@@ -1,0 +1,905 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collecting ... collected 794 items
+
+<Dir ball3d-integrated-comparison>
+  <Dir tests>
+    <Dir unit>
+      <Dir tasks>
+        <Dir ball_detection>
+          <Dir inference>
+            <Module test_heatmap_decoding.py>
+              Analytic centres, asymmetric axes and explicit rejected-fit contracts.
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15]>
+              <Function test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002]>
+              <Function test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05]>
+              <Function test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001]>
+              <Function test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002]>
+              <Function test_border_uses_only_observed_patch_cells[centroid-centre3-0.65]>
+              <Function test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65]>
+              <Function test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24]>
+              <Function test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit]>
+              <Function test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log]>
+              <Function test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit]>
+              <Function test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid]>
+              <Function test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax]>
+              <Function test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian]>
+              <Function test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes>
+              <Function test_coordinate_hypotheses_have_known_pixel_displacements>
+              <Function test_invalid_decoding_settings_are_rejected[change0]>
+              <Function test_invalid_decoding_settings_are_rejected[change1]>
+              <Function test_invalid_decoding_settings_are_rejected[change2]>
+              <Function test_invalid_decoding_settings_are_rejected[change3]>
+              <Function test_invalid_decoding_settings_are_rejected[change4]>
+              <Function test_nan_input_and_disabled_refinement_are_rejected>
+              <Function test_isotropic_gaussian_and_exactly_saturated_plateau>
+              <Function test_explicit_cells_refine_two_distinct_peaks_without_argmax_or_padding_bias>
+              <Function test_explicit_cells_keep_lattice_and_rejection_status[True-3]>
+              <Function test_explicit_cells_keep_lattice_and_rejection_status[False-7]>
+              <Function test_explicit_cells_reject_invalid_coordinates_and_implicit_legacy[axes]>
+              <Function test_explicit_cells_reject_invalid_coordinates_and_implicit_legacy[bounds]>
+              <Function test_explicit_cells_reject_invalid_coordinates_and_implicit_legacy[legacy]>
+      <Dir tennis_scene>
+        <Dir ball_association>
+          <Module test_topk.py>
+            <Function test_explicit_redecoded_pixels_change_geometry_without_mutating_raw_evidence>
+            <Function test_explicit_pixels_reject_wrong_axes_and_out_of_image_values[camera]>
+            <Function test_explicit_pixels_reject_wrong_axes_and_out_of_image_values[shape]>
+            <Function test_explicit_pixels_reject_wrong_axes_and_out_of_image_values[bounds]>
+            <Function test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order0]>
+            <Function test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order1]>
+            <Function test_missing_limit_reacquires_without_fabricating_points>
+            <Function test_turn_cost_keeps_bounce_and_hit>
+            <Function test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time>
+            <Function test_zero_score_is_not_a_candidate_threshold>
+            <Function test_invalid_configuration_or_axes_fail[top_k-9]>
+            <Function test_invalid_configuration_or_axes_fail[beam_width-0]>
+            <Function test_invalid_configuration_or_axes_fail[max_missing_frames--1]>
+            <Function test_invalid_configuration_or_axes_fail[reprojection_px-0.0]>
+            <Function test_invalid_configuration_or_axes_fail[score_weight-nan]>
+            <Function test_invalid_configuration_or_axes_fail[top_k-True]>
+            <Function test_invalid_configuration_or_axes_fail[score_weight--1]>
+            <Function test_invalid_configuration_or_axes_fail[acceleration_weight-True]>
+            <Function test_source_axes_mismatch_fails_before_association>
+            <Function test_unequal_candidate_counts_do_not_drop_lower_rank_in_other_views>
+        <Dir ball_calibration>
+          <Module test_bundle_adjustment.py>
+            Known camera and signed clock recovery, masks, and explicit refusal.
+            <Function test_recovers_camera_perturbations_and_signed_fractional_clocks>
+            <Function test_holdout_never_enters_fit_and_camera_permutation_preserves_identity>
+            <Function test_clock_resampling_uses_t_minus_delta_and_never_bridges_missing_data>
+            <Function test_half_turn_and_prosac_provenance_do_not_double_reflect_semantics>
+            <Function test_invalid_settings_are_rejected[changes0]>
+            <Function test_invalid_settings_are_rejected[changes1]>
+            <Function test_invalid_settings_are_rejected[changes2]>
+            <Function test_invalid_settings_are_rejected[changes3]>
+            <Function test_invalid_settings_are_rejected[changes4]>
+            <Function test_invalid_settings_are_rejected[changes5]>
+            <Function test_adjustment_is_in_the_actual_configuration_audit_catalog>
+            <Function test_unidentifiable_or_failed_fit_has_no_baseline_substitution[camera_axis]>
+            <Function test_unidentifiable_or_failed_fit_has_no_baseline_substitution[court_support]>
+            <Function test_unidentifiable_or_failed_fit_has_no_baseline_substitution[ball_support]>
+            <Function test_unidentifiable_or_failed_fit_has_no_baseline_substitution[static_ball]>
+            <Function test_unidentifiable_or_failed_fit_has_no_baseline_substitution[solver_budget]>
+        <Dir ball_gmm>
+          <Module test_calibration.py>
+            <Function test_calibration_excludes_later_frames_and_unselected_camera_labels>
+          <Module test_cohort_report.py>
+            The comparison-only cohort script must join camera AND frame, not row order.
+            <Function test_camera_frame_partition_errors_and_split_boundary_match_hand_values>
+            <Function test_duplicate_lovo_identity_is_rejected>
+            <Function test_common_identity_cannot_change_reference_kind>
+          <Module test_heatmap.py>
+            <Function test_joint_log_curvature_recovers_subpixel_and_rotated_covariance[covariance0]>
+            <Function test_joint_log_curvature_recovers_subpixel_and_rotated_covariance[covariance1]>
+            <Function test_pixel_covariance_grid_convention_and_unequal_candidate_counts>
+            <Function test_curvature_policy_rejects_flat_boundary_and_saddle_without_fallback>
+            <Function test_invalid_configuration_is_rejected[change0]>
+            <Function test_invalid_configuration_is_rejected[change1]>
+            <Function test_invalid_configuration_is_rejected[change2]>
+            <Function test_invalid_configuration_is_rejected[change3]>
+            <Function test_invalid_configuration_is_rejected[change4]>
+            <Function test_invalid_configuration_is_rejected[change5]>
+            <Function test_invalid_configuration_is_rejected[change6]>
+            <Function test_invalid_configuration_is_rejected[change7]>
+          <Module test_reconstruction.py>
+            <Function test_asymmetric_cameras_recover_trajectory_and_preserve_missing_evidence>
+            <Function test_map_and_mixture_mean_keep_distractor_uncertainty_and_view_order>
+            <Function test_axis_mismatch_and_component_budget_fail_explicitly>
+            <Function test_prior_single_view_mass_and_optimizer_failure_never_become_observations>
+        <Dir ball_likelihood>
+          <Module test_likelihood.py>
+            <Function test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[candidates-bicubic_logit]>
+            <Function test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[candidates-quadratic_logit]>
+            <Function test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[candidates-quadratic_log]>
+            <Function test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[coarse-bicubic_logit]>
+            <Function test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[coarse-quadratic_logit]>
+            <Function test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[coarse-quadratic_log]>
+            <Function test_one_corrupt_view_cannot_veto_two_consistent_views[missing]>
+            <Function test_one_corrupt_view_cannot_veto_two_consistent_views[distractor]>
+            <Function test_saturation_is_finite_missing_support_does_not_create_3d_and_outside_is_background>
+            <Function test_objective_gradient_in_metres_and_camera_keyed_temperature>
+            <Function test_coarse_search_needs_no_candidate_seed_and_candidate_mode_has_no_fallback>
+            <Function test_acceleration_prior_reduces_flight_jitter_and_preserves_gap_and_turn_boundaries>
+            <Function test_temporal_optimization_does_not_smooth_across_a_detected_impact_or_fill_a_gap>
+            <Function test_invalid_dense_config_is_rejected[kw0]>
+            <Function test_invalid_dense_config_is_rejected[kw1]>
+            <Function test_invalid_dense_config_is_rejected[kw2]>
+            <Function test_invalid_dense_config_is_rejected[kw3]>
+            <Function test_invalid_dense_config_is_rejected[kw4]>
+            <Function test_invalid_dense_config_is_rejected[kw5]>
+            <Function test_invalid_dense_config_is_rejected[kw6]>
+            <Function test_invalid_dense_config_is_rejected[kw7]>
+        <Dir ball_trajectory>
+          <Module test_segment_physics.py>
+            <Function test_gravity_and_quadratic_drag_use_metres_seconds_and_z_up>
+            <Function test_detect_bounce_and_hit_without_crossing_long_missing_run>
+            <Function test_joint_fit_recovers_signed_offsets_drag_bounce_and_camera_reordering>
+            <Function test_dense_heatmap_fit_is_independent_of_candidate_coordinates_and_keeps_gaps>
+            <Function test_invalid_solver_configuration_fails[kwargs0]>
+            <Function test_invalid_solver_configuration_fails[kwargs1]>
+            <Function test_invalid_solver_configuration_fails[kwargs2]>
+            <Function test_invalid_solver_configuration_fails[kwargs3]>
+            <Function test_invalid_solver_configuration_fails[kwargs4]>
+            <Function test_invalid_solver_configuration_fails[kwargs5]>
+            <Function test_failed_optimizer_has_explicit_status_and_no_baseline_fallback>
+        <Dir evaluation>
+          <Dir ball3d>
+            <Module test_annotations.py>
+              <Function test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows>
+              <Function test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]>
+              <Function test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]>
+            <Module test_baseline.py>
+              <Function test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates>
+            <Module test_contracts.py>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[covariance]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[camera_order]>
+            <Module test_court.py>
+              <Function test_view_rejects_missing_or_misbound_raw_court_observations[missing]>
+              <Function test_view_rejects_missing_or_misbound_raw_court_observations[camera]>
+              <Function test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]>
+              <Function test_view_rejects_missing_or_misbound_raw_court_observations[selection]>
+              <Function test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request>
+            <Module test_dense_cohorts.py>
+              Camera/frame cohort membership and errors, independently hand-calculated.
+              <Function test_join_preserves_camera_identity_and_split_boundary_and_error_owners>
+              <Function test_camera_kind_breakdowns_and_empty_cohorts_are_unmeasured>
+              <Function test_ambiguous_sample_identity_stops_instead_of_silently_joining[duplicate]>
+              <Function test_ambiguous_sample_identity_stops_instead_of_silently_joining[wrong_camera]>
+              <Function test_ambiguous_sample_identity_stops_instead_of_silently_joining[kind_mismatch]>
+            <Module test_error_decomposition.py>
+              Numerical contracts for the run-local, scoring-only error diagnostics.
+              <Function test_position_regression_signed_slope_and_temporal_support>
+              <Function test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis>
+              <Function test_interpolation_and_image_speed_do_not_cross_gaps_or_split>
+              <Function test_event_union_and_smoothing_keep_matched_mask_and_reference_kind>
+              <Function test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels>
+              <Function test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps>
+              <Function test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels>
+            <Module test_scoring.py>
+              <Function test_paired_scoring_matches_camera_frame_intersection_with_different_coverage>
+              <Function test_paired_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]>
+              <Function test_paired_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]>
+              <Function test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation>
+              <Function test_method_runner_excludes_labels_reference_and_heldout_camera>
+              <Function test_fractional_offsets_and_motion_never_bridge_invalid_frames>
+              <Function test_annotation_oracle_uses_retained_observations_only>
+              <Function test_camera_event_rows_use_union_windows_without_multiplying_residuals>
+              <Function test_motion_outliers_respect_gaps_and_split_boundaries>
+              <Function test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]>
+              <Function test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]>
+              <Function test_scoring_rejects_reference_identity_mismatch[clip_id]>
+              <Function test_scoring_rejects_reference_identity_mismatch[frame_count]>
+              <Function test_scoring_rejects_reference_identity_mismatch[video_hash]>
+              <Function test_common_lovo_intersection_compares_identical_camera_frame_pairs>
+              <Function test_runner_stops_before_method_when_required_line_observations_are_missing>
+            <Module test_topk_cohorts.py>
+              Camera/frame cohort accounting for the saved top-K comparison report.
+              <Function test_camera_frame_join_and_strata_preserve_reordered_asymmetric_points>
+              <Function test_duplicate_camera_frame_is_rejected>
+              <Function test_common_reference_kind_mismatch_is_rejected_before_stratification>
+              <Function test_incomplete_partition_counts_stop_the_report[totals0]>
+              <Function test_incomplete_partition_counts_stop_the_report[totals1]>
+            <Module test_uncertainty.py>
+              <Function test_projected_covariance_matches_independent_quotient_rule_and_native_pixels>
+              <Function test_ellipse_rotated_axes_have_exact_mahalanobis_radius>
+              <Function test_coverage_uses_scored_camera_frame_cohort_and_approved_estimates>
+        <Dir visualization>
+          <Module test_ball3d_comparison.py>
+            <Function test_trajectory_segments_omit_gap_endpoints_and_support_many_methods>
+            <Function test_html_reference_audit_detects_missing_sibling_media>
+            <Function test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks>
+            <Function test_broad_covariance_ellipse_stays_inside_its_trajectory_panel>
+          <Module test_ball3d_tables.py>
+            <Function test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity>
+        <Module test_configuration.py>
+          Tests for the strict tennis-scene runtime configuration boundaries.
+          <Function test_decoder_composition_overrides_reach_comparison_candidates>
+          <Function test_segment_physics_values_are_composition_owned_and_overrides_reach_runtime>
+          <Function test_clip_studio_config_resolves_each_path_from_its_declared_root>
+          <Function test_clip_studio_config_rejects_removed_path_aliases[match_id]>
+          <Function test_clip_studio_config_rejects_removed_path_aliases[dataset_root]>
+          <Function test_clip_studio_config_rejects_removed_path_aliases[project_path]>
+          <Function test_clip_studio_config_rejects_removed_path_aliases[recording_id]>
+          <Function test_clip_studio_config_rejects_removed_path_aliases[video_paths]>
+          <Function test_clip_studio_config_rejects_removed_path_aliases[camera_ids]>
+          <Function test_clip_studio_rejects_invalid_port[0]>
+          <Function test_clip_studio_rejects_invalid_port[65536]>
+          <Function test_clip_studio_rejects_invalid_port[-1]>
+          <Function test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]>
+          <Function test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]>
+          <Function test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]>
+          <Function test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict>
+          <Function test_automatic_pipeline_defaults>
+          <Function test_ball_method_and_all_topk_settings_come_from_composition>
+          <Function test_topk_missing_composed_setting_is_rejected>
+          <Function test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]>
+          <Function test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]>
+          <Function test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]>
+          <Function test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]>
+          <Function test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]>
+          <Function test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]>
+          <Function test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]>
+          <Function test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]>
+          <Function test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]>
+          <Function test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]>
+          <Function test_visualize_tasks_defaults_to_automatic_reconstruction>
+          <Function test_visualize_tasks_accepts_gvhmr_alignment_on_its_own>
+          <Function test_default_person_capacity_covers_doubles_with_buffer>
+          <Function test_pipeline_and_task_default_use_fitted_association>
+          <Function test_legacy_association_is_available_only_through_comparison_api>
+          <Function test_missing_fitted_config_does_not_load_available_legacy>
+        <Module test_pipeline_configuration.py>
+          Strict, headless automatic pipeline configuration and independent data inputs.
+          <Function test_defaults_associate_players_and_decide_sides>
+          <Function test_placement_override_is_typed_and_part_of_cache_settings>
+          <Function test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1]>
+          <Function test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan]>
+          <Function test_invalid_placement_is_rejected_before_model_loading[min_scale=2]>
+          <Function test_invalid_placement_is_rejected_before_model_loading[max_nfev=0]>
+          <Function test_invalid_placement_is_rejected_before_model_loading[min_joints=18]>
+          <Function test_unknown_placement_parameter_is_rejected>
+          <Function test_stage_only_composition_does_not_bind_dummy_video_inputs>
+          <Function test_pipeline_outputs_and_stage_cache_use_their_declared_roots>
+          <Function test_output_paths_cannot_escape_authority[../escape]>
+          <Function test_output_paths_cannot_escape_authority[/tmp/escape]>
+          <Function test_output_paths_cannot_escape_authority[outputs/repeated]>
+          <Function test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0]>
+          <Function test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1]>
+          <Function test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2]>
+          <Function test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3]>
+          <Function test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4]>
+          <Function test_removed_detector_settings_are_rejected[people_models.detector=dino-]>
+            Removed YOLO/selector keys must fail even when added to an old config.
+          <Function test_removed_detector_settings_are_rejected[people_models.detector=dino-+]>
+            Removed YOLO/selector keys must fail even when added to an old config.
+          <Function test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-]>
+            Removed YOLO/selector keys must fail even when added to an old config.
+          <Function test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+]>
+            Removed YOLO/selector keys must fail even when added to an old config.
+          <Function test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-]>
+            Removed YOLO/selector keys must fail even when added to an old config.
+          <Function test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+]>
+            Removed YOLO/selector keys must fail even when added to an old config.
+          <Function test_default_coco_source_and_explicit_finetuned_comparison>
+          <Function test_ball_detection_is_used_without_refiner_assets>
+          <Function test_retired_refiner_config_is_rejected>
+        <Dir pipeline>
+          <Dir components>
+            <Module test_ball_detection.py>
+              Tests for tennis_scene ball-detection pipeline component.
+              <Function test_trajectory_gate_zeroes_rejected_pipeline_frames>
+              <Function test_predict_video_consumes_typed_task_prediction>
+              <Function test_process_exposes_one_unidentified_observation_stream>
+              <Function test_incomplete_timeline_stops_instead_of_padding>
+              <Function test_video_to_predictor_is_always_raw_rgb[False]>
+              <Function test_video_to_predictor_is_always_raw_rgb[True]>
+              <Function test_overlapping_windows_select_all_evidence_atomically[max_score-0.9]>
+              <Function test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4]>
+              <Function test_stride_cannot_leave_silent_holes>
+              <Function test_checkpoint_normalization_mismatch_is_rejected_before_inference>
+              <Function test_centre_policy_matches_training_owners_without_score_selection[1]>
+              <Function test_centre_policy_matches_training_owners_without_score_selection[3]>
+              <Function test_centre_policy_rejects_padding_and_drop[1-backfill]>
+              <Function test_centre_policy_rejects_padding_and_drop[4-drop]>
+              <Function test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays>
+            <Module test_ball_evidence.py>
+              The persisted contract preserves raw uncertainty and rejects incomplete evidence.
+              <Function test_artifact_roundtrip_is_exact_and_load_only_does_not_infer>
+              <Function test_corrupt_evidence_is_rejected[missing]>
+              <Function test_corrupt_evidence_is_rejected[timeline]>
+              <Function test_corrupt_evidence_is_rejected[nan]>
+              <Function test_corrupt_evidence_is_rejected[mask]>
+              <Function test_corrupt_evidence_is_rejected[patch]>
+              <Function test_corrupt_evidence_is_rejected[invalid_slot]>
+              <Function test_corrupt_evidence_is_rejected[dtype]>
+              <Function test_annotation_or_disabled_outputs_cannot_claim_model_evidence>
+              <Function test_trajectory_gate_does_not_erase_raw_evidence>
+            <Module test_ball_points.py>
+              <Function test_only_observed_points_survive_storage_and_join>
+              <Function test_assembler_checks_camera_timeline_and_payload_type>
+              <Function test_filled_and_rejected_points_cannot_supply_the_second_real_view>
+          <Module test_artifact_codec.py>
+            <Function test_pep695_array_alias_accepts_numeric_arrays_and_rejects_json_lists>
+      <Dir utils>
+        <Dir configuration>
+          <Module test_audit.py>
+            Current-source configuration and path audit tests.
+            <Function test_repository_source_satisfies_current_audit>
+            <Function test_raw_configuration_fallbacks_fail_closed>
+            <Function test_unvalidated_runtime_paths_fail_closed>
+            <Function test_raw_configuration_aliases_remain_auditable>
+            <Function test_typed_children_and_persisted_records_are_not_configuration_findings>
+            <Function test_ordinary_source_edits_need_no_snapshot_refresh>
+          <Module test_cli.py>
+            Explicit selection and source-verified validation through nested CLI routes.
+            <Function test_dispatch_preserves_arguments_and_restores_argv_on_failure>
+            <Function test_invalid_selector_never_imports_or_runs_a_stage>
+            <Function test_nested_route_records_the_actual_leaf_validator>
+            <Function test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.missing'}]>
+            <Function test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.entry'}]>
+            <Function test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'duplicate': 'src.leaf', 'duplicate': 'src.nested'}]>
+            <Function test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[dynamic_routes]>
+            <Function test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{}]>
+            <Function test_unvalidated_leaf_invalidates_the_whole_router>
+          <Module test_contracts.py>
+            Source-complete inspectable configuration-contract catalog tests.
+            <Function test_catalog_has_exact_source_declaration_parity>
+            <Function test_topk_settings_are_discovered_as_required_composition_owned_fields>
+            <Function test_removed_configuration_modules_do_not_redirect[src.configuration_contracts]>
+            <Function test_removed_configuration_modules_do_not_redirect[src.configuration_validation]>
+            <Function test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.submodules]>
+            <Function test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations]>
+            <Function test_adapter_fields_have_truthful_default_precedence_and_absence_policy>
+            <Function test_operation_build_json_is_optional_and_absence_maps_to_none>
+            <Function test_all_inventoried_runtime_boundaries_expose_truthful_authorities>
+            <Function test_hybrid_audit_declares_input_output_and_optional_scene_paths>
+            <Function test_slcs_boundaries_bind_only_their_actual_public_boundary_schema>
+            <Function test_slcs_review_declares_its_required_read_only_dataset_root>
+            <Function test_synthetic_registry_exposes_only_supported_runtime_boundaries>
+            <Function test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles>
+            <Function test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.]>
+            <Function test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.]>
+            <Function test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.]>
+            <Function test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation]>
+            <Function test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules]>
+            <Function test_every_strict_schema_field_rejects_an_invalid_exact_type>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallRuntimePaths]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.inference.heatmap_decoding.HeatmapDecodingConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.AxialModelConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.tennis_scene.pipeline.components.ball_detection.BallDetectionConfig]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration]>
+            <Function test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig]>
+          <Module test_discovery.py>
+            Import-graph regressions for configuration boundary discovery.
+            <Function test_configuration_modules_import_cold_in_either_order[modules0]>
+            <Function test_configuration_modules_import_cold_in_either_order[modules1]>
+            <Function test_runtime_boundary_discovery_has_one_canonical_owner>
+            <Function test_catalog_and_audit_depend_on_lower_discovery_without_a_back_edge>
+            <Function test_catalog_does_not_publish_legacy_synthetic_boundaries>
+            <Function test_catalog_keeps_task_local_generation_boundaries_distinct>
+            <Function test_external_runtime_registration_preserves_neighbor_boundary_checks>
+            <Function test_external_runtime_sources_still_reject_configuration_fallbacks>
+            <Function test_external_runtime_registrations_have_sources_reasons_and_no_repo_imports>
+          <Module test_inventory.py>
+            Current configuration audit policy and runtime boundary inventory tests.
+            <Function test_synthetic_inventory_has_only_the_canonical_production_clis>
+            <Function test_manual_court_editor_has_an_explicit_non_hydra_path_boundary>
+            <Function test_smpl_asset_installer_has_an_explicit_non_hydra_path_boundary>
+            <Function test_task_local_generation_and_visualization_boundaries_remain_in_inventory>
+            <Function test_mixed_court_training_boundary_remains_explicitly_registered>
+            <Function test_temporal_ball_evaluation_registers_the_shared_runtime_boundary>
+            <Function test_court_learning_presentation_has_an_explicit_hydra_boundary>
+            <Function test_default_inventory_contains_only_current_policy>
+            <Function test_inventory_rejects_duplicate_boundaries>
+            <Function test_inventory_rejects_incomplete_validator_binding>
+          <Module test_operations.py>
+            Strict operation-environment and CUDA-build input contracts.
+            <Function test_boolean_environment_tokens_are_exact[]>
+            <Function test_boolean_environment_tokens_are_exact[true]>
+            <Function test_boolean_environment_tokens_are_exact[yes]>
+            <Function test_boolean_environment_tokens_are_exact[2]>
+            <Function test_boolean_environment_tokens_are_exact[ 0]>
+            <Function test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_TYPO]>
+            <Function test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_MOE_REFERENCE]>
+            <Function test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE]>
+            <Function test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_USE_TIME_LOCAL_CUDA]>
+            <Function test_runtime_environment_reuses_standalone_build_switch_authority[None-False]>
+            <Function test_runtime_environment_reuses_standalone_build_switch_authority[0-False]>
+            <Function test_runtime_environment_reuses_standalone_build_switch_authority[1-True]>
+            <Function test_runtime_environment_reuses_standalone_build_target_authority[None-all]>
+            <Function test_runtime_environment_reuses_standalone_build_target_authority[all-all]>
+            <Function test_runtime_environment_reuses_standalone_build_target_authority[compressed_time_local-compressed_time_local]>
+            <Function test_runtime_environment_rejects_unknown_build_target>
+            <Function test_enabled_build_requires_strict_json_contract>
+            <Function test_enabled_build_uses_serialized_absolute_project_root>
+            <Function test_dino_build_contract_resolves_all_roles>
+            <Function test_dino_build_contract_rejects_noncanonical_serialized_project_root[.-explicit absolute]>
+            <Function test_dino_build_contract_rejects_noncanonical_serialized_project_root[{other}-exactly match]>
+            <Function test_dino_build_contract_rejects_noncanonical_serialized_project_root[{unresolved}-resolved absolute]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation0-Unknown]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation1-source_role]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation2-destination_role]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation3-relative]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation4-escapes]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation5-expected str]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation6-Unknown]>
+            <Function test_dino_build_contract_rejects_invalid_inputs[mutation7-Unknown]>
+          <Module test_paths.py>
+            Strict root and role-relative child path contract tests.
+            <Function test_runtime_roots_reject_blank_strings[project_root-]>
+            <Function test_runtime_roots_reject_blank_strings[project_root- ]>
+            <Function test_runtime_roots_reject_blank_strings[project_root-\t]>
+            <Function test_runtime_roots_reject_blank_strings[data_root-]>
+            <Function test_runtime_roots_reject_blank_strings[data_root- ]>
+            <Function test_runtime_roots_reject_blank_strings[data_root-\t]>
+            <Function test_runtime_roots_reject_blank_strings[checkpoint_root-]>
+            <Function test_runtime_roots_reject_blank_strings[checkpoint_root- ]>
+            <Function test_runtime_roots_reject_blank_strings[checkpoint_root-\t]>
+            <Function test_runtime_roots_reject_blank_strings[artifact_root-]>
+            <Function test_runtime_roots_reject_blank_strings[artifact_root- ]>
+            <Function test_runtime_roots_reject_blank_strings[artifact_root-\t]>
+            <Function test_runtime_roots_reject_blank_strings[output_root-]>
+            <Function test_runtime_roots_reject_blank_strings[output_root- ]>
+            <Function test_runtime_roots_reject_blank_strings[output_root-\t]>
+            <Function test_runtime_roots_reject_blank_strings[cache_root-]>
+            <Function test_runtime_roots_reject_blank_strings[cache_root- ]>
+            <Function test_runtime_roots_reject_blank_strings[cache_root-\t]>
+            <Function test_runtime_roots_reject_blank_strings[external_asset_root-]>
+            <Function test_runtime_roots_reject_blank_strings[external_asset_root- ]>
+            <Function test_runtime_roots_reject_blank_strings[external_asset_root-\t]>
+            <Function test_runtime_roots_reject_unresolved_absolute_values>
+            <Function test_runtime_roots_reject_filesystem_root_authority[project_root]>
+            <Function test_runtime_roots_reject_filesystem_root_authority[data_root]>
+            <Function test_runtime_roots_reject_filesystem_root_authority[checkpoint_root]>
+            <Function test_runtime_roots_reject_filesystem_root_authority[artifact_root]>
+            <Function test_runtime_roots_reject_filesystem_root_authority[output_root]>
+            <Function test_runtime_roots_reject_filesystem_root_authority[cache_root]>
+            <Function test_runtime_roots_reject_filesystem_root_authority[external_asset_root]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[data/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[data/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[data/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[data/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[data/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[data/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[data/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[output/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[output/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[output/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[output/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[output/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[output/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[output/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[external/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[external/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[external/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[external/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[external/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[external/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[external/legacy-external_asset]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[build/legacy-project]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[build/legacy-data]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[build/legacy-checkpoint]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[build/legacy-artifact]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[build/legacy-output]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[build/legacy-cache]>
+            <Function test_every_role_rejects_legacy_root_prefixed_children[build/legacy-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[project/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[project/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[project/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[project/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[project/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[project/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[project/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[checkpoint/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[checkpoint/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[checkpoint/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[checkpoint/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[checkpoint/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[checkpoint/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[checkpoint/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[artifact/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[artifact/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[artifact/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[artifact/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[artifact/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[artifact/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[artifact/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[output/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[output/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[output/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[output/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[output/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[output/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[output/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[cache/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[cache/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[cache/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[cache/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[cache/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[cache/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[cache/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data_root/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data_root/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data_root/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data_root/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data_root/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data_root/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[data_root/work-external_asset]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-project]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-data]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-checkpoint]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-artifact]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-output]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-cache]>
+            <Function test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-external_asset]>
+            <Function test_every_role_rejects_every_configured_root_basename[workspace-root/child-project]>
+            <Function test_every_role_rejects_every_configured_root_basename[workspace-root/child-data]>
+            <Function test_every_role_rejects_every_configured_root_basename[workspace-root/child-checkpoint]>
+            <Function test_every_role_rejects_every_configured_root_basename[workspace-root/child-artifact]>
+            <Function test_every_role_rejects_every_configured_root_basename[workspace-root/child-output]>
+            <Function test_every_role_rejects_every_configured_root_basename[workspace-root/child-cache]>
+            <Function test_every_role_rejects_every_configured_root_basename[workspace-root/child-external_asset]>
+            <Function test_every_role_rejects_every_configured_root_basename[samples-root/child-project]>
+            <Function test_every_role_rejects_every_configured_root_basename[samples-root/child-data]>
+            <Function test_every_role_rejects_every_configured_root_basename[samples-root/child-checkpoint]>
+            <Function test_every_role_rejects_every_configured_root_basename[samples-root/child-artifact]>
+            <Function test_every_role_rejects_every_configured_root_basename[samples-root/child-output]>
+            <Function test_every_role_rejects_every_configured_root_basename[samples-root/child-cache]>
+            <Function test_every_role_rejects_every_configured_root_basename[samples-root/child-external_asset]>
+            <Function test_every_role_rejects_every_configured_root_basename[weights-root/child-project]>
+            <Function test_every_role_rejects_every_configured_root_basename[weights-root/child-data]>
+            <Function test_every_role_rejects_every_configured_root_basename[weights-root/child-checkpoint]>
+            <Function test_every_role_rejects_every_configured_root_basename[weights-root/child-artifact]>
+            <Function test_every_role_rejects_every_configured_root_basename[weights-root/child-output]>
+            <Function test_every_role_rejects_every_configured_root_basename[weights-root/child-cache]>
+            <Function test_every_role_rejects_every_configured_root_basename[weights-root/child-external_asset]>
+            <Function test_every_role_rejects_every_configured_root_basename[records-root/child-project]>
+            <Function test_every_role_rejects_every_configured_root_basename[records-root/child-data]>
+            <Function test_every_role_rejects_every_configured_root_basename[records-root/child-checkpoint]>
+            <Function test_every_role_rejects_every_configured_root_basename[records-root/child-artifact]>
+            <Function test_every_role_rejects_every_configured_root_basename[records-root/child-output]>
+            <Function test_every_role_rejects_every_configured_root_basename[records-root/child-cache]>
+            <Function test_every_role_rejects_every_configured_root_basename[records-root/child-external_asset]>
+            <Function test_every_role_rejects_every_configured_root_basename[runs-root/child-project]>
+            <Function test_every_role_rejects_every_configured_root_basename[runs-root/child-data]>
+            <Function test_every_role_rejects_every_configured_root_basename[runs-root/child-checkpoint]>
+            <Function test_every_role_rejects_every_configured_root_basename[runs-root/child-artifact]>
+            <Function test_every_role_rejects_every_configured_root_basename[runs-root/child-output]>
+            <Function test_every_role_rejects_every_configured_root_basename[runs-root/child-cache]>
+            <Function test_every_role_rejects_every_configured_root_basename[runs-root/child-external_asset]>
+            <Function test_every_role_rejects_every_configured_root_basename[scratch-root/child-project]>
+            <Function test_every_role_rejects_every_configured_root_basename[scratch-root/child-data]>
+            <Function test_every_role_rejects_every_configured_root_basename[scratch-root/child-checkpoint]>
+            <Function test_every_role_rejects_every_configured_root_basename[scratch-root/child-artifact]>
+            <Function test_every_role_rejects_every_configured_root_basename[scratch-root/child-output]>
+            <Function test_every_role_rejects_every_configured_root_basename[scratch-root/child-cache]>
+            <Function test_every_role_rejects_every_configured_root_basename[scratch-root/child-external_asset]>
+            <Function test_every_role_rejects_every_configured_root_basename[vendors-root/child-project]>
+            <Function test_every_role_rejects_every_configured_root_basename[vendors-root/child-data]>
+            <Function test_every_role_rejects_every_configured_root_basename[vendors-root/child-checkpoint]>
+            <Function test_every_role_rejects_every_configured_root_basename[vendors-root/child-artifact]>
+            <Function test_every_role_rejects_every_configured_root_basename[vendors-root/child-output]>
+            <Function test_every_role_rejects_every_configured_root_basename[vendors-root/child-cache]>
+            <Function test_every_role_rejects_every_configured_root_basename[vendors-root/child-external_asset]>
+            <Function test_every_role_rejects_root_collapsing_children[project-]>
+            <Function test_every_role_rejects_root_collapsing_children[project- ]>
+            <Function test_every_role_rejects_root_collapsing_children[project-\t]>
+            <Function test_every_role_rejects_root_collapsing_children[project-.]>
+            <Function test_every_role_rejects_root_collapsing_children[data-]>
+            <Function test_every_role_rejects_root_collapsing_children[data- ]>
+            <Function test_every_role_rejects_root_collapsing_children[data-\t]>
+            <Function test_every_role_rejects_root_collapsing_children[data-.]>
+            <Function test_every_role_rejects_root_collapsing_children[checkpoint-]>
+            <Function test_every_role_rejects_root_collapsing_children[checkpoint- ]>
+            <Function test_every_role_rejects_root_collapsing_children[checkpoint-\t]>
+            <Function test_every_role_rejects_root_collapsing_children[checkpoint-.]>
+            <Function test_every_role_rejects_root_collapsing_children[artifact-]>
+            <Function test_every_role_rejects_root_collapsing_children[artifact- ]>
+            <Function test_every_role_rejects_root_collapsing_children[artifact-\t]>
+            <Function test_every_role_rejects_root_collapsing_children[artifact-.]>
+            <Function test_every_role_rejects_root_collapsing_children[output-]>
+            <Function test_every_role_rejects_root_collapsing_children[output- ]>
+            <Function test_every_role_rejects_root_collapsing_children[output-\t]>
+            <Function test_every_role_rejects_root_collapsing_children[output-.]>
+            <Function test_every_role_rejects_root_collapsing_children[cache-]>
+            <Function test_every_role_rejects_root_collapsing_children[cache- ]>
+            <Function test_every_role_rejects_root_collapsing_children[cache-\t]>
+            <Function test_every_role_rejects_root_collapsing_children[cache-.]>
+            <Function test_every_role_rejects_root_collapsing_children[external_asset-]>
+            <Function test_every_role_rejects_root_collapsing_children[external_asset- ]>
+            <Function test_every_role_rejects_root_collapsing_children[external_asset-\t]>
+            <Function test_every_role_rejects_root_collapsing_children[external_asset-.]>
+            <Function test_project_source_child_remains_explicit_and_role_contained>
+            <Function test_resolve_beneath_rejects_blank_root_and_escape_children[]>
+            <Function test_resolve_beneath_rejects_blank_root_and_escape_children[ ]>
+            <Function test_resolve_beneath_rejects_blank_root_and_escape_children[.]>
+            <Function test_resolve_beneath_rejects_blank_root_and_escape_children[..]>
+            <Function test_resolve_beneath_rejects_blank_root_and_escape_children[nested/../..]>
+            <Function test_resolve_beneath_rejects_parent_from_another_role>
+            <Function test_resolve_symlink_entry_preserves_venv_launcher_but_contains_parent>
+            <Function test_resolve_symlink_entry_rejects_parent_symlink_escape>
+            <Function test_non_hydra_boundary_returns_typed_role_aware_paths>
+            <Function test_optional_boundary_paths_are_omitted_without_synthesizing_values>
+            <Function test_only_optional_boundary_can_return_an_empty_mapping>
+            <Function test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments0]>
+            <Function test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments1]>
+            <Function test_non_hydra_boundary_rejects_invalid_path_shapes[source-relative/source.json-explicit absolute]>
+            <Function test_non_hydra_boundary_rejects_invalid_path_shapes[source-invalid1-exactly str or pathlib.Path]>
+            <Function test_non_hydra_boundary_rejects_invalid_path_shapes[assets-invalid2-non-empty sequence]>
+            <Function test_non_hydra_boundary_rejects_invalid_path_shapes[assets-one.bin-non-empty sequence]>
+            <Function test_non_hydra_boundary_rejects_wrong_role_root_and_duplicate_paths>
+            <Function test_non_hydra_boundary_checks_input_existence_and_kind>
+            <Function test_independent_artifact_inputs_are_opt_in_and_keep_output_contained>
+            <Function test_independent_artifact_inputs_cannot_expand_other_authorities[output-output]>
+            <Function test_independent_artifact_inputs_cannot_expand_other_authorities[artifact-output]>
+            <Function test_independent_artifact_inputs_cannot_expand_other_authorities[data-input]>
+            <Function test_independent_artifact_input_requires_explicit_role_root_permission>
+            <Function test_reserved_prefix_error_names_why_the_prefix_is_reserved[slcs/precompute/run-basename of the configured output_root]>
+            <Function test_reserved_prefix_error_names_why_the_prefix_is_reserved[outputs/legacy-a legacy root directory name]>
+            <Function test_reserved_prefix_error_names_why_the_prefix_is_reserved[external_asset/work-the name of the external_asset path role]>
+    <Dir integration>
+      <Dir tennis_scene>
+        <Module test_ball3d_bundle.py>
+          <Function test_real_component_codec_bundle_and_cpu_runner_roundtrip>
+          <Function test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]>
+          <Function test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]>
+          <Function test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]>
+          <Function test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input>
+          <Function test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]>
+          <Function test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]>
+          <Function test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]>
+        <Module test_ball3d_candidate_gmm.py>
+          <Function test_default_pipeline_matches_frozen_main_arrays>
+          <Function test_public_config_component_codec_and_lovo_share_production_algorithm>
+        <Module test_ball3d_dense_likelihood.py>
+          <Function test_default_pipeline_matches_main_fixed_arrays>
+          <Function test_config_definition_component_codec_and_lovo_share_dense_algorithm>
+          <Function test_dense_config_fails_before_pipeline_execution[ball_reconstruction.method=unknown]>
+          <Function test_dense_config_fails_before_pipeline_execution[ball_reconstruction.dense_likelihood.temperature=-1]>
+        <Module test_ball3d_heatmap_decoding.py>
+          <Function test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order>
+        <Module test_ball3d_integrated_comparison.py>
+          Experiment compositions retain fold boundaries and portable artifact links.
+          <Function test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera>
+          <Function test_portable_report_uses_relative_video_files_after_copy>
+        <Module test_ball3d_media.py>
+          <Function test_synchronized_two_method_video_full_decode_and_portable_reference_report>
+        <Module test_ball3d_segment_physics.py>
+          <Function test_default_pipeline_matches_fixed_main_arrays>
+          <Function test_opt_in_pipeline_codec_and_lovo_use_same_solver_without_heldout_evidence>
+        <Module test_ball3d_topk.py>
+          <Function test_default_pipeline_matches_main_arrays>
+          <Function test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algorithm>
+        <Module test_court_ball_ba.py>
+          Public config, production assembly/codec and fixed-input LOVO boundaries.
+          <Function test_public_config_assembly_optional_stage_and_real_codec>
+          <Function test_fixed_default_matches_captured_main_arrays>
+          <Function test_lovo_recomputes_selected_cameras_only_and_saves_typed_refinement>
+          <Function test_unknown_calibration_choice_is_rejected_before_loading_assets>
+    <Dir e2e>
+      <Dir skills>
+        <Module test_knowledge_control.py>
+          End-to-end checks for the knowledge-control registration entry point.
+          <Function test_register_promotes_headline_and_diagnostic_metric_artifacts>
+          <Function test_named_registration_selects_latest_across_new_legacy_and_expired_history[False]>
+          <Function test_named_registration_selects_latest_across_new_legacy_and_expired_history[True]>
+          <Function test_log_only_import_reads_new_name_without_metadata_header>
+        <Module test_knowledge_library.py>
+          CPU-only storage contracts: concurrency, integrity and summary review lifecycle.
+          <Function test_task_scoped_sequences_force_and_invalid_task>
+          <Function test_concurrent_registration_allocates_unique_numbers>
+          <Function test_paper_references_checksum_and_summary_staleness>
+          <Function test_invalid_schema_reports_errors_instead_of_crashing>
+          <Function test_duplicate_sequence_and_broken_edges_are_rejected>
+          <Function test_log_import_respects_explicit_date_and_task>
+          <Function test_migration_preserves_metadata_and_rebases_links>
+          <Function test_highest_sequence_is_never_reused_after_deletion>
+          <Function test_schema_contract_rejects_invalid_values[changes0-invalid id]>
+          <Function test_schema_contract_rejects_invalid_values[changes1-title must]>
+          <Function test_schema_contract_rejects_invalid_values[changes2-issue must]>
+          <Function test_schema_contract_rejects_invalid_values[changes3-issue must]>
+          <Function test_schema_contract_rejects_invalid_values[changes4-provider must]>
+          <Function test_schema_contract_rejects_invalid_values[changes5-status must]>
+          <Function test_schema_contract_rejects_invalid_values[changes6-config must]>
+          <Function test_schema_contract_rejects_invalid_values[changes7-metrics must]>
+          <Function test_schema_contract_rejects_invalid_values[changes8-artifacts must]>
+          <Function test_schema_contract_rejects_invalid_values[changes9-artifacts.run_dir]>
+          <Function test_schema_contract_rejects_invalid_values[changes10-artifacts.run_dir]>
+          <Function test_schema_contract_rejects_invalid_values[changes11-date must]>
+          <Function test_schema_contract_rejects_invalid_values[changes12-recorded_at must]>
+          <Function test_schema_contract_rejects_invalid_values[changes13-date_source must]>
+          <Function test_schema_contract_rejects_invalid_values[changes14-self parent]>
+          <Function test_schema_contract_rejects_invalid_values[changes15-duplicate tags]>
+          <Function test_schema_contract_rejects_invalid_values[changes16-relation requires]>
+          <Function test_schema_contract_rejects_invalid_values[changes17-members are only allowed]>
+          <Function test_bad_yaml_is_an_actionable_error[id: run-one\nid: run-two\n]>
+          <Function test_bad_yaml_is_an_actionable_error[id: [unterminated\n]>
+          <Function test_bad_yaml_is_an_actionable_error[config: &config {model: test}\nmetrics: *config\n]>
+          <Function test_bad_yaml_is_an_actionable_error[metrics: {loss: 1, loss: 2}\n]>
+          <Function test_cycles_rejected_but_mutual_comparisons_allowed>
+          <Function test_unfinished_scaffold_and_summary_edits_require_completion>
+          <Function test_missing_library_or_orphan_papers_are_not_silently_ignored>
+          <Function test_base_comparison_preserves_identity_and_deleted_allocations[True]>
+          <Function test_base_comparison_preserves_identity_and_deleted_allocations[False]>
+        <Module test_knowledge_artifacts.py>
+          CPU fixtures for run retention, immutable exceptions and deletion provenance.
+          <Function test_file_size_boundaries[-1-.json-262144]>
+          <Function test_file_size_boundaries[-1-.patch-262144]>
+          <Function test_file_size_boundaries[-1-.png-524288]>
+          <Function test_file_size_boundaries[-1-.svg-524288]>
+          <Function test_file_size_boundaries[-1-.pdf-524288]>
+          <Function test_file_size_boundaries[0-.json-262144]>
+          <Function test_file_size_boundaries[0-.patch-262144]>
+          <Function test_file_size_boundaries[0-.png-524288]>
+          <Function test_file_size_boundaries[0-.svg-524288]>
+          <Function test_file_size_boundaries[0-.pdf-524288]>
+          <Function test_file_size_boundaries[1-.json-262144]>
+          <Function test_file_size_boundaries[1-.patch-262144]>
+          <Function test_file_size_boundaries[1-.png-524288]>
+          <Function test_file_size_boundaries[1-.svg-524288]>
+          <Function test_file_size_boundaries[1-.pdf-524288]>
+          <Function test_run_total_boundary[-1]>
+          <Function test_run_total_boundary[0]>
+          <Function test_run_total_boundary[1]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[pred.npz]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[pred.npy]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[weights.ckpt]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[weights.pt]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[weights.safetensors]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[events.out.tfevents.fixture]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[log.gz]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[log.zip]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[preview.mp4]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[preview.gif]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[contact.jpg]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[contact.jpeg]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[timing.prof]>
+          <Function test_raw_or_unknown_types_are_rejected_even_when_small[unknown.bin]>
+          <Function test_symlink_is_rejected>
+          <Function test_exceptions_pin_file_content_and_entire_run>
+          <Function test_exception_list_validation[version-unsupported schema_version]>
+          <Function test_exception_list_validation[duplicate-duplicate exception path]>
+          <Function test_exception_list_validation[reason-reason is required]>
+          <Function test_exception_list_validation[hash-invalid exception SHA-256]>
+          <Function test_exception_list_validation[escape-invalid or duplicate exception path]>
+          <Function test_legacy_inventory_requires_explicit_path_and_hash>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[version-unsupported schema_version]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[path-invalid or duplicate removed path]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[hash-invalid SHA-256]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[commit-full pre-deletion HEAD]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[missing-invalid deletion record fields]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[destination-invalid manifest fields]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[reason-unknown deletion reason]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[type_reason-disagrees with type/size]>
+          <Function test_manifest_rejects_invalid_or_inconsistent_records[present-deleted file still exists]>
+          <Function test_deleted_file_directory_and_body_references>
+          <Function test_relative_bare_and_nested_broken_references>
+          <Function test_history_checks_missing_record_byte_identity_and_immutability>
+          <Function test_recorded_commit_must_contain_the_file>
+          <Function test_existing_records_do_not_require_erased_history>
+          <Function test_other_markdown_run_references_are_checked[[evidence]: ../../runs/run-fixture/missing.json]>
+          <Function test_other_markdown_run_references_are_checked[`../../runs/run-fixture/missing.json`]>
+          <Function test_registration_rejects_oversize_before_copying[metrics.json-262145]>
+          <Function test_registration_rejects_oversize_before_copying[uncommitted.patch-262145]>
+          <Function test_removed_path_export_validates_records_and_skips_only_pinned_inventory>
+        <Module test_knowledge_skill_workflow.py>
+          Execute the SKILL's documented commands, then validate their completed artifacts.
+          
+          No model API, GPU, downloads, or live queue: fixtures provide the evidence and the
+          human/agent-authored prose. This tests operational consistency, not research quality.
+          <Function test_skill_metadata_and_local_references_are_discoverable>
+          <Function test_documented_workflow_passes_the_ci_gate[queue-done]>
+          <Function test_documented_workflow_passes_the_ci_gate[log-failed]>
+          <Function test_documented_workflow_passes_the_ci_gate[manual-failed]>
+
+=================== 794 tests collected in 72.45s (0:01:12) ====================
