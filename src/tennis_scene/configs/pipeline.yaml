@@ -122,6 +122,14 @@ ball_detection:
   normalize_imagenet: true
   score_threshold: 0.5
   subpixel_refine: true
+  decoding:
+    method: legacy
+    patch_size: 5
+    temperature: 1.0
+    coordinate_correction: none
+    model_stride: 4
+    scale_xy: [1.0, 1.0]
+    offset_xy: [0.0, 0.0]
   checkpoint_strict: true
   checkpoint_weights_only: false
   prefetch_batches: 2

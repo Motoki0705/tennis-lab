@@ -37,7 +37,7 @@ SHA検査・既存ファイルの扱い・再現手順は[重み取得CLI](../..
 | `checkpoints/` | schema別の保存・読込・encoder転送・再現性の照合 |
 | [training/](training/README.md) | 等予算の可変長heatmap／直接座標、5chのDPT→query→hybridと継続学習、既存heatmap/座標学習、共通runtime |
 | `evaluation/` | 学習中/単独評価で共通の採点、重複排除、clean/stress |
-| `inference/` | scene向け公開predictorとtrajectory gate |
+| [inference/](inference/README.md) | scene向け公開predictor・trajectory gate・選択式native heatmap復号 |
 | [annotation/](annotation/README.md) | 新規clipの事前推論・注釈レビュー・累積教師公開 |
 | [visualization/](visualization/README.md) | WebUI・描画・GIF・教師/拡張preview |
 | [dataset_statistics/](dataset_statistics/README.md) | 注釈構成・欠損・位置・速度・窓・pose品質のCPU統計 |

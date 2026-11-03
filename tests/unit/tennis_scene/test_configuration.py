@@ -175,6 +175,16 @@ def test_invalid_ball_candidate_config_fails_before_inference(tmp_path: Path, ov
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override))
 
 
+def test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict(tmp_path: Path) -> None:
+    runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path,
+        "ball_detection.decoding.method=quadratic_logit", "ball_detection.decoding.patch_size=3"))
+    assert runtime.ball_detection.decoding.method == "quadratic_logit"
+    assert runtime.ball_detection.decoding.patch_size == 3
+    with pytest.raises(ValueError, match="subpixel_refine"):
+        PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path,
+            "ball_detection.decoding.method=centroid", "ball_detection.subpixel_refine=false"))
+
+
 def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path))
     assert runtime.sampling_max_frames == 1024
