@@ -19,7 +19,7 @@ def main():
         source.write_bytes(original.replace(old, b"[[coef[3], 0.0], [0.0, coef[5]]]"))
         failed = subprocess.run(command, env=env, capture_output=True, text=True)
         if failed.returncode == 0 or "Mismatched elements" not in failed.stdout:
-            raise ValueError("Cross-curvature mutation did not trigger the intended numeric assertion")
+            raise ValueError("Cross-curvature mutation did not trigger the intended numeric assertion\n"+failed.stdout+failed.stderr)
     finally:
         source.write_bytes(original)
     restored = subprocess.run(command, env=env, capture_output=True, text=True)

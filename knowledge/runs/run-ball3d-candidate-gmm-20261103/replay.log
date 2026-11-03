@@ -1,0 +1,15 @@
+Frozen calibration from retained cameras and frames [0,505) only
+Running pipeline_baseline: all views and three LOVO folds
+Saved pipeline_baseline: [856, 540, 474, 646] valid frames
+Running candidate_gmm_map_none: all views and three LOVO folds
+Saved candidate_gmm_map_none: [322, 461, 700, 1010] valid frames
+Running candidate_gmm_mean_none: all views and three LOVO folds
+Saved candidate_gmm_mean_none: [322, 461, 700, 1010] valid frames
+Running candidate_gmm_map_rts: all views and three LOVO folds
+Saved candidate_gmm_map_rts: [322, 461, 700, 1010] valid frames
+Running candidate_gmm_mean_rts: all views and three LOVO folds
+Saved candidate_gmm_mean_rts: [322, 461, 700, 1010] valid frames
+/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-candidate-gmm/knowledge/runs/run-ball3d-candidate-gmm-20261103/plots.py:41: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  ax.legend(fontsize=6)
+Scored all folds/splits, generated uncertainty and comparison figures
+{"output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/candidate_gmm_v1", "artifacts_sha256": "426508fe764f4bc3c1e6e15f539e71889bcc494c7d341f4d7640b4185c1b4f5f", "elapsed_seconds": 1134.7045252920361}

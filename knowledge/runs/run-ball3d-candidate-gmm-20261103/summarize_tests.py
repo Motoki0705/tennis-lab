@@ -27,6 +27,7 @@ def main():
         files[filename]["phase_seconds"] += total
         if ("/ball_gmm/" in node or node.endswith(".py::test_default_pipeline_matches_frozen_main_arrays")
                 or "/test_kalman.py::" in node or "/test_uncertainty.py::" in node
+                or "::test_broad_covariance_ellipse_stays_inside_its_trajectory_panel" in node
                 or "/test_ball3d_candidate_gmm.py::" in node):
             new.append({"node": node, "total_seconds": total, **phases})
     summary = {"collected": len(collection["nodes"]), "passed": len(cases),

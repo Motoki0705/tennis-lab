@@ -15,9 +15,10 @@ def test_joint_log_curvature_recovers_subpixel_and_rotated_covariance(covariance
     delta = np.stack((x-.23, y+.31), -1)
     patch = .83*np.exp(-.5*np.einsum("...i,ij,...j->...", delta, np.linalg.inv(covariance), delta))
     peak = fit_peak(patch, np.ones((5, 5), bool), config=CandidateGMMConfig())
-    assert peak is not None and not peak.bounded
+    assert peak is not None
     np.testing.assert_allclose(peak.mean_cells, [.23, -.31], atol=1e-12)
     np.testing.assert_allclose(peak.covariance_cells2, covariance, atol=1e-12)
+    assert not peak.bounded
 
 
 def test_pixel_covariance_grid_convention_and_unequal_candidate_counts():

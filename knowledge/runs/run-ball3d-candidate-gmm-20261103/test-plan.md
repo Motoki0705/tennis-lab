@@ -55,3 +55,10 @@ recovery. #1672's beam null states removed 296/505 full-view frames and worsened
 common-cohort errors. This design avoids temporal path/null search; smoothing
 preserves the geometric validity mask and gaps. All results, including negative
 ones and coverage changes, will be reported. No dependence on #1559.
+
+Presentation follow-up: extend the existing media integration with covariance
+and embedded supplementary figures. One cheap unit case draws an intentionally
+broad ellipse into a court panel and requires all RGB/adjacent-panel pixels to
+remain untouched (<1 s, no video fixture). This guards the observed panel-boundary
+risk without adding another video integration. Representative ellipsoid frames
+may be selected by prediction availability only; no error-based selection.
