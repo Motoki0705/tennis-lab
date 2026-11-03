@@ -1,8 +1,8 @@
 """One read-only argv definition for agy settings, its hook and documentation.
 
 The regex language deliberately needs neither lookaround nor shell tokenization.
-The caller must use readonly_environment: Git configuration can execute helpers
-without any dangerous command-line option. This is not an OS sandbox.
+The caller must use readonly_environment: Git configuration can execute helpers,
+and GNU option parsing depends on the environment. This is not an OS sandbox.
 """
 
 from __future__ import annotations
@@ -180,7 +180,7 @@ _PR_FIELDS = [
 
 
 def _value(kind: str) -> str:
-    if kind == "argument":
+    if kind in ("argument", "pattern"):
         return _argument()
     if kind == "path":
         return _path()
@@ -271,7 +271,7 @@ _GREP = {
     **_switches(
         "-E --extended-regexp -G --basic-regexp -L --files-without-match -h -H -I"
     ),
-    "-e": "argument",
+    "-e": "pattern",
 }
 _GH: dict[str, str | None] = {
     "--json": "issue_fields",
@@ -454,13 +454,20 @@ def _option(name: str, kind: str | None, cluster: str) -> str:
     return "(?:" + "|".join(alternatives) + ")"
 
 
+def _short_switch_cluster(options: dict[str, str | None]) -> str:
+    return re.escape(
+        "".join(
+            name[1]
+            for name, kind in options.items()
+            if len(name) == 2 and kind is None
+        )
+    ).replace(r"\-", "-")
+
+
 def _flags(options: dict[str, str | None], *, history: bool = False) -> str:
-    short = "".join(
-        name[1] for name, kind in options.items() if len(name) == 2 and kind is None
-    )
-    cluster = re.escape(short).replace(r"\-", "-")
+    cluster = _short_switch_cluster(options)
     alternatives = []
-    if short:
+    if cluster:
         alternatives.append("-[" + cluster + "]+")
     alternatives.extend(
         _option(name, kind, cluster)
@@ -494,36 +501,50 @@ def _prefix(name: str) -> str:
     return _SPACE.join(words)
 
 
+def _search_form(tool: Tool, options: dict[str, str | None]) -> str:
+    # Without an explicit pattern option, exactly the first operand is a
+    # pattern. Never let a later -e turn that unrestricted operand into a file.
+    plain = {name: kind for name, kind in options.items() if kind != "pattern"}
+    flags = _flags(plain)
+    minimum = int(tool.shape == "search_file")
+    alternatives = [
+        _SPACE + _argument() + flags + _tail(flags, minimum=minimum),
+        _SPACE + "--" + _SPACE + _argument() + _bare_paths(minimum),
+    ]
+    patterns = [
+        _option(name, kind, _short_switch_cluster(options))
+        for name, kind in options.items()
+        if kind == "pattern"
+    ]
+    if patterns:
+        all_flags = _flags(options)
+        pattern = _SPACE + "(?:" + "|".join(patterns) + ")" + all_flags
+        before = "(?:" + _SPACE + _path() + flags + ")"
+        # The first explicit pattern may follow paths. All operands, on both
+        # sides of that option and after '--', still use the path grammar.
+        alternatives.append(
+            before + ("+" if minimum else "*") + pattern + _tail(all_flags)
+        )
+        if minimum:
+            alternatives.append(pattern + _tail(all_flags, minimum=1))
+    if tool.name == "rg":
+        all_flags = _flags(options)
+        alternatives.append(_SPACE + "--files" + all_flags + _tail(all_flags))
+    return _prefix(tool.name) + flags + "(?:" + "|".join(alternatives) + ")"
+
+
 def _forms(tool: Tool) -> list[str]:
-    prefix = _prefix(tool.name)
     options = {
         name: kind for name, kind in tool.flags.items() if name not in ("--files", "-P")
     }
+    if tool.shape in ("search", "search_file"):
+        return [_search_form(tool, options)]
+    prefix = _prefix(tool.name)
     flags = _flags(options, history=tool.shape == "history")
     start = prefix + flags
     shape = tool.shape
     if shape == "find":
         return [prefix + "(?:" + _SPACE + "-P)?" + _bare_paths() + flags]
-    if shape in ("search", "search_file"):
-        minimum = int(shape == "search_file")
-        tail = _tail(flags, minimum=minimum)
-        patterns = [_argument()]
-        if "-e" in options:
-            cluster = re.escape(
-                "".join(
-                    name[1]
-                    for name, kind in options.items()
-                    if len(name) == 2 and kind is None
-                )
-            )
-            patterns.append(_option("-e", "argument", cluster))
-        alternatives = [
-            _SPACE + "(?:" + "|".join(patterns) + ")" + flags + tail,
-            _SPACE + "--" + _SPACE + _argument() + _bare_paths(minimum),
-        ]
-        if tool.name == "rg":
-            alternatives.append(_SPACE + "--files" + flags + _tail(flags))
-        return [start + "(?:" + "|".join(alternatives) + ")"]
     if shape == "none":
         return [start]
     if shape in ("id", "pr"):
@@ -631,8 +652,10 @@ def readonly_environment(environ: Mapping[str, str], *, cwd: Path) -> dict[str, 
 
     Drop inherited Git path/config/exec overrides, including CONFIG_PARAMETERS
     (which would override CONFIG_COUNT). Keep gh credentials in the child only.
+    Preserve GNU option permutation so trailing option values never become files.
     """
     env = {key: value for key, value in environ.items() if not key.startswith("GIT_")}
+    env.pop("POSIXLY_CORRECT", None)
     env.update(
         {
             "AGY_CLI_DISABLE_AUTO_UPDATE": "true",

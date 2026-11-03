@@ -230,6 +230,21 @@ def json_input(command: str) -> str:
         "gh issue view https://github.com/Motoki0705/tennis-lab/issues/1644 --comments",
         "gh pr view https://github.com/Motoki0705/tennis-lab/pull/1652 --json reviews,body",
         "gh pr view codex/topic --json headRefName",
+        "grep -e key README.md docs/a.md",
+        "grep -n -e a -e b src",
+        "grep -ne key -- README.md docs/a.md",
+        "grep README.md -e key docs/a.md",
+        "grep -e key src -n docs/a.md",
+        "grep -e /etc/passwd README.md docs/a.md",
+        "grep /etc/passwd README.md docs/a.md",
+        "git grep -e key -- src",
+        "git grep -n -e a -e b -- src docs",
+        "git grep -e /etc/passwd -- README.md docs/a.md",
+        "rg --files --hidden -- src docs",
+        "rg --files -g '*.md' src docs -- README.md",
+        "rg /etc/passwd README.md docs/a.md",
+        "git log --grep=key HEAD~1..HEAD -- src docs",
+        "git log --grep /etc/passwd HEAD -- src docs",
     ],
 )
 def test_unobserved_readonly_combinations(
@@ -326,6 +341,49 @@ def test_path_operands_cannot_spell_an_escape(
     rules: dict[str, list[re.Pattern[str]]], command: str
 ) -> None:
     assert not accepted(rules, command, search=True)
+    assert hook.evaluate(json_input(command))["decision"] == "deny"
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "grep -e key /etc/passwd README.md",
+        "grep -n -e a -e b /etc/passwd x",
+        "git grep -e key /etc/passwd",
+        "git grep -e key -- /etc/passwd",
+        "grep /etc/passwd -e key README.md",
+        "grep -e key -- /etc/passwd README.md",
+        "git grep /etc/passwd -e key src",
+        "grep src -e key /etc/passwd README.md",
+        "grep -ne key '/etc/passwd' README.md",
+        "grep -e key src/../secret README.md",
+        "git grep -n -e a -e b '../secret' src",
+        "git grep -e key -- src /etc/passwd",
+        "grep -e key README.md /etc/passwd",
+        "grep --regexp=key /etc/passwd x",
+        "rg -e key /etc/passwd README.md",
+        "rg --regexp=key /etc/passwd README.md",
+        "rg --files --hidden /etc/passwd README.md",
+        "rg --files -g '*.md' -- src ../secret README.md",
+        "git status --porcelain=v2 src -- /etc/passwd README.md",
+        "ls --sort=extension src -- ../secret README.md",
+        "git ls-files -cmz src -- /etc/passwd README.md",
+        "git log --grep=key /etc/passwd README.md",
+        "git log HEAD --grep key -- src/../secret README.md",
+        "git log --grep key HEAD:../secret -- src",
+        "git log -S key HEAD -- /etc/passwd README.md",
+        "git log -G key HEAD -- /etc/passwd README.md",
+        "find src -name key /etc/passwd",
+        "find src -ipath ../secret -print",
+        "gh issue view 1644 --json body /etc/passwd README.md",
+    ],
+)
+def test_mode_flags_cannot_hide_path_operands(
+    rules: dict[str, list[re.Pattern[str]]], command: str
+) -> None:
+    assert not accepted(rules, command, search=False)
+    assert not accepted(rules, command, search=True)
+    assert not policy.command_allowed(command)
     assert hook.evaluate(json_input(command))["decision"] == "deny"
 
 

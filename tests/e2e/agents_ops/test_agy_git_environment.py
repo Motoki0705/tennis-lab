@@ -1,4 +1,4 @@
-"""Real Git helper canaries in disposable repos; never invoke the real agy."""
+"""Real Git/Grep canaries in disposable repos; never invoke the real agy."""
 
 from __future__ import annotations
 
@@ -211,3 +211,49 @@ def test_unreadable_filter_configuration_is_not_silently_ignored(
     (tmp_path / ".git/refs").mkdir()
     with pytest.raises(ValueError, match="cannot inspect workspace Git filters"):
         policy.readonly_environment(os.environ, cwd=tmp_path)
+
+
+@pytest.mark.parametrize("kind", ["pattern_after_operand", "glob_after_operand"])
+def test_grep_environment_keeps_option_values_from_becoming_files(
+    tmp_path: Path, kind: str
+) -> None:
+    work = tmp_path / "workspace"
+    work.mkdir()
+    hostile = {**os.environ, "POSIXLY_CORRECT": "1"}
+    subprocess.run(
+        ["git", "init", "--quiet", "--template="],
+        cwd=work,
+        env={
+            **{key: value for key, value in hostile.items() if not key.startswith("GIT_")},
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+            "GIT_CONFIG_NOSYSTEM": "1",
+        },
+        check=True,
+        capture_output=True,
+        timeout=10,
+    )
+    for name in ("README.md", "x", "-e", "--include"):
+        (work / name).write_text("key\n")
+    outside = tmp_path / "outside-canary"
+    nonce = "OUTSIDE_READ_CANARY"
+    content = f"key {nonce}\nREADME.md {nonce}\n"
+    outside.write_text(content)
+    args = (
+        ["grep", "README.md", "-e", str(outside), "x"]
+        if kind == "pattern_after_operand"
+        else ["grep", "-e", "key", "README.md", "--include", str(outside), "x"]
+    )
+    assert policy.command_allowed(shlex.join(args))
+    control = subprocess.run(
+        args, cwd=work, env=hostile, text=True, capture_output=True, timeout=10
+    )
+    assert control.returncode == 0
+    assert nonce in control.stdout  # The inherited environment exposes the canary.
+    safe = policy.readonly_environment(hostile, cwd=work)
+    assert "POSIXLY_CORRECT" not in safe
+    result = subprocess.run(
+        args, cwd=work, env=safe, text=True, capture_output=True, timeout=10
+    )
+    assert result.returncode in {0, 1}
+    assert nonce not in result.stdout
+    assert outside.read_text() == content
