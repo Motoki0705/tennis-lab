@@ -1,4 +1,13 @@
 {
+  "history_status": {
+    "status": "withdrawn_memory_change_history",
+    "original_tested_head": "45f2c80a19c32202e5dd68b1746f595eb94c0174",
+    "restored_reference_head": "32bac92aca62aa2dd59d0240b3f239f2530e0993",
+    "instruction": "memory変更は親の指示で取り消した。",
+    "source_correction": "cross-1はreviewer agentの指摘を親が修正指示として戻したもので、人間の判断・指示ではない。",
+    "reason": "人間の判断とした出典の誤りと、方式PRから独立したmemory変更の混在。",
+    "applicability": "以下の件数・時間・caseは取り消し前の検証履歴で、現HEADの検証結果ではない。"
+  },
   "pytest_workers": 0,
   "timezone": "UTC",
   "selected_collected": 92,
@@ -14,7 +23,7 @@
     "test": "test_memory_entry_frontmatter[review/coverage-cohort-error-distributions.md]",
     "before": "1 failed in 0.07s with TZ=UTC",
     "failure": "JST date 2026-11-04 exceeds UTC today 2026-11-03",
-    "fix": "Use the actual UTC creation/verification date 2026-11-03; keep the human judgment source date in JST"
+    "fix": "当時の新規entryの日付をUTCへ合わせた。entry自体は後に親の指示で取り消した。"
   },
   "cases": [
     {
