@@ -21,3 +21,5 @@
 - イベントは物理イベント数を推定せず、camera別の元25行を保存する。kindごとに元行の±3frame窓の和集合で残差を1回だけ採点し、行数を物理イベント数と表示しない。同kindの0/1frame差と窓の重複を手書きfixtureで検査する。
 - 動画・図は直接観測と推定に別の印を使う。小動画のintegrationを2方式で実行し、区間別表・分布・時系列・欠測・HTML埋め込みを検査する。全viewとLOVOの結果は実clipで保存・再読込し、全動画frameを逐次decodeする。
 - 新規/変更分は合計40 case以内を目標とし、既存reader50 caseと指定の再利用2 nodeを含め `-n 0`（最大2）でcollectと全durationを記録する。codec・描画は初回importを含む実測を分け、メモリの重い処理は並列にしない。
+
+結果の保存復元は既存integration nodeで、非対称な更新intrinsic・共分散・秒単位offsetも保存して照合する。LOESSなしの座標と採用maskの契約を専用unitで確認する。

@@ -4,12 +4,12 @@ if [[ $# -ne 5 ]]; then
   echo "Usage: $0 BUNDLE_DIR VIDEOS_DIR GROUND_TRUTH_JSON CHECKPOINT_ROOT NEW_OUTPUT_DIR" >&2
   exit 2
 fi
-BALL3D_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BALL3D_REPO_ROOT="$(git -C "$BALL3D_SCRIPT_DIR" rev-parse --show-toplevel)"
-cd "$BALL3D_REPO_ROOT"
-export PYTHONPATH="$BALL3D_REPO_ROOT"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+export PYTHONPATH=.
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
-.venv/bin/python "$BALL3D_SCRIPT_DIR/run.py" compare \
+.venv/bin/python "$SCRIPT_DIR/run.py" compare \
   --bundle "$1" \
   --bundle-sha256 7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a \
   --videos "$2" \

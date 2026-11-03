@@ -1,7 +1,7 @@
-<!-- knowledge-review: e7647ddc43e9c60d5ee640c7ff0c3f6953c8e680e49d9e485e0ca2f9275c3f8f on 2026-10-31 -->
+<!-- knowledge-review: be9d479ffeacafe1c13f88fff18341f88884d7ee99d536c5b827e19b75f5ae93 on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-10-31（ボール逐次学習の完了・終端validationとCourtシーン組合せの入力manifestを反映。固定6000枚・4条件比較と#1343の完了判断、球LOESS・公開デモ、既存モデル・checkpointの採用判断は維持）
+更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -10,6 +10,16 @@
 この文書は、Tennis Labの学習・実験から得られた**現在の到達点、主要な知見、判断保留事項、次に解くべき課題**を横断的に把握するための要約です。個々の数値、再現手順、因果考察の正本は [`nodes/`](./nodes) のrun / group nodeと [`runs/`](./runs) の再現性bundleです。この文書は正本を置き換えず、研究状況を短時間で理解するための入口として使います。
 
 現行knowledge graphの正式node typeはrunとgroupです。評価契約が異なる実験を同じランキングへ混ぜず、production、benchmark、family、diagnosticを区別して整理します。
+
+## 2026-11-03の球3D固定入力評価
+
+[clip_000の共通評価基盤](nodes/tennis_scene/000032-run-ball3d-evaluation-foundation-20261103.md)で、
+保存済み検出・校正と人間提供の直接観測2589点/承認推定370点を用い、baseline・LOESSなし・注釈oracleをCPU replayした。
+後半505frameのLOVO中央値/p90はbaseline 9.34/27.08px、LOESSなし9.80/29.81pxだが、coverageも56.4%/54.2%と異なる。
+欠測を除いた別集合の比較なので、対になった精度改善や独立3D精度を主張しない。推定は別kindで集計し、末尾外挿28点・座標なし43点は除外した。
+基準3Dの有効/使用view maskは完全一致、座標差は2µm許容内。動画全decode・代表画像・HTML参照切れ0を確認した。
+近似cameraによるoracleは幾何参照で、数学的下限ではない。先行run31の自己再投影とは指標が異なる。
+次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 

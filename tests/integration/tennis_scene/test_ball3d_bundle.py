@@ -1,4 +1,4 @@
-from dataclasses import fields
+from dataclasses import fields, replace
 
 import numpy as np
 import pytest
@@ -62,6 +62,23 @@ def test_real_component_codec_bundle_and_cpu_runner_roundtrip(tmp_path):
         [True, False, False, True],
     ]
     for run in runs:
+        if run.held_out_camera is None:
+            changed_intrinsic = expected.views[0].camera.intrinsic.copy()
+            changed_intrinsic[0, 0] = 123.0
+            changed_cameras = (
+                replace(expected.views[0].camera, intrinsic=changed_intrinsic),
+                expected.views[1].camera,
+                expected.views[2].camera,
+            )
+            run = replace(
+                run,
+                result=replace(
+                    run.result,
+                    covariance=np.tile(np.diag([1.0, 2.0, 3.0]), (4, 1, 1)),
+                    cameras=changed_cameras,
+                    time_offsets_seconds=np.array([0.01, 0.0, -0.02], np.float64),
+                ),
+            )
         folder = tmp_path / run.key
         checksum = save_run(folder, run)
         restored = load_run(folder, expected_sha256=checksum)
@@ -74,6 +91,16 @@ def test_real_component_codec_bundle_and_cpu_runner_roundtrip(tmp_path):
             if isinstance(before, np.ndarray):
                 np.testing.assert_array_equal(after, before)
                 assert after.dtype == before.dtype
+        if run.held_out_camera is None:
+            assert restored.result.cameras is not None
+            assert restored.result.covariance is not None
+            assert restored.result.cameras[0].intrinsic[0, 0] == 123.0
+            np.testing.assert_array_equal(
+                restored.result.time_offsets_seconds, [0.01, 0.0, -0.02]
+            )
+            np.testing.assert_array_equal(
+                restored.result.covariance[2], np.diag([1.0, 2.0, 3.0])
+            )
     array_path = next((tmp_path / runs[0].key).glob("*.npy"))
     array_path.write_bytes(b"damaged")
     with pytest.raises(ValueError, match="checksum"):
