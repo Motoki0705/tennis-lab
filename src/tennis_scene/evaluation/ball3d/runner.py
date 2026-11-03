@@ -67,10 +67,15 @@ def run_method(
 ) -> tuple[MethodRun, ...]:
     if len(inputs.views) != 3:
         raise ValueError("Full-view/LOVO runner requires exactly three cameras")
+    if type(method.requires_court_lines) is not bool:
+        raise ValueError("Methods must explicitly declare bool requires_court_lines")
     runs = []
     for held_out in (None, *inputs.camera_ids):
         selected = tuple(c for c in inputs.camera_ids if c != held_out)
         method_input = inputs.select_cameras(selected)
+        if method.requires_court_lines:
+            for view in method_input.views:
+                view.court.require_lines()
         start = time.perf_counter()
         result = method(method_input)
         elapsed = time.perf_counter() - start

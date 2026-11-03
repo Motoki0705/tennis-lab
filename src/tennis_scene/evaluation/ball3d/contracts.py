@@ -17,6 +17,8 @@ from src.tennis_scene.pipeline.components.camera_geometry import LocalCourtCalib
 from src.utils.geometry.temporal_smoothing import TemporalSmoothingConfig
 from src.utils.geometry.triangulation import PinholeCamera
 
+from .court import CourtViewObservations
+
 
 def readonly_arrays(value: Any) -> None:
     """Freeze arrays recursively without copying native heatmaps."""
@@ -58,15 +60,19 @@ class ViewInput:
     points: BallPointsOutput
     detector_config: DetectorReplayConfig
     smoothing_config: TemporalSmoothingConfig
+    court: CourtViewObservations
 
     def __post_init__(self) -> None:
         camera_id = self.camera.camera_id
+        if not isinstance(self.court, CourtViewObservations):
+            raise ValueError("Method view requires typed raw court observations")
         if any(
             name != camera_id
             for name in (
                 self.local_calibration.camera.camera_id,
                 self.detections.camera_id,
                 self.points.camera_id,
+                self.court.camera_id,
             )
         ):
             raise ValueError("View camera axis mismatch")
@@ -89,6 +95,11 @@ class ViewInput:
             )
         if self.points.source_size_wh != self.detections.evidence.source_size_wh:
             raise ValueError("View source image size mismatch")
+        if (
+            self.court.source_size_wh != self.points.source_size_wh
+            or self.court.source_num_frames != len(self.detections.frame_indices)
+        ):
+            raise ValueError("Raw court source frame/image axes disagree with view")
         if not np.array_equal(self.points.frame_indices, self.detections.frame_indices):
             raise ValueError("View frame axis mismatch")
         evidence = self.detections.evidence
@@ -255,5 +266,8 @@ class BallMethod(Protocol):
 
     @property
     def config(self) -> Mapping[str, Any]: ...
+
+    @property
+    def requires_court_lines(self) -> bool: ...
 
     def __call__(self, inputs: MethodInput) -> Ball3DResult: ...

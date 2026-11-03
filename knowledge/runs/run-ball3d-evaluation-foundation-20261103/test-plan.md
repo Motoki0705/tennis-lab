@@ -23,3 +23,10 @@
 - 新規/変更分は合計40 case以内を目標とし、既存reader50 caseと指定の再利用2 nodeを含め `-n 0`（最大2）でcollectと全durationを記録する。codec・描画は初回importを含む実測を分け、メモリの重い処理は並列にしない。
 
 結果の保存復元は既存integration nodeで、非対称な更新intrinsic・共分散・秒単位offsetも保存して照合する。LOESSなしの座標と採用maskの契約を専用unitで確認する。
+
+## PR #1669 レビュー修正の追加設計（実装前）
+
+- pr-1669-1: source courtのcamera別raw KP14/score/valid・homography採用subsetと実観測frameを保持する。broadcast済みfitted14をraw観測と偽装せず、LOVOで除外viewのcourtデータが入らないことを、camera毎に異なる画素値・採用点を持つfixtureで検証する。camera/frame/schema/欠落をunitで拒否し、実descriptorからの接続を既存bundle integrationで検証する。元storeにLINEの生観測はなく要約のみであるため、この欠落の扱いは親へ確認中。観測を捏造しない。
+- pr-1669-2: 採点APIを検証済みFixedInputBundleへ束縛し、全runのdigest・camera/frame軸と、正解のclip/camera/frame/fps/nativeサイズ/動画hashを必須照合する。既存の手計算scoring fixtureとannotation adapter nodeを拡張し、同camera・同Tの別digest、別clip、短い結果、別video hashの拒否をunitで検証する。plot/cropの残差抽出も同じ境界を使う。
+- pr-1669-3: HTML主表とPNGは同じ表データ生成を使い、LOVOのcount/label_count/coverageを誤差の隣、全view有効率を別見出しにする。レビュー実例の825/1462=56.43%と全view83.17%を手書きfixtureで区別する。全方式が採点できた(camera,frame)集合の共通部分での値も出し、欠測を0誤差として補完しない。片方のLOVOだけ1点欠く非対称fixtureで共通集合を独立に手計算する。
+- 追加は20case以内、parametrize50以下、unit各5秒/setup1秒以内を目標。既存80件と追加分を-n 0でcollect/durations全件計測する。実動画の再生成・全frame decode・目視とHTML参照切れは新しいfoundation_v2で別に測定する。foundation_v1と固定入力v1を変更しない。

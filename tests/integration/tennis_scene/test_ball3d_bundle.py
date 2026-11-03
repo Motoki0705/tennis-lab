@@ -8,7 +8,7 @@ from src.tennis_scene.evaluation.ball3d.bundle import create_bundle, load_bundle
 from src.tennis_scene.evaluation.ball3d.runner import load_run, run_method, save_run
 from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.utils.checksum import dual_sha256
-from tests.support.ball3d_evaluation import make_inputs, make_store
+from tests.support.ball3d_evaluation import court_diagnostics, make_inputs, make_store
 
 
 def _bundle(tmp_path):
@@ -33,6 +33,26 @@ def test_real_component_codec_bundle_and_cpu_runner_roundtrip(tmp_path):
     for before, after in zip(expected.views, bundle.inputs.views, strict=True):
         np.testing.assert_array_equal(after.detections.uv_px, before.detections.uv_px)
         assert not after.detections.evidence.heatmaps.flags.writeable
+        np.testing.assert_array_equal(after.court.frame_indices, [0])
+        for court_field in (
+            "keypoints_px",
+            "scores",
+            "valid",
+            "selected_for_homography",
+        ):
+            np.testing.assert_array_equal(
+                getattr(after.court, court_field), getattr(before.court, court_field)
+            )
+            assert not getattr(after.court, court_field).flags.writeable
+        np.testing.assert_array_equal(
+            after.court.require_lines().uv_px, before.court.require_lines().uv_px
+        )
+    np.testing.assert_array_equal(
+        bundle.inputs.views[1].court.keypoints_px[0, 0], [68.25, 79.5]
+    )
+    assert np.flatnonzero(
+        bundle.inputs.views[1].court.selected_for_homography[0]
+    ).tolist() == [0, 3, 13]
     np.testing.assert_array_equal(
         bundle.inputs.views[0].points.observed, [True, False, True, True]
     )
@@ -138,4 +158,29 @@ def test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_inp
             clip_id=inputs.clip_id,
             source_code_commit="a" * 40,
             source_code_evidence="Synthetic leakage contract",
+        )
+
+
+@pytest.mark.parametrize(
+    "mutation", ["missing_raw_scores", "camera_order", "source_frame"]
+)
+def test_bundle_rejects_checksummed_court_observation_provenance_errors(
+    tmp_path, mutation
+):
+    inputs = make_inputs()
+    doc = court_diagnostics(inputs)
+    if mutation == "missing_raw_scores":
+        del doc["cameras"][1]["frames"][0]["raw_scores"]
+    elif mutation == "camera_order":
+        doc["cameras"] = list(reversed(doc["cameras"]))
+    else:
+        doc["cameras"][1]["frames"][0]["frame_index"] = 1
+    store = make_store(tmp_path / "store", inputs, court_diagnostics_override=doc)
+    with pytest.raises(ValueError, match="raw court"):
+        create_bundle(
+            store.root,
+            tmp_path / "bundle",
+            clip_id=inputs.clip_id,
+            source_code_commit="a" * 40,
+            source_code_evidence="Court provenance fault injection",
         )

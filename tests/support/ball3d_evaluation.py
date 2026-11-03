@@ -18,10 +18,15 @@ from src.tasks.base.generate_dataset import (
 from src.tasks.court_side.hypothesis import HypothesisScore
 from src.tennis_scene.evaluation.ball3d.annotations import Ball2DAnnotations
 from src.tennis_scene.evaluation.ball3d.baseline import PipelineBaseline
+from src.tennis_scene.evaluation.ball3d.bundle import FixedInputBundle
 from src.tennis_scene.evaluation.ball3d.contracts import (
     DetectorReplayConfig,
     MethodInput,
     ViewInput,
+)
+from src.tennis_scene.evaluation.ball3d.court import (
+    CourtLineObservations,
+    CourtViewObservations,
 )
 from src.tennis_scene.ground_truth import (
     ReferenceIdentity,
@@ -55,6 +60,94 @@ from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.utils.geometry.temporal_smoothing import TemporalSmoothingConfig
 from src.utils.geometry.triangulation import PinholeCamera, TriangulatedPoints
+
+
+def make_scoring_bundle(inputs, digest="x"):
+    """Caller-owned synthetic source identity for pure scoring contract tests."""
+    source = ClipSource(
+        "synthetic_source_id",
+        tuple(
+            SourceVideo(
+                camera,
+                Path(f"{camera}.mp4"),
+                str(i + 1) * 64,
+                inputs.num_frames,
+                inputs.fps,
+                *inputs.source_size_wh,
+            )
+            for i, camera in enumerate(inputs.camera_ids)
+        ),
+    )
+    return FixedInputBundle(
+        inputs, BallTriangulationOutput(None), source, digest, {}, {}
+    )
+
+
+def make_court(camera_id, index, size, frames):
+    raw = np.column_stack(
+        (np.arange(14) + 21.25 + index * 47, np.arange(14) + 50.5 + index * 29)
+    ).astype(np.float64)[None]
+    valid: NDArray[np.bool_] = np.ones((1, 14), bool)
+    valid[0, index + 7] = False
+    selected: NDArray[np.bool_] = np.zeros((1, 14), bool)
+    selected[0, [0, index + 2, 13]] = True
+    lines = CourtLineObservations(
+        np.zeros(2, np.int64),
+        np.array([[20.0 + index, 70.0], [25.0, 80.0 + index]]),
+        np.array([0.8 - index / 10, 0.5]),
+        np.array([True, False]),
+    )
+    return CourtViewObservations(
+        camera_id,
+        size,
+        frames,
+        np.array([0], np.int64),
+        raw,
+        np.linspace(0.2, 0.9, 14)[None] + index * 0.02,
+        valid,
+        selected,
+        "synthetic_camera_view_kp14_fixture",
+        ("x_reflected",),
+        lines,
+        None,
+    )
+
+
+def court_diagnostics(inputs):
+    return {
+        "output_keypoint_contract": "camera_view_v2",
+        "temporal_policy": "static_first_frame_broadcast",
+        "observed_frame_indices": [0],
+        "source_frame_count": inputs.num_frames,
+        "cameras": [
+            {
+                "camera_id": view.camera.camera_id,
+                "frames": [
+                    {
+                        "frame_index": 0,
+                        "raw_keypoints_px": view.court.keypoints_px[0].tolist(),
+                        "raw_scores": view.court.scores[0].tolist(),
+                        "raw_valid": view.court.valid[0].tolist(),
+                        "selected_keypoints": np.flatnonzero(
+                            view.court.selected_for_homography[0]
+                        ).tolist(),
+                        "keypoint_schema": view.court.keypoint_schema,
+                        "kp_only_prosac_orientation": view.court.template_orientations[
+                            0
+                        ],
+                        "original_size_hw": list(reversed(inputs.source_size_wh)),
+                        "output_keypoint_contract": "camera_view_v2",
+                        "raw_line_observations": {
+                            "uv_px": view.court.require_lines().uv_px.tolist(),
+                            "scores": view.court.require_lines().scores.tolist(),
+                            "valid": view.court.require_lines().valid.tolist(),
+                        },
+                    }
+                ],
+            }
+            for view in inputs.views
+        ],
+    }
 
 
 def make_annotations(inputs, uv, kinds, *, events=(), estimation_segments=()):
@@ -173,6 +266,7 @@ def make_inputs(frames: int = 4) -> MethodInput:
                     0.5, False, TrajectoryGateConfig(False, 60.0, 2, 5, 2)
                 ),
                 config,
+                make_court(camera_id, i, size, frames),
             )
         )
     return MethodInput(
@@ -185,7 +279,11 @@ def make_inputs(frames: int = 4) -> MethodInput:
 
 
 def make_store(
-    root: Path, inputs: MethodInput, *, detector_origin: str = "component"
+    root: Path,
+    inputs: MethodInput,
+    *,
+    detector_origin: str = "component",
+    court_diagnostics_override=None,
 ) -> ClipStore:
     source = ClipSource(
         "historical_fixture_id",
@@ -246,7 +344,9 @@ def make_store(
             np.zeros((3, inputs.num_frames, 14, 2), np.float32),
             np.ones((3, inputs.num_frames, 14), bool),
             np.arange(inputs.num_frames, dtype=np.int32),
-            {},
+            court_diagnostics(inputs)
+            if court_diagnostics_override is None
+            else court_diagnostics_override,
         ),
         CalibrationSet(tuple(v.local_calibration for v in inputs.views), {}),
         "right",

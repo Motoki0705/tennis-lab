@@ -85,12 +85,22 @@ class Ball2DAnnotations:
     def validate_for_inputs(self, inputs: MethodInput) -> None:
         identity = self.reference.identity
         if (
-            self.camera_ids != inputs.camera_ids
+            identity.clip_id != inputs.clip_id
+            or identity.num_frames != inputs.num_frames
+            or self.camera_ids != inputs.camera_ids
             or not np.isclose(identity.fps, inputs.fps, atol=1e-6, rtol=0)
             or identity.source_size_wh != inputs.source_size_wh
             or self.selection.frame_indices != tuple(inputs.frame_indices)
         ):
             raise ValueError("Scoring annotation camera/frame/coordinate axes disagree")
+
+    def validate_for_bundle(self, bundle: FixedInputBundle) -> None:
+        """Scoring must bind the reference to trusted video bytes, not names alone."""
+        self.validate_for_inputs(bundle.inputs)
+        if self.reference.identity.video_sha256 != {
+            video.camera_id: video.sha256 for video in bundle.source.videos
+        }:
+            raise ValueError("Scoring annotation video hash identity disagrees")
 
 
 def load_annotations(
