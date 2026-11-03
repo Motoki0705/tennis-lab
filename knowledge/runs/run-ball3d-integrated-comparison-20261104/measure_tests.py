@@ -69,6 +69,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("collect", "run"))
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--targets", nargs="+")
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     capture = Capture()
@@ -77,7 +78,7 @@ def main():
         if args.mode == "collect"
         else ["-n", "2", "--durations=0", "--durations-min=0"]
     )
-    command = [*options, *TARGETS]
+    command = [*options, *(args.targets or TARGETS)]
     started = time.perf_counter()
     with (
         (args.output / (args.mode + ".txt")).open("w") as stream,

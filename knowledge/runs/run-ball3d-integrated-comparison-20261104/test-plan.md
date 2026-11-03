@@ -15,3 +15,12 @@
 新規ケースは手計算または独立pinhole式の値を期待値とし、実装の式の写しにしない。
 テストの削除・統合はない。pytestは `-n 2` 以下、collect-onlyと全phase durationsを保存する。
 既存974件程度を再利用し、追加テストの測定が5秒/1秒を超えれば理由を実測とともに記録する。
+
+## 採点後の表示修正（予測は再実行しない）
+
+最初のreportは、foldの`reprojection_px`（分布だけ）から`label_count`を読もうとして停止した。
+基盤の`reprojection_by_reference_kind.all`が持つ採点数・対象数・coverageをそのまま使う。
+元のreport.pyは実行済み証拠として不変に保ち、修正の適用はreport_v2.pyに明示する。
+unit `test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured`を1case追加する。
+pool/各camera/全viewの採点数が非対称、全view有効3D率とcoverageが異なり、空foldもある
+手書きの採点reportで、階層違い・coverage混同・欠測の0誤差扱いを検出する。各1秒以内を目標にする。
