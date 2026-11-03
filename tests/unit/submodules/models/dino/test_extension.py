@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import Any, cast
 
 import pytest
 import torch
@@ -41,7 +41,7 @@ def binary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
         return original_spec(name, location, **kwargs)
 
     monkeypatch.setattr(module.importlib.util, "spec_from_file_location", source_spec)
-    return module.load_dino_extension()
+    return cast(ModuleType, module.load_dino_extension())
 
 
 def test_preflight_checks_forward_and_backward_on_cpu(binary: ModuleType) -> None:
@@ -272,6 +272,9 @@ def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
     )
     monkeypatch.setitem(sys.modules, "util", None)  # type: ignore[arg-type]
     monkeypatch.setitem(sys.modules, architecture._DINO_MODELS_PACKAGE, None)  # type: ignore[arg-type]
+    # A prior real DINO import may leave this child after replacing its parent.
+    # Isolate the fake repository and restore the prior function module on exit.
+    monkeypatch.delitem(sys.modules, f"{architecture._DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func", raising=False)
     build = architecture.load_dino_build_function(repository)
     upstream = sys.modules[build.__module__]
     assert upstream.selected_extension is binary  # type: ignore[attr-defined]

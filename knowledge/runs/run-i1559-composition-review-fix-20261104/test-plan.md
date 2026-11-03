@@ -7,3 +7,11 @@
 - 予算: 新規は監査2 caseとcomposition接続1 case。GPU・モデル再推論は不要。pytest -n 0、--collect-only と --durations=0 --durations-min=0で件数と実測を保存する。src/utils/configurationの探索実装は変更しない。
 
 実データ影響の判断: review対象HEADの7 defaultと現行YAMLの一致、compositionで作った候補設定とv4 selection.jsonの全設定の一致、数値演算bodyと固定入力・下流設定の不変を照合する。全clip再実行を省く場合は、この境界と根拠を記録し、実際に再計算したとは書かない。
+
+## CIで検出したDINO unitの状態分離（修正前設計）
+
+- 契約: 仮のDINO repository/extensionを使う既存unitは、先行する実DINO importの有無に依存しない。テスト自身が作るstaleな拡張参照は引き続き拒否する。
+- 不具合: 初回CIのlane 9で、親packageだけを初期化したテストに先行importのfunctions子moduleが残り、正常系の最初のloadが拒否された。productionの拒否挙動は正しい。
+- 層・再利用node: tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch の準備処理だけを修正する。新規case・production変更・GPUは不要。
+- 検出方法: functions子moduleに別extensionを持つ先行状態を明示的に注入し、同じ既存nodeが修正前にCIと同じRuntimeError、修正後に成功することを確かめる。node後半の意図したstale参照拒否assertも保持する。
+- 予算: 既存DINO extension unit全体を-n 0でcollect/実行し、件数と全phase時間を記録する。プローブは1caseずつ、全clipや設定監査一式の再実行は不要（変更はこのunitの準備のみ）。

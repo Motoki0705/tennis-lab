@@ -211,3 +211,16 @@ GT hashと既存成果物目録のhashも一致した。このため予測座標
 heatmap_decoding_composition_fix_v1/。verification.jsonとverification.sha256、checksums.jsonにchecksumを記録した。
 小さな同一記録と再現scriptはknowledge/runs/run-i1559-composition-review-fix-20261104/へ保存した。
 この設定修正は元の負の主評価結果と方式採否の保留を変更しない。
+
+初回push ba9f929fd のCIではDINO extensionの既存unitがlane 9で失敗した
+（Actions run 41669973724、job 126035938266）。他のCPU 9 lane・Lint・Knowledgeは成功し、
+Python集約はこの1件の失敗を反映して失敗した。
+仮repositoryを使うunitが親moduleのみを初期化し、先行した実DINO importのfunctions子moduleを
+残す隔離不足だった。別extensionを持つ子moduleの注入で同じRuntimeErrorを再現した。
+当該unitの準備で子moduleをmonkeypatch経由で一時的に外し、終了時に元状態へ戻す。
+テスト後半の意図したstale参照拒否は維持し、DINOのproductionコードは変更していない。
+fixture返値には独立mypy検査用の型castを付けた（実行値は同じ）。
+プローブは修正前1 failed/0.31秒、修正後1 passed/0.36秒で、先行状態の復元も確認した。
+DINO extension unit全体は27件collect/5.74秒、27 passed/5.81秒（-n 0、全phase実測）。
+新規caseは追加せず既存nodeを再利用した。記録はreview-fix bundleのci-isolation-*.txtと
+probe_ci_isolation.py。このテスト隔離の修正も予測・採点演算を変更しない。
