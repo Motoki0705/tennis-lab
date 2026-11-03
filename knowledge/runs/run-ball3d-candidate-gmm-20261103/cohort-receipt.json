@@ -1,0 +1,43 @@
+{
+  "output_directory": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/candidate_gmm_cohort_v1",
+  "artifacts_sha256": "ea0c60de9c9366464786a15142f20bbfb317b224a69af7345b2498bf263a1fbc",
+  "inventory_files_checked": 4,
+  "undeclared_files": [],
+  "validation": {
+    "partition_rows_passed": 144,
+    "saved_score_and_marginal_checks_passed": 2232
+  },
+  "partition_count_equations_passed": 288,
+  "analysis_code_commit": "1b171a1cd11d506e66d7a54a23e434ab844ac176",
+  "script_sha256": "f8e3542c4f92aa0acf07b0ab8ca9837ac47c09dc91ce1fabf2afb02298ca2481",
+  "prediction_methods_rerun": false,
+  "src_changed": false,
+  "v2_manifest_unchanged_sha256": "46ecf147cb52139fb6cdf81a5da82f7fb0d94403e4d63c19e2abdfad179136b5",
+  "wall_seconds": 11.84,
+  "max_rss_kib": 638976,
+  "tests": {
+    "collect_only_count": 16,
+    "collect_only_pytest_seconds": 4.42,
+    "passed": 16,
+    "pytest_seconds": 4.34,
+    "workers": 0,
+    "phase_receipt": "cohort-tests.json",
+    "initial_wrapper_attempt": "collection import error without PYTHONPATH; rerun with PYTHONPATH=. passed"
+  },
+  "mutation": {
+    "change": "erase camera ID in selected sample keys",
+    "node": "tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_camera_frame_partition_errors_and_split_boundary_match_hand_values",
+    "exit_code": 1,
+    "expected_median_px": 21,
+    "mutated_median_px": 15.5,
+    "original_bytes_restored": true,
+    "restored_suite_passed": 16
+  },
+  "command": "Command being timed: \"env PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 .venv/bin/python knowledge/runs/run-ball3d-candidate-gmm-20261103/cohorts.py --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1 --annotations /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json --comparison /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/candidate_gmm_v2 --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/candidate_gmm_cohort_v1\"",
+  "quality_checks": {
+    "ruff": "passed",
+    "mypy": "passed (2 files)",
+    "knowledge_errors": 0,
+    "knowledge_warnings": 219
+  }
+}

@@ -41,6 +41,7 @@ artifacts:
   uncertainty: knowledge/runs/run-ball3d-candidate-gmm-20261103/uncertainty-coverage.csv
   tests: knowledge/runs/run-ball3d-candidate-gmm-20261103/test-summary.json
   inventory: knowledge/runs/run-ball3d-candidate-gmm-20261103/inventory-verification.json
+  cohort_analysis: knowledge/runs/run-ball3d-candidate-gmm-20261103/cohort-receipt.json
 metrics:
   annotation_oracle:
     primary_lovo_median_px: 7.8586408238936745
@@ -236,3 +237,76 @@ skipを成功件数には数えない。全phaseの実測は
 [ci-fix-test-results.json](../../runs/run-ball3d-candidate-gmm-20261103/ci-fix-test-results.json)。
 この時点では指定DINO分離テストは失敗しておらず、a8982a7e0の変更は取り込んでいない。
 採用判断・LOVO悪化/被覆不足という研究結論は変わらない。
+
+## cross-1: 共通・追加・喪失点の誤差（2026-11-04追記）
+
+明示レビューrun `parent-1554-5647a023173b48feac926b069d0a207c` の指摘に対応した。
+方式の再実行・設定の再調整・srcや基盤scoringの変更はない。
+解析コードcommitは `1b171a1cd11d506e66d7a54a23e434ab844ac176`。
+v2の目録SHAからpinした4条件と同じbaselineの保存済み15 LOVO recordを
+基盤の `load_run` で読み、SHAを照合したbundle/GTと
+`error_samples(run, bundle, annotations)` で採点点を得た。
+誤差の分布も基盤の `distribution` を使い、独自の再投影や採点は作っていない。
+
+各条件対baselineの `(held-out camera, source frame)` を突き合わせた。
+全6方式共通の514点とは異なる2方式間の共通集合である。
+以下は主評価[505,1010)、直接観測・承認推定をpoolした値。単位はpx、>20は厳密な超過。
+
+| 条件 | 共通n | 共通・方式 median/p90/>20% | 共通・baseline median/p90/>20% | 追加 n; median/p90/>20% | 喪失 n; baseline median/p90/>20% |
+|---|---:|---:|---:|---:|---:|
+| MAP | 525 | 11.477/51.991/28.95% | 9.356/34.980/21.71% | 402; 38.460/363.652/65.92% | 300; 9.116/17.005/7.00% |
+| mean | 525 | 17.677/90.297/46.29% | 9.356/34.980/21.71% | 403; 46.996/333.982/71.71% | 300; 9.116/17.005/7.00% |
+| MAP-RTS | 526 | 11.897/66.985/32.13% | 9.348/34.952/21.67% | 404; 48.102/228.605/70.79% | 299; 9.163/17.045/7.02% |
+| mean-RTS | 526 | 10.754/46.186/30.04% | 9.348/34.952/21.67% | 404; 35.128/133.510/66.58% | 299; 9.163/17.045/7.02% |
+
+MAPの採点純増102点は402点追加と300点喪失の差で、良い予測102点の回収を意味しない。
+追加点の265/402点が20px超である一方、失ったbaseline点は279/300点が20px以内だった。
+MAPの共通点の誤差11.477/51.991pxに対し、追加点は38.460/363.652pxと大きく、
+全採点点の16.202/255.719pxを悪化側へ動かしている。
+baselineの全点9.340/27.078pxと共通点9.356/34.980pxの差にも、誤差の小さい点の喪失が含まれる。
+20px超数はbaseline全体135点からMAP全体417点へ増えた。
+差282点は共通での38点増加（152−114）と追加265点から喪失21点を引いた数に一致する。
+分位点は加算分解できないため、中央値/p90の悪化をこの件数式へ換算してはいない。
+4条件とも共通点でも悪化し、追加点の中央値35.128–48.102px・p90 133.510–363.652pxも大きい。
+coverageの増加を精度改善とする根拠はなく、採用を勧めない結論は維持する。
+
+MAPの追加はcam0/1/2で43/179/180点、喪失は233/66/1点と非対称である。
+追加の参照kindは直接観測393点・承認推定9点、喪失は230/70点。
+全区間・前半・後半、camera別、kind別の全分布と、各点のidentity/誤差を保存した。
+欠測点の未知の方式誤差は補わず、これも可用性に条件付きの比較である。
+
+保存先は
+`/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/candidate_gmm_cohort_v1/`。
+`cohorts.json` に144条件行、`cohorts.csv` に共通双方/追加/喪失と全点の分布、
+`cohorts.md` に区間別pool表、`samples.csv` にcamera/frame/kind・集合名・双方の誤差を残した。
+目録 `artifacts.json` のSHA-256は
+`ea0c60de9c9366464786a15142f20bbfb317b224a69af7345b2498bf263a1fbc`。
+各ファイルと15入力recordのchecksumは
+[cohort-artifacts.json](../../runs/run-ball3d-candidate-gmm-20261103/cohort-artifacts.json)、
+検算・資源・テストのreceiptは
+[cohort-receipt.json](../../runs/run-ball3d-candidate-gmm-20261103/cohort-receipt.json)。
+4ファイルのサイズ/SHA・未宣言ファイルなし、v2目録のSHA不変を再照合した。
+
+全144行で共通+追加=方式全点、共通+喪失=baseline全点の計288式が一致した。
+主評価の方式全点はMAP/mean/MAP-RTS/mean-RTSで927/928/930/930点、baselineは全て825点。
+既存v2の全点件数/中央値/p90/最大/超過率の1440値が完全一致し、camera/kind/区間の加算792件も一致した。
+不一致・重複・参照kind不整合でscriptは例外停止する。解析11.84秒・最大RSS638,976KiB、GPU・動画処理なし。
+
+実装前の [cohort-plan.md](../../runs/run-ball3d-candidate-gmm-20261103/cohort-plan.md) に沿って
+非対称camera/frame、境界505、厳密な>20px、空集合、重複・kind不整合を検証した。
+新規3件と既存scoring 13件の `--collect-only` は16件/4.42秒、
+`--durations=0 --durations-min=0` は16 passed/4.34秒（-n 0）。
+新規caseの最大setupは0.01088秒、setup+call+teardown最大0.01382秒。
+全node/phaseは [cohort-tests.json](../../runs/run-ball3d-candidate-gmm-20261103/cohort-tests.json)。
+cameraをjoinキーから落とす故障注入は中央値15.5≠21pxのassertで失敗し、bytes復元後は全16件成功した。
+
+再現は同じcheckout rootで新規出力先を指定する（bundle/GT/v2のSHAはscriptに固定）。
+
+```bash
+BALL3D_INPUT=/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103
+PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  .venv/bin/python knowledge/runs/run-ball3d-candidate-gmm-20261103/cohorts.py \
+  --bundle "$BALL3D_INPUT/fixed_input_bundle_v1" \
+  --annotations "$BALL3D_INPUT/human_annotations/ground_truth_v1/ground_truth.json" \
+  --comparison "$BALL3D_INPUT/candidate_gmm_v2" --output "$BALL3D_INPUT/candidate_gmm_cohort_replay_v2"
+```
