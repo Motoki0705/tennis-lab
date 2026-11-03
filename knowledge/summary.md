@@ -5,9 +5,10 @@
 <!-- knowledge-review: 74d01246b7de09d16c84fdb1ea616a57682ed4cdb8e7c47662d1969fdaeaff69 on 2026-11-04 -->
 <!-- knowledge-review: 133f58588cd60f82d171c92d522c11d06811784a5d59f173de6f09055283fc1c on 2026-11-03 -->
 <!-- knowledge-review: 27388fbfdedcb6704ad9090ac5050ed9fd10c740b32a5441f0fa1e02520b6dd7 on 2026-11-04 -->
+<!-- knowledge-review: 76c72394b46c58454f31591362ec64bc6ff0f6dbd6a18ad509481f2199d9f3d8 on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
+更新日: 2026-11-04（clip_000の追加/喪失点の誤差を追記。既存モデル・checkpointの採用判断は維持）
 
 実RGB SLCSの130ノードをタスク別保存形式へ統合し、実験結果と採否を確認した。補助CLIの削除は学習結果・固定splitを変更せず、頑健性未達・固定test未評価という判断を維持する。詳細は[結果総括](reports/slcs-real-rgb.md)を参照。
 
@@ -73,6 +74,9 @@ MAPは16.20/255.72px（baseline 9.34/27.08px）で、LOVO coverageは56.43%→63
 全viewの再投影は下がるが、court holdout中央値もcam0/1で悪化し、採用を支持しない。設定を見直して後半へ合わせていない。
 平面courtの局所rank確認・合成のcamera/時刻復元は、実clipでの精度保証ではない。LINEは再取得せず、既定fixedを維持する。
 明示レビュー後に設定をcompositionへ一本化し、同じ値で4foldを再実行した予測・校正・時刻は厳密一致したため、上の負の結論を維持する。
+保存済み予測の再集計で、MAPの採点純増102点は402点追加・300点喪失の差と確認した。
+追加点は中央値38.46/p90 363.65px・20px超65.92%、喪失点のbaseline誤差は9.12/17.01px・7.00%。
+4条件とも共通点でも悪化し、追加点の大きな誤差と良いbaseline点の喪失をcoverageの改善と混同しない。
 次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 [dense heatmap尤度の直接3D推定](nodes/tennis_scene/000035-run-ball3d-dense-likelihood-20261103.md)は、
