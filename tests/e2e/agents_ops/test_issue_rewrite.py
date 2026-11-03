@@ -1343,7 +1343,7 @@ def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts
     assert env.run("rewrite") == 0
     state = env.state()
     latest = env.original.replace("先行依存なし。", "先行する依存はない。")
-    state["issue"]["body"] = latest
+    state["mutation"] = {"read": state["issue_reads"] + 1, "body": latest}
     env.save(state)
     assert env.run("apply") == 0
     assert "needs_retry=true" in (env.root / "github-output").read_text()
@@ -1360,7 +1360,10 @@ def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts
     assert env.run("rewrite", attempt=2) == 0
     assert env.bundle(2)["source"]["body"] == latest
     state = env.state()
-    state["issue"]["body"] += "\n人間がさらに編集した。"
+    state["mutation"] = {
+        "read": state["issue_reads"] + 1,
+        "body": state["issue"]["body"] + "\n人間がさらに編集した。",
+    }
     env.save(state)
     assert env.run("apply", attempt=2) == 1
     assert env.run("fail", attempt=2) == 0
@@ -1409,7 +1412,16 @@ def test_interference_between_read_and_patch_is_failure_without_rollback(
     state["interference"] = interference
     env.save(state)
     assert env.run("apply") == 1
-    assert env.run("fail") == 0 and "rewrite:failed" in labels(env)
+    missing_history = interference == "missing_history"
+    assert env.run("fail") == int(missing_history)
+    if missing_history:
+        assert labels(env) == {"issue:parent", "enhancement"}
+        assert env.state()["issue"]["body"] == env.rewritten
+        assert "write_state_unconfirmed" in (env.root / "summary.md").read_text()
+        with pytest.raises(ValueError, match="pending"):
+            env.require_final()
+    else:
+        assert "rewrite:failed" in labels(env)
     assert "interrupted_during_write" in (env.root / "summary.md").read_text()
     assert len([call for call in env.mutations() if "body" in call["payload"]]) == 1
     if interference == "after":
@@ -1555,6 +1567,48 @@ def test_failure_job_preserves_foreign_only_edits(rewrite_env: RewriteEnv) -> No
     assert env.state()["issue"]["body"] == "human's latest body"
     assert env.require_final()["body"] == "human's latest body"
     assert not any(call["method"] == "PATCH" for call in env.mutations())
+
+
+@pytest.mark.parametrize("write_state", ["unwritten", "completed", "interrupted"])
+def test_failure_job_with_invalid_execution_record_only_finalizes_without_our_write(
+    rewrite_env: RewriteEnv, write_state: str
+) -> None:
+    env = rewrite_env
+    assert env.run("rewrite") == 0
+    if write_state == "interrupted":
+        state = env.state()
+        state["interference"] = "after"
+        env.save(state)
+    else:
+        env.fail_history(1 if write_state == "unwritten" else 2)
+    assert env.run("apply") == 1
+    body = env.state()["issue"]["body"]
+    expected_body = {
+        "unwritten": env.original,
+        "completed": env.rewritten,
+        "interrupted": "human's latest body",
+    }[write_state]
+    assert body == expected_body
+    state = env.state()
+    state["comments"] = [comment(judgement() + "\n後から加えた指示")]
+    env.save(state)
+    written = write_state != "unwritten"
+    assert env.run("fail") == int(written)
+    assert env.state()["issue"]["body"] == expected_body
+    report = (env.root / "summary.md").read_text()
+    if written:
+        assert labels(env) == {"issue:parent", "enhancement"}
+        assert "write_state_unconfirmed" in report
+        assert "confirmed_after_apply_error" not in report
+        with pytest.raises(ValueError, match="pending"):
+            env.require_final()
+    else:
+        assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+        assert "invalid_execution_record" in report
+        assert env.require_final()["body"] == env.original
+    assert len([call for call in env.mutations() if call["method"] == "PATCH"]) == int(
+        written
+    )
 
 
 def test_record_added_during_stability_wait_prevents_any_model_usage(

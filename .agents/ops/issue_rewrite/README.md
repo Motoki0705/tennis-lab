@@ -149,7 +149,8 @@ verifierの自由文説明や拒否コマンドの生文字列は出さない。
 
 failed jobは本文と編集履歴を再取得し、未書き込みなら `rewrite:failed`、候補本文への本人の編集1件を確認できれば `rewrite:done`（`confirmed_after_apply_error`）にする。
 他者だけの編集や割り込みがあれば、その本文を巻き戻さず `rewrite:failed` として確定する。
-取得失敗・履歴の不整合、またはbundle欠落・不正で本人の編集がある場合は、`write_state_unconfirmed` で非ゼロ終了し、確定ラベルを付けない。
+取得失敗・履歴の不整合、新しい編集がないのに元本文と違う場合、またはbundle欠落・不正で本人の編集がある場合は、`write_state_unconfirmed` で非ゼロ終了し、確定ラベルを付けない。
+実行記録の解析失敗時は、本人の書き込みなしを確認できた場合だけ `invalid_execution_record` でfailedにし、それ以外は `write_state_unconfirmed` としてdone・failedを付けない。
 pendingのまま親CLI・dispatcherのgateが止めるため、人間が状態を確認して判断するか `rewrite:skipped` を付ける。
 `rewrite:failed` では親CLI・dispatcherは現在の本文で進められる。
 summaryの理由を確認してから、合意・実行根拠の記録がまだ無いfailed issueだけをownerが再実行できる。

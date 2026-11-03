@@ -514,6 +514,8 @@ def failure_result(
     added = new_edits(before, history)
     if added is None:
         raise ValueError("write_state_unconfirmed")
+    if not added and current["body"] != source["body"]:
+        raise ValueError("write_state_unconfirmed")
     if uninterrupted(before, history, candidate):
         return "done", "confirmed_after_apply_error"
     if any(editor_matches_login(edit["editor"], history["viewer"]) for edit in added):
@@ -541,8 +543,13 @@ def fail(
         return final_label(gh, number, REWRITE_SKIPPED_LABEL), "execution_record_exists"
     try:
         status, reason = failure_result(current, gh.history(number), bundle)
+        if record_error is not None:
+            # Only failed without a reason confirms that no new edit was ours.
+            if status != "failed" or reason is not None:
+                raise ValueError("write_state_unconfirmed")
+            reason = record_error
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired):
         # No final label may release the parent gate without write-state evidence.
         raise ValueError("write_state_unconfirmed") from None
     label = REWRITE_DONE_LABEL if status == "done" else REWRITE_FAILED_LABEL
-    return final_label(gh, number, label), reason or record_error
+    return final_label(gh, number, label), reason
