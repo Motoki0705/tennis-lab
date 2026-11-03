@@ -351,5 +351,8 @@ oracleは保存済みGT由来の幾何参照で、実運用の推定方式や数
 -n 0で収集36件3.80秒、実行36成功4.91秒（`--durations=0 --durations-min=0`）。
 新規case最大0.014秒。全node・phase・コマンドは`cohort-tests.json`。
 今回の横断レビュー判断は共有memoryのreviewにも一般化して記録した。
-memoryの形式・リンク・容量・個人情報検査は92成功0.31秒、収集92件0.08秒（15件は対象外）で、
-`cohort-memory-tests.json`に保存した。ruff/mypyも成功した。
+memoryの形式・リンク・容量・個人情報検査はUTC条件で92成功0.28秒、収集92件0.05秒（15件は対象外）で、
+`cohort-memory-tests.json`に保存した。新規entryのJST日付11月4日がUTCでは未来になる失敗を
+1case・0.07秒で再現し、作成時刻のUTC日付11月3日へmetadataを修正した。
+人間の判断の出典はJSTの11月4日と明記し、日付検査自体は変更していない。集計結果・成果物checksumは不変。
+ruff/mypyも成功した。

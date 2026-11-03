@@ -2,8 +2,8 @@
 title: "coverageの異なる方式比較は共通・追加・喪失の誤差を分ける"
 applies_to: all
 source: "2026-11-04: #1554の明示レビューcross-1（PR #1672 / #1674 / #1676）、人間と親が妥当と判断"
-created: 2026-11-04
-last_verified: 2026-11-04
+created: 2026-11-03  # UTC: 作成時刻はJSTの11月4日
+last_verified: 2026-11-03
 evidence: "knowledge/runs/run-ball3d-dense-likelihood-20261103/cohorts.pyとcohort-receipt.jsonで集合の件数再構成・元の採点値一致を確認する。将来READMEへ昇格したら重複を削除する。"
 ---
 
