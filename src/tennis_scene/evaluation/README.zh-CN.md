@@ -31,6 +31,10 @@ evidence窗口来源、court side、标定及观测mask。标注import来源及�
 
 ## 方法接口
 
+可选[候选GMM方法](../ball_gmm/README.zh-CN.md)调用production方式A。
+`ball3d/uncertainty.py` 在相同评分camera/frame集合上评估投影协方差与椭圆覆盖率。
+非零时间offset需要时间联合后验，因此明确拒绝。
+
 实现 `BallMethod.name`、`config`、bool `requires_court_lines` 和 `__call__(inputs) -> Ball3DResult`，连同bundle/code的digest
 传给 `run_method` 或 `run_comparison`。runner没有标注参数。LOVO仅提供保留的两个
 `ViewInput`，不提供被排除camera的热图或观测。所有方法共享来源运行的固定标定。

@@ -143,6 +143,10 @@ side・alignment・三角測量へ渡す`uv_px/confidence`は欠損をゼロ、m
 
 ## 成果物
 
+候補の不確かさを用いるball再構成は `ball_reconstruction.method=candidate_gmm` で選択できます。
+設定・分布・maskとCPU評価の契約は [候補GMM README](../ball_gmm/README.ja.md) を参照してください。
+既定の `triangulation` は維持します。
+
 構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとし、呼び出し側が`store_root`で明示する。
 単独動画の入口（`store_root=None`）は`cache.directory/<source digest>`を使う。
 storeの場所を動画パスの形から推測しない。`cache.directory`はrun IDを含まないARTIFACT pathで、`cache.source=load`で再開できる。

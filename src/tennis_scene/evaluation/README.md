@@ -39,6 +39,10 @@ paths are present in `MethodInput`.
 
 ## Method interface
 
+The optional [candidate GMM method](../ball_gmm/README.md) uses production Method A.
+`ball3d/uncertainty.py` propagates its covariance and measures ellipse coverage on
+the same scored camera/frame cohort; nonzero time offsets require a temporal posterior and are rejected.
+
 Implement `BallMethod.name`, `config`, explicit bool `requires_court_lines`, and `__call__(inputs) -> Ball3DResult`, then
 call `run_method` or `run_comparison` with bundle/code digests. No annotation
 argument exists on this runner. LOVO passes only its two retained `ViewInput`s;

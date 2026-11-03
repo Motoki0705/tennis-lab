@@ -30,6 +30,7 @@ from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG as DEFAULT_ASSOCIATION_CONFIG,
 )
 from src.tasks.player_association.association.config import load_association_config
+from src.tennis_scene.ball_gmm.config import CandidateGMMConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -246,8 +247,17 @@ _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_rec
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "joint_confidence": ConfigField.of(float, int),
     "placement": ConfigField.mapping(_PLACEMENT_SCHEMA),
 })
+_CANDIDATE_GMM_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction.candidate_gmm", fields={
+    **{key: ConfigField.of(int) for key in ("top_k", "max_components", "max_nfev")},
+    **{key: ConfigField.of(str) for key in ("estimator", "temporal")},
+    **{key: ConfigField.of(list, tuple) for key in ("prior_mean_m", "prior_std_m")},
+    **{key: ConfigField.of(float, int) for key in ("covariance_scale", "presence_slope", "presence_bias",
+        "min_multiview_mass", "min_variance_cells2", "max_variance_cells2", "log_floor",
+        "acceleration_std_mps2", "initial_velocity_std_mps")},
+})
 _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
+    "method": ConfigField.of(str), "candidate_gmm": ConfigField.mapping(_CANDIDATE_GMM_SCHEMA),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
@@ -309,6 +319,8 @@ class PipelineRuntimeConfig:
     player_placement: TemporalPlacementConfig
     ball_reprojection_px: float
     ball_min_frames: int
+    ball_method: str
+    ball_candidate_gmm: CandidateGMMConfig
     cache_directory: Path
     cache_source: str
     cache_overwrite: bool
@@ -392,6 +404,13 @@ class PipelineRuntimeConfig:
         person = _mapping(value["person_observations"], name="person_observations")
         player = _mapping(value["player_reconstruction"], name="player_reconstruction")
         ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
+        ball_method = cast(str, ball["method"])
+        if ball_method not in {"triangulation", "candidate_gmm"}:
+            raise SemanticConfigurationError("Unknown ball_reconstruction.method")
+        gmm_values = dict(_mapping(ball["candidate_gmm"], name="candidate_gmm"))
+        for key in ("prior_mean_m", "prior_std_m"):
+            gmm_values[key] = tuple(_sequence(gmm_values[key], name=key))
+        ball_candidate_gmm = CandidateGMMConfig(**cast(dict[str, Any], gmm_values))
         visibility = float(cast(float, person["visibility_threshold"]))
         _unit_interval(visibility, name="person visibility")
         margins = (float(cast(float, person["sideline_margin_m"])), float(cast(float, person["baseline_margin_m"])))
@@ -416,6 +435,7 @@ class PipelineRuntimeConfig:
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
+            ball_method, ball_candidate_gmm,
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing)
 

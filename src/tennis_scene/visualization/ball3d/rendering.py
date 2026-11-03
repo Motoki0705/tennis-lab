@@ -17,6 +17,10 @@ from src.tennis_scene.evaluation.ball3d.annotations import Ball2DAnnotations
 from src.tennis_scene.evaluation.ball3d.contracts import MethodInput
 from src.tennis_scene.evaluation.ball3d.runner import MethodRun
 from src.tennis_scene.evaluation.ball3d.scoring import project_result
+from src.tennis_scene.evaluation.ball3d.uncertainty import (
+    ellipse_vertices,
+    project_covariance,
+)
 from src.tennis_scene.visualization.rendering.multiview import sampled_frame_indices
 from src.utils.checksum import dual_sha256
 from src.utils.video.reader import (
@@ -99,6 +103,11 @@ class BallComparisonRenderer:
         self.projections = {
             (name, camera): project_result(inputs, run.result, camera)
             for name, run in runs.items()
+            for camera in inputs.camera_ids
+        }
+        self.projected_covariances = {
+            (name, camera): project_covariance(inputs, run.result, camera)[0]
+            for name, run in runs.items() if run.result.covariance is not None
             for camera in inputs.camera_ids
         }
         self.width, self.left_width = width, width // 2
@@ -185,6 +194,13 @@ class BallComparisonRenderer:
                     cv2.LINE_AA,
                 )
             if result.valid[frame]:
+                if result.covariance is not None:
+                    selected = list(axes)
+                    scales = np.array([width-40, -(height-60)]) / (self.upper[selected]-self.lower[selected])
+                    covariance = result.covariance[frame][np.ix_(selected, selected)] * scales[:, None] * scales[None, :]
+                    vertices = ellipse_vertices(screen(result.positions[frame]).astype(float), covariance)
+                    cv2.polylines(image, [np.rint(vertices.clip(-1e6, 1e6)).astype(np.int32)], True,
+                        self.colors[name], 1, cv2.LINE_AA)
                 cv2.circle(
                     image,
                     tuple(screen(result.positions[frame])),
@@ -250,6 +266,11 @@ class BallComparisonRenderer:
                     and np.all(uv[frame] < self.inputs.source_size_wh)
                 ):
                     point = tuple(np.rint(uv[frame] * scale).astype(int))
+                    if (name, camera) in self.projected_covariances:
+                        covariance = self.projected_covariances[name, camera][frame] * scale**2
+                        vertices = ellipse_vertices(uv[frame] * scale, covariance)
+                        cv2.polylines(panel, [np.rint(vertices.clip(-1e6, 1e6)).astype(np.int32)], True,
+                            self.colors[name], 1, cv2.LINE_AA)
                     cv2.circle(
                         panel, point, 5 + j * 3, self.colors[name], 2, cv2.LINE_AA
                     )

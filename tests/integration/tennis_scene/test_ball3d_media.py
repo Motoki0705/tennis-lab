@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import cv2
 import numpy as np
 from numpy.typing import NDArray
@@ -58,6 +60,15 @@ def test_synchronized_two_method_video_full_decode_and_portable_reference_report
         )
         for method in methods
     }
+    # Exercise real projected covariance / top-side ellipses in the existing
+    # public media integration, rather than duplicating video fixtures.
+    uncertain_name = methods[1].name
+    uncertain = []
+    for run in runs[uncertain_name]:
+        covariance = np.tile(np.diag([.03, .09, .02]), (inputs.num_frames, 1, 1))
+        covariance[~run.result.valid] = 0
+        uncertain.append(replace(run, result=replace(run.result, covariance=covariance)))
+    runs[uncertain_name] = tuple(uncertain)
     kinds: NDArray[np.str_] = np.full((3, 4), "observed", dtype="U22")
     kinds[1, 0], kinds[2, 2] = "estimated", "excluded_extrapolation"
     labels = make_annotations(inputs, np.tile([140.0, 170.0], (3, 4, 1)), kinds)
@@ -89,10 +100,12 @@ def test_synchronized_two_method_video_full_decode_and_portable_reference_report
         crops=crops,
         verification=validation,
         table_figure=table,
+        supplementary_figures={"Fixture uncertainty figure": figure},
     )
     assert "approved estimates" in page.read_text()
     assert "Primary evaluation: [2,4)" in page.read_text()
     assert "data:video/mp4;base64," in page.read_text()
+    assert "Fixture uncertainty figure" in page.read_text()
     assert broken_html_references(page) == []
     # Optional no-reference evaluation remains explicit and reports no accuracy.
     no_labels = score_comparison(
