@@ -1,0 +1,1 @@
+Validated all v1 files and scores; finalized /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_v3/index.html

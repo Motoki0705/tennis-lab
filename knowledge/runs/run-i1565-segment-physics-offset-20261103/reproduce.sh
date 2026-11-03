@@ -6,6 +6,7 @@ if [ "$#" -ne 5 ]; then
 fi
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1
+export PYTHONDONTWRITEBYTECODE=1
 PHYSICS_RAW_OUTPUT="${5}_predictions"
 bash knowledge/runs/run-i1565-segment-physics-offset-20261103/repro.sh "$1" "$2" "$3" "$4" "$PHYSICS_RAW_OUTPUT"
 PHYSICS_RAW_MANIFEST=$(cat "$PHYSICS_RAW_OUTPUT/artifacts.sha256")
