@@ -54,3 +54,22 @@ coarseは既知位置を復元し、候補版は欠測を明示する契約を�
   選定denseの1010frame・全viewをCPU再実行してv2の配列と比べる。GT再調整はしない。
 - pytestは-n 0で逐次実行。新しい大きなfixtureや重いE2Eは増やさず、collect-onlyと全phase時間を保存する。
 - DINO分離の失敗が観測された場合のみ、指定commitの該当1ファイルを同一内容で取り込む。
+
+## cross-1: coverageの共通・追加・喪失の集計（実装前）
+
+- 契約: 基盤のload_run/error_samplesだけからLOVOの(camera ID, frame)別残差を取得し、
+  共通・方式のみ・baselineのみを排他的に分ける。各区間で両側の全採点数を再構成できること。
+  20pxちょうどは超過に含めず、空集合の中央値/p90/率はnull。予測・scorer・設定は変更しない。
+- 検出したい故障: cameraを無視したframeだけのjoin、505境界の取り違え、共通点のbaseline残差の取り違え、
+  空の喪失点を0pxと扱うこと、重複key/異なる参照kindの黙認。
+- 層: 比較専用scriptをknowledge/runsへ置き、その集合分割を軽いunitで検証する。
+  504/505/1009frame、同じframeの異なるcamera、異なる挿入順、20pxちょうどを持つ非対称fixtureを手計算する。
+  共通の方式/基準、追加、喪失の中央値/p90/率と、camera/kind部分集合を確認する。
+- 再利用: test_scoring.pyのerror_samplesを通るidentity/held-out camera/kindの契約と、
+  test_annotations.pyのbundleへ結び付けた正解readerを含む既存unit directoryを実行する。
+  srcの採点へ別の入口・テスト用免除は追加しない。
+- コスト: 数値/空集合2caseとidentity異常3caseの新規5caseを上限とし、
+  1case 1秒以下・共通import以外のsetup 1秒以下を目安に計測する。
+  pytestは-n 0、collect-onlyと全phase時間を記録する。実データはoracle・baseline自体も含む報告済み8条件、
+  24 LOVO runを逐次読み込むだけで、
+  方式を呼ばず、動画やheatmapの作業用コピーも作らない。

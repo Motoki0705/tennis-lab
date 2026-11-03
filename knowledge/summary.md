@@ -7,6 +7,7 @@
 <!-- knowledge-review: 27388fbfdedcb6704ad9090ac5050ed9fd10c740b32a5441f0fa1e02520b6dd7 on 2026-11-04 -->
 <!-- knowledge-review: 76c72394b46c58454f31591362ec64bc6ff0f6dbd6a18ad509481f2199d9f3d8 on 2026-11-04 -->
 <!-- knowledge-review: 2632293584fad56a1065da16abeb3e7729b43c4daab53220a03f1ada5ce7b2af on 2026-11-03 -->
+<!-- knowledge-review: 6f76edf22a32c20f16425ff68045938c57fd04cfa364e8ae1975d7f480192790 on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-04（clip_000の追加/喪失点の誤差を追記。既存モデル・checkpointの採用判断は維持）
@@ -100,6 +101,8 @@ coverageは56.43%→99.73%に増えた一方、baselineと共通の825点でも1
 次はイベント支持、区間連続性、map目的関数の収束と校正biasの交絡を独立に検証する必要がある。
 CI修正で設定をcompositionへ集約し、solverのcamera順を正規化した。固定入力の全12実行と実行時間を除く採点は元結果と完全一致し、上記の負の結論は変わらない。
 DINOの残存子moduleによるCIテスト間の干渉も隔離し、再現した失敗の解消を確認した。production sourceと研究上の結論は追加で変えていない。
+横断レビュー後の固定予測の分解では、後半の追加633点は29.07/313.39px・>20px率60.35%、喪失0点だった。
+追加点の品質と共通点での悪化を併せて記録し、採用非推奨を維持する。camera/参照種類別と他条件の追加・喪失も同ノードから参照できる。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 
