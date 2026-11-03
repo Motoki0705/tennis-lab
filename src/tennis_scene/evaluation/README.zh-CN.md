@@ -31,13 +31,22 @@ evidence窗口来源、court side、标定及观测mask。标注import来源及�
 
 ## 方法接口
 
-实现 `BallMethod.name`、`config` 和 `__call__(inputs) -> Ball3DResult`，连同bundle/code的digest
+实现 `BallMethod.name`、`config`、bool `requires_court_lines` 和 `__call__(inputs) -> Ball3DResult`，连同bundle/code的digest
 传给 `run_method` 或 `run_comparison`。runner没有标注参数。LOVO仅提供保留的两个
 `ViewInput`，不提供被排除camera的热图或观测。所有方法共享来源运行的固定标定。
 
 每个view包含aligned camera、local标定/side、模型evidence、阈值/gate之后的历史检测点、
 接纳的ball点及其记录的重放设置。坐标是原视频像素；热图保留自身H/W网格，候选像素使用
 检测器的W−1/H−1约定。保留完整、从0开始的source时间轴，数组只读。
+
+`ViewInput.court` 按camera保留raw KP14像素、score/valid、原homography的使用点和模板方向，
+只记录实际测量frame（本次为0），不把fitted/broadcast坐标当作raw观测。
+验证camera/frame/native尺寸和字段缺失；LOVO仅传入选定view的court对象。
+现有bundle的已验证标定diagnostics包含这些raw KP，原bytes/digest保持不变。
+LINE有类型化表示，但历史store只保存support摘要。`court.lines=None` 附有明确缺失原因。
+每种方法必须声明bool `requires_court_lines`；为true时，runner在调用方法前拒绝选定view中缺失的LINE。
+也可调用 `court.require_lines()` 或 `load_bundle(..., require_court_lines=True)` 显式要求LINE。
+baseline声明false，使用固定camera；不把摘要转为观测，也不重新推理。
 
 结果包含球场米制 `positions (T,3)`、`valid (T)` 及显式camera顺序的 `used_views (V,T)`。
 无效坐标为0，有效点需要至少两个已使用视角。可选字段为PSD协方差 `(T,3,3)`、
@@ -61,6 +70,11 @@ baseline从保存的解码/gate后观测重新计算production consensus、LOESS
 每个fold和时间段均报告 `all`、`observed`、`estimated` 的分布、可评分/已评分数量和覆盖率。
 保留按camera记录的全部事件原行、注释和估计区间。
 
+`score_comparison(runs, bundle, annotations)` 和 `error_samples(run, bundle, annotations)`
+必须接收已验证的 `FixedInputBundle`，核对结果bundle digest和camera/frame轴，以及参考的
+clip ID、camera、frame数、fps、native尺寸和视频哈希。`annotation_oracle`、`plot_comparison`、
+`render_extremes` 同样接收bundle，拒绝混入尺寸相同的另一输入结果。
+
 默认时间段为调参 `[0,505)`、主要评估 `[505,1010)` 和补充的全片段。
 LOVO只评估被排除camera，汇总每个残差，而不平均各fold的中位数。
 指标包括中位数/p90、严格大于20px的比例、全视角误差、有效3D比例、粗大重投影frame比例、
@@ -74,6 +88,11 @@ LOVO只评估被排除camera，汇总每个残差，而不平均各fold的中位
 `annotation_oracle` 仅供评分，在同一固定camera下对保留camera的可评分参考（含估计）做三角测量，
 不会调用预测方法。近似标定和参考噪声使它成为几何参考，而不是数学上保证的误差下限。
 
+HTML主表和独立指标图使用同一表格数据，在LOVO误差旁显示已评分/可评分数及coverage，
+全视角有效3D比例使用独立标题。第二张表仅比较所有列出方法（包括所提供的oracle）共同可评分的
+(排除camera, 原frame)交集。表格附近说明各方法评分集合不同，以及交集比较仍以可用性为条件。
+保存交集identity和观测/估计分类；交集为空时误差不可用，不填0。
+
 可视化支持N种方法：绿色十字表示直接观测，白色菱形表示批准的估计，彩色圆表示预测重投影。
 裁剪图按LOVO误差选择，并用彩色斜十字显示LOVO预测。轨迹不跨缺失frame连接。
 HTML嵌入视频、图、表和指标，支持单文件查看；相邻文件仅用于可选下载。
@@ -83,9 +102,9 @@ HTML嵌入视频、图、表和指标，支持单文件查看；相邻文件仅�
 ## 复现与测试
 
 clip专用入口、测试设计和实际证据位于
-[`knowledge/runs/run-ball3d-evaluation-foundation-20261103`](../../../knowledge/runs/run-ball3d-evaluation-foundation-20261103/)。
+[`knowledge/runs/run-ball3d-foundation-review-20261103`](../../../knowledge/runs/run-ball3d-foundation-review-20261103/)。
 把repo加入 `PYTHONPATH` 后运行 `run.py --help`。`bundle` 和 `compare` 要求显式本地输入与新输出目录。
-compare需要可信记录中的 `--bundle-sha256`、`--annotations` 和 `--annotations-sha256`，以及核对历史权重的 `--checkpoints`。实际资产、全片解码与重放验证独立于轻量CI fixture。
+compare需要可信记录中的 `--bundle-sha256`、`--annotations` 和 `--annotations-sha256`，以及核对历史权重的 `--checkpoints`。修正后的复现还需要 `--prior-comparison`，核对预测数组与v1一致。实际资产、全片解码与重放验证独立于轻量CI fixture。
 
 ```bash
 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m pytest -n 0 \

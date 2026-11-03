@@ -39,6 +39,7 @@ from src.utils.geometry.temporal_smoothing import TemporalSmoothingConfig
 from src.utils.video.reader import probe_video_info
 
 from .contracts import Ball3DResult, DetectorReplayConfig, MethodInput, ViewInput
+from .court import court_views_from_diagnostics
 from .storage import checked_path, read_json
 
 BUNDLE_SCHEMA = "tennis_lab_ball3d_fixed_inputs.v1"
@@ -132,7 +133,9 @@ def _load_component(
     )
 
 
-def load_bundle(root: Path, *, expected_sha256: str | None = None) -> FixedInputBundle:
+def load_bundle(
+    root: Path, *, expected_sha256: str | None = None, require_court_lines: bool = False
+) -> FixedInputBundle:
     root = root.resolve()
     digest = dual_sha256(root / "bundle.json")
     if digest != (root / "bundle.sha256").read_text().strip() or (
@@ -226,6 +229,13 @@ def load_bundle(root: Path, *, expected_sha256: str | None = None) -> FixedInput
         or calibration.reference_camera != side.reference_camera
     ):
         raise ValueError("Calibration/side/alignment camera axis mismatch")
+    courts = court_views_from_diagnostics(
+        calibration.court.diagnostics,
+        source.camera_ids,
+        source.size,
+        source.num_frames,
+        require_lines=require_court_lines,
+    )
     views = []
     for i, camera_id in enumerate(source.camera_ids):
         local = calibration.calibration.views[i]
@@ -261,6 +271,7 @@ def load_bundle(root: Path, *, expected_sha256: str | None = None) -> FixedInput
                     TrajectoryGateConfig(**config["trajectory_gate"]),
                 ),
                 TemporalSmoothingConfig(**smoothing),
+                courts[i],
             )
         )
     inputs = MethodInput(

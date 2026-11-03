@@ -16,7 +16,11 @@ from src.tennis_scene.visualization.ball3d.report import (
     render_extremes,
     write_report,
 )
-from tests.support.ball3d_evaluation import make_annotations, make_inputs
+from tests.support.ball3d_evaluation import (
+    make_annotations,
+    make_inputs,
+    make_scoring_bundle,
+)
 
 
 def test_synchronized_two_method_video_full_decode_and_portable_reference_report(
@@ -34,7 +38,9 @@ def test_synchronized_two_method_video_full_decode_and_portable_reference_report
         )
         assert writer.isOpened()
         for frame in range(inputs.num_frames):
-            pixels: NDArray[np.uint8] = np.full((240, 320, 3), 30 + i * 40 + frame * 7, np.uint8)
+            pixels: NDArray[np.uint8] = np.full(
+                (240, 320, 3), 30 + i * 40 + frame * 7, np.uint8
+            )
             writer.write(pixels)
         writer.release()
         videos[camera] = path
@@ -64,14 +70,15 @@ def test_synchronized_two_method_video_full_decode_and_portable_reference_report
     ) as renderer:
         validation = render_video(renderer, tmp_path / "comparison.mp4")
     assert validation["decoded_frames"] == 4 and validation["fps"] == inputs.fps
-    scores = score_comparison(runs, inputs, labels, config=ScoringConfig(split_frame=2))
+    bundle = make_scoring_bundle(inputs, digest="fixture")
+    scores = score_comparison(runs, bundle, labels, config=ScoringConfig(split_frame=2))
     figure = tmp_path / "trajectories.png"
-    plot_comparison(runs, inputs, figure, labels, split_frame=2)
+    plot_comparison(runs, bundle, figure, labels, split_frame=2)
     table = tmp_path / "metrics-table.png"
     plot_metrics_table(scores, table)
     crops = tmp_path / "extremes.png"
     assert (
-        render_extremes(runs, inputs, videos, crops, labels, count=1)["status"]
+        render_extremes(runs, bundle, videos, crops, labels, count=1)["status"]
         == "generated"
     )
     page = write_report(
@@ -89,7 +96,7 @@ def test_synchronized_two_method_video_full_decode_and_portable_reference_report
     assert broken_html_references(page) == []
     # Optional no-reference evaluation remains explicit and reports no accuracy.
     no_labels = score_comparison(
-        runs, inputs, None, config=ScoringConfig(split_frame=2)
+        runs, bundle, None, config=ScoringConfig(split_frame=2)
     )
     assert all(
         method["lovo_reprojection_px"]["all"] is None

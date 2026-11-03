@@ -14,12 +14,17 @@ from src.tennis_scene.evaluation.ball3d.scoring import (
     project_result,
     score_comparison,
 )
-from tests.support.ball3d_evaluation import make_annotations, make_inputs
+from tests.support.ball3d_evaluation import (
+    make_annotations,
+    make_inputs,
+    make_scoring_bundle,
+)
 
 
 class FixedPointMethod:
     name = "independent_fixture"
     config = {"fixture": "hand-calculated pinhole projections"}
+    requires_court_lines = False
 
     def __init__(self):
         self.received = []
@@ -68,7 +73,10 @@ def test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation(
     )
     labels = _labels(inputs)
     report = score_comparison(
-        {method.name: runs}, inputs, labels, config=ScoringConfig(split_frame=2)
+        {method.name: runs},
+        make_scoring_bundle(inputs),
+        labels,
+        config=ScoringConfig(split_frame=2),
     )
     metrics = report["methods"][method.name]
     tune, evaluate, all_frames = [
@@ -97,8 +105,8 @@ def test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation(
     changed[1:, 0] = [20, 20]
     other = make_annotations(inputs, changed, labels.reference_kind)
     np.testing.assert_array_equal(
-        error_samples(runs[1], inputs, labels)["error_px"],
-        error_samples(runs[1], inputs, other)["error_px"],
+        error_samples(runs[1], make_scoring_bundle(inputs), labels)["error_px"],
+        error_samples(runs[1], make_scoring_bundle(inputs), other)["error_px"],
     )
     breakdown = metrics["lovo_reprojection_by_reference_kind"]["tuning"]
     assert breakdown["observed"]["count"] == 2
@@ -115,7 +123,7 @@ def test_method_runner_excludes_labels_reference_and_heldout_camera():
     )
     score_comparison(
         {method.name: first},
-        inputs,
+        make_scoring_bundle(inputs),
         _labels(inputs),
         config=ScoringConfig(split_frame=2),
     )
@@ -139,6 +147,14 @@ def test_method_runner_excludes_labels_reference_and_heldout_camera():
         "near",
         "far",
     }
+    assert [view.court.camera_id for view in method.received[1].views] == [
+        "near",
+        "far",
+    ]
+    # The excluded right view's distinct raw (21.25,50.5) point is unavailable.
+    assert [
+        view.court.keypoints_px[0, 0].tolist() for view in method.received[1].views
+    ] == [[68.25, 79.5], [115.25, 108.5]]
     for before, after in zip(first, second, strict=True):
         np.testing.assert_array_equal(before.result.positions, after.result.positions)
         np.testing.assert_array_equal(before.result.valid, after.result.valid)
@@ -196,7 +212,7 @@ def test_annotation_oracle_uses_retained_observations_only():
     uv[0, 1] = 0
     labels = make_annotations(inputs, uv, states)
     runs = annotation_oracle(
-        inputs, labels, bundle_sha256="x", code_commit="y", code_fingerprint="z"
+        make_scoring_bundle(inputs), labels, code_commit="y", code_fingerprint="z"
     )
     np.testing.assert_allclose(
         runs[0].result.positions, np.tile([1.0, 2.0, 1.0], (4, 1)), atol=1e-6
@@ -235,7 +251,7 @@ def test_camera_event_rows_use_union_windows_without_multiplying_residuals():
     )
     report = score_comparison(
         {method.name: runs},
-        inputs,
+        make_scoring_bundle(inputs),
         labels,
         config=ScoringConfig(split_frame=2, event_radius_frames=0),
     )
@@ -254,6 +270,7 @@ def test_motion_outliers_respect_gaps_and_split_boundaries():
 
     class MotionMethod:
         name, config = "hand_motion", {}
+        requires_court_lines = False
 
         def __call__(self, data):
             valid = np.array([True, True, True, False, True, True])
@@ -274,7 +291,7 @@ def test_motion_outliers_respect_gaps_and_split_boundaries():
     )
     report = score_comparison(
         {"hand_motion": runs},
-        inputs,
+        make_scoring_bundle(inputs),
         None,
         config=ScoringConfig(split_frame=2, max_speed_mps=30, max_acceleration_mps2=90),
     )
@@ -287,3 +304,129 @@ def test_motion_outliers_respect_gaps_and_split_boundaries():
     assert folds["evaluation"]["acceleration_mps2"]["count"] == 0
     assert folds["evaluation"]["adjacent_step_m"]["count"] == 1
     assert folds["evaluation"]["speed_mps"]["above_threshold_rate"] == 1
+
+
+@pytest.mark.parametrize("mismatch", ["bundle_digest", "frame_count"])
+def test_scoring_rejects_results_from_other_bundle_or_timeline(mismatch):
+    inputs, method = make_inputs(), FixedPointMethod()
+    bundle, labels = make_scoring_bundle(inputs), _labels(inputs)
+    runs = list(
+        run_method(
+            method, inputs, bundle_sha256="x", code_commit="y", code_fingerprint="z"
+        )
+    )
+    if mismatch == "bundle_digest":
+        runs[0] = replace(runs[0], bundle_sha256="another_bundle")
+    else:
+        old = runs[0].result
+        shorter = Ball3DResult(
+            old.camera_ids,
+            old.frame_indices[:3],
+            old.positions[:3],
+            old.valid[:3],
+            old.used_views[:, :3],
+        )
+        runs[0] = replace(runs[0], result=shorter)
+    with pytest.raises(ValueError, match="bundle digest|frame axis"):
+        score_comparison(
+            {method.name: runs}, bundle, labels, config=ScoringConfig(split_frame=2)
+        )
+    with pytest.raises(ValueError, match="bundle digest|frame axis"):
+        error_samples(runs[0], bundle, labels)
+
+
+@pytest.mark.parametrize("mismatch", ["clip_id", "frame_count", "video_hash"])
+def test_scoring_rejects_reference_identity_mismatch(mismatch):
+    inputs, method = make_inputs(), FixedPointMethod()
+    bundle, labels = make_scoring_bundle(inputs), _labels(inputs)
+    identity = labels.reference.identity
+    if mismatch == "clip_id":
+        identity = replace(identity, clip_id="different_clip")
+    elif mismatch == "frame_count":
+        identity = replace(identity, num_frames=3)
+    else:
+        identity = replace(
+            identity, video_sha256={**identity.video_sha256, "near": "f" * 64}
+        )
+    changed = replace(labels, reference=replace(labels.reference, identity=identity))
+    runs = run_method(
+        method, inputs, bundle_sha256="x", code_commit="y", code_fingerprint="z"
+    )
+    with pytest.raises(ValueError, match="axes|video hash"):
+        score_comparison(
+            {method.name: runs}, bundle, changed, config=ScoringConfig(split_frame=2)
+        )
+    with pytest.raises(ValueError, match="axes|video hash"):
+        error_samples(runs[0], bundle, changed)
+
+
+def test_common_lovo_intersection_compares_identical_camera_frame_pairs():
+    inputs, first = make_inputs(), FixedPointMethod()
+
+    class MissingRightPoint(FixedPointMethod):
+        name = "one_missing_point"
+
+        def __call__(self, data):
+            result = super().__call__(data)
+            if data.camera_ids == ("near", "far"):
+                valid, positions, used = (
+                    result.valid.copy(),
+                    result.positions.copy(),
+                    result.used_views.copy(),
+                )
+                valid[0], positions[0], used[:, 0] = False, 0, False
+                result = replace(
+                    result, valid=valid, positions=positions, used_views=used
+                )
+            return result
+
+    methods = (first, MissingRightPoint())
+    runs = {
+        method.name: run_method(
+            method, inputs, bundle_sha256="x", code_commit="y", code_fingerprint="z"
+        )
+        for method in methods
+    }
+    report = score_comparison(
+        runs,
+        make_scoring_bundle(inputs),
+        _labels(inputs),
+        config=ScoringConfig(split_frame=2),
+    )
+    assert report["common_lovo_cohort"]["camera_frame_pairs"] == [
+        ["right", 2],
+        ["near", 0],
+        ["near", 2],
+        ["far", 0],
+    ]
+    assert report["methods"][first.name]["lovo_reprojection_px"]["all"]["count"] == 5
+    for name in runs:
+        common = report["methods"][name]["common_lovo_reprojection_px"]["all"]
+        assert common["count"] == 4 and common["label_count"] == 8
+        assert common["median"] == pytest.approx(9)  # 0,5,13,25
+        assert common["p90"] == pytest.approx(21.4)
+        assert common["scored_label_coverage"] == 0.5
+
+
+def test_runner_stops_before_method_when_required_line_observations_are_missing():
+    inputs = make_inputs()
+    views = list(inputs.views)
+    views[1] = replace(
+        views[1],
+        court=replace(
+            views[1].court,
+            lines=None,
+            line_missing_reason="fixture did not record LINE",
+        ),
+    )
+    inputs = replace(inputs, views=tuple(views))
+
+    class NeedsLines(FixedPointMethod):
+        requires_court_lines = True
+
+    method = NeedsLines()
+    with pytest.raises(ValueError, match="near.*LINE observations unavailable"):
+        run_method(
+            method, inputs, bundle_sha256="x", code_commit="y", code_fingerprint="z"
+        )
+    assert method.received == []

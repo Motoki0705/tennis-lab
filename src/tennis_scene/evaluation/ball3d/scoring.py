@@ -17,6 +17,7 @@ from src.utils.geometry.triangulation import (
 )
 
 from .annotations import Ball2DAnnotations
+from .bundle import FixedInputBundle
 from .contracts import Ball3DResult, MethodInput
 from .runner import MethodRun
 
@@ -78,10 +79,25 @@ def project_result(
     return np.where(valid[:, None], uv, 0), valid
 
 
+def validate_scoring_run(run: MethodRun, bundle: FixedInputBundle) -> None:
+    """Reject a result from another fixed input before any projection or scoring."""
+    inputs = bundle.inputs
+    if run.bundle_sha256 != bundle.manifest_sha256:
+        raise ValueError("Scoring result bundle digest mismatch")
+    if run.source_camera_ids != inputs.camera_ids or run.result.camera_ids != tuple(
+        camera for camera in inputs.camera_ids if camera != run.held_out_camera
+    ):
+        raise ValueError("Scoring result camera identity mismatch")
+    if not np.array_equal(run.result.frame_indices, inputs.frame_indices):
+        raise ValueError("Scoring result frame axis mismatch")
+
+
 def error_samples(
-    run: MethodRun, inputs: MethodInput, annotations: Ball2DAnnotations
+    run: MethodRun, bundle: FixedInputBundle, annotations: Ball2DAnnotations
 ) -> dict[str, NDArray[Any]]:
-    annotations.validate_for_inputs(inputs)
+    validate_scoring_run(run, bundle)
+    annotations.validate_for_bundle(bundle)
+    inputs = bundle.inputs
     cameras = (
         inputs.camera_ids if run.held_out_camera is None else (run.held_out_camera,)
     )
@@ -301,14 +317,20 @@ def _score_segment(
 
 def score_comparison(
     runs: Mapping[str, Sequence[MethodRun]],
-    inputs: MethodInput,
+    bundle: FixedInputBundle,
     annotations: Ball2DAnnotations | None,
     *,
     config: ScoringConfig = DEFAULT_SCORING,
 ) -> dict[str, Any]:
+    inputs = bundle.inputs
+    if not runs:
+        raise ValueError("Scoring comparison requires at least one method")
+    if annotations is not None:
+        annotations.validate_for_bundle(bundle)
     segments = _segments(inputs, config)
     report: dict[str, Any] = {
         "schema": "tennis_lab_ball3d_scores.v1",
+        "bundle_sha256": bundle.manifest_sha256,
         "config": asdict(config),
         "primary_segment": "evaluation",
         "annotations": None
@@ -325,6 +347,7 @@ def score_comparison(
         "independent_3d_ground_truth": "unavailable; reprojection gross error is not a measured 3D error rate",
         "methods": {},
     }
+    pooled: dict[str, dict[str, NDArray[Any]]] = {}
     for name, method_runs in runs.items():
         if len(method_runs) != 4 or {r.held_out_camera for r in method_runs} != {
             None,
@@ -334,10 +357,11 @@ def score_comparison(
         fold_samples: list[dict[str, NDArray[Any]]] = []
         folds = {}
         for run in method_runs:
+            validate_scoring_run(run, bundle)
             if run.method != name or run.source_camera_ids != inputs.camera_ids:
                 raise ValueError("Comparison method/camera identity mismatch")
             samples = (
-                None if annotations is None else error_samples(run, inputs, annotations)
+                None if annotations is None else error_samples(run, bundle, annotations)
             )
             folds[run.key] = {
                 segment: _score_segment(
@@ -347,17 +371,19 @@ def score_comparison(
             }
             if run.held_out_camera is not None and samples is not None:
                 fold_samples.append(samples)
+        combined = (
+            None
+            if not fold_samples
+            else {
+                key: np.concatenate([sample[key] for sample in fold_samples])
+                for key in fold_samples[0]
+            }
+        )
+        if combined is not None:
+            pooled[name] = combined
         aggregate, aggregate_by_kind = {}, {}
         for segment, (start, stop) in segments.items():
             # Pool observations, never average fold medians or fill empty folds with zero.
-            combined = (
-                None
-                if not fold_samples
-                else {
-                    key: np.concatenate([sample[key] for sample in fold_samples])
-                    for key in fold_samples[0]
-                }
-            )
             summary = (
                 None
                 if annotations is None or combined is None
@@ -380,14 +406,61 @@ def score_comparison(
                 r.elapsed_seconds for r in method_runs
             ),
         }
+    # Pair by held-out camera and original frame. Use only availability, never
+    # residual size, to select the intersection. An empty fold is not filled.
+    common_ids: set[int] = set()
+    if pooled:
+        common_ids = set.intersection(
+            *(
+                set(
+                    (
+                        sample["camera_index"] * inputs.num_frames
+                        + sample["frame_index"]
+                    ).tolist()
+                )
+                for sample in pooled.values()
+            )
+        )
+    report["common_lovo_cohort"] = {
+        "methods": list(runs),
+        "selection": "intersection of scored (held-out camera, source frame) pairs across all listed methods",
+        "camera_frame_pairs": [
+            [inputs.camera_ids[i // inputs.num_frames], i % inputs.num_frames]
+            for i in sorted(common_ids)
+        ],
+        "limitation": "conditional on common availability; missing predictions are not scored as zero error",
+    }
+    for name, method in report["methods"].items():
+        summaries: dict[str, Any] = {}
+        for segment, (start, stop) in segments.items():
+            if annotations is None:
+                summaries[segment] = None
+            else:
+                sample = pooled[name]
+                chosen = np.isin(
+                    sample["camera_index"] * inputs.num_frames + sample["frame_index"],
+                    sorted(common_ids),
+                )
+                summaries[segment] = _reference_metrics(
+                    {key: value[chosen] for key, value in sample.items()},
+                    annotations,
+                    list(range(len(inputs.views))),
+                    start,
+                    stop,
+                    config,
+                )
+        method["common_lovo_reprojection_by_reference_kind"] = summaries
+        method["common_lovo_reprojection_px"] = {
+            segment: None if summary is None else summary["all"]
+            for segment, summary in summaries.items()
+        }
     return report
 
 
 def annotation_oracle(
-    inputs: MethodInput,
+    bundle: FixedInputBundle,
     annotations: Ball2DAnnotations,
     *,
-    bundle_sha256: str,
     code_commit: str,
     code_fingerprint: str,
     reprojection_px: float = 20.0,
@@ -397,7 +470,8 @@ def annotation_oracle(
     Noisy 2D labels and approximate cameras do not guarantee a mathematical
     lower bound. Each LOVO oracle uses only its two retained annotation views.
     """
-    annotations.validate_for_inputs(inputs)
+    annotations.validate_for_bundle(bundle)
+    inputs = bundle.inputs
     runs = []
     for held_out in (None, *inputs.camera_ids):
         start = time.perf_counter()
@@ -431,7 +505,7 @@ def annotation_oracle(
                     "reprojection_px": reprojection_px,
                     "annotation_provenance": annotations.provenance,
                 },
-                bundle_sha256,
+                bundle.manifest_sha256,
                 code_commit,
                 code_fingerprint,
                 time.perf_counter() - start,

@@ -39,7 +39,7 @@ paths are present in `MethodInput`.
 
 ## Method interface
 
-Implement `BallMethod.name`, `config` and `__call__(inputs) -> Ball3DResult`, then
+Implement `BallMethod.name`, `config`, explicit bool `requires_court_lines`, and `__call__(inputs) -> Ball3DResult`, then
 call `run_method` or `run_comparison` with bundle/code digests. No annotation
 argument exists on this runner. LOVO passes only its two retained `ViewInput`s;
 the excluded camera's heatmaps and observations are absent. The fixed calibration
@@ -50,6 +50,23 @@ pinned post-threshold/gate detector observations, accepted ball points and their
 recorded replay settings. Coordinates are native video pixels. Raw heatmaps retain
 their own H/W grid; candidate pixels use the detector's W−1/H−1 convention.
 All inputs preserve the complete, zero-based source timeline and read-only arrays.
+
+`ViewInput.court` retains camera-local raw KP14 pixels, detector scores/validity,
+source homography selection and template orientation on actual measured frames
+(frame 0 here). Fitted/broadcast court geometry is not a raw observation. Camera,
+frame, native-size and field mismatches are errors; LOVO retains only the selected
+views' court objects. The original bundle already contains these raw KP records
+in validated calibration diagnostics, so its bytes and digest remain unchanged.
+
+Raw LINE observations have a typed representation, but the historical store saved
+only LINE support summaries. `court.lines is None` carries an explicit
+`line_missing_reason`; summaries are never converted into measurements.
+The runner checks every selected view before calling a method that declares
+`requires_court_lines=True`. Direct callers can use `court.require_lines()` or
+`load_bundle(..., require_court_lines=True)`, which fails when evidence is absent.
+The baseline uses fixed cameras and does not require LINE. Recovering original
+LINE measurements requires additional source assets; this evaluation does not
+rerun inference or synthesize LINE measurements.
 
 Results contain court-metre `positions (T,3)`, `valid (T)` and
 `used_views (V,T)` in explicit `camera_ids` order. Invalid coordinates are zero;
@@ -81,6 +98,13 @@ remain NaN and are never interpolated. Every fold and segment reports `all`, `ob
 and `estimated` distributions, eligible/scored counts and coverage. Original camera
 specific event rows, notes and estimation segments remain in the scoring report.
 
+`score_comparison(runs, bundle, annotations)` and `error_samples(run, bundle,
+annotations)` require the verified `FixedInputBundle`, not a free `MethodInput`.
+They check every result's bundle digest and camera/frame axes, and bind reference
+identity (clip ID, cameras, frame count, FPS, native size and video hashes) to the
+same bundle. `annotation_oracle`, `plot_comparison` and `render_extremes` also take
+the bundle. Mixing equal-sized results from another bundle is an error.
+
 The default split is tuning `[0,505)`, primary evaluation `[505,1010)`, and a
 supplementary whole-clip result. LOVO scores only the excluded camera, pooling
 individual residuals across folds rather than averaging medians. Metrics include
@@ -102,6 +126,15 @@ of its retained cameras, including approved estimates, with the same fixed camer
 It never calls a prediction method. Approximate calibration and noisy references
 make it a geometric reference, not a guaranteed mathematical lower bound.
 
+The main HTML and standalone metric table show LOVO scored/eligible counts and
+coverage beside LOVO errors. All-view 3D validity has its own heading. Their shared
+table generator prevents different values in the two media. A second table reports
+LOVO errors on the intersection of scored (held-out camera, source frame) pairs
+across all listed methods, including the oracle when supplied. Both tables explain
+that missing predictions are excluded and that common-sample results remain
+conditional on availability. The cohort identities and observed/estimated
+breakdowns are saved; empty intersections have unavailable errors, never zero.
+
 Visualization supports N methods. Source overlays use green crosses for observed
 references and white diamonds for approved estimates; predictions use coloured rings.
 Crops rank held-out errors and also show LOVO crosses. Trajectories never connect
@@ -113,10 +146,11 @@ composes its own top/side panels without inventing player meshes.
 ## Reproduction and tests
 
 The clip-specific entrypoint, test design and actual evidence live in
-[`knowledge/runs/run-ball3d-evaluation-foundation-20261103`](../../../knowledge/runs/run-ball3d-evaluation-foundation-20261103/).
+[`knowledge/runs/run-ball3d-foundation-review-20261103`](../../../knowledge/runs/run-ball3d-foundation-review-20261103/).
 Run `run.py --help` with the repository on `PYTHONPATH`; `bundle` and `compare`
 require explicit local inputs and new output directories. The compare command requires `--bundle-sha256`, `--annotations` and
-`--annotations-sha256` from the trusted input record, plus `--checkpoints` for the historical checkpoint audit. Real assets, full video
+`--annotations-sha256` from the trusted input record, plus `--checkpoints` for the historical checkpoint audit. Review reproduction additionally requires
+`--prior-comparison` to verify that predicted arrays remain unchanged from v1. Real assets, full video
 decode and replay checks are separate from lightweight CI fixtures.
 
 ```bash

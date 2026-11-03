@@ -17,7 +17,7 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from src.tennis_scene.evaluation.ball3d.annotations import Ball2DAnnotations
-from src.tennis_scene.evaluation.ball3d.contracts import MethodInput
+from src.tennis_scene.evaluation.ball3d.bundle import FixedInputBundle
 from src.tennis_scene.evaluation.ball3d.runner import MethodRun
 from src.tennis_scene.evaluation.ball3d.scoring import (
     error_samples,
@@ -28,16 +28,18 @@ from src.tennis_scene.pipeline.artifacts import write_json_atomic
 from src.utils.video.reader import RandomAccessVideoReader
 
 from .rendering import method_colors
+from .tables import comparison_tables
 
 
 def plot_comparison(
     runs: Mapping[str, Sequence[MethodRun]],
-    inputs: MethodInput,
+    bundle: FixedInputBundle,
     output: Path,
     annotations: Ball2DAnnotations | None = None,
     *,
     split_frame: int = 505,
 ) -> None:
+    inputs = bundle.inputs
     figure = Figure(figsize=(12, 11), dpi=120)
     FigureCanvasAgg(figure)
     axes = figure.subplots(3, 2)
@@ -62,7 +64,7 @@ def plot_comparison(
             errors = []
             for fold in method_runs:
                 if fold.held_out_camera is not None:
-                    samples = error_samples(fold, inputs, annotations)
+                    samples = error_samples(fold, bundle, annotations)
                     axes[1, 1].scatter(
                         samples["frame_index"],
                         samples["error_px"],
@@ -136,76 +138,47 @@ def plot_comparison(
 
 def plot_metrics_table(scores: dict[str, Any], output: Path) -> None:
     """Export the same split-wise comparison as a standalone figure for N methods."""
-    rows = []
-    for name, method in scores["methods"].items():
-        for segment in ("tuning", "evaluation", "all"):
-            full = method["folds"]["all_views"][segment]
-            lovo = method["lovo_reprojection_px"][segment]
-            reproj = full["reprojection_px"]
-            values = [
-                name,
-                segment,
-                None if lovo is None else lovo["median"],
-                None if lovo is None else lovo["p90"],
-                None if lovo is None else lovo["above_threshold_rate"],
-                full["valid_3d_rate"],
-                None if reproj is None else reproj["median"],
-                full["gross_reprojection_frame_rate"],
-                full["speed_mps"]["above_threshold_rate"],
-                full["acceleration_mps2"]["above_threshold_rate"],
-            ]
-            rows.append(
-                [
-                    "n/a"
-                    if x is None
-                    else f"{x:.4g}"
-                    if isinstance(x, (float, int))
-                    else x
-                    for x in values
-                ]
-            )
-    figure = Figure(figsize=(16, 1.5 + 0.35 * len(rows)), dpi=110)
+    tables = comparison_tables(scores)
+    count = len(tables[0].rows)
+    figure = Figure(figsize=(18, 3 + 0.85 * count), dpi=110)
     FigureCanvasAgg(figure)
-    axis = figure.subplots()
-    axis.set_axis_off()
-    table = axis.table(
-        cellText=rows,
-        colLabels=[
-            "Method",
-            "Segment",
-            "LOVO median\npx",
-            "LOVO p90\npx",
-            f"LOVO >{scores['config']['gross_reprojection_px']:g}px\nrate",
-            "3D valid\nrate",
-            "All median\npx",
-            "Gross frame\nrate",
-            "Speed outlier\nrate",
-            "Accel outlier\nrate",
-        ],
-        loc="center",
-        cellLoc="center",
-    )
-    table.auto_set_font_size(False)
-    table.set_fontsize(9)
-    table.scale(1, 1.7)
-    table.auto_set_column_width([0, 1])
-    axis.set_title(
-        "Split-wise reference errors and motion diagnostics (rates in [0,1])", pad=16
-    )
-    figure.tight_layout()
+    axes = figure.subplots(2, 1)
+    for axis, spec in zip(axes, tables, strict=True):
+        axis.set_axis_off()
+        table = axis.table(
+            cellText=spec.rows,
+            colLabels=[
+                header.replace(" ", "\n", 1)
+                if header.startswith("All-view")
+                else header
+                for header in spec.headers
+            ],
+            loc="center",
+            cellLoc="center",
+        )
+        table.auto_set_font_size(False)
+        table.set_fontsize(8)
+        table.scale(1, 1.7)
+        table.auto_set_column_width([0, 1])
+        axis.set_title(spec.title, pad=22)
+        axis.text(
+            0.0, -0.05, spec.note, transform=axis.transAxes, fontsize=9, wrap=True
+        )
+    figure.tight_layout(pad=3)
     figure.savefig(output)
     figure.clear()
 
 
 def render_extremes(
     runs: Mapping[str, Sequence[MethodRun]],
-    inputs: MethodInput,
+    bundle: FixedInputBundle,
     videos: Mapping[str, Path],
     output: Path,
     annotations: Ball2DAnnotations | None = None,
     *,
     count: int = 6,
 ) -> dict[str, Any]:
+    inputs = bundle.inputs
     full = {
         name: next(r for r in values if r.held_out_camera is None)
         for name, values in runs.items()
@@ -218,7 +191,7 @@ def render_extremes(
             for run in method_runs:
                 if run.held_out_camera is None:
                     continue
-                samples = error_samples(run, inputs, annotations)
+                samples = error_samples(run, bundle, annotations)
                 for frame, value in zip(
                     samples["frame_index"], samples["error_px"], strict=True
                 ):
@@ -386,22 +359,10 @@ def write_report(
     def number(value: Any) -> str:
         return "unavailable" if value is None else f"{value:.4g}"
 
-    rows, breakdown_rows = [], []
+    tables = comparison_tables(scores)
+    breakdown_rows = []
     for name, method in scores["methods"].items():
         for segment in ("tuning", "evaluation", "all"):
-            main = method["lovo_reprojection_px"][segment]
-            validity = method["folds"]["all_views"][segment]["valid_3d_rate"]
-            values = [
-                html.escape(name),
-                segment,
-                number(None if main is None else main["median"]),
-                number(None if main is None else main["p90"]),
-                number(None if main is None else main["above_threshold_rate"]),
-                number(validity),
-            ]
-            rows.append(
-                "<tr>" + "".join(f"<td>{value}</td>" for value in values) + "</tr>"
-            )
             for kind in ("observed", "estimated"):
                 summaries = method["lovo_reprojection_by_reference_kind"][segment]
                 summary = None if summaries is None else summaries[kind]
@@ -446,6 +407,19 @@ def write_report(
         if table_figure is None
         else f'<h2>Split-wise metric table</h2><img alt="Metric table" src="{embed(table_figure, "image/png")}">'
     )
+    table_sections = "".join(
+        f'<section id="{spec.key}"><h2>{html.escape(spec.title)}</h2><p>{html.escape(spec.note)}</p><table><thead><tr>'
+        + "".join(f"<th>{html.escape(header)}</th>" for header in spec.headers)
+        + "</tr></thead><tbody>"
+        + "".join(
+            "<tr>"
+            + "".join(f"<td>{html.escape(value)}</td>" for value in row)
+            + "</tr>"
+            for row in spec.rows
+        )
+        + "</tbody></table></section>"
+        for spec in tables
+    )
     report = f'''<!doctype html><html lang="en"><meta charset="utf-8"><title>Ball 3D comparison</title>
 <style>body{{font:16px system-ui;max-width:1250px;margin:2em auto;padding:0 1em;background:#111820;color:#e8edf1}}
 img,video{{width:100%;height:auto}}table{{border-collapse:collapse;width:100%}}td,th{{padding:.5em;border:1px solid #536170}}
@@ -456,8 +430,7 @@ Green crosses are directly observed references; white diamonds are approved esti
 In crops, coloured crosses are LOVO predictions and rings are all-view predictions. Each LOVO run sees only two cameras.
 Camera-specific event rows retain their notes and one-frame differences. Event errors use the union of windows; rows are not counted as physical events.
 The annotation oracle uses the same approximate cameras and is a geometric reference, not a guaranteed mathematical lower bound.</p>
-<table><thead><tr><th>Method</th><th>Segment</th><th>LOVO median px</th><th>LOVO p90 px</th><th>LOVO &gt;{threshold:g}px rate</th><th>Valid 3D rate</th></tr></thead>
-<tbody>{"".join(rows)}</tbody></table>
+{table_sections}
 <details><summary>LOVO reference-kind breakdown and coverage</summary><table><thead><tr><th>Method</th><th>Segment</th><th>Reference kind</th>
 <th>Median px</th><th>p90 px</th><th>&gt;{threshold:g}px rate</th><th>Scored</th><th>Eligible</th><th>Coverage</th></tr></thead>
 <tbody>{"".join(breakdown_rows)}</tbody></table></details>{table_html}

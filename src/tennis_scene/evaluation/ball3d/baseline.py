@@ -83,6 +83,10 @@ class PipelineBaseline:
     without_loess: bool = False
 
     @property
+    def requires_court_lines(self) -> bool:
+        return False
+
+    @property
     def name(self) -> str:
         return "without_loess" if self.without_loess else "pipeline_baseline"
 
@@ -90,6 +94,7 @@ class PipelineBaseline:
     def config(self) -> Mapping[str, Any]:
         return {
             **asdict(self),
+            "requires_court_lines": self.requires_court_lines,
             "detector_input": "pinned_post_decode_threshold_gate",
             "without_loess_policy": "retain_consensus_mask_use_raw_accepted_coordinates",
         }
