@@ -1,6 +1,7 @@
 """Public config, production assembly/codec and fixed-input LOVO boundaries."""
 
 import json
+import runpy
 from dataclasses import replace
 from pathlib import Path
 
@@ -34,7 +35,7 @@ from tests.support.court_ball_calibration import (
 )
 
 
-def runtime(directory, calibration):
+def runtime(directory, calibration, overrides=()):
     config_dir = Path(__file__).resolve().parents[3] / "src/tennis_scene/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
         cfg = compose(config_name="pipeline", overrides=[
@@ -42,6 +43,7 @@ def runtime(directory, calibration):
             f"paths.checkpoint_root={directory / 'ckpt'}",
             f"paths.external_asset_root={directory / 'external'}",
             f"ball_reconstruction.calibration={calibration}",
+            *overrides,
         ])
     result = PipelineRuntimeConfig.from_config(cfg)
     for path in enabled_model_assets(result).values():
@@ -54,7 +56,10 @@ def runtime(directory, calibration):
 def test_public_config_assembly_optional_stage_and_real_codec(tmp_path):
     inputs = calibration_method_inputs(frames=20)
     source, artifacts = calibration_pipeline_artifacts(inputs, tmp_path)
-    cfg = runtime(tmp_path, "court_ball_ba")
+    values = {"court_sigma_px": 4.25, "ball_sigma_px": 8.5, "prior_weight": .6,
+              "max_offset_frames": .4, "max_ball_frames": 12, "max_nfev": 99}
+    overrides = [f"ball_reconstruction.bundle_adjustment.{name}={value}" for name, value in values.items()]
+    cfg = runtime(tmp_path, "court_ball_ba", overrides)
     nodes = standard_definition(cfg, source, code_identity="contract")
     # Constructing the actual graph catches mismatched ball v2 consumer ports.
     ComponentRunner(nodes, ClipStore(tmp_path / "store", {}))
@@ -63,6 +68,17 @@ def test_public_config_assembly_optional_stage_and_real_codec(tmp_path):
     assembled = node.assembler.assemble(AssemblyContext(source), artifacts)
     actual = node.component.process(assembled)
     assert actual.calibration is not None
+    assert len(actual.calibration.fit_frame_indices) == 12
+    # Invoke the real experiment's factory, including Hydra composition, so
+    # ignoring an override in the replay entry cannot hide behind pipeline tests.
+    entry = Path(__file__).parents[3] / "knowledge/runs/run-court-ball-ba-20261103/run.py"
+    method = runpy.run_path(str(entry))["composed_method"](overrides, ball_threshold=0.)
+    assert method.config["adjustment"] == values
+    replay = method(inputs)
+    np.testing.assert_array_equal(replay.positions, actual.ball.trajectory.positions)
+    np.testing.assert_array_equal(replay.time_offsets_seconds, actual.calibration.time_offsets_seconds)
+    for a, b in zip(replay.cameras, actual.calibration.cameras, strict=True):
+        np.testing.assert_array_equal(a.matrix, b.matrix)
     assert actual.calibration.diagnostics["reference_camera"] == "a_near"
     assert actual.calibration.time_offsets_seconds[1] > 0
     # Nonzero clocks must not relabel interpolated coordinates as the saved
@@ -117,7 +133,11 @@ def test_fixed_default_matches_captured_main_arrays(tmp_path):
 
 def test_lovo_recomputes_selected_cameras_only_and_saves_typed_refinement(tmp_path):
     inputs = calibration_method_inputs(frames=20)
-    method = CourtBallBAMethod(min_frames=1)
+    cfg = runtime(tmp_path, "court_ball_ba", ["ball_reconstruction.min_frames=1"])
+    assert cfg.ball_bundle_adjustment is not None
+    method = CourtBallBAMethod(adjustment=cfg.ball_bundle_adjustment,
+                              reprojection_px=cfg.ball_reprojection_px,
+                              min_frames=cfg.ball_min_frames, ball_threshold=0.)
     runs = run_method(method, inputs, bundle_sha256="fixture", code_commit="contract", code_fingerprint="contract")
     assert len(runs) == 4
     for run in runs:

@@ -1,7 +1,7 @@
 """Fixed-input adapter to the production court/ball calibration stage."""
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 import numpy as np
@@ -20,10 +20,10 @@ from .contracts import Ball3DResult, MethodInput
 
 @dataclass(frozen=True)
 class CourtBallBAMethod:
-    adjustment: BundleAdjustmentConfig = field(default_factory=BundleAdjustmentConfig)
-    reprojection_px: float = 20.0
-    min_frames: int = 5
-    ball_threshold: float = 0.0
+    adjustment: BundleAdjustmentConfig
+    reprojection_px: float
+    min_frames: int
+    ball_threshold: float
 
     @property
     def name(self) -> str:

@@ -31,6 +31,9 @@ log焦距0.05、旋转0.02 rad、中心0.5 m、时间0.5帧，乘以共同的无
 camera边界为4个prior单位，时间边界由 `max_offset_frames < 1` 限制。scale、prior与CPU预算
 在 `ball_reconstruction.bundle_adjustment` 中显式配置。优化失败、退化或支持不足抛出异常。
 
+六项默认值仅由Hydra的pipeline composition提供。`BundleAdjustmentConfig` 与评估adapter
+要求显式设置；replay也compose相同YAML，经 `PipelineRuntimeConfig.from_config` 后传给方式。
+
 `CalibrationRefinement` 保存camera顺序、秒单位offset、源拟合帧及solver/支持/边界诊断。
 评估adapter通过原 `Ball3DResult` 与typed runner保存。GT、真值mask、视频路径及被排除view
 的evidence不进入solver。clip指标、raw KP holdout叠加图和复现脚本记录在 `knowledge/runs/`。

@@ -36,6 +36,10 @@ dimensionless prior weightを掛ける。cameraの境界はprior単位の4倍、
 `max_offset_frames < 1`。scale・prior・CPU予算は `ball_reconstruction.bundle_adjustment`
 で指定する。最適化失敗・退化・支持不足は例外で停止し、別の結果へ戻らない。
 
+6項目の既定値はHydraのpipeline compositionが所有する。`BundleAdjustmentConfig` と
+評価adapterの設定は必須引数で、replayも同じYAMLをcomposeし、
+`PipelineRuntimeConfig.from_config` を通して方式へ明示的に渡す。
+
 `CalibrationRefinement` にcamera順、秒単位offset、元fit frame、solver・支持・境界の
 診断を保存する。評価adapterは既存の `Ball3DResult` とtyped runnerへそのまま渡す。
 GT・正解mask・動画パス・除外cameraのevidenceはsolverの入力に含まれない。

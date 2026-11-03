@@ -8,22 +8,33 @@ import json
 import platform
 import subprocess
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import Any
 
 import cv2
 import numpy as np
 import scipy
 import torch
+from hydra import compose, initialize_config_dir
+from numpy.typing import NDArray
 
 from src.tennis_scene.ball_calibration.bundle_adjustment import court_world_points
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.evaluation.ball3d.annotations import load_annotations
 from src.tennis_scene.evaluation.ball3d.baseline import (
     baseline_from_bundle,
     verify_baseline,
 )
 from src.tennis_scene.evaluation.ball3d.bundle import load_bundle, verify_videos
+from src.tennis_scene.evaluation.ball3d.contracts import MethodInput
 from src.tennis_scene.evaluation.ball3d.court_ball_ba import CourtBallBAMethod
-from src.tennis_scene.evaluation.ball3d.runner import load_run, run_comparison, save_run
+from src.tennis_scene.evaluation.ball3d.runner import (
+    MethodRun,
+    load_run,
+    run_comparison,
+    save_run,
+)
 from src.tennis_scene.evaluation.ball3d.scoring import (
     annotation_oracle,
     distribution,
@@ -42,6 +53,7 @@ from src.tennis_scene.visualization.ball3d.report import (
     write_report,
 )
 from src.utils.checksum import dual_sha256
+from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court import COURT_SKELETON
 from src.utils.video.reader import RandomAccessVideoReader
 
@@ -49,9 +61,27 @@ BUNDLE_SHA = "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a"
 REFERENCE_SHA = "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
 
 
-def court_report(runs, inputs, videos, output):
+def composed_method(overrides: Sequence[str], *, ball_threshold: float) -> CourtBallBAMethod:
+    """Use the production composition/adapter; point acceptance stays pinned."""
+    with initialize_config_dir(version_base="1.3", config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs")):
+        cfg = compose(config_name="pipeline", overrides=[
+            "device=cpu", "ball_reconstruction.calibration=court_ball_ba", *overrides,
+        ])
+    runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
+    if runtime.ball_bundle_adjustment is None:
+        raise ValueError("The replay requires ball_reconstruction.calibration=court_ball_ba")
+    return CourtBallBAMethod(
+        adjustment=runtime.ball_bundle_adjustment,
+        reprojection_px=runtime.ball_reprojection_px,
+        min_frames=runtime.ball_min_frames,
+        ball_threshold=ball_threshold,
+    )
+
+
+def court_report(runs: Sequence[MethodRun], inputs: MethodInput,
+                 videos: Mapping[str, Path], output: Path) -> dict[str, Any]:
     """Raw-court-only diagnostics; ball scoring stays entirely in the foundation."""
-    report = {}
+    report: dict[str, Any] = {}
     for run in runs:
         rows = {}
         for view, fitted in zip((v for v in inputs.views if v.camera.camera_id != run.held_out_camera), run.result.cameras, strict=True):
@@ -71,7 +101,7 @@ def court_report(runs, inputs, videos, output):
             } for key, mask in masks.items()}
         report[run.key] = rows
     full = next(run for run in runs if run.held_out_camera is None)
-    canvas = np.full((3 * 390, 1280, 3), 22, np.uint8)
+    canvas: NDArray[np.uint8] = np.full((3 * 390, 1280, 3), 22, np.uint8)
     for v, (view, fitted) in enumerate(zip(inputs.views, full.result.cameras, strict=True)):
         reader = RandomAccessVideoReader(videos[view.camera.camera_id])
         try:
@@ -99,11 +129,11 @@ def court_report(runs, inputs, videos, output):
     return report
 
 
-def metric_markdown(scores):
+def metric_markdown(scores: Mapping[str, Any]) -> str:
     lines = ["# clip_000: median px / p90 px / >20px rate; scored/eligible (coverage)", ""]
     for segment in ("evaluation", "tuning", "all"):
         lines += [f"## {segment}", "", "| Method | LOVO pool | without cam0 | without cam1 | without cam2 |", "|---|---:|---:|---:|---:|"]
-        def cell(row, fold=None):
+        def cell(row: Mapping[str, Any], fold: Any = None) -> str:
             eligible = row["label_count"] if "label_count" in row else fold["scoring_label_count"]
             coverage = row["scored_label_coverage"] if "scored_label_coverage" in row else fold["scored_label_coverage"]
             return f"{row['median']:.3f}/{row['p90']:.3f}/{100*row['above_threshold_rate']:.2f}%; {row['count']}/{eligible} ({100*coverage:.2f}%)"
@@ -119,7 +149,7 @@ def metric_markdown(scores):
     return "\n".join(lines)
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--annotations", type=Path, required=True)
@@ -127,6 +157,7 @@ def main():
     parser.add_argument("--prior", type=Path, required=True)
     parser.add_argument("--prior-method-comparison", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--override", action="append", default=[], help="Hydra composition override for the BA method")
     args = parser.parse_args()
     cv2.setNumThreads(1)
     torch.set_num_threads(1)
@@ -145,7 +176,7 @@ def main():
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     fingerprint = document_digest({str(p): dual_sha256(p) for p in sorted(Path("src").rglob("*.py"))})
     baseline = baseline_from_bundle(bundle)
-    method = CourtBallBAMethod(reprojection_px=baseline.reprojection_px, min_frames=baseline.min_frames, ball_threshold=baseline.ball_threshold)
+    method = composed_method(args.override, ball_threshold=baseline.ball_threshold)
     methods = {m.name: m for m in (baseline, method)}
     args.output.mkdir(parents=True)
     write_json_atomic(args.output / "fixed-config.json", {name: dict(m.config) for name, m in methods.items()})

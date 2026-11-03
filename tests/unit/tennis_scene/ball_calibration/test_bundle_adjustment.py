@@ -15,22 +15,28 @@ from src.tennis_scene.ball_calibration.bundle_adjustment import (
 )
 from tests.support.court_ball_calibration import (
     calibration_fixture,
+    composed_adjustment,
     destroyed_holdout,
 )
 
 
-def fit(fixture, **kwargs):
+def fit(fixture, adjustment):
     obs, cameras, courts, turns, _, _, fps = fixture
     return refine_court_ball(
         obs, cameras, courts, turns, fps=fps, reprojection_px=30., min_frames=1,
-        config=BundleAdjustmentConfig(prior_weight=0, max_nfev=300, **kwargs),
+        config=replace(adjustment, prior_weight=0, max_nfev=300),
     )
 
 
 @pytest.fixture(scope="module")
-def recovered():
+def adjustment():
+    return composed_adjustment()
+
+
+@pytest.fixture(scope="module")
+def recovered(adjustment):
     fixture = calibration_fixture()
-    return fixture, fit(fixture)
+    return fixture, fit(fixture, adjustment)
 
 
 def test_recovers_camera_perturbations_and_signed_fractional_clocks(recovered):
@@ -48,7 +54,7 @@ def test_recovers_camera_perturbations_and_signed_fractional_clocks(recovered):
     assert result.calibration.diagnostics["court_holdout_count"] == [2, 2, 2]
 
 
-def test_holdout_never_enters_fit_and_camera_permutation_preserves_identity(recovered):
+def test_holdout_never_enters_fit_and_camera_permutation_preserves_identity(recovered, adjustment):
     fixture, original = recovered
     obs, cameras, courts, turns, truth, offsets, fps = fixture
     # Reverse all view axes; the clock anchor remains a_near, not array index 0.
@@ -57,7 +63,7 @@ def test_holdout_never_enters_fit_and_camera_permutation_preserves_identity(reco
                         visibility=obs.visibility[:, order], raw_indices=obs.raw_indices[:, order])
     damaged = destroyed_holdout(courts)
     other = fit((other_obs, tuple(cameras[i] for i in order), tuple(damaged[i] for i in order),
-                 tuple(turns[i] for i in order), truth, offsets, fps))
+                 tuple(turns[i] for i in order), truth, offsets, fps), adjustment)
     np.testing.assert_allclose(other.calibration.time_offsets_seconds[::-1], original.calibration.time_offsets_seconds, atol=2e-5)
     for actual, previous in zip(other.calibration.cameras[::-1], original.calibration.cameras, strict=True):
         np.testing.assert_allclose(actual.matrix, previous.matrix, rtol=0, atol=.02)
@@ -90,13 +96,35 @@ def test_half_turn_and_prosac_provenance_do_not_double_reflect_semantics():
     {"prior_weight": -1}, {"max_offset_frames": 1},
     {"max_ball_frames": True}, {"max_nfev": 0},
 ])
-def test_invalid_settings_are_rejected(changes):
+def test_invalid_settings_are_rejected(changes, adjustment):
     with pytest.raises(ValueError):
-        BundleAdjustmentConfig(**changes)
+        replace(adjustment, **changes)
+
+
+def test_adjustment_is_in_the_actual_configuration_audit_catalog():
+    from src.tennis_scene.evaluation.ball3d.court_ball_ba import CourtBallBAMethod
+    from src.utils.configuration import inspect_typed_adapter
+    from src.utils.configuration.catalog import (
+        ADAPTER_CONTRACTS,
+        SOURCE_CONTRACT_DECLARATIONS,
+    )
+    from src.utils.configuration.schema import ConfigurationDefaultPolicy
+
+    symbol = f"{BundleAdjustmentConfig.__module__}.{BundleAdjustmentConfig.__qualname__}"
+    assert symbol in SOURCE_CONTRACT_DECLARATIONS.adapter_symbols
+    contract = next(c for c in ADAPTER_CONTRACTS if c.adapter_symbol == symbol)
+    assert {field.path.rsplit(".", 1)[-1] for field in contract.inspect()} == {
+        "court_sigma_px", "ball_sigma_px", "prior_weight", "max_offset_frames",
+        "max_ball_frames", "max_nfev",
+    }
+    assert all(field.required and field.default_policy is ConfigurationDefaultPolicy.COMPOSITION_OWNED
+               for field in contract.inspect())
+    # Method types do not end in Config, so inspect its explicit constructor too.
+    assert all(field.required for field in inspect_typed_adapter(CourtBallBAMethod).inspect())
 
 
 @pytest.mark.parametrize("failure", ["camera_axis", "court_support", "ball_support", "static_ball", "solver_budget"])
-def test_unidentifiable_or_failed_fit_has_no_baseline_substitution(failure):
+def test_unidentifiable_or_failed_fit_has_no_baseline_substitution(failure, adjustment):
     fixture = list(calibration_fixture(frames=12))
     if failure == "camera_axis":
         fixture[2] = fixture[2][::-1]
@@ -112,7 +140,7 @@ def test_unidentifiable_or_failed_fit_has_no_baseline_substitution(failure):
         obs, cameras, courts, turns, _, _, fps = fixture
         with pytest.raises(RuntimeError, match="failed"):
             refine_court_ball(obs, cameras, courts, turns, fps=fps, reprojection_px=30,
-                              min_frames=1, config=BundleAdjustmentConfig(max_nfev=1))
+                              min_frames=1, config=replace(adjustment, max_nfev=1))
     else:
         with pytest.raises(ValueError, match="axes|noncollinear|correspondences"):
-            fit(fixture)
+            fit(fixture, adjustment)

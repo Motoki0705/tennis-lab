@@ -50,6 +50,10 @@ in clock offset. Camera bounds are four prior units; clocks are bounded by
 under `ball_reconstruction.bundle_adjustment`. Solver failure, geometric
 degeneracy and insufficient support raise; there is no substitute result.
 
+The Hydra pipeline composition owns all six defaults. `BundleAdjustmentConfig`
+and the evaluation adapter require explicit settings; replay composes the same
+YAML and uses `PipelineRuntimeConfig.from_config` before constructing the method.
+
 `CalibrationRefinement` saves camera order, offsets in seconds, source fit frames
 and solver/support/boundary diagnostics. The evaluation adapter returns these
 through the existing `Ball3DResult` fields and shared typed runner. No ground

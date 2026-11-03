@@ -1,20 +1,28 @@
 """Convert collected nodes, all pytest duration phases and JUnit into a receipt."""
 
+import argparse
 import json
 import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 
-def main():
-    target = Path(__file__).resolve().parent
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target", type=Path, default=Path(__file__).resolve().parent)
+    parser.add_argument("--junit", type=Path, default=Path("/tmp/court-ball-ba-tests.xml"))
+    args = parser.parse_args()
+    target = args.target
     log = (target / "test-durations.txt").read_text()
     collection = (target / "test-collection.txt").read_text()
-    phases = {}
+    phases: dict[str, dict[str, float]] = {}
     for seconds, stage, node in re.findall(r"([0-9.]+)s\s+(setup|call|teardown)\s+(tests/[^\n]+)", log):
         phases.setdefault(node, {})[stage] = float(seconds)
-    suite = ET.parse("/tmp/court-ball-ba-tests.xml").getroot().find("testsuite")
-    cases = []
+    suite = ET.parse(args.junit).getroot().find("testsuite")
+    if suite is None:
+        raise ValueError("Expected a JUnit testsuite")
+    cases: list[dict[str, Any]] = []
     for case in suite.findall("testcase"):
         if any(case.find(kind) is not None for kind in ("failure", "error", "skipped")):
             raise ValueError("Cannot record a failed or unexecuted case as passed")

@@ -54,3 +54,15 @@ productionと当該testはmainから未変更であることを差分で確認�
 新規caseは作らず、同じnodeへ古いMSDA参照を事前注入するCPU再現で修正前失敗・修正後成功を確認する。
 `reproduce_dino_cache.py` でcollect-onlyと全phase時間を残し、当該file全体も直列で確認する。
 予算は既存1nodeの再現5秒目標と既存file全体、GPU・実モデルforward・検出再推論は使わない。
+
+## 明示レビュー pr-1681-1（2026-11-04）の修正前設計
+
+| 契約 | 検出する故障 | 層・再利用node | コスト |
+|---|---|---|---|
+| BA6項目の既定値はHydra compositionだけが所有し、評価adapterへ明示渡しする | Python default/default_factoryの再導入、YAML overrideを評価が無視 | 既存unitのinvalid設定/復元nodeをcomposition由来の設定へ変更。既存integration `test_public_config_assembly_optional_stage_and_real_codec` へ6項目の非対称overrideと実run factory→数値出力の一致を追加 | 新規integrationなし。小さな20frame、各case5秒目標 |
+| `BundleAdjustmentConfig` が実際の監査catalogに入り、6fieldがcomposition-ownedである | default付きネスト型が探索から落ち、中央監査成功だけで見逃す | BA unitへ1case追加し、既存 `SOURCE_CONTRACT_DECLARATIONS` / `ADAPTER_CONTRACTS` と `inspect_typed_adapter` の結果を確認。`tests/unit/utils/configuration/` 全体も実行 | 新規1case。catalogは既存監査のcollectionと共有、実測を残す。監査自体は変更しない |
+| 元の設定値と実データの予測を維持する | YAMLと旧Python値の差、設定の受渡しによる数値変更 | CPU replayで全view+3 LOVOを共通runnerへ通し、既存v2の位置/valid/used_views/camera/offsetを厳密比較 | 保存済み入力のみ、逐次4fold、動画/GT/検出再推論なし。新directoryへ照合JSONだけを保存 |
+| DINOのfake importは事前読込の有無にかかわらず選択binaryを使い、stale参照は拒否 | テスト順序依存とcached mismatch拒否の脱落 | 指定commit a8982a7e0の既存unit差分をそのまま採用。既存nodeの事前読込False/Trueの2caseとfile全体 | base比1case増。CPU marker moduleのみ、GPU/実forwardなし |
+
+収集と全phase時間は `review-fix/` に新規保存し、従来の測定ログを上書きしない。
+YAML・監査src・正式v2成果物は変更しない。DINOの差分はbase mainから指定commitとbytes比較する。

@@ -9,8 +9,23 @@ from numpy.typing import NDArray
 from scipy.spatial.transform import Rotation
 
 from src.tennis_scene.ball_calibration.court import CourtViewObservations
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.observation_types import GroupedObservations
 from src.utils.geometry.triangulation import PinholeCamera
+
+
+def composed_adjustment():
+    """Obtain test settings from the same Hydra composition as production."""
+    from hydra import compose, initialize_config_dir
+
+    directory = Path(__file__).resolve().parents[2] / "src/tennis_scene/configs"
+    with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
+        cfg = compose(config_name="pipeline", overrides=[
+            "device=cpu", "ball_reconstruction.calibration=court_ball_ba",
+        ])
+    runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
+    assert runtime.ball_bundle_adjustment is not None
+    return runtime.ball_bundle_adjustment
 
 
 def calibration_fixture(frames=32):

@@ -33,12 +33,14 @@ CAMERA_SCALES = np.array([0.05, 0.02, 0.02, 0.02, 0.5, 0.5, 0.5])
 
 @dataclass(frozen=True)
 class BundleAdjustmentConfig:
-    court_sigma_px: float = 3.0
-    ball_sigma_px: float = 6.0
-    prior_weight: float = 1.0
-    max_offset_frames: float = 0.75
-    max_ball_frames: int = 240
-    max_nfev: int = 200
+    """Required typed values; defaults belong to the Hydra composition."""
+
+    court_sigma_px: float
+    ball_sigma_px: float
+    prior_weight: float
+    max_offset_frames: float
+    max_ball_frames: int
+    max_nfev: int
 
     def __post_init__(self) -> None:
         for name in ("court_sigma_px", "ball_sigma_px", "max_offset_frames"):
