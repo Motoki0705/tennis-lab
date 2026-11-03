@@ -24,6 +24,11 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
+if sys.version_info >= (3, 12):
+    from typing import TypeAliasType
+else:
+    from typing_extensions import TypeAliasType
+
 from src.utils.checksum import dual_sha256
 
 ValueT = TypeVar("ValueT")
@@ -87,6 +92,12 @@ def restore_type(value: Any, annotation: Any) -> Any:
     if annotation is Any:
         return value
     origin, args = get_origin(annotation), get_args(annotation)
+    # NumPy 2.5 spells NDArray as a PEP 695 generic alias. Its origin is
+    # the alias rather than np.ndarray; retain the same array-only contract.
+    alias_type = annotation if isinstance(annotation, TypeAliasType) else origin
+    alias_value: Any = alias_type.__value__ if isinstance(alias_type, TypeAliasType) else None
+    if alias_value is not None and get_origin(alias_value) is np.ndarray:
+        origin = np.ndarray
     if origin is Literal:
         if value not in args:
             raise ValueError("Artifact literal disagrees with declared schema")
