@@ -27,5 +27,16 @@
   "limits": [
     "CPU FP32 strict resume on reduced fixtures; no GPU bitwise resume claim.",
     "Full 720p BF16/compile/VRAM verification is performed by the GPU preflight."
-  ]
+  ],
+  "storage_recovery": {
+    "restore_verified": true,
+    "idempotent_existing_restore": true,
+    "corrupt_newest_receipt_rejected": true,
+    "synthetic_fixture": true
+  },
+  "queue_service": {
+    "orphan_reaped": true,
+    "kernel_pgid_absent": true,
+    "gpu_work_started": false
+  }
 }

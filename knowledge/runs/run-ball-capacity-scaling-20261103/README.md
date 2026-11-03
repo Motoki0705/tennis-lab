@@ -79,6 +79,22 @@ benchmarkの重みを本学習へ転用しない。8構成が成功しなけれ�
 定常時間は更新内の入力待ち・拡張・forward/backward・optimizerを含む。診断更新は学習予算と別に記録する。
 データ検証・compile・validation・Drive保存の時間は推定の対象範囲を明示して別に扱う。
 
+## 起動担当から独立したqueue service
+
+この環境では有限の`agent_exec` supervisorが終了時に子孫を回収するため、Codex起動担当の内側からqueue workerをdaemon化しない。
+親側で、空の共有queueを次のforeground serviceから起動しておき、Codex子は既存workerへの登録と最初の周期保存までを担当する。
+`queue_service.py`はsubreaperとしてSIGCHLDを受けて孤児を回収し、queueのPGID終了確認がzombieで止まることを防ぐ。
+モデル・予算・メモリ設定は変更しない。service自体はGPU処理を起動せず、queue登録があるまで待機する。
+
+```bash
+TRAINING_QUEUE_DIR=/content/tennis-lab/.training_queue .venv/bin/python -B \
+  knowledge/runs/run-ball-capacity-scaling-20261103/queue_service.py -- \
+  bash .agents/skills/training-queue/scripts/training_queue.sh serve --idle-timeout 3600
+```
+
+実運用では親がこのserviceを独立processとして起動し、ログとPIDを保持する。
+既存workerがいる場合は重複起動しない。起動担当の終了後もserviceは残り、training queueの停止・取消は通常のCLIで扱う。
+
 ## 保存・再開
 
 正本は`outputs/ball_detection/train/capacity_scaling/s42-20261103-main/`。

@@ -1,4 +1,4 @@
-<!-- knowledge-review: 7ff9a12d9908c0d948c4056494de51c7b2e1d20e1191f49f5aec3bfb63778a23 on 2026-11-03 -->
+<!-- knowledge-review: 07d0b91bc73c7117a9d6635bea7215302877f9abf0b4fe9f369d31e144230f0b on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -51,13 +51,14 @@ pxは長辺512の前処理後モデル座標である。2sceneでは悪化して
 README・Blender reveal・単独3Dの公開デモを同じ新sceneへ更新し、固定したv5 releaseと過去runは保持する。
 通常pipelineのside/alignmentまで再実行した比較ではない。別clipとbounce/hitの独立GT評価を次に行い、モデル採用判断は維持する。
 
-## 2026-11-03のボール容量比較（準備・実測待ち）
+## 2026-11-03のボール容量比較（GPU事前実測完了）
 
-[新CNNと4 query mHCの容量比較](nodes/ball_detection/000069-run-ball-capacity-scaling-20261103.md)は、
-同じ配布データ約157GBの検証と、CNN・mHC query・strict転送・再開のCPU検証を完了した。
-理論計算量はCNN3.30、全query構成3.47〜5.53 GMAC/frame。GPU速度・VRAM・精度はまだ未測定であり、
-容量増加の効果や既存方式との優劣は結論しない。次は固定7条件のL4実測と等更新数の学習を行う。
-seed42のみ・validationのみという制限を保ち、採用モデルは変更しない。
+[新CNNと4 query mHCの事前実測](nodes/ball_detection/000069-run-ball-capacity-scaling-20261103.md)は、
+全データ約157GBの検証、CPU検証、L4での全8構成のforward/backwardとDrive照合を完了した。
+query7条件の定常時間は1.674〜1.750s/update、peak allocatedは12.92〜14.14GiB。DPTはBS1の2.341s/updateを採用する。
+理論値はCNN3.30、query全体3.47〜5.53 GMAC/frame。全52k更新はjoint値換算26.34時間で、検証・保存等は別費用である。
+これは診断であり、精度・容量増加の効果は未評価。次に新規共通10k→7条件各6kを学習する。
+seed42・validationのみという限界を保ち、採用モデルは変更しない。
 
 ## 2026-10-25のボール逐次学習（2026-10-31完了）
 
