@@ -286,3 +286,30 @@ Environment承認をすべて必須にしている。学習commandへsecretを�
 - [GitHub: Adding self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
 - [GitHub: Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)
 - [Microsoft: Use systemd to manage Linux services with WSL](https://learn.microsoft.com/en-us/windows/wsl/systemd)
+
+### 許可適用後の手動確認
+
+`agy_allowlist_validation.py --private /private/validation --agy /path/to/agy` は、
+事前に固定したprivateな `plan.json` と入力を使う手動の確認controller。
+既存censusの `preflight` だけをcontrollerプロセス内のscopeで差し替え、
+`run_headless` のsettingsファイル・hook・捕捉・照合と、`pipeline.generate` の
+writer・不変条件・verifier・1回だけの修正をそのまま呼ぶ。本番API・workflow・smokeへ
+安全装置を緩める引数や環境変数は追加しない。scope終了時に元の関数を戻す。
+実効plan/request-reviewとsettingsファイルの整合、永続設定digestの前後一致を各turnで確認し、
+未確認のturnは除外して停止する。quota・認証エラーは再試行しない。
+
+診断は最大3 turn、全体は20 turnを排他的な台帳で制限する。読み取り9道具の広い組合せと
+保護付きdiff、代表的なshell拒否、workspace外read_fileの拒否後の続行を指定し、
+実際のhook判定・完了・exit code・nonce・内外canaryで照合する。
+6 pipelineを目標とし、新しいpipelineの最悪4 turnを確保できなければ残りを開始しない。
+smokeの29 turnのprobeはここから呼ばず、runnerの実機確認で扱う。
+
+過去の閉じた/合意済みissueを固定入力で再生するため、GitHub adapterはsnapshotのみを返し、
+適格性判定と安定待ちは測定対象外にする。本文・コメントとモデル入力は維持し、
+最初のwriter入力を固定JSONと比較する。編集履歴はsnapshot用の印であり、公開用handoffに使わない。
+`apply`・GitHubへの書き込みは呼ばない。生のprompt・本文・コマンド・log・識別子はprivateに保持し、
+公開するのは正規化した形式・件数・判定・時間とする。
+
+固定版の実行ファイルを `--agy` で指定する。版不一致など起動前の問題を修正して
+`--resume` する場合も同じ台帳を使い、予約枠を返却しない。quota・認証による停止からの
+再開は拒否する。過去の完了と停止理由はprivateな再開履歴へ残す。

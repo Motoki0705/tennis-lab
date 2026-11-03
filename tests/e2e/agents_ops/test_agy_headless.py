@@ -138,7 +138,15 @@ def test_success_requires_evidence_and_passes_readonly_settings(
     assert args[args.index("--model") + 1] == "gemini-3.8-flash-high"
     assert args[args.index("--mode") + 1] == "plan"
     assert args[args.index("--output-format") + 1] == "stream-json"
-    fixed = json.loads(args[args.index("--settings") + 1])
+    settings_arg = args[args.index("--settings") + 1]
+    settings_file = Path(settings_arg)
+    assert settings_file == fake_agy["log_file"].with_name("turn.log.settings.json")
+    assert not settings_file.resolve().is_relative_to(fake_agy["cwd"].resolve())
+    assert settings_file.stat().st_mode & 0o777 == 0o600
+    fixed = calls[1]["session_settings"]
+    assert json.loads(settings_file.read_text()) == fixed
+    assert json.dumps(fixed) not in args
+    assert len(settings_arg.encode()) < 1024
     assert fixed["toolPermission"] == "request-review"
     assert fixed["agentMode"] == args[args.index("--mode") + 1] == "plan"
     assert fixed["enableTerminalSandbox"] is False
@@ -156,6 +164,125 @@ def test_success_requires_evidence_and_passes_readonly_settings(
         "mcp(*)",
     } <= set(settings["deny"])
     assert fake_agy["log_file"].stat().st_mode & 0o777 == 0o600
+    capture = json.loads(
+        fake_agy["log_file"].with_name("turn.log.commands.json").read_text()
+    )
+    integrity = capture["session_settings_integrity"]
+    assert integrity["unchanged"] is True
+    assert integrity["expected_sha256"] == integrity["observed_sha256"]
+
+
+@pytest.mark.parametrize(
+    "fault", ["content", "delete", "symlink", "mode", "content_error"]
+)
+def test_session_settings_file_tampering_cannot_return_success(
+    fake_agy: dict[str, Path], monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    monkeypatch.setenv("FAKE_AGY_CASE", "settings_" + fault)
+    with pytest.raises(
+        agy.AgyError, match="session settings file was modified"
+    ) as caught:
+        agy.run_headless(**fake_agy, timeout=60)
+    assert caught.value.reason == "invalid_output"
+    capture = json.loads(
+        fake_agy["log_file"].with_name("turn.log.commands.json").read_text()
+    )
+    assert capture["session_settings_integrity"]["unchanged"] is False
+    if fault.startswith("content"):
+        integrity = capture["session_settings_integrity"]
+        assert integrity["expected_sha256"] != integrity["observed_sha256"]
+    assert not (fake_agy["cwd"] / ".agents").exists()
+
+
+def test_settings_larger_than_a_single_exec_argument_are_passed_by_file(
+    fake_agy: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    settings = agy.readonly_settings()
+    settings["permissions"]["deny"].append("read_file(" + "a" * (128 * 1024) + ")")
+    monkeypatch.setattr(agy, "readonly_settings", lambda: settings)
+    assert len(json.dumps(settings).encode()) > 128 * 1024
+    result = agy.run_headless(**fake_agy, timeout=60)
+    assert result.structured_output == {"answer": "見出し"}
+    calls = [
+        json.loads(line)
+        for line in (fake_agy["agy"].parent / "invocations.jsonl")
+        .read_text()
+        .splitlines()
+    ]
+    assert calls[1]["session_settings"] == settings
+    assert len(json.dumps(calls[1]["args"]).encode()) < 8192
+
+
+def test_large_prompt_is_one_complete_stdin_event(fake_agy: dict[str, Path]) -> None:
+    prompt = "日本語\n" * 20000
+    assert len(prompt) < 96 * 1024
+    assert len(prompt.encode("utf-8")) > 128 * 1024
+    fake_agy["prompt_file"].write_text(prompt)
+    result = agy.run_headless(**fake_agy, timeout=60)
+    assert result.structured_output == {"answer": "見出し"}
+    calls = [
+        json.loads(line)
+        for line in (fake_agy["agy"].parent / "invocations.jsonl")
+        .read_text()
+        .splitlines()
+    ]
+    assert "-p" not in calls[1]["args"]
+    assert calls[1]["stdin_event"] == {"event": "user", "message": {"content": prompt}}
+    assert (
+        calls[1]["args"][calls[1]["args"].index("--input-format") + 1] == "stream-json"
+    )
+
+
+@pytest.mark.parametrize(
+    "condition", ["authorized_manual", "broad_allow", "missing_mode"]
+)
+def test_manual_harness_preserves_the_production_guard(
+    fake_agy: dict[str, Path], monkeypatch: pytest.MonkeyPatch, condition: str
+) -> None:
+    sys.path.insert(0, str(ROOT / "scripts/github_actions"))
+    validation = importlib.import_module("agy_allowlist_validation")
+    profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    profile.parent.mkdir(parents=True)
+    settings: dict[str, Any] = {"agentMode": "auto"}
+    if condition == "broad_allow":
+        settings["permissions"] = {"allow": ["command(*)"]}
+    profile.write_text(json.dumps(settings))
+    private = fake_agy["agy"].parent / "validation"
+    private.mkdir()
+    work = private / "work"
+    fake_agy["cwd"].rename(work)
+    fake_agy["cwd"] = work
+    fake_agy["log_file"] = private / "turn.log"
+    runner = validation.Runner(private, fake_agy["agy"], validation.saved_digest())
+    original_guard = agy._check_user_settings
+    with pytest.raises(agy.AgyError):
+        original_guard(work)
+    if condition == "missing_mode":
+        monkeypatch.setenv("FAKE_AGY_CASE", "validation_missing_mode")
+    with runner.policy.scope():
+        if condition == "broad_allow":
+            with pytest.raises(agy.AgyError, match="persistent permission"):
+                runner.turn(**fake_agy, timeout=60)
+            assert runner.ledger.rows() == []
+        elif condition == "missing_mode":
+            with pytest.raises(
+                validation.ValidationStop, match="unconfirmed_effective"
+            ):
+                runner.turn(**fake_agy, timeout=60)
+            assert json.loads((private / "turns/01.json").read_text())["excluded"]
+        else:
+            assert runner.turn(**fake_agy, timeout=60).structured_output == {
+                "answer": "見出し"
+            }
+            record = json.loads((private / "turns/01.json").read_text())
+            assert (
+                record["effective_policy_confirmed"] and record["persistent_unchanged"]
+            )
+            assert not record["excluded"]
+    assert agy._check_user_settings is original_guard
+    with pytest.raises(agy.AgyError):
+        agy._check_user_settings(work)
+    assert json.loads(profile.read_text()) == settings
 
 
 @pytest.mark.parametrize(
@@ -951,3 +1078,22 @@ def test_headless_reconciles_every_read_against_its_hook(
         assert capture["reads"][0]["state"] == ("DONE" if kind == "inside" else "ERROR")
     else:
         assert capture["hook_verification_errors"]
+
+
+def test_manual_diagnostic_uses_real_hook_and_common_capture(
+    fake_agy: dict[str, Path],
+) -> None:
+    sys.path.insert(0, str(ROOT / "scripts/github_actions"))
+    validation = importlib.import_module("agy_allowlist_validation")
+    private = fake_agy["agy"].parent / "validation"
+    private.mkdir()
+    runner = validation.Runner(private, fake_agy["agy"], validation.saved_digest())
+    with runner.policy.scope():
+        result = validation.run_diagnostic(runner)
+    assert result == {
+        "allowed_commands_completed": 10,
+        "negative_commands_hook_denied": 3,
+        "outside_read_hook_denied": True,
+        "status": "passed",
+    }
+    assert len(runner.ledger.rows()) == 1

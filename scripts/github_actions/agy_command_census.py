@@ -204,14 +204,7 @@ def run_turn(
                 record.chmod(0o600)
             owned_hook = hook_api.install_command_hook(work, record)
         config = agy_api.load_config()
-        env = {
-            **os.environ,
-            "AGY_CLI_DISABLE_AUTO_UPDATE": "true",
-            "GIT_OPTIONAL_LOCKS": "0",
-            "GIT_PAGER": "cat",
-            "GH_PAGER": "cat",
-            "RIPGREP_CONFIG_PATH": "/dev/null",
-        }
+        env = agy_api.readonly_environment(os.environ, cwd=work)
         for key in list(env):
             if key.startswith(("HERDR_", "CLAUDE", "CODEX")) or key in {
                 "GH_TOKEN",

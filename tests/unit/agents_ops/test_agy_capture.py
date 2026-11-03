@@ -132,9 +132,10 @@ def test_descriptive_forms_retain_flags_and_operators(
     assert census.command_form(command) == expected
 
 
-def test_grammar_uses_raw_text_and_does_not_expand_combined_flags() -> None:
+def test_grammar_uses_shared_rules_on_raw_text() -> None:
     assert census.grammar_allows("ls -l -a")
-    assert not census.grammar_allows("ls -la")
+    assert census.grammar_allows("ls -la")
+    assert not census.grammar_allows("ls -laL")
     assert not census.grammar_allows("cat a | head -n 1")
     assert not census.grammar_allows("cat a\n")
 

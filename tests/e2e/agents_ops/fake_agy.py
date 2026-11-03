@@ -14,11 +14,18 @@ fake_tools = importlib.import_module("fake_agy_tools")
 root = Path(os.environ["FAKE_AGY_ROOT"])
 scenario = os.environ.get("FAKE_AGY_CASE", "success")
 args = sys.argv[1:]
+stdin_event = json.loads(sys.stdin.read()) if "--input-format" in args else None
 with (root / "invocations.jsonl").open("a") as trace:
     trace.write(
         json.dumps(
             {
                 "args": args,
+                "stdin_event": stdin_event,
+                "session_settings": json.loads(
+                    Path(args[args.index("--settings") + 1]).read_text()
+                )
+                if "--settings" in args
+                else None,
                 "cwd": os.getcwd(),
                 "disable_auto_update": os.environ.get("AGY_CLI_DISABLE_AUTO_UPDATE"),
                 "read_environment": {
@@ -45,6 +52,23 @@ if args == ["--version"]:
     )
     raise SystemExit(0)
 
+if scenario.startswith("settings_"):
+    session_file = Path(args[args.index("--settings") + 1])
+    kind = scenario.removeprefix("settings_")
+    if kind.startswith("content"):
+        session_file.write_text('{"permissions":{"allow":["command(*)"]}}')
+    elif kind == "delete":
+        session_file.unlink()
+    elif kind == "mode":
+        session_file.chmod(0o644)
+    elif kind == "symlink":
+        target = root / "settings-replacement.json"
+        target.write_bytes(session_file.read_bytes())
+        session_file.unlink()
+        session_file.symlink_to(target)
+    if kind == "content_error":
+        raise SystemExit(3)
+
 if scenario == "timeout":
     child = subprocess.Popen([sys.executable, "-c", "import signal; signal.pause()"])
     (root / "child.pid").write_text(str(child.pid))
@@ -55,7 +79,11 @@ if scenario == "cli_error":
     )
     raise SystemExit(3)
 
-prompt = args[args.index("-p") + 1]
+prompt = (
+    stdin_event["message"]["content"]
+    if stdin_event is not None
+    else args[args.index("-p") + 1]
+)
 probe = (
     json.loads(prompt.splitlines()[1])
     if prompt.startswith("AGY_PERMISSION_PROBE\n")
@@ -70,6 +98,8 @@ label = "Gemini 3.8 Flash (High)" if scenario != "model" else "Gemini 3.8 Pro"
 if probe and probe["stage"] == "deny" and scenario == "probe_bad_model":
     label = "Other Model"
 with log.open("a") as handle:
+    if scenario != "validation_missing_mode":
+        handle.write("applying agent mode plan\n")
     if scenario != "missing_model":
         handle.write(
             f'Propagating selected model override to backend: label="{label}"\n'
@@ -136,6 +166,20 @@ if scenario.startswith("audit_"):
     if scenario == "audit_malformed":
         print("malformed stream event", flush=True)
 payload = json.loads((root / "payload.json").read_text())
+if prompt.startswith("AGY_ALLOWLIST_DIAGNOSTIC\n"):
+    spec = json.loads(prompt.splitlines()[1])
+    for command in spec["negatives"]:
+        assert fake_tools.run_command(command)["decision"] == "deny"
+    assert fake_tools.read_file(spec["outside"])["decision"] == "deny"
+    for command in spec["commands"]:
+        assert fake_tools.run_command(command)["decision"] == "allow"
+    assert fake_tools.read_file("a")["decision"] == "allow"
+    payload["structured_output"] = {
+        "line": (Path.cwd() / "a").read_text().splitlines()[0],
+        "subject": (Path.cwd() / ".git/COMMIT_EDITMSG").read_text().splitlines()[0],
+    }
+    fake_tools.emit_result(payload)
+    raise SystemExit(0)
 if probe:
     work = Path.cwd()
     if probe["stage"] == "read":

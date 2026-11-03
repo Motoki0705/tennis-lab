@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import errno
+import hashlib
 import json
 import math
 import os
@@ -21,11 +22,13 @@ from agent_output import OutputSchema
 from agent_settings import read_pins
 from agy_capture import capture_stream, public_command_summary, restore_hook_commands
 from agy_hook import install_command_hook
-from agy_permissions import command_permissions
+from agy_permissions import command_permissions, readonly_environment
 from opsproc import CommandError, run_process_group
 
 DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
 DEFAULT_AGY = Path("/var/lib/tennis-lab-actions/home/.local/bin/agy")
+DEFAULT_TIMEOUT = 600
+INLINE_PROMPT_BYTES = 96 * 1024
 MODEL_LABELS = {"gemini-3.8-flash-high": "Gemini 3.8 Flash (High)"}
 _READONLY_MODE = {
     "toolPermission": "request-review",
@@ -301,6 +304,24 @@ def _captured_denials(capture: dict[str, Any]) -> list[dict[str, str]]:
     return denied
 
 
+def _session_settings_integrity(path: Path, expected_digest: str) -> dict[str, Any]:
+    observed = None
+    mode = None
+    try:
+        metadata = path.lstat()
+        mode = stat.S_IMODE(metadata.st_mode)
+        if stat.S_ISREG(metadata.st_mode):
+            observed = hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        pass  # Missing/unreadable evidence is a mismatch, never an implicit pass.
+    return {
+        "expected_sha256": expected_digest,
+        "observed_sha256": observed,
+        "mode": mode,
+        "unchanged": observed == expected_digest and mode == 0o600,
+    }
+
+
 def run_headless(
     *,
     agy: Path,
@@ -308,7 +329,7 @@ def run_headless(
     prompt_file: Path,
     json_schema: Path,
     log_file: Path,
-    timeout: float,
+    timeout: float = DEFAULT_TIMEOUT,
     model: str | None = None,
     config_file: Path = DEFAULT_CONFIG,
 ) -> AgyResult:
@@ -333,6 +354,7 @@ def run_headless(
             if not prompt.strip():
                 raise ValueError("prompt must not be empty")
             schema = OutputSchema(json_schema, agent="agy")
+            env = readonly_environment(os.environ, cwd=cwd)
             log_file = log_file.absolute()
             if log_file.resolve().is_relative_to(cwd):
                 raise ValueError("private evidence must be outside the workspace")
@@ -341,7 +363,12 @@ def run_headless(
                 log_file,
                 *(
                     log_file.with_name(log_file.name + suffix)
-                    for suffix in (".stream.jsonl", ".hooks.jsonl", ".commands.json")
+                    for suffix in (
+                        ".stream.jsonl",
+                        ".hooks.jsonl",
+                        ".commands.json",
+                        ".settings.json",
+                    )
                 ),
             ]
             handles = []
@@ -350,19 +377,16 @@ def run_headless(
                 path.chmod(0o600)
                 handles.append(handle)
             stream_file, hooks_file = paths[1:3]
+            settings_file = paths[4]
+            settings_raw = json.dumps(readonly_settings())
+            handles[4].write(settings_raw)
+            handles[4].flush()
+            settings_digest = hashlib.sha256(settings_raw.encode("utf-8")).hexdigest()
             agents_existed = (cwd / ".agents").exists()
             owned_hook = install_command_hook(cwd, hooks_file)
         except (OSError, ValueError, UnicodeError) as exc:
             raise AgyError("invalid_input", f"invalid agy input: {exc}") from exc
 
-        env = {
-            **os.environ,
-            "AGY_CLI_DISABLE_AUTO_UPDATE": "true",
-            "GIT_OPTIONAL_LOCKS": "0",
-            "GIT_PAGER": "cat",
-            "GH_PAGER": "cat",
-            "RIPGREP_CONFIG_PATH": "/dev/null",
-        }
         started = time.monotonic()
         deadline = started + timeout
 
@@ -389,18 +413,35 @@ def run_headless(
                 with tempfile.TemporaryDirectory(prefix="agy-schema-") as directory:
                     pinned_schema = Path(directory) / "schema.json"
                     pinned_schema.write_bytes(schema.raw)
+                    stdin = None
+                    prompt_args = ["-p", prompt]
+                    if len(prompt.encode("utf-8")) > INLINE_PROMPT_BYTES:
+                        prompt_args = ["--input-format", "stream-json"]
+                        input_file = Path(directory) / "prompt.jsonl"
+                        stdin = files.enter_context(
+                            input_file.open("x+", encoding="utf-8")
+                        )
+                        input_file.chmod(0o600)
+                        stdin.write(
+                            json.dumps(
+                                {"event": "user", "message": {"content": prompt}},
+                                ensure_ascii=False,
+                            )
+                            + "\n"
+                        )
+                        stdin.flush()
+                        stdin.seek(0)
                     _check_user_settings(cwd)
                     run_process_group(
                         [
                             str(agy),
-                            "-p",
-                            prompt,
+                            *prompt_args,
                             "--model",
                             selected_model,
                             "--mode",
                             "plan",
                             "--settings",
-                            json.dumps(readonly_settings()),
+                            str(settings_file),
                             "--output-format",
                             "stream-json",
                             "--json-schema",
@@ -412,13 +453,16 @@ def run_headless(
                         timeout=remaining(),
                         env=env,
                         stdout_file=handles[1],
+                        stdin_file=stdin,
                     )
                 observed_version = check_version()
             finally:
                 # stdout goes straight to disk, including partial output before a
                 # nonzero exit or process-group timeout. Never recover from prose.
+                integrity = _session_settings_integrity(settings_file, settings_digest)
                 try:
                     capture = _capture_evidence(log_file, stream_file, hooks_file)
+                    capture["session_settings_integrity"] = integrity
                     denied = _captured_denials(capture)
                     command_summary = public_command_summary(capture)
                     json.dump(capture, handles[3], indent=2)
@@ -444,6 +488,10 @@ def run_headless(
                         raise AgyError(
                             "invalid_output", "workspace command hook was modified"
                         )
+                if not integrity["unchanged"]:
+                    raise AgyError(
+                        "invalid_output", "session settings file was modified"
+                    )
                 if capture.get("hook_verification_errors"):
                     raise AgyError(
                         "command_hook_mismatch",
