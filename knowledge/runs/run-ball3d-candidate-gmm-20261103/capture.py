@@ -51,7 +51,7 @@ def main():
     write_json_atomic(target/"verification.json", verification)
     with (target/"fold-metrics.csv").open("w") as stream:
         fields = ["segment", "method", "fold", "median_px", "p90_px", "above_20px_rate", "scored", "eligible", "coverage", "valid_3d_frames", "valid_3d_rate"]
-        writer = csv.DictWriter(stream, fieldnames=fields)
+        writer = csv.DictWriter(stream, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         for name, metrics in scores["methods"].items():
             for segment in ("evaluation", "tuning", "all"):
@@ -62,7 +62,7 @@ def main():
                         values["scored_label_count"], values["scoring_label_count"], values["scored_label_coverage"], values["valid_3d_frames"], values["valid_3d_rate"]), strict=True)))
     uncertainty = json.loads((root/"uncertainty.json").read_text())
     with (target/"uncertainty-coverage.csv").open("w") as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(["method", "fold", "segment", "reference_kind", "count", "ellipse_50", "ellipse_90", "ellipse_95"])
         for name, value in uncertainty["methods"].items():
             for fold, segments in {"lovo_pool": value["lovo"], **value["folds"]}.items():

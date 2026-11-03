@@ -46,4 +46,3 @@ class CandidateGMMConfig:
             raise ValueError("Candidate GMM requires a finite 3D Gaussian prior")
         if self.estimator not in {"map", "mean"} or self.temporal not in {"none", "kalman", "rts"}:
             raise ValueError("Unknown candidate GMM estimator/temporal selection")
-
