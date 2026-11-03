@@ -1,0 +1,59 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-heatmap-decoding
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 1 item
+
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py F     [100%]
+
+=================================== FAILURES ===================================
+_ test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05] _
+
+method = 'quadratic_log', patch = 3, sigmoid = False, rotated = True
+tolerance = 2e-05
+
+    @pytest.mark.parametrize("method,patch,sigmoid,rotated,tolerance", [
+        ("legacy", 5, False, False, 2e-5),
+        ("axis_logit", 3, True, False, 5e-5),
+        ("quadratic_log", 3, False, True, 2e-5),
+        ("quadratic_log", 5, False, True, 2e-5),
+        ("quadratic_logit", 3, True, True, 5e-5),
+        ("quadratic_logit", 5, True, True, 5e-5),
+        ("centroid", 5, False, False, .15),
+        ("softargmax", 5, False, False, .15),
+        ("gaussian", 5, False, True, 2e-3),
+    ])
+    def test_known_centres_include_rotation_anisotropy_and_saturation(method, patch, sigmoid, rotated, tolerance):
+        centre = np.array([7.23, 5.36])
+        background = .07 if method in ("centroid", "softargmax", "gaussian") else 0.
+        image = _map(tuple(centre), rotated=rotated, sigmoid=sigmoid, background=background)
+        result = decode_heatmaps(image, HeatmapDecodingConfig(method=method, patch_size=patch))
+>       np.testing.assert_allclose(result.coords.numpy() * [18, 12], centre, atol=tolerance, rtol=0)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0, atol=2e-05
+E       
+E       Mismatched elements: 2 / 2 (100%)
+E       Mismatch at indices:
+E        [0]: 6.951477348804474 (ACTUAL), 7.23 (DESIRED)
+E        [1]: 5.237390041351318 (ACTUAL), 5.36 (DESIRED)
+E       Max absolute difference among violations: 0.27852265
+E       Max relative difference among violations: 0.03852319
+E        ACTUAL: array([6.951477, 5.23739 ])
+E        DESIRED: array([7.23, 5.36])
+
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py:48: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]
+========================= 1 failed, 1 warning in 0.12s =========================
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-heatmap-decoding
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 1 item
+
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py .     [100%]
+
+========================= 1 passed, 1 warning in 0.03s =========================
+{"injected_exit": 1, "mutation": "zero fitted XY cross coefficient", "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]", "restored_exit": 0}

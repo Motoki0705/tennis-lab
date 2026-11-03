@@ -56,6 +56,10 @@ class HeatmapDecodingMethod:
     name: str
     decoding: HeatmapDecodingConfig
     baseline: PipelineBaseline
+
+    @property
+    def requires_court_lines(self) -> bool:
+        return False
     # Only per-view decoding/smoothing is cached; no cross-camera or label data.
     # Hold the original object to prevent Python object-id reuse. Limit cache size
     # when an adapter is reused with another bundle, even with identical IDs.
@@ -63,7 +67,9 @@ class HeatmapDecodingMethod:
 
     @property
     def config(self) -> Mapping[str, Any]:
-        return {"decoding": asdict(self.decoding), "downstream": dict(self.baseline.config), "cache": "per_immutable_view_identity_max12"}
+        return {"decoding": asdict(self.decoding), "downstream": {
+            **self.baseline.config, "detector_input": "saved_native_heatmaps_redecoded_threshold_gate",
+        }, "requires_court_lines": False, "cache": "per_immutable_view_identity_max12"}
 
     def __call__(self, inputs: MethodInput) -> Ball3DResult:
         views, statuses = [], []
