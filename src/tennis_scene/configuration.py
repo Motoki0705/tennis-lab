@@ -326,8 +326,8 @@ class PipelineRuntimeConfig:
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
-    ball_method: str = "triangulation"
-    ball_topk: TopKConfig = TopKConfig()
+    ball_method: str
+    ball_topk: TopKConfig
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:

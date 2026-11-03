@@ -55,7 +55,15 @@ def test_default_pipeline_matches_main_arrays(tmp_path):
     np.testing.assert_array_equal(output.ball.trajectory.inliers, reference["used_views"])
     np.testing.assert_array_equal(output.ball.uv_px, np.asarray(reference["accepted_uv_px"], np.float32))
     np.testing.assert_array_equal(output.ball.trajectory.reasons, reference["rejection_codes"])
-    np.testing.assert_array_equal(output.ball.trajectory.reprojection_px, np.asarray(reference["reprojection_px"], np.float32))
+    # The unchanged solver computes residuals from float64 fit.x, before the
+    # separate float32 position cast. Switching the OpenBLAS kernel reproduces
+    # one residual ULP of drift with every saved position still identical.
+    # Four float32 epsilons cover the observed CI relative drift <=1.9e-7;
+    # even at 20px this is <1e-5px. atol=0 keeps exact zeros exact. All other
+    # arrays above deliberately retain bitwise equality against main.
+    np.testing.assert_allclose(output.ball.trajectory.reprojection_px,
+        np.asarray(reference["reprojection_px"], np.float32),
+        rtol=4 * np.finfo(np.float32).eps, atol=0)
     # The baseline adapter and the default public component share the same output.
     baseline = PipelineBaseline()(inputs)
     np.testing.assert_array_equal(baseline.positions, output.ball.trajectory.positions)
