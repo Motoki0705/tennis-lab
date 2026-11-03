@@ -33,6 +33,7 @@ from src.tasks.player_association.association.config import (
 from src.tasks.player_association.association.config import load_association_config
 from src.tennis_scene.ball_association.topk import TopKConfig
 from src.tennis_scene.ball_gmm.config import CandidateGMMConfig
+from src.tennis_scene.ball_likelihood.config import DenseLikelihoodConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -262,6 +263,15 @@ _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_rec
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "joint_confidence": ConfigField.of(float, int),
     "placement": ConfigField.mapping(_PLACEMENT_SCHEMA),
 })
+_DENSE_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction.dense_likelihood", fields={
+    field.name: (
+        ConfigField.of(str) if field.name in {"interpolation", "initialization"}
+        else ConfigField.sequence(ConfigField.sequence(ConfigField.of(str, float, int))) if field.name in {"view_temperatures", "view_backgrounds"}
+        else ConfigField.sequence(ConfigField.of(float, int)) if field.name.endswith("_bounds")
+        else ConfigField.of(int) if field.name in {"coarse_levels", "coarse_keep", "multistart", "max_iterations", "window_size"}
+        else ConfigField.of(float, int)
+    ) for field in fields(DenseLikelihoodConfig)
+})
 _CANDIDATE_GMM_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction.candidate_gmm", fields={
     **{key: ConfigField.of(int) for key in ("top_k", "max_components", "max_nfev")},
     **{key: ConfigField.of(str) for key in ("estimator", "temporal")},
@@ -278,6 +288,7 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
         for name, annotation in get_type_hints(TopKConfig).items()
     })),
     "candidate_gmm": ConfigField.mapping(_CANDIDATE_GMM_SCHEMA),
+    "dense_likelihood": ConfigField.mapping(_DENSE_SCHEMA),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
@@ -353,6 +364,7 @@ class PipelineRuntimeConfig:
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
     ball_topk: TopKConfig
+    dense_likelihood: DenseLikelihoodConfig
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -426,13 +438,19 @@ class PipelineRuntimeConfig:
         player = _mapping(value["player_reconstruction"], name="player_reconstruction")
         ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
         ball_method = str(ball["method"])
-        if ball_method not in {"triangulation", "topk_multihypothesis", "candidate_gmm"}:
+        if ball_method not in {"triangulation", "topk_multihypothesis", "candidate_gmm", "dense_likelihood"}:
             raise SemanticConfigurationError("Unknown ball_reconstruction.method")
         ball_topk = TopKConfig(**cast(dict[str, Any], dict(_mapping(ball["topk"], name="ball_reconstruction.topk"))))
         gmm_values = dict(_mapping(ball["candidate_gmm"], name="candidate_gmm"))
         for key in ("prior_mean_m", "prior_std_m"):
             gmm_values[key] = tuple(_sequence(gmm_values[key], name=key))
         ball_candidate_gmm = CandidateGMMConfig(**cast(dict[str, Any], gmm_values))
+        dense_values = dict(_mapping(ball["dense_likelihood"], name="dense_likelihood"))
+        for name in ("x_bounds", "y_bounds", "z_bounds"):
+            dense_values[name] = tuple(cast(Sequence[float], dense_values[name]))
+        for name in ("view_temperatures", "view_backgrounds"):
+            dense_values[name] = tuple(tuple(row) for row in cast(Sequence[Sequence[object]], dense_values[name]))
+        dense_likelihood = DenseLikelihoodConfig(**cast(dict[str, Any], dense_values))
         visibility = float(cast(float, person["visibility_threshold"]))
         _unit_interval(visibility, name="person visibility")
         margins = (float(cast(float, person["sideline_margin_m"])), float(cast(float, person["baseline_margin_m"])))
@@ -459,7 +477,8 @@ class PipelineRuntimeConfig:
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             ball_method, ball_candidate_gmm,
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
-            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing, ball_topk)
+            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
+            ball_topk, dense_likelihood)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

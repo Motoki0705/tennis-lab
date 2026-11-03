@@ -15,6 +15,10 @@ from src.tennis_scene.pipeline.components.ball_gmm import (
     CandidateGMMInputAssembler,
     CandidateGMMModule,
 )
+from src.tennis_scene.pipeline.components.ball_likelihood import (
+    DenseBallInputAssembler,
+    DenseBallModule,
+)
 from src.tennis_scene.pipeline.components.ball_points import BallPointsModule
 from src.tennis_scene.pipeline.components.ball_topk import (
     TopKBallInputAssembler,
@@ -217,6 +221,10 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         add("ball_triangulation", CandidateGMMModule(ids, cfg.ball_candidate_gmm, enabled=cfg.enabled["ball_reconstruction"]),
             CandidateGMMInputAssembler(), {"alignment": "camera_alignment", **{f"detections_{c}": f"ball_detection/{c}" for c in ids}},
             lambda: {"config": cfg.ball_candidate_gmm, "enabled": cfg.enabled["ball_reconstruction"]})
+    elif cfg.ball_method == "dense_likelihood":
+        add("ball_triangulation", DenseBallModule(ids, cfg.dense_likelihood, enabled=cfg.enabled["ball_reconstruction"]),
+            DenseBallInputAssembler(), {"alignment": "camera_alignment", **{f"ball_{c}": f"ball_detection/{c}" for c in ids}},
+            lambda: {"config": cfg.processing_settings["ball_reconstruction"]})
     else:
         raise ValueError(f"Unknown ball reconstruction method: {cfg.ball_method}")
     add("body_view_selection", BodyViewSelectionModule(ids, max_frames=cfg.sampling_max_frames, enabled=body_enabled),
