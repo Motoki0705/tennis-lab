@@ -166,17 +166,17 @@ class GitHub(ParentGitHub):
             seen_cursors.add(after)
 
 
-def uninterrupted(
-    before: dict[str, Any], after: dict[str, Any], candidate: str
-) -> bool:
-    """Exactly our one new edit; same-publisher ABA edits also count as interference."""
-    if after["body"] != candidate or any(
+def new_edits(
+    before: dict[str, Any], after: dict[str, Any]
+) -> list[dict[str, Any]] | None:
+    """Return added edits excluding creation; None means histories cannot be compared."""
+    if any(
         before[key] != after[key] for key in ("viewer", "created_at", "author")
     ):
-        return False
+        return None
     old, new = before["edits"], after["edits"]
     if any(new.get(identity) != edit for identity, edit in old.items()):
-        return False
+        return None
     added = new.keys() - old.keys()
     if not before["includes_created_edit"] and after["includes_created_edit"]:
         # GitHub materializes the original creation version on the first edit.
@@ -189,13 +189,23 @@ def uninterrupted(
             and new[identity]["deletedAt"] is None
         }
         if old or len(creation) != 1:
-            return False
+            return None
         added -= creation
     elif before["includes_created_edit"] != after["includes_created_edit"]:
+        return None
+    return [new[identity] for identity in added]
+
+
+def uninterrupted(
+    before: dict[str, Any], after: dict[str, Any], candidate: str
+) -> bool:
+    """Exactly our one new edit; same-publisher ABA edits also count as interference."""
+    if after["body"] != candidate:
         return False
-    if len(added) != 1:
+    added = new_edits(before, after)
+    if added is None or len(added) != 1:
         return False
-    edit = new[next(iter(added))]
+    edit = added[0]
     return edit["deletedAt"] is None and editor_matches_login(
         edit["editor"], after["viewer"]
     )

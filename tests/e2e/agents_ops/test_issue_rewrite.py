@@ -467,6 +467,25 @@ class RewriteEnv:
     def save(self, state: dict[str, Any]) -> None:
         (self.root / "github.json").write_text(json.dumps(state))
 
+    def fail_history(
+        self,
+        reads_from_now: int = 1,
+        *,
+        repeat: bool = False,
+        invalid_response: bool = False,
+    ) -> None:
+        state = self.state()
+        state["history_failure"] = {
+            "read": state.get("history_reads", 0) + reads_from_now,
+            "repeat": repeat,
+            "invalid_response": invalid_response,
+        }
+        self.save(state)
+
+    def require_final(self) -> dict[str, Any]:
+        reader = importlib.import_module("parent.github").GitHub("o/r")
+        return importlib.import_module("parent.rewrite").require_final(reader, 1)  # type: ignore[no-any-return]
+
     def turns(self, *outputs: dict[str, Any]) -> None:
         (self.root / "turns.json").write_text(
             json.dumps([{"structured_output": output} for output in outputs])
@@ -1429,27 +1448,113 @@ def test_history_detects_aba_even_when_the_body_matches_and_pages_all_edits(
     assert not any("body" in call["payload"] for call in env.mutations())
 
 
+@pytest.mark.parametrize("failure", ["before_patch", "once", "always", "invalid"])
+def test_failure_job_reconciles_history_after_apply_error(
+    rewrite_env: RewriteEnv, failure: str
+) -> None:
+    env = rewrite_env
+    assert env.run("rewrite") == 0
+    env.fail_history(
+        1 if failure == "before_patch" else 2,
+        repeat=failure in {"always", "invalid"},
+        invalid_response=failure == "invalid",
+    )
+    assert env.run("apply") == 1
+    expected_body = env.original if failure == "before_patch" else env.rewritten
+    assert env.state()["issue"]["body"] == expected_body
+    assert labels(env) == {"issue:parent", "enhancement"}
+    unconfirmed = failure in {"always", "invalid"}
+    assert env.run("fail") == int(unconfirmed)
+    assert env.state()["issue"]["body"] == expected_body
+    report = (env.root / "summary.md").read_text()
+    if unconfirmed:
+        assert labels(env) == {"issue:parent", "enhancement"}
+        assert "write_state_unconfirmed" in report
+        with pytest.raises(ValueError, match="pending"):
+            env.require_final()
+    else:
+        final = "failed" if failure == "before_patch" else "done"
+        assert labels(env) == {"issue:parent", "enhancement", "rewrite:" + final}
+        assert env.require_final()["body"] == expected_body
+        if failure == "once":
+            assert "confirmed_after_apply_error" in report
+    patches = [call for call in env.mutations() if call["method"] == "PATCH"]
+    assert len(patches) == (0 if failure == "before_patch" else 1)
+    assert not any(call["method"] == "DELETE" for call in env.mutations())
+
+
+@pytest.mark.parametrize("state_after_apply", ["original", "written", "unavailable"])
 def test_failure_job_can_finalize_when_the_generation_artifact_is_missing(
     rewrite_env: RewriteEnv,
+    state_after_apply: str,
 ) -> None:
     env = rewrite_env
-    assert env.run("fail") == 0
-    assert (
-        "rewrite:failed" in labels(env) and env.state()["issue"]["body"] == env.original
-    )
-    assert "workflow_job_failed" in (env.root / "summary.md").read_text()
+    if state_after_apply == "written":
+        assert env.run("rewrite") == 0
+        env.fail_history(2)
+        assert env.run("apply") == 1
+        (env.root / "handoff-1.json").unlink()
+    elif state_after_apply == "unavailable":
+        env.fail_history(repeat=True)
+    assert env.run("fail") == int(state_after_apply != "original")
+    expected_body = env.rewritten if state_after_apply == "written" else env.original
+    assert env.state()["issue"]["body"] == expected_body
+    report = (env.root / "summary.md").read_text()
+    if state_after_apply == "original":
+        assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+        assert env.require_final()["body"] == env.original
+        assert "workflow_job_failed" in report
+    else:
+        assert labels(env) == {"issue:parent", "enhancement"}
+        assert "write_state_unconfirmed" in report
+        with pytest.raises(ValueError, match="pending"):
+            env.require_final()
 
 
-def test_failure_job_rejects_a_corrupt_artifact_and_still_finalizes_the_original(
+@pytest.mark.parametrize("written", [False, True])
+def test_failure_job_rejects_a_corrupt_artifact_and_checks_write_state(
     rewrite_env: RewriteEnv,
+    written: bool,
 ) -> None:
     env = rewrite_env
+    if written:
+        assert env.run("rewrite") == 0
+        env.fail_history(2)
+        assert env.run("apply") == 1
     unsafe = "ghs_" + "a" * 36
     (env.root / "handoff-1.json").write_text(unsafe)
-    assert env.run("fail") == 0 and "rewrite:failed" in labels(env)
+    assert env.run("fail") == int(written)
     report = (env.root / "summary.md").read_text()
-    assert unsafe not in report and "invalid_failure_artifact" in report
-    assert env.state()["issue"]["body"] == env.original
+    assert unsafe not in report
+    if written:
+        assert labels(env) == {"issue:parent", "enhancement"}
+        assert env.state()["issue"]["body"] == env.rewritten
+        assert "write_state_unconfirmed" in report
+        with pytest.raises(ValueError, match="pending"):
+            env.require_final()
+    else:
+        assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+        assert "invalid_failure_artifact" in report
+        assert env.state()["issue"]["body"] == env.original
+        assert env.require_final()["body"] == env.original
+
+
+def test_failure_job_preserves_foreign_only_edits(rewrite_env: RewriteEnv) -> None:
+    env = rewrite_env
+    assert env.run("rewrite") == 0
+    state = env.state()
+    state["mutation"] = {
+        "read": state["issue_reads"] + 1,
+        "body": "human's latest body",
+    }
+    env.save(state)
+    assert env.run("apply") == 0
+    assert "needs_retry=true" in (env.root / "github-output").read_text()
+    assert env.run("fail") == 0
+    assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+    assert env.state()["issue"]["body"] == "human's latest body"
+    assert env.require_final()["body"] == "human's latest body"
+    assert not any(call["method"] == "PATCH" for call in env.mutations())
 
 
 def test_record_added_during_stability_wait_prevents_any_model_usage(

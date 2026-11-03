@@ -87,6 +87,14 @@ if endpoint.startswith("repos/o/r/issues/1/comments"):
     response(state["comments"][(page - 1) * 100 : page * 100])
 if endpoint == "graphql":
     state["history_reads"] = state.get("history_reads", 0) + 1
+    failure = state.get("history_failure")
+    if failure and (
+        state["history_reads"] == failure["read"]
+        or (failure["repeat"] and state["history_reads"] > failure["read"])
+    ):
+        if failure["invalid_response"]:
+            response({"data": {}})
+        response({"message": "private-history-error"}, 503)
     after = payload["variables"]["after"]
     start = int(after) if after is not None else 0
     rows = state["edits"][start : start + 100]
