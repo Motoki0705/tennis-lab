@@ -17,3 +17,5 @@
 - [メインtreeのローカル main は自動で pull されず、そこで読む規則・memoryが古いまま残る](main-tree-main-lags-origin.md)
 - [src パッケージはインストールされておらず、カレントディレクトリから import される](src-imported-from-cwd.md)
 - [tests/ はPythonパッケージではないので、テストモジュール同士で import できない](tests-dir-not-a-package.md)
+- [親issue本文の進捗4節以外を書き換えると、人間の合意と出済みのレビュー要求が無効になる](parent-body-edit-invalidates-agreement.md)
+- [再合意（checking → agree）すると、それまでの委任は `run-worker --resume` で再開できなくなる](reagreement-invalidates-delegation.md)
