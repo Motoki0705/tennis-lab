@@ -33,3 +33,10 @@ def test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_ord
     selected = inputs.select_cameras((inputs.camera_ids[2], inputs.camera_ids[0]))
     a, b = method(selected), method(replace(selected, views=tuple(reversed(selected.views))))
     np.testing.assert_array_equal(a.diagnostics["accepted_uv_px"], b.diagnostics["accepted_uv_px"][::-1])
+    # A new bundle may use the same camera IDs. The cache must not serve the old
+    # view's decoded observations. Change the timeline length independently.
+    other = make_inputs(frames=7)
+    other = replace(other, views=tuple(replace(v, detector_config=replace(v.detector_config, subpixel_refine=True)) for v in other.views))
+    fresh = method(other)
+    assert fresh.frame_indices.shape == (7,)
+    assert fresh.diagnostics["accepted_uv_px"].shape == (3, 7, 2)

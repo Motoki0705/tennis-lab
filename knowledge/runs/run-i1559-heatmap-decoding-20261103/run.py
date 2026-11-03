@@ -25,8 +25,8 @@ from src.tennis_scene.evaluation.ball3d.baseline import (
 )
 from src.tennis_scene.evaluation.ball3d.bundle import load_bundle, verify_videos
 from src.tennis_scene.evaluation.ball3d.heatmap_decoding import HeatmapDecodingMethod
-from src.tennis_scene.evaluation.ball3d.runner import load_run, run_comparison
-from src.tennis_scene.evaluation.ball3d.scoring import score_comparison
+from src.tennis_scene.evaluation.ball3d.runner import load_run, run_method, save_run
+from src.tennis_scene.evaluation.ball3d.scoring import annotation_oracle, score_comparison
 from src.tennis_scene.pipeline.artifacts import document_digest, write_json_atomic
 from src.tennis_scene.visualization.ball3d.rendering import (
     BallComparisonRenderer,
@@ -108,6 +108,13 @@ def compact_scores(scores):
     } for name, row in scores["methods"].items()}
 
 
+def execute(method, inputs, output, kwargs):
+    runs = run_method(method, inputs, **kwargs)
+    for run in runs:
+        save_run(output / method.name / run.key, run)
+    return {method.name: runs}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("bundle", "annotations", "videos", "output"):
@@ -144,7 +151,7 @@ def main():
             methods[label] = HeatmapDecodingMethod(label, config, replace(baseline, without_loess=raw))
     runs = {}
     for name, method in methods.items():
-        runs.update(run_comparison({name: method}, inputs, args.output / "results", **kwargs))
+        runs.update(execute(method, inputs, args.output / "results", kwargs))
         print(f"Replayed {name} ({time.perf_counter() - started:.1f}s)", flush=True)
     # The shared scorer computes its fixed segments. Only its tuning entries are
     # read for selection; evaluation entries are never inspected before freezing.
@@ -161,7 +168,7 @@ def main():
         for raw in (False, True):
             label = name + ("_raw" if raw else "")
             method = HeatmapDecodingMethod(label, config, replace(baseline, without_loess=raw))
-            runs.update(run_comparison({label: method}, inputs, args.output / "results", **kwargs))
+            runs.update(execute(method, inputs, args.output / "results", kwargs))
             print(f"Replayed {label} ({time.perf_counter() - started:.1f}s)", flush=True)
     scores = score_comparison(runs, inputs, annotations)
     selected = tuning_choice(scores, [*configs, *corrections])
@@ -180,6 +187,10 @@ def main():
     print(f"Frozen front-half choice: {selected}; selection SHA256 {selection_digest}", flush=True)
     # Re-open every serialized result through the foundation checksum boundary.
     runs = {name: tuple(load_run(args.output / "results" / name / r.key) for r in values) for name, values in runs.items()}
+    oracle = annotation_oracle(inputs, annotations, **kwargs)
+    for run in oracle:
+        save_run(args.output / "results" / "annotation_oracle" / run.key, run)
+    runs["annotation_oracle"] = tuple(load_run(args.output / "results" / "annotation_oracle" / r.key) for r in oracle)
     scores = score_comparison(runs, inputs, annotations)
     write_json_atomic(args.output / "scores.json", scores)
     write_json_atomic(args.output / "metrics-summary.json", compact_scores(scores))

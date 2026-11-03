@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, replace
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 import numpy as np
@@ -56,14 +56,23 @@ class HeatmapDecodingMethod:
     name: str
     decoding: HeatmapDecodingConfig
     baseline: PipelineBaseline
+    # Only per-view decoding/smoothing is cached; no cross-camera or label data.
+    # Hold the original object to prevent Python object-id reuse. Limit cache size
+    # when an adapter is reused with another bundle, even with identical IDs.
+    _cache: dict[int, tuple[ViewInput, ViewInput, np.ndarray]] = field(default_factory=dict, compare=False, repr=False)
 
     @property
     def config(self) -> Mapping[str, Any]:
-        return {"decoding": asdict(self.decoding), "downstream": dict(self.baseline.config)}
+        return {"decoding": asdict(self.decoding), "downstream": dict(self.baseline.config), "cache": "per_immutable_view_identity_max12"}
 
     def __call__(self, inputs: MethodInput) -> Ball3DResult:
         views, statuses = [], []
         for view in inputs.views:
+            cached = self._cache.get(id(view))
+            if cached is not None:
+                views.append(cached[1])
+                statuses.append(cached[2])
+                continue
             detection, status = redecode_view(view, self.decoding)
             # ViewInput's source-mask contract requires matching replayed points.
             # Reuse the real component. PipelineBaseline deliberately replays it
@@ -71,7 +80,11 @@ class HeatmapDecodingMethod:
             points = BallPointsModule(view.smoothing_config).process(
                 BallPointsInput(detection, inputs.source_size_wh, inputs.fps)
             )
-            views.append(replace(view, detections=detection, points=points))
+            decoded_view = replace(view, detections=detection, points=points)
+            if len(self._cache) >= 12:
+                self._cache.clear()
+            self._cache[id(view)] = (view, decoded_view, status)
+            views.append(decoded_view)
             statuses.append(status)
         result = self.baseline(replace(inputs, views=tuple(views)))
         return replace(result, diagnostics={

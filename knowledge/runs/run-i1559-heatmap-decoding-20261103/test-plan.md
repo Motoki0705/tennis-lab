@@ -9,6 +9,7 @@
   独立した連続Gaussianまたはsigmoid二次曲面の中心と比較する。背景付き重心は誤差上限を明示する。
   設定・scene接続は既存component unitのstream/predictor境界だけをfakeにし、実moduleを実行する。
   replayは既存の非対称view fixtureとrunnerを使い、GTを渡すAPIを作らない。
+  runner・production平滑化・三角測量を結ぶ新規adapterはintegrationへ置く。
 - 再利用: tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction,
   ::test_overlapping_windows_select_all_evidence_atomically、同test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer、
   tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates、
