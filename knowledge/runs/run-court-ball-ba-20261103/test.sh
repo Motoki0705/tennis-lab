@@ -18,3 +18,4 @@ nodes=(
 .venv/bin/python -m pytest -o addopts='' -n 0 --collect-only -q "${nodes[@]}" | tee "$run_dir/test-collection.txt"
 .venv/bin/python -m pytest -o addopts='' -n 0 -q --durations=0 --durations-min=0 \
   --junitxml=/tmp/court-ball-ba-tests.xml "${nodes[@]}" | tee "$run_dir/test-durations.txt"
+.venv/bin/python "$run_dir/measure_tests.py"

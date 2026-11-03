@@ -1,4 +1,4 @@
-<!-- knowledge-review: d1b1665b34856262328c75ba563554a0e84e2216cbedd5054f0759b987f1d7b3 on 2026-11-03 -->
+<!-- knowledge-review: c26dea7ffa688da4bcb881a9ad34f777cd12860d469c881f2eb93c055f637bf1 on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -23,6 +23,11 @@
 主表にLOVO採点数・対象数・coverageを表示した。全3方式共通の主評価768点ではbaseline 8.97/25.40px、LOESSなし9.70/28.02px。
 8予測結果はv1と完全一致し、入力を変えて誤差を下げた比較ではない。共通点も全対象の52.53%に限られ、可用性を条件とする。
 元LINE観測は保存されておらず、必要とする方式は明示停止する。LINEによる校正の入力取得は未実施である。
+[KPとballによるbundle adjustment](nodes/tennis_scene/000034-run-court-ball-ba-20261103.md)では、
+主点/歪み固定の7変数を5/7/8個の採用KPとball対応からfitし、残る9/7/6点を確認した。
+後半LOVOは9.34/27.08→10.95/35.51px、coverageは56.43→54.58%へ悪化し、2方式共通791点でも悪化した。
+全viewの再投影は下がるが、court holdout中央値もcam0/1で悪化し、採用を支持しない。設定を見直して後半へ合わせていない。
+平面courtの局所rank確認・合成のcamera/時刻復元は、実clipでの精度保証ではない。LINEは再取得せず、既定fixedを維持する。
 次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 ## 2026-10-27のCourt固定6000枚scene比較

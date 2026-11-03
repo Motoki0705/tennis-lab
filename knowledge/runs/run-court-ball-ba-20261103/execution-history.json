@@ -1,0 +1,21 @@
+{
+  "selected_version": "court_ball_ba_v2",
+  "versions": [
+    {
+      "version": "court_ball_ba_v1",
+      "code_commit": "a26d3efceba595470728a3ad37f451ddb6081bf8",
+      "artifact_manifest_sha256": "831958d2d6baeb7952e1922068655ed047fea33adb1d2a04bc4dcab896ec46de",
+      "status": "retained; 3D predictions and scores valid; source 2D save contract corrected in v2",
+      "records": "v1/"
+    },
+    {
+      "version": "court_ball_ba_v2",
+      "code_commit": "9fc9adc0b8986460e7978c4a79d7c44c9cd30310",
+      "artifact_manifest_sha256": "419ed1b05e4f52747155691e8c4027263d9214f56de319155e62b7e21301fe37",
+      "status": "selected; source-frame pixels/masks preserved and resampled diagnostics separated; all 8 prediction arrays/cameras/offsets and accuracy fields unchanged from v1"
+    }
+  ],
+  "configuration_tuning_after_evaluation": false,
+  "gpu_used": false,
+  "prior_output_directories_modified": false
+}

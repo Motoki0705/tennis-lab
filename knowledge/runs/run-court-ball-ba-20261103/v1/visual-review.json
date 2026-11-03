@@ -1,0 +1,29 @@
+{
+  "reviewer": "codex",
+  "date": "2026-11-03",
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/court_ball_ba_v1",
+  "artifact_manifest_sha256": "831958d2d6baeb7952e1922068655ed047fea33adb1d2a04bc4dcab896ec46de",
+  "review_type": "representative stills, figures and extreme crops; full video decoded by shared renderer",
+  "viewed_files": {
+    "metrics-table.png": "b53150366e3f9655b41599e88ae5fe3e8b411c39c863af281b5f5823612c711a",
+    "trajectories.png": "3e9e5c999032bc5491b730500d66b0686bc02c9c5fc50b9803c4599c7c6dda28",
+    "court-overlay.png": "826ecfb17f2aaf71a00b98bf87911ba61f5b2e2de78f25ceed41a797955bee4e",
+    "extremes.png": "916c088640ae23145f057ef94691d987bfd436ff1400126cead0b1a6e837f5bb",
+    "preview-0000.png": "c75c0b9b33b237572dd6fc0177e1698a7f63755174658c24b44931773e218b87",
+    "preview-0252.png": "dc52121beeffab3fb9f1710f8eae9dbd705ff8aa136d75b065ba3253e69c8f62",
+    "preview-0505.png": "bf3c4ee97c91555541ac69618ce1843ec393e9be7bd7be55c7468a35d739e5f8",
+    "preview-0757.png": "bdddfb0c201381a8a169e8bf59ce604d498a8537e12733440a5cf53947f79bba",
+    "preview-1009.png": "b761cf0a13daeb7822a11f64a02a5aff7fd53cd9787948825998c69e5a810244"
+  },
+  "observations": [
+    "LOVO errors, scored/eligible counts and coverage have separate columns from all-view valid-3D rate.",
+    "Three-method common cohort is conditional on availability; two-method cohort is separately saved.",
+    "Frame 757 cam1 unknown and frame 1009 cam0 excluded extrapolation/cam1 unknown have no reference markers.",
+    "Observed green crosses and approved estimated white diamonds are distinct from prediction rings and LOVO crosses.",
+    "Top/side trajectories have explicit gaps. Similar method rings and lines can overlap.",
+    "Court overlays identify model-projected lines, green fitting KP and white unused raw KP; no measured LINE is invented.",
+    "Extreme frames 765,581,580,981,980,1000 show remaining errors, including large camera-2 LOVO disagreement."
+  ],
+  "full_video_decoded_frames": 1010,
+  "broken_html_references": []
+}
