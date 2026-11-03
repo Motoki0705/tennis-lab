@@ -132,3 +132,22 @@ def test_smoke_workflow_requires_owner_manual_main_and_read_permissions() -> Non
     assert "scripts/github_actions/agy_smoke.py" in job["steps"][1]["run"]
     assert "--permissions-probe --timeout 120" in job["steps"][2]["run"]
     assert int(job["timeout-minutes"]) >= 75
+
+
+def test_runner_install_gives_every_created_home_directory_to_the_runner() -> None:
+    # The runner path needs root, so check the script: install -d applies -o/-g only
+    # to named directories, and a root-owned ~/.local blocked uv in runner jobs.
+    script = INSTALLER.read_text()
+    assert 'runner_local="/var/lib/tennis-lab-actions/home/.local"' in script
+    assert 'bin_dir="$runner_local/bin"' in script
+    owner_calls = [
+        line.strip()
+        for line in script.splitlines()
+        if line.strip().startswith("install -d -o tennis-actions")
+    ]
+    assert owner_calls == [
+        'install -d -o tennis-actions -g tennis-actions -m 0755 "$runner_local" "$bin_dir"'
+    ]
+    # Both the fresh install and the unchanged-receipt path repair ownership.
+    assert script.count("      own_runner_dirs\n") == 1
+    assert script.count("  own_runner_dirs\nelse") == 1

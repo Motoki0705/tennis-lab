@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 from urllib.parse import quote
 
-from agy_headless import DEFAULT_AGY, AgyError, load_config, run_headless
+from agy_headless import (
+    DEFAULT_AGY,
+    DEFAULT_TIMEOUT,
+    AgyError,
+    load_config,
+    run_headless,
+)
 from issues.format import CHILD_LABEL, validate_body
 from issues.rewrite_state import (
     REWRITE_DONE_LABEL,
@@ -154,7 +160,7 @@ def generate(
     *,
     run_dir: Path,
     agy: Path = DEFAULT_AGY,
-    timeout: float = 300,
+    timeout: float = DEFAULT_TIMEOUT,
     wait: Callable[[GitHub, int], dict[str, Any]] | None = None,
 ) -> Handoff:
     run_dir = run_dir.resolve()
@@ -243,6 +249,7 @@ def generate(
             sys.dont_write_bytecode = True
             try:
                 with checkout.disposable() as cwd:
+                    turn_started = time.monotonic()
                     try:
                         result = run_headless(
                             agy=agy,
@@ -252,6 +259,23 @@ def generate(
                             log_file=run_dir / f"{role}-{revision}.log",
                             timeout=timeout,
                         )
+                    except AgyError as exc:
+                        report["turns"].append(
+                            {
+                                "role": role,
+                                "revision": revision,
+                                "usage": None,
+                                "duration_seconds": None,
+                                "elapsed_seconds": time.monotonic() - turn_started,
+                                "denied_action_count": len(exc.denied_actions),
+                                **(
+                                    {"commands": exc.command_summary}
+                                    if exc.command_summary
+                                    else {}
+                                ),
+                            }
+                        )
+                        raise
                     finally:
                         checkout.verify(
                             {
@@ -272,6 +296,7 @@ def generate(
                     "duration_seconds": result.duration_seconds,
                     "elapsed_seconds": result.elapsed_seconds,
                     "denied_action_count": len(result.denied_actions),
+                    "commands": result.command_summary,
                 }
             )
             return result.structured_output
@@ -326,7 +351,14 @@ def generate(
         write_json(run_dir / "failure.json", {"reason": exc.reason})
         return outcome(bundle, "failed", exc.reason)
     except AgyError as exc:
-        write_json(run_dir / "failure.json", {"reason": exc.reason, "detail": str(exc)})
+        write_json(
+            run_dir / "failure.json",
+            {
+                "reason": exc.reason,
+                "detail": str(exc),
+                "denied_actions": exc.denied_actions,
+            },
+        )
         return outcome(bundle, "failed", f"agy_{exc.reason}")
     except (
         ValueError,

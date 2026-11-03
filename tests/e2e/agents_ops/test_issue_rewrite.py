@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import functools
+import hashlib
 import importlib
+import inspect
 import json
 import os
 import re
@@ -583,6 +585,9 @@ def rewrite_env(
             + Path(__file__).with_name(source).read_text().split("\n", 1)[1]
         )
         executable.chmod(0o755)
+    (tmp_path / "fake_agy_tools.py").write_text(
+        Path(__file__).with_name("fake_agy_tools.py").read_text()
+    )
     monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
     monkeypatch.setenv("REWRITE_FAKE_ROOT", str(tmp_path))
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
@@ -747,6 +752,130 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert "/comments?" in calls[patch - 1]["endpoint"]
     assert len(env.state()["edits"]) == 2  # creation version plus our first edit
     assert not any("actions/variables" in call["endpoint"] for call in env.calls("gh"))
+
+
+@pytest.mark.parametrize("ending", ["success", "error", "timeout"])
+def test_hook_recovery_records_commands_and_keeps_failures_private(
+    rewrite_env: RewriteEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    ending: str,
+) -> None:
+    env = rewrite_env
+    profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    profile.parent.mkdir(parents=True)
+    profile.write_text('{"agentMode":"plan"}')
+    files = [env.repo / name for name in git(env.repo, "ls-files").splitlines()]
+    before = {
+        path: (path.stat().st_mode, hashlib.sha256(path.read_bytes()).digest())
+        for path in [*files, profile]
+    }
+    writer = {
+        "structured_output": env.writer(),
+        "commands": ["python3 -c private-command-text", "cat private-input.txt"],
+        "exit_code": 3 if ending == "error" else 0,
+        "pause": ending == "timeout",
+    }
+    (env.root / "turns.json").write_text(
+        json.dumps([writer, {"structured_output": PASS}])
+    )
+    if ending == "timeout":
+        monkeypatch.setattr(cli, "generate", functools.partial(cli.generate, timeout=5))
+    assert env.run("rewrite") == (0 if ending == "success" else 1)
+    public = (env.root / "handoff-1.json").read_text() + (
+        env.root / "summary.md"
+    ).read_text()
+    for secret in ("private-command-text", "private-input.txt", str(env.root)):
+        assert secret not in public
+    commands = env.bundle()["report"]["turns"][0]["commands"]
+    assert commands["attempted_count"] == 2
+    assert commands["denied_count"] == commands["hook_denied_count"] == 1
+    capture = json.loads(
+        (env.root / "private-1/writer-1.log.commands.json").read_text()
+    )
+    assert [entry["command"] for entry in capture["commands"]] == writer["commands"]
+    if ending == "success":
+        assert env.run("apply") == 0
+        assert env.state()["issue"]["body"] == env.rewritten
+    else:
+        failure = json.loads((env.root / "private-1/failure.json").read_text())
+        assert failure["reason"] == ("timeout" if ending == "timeout" else "cli_error")
+        assert any(
+            action.get("command") == writer["commands"][0]
+            for action in failure["denied_actions"]
+        )
+        assert env.state()["issue"]["body"] == env.original and not env.mutations()
+    assert {
+        path: (path.stat().st_mode, hashlib.sha256(path.read_bytes()).digest())
+        for path in before
+    } == before
+    assert not (env.repo / ".agents/hooks.json").exists()
+    assert git(env.repo, "worktree", "list", "--porcelain").count("worktree ") == 1
+
+
+def test_missing_hook_decision_keeps_failure_and_denials_private(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    (env.root / "turns.json").write_text(
+        json.dumps(
+            [
+                {
+                    "structured_output": env.writer(),
+                    "commands": ["python3 -c private-denied-command"],
+                    "unhooked_command": "ls -la private-path",
+                }
+            ]
+        )
+    )
+    assert env.run("rewrite") == 1
+    failure = json.loads((env.root / "private-1/failure.json").read_text())
+    assert failure["reason"] == "command_hook_mismatch"
+    assert (
+        failure["denied_actions"][0]["command"] == "python3 -c private-denied-command"
+    )
+    assert (env.root / "private-1/writer-1.log.commands.json").is_file()
+    public = (env.root / "handoff-1.json").read_text() + (
+        env.root / "summary.md"
+    ).read_text()
+    assert "private-path" not in public and "private-denied-command" not in public
+    assert "agy_command_hook_mismatch" in public
+    assert env.state()["issue"]["body"] == env.original and not env.mutations()
+
+
+@pytest.mark.parametrize("fault", ["missing", "denied_execution", "step", "path"])
+def test_unverified_read_never_applies_a_body_or_publishes_its_path(
+    rewrite_env: RewriteEnv,
+    fault: str,
+) -> None:
+    env = rewrite_env
+    (env.root / "turns.json").write_text(
+        json.dumps(
+            [
+                {
+                    "structured_output": env.writer(),
+                    "read_fault": fault,
+                }
+            ]
+        )
+    )
+    assert env.run("rewrite") == 1
+    failure = json.loads((env.root / "private-1/failure.json").read_text())
+    assert failure["reason"] == "command_hook_mismatch"
+    capture = json.loads(
+        (env.root / "private-1/writer-1.log.commands.json").read_text()
+    )
+    assert len(capture["reads"]) == 1
+    assert capture["hook_verification_errors"]
+    if fault != "missing":
+        assert failure["denied_actions"][0]["action"] == "read_file"
+        assert failure["denied_actions"][0]["path"] == "../private-read-input.txt"
+    public = (env.root / "handoff-1.json").read_text() + (
+        env.root / "summary.md"
+    ).read_text()
+    assert "private-read-input.txt" not in public and "private-other.txt" not in public
+    assert "agy_command_hook_mismatch" in public
+    assert env.run("apply") == 1
+    assert env.state()["issue"]["body"] == env.original and not env.mutations()
 
 
 def test_unsafe_user_settings_keep_original_body_and_finalize_failed(
@@ -1454,6 +1583,9 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
         assert checkout["with"]["persist-credentials"] == "false"
         assert checkout["with"]["ref"] == "${{ github.sha }}"
     for name in ("rewrite", "rewrite_retry"):
+        # Four turns: writer/verifier, then at most one repair and verification.
+        # Plus the existing 10-minute stability deadline and 10 minutes setup/I/O.
+        assert int(jobs[name]["timeout-minutes"]) == 4 * 600 // 60 + 10 + 10
         checkout = next(
             step
             for step in jobs[name]["steps"]
@@ -1467,6 +1599,9 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
     )
     assert upload["with"]["path"].endswith("/public/handoff.json")
     assert "*" not in upload["with"]["path"]
+    assert inspect.signature(pipeline.generate).parameters["timeout"].default == 600
+    agy = importlib.import_module("agy_headless")
+    assert inspect.signature(agy.run_headless).parameters["timeout"].default == 600
 
 
 def test_workflow_retries_once_inside_the_original_owner_authorized_run() -> None:
@@ -1539,3 +1674,30 @@ def test_privileged_workflow_actions_match_verified_official_release_tags() -> N
         re.fullmatch("[0-9a-f]{40}", sha) and expected[action] == (sha, version)
         for action, sha, version in uses
     )
+
+
+def test_manual_validation_uses_production_repair_flow_without_github_writes(
+    rewrite_env: RewriteEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sys.path.insert(0, str(ROOT / "scripts/github_actions"))
+    validation = importlib.import_module("agy_allowlist_validation")
+    env = rewrite_env
+    profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
+    profile.parent.mkdir(parents=True)
+    profile.write_text('{"agentMode":"auto"}')
+    runner = validation.Runner(env.root, env.agy, validation.saved_digest())
+    runner.phase, runner.number = "pipeline", 1
+    env.turns(env.writer(env.rewritten.replace("#17 を", "#18 を")), env.writer(), PASS)
+    monkeypatch.setattr(pipeline, "run_headless", runner.turn)
+    with runner.policy.scope():
+        assert env.run("rewrite") == 0
+    assert env.bundle()["status"] == "ready"
+    assert len(runner.ledger.rows()) == 3
+    assert [item["role"] for item in runner.ledger.rows()] == [
+        "writer-1",
+        "writer-2",
+        "verifier-2",
+    ]
+    assert env.mutations() == []
+    with pytest.raises(validation.agy.AgyError):
+        validation.agy._check_user_settings(env.root)

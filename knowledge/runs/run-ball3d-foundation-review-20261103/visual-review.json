@@ -1,0 +1,65 @@
+{
+  "schema": "tennis_lab_ball3d_visual_review.v1",
+  "provider": "codex",
+  "artifact_manifest_sha256": "4de8e6156b4cfa3d01ddd6231f4ba58725bd0231881ed93ba5d9b8f44f9af761",
+  "preview_source_frames": [
+    0,
+    252,
+    505,
+    757,
+    1009
+  ],
+  "images": {
+    "metrics-table.png": {
+      "sha256": "0f090bef6b324ec20aefce6155a18c280ecb8a05c76192ec425b4313281a9c62",
+      "size_bytes": 230882
+    },
+    "preview-0000.png": {
+      "sha256": "bc5fd1afab0b552421792d025a356946362022804798a228993f01849ad27db3",
+      "size_bytes": 914655
+    },
+    "preview-0252.png": {
+      "sha256": "d699933ac399b35c51ec76088bd356ae7ad1f16d6a6ebb33d799b9c310b4fe51",
+      "size_bytes": 959629
+    },
+    "preview-0505.png": {
+      "sha256": "d9a1dbb083a930a9268f62cd737b6be669db015dbc6a47a04e234441dcde460c",
+      "size_bytes": 959690
+    },
+    "preview-0757.png": {
+      "sha256": "260961b2b7124aa8754db02217124b4c6bfc1cd3911d8793c6938ab7cccd9218",
+      "size_bytes": 968815
+    },
+    "preview-1009.png": {
+      "sha256": "d909fd82f3ce5d6ac4b9941ecb4266017020c9e532f9d27d0f963d94a857a190",
+      "size_bytes": 953048
+    },
+    "extremes.png": {
+      "sha256": "84aff828732d393db0a614a0ba0fb20c4484a22da869572ac64c8abb0142ab76",
+      "size_bytes": 1316107
+    },
+    "trajectories.png": {
+      "sha256": "9f393a8d5bff366721ac587908a91aac6415a2d53185aab142a868e963b3cc5f",
+      "size_bytes": 409348
+    }
+  },
+  "observations": [
+    "The main metric table visibly puts 825 scored / 1462 eligible / 56.43% LOVO coverage beside the baseline evaluation errors. All-view 3D validity is separately headed and shows 83.17%.",
+    "The second table uses the same 768 evaluation points for all three methods and shows 52.53% of eligible references. Notes explain different scoring populations and conditional availability.",
+    "Both tables and their notes are legible and within the standalone figure; the HTML main table cells and headers were independently parsed and checked.",
+    "Representative video images retain observed green crosses and approved estimated white diamonds, method reprojection rings, current valid 3D markers and trajectory gaps. Frame 1009 retains the cam0 excluded-extrapolation state without a reference marker.",
+    "The six largest-error crop rows and the trajectory/distribution/time-series figure were inspected. This checks presentation, not the correctness of human labels or independent 3D truth."
+  ],
+  "html_main_evaluation_row": [
+    "pipeline_baseline",
+    "evaluation",
+    "9.34",
+    "27.08",
+    "16.36%",
+    "825",
+    "1462",
+    "56.43%",
+    "83.17%"
+  ],
+  "html_broken_references": []
+}
