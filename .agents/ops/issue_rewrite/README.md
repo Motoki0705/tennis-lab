@@ -71,6 +71,8 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    GitHubが最初の編集時に作成時の版も追加する場合は、`includesCreatedEdit` のfalse→true、
    変更前の空履歴、作成時刻・作者が一致する一意の作成記録を照合して、その記録を区別する。
    同一作者の追加編集、履歴の欠損・取得失敗・曖昧さも不合格。
+   編集者は `User` なら `login`、`Bot` なら `login + "[bot]"` をviewer・作成者のloginと比較する。
+   `editor=null` は不一致、未知の型・`__typename`/`login` の欠落は取得エラーにする。
 
 不変条件は、必須 `##` 節の集合と順序、`validate_body`、
 `parent.execution.PROGRESS_SECTIONS` の節内の原文（前後の空白を含む）、

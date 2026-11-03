@@ -20,7 +20,7 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
       author { login }
       includesCreatedEdit
       userContentEdits(first: 100, after: $after) {
-        nodes { id editedAt deletedAt editor { login } }
+        nodes { id editedAt deletedAt editor { __typename login } }
         totalCount
         pageInfo { hasNextPage endCursor }
       }
@@ -46,6 +46,20 @@ def has_execution_record(
             if data["detail"]["disposition"] == "startable":
                 return True
     return False
+
+
+def editor_matches_login(editor: Any, login: str) -> bool:
+    """Match an edit actor to a viewer/author login using its GraphQL type."""
+    if editor is None:
+        return False
+    actor = object_value(editor)
+    kind = nonempty(actor.get("__typename"), "editor type")
+    editor_login = nonempty(actor.get("login"), "editor login")
+    if kind == "Bot":
+        return editor_login + "[bot]" == login
+    if kind == "User":
+        return editor_login == login
+    raise ValueError("unsupported_edit_history_editor_type")
 
 
 class GitHub(ParentGitHub):
@@ -124,9 +138,8 @@ class GitHub(ParentGitHub):
                 nonempty(item["editedAt"], "edit time")
                 if item["deletedAt"] is not None:
                     nonempty(item["deletedAt"], "deleted time")
-                editor = item["editor"]
-                if editor is not None:
-                    nonempty(object_value(editor)["login"], "editor")
+                # Validate every editor, including edits predating our PATCH.
+                editor_matches_login(item["editor"], viewer)
                 edits[identity] = {
                     key: item[key] for key in ("id", "editedAt", "deletedAt", "editor")
                 }
@@ -169,7 +182,7 @@ def uninterrupted(
             identity
             for identity in added
             if new[identity]["editedAt"] == before["created_at"]
-            and new[identity]["editor"] == {"login": before["author"]}
+            and editor_matches_login(new[identity]["editor"], before["author"])
             and new[identity]["deletedAt"] is None
         }
         if old or len(creation) != 1:
@@ -180,4 +193,6 @@ def uninterrupted(
     if len(added) != 1:
         return False
     edit = new[next(iter(added))]
-    return edit["deletedAt"] is None and edit["editor"] == {"login": after["viewer"]}
+    return edit["deletedAt"] is None and editor_matches_login(
+        edit["editor"], after["viewer"]
+    )

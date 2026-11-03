@@ -89,11 +89,18 @@
                             "type": "object",
                             "additionalProperties": false,
                             "properties": {
+                              "__typename": {
+                                "enum": [
+                                  "Bot",
+                                  "User"
+                                ]
+                              },
                               "login": {
                                 "type": "string"
                               }
                             },
                             "required": [
+                              "__typename",
                               "login"
                             ]
                           },

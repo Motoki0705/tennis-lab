@@ -1407,7 +1407,7 @@ def test_history_detects_aba_even_when_the_body_matches_and_pages_all_edits(
             "id": f"prior-{i}",
             "editedAt": "2026-10-31T00:00:00Z",
             "deletedAt": None,
-            "editor": {"login": "o"},
+            "editor": {"__typename": "User", "login": "o"},
         }
         for i in range(101)
     ]
@@ -1420,7 +1420,7 @@ def test_history_detects_aba_even_when_the_body_matches_and_pages_all_edits(
             "id": "aba",
             "editedAt": "2026-10-31T00:00:01Z",
             "deletedAt": None,
-            "editor": {"login": "o"},
+            "editor": {"__typename": "User", "login": "o"},
         }
     )
     env.save(state)
@@ -1476,12 +1476,24 @@ def test_failure_job_preserves_a_concurrently_finalized_issue(
 
 
 @pytest.mark.parametrize(
-    "broken", ["author", "timestamp", "ambiguous", "old_edit_changed"]
+    "broken",
+    [
+        "author",
+        "timestamp",
+        "ambiguous",
+        "old_edit_changed",
+        "user_editor",
+        "other_bot",
+        "unknown_type",
+        "missing_typename",
+        "missing_login",
+        "null_editor",
+    ],
 )
 def test_first_edit_creation_record_is_identified_strictly(broken: str) -> None:
     before: dict[str, Any] = {
         "body": "original",
-        "viewer": "bot",
+        "viewer": "github-actions[bot]",
         "author": "owner",
         "created_at": "2026-10-31T00:00:00Z",
         "includes_created_edit": False,
@@ -1490,13 +1502,13 @@ def test_first_edit_creation_record_is_identified_strictly(broken: str) -> None:
     creation = {
         "id": "created",
         "editedAt": "2026-10-31T00:00:00Z",
-        "editor": {"login": "owner"},
+        "editor": {"__typename": "User", "login": "owner"},
         "deletedAt": None,
     }
     edit = {
         "id": "ours",
         "editedAt": "2026-10-31T00:01:00Z",
-        "editor": {"login": "bot"},
+        "editor": {"__typename": "Bot", "login": "github-actions"},
         "deletedAt": None,
     }
     after = {
@@ -1507,14 +1519,30 @@ def test_first_edit_creation_record_is_identified_strictly(broken: str) -> None:
     }
     assert github.uninterrupted(before, after, "candidate")
     if broken == "author":
-        creation["editor"] = {"login": "someone-else"}
+        creation["editor"] = {"__typename": "User", "login": "someone-else"}
     elif broken == "timestamp":
         creation["editedAt"] = "2026-10-31T00:00:01Z"
     elif broken == "ambiguous":
         after["edits"]["another-created"] = {**creation, "id": "another-created"}
-    else:
+    elif broken == "old_edit_changed":
         before["includes_created_edit"] = True
         before["edits"] = {"created": {**creation, "deletedAt": "2026-10-31T00:00:02Z"}}
+    elif broken == "user_editor":
+        edit["editor"] = {"__typename": "User", "login": "github-actions"}
+    elif broken == "other_bot":
+        edit["editor"] = {"__typename": "Bot", "login": "another-bot"}
+    elif broken == "unknown_type":
+        edit["editor"] = {"__typename": "Organization", "login": "github-actions"}
+    elif broken == "missing_typename":
+        edit["editor"] = {"login": "github-actions"}
+    elif broken == "missing_login":
+        edit["editor"] = {"__typename": "Bot"}
+    elif broken == "null_editor":
+        edit["editor"] = None
+    if broken in {"unknown_type", "missing_typename", "missing_login"}:
+        with pytest.raises(ValueError):
+            github.uninterrupted(before, after, "candidate")
+        return
     assert not github.uninterrupted(before, after, "candidate")
 
 
