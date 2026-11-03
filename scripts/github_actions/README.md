@@ -209,6 +209,63 @@ job summaryに観測した版・モデル、usage、CLIの所要時間と版の�
 導入テストでは `install_agy.sh --bin-dir DIR --config-file FILE` で一時ディレクトリと
 `file://` の偽tarballを指定できる。明示した置き先には現在の実行者の所有権で置き、sudoを要しない。
 
+## 手動のagyコマンド調査
+
+`agy_command_census.py` は本番のwriter/verifierのprompt・schemaを指定commitから読み、
+入力JSONを `pipeline.generate` と同じ方法で連結する調査用CLI。
+GitHubへの書き込み・公開・本番の権限変更は行わない。
+入力はpipelineのcontext（`repo`, `issue_number`, `url`, `issue`, `comments`,
+`managed_sections`）と同じ形で用意し、verifierでは合格したwriterの `body` を
+`rewritten` に加える。修正turnのfeedbackもcontext側に明示する。
+
+すべての入力・使い捨てclone・生ログ・結果は
+`~/.local/state/tennis-lab-agents/manual-runs/1566/agy-census/` に置く。
+新規run IDを使う。pilotは最大25回、合意済みのmeasurementは別台帳で最大60回、
+共通lockで逐次実行する。
+`--agy` には `install_agy.sh --bin-dir` で私用に導入した固定版を指定する。
+調査には実モデルの利用枠を消費するため、通常のテストから呼ばない。
+
+```bash
+.venv/bin/python scripts/github_actions/agy_command_census.py run \
+  --phase measurement --timeout 600 --deny-unlisted --prompt-stdin \
+  --id writer-example --source "$PWD" --ref HEAD \
+  --agy "$private/bin/agy" --role writer --input-json "$private/inputs/context.json"
+.venv/bin/python scripts/github_actions/agy_command_census.py summarize \
+  --captures "$private/measurement/runs/writer-example/control/capture.json" \
+  --output "$private/forms.json"
+```
+
+`private` は上記の非公開領域へ設定しておく。measurementは600秒・明示拒否条件を必須とし、
+旧pilotの台帳を変更しない。診断も同じmeasurement台帳へ起動前に記録し、上限へ含める。
+入力snapshot・verifier候補と実行順を開始前に固定する。quota・認証エラーでは再試行せず停止する。
+完了後、所要時間と300秒以内かを保存し、自分が開始した会話の全command stepと
+`reconcile_commands()` で双方向に突き合わせる。生の突き合わせ結果も非公開のまま扱う。
+`--prompt-stdin` はOSの引数長上限を避け、同じprompt全文を1件の入力イベントとして渡す。
+内容の切り詰め・追加turn・会話の再利用は行わず、利用した転送方法をmetadataへ記録する。
+CLI起動前の失敗も予約済み台帳から削除せず、上限に含める。
+
+本番と同じ `readonly_settings()` と `--mode plan` を使い、観測のために
+`--output-format stream-json` へ変える。`agy_census_capture.py` は
+`(conversation_id, step_index)` で更新イベントをまとめ、`CommandLine` を加工せず保存する。
+streamが長い引数を末尾省略した場合は、同じstepのhook記録と省略前prefixが一致するときだけ
+全文を復元し、省略表示と採用元も保存する。任意の不一致やstreamに無いhook stepはエラーにする。
+soft denialはlogのstep番号と結合する。`DONE` だけで実行済みとは判定せず、
+出力・エラーがない場合は不明とする。構造化出力のschema合否とCLI終了は別に保存する。
+コマンドの記述用の正規化は権限判定に使わない。現行grammarの判定は原文に対して行う。
+実CLIが正規化等によって別の判定をする可能性があるので、実行結果も別に残す。
+
+この手動CLIは共通APIを直接呼ばず、同じCLI引数を組み立てる。
+本番の事前検査と異なり、保存済みの起動modeが `auto` でも、
+[セッション限定の `--mode plan` 上書き](https://antigravity.google/docs/cli/reference#configuration-keys-settingsjson)
+を明示して実行する。永続の許可規則・trustされた祖先・global hookは受け入れない。
+実行後にはrequest-review、plan、版・モデル、永続設定の不変を照合する。
+設定ファイルの編集、認証情報のコピー、sandboxや自動承認の有効化は行わない。
+
+比較用の `--deny-unlisted` は、現行grammarにない形式をPreToolUse hookで明示拒否する。
+追加の実行許可は与えないが、モデルへの拒否の伝わり方を変えるので、本番条件とは別に集計する。
+hookのソースと設定は使い捨てclone内に固定し、終了時に変更を検査する。
+stdout、log、入力、metadata、集計はprivateのまま扱い、生データをcommitしない。
+
 ## セキュリティ境界
 
 GitHubは、公開リポジトリのself-hosted runnerではforkのPRからホストを侵害されうると
