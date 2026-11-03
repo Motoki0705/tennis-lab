@@ -54,5 +54,22 @@
     "missing": 0,
     "unverifiable": 28
   },
-  "mutated_script_bytes_match_scoring_script": true
+  "mutated_script_bytes_match_scoring_script": true,
+  "memory_documentation_tests_utc": {
+    "passed_count": 107,
+    "pytest_seconds": 0.32,
+    "wrapper_seconds": 2.0663431989960372,
+    "timezone": "UTC",
+    "workers": 0
+  },
+  "ci_date_fix": {
+    "failed_head": "f1375663e313917429d5940d8a9dfaeb6a3dd5f0",
+    "run_id": 41694724236,
+    "job_id": 126124174439,
+    "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/coverage-cohort-quality.md]",
+    "cause": "JST 2026-11-04 was a future date on UTC 2026-11-03 runner",
+    "corrected_created_and_last_verified": "2026-11-03",
+    "clock_verification": "2026-11-03 18:50:05 UTC",
+    "scoring_script_and_artifacts_unchanged": true
+  }
 }

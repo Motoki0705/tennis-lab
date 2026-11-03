@@ -1,9 +1,9 @@
 ---
 title: "coverageが異なる比較は共通・追加・喪失点の品質を分けて確認する"
 applies_to: all
-source: "PR #1672・#1674・#1676への明示レビューcross-1と、2026-11-04のユーザーの修正指示"
-created: 2026-11-04
-last_verified: 2026-11-04
+source: "PR #1672・#1674・#1676への明示レビューcross-1と、2026-11-04 JSTのユーザーの修正指示"
+created: 2026-11-03
+last_verified: 2026-11-03
 evidence: "PR #1672のcross-1追記とknowledge/nodes/tennis_scene/000034-run-ball3d-topk-multihypothesis-20261103.mdの集合分解を確認する"
 ---
 
