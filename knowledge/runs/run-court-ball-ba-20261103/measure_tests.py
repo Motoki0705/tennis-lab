@@ -25,7 +25,9 @@ def main():
                       "phases_seconds_rounded": phases[node]})
     new = [c for c in cases if "/ball_calibration/" in c["node"] or "test_court_ball_ba.py" in c["node"]]
     collected = re.search(r"(\d+) tests collected in ([0-9.]+)s", collection)
-    passed = re.search(r"(\d+) passed in ([0-9.]+)s", log)
+    passed = re.search(r"(\d+) passed(?:, [^\n]+?)? in ([0-9.]+)s", log)
+    if collected is None or passed is None:
+        raise ValueError("Missing pytest collection/pass summary")
     if int(collected[1]) != len(cases) or int(passed[1]) != len(cases):
         raise ValueError("Test count differs between collection and execution")
     report = {"collected": len(cases), "passed": len(cases), "new_cases": len(new),

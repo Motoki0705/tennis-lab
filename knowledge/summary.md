@@ -1,4 +1,4 @@
-<!-- knowledge-review: c26dea7ffa688da4bcb881a9ad34f777cd12860d469c881f2eb93c055f637bf1 on 2026-11-03 -->
+<!-- knowledge-review: b78a8553f038d9814d0378bda33c33d01283276813843683ac697b46f511aa8a on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）

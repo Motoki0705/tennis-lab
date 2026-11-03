@@ -327,7 +327,7 @@ class PipelineRuntimeConfig:
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
-    ball_bundle_adjustment: BundleAdjustmentConfig | None = None
+    ball_bundle_adjustment: BundleAdjustmentConfig | None
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:

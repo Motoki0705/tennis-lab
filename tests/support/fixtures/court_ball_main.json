@@ -378,5 +378,17 @@
         6.0630316734313965
       ]
     ]
+  },
+  "reference_sources": {
+    "geometry": {
+      "source": "src/utils/geometry/triangulation.py",
+      "snapshot": "court_ball_main_geometry.py.txt",
+      "sha256": "2e0e48646e251b30d42f6f1b9a6bc65a21f7d03649fb2fd50ac5c8bcc6fcc992"
+    },
+    "reconstruction": {
+      "source": "src/tennis_scene/pipeline/components/ball_reconstruction.py",
+      "snapshot": "court_ball_main_reconstruction.py.txt",
+      "sha256": "e3b23844a9941008ee939cf7d8b6700eec4988265e334d887c5fe4e19ce477f2"
+    }
   }
 }

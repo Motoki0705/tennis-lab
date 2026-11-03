@@ -135,5 +135,15 @@ tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory
 tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media
 tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity
 tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy
 
-137 tests collected in 11.15s
+=============================== warnings summary ===============================
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+  /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-court-ball-bundle-adjustment/src/tasks/person_tracking/deep_ocsort_vendor/track.py:203: SyntaxWarning: invalid escape sequence '\D'
+    """
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+138 tests collected in 83.76s (0:01:23)

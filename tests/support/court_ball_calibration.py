@@ -1,6 +1,8 @@
 """Independent non-symmetric metric court and moving-ball projections."""
 
 from dataclasses import replace
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -139,6 +141,55 @@ def main_regression_inputs():
         BallPointsInput(detection, inputs.source_size_wh, inputs.fps))
     rows[1] = replace(rows[1], detections=detection, points=points)
     return replace(inputs, views=tuple(rows))
+
+
+def frozen_main_ball(inputs) -> Any:
+    """Execute checksum-pinned main kernels on this backend for exact regression.
+
+    Golden float arrays from another NumPy/SciPy build can differ by an ULP.
+    The reference is historical source, independent of the current kernels;
+    both executions use this machine's numerical libraries without tolerance.
+    """
+    import ast
+    import hashlib
+    import json
+    import sys
+    import types
+
+    root = Path(__file__).parent / "fixtures"
+    manifest = json.loads((root / "court_ball_main.json").read_text())
+
+    def read(name):
+        record = manifest["reference_sources"][name]
+        data = (root / record["snapshot"]).read_bytes()
+        if hashlib.sha256(data).hexdigest() != record["sha256"]:
+            raise ValueError("Historical main reference source checksum mismatch")
+        return ast.parse(data.decode(), filename=record["source"])
+
+    geometry = types.ModuleType("_court_ball_frozen_main_geometry")
+    sys.modules[geometry.__name__] = geometry
+    exec(compile(read("geometry"), "frozen_main_geometry", "exec"), geometry.__dict__)
+    reconstruction = types.ModuleType("_court_ball_frozen_main_reconstruction")
+    sys.modules[reconstruction.__name__] = reconstruction
+    tree = read("reconstruction")
+    # Bind the original source imports to its original geometric kernel.
+    tree.body = [node for node in tree.body if not (
+        isinstance(node, ast.ImportFrom) and node.module == "src.utils.geometry.triangulation")]
+    for name in ("PinholeCamera", "PointTriangulationConfig", "TriangulatedPoints",
+                 "reject_excessive_speed", "triangulate_points"):
+        reconstruction.__dict__[name] = getattr(geometry, name)
+    exec(compile(tree, "frozen_main_reconstruction", "exec"), reconstruction.__dict__)
+    # Independent source-frame single-ball grouping, before the selectable stage.
+    uv = np.stack([v.points.uv_px for v in inputs.views])
+    confidence = np.stack([v.points.confidence for v in inputs.views])
+    visible = np.stack([v.points.observed for v in inputs.views])
+    observations = GroupedObservations(
+        np.array([0], np.int64), uv[None, :, :, None], confidence[None, :, :, None],
+        visible[None, :, :, None], np.where(visible[None], 0, -1).astype(np.int64))
+    cameras = tuple(geometry.PinholeCamera(v.camera.camera_id, v.camera.intrinsic.copy(),
+        v.camera.rotation.copy(), v.camera.translation.copy()) for v in inputs.views)
+    return reconstruction.reconstruct_ball(observations, cameras, fps=inputs.fps,
+        reprojection_px=20., min_frames=5)
 
 
 def calibration_pipeline_artifacts(inputs, directory):

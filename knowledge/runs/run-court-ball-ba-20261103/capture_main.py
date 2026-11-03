@@ -40,6 +40,14 @@ def main():
                        ("positions", "valid", "reasons", "inliers", "reprojection_px")},
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
+    value["reference_sources"] = {}
+    for key, source in (("geometry", "src/utils/geometry/triangulation.py"),
+                        ("reconstruction", "src/tennis_scene/pipeline/components/ball_reconstruction.py")):
+        data = subprocess.check_output(["git", "show", f"{args.main_ref}:{source}"])
+        snapshot = f"court_ball_main_{key}.py.txt"
+        (args.output.parent / snapshot).write_bytes(data)
+        value["reference_sources"][key] = {"source": source, "snapshot": snapshot,
+                                          "sha256": hashlib.sha256(data).hexdigest()}
     args.output.write_text(json.dumps(value, indent=2) + "\n")
     print(f"Captured {result.trajectory.valid.sum()} valid frames from {value['source_main']}")
 

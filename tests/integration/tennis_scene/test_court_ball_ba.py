@@ -29,6 +29,7 @@ from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from tests.support.court_ball_calibration import (
     calibration_method_inputs,
     calibration_pipeline_artifacts,
+    frozen_main_ball,
     main_regression_inputs,
 )
 
@@ -97,6 +98,7 @@ def test_fixed_default_matches_captured_main_arrays(tmp_path):
     source, artifacts = calibration_pipeline_artifacts(inputs, tmp_path)
     cfg = runtime(tmp_path, "fixed")
     assert cfg.ball_bundle_adjustment is None
+    assert (cfg.ball_reprojection_px, cfg.ball_min_frames) == (20., 5)
     node = next(n for n in standard_definition(cfg, source, code_identity="contract") if n.name == "ball_triangulation")
     assert isinstance(node.component, BallTriangulationModule)
     assert node.io.version == 1
@@ -105,8 +107,12 @@ def test_fixed_default_matches_captured_main_arrays(tmp_path):
     frozen = json.loads((Path(__file__).parents[2] / "support/fixtures/court_ball_main.json").read_text())
     for field, expected in frozen["ball"].items():
         np.testing.assert_array_equal(getattr(actual, field), np.array(expected, dtype=getattr(actual, field).dtype))
-    for field, expected in frozen["trajectory"].items():
-        np.testing.assert_array_equal(getattr(actual.trajectory, field), np.array(expected, dtype=getattr(actual.trajectory, field).dtype))
+    expected_main = frozen_main_ball(inputs)
+    for field in frozen["trajectory"]:
+        current_array = getattr(actual.trajectory, field)
+        main_array = getattr(expected_main.trajectory, field)
+        assert current_array.dtype == main_array.dtype
+        np.testing.assert_array_equal(current_array, main_array)
 
 
 def test_lovo_recomputes_selected_cameras_only_and_saves_typed_refinement(tmp_path):

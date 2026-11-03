@@ -14,8 +14,9 @@ nodes=(
   tests/unit/tennis_scene/visualization/test_ball3d_comparison.py
   tests/unit/tennis_scene/visualization/test_ball3d_tables.py
   tests/integration/tennis_scene/test_ball3d_media.py
+  tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy
 )
-.venv/bin/python -m pytest -o addopts='' -n 0 --collect-only -q "${nodes[@]}" | tee "$run_dir/test-collection.txt"
-.venv/bin/python -m pytest -o addopts='' -n 0 -q --durations=0 --durations-min=0 \
+.venv/bin/python -m pytest -o addopts='' --import-mode=importlib -n 0 --collect-only -q "${nodes[@]}" | tee "$run_dir/test-collection.txt"
+.venv/bin/python -m pytest -o addopts='' --import-mode=importlib -n 0 -q --durations=0 --durations-min=0 \
   --junitxml=/tmp/court-ball-ba-tests.xml "${nodes[@]}" | tee "$run_dir/test-durations.txt"
 .venv/bin/python "$run_dir/measure_tests.py"

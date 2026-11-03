@@ -29,3 +29,16 @@ v1の保存内容を確認し、source-frameの2Dと時刻補正後の2Dを区�
 ball artifact/SceneResultの画素・maskが元観測と一致し、再標本化座標は診断欄にだけあることを確認する。
 v2を新規directoryで実行し、v1の位置・valid・使用view・camera・offsetのbitwise一致も確認する。
 v1は上書きせず、測定記録をv1/とoutputsへ保持する。設定や最適化の残差は変更しない。
+
+## CIの設定監査による追加確認
+
+runtime型の新fieldにPython defaultを置くと、構成所有の既定値という既存契約に反する。
+型のdefaultを削除し、from_configでYAMLから決めた値を常に渡す。
+既存の `tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy`
+を再利用して契約を守り、新規caseは増やさない。収集はrepo標準のimportlibモードを明示し、
+ミラー配置の同名test moduleを衝突させない。
+
+CIの別数値環境では、記録したmainのfloat32位置と1 ULP程度の差が出ることも確認した。
+許容差を広げず、checksum固定の元main計算核を同じNumPy/SciPyで動かし、全trajectory配列を
+厳密比較する回帰へ変更する。元frameの画素・maskの固定期待値も引き続き厳密比較する。
+凍結したgeometryとreconstructionはmainの原文で、現行の計算核を参照しない。
