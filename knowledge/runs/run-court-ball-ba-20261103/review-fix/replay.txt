@@ -1,0 +1,7 @@
+/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-court-ball-bundle-adjustment/src/tasks/person_tracking/deep_ocsort_vendor/track.py:203: SyntaxWarning: invalid escape sequence '\D'
+  """
+all_views: arrays, cameras, offsets and all diagnostics exactly equal
+without_cam0: arrays, cameras, offsets and all diagnostics exactly equal
+without_cam1: arrays, cameras, offsets and all diagnostics exactly equal
+without_cam2: arrays, cameras, offsets and all diagnostics exactly equal
+{"receipt": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/court_ball_ba_config_review_v1_20261104/verification.json", "sha256": "473554ecc235acbd955704e5c9b3d17ae1a0ff5b06cd48a0c0dfbc155a41aea0", "folds": 4, "predictions_changed": false, "seconds": 18.16571832000045}

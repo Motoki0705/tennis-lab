@@ -1,4 +1,4 @@
-<!-- knowledge-review: db1afaf13e7603399a391bbc827f76f2be979bc0980d0cb8ee76f4d7dde85b8d on 2026-11-03 -->
+<!-- knowledge-review: 27388fbfdedcb6704ad9090ac5050ed9fd10c740b32a5441f0fa1e02520b6dd7 on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -28,6 +28,7 @@
 後半LOVOは9.34/27.08→10.95/35.51px、coverageは56.43→54.58%へ悪化し、2方式共通791点でも悪化した。
 全viewの再投影は下がるが、court holdout中央値もcam0/1で悪化し、採用を支持しない。設定を見直して後半へ合わせていない。
 平面courtの局所rank確認・合成のcamera/時刻復元は、実clipでの精度保証ではない。LINEは再取得せず、既定fixedを維持する。
+明示レビュー後に設定をcompositionへ一本化し、同じ値で4foldを再実行した予測・校正・時刻は厳密一致したため、上の負の結論を維持する。
 次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
