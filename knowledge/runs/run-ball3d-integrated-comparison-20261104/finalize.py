@@ -82,6 +82,20 @@ def main():
         parser = _References()
         parser.feed((output / "index.html").read_text())
         paths = {"index.html", *parser.paths}
+        paths.update(
+            name
+            for name in (
+                "conclusions.md",
+                "metrics.md",
+                "cohort-primary.md",
+                "visual-review.json",
+                "postprocessing-verification.json",
+                "common-cohort-summary.json",
+                "prior-cohort-comparison.json",
+                "report-stage.json",
+            )
+            if (output / name).is_file()
+        )
         portable = output / "portable"
         portable.mkdir(exist_ok=False)
         for relative in sorted(paths):
