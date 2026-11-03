@@ -1,4 +1,4 @@
-<!-- knowledge-review: d1b1665b34856262328c75ba563554a0e84e2216cbedd5054f0759b987f1d7b3 on 2026-11-03 -->
+<!-- knowledge-review: 7ff9a12d9908c0d948c4056494de51c7b2e1d20e1191f49f5aec3bfb63778a23 on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -50,6 +50,14 @@ pxは長辺512の前処理後モデル座標である。2sceneでは悪化して
 滑らかさと観測追従の交換関係であり、独立3D精度の向上は主張しない。
 README・Blender reveal・単独3Dの公開デモを同じ新sceneへ更新し、固定したv5 releaseと過去runは保持する。
 通常pipelineのside/alignmentまで再実行した比較ではない。別clipとbounce/hitの独立GT評価を次に行い、モデル採用判断は維持する。
+
+## 2026-11-03のボール容量比較（準備・実測待ち）
+
+[新CNNと4 query mHCの容量比較](nodes/ball_detection/000069-run-ball-capacity-scaling-20261103.md)は、
+同じ配布データ約157GBの検証と、CNN・mHC query・strict転送・再開のCPU検証を完了した。
+理論計算量はCNN3.30、全query構成3.47〜5.53 GMAC/frame。GPU速度・VRAM・精度はまだ未測定であり、
+容量増加の効果や既存方式との優劣は結論しない。次は固定7条件のL4実測と等更新数の学習を行う。
+seed42のみ・validationのみという制限を保ち、採用モデルは変更しない。
 
 ## 2026-10-25のボール逐次学習（2026-10-31完了）
 

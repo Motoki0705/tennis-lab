@@ -1,0 +1,31 @@
+{
+  "schema": "ball_capacity_validation.v1",
+  "cpu_suite": {
+    "passed": 219,
+    "seconds": 40.64,
+    "command": "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 .venv/bin/python -m pytest -n0 tests/unit/tasks/ball_detection/models/mdd tests/unit/tasks/ball_detection/model_io/test_mdd_temporal.py tests/unit/tasks/ball_detection/checkpoints/test_temporal.py tests/unit/tasks/ball_detection/training/test_temporal.py tests/integration/tasks/ball_detection/test_sequential_temporal_training.py --durations=15"
+  },
+  "post_review": {
+    "passed": 35,
+    "seconds": 18.5,
+    "scope": "test_config.py and test_sequential_temporal_training.py after correcting report model_kind and malformed name rejection; overlapping coverage, not 35 additional unique tests"
+  },
+  "new_resume_call_seconds": 4.4,
+  "halo_call_seconds_max": 0.69,
+  "ruff": "passed: changed src/tests and all campaign Python",
+  "mypy": "passed: 12 source files, then the two post-review source files",
+  "analysis_validation": {
+    "synthetic_fixture": true,
+    "passed": true,
+    "rows": 8,
+    "adjacent_comparisons": 6,
+    "mismatched_query_draw_rejected": true,
+    "research_metrics": false
+  },
+  "independent_cnn_forward_macs": 3299645440,
+  "git_diff_check": "passed",
+  "limits": [
+    "CPU FP32 strict resume on reduced fixtures; no GPU bitwise resume claim.",
+    "Full 720p BF16/compile/VRAM verification is performed by the GPU preflight."
+  ]
+}

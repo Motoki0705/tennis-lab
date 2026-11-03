@@ -1,18 +1,24 @@
 """Actual model/AdamW/pack/RNG tests for sequential DPT and coordinate stages."""
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 import torch
 
-from src.tasks.ball_detection.checkpoints.temporal import initialize_finetuning
+from src.tasks.ball_detection.checkpoints.temporal import (
+    inherit_optimizer,
+    initialize_finetuning,
+)
 from src.tasks.ball_detection.model_io.mdd_temporal import restore_temporal_model
 from src.tasks.ball_detection.training.runtime.execution import CoordinateRuntime
 from src.tasks.ball_detection.training.temporal.runner import train_temporal_model
 from src.utils.checksum import dual_sha256
+from tests.support.model_contracts.lifecycle import assert_tree_equal
 from tests.support.tasks.ball_detection.temporal import (
     prepare_fixture,
+    small_mhc_model,
     small_model,
     update_budget,
 )
@@ -144,11 +150,90 @@ def test_both_sequential_branches_inherit_weights_moments_schedule_and_pack_posi
     query_report = json.loads((q64 / "validation-update-00000003.json").read_text())
     dpt_report = json.loads((d64 / "validation-update-00000003.json").read_text())
     assert query_report["identities"] == dpt_report["identities"]
+    assert query_report["model_kind"] == "mdd_temporal_query"
     assert query_report["metrics"]["support"] == dpt_report["metrics"]["support"]
     assert not query_report["absence_detection"]["available"]
     assert "negative_fpr" not in query_report["metrics"]
     model = restore_temporal_model(state(q64)["model_artifact"])
     assert model.config.frames == 64
+
+
+def test_mhc_direct_t32_dpt_to_t64_freeze_inheritance_and_exact_runner_resume(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prepared = prepare_fixture(tmp_path / "data")
+    pre = tmp_path / "pre"
+    source = replace(small_model("dpt"), encoder_variant="x3d_csn", temporal_mixing="depthwise3d",
+                     residual_blocks=(0, 1, 1, 1, 1, 1), layers=2)
+    common = dict(runtime=CoordinateRuntime(cpu_threads=2), device=torch.device("cpu"),
+                  augmentation=None, distance_px=20.)
+    train_temporal_model(architecture="dpt", phase="pretrain", manifest=prepared / "train_T32.json",
+                         evaluation_manifest=prepared / "evaluation_T32.json", model_config=source,
+                         output=pre, budget=update_budget(), **common)
+    parent_path = pre / "checkpoint-update-00000003.pt"
+    parent = state(pre)
+    config = small_mhc_model()
+    model, receipt = initialize_finetuning(parent_path, expected_sha256=dual_sha256(parent_path), parent_update=3, config=config)
+    groups = [[parameter for name, parameter in model.named_parameters() if name.startswith("encoder.")],
+              [parameter for name, parameter in model.named_parameters() if not name.startswith("encoder.")]]
+    optimizer = torch.optim.AdamW([dict(params=parameters) for parameters in groups], lr=1e-4)
+    inherit_optimizer(parent_path, optimizer, model, receipt)
+    assert all(parameter in optimizer.state for parameter in groups[0])
+    assert all(parameter not in optimizer.state for parameter in groups[1])
+    inherited = {name: optimizer.state[parameter] for name, parameter in model.named_parameters() if name.startswith("encoder.")}
+    budget = update_budget(learning_rate=1e-4, initial_learning_rate=1e-4, warmup_updates=0,
+                           freeze_updates=1, encoder_lr_ratio=.1, optimizer_transfer="inherit")
+
+    def train(output: Path, *, stop: int | None = None, resume: Path | None = None, model_config=config) -> None:
+        options = (dict(resume=resume) if resume is not None else
+                   dict(initial_artifact=parent_path, initial_artifact_sha256=dual_sha256(parent_path), parent_update=3))
+        train_temporal_model(architecture="query", phase="finetune", manifest=prepared / "train_T64.json",
+                             evaluation_manifest=prepared / "evaluation_T64.json", model_config=model_config,
+                             output=output, budget=budget, stop_after_update=stop, **common, **options)
+
+    continuous, interrupted = tmp_path / "continuous", tmp_path / "interrupted"
+    train(continuous)
+    train(interrupted, stop=1)
+    checkpoint_path = interrupted / "checkpoint-update-00000001.pt"
+    frozen = torch.load(checkpoint_path, weights_only=True)
+    for names, group in zip(frozen["optimizer_parameter_names"], frozen["optimizer"]["param_groups"], strict=True):
+        for name, index in zip(names, group["params"], strict=True):
+            if name.startswith("encoder."):
+                assert_tree_equal(inherited[name], frozen["optimizer"]["state"][index], name)
+                assert_tree_equal(parent["model_artifact"]["state_dict"][name], frozen["model_artifact"]["state_dict"][name], name)
+            else:
+                assert float(frozen["optimizer"]["state"][index]["step"]) == 1
+    with pytest.raises(ValueError, match="Resume recipe changed"):
+        train(interrupted, resume=checkpoint_path, model_config=replace(config, mhc_eps=1e-5))
+    from src.tasks.ball_detection.training.temporal import runner
+    code = runner.source_identity()
+    code["source_sha256"]["src/utils/models/components/mhc.py"] = "changed"
+    with monkeypatch.context() as local:
+        local.setattr(runner, "source_identity", lambda: code)
+        with pytest.raises(ValueError, match="Resume code"):
+            train(interrupted, resume=checkpoint_path)
+    # An uncommitted log suffix must be discarded before reproducing update 2.
+    with (interrupted / "train.jsonl").open("ab") as stream:
+        stream.write(b'{"update":2,"uncommitted":true}\ntruncated')
+    train(interrupted, stop=2, resume=checkpoint_path)
+    for update in (1, 2):
+        first = torch.load(continuous / f"checkpoint-update-{update:08d}.pt", weights_only=True)
+        second = torch.load(interrupted / f"checkpoint-update-{update:08d}.pt", weights_only=True)
+        for key in ("model_artifact", "optimizer", "schedule", "rng", "updates_completed", "sample_position"):
+            assert_tree_equal(first[key], second[key], key)
+    train(interrupted, resume=interrupted / "checkpoint-update-00000002.pt")
+    first, second = state(continuous), state(interrupted)
+    for key in ("model_artifact", "optimizer", "schedule", "rng", "updates_completed", "sample_position"):
+        assert_tree_equal(first[key], second[key], key)
+    rows = [json.loads(line) for line in (interrupted / "train.jsonl").read_text().splitlines()]
+    assert rows[0]["encoder_frozen"] and rows[0]["encoder_learning_rate"] == 0
+    assert not rows[1]["encoder_frozen"] and rows[1]["encoder_learning_rate"] == pytest.approx(rows[1]["learning_rate"] * .1)
+    assert [row["sample_position"] for row in rows] == [4, 5, 6]
+    assert state(interrupted)["model_artifact"]["training"]["cumulative_updates"] == 6
+    validation = json.loads((interrupted / "validation-update-00000003.json").read_text())
+    assert validation["metrics"]["support"]["observed"] == 88
+    assert validation["model_kind"] == "mdd_mhc_query"
+    assert not validation["absence_detection"]["available"]
 
 
 def test_continuous_learning_rate_has_requested_endpoints_and_stage_boundaries() -> (

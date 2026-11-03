@@ -47,6 +47,7 @@ from src.tasks.ball_detection.evaluation.temporal_heatmap import (
     evaluate_temporal_heatmap,
 )
 from src.tasks.ball_detection.model_io.mdd_temporal import (
+    QUERY_CONFIG_TYPES,
     TemporalConfig,
     build_temporal_model,
     restore_temporal_model,
@@ -57,7 +58,6 @@ from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
     MDDHeatmapConfig,
     MDDHeatmapHybridConfig,
-    MDDTemporalQueryConfig,
 )
 from src.tasks.ball_detection.training.runtime.compilation import (
     compile_coordinate_model,
@@ -158,12 +158,12 @@ def train_temporal_model(
     stop_after_update: int | None = None,
     persist: Callable[[Path, str], None] | None = None,
 ) -> dict[str, Any]:
-    expected_type = dict(
-        dpt=MDDHeatmapConfig,
-        hybrid=MDDHeatmapHybridConfig,
-        query=MDDTemporalQueryConfig,
+    expected_types = dict(
+        dpt=(MDDHeatmapConfig,),
+        hybrid=(MDDHeatmapHybridConfig,),
+        query=QUERY_CONFIG_TYPES,
     ).get(architecture)
-    if type(model_config) is not expected_type or phase not in {"pretrain", "finetune"}:
+    if expected_types is None or type(model_config) not in expected_types or phase not in {"pretrain", "finetune"}:
         raise ValueError("Declare architecture and training phase explicitly")
     if phase == "pretrain" and model_config.frames != 32:
         raise ValueError("Direct pretraining requires T=32")
