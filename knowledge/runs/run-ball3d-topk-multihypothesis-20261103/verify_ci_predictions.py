@@ -10,6 +10,7 @@ import subprocess
 import time
 from dataclasses import asdict
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from hydra import compose, initialize_config_dir
@@ -44,20 +45,22 @@ def main() -> None:
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     fingerprint = document_digest({str(p): dual_sha256(p) for p in sorted(Path("src").rglob("*.py"))})
     methods = [baseline_from_bundle(bundle), TopKMultiHypothesis(runtime.ball_topk, min_frames=runtime.ball_min_frames)]
-    runs = run_comparison({method.name: method for method in methods}, bundle.inputs,
-                          args.output / "results", bundle_sha256=bundle.manifest_sha256,
-                          code_commit=commit, code_fingerprint=fingerprint)
     comparisons = []
-    for name, rows in runs.items():
-        for actual in rows:
-            before = load_run(args.prior / "results" / name / actual.key)
-            assert before.config == actual.config
-            for field in ("frame_indices", "positions", "valid", "used_views"):
-                np.testing.assert_array_equal(getattr(actual.result, field), getattr(before.result, field))
-            assert set(actual.result.diagnostics) == set(before.result.diagnostics)
-            for key in before.result.diagnostics:
-                np.testing.assert_array_equal(actual.result.diagnostics[key], before.result.diagnostics[key])
-            comparisons.append({"method": name, "fold": actual.key, "arrays_and_diagnostics_bitwise_equal": True})
+    # Persist only the comparison receipt; foundation run files are temporary.
+    with TemporaryDirectory(prefix="ball3d-topk-verification-") as scratch:
+        runs = run_comparison({method.name: method for method in methods}, bundle.inputs,
+                              Path(scratch) / "results", bundle_sha256=bundle.manifest_sha256,
+                              code_commit=commit, code_fingerprint=fingerprint)
+        for name, rows in runs.items():
+            for actual in rows:
+                before = load_run(args.prior / "results" / name / actual.key)
+                assert before.config == actual.config
+                for field in ("frame_indices", "positions", "valid", "used_views"):
+                    np.testing.assert_array_equal(getattr(actual.result, field), getattr(before.result, field))
+                assert set(actual.result.diagnostics) == set(before.result.diagnostics)
+                for key in before.result.diagnostics:
+                    np.testing.assert_array_equal(actual.result.diagnostics[key], before.result.diagnostics[key])
+                comparisons.append({"method": name, "fold": actual.key, "arrays_and_diagnostics_bitwise_equal": True})
     # Check original arrays/media/HTML/metrics too; verification never writes v2.
     for relative, meta in manifest["files"].items():
         path = args.prior / relative
@@ -71,6 +74,7 @@ def main() -> None:
         "prior_output": str(args.prior.resolve()), "prior_inventory_sha256": dual_sha256(args.prior / "artifacts.json"),
         "runtime_topk_values_equal_v2_frozen_config": True, "comparisons": comparisons,
         "original_inventory_files_verified": len(manifest["files"]),
+        "temporary_predictions_removed": True,
         "default_solver_files_equal_recorded_main": solver_identity,
         "scoring_recomputed": False,
         "metric_conclusion": "all predictions and diagnostic arrays identical; unchanged scorer, cameras and references imply unchanged accuracy and coverage",

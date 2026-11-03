@@ -89,7 +89,8 @@ def test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algori
     loaded = codec.load(payload, tmp_path / "codec", arrays)
     assert loaded.association is not None
     np.testing.assert_array_equal(loaded.association.selected_uv_px, output.association.selected_uv_px)
-    runs = run_method(TopKMultiHypothesis(cfg.ball_topk), inputs,
+    method = TopKMultiHypothesis(cfg.ball_topk, min_frames=cfg.ball_min_frames)
+    runs = run_method(method, inputs,
         bundle_sha256="synthetic", code_commit="synthetic", code_fingerprint="synthetic")
     for run in runs:
         save_run(tmp_path / run.key, run)
@@ -101,7 +102,7 @@ def test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algori
     # Changing the excluded camera cannot change its two-view fold.
     modified = replace(inputs, views=(replace(inputs.views[0], detections=replace(inputs.views[0].detections,
         evidence=inputs.views[1].detections.evidence)), *inputs.views[1:]))
-    result = TopKMultiHypothesis()(modified.select_cameras(inputs.camera_ids[1:]))
+    result = method(modified.select_cameras(inputs.camera_ids[1:]))
     np.testing.assert_array_equal(result.positions, runs[1].result.positions)
     artifacts["detections_right"] = replace(inputs.views[0].detections, evidence=None,
                                               score_semantics="annotation_acceptance_not_probability")

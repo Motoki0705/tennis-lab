@@ -6,6 +6,10 @@
 默认仍是 `triangulation`。配置位于 `ball_reconstruction.topk`，由 `TopKConfig` 验证。
 只用保存的gate前候选，不用RGB、重新推理、dense map、GT或学习参数。
 像素阈值按相对1920×1080的对角线缩放，运动单位是m/s、m/s²，缺测限制用source frame。
+所有默认值均由Hydra composition提供。评估端也从
+`PipelineRuntimeConfig.from_config(composed, bind_inputs=False)` 的结果构造
+`TopKMultiHypothesis(runtime.ball_topk, min_frames=runtime.ball_min_frames)`。
+配置类型与adapter均不补全缺失的设置。
 
 所有valid且K≤8的候选均参与，没有score阈值。0 score仅在计算log时取1e-8。
 枚举全部camera-pair候选组合，以等权DLT三角测量；每个pair还提出按几何和score选择

@@ -60,7 +60,7 @@ class TopKBallInputAssembler:
 
 
 class TopKBallTriangulationModule:
-    def __init__(self, camera_ids: tuple[str, ...], config: TopKConfig, *, min_frames: int, enabled: bool = True) -> None:
+    def __init__(self, camera_ids: tuple[str, ...], config: TopKConfig, *, min_frames: int, enabled: bool) -> None:
         self.config, self.min_frames, self.enabled = config, min_frames, enabled
         # The base ball payload is unchanged; the optional component additionally
         # persists typed association evidence. The default component/schema is intact.

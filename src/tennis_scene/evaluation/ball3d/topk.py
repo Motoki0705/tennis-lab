@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from src.tennis_scene.ball_association.topk import TopKConfig, associate_topk
@@ -13,8 +13,8 @@ from .contracts import Ball3DResult, MethodInput
 
 @dataclass(frozen=True)
 class TopKMultiHypothesis:
-    settings: TopKConfig = field(default_factory=TopKConfig)
-    min_frames: int = 5
+    settings: TopKConfig
+    min_frames: int
 
     @property
     def name(self) -> str:

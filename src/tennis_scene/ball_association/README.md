@@ -8,6 +8,10 @@ Select `ball_reconstruction.method=topk_multihypothesis` in the standard pipelin
 The default remains `triangulation`. Settings live in `ball_reconstruction.topk`;
 `TopKConfig` validates them. Pixel thresholds use the source diagonal relative to
 1920×1080, motion uses metres/seconds, and missing limits use source frames.
+Hydra composition owns all defaults. Construct the evaluation adapter with
+`TopKMultiHypothesis(runtime.ball_topk, min_frames=runtime.ball_min_frames)` using
+`PipelineRuntimeConfig.from_config(composed, bind_inputs=False)`; neither the
+settings type nor the adapter fills missing settings.
 
 Every valid candidate up to K≤8 is eligible, including zero-score candidates.
 Zero is floored at 1e-8 only for numerical log evaluation, never used as a gate.

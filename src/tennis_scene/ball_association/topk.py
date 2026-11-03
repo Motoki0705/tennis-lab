@@ -15,22 +15,22 @@ from src.utils.geometry.triangulation import PinholeCamera, solve_homogeneous_dl
 
 @dataclass(frozen=True)
 class TopKConfig:
-    top_k: int = 8
-    max_hypotheses: int = 24
-    beam_width: int = 96
-    max_missing_frames: int = 3
-    reprojection_px: float = 20.0
-    reprojection_sigma_px: float = 6.0
-    score_weight: float = 1.0
-    missing_view_cost: float = 1.5
-    missing_frame_cost: float = 3.0
-    restart_cost: float = 2.0
-    max_speed_mps: float = 65.0
-    speed_scale_mps: float = 35.0
-    speed_weight: float = 0.1
-    acceleration_scale_mps2: float = 250.0
-    acceleration_weight: float = 1.0
-    turn_cost_cap: float = 3.0
+    top_k: int
+    max_hypotheses: int
+    beam_width: int
+    max_missing_frames: int
+    reprojection_px: float
+    reprojection_sigma_px: float
+    score_weight: float
+    missing_view_cost: float
+    missing_frame_cost: float
+    restart_cost: float
+    max_speed_mps: float
+    speed_scale_mps: float
+    speed_weight: float
+    acceleration_scale_mps2: float
+    acceleration_weight: float
+    turn_cost_cap: float
 
     def __post_init__(self) -> None:
         for name, lower, upper in (
@@ -212,7 +212,7 @@ def select_temporal_path(hypotheses: list[_Hypotheses], fps: float,
 
 
 def associate_topk(evidence: tuple[BallHeatmapEvidence, ...], cameras: tuple[PinholeCamera, ...],
-                   *, fps: float, config: TopKConfig, min_frames: int = 1) -> AssociationResult:
+                   *, fps: float, config: TopKConfig, min_frames: int) -> AssociationResult:
     if not math.isfinite(fps) or fps <= 0 or len(evidence) != len(cameras) or len(cameras) < 2:
         raise ValueError("Association requires matching evidence/cameras and positive fps")
     if len({c.camera_id for c in cameras}) != len(cameras):

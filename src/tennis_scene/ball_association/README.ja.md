@@ -6,6 +6,10 @@
 既定は `triangulation`。設定は `ball_reconstruction.topk`、検証は `TopKConfig`。
 保存済みgate前候補だけを使い、RGB、再推論、dense map、GT、学習済みパラメータを使わない。
 画素閾値は1920×1080に対する対角長比、運動はm/s・m/s²、欠測上限はsource frame単位。
+既定値はすべてHydra compositionが所有する。評価側も
+`PipelineRuntimeConfig.from_config(composed, bind_inputs=False)` の結果から
+`TopKMultiHypothesis(runtime.ball_topk, min_frames=runtime.ball_min_frames)` を作る。
+設定型とadapterは欠落した設定値を補完しない。
 
 validなK≤8候補をscoreで切らず、全camera-pair候補組を等重みDLTで三角測量する。
 0 scoreはlog評価だけ1e-8へ丸める。各pairの幾何・scoreに最も整合する他view候補を

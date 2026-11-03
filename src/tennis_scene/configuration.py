@@ -6,7 +6,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Any, Literal, cast
+from typing import Any, Literal, cast, get_type_hints
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -251,8 +251,8 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
     "method": ConfigField.of(str),
     "topk": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.ball_reconstruction.topk", fields={
-        name: ConfigField.of(int) if type(getattr(TopKConfig(), name)) is int else ConfigField.of(float, int)
-        for name in TopKConfig.__dataclass_fields__
+        name: ConfigField.of(int) if annotation is int else ConfigField.of(float, int)
+        for name, annotation in get_type_hints(TopKConfig).items()
     })),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
