@@ -45,28 +45,34 @@ metrics:
   clock_cam1_offset_frames: -0.24927409120949945
   clock_cam2_offset_frames: -0.774857871707072
   remove_loess_evaluation_paired_median_reduction_px: -0.6077690525252528
-  tests_passed: 35
-  pytest_wall_seconds: 25.47
+  tests_passed: 53
+  pytest_wall_seconds: 17.76
+  common_evaluation_lovo_count: 750
+  common_evaluation_baseline_median_px: 8.742882228668506
+  common_evaluation_baseline_p90_px: 24.712196046133982
 artifacts:
   run_dir: knowledge/runs/run-ball3d-error-decomposition-20261103
-  output_dir: outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/error_decomposition_v1
-  reproduction: knowledge/runs/run-ball3d-error-decomposition-20261103/repro.sh
-  metrics: knowledge/runs/run-ball3d-error-decomposition-20261103/run-summary.json
+  output_dir: outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/error_decomposition_v2
+  reproduction: knowledge/runs/run-ball3d-error-decomposition-20261103/rescore.sh
+  metrics: knowledge/runs/run-ball3d-error-decomposition-20261103/rescore-summary.json
   fold_metrics: knowledge/runs/run-ball3d-error-decomposition-20261103/fold-metrics.csv
   regression: knowledge/runs/run-ball3d-error-decomposition-20261103/regression-coefficients.csv
   paired_budget: knowledge/runs/run-ball3d-error-decomposition-20261103/paired-budget.json
-  tests: knowledge/runs/run-ball3d-error-decomposition-20261103/test-results.json
-  inventory: knowledge/runs/run-ball3d-error-decomposition-20261103/artifacts.json
-  verification: knowledge/runs/run-ball3d-error-decomposition-20261103/verification.json
+  tests: knowledge/runs/run-ball3d-error-decomposition-20261103/rebase-test-results.json
+  inventory: knowledge/runs/run-ball3d-error-decomposition-20261103/artifacts-v2.json
+  verification: knowledge/runs/run-ball3d-error-decomposition-20261103/rescore-verification.json
+  v1_output_dir: outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/error_decomposition_v1
+  full_replay: knowledge/runs/run-ball3d-error-decomposition-20261103/repro.sh
 parents:
 - run-ball3d-evaluation-foundation-20261103
+- run-ball3d-foundation-review-20261103
 relations: []
 papers: []
 tags: []
 repro:
-  commit: 7bbccf50eed03350f030560d3d0c565854db247f
-  command: bash knowledge/runs/run-ball3d-error-decomposition-20261103/repro.sh BUNDLE_DIR
-    VIDEOS_DIR GROUND_TRUTH_JSON NEW_OUTPUT_DIR
+  commit: 50c49cec41fad4089dd8fa2aea62629e2401e82d
+  command: bash knowledge/runs/run-ball3d-error-decomposition-20261103/rescore.sh
+    BUNDLE_DIR GROUND_TRUTH_JSON PRIOR_COMPARISON_DIR NEW_OUTPUT_DIR
 ---
 
 ## 条件と診断の範囲
@@ -244,7 +250,7 @@ LOVOの三角測量は保持cameraの注釈を除外cameraの時刻へ隣接2点
 全viewはcam0時刻の軌道を共通offset投影で採点し、split直前の1点を無効にして投影補間も境界を跨がない。
 clock値は校正・注釈・補間誤差も吸収するため、物理的な同期ずれの真値ではない。
 
-## 検証・再現・制限
+## v1実行時の検証・再現・制限
 
 [test-plan.md](../../runs/run-ball3d-error-decomposition-20261103/test-plan.md) を実装前に作成した。
 追加8caseは非対称camera・時刻と手計算を使い、共通採点集合・符号/単位・候補padding・
@@ -266,9 +272,76 @@ GNU timeのwallは394.45秒、最大RSS 1,132,100KiB、swap 0。script perf_coun
 408.296秒で、異なる時計の原値を統合せず保持した。
 大きなscores/decode/配列/動画/HTMLはoutput_dirに残し、小さなJSON/CSV/図だけをknowledgeへ保存する。
 この解析にTensorBoardやseed間学習曲線は適用しない。独立clip・camera/3D正解・物理clock真値はない。
-既定pipelineとcheckpointの採用判断は変更しない。PRは #1669 にstackし、人間の統合比較後の判断までmergeしない。
+既定pipelineとcheckpointの採用判断は変更しない。当初のPRは #1669 にstackした。現在は基盤merge後のmainへ積み直し、人間の統合比較後の判断までmergeしない。
 
-実行時wrapperは `executed-repro.sh` に同一bytesで保全した。現行 `repro.sh` は
+実行時wrapperは `executed-repro.sh` に同一bytesで保全した。v1の記録時点では `repro.sh` は
 knowledge保存規約に合わせて `PYTHONDONTWRITEBYTECODE=1` を追加しただけで、
-srcおよび計算するdiagnostics.py/plots.py/run.pyは実行commitから差分0である。
+その時点のsrcおよびdiagnostics.py/plots.py/run.pyはv1実行commitから差分0だった。
+今回のrun.pyの採点API対応は、以下の再採点記録に分ける。
 検証時に生成されたbytecode cacheは解析成果物ではないため除去した。
+
+
+## mainへ積み直した後の再採点（v2）
+
+基盤 #1669 はレビュー指摘3件の修正後、merge commit
+`b41016207dc4551287ea50fe3b13eb54357389fb` でmainへmergeされた。
+`git rebase --onto origin/main 3abc5e7595bccabf4ed558ce209a9b4bc117a73c` を実行し、
+取得時のmain `2df2a9debe6a8b85c31ce98055edecc4658a1431` の上へ積み直した。
+新しいmerge commitは作っていない。summaryの内容競合は基盤のレビュー結果と本診断を両方保持し、
+sequence 33の論理的な衝突は本ノードを34へ移して解消した。
+
+`paired_error_summary` とrunner script/testの採点を `FixedInputBundle` の入口へ合わせた。
+結果のbundle/camera/frameと正解identityは基盤の `error_samples` で照合し、迂回しない。
+`annotation_oracle` の廃止されたbundle_sha256引数を外し、可視化にもbundleを渡す。
+基盤の `requires_court_lines=False` のbaselineと、テスト方式の明示宣言を保持する。
+本診断はLINE観測を要求しない。基盤の既存の採点・三角測量・表生成の挙動は追加変更していない。
+
+**予測replay・時刻fit・動画render/encodeは再実行していない。** 保存済み24結果を共通のtyped loaderで
+読み、新APIで再採点した。再採点だけのCLIは `rescore.sh` / `rescore.py`、実行commitはrepro欄である。
+同じ固定bundleと正解JSONのdigestを照合し、v1の191ファイルは既知のmanifest digestから全SHA/サイズを再検証した。
+全6結果の既存method score field（全view・LOVO・3区間・参照kind・coverage・運動/event診断等）と
+pairwise内訳はv1と**厳密に一致**した。新しいcohort field以外の誤差値に変化はない。
+`diagnostics.py` はv1の記録hashと同一bytesで、復号・gate・LOESS・三角測量の6計算ファイルは
+元基盤headから差分0。さらにfoundation_v2の8結果のpositions/valid/used_viewsを本保存結果と照合して完全一致を確認した。
+これらを根拠に、予測や注釈fitの再計算は行わず、保存済み結果を用いる再採点に限定した。
+共通scoresのruntimeはv1の予測実行時間を引き継ぐ値で、今回の再採点時間とは区別する。
+
+v2はv1を変更せず新規directoryへ保存した。24結果・動画・診断図を同一bytesで再利用し、
+基盤の `tables.py` の定義によるLOVO count/eligible/coverageの主表と、全6結果共通cohort表を更新した。
+動画はv1で全1010frameをdecode済みのbytesをそのまま使い、今回decodeしたとは記録しない。
+更新した指標図を目視確認し、HTML参照切れは0。v2の191ファイルのSHA/サイズも別途再照合した。
+再採点はGNU time wall11.00秒、最大RSS700,864KiB、swap0だった。
+
+全6結果（oracleを含む）の共通cohortは前半760点、後半750点、全区間1510点。
+後半は対象1462点の51.30%であり、基盤の3結果共通768点とは異なる集合である。
+可用性だけによる共通集合なので、欠測の回復や無条件の性能差を示すものではない。
+
+| 結果 | 後半の共通n | 中央値 / p90 px | >20px率 |
+|---|---:|---:|---:|
+| pipeline_baseline | 750 | 8.743 / 24.712 | 14.13% |
+| without_loess | 750 | 9.530 / 26.383 | 16.27% |
+| annotation_oracle | 750 | 7.202 / 19.010 | 8.27% |
+| annotation_time_oracle | 750 | 7.388 / 17.960 | 7.33% |
+| candidate1_oracle | 750 | 9.548 / 26.502 | 16.40% |
+| candidate8_oracle | 750 | 9.548 / 26.306 | 16.13% |
+
+3区間・observed/estimated別の共通cohort値とそのcamera/frame identityは
+[rescore-summary.json](../../runs/run-ball3d-error-decomposition-20261103/rescore-summary.json) に保存した。
+従来のpairwise比較は結果2つだけの共通集合、今回のcohortは全6結果の共通集合なので混同しない。
+
+![coverageと共通集合を併記した指標図](../../runs/run-ball3d-error-decomposition-20261103/metrics-table-v2.png)
+
+API移行後の `--collect-only` は53件/5.69秒、`--durations=0 --durations-min=0` は
+53 passed/17.76秒（`-n 0`）。case合計12.351秒、最大case2.864秒、最大setup0.01秒。
+追加はpaired入口のbundle/frame不一致の拒否2ケースで、正解identity拒否3ケースは既存nodeを拡張した。
+ノード別の時間はrebase-test-results.json、原ログはrebase-test-collection/durations.txtに保存した。
+ruff/mypyは成功し、knowledge validatorは0 errors（既存219 warnings）、repro path検証は0 missing（既存28 unverifiable）だった。
+後半の値に合わせた調整や、モデルの変更はない。
+
+v2の実パスはartifacts.output_dir、全ファイルの目録はartifacts-v2.json。
+
+- artifacts.json SHA-256: `f13a2be8ca868b86eeee6efc9e5d9c805edbf75832228e728ff5db04f7fa6926`
+- index.html SHA-256: `320d3d3d651e5f0b3a44d31db5964dcfde65740158ba9ddfe5e9a2e9e6924a45`
+- scores.json SHA-256: `088b7be2597431d19f6a1b14328f58d949e597e58aaf1cfb5bda79142682822b`
+- comparison.mp4 SHA-256: `cd37cb723f2acde64380cd82cdb2ee552bf0d89c7cf85845ae651999676cd74f`
+- paired-budget.json SHA-256: `6dc87795203746225c62509cd3a5e26c0ba15b9e28205d9755c2ddb939c16713`
