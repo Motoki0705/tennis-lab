@@ -39,6 +39,9 @@ paths are present in `MethodInput`.
 
 ## Method interface
 
+The optional [`TopKMultiHypothesis`](ball3d/topk.py) adapter calls the production
+[top-K association](../ball_association/README.md) without extra loading or scoring logic.
+
 Implement `BallMethod.name`, `config`, explicit bool `requires_court_lines`, and `__call__(inputs) -> Ball3DResult`, then
 call `run_method` or `run_comparison` with bundle/code digests. No annotation
 argument exists on this runner. LOVO passes only its two retained `ViewInput`s;
