@@ -5,6 +5,9 @@
 `predictor.py` 负责checkpoint推理，`trajectory_gate.py` 负责单点时序筛选。
 `heatmap_decoding.py` 在CPU上重新解码已选择的原生sigmoid热图，不执行模型，也不接收真值。
 
+`refine_peak_cells` 在显式指定的原生peak cell上应用相同的替代局部fit，
+返回归一化坐标和fit状态。坐标校正后无效slot仍为0，原始evidence和score保持不变。
+
 场景设置为 `ball_detection.decoding`。默认值仅由
 [pipeline.yaml](../../../tennis_scene/configs/pipeline.yaml)的composition提供，Python配置的每个字段均须显式传入。
 比较脚本也compose同一个YAML，只覆盖试验明确指定的差异。默认路径保持predictor数组逐元素相同。

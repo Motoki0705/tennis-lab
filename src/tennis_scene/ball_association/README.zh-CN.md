@@ -1,5 +1,9 @@
 # Top-K网球候选关联
 
+`associate_topk(..., candidate_uv_px=...)` 可接收以保留camera ID为key的显式重新解码候选像素。
+检查shape、图像范围和无效slot为0。原始cell、score、mask和heatmap出自保持不变；
+省略该可选参数时保持原有计算。
+
 [English](README.md) · [日本語](README.ja.md)
 
 在标准pipeline中选择 `ball_reconstruction.method=topk_multihypothesis`。

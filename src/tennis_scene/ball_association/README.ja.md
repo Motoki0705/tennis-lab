@@ -1,5 +1,9 @@
 # Top-Kボール対応付け
 
+`associate_topk(..., candidate_uv_px=...)` は保持camera IDをkeyに、明示的に再復号した
+候補画素を受け取れる。shape・画像範囲・無効slotの0を検証する。元cell・score・mask・
+heatmapの出自は変えず、引数を省略すれば従来の計算を保つ。
+
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 標準pipelineで `ball_reconstruction.method=topk_multihypothesis` を選ぶ。

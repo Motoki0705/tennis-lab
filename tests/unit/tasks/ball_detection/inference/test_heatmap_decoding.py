@@ -3,6 +3,7 @@
 import json
 from dataclasses import replace
 from pathlib import Path
+from typing import cast
 
 import numpy as np
 import pytest
@@ -15,6 +16,7 @@ from src.tasks.ball_detection.inference.heatmap_decoding import (
     correct_coordinates,
     decode_heatmaps,
     decode_native_sequence,
+    refine_peak_cells,
 )
 from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
 from tests.support.ball_heatmap_decoding import compose_heatmap_decoding
@@ -22,7 +24,7 @@ from tests.support.ball_heatmap_decoding import compose_heatmap_decoding
 
 @pytest.fixture(scope="module")
 def decoding_config() -> HeatmapDecodingConfig:
-    return compose_heatmap_decoding()
+    return cast(HeatmapDecodingConfig, compose_heatmap_decoding())
 
 
 def _map(centre=(7.23, 5.36), *, rotated=False, sigmoid=False, background=0., edge=False):
@@ -138,3 +140,40 @@ def test_isotropic_gaussian_and_exactly_saturated_plateau(decoding_config):
     clipped = decode_heatmaps(saturated, replace(decoding_config, method="quadratic_logit"), subpixel_refine=True)
     assert torch.isfinite(clipped.coords).all()
     assert clipped.fit_status.item() != FitStatus.LEGACY
+
+
+def test_explicit_cells_refine_two_distinct_peaks_without_argmax_or_padding_bias(decoding_config):
+    yy, xx = np.mgrid[:13, :23]
+    centers = np.array([[4.21, 3.16], [17.28, 8.32]])
+    maps = [1 / (1 + np.exp(np.clip(((xx-x)/1.4)**2+((yy-y)/.9)**2-3, -50, 50))) for x,y in centers]
+    image = np.maximum(*maps).astype(np.float32)
+    original = image.copy()
+    cfg = replace(decoding_config, method="quadratic_logit", patch_size=3,
+        coordinate_correction="affine", scale_xy=(1.01,.99), offset_xy=(.01,-.02))
+    uv, codes = refine_peak_cells(image, np.array([[4,3],[17,8],[0,0]],np.int64), np.array([True,True,False]), cfg)
+    expected = centers / [22,12] * [1.01,.99] + [.01,-.02]
+    np.testing.assert_allclose(uv[:2],expected,atol=1e-6,rtol=0)
+    np.testing.assert_array_equal(uv[2],[0,0])
+    np.testing.assert_array_equal(codes[:2],[FitStatus.REFINED]*2)
+    np.testing.assert_array_equal(image,original)
+
+
+@pytest.mark.parametrize("flat,code",[(True,FitStatus.DEGENERATE),(False,FitStatus.INSUFFICIENT_PATCH)])
+def test_explicit_cells_keep_lattice_and_rejection_status(flat,code,decoding_config):
+    image = np.full((5,7),.5,np.float32) if flat else _map((.1,.2)).numpy()
+    uv,codes = refine_peak_cells(image,np.array([[0,0]],np.int64),np.array([True]),
+        replace(decoding_config,method="quadratic_logit",patch_size=3))
+    np.testing.assert_array_equal(uv,[[0,0]])
+    assert codes[0] == code
+
+
+@pytest.mark.parametrize("failure",["axes","bounds","legacy"])
+def test_explicit_cells_reject_invalid_coordinates_and_implicit_legacy(failure,decoding_config):
+    cells = np.array([[4,3]],np.int64)
+    if failure=="axes":
+        cells=cells[0]
+    elif failure=="bounds":
+        cells[0,0]=19
+    config=decoding_config if failure=="legacy" else replace(decoding_config,method="quadratic_logit")
+    with pytest.raises(ValueError):
+        refine_peak_cells(_map().numpy(),cells,np.array([True]),config)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from itertools import combinations, product
 
@@ -212,7 +213,13 @@ def select_temporal_path(hypotheses: list[_Hypotheses], fps: float,
 
 
 def associate_topk(evidence: tuple[BallHeatmapEvidence, ...], cameras: tuple[PinholeCamera, ...],
-                   *, fps: float, config: TopKConfig, min_frames: int) -> AssociationResult:
+                   *, fps: float, config: TopKConfig, min_frames: int,
+                   candidate_uv_px: Mapping[str, NDArray[np.float32]] | None = None) -> AssociationResult:
+    """Associate raw peaks, or explicitly supplied redecoded peak coordinates.
+
+    Overrides are keyed by selected camera ID. They do not replace native
+    evidence, peak scores, cells, masks or patches, whose provenance stays intact.
+    """
     if not math.isfinite(fps) or fps <= 0 or len(evidence) != len(cameras) or len(cameras) < 2:
         raise ValueError("Association requires matching evidence/cameras and positive fps")
     if len({c.camera_id for c in cameras}) != len(cameras):
@@ -222,6 +229,15 @@ def associate_topk(evidence: tuple[BallHeatmapEvidence, ...], cameras: tuple[Pin
     size, frames = evidence[0].source_size_wh, len(evidence[0].candidate_scores)
     if any(e.source_size_wh != size or len(e.candidate_scores) != frames for e in evidence):
         raise ValueError("Candidate source image/frame axes disagree")
+    if candidate_uv_px is not None:
+        if set(candidate_uv_px) != {c.camera_id for c in cameras}:
+            raise ValueError("Candidate coordinate overrides require exactly the selected camera IDs")
+        for e, camera in zip(evidence, cameras, strict=True):
+            values = candidate_uv_px[camera.camera_id]
+            if (values.shape != e.candidate_uv_px.shape or values.dtype != np.float32
+                    or not np.isfinite(values).all() or np.any(values < 0)
+                    or np.any(values > np.asarray(size) - 1) or np.any(values[~e.candidate_valid])):
+                raise ValueError("Invalid candidate coordinate override shape/dtype/mask/pixels")
     # Only the small candidate arrays are copied; native maps/patches are untouched.
     k = config.top_k
     uv: NDArray[np.float64] = np.zeros((len(evidence), frames, k, 2), np.float64)
@@ -229,7 +245,8 @@ def associate_topk(evidence: tuple[BallHeatmapEvidence, ...], cameras: tuple[Pin
     valid: NDArray[np.bool_] = np.zeros((len(evidence), frames, k), bool)
     for j, e in enumerate(evidence):
         n = min(k, e.config.max_candidates)
-        uv[j, :, :n], scores[j, :, :n], valid[j, :, :n] = e.candidate_uv_px[:, :n], e.candidate_scores[:, :n], e.candidate_valid[:, :n]
+        coordinates = e.candidate_uv_px if candidate_uv_px is None else candidate_uv_px[cameras[j].camera_id]
+        uv[j, :, :n], scores[j, :, :n], valid[j, :, :n] = coordinates[:, :n], e.candidate_scores[:, :n], e.candidate_valid[:, :n]
     scale = math.hypot(*size) / math.hypot(1920, 1080)
     rows = [frame_hypotheses(uv[:, t], scores[:, t], valid[:, t], cameras, config, scale) for t in range(frames)]
     path, restarted = select_temporal_path(rows, fps, config)

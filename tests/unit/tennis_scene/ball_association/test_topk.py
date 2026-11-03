@@ -14,7 +14,11 @@ from src.tennis_scene.ball_association.topk import (
     select_temporal_path,
 )
 from src.utils.paths import PROJECT_ROOT
-from tests.support.ball3d_topk import candidate_evidence, make_topk_inputs
+from tests.support.ball3d_topk import (
+    candidate_evidence,
+    make_topk_inputs,
+    projected_pixels,
+)
 
 
 @pytest.fixture(scope="module")
@@ -28,6 +32,44 @@ def association_settings():
 def reconstruct(inputs, config, min_frames):
     return associate_topk(tuple(v.detections.evidence for v in inputs.views),
                           tuple(v.camera for v in inputs.views), fps=inputs.fps, config=config, min_frames=min_frames)
+
+
+def test_explicit_redecoded_pixels_change_geometry_without_mutating_raw_evidence(association_settings):
+    config,min_frames=association_settings
+    inputs,xyz,indices=make_topk_inputs()
+    expected=xyz+[.18,-.12,.03]
+    evidence=tuple(v.detections.evidence for v in inputs.views)
+    original=[e.candidate_uv_px.copy() for e in evidence]
+    overrides={}
+    for i,view in enumerate(inputs.views):
+        values=original[i].copy()
+        values[np.arange(len(xyz)),indices[i]]=projected_pixels(view.camera,expected).astype(np.float32)
+        overrides[view.camera.camera_id]=values
+    result=associate_topk(evidence,tuple(v.camera for v in inputs.views),fps=inputs.fps,
+        config=config,min_frames=min_frames,candidate_uv_px=overrides)
+    assert result.valid.all()
+    np.testing.assert_allclose(result.positions,expected,atol=3e-6,rtol=0)
+    for e,raw in zip(evidence,original,strict=True):
+        np.testing.assert_array_equal(e.candidate_uv_px,raw)
+    unchanged=reconstruct(inputs,config,min_frames)
+    np.testing.assert_allclose(unchanged.positions,xyz,atol=2e-6,rtol=0)
+
+
+@pytest.mark.parametrize("failure",["camera","shape","bounds"])
+def test_explicit_pixels_reject_wrong_axes_and_out_of_image_values(failure,association_settings):
+    inputs,_,_=make_topk_inputs()
+    evidence=tuple(v.detections.evidence for v in inputs.views)
+    overrides={v.camera.camera_id:v.detections.evidence.candidate_uv_px.copy() for v in inputs.views}
+    key=inputs.camera_ids[0]
+    if failure=="camera":
+        overrides["excluded_camera"]=overrides.pop(key)
+    elif failure=="shape":
+        overrides[key]=overrides[key][:-1]
+    else:
+        overrides[key][0,0,1]=240
+    with pytest.raises(ValueError,match="coordinate"):
+        associate_topk(evidence,tuple(v.camera for v in inputs.views),fps=inputs.fps,
+            config=association_settings[0],min_frames=association_settings[1],candidate_uv_px=overrides)
 
 
 @pytest.mark.parametrize("order", [(0, 1, 2), (2, 0, 1)])

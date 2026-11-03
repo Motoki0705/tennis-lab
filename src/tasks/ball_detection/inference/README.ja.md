@@ -5,6 +5,9 @@
 `predictor.py` はcheckpoint推論、`trajectory_gate.py` は単一点系列の受理を担当する。
 `heatmap_decoding.py` は選択済みnative sigmoid mapをCPUで再復号する。モデルや正解は使用しない。
 
+`refine_peak_cells` は明示したnative peak cellごとに同じ代替局所fitを適用し、
+正規化座標とfit状態を返す。座標補正後も無効slotは0で、元evidenceとscoreは変更しない。
+
 設定は `ball_detection.decoding`。既定値の正本は
 [pipeline.yaml](../../../tennis_scene/configs/pipeline.yaml)で、Python設定型の全fieldは必須入力。
 比較scriptも同じYAMLをcomposeし、試行で明示した差分だけを上書きする。

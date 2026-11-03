@@ -6,6 +6,10 @@
 observation stream. `heatmap_decoding.py` optionally re-decodes the selected native
 sigmoid maps on CPU. It never executes a model or uses annotations.
 
+`refine_peak_cells` applies the same alternative local fit to explicit native
+peak cells, returning normalized coordinates and fit statuses. It keeps invalid
+slots zero after coordinate correction and leaves raw evidence and scores intact.
+
 The scene pipeline selects `ball_detection.decoding`. Its defaults belong to
 [pipeline.yaml](../../../tennis_scene/configs/pipeline.yaml); the Python config
 requires every field explicitly. The comparison script composes this same YAML

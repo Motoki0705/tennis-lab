@@ -1,5 +1,10 @@
 # Top-K ball association
 
+`associate_topk(..., candidate_uv_px=...)` can accept explicitly redecoded
+candidate pixels keyed by the selected camera IDs. Shapes, image bounds and zero
+invalid slots are checked. Raw cells, scores, masks and heatmap provenance remain
+unchanged; omitting this optional argument preserves the original algorithm.
+
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 `topk.py` associates saved, pre-gate candidates in court metres without RGB,

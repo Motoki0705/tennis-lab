@@ -218,3 +218,37 @@ def decode_native_sequence(heatmaps: NDArray[np.float32], config: HeatmapDecodin
         scores.append(result.confidence.numpy())
         codes.append(result.fit_status.numpy())
     return np.concatenate(coords).astype(np.float32), np.concatenate(scores).astype(np.float32), np.concatenate(codes)
+
+
+def refine_peak_cells(
+    heatmap: NDArray[np.float32], cells: NDArray[np.int64], valid: NDArray[np.bool_],
+    config: HeatmapDecodingConfig,
+) -> tuple[NDArray[np.float32], NDArray[np.int64]]:
+    """Apply the existing alternative local fit at explicit native peak cells.
+
+    Returns normalized endpoint coordinates and fit statuses. Raw evidence and
+    scores remain unchanged; invalid slots stay zero even with affine correction.
+    This entry point neither selects peaks nor runs a global argmax. One native
+    frame is converted to float64, regardless of the number of candidates.
+    """
+    if (heatmap.ndim != 2 or min(heatmap.shape) < 2 or heatmap.dtype != np.float32
+            or not np.isfinite(heatmap).all() or np.any((heatmap < 0) | (heatmap > 1))):
+        raise ValueError("Expected a finite float32 native probability heatmap")
+    if (cells.ndim != 2 or cells.shape[1] != 2 or cells.dtype != np.int64
+            or valid.shape != cells.shape[:1] or valid.dtype != bool):
+        raise ValueError("Peak cells and valid mask must have K,XY axes")
+    h, w = heatmap.shape
+    if np.any(cells < 0) or np.any(cells >= [w, h]) or np.any(cells[~valid]):
+        raise ValueError("Peak cells must be in-grid with zero invalid slots")
+    if config.method == "legacy":
+        raise ValueError("Explicit peak refinement requires an alternative decoder")
+    coords = np.zeros(cells.shape, np.float32)
+    codes: NDArray[np.int64] = np.full(len(cells), int(FitStatus.INSUFFICIENT_PATCH), np.int64)
+    image = heatmap.astype(np.float64)
+    for slot in np.flatnonzero(valid):
+        x, y = cells[slot]
+        offset, code = _local_offset(image, int(x), int(y), config)
+        coords[slot] = (cells[slot] + offset) / [w - 1, h - 1]
+        codes[slot] = int(code)
+    corrected = correct_coordinates(torch.from_numpy(coords).clamp(0, 1), (h, w), config).numpy()
+    return np.where(valid[:, None], corrected, 0).astype(np.float32), codes
