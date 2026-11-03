@@ -86,7 +86,24 @@ def plot_diagnostics(runs, fps, path):
     for col, (name, run) in enumerate(physics.items()):
         result, d = run.result, run.result.diagnostics
         xyz = np.where(result.valid[:, None], result.positions, np.nan)
-        axes[0, col].plot(xyz[:, 1], xyz[:, 2], linewidth=0.7, label=name)
+        for index, segment in enumerate(d["segments"]):
+            part = xyz[segment["start_frame"] : segment["stop_frame"]]
+            axes[0, col].plot(
+                part[:, 1],
+                part[:, 2],
+                linewidth=0.7,
+                color="C0",
+                label=name if index == 0 else None,
+            )
+        if not result.valid.any():
+            axes[0, col].text(
+                0.5,
+                0.5,
+                f"{d['status']}\n{d['nfev']} evaluations; no valid output",
+                ha="center",
+                va="center",
+                transform=axes[0, col].transAxes,
+            )
         for event in d["events"]:
             f = event["frame"]
             if result.valid[f]:
@@ -118,6 +135,8 @@ def plot_diagnostics(runs, fps, path):
                     d["drag_per_m"],
                     d["config"]["gravity_mps2"],
                 )
+                if not len(frame):
+                    continue
                 axes[1, col].semilogy(
                     frame, np.maximum(defect, 1e-4), linewidth=0.6, label=label
                 )
@@ -128,6 +147,15 @@ def plot_diagnostics(runs, fps, path):
             ylabel="ODE defect (m/s²)",
             title="Finite-difference a + g + k |v| v (within-flight stencils)",
         )
+        if d["status"] != "ok":
+            axes[1, col].text(
+                0.5,
+                0.9,
+                "No valid physical fit; baseline shown using failed-iterate drag",
+                ha="center",
+                fontsize=8,
+                transform=axes[1, col].transAxes,
+            )
         labels, offsets, errors = [], [], []
         for row in summary:
             if row["method"] != name:
@@ -155,7 +183,9 @@ def plot_diagnostics(runs, fps, path):
             yticks=yy,
             yticklabels=labels,
             xlabel="Relative offset (source frames)",
-            title="Offsets ± local standard error; missing bars = unavailable",
+            title="Offsets ± local standard error; missing bars = unavailable"
+            if d["status"] == "ok"
+            else "Final FAILED iterates; uncertainty unavailable",
         )
     for axis in axes.flat:
         axis.grid(alpha=0.2)
