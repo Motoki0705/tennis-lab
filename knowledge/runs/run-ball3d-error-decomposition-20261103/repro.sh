@@ -2,6 +2,7 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONDONTWRITEBYTECODE=1
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1
 .venv/bin/python "$SCRIPT_DIR/run.py" \
   --bundle "$1" --videos "$2" --annotations "$3" --output "$4" \

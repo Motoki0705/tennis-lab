@@ -1,0 +1,1710 @@
+{
+  "schema": "tennis_lab_ball3d_error_decomposition_summary.v1",
+  "execution_commit": "7bbccf50eed03350f030560d3d0c565854db247f",
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/error_decomposition_v1",
+  "artifact_manifest_sha256": "92d4cffbf5375167c81740e87e6e54e8c28e67f6832042048ab6aac0795c9306",
+  "verified_output_files": 191,
+  "foundation_metrics_identical_excluding_runtime": {
+    "pipeline_baseline": true,
+    "without_loess": true,
+    "annotation_oracle": true
+  },
+  "methods": {
+    "annotation_oracle": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.11311890133718829,
+            "count": 2767,
+            "label_count": 2959,
+            "max": 136.41831394038337,
+            "median": 8.790460004693568,
+            "p90": 21.392331542297878,
+            "scored_label_coverage": 0.9351132139236229,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.011267605633802818,
+            "count": 355,
+            "label_count": 370,
+            "max": 37.68661641848966,
+            "median": 7.000624548172682,
+            "p90": 12.641940556237317,
+            "scored_label_coverage": 0.9594594594594594,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.1281094527363184,
+            "count": 2412,
+            "label_count": 2589,
+            "max": 136.41831394038337,
+            "median": 9.13633180824147,
+            "p90": 23.374648139143243,
+            "scored_label_coverage": 0.9316338354577057,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.11152416356877323,
+            "count": 1345,
+            "label_count": 1462,
+            "max": 111.84385273011843,
+            "median": 7.8586408238936745,
+            "p90": 20.721912427346656,
+            "scored_label_coverage": 0.9199726402188783,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 174,
+            "label_count": 178,
+            "max": 13.450895353084452,
+            "median": 6.399753539552248,
+            "p90": 8.96989945796189,
+            "scored_label_coverage": 0.9775280898876404,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.12809564474807855,
+            "count": 1171,
+            "label_count": 1284,
+            "max": 111.84385273011843,
+            "median": 8.312560111969649,
+            "p90": 22.27800371869549,
+            "scored_label_coverage": 0.911993769470405,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.11462728551336146,
+            "count": 1422,
+            "label_count": 1497,
+            "max": 136.41831394038337,
+            "median": 9.655369806095326,
+            "p90": 22.524030976678223,
+            "scored_label_coverage": 0.9498997995991983,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.022099447513812154,
+            "count": 181,
+            "label_count": 192,
+            "max": 37.68661641848966,
+            "median": 7.980264457605346,
+            "p90": 14.521440692082166,
+            "scored_label_coverage": 0.9427083333333334,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.12812248186946013,
+            "count": 1241,
+            "label_count": 1305,
+            "max": 136.41831394038337,
+            "median": 9.805384561982398,
+            "p90": 24.742796046167214,
+            "scored_label_coverage": 0.9509578544061302,
+            "threshold": 20.0
+          }
+        }
+      },
+      "folds": {
+        "all_views": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.002717391304347826,
+              "count": 2944,
+              "max": 111.84385273011843,
+              "median": 3.135914557388285,
+              "p90": 7.333655797960242,
+              "threshold": 20.0
+            },
+            "scored_label_count": 2944,
+            "scored_label_coverage": 0.994930719837783,
+            "scoring_label_count": 2959,
+            "valid_3d_rate": 0.9910891089108911
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0055058499655884375,
+              "count": 1453,
+              "max": 111.84385273011843,
+              "median": 2.955493387713024,
+              "p90": 6.923374367922511,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1453,
+            "scored_label_coverage": 0.993844049247606,
+            "scoring_label_count": 1462,
+            "valid_3d_rate": 0.9881188118811881
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0,
+              "count": 1491,
+              "max": 16.149771480429155,
+              "median": 3.3102870052284463,
+              "p90": 8.288720078863713,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1491,
+            "scored_label_coverage": 0.9959919839679359,
+            "scoring_label_count": 1497,
+            "valid_3d_rate": 0.994059405940594
+          }
+        },
+        "without_cam0": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0033076074972436605,
+              "count": 907,
+              "max": 22.27800371869549,
+              "median": 7.076258134340834,
+              "p90": 11.072280669203394,
+              "threshold": 20.0
+            },
+            "scored_label_count": 907,
+            "scored_label_coverage": 0.9350515463917526,
+            "scoring_label_count": 970,
+            "valid_3d_rate": 0.9287128712871288
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0022371364653243847,
+              "count": 447,
+              "max": 22.27800371869549,
+              "median": 6.257888855331935,
+              "p90": 10.442641259797268,
+              "threshold": 20.0
+            },
+            "scored_label_count": 447,
+            "scored_label_coverage": 0.945031712473573,
+            "scoring_label_count": 473,
+            "valid_3d_rate": 0.9366336633663367
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.004347826086956522,
+              "count": 460,
+              "max": 21.8110119088469,
+              "median": 7.722236441461485,
+              "p90": 11.937758619661816,
+              "threshold": 20.0
+            },
+            "scored_label_count": 460,
+            "scored_label_coverage": 0.9255533199195171,
+            "scoring_label_count": 497,
+            "valid_3d_rate": 0.9207920792079208
+          }
+        },
+        "without_cam1": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.11002178649237472,
+              "count": 918,
+              "max": 80.01636927104684,
+              "median": 11.048841001130683,
+              "p90": 20.341382616297558,
+              "threshold": 20.0
+            },
+            "scored_label_count": 918,
+            "scored_label_coverage": 0.9319796954314721,
+            "scoring_label_count": 985,
+            "valid_3d_rate": 0.9306930693069307
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0835214446952596,
+              "count": 443,
+              "max": 31.324019890061194,
+              "median": 10.13861035353103,
+              "p90": 19.359596077222427,
+              "threshold": 20.0
+            },
+            "scored_label_count": 443,
+            "scored_label_coverage": 0.9152892561983471,
+            "scoring_label_count": 484,
+            "valid_3d_rate": 0.9128712871287129
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.13473684210526315,
+              "count": 475,
+              "max": 80.01636927104684,
+              "median": 11.39427735121537,
+              "p90": 24.631441918215245,
+              "threshold": 20.0
+            },
+            "scored_label_count": 475,
+            "scored_label_coverage": 0.9481037924151696,
+            "scoring_label_count": 501,
+            "valid_3d_rate": 0.9485148514851485
+          }
+        },
+        "without_cam2": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.2218683651804671,
+              "count": 942,
+              "max": 136.41831394038337,
+              "median": 8.698047719164272,
+              "p90": 38.34202883572655,
+              "threshold": 20.0
+            },
+            "scored_label_count": 942,
+            "scored_label_coverage": 0.9382470119521913,
+            "scoring_label_count": 1004,
+            "valid_3d_rate": 0.9386138613861386
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.24615384615384617,
+              "count": 455,
+              "max": 111.84385273011843,
+              "median": 7.8873018190938815,
+              "p90": 41.45684118282303,
+              "threshold": 20.0
+            },
+            "scored_label_count": 455,
+            "scored_label_coverage": 0.900990099009901,
+            "scoring_label_count": 505,
+            "valid_3d_rate": 0.900990099009901
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.19917864476386038,
+              "count": 487,
+              "max": 136.41831394038337,
+              "median": 9.960118964870249,
+              "p90": 30.659369568507078,
+              "threshold": 20.0
+            },
+            "scored_label_count": 487,
+            "scored_label_coverage": 0.9759519038076152,
+            "scoring_label_count": 499,
+            "valid_3d_rate": 0.9762376237623762
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 10.7961169219343
+    },
+    "annotation_time_oracle": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.10386740331491713,
+            "count": 2715,
+            "label_count": 2959,
+            "max": 128.30939620543106,
+            "median": 8.693006910069634,
+            "p90": 20.63575710915341,
+            "scored_label_coverage": 0.9175397093612707,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.011527377521613832,
+            "count": 347,
+            "label_count": 370,
+            "max": 51.641378491195454,
+            "median": 6.879142817540497,
+            "p90": 12.392651091968181,
+            "scored_label_coverage": 0.9378378378378378,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.11739864864864864,
+            "count": 2368,
+            "label_count": 2589,
+            "max": 128.30939620543106,
+            "median": 8.983679863008208,
+            "p90": 22.68851617247706,
+            "scored_label_coverage": 0.9146388567014291,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.10007581501137225,
+            "count": 1319,
+            "label_count": 1462,
+            "max": 128.30939620543106,
+            "median": 8.152855279846088,
+            "p90": 19.975802483516894,
+            "scored_label_coverage": 0.9021887824897401,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 172,
+            "label_count": 178,
+            "max": 13.191178994432333,
+            "median": 5.65537098617372,
+            "p90": 9.178685369425454,
+            "scored_label_coverage": 0.9662921348314607,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.11508282476024412,
+            "count": 1147,
+            "label_count": 1284,
+            "max": 128.30939620543106,
+            "median": 8.393456293469752,
+            "p90": 22.14382185826429,
+            "scored_label_coverage": 0.8933021806853583,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.10744985673352435,
+            "count": 1396,
+            "label_count": 1497,
+            "max": 125.76584461208508,
+            "median": 9.40794239776081,
+            "p90": 21.46920106326479,
+            "scored_label_coverage": 0.9325317301269205,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.022857142857142857,
+            "count": 175,
+            "label_count": 192,
+            "max": 51.641378491195454,
+            "median": 8.52239205662677,
+            "p90": 14.681579114495245,
+            "scored_label_coverage": 0.9114583333333334,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.11957411957411958,
+            "count": 1221,
+            "label_count": 1305,
+            "max": 125.76584461208508,
+            "median": 9.512865430054633,
+            "p90": 24.15707513453093,
+            "scored_label_coverage": 0.9356321839080459,
+            "threshold": 20.0
+          }
+        }
+      },
+      "folds": {
+        "all_views": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0027331738981892723,
+              "count": 2927,
+              "max": 106.0221542161046,
+              "median": 2.9381023712811976,
+              "p90": 7.6357613791315835,
+              "threshold": 20.0
+            },
+            "scored_label_count": 2927,
+            "scored_label_coverage": 0.9891855356539372,
+            "scoring_label_count": 2959,
+            "valid_3d_rate": 0.9881188118811881
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0048375950241879755,
+              "count": 1447,
+              "max": 106.0221542161046,
+              "median": 2.7712109887376837,
+              "p90": 7.043429062511913,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1447,
+            "scored_label_coverage": 0.9897400820793434,
+            "scoring_label_count": 1462,
+            "valid_3d_rate": 0.9861386138613861
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0006756756756756757,
+              "count": 1480,
+              "max": 64.96536820487779,
+              "median": 3.076209989824889,
+              "p90": 8.408526910902067,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1480,
+            "scored_label_coverage": 0.9886439545758183,
+            "scoring_label_count": 1497,
+            "valid_3d_rate": 0.9900990099009901
+          }
+        },
+        "without_cam0": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0,
+              "count": 875,
+              "max": 17.8821624224675,
+              "median": 6.9281785457151654,
+              "p90": 10.230112346947692,
+              "threshold": 20.0
+            },
+            "scored_label_count": 875,
+            "scored_label_coverage": 0.9020618556701031,
+            "scoring_label_count": 970,
+            "valid_3d_rate": 0.8960396039603961
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0,
+              "count": 433,
+              "max": 13.191178994432333,
+              "median": 6.02037891994543,
+              "p90": 9.585351696687294,
+              "threshold": 20.0
+            },
+            "scored_label_count": 433,
+            "scored_label_coverage": 0.9154334038054969,
+            "scoring_label_count": 473,
+            "valid_3d_rate": 0.9089108910891089
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.0,
+              "count": 442,
+              "max": 17.8821624224675,
+              "median": 7.566441406081566,
+              "p90": 10.871149099346422,
+              "threshold": 20.0
+            },
+            "scored_label_count": 442,
+            "scored_label_coverage": 0.8893360160965795,
+            "scoring_label_count": 497,
+            "valid_3d_rate": 0.8831683168316832
+          }
+        },
+        "without_cam1": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.09090909090909091,
+              "count": 913,
+              "max": 101.12286988700707,
+              "median": 10.355020447367068,
+              "p90": 19.69829780762797,
+              "threshold": 20.0
+            },
+            "scored_label_count": 913,
+            "scored_label_coverage": 0.9269035532994924,
+            "scoring_label_count": 985,
+            "valid_3d_rate": 0.9257425742574258
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.05239179954441914,
+              "count": 439,
+              "max": 25.726533515513932,
+              "median": 9.73127102504358,
+              "p90": 18.925162357764698,
+              "threshold": 20.0
+            },
+            "scored_label_count": 439,
+            "scored_label_coverage": 0.9070247933884298,
+            "scoring_label_count": 484,
+            "valid_3d_rate": 0.904950495049505
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.12658227848101267,
+              "count": 474,
+              "max": 101.12286988700707,
+              "median": 10.627352009061557,
+              "p90": 22.66578724675654,
+              "threshold": 20.0
+            },
+            "scored_label_count": 474,
+            "scored_label_coverage": 0.9461077844311377,
+            "scoring_label_count": 501,
+            "valid_3d_rate": 0.9465346534653465
+          }
+        },
+        "without_cam2": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.21467098166127294,
+              "count": 927,
+              "max": 128.30939620543106,
+              "median": 9.264773209924323,
+              "p90": 37.36694032714691,
+              "threshold": 20.0
+            },
+            "scored_label_count": 927,
+            "scored_label_coverage": 0.9233067729083665,
+            "scoring_label_count": 1004,
+            "valid_3d_rate": 0.9237623762376238
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.24384787472035793,
+              "count": 447,
+              "max": 128.30939620543106,
+              "median": 8.36797658529034,
+              "p90": 40.33605054486588,
+              "threshold": 20.0
+            },
+            "scored_label_count": 447,
+            "scored_label_coverage": 0.8851485148514852,
+            "scoring_label_count": 505,
+            "valid_3d_rate": 0.8851485148514852
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.1875,
+              "count": 480,
+              "max": 125.76584461208508,
+              "median": 10.239496586241865,
+              "p90": 29.921611503257942,
+              "threshold": 20.0
+            },
+            "scored_label_count": 480,
+            "scored_label_coverage": 0.9619238476953907,
+            "scoring_label_count": 499,
+            "valid_3d_rate": 0.9623762376237623
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 10.991974096978083
+    },
+    "candidate1_oracle": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.17809943360604152,
+            "count": 1589,
+            "label_count": 2959,
+            "max": 213.8619846203167,
+            "median": 10.459409235594876,
+            "p90": 29.67100008050762,
+            "scored_label_coverage": 0.5370057451841839,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.003861003861003861,
+            "count": 259,
+            "label_count": 370,
+            "max": 22.509913233642834,
+            "median": 9.229717095486597,
+            "p90": 14.90097167390469,
+            "scored_label_coverage": 0.7,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.21203007518796993,
+            "count": 1330,
+            "label_count": 2589,
+            "max": 213.8619846203167,
+            "median": 10.918705020626454,
+            "p90": 31.381001393313234,
+            "scored_label_coverage": 0.5137118578601777,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.17452229299363056,
+            "count": 785,
+            "label_count": 1462,
+            "max": 213.8619846203167,
+            "median": 9.726117302173913,
+            "p90": 28.74924449695932,
+            "scored_label_coverage": 0.5369357045143639,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 128,
+            "label_count": 178,
+            "max": 18.513701829016913,
+            "median": 8.026728657124089,
+            "p90": 13.504644859828431,
+            "scored_label_coverage": 0.7191011235955056,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.2085235920852359,
+            "count": 657,
+            "label_count": 1284,
+            "max": 213.8619846203167,
+            "median": 10.272529083859993,
+            "p90": 30.263148048500742,
+            "scored_label_coverage": 0.5116822429906542,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.18159203980099503,
+            "count": 804,
+            "label_count": 1497,
+            "max": 117.06578211955816,
+            "median": 11.076933490845919,
+            "p90": 29.958583649496692,
+            "scored_label_coverage": 0.5370741482965932,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.007633587786259542,
+            "count": 131,
+            "label_count": 192,
+            "max": 22.509913233642834,
+            "median": 9.942067778446965,
+            "p90": 15.995677811680215,
+            "scored_label_coverage": 0.6822916666666666,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.21545319465081725,
+            "count": 673,
+            "label_count": 1305,
+            "max": 117.06578211955816,
+            "median": 11.419657467503798,
+            "p90": 31.467826631580188,
+            "scored_label_coverage": 0.5157088122605364,
+            "threshold": 20.0
+          }
+        }
+      },
+      "folds": {
+        "all_views": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.03122497998398719,
+              "count": 2498,
+              "max": 152.5840782708811,
+              "median": 5.629977362260482,
+              "p90": 12.887621779284485,
+              "threshold": 20.0
+            },
+            "scored_label_count": 2498,
+            "scored_label_coverage": 0.844204123014532,
+            "scoring_label_count": 2959,
+            "valid_3d_rate": 0.8277227722772277
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.03936348408710218,
+              "count": 1194,
+              "max": 152.5840782708811,
+              "median": 5.420506113380609,
+              "p90": 12.275928194838613,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1194,
+            "scored_label_coverage": 0.8166894664842681,
+            "scoring_label_count": 1462,
+            "valid_3d_rate": 0.7900990099009901
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.023773006134969327,
+              "count": 1304,
+              "max": 82.09665329832522,
+              "median": 5.778630032575121,
+              "p90": 13.31413319693465,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1304,
+            "scored_label_coverage": 0.8710754843019372,
+            "scoring_label_count": 1497,
+            "valid_3d_rate": 0.8653465346534653
+          }
+        },
+        "without_cam0": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.08102766798418973,
+              "count": 506,
+              "max": 77.18023706783703,
+              "median": 9.71410156179422,
+              "p90": 18.553813995719075,
+              "threshold": 20.0
+            },
+            "scored_label_count": 506,
+            "scored_label_coverage": 0.5216494845360825,
+            "scoring_label_count": 970,
+            "valid_3d_rate": 0.505940594059406
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.050980392156862744,
+              "count": 255,
+              "max": 62.32751283711056,
+              "median": 8.681861774603046,
+              "p90": 14.374026850253475,
+              "threshold": 20.0
+            },
+            "scored_label_count": 255,
+            "scored_label_coverage": 0.5391120507399577,
+            "scoring_label_count": 473,
+            "valid_3d_rate": 0.504950495049505
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.11155378486055777,
+              "count": 251,
+              "max": 77.18023706783703,
+              "median": 10.468311510278438,
+              "p90": 21.087244023512323,
+              "threshold": 20.0
+            },
+            "scored_label_count": 251,
+            "scored_label_coverage": 0.5050301810865191,
+            "scoring_label_count": 497,
+            "valid_3d_rate": 0.5069306930693069
+          }
+        },
+        "without_cam1": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.3013392857142857,
+              "count": 448,
+              "max": 213.8619846203167,
+              "median": 12.824893344944233,
+              "p90": 39.055861999694635,
+              "threshold": 20.0
+            },
+            "scored_label_count": 448,
+            "scored_label_coverage": 0.4548223350253807,
+            "scoring_label_count": 985,
+            "valid_3d_rate": 0.4485148514851485
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.2350230414746544,
+              "count": 217,
+              "max": 213.8619846203167,
+              "median": 11.493728651890354,
+              "p90": 29.06507321335141,
+              "threshold": 20.0
+            },
+            "scored_label_count": 217,
+            "scored_label_coverage": 0.44834710743801653,
+            "scoring_label_count": 484,
+            "valid_3d_rate": 0.43564356435643564
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.36363636363636365,
+              "count": 231,
+              "max": 117.06578211955816,
+              "median": 14.293407787735193,
+              "p90": 42.547033791684974,
+              "threshold": 20.0
+            },
+            "scored_label_count": 231,
+            "scored_label_coverage": 0.46107784431137727,
+            "scoring_label_count": 501,
+            "valid_3d_rate": 0.4613861386138614
+          }
+        },
+        "without_cam2": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.16850393700787403,
+              "count": 635,
+              "max": 152.5840782708811,
+              "median": 9.883089076673004,
+              "p90": 29.120041270415744,
+              "threshold": 20.0
+            },
+            "scored_label_count": 635,
+            "scored_label_coverage": 0.6324701195219123,
+            "scoring_label_count": 1004,
+            "valid_3d_rate": 0.6287128712871287
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.23322683706070288,
+              "count": 313,
+              "max": 152.5840782708811,
+              "median": 9.578494867326036,
+              "p90": 35.67450230760971,
+              "threshold": 20.0
+            },
+            "scored_label_count": 313,
+            "scored_label_coverage": 0.6198019801980198,
+            "scoring_label_count": 505,
+            "valid_3d_rate": 0.6198019801980198
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.10559006211180125,
+              "count": 322,
+              "max": 64.12307205786269,
+              "median": 10.028548898474636,
+              "p90": 21.267334109248363,
+              "threshold": 20.0
+            },
+            "scored_label_count": 322,
+            "scored_label_coverage": 0.6452905811623246,
+            "scoring_label_count": 499,
+            "valid_3d_rate": 0.6376237623762376
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 13.19497923302697
+    },
+    "candidate8_oracle": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.17875,
+            "count": 1600,
+            "label_count": 2959,
+            "max": 152.5840782708811,
+            "median": 10.468743469662579,
+            "p90": 29.70614402557174,
+            "scored_label_coverage": 0.540723217303143,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.003861003861003861,
+            "count": 259,
+            "label_count": 370,
+            "max": 22.509913233642834,
+            "median": 9.229717095486597,
+            "p90": 14.90097167390469,
+            "scored_label_coverage": 0.7,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.21252796420581654,
+            "count": 1341,
+            "label_count": 2589,
+            "max": 152.5840782708811,
+            "median": 10.977894840221007,
+            "p90": 31.38122091241698,
+            "scored_label_coverage": 0.5179606025492468,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.17506297229219145,
+            "count": 794,
+            "label_count": 1462,
+            "max": 152.5840782708811,
+            "median": 9.786350274125343,
+            "p90": 28.767466109002914,
+            "scored_label_coverage": 0.5430916552667578,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 128,
+            "label_count": 178,
+            "max": 18.513701829016913,
+            "median": 8.026728657124089,
+            "p90": 13.504644859828431,
+            "scored_label_coverage": 0.7191011235955056,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.2087087087087087,
+            "count": 666,
+            "label_count": 1284,
+            "max": 152.5840782708811,
+            "median": 10.355474164063956,
+            "p90": 30.29100667581241,
+            "scored_label_coverage": 0.5186915887850467,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.18238213399503722,
+            "count": 806,
+            "label_count": 1497,
+            "max": 117.06578211955816,
+            "median": 11.076933490845919,
+            "p90": 30.07713779876712,
+            "scored_label_coverage": 0.5384101536406145,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.007633587786259542,
+            "count": 131,
+            "label_count": 192,
+            "max": 22.509913233642834,
+            "median": 9.942067778446965,
+            "p90": 15.995677811680215,
+            "scored_label_coverage": 0.6822916666666666,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.2162962962962963,
+            "count": 675,
+            "label_count": 1305,
+            "max": 117.06578211955816,
+            "median": 11.419657467503798,
+            "p90": 31.71410097835369,
+            "scored_label_coverage": 0.5172413793103449,
+            "threshold": 20.0
+          }
+        }
+      },
+      "folds": {
+        "all_views": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.03227091633466136,
+              "count": 2510,
+              "max": 152.5840782708811,
+              "median": 5.623009266298716,
+              "p90": 12.975130834193067,
+              "threshold": 20.0
+            },
+            "scored_label_count": 2510,
+            "scored_label_coverage": 0.8482595471443055,
+            "scoring_label_count": 2959,
+            "valid_3d_rate": 0.8316831683168316
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.04156275976724855,
+              "count": 1203,
+              "max": 152.5840782708811,
+              "median": 5.413744770529433,
+              "p90": 12.294749512139688,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1203,
+            "scored_label_coverage": 0.8228454172366622,
+            "scoring_label_count": 1462,
+            "valid_3d_rate": 0.7960396039603961
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.023718439173680182,
+              "count": 1307,
+              "max": 82.09665329832522,
+              "median": 5.777188616866351,
+              "p90": 13.311410643109719,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1307,
+            "scored_label_coverage": 0.8730794923179692,
+            "scoring_label_count": 1497,
+            "valid_3d_rate": 0.8673267326732673
+          }
+        },
+        "without_cam0": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.08235294117647059,
+              "count": 510,
+              "max": 77.18023706783703,
+              "median": 9.69300368073312,
+              "p90": 18.602317170976626,
+              "threshold": 20.0
+            },
+            "scored_label_count": 510,
+            "scored_label_coverage": 0.5257731958762887,
+            "scoring_label_count": 970,
+            "valid_3d_rate": 0.5099009900990099
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.05058365758754864,
+              "count": 257,
+              "max": 62.32751283711056,
+              "median": 8.679803581799334,
+              "p90": 14.36970040297327,
+              "threshold": 20.0
+            },
+            "scored_label_count": 257,
+            "scored_label_coverage": 0.5433403805496829,
+            "scoring_label_count": 473,
+            "valid_3d_rate": 0.5089108910891089
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.11462450592885376,
+              "count": 253,
+              "max": 77.18023706783703,
+              "median": 10.468311510278438,
+              "p90": 21.62715995258256,
+              "threshold": 20.0
+            },
+            "scored_label_count": 253,
+            "scored_label_coverage": 0.5090543259557344,
+            "scoring_label_count": 497,
+            "valid_3d_rate": 0.5108910891089109
+          }
+        },
+        "without_cam1": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.29711751662971175,
+              "count": 451,
+              "max": 117.06578211955816,
+              "median": 12.795226911615636,
+              "p90": 38.478910617595105,
+              "threshold": 20.0
+            },
+            "scored_label_count": 451,
+            "scored_label_coverage": 0.4578680203045685,
+            "scoring_label_count": 985,
+            "valid_3d_rate": 0.4514851485148515
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.22727272727272727,
+              "count": 220,
+              "max": 89.88519016479009,
+              "median": 11.489011135114257,
+              "p90": 27.50771298998418,
+              "threshold": 20.0
+            },
+            "scored_label_count": 220,
+            "scored_label_coverage": 0.45454545454545453,
+            "scoring_label_count": 484,
+            "valid_3d_rate": 0.4415841584158416
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.36363636363636365,
+              "count": 231,
+              "max": 117.06578211955816,
+              "median": 14.293407787735193,
+              "p90": 42.547033791684974,
+              "threshold": 20.0
+            },
+            "scored_label_count": 231,
+            "scored_label_coverage": 0.46107784431137727,
+            "scoring_label_count": 501,
+            "valid_3d_rate": 0.4613861386138614
+          }
+        },
+        "without_cam2": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.17214397496087636,
+              "count": 639,
+              "max": 152.5840782708811,
+              "median": 9.912419967241494,
+              "p90": 29.75613477323516,
+              "threshold": 20.0
+            },
+            "scored_label_count": 639,
+            "scored_label_coverage": 0.6364541832669323,
+            "scoring_label_count": 1004,
+            "valid_3d_rate": 0.6326732673267327
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.23974763406940064,
+              "count": 317,
+              "max": 152.5840782708811,
+              "median": 9.59410244038254,
+              "p90": 38.024499498124364,
+              "threshold": 20.0
+            },
+            "scored_label_count": 317,
+            "scored_label_coverage": 0.6277227722772277,
+            "scoring_label_count": 505,
+            "valid_3d_rate": 0.6277227722772277
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.10559006211180125,
+              "count": 322,
+              "max": 64.12307205786269,
+              "median": 10.028548898474636,
+              "p90": 21.267334109248363,
+              "threshold": 20.0
+            },
+            "scored_label_count": 322,
+            "scored_label_coverage": 0.6452905811623246,
+            "scoring_label_count": 499,
+            "valid_3d_rate": 0.6376237623762376
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 8.041672365972772
+    },
+    "pipeline_baseline": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.16403402187120292,
+            "count": 1646,
+            "label_count": 2959,
+            "max": 252.9448394297582,
+            "median": 10.20787734856733,
+            "p90": 28.195989402935098,
+            "scored_label_coverage": 0.5562690098006083,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 264,
+            "label_count": 370,
+            "max": 19.765515064315775,
+            "median": 8.722677485049402,
+            "p90": 14.80229528532133,
+            "scored_label_coverage": 0.7135135135135136,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.19536903039073805,
+            "count": 1382,
+            "label_count": 2589,
+            "max": 252.9448394297582,
+            "median": 10.591283325493398,
+            "p90": 30.390299973354907,
+            "scored_label_coverage": 0.5337968327539591,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.16363636363636364,
+            "count": 825,
+            "label_count": 1462,
+            "max": 252.9448394297582,
+            "median": 9.340188442451916,
+            "p90": 27.078044438775773,
+            "scored_label_coverage": 0.5642954856361149,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 131,
+            "label_count": 178,
+            "max": 19.765515064315775,
+            "median": 7.8403501721842845,
+            "p90": 13.149186965952309,
+            "scored_label_coverage": 0.7359550561797753,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.19452449567723343,
+            "count": 694,
+            "label_count": 1284,
+            "max": 252.9448394297582,
+            "median": 10.19666847863509,
+            "p90": 30.34936086947144,
+            "scored_label_coverage": 0.5404984423676013,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.16443361753958588,
+            "count": 821,
+            "label_count": 1497,
+            "max": 126.8630595745463,
+            "median": 10.716017174178726,
+            "p90": 28.482732402114095,
+            "scored_label_coverage": 0.5484301937207748,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 133,
+            "label_count": 192,
+            "max": 17.697398842561842,
+            "median": 9.744393583226348,
+            "p90": 15.592109186405038,
+            "scored_label_coverage": 0.6927083333333334,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.19622093023255813,
+            "count": 688,
+            "label_count": 1305,
+            "max": 126.8630595745463,
+            "median": 11.321044740079603,
+            "p90": 30.408643693400894,
+            "scored_label_coverage": 0.5272030651340996,
+            "threshold": 20.0
+          }
+        }
+      },
+      "folds": {
+        "all_views": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.024438312968072525,
+              "count": 2537,
+              "max": 483.9813254639781,
+              "median": 4.872743362923498,
+              "p90": 12.2832326708818,
+              "threshold": 20.0
+            },
+            "scored_label_count": 2537,
+            "scored_label_coverage": 0.857384251436296,
+            "scoring_label_count": 2959,
+            "valid_3d_rate": 0.8475247524752475
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.034733441033925685,
+              "count": 1238,
+              "max": 483.9813254639781,
+              "median": 4.625461969860585,
+              "p90": 11.58102884950934,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1238,
+            "scored_label_coverage": 0.8467852257181943,
+            "scoring_label_count": 1462,
+            "valid_3d_rate": 0.8316831683168316
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.014626635873749037,
+              "count": 1299,
+              "max": 46.833094664406744,
+              "median": 5.057802890033017,
+              "p90": 12.983892754266453,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1299,
+            "scored_label_coverage": 0.8677354709418837,
+            "scoring_label_count": 1497,
+            "valid_3d_rate": 0.8633663366336634
+          }
+        },
+        "without_cam0": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.06378986866791744,
+              "count": 533,
+              "max": 69.6821578764953,
+              "median": 9.707641663928332,
+              "p90": 16.645330633095554,
+              "threshold": 20.0
+            },
+            "scored_label_count": 533,
+            "scored_label_coverage": 0.5494845360824743,
+            "scoring_label_count": 970,
+            "valid_3d_rate": 0.5346534653465347
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.04059040590405904,
+              "count": 271,
+              "max": 66.99823926345603,
+              "median": 7.920078419079958,
+              "p90": 14.234853183102183,
+              "threshold": 20.0
+            },
+            "scored_label_count": 271,
+            "scored_label_coverage": 0.572938689217759,
+            "scoring_label_count": 473,
+            "valid_3d_rate": 0.5386138613861386
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.08778625954198473,
+              "count": 262,
+              "max": 69.6821578764953,
+              "median": 10.498264402951934,
+              "p90": 18.152517497704963,
+              "threshold": 20.0
+            },
+            "scored_label_count": 262,
+            "scored_label_coverage": 0.5271629778672032,
+            "scoring_label_count": 497,
+            "valid_3d_rate": 0.5306930693069307
+          }
+        },
+        "without_cam1": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.2955032119914347,
+              "count": 467,
+              "max": 217.02464232896358,
+              "median": 13.080591778940466,
+              "p90": 35.88092394655646,
+              "threshold": 20.0
+            },
+            "scored_label_count": 467,
+            "scored_label_coverage": 0.47411167512690355,
+            "scoring_label_count": 985,
+            "valid_3d_rate": 0.4693069306930693
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.22943722943722944,
+              "count": 231,
+              "max": 217.02464232896358,
+              "median": 11.989697542136195,
+              "p90": 25.146851846466635,
+              "threshold": 20.0
+            },
+            "scored_label_count": 231,
+            "scored_label_coverage": 0.4772727272727273,
+            "scoring_label_count": 484,
+            "valid_3d_rate": 0.46732673267326735
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.3601694915254237,
+              "count": 236,
+              "max": 126.8630595745463,
+              "median": 14.323242414948968,
+              "p90": 40.69312739749858,
+              "threshold": 20.0
+            },
+            "scored_label_count": 236,
+            "scored_label_coverage": 0.47105788423153694,
+            "scoring_label_count": 501,
+            "valid_3d_rate": 0.47128712871287126
+          }
+        },
+        "without_cam2": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.15170278637770898,
+              "count": 646,
+              "max": 252.9448394297582,
+              "median": 9.52368457543304,
+              "p90": 29.92339945867856,
+              "threshold": 20.0
+            },
+            "scored_label_count": 646,
+            "scored_label_coverage": 0.6434262948207171,
+            "scoring_label_count": 1004,
+            "valid_3d_rate": 0.6396039603960396
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.21981424148606812,
+              "count": 323,
+              "max": 252.9448394297582,
+              "median": 9.262411509261456,
+              "p90": 40.71751731789089,
+              "threshold": 20.0
+            },
+            "scored_label_count": 323,
+            "scored_label_coverage": 0.6396039603960396,
+            "scoring_label_count": 505,
+            "valid_3d_rate": 0.6396039603960396
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.08359133126934984,
+              "count": 323,
+              "max": 46.18386721029268,
+              "median": 9.657420024308715,
+              "p90": 19.110724184511604,
+              "threshold": 20.0
+            },
+            "scored_label_count": 323,
+            "scored_label_coverage": 0.6472945891783567,
+            "scoring_label_count": 499,
+            "valid_3d_rate": 0.6396039603960396
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 56.20642806298565
+    },
+    "without_loess": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.18073047858942065,
+            "count": 1588,
+            "label_count": 2959,
+            "max": 252.48514361210303,
+            "median": 10.496407655587905,
+            "p90": 29.87046798714679,
+            "scored_label_coverage": 0.5366677931733694,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.003787878787878788,
+            "count": 264,
+            "label_count": 370,
+            "max": 22.485064281405446,
+            "median": 9.458660484850341,
+            "p90": 14.888124115114753,
+            "scored_label_coverage": 0.7135135135135136,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.21601208459214502,
+            "count": 1324,
+            "label_count": 2589,
+            "max": 252.48514361210303,
+            "median": 10.97022767554314,
+            "p90": 32.44496694254884,
+            "scored_label_coverage": 0.511394360757049,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.17906683480453972,
+            "count": 793,
+            "label_count": 1462,
+            "max": 252.48514361210303,
+            "median": 9.797591870007757,
+            "p90": 29.81043880847947,
+            "scored_label_coverage": 0.542407660738714,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 130,
+            "label_count": 178,
+            "max": 18.513305024396367,
+            "median": 8.100031408391152,
+            "p90": 13.463336941167034,
+            "scored_label_coverage": 0.7303370786516854,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.21417797888386123,
+            "count": 663,
+            "label_count": 1284,
+            "max": 252.48514361210303,
+            "median": 10.31592895918891,
+            "p90": 33.24596335404743,
+            "scored_label_coverage": 0.5163551401869159,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.18238993710691823,
+            "count": 795,
+            "label_count": 1497,
+            "max": 134.0418125510329,
+            "median": 11.270636070644034,
+            "p90": 29.886592748854245,
+            "scored_label_coverage": 0.531062124248497,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.007462686567164179,
+            "count": 134,
+            "label_count": 192,
+            "max": 22.485064281405446,
+            "median": 10.250170765878703,
+            "p90": 15.883629517507444,
+            "scored_label_coverage": 0.6979166666666666,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.2178517397881997,
+            "count": 661,
+            "label_count": 1305,
+            "max": 134.0418125510329,
+            "median": 11.623485870693747,
+            "p90": 31.72544047404091,
+            "scored_label_coverage": 0.5065134099616858,
+            "threshold": 20.0
+          }
+        }
+      },
+      "folds": {
+        "all_views": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.026079869600651995,
+              "count": 2454,
+              "max": 484.01328298442616,
+              "median": 5.593899874738076,
+              "p90": 12.608040283448718,
+              "threshold": 20.0
+            },
+            "scored_label_count": 2454,
+            "scored_label_coverage": 0.8293342345386955,
+            "scoring_label_count": 2959,
+            "valid_3d_rate": 0.8207920792079207
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.03489361702127659,
+              "count": 1175,
+              "max": 484.01328298442616,
+              "median": 5.320676523457791,
+              "p90": 12.151355062085308,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1175,
+            "scored_label_coverage": 0.8036935704514364,
+            "scoring_label_count": 1462,
+            "valid_3d_rate": 0.7900990099009901
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.017982799061767005,
+              "count": 1279,
+              "max": 82.10640788007385,
+              "median": 5.736645097911139,
+              "p90": 13.173044168846648,
+              "threshold": 20.0
+            },
+            "scored_label_count": 1279,
+            "scored_label_coverage": 0.85437541750167,
+            "scoring_label_count": 1497,
+            "valid_3d_rate": 0.8514851485148515
+          }
+        },
+        "without_cam0": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.08139534883720931,
+              "count": 516,
+              "max": 77.11173899050642,
+              "median": 9.855914807966384,
+              "p90": 18.52771834633869,
+              "threshold": 20.0
+            },
+            "scored_label_count": 516,
+            "scored_label_coverage": 0.5319587628865979,
+            "scoring_label_count": 970,
+            "valid_3d_rate": 0.5178217821782178
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.04633204633204633,
+              "count": 259,
+              "max": 62.33133898259105,
+              "median": 8.85973853056908,
+              "p90": 14.253766451569543,
+              "threshold": 20.0
+            },
+            "scored_label_count": 259,
+            "scored_label_coverage": 0.547568710359408,
+            "scoring_label_count": 473,
+            "valid_3d_rate": 0.5148514851485149
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.11673151750972763,
+              "count": 257,
+              "max": 77.11173899050642,
+              "median": 10.471019371600923,
+              "p90": 21.95215984071761,
+              "threshold": 20.0
+            },
+            "scored_label_count": 257,
+            "scored_label_coverage": 0.5171026156941649,
+            "scoring_label_count": 497,
+            "valid_3d_rate": 0.5207920792079208
+          }
+        },
+        "without_cam1": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.3036529680365297,
+              "count": 438,
+              "max": 214.22874449859546,
+              "median": 12.943017644279124,
+              "p90": 38.70722648640956,
+              "threshold": 20.0
+            },
+            "scored_label_count": 438,
+            "scored_label_coverage": 0.4446700507614213,
+            "scoring_label_count": 985,
+            "valid_3d_rate": 0.4405940594059406
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.23853211009174313,
+              "count": 218,
+              "max": 214.22874449859546,
+              "median": 11.748191503992114,
+              "p90": 28.660615213281716,
+              "threshold": 20.0
+            },
+            "scored_label_count": 218,
+            "scored_label_coverage": 0.45041322314049587,
+            "scoring_label_count": 484,
+            "valid_3d_rate": 0.4415841584158416
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.36818181818181817,
+              "count": 220,
+              "max": 134.0418125510329,
+              "median": 14.600114592735721,
+              "p90": 42.37860106323717,
+              "threshold": 20.0
+            },
+            "scored_label_count": 220,
+            "scored_label_coverage": 0.43912175648702595,
+            "scoring_label_count": 501,
+            "valid_3d_rate": 0.4396039603960396
+          }
+        },
+        "without_cam2": {
+          "all": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.17665615141955837,
+              "count": 634,
+              "max": 252.48514361210303,
+              "median": 9.884113439734278,
+              "p90": 30.686975877756904,
+              "threshold": 20.0
+            },
+            "scored_label_count": 634,
+            "scored_label_coverage": 0.6314741035856574,
+            "scoring_label_count": 1004,
+            "valid_3d_rate": 0.6277227722772277
+          },
+          "evaluation": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.2468354430379747,
+              "count": 316,
+              "max": 252.48514361210303,
+              "median": 9.494773936639632,
+              "p90": 41.45602344366442,
+              "threshold": 20.0
+            },
+            "scored_label_count": 316,
+            "scored_label_coverage": 0.6257425742574257,
+            "scoring_label_count": 505,
+            "valid_3d_rate": 0.6257425742574257
+          },
+          "tuning": {
+            "reprojection_px": {
+              "above_threshold_rate": 0.1069182389937107,
+              "count": 318,
+              "max": 64.91564156833859,
+              "median": 10.059591631052953,
+              "p90": 21.388451485552444,
+              "threshold": 20.0
+            },
+            "scored_label_count": 318,
+            "scored_label_coverage": 0.6372745490981964,
+            "scoring_label_count": 499,
+            "valid_3d_rate": 0.6297029702970297
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 65.46658243692946
+    }
+  },
+  "artifact_hashes": {
+    "index.html": {
+      "sha256": "5dd554f4e89e58dce59027fc5ba5fc26550d9e5197a2d850ef2feb516a8ac1e2",
+      "size_bytes": 6364881
+    },
+    "comparison.mp4": {
+      "sha256": "cd37cb723f2acde64380cd82cdb2ee552bf0d89c7cf85845ae651999676cd74f",
+      "size_bytes": 1598865
+    },
+    "scores.json": {
+      "sha256": "8f9d82e7ed70a7b75ac311cc3b18c56504e4c3affd036b450d14d79b1d917570",
+      "size_bytes": 520237
+    },
+    "decode.json": {
+      "sha256": "4d1b0a97e9eeb2f6fed0dd0f8bc8813bd504259c7935f4d7ee3b403320f9040b",
+      "size_bytes": 313795
+    },
+    "paired-budget.json": {
+      "sha256": "6dc87795203746225c62509cd3a5e26c0ba15b9e28205d9755c2ddb939c16713",
+      "size_bytes": 38503
+    }
+  }
+}

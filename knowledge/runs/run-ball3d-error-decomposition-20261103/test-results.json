@@ -1,0 +1,323 @@
+{
+  "collected": 35,
+  "passed": 35,
+  "collection_seconds": 6.24,
+  "pytest_elapsed_seconds": 25.47,
+  "cases": [
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+      "seconds_setup_call_teardown": 0.018,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.01,
+        "call": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+      "seconds_setup_call_teardown": 0.008,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+      "seconds_setup_call_teardown": 0.008,
+      "duration_stages_seconds_rounded": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+      "seconds_setup_call_teardown": 0.872,
+      "duration_stages_seconds_rounded": {
+        "call": 0.87,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+      "seconds_setup_call_teardown": 0.015,
+      "duration_stages_seconds_rounded": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+      "seconds_setup_call_teardown": 0.031,
+      "duration_stages_seconds_rounded": {
+        "call": 0.03,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+      "seconds_setup_call_teardown": 0.026,
+      "duration_stages_seconds_rounded": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+      "seconds_setup_call_teardown": 0.02,
+      "duration_stages_seconds_rounded": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+      "seconds_setup_call_teardown": 0.019,
+      "duration_stages_seconds_rounded": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+      "seconds_setup_call_teardown": 0.003,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+      "seconds_setup_call_teardown": 0.004,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+      "seconds_setup_call_teardown": 0.004,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+      "seconds_setup_call_teardown": 0.021,
+      "duration_stages_seconds_rounded": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_position_regression_signed_slope_and_temporal_support",
+      "seconds_setup_call_teardown": 0.019,
+      "duration_stages_seconds_rounded": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis",
+      "seconds_setup_call_teardown": 0.004,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_interpolation_and_image_speed_do_not_cross_gaps_or_split",
+      "seconds_setup_call_teardown": 0.004,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_event_union_and_smoothing_keep_matched_mask_and_reference_kind",
+      "seconds_setup_call_teardown": 0.068,
+      "duration_stages_seconds_rounded": {
+        "call": 0.07,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels",
+      "seconds_setup_call_teardown": 1.266,
+      "duration_stages_seconds_rounded": {
+        "call": 1.26,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps",
+      "seconds_setup_call_teardown": 2.255,
+      "duration_stages_seconds_rounded": {
+        "call": 2.25,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels",
+      "seconds_setup_call_teardown": 0.534,
+      "duration_stages_seconds_rounded": {
+        "call": 0.53,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_paired_scoring_matches_camera_frame_intersection_with_different_coverage",
+      "seconds_setup_call_teardown": 0.028,
+      "duration_stages_seconds_rounded": {
+        "call": 0.03,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+      "seconds_setup_call_teardown": 0.043,
+      "duration_stages_seconds_rounded": {
+        "call": 0.04,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+      "seconds_setup_call_teardown": 0.038,
+      "duration_stages_seconds_rounded": {
+        "call": 0.04,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+      "seconds_setup_call_teardown": 0.017,
+      "duration_stages_seconds_rounded": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+      "seconds_setup_call_teardown": 0.041,
+      "duration_stages_seconds_rounded": {
+        "call": 0.04,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+      "seconds_setup_call_teardown": 0.044,
+      "duration_stages_seconds_rounded": {
+        "call": 0.04,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+      "seconds_setup_call_teardown": 0.027,
+      "duration_stages_seconds_rounded": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+      "seconds_setup_call_teardown": 0.8,
+      "duration_stages_seconds_rounded": {
+        "call": 0.79,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+      "seconds_setup_call_teardown": 0.602,
+      "duration_stages_seconds_rounded": {
+        "call": 0.6,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+      "seconds_setup_call_teardown": 0.672,
+      "duration_stages_seconds_rounded": {
+        "call": 0.67,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+      "seconds_setup_call_teardown": 0.694,
+      "duration_stages_seconds_rounded": {
+        "call": 0.69,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+      "seconds_setup_call_teardown": 0.224,
+      "duration_stages_seconds_rounded": {
+        "call": 0.22,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+      "seconds_setup_call_teardown": 0.022,
+      "duration_stages_seconds_rounded": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media",
+      "seconds_setup_call_teardown": 0.006,
+      "duration_stages_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+      "seconds_setup_call_teardown": 10.031,
+      "duration_stages_seconds_rounded": {
+        "call": 10.03,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    }
+  ]
+}
