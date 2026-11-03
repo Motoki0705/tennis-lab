@@ -21,3 +21,11 @@ setupは小fixtureのみ、GPU/動画/実資産はunit・integrationへ持ち込
 全method予測保存後にGTを採点側だけで読み、設定は事前固定する（後半を使った調整なし）。
 動画は共有rendererで逐次処理する。比較図/動画/HTMLはoutputsの新directoryへ出し、
 checksum・資源実測・目視検証と再現scriptをknowledgeへ記録する。
+
+## 最終接続確認で追加した回帰
+
+v1の保存内容を確認し、source-frameの2Dと時刻補正後の2Dを区別する契約を追加した。
+新しいcaseを増やさず、公開config→sceneの既存integrationで、非ゼロoffsetでも
+ball artifact/SceneResultの画素・maskが元観測と一致し、再標本化座標は診断欄にだけあることを確認する。
+v2を新規directoryで実行し、v1の位置・valid・使用view・camera・offsetのbitwise一致も確認する。
+v1は上書きせず、測定記録をv1/とoutputsへ保持する。設定や最適化の残差は変更しない。

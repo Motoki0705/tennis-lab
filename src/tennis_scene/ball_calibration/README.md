@@ -37,6 +37,9 @@ linear interpolation of the adjacent accepted 2D measurements. Final output
 uses the original triangulation and speed gate after resampling at t-offset.
 Neither fitting nor output resampling extrapolates or bridges missing points.
 Interpolation can reduce coverage; fitted 3D latent points never fill output gaps.
+The ball artifact and `SceneResult.ball_uv/ball_vis` keep the original source-frame
+2D pixels and masks. Resampled pixels/visibility belong only to the 3D solver and
+explicit `resampled_uv_px/resampled_visibility` diagnostics.
 
 Residuals use soft-L1 loss after court/ball pixel scaling. Scores select the
 historical inliers but are not treated as calibrated probabilities in the BA.

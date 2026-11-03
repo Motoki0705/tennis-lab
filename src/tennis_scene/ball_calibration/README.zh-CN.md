@@ -23,6 +23,8 @@ inlier；优化前固定支持集合，不能通过偏移时间删除残差。�
 `max_ball_frames` 个对应，要求运动及与基准camera连通。用相邻接受2D观测的分段线性
 插值处理fractional time。最终按t-offset重新采样，再执行原三角测量与速度gate。
 不外推或跨缺失插值，coverage可能下降；拟合3D点不填补输出缺失。
+球artifact与 `SceneResult.ball_uv/ball_vis` 保留原源帧2D像素和mask。
+重采样像素/可见性仅用于3D求解与显式 `resampled_uv_px/resampled_visibility` 诊断。
 
 court/ball残差除以像素scale后采用soft-L1。score不作为已校准概率。prior标准差为
 log焦距0.05、旋转0.02 rad、中心0.5 m、时间0.5帧，乘以共同的无量纲prior weight。

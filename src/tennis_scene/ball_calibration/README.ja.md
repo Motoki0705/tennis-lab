@@ -27,6 +27,8 @@ frameもinlierを要求し、時刻を変えて残差を消せないよう支持
 fractional timeは隣接した採用2D観測の区分線形補間で扱う。最終出力はt-offsetで再標本化し、
 従来の三角測量・速度gateを実行する。端の外挿と欠測を跨ぐ補間はしない。coverageが下がる
 場合があり、fit用3D点で出力の欠測を埋めない。
+ball artifactと `SceneResult.ball_uv/ball_vis` は元frameの2D座標・maskを保持する。
+再標本化した座標・可視性は3D計算と明示的な `resampled_uv_px/resampled_visibility` 診断にだけ使う。
 
 court/ballのpixel scaleで割った残差へsoft-L1を使う。scoreを較正確率とは扱わない。
 priorの標準偏差はlog焦点0.05、姿勢0.02 rad、位置0.5 m、時刻0.5 frameで、共通の

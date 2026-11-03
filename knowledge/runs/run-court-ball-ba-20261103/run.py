@@ -125,6 +125,7 @@ def main():
     parser.add_argument("--annotations", type=Path, required=True)
     parser.add_argument("--videos", type=Path, required=True)
     parser.add_argument("--prior", type=Path, required=True)
+    parser.add_argument("--prior-method-comparison", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     cv2.setNumThreads(1)
@@ -160,6 +161,19 @@ def main():
         for key in ("positions", "valid", "used_views"):
             np.testing.assert_array_equal(getattr(run.result, key), getattr(old.result, key))
         unchanged.append(run.key)
+    unchanged_method_predictions = []
+    if args.prior_method_comparison is not None:
+        for name, values in runs.items():
+            for run in values:
+                old = load_run(args.prior_method_comparison / "results" / name / run.key)
+                if old.bundle_sha256 != bundle.manifest_sha256:
+                    raise ValueError("Prior method results are from another bundle")
+                for key in ("positions", "valid", "used_views", "time_offsets_seconds"):
+                    np.testing.assert_array_equal(getattr(run.result, key), getattr(old.result, key))
+                if run.result.cameras is not None:
+                    for camera, before in zip(run.result.cameras, old.result.cameras, strict=True):
+                        np.testing.assert_array_equal(camera.matrix, before.matrix)
+                unchanged_method_predictions.append(f"{name}/{run.key}")
     court = court_report(runs[method.name], inputs, videos, args.output)
     print("Predictions saved/reloaded; baseline arrays match foundation; reading scoring reference", flush=True)
     annotations = load_annotations(args.annotations, bundle, expected_sha256=REFERENCE_SHA)
@@ -187,6 +201,9 @@ def main():
         "bundle_sha256": bundle.manifest_sha256, "annotations_sha256": annotations.reference.sha256,
         "replay_script_sha256": dual_sha256(Path(__file__)), "code_fingerprint": fingerprint,
         "baseline": baseline_receipt, "baseline_bitwise_equal_to_foundation_v2": unchanged,
+        "predictions_bitwise_equal_to_prior_method_comparison": unchanged_method_predictions,
+        "prior_method_comparison": None if args.prior_method_comparison is None else str(args.prior_method_comparison),
+        "source_2d_clock_contract": "source-frame pixels/masks preserved; resampled coordinates in diagnostics only",
         "videos": video_receipt, "comparison_video": media,
         "court_holdout": court, "raw_line_observations": "unavailable; no reinference; KP-only BA",
         "config_selection": "fixed before scoring; no tuning on either label split",

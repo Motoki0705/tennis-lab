@@ -64,6 +64,13 @@ def test_public_config_assembly_optional_stage_and_real_codec(tmp_path):
     assert actual.calibration is not None
     assert actual.calibration.diagnostics["reference_camera"] == "a_near"
     assert actual.calibration.time_offsets_seconds[1] > 0
+    # Nonzero clocks must not relabel interpolated coordinates as the saved
+    # source-frame 2D stream. 3D uses the separately recorded resampled pixels.
+    source_pixels = np.stack([view.points.uv_px for view in inputs.views])
+    source_mask = np.stack([view.points.observed for view in inputs.views])
+    np.testing.assert_array_equal(actual.ball.uv_px, source_pixels)
+    np.testing.assert_array_equal(actual.ball.visibility, source_mask)
+    assert not np.array_equal(actual.calibration.diagnostics["resampled_uv_px"], source_pixels)
     codec = ArtifactCodec(node.io.output_type)
     payload, arrays = codec.dump(actual, tmp_path)
     restored = codec.load(payload, tmp_path, arrays)
@@ -80,6 +87,8 @@ def test_public_config_assembly_optional_stage_and_real_codec(tmp_path):
         source, artifacts["calibration"], artifacts["alignment"], empty_people,
         PlayerTriangulationOutput(None), actual, BodyPlacementOutput(None)))
     np.testing.assert_array_equal(scene.ball_3d, actual.ball.trajectory.positions)
+    np.testing.assert_allclose(scene.ball_uv, source_pixels / np.array([1920, 1080], np.float32), atol=1e-7, rtol=0)
+    np.testing.assert_array_equal(scene.ball_vis, source_mask)
     np.testing.assert_array_equal(scene.metadata["ball_calibration"]["time_offsets_seconds"], actual.calibration.time_offsets_seconds)
 
 

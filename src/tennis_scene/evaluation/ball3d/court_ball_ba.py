@@ -68,5 +68,5 @@ class CourtBallBAMethod:
                          "rejection_codes": trajectory.reasons,
                          "accepted_uv_px": fitted.ball.uv_px,
                          "input_observed": observed,
-                         "corrected_visibility": fitted.ball.visibility},
+                         "corrected_visibility": fitted.calibration.diagnostics["resampled_visibility"]},
         )

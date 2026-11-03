@@ -299,9 +299,17 @@ def refine_court_ball(
             "court_holdout_count": [int((c.valid & ~m).sum()) for c, m in zip(courts, fit_masks, strict=True)],
             "ball_fit_count": supports.sum(1).tolist(),
             "fit_3d_points": points, "fit_support": supports,
+            "resampled_uv_px": ball.uv_px,
+            "resampled_visibility": ball.visibility,
             "parameter_count": len(initial), "residual_count": len(result.fun),
             "camera_bounds_hit": bool(np.any(np.abs(result.x[:7 * views]) > 3.99)),
             "clock_bounds_hit": bool(np.any(np.abs(offsets) > config.max_offset_frames * .999)),
         },
     )
-    return CalibratedBall(ball, calibration)
+    # SceneResult's 2D fields remain measurements on each original source
+    # frame. The resampled coordinates are used only by the 3D solve and
+    # retained explicitly in diagnostics, never relabelled as source pixels.
+    source_clock_ball = BallReconstructionResult(
+        baseline.uv_px, baseline.visibility, ball.trajectory, ball.status
+    )
+    return CalibratedBall(source_clock_ball, calibration)
