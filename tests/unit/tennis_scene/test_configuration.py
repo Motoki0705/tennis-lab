@@ -6,6 +6,7 @@ import runpy
 import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -23,6 +24,7 @@ from src.tennis_scene.configuration import (
     parse_visualize_tasks_config,
 )
 from src.utils.configuration import (
+    MissingConfigurationKeyError,
     UnknownConfigurationKeyError,
 )
 from src.utils.paths import PROJECT_ROOT
@@ -206,6 +208,23 @@ def test_automatic_pipeline_defaults(tmp_path: Path) -> None:
     assert runtime.camera_geometry.reference_camera is None
     assert runtime.people.runtime.static_cam
     assert runtime.enabled["player_reconstruction"] and "blcs_association" not in runtime.enabled
+    assert runtime.ball_method == "triangulation"
+
+
+def test_ball_method_and_all_topk_settings_come_from_composition(tmp_path: Path) -> None:
+    composed = _pipeline_config(tmp_path, "ball_reconstruction.method=topk_multihypothesis",
+        "ball_reconstruction.topk.score_weight=0", "ball_reconstruction.topk.max_missing_frames=0")
+    runtime = PipelineRuntimeConfig.from_config(composed)
+    assert runtime.ball_method == "topk_multihypothesis"
+    assert runtime.ball_topk.score_weight == 0
+    assert runtime.ball_topk.max_missing_frames == 0
+    assert asdict(runtime.ball_topk) == OmegaConf.to_container(composed.ball_reconstruction.topk, resolve=True)
+
+
+def test_topk_missing_composed_setting_is_rejected(tmp_path: Path) -> None:
+    composed = _pipeline_config(tmp_path, "~ball_reconstruction.topk.beam_width")
+    with pytest.raises(MissingConfigurationKeyError, match="beam_width"):
+        PipelineRuntimeConfig.from_config(composed)
 
 
 @pytest.mark.parametrize("override", ["+ball_confidence=legacy.yaml", "+player_motion.source=plcs", "+court_reference.view_half_turns=[false,false,true]", "+player_association.mode=manual_ui", "+association.min_player_probability=0.5", "+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt"])

@@ -1,6 +1,11 @@
 import numpy as np
+from numpy.typing import NDArray
 
-from src.tennis_scene.visualization.ball3d.rendering import line_segments, method_colors
+from src.tennis_scene.visualization.ball3d.rendering import (
+    draw_candidate_overlay,
+    line_segments,
+    method_colors,
+)
 from src.tennis_scene.visualization.ball3d.report import broken_html_references
 
 
@@ -25,3 +30,13 @@ def test_html_reference_audit_detects_missing_sibling_media(tmp_path):
         '<img src="data:image/png;base64,x"><a href="present.json">metrics</a><video src="missing.mp4"></video>'
     )
     assert broken_html_references(page) == ["missing.mp4"]
+
+
+def test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks():
+    panel: NDArray[np.uint8] = np.zeros((100, 150, 3), np.uint8)
+    uv = np.array([[22., 36.], [94., 74.], [0., 0.]])
+    draw_candidate_overlay(panel, uv, np.array([True, True, False]),
+        {"topk": 1}, {"topk": (23, 71, 239)}, scale=0.5)
+    np.testing.assert_array_equal(panel[37, 47], [23, 71, 239])
+    assert panel[15:22, 8:15].any()
+    assert not panel[:3, :3].any()

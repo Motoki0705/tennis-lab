@@ -122,6 +122,11 @@ v1 artifactの自動補完は行わず、executeで再生成、loadはschema不�
 
 ## ボール点と欠損
 
+`ball_reconstruction.method=topk_multihypothesis` はgate前の複数候補を使う任意の選択肢。
+既定は従来の `triangulation`。選択時だけball三角測量componentの入力を
+`ball_detections` v2へ結び、既存のside/alignmentは従来のball_pointsを使う。
+方式・単位・欠測と保存診断の契約は [ball_association](../ball_association/README.ja.md) を参照。
+
 `ball_detection → ball_points → court_side / camera_alignment / ball_triangulation` を使う。
 `ball_points` schema v4は、`ball_smoothing`設定で局所的な2次運動consensusによる外れ値除去と、
 confidence重み付きの頑健な2次LOESSをCPUで実行する。時間窓は元動画のFPS、

@@ -1,0 +1,202 @@
+{
+  "all_views": {
+    "tuning": {
+      "valid_frames": 219,
+      "frames_with_geometric_hypotheses": 505,
+      "missing_despite_geometric_hypotheses": 286,
+      "selected_candidate_rank_counts_one_based": [
+        499,
+        25,
+        8,
+        8,
+        3,
+        0,
+        0,
+        0
+      ],
+      "temporal_restarts": 8
+    },
+    "evaluation": {
+      "valid_frames": 209,
+      "frames_with_geometric_hypotheses": 505,
+      "missing_despite_geometric_hypotheses": 296,
+      "selected_candidate_rank_counts_one_based": [
+        475,
+        28,
+        9,
+        2,
+        2,
+        1,
+        0,
+        0
+      ],
+      "temporal_restarts": 8
+    },
+    "all": {
+      "valid_frames": 428,
+      "frames_with_geometric_hypotheses": 1010,
+      "missing_despite_geometric_hypotheses": 582,
+      "selected_candidate_rank_counts_one_based": [
+        974,
+        53,
+        17,
+        10,
+        5,
+        1,
+        0,
+        0
+      ],
+      "temporal_restarts": 16
+    }
+  },
+  "without_cam0": {
+    "tuning": {
+      "valid_frames": 177,
+      "frames_with_geometric_hypotheses": 504,
+      "missing_despite_geometric_hypotheses": 327,
+      "selected_candidate_rank_counts_one_based": [
+        312,
+        28,
+        7,
+        2,
+        4,
+        1,
+        0,
+        0
+      ],
+      "temporal_restarts": 19
+    },
+    "evaluation": {
+      "valid_frames": 173,
+      "frames_with_geometric_hypotheses": 493,
+      "missing_despite_geometric_hypotheses": 320,
+      "selected_candidate_rank_counts_one_based": [
+        301,
+        33,
+        5,
+        4,
+        2,
+        1,
+        0,
+        0
+      ],
+      "temporal_restarts": 22
+    },
+    "all": {
+      "valid_frames": 350,
+      "frames_with_geometric_hypotheses": 997,
+      "missing_despite_geometric_hypotheses": 647,
+      "selected_candidate_rank_counts_one_based": [
+        613,
+        61,
+        12,
+        6,
+        6,
+        2,
+        0,
+        0
+      ],
+      "temporal_restarts": 41
+    }
+  },
+  "without_cam1": {
+    "tuning": {
+      "valid_frames": 180,
+      "frames_with_geometric_hypotheses": 505,
+      "missing_despite_geometric_hypotheses": 325,
+      "selected_candidate_rank_counts_one_based": [
+        291,
+        40,
+        18,
+        7,
+        3,
+        0,
+        1,
+        0
+      ],
+      "temporal_restarts": 23
+    },
+    "evaluation": {
+      "valid_frames": 158,
+      "frames_with_geometric_hypotheses": 504,
+      "missing_despite_geometric_hypotheses": 346,
+      "selected_candidate_rank_counts_one_based": [
+        272,
+        29,
+        9,
+        4,
+        1,
+        0,
+        1,
+        0
+      ],
+      "temporal_restarts": 23
+    },
+    "all": {
+      "valid_frames": 338,
+      "frames_with_geometric_hypotheses": 1009,
+      "missing_despite_geometric_hypotheses": 671,
+      "selected_candidate_rank_counts_one_based": [
+        563,
+        69,
+        27,
+        11,
+        4,
+        0,
+        2,
+        0
+      ],
+      "temporal_restarts": 46
+    }
+  },
+  "without_cam2": {
+    "tuning": {
+      "valid_frames": 239,
+      "frames_with_geometric_hypotheses": 505,
+      "missing_despite_geometric_hypotheses": 266,
+      "selected_candidate_rank_counts_one_based": [
+        439,
+        25,
+        5,
+        6,
+        3,
+        0,
+        0,
+        0
+      ],
+      "temporal_restarts": 13
+    },
+    "evaluation": {
+      "valid_frames": 216,
+      "frames_with_geometric_hypotheses": 505,
+      "missing_despite_geometric_hypotheses": 289,
+      "selected_candidate_rank_counts_one_based": [
+        377,
+        28,
+        18,
+        4,
+        2,
+        2,
+        0,
+        1
+      ],
+      "temporal_restarts": 17
+    },
+    "all": {
+      "valid_frames": 455,
+      "frames_with_geometric_hypotheses": 1010,
+      "missing_despite_geometric_hypotheses": 555,
+      "selected_candidate_rank_counts_one_based": [
+        816,
+        53,
+        23,
+        10,
+        5,
+        2,
+        0,
+        1
+      ],
+      "temporal_restarts": 30
+    }
+  }
+}

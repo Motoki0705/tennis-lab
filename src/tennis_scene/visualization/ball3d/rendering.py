@@ -47,6 +47,27 @@ def method_colors(names: tuple[str, ...]) -> dict[str, tuple[int, int, int]]:
     return colors
 
 
+def draw_candidate_overlay(
+    panel: NDArray[np.uint8], uv: NDArray[Any], valid: NDArray[np.bool_],
+    selections: Mapping[str, int], colors: Mapping[str, tuple[int, int, int]], *, scale: float,
+) -> None:
+    """Draw raw candidate pixels; selected squares are distinct from 3D rings."""
+    for slot in np.flatnonzero(valid):
+        k = int(slot)
+        point = tuple(np.rint(uv[k] * scale).astype(int))
+        cv2.circle(panel, point, 3, (160, 160, 160), 1, cv2.LINE_AA)
+        cv2.putText(panel, str(k + 1), (point[0] + 4, point[1] - 4),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.3, (180, 180, 180), 1, cv2.LINE_AA)
+    for name, k in selections.items():
+        if k == -1:
+            continue
+        if k < 0 or k >= len(valid) or not valid[k]:
+            raise ValueError("Selected candidate index is not a valid evidence slot")
+        point = tuple(np.rint(uv[k] * scale).astype(int))
+        cv2.rectangle(panel, (point[0] - 3, point[1] - 3),
+                      (point[0] + 3, point[1] + 3), colors[name], -1)
+
+
 class BallComparisonRenderer:
     """Three synchronized RGB views plus top/side court trajectories.
 
@@ -62,6 +83,7 @@ class BallComparisonRenderer:
         *,
         annotations: Ball2DAnnotations | None = None,
         width: int = 1200,
+        show_candidates: bool = False,
     ) -> None:
         if (
             len(inputs.views) != 3
@@ -92,6 +114,16 @@ class BallComparisonRenderer:
         if annotations is not None:
             annotations.validate_for_inputs(inputs)
         self.inputs, self.runs, self.annotations = inputs, runs, annotations
+        self.show_candidates = show_candidates
+        self.selections = {}
+        if show_candidates:
+            for name, run in runs.items():
+                diagnostics = run.result.diagnostics or {}
+                indices = diagnostics.get("selected_candidate_indices")
+                if indices is not None:
+                    if indices.shape != (len(inputs.views), inputs.num_frames) or indices.dtype != np.int64:
+                        raise ValueError("Candidate overlay camera/frame axes disagree")
+                    self.selections[name] = indices
         self.readers = {
             c: RandomAccessVideoReader(videos[c]) for c in inputs.camera_ids
         }
@@ -242,6 +274,15 @@ class BallComparisonRenderer:
             panel = cv2.resize(
                 bgr, (self.left_width, self.camera_height), interpolation=cv2.INTER_AREA
             )
+            if self.show_candidates:
+                evidence = self.inputs.views[i].detections.evidence
+                if evidence is None:
+                    raise ValueError("Candidate overlay requires source evidence")
+                draw_candidate_overlay(panel, evidence.candidate_uv_px[frame], evidence.candidate_valid[frame],
+                    {name: int(indices[i, frame]) for name, indices in self.selections.items()},
+                    self.colors, scale=scale)
+                cv2.putText(panel, "grey: candidate rank | squares: selected 2D | rings: 3D", (10, 43),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.34, (235, 235, 235), 1, cv2.LINE_AA)
             for j, name in enumerate(self.runs):
                 uv, valid = self.projections[name, camera]
                 if (

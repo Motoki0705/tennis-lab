@@ -1,0 +1,26 @@
+{
+  "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_v2",
+  "verified_inventory_files": 129,
+  "inventory_sha256": "1907104f5ca83aecff16c06b120e66c1810c781f577648c839ba8beded02563d",
+  "array_and_diagnostic_bitwise_equal_previous_version": [
+    "results/pipeline_baseline/all_views",
+    "results/pipeline_baseline/without_cam0",
+    "results/pipeline_baseline/without_cam1",
+    "results/pipeline_baseline/without_cam2",
+    "results/topk_multihypothesis/all_views",
+    "results/topk_multihypothesis/without_cam0",
+    "results/topk_multihypothesis/without_cam1",
+    "results/topk_multihypothesis/without_cam2"
+  ],
+  "previous_output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_v1",
+  "code_commit": "49cc2b31f9e3dee3de28dc4d032d17bfed7199de",
+  "artifact_hashes": {
+    "index.html": "7ec99c7b6128770f09081d1bf12251c4421ad4298149c39cdcdbce7d4cc4f26b",
+    "comparison.mp4": "fee3e3d80473bb5acd3136cec25b4f01412fecacfd082e068d79c0318d30f87d",
+    "scores.json": "752bb75e3a1216e65695f245e190a073602b24e7850089ad6ae8586365f6fde0",
+    "paired-scores.json": "aa2f5fe51d7561139ad29cbd05429da68fe2902459eea5c2eb6474af2246db3a",
+    "metrics-table.png": "e1779be60f90cb0fce68e0d8c8d28d40c6dba5a0a8b5ff4c0ae2ae6d2776429c"
+  },
+  "max_test_case_seconds": 3.5750123920151964,
+  "max_test_setup_seconds": 0.006378259975463152
+}

@@ -1,5 +1,6 @@
 <!-- knowledge-review: 68de9b2fc6f4fa98e8ff13dd8b65d6a3b5ca7d8cff83c628df7398426dce8e48 on 2026-11-03 -->
 <!-- knowledge-review: 484ee8621480813982964e5fee514dd2153ca74cd85443a981e4fe1a1f5efa1b on 2026-11-04 -->
+<!-- knowledge-review: 01de480bfc7055551b1f7d5b859a3bf05a0351c04f764eec8fd5f0e040c6db0c on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -40,6 +41,19 @@ mainへの積み直し後の24保存結果の再採点で、既存数値は全�
 既定は維持し、候補・校正・同期の結果との統合比較と人間の採否判断を待つ。
 設定レビュー後にPython既定値をcompositionへ集約し、両設定型の監査対象への復帰を確認した。
 設定15条件・数値演算・固定入力の同一性から予測変更なしと判断し、全clipの再計算は行っていない。
+
+[top-K多仮説のCPU replay](nodes/tennis_scene/000034-run-ball3d-topk-multihypothesis-20261103.md)では、
+gate前候補のpair仮説と二次運動beam DPを標準pipelineの任意の方式として実装したが、
+主評価のLOVO p90は27.08→103.60px、coverageは56.43→36.46%と悪化した。
+2方式共通353点でも中央値・p90が悪化しており、運動外れの減少を精度改善と扱わない。
+全viewで幾何仮説のある296/505frameを時間探索が欠測にしている。未較正score、候補剪定、null/運動コスト、
+選択後LOESSの欠如の寄与は未分離。後半での再調整はせず、他方式との統合比較へ負の結果を残す。既定・採用判断は維持する。
+同PRのCI修正ではruntime既定値の所有権とfloat32残差の丸め幅を修正し、clip_000の全8予測・診断がv2と完全一致した。
+追加指摘で監査の探索外にTopK設定型・評価adapterのPython既定値が残っていたため、すべて必須入力へ直し、
+比較runとtestも同じHydra compositionから明示して渡すようにした。全16値・型とYAMLは不変で、
+対象symbol自体の宣言探索・catalog登録を直接検証した。一般の探索漏れは監査本体の変更を伴う別課題である。
+追加修正後も固定bundleの8予測・全診断がv2と完全一致し、元129成果物を変更していない。
+数値や採否の判断は変更せず、証拠と検証範囲を同ノードで確認する。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 

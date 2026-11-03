@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import importlib
+from dataclasses import fields
 from importlib.machinery import PathFinder
 
 import pytest
 
+from src.tennis_scene.ball_association.topk import TopKConfig
 from src.utils.configuration import (
     DEFAULT_AUDIT_INVENTORY,
     ConfigurationAbsencePolicy,
@@ -34,6 +36,21 @@ def test_catalog_has_exact_source_declaration_parity() -> None:
         == ADAPTER_CONTRACTS
     )
     assert all(contract.fields for contract in ADAPTER_CONTRACTS)
+
+
+def test_topk_settings_are_discovered_as_required_composition_owned_fields() -> None:
+    # Catalog parity alone misses a nested type that disappears from discovery
+    # when even one Python default is introduced. Require this authority itself.
+    symbol = "src.tennis_scene.ball_association.topk.TopKConfig"
+    assert symbol in SOURCE_CONTRACT_DECLARATIONS.adapter_symbols
+    contract = next(item for item in ADAPTER_CONTRACTS if item.adapter_symbol == symbol)
+    assert contract.authority_kind == "typed-dataclass"
+    assert {field.path for field in contract.fields} == {
+        f"TopKConfig.{field.name}" for field in fields(TopKConfig)
+    }
+    assert all(field.required for field in contract.fields)
+    assert all(field.default_policy is ConfigurationDefaultPolicy.COMPOSITION_OWNED
+               for field in contract.fields)
 
 
 @pytest.mark.parametrize(
