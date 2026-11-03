@@ -65,15 +65,25 @@ PATH_BOUNDARY = NonHydraPathBoundary(
             allow_role_root=True,
             required=False,
         ),
-        *(
-            BoundaryPathField(
-                name, PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
-                must_exist=True, allow_role_root=True, required=False,
-            )
-            for name in (
-                "training_run_record", "validation_manifest", "training_distribution",
-                "test_distribution", "evaluation_contract",
-            )
+        BoundaryPathField(
+            "training_run_record", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "validation_manifest", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "training_distribution", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "test_distribution", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
+        ),
+        BoundaryPathField(
+            "evaluation_contract", PathRole.ARTIFACT, PathDirection.INPUT, PathKind.FILE,
+            must_exist=True, allow_role_root=True, required=False,
         ),
         BoundaryPathField(
             "output", PathRole.OUTPUT, PathDirection.OUTPUT, PathKind.FILE
