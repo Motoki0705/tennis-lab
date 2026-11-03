@@ -40,3 +40,17 @@ coarseの既知位置復元だけでは、将来候補seedへ戻す誤変更を�
 既存の同じ合成fixtureで候補payloadだけを全無効にしたunitを1件追加し、
 coarseは既知位置を復元し、候補版は欠測を明示する契約を確認する。
 新しいmap fixtureや重いintegrationは増やさず、追加1case・5秒以内を上限とする。
+
+## CI修正の設計
+
+- 設定の正本はcompositionのYAMLのみ。`DenseLikelihoodConfig` の全fieldを必須にし、
+  adapterも明示的なconfigを受ける。既存の設定監査directory全体を再利用し、別の免除や監査の弱化は追加しない。
+  既存のpipeline接続integrationへ温度/背景率overrideの伝達確認を足す（case数は増やさない）。
+- main回帰のpositions/valid/inliers/uv/visibility/reasonsは引き続き完全一致。
+  reprojectionだけの差について、float64のfit解から残差を作ってfloat32へ保存する経路と、
+  NumPy/BLASのCPU実装を変えたprobeを記録し、float32 ULP単位の上限を決める。
+  mainの計算ファイルのGit blob一致も別の証拠にする。画素単位の誤差を隠す許容値は使わない。
+- 数値実装とYAML値が不変であること、全保存条件の明示configが一致することを確認し、
+  選定denseの1010frame・全viewをCPU再実行してv2の配列と比べる。GT再調整はしない。
+- pytestは-n 0で逐次実行。新しい大きなfixtureや重いE2Eは増やさず、collect-onlyと全phase時間を保存する。
+- DINO分離の失敗が観測された場合のみ、指定commitの該当1ファイルを同一内容で取り込む。

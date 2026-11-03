@@ -6,7 +6,6 @@ from numpy.typing import NDArray
 from scipy.ndimage import map_coordinates
 from scipy.optimize import minimize
 
-from src.tennis_scene.ball_likelihood import DenseLikelihoodConfig
 from src.tennis_scene.ball_likelihood.likelihood import HeatmapLikelihood, objective
 from src.tennis_scene.ball_likelihood.reconstruction import (
     event_boundaries,
@@ -14,12 +13,12 @@ from src.tennis_scene.ball_likelihood.reconstruction import (
     temporal_objective,
 )
 from src.tennis_scene.evaluation.ball3d.dense_likelihood import DenseHeatmapMethod
-from tests.support.ball3d_dense import dense_inputs
+from tests.support.ball3d_dense import dense_config, dense_inputs
 
 
 def config(**kwargs):
-    return DenseLikelihoodConfig(x_bounds=(-1., 2.), y_bounds=(-1., 2.), z_bounds=(.5, 2.5),
-                                 coarse_spacing_m=.5, **kwargs)
+    return dense_config(x_bounds=(-1., 2.), y_bounds=(-1., 2.), z_bounds=(.5, 2.5),
+                        coarse_spacing_m=.5, **kwargs)
 
 
 @pytest.mark.parametrize("interpolation", ["bicubic_logit", "quadratic_logit", "quadratic_log"])
@@ -167,4 +166,4 @@ def test_temporal_optimization_does_not_smooth_across_a_detected_impact_or_fill_
                                {"coarse_spacing_m": .001}, {"view_temperatures": (("far", -1),)}])
 def test_invalid_dense_config_is_rejected(kw):
     with pytest.raises(ValueError):
-        DenseLikelihoodConfig(**kw)
+        dense_config(**kw)

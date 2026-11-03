@@ -1,0 +1,5473 @@
+{
+  "command": "bash knowledge/runs/run-ball3d-dense-likelihood-20261103/ci-fix-tests.sh",
+  "pytest_options": [
+    "-n",
+    "0",
+    "-q",
+    "--durations=0",
+    "--durations-min=0"
+  ],
+  "collected": 545,
+  "passed": 544,
+  "skipped": 1,
+  "collection_seconds": 80.74,
+  "pytest_elapsed_seconds": 353.14,
+  "raw_logs_dir": "/tmp/ball3d-dense-ci-fix-tests.PAKcHB",
+  "raw_logs_sha256": {
+    "results.xml": "4721e7b2da652c8f2157b54e63d727e52881faff8411e5ed8c728f2e4c3361e3",
+    "durations.txt": "eb28cddb1b87eef241d16cb49a838a37020ed55f0354582ae75e9117994fbe61",
+    "collection.txt": "c80a60a56de943af4ee316f9dad3366fbab419054461cde83ae4e6ae3a3f6e33"
+  },
+  "cases": [
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 29.647,
+      "phases_rounded_s": {
+        "call": 29.64,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.01,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.27,
+      "phases_rounded_s": {
+        "call": 0.27,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.01,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.025,
+      "phases_rounded_s": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_dispatch_preserves_arguments_and_restores_argv_on_failure",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_invalid_selector_never_imports_or_runs_a_stage",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_nested_route_records_the_actual_leaf_validator",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.missing'}]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.014,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.entry'}]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "setup": 0.01,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'duplicate': 'src.leaf', 'duplicate': 'src.nested'}]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.009,
+      "phases_rounded_s": {
+        "setup": 0.01,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[dynamic_routes]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.009,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{}]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.01,
+      "phases_rounded_s": {
+        "setup": 0.01,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unvalidated_leaf_invalidates_the_whole_router",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 3.824,
+      "phases_rounded_s": {
+        "call": 3.82,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.01,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallRuntimePaths]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.AxialModelConfig]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 98.483,
+      "phases_rounded_s": {
+        "call": 98.48,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 113.202,
+      "phases_rounded_s": {
+        "call": 113.2,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_runtime_boundary_discovery_has_one_canonical_owner",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.1,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_catalog_and_audit_depend_on_lower_discovery_without_a_back_edge",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_catalog_does_not_publish_legacy_synthetic_boundaries",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_catalog_keeps_task_local_generation_boundaries_distinct",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registration_preserves_neighbor_boundary_checks",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.018,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_sources_still_reject_configuration_fallbacks",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registrations_have_sources_reasons_and_no_repo_imports",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.133,
+      "phases_rounded_s": {
+        "call": 0.13,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_synthetic_inventory_has_only_the_canonical_production_clis",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_manual_court_editor_has_an_explicit_non_hydra_path_boundary",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_smpl_asset_installer_has_an_explicit_non_hydra_path_boundary",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_task_local_generation_and_visualization_boundaries_remain_in_inventory",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_mixed_court_training_boundary_remains_explicitly_registered",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_temporal_ball_evaluation_registers_the_shared_runtime_boundary",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.074,
+      "phases_rounded_s": {
+        "call": 0.07,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_court_learning_presentation_has_an_explicit_hydra_boundary",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_default_inventory_contains_only_current_policy",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_duplicate_boundaries",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_incomplete_validator_binding",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[true]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[yes]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[2]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[ 0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_TYPO]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_MOE_REFERENCE]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_USE_TIME_LOCAL_CUDA]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[None-False]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[0-False]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[1-True]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[None-all]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[all-all]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[compressed_time_local-compressed_time_local]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_rejects_unknown_build_target",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_enabled_build_requires_strict_json_contract",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_enabled_build_uses_serialized_absolute_project_root",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.01,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_resolves_all_roles",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[.-explicit absolute]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{other}-exactly match]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{unresolved}-resolved absolute]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation0-Unknown]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation1-source_role]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation2-destination_role]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation3-relative]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation4-escapes]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation5-expected str]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation6-Unknown]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation7-Unknown]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_unresolved_absolute_values",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[project_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[data_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[checkpoint_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[artifact_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[output_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[cache_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[external_asset_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.019,
+      "phases_rounded_s": {
+        "teardown": 0.01,
+        "setup": 0.0,
+        "call": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.021,
+      "phases_rounded_s": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "setup": 0.01,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-project]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-data]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-checkpoint]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-artifact]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-cache]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-external_asset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset- ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-\\t]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_project_source_child_remains_explicit_and_role_contained",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[ ]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[.]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[..]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[nested/../..]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_parent_from_another_role",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_preserves_venv_launcher_but_contains_parent",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_rejects_parent_symlink_escape",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_returns_typed_role_aware_paths",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_optional_boundary_paths_are_omitted_without_synthesizing_values",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.021,
+      "phases_rounded_s": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_only_optional_boundary_can_return_an_empty_mapping",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-relative/source.json-explicit absolute]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-invalid1-exactly str or pathlib.Path]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-invalid2-non-empty sequence]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-one.bin-non-empty sequence]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.006,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_wrong_role_root_and_duplicate_paths",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_checks_input_existence_and_kind",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_are_opt_in_and_keep_output_contained",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[output-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[artifact-output]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[data-input]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_input_requires_explicit_role_root_permission",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[slcs/precompute/run-basename of the configured output_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[outputs/legacy-a legacy root directory name]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[external_asset/work-the name of the external_asset path role]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/synthetic_data_generation/visualization/test_contracts.py::test_court_request_requires_only_explicit_trajectory_id",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/synthetic_data_generation/visualization/test_contracts.py::test_compact_domains_require_scene_and_camera[NOTSET]",
+      "outcome": "skipped",
+      "seconds_setup_call_teardown": 0.001,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "teardown": 0.0
+      },
+      "skip_reason": "got empty parameter set for (domain)"
+    },
+    {
+      "node": "tests/unit/synthetic_data_generation/visualization/test_contracts.py::test_request_rejects_output_inside_dataset_or_existing_output",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/synthetic_data_generation/visualization/test_contracts.py::test_hydra_boundary_rejects_absolute_path_bypass_of_configured_roots[dataset_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.013,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/synthetic_data_generation/visualization/test_contracts.py::test_hydra_boundary_rejects_absolute_path_bypass_of_configured_roots[output_video]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/synthetic_data_generation/visualization/test_contracts.py::test_catalog_exposes_visualization_fields_and_path_roles",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.018,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[unset]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.014,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[relative]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[missing]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[not_binary]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_different_cached_binary_is_rejected",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[selected]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[other]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[atomic_replace]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[in_place]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_removed_cached_module_cannot_be_reimported",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_binary_changed_during_import_requires_fresh_process",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[False]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.049,
+      "phases_rounded_s": {
+        "call": 0.05,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[True]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.005,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch[False]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch[True]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_build_rejects_existing_binary_before_build",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.017,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[candidates-bicubic_logit]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.431,
+      "phases_rounded_s": {
+        "call": 0.43,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[candidates-quadratic_logit]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.2,
+      "phases_rounded_s": {
+        "call": 0.2,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[candidates-quadratic_log]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.202,
+      "phases_rounded_s": {
+        "call": 0.2,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[coarse-bicubic_logit]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.218,
+      "phases_rounded_s": {
+        "call": 0.22,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[coarse-quadratic_logit]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.267,
+      "phases_rounded_s": {
+        "call": 0.26,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_subpixel_multiview_recovery_beats_bilinear_lattice_lock[coarse-quadratic_log]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.196,
+      "phases_rounded_s": {
+        "call": 0.19,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_one_corrupt_view_cannot_veto_two_consistent_views[missing]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.11,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_one_corrupt_view_cannot_veto_two_consistent_views[distractor]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.132,
+      "phases_rounded_s": {
+        "call": 0.13,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_saturation_is_finite_missing_support_does_not_create_3d_and_outside_is_background",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.198,
+      "phases_rounded_s": {
+        "call": 0.2,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_objective_gradient_in_metres_and_camera_keyed_temperature",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.145,
+      "phases_rounded_s": {
+        "call": 0.14,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_coarse_search_needs_no_candidate_seed_and_candidate_mode_has_no_fallback",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.249,
+      "phases_rounded_s": {
+        "call": 0.25,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_acceleration_prior_reduces_flight_jitter_and_preserves_gap_and_turn_boundaries",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.795,
+      "phases_rounded_s": {
+        "call": 0.79,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_temporal_optimization_does_not_smooth_across_a_detected_impact_or_fill_a_gap",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.441,
+      "phases_rounded_s": {
+        "call": 0.44,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.119,
+      "phases_rounded_s": {
+        "call": 0.12,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.123,
+      "phases_rounded_s": {
+        "call": 0.12,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw2]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.097,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw3]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.092,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw4]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.111,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw5]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.117,
+      "phases_rounded_s": {
+        "call": 0.12,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw6]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.123,
+      "phases_rounded_s": {
+        "call": 0.12,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected[kw7]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.109,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_default_pipeline_matches_main_fixed_arrays",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.866,
+      "phases_rounded_s": {
+        "call": 0.86,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_config_definition_component_codec_and_lovo_share_dense_algorithm",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.601,
+      "phases_rounded_s": {
+        "call": 0.6,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_dense_config_fails_before_pipeline_execution[ball_reconstruction.method=unknown]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.125,
+      "phases_rounded_s": {
+        "call": 0.12,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_dense_config_fails_before_pipeline_execution[ball_reconstruction.dense_likelihood.temperature=-1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.134,
+      "phases_rounded_s": {
+        "call": 0.13,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.007,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.614,
+      "phases_rounded_s": {
+        "call": 0.61,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.016,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.016,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.016,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.015,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.016,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.015,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.015,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.015,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.015,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.017,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.02,
+      "phases_rounded_s": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.048,
+      "phases_rounded_s": {
+        "call": 0.05,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.044,
+      "phases_rounded_s": {
+        "call": 0.04,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.016,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.034,
+      "phases_rounded_s": {
+        "call": 0.03,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.031,
+      "phases_rounded_s": {
+        "call": 0.03,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.019,
+      "phases_rounded_s": {
+        "call": 0.02,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.035,
+      "phases_rounded_s": {
+        "call": 0.03,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.011,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.014,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.009,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.01,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.009,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.008,
+      "phases_rounded_s": {
+        "call": 0.0,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.009,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.01,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.012,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.015,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.013,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.111,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.098,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.097,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.102,
+      "phases_rounded_s": {
+        "call": 0.1,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.087,
+      "phases_rounded_s": {
+        "call": 0.08,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.109,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.103,
+      "phases_rounded_s": {
+        "call": 0.1,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.092,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.106,
+      "phases_rounded_s": {
+        "call": 0.1,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.086,
+      "phases_rounded_s": {
+        "call": 0.08,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.109,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.112,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.139,
+      "phases_rounded_s": {
+        "call": 0.13,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.132,
+      "phases_rounded_s": {
+        "call": 0.13,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.084,
+      "phases_rounded_s": {
+        "call": 0.08,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.084,
+      "phases_rounded_s": {
+        "call": 0.08,
+        "setup": 0.01,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.092,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.096,
+      "phases_rounded_s": {
+        "call": 0.09,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.105,
+      "phases_rounded_s": {
+        "call": 0.1,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.102,
+      "phases_rounded_s": {
+        "call": 0.1,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.298,
+      "phases_rounded_s": {
+        "call": 0.29,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.104,
+      "phases_rounded_s": {
+        "call": 0.1,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.109,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.127,
+      "phases_rounded_s": {
+        "call": 0.12,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.103,
+      "phases_rounded_s": {
+        "call": 0.1,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.113,
+      "phases_rounded_s": {
+        "call": 0.11,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_only_observed_points_survive_storage_and_join",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.014,
+      "phases_rounded_s": {
+        "call": 0.01,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_assembler_checks_camera_timeline_and_payload_type",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.004,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_filled_and_rejected_points_cannot_supply_the_second_real_view",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.683,
+      "phases_rounded_s": {
+        "call": 0.68,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 1.902,
+      "phases_rounded_s": {
+        "call": 1.9,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.29,
+      "phases_rounded_s": {
+        "call": 0.29,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.271,
+      "phases_rounded_s": {
+        "call": 0.27,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.27,
+      "phases_rounded_s": {
+        "call": 0.27,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.287,
+      "phases_rounded_s": {
+        "call": 0.28,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.302,
+      "phases_rounded_s": {
+        "call": 0.3,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.27,
+      "phases_rounded_s": {
+        "call": 0.26,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.267,
+      "phases_rounded_s": {
+        "call": 0.26,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.28,
+      "phases_rounded_s": {
+        "call": 0.28,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.262,
+      "phases_rounded_s": {
+        "call": 0.26,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_artifact_codec.py::test_pep695_array_alias_accepts_numeric_arrays_and_rejects_json_lists",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.003,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.002,
+      "phases_rounded_s": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.588,
+      "phases_rounded_s": {
+        "call": 0.58,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.392,
+      "phases_rounded_s": {
+        "call": 0.39,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.467,
+      "phases_rounded_s": {
+        "call": 0.46,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.456,
+      "phases_rounded_s": {
+        "call": 0.45,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.164,
+      "phases_rounded_s": {
+        "call": 0.16,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.283,
+      "phases_rounded_s": {
+        "call": 0.28,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.297,
+      "phases_rounded_s": {
+        "call": 0.29,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 0.261,
+      "phases_rounded_s": {
+        "call": 0.26,
+        "setup": 0.0,
+        "teardown": 0.0
+      }
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+      "outcome": "passed",
+      "seconds_setup_call_teardown": 5.663,
+      "phases_rounded_s": {
+        "call": 5.65,
+        "teardown": 0.01,
+        "setup": 0.0
+      }
+    }
+  ]
+}

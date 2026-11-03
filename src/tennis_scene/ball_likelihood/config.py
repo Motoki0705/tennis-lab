@@ -8,28 +8,30 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class DenseLikelihoodConfig:
-    interpolation: str = "bicubic_logit"
-    initialization: str = "candidates"
-    temperature: float = 1.0
-    background: float = 0.05
+    """Required runtime values; defaults belong to pipeline.yaml composition."""
+
+    interpolation: str
+    initialization: str
+    temperature: float
+    background: float
     # Overrides are keyed by camera identity, never by the current LOVO slot.
-    view_temperatures: tuple[tuple[str, float], ...] = ()
-    view_backgrounds: tuple[tuple[str, float], ...] = ()
-    support_logit_drop: float = 5.0
-    min_peak_probability: float = 0.05
-    x_bounds: tuple[float, float] = (-12.0, 12.0)
-    y_bounds: tuple[float, float] = (-24.0, 24.0)
-    z_bounds: tuple[float, float] = (-0.2, 12.0)
-    coarse_spacing_m: float = 2.0
-    coarse_levels: int = 3
-    coarse_keep: int = 16
-    multistart: int = 2
-    max_iterations: int = 40
-    min_ray_angle_deg: float = 1.0
-    temporal_weight: float = 0.0
-    acceleration_scale_mps2: float = 100.0
-    event_acceleration_mps2: float = 350.0
-    window_size: int = 9
+    view_temperatures: tuple[tuple[str, float], ...]
+    view_backgrounds: tuple[tuple[str, float], ...]
+    support_logit_drop: float
+    min_peak_probability: float
+    x_bounds: tuple[float, float]
+    y_bounds: tuple[float, float]
+    z_bounds: tuple[float, float]
+    coarse_spacing_m: float
+    coarse_levels: int
+    coarse_keep: int
+    multistart: int
+    max_iterations: int
+    min_ray_angle_deg: float
+    temporal_weight: float
+    acceleration_scale_mps2: float
+    event_acceleration_mps2: float
+    window_size: int
 
     def __post_init__(self) -> None:
         if self.interpolation not in {"bicubic_logit", "quadratic_logit", "quadratic_log"}:

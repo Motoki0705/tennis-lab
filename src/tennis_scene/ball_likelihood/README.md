@@ -5,9 +5,9 @@
 This opt-in CPU method estimates court-metre ball positions directly from saved
 model heatmaps. The standard pipeline still defaults to `triangulation`.
 `ball_reconstruction.method=dense_likelihood` selects the new component. Its
-parameters live under `ball_reconstruction.dense_likelihood` in
-[`pipeline.yaml`](../configs/pipeline.yaml); the validated defaults are
-[`DenseLikelihoodConfig`](config.py).
+parameters and their defaults live under `ball_reconstruction.dense_likelihood`
+in [`pipeline.yaml`](../configs/pipeline.yaml). [`DenseLikelihoodConfig`](config.py)
+requires every value explicitly and validates the composed configuration.
 
 The component consumes pre-gate `ball_detections` v2. Court side and camera
 alignment keep their original `ball_points` inputs. Dense reconstruction never

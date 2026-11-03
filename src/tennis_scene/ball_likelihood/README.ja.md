@@ -4,8 +4,8 @@
 
 保存済みモデルheatmapからコートm単位の3D ballをCPUで直接推定する選択式の方式。
 既定の `triangulation` は維持し、`ball_reconstruction.method=dense_likelihood` で選ぶ。
-設定は [`pipeline.yaml`](../configs/pipeline.yaml) の `ball_reconstruction.dense_likelihood`、
-検証済みの既定値は [`DenseLikelihoodConfig`](config.py) が持つ。
+設定と既定値は [`pipeline.yaml`](../configs/pipeline.yaml) の `ball_reconstruction.dense_likelihood` が持つ。
+[`DenseLikelihoodConfig`](config.py) は全値を必須引数で受け、composition後の値を検証する。
 
 新componentはgate前の `ball_detections` v2を読み、side/alignmentは従来の `ball_points` を使う。
 3D推定には2D LOESS・検出の採用mask・正解・正解イベントを渡さない。

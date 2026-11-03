@@ -16,6 +16,7 @@ import matplotlib
 import numpy as np
 import scipy
 import torch
+from hydra import compose, initialize_config_dir
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -27,6 +28,7 @@ from src.tennis_scene.ball_likelihood.reconstruction import (
     estimate_frame,
     make_frame_maps,
 )
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.evaluation.ball3d.annotations import load_annotations
 from src.tennis_scene.evaluation.ball3d.baseline import (
     baseline_from_bundle,
@@ -54,6 +56,7 @@ from src.tennis_scene.visualization.ball3d.report import (
     write_report,
 )
 from src.utils.checksum import dual_sha256
+from src.utils.paths import PROJECT_ROOT
 
 BUNDLE_SHA = "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a"
 REFERENCE_SHA = "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
@@ -119,7 +122,9 @@ def tune(bundle, annotations, output, provenance):
         cache[key] = value
         return value
 
-    parameters = DenseLikelihoodConfig()
+    with initialize_config_dir(version_base="1.3", config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs")):
+        composed = compose(config_name="pipeline")
+    parameters = PipelineRuntimeConfig.from_config(composed, bind_inputs=False).dense_likelihood
     best = evaluate(parameters)
     # One prespecified coordinate pass, only over camera-specific T and epsilon.
     for key, alternative in (("view_temperatures", 2.0), ("view_backgrounds", .2)):

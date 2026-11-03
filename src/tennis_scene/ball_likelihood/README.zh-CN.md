@@ -4,8 +4,8 @@
 
 该可选CPU方法从保存的模型heatmap直接估计球的球场米制3D位置。
 默认仍为 `triangulation`，通过 `ball_reconstruction.method=dense_likelihood` 选择新方法。
-参数位于 [`pipeline.yaml`](../configs/pipeline.yaml) 的 `ball_reconstruction.dense_likelihood`；
-有效默认值由 [`DenseLikelihoodConfig`](config.py) 定义。
+参数和默认值位于 [`pipeline.yaml`](../configs/pipeline.yaml) 的 `ball_reconstruction.dense_likelihood`。
+[`DenseLikelihoodConfig`](config.py) 要求显式传入全部值，并验证组合后的配置。
 
 新组件读取门控前的 `ball_detections` v2；side/alignment仍读取原来的 `ball_points`。
 3D估计不使用2D LOESS、检测接受mask、标注或标注事件。

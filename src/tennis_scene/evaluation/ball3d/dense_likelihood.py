@@ -13,7 +13,7 @@ from .contracts import Ball3DResult, MethodInput
 
 @dataclass(frozen=True)
 class DenseHeatmapMethod:
-    parameters: DenseLikelihoodConfig = DenseLikelihoodConfig()
+    parameters: DenseLikelihoodConfig
     name: str = "dense_likelihood"
     requires_court_lines: bool = False
 

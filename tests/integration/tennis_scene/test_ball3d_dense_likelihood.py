@@ -11,6 +11,7 @@ from src.tennis_scene.evaluation.ball3d.runner import run_method
 from src.tennis_scene.evaluation.ball3d.storage import load_typed, save_typed
 from src.tennis_scene.pipeline.components.ball_likelihood import DenseBallOutput
 from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentOutput
+from src.tennis_scene.pipeline.components.triangulation import BallTriangulationModule
 from src.tennis_scene.pipeline.contracts import AssemblyContext
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
@@ -33,6 +34,7 @@ def test_default_pipeline_matches_main_fixed_arrays(tmp_path):
     cfg = runtime(tmp_path)
     materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
     node = next(n for n in standard_definition(cfg, bundle.source, code_identity="test") if n.name == "ball_triangulation")
+    assert type(node.component) is BallTriangulationModule
     artifacts = {f"ball_{v.camera.camera_id}": v.points for v in inputs.views}
     index = json.loads((store.root / "scene.json").read_text())
     for port, key, typ in (("alignment", "camera_alignment", CameraAlignmentOutput),):
@@ -54,7 +56,15 @@ def test_default_pipeline_matches_main_fixed_arrays(tmp_path):
     np.testing.assert_array_equal(result.uv_px, np.array(expected["uv_px"], np.float32))
     np.testing.assert_array_equal(result.visibility, expected["visibility"])
     np.testing.assert_array_equal(result.trajectory.reasons, expected["reasons"])
-    np.testing.assert_array_equal(result.trajectory.reprojection_px, np.array(expected["reprojection_px"], np.float32))
+    reference_errors = np.array(expected["reprojection_px"], np.float32)
+    # Main computes residuals from the unrounded float64 least-squares solution,
+    # then stores float32 positions and residuals separately. BLAS/SIMD/wheel
+    # differences can change residuals even when every stored position is exact.
+    # CI differences were below 2*eps32 relative; allow 4 float32 ULP only here
+    # (<=5.83e-11 px for this fixture), far below pixel-scale comparisons.
+    # All arrays above, and the zero-filled residual entries, stay exact.
+    np.testing.assert_array_equal(result.trajectory.reprojection_px[reference_errors == 0], 0)
+    np.testing.assert_array_max_ulp(result.trajectory.reprojection_px, reference_errors, maxulp=4)
     assert node.bindings["ball_right"] == "ball_points/right"
 
 
@@ -63,7 +73,10 @@ def test_config_definition_component_codec_and_lovo_share_dense_algorithm(tmp_pa
     store = make_store(tmp_path / "source", inputs)
     bundle = create_bundle(store.root, tmp_path / "bundle", clip_id=inputs.clip_id,
                            source_code_commit="a" * 40, source_code_evidence="synthetic dense fixture")
-    cfg = runtime(tmp_path, overrides=("ball_reconstruction.method=dense_likelihood", "ball_reconstruction.dense_likelihood.interpolation=quadratic_logit"))
+    cfg = runtime(tmp_path, overrides=("ball_reconstruction.method=dense_likelihood", "ball_reconstruction.dense_likelihood.interpolation=quadratic_logit",
+                                       "ball_reconstruction.dense_likelihood.temperature=1.25", "ball_reconstruction.dense_likelihood.background=0.15"))
+    assert cfg.dense_likelihood.temperature == 1.25
+    assert cfg.dense_likelihood.background == .15
     materialize_assets(enabled_model_assets(cfg).values(), tmp_path)
     nodes = {n.name: n for n in standard_definition(cfg, bundle.source, code_identity="test")}
     node = nodes["ball_triangulation"]

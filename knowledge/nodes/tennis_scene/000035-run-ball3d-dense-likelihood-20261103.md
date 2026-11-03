@@ -68,6 +68,9 @@ metrics:
   paired_dense_primary_p90_px: 36.828141314239524
   tests_passed: 122
   pytest_wall_seconds: 34.74
+  ci_fix_tests_passed: 544
+  ci_fix_tests_skipped: 1
+  ci_fix_pytest_wall_seconds: 353.14
 artifacts:
   run_dir: knowledge/runs/run-ball3d-dense-likelihood-20261103
   output_dir: /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2
@@ -76,6 +79,8 @@ artifacts:
   checksum_inventory: knowledge/runs/run-ball3d-dense-likelihood-20261103/checksums.json
   verification: knowledge/runs/run-ball3d-dense-likelihood-20261103/verification.json
   test_results: knowledge/runs/run-ball3d-dense-likelihood-20261103/test-results.json
+  ci_fix_test_results: knowledge/runs/run-ball3d-dense-likelihood-20261103/ci-fix-tests.json
+  ci_fix_prediction_check: knowledge/runs/run-ball3d-dense-likelihood-20261103/ci-fix-invariance.json
 parents:
 - run-ball3d-foundation-review-20261103
 relations: []
@@ -208,6 +213,54 @@ ruff/mypy成功。これらの検証はGPUを使わず、pytestは-n 0だった�
 
 全入力/成果物のchecksumと正確な実行履歴はchecksums.json、verification.json、execution-history.json。
 新規出力への全CPU replayはrepro.sh（5引数）、保存済み予測の比較媒体再生成はexecution-v2.logとresource-usage.txtのコマンドを参照する。
+
+## 2026-11-04: PR #1676のCI修正
+
+旧head `4a4f48a616f81c85dd7039187d1a88a5e4ec7709` の
+[run 41616445853](https://github.com/Motoki0705/tennis-lab/actions/runs/41616445853)では、
+設定監査による収集停止と再投影残差だけの最下位桁の差が出た。精度の再調整は行っていない。
+
+`DenseLikelihoodConfig` の21fieldはPython既定値を持っており、composition-owned契約に違反していた。
+全fieldを必須にし、adapterも明示configを受け取るようにした。YAMLの値・runtimeへの変換・validationは変えていない。
+テストと現行replay scriptは既存のHydra compositionと`PipelineRuntimeConfig`から値を得る。
+過去の実行証拠`executed-run-v1.py`は当時のcommit用として保持する。
+PR追加分に別の設定authorityの既定値違反がないことを、設定監査directory全体で確認する。
+
+既定の三角測量はfloat64の`fit.x`を投影して残差を計算し、positionsと残差を別々にfloat32へ保存する。
+そのためfloat32のpositions一致だけでは、丸め前の解や残差の一致は保証されない。
+CIはPython 3.11.18／NumPy 2.3.5／SciPy 1.17.1、本機は3.12.3／2.5.4／1.18.1で、数値wheelも異なる。
+BLAS/SIMDやsolver内の演算順によるfloat64丸め差と整合するが、CI上の個別kernelまでは特定していない。
+本機の同値な投影の加算順変更とOpenBLAS Haswell指定では差を再現しなかった。
+一方、丸め前の解を各座標8 float64 ULPだけ動かす制御実験では、float32位置は完全一致したまま
+float32残差が1 ULP（最大9.095e-13px）変わり、この保存経路の性質を確認した。
+これは診断用の摂動であり、productionの計算は変更していない。
+
+回帰テストは既定componentの型も確認し、positions・valid・inliers・uv・visibility・理由を引き続き完全一致にする。
+残差のゼロも完全一致、非ゼロ残差だけ4 float32 ULP以内とする。
+CIでの相対差は2×float32 epsilon未満で、このfixtureでの4 ULP上限は5.821e-11px。
+画素単位の方式比較に影響する差を許す値ではない。mainと同じ三角測量・LOESS・assembler・componentの
+Git blobも別に照合し、計算経路を変えていないことを確認した。
+数値probeとビルド情報は`ci_fix_probe.py`、`ci-fix-rounding*.json`に保存する。
+
+DINOの子moduleを先に読み込んだ条件では、指定のruntime importテストが0.51秒で失敗した。
+PR #1679の`a8982a7e0`から`tests/unit/submodules/models/dino/test_extension.py`だけを取り込み、
+当該commitのblobと同一bytesであることを確認した。別実装・本体変更は加えていない。
+新しいpreloaded有無の2caseで分離を検証する。再現証拠は`ci-fix-dino.json`。
+
+実データの21既定値、保存した28条件の明示設定、推定実装の不変を照合した。
+加えて固定bundleの選定方式・全view・1010frameを42.112秒でCPU再実行し、positions・valid・used_viewsと
+全診断配列がv2にbitwise一致した（`ci-fix-invariance.json`）。GTは入力せず、再調整もしていない。
+LOVOを含む他条件はコードと設定の一致による確認で、28条件全部を再実行したとは主張しない。
+指標・coverageと上記checksumは変わらず、`dense_likelihood_v2/`を変更していない。新しい結果版は作らない。
+
+最終の収集は545件・80.74秒、実行は544成功・1skip・353.14秒（`-n 0`）。
+設定監査389、関連ball3d 122、DINO 28、合成可視化契約5件が成功した。
+残る1件は既存の`test_compact_domains_require_scene_and_camera[NOTSET]`の
+空パラメータ集合によるskip（`got empty parameter set for (domain)`）で、成功数に含めない。
+`--collect-only`と`--durations=0 --durations-min=0`を実行し、全node・各phaseの時間・結果は
+`ci-fix-tests.json`、再実行は`bash knowledge/runs/run-ball3d-dense-likelihood-20261103/ci-fix-tests.sh`。
+初回122件の記録は上書きしていない。ruff、mypyも成功した。
+knowledge validator（`--check-summary --base-ref origin/main`）は0 error、再現path検査は0 missingだった。
 人間の採否・#1568の統合比較・親のレビュー・mergeは後続の判断であり、この子はmergeしない。
 
 最終確認で、候補payloadを全無効にしてもcoarseが既知位置を復元し、候補版は欠測にするunitを1件追加した。

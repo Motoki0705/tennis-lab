@@ -1,4 +1,4 @@
-<!-- knowledge-review: 49b11ca29d5ac1568e4a8793f3d70d54d02b052c29e9ce93a5b44d977f3e98ad on 2026-11-03 -->
+<!-- knowledge-review: 74d01246b7de09d16c84fdb1ea616a57682ed4cdb8e7c47662d1969fdaeaff69 on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -30,6 +30,8 @@
 coverageは56.43%→99.73%に増えた一方、baselineと共通の825点でも12.68/36.83pxへ悪化する。
 初期値なしのコート探索と3D加速度priorも改善せず、合成subpixel復元の成功を実clipの改善へ外挿できない。
 出力増加と精度を区別し、今回の方式の採用は勧めない。既定は維持し、次は共通基盤による他方式との統合比較を行う。
+11月4日のCI修正では既定値をcompositionへ集約し、残差だけのfloat32 ULP比較を修正した。
+選定方式1010frameの全view再実行は保存済み配列に完全一致し、精度・coverage・採用に関する結論は変わらない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 

@@ -4,12 +4,23 @@ from dataclasses import replace
 
 import numpy as np
 import torch
+from hydra import compose, initialize_config_dir
 from scipy.special import expit
 
 from src.tasks.ball_detection.model_io.candidates import decode_candidates
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.components.ball_evidence import BallHeatmapEvidence
+from src.utils.paths import PROJECT_ROOT
 from tests.support.ball3d_evaluation import make_inputs
+
+
+def dense_config(**overrides):
+    """Take runtime values from the shipped Hydra composition, with test overrides."""
+    with initialize_config_dir(version_base="1.3", config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs")):
+        config = compose(config_name="pipeline")
+    parameters = PipelineRuntimeConfig.from_config(config, bind_inputs=False).dense_likelihood
+    return replace(parameters, **overrides)
 
 
 def dense_inputs(*, xyz=None, log_domain=False, missing=None, distractor=None):

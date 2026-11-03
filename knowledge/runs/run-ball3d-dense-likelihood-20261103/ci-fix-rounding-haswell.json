@@ -1,0 +1,183 @@
+{
+  "python": "3.12.3",
+  "numpy": "2.5.4",
+  "scipy": "1.18.1",
+  "openblas_coretype_override": "Haswell",
+  "numpy_build": {
+    "Compilers": {
+      "c": {
+        "name": "gcc",
+        "linker": "ld.bfd",
+        "version": "14.2.1",
+        "commands": "cc"
+      },
+      "cython": {
+        "name": "cython",
+        "linker": "cython",
+        "version": "3.3.0",
+        "commands": "cython"
+      },
+      "c++": {
+        "name": "gcc",
+        "linker": "ld.bfd",
+        "version": "14.2.1",
+        "commands": "c++"
+      }
+    },
+    "Machine Information": {
+      "host": {
+        "cpu": "x86_64",
+        "family": "x86_64",
+        "endian": "little",
+        "system": "linux"
+      },
+      "build": {
+        "cpu": "x86_64",
+        "family": "x86_64",
+        "endian": "little",
+        "system": "linux"
+      }
+    },
+    "Build Dependencies": {
+      "blas": {
+        "name": "scipy-openblas",
+        "found": true,
+        "version": "0.3.34.106.0",
+        "detection method": "pkgconfig",
+        "include directory": "/opt/_internal/cpython-3.12.13/lib/python3.12/site-packages/scipy_openblas64/include",
+        "lib directory": "/opt/_internal/cpython-3.12.13/lib/python3.12/site-packages/scipy_openblas64/lib",
+        "openblas configuration": "OpenBLAS 0.3.34.106.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY SkylakeX MAX_THREADS=64",
+        "pc file directory": "/project/.openblas"
+      },
+      "lapack": {
+        "name": "scipy-openblas",
+        "found": true,
+        "version": "0.3.34.106.0",
+        "detection method": "pkgconfig",
+        "include directory": "/opt/_internal/cpython-3.12.13/lib/python3.12/site-packages/scipy_openblas64/include",
+        "lib directory": "/opt/_internal/cpython-3.12.13/lib/python3.12/site-packages/scipy_openblas64/lib",
+        "openblas configuration": "OpenBLAS 0.3.34.106.0  USE64BITINT DYNAMIC_ARCH NO_AFFINITY SkylakeX MAX_THREADS=64",
+        "pc file directory": "/project/.openblas"
+      }
+    },
+    "Python Information": {
+      "path": "/tmp/build-env-ptu49_tp/bin/python",
+      "version": "3.12"
+    },
+    "SIMD Extensions": {
+      "baseline": [
+        "X86_V2"
+      ],
+      "found": [
+        "X86_V3"
+      ],
+      "not found": [
+        "X86_V4",
+        "AVX512_ICL",
+        "AVX512_SPR"
+      ]
+    }
+  },
+  "fitted_dtype": "float64",
+  "stored_positions_dtype": "float32",
+  "stored_residual_dtype": "float32",
+  "positions_exact": true,
+  "max_float64_projection_difference_px": 0.0,
+  "max_float32_projection_difference_ulp": 0,
+  "max_float32_projection_difference_px": 0.0,
+  "reference_max_residual_px": 0.00017933867638930678,
+  "four_ulp_max_px": 5.820766091346741e-11,
+  "controlled_float64_nextafter_steps": 8,
+  "controlled_float64_nextafter_positions_exact_in_float32": true,
+  "controlled_float64_nextafter_max_residual_difference_px": 9.094947017729282e-13,
+  "controlled_float64_nextafter_max_residual_difference_ulp": 1,
+  "actual_fit_residual_vs_reference_max_ulp": 0,
+  "residuals_einsum_float32": [
+    [
+      0.0001392452686559409,
+      0.0,
+      0.00017933867638930678,
+      1.3061909157841e-05,
+      9.283528925152496e-05,
+      5.959900954621844e-05,
+      1.1790415328505333e-06,
+      1.8075317029797588e-06,
+      2.1464047677000053e-06,
+      6.060071882529883e-06,
+      3.381964052096009e-05,
+      5.938534286542563e-07
+    ],
+    [
+      3.37771671183873e-05,
+      2.5897243176586926e-06,
+      0.0,
+      1.3412459338724148e-05,
+      2.2748692572349682e-05,
+      3.277182986494154e-05,
+      2.953164084829041e-06,
+      2.741799335126416e-06,
+      2.539802380852052e-06,
+      5.964961019344628e-06,
+      3.557639502105303e-05,
+      6.269175969464413e-07
+    ],
+    [
+      9.867499466054142e-05,
+      2.33166338148294e-06,
+      0.00014041944814380258,
+      0.0,
+      5.251581751508638e-05,
+      5.0173792260466143e-05,
+      2.5522999749227893e-06,
+      3.5449058941594558e-06,
+      4.022760549560189e-06,
+      2.6951736344926758e-06,
+      0.0,
+      0.0
+    ]
+  ],
+  "residuals_scalar_float32": [
+    [
+      0.0001392452686559409,
+      0.0,
+      0.00017933867638930678,
+      1.3061909157841e-05,
+      9.283528925152496e-05,
+      5.959900954621844e-05,
+      1.1790415328505333e-06,
+      1.8075317029797588e-06,
+      2.1464047677000053e-06,
+      6.060071882529883e-06,
+      3.381964052096009e-05,
+      5.938534286542563e-07
+    ],
+    [
+      3.37771671183873e-05,
+      2.5897243176586926e-06,
+      0.0,
+      1.3412459338724148e-05,
+      2.2748692572349682e-05,
+      3.277182986494154e-05,
+      2.953164084829041e-06,
+      2.741799335126416e-06,
+      2.539802380852052e-06,
+      5.964961019344628e-06,
+      3.557639502105303e-05,
+      6.269175969464413e-07
+    ],
+    [
+      9.867499466054142e-05,
+      2.33166338148294e-06,
+      0.00014041944814380258,
+      0.0,
+      5.251581751508638e-05,
+      5.0173792260466143e-05,
+      2.5522999749227893e-06,
+      3.5449058941594558e-06,
+      4.022760549560189e-06,
+      2.6951736344926758e-06,
+      0.0,
+      0.0
+    ]
+  ]
+}
