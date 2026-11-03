@@ -233,7 +233,7 @@ checksum・全test node・実測時間・目視・資源・履歴の原値をrun
 初回HEAD e067580d6のCI run 41622391931は、設定監査の収集とcamera順序テストで失敗した。
 初回の99件は設定監査を含まず、新規Configの契約違反を見逃していた。
 
-`SegmentPhysicsConfig` の16fieldからPython既定値を取り除き、compositionの値を必須引数として受ける。
+`SegmentPhysicsConfig` の15fieldからPython既定値を取り除き、compositionの値を必須引数として受ける。
 評価adapterのsettings/baselineの暗黙生成と、積分helperのgravity/steps既定値も取り除いた。
 production YAMLの値は一切変更せず、replayとfixtureもHydra compositionから明示的に渡す。
 既存configuration監査389件を含め、495件収集・494passed・1skip、pytest279.81秒、collect69.16秒。
