@@ -74,7 +74,7 @@ def main():
                     metrics = {**metrics, "label_count": values["scoring_label_count"], "scored_label_coverage": values["scored_label_coverage"]}
                 rows.append({"method": name, "segment": segment, "fold": fold, **metrics})
     with (target / "fold-metrics.csv").open("w") as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     compact = {"output_dir": str(output), "artifact_manifest_sha256": digest(output / "artifacts.json"), "verified_output_files": len(inventory["files"]),

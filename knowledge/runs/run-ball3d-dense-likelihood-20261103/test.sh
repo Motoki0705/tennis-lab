@@ -18,4 +18,4 @@ nodes=(
 )
 .venv/bin/python -m pytest -n 0 -q --collect-only "${nodes[@]}" | tee "$DIR/test-collection.txt"
 .venv/bin/python -m pytest -n 0 -q --durations=0 --durations-min=0 \
-  --junitxml="$DIR/test-results.xml" "${nodes[@]}" | tee "$DIR/test-durations.txt"
+  --junitxml="$DIR/test-results-junit.txt" "${nodes[@]}" | tee "$DIR/test-durations.txt"
