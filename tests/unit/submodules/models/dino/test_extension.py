@@ -270,6 +270,11 @@ def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
         "import MultiScaleDeformableAttention as selected_extension\n"
         "def build_dino(args): return ()\n"
     )
+    # A real upstream loss test may already have imported child modules.
+    # Isolate the fake repository's entire namespace and restore it afterward.
+    for name in tuple(sys.modules):
+        if name.startswith(f"{architecture._DINO_MODELS_PACKAGE}."):
+            monkeypatch.delitem(sys.modules, name)
     monkeypatch.setitem(sys.modules, "util", None)  # type: ignore[arg-type]
     monkeypatch.setitem(sys.modules, architecture._DINO_MODELS_PACKAGE, None)  # type: ignore[arg-type]
     build = architecture.load_dino_build_function(repository)

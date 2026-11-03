@@ -42,3 +42,15 @@ CIの別数値環境では、記録したmainのfloat32位置と1 ULP程度の�
 許容差を広げず、checksum固定の元main計算核を同じNumPy/SciPyで動かし、全trajectory配列を
 厳密比較する回帰へ変更する。元frameの画素・maskの固定期待値も引き続き厳密比較する。
 凍結したgeometryとreconstructionはmainの原文で、現行の計算核を参照しない。
+
+## 全体CIのDINO namespace分離修正
+
+CI lane 9の既存 `tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch`
+は、先行する実DINO loss testが残した子moduleを消さず、親moduleだけをfakeへ置換するため失敗した。
+productionと当該testはmainから未変更であることを差分で確認した。
+守る契約は明示選択binaryのimportとcached mismatch拒否で、productionの拒否を維持する。
+見逃したくない不具合は先行testの子moduleがfake repositoryのfresh importへ混入すること。
+既存unit nodeのnamespaceをmonkeypatchで分離/復元し、assertや拒否条件は変えない。
+新規caseは作らず、同じnodeへ古いMSDA参照を事前注入するCPU再現で修正前失敗・修正後成功を確認する。
+`reproduce_dino_cache.py` でcollect-onlyと全phase時間を残し、当該file全体も直列で確認する。
+予算は既存1nodeの再現5秒目標と既存file全体、GPU・実モデルforward・検出再推論は使わない。
