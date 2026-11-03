@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, cast
+from typing import Any
 
 import pytest
 import torch
@@ -41,7 +41,8 @@ def binary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
         return original_spec(name, location, **kwargs)
 
     monkeypatch.setattr(module.importlib.util, "spec_from_file_location", source_spec)
-    return cast(ModuleType, module.load_dino_extension())
+    loaded: ModuleType = module.load_dino_extension()
+    return loaded
 
 
 def test_preflight_checks_forward_and_backward_on_cpu(binary: ModuleType) -> None:
@@ -259,9 +260,18 @@ def test_explicit_file_loading_bypasses_cwd_shadow(
         assert name not in sys.modules
 
 
+@pytest.mark.parametrize("preloaded_functions", [False, True])
 def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
-    binary: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    binary: ModuleType,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    preloaded_functions: bool,
 ) -> None:
+    functions_name = f"{architecture._DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func"
+    if preloaded_functions:
+        previous = ModuleType("previous_functions")
+        previous.MSDA = ModuleType("previous_extension")  # type: ignore[attr-defined]
+        monkeypatch.setitem(sys.modules, functions_name, previous)
     repository = tmp_path / "DINO"
     (repository / "util").mkdir(parents=True)
     (repository / "util/__init__.py").touch()
@@ -272,9 +282,9 @@ def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
     )
     monkeypatch.setitem(sys.modules, "util", None)  # type: ignore[arg-type]
     monkeypatch.setitem(sys.modules, architecture._DINO_MODELS_PACKAGE, None)  # type: ignore[arg-type]
-    # A prior real DINO import may leave this child after replacing its parent.
-    # Isolate the fake repository and restore the prior function module on exit.
-    monkeypatch.delitem(sys.modules, f"{architecture._DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func", raising=False)
+    # A real DINO loss test may already have imported this child module. Isolate
+    # its extension reference along with the fake package, and restore it later.
+    monkeypatch.delitem(sys.modules, functions_name, raising=False)
     build = architecture.load_dino_build_function(repository)
     upstream = sys.modules[build.__module__]
     assert upstream.selected_extension is binary  # type: ignore[attr-defined]
@@ -284,7 +294,7 @@ def test_runtime_import_uses_selected_module_and_rejects_cached_mismatch(
     binary.__file__ = str(tmp_path / "MultiScaleDeformableAttention.so")
     stale = ModuleType("functions")
     stale.MSDA = ModuleType("old_extension")  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, f"{architecture._DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func", stale)
+    monkeypatch.setitem(sys.modules, functions_name, stale)
     with pytest.raises(RuntimeError, match="functions already reference a different extension"):
         architecture.load_dino_build_function(repository)
 
