@@ -1,0 +1,177 @@
+{
+  "pre_fix_commit": "2adc9293b2ab8842809dcce80c58a55719a22525",
+  "field_count": 16,
+  "all_topk_values_and_types_unchanged": true,
+  "yaml_bytes_unchanged": true,
+  "composed_topk_values": {
+    "top_k": 8,
+    "max_hypotheses": 24,
+    "beam_width": 96,
+    "max_missing_frames": 3,
+    "reprojection_px": 20.0,
+    "reprojection_sigma_px": 6.0,
+    "score_weight": 1.0,
+    "missing_view_cost": 1.5,
+    "missing_frame_cost": 3.0,
+    "restart_cost": 2.0,
+    "max_speed_mps": 65.0,
+    "speed_scale_mps": 35.0,
+    "speed_weight": 0.1,
+    "acceleration_scale_mps2": 250.0,
+    "acceleration_weight": 1.0,
+    "turn_cost_cap": 3.0
+  },
+  "composed_min_frames": 5,
+  "classes_with_only_required_fields": {
+    "TopKConfig": [
+      "top_k",
+      "max_hypotheses",
+      "beam_width",
+      "max_missing_frames",
+      "reprojection_px",
+      "reprojection_sigma_px",
+      "score_weight",
+      "missing_view_cost",
+      "missing_frame_cost",
+      "restart_cost",
+      "max_speed_mps",
+      "speed_scale_mps",
+      "speed_weight",
+      "acceleration_scale_mps2",
+      "acceleration_weight",
+      "turn_cost_cap"
+    ],
+    "TopKMultiHypothesis": [
+      "settings",
+      "min_frames"
+    ],
+    "PipelineRuntimeConfig": [
+      "roots",
+      "resolver",
+      "video_paths",
+      "camera_ids",
+      "output_path",
+      "device",
+      "max_frames",
+      "court_kp",
+      "people",
+      "ball_detection",
+      "sampling_max_frames",
+      "camera_geometry",
+      "court_side",
+      "player_association",
+      "association_encoder_weights",
+      "human_vis_threshold",
+      "person_roi_margins",
+      "max_tracks_per_camera",
+      "player_reprojection_px",
+      "joint_confidence",
+      "player_placement",
+      "ball_reprojection_px",
+      "ball_min_frames",
+      "cache_directory",
+      "cache_source",
+      "cache_overwrite",
+      "enabled",
+      "processing_settings",
+      "component_sources",
+      "tracking",
+      "tracking_encoder_weights",
+      "aflink_checkpoint",
+      "merge_duplicate_person_boxes",
+      "ball_smoothing",
+      "ball_method",
+      "ball_topk"
+    ]
+  },
+  "source_declarations_include_topk": true,
+  "direct_existing_inspector": {
+    "symbol": "src.tennis_scene.ball_association.topk.TopKConfig",
+    "authority_kind": "typed-dataclass",
+    "fields": [
+      {
+        "path": "TopKConfig.top_k",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.max_hypotheses",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.beam_width",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.max_missing_frames",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.reprojection_px",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.reprojection_sigma_px",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.score_weight",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.missing_view_cost",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.missing_frame_cost",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.restart_cost",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.max_speed_mps",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.speed_scale_mps",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.speed_weight",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.acceleration_scale_mps2",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.acceleration_weight",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      },
+      {
+        "path": "TopKConfig.turn_cost_cap",
+        "required": true,
+        "default_policy": "composition-owned-no-python-default"
+      }
+    ]
+  },
+  "all_core_function_bodies_ast_equal": true,
+  "catalog_regression_node": "tests/unit/utils/configuration/test_contracts.py::test_topk_settings_are_discovered_as_required_composition_owned_fields",
+  "unchanged_nonconfiguration_default": "TopKBallInputAssembler.version=1 is the assembler protocol version, not a runtime setting"
+}

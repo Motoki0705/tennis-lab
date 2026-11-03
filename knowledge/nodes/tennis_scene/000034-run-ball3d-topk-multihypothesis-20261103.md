@@ -44,6 +44,7 @@ artifacts:
   tests: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/test-summary.json
   inventory_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/validation.json
   ci_fix_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/ci-fix-summary.json
+  composition_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/composition-summary.json
 parents:
 - run-ball3d-foundation-review-20261103
 relations: []
@@ -145,9 +146,10 @@ null/運動コスト、候補保持、選択後LOESSを独立に検証し、今�
 `PipelineRuntimeConfig.ball_method` のPython既定値がcomposition-owned契約に違反し、
 最初の違反を直すと `ball_topk` のPython既定値も同じ違反になるため、両方を必須fieldへ直した。
 `from_config` の処理は旧headとAST一致し、YAMLも不変である。productionでは従来からstrict schemaで
-全top-K fieldを必須としてcomposition値を渡している。計算用設定型とmethodのAPI defaultを、
-runtime adapterの欠落値補完に使う変更はしていない。新しいtestは0を含むCLI overrideと全fieldの到達を検証する。
-監査が発見する他のadapter・schemaも既存のcatalog/audit/discovery/inventory全体で確認した。
+全top-K fieldを必須としてcomposition値を渡している。新しいtestは0を含むCLI overrideと全fieldの到達を検証した。
+ただし、この修正時点では`TopKConfig`と評価methodにPython既定値が残っていた。
+監査が発見したadapter・schemaの確認だけでは不十分で、既定値のあるネスト型の探索漏れを見逃していた。
+後述の追加修正で設定型・評価methodの既定値とfactoryを除き、対象symbolの発見を直接検証する。
 
 もう1件は、main固定配列に対するreprojection_pxの厳密一致が機械依存の1～数ULP差を拒否したもの。
 既定solverと入力組立5ファイルはmain記録とchecksumが完全一致する。
@@ -187,3 +189,57 @@ fake packageとともに先にimportされた子moduleのMSDA参照も退避・�
 productionコードの変更はない。既存cacheなし/ありを含む同ファイルを再実行し、そのreceiptをci-fix-dino-testsへ保存した。
 実データを再照合したcommitからの追加変更はこのtestと記録だけで、v2不変の結論を維持する。
 push後の対象headの全CI結果はPR #1672へ記録し、人間の採否までmergeしない。
+
+## TopK設定のcomposition所有権の追加修正
+
+2026-11-04、親の追加指摘で、前回修正head 2adc9293bの`TopKConfig`に実際には16項目のPython既定値が
+残っていたことを確認した。評価adapterの`settings`にも`default_factory=TopKConfig`があり、
+`min_frames=5`もPythonで補完していた。これではpipeline YAMLの変更が比較runへ反映されない。
+この時点でCI成功を設定型全体の既定値監査の証拠とした判断は不十分だった。
+
+`TopKConfig`を全項目必須にし、`TopKMultiHypothesis`もsettings/min_framesを必須にした。
+coreの`min_frames`とcomponentの`enabled`の省略値も除いた。標準pipelineは従来からこれらを明示している。
+schemaは設定instanceを生成せず型注釈から作る。評価run.pyはHydraで標準pipelineをcomposeし、
+`PipelineRuntimeConfig.from_config(..., bind_inputs=False)`の同じ設定を明示して渡す。
+単体testもmodule-scopeの実compositionを1回使い、結合testもproductionで得た設定を評価adapterへ渡す。
+今回追加した設定型・factoryを確認し、`TopKConfig`・評価adapter・`PipelineRuntimeConfig`の全fieldで
+default/default_factoryがMISSINGであることを検証した。assemblerの`version=1`は既存方式と同じprotocol版で、
+runtimeの設定値ではない。
+
+修正前に実際の`discover_contract_declarations`で対象symbolが未登録であることを記録した
+([composition-before.json](../../runs/run-ball3d-topk-multihypothesis-20261103/composition-before.json))。
+修正後は同じ既存APIの宣言集合への登録と`inspect_typed_adapter`による全16 fieldのrequired / composition-ownedを確認した
+([composition-authority.json](../../runs/run-ball3d-topk-multihypothesis-20261103/composition-authority.json))。
+さらに`test_topk_settings_are_discovered_as_required_composition_owned_fields`は実catalogの
+`SOURCE_CONTRACT_DECLARATIONS.adapter_symbols`と`ADAPTER_CONTRACTS`を直接検査して成功した。
+単なるcatalog parityではないため、既定値を再導入して型が探索から消える故障も検出する。
+`src/utils/configuration`自体は変更していない。一般の探索漏れ（既定値のある型を宣言・nestedの両探索から外す点）は
+このPRの範囲外として親へ報告する。
+
+旧headのPython literal値と修正後のHydra値を全16項目・型まで比較して一致した。
+`pipeline.yaml`も旧headとbytes一致、min_framesは5で不変。coreの全関数本体も旧headとAST一致した。
+前半・後半のラベルを使った調整や方式・採点の変更は行っていない。
+
+事前設計は [composition-test-plan.md](../../runs/run-ball3d-topk-multihypothesis-20261103/composition-test-plan.md)、
+再現は [composition-tests.sh](../../runs/run-ball3d-topk-multihypothesis-20261103/composition-tests.sh)。
+`--collect-only`は532件/77.63秒（wrapper 80.14秒）。`--durations=0 --durations-min=0`は
+531 passed・既存の空parametrizeによる1 skip/298.83秒（wrapper 301.74秒）、すべて-n 0。
+内訳は設定監査389 passed/1 skipと、元の関連suite・synthetic visualization・DINOの142 passed。
+追加2nodeは監査登録0.002秒、必須topk scalar欠落拒否0.088秒。最大setupは0.113秒で共有compositionはmoduleに1回。
+既存のcold-import2caseが83.09/83.47秒、全source監査が28.56秒で5秒目安を超えるが、
+実processのimport順と全source/catalog契約の検証であり、対象削減やmockで代替しない。
+全node/phaseは [composition-tests.json](../../runs/run-ball3d-topk-multihypothesis-20261103/composition-tests.json)、
+件数と超過caseの要約はcomposition-summaryに保存した。変更Python11ファイルのruff・mypyは成功。
+
+修正コードcommit df93a3e415e05f8c4e247ff537c579409ab5c106で固定bundleを基盤runnerから再実行し、
+baseline/本方式×全view/3LOVOの計8結果でframe軸・位置・valid・used-viewと全診断配列がv2とbitwise一致した。
+v2の129ファイルもサイズ・checksum一致。採点・camera・参照も不変なので誤差とcoverageは変わらない。
+採点の再計算は行わず、上の負の結果と採否の判断を維持する。CPU 54.87秒、最大RSS635,220KiBで、
+GPU・再推論・動画の再生成・GTの方式入力への利用はない。
+新しい`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_composition_verification_v1/`
+には`verification.json`だけを保存した。基盤runnerの一時予測ファイルは照合後に削除し、既存成果物は変更していない。
+同じ記録は [composition-prediction-check.json](../../runs/run-ball3d-topk-multihypothesis-20261103/composition-prediction-check.json)、
+実パス・checksum・完全な再現コマンドはcomposition-summaryの`predictions`/`reproduction`に記録した。
+最終HEADのCIはPR #1672に記録し、人間の採否までmergeしない。
+knowledge validatorは`--check-summary --base-ref origin/main`で0 errors（既存219 warnings）、
+repro path検査は0 missing（既存28 unverifiable）。run保存量は上限内で、予測配列はknowledgeへコピーしていない。
