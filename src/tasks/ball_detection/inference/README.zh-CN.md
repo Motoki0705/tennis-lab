@@ -5,9 +5,9 @@
 `predictor.py` 负责checkpoint推理，`trajectory_gate.py` 负责单点时序筛选。
 `heatmap_decoding.py` 在CPU上重新解码已选择的原生sigmoid热图，不执行模型，也不接收真值。
 
-场景设置为 `ball_detection.decoding`。默认值：`method: legacy`、`patch_size: 5`、
-`temperature: 1.0`、`coordinate_correction: none`、`model_stride: 4`、
-`scale_xy: [1,1]`、`offset_xy: [0,0]`。默认路径保持predictor数组逐元素相同。
+场景设置为 `ball_detection.decoding`。默认值仅由
+[pipeline.yaml](../../../tennis_scene/configs/pipeline.yaml)的composition提供，Python配置的每个字段均须显式传入。
+比较脚本也compose同一个YAML，只覆盖试验明确指定的差异。默认路径保持predictor数组逐元素相同。
 其他方法要求 `ball_detection.subpixel_refine=true`。
 
 | method | 局部估计器 |

@@ -5,9 +5,10 @@
 `predictor.py` はcheckpoint推論、`trajectory_gate.py` は単一点系列の受理を担当する。
 `heatmap_decoding.py` は選択済みnative sigmoid mapをCPUで再復号する。モデルや正解は使用しない。
 
-設定は `ball_detection.decoding`。既定は `method: legacy`、`patch_size: 5`、
-`temperature: 1.0`、`coordinate_correction: none`、`model_stride: 4`、
-`scale_xy: [1,1]`、`offset_xy: [0,0]`。既定経路はpredictorの配列をそのまま保持する。
+設定は `ball_detection.decoding`。既定値の正本は
+[pipeline.yaml](../../../tennis_scene/configs/pipeline.yaml)で、Python設定型の全fieldは必須入力。
+比較scriptも同じYAMLをcomposeし、試行で明示した差分だけを上書きする。
+既定経路はpredictorの配列をそのまま保持する。
 他の方式には `ball_detection.subpixel_refine=true` が必要。
 
 | method | 局所推定 |

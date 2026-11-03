@@ -6,9 +6,10 @@
 observation stream. `heatmap_decoding.py` optionally re-decodes the selected native
 sigmoid maps on CPU. It never executes a model or uses annotations.
 
-The scene pipeline selects `ball_detection.decoding`. Defaults are `method: legacy`,
-`patch_size: 5`, `temperature: 1.0`, `coordinate_correction: none`, `model_stride: 4`,
-`scale_xy: [1,1]`, `offset_xy: [0,0]`. The default scene path keeps the predictor's
+The scene pipeline selects `ball_detection.decoding`. Its defaults belong to
+[pipeline.yaml](../../../tennis_scene/configs/pipeline.yaml); the Python config
+requires every field explicitly. The comparison script composes this same YAML
+and applies only the explicit trial differences. The default scene path keeps the predictor's
 arrays exactly; its `subpixel_refine` option retains the existing behaviour.
 Other methods require `ball_detection.subpixel_refine=true`.
 

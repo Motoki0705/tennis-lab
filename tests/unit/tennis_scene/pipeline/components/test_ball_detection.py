@@ -238,10 +238,6 @@ def test_centre_policy_rejects_padding_and_drop(tmp_path: Path, frames: int, tai
 
 
 def test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    from src.tasks.ball_detection.inference.heatmap_decoding import (
-        HeatmapDecodingConfig,
-    )
-
     packets = [FramePacket(index=i, frame=np.zeros((4, 6, 3), np.uint8), original_size=(6, 4)) for i in range(2)]
     monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
     yy, xx = torch.meshgrid(torch.arange(9), torch.arange(13), indexing="ij")
@@ -260,7 +256,7 @@ def test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays(t
     before, scores, evidence = module._predict_video(video)
     np.testing.assert_array_equal(before, prediction.coords[0].numpy())
     np.testing.assert_array_equal(scores, prediction.confidence[0].numpy())
-    module.config = replace(base, subpixel_refine=True, decoding=HeatmapDecodingConfig(method="quadratic_log"))
+    module.config = replace(base, subpixel_refine=True, decoding=replace(base.decoding, method="quadratic_log"))
     after, new_scores, new_evidence = module._predict_video(video)
     np.testing.assert_allclose(after * [12, 8], centres, atol=2e-5)
     assert np.max(np.abs(before - after)) > .01

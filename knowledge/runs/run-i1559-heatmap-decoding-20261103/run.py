@@ -12,12 +12,14 @@ from pathlib import Path
 import cv2
 import numpy as np
 import torch
+from hydra import compose, initialize_config_dir
+from omegaconf import OmegaConf
 from scipy.optimize import least_squares
 
 from src.tasks.ball_detection.inference.heatmap_decoding import (
-    HeatmapDecodingConfig,
     decode_native_sequence,
 )
+from src.tennis_scene.configuration import build_heatmap_decoding_config
 from src.tennis_scene.evaluation.ball3d.annotations import load_annotations
 from src.tennis_scene.evaluation.ball3d.baseline import (
     baseline_from_bundle,
@@ -48,15 +50,25 @@ BUNDLE_SHA256 = "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8
 ANNOTATIONS_SHA256 = "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
 
 
-def candidate_configs():
+def composed_decoding(overrides):
+    """Read defaults/overrides from the shipped pipeline composition."""
+    config_dir = Path(__file__).resolve().parents[3] / "src/tennis_scene/configs"
+    with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
+        config = compose(config_name="pipeline", overrides=overrides)
+    return build_heatmap_decoding_config(
+        OmegaConf.to_container(config.ball_detection.decoding, resolve=True)
+    )
+
+
+def candidate_configs(base):
     return {
-        "legacy_redecoded": HeatmapDecodingConfig(),
-        "axis_logit": HeatmapDecodingConfig(method="axis_logit"),
-        **{f"{method}_{patch}": HeatmapDecodingConfig(method=method, patch_size=patch)
+        "legacy_redecoded": replace(base, method="legacy"),
+        "axis_logit": replace(base, method="axis_logit"),
+        **{f"{method}_{patch}": replace(base, method=method, patch_size=patch)
            for method in ("quadratic_log", "quadratic_logit", "centroid") for patch in (3, 5)},
-        **{f"softargmax_t{str(t).replace('.', 'p')}": HeatmapDecodingConfig(method="softargmax", temperature=t)
+        **{f"softargmax_t{str(t).replace('.', 'p')}": replace(base, method="softargmax", temperature=t)
            for t in (.5, 2.)},  # T=1 is exactly the background-subtracted centroid.
-        "gaussian_5": HeatmapDecodingConfig(method="gaussian"),
+        "gaussian_5": replace(base, method="gaussian", patch_size=5),
     }
 
 
@@ -123,6 +135,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for flag in ("bundle", "annotations", "videos", "output"):
         parser.add_argument(f"--{flag}", type=Path, required=True)
+    parser.add_argument("--pipeline-override", action="append", default=[])
     args = parser.parse_args()
     torch.set_num_threads(1)
     cv2.setNumThreads(1)
@@ -147,7 +160,7 @@ def main():
     args.output.mkdir(parents=True)
     kwargs = dict(bundle_sha256=bundle.manifest_sha256, code_commit=commit, code_fingerprint=fingerprint)
     baseline = baseline_from_bundle(bundle)
-    configs = candidate_configs()
+    configs = candidate_configs(composed_decoding(args.pipeline_override))
     methods = {m.name: m for m in (baseline, baseline_from_bundle(bundle, without_loess=True))}
     for name, config in configs.items():
         for raw in (False, True):

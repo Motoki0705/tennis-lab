@@ -403,16 +403,19 @@ def test_every_strict_schema_field_rejects_an_invalid_exact_type() -> None:
     [
         "src.tasks.base.configuration.TrainingRuntimeConfig",
         "src.tasks.ball_detection.configuration.BallRuntimePaths",
+        "src.tasks.ball_detection.inference.heatmap_decoding.HeatmapDecodingConfig",
         "src.tasks.blcs.configuration.AxialModelConfig",
         "src.tasks.court_detection.configuration.CourtTrainingConfig",
         "src.tasks.plcs.configuration.PLCSTrainingConfig",
         "src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig",
         "src.tennis_scene.configuration.PipelineRuntimeConfig",
+        "src.tennis_scene.pipeline.components.ball_detection.BallDetectionConfig",
         "src.synthetic_data_generation.configuration.ScenePipelineConfiguration",
         "src.submodules.configuration.SubmoduleRuntimeConfig",
     ],
 )
 def test_representative_domain_adapter_is_source_discovered(symbol: str) -> None:
+    assert symbol in SOURCE_CONTRACT_DECLARATIONS.adapter_symbols
     contract = next(
         candidate
         for candidate in ADAPTER_CONTRACTS

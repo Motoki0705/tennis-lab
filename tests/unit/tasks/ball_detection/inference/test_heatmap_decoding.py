@@ -17,6 +17,12 @@ from src.tasks.ball_detection.inference.heatmap_decoding import (
     decode_native_sequence,
 )
 from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
+from tests.support.ball_heatmap_decoding import compose_heatmap_decoding
+
+
+@pytest.fixture(scope="module")
+def decoding_config() -> HeatmapDecodingConfig:
+    return compose_heatmap_decoding()
 
 
 def _map(centre=(7.23, 5.36), *, rotated=False, sigmoid=False, background=0., edge=False):
@@ -40,11 +46,11 @@ def _map(centre=(7.23, 5.36), *, rotated=False, sigmoid=False, background=0., ed
     ("softargmax", 5, False, False, .15),
     ("gaussian", 5, False, True, 2e-3),
 ])
-def test_known_centres_include_rotation_anisotropy_and_saturation(method, patch, sigmoid, rotated, tolerance):
+def test_known_centres_include_rotation_anisotropy_and_saturation(method, patch, sigmoid, rotated, tolerance, decoding_config):
     centre = np.array([7.23, 5.36])
     background = .07 if method in ("centroid", "softargmax", "gaussian") else 0.
     image = _map(tuple(centre), rotated=rotated, sigmoid=sigmoid, background=background)
-    result = decode_heatmaps(image, HeatmapDecodingConfig(method=method, patch_size=patch))
+    result = decode_heatmaps(image, replace(decoding_config, method=method, patch_size=patch), subpixel_refine=True)
     np.testing.assert_allclose(result.coords.numpy() * [18, 12], centre, atol=tolerance, rtol=0)
     assert result.confidence.item() == image.max().item()
     assert result.fit_status.item() in (FitStatus.LEGACY, FitStatus.REFINED)
@@ -58,24 +64,24 @@ def test_known_centres_include_rotation_anisotropy_and_saturation(method, patch,
     ("softargmax", (17.73, 11.67), .65),
     ("axis_logit", (.23, 5.36), .24),
 ])
-def test_border_uses_only_observed_patch_cells(method, centre, tolerance):
+def test_border_uses_only_observed_patch_cells(method, centre, tolerance, decoding_config):
     image = _map(centre, sigmoid="logit" in method, background=.07 if method == "gaussian" else 0.)
-    result = decode_heatmaps(image, HeatmapDecodingConfig(method=method))
+    result = decode_heatmaps(image, replace(decoding_config, method=method), subpixel_refine=True)
     np.testing.assert_allclose(result.coords.numpy() * [18, 12], centre, atol=tolerance, rtol=0)
     if method == "axis_logit":
         assert result.fit_status.item() == FitStatus.PARTIAL_AXIS
 
 
 @pytest.mark.parametrize("method", METHODS[1:])
-def test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice(method):
-    result = decode_heatmaps(torch.full((7, 11), .5), HeatmapDecodingConfig(method=method))
+def test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice(method, decoding_config):
+    result = decode_heatmaps(torch.full((7, 11), .5), replace(decoding_config, method=method), subpixel_refine=True)
     assert result.fit_status.item() == FitStatus.DEGENERATE
     torch.testing.assert_close(result.coords, torch.zeros(2), rtol=0, atol=0)
 
 
-def test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes():
+def test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes(decoding_config):
     frozen = json.loads((Path(__file__).parent / "fixtures/main_decode.json").read_text())
-    main_result = decode_heatmaps(torch.tensor(frozen["heatmaps"], dtype=torch.float32))
+    main_result = decode_heatmaps(torch.tensor(frozen["heatmaps"], dtype=torch.float32), decoding_config, subpixel_refine=True)
     assert torch.equal(main_result.coords, torch.tensor(frozen["coords"], dtype=torch.float32))
     assert torch.equal(main_result.confidence, torch.tensor(frozen["confidence"], dtype=torch.float32))
     # Two cameras, two unequal frame centres; shape alone cannot detect a swap.
@@ -83,19 +89,19 @@ def test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes():
     for subpixel in (False, True):
         peak, score = heatmaps_to_argmax(images)
         expected = refine_peaks_log_parabolic(images, peak) if subpixel else peak
-        result = decode_heatmaps(images, subpixel_refine=subpixel)
+        result = decode_heatmaps(images, decoding_config, subpixel_refine=subpixel)
         assert torch.equal(result.coords, expected)
         assert torch.equal(result.confidence, score)
     raw = images.reshape(4, 13, 19).numpy()
     raw.flags.writeable = False
-    uv, scores, _ = decode_native_sequence(raw, HeatmapDecodingConfig(), subpixel_refine=True)
+    uv, scores, _ = decode_native_sequence(raw, decoding_config, subpixel_refine=True)
     np.testing.assert_array_equal(uv, expected.reshape(4, 2).numpy())
     np.testing.assert_array_equal(scores, score.reshape(4).numpy())
 
 
-def test_coordinate_hypotheses_have_known_pixel_displacements():
+def test_coordinate_hypotheses_have_known_pixel_displacements(decoding_config):
     uv = torch.tensor([[0., 1.], [.25, .75]], dtype=torch.float64)
-    config = HeatmapDecodingConfig(coordinate_correction="stride")
+    config = replace(decoding_config, coordinate_correction="stride")
     pixels = correct_coordinates(uv, (72, 128), config) * torch.tensor([1919., 1079.])
     # Stride-four half-pixel centres at 1.5 and 285.5 in a 512x288 input.
     np.testing.assert_allclose(pixels[0], [1919 * 1.5 / 511, 1079 * 285.5 / 287])
@@ -107,28 +113,28 @@ def test_coordinate_hypotheses_have_known_pixel_displacements():
     {"method": "typo"}, {"patch_size": 4}, {"temperature": 0.},
     {"method": "gaussian", "patch_size": 3}, {"offset_xy": (.01, 0.)},
 ])
-def test_invalid_decoding_settings_are_rejected(change):
+def test_invalid_decoding_settings_are_rejected(change, decoding_config):
     with pytest.raises(ValueError):
-        HeatmapDecodingConfig(**change)
+        replace(decoding_config, **change)
 
 
-def test_nan_input_and_disabled_refinement_are_rejected():
+def test_nan_input_and_disabled_refinement_are_rejected(decoding_config):
     with pytest.raises(ValueError, match="finite"):
-        decode_heatmaps(torch.full((3, 4), float("nan")))
+        decode_heatmaps(torch.full((3, 4), float("nan")), decoding_config, subpixel_refine=True)
     with pytest.raises(ValueError, match="subpixel_refine"):
-        decode_heatmaps(_map(), HeatmapDecodingConfig(method="centroid"), subpixel_refine=False)
+        decode_heatmaps(_map(), replace(decoding_config, method="centroid"), subpixel_refine=False)
 
 
-def test_isotropic_gaussian_and_exactly_saturated_plateau():
+def test_isotropic_gaussian_and_exactly_saturated_plateau(decoding_config):
     yy, xx = np.mgrid[:13, :19].astype(np.float64)
     energy = (xx - 7.23) ** 2 + (yy - 5.36) ** 2
     image = torch.tensor(.8 * np.exp(-energy / 2), dtype=torch.float32)
-    result = decode_heatmaps(image, HeatmapDecodingConfig(method="quadratic_log"))
+    result = decode_heatmaps(image, replace(decoding_config, method="quadratic_log"), subpixel_refine=True)
     np.testing.assert_allclose(result.coords.numpy() * [18, 12], [7.23, 5.36], atol=2e-5)
     saturated = torch.tensor(1 / (1 + np.exp(np.clip(energy - 20, -50, 50))), dtype=torch.float32)
     assert saturated.max() == 1.
     # Saturated float32 loses centre information. This bounds the damage rather
     # than pretending that a logit transform can recover the lost bits.
-    clipped = decode_heatmaps(saturated, HeatmapDecodingConfig(method="quadratic_logit"))
+    clipped = decode_heatmaps(saturated, replace(decoding_config, method="quadratic_logit"), subpixel_refine=True)
     assert torch.isfinite(clipped.coords).all()
     assert clipped.fit_status.item() != FitStatus.LEGACY

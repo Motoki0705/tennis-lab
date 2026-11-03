@@ -123,7 +123,7 @@ class BallDetectionConfig:
     trajectory_gate: TrajectoryGateConfig
     candidates: BallCandidateConfig
     resolver: PathResolver
-    decoding: HeatmapDecodingConfig = HeatmapDecodingConfig()
+    decoding: HeatmapDecodingConfig
 
     def __post_init__(self) -> None:
         if self.decoding.method != "legacy" and not self.subpixel_refine:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import runpy
 import shutil
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -25,8 +26,22 @@ from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
 from src.utils.paths import PROJECT_ROOT
+from tests.support.ball_heatmap_decoding import compose_heatmap_decoding
 
 _TENNIS_SCENE_CONFIG_DIR = (PROJECT_ROOT / "src/tennis_scene/configs").resolve()
+
+
+def test_decoder_composition_overrides_reach_comparison_candidates() -> None:
+    comparison = runpy.run_path(str(PROJECT_ROOT / "knowledge/runs/run-i1559-heatmap-decoding-20261103/run.py"))
+    overrides = ["ball_detection.decoding.temperature=0.37", "ball_detection.decoding.model_stride=8"]
+    base = comparison["composed_decoding"](overrides)
+    assert base == compose_heatmap_decoding(*overrides)
+    candidates = comparison["candidate_configs"](base)
+    assert candidates["legacy_redecoded"].temperature == .37
+    assert candidates["quadratic_logit_3"].model_stride == 8
+    assert candidates["centroid_5"].temperature == .37
+    assert candidates["softargmax_t0p5"].temperature == .5
+    assert all(config.model_stride == 8 for config in candidates.values())
 
 
 @contextmanager

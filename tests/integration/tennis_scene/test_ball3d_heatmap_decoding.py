@@ -2,7 +2,6 @@ from dataclasses import replace
 
 import numpy as np
 
-from src.tasks.ball_detection.inference.heatmap_decoding import HeatmapDecodingConfig
 from src.tennis_scene.evaluation.ball3d.baseline import (
     PipelineBaseline,
     replay_detector,
@@ -13,17 +12,19 @@ from src.tennis_scene.evaluation.ball3d.heatmap_decoding import (
 )
 from src.tennis_scene.evaluation.ball3d.runner import run_method
 from tests.support.ball3d_evaluation import make_inputs
+from tests.support.ball_heatmap_decoding import compose_heatmap_decoding
 
 
 def test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order():
     inputs = make_inputs(frames=12)
+    decoding = compose_heatmap_decoding()
     for view in inputs.views:
-        actual, _ = redecode_view(view, HeatmapDecodingConfig())
+        actual, _ = redecode_view(view, decoding)
         expected = replay_detector(view)
         for field in ("uv_px", "confidence", "observed", "point_kind"):
             np.testing.assert_array_equal(getattr(actual, field), getattr(expected, field))
     inputs = replace(inputs, views=tuple(replace(v, detector_config=replace(v.detector_config, subpixel_refine=True)) for v in inputs.views))
-    method = HeatmapDecodingMethod("decoded", HeatmapDecodingConfig(method="centroid"), PipelineBaseline(min_frames=1))
+    method = HeatmapDecodingMethod("decoded", replace(decoding, method="centroid"), PipelineBaseline(min_frames=1))
     runs = run_method(method, inputs, bundle_sha256="x", code_commit="y", code_fingerprint="z")
     assert {cached[0].camera.camera_id for cached in method._cache.values()} == set(runs[-1].result.camera_ids)
     for run in runs:

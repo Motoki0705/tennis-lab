@@ -31,13 +31,13 @@ class FitStatus(IntEnum):
 
 @dataclass(frozen=True, slots=True)
 class HeatmapDecodingConfig:
-    method: str = "legacy"
-    patch_size: int = 5
-    temperature: float = 1.0
-    coordinate_correction: str = "none"
-    model_stride: int = 4
-    scale_xy: tuple[float, float] = (1.0, 1.0)
-    offset_xy: tuple[float, float] = (0.0, 0.0)
+    method: str
+    patch_size: int
+    temperature: float
+    coordinate_correction: str
+    model_stride: int
+    scale_xy: tuple[float, float]
+    offset_xy: tuple[float, float]
 
     def __post_init__(self) -> None:
         if self.method not in METHODS:
@@ -69,9 +69,6 @@ class DecodedHeatmaps:
     coords: Tensor
     confidence: Tensor
     fit_status: Tensor
-
-
-DEFAULT_DECODING = HeatmapDecodingConfig()
 
 
 def correct_coordinates(coords: Tensor, size_hw: tuple[int, int], config: HeatmapDecodingConfig) -> Tensor:
@@ -177,7 +174,7 @@ def _local_offset(image: NDArray[np.float64], x: int, y: int, config: HeatmapDec
     return offset, FitStatus.REFINED
 
 
-def decode_heatmaps(heatmaps: Tensor, config: HeatmapDecodingConfig = DEFAULT_DECODING, *, subpixel_refine: bool = True) -> DecodedHeatmaps:
+def decode_heatmaps(heatmaps: Tensor, config: HeatmapDecodingConfig, *, subpixel_refine: bool) -> DecodedHeatmaps:
     """Decode (...,H,W) native probabilities without modifying them or peak scores.
 
     New fits run on CPU, inspect only a 3x3/5x5 patch and explicitly report all

@@ -178,3 +178,36 @@ v1は比較scriptの出力directory契約違反で停止、v2/v3は基盤API・c
 入力・過去の成果物を上書きせず残し、採用した実行はv4だけとする。
 履歴と理由は `execution-history.json`。TensorBoardとcheckpointは、学習を行わない比較なので該当しない。
 人間の採否判断・mergeは未実施であり、このnodeのdoneは実装・比較成果物の完成を表す。
+
+## 2026-11-04 明示レビュー pr-1673-1 の設定修正
+
+HeatmapDecodingConfigの7 field、DEFAULT_DECODING、BallDetectionConfig.decodingのPython既定値を除去した。
+標準pipelineと比較scriptは共通のbuild_heatmap_decoding_configでcompositionの値を明示的に渡す。
+比較のmethod/patch/temperatureのグリッドだけを明示差分として上書きし、それ以外は同じcompositionを継承する。
+テストも同じYAMLをcomposeし、dataclasses.replaceで検証対象の差分を渡す。
+
+修正前は両型がSOURCE_CONTRACT_DECLARATIONSとADAPTER_CONTRACTSからともに消えていた。
+修正後は両方へ含まれ、HeatmapDecodingConfigの7 field、BallDetectionConfigの18 fieldすべてが
+requiredかつcomposition-ownedであることを既存監査と追加した代表型caseで確認した。
+監査実装src/utils/configurationには変更を入れていない。
+現監査は既定値を持つConfig型（通常の設定module以外）と既定値を持つネスト型を探索から外す。
+この一般的な探索漏れは本修正の対象外として維持した。
+
+設定監査一式と関連回帰は522 passed/375.73秒（-n 0、--durations=0 --durations-min=0）。
+--collect-onlyは522件/90.95秒。新規は代表型の2 caseとcomposition overrideの接続1 case。
+既存のcold-import順序検証は110.059秒/91.120秒、repository全source監査は30.305秒を要した。
+これらは独立processのimport順序とrepository全体の境界を守る既存契約であり、
+縮約すると探索漏れ・循環importを隠すため、そのまま実行した。その他の最大caseは4.871秒。
+全nodeと実測はreview-fix bundleのtest-results.json。原logは保存上限のため3分割し、
+再連結したbytesと元のSHA-256が一致することを確認した。
+
+全clipの予測・採点は再実行していない。旧Python既定値7個と現compositionの値、YAML bytes、
+v4 selection.jsonの15設定、decoder/scene componentの全演算body、比較scriptのfit/選定/実行body、
+設定constructorの7式が同じであることをASTと値で照合した。固定bundleを共通loaderで再検証し、
+GT hashと既存成果物目録のhashも一致した。このため予測座標・maskは変わらないと判断する。
+新しい予測配列を計算してbitwise一致を測ったものではない。元のv4の数値・checksumは保持する。
+
+設定修正の照合記録はoutputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/
+heatmap_decoding_composition_fix_v1/。verification.jsonとverification.sha256、checksums.jsonにchecksumを記録した。
+小さな同一記録と再現scriptはknowledge/runs/run-i1559-composition-review-fix-20261104/へ保存した。
+この設定修正は元の負の主評価結果と方式採否の保留を変更しない。
