@@ -25,6 +25,7 @@ def test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_ord
     inputs = replace(inputs, views=tuple(replace(v, detector_config=replace(v.detector_config, subpixel_refine=True)) for v in inputs.views))
     method = HeatmapDecodingMethod("decoded", HeatmapDecodingConfig(method="centroid"), PipelineBaseline(min_frames=1))
     runs = run_method(method, inputs, bundle_sha256="x", code_commit="y", code_fingerprint="z")
+    assert {cached[0].camera.camera_id for cached in method._cache.values()} == set(runs[-1].result.camera_ids)
     for run in runs:
         expected_ids = tuple(c for c in inputs.camera_ids if c != run.held_out_camera)
         assert run.result.camera_ids == expected_ids

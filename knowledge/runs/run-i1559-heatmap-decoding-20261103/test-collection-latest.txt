@@ -164,4 +164,4 @@ collected 130 items
         <Module test_ball3d_heatmap_decoding.py>
           <Function test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order>
 
-========================= 130 tests collected in 6.54s =========================
+========================= 130 tests collected in 5.59s =========================

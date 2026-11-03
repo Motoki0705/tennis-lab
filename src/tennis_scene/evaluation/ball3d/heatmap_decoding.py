@@ -72,6 +72,10 @@ class HeatmapDecodingMethod:
         }, "requires_court_lines": False, "cache": "per_immutable_view_identity_max12"}
 
     def __call__(self, inputs: MethodInput) -> Ball3DResult:
+        retained = {id(view) for view in inputs.views}
+        for key in tuple(self._cache):
+            if key not in retained:
+                del self._cache[key]
         views, statuses = [], []
         for view in inputs.views:
             cached = self._cache.get(id(view))
