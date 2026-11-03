@@ -34,5 +34,25 @@
   ],
   "max_case_seconds": 0.0876085830386728,
   "max_setup_seconds": 0.009108068014029413,
-  "workers": 0
+  "workers": 0,
+  "memory_documentation_tests": {
+    "collected_count": 107,
+    "passed_count": 107,
+    "pytest_seconds": 0.4,
+    "execution_wrapper_seconds": 2.33894191600848,
+    "collection_wrapper_seconds": 1.9176330839982256
+  },
+  "ruff": "passed on cohort_report.py and test_topk_cohorts.py",
+  "mypy": "passed on cohort_report.py and test_topk_cohorts.py",
+  "knowledge_validation": {
+    "errors": 0,
+    "warnings": 219,
+    "base_ref": "origin/main",
+    "check_summary": true
+  },
+  "repro_paths": {
+    "missing": 0,
+    "unverifiable": 28
+  },
+  "mutated_script_bytes_match_scoring_script": true
 }

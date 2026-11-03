@@ -45,6 +45,8 @@ artifacts:
   inventory_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/validation.json
   ci_fix_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/ci-fix-summary.json
   composition_validation: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/composition-summary.json
+  cohort_metrics: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort-metrics.json
+  cohort_artifacts: knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort-artifacts.json
 parents:
 - run-ball3d-foundation-review-20261103
 relations: []
@@ -243,3 +245,72 @@ GPU・再推論・動画の再生成・GTの方式入力への利用はない。
 最終HEADのCIはPR #1672に記録し、人間の採否までmergeしない。
 knowledge validatorは`--check-summary --base-ref origin/main`で0 errors（既存219 warnings）、
 repro path検査は0 missing（既存28 unverifiable）。run保存量は上限内で、予測配列はknowledgeへコピーしていない。
+
+## 明示レビューcross-1: 共通点・追加点・喪失点の誤差
+
+親の明示レビュー`parent-1554-5647a023173b48feac926b069d0a207c`（対象head 0055da23f）の指摘に対応した。
+このPRで報告した条件は`topk_multihypothesis`の1件。別のTopK+LOESS条件は報告していない。
+v2の`results/topk_multihypothesis/without_cam*`と、同じ比較で使った`results/pipeline_baseline/without_cam*`を
+基盤`load_run`で読み、SHA-256をpinしたbundleと正解に対して基盤`error_samples(run, bundle, annotations)`を呼んだ。
+誤差分布も基盤`distribution(threshold=20)`を使う。独自のprojection/scorerはなく、方式の再実行・設定調整・src変更はない。
+集計コードcommitは842165d650857d8ad344f5abcd55a032fe8379fe。
+
+主評価[505,1010)のLOVOを(held-out camera, frame)の組で突き合わせた。共通点の2列は同じ353点である。
+
+| 集合 | 件数 | top-K 中央値/p90 px | top-K >20px率 | baseline 中央値/p90 px | baseline >20px率 |
+|---|---:|---:|---:|---:|---:|
+| 共通 | 353 | 9.274 / 34.073 | 17.85% | 8.778 / 27.825 | 15.01% |
+| 追加（方式のみ） | 180 | 19.721 / 244.478 | 49.44% | — | — |
+| 喪失（baselineのみ） | 472 | — | — | 10.255 / 26.681 | 17.37% |
+
+追加点の89/180点が20px超で、方式全点の粗大誤差152点の58.55%を占める。
+20px超率は共通点の63/353=17.85%から、追加点を含む全点の152/533=28.52%へ上がる。
+全点p90は103.60pxで、共通点34.07pxより大きい。中央値・p90は加重平均できないが、
+追加点側の長い誤差分布を分けて見ると、coverageの増分の質を確認できる。
+共通点でもbaselineのp90 27.83pxより悪化している。
+喪失472点のうち390点はbaselineで20px以内であり、保持できた点と追加点だけから性能を判断しない。
+採点数-292点は追加180点と喪失472点の差である。この集合分解は記述統計で、運動コスト等の原因分離ablationではない。
+1clip・近似校正と人間2D参照という制限、悪化の結論、既定・採否の判断を維持する。
+
+| 区間 | 共通 | 追加 | 喪失 | 方式全点 = 共通+追加 | baseline全点 = 共通+喪失 |
+|---|---:|---:|---:|---:|---:|
+| 主[505,1010) | 353 | 180 | 472 | 533 | 825 |
+| 前半[0,505) | 372 | 217 | 449 | 589 | 821 |
+| 全[0,1010) | 725 | 397 | 921 | 1122 | 1646 |
+
+全3区間×(pool+3camera)×(全参照+observed+estimated)の36層、72件の件数検算はすべて成立した。
+既存`paired-scores.json`の全点・2方式共通点について、count/median/p90/>20px率の48値が完全一致した。
+空集合の中央値・p90・率はnullで、0pxの結果として扱わない。読み出した比較元68ファイルのchecksumは前後で不変。
+bundle/正解は基盤loaderのexpected_sha256で照合し、saved runも元manifestの外部pinで照合した。
+
+出力先は新設の
+`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_cohort_v1/`。
+`cohorts.json`、全層の`cohorts.csv`/`cohorts.md`、camera/frame別の集合・誤差を記した`samples.csv`、
+checksum目録`artifacts.json`を保存した。実パス・全checksumは
+[cohort-artifacts.json](../../runs/run-ball3d-topk-multihypothesis-20261103/cohort-artifacts.json)、
+小さな全層指標は[cohort-metrics.json](../../runs/run-ball3d-topk-multihypothesis-20261103/cohort-metrics.json)と
+[cohort-tables.csv](../../runs/run-ball3d-topk-multihypothesis-20261103/cohort-tables.csv)。
+point別CSVはoutputsに置き、予測配列はknowledgeへコピーしていない。CPU集計1.52秒、最大RSS633,668KiB。
+
+再現は同checkoutから新しい`--output`を指定する。入力の実パスとpinはcohort-metricsのprovenanceにも保存した。
+
+```bash
+TOPK_FIXED=/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONPATH=. .venv/bin/python \
+  knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort_report.py \
+  --bundle "$TOPK_FIXED/fixed_input_bundle_v1" \
+  --annotations "$TOPK_FIXED/human_annotations/ground_truth_v1/ground_truth.json" \
+  --comparison "$TOPK_FIXED/topk_multihypothesis_v2" \
+  --output "$TOPK_FIXED/topk_multihypothesis_cohort_reproduction"
+```
+
+テスト設計は[cohort-test-plan.md](../../runs/run-ball3d-topk-multihypothesis-20261103/cohort-test-plan.md)。
+新規5caseは行順、同frame別camera、504/505/1009、参照kind、20px境界、空集合、重複、件数不整合を検証する。
+基盤scoringの既存13caseを含む18caseはcollect-only 4.84秒、18 passed/10.14秒（すべて-n 0）。
+全node/phaseはcohort-test-results、要約はcohort-test-summary。最大case0.088秒、最大setup0.0092秒で基準内。
+共通点の方式誤差をbaseline誤差へ取り違える故障注入は、期待中央値14.5に対する8.5の不一致で失敗し、
+元bytesへ復元すると同nodeが成功した（cohort-mutation）。ruff/mypyは変更Python2ファイルで成功。
+複数PRに共通したレビュー判断はmemoryへ一般化して別commitにし、その文書契約107caseも0.40秒で成功した。
+knowledge validatorは`--check-summary --base-ref origin/main`で0 errors（既存219 warnings）、
+repro path検査は0 missing（既存28 unverifiable）。
+最終headのCI結果はPR #1672へ記録し、統合比較の採否までmergeしない。
