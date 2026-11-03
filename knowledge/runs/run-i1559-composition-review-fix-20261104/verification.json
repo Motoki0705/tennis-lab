@@ -1,0 +1,100 @@
+{
+  "review_head": "bea51b496df199c5d263e6a8753053f96ce8e22d",
+  "clip_replay_executed": false,
+  "prediction_arrays_recomputed": false,
+  "prediction_change_expected": false,
+  "judgment": "Same composed values, 15 saved decoder settings, numeric bodies, constructor expressions and verified fixed inputs; no full clip replay.",
+  "yaml_unchanged": true,
+  "yaml_sha256": "dbf513fca5932af2a13543250a344fcfc25d8597cd4b517442bee219f6f3e586",
+  "composed_decoder": {
+    "coordinate_correction": "none",
+    "method": "legacy",
+    "model_stride": 4,
+    "offset_xy": [
+      0.0,
+      0.0
+    ],
+    "patch_size": 5,
+    "scale_xy": [
+      1.0,
+      1.0
+    ],
+    "temperature": 1.0
+  },
+  "matched_saved_configs": 15,
+  "audit": {
+    "src.tasks.ball_detection.inference.heatmap_decoding.HeatmapDecodingConfig": {
+      "source_declared": true,
+      "catalog_included": true,
+      "required_fields": [
+        "HeatmapDecodingConfig.method",
+        "HeatmapDecodingConfig.patch_size",
+        "HeatmapDecodingConfig.temperature",
+        "HeatmapDecodingConfig.coordinate_correction",
+        "HeatmapDecodingConfig.model_stride",
+        "HeatmapDecodingConfig.scale_xy",
+        "HeatmapDecodingConfig.offset_xy"
+      ]
+    },
+    "src.tennis_scene.pipeline.components.ball_detection.BallDetectionConfig": {
+      "source_declared": true,
+      "catalog_included": true,
+      "required_fields": [
+        "BallDetectionConfig.checkpoint",
+        "BallDetectionConfig.batch_size",
+        "BallDetectionConfig.device",
+        "BallDetectionConfig.image_size",
+        "BallDetectionConfig.normalize_imagenet",
+        "BallDetectionConfig.score_threshold",
+        "BallDetectionConfig.subpixel_refine",
+        "BallDetectionConfig.checkpoint_strict",
+        "BallDetectionConfig.checkpoint_weights_only",
+        "BallDetectionConfig.prefetch_batches",
+        "BallDetectionConfig.window_stride",
+        "BallDetectionConfig.tail_policy",
+        "BallDetectionConfig.overlap_aggregation",
+        "BallDetectionConfig.pin_memory",
+        "BallDetectionConfig.trajectory_gate",
+        "BallDetectionConfig.candidates",
+        "BallDetectionConfig.resolver",
+        "BallDetectionConfig.decoding"
+      ]
+    }
+  },
+  "unchanged_numeric_bodies": {
+    "src/tasks/ball_detection/inference/heatmap_decoding.py": [
+      "HeatmapDecodingConfig.__post_init__",
+      "HeatmapDecodingConfig.preserves_prediction",
+      "_axis_logit",
+      "_design",
+      "_domain",
+      "_gaussian",
+      "_local_offset",
+      "correct_coordinates",
+      "decode_heatmaps",
+      "decode_native_sequence"
+    ],
+    "src/tennis_scene/pipeline/components/ball_detection.py": [
+      "BallDetectionConfig.__post_init__",
+      "BallDetectionModule.__init__",
+      "BallDetectionModule._accept_detections",
+      "BallDetectionModule._predict_video",
+      "BallDetectionModule.is_loaded",
+      "BallDetectionModule.load",
+      "BallDetectionModule.process",
+      "BallDetectionModule.unload",
+      "BallDetectionOutput.__post_init__"
+    ],
+    "knowledge/runs/run-i1559-heatmap-decoding-20261103/run.py": [
+      "compact_scores",
+      "execute",
+      "fit_front_affine",
+      "tuning_choice"
+    ]
+  },
+  "bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+  "annotations_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09",
+  "existing_artifacts_sha256": "c0a523ff8e1692fef8c714463ba3277dc976b353680eedb4af6221afef83c4cb",
+  "selection_sha256": "a66dba3cd801a2ae1b95f5a4868471f33eae8c39a381d8ce354588019bb88d71",
+  "audit_scope_note": "Default-bearing types outside conventional config modules and default-bearing nested types remain excluded by existing discovery; src/utils/configuration is unchanged."
+}

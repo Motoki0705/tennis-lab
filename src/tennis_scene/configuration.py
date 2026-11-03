@@ -16,6 +16,7 @@ from src.submodules.configuration import (
     SmplAssetPaths,
     SubmoduleRuntimeConfig,
 )
+from src.tasks.ball_detection.inference.heatmap_decoding import HeatmapDecodingConfig
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.base.visualization import parse_view_3d
@@ -193,6 +194,18 @@ _BALL_CANDIDATE_SCHEMA = StrictConfigSchema(
     name="tennis_scene.ball_detection.candidates",
     fields={name: ConfigField.of(int) for name in ("max_candidates", "nms_kernel", "patch_size")},
 )
+_BALL_DECODING_SCHEMA = StrictConfigSchema(
+    name="tennis_scene.ball_detection.decoding",
+    fields={
+        "method": ConfigField.of(str),
+        "patch_size": ConfigField.of(int),
+        "temperature": ConfigField.of(float, int),
+        "coordinate_correction": ConfigField.of(str),
+        "model_stride": ConfigField.of(int),
+        "scale_xy": ConfigField.sequence(ConfigField.of(float, int)),
+        "offset_xy": ConfigField.sequence(ConfigField.of(float, int)),
+    },
+)
 _BALL_SCHEMA = StrictConfigSchema(
     name="tennis_scene.ball_detection",
     fields={
@@ -212,6 +225,7 @@ _BALL_SCHEMA = StrictConfigSchema(
         "pin_memory": ConfigField.of(bool),
         "trajectory_gate": ConfigField.mapping(_TRAJECTORY_SCHEMA),
         "candidates": ConfigField.mapping(_BALL_CANDIDATE_SCHEMA),
+        "decoding": ConfigField.mapping(_BALL_DECODING_SCHEMA),
     },
 )
 _FLAG_SCHEMA = StrictConfigSchema(name="tennis_scene.stage", fields={"enabled": ConfigField.of(bool)})
@@ -942,6 +956,20 @@ def parse_generate_dataset_config(cfg: DictConfig) -> GenerateDatasetRuntimeConf
     )
 
 
+def build_heatmap_decoding_config(settings: Mapping[str, object]) -> HeatmapDecodingConfig:
+    """Validate explicitly composed decoder values without supplying defaults."""
+    decoding = _BALL_DECODING_SCHEMA.validate(settings)
+    return HeatmapDecodingConfig(
+        method=cast(str, decoding["method"]),
+        patch_size=cast(int, decoding["patch_size"]),
+        temperature=float(cast(float, decoding["temperature"])),
+        coordinate_correction=cast(str, decoding["coordinate_correction"]),
+        model_stride=cast(int, decoding["model_stride"]),
+        scale_xy=cast(tuple[float, float], tuple(cast(Sequence[float], decoding["scale_xy"]))),
+        offset_xy=cast(tuple[float, float], tuple(cast(Sequence[float], decoding["offset_xy"]))),
+    )
+
+
 def build_ball_detection_config(
     settings: Mapping[str, object], resolver: PathResolver, *, device: str
 ) -> BallDetectionConfig:
@@ -949,6 +977,9 @@ def build_ball_detection_config(
     ball = _BALL_SCHEMA.validate(settings)
     gate = _mapping(ball["trajectory_gate"], name="ball_detection.trajectory_gate")
     candidates = _mapping(ball["candidates"], name="ball_detection.candidates")
+    decode_config = build_heatmap_decoding_config(
+        _mapping(ball["decoding"], name="ball_detection.decoding")
+    )
     image_size = parse_hw(ball["image_size"], name="ball_detection.image_size")
     batch_size = cast(int, ball["batch_size"])
     _positive(batch_size, name="ball_detection.batch_size")
@@ -1016,6 +1047,7 @@ def build_ball_detection_config(
             patch_size=cast(int, candidates["patch_size"]),
         ),
         resolver=resolver,
+        decoding=decode_config,
     )
 
 

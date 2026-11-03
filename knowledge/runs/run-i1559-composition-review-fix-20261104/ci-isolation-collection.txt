@@ -1,0 +1,43 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-heatmap-decoding
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 27 items
+
+<Dir ball3d-heatmap-decoding>
+  <Dir tests>
+    <Dir unit>
+      <Dir submodules>
+        <Dir models>
+          <Dir dino>
+            <Module test_extension.py>
+              <Function test_preflight_checks_forward_and_backward_on_cpu>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward]>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward]>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward]>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward]>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward]>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward]>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[-forward]>
+              <Function test_preflight_rejects_legacy_and_unrelated_errors[-backward]>
+              <Function test_preflight_rejects_unexpected_extension[missing]>
+              <Function test_preflight_rejects_unexpected_extension[accepts_cpu]>
+              <Function test_preflight_preserves_import_error>
+              <Function test_selection_fails_closed_with_a_cached_candidate[unset]>
+              <Function test_selection_fails_closed_with_a_cached_candidate[relative]>
+              <Function test_selection_fails_closed_with_a_cached_candidate[missing]>
+              <Function test_selection_fails_closed_with_a_cached_candidate[not_binary]>
+              <Function test_different_cached_binary_is_rejected>
+              <Function test_untracked_cached_module_cannot_be_retried_after_removal[selected]>
+              <Function test_untracked_cached_module_cannot_be_retried_after_removal[other]>
+              <Function test_cached_binary_must_still_match_selected_file[atomic_replace]>
+              <Function test_cached_binary_must_still_match_selected_file[in_place]>
+              <Function test_removed_cached_module_cannot_be_reimported>
+              <Function test_binary_changed_during_import_requires_fresh_process>
+              <Function test_explicit_file_loading_bypasses_cwd_shadow[False]>
+              <Function test_explicit_file_loading_bypasses_cwd_shadow[True]>
+              <Function test_runtime_import_uses_selected_module_and_rejects_cached_mismatch>
+              <Function test_build_rejects_existing_binary_before_build>
+
+========================= 27 tests collected in 5.74s ==========================

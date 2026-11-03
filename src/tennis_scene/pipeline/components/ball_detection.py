@@ -10,6 +10,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from src.tasks.ball_detection.inference import BallDetectionPredictor
+from src.tasks.ball_detection.inference.heatmap_decoding import (
+    HeatmapDecodingConfig,
+    decode_native_sequence,
+)
 from src.tasks.ball_detection.inference.trajectory_gate import (
     TrajectoryGateConfig,
     apply_trajectory_gate,
@@ -119,6 +123,11 @@ class BallDetectionConfig:
     trajectory_gate: TrajectoryGateConfig
     candidates: BallCandidateConfig
     resolver: PathResolver
+    decoding: HeatmapDecodingConfig
+
+    def __post_init__(self) -> None:
+        if self.decoding.method != "legacy" and not self.subpixel_refine:
+            raise ValueError("Alternative decoding requires subpixel_refine=true")
 
 
 class BallDetectionModule(BasePipelineModule):
@@ -272,4 +281,11 @@ class BallDetectionModule(BasePipelineModule):
         ball_uv = np.stack([f.prediction.coords[f.batch_index, f.time_index].numpy() for f in ordered])
         score = np.asarray([f.score for f in ordered], dtype=np.float32)
         evidence = assemble_ball_evidence(ordered, source_size_wh=(video.width, video.height))
+        if not self.config.decoding.preserves_prediction:
+            ball_uv, score, status = decode_native_sequence(
+                evidence.heatmaps, self.config.decoding,
+                subpixel_refine=self.config.subpixel_refine,
+            )
+            codes, counts = np.unique(status, return_counts=True)
+            LOGGER.info("Ball decoding fit statuses for %s: %s", video.camera_id, dict(zip(codes.tolist(), counts.tolist(), strict=True)))
         return ball_uv, score, evidence

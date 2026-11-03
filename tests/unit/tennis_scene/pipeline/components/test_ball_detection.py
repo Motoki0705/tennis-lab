@@ -235,3 +235,31 @@ def test_centre_policy_rejects_padding_and_drop(tmp_path: Path, frames: int, tai
     module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
     with pytest.raises(ValueError, match="short-clip padding is forbidden"):
         module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", frames, 30., 6, 4))
+
+
+def test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    packets = [FramePacket(index=i, frame=np.zeros((4, 6, 3), np.uint8), original_size=(6, 4)) for i in range(2)]
+    monkeypatch.setattr(ball_component, "OpenCVVideoFrameReader", lambda *args, **kwargs: packets)
+    yy, xx = torch.meshgrid(torch.arange(9), torch.arange(13), indexing="ij")
+    centres = ((4.23, 3.36), (8.17, 5.12))
+    maps = torch.stack([.8 * torch.exp(-.5 * ((xx - x) ** 2 + (yy - y) ** 2)) for x, y in centres])[None]
+    prediction = _prediction(maps, make_ball_config(tmp_path).candidates)
+
+    class Predictor(_TypedBallPredictor):
+        def predict(self, images, *, candidate_config):
+            return prediction
+
+    video = SourceVideo("cam", tmp_path / "unused", "hash", 2, 30., 6, 4)
+    base = replace(make_ball_config(tmp_path), image_size=(4, 6))
+    module = BallDetectionModule(base)
+    module._pipeline = Predictor()  # type: ignore[assignment]
+    before, scores, evidence = module._predict_video(video)
+    np.testing.assert_array_equal(before, prediction.coords[0].numpy())
+    np.testing.assert_array_equal(scores, prediction.confidence[0].numpy())
+    module.config = replace(base, subpixel_refine=True, decoding=replace(base.decoding, method="quadratic_log"))
+    after, new_scores, new_evidence = module._predict_video(video)
+    np.testing.assert_allclose(after * [12, 8], centres, atol=2e-5)
+    assert np.max(np.abs(before - after)) > .01
+    np.testing.assert_array_equal(scores, new_scores)
+    np.testing.assert_array_equal(evidence.heatmaps, new_evidence.heatmaps)
+    np.testing.assert_array_equal(evidence.candidate_uv_px, new_evidence.candidate_uv_px)

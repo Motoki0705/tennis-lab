@@ -1,0 +1,2106 @@
+{
+  "count": 522,
+  "failures": 0,
+  "pytest_wall_seconds": 375.73,
+  "collection_seconds": 90.95,
+  "workers": 0,
+  "tests": [
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit",
+      "setup_call_teardown_seconds": 30.305
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed",
+      "setup_call_teardown_seconds": 0.024
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed",
+      "setup_call_teardown_seconds": 0.318
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_dispatch_preserves_arguments_and_restores_argv_on_failure",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_invalid_selector_never_imports_or_runs_a_stage",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_nested_route_records_the_actual_leaf_validator",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.missing'}]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.entry'}]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'duplicate': 'src.leaf', 'duplicate': 'src.nested'}]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[dynamic_routes]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{}]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_cli.py::test_unvalidated_leaf_invalidates_the_whole_router",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity",
+      "setup_call_teardown_seconds": 4.675
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallRuntimePaths]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.inference.heatmap_decoding.HeatmapDecodingConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.AxialModelConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.pipeline.components.ball_detection.BallDetectionConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]",
+      "setup_call_teardown_seconds": 110.059
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]",
+      "setup_call_teardown_seconds": 91.12
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_runtime_boundary_discovery_has_one_canonical_owner",
+      "setup_call_teardown_seconds": 0.047
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_catalog_and_audit_depend_on_lower_discovery_without_a_back_edge",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_catalog_does_not_publish_legacy_synthetic_boundaries",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_catalog_keeps_task_local_generation_boundaries_distinct",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registration_preserves_neighbor_boundary_checks",
+      "setup_call_teardown_seconds": 0.014
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_sources_still_reject_configuration_fallbacks",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registrations_have_sources_reasons_and_no_repo_imports",
+      "setup_call_teardown_seconds": 0.124
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_synthetic_inventory_has_only_the_canonical_production_clis",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_manual_court_editor_has_an_explicit_non_hydra_path_boundary",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_smpl_asset_installer_has_an_explicit_non_hydra_path_boundary",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_task_local_generation_and_visualization_boundaries_remain_in_inventory",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_mixed_court_training_boundary_remains_explicitly_registered",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_temporal_ball_evaluation_registers_the_shared_runtime_boundary",
+      "setup_call_teardown_seconds": 0.106
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_court_learning_presentation_has_an_explicit_hydra_boundary",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_default_inventory_contains_only_current_policy",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_duplicate_boundaries",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_incomplete_validator_binding",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[true]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[yes]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[2]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[ 0]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_TYPO]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_MOE_REFERENCE]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_USE_TIME_LOCAL_CUDA]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[None-False]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[0-False]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[1-True]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[None-all]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[all-all]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[compressed_time_local-compressed_time_local]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_rejects_unknown_build_target",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_enabled_build_requires_strict_json_contract",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_enabled_build_uses_serialized_absolute_project_root",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_resolves_all_roles",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[.-explicit absolute]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{other}-exactly match]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{unresolved}-resolved absolute]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation0-Unknown]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation1-source_role]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation2-destination_role]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation3-relative]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation4-escapes]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation5-expected str]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation6-Unknown]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation7-Unknown]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root- ]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-\\t]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root- ]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-\\t]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root- ]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-\\t]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root- ]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-\\t]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root- ]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-\\t]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root- ]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-\\t]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-]",
+      "setup_call_teardown_seconds": 0.017
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root- ]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-\\t]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_unresolved_absolute_values",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[project_root]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[data_root]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[checkpoint_root]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[artifact_root]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[output_root]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[cache_root]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[external_asset_root]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-project]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-data]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-output]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-cache]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-project]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-data]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-output]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-cache]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-data]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-cache]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-project]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-output]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-cache]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-data]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-cache]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-data]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-cache]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-cache]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-data]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-cache]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-project]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-data]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-output]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-cache]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-project]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-data]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-output]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-cache]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-project]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-data]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-output]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-cache]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-project]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-checkpoint]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-output]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-cache]",
+      "setup_call_teardown_seconds": 0.015
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-external_asset]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-project]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-data]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-artifact]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-output]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-cache]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-external_asset]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-project]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-data]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-output]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-cache]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-external_asset]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-project]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-data]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-output]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-cache]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-external_asset]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-project]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-data]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-output]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-cache]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-external_asset]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-project]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-data]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-artifact]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-output]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-cache]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-external_asset]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-project]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-data]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-artifact]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-output]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-cache]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-external_asset]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-project]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-data]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-output]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-cache]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-external_asset]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-artifact]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-output]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-cache]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-project]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-artifact]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-cache]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-data]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-checkpoint]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-artifact]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-cache]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-external_asset]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-checkpoint]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-artifact]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-output]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-cache]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-external_asset]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-project]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-checkpoint]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-artifact]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-output]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-cache]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-project]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-data]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-checkpoint]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-artifact]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-cache]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-external_asset]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-project]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-data]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-checkpoint]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-artifact]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-output]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-cache]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-external_asset]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-project]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-data]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-checkpoint]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-output]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-cache]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-external_asset]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-project]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-data]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-checkpoint]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-artifact]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-output]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-cache]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-external_asset]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project- ]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-\\t]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-.]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data- ]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-\\t]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-.]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint- ]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-\\t]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-.]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact- ]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-\\t]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-.]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output- ]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-\\t]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-.]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache- ]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-\\t]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-.]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset- ]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-\\t]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-.]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_project_source_child_remains_explicit_and_role_contained",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[ ]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[.]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[..]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[nested/../..]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_parent_from_another_role",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_preserves_venv_launcher_but_contains_parent",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_rejects_parent_symlink_escape",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_returns_typed_role_aware_paths",
+      "setup_call_teardown_seconds": 0.016
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_optional_boundary_paths_are_omitted_without_synthesizing_values",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_only_optional_boundary_can_return_an_empty_mapping",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments0]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments1]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-relative/source.json-explicit absolute]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-invalid1-exactly str or pathlib.Path]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-invalid2-non-empty sequence]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-one.bin-non-empty sequence]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_wrong_role_root_and_duplicate_paths",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_checks_input_existence_and_kind",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_are_opt_in_and_keep_output_contained",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[output-output]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[artifact-output]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[data-input]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_input_requires_explicit_role_root_permission",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[slcs/precompute/run-basename of the configured output_root]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[outputs/legacy-a legacy root directory name]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[external_asset/work-the name of the external_asset path role]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05]",
+      "setup_call_teardown_seconds": 0.332
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]",
+      "setup_call_teardown_seconds": 0.04
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002]",
+      "setup_call_teardown_seconds": 0.024
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[centroid-centre3-0.65]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes",
+      "setup_call_teardown_seconds": 0.015
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_coordinate_hypotheses_have_known_pixel_displacements",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change0]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change1]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change2]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change3]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change4]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_nan_input_and_disabled_refinement_are_rejected",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_isotropic_gaussian_and_exactly_saturated_plateau",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction",
+      "setup_call_teardown_seconds": 0.064
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream",
+      "setup_call_teardown_seconds": 0.482
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding",
+      "setup_call_teardown_seconds": 0.384
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True]",
+      "setup_call_teardown_seconds": 0.03
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_stride_cannot_leave_silent_holes",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_checkpoint_normalization_mismatch_is_rejected_before_inference",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1]",
+      "setup_call_teardown_seconds": 0.02
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3]",
+      "setup_call_teardown_seconds": 0.014
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[4-drop]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays",
+      "setup_call_teardown_seconds": 0.019
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer",
+      "setup_call_teardown_seconds": 0.397
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing]",
+      "setup_call_teardown_seconds": 0.428
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline]",
+      "setup_call_teardown_seconds": 0.35
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan]",
+      "setup_call_teardown_seconds": 0.362
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask]",
+      "setup_call_teardown_seconds": 0.366
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch]",
+      "setup_call_teardown_seconds": 0.333
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot]",
+      "setup_call_teardown_seconds": 0.41
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype]",
+      "setup_call_teardown_seconds": 0.369
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence",
+      "setup_call_teardown_seconds": 0.346
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence",
+      "setup_call_teardown_seconds": 0.419
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_decoder_composition_overrides_reach_comparison_candidates",
+      "setup_call_teardown_seconds": 0.253
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root",
+      "setup_call_teardown_seconds": 0.021
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]",
+      "setup_call_teardown_seconds": 0.016
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]",
+      "setup_call_teardown_seconds": 0.017
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]",
+      "setup_call_teardown_seconds": 0.015
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]",
+      "setup_call_teardown_seconds": 0.014
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]",
+      "setup_call_teardown_seconds": 0.014
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]",
+      "setup_call_teardown_seconds": 0.138
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]",
+      "setup_call_teardown_seconds": 0.135
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]",
+      "setup_call_teardown_seconds": 0.155
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict",
+      "setup_call_teardown_seconds": 0.306
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults",
+      "setup_call_teardown_seconds": 0.146
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]",
+      "setup_call_teardown_seconds": 0.131
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]",
+      "setup_call_teardown_seconds": 0.129
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]",
+      "setup_call_teardown_seconds": 0.124
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]",
+      "setup_call_teardown_seconds": 0.143
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]",
+      "setup_call_teardown_seconds": 0.16
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]",
+      "setup_call_teardown_seconds": 0.13
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]",
+      "setup_call_teardown_seconds": 0.133
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]",
+      "setup_call_teardown_seconds": 0.145
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]",
+      "setup_call_teardown_seconds": 0.147
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]",
+      "setup_call_teardown_seconds": 0.146
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction",
+      "setup_call_teardown_seconds": 0.096
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own",
+      "setup_call_teardown_seconds": 0.096
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer",
+      "setup_call_teardown_seconds": 0.158
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association",
+      "setup_call_teardown_seconds": 0.171
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api",
+      "setup_call_teardown_seconds": 0.127
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy",
+      "setup_call_teardown_seconds": 0.13
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+      "setup_call_teardown_seconds": 0.884
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+      "setup_call_teardown_seconds": 0.02
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+      "setup_call_teardown_seconds": 0.017
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+      "setup_call_teardown_seconds": 0.016
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+      "setup_call_teardown_seconds": 0.015
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+      "setup_call_teardown_seconds": 0.016
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+      "setup_call_teardown_seconds": 0.016
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]",
+      "setup_call_teardown_seconds": 0.015
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]",
+      "setup_call_teardown_seconds": 0.016
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request",
+      "setup_call_teardown_seconds": 0.017
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+      "setup_call_teardown_seconds": 0.052
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+      "setup_call_teardown_seconds": 0.039
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+      "setup_call_teardown_seconds": 0.019
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+      "setup_call_teardown_seconds": 0.039
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+      "setup_call_teardown_seconds": 0.037
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+      "setup_call_teardown_seconds": 0.025
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]",
+      "setup_call_teardown_seconds": 0.018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs",
+      "setup_call_teardown_seconds": 0.051
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing",
+      "setup_call_teardown_seconds": 0.017
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+      "setup_call_teardown_seconds": 0.02
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity",
+      "setup_call_teardown_seconds": 0.002
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+      "setup_call_teardown_seconds": 0.722
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+      "setup_call_teardown_seconds": 0.59
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+      "setup_call_teardown_seconds": 0.675
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+      "setup_call_teardown_seconds": 0.633
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+      "setup_call_teardown_seconds": 0.243
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]",
+      "setup_call_teardown_seconds": 0.536
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]",
+      "setup_call_teardown_seconds": 0.393
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]",
+      "setup_call_teardown_seconds": 0.435
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+      "setup_call_teardown_seconds": 4.871
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_heatmap_decoding.py::test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order",
+      "setup_call_teardown_seconds": 2.154
+    }
+  ],
+  "raw_log": {
+    "parts": [
+      "test-durations-01.txt",
+      "test-durations-02.txt",
+      "test-durations-03.txt"
+    ],
+    "sha256": "31eeaec95c4d52c6c0d8dd0ac24fc86afbb3f8a781768f5a960278425d17ff48",
+    "bytes": 290698
+  }
+}

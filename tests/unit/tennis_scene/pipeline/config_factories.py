@@ -23,6 +23,7 @@ from src.tennis_scene.pipeline.components.court_kp import (
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+from tests.support.ball_heatmap_decoding import compose_heatmap_decoding
 
 
 def make_resolver(root: Path) -> PathResolver:
@@ -101,6 +102,7 @@ def make_ball_config(root: Path) -> BallDetectionConfig:
         ),
         resolver=resolver,
         candidates=BallCandidateConfig(),
+        decoding=compose_heatmap_decoding(),
     )
 
 

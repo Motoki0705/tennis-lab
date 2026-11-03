@@ -1,0 +1,32 @@
+{
+  "prior_attempts": [
+    {
+      "version": "v1",
+      "code_commit_prefix": "c815145eb",
+      "status": "failed",
+      "reason": "The comparison script reused the run_comparison output directory; the runner rejected the second method.",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/heatmap_decoding_v1",
+      "resource_record": "Command exited with non-zero status 1\n\tCommand being timed: \"env PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-i1559-heatmap-decoding-20261103/run.py --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1 --videos /home/kamimura/projects/tennis-lab/data/samples --annotations /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/heatmap_decoding_v1\"\n\tUser time (seconds): 141.95\n\tSystem time (seconds): 3.30\n\tPercent of CPU this job got: 99%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 2:25.87\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 652108\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 65\n\tMinor (reclaiming a frame) page faults: 119834\n\tVoluntary context switches: 2452\n\tInvoluntary context switches: 1657\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 0\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 1\n",
+      "evaluation_metrics_used_for_tuning": false
+    },
+    {
+      "version": "v2",
+      "code_commit_prefix": "0948baf58",
+      "status": "terminated",
+      "reason": "Stopped before scoring to adopt the foundation scoring and court-input API update.",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/heatmap_decoding_v2",
+      "resource_record": "Command terminated by signal 15\n\tCommand being timed: \"env PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-i1559-heatmap-decoding-20261103/run.py --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1 --videos /home/kamimura/projects/tennis-lab/data/samples --annotations /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/heatmap_decoding_v2\"\n\tUser time (seconds): 58.19\n\tSystem time (seconds): 1.76\n\tPercent of CPU this job got: 101%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 0:58.94\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 650156\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 3\n\tMinor (reclaiming a frame) page faults: 117624\n\tVoluntary context switches: 114\n\tInvoluntary context switches: 308\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 0\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "evaluation_metrics_used_for_tuning": false
+    },
+    {
+      "version": "v3",
+      "code_commit_prefix": "6b822054df0acae10131f48dd2bacb20436ee294",
+      "status": "terminated",
+      "reason": "Stopped before selection/scoring to fix adapter cache ownership on configuration replacement and LOVO selection.",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/heatmap_decoding_v3",
+      "resource_record": "Command terminated by signal 15\n\tCommand being timed: \"env PYTHONPATH=. OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python knowledge/runs/run-i1559-heatmap-decoding-20261103/run.py --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1 --videos /home/kamimura/projects/tennis-lab/data/samples --annotations /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/heatmap_decoding_v3\"\n\tUser time (seconds): 616.83\n\tSystem time (seconds): 1.13\n\tPercent of CPU this job got: 100%\n\tElapsed (wall clock) time (h:mm:ss or m:ss): 10:16.97\n\tAverage shared text size (kbytes): 0\n\tAverage unshared data size (kbytes): 0\n\tAverage stack size (kbytes): 0\n\tAverage total size (kbytes): 0\n\tMaximum resident set size (kbytes): 655524\n\tAverage resident set size (kbytes): 0\n\tMajor (requiring I/O) page faults: 0\n\tMinor (reclaiming a frame) page faults: 117698\n\tVoluntary context switches: 193\n\tInvoluntary context switches: 3406\n\tSwaps: 0\n\tFile system inputs: 0\n\tFile system outputs: 0\n\tSocket messages sent: 0\n\tSocket messages received: 0\n\tSignals delivered: 0\n\tPage size (bytes): 4096\n\tExit status: 0\n",
+      "evaluation_metrics_used_for_tuning": false
+    }
+  ],
+  "final_output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/heatmap_decoding_v4"
+}
