@@ -9,7 +9,11 @@ import pytest
 from numpy.typing import NDArray
 
 from src.tennis_scene.evaluation.ball3d.scoring import annotation_oracle, error_samples
-from tests.support.ball3d_evaluation import make_annotations, make_inputs
+from tests.support.ball3d_evaluation import (
+    make_annotations,
+    make_inputs,
+    make_scoring_bundle,
+)
 
 PATH = (
     Path(__file__).resolve().parents[5]
@@ -148,9 +152,8 @@ def test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps(
     kinds[1, 30] = "occluded"
     annotations = make_annotations(inputs, annotations.uv_px, kinds)
     template = annotation_oracle(
-        inputs,
+        make_scoring_bundle(inputs),
         annotations,
-        bundle_sha256="fixture",
         code_commit="fixture",
         code_fingerprint="fixture",
     )
@@ -158,7 +161,7 @@ def test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps(
         inputs, annotations, offsets, template, split=24
     )
     for run in corrected[1:]:
-        samples = error_samples(run, inputs, annotations)
+        samples = error_samples(run, make_scoring_bundle(inputs), annotations)
         assert np.max(samples["error_px"]) < 1e-4
         camera = inputs.camera_ids.index(run.held_out_camera)
         expected_world = [
@@ -210,9 +213,8 @@ def test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels():
         views=views,
     )
     template = annotation_oracle(
-        inputs,
+        make_scoring_bundle(inputs),
         annotations,
-        bundle_sha256="fixture",
         code_commit="fixture",
         code_fingerprint="fixture",
     )

@@ -24,6 +24,7 @@ from tests.support.ball3d_evaluation import (
 
 def test_paired_scoring_matches_camera_frame_intersection_with_different_coverage():
     inputs = make_inputs()
+    bundle = make_scoring_bundle(inputs)
     first = run_method(
         FixedPointMethod(),
         inputs,
@@ -48,7 +49,7 @@ def test_paired_scoring_matches_camera_frame_intersection_with_different_coverag
             used_views=run.result.used_views & valid,
         )
         second.append(replace(run, method="candidate", result=result))
-    row = paired_error_summary(first, second, inputs, _labels(inputs), start=0, stop=4)
+    row = paired_error_summary(first, second, bundle, _labels(inputs), start=0, stop=4)
     assert row["reference_scored_count"] == 5
     assert row["candidate_scored_count"] == 4
     assert row["common_scored_count"] == 4
@@ -58,14 +59,42 @@ def test_paired_scoring_matches_camera_frame_intersection_with_different_coverag
     assert row["mean_reduction_px"] == pytest.approx(-1.5)
     assert row["improved_rate"] == 0
     empty = paired_error_summary(
-        first, second, inputs, _labels(inputs), start=2, stop=4, held_out_camera="far"
+        first, second, bundle, _labels(inputs), start=2, stop=4, held_out_camera="far"
     )
     assert empty["common_scored_count"] == 0
     assert empty["mean_reduction_px"] is None
     with pytest.raises(ValueError, match="once"):
         paired_error_summary(
-            first, second + second, inputs, _labels(inputs), start=0, stop=4
+            first, second + second, bundle, _labels(inputs), start=0, stop=4
         )
+
+
+@pytest.mark.parametrize("mismatch", ["bundle_digest", "frame_count"])
+def test_paired_scoring_rejects_results_from_other_bundle_or_timeline(mismatch):
+    inputs = make_inputs()
+    bundle, labels = make_scoring_bundle(inputs), _labels(inputs)
+    runs = run_method(
+        FixedPointMethod(),
+        inputs,
+        bundle_sha256="x",
+        code_commit="y",
+        code_fingerprint="z",
+    )
+    altered = list(runs)
+    if mismatch == "bundle_digest":
+        altered[1] = replace(runs[1], bundle_sha256="another_bundle")
+    else:
+        old = runs[1].result
+        shorter = Ball3DResult(
+            old.camera_ids,
+            old.frame_indices[:3],
+            old.positions[:3],
+            old.valid[:3],
+            old.used_views[:, :3],
+        )
+        altered[1] = replace(runs[1], result=shorter)
+    with pytest.raises(ValueError, match="bundle digest|frame axis"):
+        paired_error_summary(runs, altered, bundle, labels, start=0, stop=4)
 
 
 class FixedPointMethod:
@@ -405,6 +434,8 @@ def test_scoring_rejects_reference_identity_mismatch(mismatch):
         )
     with pytest.raises(ValueError, match="axes|video hash"):
         error_samples(runs[0], bundle, changed)
+    with pytest.raises(ValueError, match="axes|video hash"):
+        paired_error_summary(runs, runs, bundle, changed, start=0, stop=4)
 
 
 def test_common_lovo_intersection_compares_identical_camera_frame_pairs():

@@ -85,7 +85,9 @@ LOVO只评估被排除camera，汇总每个残差，而不平均各fold的中位
 事件指标使用每种事件的原camera行窗口的并集，即使同一事件的记录相差1frame，也只计一次残差。
 `source_row_count` 不表示物理事件数量；`physical_event_count` 保持null，不推测事件对应关系。
 
-`paired_error_summary` 按全fold或被排除camera，比较两组LOVO残差中相同camera/frame的交集。
+`paired_error_summary(reference, candidate, bundle, annotations, ...)` 使用与 `error_samples`
+相同的bundle/结果/参考identity校验。两组的交集与全方法共同LOVO cohort不同。
+它按全fold或被排除camera，比较两组LOVO残差中相同camera/frame的交集。
 保留各组评分数量并报告参考减比较的差值；coverage不同时，它是不可相加的诊断。
 clip专用误差分解保存在
 [`knowledge/runs/run-ball3d-error-decomposition-20261103`](../../../knowledge/runs/run-ball3d-error-decomposition-20261103/)。

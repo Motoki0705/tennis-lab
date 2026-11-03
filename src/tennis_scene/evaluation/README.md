@@ -121,7 +121,9 @@ A residual contributes once, including when two rows describe the same event
 with a one-frame difference. `source_row_count` is not a physical event count;
 `physical_event_count` is deliberately unavailable. Source notes remain intact.
 
-`paired_error_summary` compares the intersection of camera/frame residuals for two
+`paired_error_summary(reference, candidate, bundle, annotations, ...)` uses the same
+bundle/result/reference identity checks as `error_samples`. Its pairwise intersection
+differs from the all-method common LOVO cohort. It compares camera/frame residuals for two
 sets of LOVO runs, pooled or per held-out camera. It preserves each run's scored
 count and reports reference-minus-candidate reductions; these are non-additive
 diagnostics when coverage differs. Clip-specific error decomposition lives in

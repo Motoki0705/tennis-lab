@@ -154,7 +154,7 @@ def distribution(
 def paired_error_summary(
     reference: Sequence[MethodRun],
     candidate: Sequence[MethodRun],
-    inputs: MethodInput,
+    bundle: FixedInputBundle,
     annotations: Ball2DAnnotations,
     *,
     start: int,
@@ -168,6 +168,7 @@ def paired_error_summary(
     A reduction is reference error minus candidate error, so positive is better.
     This is a paired diagnostic, not an additive attribution of 3D error.
     """
+    inputs = bundle.inputs
     if not 0 <= start < stop <= inputs.num_frames:
         raise ValueError("Invalid paired scoring interval")
     if held_out_camera is not None and held_out_camera not in inputs.camera_ids:
@@ -187,7 +188,7 @@ def paired_error_summary(
         for run in selected:
             if run.source_camera_ids != inputs.camera_ids:
                 raise ValueError("Paired comparison camera axes disagree")
-            row = error_samples(run, inputs, annotations)
+            row = error_samples(run, bundle, annotations)
             for camera, frame, error in zip(
                 row["camera_index"], row["frame_index"], row["error_px"], strict=True
             ):

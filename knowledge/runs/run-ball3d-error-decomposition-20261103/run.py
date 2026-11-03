@@ -51,6 +51,38 @@ from src.tennis_scene.visualization.ball3d.report import (
 from src.utils.checksum import dual_sha256
 
 
+def paired_budget(runs, bundle, annotations):
+    inputs = bundle.inputs
+    comparisons = {
+        "remove_loess": ("pipeline_baseline", "without_loess"),
+        "remove_detector_errors": ("pipeline_baseline", "annotation_oracle"),
+        "fit_annotation_clocks": ("annotation_oracle", "annotation_time_oracle"),
+        "nearest_top8_vs_top1": ("candidate1_oracle", "candidate8_oracle"),
+    }
+    budget = {}
+    for comparison, (left, right) in comparisons.items():
+        budget[comparison] = {
+            "reference": left,
+            "candidate": right,
+            "segments": {
+                segment: {
+                    "pooled" if c is None else c: paired_error_summary(
+                        runs[left],
+                        runs[right],
+                        bundle,
+                        annotations,
+                        start=start,
+                        stop=stop,
+                        held_out_camera=c,
+                    )
+                    for c in (None, *inputs.camera_ids)
+                }
+                for segment, (start, stop) in segments(inputs.num_frames).items()
+            },
+        }
+    return budget
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ("bundle", "annotations", "videos", "output"):
@@ -111,7 +143,9 @@ def main():
     }
     runs = run_comparison(methods, inputs, args.output / "results", **identity)
     print("Baseline and without-LOESS replayed (all-view and LOVO)", flush=True)
-    oracle = annotation_oracle(inputs, annotations, **identity)
+    oracle = annotation_oracle(
+        bundle, annotations, code_commit=commit, code_fingerprint=fingerprint
+    )
     refined, integer, confidence = decode_native(inputs)
     offsets, timing = fit_offsets(inputs, annotations)
     diagnostic_runs = {
@@ -140,37 +174,11 @@ def main():
         "Scoring-only geometry/candidate/clock diagnostics saved and reloaded",
         flush=True,
     )
-    scores = score_comparison(runs, inputs, annotations)
+    scores = score_comparison(runs, bundle, annotations)
     decode = decode_report(inputs, annotations, refined, integer, confidence)
     candidates = candidate_report(inputs, annotations, refined)
     smoothing = smoothing_report(inputs, annotations)
-    comparisons = {
-        "remove_loess": ("pipeline_baseline", "without_loess"),
-        "remove_detector_errors": ("pipeline_baseline", "annotation_oracle"),
-        "fit_annotation_clocks": ("annotation_oracle", "annotation_time_oracle"),
-        "nearest_top8_vs_top1": ("candidate1_oracle", "candidate8_oracle"),
-    }
-    budget = {}
-    for comparison, (left, right) in comparisons.items():
-        budget[comparison] = {
-            "reference": left,
-            "candidate": right,
-            "segments": {
-                segment: {
-                    "pooled" if c is None else c: paired_error_summary(
-                        runs[left],
-                        runs[right],
-                        inputs,
-                        annotations,
-                        start=start,
-                        stop=stop,
-                        held_out_camera=c,
-                    )
-                    for c in (None, *inputs.camera_ids)
-                }
-                for segment, (start, stop) in segments(inputs.num_frames).items()
-            },
-        }
+    budget = paired_budget(runs, bundle, annotations)
     for name, value in (
         ("scores", scores),
         ("decode", decode),
@@ -182,7 +190,7 @@ def main():
         write_json_atomic(args.output / f"{name}.json", value)
     figures = diagnostic_plots(args.output, inputs, decode, candidates, smoothing)
     plot_metrics_table(scores, args.output / "metrics-table.png")
-    plot_comparison(runs, inputs, args.output / "trajectories.png", annotations)
+    plot_comparison(runs, bundle, args.output / "trajectories.png", annotations)
     displayed = {
         name: values[0]
         for name, values in runs.items()
@@ -199,7 +207,7 @@ def main():
         media = render_video(renderer, args.output / "comparison.mp4")
     extremes = render_extremes(
         {name: runs[name] for name in displayed},
-        inputs,
+        bundle,
         videos,
         args.output / "extremes.png",
         annotations,

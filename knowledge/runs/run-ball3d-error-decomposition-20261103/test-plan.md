@@ -22,3 +22,19 @@ annotation oracleは採点専用入口。時刻fit・候補選択oracleはrun内
 方式登録もMethodInputへの注釈変換も提供しない。時刻fitは前半のみ、後半は固定した値で採点。
 3Dの絶対的誤差と、校正/注釈の誤差の分離は独立3D正解がなく識別できないため、
 誤差予算は非加算的なcounterfactual差とcoverageを併記する。
+
+## mainへの積み直し（#1669レビュー修正後）
+
+paired集計も `FixedInputBundle` を受け取り、基盤の `error_samples` のidentity照合を
+迂回しない契約にする。既存の非対称な共通集合テストをbundle fixtureへ移行する。
+`test_paired_scoring_rejects_results_from_other_bundle_or_timeline` をunitに2ケース追加し、
+別bundle digestと短いframe軸のLOVO結果が拒否されることを検証する（各1秒以内）。
+正解のclip/frame/video不一致は基盤の既存3ケースを拡張し、paired入口でも拒否を確認する。
+既存8ケースの数値・符号・欠測・heldout隔離契約は維持する。
+共通LOVO cohortと表は基盤の既存unit/integrationを再利用し、同じテストを複製しない。
+
+実データは保存済み24結果をchecksum・型・bundleへ照合して再採点し、旧scoresの既存fieldと
+pairwise内訳を全区間・全foldで厳密比較する。解析コードとprediction計算部品の差分も確認する。
+新しい全6結果共通cohortを併記し、既存動画を再利用したHTML/指標図を新しいv2へ生成する。
+予測replay・時刻fit・動画encodeは再実行せず、v1のbytesは変更しない。
+pytestは `-n 0`、収集数とstage別時間を再記録し、他workerと重い処理を並列に走らせない。
