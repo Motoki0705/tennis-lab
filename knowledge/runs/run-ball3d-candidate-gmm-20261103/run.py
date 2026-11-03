@@ -19,14 +19,23 @@ from plots import ellipsoid_figure, uncertainty_figure
 from src.tennis_scene.ball_gmm.config import CandidateGMMConfig
 from src.tennis_scene.ball_gmm.heatmap import candidate_gaussians
 from src.tennis_scene.evaluation.ball3d.annotations import load_annotations
-from src.tennis_scene.evaluation.ball3d.baseline import baseline_from_bundle, verify_baseline
+from src.tennis_scene.evaluation.ball3d.baseline import (
+    baseline_from_bundle,
+    verify_baseline,
+)
 from src.tennis_scene.evaluation.ball3d.bundle import load_bundle, verify_videos
 from src.tennis_scene.evaluation.ball3d.candidate_gmm import CandidateGMM
 from src.tennis_scene.evaluation.ball3d.runner import load_run, run_method, save_run
-from src.tennis_scene.evaluation.ball3d.scoring import annotation_oracle, score_comparison
+from src.tennis_scene.evaluation.ball3d.scoring import (
+    annotation_oracle,
+    score_comparison,
+)
 from src.tennis_scene.evaluation.ball3d.uncertainty import score_uncertainty
 from src.tennis_scene.pipeline.artifacts import document_digest, write_json_atomic
-from src.tennis_scene.visualization.ball3d.rendering import BallComparisonRenderer, render_video
+from src.tennis_scene.visualization.ball3d.rendering import (
+    BallComparisonRenderer,
+    render_video,
+)
 from src.tennis_scene.visualization.ball3d.report import (
     broken_html_references,
     plot_comparison,
@@ -59,6 +68,7 @@ def main():
     for name in ("bundle", "videos", "annotations", "prior_baseline", "output"):
         parser.add_argument("--"+name.replace("_", "-"), type=Path, required=True)
     parser.add_argument("--calibrate-only", action="store_true")
+    parser.add_argument("--reuse-predictions", type=Path)
     args = parser.parse_args()
     started = time.perf_counter()
     torch.set_num_threads(1)
@@ -99,8 +109,20 @@ def main():
     runs = {}
     for method in methods:
         print(f"Running {method.name}: all views and three LOVO folds", flush=True)
-        result = run_method(method, inputs,
-            bundle_sha256=bundle.manifest_sha256, code_commit=commit, code_fingerprint=fingerprint)
+        if args.reuse_predictions is None:
+            result = run_method(method, inputs,
+                bundle_sha256=bundle.manifest_sha256, code_commit=commit, code_fingerprint=fingerprint)
+        else:
+            from src.tennis_scene.evaluation.ball3d.scoring import validate_scoring_run
+            previous_calibration = json.loads((args.reuse_predictions/"frozen-calibration.json").read_text())
+            if previous_calibration != json.loads((args.output/"frozen-calibration.json").read_text()):
+                raise ValueError("Cannot reuse predictions with different frozen calibration")
+            result = tuple(load_run(args.reuse_predictions/"results"/method.name/key) for key in
+                ("all_views", *(f"without_{c}" for c in inputs.camera_ids)))
+            for run in result:
+                validate_scoring_run(run, bundle)
+                if run.config != json.loads(json.dumps(dict(method.config))):
+                    raise ValueError("Reused method configuration differs")
         for run in result:
             save_run(args.output/"results"/method.name/run.key, run)
         runs[method.name] = tuple(load_run(args.output/"results"/method.name/r.key) for r in result)
@@ -132,10 +154,17 @@ def main():
     print("Scored all folds/splits, generated uncertainty and comparison figures", flush=True)
     with BallComparisonRenderer(inputs, full, videos, annotations=annotations) as renderer:
         media = render_video(renderer, args.output/"comparison.mp4")
+        available = np.flatnonzero(full["candidate_gmm_map_none"].result.valid)
+        example_frame = int(available[np.argmin(np.abs(available-505))])
+        if not cv2.imwrite(str(args.output/"uncertainty-example.png"), renderer.render(example_frame)):
+            raise RuntimeError("Failed to save uncertainty example")
     extremes = render_extremes({name: runs[name] for name in full}, bundle, videos, args.output/"extremes.png", annotations)
     write_json_atomic(args.output/"extremes.json", extremes)
     verification = {"bundle_sha256": bundle.manifest_sha256, "annotations_sha256": REFERENCE_SHA,
         "replay_code_commit": commit, "replay_code_fingerprint": fingerprint,
+        "prediction_code_commits": sorted({r.code_commit for values in runs.values() for r in values}),
+        "reused_predictions_from": str(args.reuse_predictions) if args.reuse_predictions else None,
+        "uncertainty_example_frame": example_frame,
         "videos": video_receipt, "baseline": baseline_verification,
         "baseline_bitwise_equal_foundation_v2": unchanged, "calibration": calibration,
         "uncertainty": uncertainty, "comparison_video": media,
@@ -155,7 +184,8 @@ def main():
         crops=args.output/"extremes.png" if extremes["frames"] else None, verification=verification,
         table_figure=args.output/"metrics-table.png", supplementary_figures={
             "LOVO uncertainty coverage (conditional on scored predictions)": args.output/"uncertainty.png",
-            "Representative 95% 3D ellipsoids": args.output/"ellipsoids.png"})
+            "Representative 95% 3D ellipsoids (availability-selected frames)": args.output/"ellipsoids.png",
+            "95% ellipses: camera, top and side views": args.output/"uncertainty-example.png"})
     verification["broken_html_references"] = broken_html_references(page)
     write_json_atomic(args.output/"verification.json", verification)
     metrics = {"methods": scores["methods"], "common_lovo_cohort": scores.get("common_lovo_cohort")}

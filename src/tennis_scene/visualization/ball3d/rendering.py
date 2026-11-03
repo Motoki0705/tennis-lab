@@ -199,7 +199,8 @@ class BallComparisonRenderer:
                     scales = np.array([width-40, -(height-60)]) / (self.upper[selected]-self.lower[selected])
                     covariance = result.covariance[frame][np.ix_(selected, selected)] * scales[:, None] * scales[None, :]
                     vertices = ellipse_vertices(screen(result.positions[frame]).astype(float), covariance)
-                    cv2.polylines(image, [np.rint(vertices.clip(-1e6, 1e6)).astype(np.int32)], True,
+                    # Clip to the trajectory panel, including very broad tails.
+                    cv2.polylines(image[y:y+height, x:x+width], [np.rint((vertices-[x, y]).clip(-1e6, 1e6)).astype(np.int32)], True,
                         self.colors[name], 1, cv2.LINE_AA)
                 cv2.circle(
                     image,
