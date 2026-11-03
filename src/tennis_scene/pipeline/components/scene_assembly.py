@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.assembly import assemble_automatic_scene
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementOutput
 from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentOutput
+from src.tennis_scene.pipeline.components.court_ball_ba import (
+    CalibratedBallTriangulationOutput,
+)
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
@@ -29,17 +33,18 @@ class SceneAssemblyInput:
     alignment: CameraAlignmentOutput
     people: GroupedObservations
     skeleton: PlayerTriangulationOutput
-    ball: BallTriangulationOutput
+    ball: BallTriangulationOutput | CalibratedBallTriangulationOutput
     placement: BodyPlacementOutput
 
 
 class SceneAssemblyModule:
-    def __init__(self, camera_ids: tuple[str, ...], *, require_people: bool, require_ball: bool, require_body: bool) -> None:
+    def __init__(self, camera_ids: tuple[str, ...], *, require_people: bool, require_ball: bool, require_body: bool,
+                 ball_schema_version: int = 1) -> None:
         self.require_people, self.require_ball, self.require_body = require_people, require_ball, require_body
         self.io = ComponentIO("scene_assembly", SceneAssemblyInput, SceneResult,
             {"calibration": InputPort("local_court_calibration"), "alignment": InputPort("aligned_cameras"),
              "identities": IDENTITIES_PORT, "skeleton": InputPort("player_skeletons"),
-             "ball": InputPort("ball_trajectory"), "placement": InputPort("placed_bodies"),
+             "ball": InputPort("ball_trajectory", ball_schema_version), "placement": InputPort("placed_bodies"),
              **{f"pose_{c}": InputPort("person_poses") for c in camera_ids}}, "scene_result", 2)
 
     def process(self, inputs: SceneAssemblyInput) -> SceneResult:
@@ -57,8 +62,16 @@ class SceneAssemblyModule:
             complete = (not self.require_people or has_people) and (not self.require_ball or has_ball) and (not self.require_body or has_body)
             status = "ok" if complete else "partial"
         first = source.videos[0]
+        metadata = {"status": status, "dataset_clip_id": source.clip_id, "pipeline_contract": "declared_components_v1"}
+        if isinstance(inputs.ball, CalibratedBallTriangulationOutput) and inputs.ball.calibration is not None:
+            refinement = inputs.ball.calibration
+            metadata["ball_calibration"] = json_value({
+                "cameras": refinement.cameras,
+                "time_offsets_seconds": refinement.time_offsets_seconds,
+                "reference_camera": refinement.diagnostics["reference_camera"],
+            })
         return assemble_automatic_scene(video_paths=source.paths, camera_ids=source.camera_ids,
             info=VideoInfo(first.fps, first.width, first.height, first.num_frames), court=inputs.calibration.court,
             active_indices=active, geometry=geometry, grouped_people=inputs.people,
             skeleton=skeleton, players=players, ball=ball,
-            metadata={"status": status, "dataset_clip_id": source.clip_id, "pipeline_contract": "declared_components_v1"})
+            metadata=metadata)

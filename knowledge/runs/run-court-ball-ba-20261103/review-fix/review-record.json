@@ -1,0 +1,89 @@
+{
+  "review_finding": "pr-1681-1",
+  "review_run": "parent-1554-4faf8b2d105f476f9c1dd2fd6a734b5c",
+  "reviewed_head": "92c343cb01ad6f7e53ae14bc6c4a0ce5e3eac421",
+  "implementation_commit": "9ffbc3ea83d5eb191cc1e5468520eb06fe7f7562",
+  "config_audit": {
+    "symbol": "src.tennis_scene.ball_calibration.bundle_adjustment.BundleAdjustmentConfig",
+    "actual_catalog_test": {
+      "node": "tests/unit/tennis_scene/ball_calibration/test_bundle_adjustment.py::test_adjustment_is_in_the_actual_configuration_audit_catalog",
+      "total_seconds": 0.002,
+      "phases_seconds_rounded": {
+        "setup": 0.0,
+        "call": 0.0,
+        "teardown": 0.0
+      }
+    },
+    "six_fields": [
+      {
+        "default_policy": "composition-owned-no-python-default",
+        "path": "BundleAdjustmentConfig.court_sigma_px",
+        "required": true
+      },
+      {
+        "default_policy": "composition-owned-no-python-default",
+        "path": "BundleAdjustmentConfig.ball_sigma_px",
+        "required": true
+      },
+      {
+        "default_policy": "composition-owned-no-python-default",
+        "path": "BundleAdjustmentConfig.prior_weight",
+        "required": true
+      },
+      {
+        "default_policy": "composition-owned-no-python-default",
+        "path": "BundleAdjustmentConfig.max_offset_frames",
+        "required": true
+      },
+      {
+        "default_policy": "composition-owned-no-python-default",
+        "path": "BundleAdjustmentConfig.max_ball_frames",
+        "required": true
+      },
+      {
+        "default_policy": "composition-owned-no-python-default",
+        "path": "BundleAdjustmentConfig.max_nfev",
+        "required": true
+      }
+    ],
+    "audit_source_changed": false,
+    "known_discovery_gap": "Source discovery skips explicitly named adapters with field defaults; transitive discovery also skips nested dataclasses with defaults. Not changed in this PR."
+  },
+  "dino": {
+    "reference_commit": "a8982a7e07b803d1c954a81dea54ddded1f0d701",
+    "main_base": "6372e2267a8fee7b88f9c77d8be1691620bf2030",
+    "patch_byte_equal": true,
+    "patch_sha256": "e4e201ed43d76cf33797debf30f6f09b978b913dcfd056b5c44744b15c20df6c",
+    "cases": 28
+  },
+  "prediction_check": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/court_ball_ba_config_review_v1_20261104/verification.json",
+    "sha256": "473554ecc235acbd955704e5c9b3d17ae1a0ff5b06cd48a0c0dfbc155a41aea0",
+    "folds": 4,
+    "predictions_changed": false,
+    "all_diagnostics_equal": true,
+    "seconds": 18.16571832000045,
+    "max_rss_kib": 644992,
+    "previous_v2_manifest_sha256": "419ed1b05e4f52747155691e8c4027263d9214f56de319155e62b7e21301fe37"
+  },
+  "validation": {
+    "collected": 551,
+    "passed": 551,
+    "new_cases": 20,
+    "collection_seconds": 91.84,
+    "pytest_elapsed_seconds": 309.84,
+    "case_time_sum_seconds": 236.901,
+    "new_case_time_sum_seconds": 4.349,
+    "ruff": "passed; 9 changed Python files",
+    "mypy": "passed; 9 changed Python files; --follow-imports=skip",
+    "knowledge": {
+      "errors": 0,
+      "warnings": 219,
+      "base_ref": "origin/main"
+    },
+    "repro_paths": {
+      "missing": 0,
+      "unverifiable": 28
+    }
+  }
+}

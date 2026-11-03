@@ -4,6 +4,7 @@
 <!-- knowledge-review: 7ff15d11fdaae7c5de8aa41c8375c2d2602e308f37f965699462135fd1040bb6 on 2026-11-03 -->
 <!-- knowledge-review: 74d01246b7de09d16c84fdb1ea616a57682ed4cdb8e7c47662d1969fdaeaff69 on 2026-11-04 -->
 <!-- knowledge-review: 133f58588cd60f82d171c92d522c11d06811784a5d59f173de6f09055283fc1c on 2026-11-03 -->
+<!-- knowledge-review: 27388fbfdedcb6704ad9090ac5050ed9fd10c740b32a5441f0fa1e02520b6dd7 on 2026-11-04 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -66,6 +67,12 @@ MAPは16.20/255.72px（baseline 9.34/27.08px）で、LOVO coverageは56.43%→63
 候補の回収余地や運動の滑らかさを精度改善と扱わず、次の方式比較でも欠測と不確かさを併記する。
 設定の既定値をcompositionへ集約し、残差診断の機械依存の丸め差を検証したCI修正でも、
 設定値・数値kernel・実データのGaussian配列は不変で、上の採用判断は変わらない。
+[KPとballによるbundle adjustment](nodes/tennis_scene/000034-run-court-ball-ba-20261103.md)では、
+主点/歪み固定の7変数を5/7/8個の採用KPとball対応からfitし、残る9/7/6点を確認した。
+後半LOVOは9.34/27.08→10.95/35.51px、coverageは56.43→54.58%へ悪化し、2方式共通791点でも悪化した。
+全viewの再投影は下がるが、court holdout中央値もcam0/1で悪化し、採用を支持しない。設定を見直して後半へ合わせていない。
+平面courtの局所rank確認・合成のcamera/時刻復元は、実clipでの精度保証ではない。LINEは再取得せず、既定fixedを維持する。
+明示レビュー後に設定をcompositionへ一本化し、同じ値で4foldを再実行した予測・校正・時刻は厳密一致したため、上の負の結論を維持する。
 次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 [dense heatmap尤度の直接3D推定](nodes/tennis_scene/000035-run-ball3d-dense-likelihood-20261103.md)は、

@@ -32,6 +32,7 @@ from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionModule,
 )
 from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentModule
+from src.tennis_scene.pipeline.components.court_ball_ba import CourtBallBAModule
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationModule,
 )
@@ -61,6 +62,9 @@ from src.tennis_scene.pipeline.input_assembly.body import (
     BodyPlacementInputAssembler,
     BodyViewSelectionInputAssembler,
     GVHMRInputAssembler,
+)
+from src.tennis_scene.pipeline.input_assembly.court_ball_ba import (
+    CourtBallBAInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     BallDetectionInputAssembler,
@@ -212,10 +216,17 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("player_triangulation", PlayerTriangulationModule(ids, reprojection_px=cfg.player_reprojection_px,
         joint_confidence=cfg.joint_confidence, enabled=cfg.enabled["player_reconstruction"]),
         PlayerTriangulationInputAssembler(cfg.human_vis_threshold), reconstructed, lambda: cfg.processing_settings["player_reconstruction"])
-    if cfg.ball_method == "triangulation":
+    if cfg.ball_bundle_adjustment is not None and cfg.ball_method != "triangulation":
+        raise ValueError("court_ball_ba calibration requires ball_reconstruction.method=triangulation")
+    if cfg.ball_method == "triangulation" and cfg.ball_bundle_adjustment is None:
         add("ball_triangulation", BallTriangulationModule(ids, reprojection_px=cfg.ball_reprojection_px,
             min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
             BallTriangulationInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
+            lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
+    elif cfg.ball_method == "triangulation":
+        add("ball_triangulation", CourtBallBAModule(ids, reprojection_px=cfg.ball_reprojection_px,
+            min_frames=cfg.ball_min_frames, config=cfg.ball_bundle_adjustment, enabled=cfg.enabled["ball_reconstruction"]),
+            CourtBallBAInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
             lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
     elif cfg.ball_method == "topk_multihypothesis":
         add("ball_triangulation", TopKBallTriangulationModule(ids, cfg.ball_topk,
@@ -249,7 +260,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         {**reconstructed, "skeleton": "player_triangulation", "recovered": "gvhmr"},
         lambda: {"config": cfg.player_placement, "assets": body_assets()})
     add("scene_assembly", SceneAssemblyModule(ids, require_people=cfg.enabled["player_reconstruction"],
-        require_ball=cfg.enabled["ball_reconstruction"], require_body=body_enabled), SceneAssemblyInputAssembler(cfg.human_vis_threshold),
+        require_ball=cfg.enabled["ball_reconstruction"], require_body=body_enabled,
+        ball_schema_version=2 if cfg.ball_bundle_adjustment is not None else 1), SceneAssemblyInputAssembler(cfg.human_vis_threshold),
         {**reconstructed, "skeleton": "player_triangulation", "ball": "ball_triangulation", "placement": "body_placement"}, lambda: {"enabled": cfg.enabled})
     return tuple(nodes)
 

@@ -11,6 +11,7 @@ the standard pipeline or execute detector inference.
 | `bundle.py` | Extract and validate fixed inputs, original identities, source hashes and complete dependency descriptors |
 | `contracts.py` | Selected-view method inputs and masked 3D results |
 | `baseline.py` | Replay pinned detector observations through production consensus, LOESS and triangulation; independently check native-map decoding |
+| `court_ball_ba.py` | Adapter to optional production [court/ball bundle adjustment](../ball_calibration/README.md) |
 | `runner.py` | Run all three views and each of the three two-view LOVO folds; save/load typed, checksummed results |
 | `annotations.py` | Adapt strict user-reference selections into scoring-only arrays |
 | `scoring.py` | Split-aware reprojection, coverage, motion/event diagnostics and the annotation-only geometric reference |

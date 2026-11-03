@@ -274,6 +274,14 @@ ball_reconstruction:
     acceleration_scale_mps2: 100.0
     event_acceleration_mps2: 350.0
     window_size: 9
+  calibration: fixed  # Optional ball-only refinement with method=triangulation: court_ball_ba
+  bundle_adjustment:
+    court_sigma_px: 3.0
+    ball_sigma_px: 6.0
+    prior_weight: 1.0
+    max_offset_frames: 0.75
+    max_ball_frames: 240
+    max_nfev: 200
 gvhmr:
   enabled: true
 cache:

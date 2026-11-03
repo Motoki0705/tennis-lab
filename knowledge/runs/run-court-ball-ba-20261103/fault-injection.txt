@@ -1,0 +1,35 @@
+Mutation: t-offset changed to t+offset in resampling.
+F                                                                        [100%]
+=================================== FAILURES ===================================
+___ test_clock_resampling_uses_t_minus_delta_and_never_bridges_missing_data ____
+
+    def test_clock_resampling_uses_t_minus_delta_and_never_bridges_missing_data():
+        obs, *_ = calibration_fixture(frames=5)
+        uv = np.array([[[[10., 20.]], [[18., 26.]], [[30., 38.]], [[50., 46.]], [[90., 74.]]]], np.float32)
+        uv = np.repeat(uv[None], 3, axis=1).reshape(1, 3, 5, 1, 2)
+        mask: NDArray[np.bool_] = np.ones((1, 3, 5, 1), bool)
+        mask[0, 1, 2] = False
+        obs = replace(obs, uv_px=uv, visibility=mask)
+        corrected = resample_observations(obs, np.array([0., .25, -.5]))
+        np.testing.assert_array_equal(corrected.uv_px[0, 0], obs.uv_px[0, 0])
+>       np.testing.assert_allclose(corrected.uv_px[0, 1, 1, 0], [16, 24.5])
+E       AssertionError: 
+E       Not equal to tolerance rtol=1e-07, atol=0
+E       
+E       Mismatched elements: 2 / 2 (100%)
+E       Mismatch at indices:
+E        [0]: 0.0 (ACTUAL), 16.0 (DESIRED)
+E        [1]: 0.0 (ACTUAL), 24.5 (DESIRED)
+E       Max absolute difference among violations: 24.5
+E       Max relative difference among violations: 1.
+E        ACTUAL: array([0., 0.], dtype=float32)
+E        DESIRED: array([16. , 24.5])
+
+tests/unit/tennis_scene/ball_calibration/test_bundle_adjustment.py:75: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/tennis_scene/ball_calibration/test_bundle_adjustment.py::test_clock_resampling_uses_t_minus_delta_and_never_bridges_missing_data
+1 failed in 0.56s
+
+Restored original bytes:
+.                                                                        [100%]
+1 passed in 0.38s
