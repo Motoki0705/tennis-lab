@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import json
 import platform
 import subprocess
 import time
@@ -18,6 +19,7 @@ import torch
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from reuse import reuse
 
 from src.tennis_scene.ball_likelihood import DenseLikelihoodConfig
 from src.tennis_scene.ball_likelihood.reconstruction import (
@@ -152,7 +154,10 @@ def slice_plots(bundle, runs, annotations, parameters, output):
         raw_errors[i] = np.linalg.norm(view.detections.evidence.candidate_uv_px[:, 0] - annotations.uv_px[i], axis=-1)
     normal = np.flatnonzero(available & annotations.valid_for_scoring.all(0) & (np.nanmax(raw_errors, axis=0) < 10))
     occluded = np.flatnonzero(available & (annotations.reference_kind == "occluded").any(0))
-    bad = np.flatnonzero(available & (np.nanmax(np.where(annotations.valid_for_scoring, raw_errors, np.nan), axis=0) > 40))
+    confident_peak = np.stack([v.detections.evidence.candidate_valid[:, 0] &
+                                (v.detections.evidence.candidate_scores[:, 0] >= v.detector_config.score_threshold)
+                                for v in bundle.inputs.views])
+    bad = np.flatnonzero(available & (annotations.valid_for_scoring & confident_peak & (raw_errors > 40)).any(0))
     groups = [("normal", normal), ("reference_occluded", occluded), ("raw_peak_misdetection", bad)]
     figure, axes = plt.subplots(3, 2, figsize=(12, 13), constrained_layout=True)
     records = []
@@ -189,7 +194,7 @@ def slice_plots(bundle, runs, annotations, parameters, output):
             ax.legend(fontsize=7)
         records.append({"kind": kind, "frame": frame, "centre_court_m": centre.tolist(),
                         "reference_kinds": annotations.reference_kind[:, frame].tolist(),
-                        "raw_peak_error_px": raw_errors[:, frame].tolist(),
+                        "raw_peak_error_px": [float(e) if np.isfinite(e) else None for e in raw_errors[:, frame]],
                         "selection": "post-selection diagnostic using references; never parameter tuning"})
     figure.savefig(output / "likelihood-slices.png", dpi=115)
     plt.close(figure)
@@ -200,7 +205,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for arg in ("bundle", "videos", "annotations", "baseline", "output"):
         parser.add_argument(f"--{arg}", type=Path, required=True)
+    parser.add_argument("--reuse-results", type=Path)
+    parser.add_argument("--reuse-inventory", type=Path)
+    parser.add_argument("--reuse-inventory-sha256")
     args = parser.parse_args()
+    if any((args.reuse_results, args.reuse_inventory, args.reuse_inventory_sha256)) and not all((args.reuse_results, args.reuse_inventory, args.reuse_inventory_sha256)):
+        raise ValueError("Reusing predictions requires source, pinned inventory and its digest")
     torch.set_num_threads(1)
     cv2.setNumThreads(1)
     if args.output.exists():
@@ -221,7 +231,17 @@ def main():
                   "code_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
                   "code_fingerprint": document_digest({str(p): dual_sha256(p) for p in sorted(Path("src").rglob("*.py"))})}
     annotations = load_annotations(args.annotations, bundle, expected_sha256=REFERENCE_SHA)
-    parameters = tune(bundle, annotations, args.output, provenance)
+    reused = None
+    if args.reuse_results is None:
+        parameters = tune(bundle, annotations, args.output, provenance)
+    else:
+        reused = reuse(args.reuse_results, args.reuse_inventory, args.reuse_inventory_sha256, args.output)
+        values = json.loads((args.output / "selection.json").read_text())["selected"]
+        for key in ("x_bounds", "y_bounds", "z_bounds"):
+            values[key] = tuple(values[key])
+        for key in ("view_temperatures", "view_backgrounds"):
+            values[key] = tuple(tuple(row) for row in values[key])
+        parameters = DenseLikelihoodConfig(**values)
     selection_sha = dual_sha256(args.output / "selection.json")
     print(f"FROZEN selection {selection_sha}: {parameters}", flush=True)
     methods = [baseline_from_bundle(bundle), baseline_from_bundle(bundle, without_loess=True)]
@@ -232,11 +252,19 @@ def main():
                     DenseHeatmapMethod(replace(parameters, temporal_weight=.5), "dense_temporal")])
     runs = {}
     for method in methods:
-        print(f"Full replay {method.name}", flush=True)
-        values = run_method(method, inputs, **provenance)
-        for run in values:
-            save_run(args.output / "results" / method.name / run.key, run)
-        runs[method.name] = tuple(load_run(args.output / "results" / method.name / r.key) for r in values)
+        if reused is None:
+            print(f"Full replay {method.name}", flush=True)
+            values = run_method(method, inputs, **provenance)
+            for run in values:
+                save_run(args.output / "results" / method.name / run.key, run)
+            keys = [r.key for r in values]
+        else:
+            keys = ["all_views", *(f"without_{c}" for c in inputs.camera_ids)]
+        runs[method.name] = tuple(load_run(args.output / "results" / method.name / key) for key in keys)
+        for run in runs[method.name]:
+            if run.bundle_sha256 != bundle.manifest_sha256 or document_digest(run.config) != document_digest(method.config):
+                raise ValueError("Reused prediction input/config mismatch")
+        values = runs[method.name]
         print(f"Completed {method.name}: {sum(r.elapsed_seconds for r in values):.1f}s, valid frames {[int(r.result.valid.sum()) for r in values]}", flush=True)
     unchanged = []
     for name in ("pipeline_baseline", "without_loess"):
@@ -267,6 +295,8 @@ def main():
     source_decode = {camera: validate_video(path, frames=1010, fps=inputs.fps, size=inputs.source_size_wh) for camera, path in videos.items()}
     verification = {"bundle_sha256": BUNDLE_SHA, "annotations_sha256": REFERENCE_SHA, "baseline": baseline_receipt,
                     "source_code_commit": bundle.manifest["source_code_commit"], "replay_provenance": provenance,
+                    "reused_predictions": reused,
+                    "prediction_code_commits": sorted({r.code_commit for name, values in runs.items() if name != "annotation_oracle" for r in values}),
                     "baseline_unchanged_from_foundation_v2": unchanged, "selection_sha256": selection_sha,
                     "script_sha256": dual_sha256(Path(__file__)), "source_decode": source_decode, "comparison_video": media,
                     "gpu_used": False, "inference_rerun": False, "elapsed_seconds": time.perf_counter() - started,
