@@ -26,7 +26,10 @@ from src.tennis_scene.evaluation.ball3d.baseline import (
 from src.tennis_scene.evaluation.ball3d.bundle import load_bundle, verify_videos
 from src.tennis_scene.evaluation.ball3d.heatmap_decoding import HeatmapDecodingMethod
 from src.tennis_scene.evaluation.ball3d.runner import load_run, run_method, save_run
-from src.tennis_scene.evaluation.ball3d.scoring import annotation_oracle, score_comparison
+from src.tennis_scene.evaluation.ball3d.scoring import (
+    annotation_oracle,
+    score_comparison,
+)
 from src.tennis_scene.pipeline.artifacts import document_digest, write_json_atomic
 from src.tennis_scene.visualization.ball3d.rendering import (
     BallComparisonRenderer,
@@ -101,6 +104,7 @@ def tuning_choice(scores, names):
 def compact_scores(scores):
     return {name: {
         "lovo": row["lovo_reprojection_px"],
+        "common_lovo": row["common_lovo_reprojection_px"],
         "folds": {fold: {segment: {k: r[k] for k in (
             "reprojection_px", "scored_label_count", "scoring_label_count", "scored_label_coverage", "valid_3d_rate")}
             for segment, r in segments.items()} for fold, segments in row["folds"].items()},
@@ -155,7 +159,7 @@ def main():
         print(f"Replayed {name} ({time.perf_counter() - started:.1f}s)", flush=True)
     # The shared scorer computes its fixed segments. Only its tuning entries are
     # read for selection; evaluation entries are never inspected before freezing.
-    scores = score_comparison(runs, inputs, annotations)
+    scores = score_comparison(runs, bundle, annotations)
     winner = tuning_choice(scores, list(configs))
     corrections = {
         "legacy_stride": replace(configs["legacy_redecoded"], coordinate_correction="stride"),
@@ -170,7 +174,7 @@ def main():
             method = HeatmapDecodingMethod(label, config, replace(baseline, without_loess=raw))
             runs.update(execute(method, inputs, args.output / "results", kwargs))
             print(f"Replayed {label} ({time.perf_counter() - started:.1f}s)", flush=True)
-    scores = score_comparison(runs, inputs, annotations)
+    scores = score_comparison(runs, bundle, annotations)
     selected = tuning_choice(scores, [*configs, *corrections])
     selection = {
         "schema": "heatmap_decoding_selection.v1", "code_commit": commit,
@@ -187,13 +191,17 @@ def main():
     print(f"Frozen front-half choice: {selected}; selection SHA256 {selection_digest}", flush=True)
     # Re-open every serialized result through the foundation checksum boundary.
     runs = {name: tuple(load_run(args.output / "results" / name / r.key) for r in values) for name, values in runs.items()}
-    oracle = annotation_oracle(inputs, annotations, **kwargs)
+    oracle = annotation_oracle(bundle, annotations, code_commit=commit, code_fingerprint=fingerprint)
     for run in oracle:
         save_run(args.output / "results" / "annotation_oracle" / run.key, run)
     runs["annotation_oracle"] = tuple(load_run(args.output / "results" / "annotation_oracle" / r.key) for r in oracle)
-    scores = score_comparison(runs, inputs, annotations)
+    scores = score_comparison(runs, bundle, annotations)
     write_json_atomic(args.output / "scores.json", scores)
     write_json_atomic(args.output / "metrics-summary.json", compact_scores(scores))
+    paired = score_comparison({n: runs[n] for n in ("pipeline_baseline", selected)}, bundle, annotations)
+    write_json_atomic(args.output / "paired-scores.json", paired)
+    write_json_atomic(args.output / "paired-summary.json", compact_scores(paired))
+    plot_metrics_table(paired, args.output / "paired-metrics-table.png")
     plot_metrics_table(scores, args.output / "metrics-table.png")
     # Compact video: baseline, the frozen winner, its raw ablation, the winning
     # uncorrected decoder, and both uncorrected coordinate hypotheses.
@@ -201,8 +209,8 @@ def main():
     display_runs = {name: runs[name] for name in display_names}
     with BallComparisonRenderer(inputs, {n: rs[0] for n, rs in display_runs.items()}, videos, annotations=annotations, width=1200) as renderer:
         media = render_video(renderer, args.output / "comparison.mp4", step=1)
-    plot_comparison(display_runs, inputs, args.output / "trajectories.png", annotations)
-    extremes = render_extremes(display_runs, inputs, videos, args.output / "extremes.png", annotations)
+    plot_comparison(display_runs, bundle, args.output / "trajectories.png", annotations)
+    extremes = render_extremes(display_runs, bundle, videos, args.output / "extremes.png", annotations)
     write_json_atomic(args.output / "extremes.json", extremes)
     verification = {
         "bundle_sha256": bundle.manifest_sha256, "annotations_sha256": annotations.reference.sha256,
@@ -210,10 +218,15 @@ def main():
         "selection_sha256": selection_digest, "selection": selection,
         "baseline": baseline_receipt, "videos": video_receipt, "comparison_video": media,
         "video_methods": display_names, "all_methods_in_scores_and_main_table": list(runs),
+        "fit_status_counts_all_views": {name: {
+            camera: {str(int(code)): int(count) for code, count in zip(*np.unique(rs[0].result.diagnostics["decoding_fit_status"][i], return_counts=True), strict=True)}
+            for i, camera in enumerate(inputs.camera_ids)} for name, rs in runs.items()
+            if rs[0].result.diagnostics and "decoding_fit_status" in rs[0].result.diagnostics},
+        "saturated_peak_frames": {v.camera.camera_id: int((v.detections.evidence.heatmaps.max(axis=(1, 2)) >= 1).sum()) for v in inputs.views},
         "gpu_used": False, "inference_rerun": False,
         "environment": {"python": platform.python_version(), "numpy": np.__version__, "torch": torch.__version__},
         "elapsed_seconds": time.perf_counter() - started,
-        "limitations": ["one clip; approximate fixed cameras; varying coverage", "CPU reconstruction and repeated re-decoding are not an optimized runtime comparison", "video shows selected variants; all variants have saved all-view/LOVO results", "stride correction is a half-pixel-centre hypothesis; clipped sigmoid logits cannot be recovered"],
+        "limitations": ["one clip; approximate fixed cameras; varying coverage", "CPU reconstruction and per-view caching are not an optimized runtime comparison", "video shows selected variants; all variants have saved all-view/LOVO results", "stride correction is a half-pixel-centre hypothesis; clipped sigmoid logits cannot be recovered"],
         "human_adoption": "pending human comparison; do not merge",
     }
     page = write_report(args.output, scores, video=args.output / "comparison.mp4", figure=args.output / "trajectories.png",
