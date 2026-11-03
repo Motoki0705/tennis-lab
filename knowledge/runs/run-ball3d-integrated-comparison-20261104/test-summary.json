@@ -53,6 +53,7 @@
     "tests/e2e/skills/test_knowledge_artifacts.py",
     "tests/e2e/skills/test_knowledge_skill_workflow.py"
   ],
+  "collection_pytest_seconds": 72.45,
   "collection_wrapper_seconds": 74.55029398802435,
   "executed_nodes": 794,
   "execution_arguments": [

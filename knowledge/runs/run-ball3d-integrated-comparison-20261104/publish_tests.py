@@ -60,6 +60,12 @@ def main():
         "executed_nodes": len(phases),
         "new_cases": len(new),
         "collection_wrapper_seconds": collect["wrapper_seconds"],
+        "collection_pytest_seconds": float(
+            re.findall(
+                r"tests collected in ([0-9.]+)s",
+                (args.source / "collect.txt").read_text(),
+            )[-1]
+        ),
         "execution_wrapper_seconds": run["wrapper_seconds"],
         "pytest_final_summary": pytest_elapsed[-1] if pytest_elapsed else None,
         "collection_arguments": collect["pytest_arguments"],
