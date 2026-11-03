@@ -6,6 +6,7 @@
 <!-- knowledge-review: 133f58588cd60f82d171c92d522c11d06811784a5d59f173de6f09055283fc1c on 2026-11-03 -->
 <!-- knowledge-review: 27388fbfdedcb6704ad9090ac5050ed9fd10c740b32a5441f0fa1e02520b6dd7 on 2026-11-04 -->
 <!-- knowledge-review: 76c72394b46c58454f31591362ec64bc6ff0f6dbd6a18ad509481f2199d9f3d8 on 2026-11-04 -->
+<!-- knowledge-review: 2632293584fad56a1065da16abeb3e7729b43c4daab53220a03f1ada5ce7b2af on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-04（clip_000の追加/喪失点の誤差を追記。既存モデル・checkpointの採用判断は維持）
@@ -58,6 +59,10 @@ gate前候補のpair仮説と二次運動beam DPを標準pipelineの任意の方
 比較runとtestも同じHydra compositionから明示して渡すようにした。全16値・型とYAMLは不変で、
 対象symbol自体の宣言探索・catalog登録を直接検証した。一般の探索漏れは監査本体の変更を伴う別課題である。
 追加修正後も固定bundleの8予測・全診断がv2と完全一致し、元129成果物を変更していない。
+cross-1の追加分析では、主評価の採点数-292点を追加180・喪失472へ分解した。
+追加点の中央値/p90は19.72/244.48px、20px超49.44%。喪失点はbaselineで10.25/26.68px、20px超17.37%で、
+20px以内の390点も失っている。共通353点でも悪化しており、追加点の長い誤差分布を含めて負の結果と解釈する。
+保存予測を基盤scorerで読み直した記述統計で、方式・設定・scoring・採否は変更していない。
 数値や採否の判断は変更せず、証拠と検証範囲を同ノードで確認する。
 [候補GMMと方式A](nodes/tennis_scene/000036-run-ball3d-candidate-gmm-20261103.md)は、
 前半だけで較正したMAP/meanと各RTS版を比較し、いずれも後半LOVOが悪化した。
