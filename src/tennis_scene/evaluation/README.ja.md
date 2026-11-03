@@ -10,6 +10,7 @@
 | `bundle.py` | 固定入力、元identity・source hash、完全な依存descriptorを抽出・検証 |
 | `contracts.py` | 選択viewだけの方式入力とmask付き3D結果 |
 | `baseline.py` | 保存済み検出観測からconsensus・LOESS・三角測量をreplayし、native mapの復号を別途照合 |
+| `court_ball_ba.py` | 任意のproduction [court/ball bundle adjustment](../ball_calibration/README.ja.md) へのadapter |
 | `runner.py` | 全viewと3通りの2view LOVO、型付きchecksum保存読込 |
 | `annotations.py` | 共通readerの選択結果を採点専用配列へ変換 |
 | `scoring.py` | 区間別の再投影・coverage・運動・イベント診断、注釈のみの幾何参照 |

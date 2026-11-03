@@ -30,6 +30,7 @@ from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG as DEFAULT_ASSOCIATION_CONFIG,
 )
 from src.tasks.player_association.association.config import load_association_config
+from src.tennis_scene.ball_calibration.bundle_adjustment import BundleAdjustmentConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -248,6 +249,12 @@ _PLAYER_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.player_rec
 })
 _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconstruction", fields={
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
+    "calibration": ConfigField.of(str),
+    "bundle_adjustment": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.ball_reconstruction.bundle_adjustment", fields={
+        "court_sigma_px": ConfigField.of(float, int), "ball_sigma_px": ConfigField.of(float, int),
+        "prior_weight": ConfigField.of(float, int), "max_offset_frames": ConfigField.of(float, int),
+        "max_ball_frames": ConfigField.of(int), "max_nfev": ConfigField.of(int),
+    })),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
@@ -320,6 +327,7 @@ class PipelineRuntimeConfig:
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
+    ball_bundle_adjustment: BundleAdjustmentConfig | None = None
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -392,6 +400,10 @@ class PipelineRuntimeConfig:
         person = _mapping(value["person_observations"], name="person_observations")
         player = _mapping(value["player_reconstruction"], name="player_reconstruction")
         ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
+        calibration_method = ball["calibration"]
+        if calibration_method not in {"fixed", "court_ball_ba"}:
+            raise SemanticConfigurationError("ball_reconstruction.calibration must be fixed/court_ball_ba")
+        ba_config = BundleAdjustmentConfig(**cast(dict[str, Any], dict(_mapping(ball["bundle_adjustment"], name="ball_reconstruction.bundle_adjustment"))))
         visibility = float(cast(float, person["visibility_threshold"]))
         _unit_interval(visibility, name="person visibility")
         margins = (float(cast(float, person["sideline_margin_m"])), float(cast(float, person["baseline_margin_m"])))
@@ -417,7 +429,8 @@ class PipelineRuntimeConfig:
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
-            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing)
+            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
+            ba_config if calibration_method == "court_ball_ba" else None)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

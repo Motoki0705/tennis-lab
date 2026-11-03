@@ -39,6 +39,8 @@ ball_points＋camera → ball_triangulation
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
 ```
 
+ball経路の任意のcamera・時刻精密化は [court/ball bundle adjustment](../ball_calibration/README.ja.md) を参照。
+
 人物検出はDINOに固定し、標準設定は**COCO DINOの全画面、score ≥ 0.30、入力800/1333**（#964の2026-09-30判断）。
 ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth`を明示した場合に使用できる。

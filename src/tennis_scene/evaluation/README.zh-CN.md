@@ -10,6 +10,7 @@
 | `bundle.py` | 提取并验证固定输入、原identity/source哈希和完整依赖descriptor |
 | `contracts.py` | 仅含选定视角的方法输入与带mask的3D结果 |
 | `baseline.py` | 从保存的检测观测重放consensus、LOESS、三角测量，并单独核对原始热图解码 |
+| `court_ball_ba.py` | 可选production [court/ball bundle adjustment](../ball_calibration/README.zh-CN.md)的adapter |
 | `runner.py` | 全视角及三个双视角LOVO折，带类型和checksum的保存/加载 |
 | `annotations.py` | 将公共reader选择结果转换为评分专用数组 |
 | `scoring.py` | 分段重投影、覆盖率、运动/事件诊断及标注几何参考 |
