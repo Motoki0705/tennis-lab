@@ -223,7 +223,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
             BallTriangulationInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
             lambda: {"config": cfg.processing_settings["ball_reconstruction"], "threshold": 0.0})
-    elif cfg.ball_method == "triangulation":
+    elif cfg.ball_method == "triangulation" and cfg.ball_bundle_adjustment is not None:
         add("ball_triangulation", CourtBallBAModule(ids, reprojection_px=cfg.ball_reprojection_px,
             min_frames=cfg.ball_min_frames, config=cfg.ball_bundle_adjustment, enabled=cfg.enabled["ball_reconstruction"]),
             CourtBallBAInputAssembler(0.0), {"alignment": "camera_alignment", "calibration": "court_calibration", **balls},
