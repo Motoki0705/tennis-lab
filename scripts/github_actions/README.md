@@ -185,12 +185,20 @@ checkoutのcredentialは永続化せず、GitHub tokenの権限はcontents・iss
 
 workflowは軽量なjsonschema環境で `agy_smoke.py` から共通部品を呼び、
 `.github/ISSUE_TEMPLATE/06_parent.md` の `##` 見出しを読み取り、実際のファイルと結果を照合する。
-job summaryに観測した版・モデル、usage、CLIの所要時間と版の確認を含む所要時間、`denied_actions` を出す。
-失敗時は失敗の分類と取得できた拒否一覧を残す。log・prompt・会話ID・認証情報をartifactへ公開しない。
+job summaryに観測した版・モデル、usage、CLIの所要時間と版の確認を含む所要時間、
+試行/拒否件数と引数を伏せたコマンド形式を出す。失敗時も取得できた件数を残す。
+log・prompt・会話ID・認証情報・コマンド全文をartifactへ公開しない。
+通常の読み取りも使い捨てworkspaceにテンプレートをコピーして実行する。
+非公開の生stream・hook判定・捕捉結果は成功・失敗・timeoutとも
+`${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/agy-smoke/run-*/` に残し、作業workspaceは片付ける。
 認証・モデル・版・構造化出力のいずれかで失敗したら修正して手動でやり直す。
 この疎通だけでは書き直しの本体を有効化しない。
 
 続くpermissions probe段階は、使い捨ての作業領域で読み取りの成功と、危険なコマンドの拒否・ファイル不変を確認する。
+読み取りの前に許可外の `pwd` をhookで拒否し、その後も読み取りを続けて構造化結果を返すことを必須とする。
+同じ段階でworkspace外への `read_file` もhookで拒否する。内側の読み取りと結果返却の続行を確認し、
+シェルと `read_file` の全試行をhook記録と照合する。未記録・step/対象の不一致・拒否後の実行形跡は共通の `command_hook_mismatch` で失敗する。
+入力形式と照合reasonの正本は[共通部品の契約](../../.agents/ops/lib/README.md#agyの共通呼び出し部品)にある。
 形式と判定方法・呼び出し数・上限時間は[共通部品の読み取り権限と実機プローブ](../../.agents/ops/lib/README.md#agyの読み取り権限と実機プローブ)を参照する。
 両段階が成功してから実機の疎通成功とし、実行は #1599 で人間が行う。
 
@@ -198,7 +206,8 @@ job summaryに観測した版・モデル、usage、CLIの所要時間と版の�
 
 - headlessがtrustの確認待ちで止まらず、テンプレートとpermissions probeの読み取りを完了すること。
   trustを追加して通すことはせず、拒否やtimeoutがあればそのまま未確認として親へ返す。
-- untrustedなworkspaceからhooks・MCP・pluginsの拡張設定を読み込んでいないこと。
+- untrustedなworkspaceで、この呼び出しが配置したPreToolUse hookが実行され、拒否後も続行すること。
+  このhookの実行コードはcontroller側に固定する。その他のhooks・MCP・pluginsを読み込んでいないこと。
   workspaceの設定場所と現状は[共通部品README](../../.agents/ops/lib/README.md#agyの読み取り権限と実機プローブ)を参照し、
   privateな診断logや実行結果で確認する。読み込みの有無が判断できなければ、その点を未確認として残す。
   現在のrepoに設定が無いことだけで、存在する場合の挙動まで検証済みとは扱わない。
@@ -245,7 +254,7 @@ GitHubへの書き込み・公開・本番の権限変更は行わない。
 CLI起動前の失敗も予約済み台帳から削除せず、上限に含める。
 
 本番と同じ `readonly_settings()` と `--mode plan` を使い、観測のために
-`--output-format stream-json` へ変える。`agy_census_capture.py` は
+`--output-format stream-json` を使う。本番と共有する [`agy_capture.py`](../../.agents/ops/lib/agy_capture.py) は
 `(conversation_id, step_index)` で更新イベントをまとめ、`CommandLine` を加工せず保存する。
 streamが長い引数を末尾省略した場合は、同じstepのhook記録と省略前prefixが一致するときだけ
 全文を復元し、省略表示と採用元も保存する。任意の不一致やstreamに無いhook stepはエラーにする。
@@ -261,9 +270,10 @@ soft denialはlogのstep番号と結合する。`DONE` だけで実行済みと�
 実行後にはrequest-review、plan、版・モデル、永続設定の不変を照合する。
 設定ファイルの編集、認証情報のコピー、sandboxや自動承認の有効化は行わない。
 
-比較用の `--deny-unlisted` は、現行grammarにない形式をPreToolUse hookで明示拒否する。
-追加の実行許可は与えないが、モデルへの拒否の伝わり方を変えるので、本番条件とは別に集計する。
-hookのソースと設定は使い捨てclone内に固定し、終了時に変更を検査する。
+`--deny-unlisted` は、本番と共有する [`agy_hook.py`](../../.agents/ops/lib/agy_hook.py) で
+現行grammarにない形式をPreToolUse hookで明示拒否する。追加の実行許可は与えない。
+旧pilotのsoft denial条件とは別に集計する。
+設定だけを使い捨てcloneへ配置して終了時に照合し、実行コードはcontroller側を使う。
 stdout、log、入力、metadata、集計はprivateのまま扱い、生データをcommitしない。
 
 ## セキュリティ境界

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from functools import cache
 
 # Keep the grammar compatible with regular-expression engines without lookaround.
 # No whitespace in the rule itself: spaces in a command are represented as \x20.
@@ -78,6 +79,22 @@ def _form(
         "{" + str(minimum) + "," + (str(maximum) if maximum is not None else "") + "}"
     )
     return "^" + prefix + flags + "(?:" + operand + ")" + count + r"\x20*$"
+
+
+@cache
+def _command_patterns() -> dict[str, tuple[re.Pattern[str], ...]]:
+    return {
+        key: tuple(re.compile(rule[len("command(regex:") : -1]) for rule in rules)
+        for key, rules in command_permissions().items()
+    }
+
+
+def command_allowed(command: str) -> bool:
+    """Use exactly the deny-first rules sent to agy, on the unmodified command."""
+    patterns = _command_patterns()
+    return not any(rule.search(command) for rule in patterns["deny"]) and any(
+        rule.search(command) for rule in patterns["allow"]
+    )
 
 
 def command_permissions() -> dict[str, list[str]]:

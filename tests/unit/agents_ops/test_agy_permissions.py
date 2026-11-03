@@ -12,6 +12,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops/lib"))
 agy: Any = importlib.import_module("agy_headless")
+hook: Any = importlib.import_module("agy_hook")
 
 
 @pytest.fixture(scope="module")
@@ -85,6 +86,7 @@ def test_supported_read_forms(
 ) -> None:
     assert accepted(rules, command, search=False)
     assert accepted(rules, command, search=True)
+    assert hook.evaluate(json_input(command))["decision"] == "allow"
 
 
 @pytest.mark.parametrize(
@@ -126,6 +128,7 @@ def test_shell_syntax_is_denied(
 ) -> None:
     assert not accepted(rules, command, search=False)
     assert not accepted(rules, command, search=True)
+    assert hook.evaluate(json_input(command))["decision"] == "deny"
 
 
 @pytest.mark.parametrize(
@@ -181,6 +184,18 @@ def test_unlisted_flags_are_denied(
 ) -> None:
     assert not accepted(rules, command, search=False)
     assert not accepted(rules, command, search=True)
+    assert hook.evaluate(json_input(command))["decision"] == "deny"
+
+
+def json_input(command: str) -> str:
+    import json
+
+    return json.dumps(
+        {
+            "stepIdx": 7,
+            "toolCall": {"name": "run_command", "args": {"CommandLine": command}},
+        }
+    )
 
 
 def test_every_allow_is_anchored_and_non_command_actions_are_denied() -> None:

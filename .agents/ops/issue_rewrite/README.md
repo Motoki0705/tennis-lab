@@ -49,6 +49,11 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
 3. writerとverifierは、[`agy_headless.py` の公開API](../lib/README.md#agyの共通呼び出し部品)を使う。
    版・モデルは同部品と `agents.conf` のpinだけに従う。呼び出しごとに別の会話とlogを作り、
    repo・関連issue/PRはGemini自身が読み取る。1呼び出しの上限は300秒。
+   許可外のシェル形式は共通部品のPreToolUse hookが理由付きで拒否し、読み取りと構造化出力の生成を続けさせる。
+   workspace外への `read_file` もsymlink解決後のパスで拒否する。
+   streamのシェル・読み取り試行は同じtool・stepと、コマンド全文またはPathがhook記録と一致することを必須とし、照合できない試行や拒否後の実行形跡は
+   `command_hook_mismatch` として失敗する。末尾省略の復元はハーネスと同じ共通部品を使う。
+   拒否があっても、以下のschema・不変条件・意味検査・照合付き書き込みの合格条件は変えない。
 4. writerの構造化出力をschemaで検査してから不変条件を調べる。通った本文だけを別会話のverifierへ渡す。
    `verdict=pass` かつ `differences=[]` だけが意味検査の合格。自由文やCLIの終了値から結果を補わない。
 5. 不変条件か意味検査で落ちた場合、直前の本文と具体的な理由をwriterへ渡して1回だけ修正する。
@@ -94,6 +99,8 @@ HEADを固定する。writer・verifier・修正の**呼び出しごと**に、r
 `git log`・`git show`・`gh issue view` のための文脈を維持する。
 呼び出しごとに作り直す理由は、writerが作業領域を変更してもverifierや修正の入力へ持ち越さないため。
 作業領域内のコード・prompt・schemaは検査や合否判定に使わない。
+hook設定だけを呼び出し中のworkspaceへ置き、実行プログラムはcontroller側を使う。
+配置・片付けと記録の契約は[共通部品](../lib/README.md#agyの共通呼び出し部品)に従う。
 
 使用するpromptの雛形とschemaは固定commitから読み、検査側のファイルとの一致を確認する。
 入力JSONを加えたprompt、schemaのコピー、構造化出力、log、公開artifactは使い捨て領域の外へ置く。
@@ -117,6 +124,9 @@ agyの導入やGoogle認証情報を持たない。全jobからactionsのwrite�
 外部actionは公式release tagと照合した完全commit SHAと版コメントで固定する。
 
 run dirは0700、保存ファイルは0600。入力・prompt・writerのnotes・verifierの説明・agy logはprivateに保つ。
+各turnのlogに対応する `.stream.jsonl`・`.hooks.jsonl`・`.commands.json` も同じ非公開領域に残す。
+失敗時の `failure.json` には `denied_actions` も保存する。成功・異常終了・timeoutともコマンド全文を公開しない。
+読み取りの拒否パスも非公開記録に限り、公開するのは件数と固定形式だけとする。
 artifactへ渡すのは `public/handoff.json` 1ファイルだけで、globやrun dir全体をuploadしない。
 合格時は比較用の元本文、検査済み本文、履歴のID・時刻・作者、空差分の検証結果を含む。
 失敗した候補本文やコメント、log、会話ID、ローカルパス、認証情報は含めない。
@@ -127,6 +137,8 @@ artifactへ渡すのは `public/handoff.json` 1ファイルだけで、globやru
 公開JSON全体も同じ検査を通し、applyで再検査する。
 summaryには状態、検査理由、意味差分の種類と実際の本文から取れた引用、usage・所要時間を出す。
 verifierの自由文説明や拒否コマンドの生文字列は出さない。usage未取得はnull/未取得のまま扱い、0に補わない。
+コマンドの試行・拒否は各turnの件数と、共通部品が伏せ字化した形式だけをsummary/artifactへ渡す。
+呼び出し失敗でも取得できた集計を残す。
 過去revisionの不合格理由は、修正成功後もrevision付きで残す。
 
 ## 失敗、skip、手動の再実行
