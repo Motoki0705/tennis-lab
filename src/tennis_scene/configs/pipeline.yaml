@@ -200,6 +200,22 @@ player_reconstruction:
 ball_reconstruction:
   enabled: true
   method: triangulation
+  segment_physics:
+    observation: candidates
+    gravity_mps2: 9.81
+    initial_drag_per_m: 0.015
+    max_drag_per_m: 0.1
+    offset_bound_frames: 0.99
+    sigma_px: 6.0
+    robust_scale: 2.0
+    event_velocity_change_mps: 8.0
+    bounce_height_m: 1.0
+    event_window_frames: 4
+    min_segment_frames: 8
+    max_segment_frames: 100
+    max_gap_frames: 3
+    integration_steps: 48
+    max_nfev: 100
   reprojection_px: 20.0
   min_frames: 5
   topk:

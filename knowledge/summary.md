@@ -3,6 +3,7 @@
 <!-- knowledge-review: 01de480bfc7055551b1f7d5b859a3bf05a0351c04f764eec8fd5f0e040c6db0c on 2026-11-04 -->
 <!-- knowledge-review: 7ff15d11fdaae7c5de8aa41c8375c2d2602e308f37f965699462135fd1040bb6 on 2026-11-03 -->
 <!-- knowledge-review: 74d01246b7de09d16c84fdb1ea616a57682ed4cdb8e7c47662d1969fdaeaff69 on 2026-11-04 -->
+<!-- knowledge-review: 133f58588cd60f82d171c92d522c11d06811784a5d59f173de6f09055283fc1c on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -74,6 +75,15 @@ coverageは56.43%→99.73%に増えた一方、baselineと共通の825点でも1
 出力増加と精度を区別し、今回の方式の採用は勧めない。既定は維持し、次は共通基盤による他方式との統合比較を行う。
 11月4日のCI修正では既定値をcompositionへ集約し、残差だけのfloat32 ULP比較を修正した。
 選定方式1010frameの全view再実行は保存済み配列に完全一致し、精度・coverage・採用に関する結論は変わらない。
+[区間物理軌道・相対時刻の比較](nodes/tennis_scene/000034-run-i1565-segment-physics-offset-20261103.md)では、
+候補点方式の後半LOVOが13.64/58.20pxへ悪化し、coverageも56.43%から51.71%へ低下した。
+同じ756点でもbaseline 9.07/26.25pxに対して悪化した。dense heatmap方式は全foldで未収束・採点0。
+全方式共通集合は空のため、baseline/候補点だけの共通集合も別途保存した。
+合成でdrag・時刻・bounceを復元できても、このclipの実観測では分割・同期が安定せず、
+小さいODE残差は精度の根拠にならなかった。設定を後半で調整せず、既定と方式採用は変更しない。
+次はイベント支持、区間連続性、map目的関数の収束と校正biasの交絡を独立に検証する必要がある。
+CI修正で設定をcompositionへ集約し、solverのcamera順を正規化した。固定入力の全12実行と実行時間を除く採点は元結果と完全一致し、上記の負の結論は変わらない。
+DINOの残存子moduleによるCIテスト間の干渉も隔離し、再現した失敗の解消を確認した。production sourceと研究上の結論は追加で変えていない。
 
 ## 2026-10-27のCourt固定6000枚scene比較
 

@@ -34,6 +34,7 @@ from src.tasks.player_association.association.config import load_association_con
 from src.tennis_scene.ball_association.topk import TopKConfig
 from src.tennis_scene.ball_gmm.config import CandidateGMMConfig
 from src.tennis_scene.ball_likelihood.config import DenseLikelihoodConfig
+from src.tennis_scene.ball_trajectory.config import SegmentPhysicsConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionConfig
 from src.tennis_scene.pipeline.components.camera_geometry import CameraGeometryConfig
@@ -289,6 +290,10 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
     })),
     "candidate_gmm": ConfigField.mapping(_CANDIDATE_GMM_SCHEMA),
     "dense_likelihood": ConfigField.mapping(_DENSE_SCHEMA),
+    "segment_physics": ConfigField.mapping(StrictConfigSchema(name="tennis_scene.ball_reconstruction.segment_physics", fields={
+        name: ConfigField.of(str) if name == "observation" else ConfigField.of(int) if name in {"event_window_frames", "min_segment_frames", "max_segment_frames", "max_gap_frames", "integration_steps", "max_nfev"} else ConfigField.of(float, int)
+        for name in SegmentPhysicsConfig.__dataclass_fields__
+    })),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
@@ -365,6 +370,7 @@ class PipelineRuntimeConfig:
     ball_smoothing: TemporalSmoothingConfig
     ball_topk: TopKConfig
     dense_likelihood: DenseLikelihoodConfig
+    ball_segment_physics: SegmentPhysicsConfig
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -438,7 +444,7 @@ class PipelineRuntimeConfig:
         player = _mapping(value["player_reconstruction"], name="player_reconstruction")
         ball = _mapping(value["ball_reconstruction"], name="ball_reconstruction")
         ball_method = str(ball["method"])
-        if ball_method not in {"triangulation", "topk_multihypothesis", "candidate_gmm", "dense_likelihood"}:
+        if ball_method not in {"triangulation", "topk_multihypothesis", "candidate_gmm", "dense_likelihood", "segment_physics"}:
             raise SemanticConfigurationError("Unknown ball_reconstruction.method")
         ball_topk = TopKConfig(**cast(dict[str, Any], dict(_mapping(ball["topk"], name="ball_reconstruction.topk"))))
         gmm_values = dict(_mapping(ball["candidate_gmm"], name="candidate_gmm"))
@@ -451,6 +457,7 @@ class PipelineRuntimeConfig:
         for name in ("view_temperatures", "view_backgrounds"):
             dense_values[name] = tuple(tuple(row) for row in cast(Sequence[Sequence[object]], dense_values[name]))
         dense_likelihood = DenseLikelihoodConfig(**cast(dict[str, Any], dense_values))
+        ball_physics = SegmentPhysicsConfig(**cast(dict[str, Any], dict(_mapping(ball["segment_physics"], name="ball_reconstruction.segment_physics"))))
         visibility = float(cast(float, person["visibility_threshold"]))
         _unit_interval(visibility, name="person visibility")
         margins = (float(cast(float, person["sideline_margin_m"])), float(cast(float, person["baseline_margin_m"])))
@@ -478,7 +485,7 @@ class PipelineRuntimeConfig:
             ball_method, ball_candidate_gmm,
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
-            ball_topk, dense_likelihood)
+            ball_topk, dense_likelihood, ball_physics)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

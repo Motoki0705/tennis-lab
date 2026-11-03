@@ -1,0 +1,5 @@
+ruff: all changed source/test Python and run scripts passed
+mypy --follow-imports=skip: all 13 changed source/test files passed
+knowledge validator --check-summary --base-ref origin/main: 0 errors, 219 existing warnings
+kg_repro_paths: 0 missing, 28 existing unverifiable
+capture_default.py regenerated the pinned main fixture byte-for-byte

@@ -1,0 +1,7 @@
+pytest: 495 collected; 494 passed, 1 existing empty-parametrization skip; 279.81s
+collect-only: 495 cases, 69.16s
+ruff: all changed source/test Python and CI repair scripts passed
+mypy --follow-imports=skip: all 10 changed source/test files passed
+knowledge --check-summary --base-ref origin/main: 0 errors, 219 existing warnings
+kg_repro_paths: 0 missing, 28 existing unverifiable
+real clip: 12 reconstructed results fully bitwise equal; all non-runtime score fields equal

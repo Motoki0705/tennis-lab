@@ -85,6 +85,29 @@ def _visualize_tasks_config(root: Path, *overrides: str) -> DictConfig:
         return config
 
 
+def test_segment_physics_values_are_composition_owned_and_overrides_reach_runtime(
+    tmp_path: Path,
+) -> None:
+    from src.tennis_scene.ball_trajectory.config import SegmentPhysicsConfig
+    from src.utils.configuration.contracts import inspect_typed_adapter
+
+    contract = inspect_typed_adapter(SegmentPhysicsConfig)
+    assert all(field.required for field in contract.fields)
+    with pytest.raises(TypeError, match="required positional arguments"):
+        SegmentPhysicsConfig()  # type: ignore[call-arg]
+    runtime = PipelineRuntimeConfig.from_config(
+        _pipeline_config(
+            tmp_path,
+            "ball_reconstruction.method=segment_physics",
+            "ball_reconstruction.segment_physics.sigma_px=7.25",
+            "ball_reconstruction.segment_physics.max_nfev=37",
+        )
+    )
+    assert runtime.ball_method == "segment_physics"
+    assert runtime.ball_segment_physics.sigma_px == 7.25
+    assert runtime.ball_segment_physics.max_nfev == 37
+
+
 def _clip_studio_config(root: Path) -> dict[str, object]:
     source = root / "data/tennis_multivew/raw/match01/video_000"
     source.mkdir(parents=True, exist_ok=True)

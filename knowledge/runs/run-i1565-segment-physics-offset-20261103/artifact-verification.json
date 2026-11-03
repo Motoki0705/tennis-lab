@@ -1,0 +1,19 @@
+{
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_v3",
+  "files_verified": 211,
+  "prediction_files_identical_to_v1": 188,
+  "typed_method_runs": 16,
+  "video_identical_to_v1": true,
+  "scores_identical_to_v1": true,
+  "source_calculation_unchanged_since_prediction_commit": true,
+  "checksum": {
+    "artifacts.json": "74dc43a3eb71598e3e95bd9ee4ec1effa8c1a97e739a0eb6b4732c922884d61e",
+    "index.html": "3fbb5f924ecc0289801322abfe57abfce7014aa695fe0982f020d7ad079daa5a",
+    "comparison.mp4": "bdeb0dcdbb27bc9777e931af8cad874faacfafe9bec9236551d4cc4778ebcd44",
+    "scores.json": "bfc82e04fb33f12d49ed5339cbd0ce9e7022de18f91da20bc062823f3a8ae24b",
+    "paired-scores.json": "ca621343cf33a4a00d973fde401ccbb8e9ab9f2d9d6616e4dcf022355dc32286",
+    "physics-diagnostics.png": "7fea9d46f372744e7111697132af6e017da5be30fbbf16a0262512730cf09ddc",
+    "paired-metrics-table.png": "52cc50bc412c3149c9a2379bb02c3b23f27d9542e7e5a557804ed0d1dfb930b3"
+  },
+  "main_reference_calculation_still_equal_at": "6372e2267a8fee7b88f9c77d8be1691620bf2030"
+}

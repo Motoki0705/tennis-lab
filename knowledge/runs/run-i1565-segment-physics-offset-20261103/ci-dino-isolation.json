@@ -1,0 +1,35 @@
+{
+  "failed_ci_run": 41641759130,
+  "failed_ci_job": 125937006734,
+  "failed_node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch",
+  "reproduced_exception": "RuntimeError: DINO functions already reference a different extension; start a fresh process",
+  "before": {
+    "passed": 1,
+    "failed": 1,
+    "wall_seconds": 9.42
+  },
+  "after": {
+    "collected": 33,
+    "collect_seconds": 5.21,
+    "passed": 33,
+    "wall_seconds": 5.62
+  },
+  "production_src_diff_from_replay_commit": false,
+  "replay_commit": "345edc98dcbda2469f3c0f4abfcf324a8b6221ba",
+  "ruff": "passed",
+  "mypy_follow_imports_skip": "passed",
+  "files": {
+    "ci-dino-isolation-before.txt": {
+      "bytes": 6304,
+      "sha256": "bb7ecffbd9bdb411fe686814d272b02ddd7c8dafa1ff795c138911872b45a79d"
+    },
+    "ci-dino-collection.txt": {
+      "bytes": 3926,
+      "sha256": "c723358538910aaa6af7d1a71d01471f95aa7b42560df6164887d98e31c6fee4"
+    },
+    "ci-dino-durations.txt": {
+      "bytes": 18249,
+      "sha256": "48efe5be3770488ba5ca1f3886a3362c06910edcb3aa00a8dd0fc9023b499959"
+    }
+  }
+}
