@@ -56,7 +56,15 @@ def test_default_pipeline_matches_frozen_main_arrays(tmp_path):
     np.testing.assert_array_equal(output.ball.trajectory.inliers, reference["used_views"])
     np.testing.assert_array_equal(output.ball.uv_px, np.asarray(reference["accepted_uv_px"], np.float32))
     np.testing.assert_array_equal(output.ball.trajectory.reasons, reference["rejection_codes"])
-    np.testing.assert_array_equal(output.ball.trajectory.reprojection_px, np.asarray(reference["reprojection_px"], np.float32))
+    expected_residuals = np.asarray(reference["reprojection_px"], np.float32)
+    actual_residuals = output.ball.trajectory.reprojection_px
+    # Residuals use the optimizer's unrounded float64 fit.x, whereas exported
+    # positions above are float32. BLAS/SIMD/optimizer roundoff can therefore
+    # change their last float32 bits with identical exported positions. Allow
+    # only four float32 ULPs (<6e-11 px for this fixture), and keep zeros exact.
+    # All other arrays retain assert_array_equal above.
+    np.testing.assert_array_equal(actual_residuals[expected_residuals == 0], 0)
+    np.testing.assert_array_max_ulp(actual_residuals, expected_residuals, maxulp=4)
 
 
 def test_public_config_component_codec_and_lovo_share_production_algorithm(tmp_path):

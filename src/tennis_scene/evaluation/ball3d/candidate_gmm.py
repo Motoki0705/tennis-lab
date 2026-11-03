@@ -17,7 +17,7 @@ from .contracts import Ball3DResult, MethodInput
 
 @dataclass(frozen=True)
 class CandidateGMM:
-    settings: CandidateGMMConfig = CandidateGMMConfig()
+    settings: CandidateGMMConfig
 
     @property
     def name(self) -> str:

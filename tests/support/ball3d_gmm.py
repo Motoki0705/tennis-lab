@@ -1,12 +1,30 @@
 """Independent pinhole and Gaussian evidence fixture, never real-clip labels."""
 
 from dataclasses import replace
+from functools import cache
+from typing import Any, cast
 
 import numpy as np
+from hydra import compose, initialize_config_dir
 
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
+from src.tennis_scene.ball_gmm.config import CandidateGMMConfig
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.components.ball_evidence import BallHeatmapEvidence
+from src.utils.paths import PROJECT_ROOT
 from tests.support.ball3d_evaluation import make_inputs
+
+
+@cache
+def _composed_gmm_config() -> CandidateGMMConfig:
+    with initialize_config_dir(version_base="1.3", config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs")):
+        composed = compose(config_name="pipeline")
+    return cast(CandidateGMMConfig, PipelineRuntimeConfig.from_config(composed, bind_inputs=False).ball_candidate_gmm)
+
+
+def gmm_config(**changes: Any) -> CandidateGMMConfig:
+    """Use the actual composition, without a second set of runtime defaults."""
+    return replace(_composed_gmm_config(), **changes)
 
 
 def make_gmm_inputs(frames=5, *, distractors=False, missing=True):

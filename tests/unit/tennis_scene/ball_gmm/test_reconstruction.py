@@ -3,17 +3,16 @@ from dataclasses import replace
 import numpy as np
 import pytest
 
-from src.tennis_scene.ball_gmm.config import CandidateGMMConfig
 from src.tennis_scene.ball_gmm.reconstruction import (
     point_estimate,
     reconstruct_candidates,
 )
-from tests.support.ball3d_gmm import make_gmm_inputs
+from tests.support.ball3d_gmm import gmm_config, make_gmm_inputs
 
 
 def test_asymmetric_cameras_recover_trajectory_and_preserve_missing_evidence():
     inputs, xyz = make_gmm_inputs()
-    config = CandidateGMMConfig(presence_bias=8)
+    config = gmm_config(presence_bias=8)
     trajectory = reconstruct_candidates(tuple(v.detections for v in inputs.views),
         tuple(v.camera for v in inputs.views), config=config)
     np.testing.assert_array_equal(trajectory.valid, [True, True, False, True, True])
@@ -30,7 +29,7 @@ def test_asymmetric_cameras_recover_trajectory_and_preserve_missing_evidence():
 def test_map_and_mixture_mean_keep_distractor_uncertainty_and_view_order():
     inputs, xyz = make_gmm_inputs(frames=2, distractors=True, missing=False)
     detections, cameras = tuple(v.detections for v in inputs.views), tuple(v.camera for v in inputs.views)
-    config = CandidateGMMConfig()
+    config = gmm_config()
     a = reconstruct_candidates(detections, cameras, config=config)
     b = reconstruct_candidates(detections[::-1], cameras[::-1], config=config)
     assert a.valid.all()
@@ -45,15 +44,15 @@ def test_axis_mismatch_and_component_budget_fail_explicitly():
     inputs, _ = make_gmm_inputs(frames=2, missing=False)
     detections, cameras = tuple(v.detections for v in inputs.views), tuple(v.camera for v in inputs.views)
     with pytest.raises(ValueError, match="axes"):
-        reconstruct_candidates(detections[::-1], cameras, config=CandidateGMMConfig())
+        reconstruct_candidates(detections[::-1], cameras, config=gmm_config())
     with pytest.raises(ValueError, match="budget"):
-        reconstruct_candidates(detections, cameras, config=CandidateGMMConfig(max_components=1))
+        reconstruct_candidates(detections, cameras, config=gmm_config(max_components=1))
 
 
 def test_prior_single_view_mass_and_optimizer_failure_never_become_observations(monkeypatch):
     inputs, _ = make_gmm_inputs(frames=2, missing=False)
     detections, cameras = tuple(v.detections for v in inputs.views), tuple(v.camera for v in inputs.views)
-    result = reconstruct_candidates(detections, cameras, config=CandidateGMMConfig(presence_bias=-20))
+    result = reconstruct_candidates(detections, cameras, config=gmm_config(presence_bias=-20))
     assert not result.valid.any() and not result.map_views.any()
     np.testing.assert_array_equal(result.map_positions, 0)
 
@@ -61,6 +60,6 @@ def test_prior_single_view_mass_and_optimizer_failure_never_become_observations(
         raise RuntimeError("injected numerical failure")
 
     monkeypatch.setattr("src.tennis_scene.ball_gmm.reconstruction.triangulate_gmm", fail)
-    failed = reconstruct_candidates(detections, cameras, config=CandidateGMMConfig())
+    failed = reconstruct_candidates(detections, cameras, config=gmm_config())
     assert not failed.valid.any()
     assert failed.diagnostics["solver_failures"] == {"0": "injected numerical failure", "1": "injected numerical failure"}

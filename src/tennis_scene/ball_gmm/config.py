@@ -8,22 +8,22 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class CandidateGMMConfig:
-    top_k: int = 3
-    covariance_scale: float = 1.0
-    presence_slope: float = 1.0
-    presence_bias: float = 0.0
-    min_multiview_mass: float = 0.05
-    min_variance_cells2: float = 0.04
-    max_variance_cells2: float = 25.0
-    log_floor: float = 1e-7
-    prior_mean_m: tuple[float, float, float] = (0.0, 0.0, 2.0)
-    prior_std_m: tuple[float, float, float] = (8.0, 16.0, 6.0)
-    max_components: int = 1024
-    max_nfev: int = 150
-    estimator: str = "map"
-    temporal: str = "none"
-    acceleration_std_mps2: float = 150.0
-    initial_velocity_std_mps: float = 40.0
+    top_k: int
+    covariance_scale: float
+    presence_slope: float
+    presence_bias: float
+    min_multiview_mass: float
+    min_variance_cells2: float
+    max_variance_cells2: float
+    log_floor: float
+    prior_mean_m: tuple[float, float, float]
+    prior_std_m: tuple[float, float, float]
+    max_components: int
+    max_nfev: int
+    estimator: str
+    temporal: str
+    acceleration_std_mps2: float
+    initial_velocity_std_mps: float
 
     def __post_init__(self) -> None:
         if type(self.top_k) is not int or self.top_k not in (2, 3):

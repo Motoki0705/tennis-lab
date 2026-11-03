@@ -7,7 +7,10 @@ The default remains `triangulation`. Only the ball reconstruction component
 switches to saved `ball_detections` v2 evidence; side/alignment keep ball points.
 This is CPU inference over existing evidence, with no learned covariance model.
 
-`CandidateGMMConfig` and `configs/pipeline.yaml` define all settings. Choose
+`CandidateGMMConfig` and `configs/pipeline.yaml` define all settings.
+Defaults are owned solely by the Hydra YAML composition; the Python config and
+evaluation adapter require explicit settings, including in the replay script.
+Choose
 `estimator=map|mean` and `temporal=none|kalman|rts` inside
 `ball_reconstruction.candidate_gmm`. Supply calibrated `covariance_scale`,
 `presence_slope` and `presence_bias` explicitly; production never reads labels.

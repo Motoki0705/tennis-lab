@@ -1,0 +1,39 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-candidate-gmm
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 435 items
+
+tests/unit/utils/configuration/test_audit.py ......                      [  1%]
+tests/unit/utils/configuration/test_cli.py .........                     [  3%]
+tests/unit/utils/configuration/test_contracts.py ....................... [  8%]
+.....................                                                    [ 13%]
+tests/unit/utils/configuration/test_discovery.py .........               [ 15%]
+tests/unit/utils/configuration/test_inventory.py ..........              [ 17%]
+tests/unit/utils/configuration/test_operations.py ...................... [ 22%]
+........                                                                 [ 24%]
+tests/unit/utils/configuration/test_paths.py ........................... [ 31%]
+........................................................................ [ 47%]
+........................................................................ [ 64%]
+........................................................................ [ 80%]
+......................................                                   [ 89%]
+tests/integration/tennis_scene/test_ball3d_candidate_gmm.py ..           [ 89%]
+tests/unit/tennis_scene/ball_gmm/test_calibration.py .                   [ 90%]
+tests/unit/tennis_scene/ball_gmm/test_heatmap.py ............            [ 92%]
+tests/unit/tennis_scene/ball_gmm/test_reconstruction.py ....             [ 93%]
+tests/unit/submodules/models/dino/test_extension.py .................... [ 98%]
+.......                                                                  [100%]
+
+============================= slowest 10 durations =============================
+115.68s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]
+104.60s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]
+42.45s call     tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit
+4.94s call     tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity
+0.89s call     tests/integration/tennis_scene/test_ball3d_candidate_gmm.py::test_public_config_component_codec_and_lovo_share_production_algorithm
+0.82s call     tests/integration/tennis_scene/test_ball3d_candidate_gmm.py::test_default_pipeline_matches_frozen_main_arrays
+0.45s call     tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed
+0.30s call     tests/unit/tennis_scene/ball_gmm/test_reconstruction.py::test_map_and_mixture_mean_keep_distractor_uncertainty_and_view_order
+0.17s call     tests/unit/tennis_scene/ball_gmm/test_calibration.py::test_calibration_excludes_later_frames_and_unselected_camera_labels
+0.15s call     tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registrations_have_sources_reasons_and_no_repo_imports
+================= 435 passed, 7 warnings in 396.17s (0:06:36) ==================

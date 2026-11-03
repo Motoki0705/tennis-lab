@@ -6,6 +6,8 @@
 既定は `triangulation` のままです。ball再構成だけが `ball_detections` v2の
 保存済み証拠を読み、side/alignmentは従来のball pointsを使います。CPU処理です。
 設定の正本は `CandidateGMMConfig` と `configs/pipeline.yaml`。
+既定値はHydraのYAML compositionだけに置き、Pythonの設定と評価adapterは
+replay scriptも含め、設定の明示的な受け渡しを要求します。
 `ball_reconstruction.candidate_gmm` の `estimator=map|mean` と
 `temporal=none|kalman|rts` を選べます。較正済み `covariance_scale`・
 `presence_slope`・`presence_bias` は明示指定し、productionは正解を読みません。

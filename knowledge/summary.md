@@ -1,4 +1,4 @@
-<!-- knowledge-review: 4d57ee7d028e92cebe57c23c7e47f6064955bf9abe7d38f0c06990efcfacb2fe on 2026-11-03 -->
+<!-- knowledge-review: 7ff15d11fdaae7c5de8aa41c8375c2d2602e308f37f965699462135fd1040bb6 on 2026-11-03 -->
 # Tennis Lab Knowledge Summary
 
 更新日: 2026-11-03（clip_000の球3D共通評価を追加。既存モデル・checkpointの採用判断は維持）
@@ -30,6 +30,8 @@ MAPは16.20/255.72px（baseline 9.34/27.08px）で、LOVO coverageは56.43%→63
 背面modeによるframe全体棄却と、95%楕円の被覆不足（MAP 57.4%、MAP-RTS 17.1%）を記録した。
 局所Gaussian/支持確率の代理・近似校正の寄与は未分離であり、独立存在確率の較正を示していない。
 候補の回収余地や運動の滑らかさを精度改善と扱わず、次の方式比較でも欠測と不確かさを併記する。
+設定の既定値をcompositionへ集約し、残差診断の機械依存の丸め差を検証したCI修正でも、
+設定値・数値kernel・実データのGaussian配列は不変で、上の採用判断は変わらない。
 次は同じ部品で6方式を比較し、方向転換付近の誤差とcoverageを併せて確認する。既定pipelineと方式採用は変更しない。
 
 ## 2026-10-27のCourt固定6000枚scene比較

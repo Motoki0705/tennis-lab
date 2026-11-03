@@ -6,6 +6,8 @@
 默认仍为 `triangulation`。只有球重建读取 `ball_detections` v2保存的证据；
 side/alignment仍使用ball points。计算在CPU执行，无学习型协方差模型。
 设置定义于 `CandidateGMMConfig` 和 `configs/pipeline.yaml`。
+默认值仅由Hydra的YAML composition提供；Python配置和评估adapter要求显式传入设置，
+replay脚本同样遵守此契约。
 在 `ball_reconstruction.candidate_gmm` 下选择 `estimator=map|mean` 和
 `temporal=none|kalman|rts`。显式提供标定后的 `covariance_scale`、
 `presence_slope`、`presence_bias`；production不读取真值。

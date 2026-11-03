@@ -202,3 +202,37 @@ cam1 unknownとcam0末尾外挿除外が正解markerとして描かれないこ�
 較正値・method config・bundle identityの一致を検証し、保存した結果の元code provenanceを保持する。
 
 最終 `--collect-only` は121件/6.87秒、`--durations=0 --durations-min=0` は121 passed/28.76秒（-n 0）。最大case2.714秒・setup0.01184秒で5秒/1秒の基準内。交差曲率を消す故障注入で専用nodeの数値assertが失敗し、元bytes復元後に成功した。ruff/mypy成功、knowledgeは0 errors（既存219 warnings）、repro pathは0 missing（既存28 unverifiable）。
+
+## PR #1674 のCI修正
+
+対象の旧HEADは2fd5385ab、CI run 41611770627。設定dataclassのPython既定値で
+設定catalogの収集が止まったため、CandidateGMMConfigの全16fieldと評価adapterの
+暗黙settings instanceを削除した。Hydra YAMLは変更せず、実行入口とunit fixtureも
+compositionから明示的に設定を渡す。監査の除外・緩和は行っていない。
+
+既定の再投影診断は、float32で保存する位置に丸める前のfloat64 fit.xから計算される。
+BLAS core typeをSandybridgeへ切り替える逐次probeで、float64解が最大4.0701e-13m変わり、
+位置・valid・inliers・採用UV・理由コードは完全一致したまま、残差7要素が1 ULP変わることを再現した。
+最大差は1.4552e-11px。CIの7要素/最大3.6380e-12pxの差と同じ種類の現象で、
+このPRの既定演算の変更ではない。既定経路6sourceはorigin/mainとbytes一致する。
+
+回帰テストは上の5種類の配列の完全一致を維持し、再投影診断だけ4 float32 ULP以内
+（このfixtureでは最大5.8208e-11px未満）を許容し、ゼロ残差は完全一致のままにした。
+LOVO等の採点は保存位置から再投影して行うため、この診断の許容幅は方式比較を変えない。
+根拠は [ci-fix-numerical-evidence.json](../../runs/run-ball3d-candidate-gmm-20261103/ci-fix-numerical-evidence.json)。
+
+実データの3D予測全体は再実行していない。旧Python既定値と新compositionの16値が等しく、
+設定validatorとadapter実行部のAST、全数値kernelのbytesが不変であることを確認した。
+さらに固定bundleの3camera×1010frameからGaussian化を再実行し、21診断配列の全要素・dtypeが
+保存済みv2と完全一致した。したがって設定の渡し方だけの変更であり、3D数値・採点結果は不変と判断する。
+`candidate_gmm_v2/` は変更せず、目録checksumも維持する。根拠は
+[ci-fix-invariance.json](../../runs/run-ball3d-candidate-gmm-20261103/ci-fix-invariance.json)。
+
+設定監査・GMM関連・結合・DINO extensionは435 passed/396.17秒（-n 0）。
+時間の大半は既存のfresh-process import 2件（115.68/104.60秒）とrepo全体監査（42.45秒）で、
+その契約上cold import/全source走査を省けない。新しい重いfixtureは追加していない。
+基盤等の関連テストと以前収集で止まったsynthetic可視化契約は126 passed・既存の空parameter 1 skip/102.39秒。
+skipを成功件数には数えない。全phaseの実測は
+[ci-fix-test-results.json](../../runs/run-ball3d-candidate-gmm-20261103/ci-fix-test-results.json)。
+この時点では指定DINO分離テストは失敗しておらず、a8982a7e0の変更は取り込んでいない。
+採用判断・LOVO悪化/被覆不足という研究結論は変わらない。

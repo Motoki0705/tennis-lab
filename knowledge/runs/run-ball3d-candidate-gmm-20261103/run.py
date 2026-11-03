@@ -14,10 +14,11 @@ import cv2
 import numpy as np
 import torch
 from calibration import fit_calibration
+from hydra import compose, initialize_config_dir
 from plots import ellipsoid_figure, uncertainty_figure
 
-from src.tennis_scene.ball_gmm.config import CandidateGMMConfig
 from src.tennis_scene.ball_gmm.heatmap import candidate_gaussians
+from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.evaluation.ball3d.annotations import load_annotations
 from src.tennis_scene.evaluation.ball3d.baseline import (
     baseline_from_bundle,
@@ -44,6 +45,7 @@ from src.tennis_scene.visualization.ball3d.report import (
     write_report,
 )
 from src.utils.checksum import dual_sha256
+from src.utils.paths import PROJECT_ROOT
 
 BUNDLE_SHA = "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a"
 REFERENCE_SHA = "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
@@ -84,7 +86,9 @@ def main():
     videos = {c: args.videos/f"{c}.mp4" for c in inputs.camera_ids}
     video_receipt = verify_videos(bundle, videos)
     annotations = load_annotations(args.annotations, bundle, expected_sha256=REFERENCE_SHA)
-    base = CandidateGMMConfig()
+    with initialize_config_dir(version_base="1.3", config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs")):
+        composed = compose(config_name="pipeline")
+    base = PipelineRuntimeConfig.from_config(composed, bind_inputs=False).ball_candidate_gmm
     candidates = tuple(candidate_gaussians(v.detections.evidence, base) for v in inputs.views)
     settings, calibration = {}, {}
     for held_out in (None, *inputs.camera_ids):
