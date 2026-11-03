@@ -1,0 +1,19 @@
+{
+  "mutation": "zero acceleration cost in temporal transitions",
+  "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time",
+  "command": [
+    ".venv/bin/python",
+    "-m",
+    "pytest",
+    "-n",
+    "0",
+    "-q",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time",
+    "--tb=short"
+  ],
+  "failure_returncode": 1,
+  "numeric_assert_failure": true,
+  "restored_returncode": 0,
+  "restored_source_sha256": "05fa7fb62ab2d1fd98cfb569a9ce9963b718da1a792a874807636daf4155b5c9",
+  "head_commit": "af4c499ea455d5698d9384e45de88cabd02424db"
+}

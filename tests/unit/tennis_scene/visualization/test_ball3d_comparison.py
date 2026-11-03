@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import NDArray
 
 from src.tennis_scene.visualization.ball3d.rendering import (
     draw_candidate_overlay,
@@ -32,7 +33,7 @@ def test_html_reference_audit_detects_missing_sibling_media(tmp_path):
 
 
 def test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks():
-    panel = np.zeros((100, 150, 3), np.uint8)
+    panel: NDArray[np.uint8] = np.zeros((100, 150, 3), np.uint8)
     uv = np.array([[22., 36.], [94., 74.], [0., 0.]])
     draw_candidate_overlay(panel, uv, np.array([True, True, False]),
         {"topk": 1}, {"topk": (23, 71, 239)}, scale=0.5)
