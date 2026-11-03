@@ -63,7 +63,7 @@ class HeatmapDecodingMethod:
     # Only per-view decoding/smoothing is cached; no cross-camera or label data.
     # Hold the original object to prevent Python object-id reuse. Limit cache size
     # when an adapter is reused with another bundle, even with identical IDs.
-    _cache: dict[int, tuple[ViewInput, ViewInput, np.ndarray]] = field(default_factory=dict, compare=False, repr=False)
+    _cache: dict[int, tuple[ViewInput, ViewInput, np.ndarray]] = field(default_factory=dict, init=False, compare=False, repr=False)
 
     @property
     def config(self) -> Mapping[str, Any]:

@@ -33,6 +33,12 @@ def test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_ord
     selected = inputs.select_cameras((inputs.camera_ids[2], inputs.camera_ids[0]))
     a, b = method(selected), method(replace(selected, views=tuple(reversed(selected.views))))
     np.testing.assert_array_equal(a.diagnostics["accepted_uv_px"], b.diagnostics["accepted_uv_px"][::-1])
+    # Changing a frozen adapter's config must not inherit another decoder's cache.
+    shifted = replace(method, decoding=replace(method.decoding,
+        coordinate_correction="affine", offset_xy=(.01, .02)))
+    changed = shifted(selected)
+    before, after = a.diagnostics["accepted_uv_px"], changed.diagnostics["accepted_uv_px"]
+    np.testing.assert_allclose(after - before, np.broadcast_to([3.19, 4.78], before.shape), atol=1e-4, rtol=0)
     # A new bundle may use the same camera IDs. The cache must not serve the old
     # view's decoded observations. Change the timeline length independently.
     other = make_inputs(frames=7)
