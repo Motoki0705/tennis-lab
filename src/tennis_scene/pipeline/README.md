@@ -97,6 +97,10 @@ ball検出を無効にした構成では実行できず、definition構築時に
 
 ## ball検出証拠
 
+ball再構成は `ball_reconstruction.method=triangulation` が既定。
+`dense_likelihood` を明示すると、ball三角測量だけがgate前heatmapを読む
+[dense尤度方式](../ball_likelihood/README.ja.md)になる。side/alignmentの入力経路は同じ。
+
 `ball_detection` は `ball_detections` schema v2を保存する。
 `BallDetectionOutput.uv_px/confidence/observed` は従来どおり閾値・trajectory gate後の単一観測。
 `evidence: BallHeatmapEvidence` はgate前の

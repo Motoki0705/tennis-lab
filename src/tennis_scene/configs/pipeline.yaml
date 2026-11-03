@@ -191,8 +191,31 @@ player_reconstruction:
     max_nfev: 200
 ball_reconstruction:
   enabled: true
+  method: triangulation
   reprojection_px: 20.0
   min_frames: 5
+  dense_likelihood:
+    interpolation: bicubic_logit
+    initialization: candidates
+    temperature: 1.0
+    background: 0.05
+    view_temperatures: []
+    view_backgrounds: []
+    support_logit_drop: 5.0
+    min_peak_probability: 0.05
+    x_bounds: [-12.0, 12.0]
+    y_bounds: [-24.0, 24.0]
+    z_bounds: [-0.2, 12.0]
+    coarse_spacing_m: 2.0
+    coarse_levels: 3
+    coarse_keep: 16
+    multistart: 2
+    max_iterations: 40
+    min_ray_angle_deg: 1.0
+    temporal_weight: 0.0
+    acceleration_scale_mps2: 100.0
+    event_acceleration_mps2: 350.0
+    window_size: 9
 gvhmr:
   enabled: true
 cache:
