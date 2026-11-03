@@ -1,0 +1,125 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-error-decomposition
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 35 items
+
+tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py ...        [  8%]
+tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py .             [ 11%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py .........    [ 37%]
+tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py .. [ 42%]
+.....                                                                    [ 57%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py .......        [ 77%]
+tests/integration/tennis_scene/test_ball3d_bundle.py .....               [ 91%]
+tests/unit/tennis_scene/visualization/test_ball3d_comparison.py ..       [ 97%]
+tests/integration/tennis_scene/test_ball3d_media.py .                    [100%]
+
+-------- generated xml file: /tmp/ball3d-error-decomposition-final.xml ---------
+============================== slowest durations ===============================
+10.03s call     tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+2.25s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps
+1.26s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels
+0.87s call     tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates
+0.79s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip
+0.69s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]
+0.67s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]
+0.60s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]
+0.53s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels
+0.22s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input
+0.07s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_event_union_and_smoothing_keep_matched_mask_and_reference_kind
+0.04s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.04s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.04s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.04s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.03s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]
+0.03s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_paired_scoring_matches_camera_frame_intersection_with_different_coverage
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]
+0.02s call     tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_position_regression_signed_slope_and_temporal_support
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]
+0.01s setup    tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows
+0.01s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]
+0.01s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows
+0.01s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input
+0.00s setup    tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]
+0.00s setup    tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_position_regression_signed_slope_and_temporal_support
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_interpolation_and_image_speed_do_not_cross_gaps_or_split
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_event_union_and_smoothing_keep_matched_mask_and_reference_kind
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.00s setup    tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_paired_scoring_matches_camera_frame_intersection_with_different_coverage
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_interpolation_and_image_speed_do_not_cross_gaps_or_split
+0.00s teardown tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_event_union_and_smoothing_keep_matched_mask_and_reference_kind
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]
+0.00s call     tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_position_regression_signed_slope_and_temporal_support
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_paired_scoring_matches_camera_frame_intersection_with_different_coverage
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.00s teardown tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_interpolation_and_image_speed_do_not_cross_gaps_or_split
+0.00s teardown tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media
+============================= 35 passed in 25.47s ==============================
