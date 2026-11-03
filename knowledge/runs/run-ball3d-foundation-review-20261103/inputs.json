@@ -1,0 +1,67 @@
+{
+  "schema": "tennis_lab_ball3d_input_checksums.v1",
+  "annotations_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09",
+  "bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+  "videos": {
+    "cam0": {
+      "fps": 59.94006,
+      "height": 1080,
+      "num_frames": 1010,
+      "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+      "width": 1920
+    },
+    "cam1": {
+      "fps": 59.94006,
+      "height": 1080,
+      "num_frames": 1010,
+      "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+      "width": 1920
+    },
+    "cam2": {
+      "fps": 59.94006,
+      "height": 1080,
+      "num_frames": 1010,
+      "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+      "width": 1920
+    }
+  },
+  "reference_source_files": [
+    {
+      "filename": "ball_positions.csv",
+      "path": "source/ball_positions.csv",
+      "sha256": "e22093574a2df18192fb00f90be98c4e042a51464dc1db96e5e1999a17d80956",
+      "size_bytes": 137652
+    },
+    {
+      "filename": "ball_positions (1).csv",
+      "path": "source/ball_positions (1).csv",
+      "sha256": "0b30f35f000918a20aad1da98bdc133f8e64489fe1355fbd0de529e9630a322d",
+      "size_bytes": 113691
+    },
+    {
+      "filename": "ball_positions (2).csv",
+      "path": "source/ball_positions (2).csv",
+      "sha256": "3598af7cbd530e11671346462622d6844deb28dda4f2dd10645d2e4a77bd5f27",
+      "size_bytes": 74330
+    },
+    {
+      "filename": "ball_events.csv",
+      "path": "source/ball_events.csv",
+      "sha256": "9c5cc1c400c9682b1fe76044a19855655684d16560cff185d11f837f25995c9d",
+      "size_bytes": 436
+    },
+    {
+      "filename": "ball_events (1).csv",
+      "path": "source/ball_events (1).csv",
+      "sha256": "c90a3557e74ae25496948dc57086d44afef0f96edd84c8ee4154e4556e97d72a",
+      "size_bytes": 1499
+    },
+    {
+      "filename": "ball_estimation_segments.csv",
+      "path": "source/ball_estimation_segments.csv",
+      "sha256": "4f6fbec39e7d69c63d8dbd80b574ea570f2f2a73bfcabf2d18bd8d4b4afcc6a8",
+      "size_bytes": 1240
+    }
+  ],
+  "reference_source_provenance": "user_supplied_reference"
+}

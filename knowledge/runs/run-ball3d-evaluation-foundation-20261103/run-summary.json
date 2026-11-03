@@ -1,0 +1,1066 @@
+{
+  "schema": "tennis_lab_ball3d_run_summary.v1",
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/foundation_v1",
+  "artifact_manifest_sha256": "43c56e13992a6bb9357c7fb399c5d92e6af154a0b74acc7b080ac459daee7e07",
+  "verified_output_files": 109,
+  "inputs": {
+    "annotations_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09",
+    "bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+    "videos": {
+      "cam0": {
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+        "width": 1920
+      },
+      "cam1": {
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+        "width": 1920
+      },
+      "cam2": {
+        "fps": 59.94006,
+        "height": 1080,
+        "num_frames": 1010,
+        "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+        "width": 1920
+      }
+    }
+  },
+  "source_code_commit": "1f77a3bf8d637708d02f8f7ecd69549f93aa0438",
+  "replay_code_commit": "ca63330c31fcf48363037e2cb0f681c0f7284743",
+  "methods": {
+    "annotation_oracle": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.11311890133718829,
+            "count": 2767,
+            "label_count": 2959,
+            "max": 136.41831394038337,
+            "median": 8.790460004693568,
+            "p90": 21.392331542297878,
+            "scored_label_coverage": 0.9351132139236229,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.011267605633802818,
+            "count": 355,
+            "label_count": 370,
+            "max": 37.68661641848966,
+            "median": 7.000624548172682,
+            "p90": 12.641940556237317,
+            "scored_label_coverage": 0.9594594594594594,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.1281094527363184,
+            "count": 2412,
+            "label_count": 2589,
+            "max": 136.41831394038337,
+            "median": 9.13633180824147,
+            "p90": 23.374648139143243,
+            "scored_label_coverage": 0.9316338354577057,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.11152416356877323,
+            "count": 1345,
+            "label_count": 1462,
+            "max": 111.84385273011843,
+            "median": 7.8586408238936745,
+            "p90": 20.721912427346656,
+            "scored_label_coverage": 0.9199726402188783,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 174,
+            "label_count": 178,
+            "max": 13.450895353084452,
+            "median": 6.399753539552248,
+            "p90": 8.96989945796189,
+            "scored_label_coverage": 0.9775280898876404,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.12809564474807855,
+            "count": 1171,
+            "label_count": 1284,
+            "max": 111.84385273011843,
+            "median": 8.312560111969649,
+            "p90": 22.27800371869549,
+            "scored_label_coverage": 0.911993769470405,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.11462728551336146,
+            "count": 1422,
+            "label_count": 1497,
+            "max": 136.41831394038337,
+            "median": 9.655369806095326,
+            "p90": 22.524030976678223,
+            "scored_label_coverage": 0.9498997995991983,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.022099447513812154,
+            "count": 181,
+            "label_count": 192,
+            "max": 37.68661641848966,
+            "median": 7.980264457605346,
+            "p90": 14.521440692082166,
+            "scored_label_coverage": 0.9427083333333334,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.12812248186946013,
+            "count": 1241,
+            "label_count": 1305,
+            "max": 136.41831394038337,
+            "median": 9.805384561982398,
+            "p90": 24.742796046167214,
+            "scored_label_coverage": 0.9509578544061302,
+            "threshold": 20.0
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 8.668138882901985,
+      "all_views": {
+        "all": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.058174523570712136,
+            "count": 997,
+            "max": 11539.399644349929,
+            "median": 53.045673915246205,
+            "p90": 241.353264665491,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.004004004004004004,
+            "count": 999,
+            "max": 1.8317910656090737,
+            "median": 0.2492878930689674,
+            "p90": 0.37012741818961603,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 370,
+          "frames": [
+            0,
+            1010
+          ],
+          "gross_reprojection_frame_rate": 0.007992007992007992,
+          "observed_label_count": 2589,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.002717391304347826,
+              "count": 2944,
+              "label_count": 2959,
+              "max": 111.84385273011843,
+              "median": 3.135914557388285,
+              "p90": 7.333655797960242,
+              "scored_label_coverage": 0.994930719837783,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.0,
+              "count": 370,
+              "label_count": 370,
+              "max": 15.046587170876297,
+              "median": 3.4414808133698886,
+              "p90": 11.174909593243882,
+              "scored_label_coverage": 1.0,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.003108003108003108,
+              "count": 2574,
+              "label_count": 2589,
+              "max": 111.84385273011843,
+              "median": 3.122601844717842,
+              "p90": 6.92785766501214,
+              "scored_label_coverage": 0.9942062572421785,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.002717391304347826,
+            "count": 2944,
+            "max": 111.84385273011843,
+            "median": 3.135914557388285,
+            "p90": 7.333655797960242,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 2.7182803829782642,
+          "scored_label_count": 2944,
+          "scored_label_coverage": 0.994930719837783,
+          "scoring_label_count": 2959,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.004004004004004004,
+            "count": 999,
+            "max": 109.79766638007182,
+            "median": 14.942331267827491,
+            "p90": 22.185459653930675,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 1001,
+          "valid_3d_rate": 0.9910891089108911
+        },
+        "evaluation": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.06237424547283702,
+            "count": 497,
+            "max": 11539.399644349929,
+            "median": 54.99661341312003,
+            "p90": 282.44215255585624,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.008032128514056224,
+            "count": 498,
+            "max": 1.8317910656090737,
+            "median": 0.24233353866504143,
+            "p90": 0.3356784902496737,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 178,
+          "frames": [
+            505,
+            1010
+          ],
+          "gross_reprojection_frame_rate": 0.01603206412825651,
+          "observed_label_count": 1284,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.0055058499655884375,
+              "count": 1453,
+              "label_count": 1462,
+              "max": 111.84385273011843,
+              "median": 2.955493387713024,
+              "p90": 6.923374367922511,
+              "scored_label_coverage": 0.993844049247606,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.0,
+              "count": 178,
+              "label_count": 178,
+              "max": 12.590013123064441,
+              "median": 2.59485464164419,
+              "p90": 5.776021428332518,
+              "scored_label_coverage": 1.0,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.006274509803921568,
+              "count": 1275,
+              "label_count": 1284,
+              "max": 111.84385273011843,
+              "median": 2.9837181043000873,
+              "p90": 6.9972735287599175,
+              "scored_label_coverage": 0.9929906542056075,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.0055058499655884375,
+            "count": 1453,
+            "max": 111.84385273011843,
+            "median": 2.955493387713024,
+            "p90": 6.923374367922511,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 2.7182803829782642,
+          "scored_label_count": 1453,
+          "scored_label_coverage": 0.993844049247606,
+          "scoring_label_count": 1462,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.008032128514056224,
+            "count": 498,
+            "max": 109.79766638007182,
+            "median": 14.525486847594905,
+            "p90": 20.12058884627486,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 499,
+          "valid_3d_rate": 0.9881188118811881
+        },
+        "tuning": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.05421686746987952,
+            "count": 498,
+            "max": 4721.780086185177,
+            "median": 49.296807512009174,
+            "p90": 206.0645401447592,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.0,
+            "count": 500,
+            "max": 0.9274658870672428,
+            "median": 0.26807975949756696,
+            "p90": 0.38921800564045345,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 192,
+          "frames": [
+            0,
+            505
+          ],
+          "gross_reprojection_frame_rate": 0.0,
+          "observed_label_count": 1305,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.0,
+              "count": 1491,
+              "label_count": 1497,
+              "max": 16.149771480429155,
+              "median": 3.3102870052284463,
+              "p90": 8.288720078863713,
+              "scored_label_coverage": 0.9959919839679359,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.0,
+              "count": 192,
+              "label_count": 192,
+              "max": 15.046587170876297,
+              "median": 4.813080401042784,
+              "p90": 12.133808412375185,
+              "scored_label_coverage": 1.0,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.0,
+              "count": 1299,
+              "label_count": 1305,
+              "max": 16.149771480429155,
+              "median": 3.252854559856465,
+              "p90": 6.833362386025054,
+              "scored_label_coverage": 0.9954022988505747,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.0,
+            "count": 1491,
+            "max": 16.149771480429155,
+            "median": 3.3102870052284463,
+            "p90": 8.288720078863713,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 2.7182803829782642,
+          "scored_label_count": 1491,
+          "scored_label_coverage": 0.9959919839679359,
+          "scoring_label_count": 1497,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.0,
+            "count": 500,
+            "max": 55.59236091876376,
+            "median": 16.068716869069732,
+            "p90": 23.32975061116912,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 502,
+          "valid_3d_rate": 0.994059405940594
+        }
+      }
+    },
+    "pipeline_baseline": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.16403402187120292,
+            "count": 1646,
+            "label_count": 2959,
+            "max": 252.9448394297582,
+            "median": 10.20787734856733,
+            "p90": 28.195989402935098,
+            "scored_label_coverage": 0.5562690098006083,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 264,
+            "label_count": 370,
+            "max": 19.765515064315775,
+            "median": 8.722677485049402,
+            "p90": 14.80229528532133,
+            "scored_label_coverage": 0.7135135135135136,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.19536903039073805,
+            "count": 1382,
+            "label_count": 2589,
+            "max": 252.9448394297582,
+            "median": 10.591283325493398,
+            "p90": 30.390299973354907,
+            "scored_label_coverage": 0.5337968327539591,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.16363636363636364,
+            "count": 825,
+            "label_count": 1462,
+            "max": 252.9448394297582,
+            "median": 9.340188442451916,
+            "p90": 27.078044438775773,
+            "scored_label_coverage": 0.5642954856361149,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 131,
+            "label_count": 178,
+            "max": 19.765515064315775,
+            "median": 7.8403501721842845,
+            "p90": 13.149186965952309,
+            "scored_label_coverage": 0.7359550561797753,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.19452449567723343,
+            "count": 694,
+            "label_count": 1284,
+            "max": 252.9448394297582,
+            "median": 10.19666847863509,
+            "p90": 30.34936086947144,
+            "scored_label_coverage": 0.5404984423676013,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.16443361753958588,
+            "count": 821,
+            "label_count": 1497,
+            "max": 126.8630595745463,
+            "median": 10.716017174178726,
+            "p90": 28.482732402114095,
+            "scored_label_coverage": 0.5484301937207748,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 133,
+            "label_count": 192,
+            "max": 17.697398842561842,
+            "median": 9.744393583226348,
+            "p90": 15.592109186405038,
+            "scored_label_coverage": 0.6927083333333334,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.19622093023255813,
+            "count": 688,
+            "label_count": 1305,
+            "max": 126.8630595745463,
+            "median": 11.321044740079603,
+            "p90": 30.408643693400894,
+            "scored_label_coverage": 0.5272030651340996,
+            "threshold": 20.0
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 50.37026975402841,
+      "all_views": {
+        "all": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.12247474747474747,
+            "count": 792,
+            "max": 5460.319742418372,
+            "median": 66.46885513583698,
+            "p90": 640.7802729309685,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.0,
+            "count": 821,
+            "max": 1.0626721592177772,
+            "median": 0.2551074232130851,
+            "p90": 0.38016389669458256,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 370,
+          "frames": [
+            0,
+            1010
+          ],
+          "gross_reprojection_frame_rate": 0.0689252336448598,
+          "observed_label_count": 2589,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.024438312968072525,
+              "count": 2537,
+              "label_count": 2959,
+              "max": 483.9813254639781,
+              "median": 4.872743362923498,
+              "p90": 12.2832326708818,
+              "scored_label_coverage": 0.857384251436296,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.0,
+              "count": 329,
+              "label_count": 370,
+              "max": 17.697398842561842,
+              "median": 6.684138842010974,
+              "p90": 12.684588973317492,
+              "scored_label_coverage": 0.8891891891891892,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.028079710144927536,
+              "count": 2208,
+              "label_count": 2589,
+              "max": 483.9813254639781,
+              "median": 4.708608603831332,
+              "p90": 11.937035257066322,
+              "scored_label_coverage": 0.8528389339513326,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.024438312968072525,
+            "count": 2537,
+            "max": 483.9813254639781,
+            "median": 4.872743362923498,
+            "p90": 12.2832326708818,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 16.559002525988035,
+          "scored_label_count": 2537,
+          "scored_label_coverage": 0.857384251436296,
+          "scoring_label_count": 2959,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.0,
+            "count": 821,
+            "max": 63.696632983843124,
+            "median": 15.291154253837714,
+            "p90": 22.787046777707083,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 856,
+          "valid_3d_rate": 0.8475247524752475
+        },
+        "evaluation": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.14615384615384616,
+            "count": 390,
+            "max": 5460.319742418372,
+            "median": 73.28465565987281,
+            "p90": 947.15959638311,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.0,
+            "count": 403,
+            "max": 1.0626721592177772,
+            "median": 0.2468844586444981,
+            "p90": 0.359338039274575,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 178,
+          "frames": [
+            505,
+            1010
+          ],
+          "gross_reprojection_frame_rate": 0.09761904761904762,
+          "observed_label_count": 1284,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.034733441033925685,
+              "count": 1238,
+              "label_count": 1462,
+              "max": 483.9813254639781,
+              "median": 4.625461969860585,
+              "p90": 11.58102884950934,
+              "scored_label_coverage": 0.8467852257181943,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.0,
+              "count": 167,
+              "label_count": 178,
+              "max": 14.738591108927594,
+              "median": 5.603123237669102,
+              "p90": 10.430405307300187,
+              "scored_label_coverage": 0.9382022471910112,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.040149393090569564,
+              "count": 1071,
+              "label_count": 1284,
+              "max": 483.9813254639781,
+              "median": 4.483245118894615,
+              "p90": 11.630528990002547,
+              "scored_label_coverage": 0.8341121495327103,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.034733441033925685,
+            "count": 1238,
+            "max": 483.9813254639781,
+            "median": 4.625461969860585,
+            "p90": 11.58102884950934,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 16.559002525988035,
+          "scored_label_count": 1238,
+          "scored_label_coverage": 0.8467852257181943,
+          "scoring_label_count": 1462,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.0,
+            "count": 403,
+            "max": 63.696632983843124,
+            "median": 14.798269264218735,
+            "p90": 21.538743634400387,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 420,
+          "valid_3d_rate": 0.8316831683168316
+        },
+        "tuning": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.09950248756218906,
+            "count": 402,
+            "max": 3494.3864574913932,
+            "median": 61.536734409354196,
+            "p90": 476.5622056149519,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.0,
+            "count": 418,
+            "max": 0.9661354106524674,
+            "median": 0.27033295379590916,
+            "p90": 0.3909411414664888,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 192,
+          "frames": [
+            0,
+            505
+          ],
+          "gross_reprojection_frame_rate": 0.04128440366972477,
+          "observed_label_count": 1305,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.014626635873749037,
+              "count": 1299,
+              "label_count": 1497,
+              "max": 46.833094664406744,
+              "median": 5.057802890033017,
+              "p90": 12.983892754266453,
+              "scored_label_coverage": 0.8677354709418837,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.0,
+              "count": 162,
+              "label_count": 192,
+              "max": 17.697398842561842,
+              "median": 7.476217584372875,
+              "p90": 15.26207282922741,
+              "scored_label_coverage": 0.84375,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.016710642040457344,
+              "count": 1137,
+              "label_count": 1305,
+              "max": 46.833094664406744,
+              "median": 4.916162979504832,
+              "p90": 12.760365005668453,
+              "scored_label_coverage": 0.871264367816092,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.014626635873749037,
+            "count": 1299,
+            "max": 46.833094664406744,
+            "median": 5.057802890033017,
+            "p90": 12.983892754266453,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 16.559002525988035,
+          "scored_label_count": 1299,
+          "scored_label_coverage": 0.8677354709418837,
+          "scoring_label_count": 1497,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.0,
+            "count": 418,
+            "max": 57.91021448263354,
+            "median": 16.203773470504025,
+            "p90": 23.433035475969827,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 436,
+          "valid_3d_rate": 0.8633663366336634
+        }
+      }
+    },
+    "without_loess": {
+      "lovo_reprojection_by_reference_kind": {
+        "all": {
+          "all": {
+            "above_threshold_rate": 0.18073047858942065,
+            "count": 1588,
+            "label_count": 2959,
+            "max": 252.48514361210303,
+            "median": 10.496407655587905,
+            "p90": 29.87046798714679,
+            "scored_label_coverage": 0.5366677931733694,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.003787878787878788,
+            "count": 264,
+            "label_count": 370,
+            "max": 22.485064281405446,
+            "median": 9.458660484850341,
+            "p90": 14.888124115114753,
+            "scored_label_coverage": 0.7135135135135136,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.21601208459214502,
+            "count": 1324,
+            "label_count": 2589,
+            "max": 252.48514361210303,
+            "median": 10.97022767554314,
+            "p90": 32.44496694254884,
+            "scored_label_coverage": 0.511394360757049,
+            "threshold": 20.0
+          }
+        },
+        "evaluation": {
+          "all": {
+            "above_threshold_rate": 0.17906683480453972,
+            "count": 793,
+            "label_count": 1462,
+            "max": 252.48514361210303,
+            "median": 9.797591870007757,
+            "p90": 29.81043880847947,
+            "scored_label_coverage": 0.542407660738714,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.0,
+            "count": 130,
+            "label_count": 178,
+            "max": 18.513305024396367,
+            "median": 8.100031408391152,
+            "p90": 13.463336941167034,
+            "scored_label_coverage": 0.7303370786516854,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.21417797888386123,
+            "count": 663,
+            "label_count": 1284,
+            "max": 252.48514361210303,
+            "median": 10.31592895918891,
+            "p90": 33.24596335404743,
+            "scored_label_coverage": 0.5163551401869159,
+            "threshold": 20.0
+          }
+        },
+        "tuning": {
+          "all": {
+            "above_threshold_rate": 0.18238993710691823,
+            "count": 795,
+            "label_count": 1497,
+            "max": 134.0418125510329,
+            "median": 11.270636070644034,
+            "p90": 29.886592748854245,
+            "scored_label_coverage": 0.531062124248497,
+            "threshold": 20.0
+          },
+          "estimated": {
+            "above_threshold_rate": 0.007462686567164179,
+            "count": 134,
+            "label_count": 192,
+            "max": 22.485064281405446,
+            "median": 10.250170765878703,
+            "p90": 15.883629517507444,
+            "scored_label_coverage": 0.6979166666666666,
+            "threshold": 20.0
+          },
+          "observed": {
+            "above_threshold_rate": 0.2178517397881997,
+            "count": 661,
+            "label_count": 1305,
+            "max": 134.0418125510329,
+            "median": 11.623485870693747,
+            "p90": 31.72544047404091,
+            "scored_label_coverage": 0.5065134099616858,
+            "threshold": 20.0
+          }
+        }
+      },
+      "runtime_seconds_all_four_runs": 46.247162228042725,
+      "all_views": {
+        "all": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.7022696929238985,
+            "count": 749,
+            "max": 6739.112393206676,
+            "median": 749.5941597279563,
+            "p90": 2236.674377175289,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.0,
+            "count": 785,
+            "max": 1.0713996133598886,
+            "median": 0.25943400218923074,
+            "p90": 0.5366619226411843,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 370,
+          "frames": [
+            0,
+            1010
+          ],
+          "gross_reprojection_frame_rate": 0.0735826296743064,
+          "observed_label_count": 2589,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.026079869600651995,
+              "count": 2454,
+              "label_count": 2959,
+              "max": 484.01328298442616,
+              "median": 5.593899874738076,
+              "p90": 12.608040283448718,
+              "scored_label_coverage": 0.8293342345386955,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.003105590062111801,
+              "count": 322,
+              "label_count": 370,
+              "max": 22.208686652987552,
+              "median": 7.184730710516384,
+              "p90": 13.406154054978877,
+              "scored_label_coverage": 0.8702702702702703,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.02954971857410882,
+              "count": 2132,
+              "label_count": 2589,
+              "max": 484.01328298442616,
+              "median": 5.364989770911357,
+              "p90": 12.3723088252595,
+              "scored_label_coverage": 0.8234839706450366,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.026079869600651995,
+            "count": 2454,
+            "max": 484.01328298442616,
+            "median": 5.593899874738076,
+            "p90": 12.608040283448718,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 15.238805108005181,
+          "scored_label_count": 2454,
+          "scored_label_coverage": 0.8293342345386955,
+          "scoring_label_count": 2959,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.0,
+            "count": 785,
+            "max": 64.21975710876853,
+            "median": 15.550489657262622,
+            "p90": 32.16754784282795,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 829,
+          "valid_3d_rate": 0.8207920792079207
+        },
+        "evaluation": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.7394957983193278,
+            "count": 357,
+            "max": 6739.112393206676,
+            "median": 778.5737107442511,
+            "p90": 2284.017560902455,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.0,
+            "count": 375,
+            "max": 1.0713996133598886,
+            "median": 0.2611296728113018,
+            "p90": 0.5353423300069238,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 178,
+          "frames": [
+            505,
+            1010
+          ],
+          "gross_reprojection_frame_rate": 0.10025062656641603,
+          "observed_label_count": 1284,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.03489361702127659,
+              "count": 1175,
+              "label_count": 1462,
+              "max": 484.01328298442616,
+              "median": 5.320676523457791,
+              "p90": 12.151355062085308,
+              "scored_label_coverage": 0.8036935704514364,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.0,
+              "count": 163,
+              "label_count": 178,
+              "max": 16.999426094785466,
+              "median": 6.437572347530528,
+              "p90": 12.196189535943901,
+              "scored_label_coverage": 0.9157303370786517,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.040513833992094864,
+              "count": 1012,
+              "label_count": 1284,
+              "max": 484.01328298442616,
+              "median": 5.163253961641694,
+              "p90": 12.115381559598909,
+              "scored_label_coverage": 0.7881619937694704,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.03489361702127659,
+            "count": 1175,
+            "max": 484.01328298442616,
+            "median": 5.320676523457791,
+            "p90": 12.151355062085308,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 15.238805108005181,
+          "scored_label_count": 1175,
+          "scored_label_coverage": 0.8036935704514364,
+          "scoring_label_count": 1462,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.0,
+            "count": 375,
+            "max": 64.21975710876853,
+            "median": 15.652128256089798,
+            "p90": 32.08845138115481,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 399,
+          "valid_3d_rate": 0.7900990099009901
+        },
+        "tuning": {
+          "acceleration_mps2": {
+            "above_threshold_rate": 0.6683673469387755,
+            "count": 392,
+            "max": 5534.656834971308,
+            "median": 716.593716035314,
+            "p90": 2171.6224311020856,
+            "threshold": 500.0
+          },
+          "adjacent_step_m": {
+            "above_threshold_rate": 0.0,
+            "count": 410,
+            "max": 1.0062688257853807,
+            "median": 0.2580562847367279,
+            "p90": 0.5378773388557389,
+            "threshold": 1.08441666558225
+          },
+          "estimated_label_count": 192,
+          "frames": [
+            0,
+            505
+          ],
+          "gross_reprojection_frame_rate": 0.04883720930232558,
+          "observed_label_count": 1305,
+          "reprojection_by_reference_kind": {
+            "all": {
+              "above_threshold_rate": 0.017982799061767005,
+              "count": 1279,
+              "label_count": 1497,
+              "max": 82.10640788007385,
+              "median": 5.736645097911139,
+              "p90": 13.173044168846648,
+              "scored_label_coverage": 0.85437541750167,
+              "threshold": 20.0
+            },
+            "estimated": {
+              "above_threshold_rate": 0.006289308176100629,
+              "count": 159,
+              "label_count": 192,
+              "max": 22.208686652987552,
+              "median": 8.565081517841966,
+              "p90": 15.82756366007163,
+              "scored_label_coverage": 0.828125,
+              "threshold": 20.0
+            },
+            "observed": {
+              "above_threshold_rate": 0.019642857142857142,
+              "count": 1120,
+              "label_count": 1305,
+              "max": 82.10640788007385,
+              "median": 5.579899922917617,
+              "p90": 12.60787122419039,
+              "scored_label_coverage": 0.8582375478927203,
+              "threshold": 20.0
+            }
+          },
+          "reprojection_px": {
+            "above_threshold_rate": 0.017982799061767005,
+            "count": 1279,
+            "max": 82.10640788007385,
+            "median": 5.736645097911139,
+            "p90": 13.173044168846648,
+            "threshold": 20.0
+          },
+          "runtime_seconds_full_run": 15.238805108005181,
+          "scored_label_count": 1279,
+          "scored_label_coverage": 0.85437541750167,
+          "scoring_label_count": 1497,
+          "scoring_status": "measured_on_user_reference",
+          "speed_mps": {
+            "above_threshold_rate": 0.0,
+            "count": 410,
+            "max": 60.31581379370527,
+            "median": 15.46790919049656,
+            "p90": 32.24039996365332,
+            "threshold": 65.0
+          },
+          "valid_3d_frames": 430,
+          "valid_3d_rate": 0.8514851485148515
+        }
+      }
+    }
+  }
+}

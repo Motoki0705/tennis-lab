@@ -1,0 +1,23 @@
+	Command being timed: "bash knowledge/runs/run-ball3d-evaluation-foundation-20261103/repro.sh /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1 /home/kamimura/projects/tennis-lab/data/samples /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json /home/kamimura/projects/tennis-lab/ckpt /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/foundation_v1"
+	User time (seconds): 404.59
+	System time (seconds): 30.83
+	Percent of CPU this job got: 186%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:53.44
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1112636
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 25
+	Minor (reclaiming a frame) page faults: 259804
+	Voluntary context switches: 486280
+	Involuntary context switches: 12208
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
