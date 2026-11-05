@@ -1,0 +1,40 @@
+{
+  "pytest_arguments": [
+    "--verbose",
+    "--import-mode=importlib",
+    "-n",
+    "auto",
+    "--strict-markers",
+    "--disable-warnings",
+    "-n",
+    "0",
+    "-q",
+    "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 13.201080712024122,
+  "collected_count": 1,
+  "nodes": [
+    "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks"
+  ],
+  "reports": [
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.00715853797737509
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.04144759604241699
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006014680257067084
+    }
+  ]
+}

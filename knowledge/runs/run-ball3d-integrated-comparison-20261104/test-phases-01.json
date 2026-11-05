@@ -1,0 +1,2522 @@
+{
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_deleted_file_directory_and_body_references": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00814712600549683
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033344279509037733
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032743701012805104
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_exception_list_validation[duplicate-duplicate exception path]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001279796997550875
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004556205007247627
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043610396096482873
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_exception_list_validation[escape-invalid or duplicate exception path]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000864227011334151
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003608532017096877
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003616390167735517
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_exception_list_validation[hash-invalid exception SHA-256]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0009370300103910267
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003870102984365076
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036582996835932136
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_exception_list_validation[reason-reason is required]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0009620650089345872
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004201451956760138
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004007550305686891
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_exception_list_validation[version-unsupported schema_version]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0011620550067164004
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005790784955024719
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043871498201042414
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_exceptions_pin_file_content_and_entire_run": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.02956391900079325
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032361780176870525
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0008045050199143589
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_existing_records_do_not_require_erased_history": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.04624391399556771
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00528948096325621
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0009388779872097075
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[-1-.json-262144]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0028723180294036865
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.009430886013433337
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005406829877756536
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[-1-.patch-262144]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002836329978890717
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004655291966628283
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004354330012574792
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[-1-.pdf-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0028422559844329953
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004284413997083902
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035261601442471147
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[-1-.png-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0031448749941773713
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0043802690342999995
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041398999746888876
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[-1-.svg-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0029545570141635835
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00394598301500082
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043697102228179574
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[0-.json-262144]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0032204639865085483
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004340843006502837
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005845270352438092
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[0-.patch-262144]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003312913002446294
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.006489482009783387
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007185389986261725
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[0-.pdf-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003840702003799379
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.006376427016220987
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007393100531771779
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[0-.png-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.004410177993122488
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.011414592969231308
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0008689139503985643
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[0-.svg-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003101070993579924
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0056181419640779495
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000528830976691097
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[1-.json-262144]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0034289309987798333
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.007111278013326228
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006074769771657884
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[1-.patch-262144]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00412334396969527
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.006426156032830477
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006543869967572391
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[1-.pdf-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0034340829588472843
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005641825031489134
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005687319790013134
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[1-.png-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0031971019925549626
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0055419940035790205
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005987430340610445
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_file_size_boundaries[1-.svg-524288]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00333335401955992
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005464587011374533
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006463659810833633
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_history_checks_missing_record_byte_identity_and_immutability": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.14008092496078461
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034697920200414956
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007214709767140448
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_legacy_inventory_requires_explicit_path_and_hash": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.004528796998783946
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003369806974660605
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041951396269723773
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[commit-full pre-deletion HEAD]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002395323012024164
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034666539868339896
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003415800165385008
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[destination-invalid manifest fields]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002376832999289036
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003548273991327733
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003982369671575725
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[hash-invalid SHA-256]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002101944002788514
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038939400110393763
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032973900670185685
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[missing-invalid deletion record fields]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0022786560002714396
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038078000070527196
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000324484019074589
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[path-invalid or duplicate removed path]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002215382002759725
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038268889766186476
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034269504249095917
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[present-deleted file still exists]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002936025965027511
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036801269743591547
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003300590324215591
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[reason-unknown deletion reason]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002261733985505998
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038164309808053076
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003754420322366059
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[type_reason-disagrees with type/size]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002447963983286172
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003582949982956052
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036136002745479345
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_manifest_rejects_invalid_or_inconsistent_records[version-unsupported schema_version]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0022702920250594616
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004074790980666876
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003661300288513303
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_other_markdown_run_references_are_checked[[evidence]: ../../runs/run-fixture/missing.json]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0008239229791797698
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005208682967349887
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000395810988266021
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_other_markdown_run_references_are_checked[`../../runs/run-fixture/missing.json`]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007949649589136243
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0041858950280584395
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004073830205015838
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[contact.jpeg]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020210889633744955
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035603620344772935
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00044282397720962763
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[contact.jpg]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00212944601662457
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004336351994425058
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003602550132200122
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[events.out.tfevents.fixture]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0025612859753891826
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0055027229827828705
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005456070066429675
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[log.gz]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002292933000717312
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004876426013652235
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005499119870364666
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[log.zip]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0024505240144208074
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004476362024433911
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003978539607487619
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[pred.npy]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002770103979855776
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005619019037112594
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005293790018185973
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[pred.npz]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002536810003221035
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005694320017937571
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005023510311730206
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[preview.gif]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001942814968060702
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004460679949261248
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004374769632704556
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[preview.mp4]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002254642022307962
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005106902041006833
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040885998168960214
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[timing.prof]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021815819782204926
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004280099004972726
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003747189766727388
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[unknown.bin]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020927980076521635
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003702157991938293
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034536904422566295
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[weights.ckpt]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0024004440056160092
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005366626020986587
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005974940140731633
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[weights.pt]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0025123320519924164
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005206494999583811
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043490598909556866
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_raw_or_unknown_types_are_rejected_even_when_small[weights.safetensors]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0024226600071415305
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004524150979705155
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006952799740247428
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_recorded_commit_must_contain_the_file": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.06583232700359076
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004906374961137772
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006941240280866623
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_registration_rejects_oversize_before_copying[metrics.json-262145]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12778921000426635
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003768797032535076
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005619500298053026
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_registration_rejects_oversize_before_copying[uncommitted.patch-262145]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.10958931496134028
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038185990415513515
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000510527053847909
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_relative_bare_and_nested_broken_references": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003663484996650368
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003459097002632916
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035200698766857386
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_removed_path_export_validates_records_and_skips_only_pinned_inventory": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.004651957016903907
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005083396041300148
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004631619667634368
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_run_total_boundary[-1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00709267397178337
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004869994008913636
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005252590053714812
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_run_total_boundary[0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.007293448958080262
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004702317004557699
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005812229937873781
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_run_total_boundary[1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.007393959967885166
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005264307023026049
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005605559563264251
+    }
+  },
+  "tests/e2e/skills/test_knowledge_artifacts.py::test_symlink_is_rejected": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0023382119834423065
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003684298018924892
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003573960275389254
+    }
+  },
+  "tests/e2e/skills/test_knowledge_control.py::test_log_only_import_reads_new_name_without_metadata_header": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11862323398236185
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035434640012681484
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00048052502097561955
+    }
+  },
+  "tests/e2e/skills/test_knowledge_control.py::test_named_registration_selects_latest_across_new_legacy_and_expired_history[False]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.25658209301764145
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036667159874923527
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005152520025148988
+    }
+  },
+  "tests/e2e/skills/test_knowledge_control.py::test_named_registration_selects_latest_across_new_legacy_and_expired_history[True]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.23450234800111502
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038635620148852468
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004751139786094427
+    }
+  },
+  "tests/e2e/skills/test_knowledge_control.py::test_register_promotes_headline_and_diagnostic_metric_artifacts": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1294536819914356
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004437941999640316
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006398779805749655
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_bad_yaml_is_an_actionable_error[config: &config {model: test}\\nmetrics: *config\\n]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.21069315599743277
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003888200968503952
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005612469976767898
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_bad_yaml_is_an_actionable_error[id: [unterminated\\n]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.17605855001602322
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037298969691619277
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004862769856117666
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_bad_yaml_is_an_actionable_error[id: run-one\\nid: run-two\\n]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.17750302999047562
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003711855970323086
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00046075601130723953
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_bad_yaml_is_an_actionable_error[metrics: {loss: 1, loss: 2}\\n]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.18889505602419376
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035811850102618337
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005996929830871522
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_base_comparison_preserves_identity_and_deleted_allocations[False]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.5689784839632921
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004491614003200084
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006149000255391002
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_base_comparison_preserves_identity_and_deleted_allocations[True]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.4569351469981484
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037965779774822295
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000618956983089447
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_concurrent_registration_allocates_unique_numbers": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.29272480902727693
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003402440983336419
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0027139480225741863
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_cycles_rejected_but_mutual_comparisons_allowed": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.7170136779895984
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004260132031049579
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006641850341111422
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_duplicate_sequence_and_broken_edges_are_rejected": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.36169470800086856
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0070645619998686016
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006373120122589171
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_highest_sequence_is_never_reused_after_deletion": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.6517848360235803
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003769931965507567
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005574690294452012
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_invalid_schema_reports_errors_instead_of_crashing": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.2982974170008674
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005217343976255506
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000989018997643143
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_log_import_respects_explicit_date_and_task": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.10362355696270242
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003707948955707252
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005007190047763288
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_migration_preserves_metadata_and_rebases_links": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.06231119699077681
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003673540020827204
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004826940130442381
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_missing_library_or_orphan_papers_are_not_silently_ignored": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.3868632010417059
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004516695975326002
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005576650146394968
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_paper_references_checksum_and_summary_staleness": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.8475900330231525
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00617370696272701
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000932270020712167
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes0-invalid id]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.2080730029847473
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0045613780384883285
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005978759727440774
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes1-title must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.18572558101732284
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003768869035411626
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005470110336318612
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes10-artifacts.run_dir]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1557133849710226
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003267070045694709
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043579802149906754
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes11-date must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.16000821895431727
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035331229446455836
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005313720321282744
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes12-recorded_at must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.171894692000933
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003133605991024524
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004929209826514125
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes13-date_source must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.20387893699808046
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035751360119320452
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0008220860036090016
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes14-self parent]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.2646191699896008
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005112562037538737
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005737150204367936
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes15-duplicate tags]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.25444054102990776
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004783448996022344
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005904880235902965
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes16-relation requires]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.15407809399766847
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004192268999759108
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.002758895978331566
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes17-members are only allowed]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.19758204399840906
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0043998429900966585
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000552296987734735
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes2-issue must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1823326789890416
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003840814984869212
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005739969783462584
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes3-issue must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.19827704003546387
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004332861979492009
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005673689884133637
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes4-provider must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.19289595098234713
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004245421034283936
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006198239861987531
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes5-status must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.17416444601258263
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003715439001098275
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005781659856438637
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes6-config must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.16511679498944432
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034224719856865704
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00044277997221797705
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes7-metrics must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1534453250351362
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0030962300370447338
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042623502667993307
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes8-artifacts must]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1588700630236417
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003017594979610294
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004473759909160435
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_schema_contract_rejects_invalid_values[changes9-artifacts.run_dir]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.15420349402120337
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003437560983002186
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004992829635739326
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_task_scoped_sequences_force_and_invalid_task": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.5391191290109418
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035512909526005387
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004911820287816226
+    }
+  },
+  "tests/e2e/skills/test_knowledge_library.py::test_unfinished_scaffold_and_summary_edits_require_completion": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.8637199650402181
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003648011013865471
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005236789584159851
+    }
+  },
+  "tests/e2e/skills/test_knowledge_skill_workflow.py::test_documented_workflow_passes_the_ci_gate[log-failed]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.6889348839758895
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003592066001147032
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005436069914139807
+    }
+  },
+  "tests/e2e/skills/test_knowledge_skill_workflow.py::test_documented_workflow_passes_the_ci_gate[manual-failed]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.7474641429726034
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004554765997454524
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.008197172021027654
+    }
+  },
+  "tests/e2e/skills/test_knowledge_skill_workflow.py::test_documented_workflow_passes_the_ci_gate[queue-done]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.7506777649978176
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036067779874429107
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006232819869183004
+    }
+  },
+  "tests/e2e/skills/test_knowledge_skill_workflow.py::test_skill_metadata_and_local_references_are_discoverable": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002515631029382348
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017994599766097963
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035482499515637755
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.17192844598321244
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037641660310328007
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00046297296648845077
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.36407366901403293
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004298112995456904
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006717460346408188
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.32996733201434836
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034383590100333095
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006130840047262609
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.34549194399733096
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004302719025872648
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006372049683704972
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.5450875879614614
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003831099020317197
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000509855046402663
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.5397269809618592
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0039842440164648
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005446950090117753
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.5541751809651032
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004226644989103079
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005000350065529346
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.6127981079625897
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032040540245361626
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000523568014614284
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_candidate_gmm.py::test_default_pipeline_matches_frozen_main_arrays": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.6869357510004193
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0039083430310711265
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004743929603137076
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_candidate_gmm.py::test_public_config_component_codec_and_lovo_share_production_algorithm": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.6977528529823758
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003536890959367156
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006866269977763295
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_config_definition_component_codec_and_lovo_share_dense_algorithm": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.7839077830431052
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.006676143035292625
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007044909871183336
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_default_pipeline_matches_main_fixed_arrays": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 1.0663259550346993
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004244996001943946
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0009954310371540487
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_dense_config_fails_before_pipeline_execution[ball_reconstruction.dense_likelihood.temperature=-1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.15997959295054898
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004190525040030479
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005630120285786688
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_dense_config_fails_before_pipeline_execution[ball_reconstruction.method=unknown]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1360494730179198
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00361347000580281
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005307540413923562
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_heatmap_decoding.py::test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 1.8796343000140041
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002107587002683431
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007335080299526453
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.6563325559836812
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038386730011552572
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007773730321787298
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.031726092973258346
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004973753006197512
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0008349820272997022
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 4.663441823970061
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0049582020146772265
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0011286980006843805
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_segment_physics.py::test_default_pipeline_matches_fixed_main_arrays": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.7495523479883559
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0047578379744663835
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004841249901801348
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_segment_physics.py::test_opt_in_pipeline_codec_and_lovo_use_same_solver_without_heldout_evidence": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 19.886153767001815
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035448590060696006
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006341440021060407
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_topk.py::test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algorithm": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 1.2957473149872385
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004900438012555242
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00048634898848831654
+    }
+  },
+  "tests/integration/tennis_scene/test_ball3d_topk.py::test_default_pipeline_matches_main_arrays": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.9350167560041882
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005246534012258053
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007017099997028708
+    }
+  },
+  "tests/integration/tennis_scene/test_court_ball_ba.py::test_fixed_default_matches_captured_main_arrays": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.4320252350298688
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035758980084210634
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006225089891813695
+    }
+  },
+  "tests/integration/tennis_scene/test_court_ball_ba.py::test_lovo_recomputes_selected_cameras_only_and_saves_typed_refinement": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 1.9942591389990412
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0040942690102383494
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005529519985429943
+    }
+  },
+  "tests/integration/tennis_scene/test_court_ball_ba.py::test_public_config_assembly_optional_stage_and_real_codec": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 1.4161423739860766
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038602370186708868
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005128970369696617
+    }
+  },
+  "tests/integration/tennis_scene/test_court_ball_ba.py::test_unknown_calibration_choice_is_rejected_before_loading_assets": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.142969288979657
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004157421994023025
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006170470151118934
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001228578039444983
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018520180019550025
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003696909989230335
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[centroid-centre3-0.65]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0012201150530017912
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0020183310261927545
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004064779495820403
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.006507352052722126
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002238378976471722
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004015750018879771
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0013762720045633614
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001828475040383637
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004374950076453388
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015418619732372463
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017614969983696938
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004201949923299253
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0012401390122249722
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019036370213143528
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003502450417727232
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_coordinate_hypotheses_have_known_pixel_displacements": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0010154980118386447
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016513230511918664
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003315320354886353
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00407830101903528
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016300920397043228
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000316596997436136
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_keep_lattice_and_rejection_status[False-7]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007609340245835483
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017588239861652255
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003719110391102731
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_keep_lattice_and_rejection_status[True-3]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0010268109617754817
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018528340151533484
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003331840271130204
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_refine_two_distinct_peaks_without_argmax_or_padding_bias": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014435899793170393
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016950970166362822
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00031914602732285857
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_reject_invalid_coordinates_and_implicit_legacy[axes]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005677440203726292
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018449059571139514
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035933899926021695
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_reject_invalid_coordinates_and_implicit_legacy[bounds]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005907410522922873
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017011559684760869
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032704201294109225
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_reject_invalid_coordinates_and_implicit_legacy[legacy]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006837600376456976
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015772550250403583
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034888298250734806
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004054660093970597
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017824299866333604
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034331995993852615
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00045524799497798085
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015851719654165208
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000340739032253623
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change2]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00037554302252829075
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016356760170310736
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003126849769614637
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change3]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00034800596768036485
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002710130997002125
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003094749990850687
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change4]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003595759626477957
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017860939842648804
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00031485198996961117
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_isotropic_gaussian_and_exactly_saturated_plateau": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020754309953190386
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019750940264202654
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00038847699761390686
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018821060075424612
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0023828819976188242
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042454100912436843
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0010997019708156586
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001963728980626911
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003897669957950711
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.006037271989043802
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0021162639604881406
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004336959682404995
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.004363209998700768
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.1588963929680176
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006258030189201236
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020949699683114886
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0024717309861443937
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041708798380568624
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015448759659193456
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002204576041549444
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004209799808450043
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001222147955559194
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002117987023666501
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003970540128648281
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0012664800160564482
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0021969169611111283
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003611039719544351
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0012955560232512653
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019951589638367295
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003810349735431373
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_nan_input_and_disabled_refinement_are_rejected": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0013677869574166834
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017813350423239172
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00038057100027799606
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020042419782839715
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016965949907898903
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040040898602455854
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000856078986544162
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015835720114409924
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00044582400005310774
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001261792960576713
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017953829956240952
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00031725794542580843
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001209711015690118
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001999978965613991
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039478298276662827
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0008715830044820905
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016669720062054694
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003414719831198454
+    }
+  },
+  "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0008414129843004048
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016911859856918454
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004788219812326133
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_explicit_pixels_reject_wrong_axes_and_out_of_image_values[bounds]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.32272654603002593
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017789299599826336
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006190109997987747
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_explicit_pixels_reject_wrong_axes_and_out_of_image_values[camera]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.3011594050331041
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019001070177182555
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004565789713524282
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_explicit_pixels_reject_wrong_axes_and_out_of_image_values[shape]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.3095173400361091
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001783968007657677
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004495710018090904
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_explicit_redecoded_pixels_change_geometry_without_mutating_raw_evidence": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.4880243689985946
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.11717928800499067
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005347660044208169
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[acceleration_weight-True]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006172260036692023
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0020220470032654703
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035212404327467084
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[beam_width-0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006618259940296412
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0021027320181019604
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003796519595198333
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[max_missing_frames--1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006111050024628639
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0020739129977300763
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040873896796256304
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[reprojection_px-0.0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005082910065539181
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002042918000370264
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036285899113863707
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight--1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00045494799269363284
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018856570241041481
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000697755953297019
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight-nan]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006181239732541144
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002050978015176952
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00044655700912699103
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-9]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006222630036063492
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0024289279826916754
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003931420505978167
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-True]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004128050059080124
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0020198069978505373
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043080601608380675
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_missing_limit_reacquires_without_fabricating_points": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.4817373870173469
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017329269903711975
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005071860505267978
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.35882339504314587
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018963399925269186
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004427370149642229
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.4159761740011163
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002050762006547302
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004987230058759451
+    }
+  },
+  "tests/unit/tennis_scene/ball_association/test_topk.py::test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.005483492976054549
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018636499880813062
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003208390553481877
+    }
+  }
+}

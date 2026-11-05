@@ -1,0 +1,37 @@
+{
+  "output_dir": "outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_v2",
+  "reviewer": "codex",
+  "previews_reviewed": [
+    0,
+    252,
+    505,
+    757,
+    1009
+  ],
+  "figures_reviewed": [
+    "metrics-table.png",
+    "trajectories.png",
+    "extremes.png"
+  ],
+  "extreme_frames": [
+    419,
+    417,
+    415,
+    411,
+    407,
+    406
+  ],
+  "checks": [
+    "3 camera source frame synchronization and captions",
+    "grey candidate ranks and blue selected raw-pixel square at frame 252",
+    "method reprojection rings versus observed cross and approved-estimate diamond",
+    "no reference marker for cam1 unknown at 757 and cam0 excluded extrapolation at 1009",
+    "trajectory gaps remain disconnected",
+    "LOVO counts/coverage separate from all-view valid-3D rate",
+    "common cohort support shown beside its error",
+    "large heldout errors retained in plot and extreme crops"
+  ],
+  "findings": "Frame 252 selections align with references; the method is absent on many other frames. Extreme crops expose large two-view heldout errors. Negative quantitative result preserved. No visual claim of improvement.",
+  "full_comparison_decode_frames": 1010,
+  "broken_html_references": []
+}

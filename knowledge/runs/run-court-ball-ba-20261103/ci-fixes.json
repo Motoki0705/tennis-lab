@@ -1,0 +1,31 @@
+{
+  "initial_head": "681475cd6e0e335316dada3985c12903f4c584f6",
+  "workflow_url": "https://github.com/Motoki0705/tennis-lab/actions/runs/41625949418",
+  "initial_failures": [
+    {
+      "job": "CPU tests (3)",
+      "job_id": 125883374312,
+      "error": "PipelineRuntimeConfig.ball_bundle_adjustment declares a Python runtime default; defaults must be composition-owned.",
+      "fix": "Remove Python default; from_config always passes the YAML-derived choice explicitly."
+    },
+    {
+      "job": "CPU tests (0)",
+      "job_id": 125883374226,
+      "node": "tests/integration/tennis_scene/test_court_ball_ba.py::test_fixed_default_matches_captured_main_arrays",
+      "max_position_difference_m": 1.1920929e-07,
+      "fix": "Compare exact arrays against checksum-pinned historical main kernels executed on the same NumPy/SciPy backend; keep strict equality."
+    }
+  ],
+  "local_validation": {
+    "collected": 138,
+    "passed": 138,
+    "pytest_seconds": 99.54,
+    "collection_seconds": 83.76,
+    "new_cases": 19,
+    "new_case_seconds_sum": 3.352
+  },
+  "original_kernels_regression_mutation": "current speed gate 65 to 1 m/s is detected; restore passes",
+  "algorithm_or_fixed_method_config_changed": false,
+  "comparison_reexecuted_after_this_config_only_fix": false,
+  "experiment_commit": "9fc9adc0b8986460e7978c4a79d7c44c9cd30310"
+}

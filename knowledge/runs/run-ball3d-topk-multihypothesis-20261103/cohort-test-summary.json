@@ -1,0 +1,81 @@
+{
+  "collected_count": 18,
+  "collection_pytest_seconds": 4.84,
+  "collection_wrapper_seconds": 7.537904365977738,
+  "passed_count": 18,
+  "execution_pytest_seconds": 10.14,
+  "execution_wrapper_seconds": 15.720402840990573,
+  "new_cases": [
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_camera_frame_join_and_strata_preserve_reordered_asymmetric_points",
+      "seconds": 0.041052219981793314,
+      "setup_seconds": 0.009108068014029413
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_duplicate_camera_frame_is_rejected",
+      "seconds": 0.004122873011510819,
+      "setup_seconds": 0.0027344240224920213
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_common_reference_kind_mismatch_is_rejected_before_stratification",
+      "seconds": 0.004447267972864211,
+      "setup_seconds": 0.0024881159770302474
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_incomplete_partition_counts_stop_the_report[totals0]",
+      "seconds": 0.0041289060027338564,
+      "setup_seconds": 0.0028606810374185443
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_incomplete_partition_counts_stop_the_report[totals1]",
+      "seconds": 0.003986672032624483,
+      "setup_seconds": 0.0028833100222982466
+    }
+  ],
+  "max_case_seconds": 0.0876085830386728,
+  "max_setup_seconds": 0.009108068014029413,
+  "workers": 0,
+  "memory_documentation_tests": {
+    "collected_count": 107,
+    "passed_count": 107,
+    "pytest_seconds": 0.4,
+    "execution_wrapper_seconds": 2.33894191600848,
+    "collection_wrapper_seconds": 1.9176330839982256
+  },
+  "ruff": "passed on cohort_report.py and test_topk_cohorts.py",
+  "mypy": "passed on cohort_report.py and test_topk_cohorts.py",
+  "knowledge_validation": {
+    "errors": 0,
+    "warnings": 219,
+    "base_ref": "origin/main",
+    "check_summary": true
+  },
+  "repro_paths": {
+    "missing": 0,
+    "unverifiable": 28
+  },
+  "mutated_script_bytes_match_scoring_script": true,
+  "memory_documentation_tests_utc": {
+    "passed_count": 107,
+    "pytest_seconds": 0.32,
+    "wrapper_seconds": 2.0663431989960372,
+    "timezone": "UTC",
+    "workers": 0
+  },
+  "ci_date_fix": {
+    "failed_head": "f1375663e313917429d5940d8a9dfaeb6a3dd5f0",
+    "run_id": 41694724236,
+    "job_id": 126124174439,
+    "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/coverage-cohort-quality.md]",
+    "cause": "JST 2026-11-04 was a future date on UTC 2026-11-03 runner",
+    "corrected_created_and_last_verified": "2026-11-03",
+    "clock_verification": "2026-11-03 18:50:05 UTC",
+    "scoring_script_and_artifacts_unchanged": true
+  },
+  "shared_memory_change_status": {
+    "status": "retracted_at_parent_request",
+    "historical_only": true,
+    "reason": "memory変更は親の指示で取り消した。cross-1の出典はreviewer agentと親であり、ユーザー判断ではない。",
+    "record": "knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort-memory-retraction.json"
+  }
+}

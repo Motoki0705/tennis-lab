@@ -1,0 +1,12 @@
+{
+  "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+  "checkout_commit": "9ef5dce17",
+  "failure": "presentation metric_rows read fold reprojection_px.label_count; foundation keeps coverage in reprojection_by_reference_kind.all",
+  "predictions_changed": false,
+  "scorer_changed": false,
+  "files": {
+    "ball3d-integrated-report-20261104.resources.txt": "97a3fd9bb82f9dbf2c6ffb2437275fcfb68dfbd69c437cfacff728a3888045f9",
+    "scores.json": "a9bc05c595526b3c02d0b00dc884c511c01bf8fd229fe475bc953478e13269f0",
+    "ball3d-integrated-report-20261104.log": "ca2e5ca773711e6b0e4da206f1e5222a0473a411367df21c2c6b6a54e58378d2"
+  }
+}

@@ -1,0 +1,13 @@
+Frozen calibration from retained cameras and frames [0,505) only
+Running pipeline_baseline: all views and three LOVO folds
+Saved pipeline_baseline: [856, 540, 474, 646] valid frames
+Running candidate_gmm_map_none: all views and three LOVO folds
+Saved candidate_gmm_map_none: [322, 461, 700, 1010] valid frames
+Running candidate_gmm_mean_none: all views and three LOVO folds
+Saved candidate_gmm_mean_none: [322, 461, 700, 1010] valid frames
+Running candidate_gmm_map_rts: all views and three LOVO folds
+Saved candidate_gmm_map_rts: [322, 461, 700, 1010] valid frames
+Running candidate_gmm_mean_rts: all views and three LOVO folds
+Saved candidate_gmm_mean_rts: [322, 461, 700, 1010] valid frames
+Scored all folds/splits, generated uncertainty and comparison figures
+{"output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/candidate_gmm_v2", "artifacts_sha256": "46ecf147cb52139fb6cdf81a5da82f7fb0d94403e4d63c19e2abdfad179136b5", "elapsed_seconds": 180.15455952304183}

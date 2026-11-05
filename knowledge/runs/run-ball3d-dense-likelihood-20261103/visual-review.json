@@ -1,0 +1,39 @@
+{
+  "reviewer": "codex",
+  "previews": [
+    0,
+    252,
+    505,
+    757,
+    1009
+  ],
+  "figures": [
+    "metrics-table.png",
+    "trajectories.png",
+    "likelihood-slices.png",
+    "extremes.png"
+  ],
+  "extreme_frames": [
+    782,
+    811,
+    810,
+    409,
+    827,
+    826
+  ],
+  "likelihood_frames": {
+    "normal": 564,
+    "reference_occluded": 281,
+    "confident_raw_peak_misdetection": 554
+  },
+  "observations": [
+    "LOVO error and coverage have separate columns; all-view 3D validity has its own column.",
+    "Common cohort has 643 primary points.",
+    "Dense/coarse paths visibly jump; negative error results are retained.",
+    "Observed green crosses, approved-estimated white diamonds, and method rings stay distinct.",
+    "Frame 757 cam1 unknown and frame 1009 cam0 excluded extrapolation do not show reference markers.",
+    "XZ diagnostic colour bars describe each plane; baseline symbol is an XZ projection at potentially different Y."
+  ],
+  "video_full_decode": 1010,
+  "html_missing_references": []
+}

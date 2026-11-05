@@ -1,0 +1,1550 @@
+{
+  "bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+  "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+  "code_commit_policy": "This commit owns every executable byte. The later plan-only commit is the checkout HEAD at execution; both are recorded.",
+  "code_fingerprint": "30d16297ffe942be2656f34cbf0c94ac69a323eb810a7665c37c207b4f2c30e8",
+  "diagnostics": [
+    {
+      "category": "diagnostic_labels_used",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "annotation_provenance": {
+          "exclusion": {
+            "camera_id": "cam0",
+            "frame_end_inclusive": 1009,
+            "frame_start_inclusive": 982,
+            "reason": "user_excluded_tail_extrapolation",
+            "source_flag": "extrapolated_unverified"
+          },
+          "file_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09",
+          "instruction": "Use all supplied observed and estimated coordinates as scoring reference except cam0 trailing extrapolation, as directed by the user. Preserve source distinctions.",
+          "kind": "user_supplied_reference",
+          "source_files": [
+            {
+              "filename": "ball_positions.csv",
+              "path": "source/ball_positions.csv",
+              "sha256": "e22093574a2df18192fb00f90be98c4e042a51464dc1db96e5e1999a17d80956",
+              "size_bytes": 137652
+            },
+            {
+              "filename": "ball_positions (1).csv",
+              "path": "source/ball_positions (1).csv",
+              "sha256": "0b30f35f000918a20aad1da98bdc133f8e64489fe1355fbd0de529e9630a322d",
+              "size_bytes": 113691
+            },
+            {
+              "filename": "ball_positions (2).csv",
+              "path": "source/ball_positions (2).csv",
+              "sha256": "3598af7cbd530e11671346462622d6844deb28dda4f2dd10645d2e4a77bd5f27",
+              "size_bytes": 74330
+            },
+            {
+              "filename": "ball_events.csv",
+              "path": "source/ball_events.csv",
+              "sha256": "9c5cc1c400c9682b1fe76044a19855655684d16560cff185d11f837f25995c9d",
+              "size_bytes": 436
+            },
+            {
+              "filename": "ball_events (1).csv",
+              "path": "source/ball_events (1).csv",
+              "sha256": "c90a3557e74ae25496948dc57086d44afef0f96edd84c8ee4154e4556e97d72a",
+              "size_bytes": 1499
+            },
+            {
+              "filename": "ball_estimation_segments.csv",
+              "path": "source/ball_estimation_segments.csv",
+              "sha256": "4f6fbec39e7d69c63d8dbd80b574ea570f2f2a73bfcabf2d18bd8d4b4afcc6a8",
+              "size_bytes": 1240
+            }
+          ]
+        },
+        "reprojection_px": 20.0,
+        "scoring_only": true
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "scoring_only",
+      "name": "annotation_oracle",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/diagnostics/annotation_oracle",
+      "prior": {
+        "directory": "error_decomposition_v2",
+        "prefix": "scoring_diagnostics_only/annotation_oracle"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "diagnostic_labels_used",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "fit_frames": [
+          0,
+          505
+        ],
+        "offset_frames": [
+          0.0,
+          -0.24927409120949945,
+          -0.774857871707072
+        ],
+        "scoring_only": true,
+        "split_projection_buffer_frames": 1,
+        "timeline_anchor_camera": "cam0"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "scoring_only",
+      "name": "annotation_time_oracle",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/diagnostics/annotation_time_oracle",
+      "prior": {
+        "directory": "error_decomposition_v2",
+        "prefix": "scoring_diagnostics_only/annotation_time_oracle"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "diagnostic_labels_used",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "k": 1,
+        "scoring_only": true,
+        "speed_filter": "none; pair comparison shares geometry only",
+        "weights": "unit"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "scoring_only",
+      "name": "candidate1_oracle",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/diagnostics/candidate1_oracle",
+      "prior": {
+        "directory": "error_decomposition_v2",
+        "prefix": "scoring_diagnostics_only/candidate1_oracle"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "diagnostic_labels_used",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "k": 8,
+        "scoring_only": true,
+        "speed_filter": "none; pair comparison shares geometry only",
+        "weights": "unit"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "scoring_only",
+      "name": "candidate8_oracle",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/diagnostics/candidate8_oracle",
+      "prior": {
+        "directory": "error_decomposition_v2",
+        "prefix": "scoring_diagnostics_only/candidate8_oracle"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    }
+  ],
+  "display_selection": "After freezing and scoring, baseline plus the three non-diagnostic nonempty rows with smallest evaluation LOVO (median,p90,>20 rate); only chooses video display, never settings.",
+  "excluded_combinations": [
+    {
+      "combination": "BA clock + top-K/dense",
+      "reason": "Existing top-K/dense kernels assume simultaneous frames. Applying nonzero clocks requires a new asynchronous likelihood/candidate model; camera-only rows explicitly use zero clocks."
+    },
+    {
+      "combination": "GMM K/support/failure-policy changes",
+      "reason": "Child next proposals require changing the model or retuning; not a composition of existing frozen parts."
+    },
+    {
+      "combination": "physics segment continuity/event support/dense convergence changes",
+      "reason": "Child proposals require new objectives or tuning, not existing component composition. Unconverged heatmap row remains in all tables."
+    },
+    {
+      "combination": "top-K null/motion cost changes",
+      "reason": "Requires retuning, prohibited. The existing selected-candidate + LOESS composition is included."
+    },
+    {
+      "combination": "LINE-based BA",
+      "reason": "Pinned bundle contains no raw LINE coordinates. Re-inference/new bundle is outside scope."
+    }
+  ],
+  "inputs": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103",
+  "integration_boundary_commit": "cecb863797d3e5468f26005d1286e29c7eaf997a",
+  "issue": 1568,
+  "methods": [
+    {
+      "category": "baseline",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "ball_threshold": 0.0,
+        "detector_input": "pinned_post_decode_threshold_gate",
+        "min_frames": 5,
+        "reprojection_px": 20.0,
+        "requires_court_lines": false,
+        "without_loess": false,
+        "without_loess_policy": "retain_consensus_mask_use_raw_accepted_coordinates"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "baseline",
+      "name": "pipeline_baseline",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/pipeline_baseline",
+      "prior": {
+        "directory": "foundation_v2",
+        "prefix": "results/pipeline_baseline"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "reference_no_labels",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "ball_threshold": 0.0,
+        "detector_input": "pinned_post_decode_threshold_gate",
+        "min_frames": 5,
+        "reprojection_px": 20.0,
+        "requires_court_lines": false,
+        "without_loess": true,
+        "without_loess_policy": "retain_consensus_mask_use_raw_accepted_coordinates"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "baseline",
+      "name": "without_loess",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/without_loess",
+      "prior": {
+        "directory": "foundation_v2",
+        "prefix": "results/without_loess"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "cache": "per_immutable_view_identity_max12",
+        "decoding": {
+          "coordinate_correction": "none",
+          "method": "quadratic_logit",
+          "model_stride": 4,
+          "offset_xy": [
+            0.0,
+            0.0
+          ],
+          "patch_size": 3,
+          "scale_xy": [
+            1.0,
+            1.0
+          ],
+          "temperature": 1.0
+        },
+        "downstream": {
+          "ball_threshold": 0.0,
+          "detector_input": "saved_native_heatmaps_redecoded_threshold_gate",
+          "min_frames": 5,
+          "reprojection_px": 20.0,
+          "requires_court_lines": false,
+          "without_loess": false,
+          "without_loess_policy": "retain_consensus_mask_use_raw_accepted_coordinates"
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "decode",
+      "name": "quadratic_logit_3",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/quadratic_logit_3",
+      "prior": {
+        "directory": "heatmap_decoding_v4",
+        "prefix": "results/quadratic_logit_3"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "cache": "per_immutable_view_identity_max12",
+        "decoding": {
+          "coordinate_correction": "affine",
+          "method": "quadratic_logit",
+          "model_stride": 4,
+          "offset_xy": [
+            -0.0013464178797410453,
+            -0.0022516805393959153
+          ],
+          "patch_size": 3,
+          "scale_xy": [
+            1.0031469720321813,
+            1.0018819231001146
+          ],
+          "temperature": 1.0
+        },
+        "downstream": {
+          "ball_threshold": 0.0,
+          "detector_input": "saved_native_heatmaps_redecoded_threshold_gate",
+          "min_frames": 5,
+          "reprojection_px": 20.0,
+          "requires_court_lines": false,
+          "without_loess": false,
+          "without_loess_policy": "retain_consensus_mask_use_raw_accepted_coordinates"
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "decode",
+      "name": "selected_affine",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/selected_affine",
+      "prior": {
+        "directory": "heatmap_decoding_v4",
+        "prefix": "results/selected_affine"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "acceleration_scale_mps2": 250.0,
+        "acceleration_weight": 1.0,
+        "beam_width": 96,
+        "max_hypotheses": 24,
+        "max_missing_frames": 3,
+        "max_speed_mps": 65.0,
+        "min_frames": 5,
+        "missing_frame_cost": 3.0,
+        "missing_view_cost": 1.5,
+        "proposal_policy": "all_pairs_and_best_compatible_extensions",
+        "reprojection_px": 20.0,
+        "reprojection_sigma_px": 6.0,
+        "requires_court_lines": false,
+        "restart_cost": 2.0,
+        "score_semantics": "exp_negative_emission_cost_uncalibrated",
+        "score_weight": 1.0,
+        "speed_scale_mps": 35.0,
+        "speed_weight": 0.1,
+        "temporal_policy": "second_order_beam_dp_bounded_missing_history",
+        "top_k": 8,
+        "turn_cost_cap": 3.0
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "topk",
+      "name": "topk_multihypothesis",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/topk_multihypothesis",
+      "prior": {
+        "directory": "topk_multihypothesis_v2",
+        "prefix": "results/topk_multihypothesis"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "fit_frames": [
+          0,
+          505
+        ],
+        "fold_calibrations": {
+          "cam0,cam1": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03766251800906612,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.5068117130188583,
+            "presence_slope": 2.25647435628391,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          },
+          "cam0,cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.040704642768265915,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2132225442874474,
+            "presence_slope": 2.4258187209603324,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          },
+          "cam0,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.045950323391135674,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2111392916876715,
+            "presence_slope": 2.5425794876125813,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          },
+          "cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03888921480255741,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 0.9909951288335228,
+            "presence_slope": 2.4081485107450438,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          }
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "gmm",
+      "name": "candidate_gmm_map_none",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/candidate_gmm_map_none",
+      "prior": {
+        "directory": "candidate_gmm_v2",
+        "prefix": "results/candidate_gmm_map_none"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "fit_frames": [
+          0,
+          505
+        ],
+        "fold_calibrations": {
+          "cam0,cam1": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03766251800906612,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.5068117130188583,
+            "presence_slope": 2.25647435628391,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          },
+          "cam0,cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.040704642768265915,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2132225442874474,
+            "presence_slope": 2.4258187209603324,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          },
+          "cam0,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.045950323391135674,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2111392916876715,
+            "presence_slope": 2.5425794876125813,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          },
+          "cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03888921480255741,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 0.9909951288335228,
+            "presence_slope": 2.4081485107450438,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "none",
+            "top_k": 3
+          }
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "gmm",
+      "name": "candidate_gmm_mean_none",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/candidate_gmm_mean_none",
+      "prior": {
+        "directory": "candidate_gmm_v2",
+        "prefix": "results/candidate_gmm_mean_none"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "fit_frames": [
+          0,
+          505
+        ],
+        "fold_calibrations": {
+          "cam0,cam1": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03766251800906612,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.5068117130188583,
+            "presence_slope": 2.25647435628391,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          },
+          "cam0,cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.040704642768265915,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2132225442874474,
+            "presence_slope": 2.4258187209603324,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          },
+          "cam0,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.045950323391135674,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2111392916876715,
+            "presence_slope": 2.5425794876125813,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          },
+          "cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03888921480255741,
+            "estimator": "map",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 0.9909951288335228,
+            "presence_slope": 2.4081485107450438,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          }
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "gmm",
+      "name": "candidate_gmm_map_rts",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/candidate_gmm_map_rts",
+      "prior": {
+        "directory": "candidate_gmm_v2",
+        "prefix": "results/candidate_gmm_map_rts"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "fit_frames": [
+          0,
+          505
+        ],
+        "fold_calibrations": {
+          "cam0,cam1": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03766251800906612,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.5068117130188583,
+            "presence_slope": 2.25647435628391,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          },
+          "cam0,cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.040704642768265915,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2132225442874474,
+            "presence_slope": 2.4258187209603324,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          },
+          "cam0,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.045950323391135674,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 1.2111392916876715,
+            "presence_slope": 2.5425794876125813,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          },
+          "cam1,cam2": {
+            "acceleration_std_mps2": 150.0,
+            "covariance_scale": 0.03888921480255741,
+            "estimator": "mean",
+            "initial_velocity_std_mps": 40.0,
+            "log_floor": 1e-07,
+            "max_components": 1024,
+            "max_nfev": 150,
+            "max_variance_cells2": 25.0,
+            "min_multiview_mass": 0.05,
+            "min_variance_cells2": 0.04,
+            "presence_bias": 0.9909951288335228,
+            "presence_slope": 2.4081485107450438,
+            "prior_mean_m": [
+              0.0,
+              0.0,
+              2.0
+            ],
+            "prior_std_m": [
+              8.0,
+              16.0,
+              6.0
+            ],
+            "temporal": "rts",
+            "top_k": 3
+          }
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "gmm",
+      "name": "candidate_gmm_mean_rts",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/candidate_gmm_mean_rts",
+      "prior": {
+        "directory": "candidate_gmm_v2",
+        "prefix": "results/candidate_gmm_mean_rts"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "acceleration_scale_mps2": 100.0,
+        "background": 0.05,
+        "coarse_keep": 16,
+        "coarse_levels": 3,
+        "coarse_spacing_m": 2.0,
+        "event_acceleration_mps2": 350.0,
+        "initialization": "candidates",
+        "input": "pre_gate_dense_model_evidence",
+        "interpolation": "bicubic_logit",
+        "loess": false,
+        "max_iterations": 40,
+        "min_peak_probability": 0.05,
+        "min_ray_angle_deg": 1.0,
+        "multistart": 2,
+        "requires_court_lines": false,
+        "support_logit_drop": 5.0,
+        "temperature": 1.0,
+        "temporal_weight": 0.0,
+        "view_backgrounds": [
+          [
+            "cam1",
+            0.2
+          ],
+          [
+            "cam2",
+            0.2
+          ]
+        ],
+        "view_temperatures": [
+          [
+            "cam0",
+            2.0
+          ],
+          [
+            "cam2",
+            2.0
+          ]
+        ],
+        "window_size": 9,
+        "x_bounds": [
+          -12.0,
+          12.0
+        ],
+        "y_bounds": [
+          -24.0,
+          24.0
+        ],
+        "z_bounds": [
+          -0.2,
+          12.0
+        ]
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "dense",
+      "name": "dense_selected",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/dense_selected",
+      "prior": {
+        "directory": "dense_likelihood_v2",
+        "prefix": "results/dense_selected"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "acceleration_scale_mps2": 100.0,
+        "background": 0.05,
+        "coarse_keep": 16,
+        "coarse_levels": 3,
+        "coarse_spacing_m": 2.0,
+        "event_acceleration_mps2": 350.0,
+        "initialization": "candidates",
+        "input": "pre_gate_dense_model_evidence",
+        "interpolation": "bicubic_logit",
+        "loess": false,
+        "max_iterations": 40,
+        "min_peak_probability": 0.05,
+        "min_ray_angle_deg": 1.0,
+        "multistart": 2,
+        "requires_court_lines": false,
+        "support_logit_drop": 5.0,
+        "temperature": 1.0,
+        "temporal_weight": 0.5,
+        "view_backgrounds": [
+          [
+            "cam1",
+            0.2
+          ],
+          [
+            "cam2",
+            0.2
+          ]
+        ],
+        "view_temperatures": [
+          [
+            "cam0",
+            2.0
+          ],
+          [
+            "cam2",
+            2.0
+          ]
+        ],
+        "window_size": 9,
+        "x_bounds": [
+          -12.0,
+          12.0
+        ],
+        "y_bounds": [
+          -24.0,
+          24.0
+        ],
+        "z_bounds": [
+          -0.2,
+          12.0
+        ]
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "dense",
+      "name": "dense_temporal",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/dense_temporal",
+      "prior": {
+        "directory": "dense_likelihood_v2",
+        "prefix": "results/dense_temporal"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "initialization": {
+          "ball_threshold": 0.0,
+          "detector_input": "pinned_post_decode_threshold_gate",
+          "min_frames": 5,
+          "reprojection_px": 20.0,
+          "requires_court_lines": false,
+          "without_loess": false,
+          "without_loess_policy": "retain_consensus_mask_use_raw_accepted_coordinates"
+        },
+        "physics": {
+          "bounce_height_m": 1.0,
+          "event_velocity_change_mps": 8.0,
+          "event_window_frames": 4,
+          "gravity_mps2": 9.81,
+          "initial_drag_per_m": 0.015,
+          "integration_steps": 48,
+          "max_drag_per_m": 0.1,
+          "max_gap_frames": 3,
+          "max_nfev": 100,
+          "max_segment_frames": 100,
+          "min_segment_frames": 8,
+          "observation": "candidates",
+          "offset_bound_frames": 0.99,
+          "robust_scale": 2.0,
+          "sigma_px": 6.0
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "physics",
+      "name": "segment_physics_candidates",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/segment_physics_candidates",
+      "prior": {
+        "directory": "segment_physics_offset_v3",
+        "prefix": "results/segment_physics_candidates"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "initialization": {
+          "ball_threshold": 0.0,
+          "detector_input": "pinned_post_decode_threshold_gate",
+          "min_frames": 5,
+          "reprojection_px": 20.0,
+          "requires_court_lines": false,
+          "without_loess": false,
+          "without_loess_policy": "retain_consensus_mask_use_raw_accepted_coordinates"
+        },
+        "physics": {
+          "bounce_height_m": 1.0,
+          "event_velocity_change_mps": 8.0,
+          "event_window_frames": 4,
+          "gravity_mps2": 9.81,
+          "initial_drag_per_m": 0.015,
+          "integration_steps": 48,
+          "max_drag_per_m": 0.1,
+          "max_gap_frames": 3,
+          "max_nfev": 100,
+          "max_segment_frames": 100,
+          "min_segment_frames": 8,
+          "observation": "heatmap",
+          "offset_bound_frames": 0.99,
+          "robust_scale": 2.0,
+          "sigma_px": 6.0
+        },
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "physics",
+      "name": "segment_physics_heatmap",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/segment_physics_heatmap",
+      "prior": {
+        "directory": "segment_physics_offset_v3",
+        "prefix": "results/segment_physics_heatmap"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "method",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "adjustment": {
+          "ball_sigma_px": 6.0,
+          "court_sigma_px": 3.0,
+          "max_ball_frames": 240,
+          "max_nfev": 200,
+          "max_offset_frames": 0.75,
+          "prior_weight": 1.0
+        },
+        "ball_threshold": 0.0,
+        "distortion": "fixed_zero",
+        "input": "pinned_consensus_loess_points",
+        "min_frames": 5,
+        "principal_point": "fixed",
+        "reprojection_px": 20.0,
+        "requires_court_lines": false
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "ba",
+      "name": "court_ball_ba",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/court_ball_ba",
+      "prior": {
+        "directory": "court_ball_ba_v2",
+        "prefix": "results/court_ball_ba"
+      },
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "combination",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "ba": {
+          "adjustment": {
+            "ball_sigma_px": 6.0,
+            "court_sigma_px": 3.0,
+            "max_ball_frames": 240,
+            "max_nfev": 200,
+            "max_offset_frames": 0.75,
+            "prior_weight": 1.0
+          },
+          "ball_threshold": 0.0,
+          "distortion": "fixed_zero",
+          "input": "pinned_consensus_loess_points",
+          "min_frames": 5,
+          "principal_point": "fixed",
+          "reprojection_px": 20.0,
+          "requires_court_lines": false
+        },
+        "composition": "ba_cameras",
+        "downstream": "baseline",
+        "fold_policy": "fit BA from the retained views of this fold only",
+        "time_policy": "BA cameras only; all offsets zero; full BA is separate"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "composition",
+      "name": "ba_cameras_baseline",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/ba_cameras_baseline",
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "combination",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "ba": {
+          "adjustment": {
+            "ball_sigma_px": 6.0,
+            "court_sigma_px": 3.0,
+            "max_ball_frames": 240,
+            "max_nfev": 200,
+            "max_offset_frames": 0.75,
+            "prior_weight": 1.0
+          },
+          "ball_threshold": 0.0,
+          "distortion": "fixed_zero",
+          "input": "pinned_consensus_loess_points",
+          "min_frames": 5,
+          "principal_point": "fixed",
+          "reprojection_px": 20.0,
+          "requires_court_lines": false
+        },
+        "composition": "ba_cameras",
+        "downstream": "topk",
+        "fold_policy": "fit BA from the retained views of this fold only",
+        "time_policy": "BA cameras only; all offsets zero; full BA is separate",
+        "topk": {
+          "acceleration_scale_mps2": 250.0,
+          "acceleration_weight": 1.0,
+          "beam_width": 96,
+          "max_hypotheses": 24,
+          "max_missing_frames": 3,
+          "max_speed_mps": 65.0,
+          "min_frames": 5,
+          "missing_frame_cost": 3.0,
+          "missing_view_cost": 1.5,
+          "proposal_policy": "all_pairs_and_best_compatible_extensions",
+          "reprojection_px": 20.0,
+          "reprojection_sigma_px": 6.0,
+          "requires_court_lines": false,
+          "restart_cost": 2.0,
+          "score_semantics": "exp_negative_emission_cost_uncalibrated",
+          "score_weight": 1.0,
+          "speed_scale_mps": 35.0,
+          "speed_weight": 0.1,
+          "temporal_policy": "second_order_beam_dp_bounded_missing_history",
+          "top_k": 8,
+          "turn_cost_cap": 3.0
+        }
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "composition",
+      "name": "ba_cameras_topk",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/ba_cameras_topk",
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "combination",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "ba": {
+          "adjustment": {
+            "ball_sigma_px": 6.0,
+            "court_sigma_px": 3.0,
+            "max_ball_frames": 240,
+            "max_nfev": 200,
+            "max_offset_frames": 0.75,
+            "prior_weight": 1.0
+          },
+          "ball_threshold": 0.0,
+          "distortion": "fixed_zero",
+          "input": "pinned_consensus_loess_points",
+          "min_frames": 5,
+          "principal_point": "fixed",
+          "reprojection_px": 20.0,
+          "requires_court_lines": false
+        },
+        "composition": "ba_cameras",
+        "dense": {
+          "acceleration_scale_mps2": 100.0,
+          "background": 0.05,
+          "coarse_keep": 16,
+          "coarse_levels": 3,
+          "coarse_spacing_m": 2.0,
+          "event_acceleration_mps2": 350.0,
+          "initialization": "candidates",
+          "input": "pre_gate_dense_model_evidence",
+          "interpolation": "bicubic_logit",
+          "loess": false,
+          "max_iterations": 40,
+          "min_peak_probability": 0.05,
+          "min_ray_angle_deg": 1.0,
+          "multistart": 2,
+          "requires_court_lines": false,
+          "support_logit_drop": 5.0,
+          "temperature": 1.0,
+          "temporal_weight": 0.0,
+          "view_backgrounds": [
+            [
+              "cam1",
+              0.2
+            ],
+            [
+              "cam2",
+              0.2
+            ]
+          ],
+          "view_temperatures": [
+            [
+              "cam0",
+              2.0
+            ],
+            [
+              "cam2",
+              2.0
+            ]
+          ],
+          "window_size": 9,
+          "x_bounds": [
+            -12.0,
+            12.0
+          ],
+          "y_bounds": [
+            -24.0,
+            24.0
+          ],
+          "z_bounds": [
+            -0.2,
+            12.0
+          ]
+        },
+        "downstream": "dense",
+        "fold_policy": "fit BA from the retained views of this fold only",
+        "time_policy": "BA cameras only; all offsets zero; full BA is separate"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "composition",
+      "name": "ba_cameras_dense",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/ba_cameras_dense",
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "combination",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "candidate_policy": "same raw cells/scores/masks; existing fit at each cell; normalized affine then original pixels",
+        "composition": "decode_candidates",
+        "decoding": {
+          "coordinate_correction": "affine",
+          "method": "quadratic_logit",
+          "model_stride": 4,
+          "offset_xy": [
+            -0.0013464178797410453,
+            -0.0022516805393959153
+          ],
+          "patch_size": 3,
+          "scale_xy": [
+            1.0031469720321813,
+            1.0018819231001146
+          ],
+          "temperature": 1.0
+        },
+        "downstream": "topk",
+        "topk": {
+          "acceleration_scale_mps2": 250.0,
+          "acceleration_weight": 1.0,
+          "beam_width": 96,
+          "max_hypotheses": 24,
+          "max_missing_frames": 3,
+          "max_speed_mps": 65.0,
+          "min_frames": 5,
+          "missing_frame_cost": 3.0,
+          "missing_view_cost": 1.5,
+          "proposal_policy": "all_pairs_and_best_compatible_extensions",
+          "reprojection_px": 20.0,
+          "reprojection_sigma_px": 6.0,
+          "requires_court_lines": false,
+          "restart_cost": 2.0,
+          "score_semantics": "exp_negative_emission_cost_uncalibrated",
+          "score_weight": 1.0,
+          "speed_scale_mps": 35.0,
+          "speed_weight": 0.1,
+          "temporal_policy": "second_order_beam_dp_bounded_missing_history",
+          "top_k": 8,
+          "turn_cost_cap": 3.0
+        }
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "composition",
+      "name": "selected_affine_topk",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/selected_affine_topk",
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "combination",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "composition": "topk_then_loess",
+        "downstream": "topk",
+        "smoothing": "selected raw candidates through unchanged BallPointsModule and triangulation; no gap filling",
+        "topk": {
+          "acceleration_scale_mps2": 250.0,
+          "acceleration_weight": 1.0,
+          "beam_width": 96,
+          "max_hypotheses": 24,
+          "max_missing_frames": 3,
+          "max_speed_mps": 65.0,
+          "min_frames": 5,
+          "missing_frame_cost": 3.0,
+          "missing_view_cost": 1.5,
+          "proposal_policy": "all_pairs_and_best_compatible_extensions",
+          "reprojection_px": 20.0,
+          "reprojection_sigma_px": 6.0,
+          "requires_court_lines": false,
+          "restart_cost": 2.0,
+          "score_semantics": "exp_negative_emission_cost_uncalibrated",
+          "score_weight": 1.0,
+          "speed_scale_mps": 35.0,
+          "speed_weight": 0.1,
+          "temporal_policy": "second_order_beam_dp_bounded_missing_history",
+          "top_k": 8,
+          "turn_cost_cap": 3.0
+        }
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "composition",
+      "name": "topk_loess",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/topk_loess",
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    },
+    {
+      "category": "combination",
+      "code_commit": "3bf09cf51a33422a5e4684298d957e37a3998b03",
+      "config": {
+        "ba": {
+          "adjustment": {
+            "ball_sigma_px": 6.0,
+            "court_sigma_px": 3.0,
+            "max_ball_frames": 240,
+            "max_nfev": 200,
+            "max_offset_frames": 0.75,
+            "prior_weight": 1.0
+          },
+          "ball_threshold": 0.0,
+          "distortion": "fixed_zero",
+          "input": "pinned_consensus_loess_points",
+          "min_frames": 5,
+          "principal_point": "fixed",
+          "reprojection_px": 20.0,
+          "requires_court_lines": false
+        },
+        "composition": "decode_then_ba",
+        "decoding": {
+          "coordinate_correction": "affine",
+          "method": "quadratic_logit",
+          "model_stride": 4,
+          "offset_xy": [
+            -0.0013464178797410453,
+            -0.0022516805393959153
+          ],
+          "patch_size": 3,
+          "scale_xy": [
+            1.0031469720321813,
+            1.0018819231001146
+          ],
+          "temperature": 1.0
+        },
+        "fold_policy": "decode, threshold/gate, consensus/LOESS then BA inside the same fold"
+      },
+      "folds": [
+        "all_views",
+        "without_cam0",
+        "without_cam1",
+        "without_cam2"
+      ],
+      "input_bundle_sha256": "7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a",
+      "kind": "composition",
+      "name": "selected_affine_ba",
+      "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1/results/selected_affine_ba",
+      "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+    }
+  ],
+  "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/integrated_comparison_v1",
+  "reference_sha256": "dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09",
+  "resource_policy": {
+    "gpu": false,
+    "method_workers": 1,
+    "pytest_workers_max": 2,
+    "video_streaming": true
+  },
+  "schema": "ball3d_integrated_execution_plan.v1",
+  "selection": "Use each child front-half selection/calibration unchanged. Do not refit any settings.",
+  "source_manifest_sha256": {
+    "candidate_gmm_v2": "46ecf147cb52139fb6cdf81a5da82f7fb0d94403e4d63c19e2abdfad179136b5",
+    "court_ball_ba_v2": "419ed1b05e4f52747155691e8c4027263d9214f56de319155e62b7e21301fe37",
+    "dense_likelihood_v2": "3b53a53ff5ca34bfdb6c4c764039bf1e3fe8eb3a4ea20b2a363f2fd6d97c9d6c",
+    "error_decomposition_v2": "f13a2be8ca868b86eeee6efc9e5d9c805edbf75832228e728ff5db04f7fa6926",
+    "foundation_v2": "4de8e6156b4cfa3d01ddd6231f4ba58725bd0231881ed93ba5d9b8f44f9af761",
+    "heatmap_decoding_v4": "c0a523ff8e1692fef8c714463ba3277dc976b353680eedb4af6221afef83c4cb",
+    "segment_physics_offset_v3": "74dc43a3eb71598e3e95bd9ee4ec1effa8c1a97e739a0eb6b4732c922884d61e",
+    "topk_multihypothesis_v2": "1907104f5ca83aecff16c06b120e66c1810c781f577648c839ba8beded02563d"
+  }
+}

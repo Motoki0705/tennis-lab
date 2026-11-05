@@ -1,0 +1,3 @@
+Predicting all-view and LOVO before reading ground truth
+Predictions saved/reloaded; baseline arrays match foundation; reading scoring reference
+{"output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/court_ball_ba_v2", "artifacts_sha256": "419ed1b05e4f52747155691e8c4027263d9214f56de319155e62b7e21301fe37", "elapsed_seconds": 210.0144026039634}

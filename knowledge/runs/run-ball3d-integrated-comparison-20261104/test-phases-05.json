@@ -1,0 +1,1038 @@
+{
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015953619731590152
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031861700117588043
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037783797597512603
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017070580506697297
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035657110274769366
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003510000533424318
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001459791965316981
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003460323961917311
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004031359567306936
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015466749900951982
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034105429658666253
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035124795977026224
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[data-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015349960303865373
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034280759864486754
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040146399987861514
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020676720305345953
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035464430111460388
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040125701343640685
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002066154032945633
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003806563967373222
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00044131098547950387
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017584610031917691
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004199135990347713
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004272780497558415
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[external_asset-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016781860031187534
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038373980205506086
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003706709831021726
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016357050044462085
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032580079860053957
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004101790254935622
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021675439784303308
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004065993009135127
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00038411602145060897
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017400180222466588
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004028191033285111
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042220897739753127
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[output-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015369579778052866
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031832680106163025
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034674600465223193
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015664179809391499
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003243345010560006
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003330530016683042
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001595164998434484
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003159837971907109
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033774098847061396
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014660910237580538
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003253299044445157
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033185601932927966
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[project-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016286420286633074
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033475550008006394
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003377519897185266
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_input_requires_explicit_role_root_permission": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001806435000617057
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002942032995633781
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003506600041873753
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_are_opt_in_and_keep_output_contained": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0053617790108546615
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002998123993165791
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003259189543314278
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[artifact-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0013803759939037263
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032036519842222333
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032942905090749264
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[data-input]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016667249728925526
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032445639953948557
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003703000256791711
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_independent_artifact_inputs_cannot_expand_other_authorities[output-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015710860025137663
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004135135968681425
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000348842004314065
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_checks_input_existence_and_kind": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.006336446036584675
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003157990984618664
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000334343989379704
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-invalid2-non-empty sequence]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00524925603531301
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003320540999993682
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004298489657230675
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[assets-one.bin-non-empty sequence]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.004852822981774807
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032684269826859236
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034291500924155116
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-invalid1-exactly str or pathlib.Path]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.005130168050527573
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004960223042871803
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003471279633231461
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_invalid_path_shapes[source-relative/source.json-explicit absolute]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.005037357972469181
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003604639961849898
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036023103166371584
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0056552839814685285
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004235617991071194
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004371289978735149
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_missing_and_unknown_keys[arguments1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.005000523990020156
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034041929757222533
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00047275295946747065
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_rejects_wrong_role_root_and_duplicate_paths": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.007024538004770875
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00342106499010697
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035197101533412933
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_non_hydra_boundary_returns_typed_role_aware_paths": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.005186092981602997
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031095719896256924
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00030866399174556136
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_only_optional_boundary_can_return_an_empty_mapping": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.004696403979323804
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003591381013393402
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00031759595731273293
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_optional_boundary_paths_are_omitted_without_synthesizing_values": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0059570089797489345
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002933174022473395
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036346400156617165
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_project_source_child_remains_explicit_and_role_contained": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017693859990686178
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004109289962798357
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00048581603914499283
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[external_asset/work-the name of the external_asset path role]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014003870310261846
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003386224969290197
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003408190095797181
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[outputs/legacy-a legacy root directory name]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014842439559288323
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003526492975652218
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037134200101718307
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_reserved_prefix_error_names_why_the_prefix_is_reserved[slcs/precompute/run-basename of the configured output_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015007969923317432
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034616769989952445
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033046200405806303
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[ ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002069281996227801
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004034882003907114
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00044370698742568493
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[..]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003288159961812198
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005956472014077008
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006906010094098747
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002871022035833448
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0041958329966291785
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006916840211488307
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0022981989895924926
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004183328012004495
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005097819957882166
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_blank_root_and_escape_children[nested/../..]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0037654050393030047
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.006101334001868963
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006625859532505274
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_beneath_rejects_parent_from_another_role": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003219253965653479
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0053668280015699565
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006124640349298716
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_preserves_venv_launcher_but_contains_parent": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.008005731971934438
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005560480989515781
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006962079787626863
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_resolve_symlink_entry_rejects_parent_symlink_escape": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.005053589993622154
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004946344008203596
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005031630280427635
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006751319742761552
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031736859818920493
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003297600196674466
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006427610060200095
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003163937944918871
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033302302472293377
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[artifact_root-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007105600088834763
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003414332983084023
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036308198468759656
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0009176789899356663
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003112587030045688
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003288199659436941
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007964930264279246
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031633489998057485
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033427198650315404
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[cache_root-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007970000151544809
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031314209918491542
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004902559448964894
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005741339991800487
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031834649853408337
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033138098660856485
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005775209865532815
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031647230498492718
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033454096410423517
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[checkpoint_root-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005927309975959361
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003308821003884077
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039901596028357744
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006791700143367052
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032880870276130736
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034299801336601377
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005077790119685233
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032813549623824656
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033341505331918597
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[data_root-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000511982012540102
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003471889009233564
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003672529710456729
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0008185600163415074
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003275231982115656
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003691530437208712
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0008147390326485038
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032118819653987885
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003279519733041525
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[external_asset_root-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0009214890305884182
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003156266000587493
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039835600182414055
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000825477996841073
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031166960252448916
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003378030378371477
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007276599644683301
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003211706003639847
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003794790245592594
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[output_root-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000715848000254482
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003410417994018644
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041758199222385883
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004474869929254055
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00326573196798563
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042026699520647526
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004760989686474204
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031389599898830056
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003376590320840478
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_blank_strings[project_root-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005603080498985946
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003197818004991859
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034149002749472857
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[artifact_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001064307987689972
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0030954050016589463
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032253097742795944
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[cache_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001331595005467534
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003149637021124363
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003288510488346219
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[checkpoint_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001000163028948009
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003212170966435224
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003632460138760507
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[data_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0009941949974745512
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0030455199885182083
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003283449914306402
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[external_asset_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0011915960349142551
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003159858984872699
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035764003405347466
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[output_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001171666954178363
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031233569607138634
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037370703648775816
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_filesystem_root_authority[project_root]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007943660020828247
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0030368160223588347
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032826297683641315
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_runtime_roots_reject_unresolved_absolute_values": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006636090110987425
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003167375980410725
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037564901867881417
+    }
+  }
+}

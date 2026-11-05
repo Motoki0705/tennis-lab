@@ -1,0 +1,7 @@
+Injected prior upstream module: _tennis_lab_third_party_dino_models.dino.ops.functions.ms_deform_attn_func
+.                                                                        [100%]
+============================== slowest durations ===============================
+0.02s setup    tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch
+0.01s call     tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch
+0.00s teardown tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch
+1 passed in 12.15s

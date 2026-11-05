@@ -1,0 +1,43 @@
+{
+  "pre_fix_commit": "2adc9293b2ab8842809dcce80c58a55719a22525",
+  "field_count": 16,
+  "old_python_defaults": {
+    "top_k": 8,
+    "max_hypotheses": 24,
+    "beam_width": 96,
+    "max_missing_frames": 3,
+    "reprojection_px": 20.0,
+    "reprojection_sigma_px": 6.0,
+    "score_weight": 1.0,
+    "missing_view_cost": 1.5,
+    "missing_frame_cost": 3.0,
+    "restart_cost": 2.0,
+    "max_speed_mps": 65.0,
+    "speed_scale_mps": 35.0,
+    "speed_weight": 0.1,
+    "acceleration_scale_mps2": 250.0,
+    "acceleration_weight": 1.0,
+    "turn_cost_cap": 3.0
+  },
+  "composed_yaml_values": {
+    "top_k": 8,
+    "max_hypotheses": 24,
+    "beam_width": 96,
+    "max_missing_frames": 3,
+    "reprojection_px": 20.0,
+    "reprojection_sigma_px": 6.0,
+    "score_weight": 1.0,
+    "missing_view_cost": 1.5,
+    "missing_frame_cost": 3.0,
+    "restart_cost": 2.0,
+    "max_speed_mps": 65.0,
+    "speed_scale_mps": 35.0,
+    "speed_weight": 0.1,
+    "acceleration_scale_mps2": 250.0,
+    "acceleration_weight": 1.0,
+    "turn_cost_cap": 3.0
+  },
+  "all_values_equal": true,
+  "yaml_min_frames": 5,
+  "topk_in_source_declarations_before": false
+}

@@ -1,0 +1,31 @@
+{
+  "preview_frames": [
+    0,
+    252,
+    505,
+    757,
+    1009
+  ],
+  "extreme_frames": [
+    765,
+    764,
+    581,
+    580,
+    980,
+    981
+  ],
+  "inspected": [
+    "paired-metrics-table.png",
+    "trajectories.png",
+    "extremes.png"
+  ],
+  "observations": [
+    "Reference observed crosses and estimated diamonds remain distinct from method rings.",
+    "Missing predictions at representative frames remain absent.",
+    "Excluded cam0 extrapolation and unknown cam1 at frame 1009 have no ground-truth marker.",
+    "Methods overlap closely; large held-out errors remain at extreme frames."
+  ],
+  "video_methods": 6,
+  "all_conditions_in_main_metrics": 33,
+  "source_artifacts_manifest_sha256": "c0a523ff8e1692fef8c714463ba3277dc976b353680eedb4af6221afef83c4cb"
+}

@@ -1,0 +1,76 @@
+{
+  "collected": 122,
+  "passed": 122,
+  "new_cases": 25,
+  "reused_cases": 97,
+  "collection_seconds": 6.22,
+  "pytest_elapsed_seconds": 34.74,
+  "new_nodes": [
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_subpixel_multiview_recovery_beats_bilinear_lattice_lock",
+      "count": 6,
+      "case_seconds_sum": 1.075,
+      "case_seconds_max": 0.29
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_one_corrupt_view_cannot_veto_two_consistent_views",
+      "count": 2,
+      "case_seconds_sum": 0.157,
+      "case_seconds_max": 0.082
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_saturation_is_finite_missing_support_does_not_create_3d_and_outside_is_background",
+      "count": 1,
+      "case_seconds_sum": 0.046,
+      "case_seconds_max": 0.046
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_objective_gradient_in_metres_and_camera_keyed_temperature",
+      "count": 1,
+      "case_seconds_sum": 0.094,
+      "case_seconds_max": 0.094
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_coarse_search_needs_no_candidate_seed_and_candidate_mode_has_no_fallback",
+      "count": 1,
+      "case_seconds_sum": 0.186,
+      "case_seconds_max": 0.186
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_acceleration_prior_reduces_flight_jitter_and_preserves_gap_and_turn_boundaries",
+      "count": 1,
+      "case_seconds_sum": 2.142,
+      "case_seconds_max": 2.142
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_temporal_optimization_does_not_smooth_across_a_detected_impact_or_fill_a_gap",
+      "count": 1,
+      "case_seconds_sum": 0.897,
+      "case_seconds_max": 0.897
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_invalid_dense_config_is_rejected",
+      "count": 8,
+      "case_seconds_sum": 0.024,
+      "case_seconds_max": 0.003
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_default_pipeline_matches_main_fixed_arrays",
+      "count": 1,
+      "case_seconds_sum": 2.501,
+      "case_seconds_max": 2.501
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_config_definition_component_codec_and_lovo_share_dense_algorithm",
+      "count": 1,
+      "case_seconds_sum": 1.582,
+      "case_seconds_max": 1.582
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_dense_likelihood.py::test_dense_config_fails_before_pipeline_execution",
+      "count": 2,
+      "case_seconds_sum": 0.244,
+      "case_seconds_max": 0.13
+    }
+  ]
+}

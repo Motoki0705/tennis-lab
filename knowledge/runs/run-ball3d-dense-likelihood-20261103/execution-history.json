@@ -1,0 +1,21 @@
+{
+  "prediction_commit": "6cc07b2ea708f3e636479c7d8fe9c4d113f5d854",
+  "report_commit": "43dd9f4f6f1cb6a3da64e11a694d9d81de9d6d58",
+  "v1": {
+    "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v1",
+    "status": "predictions and scores complete; slice JSON failed on occlusion NaN before video/HTML",
+    "wall_seconds": 1512.91,
+    "max_rss_kib": 1026484,
+    "exit_status": 1
+  },
+  "v2": {
+    "output": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2",
+    "status": "success; pinned selection and all 28 method predictions reused without refitting",
+    "wall_seconds": 235.62,
+    "max_rss_kib": 1187744,
+    "exit_status": 0
+  },
+  "scores_equal_except_runtime": true,
+  "partial_inventory_sha256": "cfd64418cc880d8cfa401928f857d154d1e6d3ac49e7bc0f63ae09560a16f4d3",
+  "prediction_code_changes_after_v1": []
+}

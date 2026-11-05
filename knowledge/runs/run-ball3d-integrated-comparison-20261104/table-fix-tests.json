@@ -1,0 +1,113 @@
+{
+  "collection": {
+    "count": 3,
+    "exit_code": 0,
+    "nodes": [
+      "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured",
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera",
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy"
+    ],
+    "phases": {},
+    "pytest_arguments": [
+      "--verbose",
+      "--import-mode=importlib",
+      "-n",
+      "auto",
+      "--strict-markers",
+      "--disable-warnings",
+      "-n",
+      "0",
+      "--collect-only",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py",
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py"
+    ],
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "thread_limits": {
+      "MKL_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1"
+    },
+    "wrapper_seconds": 6.39049109298503
+  },
+  "distinct_total_with_primary_suite": 795,
+  "new_cases": 1,
+  "pytest_summary": [
+    "3 passed",
+    "10.27"
+  ],
+  "reused_cases": 2,
+  "run": {
+    "count": 3,
+    "exit_code": 0,
+    "nodes": [
+      "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured",
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera",
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy"
+    ],
+    "phases": {
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera": {
+        "call": {
+          "outcome": "passed",
+          "seconds": 0.5999975900049321
+        },
+        "setup": {
+          "outcome": "passed",
+          "seconds": 0.007558770943433046
+        },
+        "teardown": {
+          "outcome": "passed",
+          "seconds": 0.0006158510223031044
+        }
+      },
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy": {
+        "call": {
+          "outcome": "passed",
+          "seconds": 0.025973222975153476
+        },
+        "setup": {
+          "outcome": "passed",
+          "seconds": 0.004517657042015344
+        },
+        "teardown": {
+          "outcome": "passed",
+          "seconds": 0.0005467199953272939
+        }
+      },
+      "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured": {
+        "call": {
+          "outcome": "passed",
+          "seconds": 0.011881012003868818
+        },
+        "setup": {
+          "outcome": "passed",
+          "seconds": 0.005385122029110789
+        },
+        "teardown": {
+          "outcome": "passed",
+          "seconds": 0.00044459401397034526
+        }
+      }
+    },
+    "pytest_arguments": [
+      "--verbose",
+      "--import-mode=importlib",
+      "-n",
+      "auto",
+      "--strict-markers",
+      "--disable-warnings",
+      "-n",
+      "2",
+      "--durations=0",
+      "--durations-min=0",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py",
+      "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py"
+    ],
+    "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+    "thread_limits": {
+      "MKL_NUM_THREADS": "1",
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1"
+    },
+    "wrapper_seconds": 12.220065305009484
+  }
+}

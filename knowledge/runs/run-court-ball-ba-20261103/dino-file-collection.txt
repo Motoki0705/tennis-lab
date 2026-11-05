@@ -1,0 +1,29 @@
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu]
+tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error
+tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[unset]
+tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[relative]
+tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[missing]
+tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[not_binary]
+tests/unit/submodules/models/dino/test_extension.py::test_different_cached_binary_is_rejected
+tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[selected]
+tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[other]
+tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[atomic_replace]
+tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[in_place]
+tests/unit/submodules/models/dino/test_extension.py::test_removed_cached_module_cannot_be_reimported
+tests/unit/submodules/models/dino/test_extension.py::test_binary_changed_during_import_requires_fresh_process
+tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[False]
+tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[True]
+tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch
+tests/unit/submodules/models/dino/test_extension.py::test_build_rejects_existing_binary_before_build
+
+27 tests collected in 8.80s
