@@ -269,6 +269,19 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
 })
 
 
+def pipeline_asset_configuration(
+    cfg: DictConfig,
+) -> tuple[Mapping[str, object], RuntimePathRoots, PathResolver]:
+    """Validate structure and root authorities without resolving asset children.
+
+    Installation diagnostics must be able to reject each child independently.
+    This does not construct an executable runtime configuration.
+    """
+    value = _PIPELINE_SCHEMA.validate(_plain(cfg))
+    roots, resolver = _roots(value["paths"])
+    return value, roots, resolver
+
+
 @dataclass(frozen=True, slots=True)
 class PipelineRuntimeConfig:
     """Automatic stage configuration; dataset callers can leave run inputs unbound."""
@@ -310,8 +323,7 @@ class PipelineRuntimeConfig:
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
-        value = _PIPELINE_SCHEMA.validate(_plain(cfg))
-        roots, resolver = _roots(value["paths"])
+        value, roots, resolver = pipeline_asset_configuration(cfg)
         raw_videos = _sequence(value["video_paths"], name="video_paths") if bind_inputs else ()
         raw_cameras = _sequence(value["camera_ids"], name="camera_ids") if bind_inputs else ()
         if bind_inputs and (not 3 <= len(raw_videos) <= 5 or len(raw_videos) != len(raw_cameras)):

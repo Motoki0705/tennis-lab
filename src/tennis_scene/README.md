@@ -25,6 +25,8 @@ reference未指定時は校正可能camera IDの辞書順先頭を選びます�
 既定の配布名は配置規約であり、重みを自動取得・自動選定する処理はありません。
 有効な機能が参照するcheckpointが欠けていれば、実行前のdefinition構築時に停止します。
 
+DINO binaryの選択は[導入案内](../../docs/installation/README.ja.md#dino-cuda-extension)に従います。
+
 ```bash
 # GPU実行は、このコマンドを共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
@@ -104,6 +106,8 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 
 ## 他の入口
 
+- [evaluation](evaluation/README.md): 固定入力でのball 3D CPU replay・LOVO採点・比較可視化。
+- [ground_truth](ground_truth/README.md): 人間提供の評価用正解の厳格な reader（再構成入力への接続なし）。
 - [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。
 - [clip_studio](clip_studio/README.md): 同期・ラリーclip切り出し。
 - [motion_alignment](motion_alignment/README.md): COCO17への身体配置。

@@ -285,7 +285,7 @@ _BOUNDARY_VALIDATOR_CALLABLES: Mapping[str, str] = {
     "src.tennis_scene.scripts.export_blender_rays": "src.tennis_scene.visualization.blender.export.rays_configuration.validate_rays_boundary",
     "src.tennis_scene.scripts.generate_dataset": "src.tennis_scene.configuration.validate_generate_dataset_boundary",
     "src.tennis_scene.scripts.run_pipeline": "src.tennis_scene.configuration.validate_pipeline_boundary",
-    "src.tennis_scene.scripts.preflight": "src.tennis_scene.configuration.validate_pipeline_boundary",
+    "src.tennis_scene.scripts.preflight": "src.tennis_scene.scripts.preflight.validate_preflight_boundary",
     "src.tennis_scene.scripts.visualization": "src.tennis_scene.configuration.validate_visualization_boundary",
     "src.tennis_scene.scripts.visualize_tasks": "src.tennis_scene.configuration.validate_visualize_tasks_boundary",
 }

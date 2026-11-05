@@ -167,3 +167,42 @@ def test_vitpose_frame_sequence_shares_udp_and_batches_multiple_people(
     model.batch_size = 1
     other = model.predict(Pose2DFrameSequenceRequest(frames(), boxes, indices)).keypoints
     torch.testing.assert_close(result, other, rtol=0, atol=0)
+
+
+def test_vitpose_batch_progress_can_be_disabled_without_changing_prediction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str],
+) -> None:
+    class Network(torch.nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.batch_sizes: list[int] = []
+
+        def forward(self, images: torch.Tensor) -> torch.Tensor:
+            self.batch_sizes.append(len(images))
+            return torch.zeros((len(images), 17, 1, 1))
+
+    def get_batch(path, boxes, *, img_ds):
+        return torch.zeros((len(boxes), 3, 1, 256)), boxes
+
+    def decode(*, heatmaps, center, scale, use_udp):
+        return np.repeat(center[:, None, :], 17, axis=1), np.full((len(center), 17, 1), .75, np.float32)
+
+    monkeypatch.setattr(pose2d_module, 'get_batch', get_batch)
+    monkeypatch.setattr(pose2d_module, 'keypoints_from_heatmaps', decode)
+    boxes = torch.tensor([[20., 30., 10.], [50., 40., 20.]])
+    request = Pose2DRequest(tmp_path / 'unused.mp4', boxes)
+
+    def predict(**options):
+        model = ViTPosePose2D(tmp_path / 'unused.ckpt', device='cpu', flip_test=False,
+                             batch_size=1, head_config=_head_config(), **options)
+        network = Network()
+        model._pose, model._loaded = network, True
+        return model.predict(request).keypoints, network.batch_sizes
+
+    visible, visible_batches = predict()
+    assert 'ViTPose:' in capsys.readouterr().err
+    silent, silent_batches = predict(show_progress=False)
+    assert capsys.readouterr().err == ''
+    assert visible_batches == silent_batches == [1, 1]
+    torch.testing.assert_close(visible, silent, rtol=0, atol=0)
+    torch.testing.assert_close(silent[:, 0, :2], boxes[:, :2], rtol=0, atol=0)

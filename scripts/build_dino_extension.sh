@@ -3,7 +3,7 @@
 #
 # Usage (from the root of the checkout to build): build_dino_extension.sh <asset_root> <output_dir>
 #   <asset_root>  root whose third_party/DINO submodule is initialized
-#   <output_dir>  receives lib/ (put it on PYTHONPATH), temp/ and cache/
+#   <output_dir>  receives lib/, temp/ and cache/; select the binary explicitly
 #
 # The code (setup.py and the ops build contract) is the git checkout of the
 # current directory, so knowledge run bundles can carry a copy of this script.
@@ -18,6 +18,13 @@ code_root="$(git rev-parse --show-toplevel)"
 asset_root="$(cd "$1" && pwd)"
 mkdir -p "$2"
 output="$(cd "$2" && pwd)"
+shopt -s nullglob
+existing=("$output/lib/"MultiScaleDeformableAttention*.so)
+shopt -u nullglob
+if (( ${#existing[@]} )); then
+    echo "DINO binary already exists in $output/lib; choose a new build output directory" >&2
+    exit 1
+fi
 python="${code_root}/.venv/bin/python"
 : "${CUDA_HOME:?Set CUDA_HOME to your CUDA 13 toolkit (see docs/installation/README.md)}"
 : "${TORCH_CUDA_ARCH_LIST:?Set TORCH_CUDA_ARCH_LIST for your GPU (see docs/installation/README.md)}"
@@ -71,7 +78,8 @@ CUDA_VISIBLE_DEVICES="" TENNIS_LAB_BUILD_CUDA_OPS=1 TENNIS_LAB_CUDA_OPS_BUILD_TA
     TENNIS_LAB_DINO_OPS_BUILD_CONFIG="$config" \
     "$python" setup.py build_ext --build-lib "$output/lib" --build-temp "$output/temp" --force \
     egg_info --egg-base "$output"
-test -f "$output/lib/MultiScaleDeformableAttention"*.so
-CUDA_VISIBLE_DEVICES="" PYTHONPATH="$output/lib" "$python" -c \
+test -f "$output/lib/MultiScaleDeformableAttention.so"
+CUDA_VISIBLE_DEVICES="" PYTHONPATH="$output/lib" \
+    TENNIS_LAB_DINO_EXTENSION="$output/lib/MultiScaleDeformableAttention.so" "$python" -c \
     'from src.submodules.models import validate_dino_extension; print(validate_dino_extension())'
-echo "[build_dino_extension] built $(ls "$output/lib"/MultiScaleDeformableAttention*.so)"
+echo "[build_dino_extension] built $output/lib/MultiScaleDeformableAttention.so"

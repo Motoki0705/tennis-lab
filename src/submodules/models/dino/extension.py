@@ -2,10 +2,117 @@
 
 from __future__ import annotations
 
-import importlib
+import importlib.machinery
+import importlib.util
+import os
+import sys
 from pathlib import Path
+from threading import RLock
+from types import ModuleType
 
 import torch
+
+from src.utils.checksum import FileIntegrityError, dual_sha256
+
+_MODULE = "MultiScaleDeformableAttention"
+_SELECTION = "TENNIS_LAB_DINO_EXTENSION"
+_LOAD_LOCK = RLock()
+_FileIdentity = tuple[int, int, int, int, int, str]
+_LOADED: dict[ModuleType, tuple[Path, _FileIdentity]] = {}
+_LOAD_ATTEMPTED = False
+_REBUILD = (
+    "Follow docs/installation/README.md#dino-cuda-extension to rebuild with "
+    "scripts/build_dino_extension.sh and set TENNIS_LAB_DINO_EXTENSION to its binary."
+)
+
+
+def _file_identity(path: Path) -> _FileIdentity:
+    """Record file identity and bytes, rejecting changes while reading."""
+    def metadata() -> tuple[int, int, int, int, int]:
+        stat = path.stat()
+        return stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns
+
+    try:
+        before = metadata()
+        digest = dual_sha256(path)
+        after = metadata()
+    except (OSError, FileIntegrityError) as error:
+        raise RuntimeError(f"Cannot verify DINO binary {path}; start a fresh process. {_REBUILD}") from error
+    if before != after:
+        raise RuntimeError(f"DINO binary {path} changed during verification; start a fresh process")
+    return (*before, digest)
+
+
+def load_dino_extension() -> ModuleType:
+    """Load the explicitly selected binary under the name used by upstream DINO.
+
+    Loading from a file bypasses cwd/PYTHONPATH shadowing. Never replace a cached
+    module: upstream code could already hold a reference to it. An extension
+    imported outside this loader has no verified identity and is rejected.
+    """
+    global _LOAD_ATTEMPTED
+    selected = os.environ.get(_SELECTION)
+    if not selected:
+        raise RuntimeError(f"Set {_SELECTION} to the absolute DINO binary path. {_REBUILD}")
+    path = Path(selected)
+    if not path.is_absolute():
+        raise RuntimeError(f"{_SELECTION} must be an absolute binary path: {path}")
+    try:
+        path = path.resolve(strict=True)
+    except OSError as error:
+        raise RuntimeError(f"DINO extension selected by {_SELECTION} does not exist: {path}. {_REBUILD}") from error
+    if not path.is_file() or not path.name.endswith(tuple(importlib.machinery.EXTENSION_SUFFIXES)):
+        raise RuntimeError(f"DINO extension selected by {_SELECTION} is not a binary file: {path}. {_REBUILD}")
+
+    with _LOAD_LOCK:
+        if _MODULE in sys.modules:
+            cached = sys.modules[_MODULE]
+            loaded = _LOADED.get(cached) if isinstance(cached, ModuleType) else None
+            if loaded is None:
+                # A foreign native module can remain mapped after its Python
+                # entry is removed; no later import is safe in this process.
+                _LOAD_ATTEMPTED = True
+            cached_file = getattr(cached, "__file__", None)
+            if not isinstance(cached, ModuleType) or cached_file is None or Path(cached_file).resolve() != path:
+                raise RuntimeError(
+                    f"DINO extension already loaded from {cached_file!r}; "
+                    f"{_SELECTION} selects {path}. Start a fresh process."
+                )
+            if loaded is None:
+                raise RuntimeError(
+                    f"DINO extension already loaded from {path} without a verified identity; start a fresh process"
+                )
+            if loaded != (path, _file_identity(path)):
+                raise RuntimeError(f"DINO binary {path} changed since import; start a fresh process")
+            return cached
+
+        # CPython/dlopen can retain the native library even after sys.modules
+        # is cleared; re-importing the same path may silently reuse old code.
+        if _LOAD_ATTEMPTED:
+            raise RuntimeError("DINO extension load was already attempted and its module entry is absent; start a fresh process")
+        expected_identity = _file_identity(path)
+        extension: ModuleType | None = None
+        _LOAD_ATTEMPTED = True
+        try:
+            spec = importlib.util.spec_from_file_location(_MODULE, path)
+            if spec is None or spec.loader is None:
+                raise ImportError(f"No extension loader for {path}")
+            extension = importlib.util.module_from_spec(spec)
+            sys.modules[_MODULE] = extension
+            spec.loader.exec_module(extension)
+            loaded_file = getattr(extension, "__file__", None)
+            if loaded_file is None or Path(loaded_file).resolve() != path:
+                raise RuntimeError(f"DINO extension resolved to {loaded_file!r}, expected {path}")
+            if _file_identity(path) != expected_identity:
+                raise RuntimeError(f"DINO binary {path} changed during import; start a fresh process")
+            _LOADED[extension] = (path, expected_identity)
+            return extension
+        except BaseException as error:
+            if extension is not None and sys.modules.get(_MODULE) is extension:
+                sys.modules.pop(_MODULE, None)
+            if isinstance(error, (ImportError, OSError)):
+                raise RuntimeError(f"Cannot import DINO extension {path}. {_REBUILD}") from error
+            raise
 
 
 def validate_dino_extension() -> Path:
@@ -16,16 +123,8 @@ def validate_dino_extension() -> Path:
     importing an old binary alone does not. This is NOT a CUDA kernel test.
     No extension is built, searched for elsewhere, or substituted on failure.
     """
-    rebuild = (
-        "Follow docs/installation/README.md#dino-cuda-extension to rebuild with "
-        "scripts/build_dino_extension.sh and select its lib explicitly via PYTHONPATH."
-    )
-    try:
-        extension = importlib.import_module("MultiScaleDeformableAttention")
-    except (ImportError, OSError) as error:
-        raise RuntimeError(f"Cannot import the DINO CUDA extension. {rebuild}") from error
-    if extension.__file__ is None:
-        raise RuntimeError("DINO extension must have a concrete binary path")
+    extension = load_dino_extension()
+    assert extension.__file__ is not None  # Checked by load_dino_extension.
     path = Path(extension.__file__).resolve(strict=True)
     # Valid minimal shapes ensure that only the deliberate CPU rejection is
     # accepted; unrelated errors and unexpected CPU implementations fail closed.
@@ -38,7 +137,7 @@ def validate_dino_extension() -> Path:
     for entry, tail in (("forward", ()), ("backward", (gradient,))):
         function = getattr(extension, f"ms_deform_attn_{entry}", None)
         if not callable(function):
-            raise RuntimeError(f"DINO extension {path} has no {entry} entry point. {rebuild}")
+            raise RuntimeError(f"DINO extension {path} has no {entry} entry point. {_REBUILD}")
         try:
             function(value, shapes, starts, locations, weights, *tail, 1)
         except RuntimeError as error:
@@ -46,7 +145,7 @@ def validate_dino_extension() -> Path:
                 continue
             raise RuntimeError(
                 f"DINO extension {path} failed CPU {entry} dispatch with PyTorch "
-                f"{torch.__version__}: {error}. {rebuild}"
+                f"{torch.__version__}: {error}. {_REBUILD}"
             ) from error
-        raise RuntimeError(f"DINO extension {path} unexpectedly accepted CPU {entry}. {rebuild}")
+        raise RuntimeError(f"DINO extension {path} unexpectedly accepted CPU {entry}. {_REBUILD}")
     return path

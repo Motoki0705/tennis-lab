@@ -21,6 +21,8 @@ import torch
 from numpy.typing import NDArray
 from torchvision.transforms import functional as transform_functional
 
+from src.submodules.models.dino.extension import load_dino_extension
+
 # The released COCO checkpoint predicts person at class id 1. Fine-tuned
 # player checkpoints keep the 91-way head and reuse this id for "player".
 COCO_PERSON_CLASS_ID = 1
@@ -126,16 +128,7 @@ def build_dino(
     repository: Path, args: DinoConfig
 ) -> tuple[torch.nn.Module, torch.nn.Module]:
     """Build the official model and its training criterion (unloaded weights)."""
-    try:
-        build_function = load_dino_build_function(repository)
-    except ModuleNotFoundError as error:
-        if error.name == "MultiScaleDeformableAttention":
-            raise RuntimeError(
-                "DINO CUDA extension is not installed. Follow "
-                "docs/installation/README.md#dino-cuda-extension "
-                "to run scripts/build_dino_extension.sh and select its lib via PYTHONPATH."
-            ) from error
-        raise
+    build_function = load_dino_build_function(repository)
     model, criterion, _ = build_function(args)
     if not isinstance(model, torch.nn.Module) or not isinstance(
         criterion, torch.nn.Module
@@ -161,6 +154,7 @@ def load_dino_state_dict(checkpoint: Path) -> dict[str, torch.Tensor]:
 def load_dino_build_function(repository: Path) -> Callable[[Any], tuple[Any, ...]]:
     """Load official DINO without modifying or copying its source tree."""
     models_init, util_init = validate_dino_repository(repository)
+    extension = load_dino_extension()
     _load_dino_util_package(util_init)
 
     module = sys.modules.get(_DINO_MODELS_PACKAGE)
@@ -190,6 +184,12 @@ def load_dino_build_function(repository: Path) -> Callable[[Any], tuple[Any, ...
                 "DINO models are already imported from a different repository: "
                 f"{loaded_file!r}"
             )
+
+    # A previously imported upstream function can retain its own module
+    # reference even if somebody removed/replaced the sys.modules entry.
+    functions = sys.modules.get(f"{_DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func")
+    if functions is not None and getattr(functions, "MSDA", None) is not extension:
+        raise RuntimeError("DINO functions already reference a different extension; start a fresh process")
 
     build_dino_function = getattr(module, "build_dino", None)
     if not callable(build_dino_function):

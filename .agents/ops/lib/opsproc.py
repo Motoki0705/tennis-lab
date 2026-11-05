@@ -20,6 +20,7 @@ import subprocess
 import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import TextIO
 
 LOG = logging.getLogger("opsproc")
 DEFAULT_TERM_GRACE_SECONDS = 5.0
@@ -196,6 +197,8 @@ def run_process_group(
     timeout: float | None,
     env: Mapping[str, str] | None = None,
     term_grace: float = DEFAULT_TERM_GRACE_SECONDS,
+    stdout_file: TextIO | None = None,
+    stdin_file: TextIO | None = None,
 ) -> str:
     """Run ``cmd`` in its own process group and return stdout.
 
@@ -203,13 +206,17 @@ def run_process_group(
     killing only the direct child on timeout would leave them running. On timeout,
     error or exit, the whole group is terminated (SIGTERM, then SIGKILL after
     ``term_grace`` seconds) and reaped.
+    If ``stdout_file`` is supplied, stream directly to that caller-owned file
+    and return an empty string; partial output survives errors and timeouts.
+    ``stdin_file`` provides caller-owned input without a large argv or pipe write.
     """
     try:
         proc = subprocess.Popen(
             list(cmd),
             cwd=cwd,
             text=True,
-            stdout=subprocess.PIPE,
+            stdin=stdin_file,
+            stdout=subprocess.PIPE if stdout_file is None else stdout_file,
             stderr=subprocess.PIPE,
             start_new_session=True,
             env=None if env is None else dict(env),
@@ -235,4 +242,4 @@ def run_process_group(
         raise CommandError(
             f"{shlex.join(cmd)} exited {proc.returncode}: {stderr.strip()}"
         )
-    return stdout
+    return stdout or ""

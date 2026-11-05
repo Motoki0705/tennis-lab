@@ -11,12 +11,27 @@ import logging
 from omegaconf import DictConfig
 
 from src.tennis_scene.configuration import validate_pipeline_boundary
+from src.tennis_scene.schema import SceneResult
 from src.utils.configuration import PathRole
 from src.utils.hydra import hydra_main, register_boundary_validator
 
 LOGGER = logging.getLogger(__name__)
 _BOUNDARY = "tennis_scene.pipeline"
 register_boundary_validator(_BOUNDARY, validate_pipeline_boundary)
+
+
+def log_pipeline_summary(result: SceneResult) -> None:
+    """Report observed 2D and valid 3D frames from their independent masks."""
+    LOGGER.info("=" * 60)
+    LOGGER.info("Pipeline Summary:")
+    LOGGER.info(f"  Frames processed: {result.num_frames}")
+    LOGGER.info(f"  FPS: {result.fps:.2f}")
+    LOGGER.info(f"  Resolution: {result.width}x{result.height}")
+    observed = "unavailable" if result.ball_vis is None else f"{int(result.ball_vis.any(axis=0).sum())}/{result.num_frames}"
+    valid = "unavailable" if result.ball_3d_valid is None else f"{int(result.ball_3d_valid.sum())}/{result.num_frames}"
+    LOGGER.info(f"  Ball 2D observed frames (>=1 view): {observed}")
+    LOGGER.info(f"  Ball 3D valid frames: {valid}")
+    LOGGER.info("=" * 60)
 
 
 @hydra_main(
@@ -61,17 +76,7 @@ def main(cfg: DictConfig) -> int:
     save_scene_result(result, runtime.output_path)
     LOGGER.info(f"Saved: {runtime.output_path}")
 
-    LOGGER.info("=" * 60)
-    LOGGER.info("Pipeline Summary:")
-    LOGGER.info(f"  Frames processed: {result.num_frames}")
-    LOGGER.info(f"  FPS: {result.fps:.2f}")
-    LOGGER.info(f"  Resolution: {result.width}x{result.height}")
-    if result.ball_3d is not None:
-        visible_ball = 0
-        if result.ball_vis is not None:
-            visible_ball = int(result.ball_vis.any(axis=0).sum())
-        LOGGER.info(f"  Ball visible frames: {visible_ball}/{result.num_frames}")
-    LOGGER.info("=" * 60)
+    log_pipeline_summary(result)
 
     return 0
 

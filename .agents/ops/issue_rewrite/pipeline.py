@@ -11,7 +11,13 @@ from pathlib import Path
 from typing import Any, TypedDict, cast
 from urllib.parse import quote
 
-from agy_headless import DEFAULT_AGY, AgyError, load_config, run_headless
+from agy_headless import (
+    DEFAULT_AGY,
+    DEFAULT_TIMEOUT,
+    AgyError,
+    load_config,
+    run_headless,
+)
 from issues.format import CHILD_LABEL, validate_body
 from issues.rewrite_state import (
     REWRITE_DONE_LABEL,
@@ -22,7 +28,13 @@ from issues.rewrite_state import (
 )
 from parent.execution import PROGRESS_SECTIONS
 
-from .github import GitHub, has_execution_record, uninterrupted
+from .github import (
+    GitHub,
+    editor_matches_login,
+    has_execution_record,
+    new_edits,
+    uninterrupted,
+)
 from .invariants import check_invariants
 from .publication import (
     diagnostic_differences,
@@ -154,7 +166,7 @@ def generate(
     *,
     run_dir: Path,
     agy: Path = DEFAULT_AGY,
-    timeout: float = 300,
+    timeout: float = DEFAULT_TIMEOUT,
     wait: Callable[[GitHub, int], dict[str, Any]] | None = None,
 ) -> Handoff:
     run_dir = run_dir.resolve()
@@ -243,6 +255,7 @@ def generate(
             sys.dont_write_bytecode = True
             try:
                 with checkout.disposable() as cwd:
+                    turn_started = time.monotonic()
                     try:
                         result = run_headless(
                             agy=agy,
@@ -252,6 +265,23 @@ def generate(
                             log_file=run_dir / f"{role}-{revision}.log",
                             timeout=timeout,
                         )
+                    except AgyError as exc:
+                        report["turns"].append(
+                            {
+                                "role": role,
+                                "revision": revision,
+                                "usage": None,
+                                "duration_seconds": None,
+                                "elapsed_seconds": time.monotonic() - turn_started,
+                                "denied_action_count": len(exc.denied_actions),
+                                **(
+                                    {"commands": exc.command_summary}
+                                    if exc.command_summary
+                                    else {}
+                                ),
+                            }
+                        )
+                        raise
                     finally:
                         checkout.verify(
                             {
@@ -272,6 +302,7 @@ def generate(
                     "duration_seconds": result.duration_seconds,
                     "elapsed_seconds": result.elapsed_seconds,
                     "denied_action_count": len(result.denied_actions),
+                    "commands": result.command_summary,
                 }
             )
             return result.structured_output
@@ -326,7 +357,14 @@ def generate(
         write_json(run_dir / "failure.json", {"reason": exc.reason})
         return outcome(bundle, "failed", exc.reason)
     except AgyError as exc:
-        write_json(run_dir / "failure.json", {"reason": exc.reason, "detail": str(exc)})
+        write_json(
+            run_dir / "failure.json",
+            {
+                "reason": exc.reason,
+                "detail": str(exc),
+                "denied_actions": exc.denied_actions,
+            },
+        )
         return outcome(bundle, "failed", f"agy_{exc.reason}")
     except (
         ValueError,
@@ -450,20 +488,68 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
     return outcome(bundle, final_label(gh, number, REWRITE_DONE_LABEL))["report"]
 
 
-def fail(gh: GitHub, number: int) -> tuple[str, str | None]:
+def failure_result(
+    current: dict[str, Any], history: dict[str, Any], bundle: Handoff | None
+) -> tuple[str, str | None]:
+    """Reconcile a failed job using complete, comparable GitHub observations."""
+    if current["body"] != history["body"]:
+        raise ValueError("write_state_unconfirmed")
+    source = bundle["source"] if bundle is not None else None
+    candidate = bundle["body"] if bundle is not None else None
+    if (
+        bundle is None
+        or bundle["status"] != "ready"
+        or source is None
+        or not isinstance(candidate, str)
+    ):
+        if any(
+            editor_matches_login(edit["editor"], history["viewer"])
+            for edit in history["edits"].values()
+        ):
+            raise ValueError("write_state_unconfirmed")
+        return "failed", None
+    before = source["history"]
+    if before["body"] != source["body"]:
+        raise ValueError("write_state_unconfirmed")
+    added = new_edits(before, history)
+    if added is None:
+        raise ValueError("write_state_unconfirmed")
+    if not added and current["body"] != source["body"]:
+        raise ValueError("write_state_unconfirmed")
+    if uninterrupted(before, history, candidate):
+        return "done", "confirmed_after_apply_error"
+    if any(editor_matches_login(edit["editor"], history["viewer"]) for edit in added):
+        return "failed", "interrupted_during_write"
+    return "failed", None
+
+
+def fail(
+    gh: GitHub, number: int, bundle: Handoff | None = None
+) -> tuple[str, str | None]:
     current = gh.issue(number)
     state = issue_state(gh, current)
     if state in {"not_target", "done", "skipped"}:
         return state, None
     comments = gh.comments(number)
+    record_error = None
     try:
         recorded = has_execution_record(
             comments, gh.repo.split("/")[0], gh.repo, number
         )
     except ValueError:
-        # Parsing failure is itself a failure, never a successful skip/rewrite.
-        return final_label(gh, number, REWRITE_FAILED_LABEL), "invalid_execution_record"
-    label = REWRITE_SKIPPED_LABEL if recorded else REWRITE_FAILED_LABEL
-    return final_label(
-        gh, number, label
-    ), "execution_record_exists" if recorded else None
+        recorded = False
+        record_error = "invalid_execution_record"
+    if recorded:
+        return final_label(gh, number, REWRITE_SKIPPED_LABEL), "execution_record_exists"
+    try:
+        status, reason = failure_result(current, gh.history(number), bundle)
+        if record_error is not None:
+            # Only failed without a reason confirms that no new edit was ours.
+            if status != "failed" or reason is not None:
+                raise ValueError("write_state_unconfirmed")
+            reason = record_error
+    except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired):
+        # No final label may release the parent gate without write-state evidence.
+        raise ValueError("write_state_unconfirmed") from None
+    label = REWRITE_DONE_LABEL if status == "done" else REWRITE_FAILED_LABEL
+    return final_label(gh, number, label), reason

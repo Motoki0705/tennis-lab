@@ -17,10 +17,10 @@ query($owner: String!, $name: String!, $number: Int!, $after: String) {
     issue(number: $number) {
       body
       createdAt
-      author { login }
+      author { __typename login }
       includesCreatedEdit
       userContentEdits(first: 100, after: $after) {
-        nodes { id editedAt deletedAt editor { login } }
+        nodes { id editedAt deletedAt editor { __typename login } }
         totalCount
         pageInfo { hasNextPage endCursor }
       }
@@ -46,6 +46,23 @@ def has_execution_record(
             if data["detail"]["disposition"] == "startable":
                 return True
     return False
+
+
+def actor_login(value: Any) -> str:
+    """Normalize a typed GraphQL actor to the REST/viewer login format."""
+    actor = object_value(value)
+    kind = nonempty(actor.get("__typename"), "actor type")
+    login = nonempty(actor.get("login"), "actor login")
+    if kind == "Bot":
+        return login + "[bot]"
+    if kind == "User":
+        return login
+    raise ValueError("unsupported_edit_history_actor_type")
+
+
+def editor_matches_login(editor: Any, login: str) -> bool:
+    """Match an edit actor to a viewer/author login using its GraphQL type."""
+    return editor is not None and actor_login(editor) == login
 
 
 class GitHub(ParentGitHub):
@@ -98,7 +115,7 @@ class GitHub(ParentGitHub):
             issue = object_value(object_value(data["repository"])["issue"])
             body = issue["body"]
             created_at = nonempty(issue["createdAt"], "issue creation time")
-            author = nonempty(object_value(issue["author"])["login"], "issue author")
+            author = actor_login(issue.get("author"))
             includes_created = issue["includesCreatedEdit"]
             connection = object_value(issue["userContentEdits"])
             total = connection["totalCount"]
@@ -124,9 +141,8 @@ class GitHub(ParentGitHub):
                 nonempty(item["editedAt"], "edit time")
                 if item["deletedAt"] is not None:
                     nonempty(item["deletedAt"], "deleted time")
-                editor = item["editor"]
-                if editor is not None:
-                    nonempty(object_value(editor)["login"], "editor")
+                # Validate every editor, including edits predating our PATCH.
+                editor_matches_login(item["editor"], viewer)
                 edits[identity] = {
                     key: item[key] for key in ("id", "editedAt", "deletedAt", "editor")
                 }
@@ -150,17 +166,17 @@ class GitHub(ParentGitHub):
             seen_cursors.add(after)
 
 
-def uninterrupted(
-    before: dict[str, Any], after: dict[str, Any], candidate: str
-) -> bool:
-    """Exactly our one new edit; same-publisher ABA edits also count as interference."""
-    if after["body"] != candidate or any(
+def new_edits(
+    before: dict[str, Any], after: dict[str, Any]
+) -> list[dict[str, Any]] | None:
+    """Return added edits excluding creation; None means histories cannot be compared."""
+    if any(
         before[key] != after[key] for key in ("viewer", "created_at", "author")
     ):
-        return False
+        return None
     old, new = before["edits"], after["edits"]
     if any(new.get(identity) != edit for identity, edit in old.items()):
-        return False
+        return None
     added = new.keys() - old.keys()
     if not before["includes_created_edit"] and after["includes_created_edit"]:
         # GitHub materializes the original creation version on the first edit.
@@ -169,15 +185,27 @@ def uninterrupted(
             identity
             for identity in added
             if new[identity]["editedAt"] == before["created_at"]
-            and new[identity]["editor"] == {"login": before["author"]}
+            and editor_matches_login(new[identity]["editor"], before["author"])
             and new[identity]["deletedAt"] is None
         }
         if old or len(creation) != 1:
-            return False
+            return None
         added -= creation
     elif before["includes_created_edit"] != after["includes_created_edit"]:
+        return None
+    return [new[identity] for identity in added]
+
+
+def uninterrupted(
+    before: dict[str, Any], after: dict[str, Any], candidate: str
+) -> bool:
+    """Exactly our one new edit; same-publisher ABA edits also count as interference."""
+    if after["body"] != candidate:
         return False
-    if len(added) != 1:
+    added = new_edits(before, after)
+    if added is None or len(added) != 1:
         return False
-    edit = new[next(iter(added))]
-    return edit["deletedAt"] is None and edit["editor"] == {"login": after["viewer"]}
+    edit = added[0]
+    return edit["deletedAt"] is None and editor_matches_login(
+        edit["editor"], after["viewer"]
+    )

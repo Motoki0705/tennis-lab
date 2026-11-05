@@ -69,20 +69,38 @@ export MAX_JOBS=2
 nvidia-smi
 bash scripts/build_dino_extension.sh "$PWD" "$PWD/outputs/dino_extension"
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
   'from src.submodules.models import validate_dino_extension; print(validate_dino_extension())'
 ```
 
-Adjust `CUDA_HOME` for your environment, for example to `/usr/local/cuda`. `PYTHONPATH` is also required
-for preflight and pipeline execution in the same shell. Set it again when using another shell.
+Adjust `CUDA_HOME` for your environment, for example to `/usr/local/cuda`. Set both variables for
+preflight and pipeline execution, including in a new shell. `TENNIS_LAB_DINO_EXTENSION` is the absolute
+path to the exact DINO binary; `PYTHONPATH` makes the shared CUDA extension importable. A missing selection
+or an unverified already-imported DINO binary fails explicitly. If the selected file changes after loading,
+start a fresh process and validate the new binary. Start DINO in a fresh Python process and let this loader
+import the extension first; an earlier native import removed from the module registry cannot be detected.
 
 The script creates `TENNIS_LAB_DINO_OPS_BUILD_CONFIG` under the canonical path contract and builds
 DINO and the shared CUDA extension through the root `setup.py`. It writes to
 `outputs/dino_extension/{lib,temp,cache}` and `build.json`, without changing sources in submodules
-or the shared venv. Compatibility fixes apply only to the generated DINO sources.
+or the shared venv. It refuses an existing DINO binary in the output directory; choose a new output
+directory for each build. Compatibility fixes apply only to the generated DINO sources.
 The build sets `CUDA_VISIBLE_DEVICES=''` and does not use the GPU. `validate_dino_extension()` also
 checks forward/backward dispatch with CPU tensors; it does not numerically validate CUDA kernels.
 If you sync to a different torch version, rebuild into a new output directory and explicitly use its `lib`.
+
+The shared compressed time-local CUDA extension is also built at the top level of
+`outputs/dino_extension/lib`. Check that its import path points to this build:
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
+  'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
+```
+
+After updating from a version that stored the shared binary under `lib/src/`,
+build into a new output directory and set `PYTHONPATH` to its `lib`.
+This check imports the extension without running a CUDA kernel.
 
 <a id="required-assets"></a>
 
@@ -185,11 +203,16 @@ Models requiring registration or an application are not redistributed by this re
 
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 ```
 
 Require `status: ok` and exit code 0. Missing files, content mismatches, read failures and extension incompatibilities
 are **reported together** in JSON; any failure produces exit code 1. Explicitly fix the acquired files and rerun.
+Unsafe asset paths (including symlinks escaping a declared root) appear as `invalid_path` alongside other failures;
+their targets are not opened or hashed. The normal pipeline still rejects these paths. Full runtime validation is
+marked unavailable until they are repaired. If the configuration structure or roots prevent a safe inventory,
+JSON reports `pipeline_configuration` and explains that limitation instead of claiming the assets were checked.
 The check covers every asset from `enabled_model_assets()`, the DINO and DINOv3 sources, standalone DINOv3 weights,
 SMPL-H and the regressor for visualization, and input videos (plus the manifest and LICENSE for the published sample).
 It does not download files, substitute models, run inference or use the GPU. Source checks verify that required files exist.
@@ -201,7 +224,9 @@ Resolve every failure before starting the pipeline.
 ## Run the sample
 
 ```bash
-PYTHONPATH="$PWD/outputs/dino_extension/lib" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
+PYTHONPATH="$PWD/outputs/dino_extension/lib" \
+  TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so" \
+  OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   output_directory=tennis_scene/generate/clean_install output_name=scene \
   cache.directory=tennis_scene/cache/clean_install

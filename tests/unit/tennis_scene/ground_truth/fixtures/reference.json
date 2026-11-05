@@ -1,0 +1,47 @@
+{
+  "schema": "tennis_lab_ball3d_user_reference.v1",
+  "created_at_utc": "2026-11-03T00:00:00+00:00",
+  "clip_id": "synthetic/asymmetric",
+  "camera_ids": ["right", "left"],
+  "num_frames": 3,
+  "fps": 29.97,
+  "source_size_wh": [80, 40],
+  "video_sha256": {
+    "right": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "left": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "provenance": {
+    "kind": "user_supplied_reference",
+    "instruction": "Score observed and approved estimates, excluding the specified tail.",
+    "exclusion": {
+      "camera_id": "right",
+      "frame_start_inclusive": 2,
+      "frame_end_inclusive": 2,
+      "source_flag": "extrapolated_unverified",
+      "reason": "user_excluded_tail_extrapolation"
+    },
+    "source_files": [
+      {"filename": "annotations.csv", "path": "source/annotations.csv", "sha256": "a408ad856dda88713d73cfb4c6849fc570940dab828372fcace6c2ea7d24b0c7", "size_bytes": 21}
+    ]
+  },
+  "counts_by_camera": {
+    "right": {"observed": 1, "estimated": 1, "excluded_extrapolation": 1},
+    "left": {"observed": 1, "unknown": 1, "occluded": 1}
+  },
+  "notes": ["Fixture only. Native pixel coordinates; no reconstruction inputs."],
+  "positions": [
+    {"camera_id": "left", "frame_index": 2, "source_status": "occluded", "reference_kind": "occluded", "valid_for_scoring": false, "uv_px": null, "source_file": "annotations.csv", "estimation": {"position_source": "unavailable"}},
+    {"camera_id": "right", "frame_index": 1, "source_status": "unknown", "reference_kind": "estimated", "valid_for_scoring": true, "uv_px": [17.25, 8.5], "source_file": "annotations.csv", "estimation": {"position_source": "estimated", "estimate_method": "poly_3_10", "estimate_quality": "lower", "estimate_model_spread_px": "6.37"}},
+    {"camera_id": "left", "frame_index": 0, "source_status": "observed", "reference_kind": "observed", "valid_for_scoring": true, "uv_px": [61.25, 5.5], "source_file": "annotations.csv", "estimation": {"position_source": "observed"}},
+    {"camera_id": "right", "frame_index": 2, "source_status": "unknown", "reference_kind": "excluded_extrapolation", "valid_for_scoring": false, "uv_px": null, "source_file": "annotations.csv", "estimation": {"estimation_method": "extrapolate_quadratic", "estimation_flag": "extrapolated_unverified", "left_observed_frame": "1", "gap_length_frames": "1", "method_disagreement_px": "0.3"}},
+    {"camera_id": "left", "frame_index": 1, "source_status": "unknown", "reference_kind": "unknown", "valid_for_scoring": false, "uv_px": null, "source_file": "annotations.csv", "estimation": null},
+    {"camera_id": "right", "frame_index": 0, "source_status": "observed", "reference_kind": "observed", "valid_for_scoring": true, "uv_px": [3.5, 27.0], "source_file": "annotations.csv", "estimation": null}
+  ],
+  "events": [
+    {"camera_id": "right", "frame_index": 0, "event": "bounce", "note": "Contact uncertain by one frame.", "source_file": "annotations.csv"},
+    {"camera_id": "left", "frame_index": 1, "event": "bounce", "note": "Same event, another camera.", "source_file": "annotations.csv"}
+  ],
+  "estimation_segments": [
+    {"camera_id": "right", "gap_id": "1", "start_frame": "1", "end_frame": "1", "frames": "1", "method": "poly_3_10", "quality": "lower", "events_in_gap": "", "max_model_spread_px": "6.37", "masked_validation_mean_px": "0.39", "masked_validation_p90_px": "0.83", "validation_scenario": "same_gap_length", "validation_cases": "141"}
+  ]
+}

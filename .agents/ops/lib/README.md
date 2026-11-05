@@ -14,6 +14,8 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
 | `agy_headless.py` | issue書き直し用agyの読み取り専用1回実行。固定版・logのモデル・構造化結果を照合 |
 | `agy_permissions.py` | コマンド・引数・フラグの定義から、両端を固定したagyの権限規則を生成 |
+| `agy_hook.py` | 使い捨てworkspaceのPreToolUse設定と、controller側で動く拒否・記録処理 |
+| `agy_capture.py` | 本番と調査ハーネスで共有するstreamのコマンド捕捉・正規化・集計 |
 | `agent_runtime.py` | run/session対応、同一sessionの排他・継続・停止、ローカル記録 |
 | `opsproc.py` | 外部コマンド、プロセス識別・グループ停止・離脱した子孫の回収 |
 
@@ -33,11 +35,11 @@ from agy_headless import DEFAULT_AGY, AgyError, AgyResult, run_headless
 try:
     result: AgyResult = run_headless(
         agy=DEFAULT_AGY,
-        cwd=Path.cwd(),
+        cwd=Path("/private/disposable-checkout"),
         prompt_file=Path("writer-prompt.md"),
         json_schema=Path("writer.schema.json"),
-        log_file=Path("private-run/writer.log"),
-        timeout=300,
+        log_file=Path("/private/run/writer.log"),
+        timeout=600,
     )
 except AgyError as error:
     reason = error.reason
@@ -47,11 +49,16 @@ else:
 ```
 
 `run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
-log_file: Path, timeout: float, model: str | None = None,
+log_file: Path, timeout: float = DEFAULT_TIMEOUT, model: str | None = None,
 config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契約。
 相対パスは呼出元のcwdを基準に解決する。prompt/schemaはUTF-8ファイル。
+`cwd` は呼出元が用意し片付ける使い捨てworkspace、`log_file` はその外側の非公開領域を必須とする。
+controller checkout内で直接呼び出さず、smokeもテンプレートのコピーを使い捨てworkspaceへ置く。
 schemaの原文をprivateな一時ファイルへ固定し、同じ内容でCLIとローカル検証を行う。
-`timeout` は有限の正数で、実行前後の `--version` とheadless呼び出し全体の上限秒数。
+promptはUTF-8で96 KiB以内なら `-p`、それを超える場合は `--input-format stream-json` の
+単一userイベントを0600の一時ファイルからstdinへ渡す。workspaceの外で扱い、内容の省略・分割はしない。
+長い固定入力・verifier入力・修正入力でもLinuxの単一引数上限へ達しないよう、byte数で経路を決める。
+`timeout` の既定は600秒。有限の正数で、実行前後の `--version` とheadless呼び出し全体の上限秒数。
 timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess groupのtoolを回収する。
 
 - `load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig` は `agents.conf` の4キーだけを設定元とする。
@@ -64,12 +71,37 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
   `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
   logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
   新しいモデルを採用するときは設定と `MODEL_LABELS` の対応を一緒に更新する。
-- `readonly_settings() -> dict[str, Any]` が生成する固定modeと `permissions` をJSON文字列として `--settings` へ渡す。
+- `readonly_settings() -> dict[str, Any]` が生成する固定modeと `permissions` を
+  `<log_file>.settings.json` へ呼び出しごとに排他的に書き、`--settings` にはそのパスを渡す。
+  ファイルはworkspaceの外、mode 0600。巨大なJSONを単一のargvへ載せない。
+  終了時は成功・失敗・timeoutともSHA-256・regular file・modeを照合し、改変・削除・symlink化は
+  `invalid_output` として拒否する。照合値はprivateな `.commands.json` の
+  `session_settings_integrity` に残す。settingsファイルは他のprivate証拠と一緒に保持する。
   コマンドの許可形式・拒否・実機での検証は[読み取り権限と実機プローブ](#agyの読み取り権限と実機プローブ)を正本とする。
   `--mode plan` を指定する。このpermission規則はrunnerのOS隔離を置き換えない。
+- 許可外のシェル形式とworkspace外への `read_file` は、workspaceの `.agents/hooks.json` に一時配置したPreToolUse hookで
+  理由付きの `decision=deny` を返す。拒否後も読み取りを続け、指定schemaの構造化出力を返すよう案内する。
+  hookの `allow` はsettingsの権限を広げない。判定は `agy_permissions.command_allowed()` が
+  settingsと同じ `command_permissions()` から生成し、正例・負例のコーパスで一致を検査する。
+  実行プログラムはcontroller側の `agy_hook.py`。Pythonの `-I -B` でworkspaceや環境変数の
+  import先を使わず、workspace内のコードを実行しない。既存hookと `.agents` のsymlinkは拒否する。
+  終了時は成功・失敗・timeoutとも設定の内容・modeを照合して除去する。
+  ユーザー設定・controller checkoutにhook設定を常設しない。
+  `read_file` は `Path` をcontrollerが渡したworkspace基準で解決し、symlinkの解決後に外側なら拒否する。
+  内側の `allow` は従来のCLIの読み取り判定へ渡す。壊れた入力や解決できないパスは拒否する。
+  [公式のPreToolUse契約](https://antigravity.google/docs/hooks?tab=cli#pretooluse)は
+  `toolCall.name`・`toolCall.args`・`stepIdx` を定義する。CLIの `read_file` 引数は同文書に記載がないため、
+  固定版1.4.11の観測で `toolCall.name="read_file"`、`args.Path`（文字列）、
+  `args.StartLine` / `args.EndLine`（整数）を確認した。IDE向け `view_file.AbsolutePath` と混同しない。
 - `log_file` は呼び出しごとの未作成パスが必須。親ディレクトリがなければ0700で作成し、logは0600にする。
   存在するファイルやsymlinkを再利用しない。writer、verifier、修正呼び出しごとに別パスを渡す。
   毎回新しい会話を作り、自動再試行・resume・別モデルへの振替は行わない。
+  `stream-json` のstdoutを `<log_file>.stream.jsonl` へ直接保存し、途中の失敗やtimeoutでも残す。
+  `<log_file>.hooks.jsonl` はtool・コマンド原文または読み取りパス・step・hookの許可/拒否と理由、
+  `<log_file>.commands.json` は `tool_info.parameters.CommandLine` と `Path` の原文・stepの更新をまとめた
+  `commands` / `reads` の観測結果・hook判定を保持する。いずれも未作成パスへ0600で作る。
+  コマンド全文・読み取りパス・入力・結果を含むため公開しない。
+  壊れたstreamも生データと取得済みの観測を保存するが、成功結果としては受理しない。
 
 `AgyResult` はfrozen dataclassで、フィールドは次のとおり。
 
@@ -77,21 +109,33 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
 |---|---|
 | `structured_output` | `Any`。指定schemaを通った非nullのJSON値。自由文の `response` から補完しない |
 | `usage` | `dict[str, int] \| None`。CLIが返した非負整数の使用量。欠測は `None` で、0を補わない |
-| `denied_actions` | `list[dict[str, str]]`。CLIが返した拒否一覧。フィールド省略時だけ空リスト |
+| `denied_actions` | `list[dict[str, str]]`。CLIの拒否一覧とhookの拒否。コマンド原文・理由を含むため非公開 |
 | `observed_model` | `str`。今回のlogで照合したlabel（現行は `Gemini 3.8 Flash (High)`） |
 | `observed_version` | `str`。実行前後で固定値との一致を確認した版 |
 | `duration_seconds` | `float \| None`。CLIの所要秒数。欠測は `None` |
 | `elapsed_seconds` | `float`。版の確認を含め、部品が計測した実行秒数 |
+| `command_summary` | `dict[str, Any]`。シェルの `attempted_count`, `denied_count`, `hook_denied_count`, `forms`（形式と件数）。ファイル読み取りがあれば `read_file` にその試行/拒否件数と固定形式を加える |
 
-`AgyError(RuntimeError)` は `reason: str` と `denied_actions: list[dict[str, str]]` を持つ。
+`AgyError(RuntimeError)` は `reason: str`、`denied_actions: list[dict[str, str]]` と
+取得できた `command_summary` を持つ。
 `reason` は `invalid_input`（設定・入力・既存log）、`version_mismatch`（版欠落・相違）、
 `cli_error`（起動失敗・非0終了）、`timeout`、`invalid_output`（不正JSON・status・構造化出力・schema・観測値）、
-`model_mismatch`（今回のlogのlabel欠落・相違）、`unsafe_user_settings`（永続設定の事前検査で拒否）。
+`model_mismatch`（今回のlogのlabel欠落・相違）、`unsafe_user_settings`（永続設定の事前検査で拒否）、
+`command_hook_mismatch`（シェル・read_fileのstreamとhookのstep・対象・判定の不一致や記録欠落、拒否後の実行形跡）。
 呼出元はこの型をcatchし、成功結果を捏造しない。既存のreasonと関数の引数・結果の型は維持する。
 例外の文字列にはstderrやpromptが含まれ得るため、そのまま公開しない。
-拒否一覧はparseできた出力から得たものだけを保持する。非0終了やparse不能時は空の場合がある。
+拒否一覧はparseできた結果とhook記録から得たものを保持する。非0終了・timeoutにもhookの拒否を残す。
 有効な構造化出力もある拒否は `AgyResult.denied_actions` に残し、タスクとしての合否は呼出元が判断する。
 exit 0・`status: SUCCESS` でも、構造化出力欠落やschema違反なら例外になる。
+streamの最終resultイベントを検証し、複数resultや不正なイベントを拒否する。
+本番でもハーネスと同じ `restore_hook_commands()` を使い、末尾省略のprefixと同じstepのhook全文が
+一致した場合だけ復元する。原文の表示と採用元を非公開記録へ保存する。
+同じ関数で `read_file` もtool・step・`Path`・判定を照合し、全シェル試行と読み取り試行にhookの判定を必須とする。
+読み取りは `ACTIVE` → `ERROR`（拒否、出力なし）と、`ACTIVE` → `DONE`（出力あり）を区別する。
+deny後にDONEと出力が観測された場合は、後続の更新がERRORでも失敗にする。
+照合違反は異常終了・timeoutの場合も上記の共通reasonで失敗する。捕捉は例外を返す前に保存する。
+公開する集計では、許可済み形式の引数・パス・検索語・JSON fieldを伏せる。
+未知のコマンド・フラグは `<unlisted command>` にする。調査用の詳細な正規化・実例は非公開のまま扱う。
 [1.4.11の公式release notes](https://github.com/google-antigravity/antigravity-cli/releases/tag/1.4.11)に従い、
 途中終了を示す `finished_reason` がある出力も拒否する。
 
@@ -142,8 +186,10 @@ userの `strict` やask/denyが優先されて読み取りまで拒否される�
 [公式の設定ファイル一覧](https://antigravity.google/docs/settings?tab=cli#other-configuration-files)では、workspaceの拡張設定は
 `.agents/hooks.json`、`.agents/mcp_config.json`、`.agents/plugins/` に置く。
 このrepoの `.agents/` はskills・memory・ops・READMEなどを持つが、これらの拡張設定は持たない。
-**untrustedでこれらを読み込まないこと、headlessがtrust確認待ちで止まらないことは未確認**であり、
-設定検査だけで保証しない。#1599で[手動疎通の確認事項](../../../scripts/github_actions/README.md#手動の疎通)を確かめる。
+pilotでは、untrustedなworkspaceでもPreToolUse hookが動作した。
+共通部品は自分で配置したhookの実行を前提とし、trustを追加しない。
+その他の拡張設定の扱いと、runner上のheadlessがtrust確認待ちで止まらないことは、
+#1599で[手動疎通の確認事項](../../../scripts/github_actions/README.md#手動の疎通)を確かめる。
 
 コマンド名だけの前方一致は使わない。`agy_permissions.py` の形式定義を `_form` / `_option` /
 `_argument` で正規表現へ変換し、allowをすべて `command(regex:^...$)` にする。
@@ -159,47 +205,98 @@ userの `strict` やask/denyが優先されて読み取りまで拒否される�
 一致し得る場合も拒否するためで、テストは `re.fullmatch` / `re.search` の両方でDeny優先の最終判定を確認する。
 lookaroundやPython固有の絶対終端anchorには依存しない。
 
-許可するプログラムとフラグは次のとおり。表にない略記・結合フラグ・オプションは拒否する。
-`N` は非負整数で、短い数値フラグは `-n10` の形も使える。長い値付きフラグは空白区切りまたは `=` を使う。
-`--` は表の該当プログラムで使えるが、その後も引数の禁止文字・先頭 `-` の検査を省略しない。
+許可する道具・フラグ・除外は次の表を正本とする。`agy_permissions.permission_table()` から生成し、
+単体テストで定義との一致を検査する（`--` とGit共通の `--no-pager` はフラグ数に含めない）。
+既知の短いswitchは `-la` / `-rn` のように結合できる。値付きの短いフラグは結合の末尾に置き、
+数値なら `-A2` / `-nm5` のような連結も使える。長い値付きフラグは空白または `=` で区切る。
+`--` はsearch・file・Gitの形式でオプションを終了し、それ以降はフラグとして再解釈しない。
+検索語指定フラグの値は `pattern` 型で、文字制約は `argument` と同じ。
+`pattern` 型のフラグがある形では、その前後と `--` 後を含む全位置引数にpathの規則を適用する。
+位置引数で検索語を渡す形には検索語指定フラグを混在させず、最初の位置引数だけを検索語として扱う。
+`rg --files` の形は位置検索語を持たず、全位置引数をpathとして検査する。
 
-| 形式 | 許可するフラグ・引数 |
-|---|---|
-| `cat FILE...` | `-n`, `--` |
-| `ls [PATH...]` | `-a`, `-l`, `-d`, `-h`, `-1`, `--` |
-| `head FILE...` / `tail FILE...` | `-n N`, `--`。`tail -f` は拒否 |
-| `wc FILE...` | `-l`, `-w`, `-m`, `--` |
-| `grep PATTERN FILE...` | `-n`, `-i`, `-l`, `-F`, `-w` |
-| `rg PATTERN [PATH...]` | `-n`, `-i`, `-l`, `-F`, `-w`, `-g ARG`, `--glob ARG`, `--hidden`, `-C/-A/-B N`, `--` |
-| `rg --files [PATH...]` | `-g ARG`, `--glob ARG`, `--hidden` |
-| `git log [REV/PATH...]` | `--oneline`, `-n N`, `--follow`, `--` |
-| `git log --no-ext-diff --no-textconv [REV/PATH...]` | 上のlogフラグに加え `-p`, `--stat` |
-| `git show --no-ext-diff --no-textconv [REV/PATH...]` | `-p`, `--stat`, `--name-only`, `--name-status`, `--` |
-| `git diff --no-ext-diff --no-textconv [REV/PATH...]` | 上のshowフラグに加え `--cached` |
-| `git grep PATTERN [PATH...]` | `-n`, `-i`, `-l`, `-F`, `-w`, `--no-textconv`, `--` |
-| `gh issue view ID` / `gh pr view ID` | `--comments`, `--json FIELD,FIELD`, `--repo OWNER/REPO`, `-R OWNER/REPO` |
-| `gh issue list` | `--json FIELD,FIELD`, `--repo OWNER/REPO`, `-R OWNER/REPO`, `--limit N`, `--state open/closed/all` |
+<!-- agy-permissions:start -->
+| 道具 | フラグ数（別名を含む） | 許可するフラグと値の型 | 明示的に外すもの |
+|---|---:|---|---|
+| `git grep` | 40 | `-n`, `--line-number`, `-i`, `--ignore-case`, `-F`, `--fixed-strings`, `-w`, `--word-regexp`, `-v`, `--invert-match`, `-l`, `--files-with-matches`, `-c`, `--count`, `-q`, `--quiet`, `-A count`, `-B count`, `-C count`, `-m count`, `--max-count count`, `-E`, `--extended-regexp`, `-G`, `--basic-regexp`, `-L`, `--files-without-match`, `-h`, `-H`, `-I`, `-e pattern`, `--column`, `--full-name`, `--cached`, `--untracked`, `--no-color`, `--no-textconv`, `-W`, `--function-context`, `--max-depth depth` | -O/--open-files-in-pager, --textconv, --recurse-submodules |
+| `git status` | 9 | `--short`, `-s`, `--branch`, `-b`, `-z`, `--porcelain porcelain?`, `--untracked-files untracked`, `--ignored ignored`, `--ignore-submodules all` | -c/--config-env, pager, absolute/parent path |
+| `git log` | 29 | `--oneline`, `--all-match`, `--fixed-strings`, `--regexp-ignore-case`, `--reverse`, `--no-merges`, `--merges`, `--first-parent`, `--follow`, `--no-ext-diff`, `--no-textconv`, `--all`, `--full-history`, `-n count`, `--max-count count`, `--skip count`, `--since date_filter`, `--until date_filter`, `--author argument`, `--committer argument`, `--grep argument`, `--date date`, `--format format`, `--pretty format`, `--decorate decorate?`, `-p`, `--stat`, `--name-only`, `--name-status` | -c/--config-env, --output/-o, pager, --ext-diff, --textconv, --show-signature, --format=%G* |
+| `ls` | 24 | `-a`, `--all`, `-A`, `--almost-all`, `-l`, `-h`, `--human-readable`, `-1`, `-d`, `--directory`, `-F`, `--classify`, `-p`, `-R`, `--recursive`, `-r`, `--reverse`, `-t`, `-S`, `-U`, `--group-directories-first`, `--sort sort`, `--time-style time_style`, `--color never` | -L/--dereference, -H/--dereference-command-line, --dereference-command-line-symlink-to-dir |
+| `rg` | 48 | `-n`, `--line-number`, `-i`, `--ignore-case`, `-F`, `--fixed-strings`, `-w`, `--word-regexp`, `-v`, `--invert-match`, `-l`, `--files-with-matches`, `-c`, `--count`, `-q`, `--quiet`, `-A count`, `-B count`, `-C count`, `-m count`, `--max-count count`, `--column`, `-s`, `--case-sensitive`, `-S`, `--smart-case`, `--files-without-match`, `--count-matches`, `-o`, `--only-matching`, `--hidden`, `--files`, `--no-heading`, `--no-config`, `--stats`, `--no-ignore`, `--no-ignore-vcs`, `--context count`, `--max-depth depth`, `-g argument`, `--glob argument`, `--iglob argument`, `--type search_type`, `--type-not search_type`, `-t search_type`, `-T search_type`, `--color never`, `--max-filesize bytes` | --pre, --pre-glob, --hostname-bin, -z/--search-zip, -L/--follow, --type-add, --type-clear |
+| `grep` | 41 | `-n`, `--line-number`, `-i`, `--ignore-case`, `-F`, `--fixed-strings`, `-w`, `--word-regexp`, `-v`, `--invert-match`, `-l`, `--files-with-matches`, `-c`, `--count`, `-q`, `--quiet`, `-A count`, `-B count`, `-C count`, `-m count`, `--max-count count`, `-E`, `--extended-regexp`, `-G`, `--basic-regexp`, `-L`, `--files-without-match`, `-h`, `-H`, `-I`, `-e pattern`, `-o`, `--only-matching`, `-r`, `--recursive`, `--include argument`, `--exclude argument`, `--exclude-dir argument`, `--color never`, `--binary-files without_match`, `--devices skip` | -R/--dereference-recursive, -f/--file, --devices=read |
+| `gh issue view` | 5 | `--json issue_fields`, `--repo repository`, `-R repository`, `--comments`, `-c` | --web/-w, --jq/-q, --template/-t |
+| `find` | 22 | `-P`, `-empty`, `-print`, `-print0`, `-ls`, `-prune`, `-quit`, `-a`, `-and`, `-o`, `-or`, `-not`, `-maxdepth depth`, `-mindepth depth`, `-name basename`, `-iname basename`, `-path path`, `-ipath path`, `-type file_type`, `-size size`, `-mtime signed_count`, `-mmin signed_count` | -exec/-execdir/-ok/-okdir, -delete, -fprint/-fprint0/-fprintf/-fls, -files0-from, -L/-H/-follow |
+| `git ls-files` | 23 | `--cached`, `-c`, `--deleted`, `-d`, `--modified`, `-m`, `--others`, `-o`, `--ignored`, `-i`, `--stage`, `-s`, `--directory`, `--no-empty-directory`, `--unmerged`, `-u`, `--killed`, `-k`, `--exclude-standard`, `--full-name`, `--error-unmatch`, `--deduplicate`, `-z` | --exclude-from, --recurse-submodules, --format |
+| `cat` | 1 | `-n` | unknown flags, shell syntax |
+| `head` | 1 | `-n count` | unknown flags, shell syntax |
+| `tail` | 1 | `-n count` | -f/--follow, unknown flags |
+| `wc` | 3 | `-l`, `-w`, `-m` | unknown flags, shell syntax |
+| `git show` | 4 | `-p`, `--stat`, `--name-only`, `--name-status` | -c/--config-env, --output/-o, pager, --ext-diff, --textconv, --show-signature, --format=%G* |
+| `git diff` | 5 | `-p`, `--stat`, `--name-only`, `--name-status`, `--cached` | -c/--config-env, --output/-o, pager, --ext-diff, --textconv, --show-signature, --format=%G* |
+| `gh issue list` | 5 | `--json issue_fields`, `--repo repository`, `-R repository`, `--limit limit`, `--state state` | --web/-w, --jq/-q, --template/-t |
+| `gh pr view` | 5 | `--json pr_fields`, `--repo repository`, `-R repository`, `--comments`, `-c` | --web/-w, --jq/-q, --template/-t |
+<!-- agy-permissions:end -->
 
-Gitの各形式では `git --no-pager ...` も使える。patchを生成する形式は、通常のユーザー設定からの
-[外部diff・textconv実行](https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---no-ext-diff)も避けるため、
+値の型: `count` は0〜10000、`depth` は0〜100、`bytes` は0〜10000000 byte、
+`limit` は1〜1000。符号・小数・単位suffix・先頭zeroは使わない（0そのものは可）。
+`size` は符号付きの同じbyte範囲に `c` を必須とし、`signed_count` は±10000以内。
+`file_type` は `b/c/d/f/l/p/s`、`search_type` は英数から始まる英数・`_`・`-` の64文字以内。
+`basename` はslashなしの検索名、`argument` は上の禁止文字に従う検索語・glob。
+`find -P` はpathより前だけ。pathの後はpredicateだけを置く。
+`repository` は `OWNER/REPO`、issueは正の9桁以内の番号または `https://github.com/OWNER/REPO/issues/N`、
+PRは番号・同hostの `/pull/N` URL・相対branch名。`issue_fields` / `pr_fields` は
+各 `gh ... view --help` の既知のJSON field名の有限集合（カンマ区切り）。
+この表は安全な引数の許可を定め、CLI自身の組合せ制約や実行成功は保証しない。
+実機のghは `--comments` と `--json` の同時指定を拒否するため、JSONでコメントが必要なら
+`--json comments` を使う。診断の正例は両形式を分けて扱う。
+
+表示値は有限集合に限る。`porcelain?` は省略または `v1/v2`、`untracked` は `no/normal/all`、
+`ignored` は `no/traditional/matching`、`state` は `open/closed/all`、`decorate?` は省略または
+`short/full/no/auto`。`sort` は `none/size/time/version/extension/width`、`time_style` は
+`full-iso/long-iso/iso/locale`。`date` は `default/relative/local/iso/iso-strict/rfc/short/raw/human/unix`。
+`date_filter` は `YYYY-MM-DD` または `N days/weeks/months/years ago`（Nは1〜9999）。
+`format` はGitの既知の標準形式と少数の署名なしplaceholderの有限集合を定義に列挙する。
+ユーザー設定のformat名・任意template・`%G*` は使わない。`?` は値の省略可、固定値の型はその値だけを許可する。
+
+path operandはworkspace相対の字句形式に限り、絶対path、colon、`..` または `-` で始まる成分を拒否する。
+`.`, `.agents`, `./src`, `src/a..b.py` は可。引用しても検査を省かず、globは引用時だけ使える。
+Gitのpathspec magicもcolonで拒否し、`REV:PATH` のPATHにも同じ検査を適用する。
+検索語とglob filterはpath operandと区別する。この字句制約はsymlink先の隔離を保証せず、
+CLIのworkspace制約やOS隔離を置き換えない。
+
+Gitの各形式では `git --no-pager ...` も使える。patchを生成するlog/show/diffは、通常設定由来の
+[外部diff・textconv実行](https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---no-ext-diff)を避けるため、
 `--no-ext-diff --no-textconv` をこの順でサブコマンドの直後に必須とする。
-子環境では `GIT_OPTIONAL_LOCKS=0`、`GIT_PAGER=cat`、`GH_PAGER=cat`、`RIPGREP_CONFIG_PATH=/dev/null` を固定し、
-Gitの任意index更新、pagerの実行、rgの設定経由のフラグ追加を避ける。
+子環境は `readonly_environment(environ, cwd=workspace)` で作る。継承した `GIT_*`（設定・実行・pathの上書き）を除き、
+system/global設定を `/dev/null` に固定する。local/worktree設定は保持し、
+[`GIT_CONFIG_COUNT` のcommand scope](https://git-scm.com/docs/git-config#Documentation/git-config.txt-GIT_CONFIG_COUNT)で
+`core.fsmonitor=false`, `core.hooksPath=/dev/null`, `core.pager=cat`, `log.showSignature=false`, `format.pretty=medium`,
+`submodule.recurse=false`, `diff.ignoreSubmodules=all` を上書きする。`-c` / `--config-env` は許可しない。
+`GIT_OPTIONAL_LOCKS=0`, `GIT_PAGER=cat`, `GIT_TERMINAL_PROMPT=0`, `GIT_ATTR_NOSYSTEM=1` も固定する。
+Gitは `GIT_PAGER=cat` の場合pagerを起動しない。`GH_PAGER=cat`, `RIPGREP_CONFIG_PATH=/dev/null` は維持する。
+`POSIXLY_CORRECT` は子環境から除去する。GNU grepが位置引数の後もフラグを解析する挙動を固定し、
+検索語やglobのフラグ値が、オプション解析の打切りによってファイル名へ変わることを防ぐ。
+`git config --null --name-only --get-regexp` でlocal/worktree設定（includeを含む）のfilter名を読み、
+各driverの `filter.*.clean/smudge/process` を空、`filter.*.required` をfalseで上書きする。
+`--no-textconv` だけでは止まらないworking treeのclean filterも抑止し、設定の取得失敗は起動前の失敗にする。
+設定ファイルは編集しない。実Gitの一時repoとhelper canaryを使うe2eで、上記の環境と必須フラグを検証する。
 
 書き込み/外部操作のdenyは `write_file(*)`, `read_url(*)`, `execute_url(*)`, `unsandboxed(*)`, `mcp(*)`。
 `edit_file` は公式CLIのactionではないため置かない。編集も `write_file` の拒否で扱う。
 workspace内の `read_file` はCLIの暗黙の読み取り許可を維持し、全ファイルへの読み取り許可は追加しない。
-`--output`, `-o`, `--pre`, `--pre-glob`, `-O`, `--open-files-in-pager`, `--ext-diff`, `--textconv`,
-`-c`, `--exec-path`, `--git-dir`, `--work-tree`, `--web`, `--jq`, `--template` は許可形式に存在しない。
+Python/pytest等のコード実行、shellのパイプ・連結・リダイレクトと書き込みは頻度にかかわらず拒否する。
 
 静的テストだけで実CLIの照合を確認したとは扱わない。#1599で人間がデスクトップから **AGY smoke** を手動実行し、
 通常のテンプレート読み取りに続いて `agy_smoke.py --permissions-probe --timeout 120` の段階を通す。
 この段階は使い捨てgit repositoryを作り、`read_file` と9個の読み取りコマンドを依頼し、
-privateな入力nonceとHEADのcommit subjectに一致する出力、拒否なし、ファイル不変を確認する。
+最初に許可外の `pwd` と外側のcanaryへの `read_file` を試すよう依頼する。両方のhook拒否の記録と、その後も続行して
+privateな入力nonceとHEADのcommit subjectに一致する構造化出力を返したこと、ファイル不変を確認する。
+追加の許可外コマンドが拒否されたことだけでは読み取りを不合格にしない。
 その後、リダイレクト・連結・実行フラグ・展開・改行と、許可外の単独コマンドを含む27形式を、
 新規会話で1形式ずつそのまま試すよう依頼する。単独コマンドは `touch b`, `rm x`, `mkdir new-directory`,
 `cp a copied`, `mv a moved`, `python3 -c pass`, `sh -c true`。特殊文字のdenyに頼らず拒否されることを確認する。
 各形式の `denied_actions` にcommandの拒否が必要。exit 0でも拒否がなければ失敗する。
+全段階に共通部品のシェル・read_file照合を適用し、hookを通らない試行は `command_hook_mismatch` として失敗させる。
 構造化出力を伴わない拒否も、版・今回のモデルlogを照合した場合だけ期待した拒否として受け取る。
 
 さらに、外側のcanaryファイルを絶対パスの `cat` で読む観測を1件行い、`outside_read_denied` をsummaryに記録する。
@@ -213,8 +310,10 @@ commandまたはread_fileの拒否があれば `true`、正常な構造化結果
 外側の実行canaryはrg/git/browser経由の実行を記録する。`BROWSER` と `GH_BROWSER` はこのcanaryへ向け、
 誤って許可されても本物のbrowserは開かない。検査範囲はこの使い捨てworkと外側のcanary directoryであり、
 agy自身の認証/cache/logが保存されるHOME全体の変更を主張するものではない。
+controllerが配置・除去するhook設定は共通部品で照合する。probeは `.agents` を事前作成し、
+そのdirectoryのsize/mtimeだけを比較から除く。mode・inode・全childの一覧/内容は引き続き比較する。
 制御用prompt/schema/logは別directoryに置き、summaryには公開しない。
-summaryに残すのは、照合した版・モデル、数値usage・時間、固定probe識別子、拒否件数、検査結果だけ。
+summaryに残すのは、照合した版・モデル、数値usage・時間、固定probe識別子、件数・正規化した形式、検査結果だけ。
 最大29会話（読み取り1・拒否27・領域外読み取り観測1）、各120秒、workflow全体75分。
 必須の拒否・読み取り・不変検査が1件でも失敗すればjobも失敗し、有効化の根拠にしない。
 

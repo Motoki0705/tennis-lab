@@ -66,19 +66,36 @@ export MAX_JOBS=2
 nvidia-smi
 bash scripts/build_dino_extension.sh "$PWD" "$PWD/outputs/dino_extension"
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
   'from src.submodules.models import validate_dino_extension; print(validate_dino_extension())'
 ```
 
-请根据环境调整 `CUDA_HOME`，例如设为 `/usr/local/cuda`。在同一 shell 中执行预检和运行处理流程时，
-也需要设置 `PYTHONPATH`。换用其他 shell 时请重新设置。
+请根据环境调整 `CUDA_HOME`，例如设为 `/usr/local/cuda`。预检和处理流程都需要这两个变量，
+换用其他 shell 时也请设置。`TENNIS_LAB_DINO_EXTENSION` 指定所用 DINO 二进制文件的绝对路径，
+`PYTHONPATH` 指定共用 CUDA 扩展目录。未指定或已导入未经验证的 DINO 二进制文件时会明确报错。
+如果加载后所选文件发生变化，请启动新进程并重新验证。请从新的 Python 进程开始，让此加载器首先导入扩展；
+先前已导入并从模块注册表中移除的原生二进制文件无法检测。
 
 脚本按照统一的路径约定生成 `TENNIS_LAB_DINO_OPS_BUILD_CONFIG`，并通过仓库根目录的 `setup.py`
 构建 DINO 和共用的 CUDA 扩展。输出写入 `outputs/dino_extension/{lib,temp,cache}` 和 `build.json`，
-不会修改子模块或共用虚拟环境中的源代码。兼容性修复仅应用于生成的 DINO 源代码。
+不会修改子模块或共用虚拟环境中的源代码。输出目录已有 DINO 二进制文件时会停止，因此每次构建请使用新目录。
+兼容性修复仅应用于生成的 DINO 源代码。
 构建时设置 `CUDA_VISIBLE_DEVICES=''`，不使用 GPU。`validate_dino_extension()` 也仅使用 CPU 张量
 检查前向和反向运算的调用分派，不对 CUDA 内核进行数值验证。
 如果同步后 torch 版本发生变化，请在新的输出目录中重新构建，并显式使用其 `lib`。
+
+共用的 compressed time-local CUDA 扩展也会构建在 `outputs/dino_extension/lib` 的顶层。
+请确认其导入路径指向本次构建的输出：
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
+  'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
+```
+
+从将共用二进制文件存放在 `lib/src/` 下的版本更新后，请在新的输出目录中构建，
+并将 `PYTHONPATH` 设为该目录下的 `lib`。
+此检查只导入扩展，不运行 CUDA 内核。
 
 <a id="required-assets"></a>
 
@@ -172,11 +189,16 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
 
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 ```
 
 预检必须返回 `status: ok` 和退出码 0。文件缺失、内容不匹配、读取失败和扩展不兼容等问题会**汇总在一起**
 以 JSON 输出；只要存在任何问题，退出码就是 1。请明确修复已获取的文件，然后重新运行。
+不安全的资产路径（包括指向声明根目录之外的符号链接）会与其他故障一起以 `invalid_path` 报告；
+不会打开其目标或计算哈希。正常处理流程仍然拒绝这些路径，并注明在修复前无法完成运行时验证。
+如果配置结构或根目录不允许安全地列出资产，JSON 会通过 `pipeline_configuration` 说明限制，
+不会将未检查的资产标记为已验证。
 检查范围包括 `enabled_model_assets()` 中的全部资产、DINO 和 DINOv3 源代码、独立的 DINOv3 权重、
 可视化所需的 SMPL-H 和回归器，以及输入视频（公开示例还包括清单文件和 LICENSE）。
 预检不会下载文件、替换模型、执行推理或使用 GPU。源代码检查仅验证必需文件是否存在。
@@ -188,7 +210,9 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 ## 运行示例
 
 ```bash
-PYTHONPATH="$PWD/outputs/dino_extension/lib" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
+PYTHONPATH="$PWD/outputs/dino_extension/lib" \
+  TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so" \
+  OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   output_directory=tennis_scene/generate/clean_install output_name=scene \
   cache.directory=tennis_scene/cache/clean_install

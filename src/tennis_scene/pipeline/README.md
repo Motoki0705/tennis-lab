@@ -52,6 +52,10 @@ productionと#935用の[共通入口](../../tasks/person_tracking/README.md)で�
 GSIの`reconstruction.boxes/interpolated`は別配列で、`observed`は実検出のみ。
 選別・人物対応・pose出力はsynthetic boxを観測へ入れない。旧方式はtaskの比較benchmarkで使用する。
 重み・方式・特徴契約のエラーは停止し、別方式へ戻さない。
+追跡の進捗は`person_tracking/<camera ID>`ごとに、空検出を含む処理済みframe数と総数を表示する。
+端末では1本のbar、リダイレクト時は開始・最大30秒に1回の途中経過・最後の実数を出す。
+この数はframe単位の処理を表し、その後のAFLink/GSI処理の完了を意味しない。
+Pythonからの呼び出しでは`PersonTrackingModule(..., show_progress=False)`で表示を抑制できる。
 
 `person_tracking.aflink_checkpoint`はcheckpoint root相対の`person_tracking/AFLink_epoch20.pth`。
 公開重みをcheckpoint root内へ配置し、この設定でroot相対の場所を明示する。

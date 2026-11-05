@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Finite writer/verifier turns; never executes another agent."""
 
+import importlib
 import json
 import os
+import signal
 import subprocess
 import sys
 from pathlib import Path
+
+fake_tools = importlib.import_module("fake_agy_tools")
 
 root = Path(os.environ["REWRITE_FAKE_ROOT"])
 args = sys.argv[1:]
@@ -35,7 +39,9 @@ with (root / "workspace-calls.jsonl").open("a") as trace:
                 "history": git("log", "-2", "--format=%H").splitlines(),
                 "shown": git("show", "HEAD:history.txt"),
                 "remote": git("config", "--get", "remote.origin.url"),
-                "dirty": git("status", "--porcelain"),
+                "dirty": git(
+                    "status", "--porcelain", "--", ".", ":!.agents/hooks.json"
+                ),
                 "previous_turn_file": (Path.cwd() / "previous-turn.txt").exists(),
                 "schema": args[args.index("--json-schema") + 1],
                 "prompt": str(log.with_suffix(".md")),
@@ -44,7 +50,12 @@ with (root / "workspace-calls.jsonl").open("a") as trace:
         )
         + "\n"
     )
-assert log.with_suffix(".md").read_text() == args[args.index("-p") + 1]
+prompt = (
+    json.loads(sys.stdin.read())["message"]["content"]
+    if "--input-format" in args
+    else args[args.index("-p") + 1]
+)
+assert log.with_suffix(".md").read_text() == prompt
 attacks = (
     json.loads((root / "attacks.json").read_text())
     if (root / "attacks.json").exists()
@@ -81,18 +92,34 @@ for attack in attacks:
     if attack.get("exit"):
         raise SystemExit(attack["exit"])
 log.write_text(
+    "applying agent mode plan\n"
     'Propagating selected model override to backend: label="Gemini 3.8 Flash (High)"\n'
     "private-log conversation_id=private-conversation /home/private-person/token.json\n"
 )
-print(
-    json.dumps(
-        {
-            "status": "SUCCESS",
-            "conversation_id": "private-conversation",
-            "duration_seconds": 0.2,
-            "usage": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
-            **outputs[index],
-        },
-        ensure_ascii=False,
+fake_tools.init_stream()
+for command in outputs[index].get("commands", []):
+    fake_tools.run_command(command)
+if outputs[index].get("unhooked_command"):
+    fake_tools.run_command(outputs[index]["unhooked_command"], skip_hook=True)
+if outputs[index].get("read_fault"):
+    fault = outputs[index]["read_fault"]
+    fake_tools.read_file(
+        "../private-read-input.txt",
+        skip_hook=fault == "missing",
+        force_execution=fault == "denied_execution",
+        hook_step_offset=1 if fault == "step" else 0,
+        display_path="../private-other.txt" if fault == "path" else None,
     )
+if outputs[index].get("pause"):
+    signal.pause()
+if outputs[index].get("exit_code"):
+    raise SystemExit(outputs[index]["exit_code"])
+fake_tools.emit_result(
+    {
+        "status": "SUCCESS",
+        "conversation_id": "private-conversation",
+        "duration_seconds": 0.2,
+        "usage": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+        **outputs[index],
+    }
 )
