@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
@@ -46,7 +47,10 @@ def _identity(settings: CourtLineModelSettings) -> dict[str, object]:
 
 @pytest.mark.parametrize("channels", [("court_line",), ("other_line",)])
 def test_detector_loads_common_predictor_once_and_preserves_probability_grid(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, channels: tuple[str, ...]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
+    channels: tuple[str, ...],
 ) -> None:
     settings = _settings(tmp_path / "court.ckpt")
     resolver = object()
@@ -95,7 +99,7 @@ def test_detector_loads_common_predictor_once_and_preserves_probability_grid(
         (torch.backends.cudnn, "allow_tf32"),
         (torch.backends.cuda.matmul, "allow_tf32"),
     ):
-        monkeypatch.setattr(backend, name, getattr(backend, name))
+        request.addfinalizer(partial(setattr, backend, name, getattr(backend, name)))
     detector = ProductionCourtLineDetector(settings, cast(Any, resolver), seed=42)
     if channels != ("court_line",):
         with pytest.raises(ValueError, match="binary court_line"):
