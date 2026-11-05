@@ -1,0 +1,43 @@
+{
+  "reviewer": "codex",
+  "date": "2026-11-03",
+  "representative_frames": [
+    0,
+    252,
+    505,
+    757,
+    1009
+  ],
+  "extreme_frames": [
+    765,
+    581,
+    580,
+    980,
+    304,
+    303
+  ],
+  "figures": [
+    "position-bias.png",
+    "candidate-recovery.png",
+    "regression.png",
+    "smoothing.png",
+    "metrics-table.png",
+    "trajectories.png"
+  ],
+  "checks": [
+    "All panels retain the same source frame ID; RGB camera order matches cam0/cam1/cam2.",
+    "Green observed crosses and white estimated diamonds stay distinct; excluded cam0 tail has no reference marker.",
+    "Unknown cam1 frames retain predictions without fabricating a reference.",
+    "Four named video traces include baseline, without_loess and two explicit scoring-only annotation oracles.",
+    "Diagnostic arrows use native pixels; regression shows sampled support and separate near-correct peak analysis.",
+    "Extreme-frame colored LOVO crosses differ from all-view rings; missingness and large residuals remain visible.",
+    "All 1010 comparison frames decoded successfully; self-contained HTML has no broken references."
+  ],
+  "limitations": [
+    "Visual review checks synchronization, representation and missingness, not independent 3D accuracy or the physical truth of clock offsets.",
+    "Native resolution is reduced in the overview; extreme crops retain nearest-neighbor enlargement."
+  ],
+  "comparison_decoded_frames": 1010,
+  "html_broken_references": [],
+  "artifact_manifest_sha256": "92d4cffbf5375167c81740e87e6e54e8c28e67f6832042048ab6aac0795c9306"
+}

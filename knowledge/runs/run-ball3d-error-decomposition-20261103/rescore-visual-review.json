@@ -1,0 +1,15 @@
+{
+  "reviewer": "codex",
+  "scope": "v2 rescoring report and updated metric table",
+  "figure": "metrics-table-v2.png",
+  "figure_sha256": "e7d4220aafc3a7dcb015cf008b1f9b78cb824e038e6b74a9f0e88f0dafc1c812",
+  "checks": [
+    "LOVO counts, eligible counts and coverage appear alongside marginal errors; all-view 3D validity has a separate header.",
+    "The second table identifies the six-result common cohort; tuning/evaluation/all counts are 760/750/1510.",
+    "Method names, table columns and caveats fit the exported standalone figure.",
+    "Existing video and diagnostic figures were copied without changes, and are not presented as newly decoded/recomputed."
+  ],
+  "html_broken_references": [],
+  "video_reused": true,
+  "prediction_replay_rerun": false
+}

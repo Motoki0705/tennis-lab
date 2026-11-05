@@ -1,0 +1,37 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-error-decomposition
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 8 items
+
+tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py .. [ 25%]
+.....                                                                    [ 87%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py .              [100%]
+
+============================== slowest durations ===============================
+1.41s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps
+1.29s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels
+0.35s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels
+0.07s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_event_union_and_smoothing_keep_matched_mask_and_reference_kind
+0.02s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_position_regression_signed_slope_and_temporal_support
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_position_regression_signed_slope_and_temporal_support
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_paired_scoring_matches_camera_frame_intersection_with_different_coverage
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_interpolation_and_image_speed_do_not_cross_gaps_or_split
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_event_union_and_smoothing_keep_matched_mask_and_reference_kind
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_paired_scoring_matches_camera_frame_intersection_with_different_coverage
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_interpolation_and_image_speed_do_not_cross_gaps_or_split
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_event_union_and_smoothing_keep_matched_mask_and_reference_kind
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_position_regression_signed_slope_and_temporal_support
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_interpolation_and_image_speed_do_not_cross_gaps_or_split
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_paired_scoring_matches_camera_frame_intersection_with_different_coverage
+============================== 8 passed in 17.64s ==============================

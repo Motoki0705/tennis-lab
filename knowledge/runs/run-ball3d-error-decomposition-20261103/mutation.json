@@ -1,0 +1,7 @@
+{
+  "mutation": "retained-camera interpolation query: frames - offset[b] -> frames + offset[b]",
+  "test_node": "tests/unit/tennis_scene/evaluation/ball3d/test_error_decomposition.py::test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels",
+  "exit_code": 1,
+  "detected_by": "numerical offset sign assertion (Mismatched elements)",
+  "original_restored": true
+}
