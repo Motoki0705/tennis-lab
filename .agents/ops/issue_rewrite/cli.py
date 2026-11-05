@@ -41,6 +41,8 @@ PUBLIC_FAILURES = {
     "failed_bundle_cannot_be_applied",
     "github_request_failed",
     "rewrite_label_conflict",
+    "confirmed_after_apply_error",
+    "write_state_unconfirmed",
 }
 
 
@@ -129,9 +131,9 @@ def main(argv: list[str] | None = None) -> int:
                     )
                 except (ValueError, OSError):
                     # A rejected artifact is never used, including its report.
-                    # Still finalize the freshly fetched issue and expose why.
+                    # Reconcile from GitHub alone when the source is unavailable.
                     outcome(bundle, "failed", "invalid_failure_artifact")
-            status, reason = fail(gh, args.issue_number)
+            status, reason = fail(gh, args.issue_number, bundle)
             if reason:
                 outcome(bundle, status, reason)
             report = outcome(bundle, status, "workflow_job_failed")["report"]

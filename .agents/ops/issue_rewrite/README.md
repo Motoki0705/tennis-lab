@@ -35,7 +35,7 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
 | `github.py` | 既存の合意・実行根拠の解析、GitHubへの要求、編集履歴の全ページ取得と照合 |
 | `publication.py` | 公開する項目の選別、token等の検査、summaryの出力。生のagent診断は公開しない |
 | `pipeline.apply` / job `apply`・`apply_retry` | GitHub-hosted runnerでartifactを再検査し、最新入力との照合・PATCH・編集履歴の検査・確定ラベルの付与を行う |
-| `pipeline.fail` / job `failed` | 上流jobの失敗時に、GitHub-hosted runnerで現在の対象・合意・確定状態を再取得して失敗を確定する |
+| `pipeline.fail` / job `failed` | 上流jobの失敗時に、GitHub-hosted runnerで対象・合意・本文・履歴を再取得し、書き込み結果を確定する。確認できなければpendingを保つ |
 
 1. ownerによる手動再実行でfailedの場合、prepareが現在の状態を読み直してfailedラベルだけを個別に削除し、
    pendingを再取得してから合意・実行根拠を確認する。記録済みならskippedを付けて終了する。
@@ -71,6 +71,8 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    GitHubが最初の編集時に作成時の版も追加する場合は、`includesCreatedEdit` のfalse→true、
    変更前の空履歴、作成時刻・作者が一致する一意の作成記録を照合して、その記録を区別する。
    同一作者の追加編集、履歴の欠損・取得失敗・曖昧さも不合格。
+   編集者と作成者は `User` なら `login`、`Bot` なら `login + "[bot]"` に正規化し、viewerとの本人判定・creation recordの照合に使う。
+   `editor=null` は不一致、未知の型・`__typename`/`login` の欠落は取得エラーにする。
 
 不変条件は、必須 `##` 節の集合と順序、`validate_body`、
 `parent.execution.PROGRESS_SECTIONS` の節内の原文（前後の空白を含む）、
@@ -111,7 +113,7 @@ privateなrun dirも検査側checkoutの外を必須とする。
 （ignoredも含む）、HEADが呼び出し前と一致し、使用したprompt・schemaが期待した内容と一致することを検査する。
 ファイルのstat cacheだけに頼らず、内容のSHA-256も比較する。検査中にbytecodeは作らない。
 絶対パス等から検査側に変更が入った場合も結果を破棄し、静的な理由を公開して停止する。
-後続のGitHub-hostedのfailed jobが `rewrite:failed` を確定する。
+後続のGitHub-hostedのfailed jobが[本文と履歴を照合して確定する](#失敗skip手動の再実行)。
 
 終了時は `finally` で自分が作ったworktreeだけを `git worktree remove --force` し、一時ディレクトリも削除する。
 構造化出力の不正、agyの異常終了、完全性の違反でも片付ける。片付けの失敗も明示的な失敗とし、
@@ -145,7 +147,12 @@ verifierの自由文説明や拒否コマンドの生文字列は出さない。
 
 ## 失敗、skip、手動の再実行
 
-`rewrite:failed` は「原文で確定」の意味で、親CLI・dispatcherはこの確定状態で進められる。
+failed jobは本文と編集履歴を再取得し、未書き込みなら `rewrite:failed`、候補本文への本人の編集1件を確認できれば `rewrite:done`（`confirmed_after_apply_error`）にする。
+他者だけの編集や割り込みがあれば、その本文を巻き戻さず `rewrite:failed` として確定する。
+取得失敗・履歴の不整合、新しい編集がないのに元本文と違う場合、またはbundle欠落・不正で本人の編集がある場合は、`write_state_unconfirmed` で非ゼロ終了し、確定ラベルを付けない。
+実行記録の解析失敗時は、本人の書き込みなしを確認できた場合だけ `invalid_execution_record` でfailedにし、それ以外は `write_state_unconfirmed` としてdone・failedを付けない。
+pendingのまま親CLI・dispatcherのgateが止めるため、人間が状態を確認して判断するか `rewrite:skipped` を付ける。
+`rewrite:failed` では親CLI・dispatcherは現在の本文で進められる。
 summaryの理由を確認してから、合意・実行根拠の記録がまだ無いfailed issueだけをownerが再実行できる。
 Actions → **Issue rewrite** → **Run workflow** でmain・issue番号を選ぶか、次を使う。
 
