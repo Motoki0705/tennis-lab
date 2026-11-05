@@ -9,5 +9,6 @@ code_root="$(git rev-parse --show-toplevel)"
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 MAX_JOBS=2
 bash "$code_root/tests/benchmarks/build_dino_extension.sh" "$1" "$3/dino_extension"
 export PYTHONPATH="$code_root:$3/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$(cd "$3/dino_extension/lib" && pwd)/MultiScaleDeformableAttention.so"
 "$code_root/.venv/bin/python" "$code_root/tests/benchmarks/person_coco_fullframe.py" \
     --phase infer --repo "$1" --comparison "$2" --report "$3"

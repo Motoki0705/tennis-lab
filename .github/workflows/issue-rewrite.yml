@@ -67,7 +67,8 @@ jobs:
     - linux
     - x64
     - tennis-lab
-    timeout-minutes: 35
+    # Four 600s turns (writer/verifier + one repair/recheck), 10m stability, 10m setup.
+    timeout-minutes: 60
     permissions:
       contents: read
       issues: read
@@ -152,7 +153,8 @@ jobs:
     - linux
     - x64
     - tennis-lab
-    timeout-minutes: 35
+    # Same turn/stability/setup budget as rewrite; this is a separate attempt.
+    timeout-minutes: 60
     permissions:
       contents: read
       issues: read

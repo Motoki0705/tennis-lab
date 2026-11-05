@@ -131,7 +131,8 @@ sudo -u tennis-actions env HOME=/var/lib/tennis-lab-actions/home \
 
 導入スクリプトは公式GitHub Releaseの固定assetを取得し、SHA-256が一致してから中の `antigravity` を `agy` として配置する。
 所有者は `tennis-actions`、置き先は `/var/lib/tennis-lab-actions/home/.local/bin/agy`。
-同じpinと導入記録があり、実行ファイルも改変されていなければ再取得しない。
+途中の `~/.local` も `tennis-actions` の所有にする。rootの所有だとjobのuvが `~/.local/share` を作れない。
+同じpinと導入記録があり、実行ファイルも改変されていなければ再取得しない。このときも2つのディレクトリの所有者を直す。
 検証不一致では新規配置せず、既存の実行ファイルも置き換えない。公式のlatest用 `install.sh` は使わない。
 
 2つ目のコマンドで開いた対話画面で、利用するGoogleアカウントへ直接ログインする。
@@ -184,12 +185,20 @@ checkoutのcredentialは永続化せず、GitHub tokenの権限はcontents・iss
 
 workflowは軽量なjsonschema環境で `agy_smoke.py` から共通部品を呼び、
 `.github/ISSUE_TEMPLATE/06_parent.md` の `##` 見出しを読み取り、実際のファイルと結果を照合する。
-job summaryに観測した版・モデル、usage、CLIの所要時間と版の確認を含む所要時間、`denied_actions` を出す。
-失敗時は失敗の分類と取得できた拒否一覧を残す。log・prompt・会話ID・認証情報をartifactへ公開しない。
+job summaryに観測した版・モデル、usage、CLIの所要時間と版の確認を含む所要時間、
+試行/拒否件数と引数を伏せたコマンド形式を出す。失敗時も取得できた件数を残す。
+log・prompt・会話ID・認証情報・コマンド全文をartifactへ公開しない。
+通常の読み取りも使い捨てworkspaceにテンプレートをコピーして実行する。
+非公開の生stream・hook判定・捕捉結果は成功・失敗・timeoutとも
+`${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/agy-smoke/run-*/` に残し、作業workspaceは片付ける。
 認証・モデル・版・構造化出力のいずれかで失敗したら修正して手動でやり直す。
 この疎通だけでは書き直しの本体を有効化しない。
 
 続くpermissions probe段階は、使い捨ての作業領域で読み取りの成功と、危険なコマンドの拒否・ファイル不変を確認する。
+読み取りの前に許可外の `pwd` をhookで拒否し、その後も読み取りを続けて構造化結果を返すことを必須とする。
+同じ段階でworkspace外への `read_file` もhookで拒否する。内側の読み取りと結果返却の続行を確認し、
+シェルと `read_file` の全試行をhook記録と照合する。未記録・step/対象の不一致・拒否後の実行形跡は共通の `command_hook_mismatch` で失敗する。
+入力形式と照合reasonの正本は[共通部品の契約](../../.agents/ops/lib/README.md#agyの共通呼び出し部品)にある。
 形式と判定方法・呼び出し数・上限時間は[共通部品の読み取り権限と実機プローブ](../../.agents/ops/lib/README.md#agyの読み取り権限と実機プローブ)を参照する。
 両段階が成功してから実機の疎通成功とし、実行は #1599 で人間が行う。
 
@@ -197,7 +206,8 @@ job summaryに観測した版・モデル、usage、CLIの所要時間と版の�
 
 - headlessがtrustの確認待ちで止まらず、テンプレートとpermissions probeの読み取りを完了すること。
   trustを追加して通すことはせず、拒否やtimeoutがあればそのまま未確認として親へ返す。
-- untrustedなworkspaceからhooks・MCP・pluginsの拡張設定を読み込んでいないこと。
+- untrustedなworkspaceで、この呼び出しが配置したPreToolUse hookが実行され、拒否後も続行すること。
+  このhookの実行コードはcontroller側に固定する。その他のhooks・MCP・pluginsを読み込んでいないこと。
   workspaceの設定場所と現状は[共通部品README](../../.agents/ops/lib/README.md#agyの読み取り権限と実機プローブ)を参照し、
   privateな診断logや実行結果で確認する。読み込みの有無が判断できなければ、その点を未確認として残す。
   現在のrepoに設定が無いことだけで、存在する場合の挙動まで検証済みとは扱わない。
@@ -207,6 +217,64 @@ job summaryに観測した版・モデル、usage、CLIの所要時間と版の�
 ローカルのテストは本物のagyを起動せず、実行ファイルの偽物と小さなtarballだけを使う。
 導入テストでは `install_agy.sh --bin-dir DIR --config-file FILE` で一時ディレクトリと
 `file://` の偽tarballを指定できる。明示した置き先には現在の実行者の所有権で置き、sudoを要しない。
+
+## 手動のagyコマンド調査
+
+`agy_command_census.py` は本番のwriter/verifierのprompt・schemaを指定commitから読み、
+入力JSONを `pipeline.generate` と同じ方法で連結する調査用CLI。
+GitHubへの書き込み・公開・本番の権限変更は行わない。
+入力はpipelineのcontext（`repo`, `issue_number`, `url`, `issue`, `comments`,
+`managed_sections`）と同じ形で用意し、verifierでは合格したwriterの `body` を
+`rewritten` に加える。修正turnのfeedbackもcontext側に明示する。
+
+すべての入力・使い捨てclone・生ログ・結果は
+`~/.local/state/tennis-lab-agents/manual-runs/1566/agy-census/` に置く。
+新規run IDを使う。pilotは最大25回、合意済みのmeasurementは別台帳で最大60回、
+共通lockで逐次実行する。
+`--agy` には `install_agy.sh --bin-dir` で私用に導入した固定版を指定する。
+調査には実モデルの利用枠を消費するため、通常のテストから呼ばない。
+
+```bash
+.venv/bin/python scripts/github_actions/agy_command_census.py run \
+  --phase measurement --timeout 600 --deny-unlisted --prompt-stdin \
+  --id writer-example --source "$PWD" --ref HEAD \
+  --agy "$private/bin/agy" --role writer --input-json "$private/inputs/context.json"
+.venv/bin/python scripts/github_actions/agy_command_census.py summarize \
+  --captures "$private/measurement/runs/writer-example/control/capture.json" \
+  --output "$private/forms.json"
+```
+
+`private` は上記の非公開領域へ設定しておく。measurementは600秒・明示拒否条件を必須とし、
+旧pilotの台帳を変更しない。診断も同じmeasurement台帳へ起動前に記録し、上限へ含める。
+入力snapshot・verifier候補と実行順を開始前に固定する。quota・認証エラーでは再試行せず停止する。
+完了後、所要時間と300秒以内かを保存し、自分が開始した会話の全command stepと
+`reconcile_commands()` で双方向に突き合わせる。生の突き合わせ結果も非公開のまま扱う。
+`--prompt-stdin` はOSの引数長上限を避け、同じprompt全文を1件の入力イベントとして渡す。
+内容の切り詰め・追加turn・会話の再利用は行わず、利用した転送方法をmetadataへ記録する。
+CLI起動前の失敗も予約済み台帳から削除せず、上限に含める。
+
+本番と同じ `readonly_settings()` と `--mode plan` を使い、観測のために
+`--output-format stream-json` を使う。本番と共有する [`agy_capture.py`](../../.agents/ops/lib/agy_capture.py) は
+`(conversation_id, step_index)` で更新イベントをまとめ、`CommandLine` を加工せず保存する。
+streamが長い引数を末尾省略した場合は、同じstepのhook記録と省略前prefixが一致するときだけ
+全文を復元し、省略表示と採用元も保存する。任意の不一致やstreamに無いhook stepはエラーにする。
+soft denialはlogのstep番号と結合する。`DONE` だけで実行済みとは判定せず、
+出力・エラーがない場合は不明とする。構造化出力のschema合否とCLI終了は別に保存する。
+コマンドの記述用の正規化は権限判定に使わない。現行grammarの判定は原文に対して行う。
+実CLIが正規化等によって別の判定をする可能性があるので、実行結果も別に残す。
+
+この手動CLIは共通APIを直接呼ばず、同じCLI引数を組み立てる。
+本番の事前検査と異なり、保存済みの起動modeが `auto` でも、
+[セッション限定の `--mode plan` 上書き](https://antigravity.google/docs/cli/reference#configuration-keys-settingsjson)
+を明示して実行する。永続の許可規則・trustされた祖先・global hookは受け入れない。
+実行後にはrequest-review、plan、版・モデル、永続設定の不変を照合する。
+設定ファイルの編集、認証情報のコピー、sandboxや自動承認の有効化は行わない。
+
+`--deny-unlisted` は、本番と共有する [`agy_hook.py`](../../.agents/ops/lib/agy_hook.py) で
+現行grammarにない形式をPreToolUse hookで明示拒否する。追加の実行許可は与えない。
+旧pilotのsoft denial条件とは別に集計する。
+設定だけを使い捨てcloneへ配置して終了時に照合し、実行コードはcontroller側を使う。
+stdout、log、入力、metadata、集計はprivateのまま扱い、生データをcommitしない。
 
 ## セキュリティ境界
 
@@ -218,3 +286,30 @@ Environment承認をすべて必須にしている。学習commandへsecretを�
 - [GitHub: Adding self-hosted runners](https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners)
 - [GitHub: Secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)
 - [Microsoft: Use systemd to manage Linux services with WSL](https://learn.microsoft.com/en-us/windows/wsl/systemd)
+
+### 許可適用後の手動確認
+
+`agy_allowlist_validation.py --private /private/validation --agy /path/to/agy` は、
+事前に固定したprivateな `plan.json` と入力を使う手動の確認controller。
+既存censusの `preflight` だけをcontrollerプロセス内のscopeで差し替え、
+`run_headless` のsettingsファイル・hook・捕捉・照合と、`pipeline.generate` の
+writer・不変条件・verifier・1回だけの修正をそのまま呼ぶ。本番API・workflow・smokeへ
+安全装置を緩める引数や環境変数は追加しない。scope終了時に元の関数を戻す。
+実効plan/request-reviewとsettingsファイルの整合、永続設定digestの前後一致を各turnで確認し、
+未確認のturnは除外して停止する。quota・認証エラーは再試行しない。
+
+診断は最大3 turn、全体は20 turnを排他的な台帳で制限する。読み取り9道具の広い組合せと
+保護付きdiff、代表的なshell拒否、workspace外read_fileの拒否後の続行を指定し、
+実際のhook判定・完了・exit code・nonce・内外canaryで照合する。
+6 pipelineを目標とし、新しいpipelineの最悪4 turnを確保できなければ残りを開始しない。
+smokeの29 turnのprobeはここから呼ばず、runnerの実機確認で扱う。
+
+過去の閉じた/合意済みissueを固定入力で再生するため、GitHub adapterはsnapshotのみを返し、
+適格性判定と安定待ちは測定対象外にする。本文・コメントとモデル入力は維持し、
+最初のwriter入力を固定JSONと比較する。編集履歴はsnapshot用の印であり、公開用handoffに使わない。
+`apply`・GitHubへの書き込みは呼ばない。生のprompt・本文・コマンド・log・識別子はprivateに保持し、
+公開するのは正規化した形式・件数・判定・時間とする。
+
+固定版の実行ファイルを `--agy` で指定する。版不一致など起動前の問題を修正して
+`--resume` する場合も同じ台帳を使い、予約枠を返却しない。quota・認証による停止からの
+再開は拒否する。過去の完了と停止理由はprivateな再開履歴へ残す。

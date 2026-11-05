@@ -13,6 +13,7 @@ export PYTHONPATH="$code_root:$2/dino_extension/lib"
 "$code_root/.venv/bin/python" "$code_root/tests/benchmarks/association_feature_guard.py" --report "$2" -- \
     bash -euo pipefail -c '
         bash "$1/tests/benchmarks/build_dino_extension.sh" "$2" "$3/dino_extension"
+        export TENNIS_LAB_DINO_EXTENSION="$(cd "$3/dino_extension/lib" && pwd)/MultiScaleDeformableAttention.so"
         "$1/.venv/bin/python" "$1/tests/benchmarks/pipeline_qualification.py" --phase execute --report "$3"
         CUDA_VISIBLE_DEVICES="" "$1/.venv/bin/python" "$1/tests/benchmarks/pipeline_qualification.py" --phase validate --report "$3"
     ' qualification "$code_root" "$1" "$2"

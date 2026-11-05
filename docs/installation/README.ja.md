@@ -64,19 +64,37 @@ export MAX_JOBS=2
 nvidia-smi
 bash scripts/build_dino_extension.sh "$PWD" "$PWD/outputs/dino_extension"
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
   'from src.submodules.models import validate_dino_extension; print(validate_dino_extension())'
 ```
 
-環境によって`CUDA_HOME=/usr/local/cuda`などに変更します。`PYTHONPATH`は同じshellでの
-preflightとpipeline実行にも必要です。別shellでは再設定してください。
+環境によって`CUDA_HOME=/usr/local/cuda`などに変更します。preflightとpipeline実行には両変数が
+必要です。別shellでも設定してください。`TENNIS_LAB_DINO_EXTENSION`には使用するDINO binaryの絶対path、
+`PYTHONPATH`には共通CUDA拡張のdirectoryを指定します。選択が無い場合や、検証されていないbinaryを
+import済みの場合は停止します。読み込み後に選択ファイルが変わった場合は新しいprocessで再検証してください。
+新しいPython processで開始し、このloaderが拡張を最初にimportするようにしてください。事前にimportして
+module registryから削除されたnative binaryは検知できません。
 
 スクリプトは`TENNIS_LAB_DINO_OPS_BUILD_CONFIG`を正規のpath契約で作り、ルート`setup.py`から
 DINOと共通CUDA拡張をビルドします。`outputs/dino_extension/{lib,temp,cache}`と`build.json`へ
-生成し、submodule・共有venvのソースを変更しません。互換修正は生成したDINOソースだけに適用します。
+生成し、submodule・共有venvのソースを変更しません。出力先にDINO binaryが既にある場合は停止するため、
+ビルドごとに新しい出力先を指定します。互換修正は生成したDINOソースだけに適用します。
 ビルド中は`CUDA_VISIBLE_DEVICES=''`とし、GPUを使いません。`validate_dino_extension()`も
 CPU tensorでforward/backwardのdispatchを検査するもので、CUDA kernelの数値検証ではありません。
 異なるtorchへ同期し直した場合は、新しい出力先へ再ビルドし、その`lib`を明示してください。
+
+共通のcompressed time-local CUDA拡張も`outputs/dino_extension/lib`の直下にビルドされます。
+import pathがこの出力先を指すことを確認してください。
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
+  'from src.utils.models.components.ops import require_compressed_time_local_cuda_extension; print(require_compressed_time_local_cuda_extension().__file__)'
+```
+
+共通binaryを`lib/src/`へ保存していた版から更新した場合は、新しい出力先へビルドし、
+その`lib`を`PYTHONPATH`に設定してください。
+この確認は拡張をimportするだけで、CUDA kernelは実行しません。
 
 <a id="required-assets"></a>
 
@@ -170,11 +188,16 @@ Google Driveのfolderは中の該当ファイルだけをダウンロードし�
 
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
+export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
 CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
 ```
 
 `status: ok`と終了値0が必要です。欠損・内容の不一致・読取失敗・拡張の不適合を**全件まとめて**
 JSONへ出力し、1件でもあれば終了値1になります。入手したファイルを明示的に直し、再実行してください。
+宣言したroot外へのsymlinkを含む不正な資産パスは、他の不具合とともに`invalid_path`で報告し、
+参照先を開いたりhashを計算したりしません。通常のpipelineも引き続き拒否します。
+修復までは完全なruntime検証ができないことを示します。設定構造やrootが不正で安全に一覧を作れない場合は、
+資産を検査済みとはせず、JSONの`pipeline_configuration`にその制約を報告します。
 `enabled_model_assets()`の全資産に加え、DINOとDINOv3 source、DINOv3単体重み、可視化のSMPL-H・regressor、
 入力動画（公開サンプルならmanifest・LICENSEも）を検査します。ダウンロード・モデルの代替・推論・GPU使用は行いません。
 ソースは必要ファイルの存在を検査します。
@@ -186,7 +209,9 @@ JSONへ出力し、1件でもあれば終了値1になります。入手した�
 ## サンプルで3D再構成
 
 ```bash
-PYTHONPATH="$PWD/outputs/dino_extension/lib" OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
+PYTHONPATH="$PWD/outputs/dino_extension/lib" \
+  TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so" \
+  OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   output_directory=tennis_scene/generate/clean_install output_name=scene \
   cache.directory=tennis_scene/cache/clean_install

@@ -1,0 +1,56 @@
+{
+  "schema": "tennis_lab_ball3d_visual_review.v1",
+  "provider": "codex",
+  "output_manifest_sha256": "43c56e13992a6bb9357c7fb399c5d92e6af154a0b74acc7b080ac459daee7e07",
+  "preview_source_frames": [
+    0,
+    252,
+    505,
+    757,
+    1009
+  ],
+  "images": {
+    "preview-0000.png": {
+      "sha256": "bc5fd1afab0b552421792d025a356946362022804798a228993f01849ad27db3",
+      "size_bytes": 914655
+    },
+    "preview-0252.png": {
+      "sha256": "d699933ac399b35c51ec76088bd356ae7ad1f16d6a6ebb33d799b9c310b4fe51",
+      "size_bytes": 959629
+    },
+    "preview-0505.png": {
+      "sha256": "d9a1dbb083a930a9268f62cd737b6be669db015dbc6a47a04e234441dcde460c",
+      "size_bytes": 959690
+    },
+    "preview-0757.png": {
+      "sha256": "260961b2b7124aa8754db02217124b4c6bfc1cd3911d8793c6938ab7cccd9218",
+      "size_bytes": 968815
+    },
+    "preview-1009.png": {
+      "sha256": "d909fd82f3ce5d6ac4b9941ecb4266017020c9e532f9d27d0f963d94a857a190",
+      "size_bytes": 953048
+    },
+    "trajectories.png": {
+      "sha256": "9f393a8d5bff366721ac587908a91aac6415a2d53185aab142a868e963b3cc5f",
+      "size_bytes": 409348
+    },
+    "metrics-table.png": {
+      "sha256": "673f727a7c08cc6a6c001a790d880b41edb261623187381c811620004d3f9bc2",
+      "size_bytes": 104971
+    },
+    "extremes.png": {
+      "sha256": "84aff828732d393db0a614a0ba0fb20c4484a22da869572ac64c8abb0142ab76",
+      "size_bytes": 1316107
+    }
+  },
+  "observations": [
+    "Frames 252 and 757 show both method reprojection rings and same-frame top/side positions.",
+    "Frames 0, 505 and 1009 preserve absent 3D samples; retained historical traces have gaps and do not invent current markers.",
+    "cam0 frame 1009 is excluded_extrapolation with no scoring marker; cam1 frame 757 is unknown while method predictions remain visible.",
+    "cam2 crops at frames 580/581/447/448 show approved-estimate white diamonds distinct from observed green crosses.",
+    "The six extreme source frames are 765, 581, 580, 980, 448 and 447; crops show all-view rings and held-out crosses.",
+    "The metric table and trajectory/distribution/time-series figure are legible. This is a rendering inspection, not independent validation of human labels or 3D accuracy."
+  ],
+  "html_broken_references": [],
+  "scope": "representative images; full video decode was checked separately"
+}

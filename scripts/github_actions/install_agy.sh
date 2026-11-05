@@ -5,7 +5,8 @@ set -euo pipefail
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/../.." && pwd)"
 config_file="$repo_root/.agents/ops/lib/agents.conf"
-bin_dir="/var/lib/tennis-lab-actions/home/.local/bin"
+runner_local="/var/lib/tennis-lab-actions/home/.local"
+bin_dir="$runner_local/bin"
 runner_install=true
 
 while [[ $# -gt 0 ]]; do
@@ -73,11 +74,21 @@ on main as the repository owner. See scripts/github_actions/README.md.
 TEXT
 }
 
+# install -d applies -o/-g only to the directories it is given, so name ~/.local too.
+# A root-owned parent would stop runner jobs from creating ~/.local/share (uv's Python).
+own_runner_dirs() {
+  install -d -o tennis-actions -g tennis-actions -m 0755 "$runner_local" "$bin_dir"
+}
+
 # A receipt is valid only while the installed bytes still match. Self-updates or
 # manual replacements therefore cannot be mistaken for the pinned installation.
 if [[ -f "$target" && ! -L "$target" && -x "$target" && -f "$receipt" ]]; then
   expected_receipt="$(printf '%s\n%s\n%s' "$agy_version" "$agy_sha256" "$(sha256sum "$target" | cut -d' ' -f1)")"
   if [[ "$(cat "$receipt")" == "$expected_receipt" ]]; then
+    # Also repair installs whose ~/.local was created root-owned by an older installer.
+    if $runner_install; then
+      own_runner_dirs
+    fi
     echo "agy $agy_version is already installed and unchanged."
     login_instructions
     exit 0
@@ -105,7 +116,7 @@ fi
 
 # Do not create or replace anything at the destination until verification passes.
 if $runner_install; then
-  install -d -o tennis-actions -g tennis-actions -m 0755 "$bin_dir"
+  own_runner_dirs
 else
   install -d -m 0755 "$bin_dir"
 fi

@@ -31,7 +31,7 @@ membership/教師provenanceを合わせて検証する。追加学習が読むsn
 `test_annotation_publication.py` は合成画像で累積公開・reader/collate・並行要求・途中停止を検証する。
 `test_publication_loss.py` は公開した全空/混在batchを上流DINOのmatcher・classification/L1/GIoU lossへ
 CPUで通し、有限値・負例の非ゼロ勾配・optimizer更新を検証する。DINOの初期化済みsubmoduleと
-import可能な公式拡張が必要で、`PLAYER_DINO_REPOSITORY` で読取対象を明示できる。
+公式拡張のbinaryを`TENNIS_LAB_DINO_EXTENSION`に絶対pathで指定し、`PLAYER_DINO_REPOSITORY` で読取対象を明示できる。
 CPUではCUDA専用denoising forwardを実行しない。全criterionの受入は、管理役が共有training queueの
 allジョブで次を実行する（固定したDINO repository/拡張へのpathを環境に設定する）。
 
