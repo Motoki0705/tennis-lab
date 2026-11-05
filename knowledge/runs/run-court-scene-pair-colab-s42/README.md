@@ -1,8 +1,8 @@
 # シーン5ペアのColab逐次実行・再開手順
 
-#1581 / #1584の実行bundle。担当親がL4の1セッションで、入力照合 → P02の3更新probe →
+#1581 / #1584の実行bundle。L4の1セッションで、入力照合 → P02の3更新probe →
 scene-1〜4の再評価 → P02 / P03 / P12 / P13 / P23それぞれの学習・評価を順に実行する。
-管理入口は `campaign.py run`。このPRではCPU検証までを行い、Colabのprobe・本実行は未実施。
+管理入口は `campaign.py run`。実行経緯は #1585、保存先の重複解消は #1635 を参照する。
 
 session管理と終了判定は[tennis-colab](../../../.agents/skills/tennis-colab/SKILL.md)、
 Driveの接続・管理方針は[tennis-drive](../../../.agents/skills/tennis-drive/SKILL.md)を使う。
@@ -17,7 +17,7 @@ Driveの接続・管理方針は[tennis-drive](../../../.agents/skills/tennis-dr
 `unknown`ならskillの`recover`手順に従う。動いている同じcampaignを重ねて提出しない。
 
 ```bash
-export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.conf"
+export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.dedicated.conf"
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py status \
   --session "$PAIR_PREVIOUS_SESSION" --job-id "$PAIR_PREVIOUS_JOB"
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py logs \
@@ -47,10 +47,13 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
 以下はローカルの、このbundleを含むcommitをcheckoutした専用worktreeから実行する。
 初回も再開も同じコマンドでよい。再開には前回と同じソース内容を使う。
 `PAIR_REF`を最初の提出時に記録し、親の指示なしで別の実装へ更新しない。
+入力完了印のidentityには`src` tree・`uv.lock`・`third_party/dinov3`と、
+`campaign.py`・`runtime.py`の内容も含む。無関係なsrc変更でもidentityは変わるため、
+再開commitと既存の入力完了印の扱いは親が確認する。不一致を無視して続行しない。
 認証済みrclone設定の内容は表示しない。
 
 ```bash
-export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.conf"
+export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.dedicated.conf"
 PAIR_REF=$(git rev-parse HEAD)
 PAIR_SESSION="court-scene-pair-$(date -u +%Y%m%d-%H%M%S)"
 PAIR_JOB=campaign
@@ -75,8 +78,8 @@ L4の確保を確認し、次の**1つのexec**を提出する。`bootstrap.sh`�
   --runner-output outputs/court_detection/train/scene-pair-5500-s384-colab/P12-s42 \
   --runner-output outputs/court_detection/train/scene-pair-5500-s384-colab/P13-s42 \
   --runner-output outputs/court_detection/train/scene-pair-5500-s384-colab/P23-s42 \
-  --persist outputs/court_detection/evaluate/scene-pair-5500-s384-colab \
-  --persist outputs/court_detection/campaign/scene-pair-5500-s384-colab \
+  --runner-output outputs/court_detection/evaluate/scene-pair-5500-s384-colab \
+  --runner-output outputs/court_detection/campaign/scene-pair-5500-s384-colab \
   -- bash knowledge/runs/run-court-scene-pair-colab-s42/bootstrap.sh
 ```
 
@@ -145,9 +148,30 @@ mid-epochのDataLoaderの位置・worker RNGを厳密には継続しないとい
 | 全9評価 | `outputs/court_detection/evaluate/scene-pair-5500-s384-colab/<scene-1/scene-2/scene-3/scene-4/P02/P03/P12/P13/P23>-s42` |
 | 設定・完了印・進捗・再開記録 | `outputs/court_detection/campaign/scene-pair-5500-s384-colab` |
 
-学習のtreeは`--runner-output`で宣言し、runnerのrclone artifact storeがcheckpoint保存直後に永続化する。
-評価・状態のtreeは`--persist`で宣言する。bundle自身も段階境界で検証付き保存を行う。
-Colab workerは`operations/colab/<session>/<job-id>`にもコマンド・ログ・終了/保存receiptを残す。
+上のexecでは、4用途の全treeを`--runner-output`で宣言する。これは学習runnerに限らず、
+コマンド自身が実行中のDrive保存を所有する宣言である。workerはprocess終了後にだけ残りを保存する。
+これらのtreeやその祖先・子孫を`--persist`へ追加しない。同じtreeへworkerの周期コピーと
+bundleの公開が並行すると、Driveに同名folderができ、内容照合も再開も曖昧なpathで停止する（#1635）。
+
+| tree | 実行中にDriveへ保存する処理 | 公開のタイミング |
+|---|---|---|
+| 新5学習・probe | 学習subprocessのartifact store | `PublishingCheckpointIO`の保存直後と、同じthreadの同期callbackによるログ・設定の保存 |
+| 状態 | bundleの`ColabBackend.publish` | 進捗・再開記録・checkpoint検証記録・完了印を書いた直後 |
+| 評価 | bundleの`ColabBackend.publish` | evaluator終了後、結果全体の照合が通ってからdirectoryを公開 |
+
+bundleの親processは学習subprocessの終了を待つ。その間の状態更新はsubprocessのcheckpoint hookが
+行い、親と並行に公開しない。学習開始前の退避設定もsubprocess内でrunner開始前に保存する。
+Colab workerが実行中に周期保存するのは、別treeの`operations/colab/<session>/<job-id>`の
+コマンド・stdout・状態だけである。通常終了・失敗終了とも、process終了後に全宣言treeを回収する。
+
+VMが消えた場合、この終了時回収は行われない。保存・検証済みcheckpointより後の更新と、
+最後のrunner同期以後のログは失われ得る。実行中の評価はまだbundleが公開していないため、
+その評価の途中結果も失われ、同じ条件の評価をやり直す。過去の公開済み評価・完了印は再照合して使う。
+状態treeの`configs/*.yaml`は入力準備でローカルに生成するが、bundleは個別には公開しないため、
+終了時回収前にVMが消えるとそのVMで作ったコピーは失われ得る。再開時に固定設定から再生成し、
+公開済み`inputs.json`・`config-audit.json`のidentityを照合する。
+各記録を書いてから公開が完了するまでの間にも未保存の窓があり、完了印だけで成果を採用しない。
+checkpointの公開後に保存記録や完了印を失った場合は、既存のcheckpoint内容検証から回復する。
 
 各評価の`evaluation.json`は`court_data_scaling_evaluation_v2`。
 実画像val 2,211枚と合成val 2,439枚を、9条件共通のID・順序・batch 8で検証する。
@@ -169,7 +193,10 @@ Colab workerは`operations/colab/<session>/<job-id>`にもコマンド・ログ�
 ```bash
 PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES="" PYTHONPATH=. .venv/bin/python -m pytest -n 2 \
   knowledge/runs/run-court-scene-pair-colab-s42/test_campaign.py \
+  tests/unit/skills/test_tennis_colab.py::test_runner_output_has_one_live_writer_and_is_salvaged_after_exit \
   tests/unit/tasks/base/training/test_artifact_store.py::test_checkpoint_io_publishes_after_local_serialization \
+  tests/unit/tasks/base/training/test_artifact_store.py::test_colab_declared_output_accepts_matching_rclone_store \
+  tests/unit/tasks/base/training/test_artifact_store.py::test_colab_declared_output_rejects_local_or_wrong_remote \
   tests/e2e/tasks/court_detection/test_evaluate_ablation.py \
   --durations=0 --durations-min=0
 ```
@@ -178,4 +205,13 @@ PYTHONDONTWRITEBYTECODE=1 CUDA_VISIBLE_DEVICES="" PYTHONPATH=. .venv/bin/python 
 偽関数で代替し、checkpoint adapterだけは小さい実torchファイルを使う。
 既存4条件のcheckpoint解決はrepo内の実在bundleを読み、保存済み設定・評価・親の照合記録との整合と、
 scene-1・scene-2の`training-completion.json`とのpath・内容hashの一致を確認する。
+`test_runbook_gives_each_publisher_one_live_drive_writer`は、READMEのexecを実CLI parserで読み、
+bundleの公開adapterと学習・probeのartifact store設定の保存先を照合する。
+学習5条件・probeはworkerと同形式の`TENNIS_COLAB_ARTIFACT_ROOTS`を実際の
+`build_artifact_store`へ渡し、公開先URIと宣言の完全一致を必須にする。
+状態・評価は子directoryへ公開するため、公開先を含む`--runner-output`が1つであることを検査する。
+全treeで重なる`--persist`も拒否する。
+`test_training_outputs_reject_inexact_declarations`は、学習・probeの6宣言それぞれについて、
+祖先directory・別条件pathへの変更を実factoryが拒否することを12ケースで確認する。
+storeの構築までを実行し、rcloneコマンドやDrive通信は行わない。
 実poolの全経路読込、実9モデルの評価、L4のprobe・学習は担当親の実行工程で確認する。

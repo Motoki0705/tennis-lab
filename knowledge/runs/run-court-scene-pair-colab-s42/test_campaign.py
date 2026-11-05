@@ -1,11 +1,18 @@
 """Small CPU fixtures for campaign policy, recovery and adapter boundaries."""
 
+# Match the pytest decorator policy for tests/ in pyproject.toml for this bundle.
+# mypy: disallow-untyped-decorators=False
+
 from __future__ import annotations
 
+import importlib
+import json
+import shlex
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -14,6 +21,165 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import campaign as c  # noqa: E402
 import runtime as runtime  # noqa: E402
+
+TRAINING_OUTPUTS = (("P02", True), *((pair, False) for pair in c.PAIRS))
+
+
+def _runbook_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[list[str], list[str]]:
+    # Parse the submitted command, without allocating a session or contacting Drive.
+    monkeypatch.syspath_prepend(str(c.REPO / ".agents/skills/tennis-colab/scripts"))
+    colab = importlib.import_module("colab")
+    script = ".agents/skills/tennis-colab/scripts/colab.py"
+    commands = [
+        shlex.split(block.split("```", 1)[0].replace("\\\n", ""))
+        for block in (c.BUNDLE / "README.md").read_text().split("```bash\n")[1:]
+    ]
+    executions = [
+        argv[argv.index(script) + 1 :]
+        for argv in commands
+        if script in argv and argv[argv.index(script) + 1] == "exec"
+    ]
+    assert len(executions) == 1
+    declared = colab.parser().parse_args(executions[0])
+    assert declared.argv == [
+        "--",
+        "bash",
+        "knowledge/runs/run-court-scene-pair-colab-s42/bootstrap.sh",
+    ]
+    return declared.runner_output, declared.persist
+
+
+def _build_training_store(
+    condition: str,
+    probe: bool,
+    declarations: list[str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Path:
+    from src.tasks.base.configuration import ArtifactStoreConfig
+    from src.tasks.base.training.artifact_store.factory import build_artifact_store
+    from src.utils.artifact_store import RcloneArtifactStore
+
+    config = c.make_config(condition, probe=probe)
+    store_config = ArtifactStoreConfig.from_mapping(config["run"]["artifact_store"])
+    assert store_config.mode == "rclone" and store_config.remote == "gdrive"
+    # Preserve the declared spelling, exactly as colab_remote.run constructs URIs.
+    monkeypatch.setenv(
+        "TENNIS_COLAB_ARTIFACT_ROOTS",
+        json.dumps([f"gdrive:tennis_lab/{fragment}" for fragment in declarations]),
+    )
+    secret = tmp_path / "fake-rclone.conf"
+    secret.touch(mode=0o600)
+    monkeypatch.setenv("RCLONE_CONFIG", str(secret))
+    root: Path = Path("outputs") / config["run"]["output_dir"]
+    # Construction checks exact declared URI membership; no Drive operation runs.
+    store = build_artifact_store(store_config, local_root=tmp_path / root)
+    assert isinstance(store, RcloneArtifactStore)
+    assert store.remote_uri == f"gdrive:tennis_lab/{root.as_posix()}"
+    return root
+
+
+def test_runbook_gives_each_publisher_one_live_drive_writer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    declarations, persisted = _runbook_outputs(monkeypatch)
+    owners = [Path(fragment) for fragment in declarations]
+    periodic = [Path(fragment) for fragment in persisted]
+    # Runner stores require exact URI declarations, including each condition.
+    training_roots = [
+        _build_training_store(condition, probe, declarations, tmp_path, monkeypatch)
+        for condition, probe in TRAINING_OUTPUTS
+    ]
+
+    # Observe the actual adapter destinations, rather than repeating its allowlist.
+    bundle_roots: list[Path] = []
+
+    class Store:
+        def __init__(
+            self, root: Path, *, remote: str, remote_root: str, config_path: Path
+        ) -> None:
+            assert remote == "gdrive"
+            self.remote_root = Path(remote_root).relative_to("tennis_lab")
+
+        def publish_file(self, path: Path) -> None:
+            bundle_roots.append(self.remote_root)
+
+        def sync_tree(self) -> None:
+            bundle_roots.append(self.remote_root)
+
+    from src.utils import artifact_store
+
+    monkeypatch.setattr(artifact_store, "RcloneArtifactStore", Store)
+    monkeypatch.setattr(c, "REPO", tmp_path)
+    backend = object.__new__(runtime.ColabBackend)
+    monkeypatch.setattr(
+        backend,
+        "drive",
+        SimpleNamespace(config_path=tmp_path / "unused"),
+        raising=False,
+    )
+    monkeypatch.setattr(backend, "verify_remote", lambda local, remote: None)
+    for relative in (
+        c.STATE / "progress.json",
+        c.STATE / "saved" / "probe.json",
+        c.STATE / "restarts" / "probe.json",
+        c.STATE / "done" / "inputs.json",
+    ):
+        c.write(tmp_path / relative, {})
+        backend.publish(tmp_path / relative)
+    for relative in (
+        c.STATE / "partial-evaluations" / "scene-1-attempt",
+        *(c.eval_root(condition) for condition in (*c.LEGACY, *c.PAIRS)),
+    ):
+        (tmp_path / relative).mkdir(parents=True)
+        backend.publish(tmp_path / relative)
+
+    # Ancestor declarations also overlap: an umbrella --persist must fail here.
+    for index, owner in enumerate(owners):
+        assert all(
+            not owner.is_relative_to(other) and not other.is_relative_to(owner)
+            for other in owners[index + 1 :] + periodic
+        ), f"Concurrent persistence owners overlap: {owner}"
+    # Bundle state/evaluation writes may target children of the declared trees.
+    for root in bundle_roots:
+        assert sum(root.is_relative_to(owner) for owner in owners) == 1, (
+            f"Publisher needs exactly one --runner-output: {root}"
+        )
+    assert all(
+        any(root.is_relative_to(owner) for root in [*bundle_roots, *training_roots])
+        for owner in owners
+    )
+
+
+@pytest.mark.parametrize(
+    ("condition", "probe"),
+    TRAINING_OUTPUTS,
+    ids=["probe-P02", *(f"train-{pair}" for pair in c.PAIRS)],
+)
+@pytest.mark.parametrize("mismatch", ["ancestor", "other-condition"])
+def test_training_outputs_reject_inexact_declarations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    condition: str,
+    probe: bool,
+    mismatch: str,
+) -> None:
+    declarations, _ = _runbook_outputs(monkeypatch)
+    root = c.train_root(condition, probe=probe)
+    wrong = (
+        root.parent
+        if mismatch == "ancestor"
+        else root.with_name("P03-s42" if condition == "P02" else "P02-s42")
+    )
+    mutated = [
+        wrong.as_posix() if fragment == root.as_posix() else fragment
+        for fragment in declarations
+    ]
+    assert root.as_posix() not in mutated
+    with pytest.raises(RuntimeError, match="declared Drive root"):
+        _build_training_store(condition, probe, mutated, tmp_path, monkeypatch)
 
 
 @pytest.mark.parametrize(
@@ -209,13 +375,14 @@ class FakeBackend:
         if self.fail == stage.kind:
             raise RuntimeError(f"injected {stage.kind} failure")
         if stage.kind == "train":
-            prefix = c.train_root(stage.condition).as_posix()  # type: ignore[arg-type]
+            assert stage.condition is not None
+            prefix = c.train_root(stage.condition).as_posix()
             files = [
                 p.relative_to(self.remote).as_posix()
                 for p in self.remote.rglob("*.ckpt")
                 if p.relative_to(self.remote).is_relative_to(prefix)
             ]
-            saved = c.latest_checkpoint(files, stage.condition)  # type: ignore[arg-type]
+            saved = c.latest_checkpoint(files, stage.condition)
             step = c.checkpoint_step(saved, Path(prefix)) if saved else 0
             self.resumes.append(step)
             if self.fail == "interrupt" and stage.condition == "P02":
@@ -422,7 +589,7 @@ def test_evaluation_adapter_checks_pinned_order_and_unweighted_mean(
 ) -> None:
     backend = object.__new__(runtime.ColabBackend)
     ids = ["B00:a", "B00:b", "B01:c", "B02:d", "B03:e"]
-    ready = {
+    ready: dict[str, Any] = {
         "synthetic_ids": ids,
         "real_ids": ["real-b", "real-a"],
         "evaluation_manifest_sha256": "manifest",
@@ -453,7 +620,7 @@ def test_evaluation_adapter_checks_pinned_order_and_unweighted_mean(
             "metrics": dict.fromkeys(runtime.METRICS, value),
         }
     synthetic["scene_macro_mean"] = dict.fromkeys(runtime.METRICS, 5.0)
-    report = {
+    report: dict[str, Any] = {
         "schema": "court_data_scaling_evaluation_v2",
         "series": "scene-pairs",
         "global_step": 33160,

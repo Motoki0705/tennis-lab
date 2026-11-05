@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any, NoReturn
 from urllib.parse import unquote
 
+BOT_EDITOR = {"__typename": "Bot", "login": "github-actions"}
+HUMAN_EDITOR = {"__typename": "User", "login": "human"}
+
 root = Path(os.environ["REWRITE_FAKE_ROOT"])
 args = sys.argv[1:]
 state_file = root / "github.json"
@@ -33,14 +36,17 @@ def response(value: Any, code: int = 200) -> NoReturn:
     raise SystemExit(0 if code < 300 else 1)
 
 
-def edit(body: str, login: str) -> None:
+def edit(body: str, editor: dict[str, str]) -> None:
     if not state["edits"]:
         state["edits"].append(
             {
                 "id": "creation",
                 "editedAt": state["issue"]["created_at"],
                 "deletedAt": None,
-                "editor": state["issue"]["user"],
+                "editor": {
+                    "__typename": "User",
+                    "login": state["issue"]["user"]["login"],
+                },
             }
         )
     state["issue"]["body"] = body
@@ -49,7 +55,7 @@ def edit(body: str, login: str) -> None:
             "id": "edit-" + str(len(state["edits"]) + 1),
             "editedAt": "2026-10-31T00:01:00Z",
             "deletedAt": None,
-            "editor": {"login": login},
+            "editor": editor,
         }
     )
 
@@ -66,7 +72,7 @@ if endpoint == "repos/o/r/issues/1" and method == "GET":
     mutation = state.get("mutation")
     if mutation and state["issue_reads"] == mutation["read"]:
         if "body" in mutation:
-            edit(mutation["body"], "human")
+            edit(mutation["body"], HUMAN_EDITOR)
         if "comments" in mutation:
             state["comments"] = mutation["comments"]
         for name in mutation.get("add_labels", []):
@@ -81,6 +87,14 @@ if endpoint.startswith("repos/o/r/issues/1/comments"):
     response(state["comments"][(page - 1) * 100 : page * 100])
 if endpoint == "graphql":
     state["history_reads"] = state.get("history_reads", 0) + 1
+    failure = state.get("history_failure")
+    if failure and (
+        state["history_reads"] == failure["read"]
+        or (failure["repeat"] and state["history_reads"] > failure["read"])
+    ):
+        if failure["invalid_response"]:
+            response({"data": {}})
+        response({"message": "private-history-error"}, 503)
     after = payload["variables"]["after"]
     start = int(after) if after is not None else 0
     rows = state["edits"][start : start + 100]
@@ -93,7 +107,10 @@ if endpoint == "graphql":
                     "issue": {
                         "body": state["issue"]["body"],
                         "createdAt": state["issue"]["created_at"],
-                        "author": state["issue"]["user"],
+                        "author": {
+                            "__typename": "User",
+                            "login": state["issue"]["user"]["login"],
+                        },
                         "includesCreatedEdit": bool(state["edits"]),
                         "userContentEdits": {
                             "nodes": rows,
@@ -113,18 +130,18 @@ if endpoint == "repos/o/r/issues/1" and method == "PATCH":
     if "body" in payload:
         if state.get("interference") in {"before", "same_author"}:
             editor = (
-                "github-actions[bot]"
+                BOT_EDITOR
                 if state["interference"] == "same_author"
-                else "human"
+                else HUMAN_EDITOR
             )
             edit("concurrent edit", editor)
         if state.get("interference") != "missing_history":
-            edit(payload["body"], "github-actions[bot]")
+            edit(payload["body"], BOT_EDITOR)
         else:
             state["issue"]["body"] = payload["body"]
         patch_response = json.loads(json.dumps(state["issue"]))
         if state.get("interference") == "after":
-            edit("human's latest body", "human")
+            edit("human's latest body", HUMAN_EDITOR)
     response(patch_response)
 if endpoint == "repos/o/r/issues/1/labels" and method == "POST":
     assert set(payload) == {"labels"} and len(payload["labels"]) == 1

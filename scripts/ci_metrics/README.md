@@ -63,7 +63,8 @@ no success index is committed to the repository.
 The `player-publication` lane initializes pinned `third_party/DINO` and runs
 `prepare_dino_cpu --output .ci-dino-cpu`. This compiles upstream `vision.cpp`
 without CUDA, solely so real matcher/loss imports work. Attention forward/backward
-still raise; no model forward is replaced. Add the output directory to `PYTHONPATH`.
+still raise; no model forward is replaced. Set `TENNIS_LAB_DINO_EXTENSION` to the absolute path
+of `.ci-dino-cpu/MultiScaleDeformableAttention.so`.
 Missing preparation fails CI instead of skipping the two publication loss cases.
 
 The `javascript` lane wraps existing `*.test.mjs` with `node --test` and runs the

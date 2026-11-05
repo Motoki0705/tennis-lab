@@ -35,7 +35,7 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
 | `github.py` | 既存の合意・実行根拠の解析、GitHubへの要求、編集履歴の全ページ取得と照合 |
 | `publication.py` | 公開する項目の選別、token等の検査、summaryの出力。生のagent診断は公開しない |
 | `pipeline.apply` / job `apply`・`apply_retry` | GitHub-hosted runnerでartifactを再検査し、最新入力との照合・PATCH・編集履歴の検査・確定ラベルの付与を行う |
-| `pipeline.fail` / job `failed` | 上流jobの失敗時に、GitHub-hosted runnerで現在の対象・合意・確定状態を再取得して失敗を確定する |
+| `pipeline.fail` / job `failed` | 上流jobの失敗時に、GitHub-hosted runnerで対象・合意・本文・履歴を再取得し、書き込み結果を確定する。確認できなければpendingを保つ |
 
 1. ownerによる手動再実行でfailedの場合、prepareが現在の状態を読み直してfailedラベルだけを個別に削除し、
    pendingを再取得してから合意・実行根拠を確認する。記録済みならskippedを付けて終了する。
@@ -48,11 +48,18 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    壊れた所有コメントは解析失敗とし、書き直さず `rewrite:failed` にする。
 3. writerとverifierは、[`agy_headless.py` の公開API](../lib/README.md#agyの共通呼び出し部品)を使う。
    版・モデルは同部品と `agents.conf` のpinだけに従う。呼び出しごとに別の会話とlogを作り、
-   repo・関連issue/PRはGemini自身が読み取る。1呼び出しの上限は300秒。
+   repo・関連issue/PRはGemini自身が読み取る。1呼び出しの上限は共通部品の既定値（600秒）。
+   許可外のシェル形式は共通部品のPreToolUse hookが理由付きで拒否し、読み取りと構造化出力の生成を続けさせる。
+   workspace外への `read_file` もsymlink解決後のパスで拒否する。
+   streamのシェル・読み取り試行は同じtool・stepと、コマンド全文またはPathがhook記録と一致することを必須とし、照合できない試行や拒否後の実行形跡は
+   `command_hook_mismatch` として失敗する。末尾省略の復元はハーネスと同じ共通部品を使う。
+   拒否があっても、以下のschema・不変条件・意味検査・照合付き書き込みの合格条件は変えない。
 4. writerの構造化出力をschemaで検査してから不変条件を調べる。通った本文だけを別会話のverifierへ渡す。
    `verdict=pass` かつ `differences=[]` だけが意味検査の合格。自由文やCLIの終了値から結果を補わない。
 5. 不変条件か意味検査で落ちた場合、直前の本文と具体的な理由をwriterへ渡して1回だけ修正する。
    schema不正・構造化出力なし・版/モデル/認証等の呼び出し失敗は修正を試さず失敗する。
+   rewrite / rewrite_retry のjob上限は各60分。最大4呼び出し（writer/verifierと1回の修正/再検査）の40分、
+   本文の安定待ち最大10分、checkout・依存準備・完全性検査・artifact処理の10分を確保する。
 6. applyはartifactのschema、不変条件、verifier合格を再検査し、対象状態と合意記録も再取得する。
    元本文と現在の本文、入力時と現在の編集履歴が一致したときだけ本文をPATCHする。
    不一致なら書かず、applyの `needs_retry=true` outputを受けた静的な `rewrite_retry`（self-hosted）と
@@ -64,6 +71,8 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    GitHubが最初の編集時に作成時の版も追加する場合は、`includesCreatedEdit` のfalse→true、
    変更前の空履歴、作成時刻・作者が一致する一意の作成記録を照合して、その記録を区別する。
    同一作者の追加編集、履歴の欠損・取得失敗・曖昧さも不合格。
+   編集者と作成者は `User` なら `login`、`Bot` なら `login + "[bot]"` に正規化し、viewerとの本人判定・creation recordの照合に使う。
+   `editor=null` は不一致、未知の型・`__typename`/`login` の欠落は取得エラーにする。
 
 不変条件は、必須 `##` 節の集合と順序、`validate_body`、
 `parent.execution.PROGRESS_SECTIONS` の節内の原文（前後の空白を含む）、
@@ -94,6 +103,8 @@ HEADを固定する。writer・verifier・修正の**呼び出しごと**に、r
 `git log`・`git show`・`gh issue view` のための文脈を維持する。
 呼び出しごとに作り直す理由は、writerが作業領域を変更してもverifierや修正の入力へ持ち越さないため。
 作業領域内のコード・prompt・schemaは検査や合否判定に使わない。
+hook設定だけを呼び出し中のworkspaceへ置き、実行プログラムはcontroller側を使う。
+配置・片付けと記録の契約は[共通部品](../lib/README.md#agyの共通呼び出し部品)に従う。
 
 使用するpromptの雛形とschemaは固定commitから読み、検査側のファイルとの一致を確認する。
 入力JSONを加えたprompt、schemaのコピー、構造化出力、log、公開artifactは使い捨て領域の外へ置く。
@@ -102,7 +113,7 @@ privateなrun dirも検査側checkoutの外を必須とする。
 （ignoredも含む）、HEADが呼び出し前と一致し、使用したprompt・schemaが期待した内容と一致することを検査する。
 ファイルのstat cacheだけに頼らず、内容のSHA-256も比較する。検査中にbytecodeは作らない。
 絶対パス等から検査側に変更が入った場合も結果を破棄し、静的な理由を公開して停止する。
-後続のGitHub-hostedのfailed jobが `rewrite:failed` を確定する。
+後続のGitHub-hostedのfailed jobが[本文と履歴を照合して確定する](#失敗skip手動の再実行)。
 
 終了時は `finally` で自分が作ったworktreeだけを `git worktree remove --force` し、一時ディレクトリも削除する。
 構造化出力の不正、agyの異常終了、完全性の違反でも片付ける。片付けの失敗も明示的な失敗とし、
@@ -117,6 +128,9 @@ agyの導入やGoogle認証情報を持たない。全jobからactionsのwrite�
 外部actionは公式release tagと照合した完全commit SHAと版コメントで固定する。
 
 run dirは0700、保存ファイルは0600。入力・prompt・writerのnotes・verifierの説明・agy logはprivateに保つ。
+各turnのlogに対応する `.stream.jsonl`・`.hooks.jsonl`・`.commands.json` も同じ非公開領域に残す。
+失敗時の `failure.json` には `denied_actions` も保存する。成功・異常終了・timeoutともコマンド全文を公開しない。
+読み取りの拒否パスも非公開記録に限り、公開するのは件数と固定形式だけとする。
 artifactへ渡すのは `public/handoff.json` 1ファイルだけで、globやrun dir全体をuploadしない。
 合格時は比較用の元本文、検査済み本文、履歴のID・時刻・作者、空差分の検証結果を含む。
 失敗した候補本文やコメント、log、会話ID、ローカルパス、認証情報は含めない。
@@ -127,11 +141,18 @@ artifactへ渡すのは `public/handoff.json` 1ファイルだけで、globやru
 公開JSON全体も同じ検査を通し、applyで再検査する。
 summaryには状態、検査理由、意味差分の種類と実際の本文から取れた引用、usage・所要時間を出す。
 verifierの自由文説明や拒否コマンドの生文字列は出さない。usage未取得はnull/未取得のまま扱い、0に補わない。
+コマンドの試行・拒否は各turnの件数と、共通部品が伏せ字化した形式だけをsummary/artifactへ渡す。
+呼び出し失敗でも取得できた集計を残す。
 過去revisionの不合格理由は、修正成功後もrevision付きで残す。
 
 ## 失敗、skip、手動の再実行
 
-`rewrite:failed` は「原文で確定」の意味で、親CLI・dispatcherはこの確定状態で進められる。
+failed jobは本文と編集履歴を再取得し、未書き込みなら `rewrite:failed`、候補本文への本人の編集1件を確認できれば `rewrite:done`（`confirmed_after_apply_error`）にする。
+他者だけの編集や割り込みがあれば、その本文を巻き戻さず `rewrite:failed` として確定する。
+取得失敗・履歴の不整合、新しい編集がないのに元本文と違う場合、またはbundle欠落・不正で本人の編集がある場合は、`write_state_unconfirmed` で非ゼロ終了し、確定ラベルを付けない。
+実行記録の解析失敗時は、本人の書き込みなしを確認できた場合だけ `invalid_execution_record` でfailedにし、それ以外は `write_state_unconfirmed` としてdone・failedを付けない。
+pendingのまま親CLI・dispatcherのgateが止めるため、人間が状態を確認して判断するか `rewrite:skipped` を付ける。
+`rewrite:failed` では親CLI・dispatcherは現在の本文で進められる。
 summaryの理由を確認してから、合意・実行根拠の記録がまだ無いfailed issueだけをownerが再実行できる。
 Actions → **Issue rewrite** → **Run workflow** でmain・issue番号を選ぶか、次を使う。
 

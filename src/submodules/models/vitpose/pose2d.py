@@ -65,7 +65,11 @@ class Pose2DResult:
 
 
 class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceRequest, Pose2DResult]):
-    """ViTPose-H top-down 2D pose estimator on tracked person crops."""
+    """ViTPose-H top-down 2D pose estimator on tracked person crops.
+
+    ``show_progress`` controls the crop-batch bar, which is enabled by default.
+    Callers reporting their own progress can disable it independently.
+    """
 
     def __init__(
         self,
@@ -76,17 +80,21 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         batch_size: int,
         head_config: ViTPoseHeadConfig,
         precision: Literal["float32", "bfloat16"] = "float32",
+        show_progress: bool = True,
     ) -> None:
         super().__init__(device)
         if type(flip_test) is not bool:
             raise TypeError("flip_test must be a bool.")
         if type(batch_size) is not int:
             raise TypeError("batch_size must be an integer.")
+        if type(show_progress) is not bool:
+            raise TypeError("show_progress must be a bool.")
         if batch_size <= 0:
             raise ValueError(f"batch_size must be positive, got {batch_size}")
         self.checkpoint = require_absolute_path(checkpoint, name="ViTPose checkpoint")
         self.flip_test = flip_test
         self.batch_size = batch_size
+        self.show_progress = show_progress
         if precision not in {"float32", "bfloat16"}:
             raise ValueError(f"Unsupported ViTPose precision: {precision}")
         self.precision = precision
@@ -124,7 +132,8 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         else:
             batches = iter_person_crops(request.video_path, request.bbx_xys, request.frame_indices, batch_size=self.batch_size)
         keypoints = []
-        for images, bbx_xys_batch in tqdm(batches, desc="ViTPose"):
+        batch_iterator = tqdm(batches, desc="ViTPose") if self.show_progress else batches
+        for images, bbx_xys_batch in batch_iterator:
             imgs_batch = images[:, :, :, 32:224].to(self._device)
             with torch.autocast(
                 self.device.type,

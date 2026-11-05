@@ -10,7 +10,6 @@
 ## [decision](decision/index.md) — ユーザーの判断
 
 - 判断を仰ぐときは、既に答えが出ている事項を聞き直さない。選択肢には、コードを読まずに判断できる説明を付ける。品質確認は動画で見せる。
-- 長時間ジョブ（Colabを含む）は定期的に起きて確かめず、親自身が完了・失敗だけを監視して待つ。子には監視させない。
 - Colabの複数条件の学習は、1セッションで逐次に実行し、約12時間で消えるVMから再開できるようにする。
 - 古いckptは、指標がknowledgeにあれば削除してよい。
 - 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
@@ -19,7 +18,7 @@
 
 ## [environment](environment/index.md) — 環境の癖
 
-- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。
+- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。親レビューの隔離CPUテストのprobeが通らず、CIログも読めないので、指示に書かないと統合レビューが `incomplete` になる。
 
 ## [gotcha](gotcha/index.md) — 落とし穴
 
@@ -28,6 +27,7 @@
 - pre-commit の mypy は staged ファイルだけを検査する。`.gitignore` の汎用パターンが新しいディレクトリを黙って無視する。`tests/` はパッケージではない。
 - 実行中のbashスクリプトを上書きしない。codex-followup の timer は作成時のスクリプトを絶対パスで実行する。
 - ColabのVMは使わずに待たせると寿命前に回収され、取得済み入力も消える。rclone設定に `client_id` がないと共用clientの上限で Drive が 403 rateLimitExceeded になる。
+- Colabの `exec` 直後の接続断では job が `pending` のまま起動しない（`transport_alive: false`）。`running` 後の `transport_alive: false` は提出clientの不在だけで、異常ではない。Claudeのbackground監視は会話のプロセスと一緒に止まる。
 - メインtreeのローカル `main` は自動で pull されない。規則・memory・skillは `git fetch` 後に `origin/main` から読む。
 - Claude Code配下のローカル `tests/e2e/agents_ops` には変更と無関係な失敗がある。退行と判断する前に origin/main で同じテストを比べる。
 - submodule の pointer がPRで進んでも、メインtreeの checkout は古いまま残る。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。

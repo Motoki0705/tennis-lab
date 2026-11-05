@@ -40,7 +40,7 @@ def main() -> None:
                 extra_compile_args=["-O0", "-g0"],
             )
         ],
-        cmdclass={"build_ext": BuildExtension.with_options(use_ninja=False)},
+        cmdclass={"build_ext": BuildExtension.with_options(use_ninja=False, no_python_abi_suffix=True)},
     )
 
 
