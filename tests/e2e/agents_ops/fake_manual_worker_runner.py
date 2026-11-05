@@ -48,6 +48,13 @@ def main() -> int:
     assert "--model" not in args and "--effort" not in args
     with Path(os.environ["MANUAL_RUNNER_CALLS"]).open("a") as stream:
         stream.write(json.dumps(args) + "\n")
+    # Read the instruction as the real runner does (UTF-8 file or stdin).
+    source = opt("--prompt-file")
+    raw = sys.stdin.buffer.read() if source == "-" else Path(source).read_bytes()
+    prompt = raw.decode("utf-8")
+    if os.environ.get("MANUAL_RUNNER_PROMPTS"):  # Only the producer tests inspect it.
+        with Path(os.environ["MANUAL_RUNNER_PROMPTS"]).open("a") as stream:
+            stream.write(json.dumps({"prompt_file": source, "prompt": prompt}) + "\n")
     if os.environ.get("MANUAL_PREFLIGHT_FAILURE"):
         print(str(directory), file=sys.stderr)  # Must stay private at the boundary.
         return 2

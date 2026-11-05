@@ -18,6 +18,7 @@ from .policy import closing_issues, nonempty, object_value
 from .session import ParentSession
 from .snapshot import git, validate_worktree
 from .state import Store, unique_object
+from .worker_instruction import worker_instruction
 
 RUNNER = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
 SUMMARY_KEYS = {
@@ -176,7 +177,7 @@ def prepare_run(
     prompt: Path,
     resume: bool,
     restart_evidence: str | None,
-) -> tuple[list[str], str]:
+) -> tuple[list[str], str, str]:
     task = current_task(session, child)
     session.agreed()
     parent, items = session.work_items()
@@ -193,7 +194,7 @@ def prepare_run(
             "worker delegation inputs changed; reconcile the current reservation"
         )
     try:
-        nonempty(prompt.read_text(encoding="utf-8"), "worker instruction")
+        instruction = nonempty(prompt.read_text(encoding="utf-8"), "worker instruction")
     except OSError:
         raise ValueError("worker instruction file unavailable") from None
     ended = task.get("worker_ended")
@@ -272,18 +273,27 @@ def prepare_run(
         task["worktree"],
         "--branch",
         task["branch"],
+        # The same standard instruction as managed workers, sent on stdin.
         "--prompt-file",
-        str(prompt.resolve()),
+        "-",
         "--run-dir",
         str(directory),
     ]
+    text = worker_instruction(
+        session.parent,
+        child,
+        Path(task["worktree"]),
+        task["branch"],
+        items[child].body,
+        instruction,
+    )
     # Claim a released slot and save the run in one transaction, before execution.
     if ended:
         task.pop("worker_ended")
     if restart_evidence is not None:
         task["restart_evidence"] = nonempty(restart_evidence, "restart evidence")
     append_run(session, task, directory, "resume" if resume else "initial")
-    return command, task["delegation_id"]
+    return command, task["delegation_id"], text
 
 
 def run_worker(
@@ -299,12 +309,18 @@ def run_worker(
 ) -> tuple[int, dict[str, Any]]:
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
-        command, delegation = prepare_run(
+        command, delegation, instruction = prepare_run(
             session, child, prompt, resume, restart_evidence
         )
     # A foreground runner must not hold a registry or parent operation lock.
+    # Bytes in both directions: the runner reads UTF-8 and the locale may not be.
     try:
-        proc = subprocess.run(command, capture_output=True, text=True, check=False)
+        proc = subprocess.run(
+            command,
+            input=instruction.encode("utf-8"),
+            capture_output=True,
+            check=False,
+        )
     except OSError:
         raise ValueError(
             "common runner could not start; inspect the recorded private run"
