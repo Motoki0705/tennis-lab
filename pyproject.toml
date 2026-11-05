@@ -34,7 +34,7 @@ dependencies = [
     "einops>=0.8.2",
     "ezc3d>=1.7.2",
     "gdown>=6.1.0",
-    "huggingface-hub>=0.36.0",
+    "huggingface-hub>=2.4.0",
     "hydra-core>=1.3.5",
     "matplotlib>=3.11.1",
     "omegaconf>=2.3.1",
@@ -93,6 +93,7 @@ torchvision = [{ index = "pytorch-cpu", group = "cpu" }, { index = "pytorch-defa
 cpu = ["torch", "torchvision"]
 gpu = ["torch", "torchvision"]
 dev = [
+    "httpx2>=2.16.0",
     "mypy>=2.3.0",
     "pre-commit>=4.6.2",
     "ruff>=0.16.3",

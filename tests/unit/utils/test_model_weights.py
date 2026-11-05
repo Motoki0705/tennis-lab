@@ -7,13 +7,16 @@ import os
 import runpy
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
-import httpx
+import httpx2 as httpx
 import pytest
 import yaml
 from huggingface_hub import constants as hub_constants
+from huggingface_hub import file_download as hub_file_download
 from huggingface_hub.errors import HfHubHTTPError
+from huggingface_hub.utils import _detect_agent as hub_detect_agent
 from huggingface_hub.utils import _http as hub_http
 
 from src.utils import model_weights as weights
@@ -185,6 +188,13 @@ def test_cli_rejects_http_failure_with_valid_hub_cache(
     monkeypatch.setattr(hub_constants, "HF_HUB_DISABLE_IMPLICIT_TOKEN", True)
     monkeypatch.setattr(hub_constants, "HF_TOKEN_PATH", str(tmp_path / "no-token"))
     monkeypatch.setattr(hub_constants, "HF_HUB_OFFLINE", False)
+    monkeypatch.setattr(
+        hub_detect_agent, "_registry", {"standardEnvVars": [], "harnesses": {}}
+    )
+    # The downloader retries transport timeouts; exercise retries without real delays.
+    monkeypatch.setattr(
+        hub_file_download, "time", SimpleNamespace(sleep=lambda _: None)
+    )
     weight = weights.PUBLISHED_WEIGHTS[1]
     content = published_content[weight.name]
     requests: list[str] = []
@@ -247,7 +257,10 @@ def test_cli_rejects_http_failure_with_valid_hub_cache(
         assert isinstance(underlying, transport_error)
         if isinstance(underlying, HfHubHTTPError):
             assert underlying.response.status_code == 503
-        assert requests == (["HEAD"] if method == "HEAD" else ["HEAD", "GET"])
+        if method == "HEAD":
+            assert requests and set(requests) == {"HEAD"}
+        else:
+            assert requests[0] == "HEAD" and set(requests[1:]) == {"GET"}
         assert not root.exists()
         assert cached.read_bytes() == content
         assert "Verified" not in capsys.readouterr().out
