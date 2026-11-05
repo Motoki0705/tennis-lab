@@ -9,11 +9,12 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock
 
-import httpx
+import httpx2 as httpx
 import pytest
 import yaml
 from huggingface_hub import constants as hub_constants
 from huggingface_hub.errors import HfHubHTTPError
+from huggingface_hub.utils import _detect_agent as hub_detect_agent
 from huggingface_hub.utils import _http as hub_http
 
 from src.utils import sample_dataset as sample
@@ -233,6 +234,9 @@ def test_http_failure_does_not_use_valid_hub_cache(
     monkeypatch.setattr(hub_constants, "HF_HUB_DISABLE_IMPLICIT_TOKEN", True)
     monkeypatch.setattr(hub_constants, "HF_TOKEN_PATH", str(tmp_path / "no-token"))
     monkeypatch.setattr(hub_constants, "HF_HUB_OFFLINE", False)
+    monkeypatch.setattr(
+        hub_detect_agent, "_registry", {"standardEnvVars": [], "harnesses": {}}
+    )
     published = sample.PUBLISHED_FILES[0]
     data = content[published.filename]
     fail = False
