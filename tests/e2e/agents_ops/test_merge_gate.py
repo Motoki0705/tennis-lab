@@ -27,6 +27,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
 )
 from tests.support.agents_ops.directory_seed import DirectorySeed
+from tests.support.agents_ops.worker_preflight import completed_implementation
 
 SCRIPT = OPS / "review/merge_gate.py"
 SEEDS = pytest.StashKey[dict[str | None, "GateSeed"]]()
@@ -155,7 +156,9 @@ class GateSeed:
             p=replace(gate.review.p, env=gate.review.p.env.copy()),
             request=copy.deepcopy(gate.review.request),
         )
-        return cls(DirectorySeed.capture(review.p.root, snapshot), replace(gate, review=review))
+        return cls(
+            DirectorySeed.capture(review.p.root, snapshot), replace(gate, review=review)
+        )
 
     def restore(self, p: ParentEnv, monkeypatch: pytest.MonkeyPatch) -> GateEnv:
         self.directory.restore(p.root)
@@ -176,7 +179,9 @@ class GateSeed:
                 fake=relocated(review.fake),
                 output=relocated(review.output),
                 calls_path=relocated(review.calls_path),
-                clock_script=relocated(review.clock_script) if review.clock_script else None,
+                clock_script=relocated(review.clock_script)
+                if review.clock_script
+                else None,
             ),
             review_policy_module(monkeypatch),
         )
@@ -204,13 +209,15 @@ def make_gate_env(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, variant: str | None = None
 ) -> GateEnv:
     def configure(p: ParentEnv) -> None:
-        if variant == "research_dependency":
+        if variant in {"research_dependency", "preflight_dependency"}:
             p.child("research")
         state = p.state()
-        if variant in {"dependency", "research_dependency"}:
+        if variant in {"dependency", "research_dependency", "preflight_dependency"}:
             parent_policy = importlib.import_module("parent.policy")
-            dependency = 13 if variant == "research_dependency" else 11
-            if variant == "research_dependency":
+            dependency = (
+                13 if variant in {"research_dependency", "preflight_dependency"} else 11
+            )
+            if variant in {"research_dependency", "preflight_dependency"}:
                 state["issues"]["13"].update(state="closed", state_reason="completed")
             state["issues"]["10"]["body"] = parent_policy.replace_section(
                 state["issues"]["10"]["body"], "依存関係", f"#{dependency} の完了後。"
@@ -224,14 +231,50 @@ def make_gate_env(
                 pr["base"]["ref"] = "trunk"
             run_git(p.repo, "branch", "-m", "main", "trunk")
         p.save(state)
+        if variant == "preflight_dependency":
+            # Reserve before publishing the PRs, then provide terminal offline
+            # worker records. Review/merge still use their real public CLIs.
+            prs = state["prs"]
+            for index, pr in enumerate(prs):
+                pr["head"]["ref"] = f"codex/pr-{index}"
+            state["prs"] = []
+            p.save(state)
+            for child in (10, 11):
+                p.cli(
+                    "delegate",
+                    "--child",
+                    str(child),
+                    "--agent",
+                    "codex",
+                    "--branch",
+                    f"codex/pr-{child - 10}",
+                    "--worktree",
+                    str(p.repo / f".claude/worktrees/pr-{child - 10}"),
+                )
+            state = p.state()
+            state["prs"] = prs
+            p.save(state)
+            for child in (10, 11):
+                completed_implementation(p, child)
+                p.cli(
+                    "record-result", "--child", str(child), "--evidence-file", p.note()
+                )
 
     # Only scenarios that exercise interactions between PRs need three targets.
     review_env = make_review_env(
         parent_env,
-        independent=variant in {"independent", "dependency", "research_dependency"},
+        independent=variant
+        in {"independent", "dependency", "research_dependency", "preflight_dependency"},
         standalone=variant == "standalone",
         pr_count=3
-        if variant in {"multiple", "independent", "dependency", "research_dependency"}
+        if variant
+        in {
+            "multiple",
+            "independent",
+            "dependency",
+            "research_dependency",
+            "preflight_dependency",
+        }
         else 1,
         shared=variant == "shared",
         before_review=configure,
@@ -279,7 +322,9 @@ def test_gate_seed_keeps_git_github_review_and_metadata_private(
 
     def fingerprint() -> dict[Path, str]:
         return {
-            path.relative_to(seed.directory.snapshot): hashlib.sha256(path.read_bytes()).hexdigest()
+            path.relative_to(seed.directory.snapshot): hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest()
             for path in seed.directory.snapshot.rglob("*")
             if path.is_file()
         }
@@ -292,7 +337,9 @@ def test_gate_seed_keeps_git_github_review_and_metadata_private(
         repo=root / "repo",
         state_path=root / "github.json",
         calls_path=root / "calls.jsonl",
-        env={key: value.replace(str(p.root), str(root)) for key, value in p.env.items()},
+        env={
+            key: value.replace(str(p.root), str(root)) for key, value in p.env.items()
+        },
     )
     cloned = seed.restore(private, monkeypatch)
     worktree = private.repo / ".claude/worktrees/pr-0"
@@ -307,12 +354,18 @@ def test_gate_seed_keeps_git_github_review_and_metadata_private(
     assert not cloned.merge_calls()
     assert p.state() == original_state
     assert (g.review.run_dir / "result.json").read_bytes() == original_result
-    assert run_git(p.repo / ".claude/worktrees/pr-0", "rev-parse", "HEAD") == original_head
+    assert (
+        run_git(p.repo / ".claude/worktrees/pr-0", "rev-parse", "HEAD") == original_head
+    )
     assert "only-in-copy" not in run_git(p.repo, "branch", "--list")
     assert str(root) in run_git(private.repo, "worktree", "list", "--porcelain")
     for source in (p.repo / ".git/objects").rglob("*"):
         if source.is_file():
-            copied = private.repo / ".git/objects" / source.relative_to(p.repo / ".git/objects")
+            copied = (
+                private.repo
+                / ".git/objects"
+                / source.relative_to(p.repo / ".git/objects")
+            )
             assert source.stat().st_ino != copied.stat().st_ino
     assert fingerprint() == before
     response = g.cli("merge", AGENT_AUTO_MERGE="0")
@@ -794,6 +847,53 @@ def test_check_run_read_failure_is_an_explicit_collection_error(
     )
     assert response.returncode == 2
     assert json.loads(response.stderr)["reasons"] == ["input_or_collection_error"]
+    assert not g.merge_calls()
+
+
+@pytest.mark.parametrize("gate_env", ["preflight_dependency"], indirect=True)
+def test_preflight_invalidation_revokes_saved_review(gate_env: GateEnv) -> None:
+    from tests.e2e.agents_ops.test_manual_worker_runs import (
+        manual,
+        planning_answer,
+        resume_answer,
+        run,
+        task,
+    )
+
+    g, p = gate_env, gate_env.review.p
+    before = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert all(row["decision"] == "merge" for row in before.values())
+    assert "13" not in g.review.request["requirements"]
+    state = p.state()
+    state["issues"]["13"]["body"] += (
+        "\n## 新しい入力要件\n依存データの形式も照合する。\n"
+    )
+    p.save(state)
+    # Merge's existing authorization collection must detect the change even
+    # before another worker command observes/records the invalidation.
+    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert rows[100]["decision"] != "merge", rows[100]
+    assert rows[101]["decision"] == "merge", rows[101]
+    run(p, "--resume", "--restart-evidence-file", p.note("元sessionの終了を照合した。"))
+    assert task(p)["preflight"]["phase"] == "planning"
+    response = g.cli("merge", AGENT_AUTO_MERGE="0")
+    rows = g.results(response)
+    assert rows[100]["decision"] != "merge", rows[100]
+    assert rows[101]["decision"] == "merge", rows[101]
+    planning_answer(p)
+    resume_answer(p)
+    manual(
+        p,
+        "record-result",
+        "--child",
+        "10",
+        "--evidence-file",
+        p.note("再調査後の実装結果を確認した。"),
+    )
+    # A fresh result is not a fresh review of the changed worker inputs.
+    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert rows[100]["decision"] != "merge", rows[100]
+    assert rows[101]["decision"] == "merge", rows[101]
     assert not g.merge_calls()
 
 

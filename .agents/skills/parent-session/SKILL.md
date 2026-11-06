@@ -198,6 +198,14 @@ workerは報告・質問を最終メッセージで返し、親issueへはコメ
 
 ## 子の報告を受け取る
 
+workerは既定でplanningから始める。最初の報告は [標準worker指示](../../ops/parent/worker_prompt.md) の6節で読み、
+`decide-worker-plan --child N --action approve|investigate|reject --answer-file tmp/answer.md` で判断を記録する。
+質問なしでも省略せず、既存の実行根拠の範囲内なら親AIが判断する。範囲・要件を変える判断だけ再合意へ戻す。
+判断後の `run-worker --resume` / `continue-worker` は回答を自動配送するため `--prompt-file` を渡さない。
+追加指示は `--additional-instruction-file` に分ける。planningの終了を成果登録へ進めず、実装ターンの終了後に以下を行う。
+自明な初回作業だけ `--skip-planning-reason-file` で理由を明示して省略できる。
+状態・失効・移行のCLI契約は [parent README](../../ops/parent/README.md#workerの調査親判断実装フェーズ) を参照する。
+
 1. 終了を照合する。runnerのexit 0や `result=completed` は1ターンの終了であり、タスクの成功ではない。
    手動親は、`run-worker` の出力の `delegation_id` に対応する親stateの最新run（`worker-runs/<delegation_id>/` 配下）を
    `agent_exec.sh status --run-dir` で確かめ、最終報告をそのrunの `final.md` で読む
@@ -230,10 +238,11 @@ workerは報告・質問を最終メッセージで返し、親issueへはコメ
 子の要件本文を変えた場合も、その子の委任・結果・レビューが同じ扱いになる。
 
 - 可能なら、実行中のworkerが区切りに達してから再合意する。実行中のworkerは旧要件のまま動き続ける。
-- PRのある子は、現在の要件でPRの差分と検証を確かめて `record-result` を記録し、新しい根拠に結び付ける。
-  その後は同じsessionへ継続できる（終了記録済みなら再開証拠も渡す）。
-- PRのない子は、runnerの終了と回収を確かめて `record-worker-ended` し、`delegate --restart-evidence-file` で新しい委任を作って起動する。
-  新しいsessionは前の文脈を持たないので、branch・未commitの変更・途中の成果物・残作業を指示ファイルに書く。
+- PRのある子は、先に同じsessionへ変更内容を渡して再調査し、親判断・実装ターンを経て、
+  現在の要件でPRの差分と検証を確かめて `record-result` を記録する。
+- PRのない子も、元runの終了・回収を確認し、同じsessionへ変更内容を渡して再調査する。
+  手動は通常の `run-worker --resume`、自律は根拠・担当変更の再結合が必要なら `refresh-worker-plan` 後に `continue-worker` を使う。
+  別sessionへの再委任で失効を迂回しない。
 - 旧根拠・旧世代のレビュー確認ではmergeできない。対象PRを現在の要件で確かめ、新しい理由とrunでレビューを要求し直す。
   予定した引継ぎなら、修正確認まで済んだPRは引継ぎの前にmergeしておく。
 

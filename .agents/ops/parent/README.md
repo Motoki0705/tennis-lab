@@ -28,6 +28,8 @@ stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`�
 同じホストの全worktree・Claude/Codexで共有する。更新操作は親ごとの操作ロックを先に取り、
 registryロックで担当の衝突・二重予約を防ぐ。GitHub通信中はregistryロックを離す。
 取得前後で対象親の担当・generation・tasks・reviewsが変われば終了値2で停止する。
+競合やregistryの再検証失敗後は、そのトランザクションでのsave・移行・再取得を拒否する。
+呼出元が例外を捕捉しても古いregistryを保存できず、新しいトランザクションで読み直す必要がある。
 他の親だけの変更は、その親の保存済み行を取り込み、自分の未保存の変更と参照を保持して続行する。
 `status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らない。
 Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
@@ -545,7 +547,7 @@ model省略時は直前runの保存contractから継承し、同値の再指定�
 この変更より前の、キーを持たない旧委任は「run記録なし」であり、未起動とは区別する。
 読取だけで旧委任へキーを補わない。
 
-`worker_runs` は次の6キーの配列を記録順で保持する。導入前の4キー記録も読み取る。
+`worker_runs` は次の6キーに新しいターンの `preflight` snapshotを加え、記録順で保持する。導入前の4/6キー記録も読み取る。
 
 ```json
 [{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00","model":"gpt-6.1-sol","model_reason":"通常の実装として既定を選択。"}]
@@ -561,6 +563,114 @@ version 1/2とも既存フィールドと過去の委任のrunを保持し、新
 子taskの `title` は実行状況に表示するタスク名で、`create-child` と `delegate` が記録する。
 親・子issueは題名の書式から取り出した要約、それ以外のissueは題名全体を保存する。
 `sync` は既存の子taskの名前をGitHubの現在の題名へ更新する。ローカルtaskのない正式な子へは追加しない。
+
+### workerの調査・親判断・実装フェーズ
+
+手動・自律の全workerは既定で `planning` から始まる。書込み権限を制限する方式ではなく、
+親判断前の成果受理を止める方式である。runnerは両フェーズとも `mode=write`、同じcontractとモデルで継続する。
+planningではコード・実データ・指示の整合と設計を確認し、実装・commit・PR作成をせずターンを終える。
+報告の6節は [標準worker指示](worker_prompt.md) が正本。質問がなくても親判断を待つ。
+
+```bash
+# 最新の終了確認済みplanning finalを読み、親AIが既存の根拠内で判断する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  decide-worker-plan --child 1217 --action approve --answer-file tmp/answer.md
+# 保存した回答は同じsessionへ自動配送。判断後の継続ではprompt-fileを指定しない
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  run-worker --child 1217 --resume --restart-evidence-file tmp/restart.md
+# 自律の場合
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  continue-worker --child 1217 --evidence-file tmp/restart.md
+```
+
+`decide-worker-plan` は最新planningターンの終了・cleanup・元sessionを照合し、finalのdigest・ターンに回答を束ねる。
+`approve` は必須見出しの欠落・空節・重複を拒否する。`investigate` は不完全な報告の再提出にも使える。
+`reject` は実装移行を拒否し、回答確認だけのplanningターンへ戻す。その回答確認を実装承認へ読み替えない。
+判断は親のprivate stateに保存する。plan.jsonの作成や親issueのnoteへの転記は不要。
+同じ未配送判断の再送登録は冪等で、異なる未配送判断の重複登録は拒否する。
+
+未配送判断が1件あればresume/continueがその回答を送る。`--prompt-file` による回答の置換は拒否する。
+補足は `--additional-instruction-file` で渡し、回答と別の節で送る。判断待ちで未配送判断がなければ継続を拒否する。
+通常の実装修正は従来どおり `--prompt-file` を使う。初回の自明な作業だけは
+`run-worker` / `start-worker --skip-planning-reason-file tmp/reason.md` で親が理由を明示して省略できる。
+空の理由、resumeでの省略、承認失効後の省略は拒否する。
+
+正本はtaskのversion付きprivateな `preflight`。run/jobの `preflight` は起動時の履歴で、
+`schema_version/lineage_id/turn_id/previous_turn_id/phase/decision_id/context_sha256` を持つ。
+自律continueの委任ID更新は、終了確認済みの同sessionの系列として明示的に結合する。
+既存4/6キーrunは保持し、新しいrunにだけsnapshotを追加する。ランナーのcontractは変更しない。
+status/reconcile/inspect-workerは、runtimeの終了状態と別に `worker_phase` と次の操作を返す。
+閲覧者のsession identityと、保存された担当generation・実行根拠の鮮度は別に照合する。
+identityなし・別sessionからのstatusでも、有効な承認はimplementingと表示し、読取だけではstateを変更しない。
+回答原文・runtimeの私的な識別子は公開表示へ出さない。
+導入時は手動親・自律親・dispatcherのCLI呼出元を同じ版へ更新する。registry外側のversionは1/2を維持し、
+読取だけで旧委任にフェーズを補わない。旧CLIはフェーズ判定を実装していないため、新旧CLIの混在を強制の保証範囲に含めない。
+
+親判断前のcommit・PRは実物を表示して「承認前成果・受理不可」と扱い、成果登録・レビュー準備/指示・
+後続の依存headへの採用を拒否する。承認の保存だけでは成果を受理せず、回答を送った実装ターンの正常終了を確認する。
+外部コマンドによる書込みやPR作成の物理的な阻止、外部変更の常時監視は行わない。
+
+要件・根拠・担当generation・依存集合/headが変わると、読取は `refresh_required` を返し、
+起動・claim・成果受理は承認を失効させる。読取だけではstateを書き換えない。
+完了済み・family外の依存も、依存issue集合を明示したtimeline取得でPRとheadを束ねる。
+registryの並行更新、GitHub取得失敗、応答・保存記録の構造検証失敗は、そのまま中断し保存しない。
+取得できた入力の差と、型で区別した既知の実行根拠の失効だけをrefresh_requiredとして扱う。
+
+失効は現在のverificationと保存レビューの鮮度にも伝わる。元のレビュー証拠は保持し、
+taskの `review_preflight` にreview run・context digest・失効回数を束ねる。
+再調査・親判断・実装を終え、record-resultで再検証しても旧レビューは復活しない。
+理由付きで新しいレビューを準備する。既存のレビュー根拠検証とtask_errorsを通してmerge受付も止め、
+merge gate本体・policyは変更しない。familyでは影響を受けたPRだけを止め、単独issueも同じ鮮度を検査する。
+レビューbindingのない既存workerのレビューは承認済みと推定せず、現在の結果を確認して新しいレビューを準備する。
+手動は終了・回収確認後の通常の `run-worker --resume --prompt-file tmp/changed.md` を再調査に使う。
+自律の要件/依存だけの変更も `continue-worker --prompt-file` で再調査する。自律の根拠・担当変更だけは
+新しい有効根拠と元runtimeを照合して `refresh-worker-plan --child N --evidence-file tmp/rebind.md` を明示する。
+旧親/子が残る引継ぎは拒否する。引継ぎ後は現担当が保存済みの子sessionを操作し、旧親sessionを自動再起動しない。
+旧jobのauthorizationとcontractは保持する。
+
+判断待ちは終了確認後に枠を解放する。判断記録は枠を取得せず、継続時に再取得・上限照合する。
+停止・終了未確認・cleanup失敗は承認や枠の解放の証拠ではない。未起動取消はターン履歴に残し、
+未配送回答は次の同session継続へ戻す。#1610の起動前拒否による欠落runは従来の復旧対象であり、古いrunへ黙って戻らない。
+
+フェーズ欄のない旧委任は読取で補完せず `migration_required` と表示する。保存された担当の同じsessionが
+`migrate-worker-phase --child N --evidence-file tmp/migration.md` で明示移行する。
+理由だけで実装済み・承認済みとは推定せず、次の証拠で移行先を決める。
+
+| 旧委任の状態 | 必要な証拠・操作 | 移行結果 |
+| --- | --- | --- |
+| 未着手・PRなし | 記録方式が明示された空のrun記録、または全jobが起動証拠のない初回取消。worktree・branchを照合 | planning。初回の調査から始める |
+| 実行中・終了未確認・cleanup未確認 | 生存や未回収の疑いがある間は移行不可。既存のinspect/reconcile/cleanup確認と終了記録を先に行う | 拒否。承認・枠の解放と読み替えない |
+| 終了済み・PRなし | 最新runの終了・cleanup・session・contract・委任を照合 | planning。同じworker sessionで再調査 |
+| PR作成済み・レビュー中、workerは正常終了済み | 一意の同repo PR、現在のauthorization・要件に対する親の結果検証、最新の保存/公開レビュー、PRとworktreeのhead・branch・repoを照合 | implementing。照合した既存結果だけを明示採用し、元のレビュー状態を維持 |
+| レビュー後の修正head | 上記に加え、親の公開済み修正確認、保存されたresolutionと実diff、現在snapshotへのcoverageを照合 | implementing。最初のレビューheadと異なっても、確認済みの修正headだけを採用 |
+| merge済み・issueはclosed/completed | 正常終了と現在の結果検証に加え、実PRのmerge/close、gateのmerge journal、保存/公開レビュー結果・修正確認を照合 | implementingの既存結果receipt。完了後再開・終了照合を通常の証拠検査へ戻す |
+| 親の担当も終了済み | merge済みの証拠を同じ保存担当sessionで照合。担当の再登録・generation更新はしない | 既存結果だけを移行し、親のended状態を維持 |
+| 証拠不足・不一致、未mergeのclosed PR | 移行を拒否。open issueを調査からやり直す場合だけ、終了照合後に `--replan` を明示 | `--replan` はplanning。旧PR・旧レビューを成果として受理しない。closed issueの再実装は不可 |
+
+既存結果の採用はtaskの `preflight.legacy_result` に、移行理由・現在入力・元runtime/final・レビュー/結果検証と
+照合したPR snapshotを束ねて記録する。旧run/jobのphaseやturn、過去のplanning承認を捏造しない。
+status/reconcileは `legacy_result_migrated` を表示する。成果再登録でも元のruntime/finalとPR headを再照合し、
+別headの成果は同じsessionで実際の継続turnを終えるまで受理しない。要件・根拠・世代・依存変更時には、この採用も失効する。
+移行だけを理由に、鮮度のある既存レビューを再実行しない。移行はmerge/完了の認定ではなく、
+その後も通常のreview-request・merge gate・verify_completionの条件を通す。merge gate本体の判定は変えない。
+merge済みのclosed/completed結果は、元runtimeのcontractとPR・レビュー・merge journalを使って照合し、
+削除済みworktreeの再作成を要求しない。未mergeのPRでは、現在のworktreeとhead・branchの一致も必須とする。
+
+```bash
+# 新しい版のCLIを持つ親checkoutから、現在の担当sessionのまま実行する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 status
+# 手動は共通runnerのstatus、自律はinspect-workerで最新runの終了・cleanupを照合する
+# 終了・回収を確認してから、親が照合した根拠をprivateなファイルへ書く
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  migrate-worker-phase --child 1217 --evidence-file tmp/migration.md
+# openの旧委任を再調査へ戻す場合だけ明示する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  migrate-worker-phase --child 1217 --replan --evidence-file tmp/replan.md
+```
+
+planningへ移行する場合は通常、子の調査ターンが1回増え、追加調査ごとにさらに1回増える。
+証拠に基づく既存結果の採用にはworkerの追加ターンは不要。run記録方式が不明な委任を未起動とは扱わない。
+実モデルの待時間・費用は固定せず、予算が必要な調査は既存の資源手順へ戻す。
 
 ### stacked branchの確認とrebase
 

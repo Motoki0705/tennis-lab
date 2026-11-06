@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -13,7 +14,8 @@ from typing import Any
 from dispatcher.runtime import Runtime, load
 from lib.agent_settings import implementation_model
 
-from .execution import authorization, task_errors
+from . import worker_preflight
+from .execution import authorization, task_input_errors
 from .github import GitHub
 from .policy import closing_issues, nonempty, object_value
 from .session import ParentSession
@@ -62,7 +64,13 @@ def worker_runs(task: dict[str, Any]) -> list[dict[str, Any]]:
     for run in runs:
         if (
             not isinstance(run, dict)
-            or set(run) not in (RUN_KEYS, RUN_KEYS | MODEL_KEYS)
+            or set(run)
+            not in (
+                RUN_KEYS,
+                RUN_KEYS | MODEL_KEYS,
+                RUN_KEYS | {"preflight"},
+                RUN_KEYS | MODEL_KEYS | {"preflight"},
+            )
             or not isinstance(run["delegation_id"], str)
             or not re.fullmatch(r"[0-9a-f]{32}", run["delegation_id"])
             or not isinstance(run["run_dir"], str)
@@ -85,6 +93,8 @@ def worker_runs(task: dict[str, Any]) -> list[dict[str, Any]]:
             )
         ):
             raise ValueError("malformed private worker run records")
+        if "preflight" in run:
+            worker_preflight.validate_snapshot(run["preflight"])
         try:
             stamp = datetime.fromisoformat(run["recorded_at"])
             if stamp.utcoffset() != UTC.utcoffset(stamp):
@@ -183,6 +193,7 @@ def append_run(
     kind: str,
     model: str,
     model_reason: str | None,
+    turn: dict[str, Any] | None = None,
 ) -> None:
     root = session.store.directory.resolve()
     path = directory.resolve()
@@ -196,6 +207,7 @@ def append_run(
             "recorded_at": datetime.now(UTC).isoformat(),
             "model": model,
             "model_reason": model_reason,
+            **({"preflight": turn} if turn is not None else {}),
         },
     ]
     task.update(model=model, model_reason=model_reason)
@@ -229,13 +241,17 @@ def record_worker_run(
 def prepare_run(
     session: ParentSession,
     child: int,
-    prompt: Path,
+    prompt: Path | None,
     resume: bool,
     restart_evidence: str | None,
     model: str | None = None,
     model_reason: str | None = None,
+    skip_reason: str | None = None,
+    additional: str | None = None,
 ) -> tuple[list[str], str, str]:
     task = current_task(session, child)
+    worker_preflight.observe(session, child, persist=True)
+    phase_state = worker_preflight.state(task)
     session.agreed()
     parent, items = session.work_items()
     if child not in items:
@@ -246,12 +262,17 @@ def prepare_run(
 
     check_task_adoptions(session.gh, parent.body)
     check_task_adoptions(session.gh, items[child].body)
-    if task_errors(task, authorization(session), items[child].body):
+    changed = task_input_errors(task, authorization(session), items[child].body)
+    if changed and not (resume and worker_preflight.state(task)["refresh_required"]):
         raise ValueError(
             "worker delegation inputs changed; reconcile the current reservation"
         )
     try:
-        instruction = nonempty(prompt.read_text(encoding="utf-8"), "worker instruction")
+        instruction = (
+            nonempty(prompt.read_text(encoding="utf-8"), "worker instruction")
+            if prompt is not None
+            else None
+        )
     except OSError:
         raise ValueError("worker instruction file unavailable") from None
     ended = task.get("worker_ended")
@@ -296,11 +317,15 @@ def prepare_run(
             cwd=Path(task["worktree"]),
         )
     previous: Path | None = None
+    previous_record = None
     runner_model: str | None
-    if not resume:
+    unstarted_migration = bool(phase_state.get("migration_unstarted")) and not any(
+        r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)
+    )
+    if not resume or unstarted_migration:
         if any(r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)):
             raise ValueError("worker already has a run; inspect it and use --resume")
-        if restart_evidence is not None:
+        if restart_evidence is not None and not resume:
             raise ValueError("restart evidence requires --resume")
         model = implementation_model(model)
         if model_reason is None:
@@ -318,6 +343,7 @@ def prepare_run(
         if model_reason is None:
             model_reason = task.get("model_reason")
         proof = Runtime(RUNNER).inspect(previous)
+        previous_record = proof["record"]
         if model_settings(task, proof["record"]) != settings:
             raise ValueError("saved model settings changed during inspection")
         if not Runtime(RUNNER).ended(proof):
@@ -354,6 +380,16 @@ def prepare_run(
         command += ["--model", runner_model]
     if model_reason is not None:
         model_reason = nonempty(model_reason, "model selection reason")
+    phase, instruction = worker_preflight.prepare_turn(
+        session,
+        child,
+        instruction,
+        resume=resume,
+        skip_reason=skip_reason,
+        additional=additional,
+        previous_record=previous_record,
+    )
+    turn = worker_preflight.commit_turn(task, phase, directory)
     text = worker_instruction(
         session.parent,
         child,
@@ -361,14 +397,31 @@ def prepare_run(
         task["branch"],
         items[child].body,
         instruction,
+        turn,
     )
+    task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
+        text.encode("utf-8")
+    ).hexdigest()
     # Claim a released slot and save the run in one transaction, before execution.
     if ended:
         task.pop("worker_ended")
     if restart_evidence is not None:
         task["restart_evidence"] = nonempty(restart_evidence, "restart evidence")
+    if changed:
+        task.update(
+            authorization=authorization(session),
+            requirements_sha256=worker_preflight.context(session, child)[
+                "requirements"
+            ],
+        )
     append_run(
-        session, task, directory, "resume" if resume else "initial", model, model_reason
+        session,
+        task,
+        directory,
+        "resume" if previous is not None else "initial",
+        model,
+        model_reason,
+        turn,
     )
     return command, task["delegation_id"], text
 
@@ -380,16 +433,26 @@ def run_worker(
     identity: str,
     *,
     child: int,
-    prompt: Path,
+    prompt: Path | None,
     resume: bool,
     restart_evidence: str | None,
     model: str | None = None,
     model_reason: str | None = None,
+    skip_reason: str | None = None,
+    additional: str | None = None,
 ) -> tuple[int, dict[str, Any]]:
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
         command, delegation, instruction = prepare_run(
-            session, child, prompt, resume, restart_evidence, model, model_reason
+            session,
+            child,
+            prompt,
+            resume,
+            restart_evidence,
+            model,
+            model_reason,
+            skip_reason,
+            additional,
         )
     # A foreground runner must not hold a registry or parent operation lock.
     # Bytes in both directions: the runner reads UTF-8 and the locale may not be.

@@ -100,7 +100,20 @@ def main() -> None:
             }
         )
     else:
-        final = "Implementation returned; parent must verify artifacts."
+        final = os.environ.get(
+            "FAKE_PLANNING_FINAL",
+            "\n\n".join(
+                f"## {h}\n\nなし"
+                for h in (
+                    "確認した根拠",
+                    "指示との不一致",
+                    "実装案",
+                    "テスト設計",
+                    "制約・未確認事項",
+                    "親に決めてほしい点",
+                )
+            ),
+        )
         Path(args[args.index("--output-last-message") + 1]).write_text(final)
         emit(
             {"type": "item.completed", "item": {"type": "agent_message", "text": final}}

@@ -19,6 +19,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     run_git,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.worker_preflight import completed_implementation
 
 
 def registry(p: ParentEnv) -> Path:
@@ -103,6 +104,7 @@ def test_valid_autonomous_basis_allows_split_delegation_and_result(
     state = p.state()
     state["prs"] = [p.pr(100, 10, branch="codex/worker")]
     p.save(state)
+    completed_implementation(p)
     p.cli("record-result", "--child", "10", "--evidence-file", p.note())
     row = json.loads(registry(p).read_text())["parents"]["o/r#1"]
     assert row["tasks"]["10"]["verification"]["authorization"] == auth
@@ -572,6 +574,13 @@ def test_stale_delegation_needs_explicit_parent_result_verification(
         registry(p).write_text(json.dumps(data))
         record(p)
     p.cli("review-prepare", "--prs", "100", ok=False)
+    assert (
+        "planning approval"
+        in p.cli(
+            "record-result", "--child", "10", "--evidence-file", p.note(), ok=False
+        ).stderr
+    )
+    completed_implementation(p)
     p.cli(
         "record-result",
         "--child",

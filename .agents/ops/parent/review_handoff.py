@@ -8,9 +8,10 @@ from typing import Any
 from .policy import closing_issues, object_value
 from .session import ParentSession
 from .snapshot import prepare, transition
+from .worker_preflight import require_implementation
 
 
-def runner_ended(session: ParentSession, child: int) -> None:
+def runner_ended(session: ParentSession, child: int, *, persist: bool = True) -> None:
     task = session.row["tasks"].get(str(child), {})
     if not task.get("delegated"):
         return
@@ -54,6 +55,8 @@ def runner_ended(session: ParentSession, child: int) -> None:
             )
     if task.get("worker_ended", {}).get("delegation_id") == task["delegation_id"]:
         return
+    if not persist:
+        return
     task["worker_ended"] = {
         "delegation_id": task["delegation_id"],
         "evidence": "Common runner confirmed termination and cleanup.",
@@ -79,6 +82,7 @@ def request(
             raise ValueError("review requires related open PRs")
         linked.update(relevant)
     for child in sorted(linked):
+        require_implementation(session, child)
         runner_ended(session, child)
         session.record_result(child, evidence)
     fixed = prepare(session, prs, reason)

@@ -12,6 +12,8 @@ from typing import Any
 
 from dispatcher.schedule import Schedule
 from parent.state import Store, state_directory
+from parent.worker_preflight import summary as planning_summary
+from parent.worker_preflight import validate_snapshot
 
 from . import task_view
 from .github import parent_snapshot
@@ -105,7 +107,7 @@ def latest_run(
     for index, run in enumerate(runs):
         if (
             not isinstance(run, dict)
-            or set(run)
+            or set(run) - {"preflight"}
             not in (
                 {"delegation_id", "run_dir", "kind", "recorded_at"},
                 {
@@ -124,6 +126,8 @@ def latest_run(
             or run["kind"] not in {"initial", "resume", "registered"}
         ):
             raise ValueError("invalid worker run")
+        if "preflight" in run:
+            validate_snapshot(run["preflight"])
         recorded = timestamp(run["recorded_at"])
         if run["delegation_id"] == current:
             path = Path(run["run_dir"])
@@ -255,11 +259,30 @@ def child_status(
         "dependencies": [],
         "stop_record": {},
         "github": remote or {"status": "not_requested"},
+        "worker_phase": {"phase": "unknown", "input_freshness": "not_checked"},
     }
     try:
         for key in ("delegated", "stopped"):
             if key in task and type(task[key]) is not bool:
                 raise ValueError("invalid task flag")
+        phase_summary = (
+            planning_summary(task)
+            if task.get("delegated")
+            else {"phase": "not_delegated"}
+        )
+        saved_context = (
+            task["preflight"].get("context")
+            if task.get("delegated") and "preflight" in task
+            else None
+        )
+        stale_owner = (
+            saved_context is not None
+            and saved_context["authorization"]["generation"] != row["generation"]
+        )
+        value["worker_phase"] = {
+            **(planning_summary(task, stale=True) if stale_owner else phase_summary),
+            "input_freshness": "stale" if stale_owner else "not_checked",
+        }
         value["title"] = task_view.title(task, guard)
         if stopped:
             notes = task.get("last_status", {})

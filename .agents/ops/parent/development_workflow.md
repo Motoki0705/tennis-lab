@@ -50,10 +50,16 @@ GPU・Blenderはtraining queueを使い、未指定の資源予算を作らな�
 ## 結果確認・修正・部分停止
 
 同じparent共通引数で `inspect-worker --child N` を呼び、最新job・終了理由・設定・最終文のprivateな参照先を読む。
+初回はplanning。報告の6節を確認し、`decide-worker-plan --child N --action approve|investigate|reject --answer-file tmp/answer.md`
+で最新finalへ親判断を束ねる。次の `continue-worker --child N --evidence-file tmp/continuation.md` は回答を自動配送する。
+未配送判断がある場合は `--prompt-file` で置換せず、補足だけ `--additional-instruction-file` に分ける。
+質問なしでも判断を待ち、自明な初回の省略だけ `start-worker --skip-planning-reason-file` で明示する。
+状態と失効・移行の正本は [parent README](README.md#workerの調査親判断実装フェーズ)。
 runnerのexit 0も `result=completed` もCLIターンの終了であり、常に `task_success=null`。
 dispatcherが終了・回収・worker lifetime lockを照合して現在のdelegationへ `worker_ended` を記録するまで枠を保持する。
 親は実diff、受入条件ごとの証拠、テストコマンドと結果、PRのclosing指示・branch/HEADを自分で確認し、
 `record-result --child N --evidence-file tmp/tests.md` へ記録する。子の最終文の転記だけで合格にしない。
+この成果受理は、親判断を配送したimplementingターンの終了後に限る。planningの終了は親判断待ちであり、実装完了ではない。
 
 修正は終了照合後、同じworkerへ戻す。PRが既にある場合も新しいsession・worktreeを作らない。
 

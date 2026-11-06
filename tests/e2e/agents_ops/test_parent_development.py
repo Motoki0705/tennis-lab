@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import importlib
 import json
 import os
@@ -30,6 +31,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     review_policy_module,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.worker_preflight import completed_implementation
 
 
 def workflow(
@@ -80,12 +82,23 @@ def child_tree(d: DispatchHarness, name: str = "parser") -> Path:
     return tree
 
 
-def drain(d: DispatchHarness, job_id: str) -> dict[str, Any]:
+def decide_plan(
+    session: Any,
+    child: int,
+    action: str = "approve",
+    answer: str = "提案どおり進める。",
+) -> dict[str, Any]:
+    preflight = importlib.import_module("parent.worker_preflight")
+    with session.store.locked():
+        return cast(dict[str, Any], preflight.decide(session, child, action, answer))
+
+
+def drain(d: DispatchHarness, job_id: str, *, timeout: float = 12) -> dict[str, Any]:
     def done() -> bool:
         d.control.reconcile()
         return bool(d.row()["dispatch"]["jobs"][job_id]["phase"] == "ended")
 
-    wait_until(done)
+    wait_until(done, timeout=timeout)
     return cast(dict[str, Any], d.row()["dispatch"]["jobs"][job_id])
 
 
@@ -182,6 +195,7 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
         model=initial_model,
         branch="codex/parser",
         worktree=tree,
+        skip_reason="モデル継承fixtureの自明な1行変更。",
     )
     try:
         launch(d, monkeypatch)
@@ -804,6 +818,7 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
             state = p.state()
             state["prs"].append(p.pr(50, 10, branch="codex/worker-10"))
             p.save(state)
+            completed_implementation(p)
         p.cli(
             "delegate",
             "--child",
@@ -905,6 +920,7 @@ def test_stop_terminates_running_dependency_but_keeps_independent_worker(
         model=None,
         branch="codex/upstream",
         worktree=child_tree(d, "upstream"),
+        skip_reason="停止伝播fixtureの自明な先行変更。",
     )
     try:
         launch(d, monkeypatch)
@@ -950,7 +966,9 @@ def test_stop_terminates_running_dependency_but_keeps_independent_worker(
                 for p in paths.values()
             )
 
-        wait_until(running)
+        # Both workers validate fresh GitHub inputs before the fake CLI starts.
+        # This is a hang limit, not a fixed wait or completion inference.
+        wait_until(running, timeout=30)
         processes = {n: json.loads(p.read_text())["process"] for n, p in paths.items()}
         with session.store.locked():
             result = mod.stop_worker(session, 10, stop_detail())
@@ -1444,3 +1462,354 @@ def test_merge_checks_revoked_adoptions_and_keeps_independent_prs_eligible(
     else:
         assert g.merge_calls() == []
     assert len(review.calls()) == 1
+
+
+@pytest.mark.parametrize("action", ["approve", "reject"])
+def test_preflight_decision_paths(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, action: str
+) -> None:
+    mod, session, env = workflow(d, monkeypatch, family=True)
+    tree = child_tree(d)
+    before = d.row()
+    with pytest.raises(ValueError, match="undelivered planning decision"):
+        mod.start_worker(
+            session,
+            d.schedule.directory,
+            env,
+            child=10,
+            prompt="初回調査。",
+            model=None,
+            branch="codex/parser",
+            worktree=tree,
+            additional="未配送判断がないため補足を配送できない。",
+        )
+    assert d.row() == before
+    first = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="根拠と設計を調査する。",
+        model=None,
+        branch="codex/parser",
+        worktree=tree,
+    )
+    try:
+        launch(d, monkeypatch)
+        previous = drain(d, first["job_id"])
+        before = d.row()
+        with pytest.raises(ValueError, match="decide-worker-plan"):
+            mod.start_worker(
+                session,
+                d.schedule.directory,
+                env,
+                child=10,
+                prompt="勝手に実装しない。",
+                model=None,
+                continuation="終了を確認。",
+            )
+        assert d.row() == before
+        answer = (
+            "質問なしを確認。提案どおり実装する。"
+            if action == "approve"
+            else "今回は実装へ移行しない。回答を確認して終了する。"
+        )
+        saved = decide_plan(session, 10, action, answer)
+        second = mod.start_worker(
+            session,
+            d.schedule.directory,
+            env,
+            child=10,
+            prompt=None,
+            model=None,
+            continuation="終了と元sessionを確認。",
+        )
+        job = d.row()["dispatch"]["jobs"][second["job_id"]]
+        assert job["preflight"]["decision_id"] == saved["decision_id"]
+        assert job["preflight"]["phase"] == (
+            "implementing" if action == "approve" else "planning"
+        )
+        assert answer in (Path(job["directory"]) / "prompt.md").read_text()
+        launch(d, monkeypatch)
+        current = drain(d, second["job_id"])
+        old = json.loads(
+            (Path(previous["directory"]) / "runtime/result.json").read_text()
+        )
+        new = json.loads(
+            (Path(current["directory"]) / "runtime/result.json").read_text()
+        )
+        assert old["contract"] == new["contract"]
+        assert old["runtime"]["session_id"] == new["runtime"]["session_id"]
+        assert first["delegation_id"] != second["delegation_id"]
+        assert len((d.h.root / "runtime-calls.jsonl").read_text().splitlines()) == 2
+        if action == "reject":
+            with pytest.raises(ValueError, match="headings"):
+                decide_plan(session, 10)
+        assert d.mod.children_pending(d.row()) == []
+    finally:
+        d.control.reconcile(stop=True)
+
+
+def test_changed_dependency_after_approval_replans_saved_session(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    mod, session, env = workflow(d, monkeypatch, family=True, dependencies={11: [10]})
+    dep: dict[str, Any] = {
+        "number": 50,
+        "state": "open",
+        "body": "Closes #10",
+        "merged_at": None,
+        "head": {
+            "ref": "test",
+            "sha": d.h.git("rev-parse", "HEAD"),
+            "repo": {"full_name": "o/r"},
+        },
+    }
+    d.h.gh.prs.append(dep)
+    tree = child_tree(d)
+    first = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=11,
+        prompt="依存を含めて調査する。",
+        model=None,
+        branch="codex/parser",
+        worktree=tree,
+    )
+    try:
+        launch(d, monkeypatch)
+        previous = drain(d, first["job_id"])
+        decide_plan(session, 11)
+        pending = mod.start_worker(
+            session,
+            d.schedule.directory,
+            env,
+            child=11,
+            prompt=None,
+            model=None,
+            continuation="計画と終了を確認。",
+        )
+        d.h.git(
+            "-c",
+            "user.name=Fixture",
+            "-c",
+            "user.email=fixture@example.invalid",
+            "commit",
+            "--allow-empty",
+            "-m",
+            "dependency update",
+        )
+        dep["head"]["sha"] = d.h.git("rev-parse", "HEAD")
+        assert d.control.claim("o/r#1", pending["job_id"]) is None
+        cancelled = d.row()["dispatch"]["jobs"][pending["job_id"]]
+        assert cancelled["cancelled_before_start"]
+        assert d.mod.children_pending(d.row()) == []
+        assert d.row()["tasks"]["11"]["preflight"]["refresh_required"]
+        subprocess.run(
+            ["git", "-C", str(tree), "merge", "--ff-only", dep["head"]["sha"]],
+            check=True,
+            capture_output=True,
+        )
+        next_turn = mod.start_worker(
+            session,
+            d.schedule.directory,
+            env,
+            child=11,
+            prompt="更新された依存headを再調査する。",
+            model=None,
+            continuation="未起動取消と積み直しを確認。",
+        )
+        launch(d, monkeypatch)
+        current = drain(d, next_turn["job_id"], timeout=30)
+        assert current["preflight"]["phase"] == "planning"
+        assert current["resume_from"] == str(Path(previous["directory"]) / "runtime")
+        assert all(
+            x["invalidated"] for x in d.row()["tasks"]["11"]["preflight"]["decisions"]
+        )
+    finally:
+        d.control.reconcile(stop=True)
+
+
+@pytest.mark.parametrize("change", ["generation", "basis"])
+def test_handoff_replans_original_worker_session(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    mod, session, env = workflow(d, monkeypatch, family=True)
+    monkeypatch.setattr(mod, "Runtime", d.mod.Runtime)
+    first = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="初回調査。",
+        model=None,
+        branch="codex/parser",
+        worktree=child_tree(d),
+    )
+    try:
+        launch(d, monkeypatch)
+        previous = drain(d, first["job_id"])
+        decide_plan(session, 10)
+        row = d.row()
+        row["dispatch"]["wake_requested"] = False
+        d.update(row)
+        d.runtime(d.job(), live=False)
+        d.control.reconcile()
+        if change == "generation":
+            with session.store.locked():
+                session.lifecycle("handoff_pending", "元workerの終了を確認、次の親へ。")
+            new_session = importlib.import_module("parent.session").ParentSession(
+                d.h.gh, session.store, 1, "claude:new-owner"
+            )
+        else:
+            new_session = session
+        with new_session.store.locked():
+            if change == "generation":
+                new_session.accept("既存worktreeと元workerを引き継ぐ。")
+                # A crashed old supervisor may have missed a terminal run.
+                # Cleanup is real; only the dispatcher's end marker is absent.
+                missed = new_session.row["dispatch"]["jobs"][first["job_id"]]
+                missed["phase"] = "starting"
+                new_session.row["tasks"]["10"].pop("worker_ended")
+                new_session.store.save()
+            new_session.checking()
+            new_session.agree(
+                {
+                    "purpose": "既存作業の再確認",
+                    "scope": "同じ子とworktree",
+                    "behavior": "再調査後に判断する",
+                    "acceptance": "同じsessionの維持",
+                    "human_confirmation": "fixtureの新担当で確認済み。",
+                }
+            )
+            result = mod.refresh_worker_plan(
+                new_session,
+                d.schedule.directory,
+                10,
+                "旧親・全子の終了、元contract、現担当の新根拠を確認。",
+            )
+            assert result["worker_phase"]["status"] == "refresh_required"
+            other = copy.deepcopy(new_session.row)
+            other.update(session="claude:other-owner", tasks={})
+            other["dispatch"].update(session=other["session"], phase="reserved")
+            new_session.store.parents["o/r#2"] = other
+            new_session.store.save()
+        held = d.row()
+        with pytest.raises(ValueError, match="parent execution slots"):
+            mod.start_worker(
+                new_session,
+                d.schedule.directory,
+                {"CLAUDE_CODE_SESSION_ID": "new-owner"}
+                if change == "generation"
+                else env,
+                child=10,
+                prompt="枠が空くまで再調査を予約しない。",
+                model=None,
+                continuation="終了を照合した。",
+            )
+        assert d.row() == held
+        with new_session.store.locked():
+            del new_session.store.parents["o/r#2"]
+            new_session.store.save()
+        resumed = mod.start_worker(
+            new_session,
+            d.schedule.directory,
+            {"CLAUDE_CODE_SESSION_ID": "new-owner"} if change == "generation" else env,
+            child=10,
+            prompt="新しい根拠と担当で再調査する。",
+            model=None,
+            continuation="引継ぎと回収を確認。",
+        )
+        launch(d, monkeypatch)
+        current = drain(d, resumed["job_id"])
+        assert current["preflight"]["phase"] == "planning"
+        assert current["task_id"] == previous["task_id"]
+        before = json.loads(
+            (Path(previous["directory"]) / "runtime/result.json").read_text()
+        )
+        after = json.loads(
+            (Path(current["directory"]) / "runtime/result.json").read_text()
+        )
+        assert before["contract"] == after["contract"]
+        assert before["runtime"]["session_id"] == after["runtime"]["session_id"]
+        assert d.mod.children_pending(d.row()) == []
+        assert d.row()["dispatch"]["phase"] == "waiting"
+        jobs_before = len(d.row()["dispatch"]["jobs"])
+        d.control.reconcile(stop=True)
+        d.control.resume(1, "引継ぎ後の明示停止を解除する。")
+        assert d.row()["dispatch"]["phase"] == "waiting"
+        assert len(d.row()["dispatch"]["jobs"]) == jobs_before
+    finally:
+        d.control.reconcile(stop=True)
+
+
+@pytest.mark.parametrize("started", [False, True])
+def test_legacy_dispatch_phase_needs_explicit_migration(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, started: bool
+) -> None:
+    mod, session, env = workflow(d, monkeypatch, family=True)
+    first = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="移行前の調査。",
+        model=None,
+        branch="codex/parser",
+        worktree=child_tree(d),
+    )
+    try:
+        if started:
+            launch(d, monkeypatch)
+            previous = drain(d, first["job_id"])
+        else:
+            with session.store.locked():
+                dispatch = session.row["dispatch"]
+                d.control.cancel_reservation(
+                    session.row,
+                    dispatch["jobs"][first["job_id"]],
+                    "fixture cancelled before start",
+                )
+                session.store.save()
+            previous = d.row()["dispatch"]["jobs"][first["job_id"]]
+        directory = Path(previous["directory"]) / "runtime"
+        original = (directory / "result.json").read_bytes() if started else None
+        row = d.row()
+        row["tasks"]["10"].pop("preflight")
+        row["dispatch"]["jobs"][first["job_id"]].pop("preflight")
+        d.update(row)
+        before = d.row()
+        with pytest.raises(ValueError, match="migrate-worker-phase"):
+            mod.start_worker(
+                session,
+                d.schedule.directory,
+                env,
+                child=10,
+                prompt="推定で再開しない。",
+                model=None,
+                continuation="元runを確認。",
+            )
+        assert d.row() == before
+        with session.store.locked():
+            importlib.import_module("parent.worker_preflight").migrate(
+                session, 10, "終了と元contractを照合。"
+            )
+        resumed = mod.start_worker(
+            session,
+            d.schedule.directory,
+            env,
+            child=10,
+            prompt="明示移行後の再調査。",
+            model=None,
+            continuation="元sessionを確認。",
+        )
+        launch(d, monkeypatch)
+        current = drain(d, resumed["job_id"])
+        assert current["preflight"]["phase"] == "planning"
+        assert current["resume_from"] == (str(directory) if started else None)
+        if original is not None:
+            assert (directory / "result.json").read_bytes() == original
+        assert "preflight" not in d.row()["dispatch"]["jobs"][first["job_id"]]
+    finally:
+        d.control.reconcile(stop=True)

@@ -195,8 +195,15 @@ class FakeGitHub:
     def comments(self, n: int) -> list[dict[str, Any]]:
         return self.rows(f"repos/o/r/issues/{n}/comments")
 
-    def pulls(self) -> list[dict[str, Any]]:
-        return self.rows("repos/o/r/pulls?state=all")
+    def pulls(self, issues: set[int] | None = None) -> list[dict[str, Any]]:
+        rows = self.rows("repos/o/r/pulls?state=all")
+        closing_issues = importlib.import_module("parent.policy").closing_issues
+        return [
+            row
+            for row in rows
+            if issues is None
+            or closing_issues(row.get("body") or "", self.repo) & issues
+        ]
 
     def write(
         self, method: str, endpoint: str, payload: dict[str, Any]

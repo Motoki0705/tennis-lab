@@ -135,20 +135,32 @@ def valid_gate(policy: Any, *, dependency: bool = False) -> Any:
             }
         ],
     }
+    preflight = importlib.import_module("parent.worker_preflight")
+    worker = preflight.new("unit-worker")
+    worker.update(
+        phase="implementing", skip_reason="CI policyの自明な変更のunit fixture。"
+    )
+    task = {
+        "branch": "codex/unit",
+        "delegated": True,
+        "delegation_id": "unit-worker",
+        "authorization": auth,
+        "requirements_sha256": policy.digest(child.body),
+        "preflight": worker,
+        "review_preflight": {
+            "review_run_id": request["review_run_id"],
+            "context_sha256": policy.digest(worker["context"]),
+            "invalidations": 0,
+            "invalidated": False,
+        },
+    }
     return policy.MergeInput(
         repo="o/r",
         default_branch="main",
         parent_issue=1,
         pr=pr,
         children=children,
-        tasks={
-            "10": {
-                "branch": "codex/unit",
-                "delegated": True,
-                "authorization": auth,
-                "requirements_sha256": policy.digest(child.body),
-            }
-        },
+        tasks={"10": task},
         pulls=[copy.deepcopy(pr)],
         result=result,
         current=[snapshot],
