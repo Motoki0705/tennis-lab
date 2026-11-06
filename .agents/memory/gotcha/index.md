@@ -6,6 +6,7 @@
 - [実行中のbashスクリプトをその場で書き換えると、実行中のプロセスが新しい内容を途中から実行する](bash-script-edit-while-running.md)
 - [ColabのVMは、jobを実行せずに待たせると数時間の寿命より前に回収され、取得済みの入力も消える](colab-idle-vm-reclaimed.md)
 - [rclone設定に client_id がないと、全rclone利用者の共用OAuth clientの上限に当たり、Driveの転送が 403 rateLimitExceeded で止まる](rclone-default-client-rate-limit.md)
+- [Codex workerのpromptで途中終了を数値なしで許すと、時間が残っていても早々に途中終了する](codex-worker-defers-without-numeric-budget.md)
 - [Colabの `exec` 直後に接続が切れると、jobは `pending` のまま起動せず、`status` は `transport_alive: false` を返す](colab-exec-transport-lost-pending.md)
 - [Claude Codeのbackgroundの監視は、会話のプロセスが終わると一緒に止まり、再開した会話へ通知は届かない](claude-background-monitor-dies-with-session.md) (claude)
 - [codex-scheduled-followup の timer は、作成時の cli_heartbeat.py を絶対パスで実行し続ける](codex-followup-timer-script-path.md)

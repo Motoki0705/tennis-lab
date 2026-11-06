@@ -23,6 +23,7 @@ from src.tasks.base.annotation.workers.contracts import WorkRequest
 
 from .contracts import (
     CancelPendingStage,
+    ContinueReview,
     ObserveHostSpace,
     RecoveryInput,
     RecoveryReceipt,
@@ -131,6 +132,29 @@ def recover(controller: Controller, data: RecoveryInput) -> ArtifactRef:
             if attempt is None:
                 raise ValueError("worker completed while recovery was being requested")
             result = RecoveryReceipt(request=request_ref, worker_attempt=attempt)
+        elif isinstance(operation, ContinueReview):
+            from .review_progress import clip_status, continuation
+
+            production = controller.production
+            request = read_document(layout, operation.request, WorkRequest)
+            if production is None or request.adapter != "ball_review":
+                raise ValueError(
+                    "review continuation requires a production ball review"
+                )
+            production.pool.register(request)
+            row = production.pool.reconcile(request)
+            if row["current_attempt"] != operation.after_attempt:
+                raise ValueError("worker attempt changed; inspect its current state")
+            # Recompute verified coverage here; the caller's summary is not evidence.
+            allowed, detail = continuation(
+                clip_status(layout, controller.plan, operation.request),
+                operation.max_attempts,
+            )
+            if not allowed:
+                raise ValueError("review cannot be continued: " + detail)
+            production.pool.authorize_retry(
+                request, after_attempt=operation.after_attempt, reason=data.reason
+            )
         elif isinstance(operation, RetryLearning):
             production = controller.production
             if production is None:

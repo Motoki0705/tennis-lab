@@ -2,7 +2,8 @@
 
 `WorkerPool` は task adapter を注入してローカル Codex を起動する。
 ball/playerの意味・ラベルschema・レビュー方針は解釈しない。adapter が
-`prepare` で指示を作り、`validate` で画像確認範囲・教師・hash等を検証して
+`prepare` で指示を作り（supervisorの時間上限 `timeout_seconds` を受け取り、promptに示してよい）、
+`validate` で画像確認範囲・教師・hash等を検証して
 成果物receiptを返す。共通層は `complete / deferred / not_applicable` と
 採用receiptの有無を保存する。worker完了とdataset公開完了は別である。
 
@@ -49,6 +50,9 @@ state = pool.reconcile(request)
   receiptと台帳の間で中断しても再検証・再起動せず同じreceiptを回収する。
   preview planからの教師採用は拒否する。
 - 失敗・保留・timeout・cancelは自動retryしない。`start(..., retry=True)` を明示する。
+  `authorize_retry(request, after_attempt=..., reason=...)` は停止したworkを理由付きで `ready` へ
+  戻す明示の判断だけを記録する。processを起動せず枠も確保しないため、次のattemptは通常の受付・
+  待機・資源管理で始まる。現在のattemptと停止状態をwork lock内で照合する。
   quotaイベントはcampaign全体の新規投入を止め、明示的な `resume_campaign` を要求する。
   admission時にも終了receiptを検証し、quota状態とcampaign停止を同じtransactionで保存する。
   回収はwork lock取得後に現在のattemptを読み、状態更新は検証したattemptと遷移元状態に限定する。

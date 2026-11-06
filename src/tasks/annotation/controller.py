@@ -712,6 +712,9 @@ class Controller:
         annotation = publication_summary(self.layout, self.runtime.plan, completion)
         return {
             "state": state,
+            # Running workers/stages still need this controller's services and
+            # result collection, including while other work waits for a decision.
+            "live": live,
             "collection": summary,
             "task_states": tasks,
             "workers": workers,

@@ -14,6 +14,17 @@ Wait for each requested service to return before issuing another one. Finish all
 image/row requests for the current revision before submitting an edit, then use
 the revision returned by that edit for the next requests.
 
+The unit of work is this clip's whole target interval. A handoff scope (at most
+64 frames) and a rows page (at most 8 frames) are views of it, not the task.
+The clip-wide progress below and the clip-wide action in every handoff name the
+next frames that need review; after finishing a scope, request that next scope
+and continue until every target frame satisfies the frozen thresholds.
+A frame you cannot decide is still a decision: save presence unknown, an
+unresolved or occluded observation, or a blocking note as the policy allows, and
+move on. Doubt about some frames is not a reason to end the attempt.
+Run `date -u +%s` as your first command and check elapsed time between scopes
+against the time limit stated below.
+
 1. `review_handoff`: parameters are `scope: {start,stop}` (half-open, at most 64
    frames), optional `expected_revision`, `after_row`, and `previous_revision`.
    Page all remaining rows using the supplied cursor and the same revision. Use
@@ -75,8 +86,14 @@ revision and bounded changes. Raw JSON cannot directly update the shared revisio
 
 Finish by writing `work/result.json` with `status` (`complete` or `deferred`),
 `revision` (the current revision ArtifactRef), and a short nonempty `reason`.
-Only declare complete when the frozen review thresholds and unresolved-note rules
-are satisfied. If uncertain or out of budget, leave progress and explicitly defer.
+Declare complete only when the frozen review thresholds and unresolved-note rules
+are satisfied for the whole target interval. Use `deferred` only when (1) the stop
+time stated below has passed while target frames still need review, (2) a parent
+service keeps failing or stays unanswered for the same request, or (3) the frozen
+policy cannot be applied to what the images show. Name the case in `reason` with
+the clip-wide reviewed count and the first frame that still needs review; the
+parent continues from your saved revision. Never defer only because the clip is
+long or a scope is finished.
 The parent checks actual rollout image bytes and every attempt's evidence before
 adopting teachers. Rendering, structural validity and your complete flag alone do
 not satisfy adoption. You do not publish datasets or train models from this worker.

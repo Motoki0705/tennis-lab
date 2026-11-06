@@ -225,6 +225,15 @@ class RetryWorker(Document):
     after_attempt: str = Field(min_length=1)
 
 
+class ContinueReview(Document):
+    """Authorize another attempt of a stopped review that verified new coverage."""
+
+    action: Literal["continue_review"] = "continue_review"
+    request: ArtifactRef
+    after_attempt: str = Field(min_length=1)
+    max_attempts: int = Field(ge=2)
+
+
 class RetryLearning(Document):
     action: Literal["retry_learning"] = "retry_learning"
     intent: ArtifactRef
@@ -258,6 +267,7 @@ class RecoveryInput(Document):
     reason: str = Field(min_length=1)
     operation: Annotated[
         RetryWorker
+        | ContinueReview
         | RetryLearning
         | ResumeWorkers
         | CancelPendingStage

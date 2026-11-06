@@ -1693,7 +1693,9 @@ def sealed_screening_attempt(
     directory = layout.path(
         "campaigns", plan.campaign_id, "workers", request.work_id, "attempt-0001"
     )
-    prepared = ScreeningAdapter().prepare(layout, plan, request, directory)
+    prepared = ScreeningAdapter().prepare(
+        layout, plan, request, directory, timeout_seconds=60.0
+    )
     task_ref = annotation_reference(layout, directory / "request.json")
     body = read_document(layout, task_ref, ScreeningRequest)
     detail = request_preview(layout, body, start=0.0, stop=15.0, step=0.5)
@@ -1908,7 +1910,8 @@ def run_source_operation(
     monkeypatch.setenv("TENNIS_ANNOTATION_STAGE_OPERATION", reference.digest)
     result = execute(controller.layout, reference)
     record_stage(controller, data, exited=True)
-    return read_document(controller.layout, result, OperationReceipt)
+    receipt: OperationReceipt = read_document(controller.layout, result, OperationReceipt)
+    return receipt
 
 
 def test_duplicate_acquisition_survives_shared_source_retirement(

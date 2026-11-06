@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+import math
 import shlex
 from pathlib import Path
-from typing import Literal
+from typing import NamedTuple
 
 from pydantic import Field
 
@@ -59,26 +60,31 @@ from ..preview import proposal_drawings
 from .adapter import BallReviewAdapter
 from .contracts import BallFrame, BallLabels
 from .evidence import review_images
+from .progress import ProofState, clip_progress, first_scope, progress_action
 from .storage import retained_revision
 from .validation import inputs
 
-ProofState = Literal["unreviewed", "verified", "pending_current_attempt", "missing"]
+
+class ImageProof(NamedTuple):
+    """Rollout-verified images per attempt, read once for any number of revisions."""
+
+    proven: dict[ArtifactRef, set[ArtifactRef]]
+    pending: set[ArtifactRef]
+    unavailable: dict[ArtifactRef, str]
 
 
-def proof_states(
-    layout: AnnotationLayout,
-    context: ReviewContext,
-    labels: BallLabels,
-) -> tuple[dict[int, ProofState], dict[ArtifactRef, str]]:
+def image_proof(
+    layout: AnnotationLayout, context: ReviewContext, clip_id: str
+) -> ImageProof:
     plan = read_document(layout, context.plan, CampaignPlan)
     context_ref = annotation_reference(
-        layout, layout.path("annotations", "ball", labels.clip_id, "context.json")
+        layout, layout.path("annotations", "ball", clip_id, "context.json")
     )
     work = WorkRequest(
         adapter="ball_review",
         adapter_version="v1",
         stage="review",
-        subject_id=labels.clip_id,
+        subject_id=clip_id,
         payload=context_ref,
         inputs=(context.manifest, context.prediction),
     )
@@ -97,24 +103,50 @@ def proof_states(
 
             if read_document(layout, attempt.launch, Launch).attempt == current:
                 pending.add(attempt.launch)
+    return ImageProof(proven=proven, pending=pending, unavailable=unavailable)
+
+
+def frame_proof_states(labels: BallLabels, proof: ImageProof) -> dict[int, ProofState]:
     catalog = {image.sha256: image.image for image in labels.images}
     result: dict[int, ProofState] = {}
     for frame in labels.frames:
         if not frame.decision.reviewed:
             state: ProofState = "unreviewed"
         elif all(
-            catalog[key] in proven.get(frame.review_actor, set())
+            catalog[key] in proof.proven.get(frame.review_actor, set())
             for key in frame.decision.evidence
         ):
             state = "verified"
         else:
             state = (
                 "pending_current_attempt"
-                if frame.review_actor in pending
+                if frame.review_actor in proof.pending
                 else "missing"
             )
         result[frame.frame.frame_index] = state
-    return result, unavailable
+    return result
+
+
+def proof_states(
+    layout: AnnotationLayout,
+    context: ReviewContext,
+    labels: BallLabels,
+) -> tuple[dict[int, ProofState], dict[ArtifactRef, str]]:
+    proof = image_proof(layout, context, labels.clip_id)
+    return frame_proof_states(labels, proof), proof.unavailable
+
+
+def attempt_time_limit(timeout_seconds: float) -> tuple[float, float]:
+    """Minutes of the supervisor limit and of the point to stop starting new scopes.
+
+    The reserve (10%, at least five minutes, at most half the limit) leaves time to
+    write ``result.json``; a hard timeout discards the worker's own account of
+    where it stopped, although saved revisions remain.
+    """
+    if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
+        raise ValueError("worker time limit must be positive and finite")
+    reserve = max(min(300.0, timeout_seconds / 2), timeout_seconds / 10)
+    return timeout_seconds / 60, (timeout_seconds - reserve) / 60
 
 
 class BallRowPage(Document):
@@ -174,8 +206,10 @@ class BallReviewServices(BallReviewAdapter):
         summary = super().summarize(
             layout, context, manifest, payload, scope, after_row
         )
-        states, unavailable = proof_states(
-            layout, context, read_document(layout, payload, BallLabels)
+        labels = read_document(layout, payload, BallLabels)
+        states, unavailable = proof_states(layout, context, labels)
+        clip_wide = progress_action(
+            clip_progress(labels, states, manifest.target_range)
         )
         missing = any(states[row.frame_index] == "missing" for row in summary.rows)
         evidence_page = _evidence_pages(layout, manifest.clip_id, payload, unavailable)
@@ -204,9 +238,10 @@ class BallReviewServices(BallReviewAdapter):
                     "Reinspect rows with image_proof=missing and explicitly replace their decisions; retain unresolved notes until resolved.",
                     *evidence_actions,
                     *summary.next_actions,
+                    clip_wide,
                 )
                 if missing
-                else (*evidence_actions, *summary.next_actions),
+                else (*evidence_actions, *summary.next_actions, clip_wide),
             }
         )
 
@@ -332,8 +367,11 @@ class BallReviewWorker:
         plan: CampaignPlan,
         request: WorkRequest,
         directory: Path,
+        *,
+        timeout_seconds: float,
     ) -> PreparedWorker:
         self.require_work(request)
+        limit_minutes, stop_minutes = attempt_time_limit(timeout_seconds)
         context = read_document(layout, request.payload, ReviewContext)
         adapter, store = BallReviewServices(), RevisionStore(layout)
         bound_plan, manifest, _ = store.context(context, adapter)
@@ -346,15 +384,13 @@ class BallReviewWorker:
         revision = store.initialize(context, adapter)
         if read_document(layout, revision, Revision).context != request.payload:
             raise ValueError("worker must use the registered review context reference")
-        handoff = build_handoff(
-            store,
-            request.payload,
-            adapter,
-            FrameRange(
-                start=manifest.target_range.start,
-                stop=min(manifest.target_range.stop, manifest.target_range.start + 64),
-            ),
+        labels = read_document(
+            layout, read_document(layout, revision, Revision).payload, BallLabels
         )
+        states, _ = proof_states(layout, context, labels)
+        progress = clip_progress(labels, states, manifest.target_range)
+        # A continuation starts where review work remains, not at the target start.
+        handoff = build_handoff(store, request.payload, adapter, first_scope(progress))
         body = ReviewWorkerInput(
             work=request,
             attempt_path=directory.relative_to(layout.root).as_posix(),
@@ -392,6 +428,13 @@ class BallReviewWorker:
             )
             + "\n\nFrozen review policy:\n"
             + policy.model_dump_json()
+            + "\n\nTime limit: the supervisor stops this attempt "
+            + f"{limit_minutes:.1f} minutes after launch. Stop starting new handoff "
+            + f"scopes {stop_minutes:.1f} minutes after your first command and write "
+            + "work/result.json.\n\nClip-wide review progress when this attempt was "
+            + "prepared (counts are target frames; the initial handoff starts at the "
+            + "first scope that still needs work):\n"
+            + progress.model_dump_json()
             + "\n\nInitial bounded handoff:\n"
             + read_handoff(layout, handoff).model_dump_json()
             + "\n\nAnnotation artifact root (read-only):\n"
