@@ -63,7 +63,8 @@ parents:
 - run-pr937-player-inference-real-frame-20260928
 relations:
 - to: run-i1031-player-ckpt-qualitative-20261008a
-  rel: resolves
+  rel: supersedes
+  note: 対象で生じた問題を解消して置き換えた
 papers: []
 tags:
 - qualitative-logging

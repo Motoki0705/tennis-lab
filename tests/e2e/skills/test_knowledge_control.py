@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +16,20 @@ from src.utils.training_queue import CEILING, RETENTION_NS
 
 ROOT = Path(__file__).resolve().parents[3]
 REGISTER_SCRIPT = ROOT / ".agents/skills/knowledge-control/scripts/kg_register.py"
+
+
+def seed_registry(base: Path, *tasks: str) -> None:
+    """Write the registry an isolated library needs: tasks, relation types, no deployments."""
+    registry = base / "registry"
+    registry.mkdir(parents=True, exist_ok=True)
+    path = registry / "tasks.yaml"
+    entries = yaml.safe_load(path.read_text())["tasks"] if path.exists() else {}
+    for task in tasks:
+        entries.setdefault(task, {"status": "active", "note": "isolated test topic"})
+    path.write_text(yaml.safe_dump({"schema_version": 1, "tasks": entries}, allow_unicode=True))
+    shutil.copyfile(ROOT / "knowledge/registry/relations.yaml", registry / "relations.yaml")
+    if not (registry / "deployments.yaml").exists():
+        (registry / "deployments.yaml").write_text("schema_version: 1\nconfigs: []\ndeployments: []\n")
 
 
 def test_register_promotes_headline_and_diagnostic_metric_artifacts(
@@ -50,6 +65,7 @@ def test_register_promotes_headline_and_diagnostic_metric_artifacts(
     )
 
     knowledge_dir = tmp_path / "knowledge"
+    seed_registry(knowledge_dir, "plcs")
     subprocess.run(
         [
             sys.executable,
@@ -149,6 +165,7 @@ def test_named_registration_selects_latest_across_new_legacy_and_expired_history
                 )
             )
         )
+    seed_registry(knowledge, "plcs")
     environment = {
         **os.environ,
         "KNOWLEDGE_DIR": str(knowledge),

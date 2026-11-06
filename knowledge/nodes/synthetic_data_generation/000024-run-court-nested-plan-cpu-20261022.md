@@ -36,7 +36,8 @@ artifacts:
 parents: []
 relations:
 - to: run-court-sfm-all-scenes-drift-20260920
-  rel: informed_by
+  rel: related
+  note: 対象の知見を計画の根拠にした
 papers: []
 tags: [court, nested-sampling, trajectory, cpu, diagnostic]
 ---

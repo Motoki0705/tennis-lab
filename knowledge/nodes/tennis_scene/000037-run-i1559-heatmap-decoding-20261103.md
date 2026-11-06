@@ -74,7 +74,8 @@ parents:
 - run-ball3d-evaluation-foundation-20261103
 relations:
 - to: run-ball3d-foundation-review-20261103
-  rel: uses
+  rel: related
+  note: レビュー修正後の共通評価基盤を使用。
 papers: []
 tags: []
 repro:

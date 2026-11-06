@@ -29,15 +29,20 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import contextlib
 import json
-import re
 import shutil
 import sys
 from pathlib import Path
 
 from kg_artifacts import RUN_LIMIT, removal_reason
-from kg_lib import nodes_dir, portable_path, queue_dir, repo_root
+from kg_lib import (
+    config_from_command,
+    nodes_dir,
+    portable_path,
+    queue_dir,
+    repo_root,
+    test_metrics_from_log,
+)
 from kg_schema import PROVIDERS, STATUSES, iso_date
 from kg_storage import check_identity, prepare_node, registration_lock, write_node
 
@@ -45,9 +50,6 @@ sys.path.insert(0, str(repo_root()))
 from src.utils.training_queue import latest_named_job  # noqa: E402
 
 QUEUE_DIR: Path = queue_dir()
-OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
-CONFIG_KEYS = ("model", "loss", "data")
-METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
 BUNDLE_FILES = ("run.json", "repro.sh", "uncommitted.patch", "git_status.txt", "output_dir.txt")
 METRIC_FILES = (
     "metrics.json",
@@ -65,13 +67,10 @@ def portable_output_dir(raw: str, run: dict) -> str:
     odir = Path(raw)
     if odir.name == "checkpoints":
         odir = odir.parent
-    for base in (run.get("cwd"), str(repo_root())):
-        if base:
-            try:
-                return str(odir.relative_to(base))
-            except ValueError:
-                continue
-    return str(odir)
+    cwd = run.get("cwd")
+    if cwd and odir.is_relative_to(cwd):
+        return str(odir.relative_to(cwd))
+    return portable_path(odir)
 
 
 def find_repro_dir(name: str) -> Path | None:
@@ -87,14 +86,9 @@ def find_log(name: str, *, run_id: str | None = None) -> Path | None:
 
 
 def parse_metrics_from_log(log: Path | None) -> dict[str, float]:
-    metrics: dict[str, float] = {}
     if log and log.exists():
-        for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
-            m = METRIC_ROW_RE.match(line.strip())
-            if m:
-                with contextlib.suppress(ValueError):
-                    metrics[m.group(1).replace("test/", "")] = round(float(m.group(2)), 6)
-    return metrics
+        return test_metrics_from_log(log.read_text(encoding="utf-8", errors="replace"))
+    return {}
 
 
 def load_metrics(repro: Path, name: str) -> dict[str, float]:
@@ -143,10 +137,7 @@ def main() -> int:
     if issue is None and str(run.get("issue", "")).isdigit():
         issue = int(run["issue"])
     cmd = run.get("command", "")
-    overrides = dict(OVERRIDE_RE.findall(cmd))
-    config = {k: overrides[k] for k in CONFIG_KEYS if k in overrides} or {
-        "model": "", "loss": "", "data": ""
-    }
+    config = config_from_command(cmd) or {"model": "", "loss": "", "data": ""}
     metrics = load_metrics(repro, name)
 
     node_id = args.id or f"run-{name.replace('_', '-')}"
@@ -169,7 +160,10 @@ def main() -> int:
         proposed = {**existing, **sources}
         if sum(path.stat().st_size for path in proposed.values()) > RUN_LIMIT:
             p.error("bundle rejected before copying: run exceeds 2 MiB")
-        node_path = prepare_node(meta, args.force)
+        try:
+            node_path = prepare_node(meta, args.force)
+        except ValueError as exc:
+            p.error(str(exc))
         if (run_dir.exists() or node_path.exists()) and not args.force:
             p.error(f"{node_id} already registered (use --force)")
         run_dir.mkdir(parents=True, exist_ok=True)

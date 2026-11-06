@@ -55,11 +55,8 @@ test("browse, compare, follow research, and read PDF", async ({
   );
   await page.getByRole("button", { name: "研究サマリー", exact: true }).click();
   await page
-    .locator(".summary-document")
-    .getByRole("link", {
-      name: "run-plcs-accad-gvhmr-meiji-1000-v1-train",
-      exact: true,
-    })
+    .locator(".summary-document a[href^='/?node=']")
+    .first()
     .click();
   await expect(
     page.getByRole("complementary", { name: "実験の詳細" }),

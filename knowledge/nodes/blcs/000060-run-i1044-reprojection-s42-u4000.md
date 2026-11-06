@@ -80,7 +80,7 @@ relations:
 - to: run-i1044-position-s42-u4000
   rel: compares
 - to: run-i1044-reprojection-s42-cuda-interrupted
-  rel: reruns
+  rel: retries
 papers: []
 tags:
 - issue1044

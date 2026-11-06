@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from kg_lib import Node, dump_frontmatter, load_nodes, nodes_dir
+from kg_registry import require_registered_task
 from kg_schema import ID_RE, TASK_RE
 
 
@@ -80,6 +81,7 @@ def prepare_node(meta: dict[str, Any], force: bool = False) -> Path:
         meta["sequence"] = old.meta["sequence"]
         meta["recorded_at"] = old.meta["recorded_at"]
         return old.path
+    require_registered_task(meta["task"])
     directory = nodes_dir() / meta["task"]
     counter = read_counter(directory)
     maximum = max((n.meta["sequence"] for n in nodes if n.meta["task"] == meta["task"]), default=0)

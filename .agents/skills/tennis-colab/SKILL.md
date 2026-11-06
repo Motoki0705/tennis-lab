@@ -53,5 +53,7 @@ Driveの配置・版・保持・整理は [tennis-drive](../tennis-drive/SKILL.m
 ローカルの対象worktreeとcommitを照合し、差分を確認して適用・検証・commitする。既存のローカル変更を上書きしない。
 
 終了前に全jobの終了・Drive保存を確認して `stop`。stopはコード差分もローカルへ退避する。
+実験結果として残すjobは、終了とDrive保存を確認した後、Driveの運用記録
+`operations/colab/<session>/<job-id>` から [knowledge-control](../knowledge-control/references/record.md#colab-job-from-its-drive-record) のColab経路でノード化する。
 モデルや学習結果の全量ローカル回収は行わず、依頼されたものだけDriveから取得する。
 通信断やVM消失をコマンド成功と扱わない。保存済みcheckpointと対応設定から新しいsessionで再開する。

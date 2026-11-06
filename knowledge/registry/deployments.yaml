@@ -1,0 +1,63 @@
+# 標準pipelineが選ぶcheckpointと、その採用根拠の対応表。CIがconfigsの値と照合する。
+# configsに挙げたYAMLの `checkpoint` / `*_checkpoint` キーは、すべてここに1件ずつ必要。
+# 学習したモデルはevidence（ノードID）、外部の公開重みはsource（重みの出典を記したrepo内文書）で根拠を示す。
+# 値を変えるPRでは、この表・根拠ノード・summary.mdを同時に更新する。
+schema_version: 1
+configs:
+- src/tennis_scene/configs/pipeline.yaml
+deployments:
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: court_kp.checkpoint
+  value: court_detection/multiscale_depth3/b863df1f01f0.ckpt
+  task: court_detection
+  evidence:
+  - run-court-meiji-model-only-regions-20260922
+  - run-i931-default-meiji-clip000-20260927
+  note: >-
+    画像だけによる領域探索と組み合わせて、Meiji 3cameraの先頭frameで校正が通ったことが採用の根拠。
+    このcheckpointを学習したrunのノードは未登録。
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: people_models.dino_checkpoint
+  value: dino/checkpoint0029_4scale_swin.pth
+  task: player_detection
+  source: LICENSES.md
+  evidence:
+  - run-i964-coco-fullframe-r5-20260929
+  note: COCO事前学習の重みをpersonクラスだけで使う。#937の選手検出FTは明示的なcheckpoint指定でだけ使う。
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: people_models.vitpose_checkpoint
+  value: vitpose/vitpose-h-multi-coco.pth
+  task: tennis_scene
+  source: LICENSES.md
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: people_models.hmr2_checkpoint
+  value: hmr2/epoch=10-step=25000.ckpt
+  task: tennis_scene
+  source: LICENSES.md
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: people_models.gvhmr_checkpoint
+  value: gvhmr/gvhmr_siga24_release.ckpt
+  task: tennis_scene
+  source: LICENSES.md
+  papers:
+  - paper-2024-gvhmr
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: person_tracking.aflink_checkpoint
+  value: person_tracking/AFLink_epoch20.pth
+  task: person_tracking
+  source: LICENSES.md
+  evidence:
+  - run-i964-default-merge-r11-20260930
+  note: 重みの利用条件は一次資料で未確認。2026-10-19のユーザー判断で標準pipelineでの利用を続けている（LICENSES.md）。
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: ball_detection.checkpoint
+  value: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
+  task: ball_detection
+  since: '2026-10-01'
+  evidence:
+  - run-i935-mixed-ft-val-recall-s42-r16-20260929
+  - run-i935-evidence-mixed-e9-trainval-r17-20260930
+  - run-i935-confidence-r29-20261001
+  note: >-
+    #935の混合FTのepoch 9。2026-10-01のユーザー判断（#935のコメント）で既定にした。
+    根拠ノードは廃止したball_refinerトピックにある。

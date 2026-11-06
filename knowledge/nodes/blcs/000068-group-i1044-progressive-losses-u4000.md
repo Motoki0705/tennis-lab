@@ -54,11 +54,14 @@ artifacts:
   tables_and_figures: knowledge/runs/run-i1044-final-evaluation/report
 relations:
 - to: run-i1044-position-s42-cuda-interrupted
-  rel: excludes_failed_attempt
+  rel: related
+  note: 失敗した試行。groupの集計から除外した
 - to: run-i1044-reprojection-s42-cuda-interrupted
-  rel: excludes_failed_attempt
+  rel: related
+  note: 失敗した試行。groupの集計から除外した
 - to: run-i1044-parameters-s43-cuda-interrupted
-  rel: excludes_failed_attempt
+  rel: related
+  note: 失敗した試行。groupの集計から除外した
 ---
 
 同じデータ・入力・backbone・更新予算で比較すると、候補Bの直接座標は主対照より3seedすべてでtest軌道RMSEが小さかった。一方、損失を一つずつ増やすほど全軸が改善する結果ではなかった。rollout位置だけの追加はseed42の位置RMSEを悪化させ、Bの積分出力は直接座標より大きく外れた。採用基準はユーザー指定で設けておらず、この結果から方式や本番checkpointを自動採用しない。

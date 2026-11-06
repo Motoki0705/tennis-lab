@@ -11,7 +11,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 from urllib.parse import unquote, urlsplit
 
-from kg_lib import Node, nodes_dir, repo_root
+from kg_lib import Node, git_toplevel, nodes_dir, repo_root
 
 FILE_LIMIT = 256 * 1024
 FIGURE_LIMIT = 512 * 1024
@@ -404,7 +404,7 @@ def validate_references(
     documents = [(n.path, n.body) for n in nodes]
     documents += [
         (p, p.read_text())
-        for p in [base / "summary.md", *sorted((base / "reports").rglob("*.md"))]
+        for p in [base / "summary.md", *sorted((base / "reports").rglob("*.md")), *sorted((base / "history").rglob("*.md"))]
         if p.is_file()
     ]
     for node in nodes:
@@ -430,7 +430,7 @@ def validate_removal_history(
     No lookup of old commits is required after a history rewrite: unchanged
     manifests are compared with the PR base, which already contains the records.
     """
-    root = repo_root()
+    root = git_toplevel(base)
 
     def git(*args: str) -> bytes:
         result = subprocess.run(["git", *args], cwd=root, capture_output=True)
@@ -445,7 +445,7 @@ def validate_removal_history(
         .decode()
         .strip()
     )
-    prefix = (base / "runs").relative_to(root).as_posix()
+    prefix = (base.resolve() / "runs").relative_to(root).as_posix()
     old: dict[str, tuple[str, int]] = {}
     for row in git("ls-tree", "-rlz", commit, "--", prefix).split(b"\0"):
         if row:

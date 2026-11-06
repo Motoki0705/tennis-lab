@@ -17,7 +17,7 @@ npm run build && npm start      # production
 - グラフ: 前提から後続への有向線、グループの囲み、任意の関連線、zoom/minimap。
 - 詳細: 考察、実測metrics、config、曲線、再現bundleのパス、前提・後続・関連実験、論文参照。Escapeで閉じる。
 - 実験比較: 最大4件の条件・metricsを並置しCSV出力。異なる評価条件に自動の優劣を付けない。
-- Papers: 論文情報・読解ノート・ローカルPDF閲覧・参照実験への逆引き。
+- Papers: 論文情報・読解ノート・PDF閲覧（PDFを保存した論文のみ）・参照実験への逆引き。
 - 研究サマリー: `summary.md` を表示し、根拠ノードへ遷移。
 - URLにタスク・検索・フィルタ・表示・選択ノードを保持。`/?node=<id>`、`/?paper=<id>` で直接開ける。実験の論文絞り込みには別キー `paperFilter` を使う。
 - モバイル対応、キーボード操作、MarkdownのHTMLサニタイズ。

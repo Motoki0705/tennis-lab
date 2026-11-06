@@ -12,6 +12,8 @@ ID_RE = re.compile(r"^(?:run|group)-[a-z0-9]+(?:-[a-z0-9]+)*$")
 NODE_TYPES = {"run", "group"}
 STATUSES = {"done", "failed", "running", "planned"}
 PROVIDERS = {"claude", "codex", "gemini", "human", "other"}
+# Declared by nodes that a branch adds or whose status it changes (see kg_changes.py).
+SUMMARY_IMPACTS = {"updated", "none"}
 
 
 def nonempty_text(value: Any) -> bool:

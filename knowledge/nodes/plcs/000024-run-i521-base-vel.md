@@ -46,7 +46,8 @@ parents:
 - run-i520-canon-none
 relations:
 - to: run-i520-canon-none
-  rel: improves
+  rel: compares
+  note: 対象より改善した
 tags:
 - plcs
 - canonical

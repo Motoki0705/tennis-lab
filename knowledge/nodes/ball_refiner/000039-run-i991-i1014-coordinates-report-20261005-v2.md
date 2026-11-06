@@ -52,7 +52,52 @@ parents:
 - run-i1014-coords-3d-regression-p025-s42-20261005-v2
 - run-i1014-coords-3d-regression-p05-s42-20261005-v2
 - run-i1014-coords-3d-regression-p075-s42-20261005-v2
-relations: []
+relations:
+- to: run-i991-coords-2d-gan-p025-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i991-coords-2d-gan-p05-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i991-coords-2d-regression-p025-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i991-coords-2d-regression-p05-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i991-coords-2d-regression-p075-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i991-coords-2d-gan-p075-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-regression-p025-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-flow-p025-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-gan-p025-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-gan-p05-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-regression-p05-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-flow-p05-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-regression-p075-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-flow-p075-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
+- to: run-i1014-coords-3d-gan-p075-s42-20261005-v2
+  rel: evaluates
+  note: 同一入力の再集計・単独GPU計測
 papers: []
 tags:
 - coordinate-refiner
