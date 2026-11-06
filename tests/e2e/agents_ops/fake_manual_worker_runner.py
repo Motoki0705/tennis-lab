@@ -45,7 +45,18 @@ def main() -> int:
     assert "worker_ended" not in task
     assert opt("--role") == "implementation" and opt("--mode") == "write"
     assert opt("--branch") == task["branch"] and opt("--cwd") == task["worktree"]
-    assert "--model" not in args and "--effort" not in args
+    assert "--effort" not in args
+    resolver = importlib.import_module("lib.agent_settings")
+    settings = resolver.resolve(
+        resolver.DEFAULT_CONFIG,
+        "codex",
+        None,
+        opt("--model") if "--model" in args else None,
+        None,
+        "write",
+    )
+    assert task["model"] == saved["model"] == settings["selected"]["model"]
+    assert task["model_reason"] == saved["model_reason"]
     with Path(os.environ["MANUAL_RUNNER_CALLS"]).open("a") as stream:
         stream.write(json.dumps(args) + "\n")
     # Read the instruction as the real runner does (UTF-8 file or stdin).
@@ -63,6 +74,8 @@ def main() -> int:
         "task_id": opt("--task-id"),
         "cwd": opt("--cwd"),
         "branch": opt("--branch"),
+        "mode": "write",
+        "settings": settings,
     }
     session_id = "offline-private-session"
     if args[0] == "resume":
@@ -84,7 +97,17 @@ def main() -> int:
                 **summary,
                 "contract": contract,
                 "cleanup_complete": True,
-                "runtime": {"session_id": session_id},
+                "runtime": {
+                    "session_id": session_id,
+                    "effective": {
+                        key: {
+                            "status": "observed",
+                            "value": settings["selected"][key],
+                            "source": "offline fixture",
+                        }
+                        for key in ("model", "effort")
+                    },
+                },
             }
         )
     )

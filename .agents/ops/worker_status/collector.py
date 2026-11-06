@@ -105,7 +105,18 @@ def latest_run(
     for index, run in enumerate(runs):
         if (
             not isinstance(run, dict)
-            or set(run) != {"delegation_id", "run_dir", "kind", "recorded_at"}
+            or set(run)
+            not in (
+                {"delegation_id", "run_dir", "kind", "recorded_at"},
+                {
+                    "delegation_id",
+                    "run_dir",
+                    "kind",
+                    "recorded_at",
+                    "model",
+                    "model_reason",
+                },
+            )
             or not isinstance(run["delegation_id"], str)
             or not re.fullmatch(r"[0-9a-f]{32}", run["delegation_id"])
             or not isinstance(run["run_dir"], str)

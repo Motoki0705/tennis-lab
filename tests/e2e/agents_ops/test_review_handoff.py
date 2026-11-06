@@ -43,7 +43,19 @@ def test_handoff_accepts_only_completed_current_worker(
         row={"tasks": {"10": task}},
         store=SimpleNamespace(directory=tmp_path, save=lambda: saved.append(True)),
     )
-    contract = {"task_id": "a" * 32, "branch": "codex/worker", "cwd": str(tmp_path)}
+    contract: dict[str, Any] = {
+        "task_id": "a" * 32,
+        "branch": "codex/worker",
+        "cwd": str(tmp_path),
+        "mode": "write",
+        "settings": {
+            "agent": "codex",
+            "role": "implementation",
+            "profile": None,
+            "selected": {"model": "gpt-6.1-sol", "effort": "max"},
+            "overrides": {},
+        },
+    }
     record = {
         "schema_version": 1,
         "result": "completed",

@@ -33,7 +33,11 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 出力は `child/delegation_id/job_id/result=reserved`。起動の成功や成果物の合格ではない。
 担当issueの原文・親の具体指示と [worker prompt](worker_prompt.md) を共通ランナーへ渡す。
 親は子のscope・対象外・受入条件・依存・テスト条件・PR作成時点を指示ファイルへ書く。
-モデル選択の理由もissueへの `note` に残す。GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
+モデル選択は [AGENTS.md](../../../AGENTS.md#開発ルール) に従い、通常はSol/max、未解決の数理・幾何アルゴリズムや
+広範囲の統合設計などの高難度の委任では親がAstra/maxを選べる。人間との合意によるモデル指定を優先する。
+選択肢は `agents.conf` の既定・代替の2種で、effortはmax固定。理由は親issueへの `note` と具体指示へ残す。
+同一委任・sessionの途中では変更せず、利用不可・実効値不一致を別モデルへ振り替えない。
+GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
 
 予約後の障害は `reconcile` と保存jobを照合する。delegateだけ保存された場合は、同じdelegation_idで
 [dispatcher start-child](../dispatcher/README.md#親workflowへのbootstrap契約) へ接続する。
