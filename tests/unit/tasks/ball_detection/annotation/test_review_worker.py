@@ -286,9 +286,18 @@ def test_retry_keeps_previous_evidence_or_requires_explicit_reconfirmation(
     assert history[0].launch == old_actor and history[0].telemetry == report
     initial = read_document(env.layout, session.input, ReviewWorkerInput)
     handoff = read_handoff(env.layout, initial.initial_handoff)
+    target = env.manifest.target_range
+    # Verified work is kept and the continuation starts at the next frame needing
+    # review; a decision without bound image proof must be viewed again first.
+    reconfirm = previous == "missing"
+    assert handoff.scope.start == (1 if reconfirm else 2)
     assert (
-        "image_proof=missing" if previous == "missing" else "image_proof=verified"
+        "image_proof=missing" if reconfirm else "image_proof=unreviewed"
     ) in handoff.content.rows[0].detail
+    assert handoff.content.next_actions[-1].startswith(
+        f"Clip-wide target [{target.start},{target.stop}): "
+        f"1/{target.stop - target.start} reviewed, {int(reconfirm)} need re-confirmation"
+    )
     current = session.evidence(shown=())
     if previous == "missing":
         with pytest.raises(ValueError, match="actually shown"):
@@ -301,6 +310,37 @@ def test_retry_keeps_previous_evidence_or_requires_explicit_reconfirmation(
         proof = read_document(env.layout, evidence.evidence[0], BallReviewProof)
         assert proof.telemetry == (report, current)
         assert env.labels().frames[1].review_actor == old_actor
+
+
+def test_continuation_prompt_states_time_limit_and_clip_wide_progress(
+    session: ReviewSession,
+) -> None:
+    env = session.env
+    shown = session.image(1, 2)
+    session.confirm(shown, 1, 3)
+    session.finish(session.evidence(shown=(shown,)), status="deferred")
+    session.open(2)
+    launch = read_document(env.layout, env.actor, Launch)
+    prompt = env.layout.artifact_path(launch.prepared.prompt).read_text()
+    # The support launch allows 60 s; half of a short limit is kept in reserve.
+    assert (
+        "Time limit: the supervisor stops this attempt 1.0 minutes after launch. "
+        "Stop starting new handoff scopes 0.5 minutes after your first command"
+    ) in prompt
+    progress = json.loads(
+        prompt.split("Clip-wide review progress", 1)[1].split("\n")[1]
+    )
+    target = env.manifest.target_range
+    assert (progress["target"], progress["reviewed_frames"]) == (
+        {"start": target.start, "stop": target.stop},
+        2,
+    )
+    assert (progress["verified_frames"], progress["next_review_scope"]) == (
+        2,
+        {"start": 3, "stop": min(target.stop, 67)},
+    )
+    assert "If uncertain or out of budget" not in prompt
+    assert "The unit of work is this clip's whole target interval." in prompt
 
 
 @pytest.mark.parametrize(

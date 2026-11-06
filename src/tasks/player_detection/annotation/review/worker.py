@@ -313,7 +313,12 @@ class PlayerReviewWorker:
         plan: CampaignPlan,
         request: WorkRequest,
         directory: Path,
+        *,
+        timeout_seconds: float,
     ) -> PreparedWorker:
+        # Ball review states its limit; player prompts stay unchanged until the
+        # player review path is measured on real clips.
+        del timeout_seconds
         self.require_work(request)
         context = read_document(layout, request.payload, ReviewContext)
         adapter, store = PlayerReviewServices(), RevisionStore(layout)

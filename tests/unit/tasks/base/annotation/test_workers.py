@@ -98,8 +98,10 @@ class Adapter:
         plan: CampaignPlan,
         request: WorkRequest,
         directory: Path,
+        *,
+        timeout_seconds: float,
     ) -> PreparedWorker:
-        del plan, request
+        del plan, request, timeout_seconds
         return PreparedWorker(
             prompt=write_asset(layout, directory / "prompt.md", b"fixture only"),
             inputs=(write_asset(layout, directory / "context.txt", b"attempt input"),),
@@ -871,6 +873,42 @@ def test_stale_attempt_update_cannot_release_retry_protection(setup: Setup) -> N
     assert settled(pool, setup.request)["state"] == "complete"
     assert not set(launch.prepared.inputs) & protected(pool)
     assert setup.request.payload in protected(pool)
+
+
+def test_authorized_retry_records_decision_and_waits_for_admission(
+    setup: Setup,
+) -> None:
+    pool = setup.pool()
+    setup.adapter.outcome = "deferred"
+    first = pool.start(setup.request)
+    assert first is not None and settled(pool, setup.request)["state"] == "deferred"
+    with pytest.raises(ValueError, match="requires a reason"):
+        pool.authorize_retry(setup.request, after_attempt=first, reason=" ")
+    with pytest.raises(ValueError, match="attempt changed"):
+        pool.authorize_retry(setup.request, after_attempt="older", reason="continue")
+    row = pool.authorize_retry(
+        setup.request, after_attempt=first, reason="continue saved progress"
+    )
+    # The decision is recorded, but no process starts and no capacity is held.
+    assert (row["state"], row["current_attempt"], row["reason"]) == (
+        "ready",
+        first,
+        "continue saved progress",
+    )
+    assert setup.launches() == 1
+    with pytest.raises(ValueError, match="stopped or failed"):
+        pool.authorize_retry(setup.request, after_attempt=first, reason="twice")
+    setup.adapter.outcome = "complete"
+    second = pool.start(setup.request)
+    assert second is not None and second != first
+    assert settled(pool, setup.request)["state"] == "complete"
+    assert [item.state for item in pool.ledger.history(setup.plan, setup.request)] == [
+        "deferred",
+        "complete",
+    ]
+    with pytest.raises(ValueError, match="stopped or failed"):
+        pool.authorize_retry(setup.request, after_attempt=second, reason="complete")
+    assert setup.launches() == 2
 
 
 @pytest.mark.parametrize("finish_retry", [False, True])

@@ -452,7 +452,10 @@ class _Worker:
         plan: CampaignPlan,
         request: WorkRequest,
         directory: Path,
+        *,
+        timeout_seconds: float,
     ) -> PreparedWorker:
+        del timeout_seconds
         return PreparedWorker(
             prompt=write_asset(
                 layout, directory / "prompt.md", b"synthetic isolated worker"

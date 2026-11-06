@@ -191,7 +191,15 @@ class TaskAdapter(Protocol):
         plan: CampaignPlan,
         request: WorkRequest,
         directory: Path,
-    ) -> PreparedWorker: ...
+        *,
+        timeout_seconds: float,
+    ) -> PreparedWorker:
+        """Publish the attempt prompt; ``timeout_seconds`` is the supervisor limit.
+
+        An adapter may state the limit in its prompt so a worker can save its own
+        result before the supervisor stops it.
+        """
+        ...
 
     def telemetry_images(
         self,

@@ -935,6 +935,9 @@ def test_deferred_review_cannot_close_or_publish(session: ReviewSession) -> None
     controller = controller_for(session)
     assert controller.production is not None
     assert controller.production.cycle()["state"] == "blocked"
+    status = controller.status(details=False)
+    # Nothing still runs, so `run` would end here and report the decision.
+    assert (status["state"], status["live"]) == ("blocked", False)
     assert not env.layout.path(
         "campaigns", env.plan.campaign_id, "workflow", "completion.json"
     ).exists()
@@ -2012,3 +2015,299 @@ def test_service_session_stage_handles_subsequent_requests_without_parent_poll(
     with controller.resources.registry.transaction() as db:
         rows = db.execute("SELECT stage FROM resource_requests").fetchall()
     assert [row[0] for row in rows] == ["render"]
+
+
+def test_review_progress_counts_only_rollout_verified_coverage(
+    tmp_path: Path,
+) -> None:
+    from src.tasks.annotation.review_progress import review_progress
+
+    session = ReviewSession(
+        tmp_path / "annotation", minimum_reviewed_target_fraction=1.0
+    )
+    env = session.env
+    # Frames 1-2 were actually shown; 3-4 are claims without rollout bytes.
+    shown = session.image(1, 2)
+    session.confirm(shown, 1, 3)
+    session.confirm(session.image(3, 4), 3, 5)
+    session.finish(session.evidence(shown=(shown,)), status="deferred")
+
+    report = review_progress(env.layout, env.plan, env.plan_ref)
+
+    (clip,) = report.clips
+    target = env.manifest.target_range.stop - env.manifest.target_range.start
+    assert clip.progress is not None
+    assert (clip.state, clip.target_frames, clip.required_reviewed_frames) == (
+        "deferred",
+        target,
+        target,
+    )
+    assert (clip.progress.reviewed_frames, clip.verified_frames) == (4, 2)
+    assert clip.progress.missing_proof_frames == 2
+    assert clip.progress.next_review_scope is not None
+    assert clip.progress.next_review_scope.start == 3
+    (attempt,) = clip.attempts
+    assert (attempt.verified_before, attempt.verified_after) == (0, 2)
+    assert (attempt.elapsed_seconds, attempt.tokens) == (
+        1.0,
+        {
+            "input_tokens": 100,
+            "cached_input_tokens": None,
+            "output_tokens": 10,
+            "reasoning_output_tokens": None,
+        },
+    )
+    throughput = report.throughput
+    # Two verified frames in one second of worker time, 100 input tokens.
+    assert throughput.verified_frames_per_worker_hour == pytest.approx(7200.0)
+    assert throughput.tokens_per_verified_frame["input_tokens"] == pytest.approx(50.0)
+    assert throughput.tokens["cached_input_tokens"] is None
+    assert throughput.attempts_missing_tokens["cached_input_tokens"] == 1
+    remaining = target - 2
+    assert report.projection.remaining_target_frames == remaining
+    assert report.projection.worker_hours == pytest.approx(remaining / 7200.0)
+    assert report.projection.tokens["input_tokens"] == pytest.approx(50.0 * remaining)
+    assert report.projection.tokens["cached_input_tokens"] is None
+
+
+def test_continue_reviews_authorizes_verified_progress_without_launching(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from src.tasks.annotation.contracts import (
+        ContinueReview,
+        RecoveryInput,
+        RecoveryReceipt,
+    )
+    from src.tasks.annotation.review_progress import continue_reviews
+
+    finish(session, deferred=True)
+    env = session.env
+    controller = controller_for(session)
+    assert controller.production is not None
+    launched: list[Any] = []
+    monkeypatch.setattr(
+        controller.production.pool,
+        "start",
+        lambda *args, **kwargs: launched.append(args),
+    )
+    after = session.ledger.task(session.request.work_id)["current_attempt"]
+
+    (dry,) = continue_reviews(
+        controller, reason="pilot continuation", max_attempts=3, dry_run=True
+    )
+    assert (dry.action, dry.after_attempt, dry.recovery) == ("continue", after, None)
+    assert session.ledger.task(session.request.work_id)["state"] == "deferred"
+
+    (decision,) = continue_reviews(
+        controller, reason="pilot continuation", max_attempts=3, dry_run=False
+    )
+    row = session.ledger.task(session.request.work_id)
+    assert (row["state"], row["current_attempt"]) == ("ready", after)
+    assert decision.recovery is not None and launched == []
+    receipt = read_document(env.layout, decision.recovery, RecoveryReceipt)
+    recorded = read_document(env.layout, receipt.request, RecoveryInput)
+    assert recorded.operation == ContinueReview(
+        request=decision.request, after_attempt=after, max_attempts=3
+    )
+    assert "verified 2 new target frames" in recorded.reason
+    assert row["reason"] == recorded.reason
+    # Authorized work no longer needs a decision, so it is not continued twice.
+    assert continue_reviews(
+        controller, reason="pilot continuation", max_attempts=3, dry_run=False
+    ) == ()
+
+
+def test_continuation_holds_unverified_or_exhausted_reviews(
+    session: ReviewSession,
+) -> None:
+    from src.tasks.annotation.contracts import ContinueReview, RecoveryInput
+    from src.tasks.annotation.recovery import recover
+    from src.tasks.annotation.review_progress import (
+        clip_status,
+        continue_reviews,
+    )
+
+    env = session.env
+    image = session.image(1, 2)
+    session.confirm(image, 1, 3)
+    # The rollout never showed the image, so the claims are not progress.
+    session.finish(session.evidence(shown=()), status="deferred")
+    controller = controller_for(session)
+    request = requests(env.layout, env.plan, env.plan_ref)[0]
+    first = session.ledger.task(session.request.work_id)["current_attempt"]
+    (held,) = continue_reviews(
+        controller, reason="check", max_attempts=3, dry_run=False
+    )
+    assert (held.action, held.recovery) == ("hold", None)
+    assert "verified no new target frames" in held.reason
+    # The recovery operation recomputes coverage instead of trusting a caller.
+    with pytest.raises(ValueError, match="verified no new target frames"):
+        recover(
+            controller,
+            RecoveryInput(
+                plan=env.plan_ref,
+                reason="forced",
+                operation=ContinueReview(
+                    request=request, after_attempt=first, max_attempts=3
+                ),
+            ),
+        )
+    assert session.ledger.task(session.request.work_id)["state"] == "deferred"
+
+    session.open(2)
+    shown = session.image(3, 4)
+    session.confirm(shown, 3, 5)
+    session.finish(session.evidence(shown=(shown,)), status="deferred")
+    status = clip_status(env.layout, env.plan, request)
+    assert [a.verified_gain for a in status.attempts] == [0, 2]
+    assert status.progress is not None
+    # Unproven frames 1-2 still need re-confirmation before adoption.
+    assert status.progress.missing_proof_frames == 2
+    (exhausted,) = continue_reviews(
+        controller, reason="check", max_attempts=2, dry_run=True
+    )
+    assert (exhausted.action, exhausted.reason) == ("hold", "attempt limit 2 reached")
+
+
+def test_production_holds_new_reviews_but_serves_live_and_authorized_work(
+    session: ReviewSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import src.tasks.annotation.production as production_module
+
+    controller = controller_for(session)
+    production = controller.production
+    assert production is not None
+    names = ("deferred", "running", "authorized", "fresh")
+    works = {
+        name: WorkRequest(
+            adapter="ball_review",
+            adapter_version="v1",
+            stage="review",
+            subject_id=content_digest(name),
+            payload=session.env.blob,
+            inputs=(),
+        )
+        for name in names
+    }
+    refs = {name: session.env.blob.model_copy(update={"path": name}) for name in names}
+    rows: dict[str, dict[str, Any]] = {
+        "deferred": {"state": "deferred", "reason": "stop", "current_attempt": "a1"},
+        "running": {"state": "running", "reason": None, "current_attempt": "b1"},
+        "authorized": {"state": "ready", "reason": "go", "current_attempt": "c1"},
+        "fresh": {"state": "ready", "reason": None, "current_attempt": None},
+    }
+    by_subject = {work.subject_id: name for name, work in works.items()}
+    started: list[str] = []
+    served: list[str] = []
+
+    class Pool:
+        def register(self, request: WorkRequest) -> None:
+            assert request.subject_id in by_subject
+
+        def reconcile(self, request: WorkRequest) -> dict[str, Any]:
+            return rows[by_subject[request.subject_id]]
+
+        def start(self, request: WorkRequest) -> str:
+            name = by_subject[request.subject_id]
+            started.append(name)
+            rows[name] = {"state": "running", "reason": None, "current_attempt": "c2"}
+            return "c2"
+
+    monkeypatch.setattr(
+        production_module, "requests", lambda *args: tuple(refs.values())
+    )
+    monkeypatch.setattr(
+        production_module,
+        "read_document",
+        lambda layout, ref, kind: works[ref.path],
+    )
+    monkeypatch.setattr(production, "pool", Pool())
+    monkeypatch.setattr(
+        production,
+        "services",
+        lambda request, row, pool: served.append(by_subject[request.subject_id]),
+    )
+
+    result = production._cycle()
+
+    assert result["state"] == "blocked"
+    assert started == ["authorized"]
+    assert served == ["deferred", "running", "authorized"]
+    assert result["reviews"][3] == {
+        "state": "held",
+        "reason": "new reviews wait for decisions on stopped reviews",
+    }
+    assert [row["state"] for row in result["failures"]] == ["deferred"]
+
+
+@pytest.mark.parametrize(
+    ("status", "finished"),
+    [
+        ({"state": "blocked", "live": True}, False),
+        ({"state": "blocked", "live": False}, True),
+        ({"state": "running", "live": True}, False),
+        ({"state": "pending", "live": False}, False),
+        ({"state": "complete", "live": False}, True),
+        ({"state": "preview_ready", "live": False}, True),
+        ({"state": "budget_stopped", "reason": "stop", "progress": {}}, True),
+    ],
+)
+def test_run_reports_a_blocked_campaign_only_after_live_work_settles(
+    status: dict[str, Any], finished: bool
+) -> None:
+    from src.tasks.annotation.__main__ import run_finished
+
+    assert run_finished(status) is finished
+
+
+def test_cli_saves_review_progress_and_previews_continuations(
+    session: ReviewSession,
+) -> None:
+    import json
+    import subprocess
+    import sys
+
+    from src.tasks.annotation.review_progress import ReviewProgressReport
+    from src.utils.paths import PROJECT_ROOT
+
+    finish(session, deferred=True)
+    env = session.env
+    controller = controller_for(session)
+    runtime_ref = env.save(controller.runtime)
+
+    def cli(*arguments: str) -> dict[str, Any]:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "src.tasks.annotation",
+                *arguments,
+                "--runtime",
+                str(env.layout.artifact_path(runtime_ref)),
+                "--sha256",
+                runtime_ref.digest,
+                "--test-root",
+                str(env.layout.root),
+            ],
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            check=True,
+        )
+        result: dict[str, Any] = json.loads(completed.stdout.splitlines()[-1])
+        return result
+
+    measured = cli("review-progress")
+    saved = read_document(
+        env.layout, ArtifactRef.model_validate(measured["report"]), ReviewProgressReport
+    )
+    assert saved.verified_frames == measured["verified_frames"] == 2
+    assert [row["state"] for row in measured["needs_decision"]] == ["deferred"]
+    assert measured["needs_decision"][0]["latest_verified_gain"] == 2
+    preview = cli(
+        "continue-reviews", "--reason", "pilot", "--max-attempts", "3", "--dry-run"
+    )
+    assert preview["dry_run"] is True
+    assert [item["action"] for item in preview["decisions"]] == ["continue"]
+    assert session.ledger.task(session.request.work_id)["state"] == "deferred"

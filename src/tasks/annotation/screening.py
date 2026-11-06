@@ -97,7 +97,11 @@ class ScreeningAdapter:
         plan: CampaignPlan,
         request: WorkRequest,
         directory: Path,
+        *,
+        timeout_seconds: float,
     ) -> PreparedWorker:
+        # The screening prompt is owned by the base WORKER.md and states no limit.
+        del timeout_seconds
         screening = Screening(Collection(layout, plan))
         ref = screening.request(request.payload, directory)
         body = read_document(layout, ref, ScreeningRequest)

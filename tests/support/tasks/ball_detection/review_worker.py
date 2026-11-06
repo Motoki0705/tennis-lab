@@ -73,7 +73,11 @@ class ReviewSession:
         self.directory.mkdir(parents=True, exist_ok=True)
         (self.directory / "work").mkdir(exist_ok=True)
         prepared = self.worker.prepare(
-            env.layout, env.plan, self.request, self.directory
+            env.layout,
+            env.plan,
+            self.request,
+            self.directory,
+            timeout_seconds=60.0,
         )
         launch = Launch(
             work_id=self.request.work_id,

@@ -82,6 +82,7 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
         key: value
         for key, value in {
             "state": status["state"],
+            "live": status.get("live"),
             "collection": status.get("collection"),
             "task_states": status.get("task_states"),
             "annotation": status.get("annotation"),
@@ -106,6 +107,17 @@ def compact_status(status: dict[str, Any]) -> dict[str, Any]:
         }.items()
         if value is not None
     }
+
+
+def run_finished(status: dict[str, Any]) -> bool:
+    """End ``run`` at an outcome that needs the parent, not while work is live.
+
+    A blocked campaign keeps serving running workers and stages until they settle,
+    so their service requests are answered and one exit reports all decisions.
+    """
+    if status["state"] in {"preview_ready", "complete", "budget_stopped"}:
+        return True
+    return status["state"] == "blocked" and not status.get("live", False)
 
 
 def main() -> None:
@@ -144,6 +156,8 @@ def main() -> None:
         "resume-budget",
         "code-update",
         "retry-screen",
+        "review-progress",
+        "continue-reviews",
     ):
         command = commands.add_parser(name)
         command.add_argument("--runtime", type=Path, required=True)
@@ -167,6 +181,10 @@ def main() -> None:
         elif name == "retry-screen":
             command.add_argument("--source-id", required=True)
             command.add_argument("--resume-quota", action="store_true")
+        elif name == "continue-reviews":
+            command.add_argument("--reason", required=True)
+            command.add_argument("--max-attempts", type=int, required=True)
+            command.add_argument("--dry-run", action="store_true")
     stage = commands.add_parser("stage")
     stage.add_argument("--operation", type=Path, required=True)
     stage.add_argument("--sha256", required=True)
@@ -388,6 +406,24 @@ def main() -> None:
         }
     elif args.command == "retry-screen":
         result = controller.retry_screen(args.source_id, resume_quota=args.resume_quota)
+    elif args.command == "review-progress":
+        from .review_progress import save_review_progress
+
+        saved, measured = save_review_progress(controller)
+        result = {"report": saved.model_dump(mode="json"), **measured}
+    elif args.command == "continue-reviews":
+        from .review_progress import continue_reviews
+
+        decisions = continue_reviews(
+            controller,
+            reason=args.reason,
+            max_attempts=args.max_attempts,
+            dry_run=args.dry_run,
+        )
+        result = {
+            "dry_run": args.dry_run,
+            "decisions": [item.model_dump(mode="json") for item in decisions],
+        }
     else:
         if args.command == "run" and (
             not math.isfinite(args.max_seconds) or args.max_seconds <= 0
@@ -409,11 +445,7 @@ def main() -> None:
             if summary != last or time.monotonic() - printed >= 30:
                 print(summary, flush=True)
                 last, printed = summary, time.monotonic()
-            if (
-                result["state"]
-                in {"preview_ready", "complete", "blocked", "budget_stopped"}
-                or time.monotonic() >= deadline
-            ):
+            if run_finished(result) or time.monotonic() >= deadline:
                 return
             time.sleep(1)
     print(json.dumps(result, ensure_ascii=False))

@@ -50,6 +50,11 @@ from .processes import (
     signal_owned,
 )
 
+# Stopped states that an explicit decision may send back to admission.
+RETRYABLE_STATES = frozenset(
+    {"deferred", "failed", "cancelled", "quota", "timed_out", "validation_failed"}
+)
+
 
 class WorkerPool:
     def __init__(
@@ -487,7 +492,11 @@ class WorkerPool:
                 directory.mkdir(parents=True, exist_ok=True)
                 (directory / "work").mkdir(exist_ok=True)
                 prepared = self._adapter(request).prepare(
-                    self.layout, self.plan, request, directory
+                    self.layout,
+                    self.plan,
+                    request,
+                    directory,
+                    timeout_seconds=self.timeout,
                 )
                 if (
                     self.layout.artifact_path(prepared.prompt)
@@ -772,6 +781,40 @@ class WorkerPool:
             attempt=launch.attempt,
             result=final_ref,
         )
+        return self._task(request.work_id)
+
+    def authorize_retry(
+        self, request: WorkRequest, *, after_attempt: str, reason: str
+    ) -> dict[str, Any]:
+        """Return a stopped work to ``ready`` so normal admission starts its next attempt.
+
+        This records an explicit decision only: it starts no process and reserves
+        no capacity, so shared limits and backpressure still decide when the next
+        attempt runs. The stopped attempt and its receipts stay in the history.
+        """
+        if not reason.strip():
+            raise ValueError("retry authorization requires a reason")
+        self._registered_task(request)
+        try:
+            with (
+                artifact_lock(self.layout, "worker-" + request.work_id, blocking=False),
+                artifact_lock(self.layout, "worker-services-" + request.work_id),
+            ):
+                row = self._reconcile_locked(request)
+                if row["current_attempt"] != after_attempt:
+                    raise ValueError("worker attempt changed; inspect its current state")
+                if row["state"] not in RETRYABLE_STATES:
+                    raise ValueError("only a stopped or failed worker can be retried")
+                with self.ledger.registry.transaction() as database:
+                    updated = database.execute(
+                        "UPDATE worker_tasks SET state='ready',reason=?,result=NULL "
+                        "WHERE id=? AND current_attempt=? AND state=?",
+                        (reason, request.work_id, after_attempt, row["state"]),
+                    )
+                    if updated.rowcount != 1:
+                        raise ValueError("worker state changed during authorization")
+        except BlockingIOError as error:
+            raise WorkerBusy("work is owned by an existing supervisor") from error
         return self._task(request.work_id)
 
     def cancel_pending(self, request: WorkRequest, *, reason: str) -> dict[str, Any]:

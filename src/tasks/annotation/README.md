@@ -7,8 +7,9 @@ preview campaignでは取得→プレー窓選別→clip準備→ball/player予�
 保存済み予測の定性確認には、以下の `prediction_preview` を使う。
 production campaignでは、現在 **ball / framesのみ**、レビュー→全clipの採用確認→
 累積snapshot公開→追加学習・固定評価・モデル採用まで接続している。
-player bbox/poseを含むproduction planは明示的に拒否する。実装状態と実動画検証の進捗は
-[親Issue](https://github.com/Motoki0705/tennis-lab/issues/1088)で管理する。
+player bbox/poseを含むproduction planは明示的に拒否する。レビューは保存済みの予測receiptを
+初期値にするため、予測を使わない評価用の正解づくり（動画からの直接注釈）は対象外である。
+実装の経緯と未完了の受入条件は[親Issue](https://github.com/Motoki0705/tennis-lab/issues/1088)に残っている。
 
 ```mermaid
 flowchart LR
@@ -59,6 +60,8 @@ plan・scope・runtimeとその参照を持つreceiptを不変保存する。実
 .venv/bin/python -m src.tasks.annotation run --runtime /absolute/runtime.json --sha256 HASH --max-seconds 600
 .venv/bin/python -m src.tasks.annotation status --runtime /absolute/runtime.json --sha256 HASH --details
 .venv/bin/python -m src.tasks.annotation report --runtime /absolute/runtime.json --sha256 HASH
+.venv/bin/python -m src.tasks.annotation review-progress --runtime /absolute/runtime.json --sha256 HASH
+.venv/bin/python -m src.tasks.annotation continue-reviews --runtime /absolute/runtime.json --sha256 HASH --reason TEXT --max-attempts N --dry-run
 ```
 
 `Configuration` は `plan`（CampaignPlan全文）、`budget`、`runtime`（plan/scope参照以外の
@@ -74,7 +77,7 @@ RuntimeSettings）を持つ。`budget.action = reuse` と既存 `scope` 参照�
 benchmark・テストモードのいずれにも例外を設けない。値は必須で、暗黙の既定値や補正はない。
 既存planの読込・同一内容の再送は保存済み条件を維持する。不一致の上書きは従来どおり拒否し、
 過去planへ現在の決定を遡及適用しない。親の作成手順は
-[annotation-workflow skill](../../../.agents/skills/annotation-workflow/SKILL.md#計画と初期確認)を参照する。
+[annotation-workflow skill](../../../.agents/skills/annotation-workflow/SKILL.md#planを固定する)を参照する。
 
 計測rootはディレクトリまたは通常ファイルを指定できる。既存scopeの一時ファイルが
 消えていても、元のbaselineとrootを維持して再利用する。Codex状態の保存先は、全体を
@@ -188,6 +191,12 @@ hashとsourceの対応を検証するが、公開動画数やレビュー対象c
 
 通常の再開は同じruntimeで `tick` または `run` を実行する。完了工程を再実行せず、
 `run --max-seconds` の終了時も受付済みsupervisorは自身のtimeout・資源管理に従う。
+`run` は `complete`・`preview_ready`・`budget_stopped`・時間上限で終わる。判断が必要な停止
+（保留・失敗したレビューや工程）があっても、稼働中のworker・工程が残る間はserviceと結果回収を
+続け、それらが落ち着いてから `blocked` で終わる。statusの `live` が稼働中のworker・工程の有無を示す。
+判断待ちのレビューがある間は、まだattemptのないclipの新しいレビューを始めず `held` と表示する。
+系統的な原因（指示・方針・モデル）で同じ停止を量産しないためである。稼働中のworkerと、
+明示的に再試行を許可したレビューは続ける。
 待機列上限で受付を拒否され、launchだけが保存された工程は、枠が空いた後の再送で
 同じattemptの資源要求を登録する。CPU起動・GPU queue登録前の未受付を実行失敗と扱わない。
 `status --details` はworkerの現在attempt、全工程の履歴、公開完了参照、学習結果を返す。
@@ -232,12 +241,30 @@ quotaによるcampaign全体のworker停止は、原因解消後に同コマン�
 Controllerは予算停止時とcampaignのquota停止確認時に、選別・review両poolの未起動資源要求を
 [workerの取消契約](../base/annotation/workers/README.md)に従って取り消し、共有待機枠を返す。
 
+### レビューの進捗・費用と継続
+
+`review-progress` は、clipごとのレビュー済み・画像証拠の検証済み・再確認が必要・未解決のframe数と、
+attemptごとの経過時間・token・検証済みframeの増分を集計し、
+`campaigns/<campaign>/reports/review-progress/<content-hash>.json` へ不変保存して参照と要約を返す。
+検証済みは、判断の根拠画像がそのattemptのrollout bytesと一致したframeであり、workerの申告や
+画像の生成だけでは数えない。終了したattemptの合計から、worker 1時間あたりの検証済みframe数と
+frameあたりのtokenを求め、固定方針が要求する確認数の残りへ外挿する。token合計は欠測を0とせず
+nullにし、keyごとの欠測attempt数を返す。外挿は同じcampaignの実測からの目安であり、
+モデル・方針・素材が変われば変わる。要約の `needs_decision` は判断が必要なclipを返す。
+
+`continue-reviews --reason TEXT --max-attempts N` は、`deferred` / `timed_out` で止まったレビューのうち、
+最新attemptが検証済みframeを1件以上増やし、attempt数がN未満のものに `continue_review` recoveryを
+1件ずつ記録し、次のattemptを許可する。processはここで起動せず、通常の `run` / `tick` が共有枠の中で
+起動する。増分がない、上限に達した、その他の失敗は `hold` と理由を返す。原因を確かめて判断する。
+`--dry-run` は記録せずに判定だけを返す。recoveryは同じ判定を再計算し、呼び出し側の集計を根拠にしない。
+
 worker/学習の再試行は、`RecoveryInput(plan, reason, operation)` を固定root内に保存し、
 `recover --runtime PATH --sha256 HASH --operation PATH` で実行する。
 
 | operation | 指定内容 |
 |---|---|
 | `retry_worker` | 既存WorkRequest参照、再試行元の `after_attempt`。保留・失敗だけが対象 |
+| `continue_review` | 既存WorkRequest参照、`after_attempt`、`max_attempts`。最新attemptが検証済みframeを増やした `deferred` / `timed_out` のレビューだけを `ready` に戻す。processは起動しない |
 | `retry_learning` | 登録済みintent参照、`train` / `evaluate`、必要なら同intentのresume checkpoint |
 | `resume_workers` | quota等で止まった当該campaignのworker受付を再開。資源stopは解除しない |
 | `cancel_pending_stage` | 未起動stageの `launch` 参照。理由を残して予約を取消す。稼働中stageは対象外 |

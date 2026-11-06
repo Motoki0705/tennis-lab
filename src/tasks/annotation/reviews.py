@@ -31,6 +31,19 @@ from src.tasks.base.annotation.workers.contracts import (
 )
 from src.tasks.base.annotation.workers.ledger import WorkerLedger
 
+# Review worker states that block publication until an explicit decision.
+DECISION_STATES = frozenset(
+    {
+        "deferred",
+        "not_applicable",
+        "failed",
+        "cancelled",
+        "quota",
+        "timed_out",
+        "validation_failed",
+    }
+)
+
 
 class SourceCompletion(Document):
     source_id: Digest

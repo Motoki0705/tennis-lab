@@ -67,6 +67,7 @@ heatmap負例だけのclipがMDDの追加座標教師になるわけではない
 画像は共通rendererの `RenderedImage` を使う。clip/元予測/同じrevision履歴、描画点と元ラベル、
 native crop・倍率を照合する。確認したvisible点は根拠crop内に必要。引継ぎは最大64frameの
 要約・確認/未解決範囲・境界・次操作を返し、見たが未解決のframeは両方の範囲に残る。
+次操作の最後の1件は、clip全体の確認済み・再確認が必要・未解決の件数と、確認が必要な次のscopeを示す。
 
 ## 採用
 
@@ -84,6 +85,16 @@ AdoptionReceiptを不変保存する。`RevisionStore.seal()` で同じ現行rev
 操作の共通プロトコル・上限は[review services](../../../base/annotation/workers/review/README.md)に置く。
 手順の正本は[worker instructions](worker-instructions.md)で、promptへ固定policy・native寸法・
 初期handoffとともに取り込む。workerが指定した描画点を採用せず、元予測またはrevisionから描く。
+
+作業単位はclipの注釈対象区間全体で、64frameのhandoffは表示単位である。promptはsupervisorの
+時間上限と、新しいscopeを始めない時刻（上限の10%、最低5分・最大で上限の半分を結果の保存に残す）、
+clip全体の進捗（[progress](progress.py)）を示す。初回handoffは確認または再確認が必要な最初のframe
+から始め、なければ最初の未解決frame、どちらもなければ対象区間の先頭から始める。
+workerは判断できないframeをunknown・未解決の観測・blocking noteとして保存して先へ進む。
+`deferred` は、停止時刻を過ぎた、親のserviceが同じ要求で失敗し続ける、固定方針を画像に
+適用できない、のいずれかに限り、理由にclip全体の確認数と次に確認が必要なframeを書く。
+2026-10-16の実運用では、予算の数値がない途中終了の許可と先頭64frameだけのhandoffにより、
+全workerが64〜192/780 frameで自主的に `deferred` を返した。
 
 handoffと少数frameの詳細は `image_proof` を返す。過去の実画像入力まで照合済みなら
 `verified`、現workerの終了後に検証するものは `pending_current_attempt`、過去attemptの

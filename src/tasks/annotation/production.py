@@ -37,6 +37,7 @@ from .contracts import (
     Runtime,
 )
 from .reviews import (
+    DECISION_STATES,
     CampaignReview,
     close_reviews,
     requests,
@@ -139,12 +140,25 @@ class ProductionWorkflow:
         return progress
 
     def _cycle(self) -> dict[str, Any]:
-        rows = []
+        reconciled = []
         for request_ref in requests(self.layout, self.plan, self.runtime.plan):
             request = read_document(self.layout, request_ref, WorkRequest)
             self.pool.register(request)
-            row = self.pool.reconcile(request)
+            reconciled.append((request, self.pool.reconcile(request)))
+        # A stop that needs a decision may be systematic (prompt, policy, model).
+        # Live and explicitly retried work continues; new clips wait for the decision.
+        hold = any(row["state"] in DECISION_STATES for _, row in reconciled)
+        rows = []
+        for request, row in reconciled:
             if row["state"] == "ready":
+                if hold and row["current_attempt"] is None:
+                    rows.append(
+                        {
+                            "state": "held",
+                            "reason": "new reviews wait for decisions on stopped reviews",
+                        }
+                    )
+                    continue
                 try:
                     self.pool.start(request)
                 except (WorkerBusy, CapacityUnavailable, WorkerStopped) as error:
@@ -158,20 +172,7 @@ class ProductionWorkflow:
                     request, reason=f"invalid review service request: {error}"
                 )
             rows.append({"state": row["state"], "reason": row["reason"]})
-        failures = [
-            row
-            for row in rows
-            if row["state"]
-            in {
-                "deferred",
-                "not_applicable",
-                "failed",
-                "cancelled",
-                "quota",
-                "timed_out",
-                "validation_failed",
-            }
-        ]
+        failures = [row for row in rows if row["state"] in DECISION_STATES]
         if failures:
             return {
                 "state": "blocked",

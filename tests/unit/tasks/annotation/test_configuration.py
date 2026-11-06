@@ -1219,7 +1219,7 @@ def test_code_update_cancels_unregistered_worker_launch_before_explicit_retry(
     monkeypatch.setattr(
         adapter,
         "prepare",
-        lambda _layout, _plan, _request, directory: PreparedWorker(
+        lambda _layout, _plan, _request, directory, *, timeout_seconds: PreparedWorker(
             prompt=write_asset(layout, directory / "prompt.md", b"synthetic worker"),
             inputs=(example.blob,),
         ),
