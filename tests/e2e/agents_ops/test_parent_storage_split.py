@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -77,7 +78,10 @@ def test_unrelated_save_does_not_abort_or_overwrite_peer(
         assert result.parents["o/r#1"]["tasks"]["10"]["evidence"] == "unsaved local"
 
 
-def test_same_parent_change_still_rejects_stale_data(parent_env: ParentEnv) -> None:
+@pytest.mark.parametrize("route", ["registry", "preflight"])
+def test_same_parent_change_still_rejects_stale_data(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, route: str
+) -> None:
     module = importlib.import_module("parent.state")
     directory = parent_env.root / "conflict"
     module.Store.write_json(
@@ -87,13 +91,34 @@ def test_same_parent_change_still_rejects_stale_data(parent_env: ParentEnv) -> N
     with module.Store(directory).locked() as first:
         first.migrate()
         first.focus("o/r#1")
-        with (
-            pytest.raises(ValueError, match="registry changed"),
-            first.unlocked_read(),
-            module.Store(directory).locked() as second,
-        ):
-            second.parents["o/r#1"]["generation"] += 1
-            second.save()
+        preflight = importlib.import_module("parent.worker_preflight")
+        value = preflight.new("delegation")
+        first.parents["o/r#1"]["tasks"]["10"]["preflight"] = value
+        first.save()
+
+        def changed_inputs(*_args: object) -> None:
+            with first.unlocked_read(), module.Store(directory).locked() as second:
+                second.parents["o/r#1"]["generation"] += 1
+                second.save()
+
+        monkeypatch.setattr(preflight, "context", changed_inputs)
+        with pytest.raises(ValueError, match="registry changed"):
+            if route == "registry":
+                changed_inputs()
+            else:
+                preflight.observe_context(
+                    SimpleNamespace(store=first), 10, value, persist=True
+                )
+        assert first.read_data()["parents"]["o/r#1"]["generation"] == 2
+        assert not value["refresh_required"]
+        # A surrounding launcher may catch the error to record a rejection.
+        # That must not make this stale transaction writable again.
+        with pytest.raises(ValueError, match="registry changed"):
+            first.save()
+        assert first.read_data()["parents"]["o/r#1"]["generation"] == 2
+    with first.locked():
+        assert first.parents["o/r#1"]["generation"] == 2
+        first.save()  # Only an explicitly new transaction can write again.
 
 
 def test_malformed_legacy_state_is_not_migrated(parent_env: ParentEnv) -> None:

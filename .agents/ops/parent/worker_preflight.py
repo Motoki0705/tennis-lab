@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Any
 
 from issues import Issue
 
-from .execution import authorization, requirement_body
+from .execution import ExecutionBasisStale, observed_authorization, requirement_body
 from .policy import closing_issues, dependencies, digest, nonempty
 
 if TYPE_CHECKING:
@@ -111,12 +111,11 @@ def context(
     work_items: tuple[Issue, dict[int, Issue]] | None = None,
 ) -> dict[str, Any]:
     """Freeze material inputs, including heads of completed dependencies."""
-    auth = authorization(session) if authorized is None else authorized
+    auth = observed_authorization(session) if authorized is None else authorized
     parent, items = session.work_items() if work_items is None else work_items
     if child not in items:
         raise ValueError("worker requires a direct child or the standalone issue")
     task = session.row["tasks"].get(str(child), {})
-    pulls = session.gh.pulls()
     found: dict[int, dict[str, Any]] = {}
 
     def visit(n: int, body: str) -> None:
@@ -138,26 +137,30 @@ def context(
                 "state": raw["state"],
                 "state_reason": raw.get("state_reason"),
                 "requirements_sha256": digest(requirement_body(raw.get("body") or "")),
-                "prs": sorted(
-                    [
-                        {
-                            "number": p["number"],
-                            "state": p["state"],
-                            "merged": p.get("merged_at") is not None,
-                            "branch": p["head"]["ref"],
-                            "head": p["head"]["sha"],
-                            "repo": p["head"]["repo"]["full_name"].casefold(),
-                        }
-                        for p in pulls
-                        if dep in closing_issues(p.get("body") or "", session.gh.repo)
-                    ],
-                    key=lambda p: p["number"],
-                ),
             }
             if dep in items:
                 visit(dep, raw.get("body") or "")
 
     visit(child, items[child].body)
+    # The default query only covers the parent's family. Include external and
+    # completed dependency issues explicitly, through their own timelines.
+    pulls = session.gh.pulls(set(found))
+    for dep, entry in found.items():
+        entry["prs"] = sorted(
+            [
+                {
+                    "number": p["number"],
+                    "state": p["state"],
+                    "merged": p.get("merged_at") is not None,
+                    "branch": p["head"]["ref"],
+                    "head": p["head"]["sha"],
+                    "repo": p["head"]["repo"]["full_name"].casefold(),
+                }
+                for p in pulls
+                if dep in closing_issues(p.get("body") or "", session.gh.repo)
+            ],
+            key=lambda p: p["number"],
+        )
     return {
         "repo": session.gh.repo.casefold(),
         "parent": session.parent,
@@ -171,7 +174,9 @@ def context(
     }
 
 
-def invalidate(value: dict[str, Any], reason: str) -> None:
+def invalidate(
+    value: dict[str, Any], reason: str, *, task: dict[str, Any] | None = None
+) -> None:
     if not value["refresh_required"]:
         value["invalidations"].append(
             {
@@ -182,6 +187,11 @@ def invalidate(value: dict[str, Any], reason: str) -> None:
     value.update(phase="planning", refresh_required=True, skip_reason=None)
     for decision in value["decisions"]:
         decision["invalidated"] = True
+    if task is not None:
+        if "verification" in task:
+            task["verification"]["preflight_invalidated"] = reason
+        if "review_preflight" in task:
+            task["review_preflight"]["invalidated"] = True
 
 
 def observe_context(
@@ -192,18 +202,124 @@ def observe_context(
     persist: bool,
     current: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, bool]:
-    reason = None
-    fresh = None
+    # Retrieval/validation failures (including Store's concurrent-write error)
+    # must abort without saving. Only successfully compared inputs may expire
+    # an approval; errors are never silently converted to stale material.
     try:
         fresh = context(session, child) if current is None else current
-        if value["context"] is not None and value["context"] != fresh:
-            reason = "worker requirements/authorization/generation/dependencies changed"
-    except ValueError:
-        reason = "current execution basis cannot be verified"
+        reason = (
+            "worker requirements/authorization/generation/dependencies changed"
+            if value["context"] is not None and value["context"] != fresh
+            else None
+        )
+    except ExecutionBasisStale as exc:
+        fresh, reason = None, str(exc)
     if reason and persist:
-        invalidate(value, reason)
+        invalidate(value, reason, task=session.row["tasks"][str(child)])
         session.store.save()
     return fresh, reason is not None
+
+
+def review_errors(task: dict[str, Any]) -> tuple[str, ...]:
+    """Freshness of the latest saved review for this worker's PR.
+
+    Merge already selects the latest request per PR and consumes task_errors.
+    Keep this binding separate from result verification: verifying a new
+    implementation must not revive the previous review.
+    """
+    if not task.get("delegated"):
+        return ()
+    if "preflight" not in task:
+        return ("worker_phase_unknown",)
+    value = state(task)
+    if not implementation_authorized(value):
+        return ("worker_planning_changed",)
+    if task.get("verification", {}).get("preflight_invalidated"):
+        return ("worker_result_invalidated",)
+    binding = task.get("review_preflight")
+    if (
+        not binding
+        or binding.get("invalidated") is not False
+        or binding.get("context_sha256") != digest(value["context"])
+        or binding.get("invalidations") != len(value["invalidations"])
+    ):
+        return ("worker_review_inputs_changed",)
+    return ()
+
+
+def review_tasks(
+    session: ParentSession, request: dict[str, Any]
+) -> dict[int, dict[str, Any]]:
+    branches = {entry["branch"] for entry in request["prs"]}
+    return {
+        int(child): task
+        for child, task in session.row["tasks"].items()
+        if task.get("delegated") and task.get("branch") in branches
+    }
+
+
+def bind_review(session: ParentSession, request: dict[str, Any]) -> None:
+    for task in review_tasks(session, request).values():
+        value = state(task)
+        task["review_preflight"] = {
+            "review_run_id": request["review_run_id"],
+            "context_sha256": digest(value["context"]),
+            "invalidations": len(value["invalidations"]),
+            "invalidated": False,
+        }
+
+
+def require_review(
+    session: ParentSession,
+    request: dict[str, Any],
+    required_issues: set[int] | None,
+) -> None:
+    if not any(r["request"] == request for r in session.row["reviews"]):
+        return
+    for child, task in review_tasks(session, request).items():
+        if (
+            required_issues is not None
+            and child != session.parent
+            and child not in required_issues
+        ):
+            continue
+        errors = review_errors(task)
+        if (
+            errors
+            or task["review_preflight"]["review_run_id"] != request["review_run_id"]
+        ):
+            raise ValueError(
+                f"#{child}: worker planning approval/review inputs changed ({errors}); verify the new result and prepare a new review with reason"
+            )
+
+
+def refresh_review(
+    session: ParentSession, request: dict[str, Any], auth: dict[str, Any]
+) -> None:
+    """Reuse review authorization's collection point without changing the gate.
+
+    Families retain per-PR task_errors; the standalone gate has no child loop,
+    so its single worker is checked here as part of request authorization.
+    """
+    if not any(r["request"] == request for r in session.row["reviews"]):
+        return  # A new request is bound by snapshot.prepare before publication.
+    tasks = review_tasks(session, request)
+    if not tasks:
+        return
+    work_items = session.work_items()
+    for child, task in tasks.items():
+        if "preflight" in task:
+            observe_context(
+                session,
+                child,
+                state(task),
+                persist=True,
+                current=context(session, child, authorized=auth, work_items=work_items),
+            )
+        if child == session.parent and review_errors(task):
+            raise ValueError(
+                "worker review inputs changed; prepare a new review after replanning/verification"
+            )
 
 
 def observe(

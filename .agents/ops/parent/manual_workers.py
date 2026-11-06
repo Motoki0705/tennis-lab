@@ -15,7 +15,7 @@ from dispatcher.runtime import Runtime, load
 from lib.agent_settings import implementation_model
 
 from . import worker_preflight
-from .execution import authorization, task_errors
+from .execution import authorization, task_input_errors
 from .github import GitHub
 from .policy import closing_issues, nonempty, object_value
 from .session import ParentSession
@@ -262,7 +262,7 @@ def prepare_run(
 
     check_task_adoptions(session.gh, parent.body)
     check_task_adoptions(session.gh, items[child].body)
-    changed = task_errors(task, authorization(session), items[child].body)
+    changed = task_input_errors(task, authorization(session), items[child].body)
     if changed and not (resume and worker_preflight.state(task)["refresh_required"]):
         raise ValueError(
             "worker delegation inputs changed; reconcile the current reservation"

@@ -235,11 +235,27 @@ class ParentSession:
             return "未指示"
         run = self.row["reviews"][-1]
         public_state = review_state(history, run["request"])
+        workers = worker_preflight.review_tasks(self, run["request"])
+        fresh = all(
+            not worker_preflight.review_errors(task)
+            and worker_preflight.observe(self, child)["phase"] == "implementing"
+            for child, task in workers.items()
+        )
         return [
             {
                 **run,
                 "state": public_state or run["state"],
                 "public_recorded": public_state is not None,
+                **(
+                    {
+                        "preflight_valid": fresh,
+                        "next_action": "review verification"
+                        if fresh
+                        else "record-result and prepare a new review after replanning",
+                    }
+                    if workers
+                    else {}
+                ),
             }
         ]
 

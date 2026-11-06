@@ -14,7 +14,7 @@ from .execution import (
     require_requirement_targets,
     require_run_authorization,
     requirement_body,
-    task_errors,
+    task_input_errors,
 )
 from .policy import (
     REVIEW_LABELS,
@@ -27,6 +27,7 @@ from .policy import (
     select_prs,
 )
 from .session import ParentSession
+from .worker_preflight import bind_review, review_errors, review_tasks
 
 
 def git(*args: str, cwd: Path | None = None) -> bytes:
@@ -128,11 +129,20 @@ def prepare(
             closing_issues(pr.get("body") or "", session.gh.repo) & child_numbers
         ):
             require_implementation(session, child)
+            if (
+                row["tasks"]
+                .get(str(child), {})
+                .get("verification", {})
+                .get("preflight_invalidated")
+            ):
+                raise ValueError(
+                    "worker result invalidated; record-result before preparing a new review"
+                )
     for pr in prs:
         for child in closing_issues(pr.get("body") or "", session.gh.repo) & set(
             children
         ):
-            errors = task_errors(
+            errors = task_input_errors(
                 row["tasks"].get(str(child), {}), auth, children[child].body
             )
             if errors:
@@ -180,6 +190,10 @@ def prepare(
             (
                 reviews[-1]["request"].get("authorization") == auth
                 and reviews[-1]["request"].get("requirements") == requirements
+                and not any(
+                    review_errors(task)
+                    for task in review_tasks(session, reviews[-1]["request"]).values()
+                )
             )
             or reviews[-1]["request"]["schema_version"] == 1
         )
@@ -213,6 +227,7 @@ def prepare(
         (run_dir / f"pr-{n}.diff").write_bytes(diff)
     session.store.write_json(run_dir / "request.json", request)
     reviews.append({"state": "targets_fixed", "request": request})
+    bind_review(session, request)
     session.store.save()
     publish_targets(session, request)
     return request

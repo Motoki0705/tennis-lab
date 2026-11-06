@@ -260,6 +260,7 @@ def completion_workflow(
             skip_reason="親の完了・再開だけを検証する自明な変更のfixture。",
         )
         preflight.commit_turn(task, prepared)
+        preflight.bind_review(session, g.review.request)
         parent = control._job(session.key, session.row)
         implementation = control._job(
             session.key,

@@ -39,7 +39,14 @@ class Store:
         self._lock: TextIO | None = None
         self._focus: str | None = None
         self._saved: dict[str, Any] = {}
+        self._write_invalid = False
         self.transaction_epoch = 0
+
+    def _require_current(self) -> None:
+        if self._write_invalid:
+            raise ValueError(
+                "parent registry changed or could not be revalidated; retry the command in a new transaction"
+            )
 
     def focus(self, key: str) -> None:
         self._focus = key.casefold()
@@ -62,6 +69,7 @@ class Store:
             os.chmod(lock.name, 0o600)
             metrics.flock(lock, fcntl.LOCK_EX)
             self.transaction_epoch += 1
+            self._write_invalid = False
             self.data = self.read_data()
             self._saved = copy.deepcopy(self.data)
             if (
@@ -136,12 +144,18 @@ class Store:
         lock = self._lock
         if lock is None:
             raise ValueError("GitHub read requires an active registry transaction")
+        self._require_current()
+        self._write_invalid = True
         before = self.read_data()
+        self._write_invalid = False
         metrics.flock(lock, fcntl.LOCK_UN)
         try:
             yield
         finally:
             metrics.flock(lock, fcntl.LOCK_EX)
+            # A caller may catch the retrieval exception to record a failed
+            # launch. Never allow that stale in-memory transaction to save.
+            self._write_invalid = True
             after = self.read_data()
             if after != before:
                 key = self._focus
@@ -177,6 +191,7 @@ class Store:
                 ]
                 if len(owners) != len(set(owners)):
                     raise ValueError("another parent claimed the same session")
+            self._write_invalid = False
 
     @property
     def parents(self) -> dict[str, Any]:
@@ -215,6 +230,7 @@ class Store:
         """Explicit migration under the global lock; never discard old evidence."""
         if self._lock is None:
             raise ValueError("migration requires the registry lock")
+        self._require_current()
         if self.data["version"] == 2:
             return
         backup = self.directory / "registry-v1.backup.json"
@@ -231,6 +247,7 @@ class Store:
     def save(self) -> None:
         if self._lock is None:
             raise ValueError("save requires an active registry transaction")
+        self._require_current()
         owners = [
             row["session"]
             for row in self.parents.values()

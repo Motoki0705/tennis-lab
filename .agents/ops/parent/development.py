@@ -26,7 +26,12 @@ from lib.agent_settings import implementation_model
 
 from . import worker_preflight
 from .adopted_tasks import check_task_adoptions
-from .execution import authorization, require_request_authorization, task_errors
+from .execution import (
+    authorization,
+    require_request_authorization,
+    task_errors,
+    task_input_errors,
+)
 from .github import GitHub
 from .policy import (
     closing_issues,
@@ -217,7 +222,7 @@ def start_worker(
         check_task_adoptions(session.gh, parent.body)
         check_task_adoptions(session.gh, items[child].body)
         check_dependencies(session, dispatch)
-        if authorization(session) != dispatch["authorization"] or task_errors(
+        if authorization(session) != dispatch["authorization"] or task_input_errors(
             claim["assignment"], dispatch["authorization"], items[child].body
         ):
             raise ValueError(
@@ -662,6 +667,7 @@ def refresh_worker_plan(
             worker_preflight.invalidate(
                 worker_preflight.state(task),
                 "managed execution basis/owner explicitly rebound",
+                task=task,
             )
     session.store.save()
     return {

@@ -28,6 +28,8 @@ stateは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/parent-sessions/`�
 同じホストの全worktree・Claude/Codexで共有する。更新操作は親ごとの操作ロックを先に取り、
 registryロックで担当の衝突・二重予約を防ぐ。GitHub通信中はregistryロックを離す。
 取得前後で対象親の担当・generation・tasks・reviewsが変われば終了値2で停止する。
+競合やregistryの再検証失敗後は、そのトランザクションでのsave・移行・再取得を拒否する。
+呼出元が例外を捕捉しても古いregistryを保存できず、新しいトランザクションで読み直す必要がある。
 他の親だけの変更は、その親の保存済み行を取り込み、自分の未保存の変更と参照を保持して続行する。
 `status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らない。
 Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
@@ -598,6 +600,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 自律continueの委任ID更新は、終了確認済みの同sessionの系列として明示的に結合する。
 既存4/6キーrunは保持し、新しいrunにだけsnapshotを追加する。ランナーのcontractは変更しない。
 status/reconcile/inspect-workerは、runtimeの終了状態と別に `worker_phase` と次の操作を返す。
+閲覧者のsession identityと、保存された担当generation・実行根拠の鮮度は別に照合する。
+identityなし・別sessionからのstatusでも、有効な承認はimplementingと表示し、読取だけではstateを変更しない。
 回答原文・runtimeの私的な識別子は公開表示へ出さない。
 導入時は手動親・自律親・dispatcherのCLI呼出元を同じ版へ更新する。registry外側のversionは1/2を維持し、
 読取だけで旧委任にフェーズを補わない。旧CLIはフェーズ判定を実装していないため、新旧CLIの混在を強制の保証範囲に含めない。
@@ -608,6 +612,16 @@ status/reconcile/inspect-workerは、runtimeの終了状態と別に `worker_pha
 
 要件・根拠・担当generation・依存集合/headが変わると、読取は `refresh_required` を返し、
 起動・claim・成果受理は承認を失効させる。読取だけではstateを書き換えない。
+完了済み・family外の依存も、依存issue集合を明示したtimeline取得でPRとheadを束ねる。
+registryの並行更新、GitHub取得失敗、応答・保存記録の構造検証失敗は、そのまま中断し保存しない。
+取得できた入力の差と、型で区別した既知の実行根拠の失効だけをrefresh_requiredとして扱う。
+
+失効は現在のverificationと保存レビューの鮮度にも伝わる。元のレビュー証拠は保持し、
+taskの `review_preflight` にreview run・context digest・失効回数を束ねる。
+再調査・親判断・実装を終え、record-resultで再検証しても旧レビューは復活しない。
+理由付きで新しいレビューを準備する。既存のレビュー根拠検証とtask_errorsを通してmerge受付も止め、
+merge gate本体・policyは変更しない。familyでは影響を受けたPRだけを止め、単独issueも同じ鮮度を検査する。
+レビューbindingのない既存workerのレビューは承認済みと推定せず、現在の結果を確認して新しいレビューを準備する。
 手動は終了・回収確認後の通常の `run-worker --resume --prompt-file tmp/changed.md` を再調査に使う。
 自律の要件/依存だけの変更も `continue-worker --prompt-file` で再調査する。自律の根拠・担当変更だけは
 新しい有効根拠と元runtimeを照合して `refresh-worker-plan --child N --evidence-file tmp/rebind.md` を明示する。

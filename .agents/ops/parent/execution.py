@@ -12,6 +12,11 @@ from .policy import digest, nonempty, number, object_value, phase, section_span
 if TYPE_CHECKING:
     from .session import ParentSession
 
+
+class ExecutionBasisStale(ValueError):
+    """A successfully observed change/revocation, not a retrieval failure."""
+
+
 POLICY_VERSION = "autonomous-start/v1"
 BASIS_KEYS = {
     "schema_version",
@@ -275,7 +280,7 @@ def _current_basis(session: ParentSession, generation: int) -> dict[str, Any]:
         None,
     )
     if current is None or current["event"] in {"checking", "basis_revoked"}:
-        raise ValueError(
+        raise ExecutionBasisStale(
             "親issueの要件合意記録または有効な実行根拠がありません。分割・委任は拒否しました"
         )
     if current["event"] == "agreed":
@@ -291,28 +296,43 @@ def _current_basis(session: ParentSession, generation: int) -> dict[str, Any]:
             )
         body = session.gh.issue(session.parent).get("body") or ""
         if sha256(current["requirements_sha256"]) != digest(requirement_body(body)):
-            raise ValueError(
+            raise ExecutionBasisStale(
                 f"#{session.parent}: human agreement requirements changed; "
                 "checking → agree で変更後の本文を人間と確認し、再合意してください"
             )
         return human_basis(current)
     validate_event(current)
     if current["generation"] != generation:
-        raise ValueError("execution basis belongs to an old owner generation")
+        raise ExecutionBasisStale("execution basis belongs to an old owner generation")
     inputs = execution_input(
         session, current["ignored_comments"], current["inputs"]["context"]
     )
     if inputs != current["inputs"]:
-        raise ValueError(
+        raise ExecutionBasisStale(
             "execution basis inputs changed; an explicit new decision is required"
         )
     if inputs["issue"]["needs_human"]:
-        raise ValueError("explicit human decision is pending")
+        raise ExecutionBasisStale("explicit human decision is pending")
     return object_value(current["basis"])
 
 
 def current_basis(session: ParentSession) -> dict[str, Any]:
     return _current_basis(session, session.owner()["generation"])
+
+
+def observed_authorization(session: ParentSession) -> dict[str, Any]:
+    """Validate the saved owner/basis without granting the viewer ownership."""
+    row = session.row
+    if not row:
+        raise ValueError("worker freshness requires a saved parent owner")
+    basis = _current_basis(session, row["generation"])
+    return validate_authorization(
+        {
+            "generation": row["generation"],
+            "execution_basis_kind": basis["kind"],
+            "execution_basis_sha256": digest(basis),
+        }
+    )
 
 
 def validate_candidate(
@@ -355,14 +375,23 @@ def authorization(
                 "human_confirmation",
             )
         }
+        from .worker_preflight import refresh_review, require_review
+
+        refresh_review(session, dict(request), observed_authorization(session))
+        require_review(session, dict(request), None)
         return {"generation": generation, "agreement_sha256": digest(agreement)}
-    return validate_authorization(
+    auth = validate_authorization(
         {
             "generation": generation,
             "execution_basis_kind": basis["kind"],
             "execution_basis_sha256": digest(basis),
         }
     )
+    if request is not None:
+        from .worker_preflight import refresh_review
+
+        refresh_review(session, dict(request), auth)
+    return auth
 
 
 def record_autonomous(session: ParentSession, value: dict[str, Any]) -> dict[str, Any]:
@@ -448,6 +477,9 @@ def require_request_authorization(
     required_issues: set[int] | None = None,
 ) -> dict[str, Any]:
     auth = authorization(session, request)
+    from .worker_preflight import require_review
+
+    require_review(session, dict(request), required_issues)
     if request["schema_version"] == 2 and request.get("authorization") != auth:
         raise ValueError("review targets belong to an old execution basis/owner")
     if request["schema_version"] == 2:
@@ -513,7 +545,7 @@ def require_run_authorization(
     return auth
 
 
-def task_errors(
+def task_input_errors(
     task: Mapping[str, Any], auth: Mapping[str, Any], body: str
 ) -> tuple[str, ...]:
     verification = task.get("verification", {})
@@ -533,3 +565,11 @@ def task_errors(
     ] != digest(requirement_body(body)):
         errors.append("requirements_changed")
     return tuple(errors)
+
+
+def task_errors(
+    task: Mapping[str, Any], auth: Mapping[str, Any], body: str
+) -> tuple[str, ...]:
+    from .worker_preflight import review_errors
+
+    return task_input_errors(task, auth, body) + review_errors(dict(task))

@@ -4,11 +4,95 @@ from __future__ import annotations
 
 import copy
 import importlib
+import re
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+
+
+def test_context_tracks_external_dependency_prs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.syspath_prepend(
+        str(Path(__file__).resolve().parents[3] / ".agents/ops")
+    )
+    phase = importlib.import_module("parent.worker_preflight")
+    github = importlib.import_module("parent.github").GitHub("o/r")
+    github.parent = 1
+    monkeypatch.setattr(github, "family", lambda _parent: {1: None, 10: None})
+    issue = {
+        "number": 20,
+        "repository_url": "https://api.github.com/repos/o/r",
+        "state": "closed",
+        "state_reason": "completed",
+        "body": "## 要件\n外部依存の入力仕様。\n",
+    }
+    pulls: list[dict[str, Any]] = [
+        {
+            "number": 200,
+            "body": "Closes #20",
+            "state": "closed",
+            "merged_at": "2026-11-06T00:00:00Z",
+            "head": {
+                "sha": "a" * 40,
+                "ref": "codex/external",
+                "repo": {"full_name": "o/r"},
+            },
+        }
+    ]
+    reads: list[str] = []
+
+    def get(endpoint: str, **_kwargs: object) -> object:
+        reads.append(endpoint)
+        if endpoint == "repos/o/r/issues/20":
+            return copy.deepcopy(issue)
+        if match := re.fullmatch(
+            r"repos/o/r/issues/(\d+)/timeline\?per_page=100&page=1", endpoint
+        ):
+            return (
+                [
+                    {
+                        "id": pr["number"],
+                        "source": {
+                            "issue": {
+                                **pr,
+                                "pull_request": {
+                                    "url": "https://api.github.com/repos/o/r/pulls/200"
+                                },
+                                "repository_url": "https://api.github.com/repos/o/r",
+                            }
+                        },
+                    }
+                    for pr in pulls
+                ]
+                if match[1] == "20"
+                else []
+            )
+        if match := re.fullmatch(r"repos/o/r/pulls/(\d+)", endpoint):
+            return copy.deepcopy(
+                next(pr for pr in pulls if pr["number"] == int(match[1]))
+            )
+        raise AssertionError(endpoint)
+
+    monkeypatch.setattr(github, "get", get)
+    child = SimpleNamespace(body="## 依存関係\n#20 の完了後。\n")
+    session = SimpleNamespace(
+        gh=github,
+        parent=1,
+        row={"tasks": {"10": {"branch": "codex/worker", "worktree": str(tmp_path)}}},
+        work_items=lambda: (SimpleNamespace(body="親の要件。"), {10: child}),
+    )
+    first = phase.context(session, 10, authorized={"generation": 1})
+    assert [p["head"] for p in first["dependencies"][0]["prs"]] == ["a" * 40]
+    pulls[0]["head"]["sha"] = "b" * 40
+    advanced = phase.context(session, 10, authorized={"generation": 1})
+    assert phase.digest(first) != phase.digest(advanced)
+    pulls.append({**copy.deepcopy(pulls[0]), "number": 201})
+    added = phase.context(session, 10, authorized={"generation": 1})
+    assert phase.digest(advanced) != phase.digest(added)
+    assert any("/issues/20/timeline?" in endpoint for endpoint in reads)
 
 
 @pytest.fixture
@@ -85,6 +169,118 @@ def decision(module: Any, phase: dict[str, Any]) -> dict[str, Any]:
         "action": "approve",
         "answer": "提案どおり実装する。",
     }
+
+
+@pytest.mark.parametrize("failure", ["http", "malformed"])
+def test_context_failure_does_not_invalidate_or_save(
+    planning: tuple[Any, Any, dict[str, Any]],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    module, session, _ = planning
+    phase = session.row["tasks"]["10"]["preflight"]
+    before = copy.deepcopy(phase)
+    error = (
+        importlib.import_module("issues.cli").GitHubHTTPError(
+            "repos/o/r/issues/20", 503, "unavailable"
+        )
+        if failure == "http"
+        else ValueError("malformed dependency response")
+    )
+    saved: list[bool] = []
+    monkeypatch.setattr(session.store, "save", lambda: saved.append(True))
+
+    def unavailable(*_args: object) -> None:
+        raise error
+
+    monkeypatch.setattr(module, "context", unavailable)
+    with pytest.raises(type(error), match="unavailable|malformed"):
+        module.observe_context(session, 10, phase, persist=True)
+    assert phase == before
+    assert saved == []
+
+
+def test_new_result_does_not_revive_invalidated_review(
+    planning: tuple[Any, Any, dict[str, Any]],
+) -> None:
+    module, session, current = planning
+    task = session.row["tasks"]["10"]
+    task["branch"] = "codex/worker"
+    phase = task["preflight"]
+    phase.update(phase="implementing", skip_reason="レビュー鮮度のunit fixture。")
+    task["verification"] = {"evidence": "元の実装を確認した。"}
+    request = {"review_run_id": "review-one", "prs": [{"branch": "codex/worker"}]}
+    module.bind_review(session, request)
+    assert module.review_errors(task) == ()
+    module.invalidate(phase, "dependency changed", task=task)
+    current["requirements"] = "new requirements"
+    phase.update(
+        context=copy.deepcopy(current), phase="implementing", refresh_required=False
+    )
+    phase["turns"][-1]["final_sha256"] = "new final"
+    phase["turns"][-1]["snapshot"]["context_sha256"] = module.digest(current)
+    answer = decision(module, phase)
+    answer.update(final_sha256="new final", delivered_turn_id="new implementation turn")
+    phase["decisions"].append(answer)
+    task["verification"] = {"evidence": "新計画の実装を再検証した。"}
+    assert module.implementation_authorized(phase)
+    assert "worker_review_inputs_changed" in module.review_errors(task)
+    module.bind_review(session, {**request, "review_run_id": "review-two"})
+    assert module.review_errors(task) == ()
+
+
+def test_observed_basis_change_expires_approval(
+    planning: tuple[Any, Any, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module, session, _ = planning
+
+    def revoked(*_args: object) -> None:
+        raise module.ExecutionBasisStale("execution basis revoked")
+
+    monkeypatch.setattr(module, "context", revoked)
+    value = session.row["tasks"]["10"]["preflight"]
+    fresh, stale = module.observe_context(session, 10, value, persist=True)
+    assert fresh is None and stale
+    assert value["refresh_required"] and value["phase"] == "planning"
+
+
+def test_legacy_review_revalidates_worker_inputs(
+    planning: tuple[Any, Any, dict[str, Any]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    phase, session, current = planning
+    execution = importlib.import_module("parent.execution")
+    basis = {
+        "kind": "human_agreement",
+        **{
+            key: key
+            for key in (
+                "purpose",
+                "scope",
+                "behavior",
+                "acceptance",
+                "human_confirmation",
+            )
+        },
+    }
+    session.owner = lambda: {"generation": 2}
+    session.parent = 1
+    session.work_items = lambda: (None, {})
+    session.row["tasks"]["10"]["branch"] = "codex/worker"
+    request = {
+        "schema_version": 1,
+        "review_run_id": "old-review",
+        "prs": [{"branch": "codex/worker"}],
+    }
+    session.row["reviews"] = [{"request": request}]
+    monkeypatch.setattr(execution, "current_basis", lambda _: basis)
+    monkeypatch.setattr(
+        execution, "observed_authorization", lambda _: current["authorization"]
+    )
+    monkeypatch.setattr(
+        phase, "context", lambda *_args, **_kwargs: copy.deepcopy(current)
+    )
+    with pytest.raises(ValueError, match="planning approval|review inputs"):
+        execution.authorization(session, request)
 
 
 @pytest.mark.parametrize(

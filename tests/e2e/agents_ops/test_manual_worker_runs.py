@@ -883,6 +883,40 @@ def test_preapproval_artifacts_are_not_accepted(reserved: ParentEnv) -> None:
     )
 
 
+def test_readonly_status_preserves_approved_worker_and_dependency(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    p.child("downstream", deps=[10])
+    run(p)
+    planning_answer(p)
+    resume_answer(p)
+    tree = Path(task(p)["worktree"])
+    (tree / "feature.txt").write_text("approved implementation\n")
+    run_git(tree, "add", "feature.txt")
+    run_git(tree, "commit", "-m", "approved implementation")
+    gh = p.state()
+    gh["prs"] = [p.pr(100, 10, run_git(tree, "rev-parse", "HEAD"), "codex/worker")]
+    p.save(gh)
+    ended(p)
+    before = store(p).read_data()
+    for identity in ("", "other-viewer"):
+        response = p.cli(
+            "status", extra={"CLAUDE_CODE_SESSION_ID": identity, "CODEX_SESSION_ID": ""}
+        )
+        visible = json.loads(response.stdout)
+        assert not visible["current_session_is_owner"]
+        assert visible["tasks"]["10"]["worker_phase"]["phase"] == "implementing"
+        downstream = next(
+            item for item in visible["launch_plan"]["tasks"] if item["child"] == 11
+        )
+        assert "dependency_planning_unapproved" not in {
+            reason["code"] for reason in downstream["reasons"]
+        }
+        assert downstream["stacked_on"][0]["pr"] == 100
+        assert store(p).read_data() == before
+
+
 def test_stale_approval_replans_existing_session(reserved: ParentEnv) -> None:
     p = reserved
     run(p)

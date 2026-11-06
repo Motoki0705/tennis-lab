@@ -6,7 +6,12 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from .execution import ignored_comment_map, instruction_comments, sha256
+from .execution import (
+    ExecutionBasisStale,
+    ignored_comment_map,
+    instruction_comments,
+    sha256,
+)
 from .judgement_comments import owned_comment
 from .policy import digest, events, nonempty, number, object_value
 
@@ -99,7 +104,7 @@ def _stale(session: ParentSession, changes: Mapping[int, str]) -> ValueError:
         f"ID={n} https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{n} ({changes[n]})"
         for n in sorted(changes)
     )
-    return ValueError(
+    return ExecutionBasisStale(
         f"unclassified agreement comments: {refs}。"
         "要件と無関係と確認できる現存コメントは agreement-ignore-comments "
         "--ignored-comments でID/digest/理由を明示してください。"
