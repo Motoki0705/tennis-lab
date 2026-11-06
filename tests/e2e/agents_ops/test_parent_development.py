@@ -1469,6 +1469,21 @@ def test_preflight_decision_paths(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, action: str
 ) -> None:
     mod, session, env = workflow(d, monkeypatch, family=True)
+    tree = child_tree(d)
+    before = d.row()
+    with pytest.raises(ValueError, match="undelivered planning decision"):
+        mod.start_worker(
+            session,
+            d.schedule.directory,
+            env,
+            child=10,
+            prompt="初回調査。",
+            model=None,
+            branch="codex/parser",
+            worktree=tree,
+            additional="未配送判断がないため補足を配送できない。",
+        )
+    assert d.row() == before
     first = mod.start_worker(
         session,
         d.schedule.directory,
@@ -1477,7 +1492,7 @@ def test_preflight_decision_paths(
         prompt="根拠と設計を調査する。",
         model=None,
         branch="codex/parser",
-        worktree=child_tree(d),
+        worktree=tree,
     )
     try:
         launch(d, monkeypatch)

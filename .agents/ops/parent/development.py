@@ -133,6 +133,10 @@ def start_worker(
     implementation_model(model)
     if continuation is None:
         nonempty(prompt, "initial worker instruction")
+        if additional is not None:
+            raise ValueError(
+                "additional instructions require an undelivered planning decision"
+            )
     if skip_reason is not None:
         nonempty(skip_reason, "planning skip reason")
     with session.store.locked():
