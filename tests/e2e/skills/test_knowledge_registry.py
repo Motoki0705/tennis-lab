@@ -9,6 +9,7 @@ import base64
 import importlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -374,3 +375,48 @@ def test_portable_paths_drop_machine_prefixes(tmp_path: Path, monkeypatch: pytes
     assert lib.portable_path(main / ".training_queue/logs/x.log") == ".training_queue/logs/x.log"
     assert lib.portable_path(home / "artifacts/run") == "~/artifacts/run"
     assert lib.portable_path(tmp_path / "elsewhere") == str((tmp_path / "elsewhere").resolve())
+
+
+def _workflow_glob_regex(pattern: str) -> re.Pattern[str]:
+    """Translate a GitHub Actions ``paths`` filter pattern into a regex."""
+    parts: list[str] = []
+    i = 0
+    while i < len(pattern):
+        if pattern[i : i + 3] == "**/":
+            parts.append("(?:.+/)?")
+            i += 3
+        elif pattern[i : i + 2] == "**":
+            parts.append(".*")
+            i += 2
+        elif pattern[i] == "*":
+            parts.append("[^/]*")
+            i += 1
+        elif pattern[i] == "?":
+            parts.append("[^/]")
+            i += 1
+        else:
+            parts.append(re.escape(pattern[i]))
+            i += 1
+    return re.compile("^" + "".join(parts) + "$")
+
+
+def _workflow_watches(patterns: list[str], path: str) -> bool:
+    matched = False
+    for raw in patterns:
+        negated = raw.startswith("!")
+        pat = raw[1:] if negated else raw
+        if _workflow_glob_regex(pat).match(path):
+            matched = not negated
+    return matched
+
+
+def test_ci_runs_when_a_tracked_config_or_source_changes() -> None:
+    assert not _workflow_watches(["src/tennis_scene/configs/*"], "src/tennis_scene/configs/sub/pipeline.yaml")
+    assert not _workflow_watches(["src/tennis_scene/configs/**", "!src/tennis_scene/configs/pipeline.yaml"], "src/tennis_scene/configs/pipeline.yaml")
+    workflow = yaml.safe_load((ROOT / ".github/workflows/knowledge.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))  # PyYAML reads the bare key `on` as True.
+    registry = yaml.safe_load((ROOT / "knowledge/registry/deployments.yaml").read_text())
+    watched = set(registry["configs"]) | {e["source"] for e in registry["deployments"] if "source" in e}
+    for event in ("pull_request", "push"):
+        patterns = triggers[event]["paths"]
+        assert all(_workflow_watches(patterns, path) for path in watched), (event, watched)

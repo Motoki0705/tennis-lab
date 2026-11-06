@@ -7,6 +7,9 @@ on:
       - 'tests/e2e/skills/test_knowledge*.py'
       - '.github/workflows/knowledge.yml'
       - '.github/workflows/ci.yml'
+      # Configs tracked by knowledge/registry/deployments.yaml and its source documents.
+      - 'src/tennis_scene/configs/**'
+      - 'LICENSES.md'
   push:
     branches: [main]
     paths:
@@ -15,6 +18,9 @@ on:
       - 'tests/e2e/skills/test_knowledge*.py'
       - '.github/workflows/knowledge.yml'
       - '.github/workflows/ci.yml'
+      # Configs tracked by knowledge/registry/deployments.yaml and its source documents.
+      - 'src/tennis_scene/configs/**'
+      - 'LICENSES.md'
   workflow_dispatch:
 permissions:
   contents: read
