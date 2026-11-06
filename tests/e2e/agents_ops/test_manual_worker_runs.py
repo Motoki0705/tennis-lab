@@ -27,6 +27,9 @@ from parent.cli import main
 sys.exit(main(sys.argv[2:]))
 """
 MANUAL_SEED = pytest.StashKey[DirectorySeed]()
+WORKER_PROMPT = (
+    Path(__file__).resolve().parents[3] / ".agents/ops/parent/worker_prompt.md"
+)
 
 
 def state_dir(p: ParentEnv) -> Path:
@@ -39,6 +42,10 @@ def store(p: ParentEnv) -> Any:
 
 def task(p: ParentEnv) -> dict[str, Any]:
     return dict(store(p).read_data()["parents"]["o/r#1"]["tasks"]["10"])
+
+
+def issue_body(p: ParentEnv, number: int) -> str:
+    return str(p.state()["issues"][str(number)]["body"])
 
 
 def update(p: ParentEnv, **values: Any) -> None:
@@ -73,6 +80,7 @@ def manual(
             **p.env,
             "MANUAL_STATE_DIR": str(state_dir(p)),
             "MANUAL_RUNNER_CALLS": str(p.root / "runner-calls.jsonl"),
+            "MANUAL_RUNNER_PROMPTS": str(p.root / "runner-prompts.jsonl"),
             **extra,
         },
         text=True,
@@ -310,6 +318,7 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
         p.note(),
     )
     run(p)
+    bodies = [issue_body(p, 10)]
     first = latest(p)
     original = task(p)["delegation_id"]
     ended(p)
@@ -336,6 +345,7 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
     gh["prs"] = [p.pr(100, 10, branch="codex/worker")]
     p.save(gh)
     result = run(p, "--resume", "--restart-evidence-file", p.note())
+    bodies.append(issue_body(p, 10))
     assert json.loads(result.stdout)["exit_code"] == 0
     assert task(p)["delegation_id"] == original and "worker_ended" not in task(p)
     assert [r["kind"] for r in task(p)["worker_runs"]] == ["initial", "resume"]
@@ -344,6 +354,21 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
         for line in (p.root / "runner-calls.jsonl").read_text().splitlines()
     ]
     assert calls[-1][:3] == ["resume", "--resume-from", str(first)]
+    # Both turns get the managed workers' standard rules, not just the parent's
+    # file: e.g. report in the final message instead of parent-issue comments.
+    prompts = [
+        json.loads(line)
+        for line in (p.root / "runner-prompts.jsonl").read_text().splitlines()
+    ]
+    assert len(prompts) == len(bodies) == 2
+    for entry, body in zip(prompts, bodies, strict=True):
+        assert entry["prompt_file"] == "-"
+        text = entry["prompt"]
+        assert text.startswith(WORKER_PROMPT.read_text(encoding="utf-8"))
+        assert "親issue: #1\n担当issue: #10\n" in text
+        assert f"branch: {task(p)['branch']}\n" in text
+        assert f"## 担当issueの原文\n\n{body}\n" in text
+        assert text.endswith("## 親の具体的な指示\n\n確認済みの証拠・次の操作。\n")
     assert (
         json.loads((first / "result.json").read_text())["runtime"]
         == json.loads((latest(p) / "result.json").read_text())["runtime"]

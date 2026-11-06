@@ -500,6 +500,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 共通ランナーを `--role implementation --mode write --task-id 委任ID --cwd worktree --branch branch`
 で呼び、[`agents.conf`](../lib/agents.conf) の実装子の既定値を使う。
 Codex CLIを直接起動せず、この入口から共通ランナーへ渡す。
+指示は `start-worker` / `continue-worker` と同じ `worker_instruction.py` で組み立てる。
+[標準のworker指示](worker_prompt.md)、親・担当issueの番号、worktree・branch、担当issueの現在の原文の後に、
+`--prompt-file` の内容を「親の具体的な指示」として続け、共通ランナーへ標準入力（`--prompt-file -`）で渡す。
+継続のターンも同じ構成で、指示ファイルには案件固有の内容だけを書く。
 
 runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ランナーの起動前にregistryへ保存する。
 実行中はregistry・親の操作ロックを保持しない。終了値は共通ランナーの値を返し、stdoutは
