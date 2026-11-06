@@ -2262,25 +2262,28 @@ def test_run_reports_a_blocked_campaign_only_after_live_work_settles(
 
 def test_cli_saves_review_progress_and_previews_continuations(
     session: ReviewSession,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     import json
-    import subprocess
     import sys
 
+    from src.tasks.annotation.__main__ import main
     from src.tasks.annotation.review_progress import ReviewProgressReport
-    from src.utils.paths import PROJECT_ROOT
 
     finish(session, deferred=True)
     env = session.env
     controller = controller_for(session)
     runtime_ref = env.save(controller.runtime)
 
+    # In-process: the subprocess entry is covered by
+    # test_cli_resumes_only_the_named_worker_campaign; this checks argument wiring.
     def cli(*arguments: str) -> dict[str, Any]:
-        completed = subprocess.run(
+        monkeypatch.setattr(
+            sys,
+            "argv",
             [
-                sys.executable,
-                "-m",
-                "src.tasks.annotation",
+                "annotation",
                 *arguments,
                 "--runtime",
                 str(env.layout.artifact_path(runtime_ref)),
@@ -2289,13 +2292,9 @@ def test_cli_saves_review_progress_and_previews_continuations(
                 "--test-root",
                 str(env.layout.root),
             ],
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=60,
-            check=True,
         )
-        result: dict[str, Any] = json.loads(completed.stdout.splitlines()[-1])
+        main()
+        result: dict[str, Any] = json.loads(capsys.readouterr().out.splitlines()[-1])
         return result
 
     measured = cli("review-progress")
