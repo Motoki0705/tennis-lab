@@ -46,7 +46,8 @@ artifacts:
 parents: []
 relations:
 - to: run-i1031-court-ckpt-qualitative-20261008a
-  rel: resolves
+  rel: supersedes
+  note: 対象で生じた問題を解消して置き換えた
 papers: []
 tags:
 - qualitative-logging

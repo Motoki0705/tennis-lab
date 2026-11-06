@@ -38,7 +38,8 @@ artifacts:
 parents: []
 relations:
 - to: run-i1088-ball-prediction-pilot-20261015
-  rel: same_input
+  rel: related
+  note: 同じ入力を使った
 papers: []
 tags:
 - annotation

@@ -1,66 +1,78 @@
 #!/usr/bin/env python
-"""Detect unreviewed knowledge changes; acknowledge only after editing summary.md."""
+"""Check the library's narrative documents: summary.md and its companions.
+
+summary.md holds only the current judgement per task and must stay within a
+character budget, so reading it before planning stays cheap. Relative links in
+the maintained documents must resolve; frozen archives under ``history/`` are
+checked only for links into the library itself. Whether a branch reviewed the
+summary is a change rule in kg_changes.py (``--check-summary --base-ref``).
+"""
 from __future__ import annotations
 
 import argparse
-import hashlib
 import re
-from datetime import date
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 from kg_lib import nodes_dir
-from kg_schema import has_prose, iso_date
+from kg_schema import has_prose
 
-MARKER = re.compile(r"<!-- knowledge-review: [0-9a-f]{64} on \d{4}-\d{2}-\d{2} -->\n?")
+# Characters, not bytes. The 2026-11 rewrite is about half of it; raise it only deliberately.
+SUMMARY_BUDGET = 20_000
+LINK = re.compile(r"!?\[[^\]\n]*\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)")
+FENCE = re.compile(r"^(```|~~~).*?^\1", re.MULTILINE | re.DOTALL)
+CODE = re.compile(r"`[^`\n]+`")
 
 
-def fingerprint(narrative: str | None = None) -> str:
-    base = nodes_dir().parent
-    paths = sorted([*nodes_dir().rglob("*.md"), *(base / "Papers").glob("*/paper.md")])
-    digest = hashlib.sha256()
-    for path in paths:
-        digest.update(str(path.relative_to(base)).encode())
-        digest.update(b"\0")
-        digest.update(path.read_bytes())
-        digest.update(b"\0")
-    if narrative is None:
-        narrative = (base / "summary.md").read_text(encoding="utf-8")
-    digest.update(b"summary.md\0")
-    digest.update(MARKER.sub("", narrative).encode())
-    return digest.hexdigest()
+def library() -> Path:
+    return nodes_dir().parent
+
+
+def broken_links(path: Path, text: str, *, within: Path | None = None) -> list[str]:
+    """Relative links (outside code) whose target does not exist."""
+    errors = []
+    prose = CODE.sub("", FENCE.sub("", text))
+    for match in LINK.finditer(prose):
+        parts = urlsplit(match.group(1))
+        if parts.scheme or parts.netloc or not parts.path:
+            continue
+        target = (path.parent / unquote(parts.path)).resolve()
+        if within is not None and not target.is_relative_to(within.resolve()):
+            continue
+        if not target.exists():
+            errors.append(f"{path.relative_to(library())}: broken link {match.group(1)}")
+    return errors
 
 
 def check_summary() -> list[str]:
-    path = nodes_dir().parent / "summary.md"
+    base = library()
+    path = base / "summary.md"
     if not path.is_file():
         return ["summary.md is missing"]
     text = path.read_text(encoding="utf-8")
-    matches = list(MARKER.finditer(text))
-    if len(matches) != 1 or text.count("<!-- knowledge-review:") != 1:
-        return ["summary.md has unreviewed changes: exactly one review marker is required; review then kg_summary.py --mark-reviewed"]
-    if not iso_date(matches[0].group().split(" on ")[1].split(" ")[0]):
-        return ["summary.md review marker must contain a valid ISO date"]
-    if not has_prose(MARKER.sub("", text)):
-        return ["summary.md needs a substantive narrative, not just headings/comments"]
-    if fingerprint(text) not in matches[0].group():
-        return ["summary.md has unreviewed node/paper changes; update the narrative, then kg_summary.py --mark-reviewed"]
-    return []
+    errors = []
+    if not has_prose(text):
+        errors.append("summary.md needs a substantive narrative, not just headings/comments")
+    if len(text) > SUMMARY_BUDGET:
+        errors.append(f"summary.md has {len(text)} characters (budget {SUMMARY_BUDGET}); keep only current judgements and move settled history into group nodes")
+    maintained = [path, base / "README.md", base / "Papers/README.md", *sorted((base / "reports").glob("*.md"))]
+    for document in maintained:
+        if document.is_file():
+            errors.extend(broken_links(document, document.read_text(encoding="utf-8")))
+    for archive in sorted((base / "history").glob("*.md")):
+        errors.extend(broken_links(archive, archive.read_text(encoding="utf-8"), within=base))
+    return errors
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mark-reviewed", action="store_true", help="record that the summary was reviewed against the current evidence")
-    args = parser.parse_args()
-    if args.mark_reviewed:
-        path = nodes_dir().parent / "summary.md"
-        text = MARKER.sub("", path.read_text())
-        if not has_prose(text):
-            print("ERROR: summary.md needs a substantive narrative before marking reviewed")
-            return 1
-        marker = f"<!-- knowledge-review: {fingerprint(text)} on {date.today().isoformat()} -->\n"
-        path.write_text(marker + text)
+    parser.parse_args()
     errors = check_summary()
     for error in errors:
         print(f"ERROR: {error}")
+    path = library() / "summary.md"
+    if path.is_file():
+        print(f"summary.md: {len(path.read_text(encoding='utf-8'))}/{SUMMARY_BUDGET} characters")
     return int(bool(errors))
 
 

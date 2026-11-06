@@ -30,9 +30,7 @@ artifacts:
   run_dir: knowledge/runs/run-ball-temporal-target-survey-20261022
 parents:
 - run-ball-colab-transfer-feasibility-20261022
-relations:
-- to: run-ball-all-frame-protocol-20261022
-  rel: superseded_by
+relations: []
 papers: []
 tags: []
 repro:

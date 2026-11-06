@@ -29,7 +29,8 @@ parents:
 - run-i524-court-seg-baseline
 relations:
 - to: run-i524-court-seg-baseline
-  rel: improves
+  rel: compares
+  note: 対象より改善した
 tags:
 - court-detection
 - dinov3

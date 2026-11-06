@@ -1,0 +1,21 @@
+# relations[].rel に使える関係の語彙。向きは「このノード → to」。
+# 新しい関係が必要になったら、既存の語で表せない理由を確かめてから追加する。
+schema_version: 1
+relations:
+  compares:
+    description: 同じ評価条件・splitで対象と結果を比較した。双方向に張ってよい。
+  confirms:
+    description: 対象の結果・結論を、別の実行や根拠で支持した。
+  contradicts:
+    description: 対象の結果・結論と矛盾する結果を得た。
+  supersedes:
+    description: 対象の結果・判断を置き換える。対象は古い記録として残す（向きは新→旧）。
+  replicates:
+    description: 対象と同じ条件を、別seedまたは独立した実行で再現した。
+  retries:
+    description: 失敗・中断した対象を、同じ目的で再実行した。
+  evaluates:
+    description: 対象のモデル・出力を評価・分析・再集計した。
+  related:
+    description: 上記のどれにも当てはまらない関連。noteに関係の内容を書く。
+    note_required: true

@@ -54,7 +54,9 @@ export interface Paper {
   authors: string[];
   tasks: string[];
   source: string;
-  license: string;
-  pdfUrl: string;
+  /** Present when the license was recorded (required for a stored PDF). */
+  license?: string;
+  /** Present only when the library stores the paper's PDF. */
+  pdfUrl?: string;
   bodyHtml: string;
 }

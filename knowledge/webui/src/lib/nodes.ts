@@ -162,10 +162,11 @@ export async function getGraph(): Promise<KnowledgeGraph> {
   for (const file of paperFiles) {
     const { data } = matter(await fs.readFile(file, "utf8"));
     targets.set(path.resolve(file), `/?paper=${encodeURIComponent(data.id)}`);
-    targets.set(
-      path.resolve(path.dirname(file), "paper.pdf"),
-      `/api/papers/${data.id}`,
-    );
+    if (data.pdf)
+      targets.set(
+        path.resolve(path.dirname(file), "paper.pdf"),
+        `/api/papers/${data.id}`,
+      );
   }
   const papers: Paper[] = await Promise.all(
     paperFiles.map(async (file) => {
@@ -177,8 +178,8 @@ export async function getGraph(): Promise<KnowledgeGraph> {
         authors: asStringArray(data.authors),
         tasks: asStringArray(data.tasks),
         source: data.source,
-        license: data.license,
-        pdfUrl: `/api/papers/${data.id}`,
+        ...(data.license ? { license: String(data.license) } : {}),
+        ...(data.pdf ? { pdfUrl: `/api/papers/${data.id}` } : {}),
         bodyHtml: renderMarkdown(content, file, targets),
       };
     }),

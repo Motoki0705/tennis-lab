@@ -432,15 +432,19 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
                   <h2>{paper.title}</h2>
                   <p>{paper.authors.join(", ")}</p>
                   <div className="paper-actions">
-                    <a href={paper.pdfUrl} target="_blank" rel="noreferrer">
-                      PDFを開く ↗
-                    </a>
+                    {paper.pdfUrl && (
+                      <a href={paper.pdfUrl} target="_blank" rel="noreferrer">
+                        PDFを開く ↗
+                      </a>
+                    )}
                     <a href={paper.source} target="_blank" rel="noreferrer">
                       原論文
                     </a>
-                    <a href={paper.license} target="_blank" rel="noreferrer">
-                      ライセンス
-                    </a>
+                    {paper.license && (
+                      <a href={paper.license} target="_blank" rel="noreferrer">
+                        ライセンス
+                      </a>
+                    )}
                   </div>
                   <div
                     className="prose"

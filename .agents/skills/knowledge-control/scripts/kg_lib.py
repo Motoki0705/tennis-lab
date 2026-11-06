@@ -21,6 +21,7 @@ from kg_schema import (
     NODE_TYPES,
     PROVIDERS,
     STATUSES,
+    SUMMARY_IMPACTS,
     TASK_RE,
     has_prose,
     iso_date,
@@ -29,6 +30,11 @@ from kg_schema import (
 )
 
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n?(.*)$", re.DOTALL)
+# A Lightning test table row (``│ test/metric │ value │``) and Hydra overrides.
+METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
+OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
+# Hydra keys surfaced into ``config``; the remaining overrides stay in the command.
+CONFIG_KEYS = ("model", "loss", "data")
 
 
 class UniqueLoader(yaml.SafeLoader):
@@ -186,7 +192,7 @@ def validate(nodes: list[Node]) -> ValidationResult:
             issues = issue if isinstance(issue, list) else [issue]
             if not issues or any(type(i) is not int or i <= 0 for i in issues):
                 res.errors.append(f"{loc}: issue must be a positive integer or a nonempty list of positive integers")
-        for field_name, allowed in (("status", STATUSES), ("provider", PROVIDERS)):
+        for field_name, allowed in (("status", STATUSES), ("provider", PROVIDERS), ("summary_impact", SUMMARY_IMPACTS)):
             value = n.meta.get(field_name)
             if value is not None and (not isinstance(value, str) or value not in allowed):
                 res.errors.append(f"{loc}: {field_name} must be one of {sorted(allowed)}")
@@ -254,8 +260,6 @@ def _validate_acyclic(nodes: list[Node], field_name: str, res: ValidationResult)
 
 def _validate_run(n: Node, res: ValidationResult) -> None:
     loc = n.path.name
-    if "issue" not in n.meta:
-        res.warnings.append(f"{loc}: run node has no 'issue'")
     # A recorded reproducibility bundle (or its deletion manifest) must exist.
     artifacts = n.meta.get("artifacts") or {}
     run_dir = artifacts.get("run_dir") if isinstance(artifacts, dict) else None
@@ -269,7 +273,7 @@ def dump_frontmatter(meta: dict[str, Any]) -> str:
     """Serialize frontmatter with stable key ordering for nice git diffs."""
     order = [
         "id", "type", "task", "sequence", "recorded_at", "date_source", "title", "issue", "provider", "session", "date", "status",
-        "config", "metrics", "repro", "artifacts", "members", "parents",
+        "summary_impact", "config", "metrics", "repro", "artifacts", "members", "parents",
         "relations", "papers", "tags",
     ]
     ordered = {k: meta[k] for k in order if k in meta}
@@ -279,20 +283,65 @@ def dump_frontmatter(meta: dict[str, Any]) -> str:
     return yaml.safe_dump(ordered, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
 
+def test_metrics_from_log(text: str) -> dict[str, float]:
+    """``test/*`` rows of the metric tables in a training log, rounded to 6 digits."""
+    metrics: dict[str, float] = {}
+    for line in text.splitlines():
+        match = METRIC_ROW_RE.match(line.strip())
+        if match:
+            try:
+                metrics[match.group(1).removeprefix("test/")] = round(float(match.group(2)), 6)
+            except ValueError:
+                continue
+    return metrics
+
+
+def config_from_command(command: str) -> dict[str, str]:
+    overrides = dict(OVERRIDE_RE.findall(command))
+    return {key: overrides[key] for key in CONFIG_KEYS if key in overrides}
+
+
+def git_toplevel(path: Path) -> Path:
+    """The Git checkout containing ``path``; a library outside Git cannot be compared with a base."""
+    import subprocess
+
+    proc = subprocess.run(["git", "-C", str(path), "rev-parse", "--show-toplevel"], text=True, capture_output=True)
+    if proc.returncode:
+        raise ValueError(f"{path} is not inside a Git checkout; base-ref checks compare against its history")
+    return Path(proc.stdout.strip()).resolve()
+
+
+def main_checkout() -> Path:
+    """The checkout owning the Git directory; worktrees resolve to it."""
+    import subprocess
+
+    common = subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=repo_root(), text=True).strip()
+    return (repo_root() / common).resolve().parent
+
+
 def queue_dir() -> Path:
     """Honor the shared training queue even when invoked from a worktree."""
     import os
-    import subprocess
 
     override = os.environ.get("TRAINING_QUEUE_DIR")
     if override:
         return Path(override).resolve()
-    common = subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=repo_root(), text=True).strip()
-    return (repo_root() / common).resolve().parent / ".training_queue"
+    return main_checkout() / ".training_queue"
 
 
 def portable_path(path: Path) -> str:
-    try:
-        return str(path.relative_to(repo_root()))
-    except ValueError:
-        return str(path.resolve())
+    """Record a local path without machine-specific prefixes.
+
+    Paths inside the active checkout or the main checkout (which contains the
+    shared queue and ``.claude/worktrees``) become relative to that checkout, as
+    readers such as kg_curves resolve them against both. Other paths under the
+    home directory use ``~/``; anything else stays absolute.
+    """
+    resolved = path.resolve()
+    for base in (repo_root().resolve(), main_checkout()):
+        if resolved.is_relative_to(base):
+            return resolved.relative_to(base).as_posix()
+    home = Path.home().resolve()
+    if resolved.is_relative_to(home):
+        return "~/" + resolved.relative_to(home).as_posix()
+    return str(resolved)

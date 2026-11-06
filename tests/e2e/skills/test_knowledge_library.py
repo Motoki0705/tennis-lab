@@ -1,8 +1,10 @@
-"""CPU-only storage contracts: concurrency, integrity and summary review lifecycle."""
+"""CPU-only storage contracts: concurrency, integrity and the narrative documents."""
 from __future__ import annotations
 
 import importlib
 import os
+import re
+import shutil
 import subprocess
 import sys
 from datetime import date
@@ -20,11 +22,27 @@ def command(base: Path, script: str, *args: str, check: bool = True) -> subproce
     return subprocess.run([sys.executable, str(SCRIPTS / script), *args], cwd=ROOT, env={**os.environ, "KNOWLEDGE_DIR": str(base)}, text=True, capture_output=True, check=check)
 
 
+def seed_registry(base: Path, *tasks: str) -> None:
+    """Write the registry an isolated library needs: tasks, relation types, no deployments."""
+    registry = base / "registry"
+    registry.mkdir(parents=True, exist_ok=True)
+    path = registry / "tasks.yaml"
+    entries = yaml.safe_load(path.read_text())["tasks"] if path.exists() else {}
+    for task in tasks:
+        entries.setdefault(task, {"status": "active", "note": "isolated test topic"})
+    path.write_text(yaml.safe_dump({"schema_version": 1, "tasks": entries}, allow_unicode=True))
+    shutil.copyfile(ROOT / "knowledge/registry/relations.yaml", registry / "relations.yaml")
+    if not (registry / "deployments.yaml").exists():
+        (registry / "deployments.yaml").write_text("schema_version: 1\nconfigs: []\ndeployments: []\n")
+
+
 def meta(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text().split("---", 2)[1])  # type: ignore[no-any-return]
 
 
 def create(base: Path, node_id: str, task: str = "new_topic", *extra: str) -> subprocess.CompletedProcess[str]:
+    if re.fullmatch(r"[a-z][a-z0-9_]*", task):  # Invalid names stay unregistered and must fail.
+        seed_registry(base, task)
     result = command(base, "kg_new.py", "--type", "run", "--task", task, "--id", node_id, "--title", "試験", *extra)
     path = next((base / "nodes").rglob(f"*-{node_id}.md"))
     path.write_text(path.read_text() + "\n合成入力の登録動作を確認した。精度の評価は行っていない。\n")
@@ -47,6 +65,7 @@ def test_task_scoped_sequences_force_and_invalid_task(tmp_path: Path) -> None:
 
 
 def test_concurrent_registration_allocates_unique_numbers(tmp_path: Path) -> None:
+    seed_registry(tmp_path, "plcs")
     procs = [subprocess.Popen([sys.executable, str(SCRIPTS / "kg_new.py"), "--type", "run", "--task", "plcs", "--id", f"run-{i}", "--title", "並列登録"], cwd=ROOT, env={**os.environ, "KNOWLEDGE_DIR": str(tmp_path)}, stdout=subprocess.PIPE, stderr=subprocess.PIPE) for i in range(8)]
     for proc in procs:
         _, stderr = proc.communicate(timeout=30)
@@ -55,25 +74,20 @@ def test_concurrent_registration_allocates_unique_numbers(tmp_path: Path) -> Non
     assert sorted(numbers) == list(range(1, 9))
 
 
-def test_paper_references_checksum_and_summary_staleness(tmp_path: Path) -> None:
+def test_paper_references_and_checksum(tmp_path: Path) -> None:
+    seed_registry(tmp_path, "new_topic")
     pdf = tmp_path / "input.pdf"
     pdf.write_bytes(b"%PDF-1.4\nfixture\n%%EOF")
     command(tmp_path, "kg_papers.py", "--id", "paper-2024-fixture", "--title", "Paper", "--authors", "Author", "--tasks", "new_topic", "--source", "https://example.org/paper/v1", "--license", "https://creativecommons.org/licenses/by/4.0/", "--pdf", str(pdf))
     note = tmp_path / "Papers/paper-2024-fixture/paper.md"
     note.write_text(note.read_text() + "\n検証用のPDF fixture。実在研究の主張は含まない。\n")
     create(tmp_path, "run-one", "new_topic", "--papers", "paper-2024-fixture")
-    (tmp_path / "summary.md").write_text("# Summary\n試験の限界を確認した。\n")
-    stale = command(tmp_path, "kg_validate.py", "--check-summary", check=False)
-    assert stale.returncode == 1 and "unreviewed" in stale.stdout
-    command(tmp_path, "kg_summary.py", "--mark-reviewed")
-    command(tmp_path, "kg_validate.py", "--check-summary")
-    node = next((tmp_path / "nodes").rglob("*.md"))
-    node.write_text(node.read_text() + "\n追加の考察\n")
-    assert command(tmp_path, "kg_summary.py", check=False).returncode == 1
+    command(tmp_path, "kg_validate.py")
     paper = tmp_path / "Papers/paper-2024-fixture/paper.pdf"
     paper.write_bytes(b"%PDF-modified")
     result = command(tmp_path, "kg_validate.py", check=False)
     assert result.returncode == 1 and "sha256 mismatch" in result.stdout
+    node = next((tmp_path / "nodes").rglob("*.md"))
     node.write_text(node.read_text().replace("paper-2024-fixture", "paper-2024-missing"))
     assert "unknown paper" in command(tmp_path, "kg_validate.py", check=False).stdout
 
@@ -99,6 +113,7 @@ def test_duplicate_sequence_and_broken_edges_are_rejected(tmp_path: Path) -> Non
 
 
 def test_log_import_respects_explicit_date_and_task(tmp_path: Path) -> None:
+    seed_registry(tmp_path, "blcs")
     job = tmp_path / "done/20260920_fixture.job"
     job.parent.mkdir()
     job.write_text("# name: fixture\npython -m src.tasks.blcs.scripts.train model=test loss=baseline\n")
@@ -232,7 +247,8 @@ def test_cycles_rejected_but_mutual_comparisons_allowed(tmp_path: Path) -> None:
     assert 'members: cycle detected' in command(tmp_path, 'kg_validate.py', check=False).stdout
 
 
-def test_unfinished_scaffold_and_summary_edits_require_completion(tmp_path: Path) -> None:
+def test_unfinished_scaffold_and_narrative_documents(tmp_path: Path) -> None:
+    seed_registry(tmp_path, 'new_topic')
     command(tmp_path, 'kg_new.py', '--type', 'run', '--task', 'new_topic', '--id', 'run-draft', '--title', '下書き')
     node = next((tmp_path / 'nodes').rglob('*.md'))
     assert 'date' not in meta(node) and 'provider' not in meta(node)
@@ -241,16 +257,15 @@ def test_unfinished_scaffold_and_summary_edits_require_completion(tmp_path: Path
     update_meta(node, status='failed', metrics={}, issue=None)
     summary = tmp_path / 'summary.md'
     summary.write_text('# Summary\n')
-    assert command(tmp_path, 'kg_summary.py', '--mark-reviewed', check=False).returncode == 1
-    summary.write_text('# Summary\n実行失敗のためbaselineは維持する。\n')
-    command(tmp_path, 'kg_summary.py', '--mark-reviewed')
+    assert 'substantive narrative' in command(tmp_path, 'kg_validate.py', '--check-summary', check=False).stdout
+    summary.write_text('# Summary\n実行失敗のためbaselineは維持する。[根拠](nodes/new_topic/000001-run-draft.md)\n')
     command(tmp_path, 'kg_validate.py', '--check-summary')
-    summary.write_text(summary.read_text() + '\n追加の解釈は未レビュー。\n')
-    assert command(tmp_path, 'kg_validate.py', '--check-summary', check=False).returncode == 1
-    command(tmp_path, 'kg_summary.py', '--mark-reviewed')
-    command(tmp_path, 'kg_validate.py', '--check-summary')
-    summary.write_text(summary.read_text().replace(' on ', ' on 2026-02-30 --><!-- on ', 1))
-    assert command(tmp_path, 'kg_validate.py', '--check-summary', check=False).returncode == 1
+    command(tmp_path, 'kg_summary.py')
+    summary.write_text(summary.read_text() + '[移動した節](reports/missing.md) と `[コード中](nowhere.md)`\n')
+    result = command(tmp_path, 'kg_validate.py', '--check-summary', check=False)
+    assert result.returncode == 1 and 'broken link reports/missing.md' in result.stdout and 'nowhere' not in result.stdout
+    summary.write_text('# Summary\n' + '判断。' * 7000)
+    assert 'budget' in command(tmp_path, 'kg_validate.py', '--check-summary', check=False).stdout
 
 
 def test_missing_library_or_orphan_papers_are_not_silently_ignored(tmp_path: Path) -> None:
@@ -279,7 +294,6 @@ def test_base_comparison_preserves_identity_and_deleted_allocations(tmp_path: Pa
     subprocess.run(['git', 'init', '-q', str(tmp_path)], check=True)
     subprocess.run(['git', '-C', str(tmp_path), 'add', '.'], check=True)
     subprocess.run(['git', '-C', str(tmp_path), '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.org', 'commit', '-qm', 'base'], check=True)
-    monkeypatch.setattr(history, 'repo_root', lambda: tmp_path)
     monkeypatch.setattr(history, 'nodes_dir', lambda: base / 'nodes')
     lib = importlib.import_module('kg_lib')
     directory = base / 'nodes/new_topic'

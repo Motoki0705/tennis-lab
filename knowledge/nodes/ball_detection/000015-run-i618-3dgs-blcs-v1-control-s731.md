@@ -55,7 +55,8 @@ parents:
 - run-i618-3dgs-blcs-real-baseline-v1
 relations:
 - to: run-i618-blcs-b00-full-scale-v1
-  rel: controls_for
+  rel: compares
+  note: 対象の対照条件
 tags:
 - ball_detection
 - 3dgs-blcs

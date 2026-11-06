@@ -27,7 +27,7 @@ artifacts:
   input_verification: knowledge/runs/group-i983-court-throughput-s42/input-verification.json
 relations:
 - to: run-i983-court-dinov3-splus-s42
-  rel: analyzes
+  rel: evaluates
 ---
 
 ユーザーの「Driveからデータをローカルへ取得していないか」「モデルが大きくbatchを増やせず遅いか」という仮説を調べた。元S+ runの準備記録と、同じGit/入力を復元した新しいL4の実体を照合した。入力は `/content/tennis-lab/data` の通常のVM filesystemへ取得済みで、学習batchごとにDriveから画像を読んでいない。

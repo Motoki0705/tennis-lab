@@ -188,7 +188,8 @@ from missing/unknown history. Annotation still requires its own stage receipt
 before reporting success; inference can recover a retained result; a log-only
 knowledge import reports expiry and directs the caller to the retained repro
 bundle. Knowledge references to queue logs have the same seven-day lifetime;
-promoted repro/prediction artifacts remain available.
+the repro bundle and metric summaries promoted to knowledge remain available, and
+prediction arrays remain in the retained `repro/` bundle.
 
 ## Reproducibility bundle (auto-saved, issue #533)
 
@@ -214,8 +215,9 @@ prediction bundles, and missing pointers keep their checkpoints. Pruning is
 non-fatal and never removes the prediction bundle.
 
 After a run finishes, register it into the git-tracked knowledge graph with the
-**knowledge-control** skill, which promotes the repro bundle + predictions into
-`knowledge/runs/<run-id>/`:
+**knowledge-control** skill, which copies the repro bundle and small metric
+summaries into `knowledge/runs/<run-id>/`. Prediction arrays are never copied;
+they stay in `$TRAINING_QUEUE_DIR/repro/<jobid>/predictions/`:
 
 ```bash
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_register.py <job-name> \
