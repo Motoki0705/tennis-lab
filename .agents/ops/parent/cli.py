@@ -86,9 +86,21 @@ def parser() -> argparse.ArgumentParser:
         worker = commands.add_parser(name)
         worker.add_argument("--child", type=int, required=True)
         if name in {"start-worker", "continue-worker"}:
-            worker.add_argument("--prompt-file", required=True)
+            worker.add_argument(
+                "--prompt-file",
+                required=name == "start-worker",
+                help="task/fix instructions; pending planning answers are sent automatically",
+            )
+            worker.add_argument(
+                "--additional-instruction-file",
+                help="extra instructions appended separately to a pending planning answer",
+            )
             worker.add_argument("--model", choices=models)
         if name == "start-worker":
+            worker.add_argument(
+                "--skip-planning-reason-file",
+                help="explicit reason to skip planning for a trivial initial task",
+            )
             worker.add_argument("--branch", required=True)
             worker.add_argument("--worktree", type=Path, required=True)
         if name == "continue-worker":
@@ -146,7 +158,16 @@ def parser() -> argparse.ArgumentParser:
     ended.add_argument("--evidence-file", required=True)
     manual = commands.add_parser("run-worker")
     manual.add_argument("--child", type=int, required=True)
-    manual.add_argument("--prompt-file", type=Path, required=True)
+    manual.add_argument(
+        "--prompt-file",
+        type=Path,
+        help="task/fix instructions; pending planning answers are sent automatically",
+    )
+    manual.add_argument("--additional-instruction-file")
+    manual.add_argument(
+        "--skip-planning-reason-file",
+        help="explicit reason; initial trivial tasks only",
+    )
     manual.add_argument("--resume", action="store_true")
     manual.add_argument("--restart-evidence-file")
     manual.add_argument(
@@ -161,6 +182,19 @@ def parser() -> argparse.ArgumentParser:
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True)
     run_record.add_argument("--run-dir", type=Path, required=True)
+    decision = commands.add_parser(
+        "decide-worker-plan",
+        help="bind a parent answer to the latest completed planning final",
+    )
+    decision.add_argument("--child", type=int, required=True)
+    decision.add_argument(
+        "--action", choices=("approve", "investigate", "reject"), required=True
+    )
+    decision.add_argument("--answer-file", required=True)
+    for name in ("migrate-worker-phase", "refresh-worker-plan"):
+        phase_parser = commands.add_parser(name)
+        phase_parser.add_argument("--child", type=int, required=True)
+        phase_parser.add_argument("--evidence-file", required=True)
     for command in ("stop", "resume", "improvement"):
         sub = commands.add_parser(command)
         sub.add_argument("--child", type=int, required=True)
@@ -243,6 +277,12 @@ def _main(argv: list[str] | None = None) -> int:
                 model=args.model,
                 model_reason=read_text(args.model_reason_file)
                 if args.model_reason_file
+                else None,
+                skip_reason=read_text(args.skip_planning_reason_file)
+                if args.skip_planning_reason_file
+                else None,
+                additional=read_text(args.additional_instruction_file)
+                if args.additional_instruction_file
                 else None,
                 restart_evidence=read_text(args.restart_evidence_file)
                 if args.restart_evidence_file
@@ -408,6 +448,33 @@ def _main(argv: list[str] | None = None) -> int:
                 )
             elif command == "improvement":
                 result = session.improvement(number(args.child), read_object(args.spec))
+            elif command in {
+                "decide-worker-plan",
+                "migrate-worker-phase",
+                "refresh-worker-plan",
+            }:
+                from . import worker_preflight
+
+                if command == "decide-worker-plan":
+                    result = worker_preflight.decide(
+                        session,
+                        number(args.child),
+                        args.action,
+                        read_text(args.answer_file),
+                    )
+                elif command == "migrate-worker-phase":
+                    result = worker_preflight.migrate(
+                        session, number(args.child), read_text(args.evidence_file)
+                    )
+                else:
+                    from .development import refresh_worker_plan
+
+                    result = refresh_worker_plan(
+                        session,
+                        args.dispatcher_state_dir,
+                        number(args.child),
+                        read_text(args.evidence_file),
+                    )
             elif command == "record-result":
                 result = session.record_result(
                     number(args.child), read_text(args.evidence_file)

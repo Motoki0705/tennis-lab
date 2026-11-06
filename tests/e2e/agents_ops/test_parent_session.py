@@ -18,6 +18,7 @@ from typing import Any, cast
 import pytest
 
 from tests.support.agents_ops.directory_seed import DirectorySeed
+from tests.support.agents_ops.worker_preflight import completed_implementation
 
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
@@ -1407,6 +1408,7 @@ def test_delegation_reconcile_and_completed_tasks_do_not_relaunch(
     state = p.state()
     state["prs"] = [p.pr(100, 10, branch="codex/a")]
     p.save(state)
+    completed_implementation(p)
     p.cli(
         "record-result",
         "--child",

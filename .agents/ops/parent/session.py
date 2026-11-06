@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 import uuid
@@ -27,7 +28,7 @@ from issues import (
 )
 from issues.cli import render_spec
 
-from . import execution, proposals
+from . import execution, proposals, worker_preflight
 from .github import GitHub
 from .launch import DEFAULT_LAUNCH_POLICY, launch_policy, plan_launches, reason
 from .policy import (
@@ -92,8 +93,12 @@ def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any
     return {
         key: redact(value)
         for key, value in task.items()
-        if key not in {"worker_runs", "model_reason"}
-    }
+        if key not in {"worker_runs", "model_reason", "preflight"}
+    } | (
+        {"worker_phase": worker_preflight.summary(task)}
+        if task.get("delegated")
+        else {}
+    )
 
 
 class ParentSession:
@@ -203,7 +208,10 @@ class ParentSession:
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
             "tasks": {
-                n: visible_task(task, run_paths)
+                n: {
+                    **visible_task(task, run_paths),
+                    "worker_phase": worker_preflight.observe(self, int(n)),
+                }
                 for n, task in row.get("tasks", {}).items()
             },
             "launch_plan": self.launch_plan(),
@@ -745,7 +753,18 @@ class ParentSession:
             )
         plan = plan_launches(
             children,
-            self.row.get("tasks", {}),
+            {
+                n: {
+                    **task,
+                    "_preflight_accepted": "preflight" in task
+                    and worker_preflight.implementation_authorized(
+                        worker_preflight.state(task)
+                    )
+                    and worker_preflight.observe(self, int(n))["phase"]
+                    == "implementing",
+                }
+                for n, task in self.row.get("tasks", {}).items()
+            },
             self.gh.pulls(),
             self.gh.repo,
             launch_policy(self.row.get("launch_policy", DEFAULT_LAUNCH_POLICY)),
@@ -835,6 +854,27 @@ class ParentSession:
                     "verification": parse_sections(child.body).get(
                         "成果物・関連PR", "未記録"
                     ),
+                    "worker_phase": worker_preflight.observe(self, n),
+                    "artifacts_accepted": not task.get("delegated")
+                    or (
+                        "preflight" in task
+                        and worker_preflight.implementation_authorized(
+                            worker_preflight.state(task)
+                        )
+                        and worker_preflight.observe(self, n)["phase"] == "implementing"
+                        and task["preflight"].get("accepted_turn_id")
+                        == (
+                            task["preflight"]["turns"][-1]["snapshot"]["turn_id"]
+                            if task["preflight"]["turns"]
+                            else "not_started"
+                        )
+                    ),
+                    "artifact_status": "承認前成果・受理不可"
+                    if matching
+                    and worker_preflight.observe(self, n)["phase"] != "implementing"
+                    and task.get("delegated")
+                    else "成果の検証記録を照合する",
+                    "commits_since_planning": self._planning_commits(task),
                 }
             )
         plan = self.launch_plan()
@@ -849,6 +889,22 @@ class ParentSession:
             "launch_plan": plan,
             "review": self.review_status(self.history()),
         }
+
+    @staticmethod
+    def _planning_commits(task: dict[str, Any]) -> bool | None:
+        value = task.get("preflight", {})
+        turns = value.get("turns", [])
+        if not turns or not task.get("worktree"):
+            return None
+        from .snapshot import git
+
+        start = turns[-1].get("head_at_start")
+        return (
+            git("rev-parse", "HEAD", cwd=Path(task["worktree"])).decode().strip()
+            != start
+            if start
+            else None
+        )
 
     def delegate(
         self,
@@ -967,6 +1023,15 @@ class ParentSession:
                 )
             ),
         }
+        if continue_existing:
+            previous_phase = copy.deepcopy(worker_preflight.state(previous))
+            previous_phase["continuations"].append(
+                {"from": previous_phase["delegation_id"], "to": task["delegation_id"]}
+            )
+            previous_phase["delegation_id"] = task["delegation_id"]
+            task["preflight"] = previous_phase
+        else:
+            task["preflight"] = worker_preflight.new(task["delegation_id"])
         if restart:
             task["restart_evidence"] = restart
         task.pop("worker_ended", None)
@@ -1103,6 +1168,7 @@ class ParentSession:
     def record_result(self, child: int, evidence: str) -> dict[str, Any]:
         self.owner()
         nonempty(evidence, "verification evidence")
+        worker_preflight.require_implementation(self, child)
         # During checking this remains a factual record, without implementation
         # authorization. In an execution phase, stale inputs are an explicit error.
         auth = (
@@ -1148,6 +1214,11 @@ class ParentSession:
             "authorization": auth,
             "requirements_sha256": digest(execution.requirement_body(body)),
         }
+        recorded = self.row["tasks"][str(child)]
+        if recorded.get("delegated"):
+            recorded["preflight"]["accepted_turn_id"] = recorded["preflight"]["turns"][
+                -1
+            ]["snapshot"]["turn_id"]
         self.store.save()
         return {
             "child": child,

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import importlib
 import json
 import os
@@ -96,6 +97,7 @@ def main() -> int:
             {
                 **summary,
                 "contract": contract,
+                "prompt_sha256": hashlib.sha256(raw).hexdigest(),
                 "cleanup_complete": True,
                 "runtime": {
                     "session_id": session_id,
@@ -113,6 +115,20 @@ def main() -> int:
     )
     (directory / "invocation.json").write_text(
         json.dumps({"schema_version": 1, "contract": contract})
+    )
+    headings = (
+        "確認した根拠",
+        "指示との不一致",
+        "実装案",
+        "テスト設計",
+        "制約・未確認事項",
+        "親に決めてほしい点",
+    )
+    (directory / "final.md").write_text(
+        os.environ.get(
+            "MANUAL_PLANNING_FINAL", "\n\n".join(f"## {h}\n\nなし" for h in headings)
+        ),
+        encoding="utf-8",
     )
     print(json.dumps(summary))
     return code

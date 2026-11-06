@@ -121,6 +121,13 @@ def prepare(
     parent, children = session.family()
     child_numbers = set(children) or {parent.number}
     prs = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
+    from .worker_preflight import require_implementation
+
+    for pr in prs:
+        for child in (
+            closing_issues(pr.get("body") or "", session.gh.repo) & child_numbers
+        ):
+            require_implementation(session, child)
     for pr in prs:
         for child in closing_issues(pr.get("body") or "", session.gh.repo) & set(
             children
@@ -263,6 +270,14 @@ def transition(
     if target == "instructed":
         request = run["request"]
         parent, children = session.family()
+        from .worker_preflight import require_implementation
+
+        for entry in request["prs"]:
+            raw = session.gh.get(f"repos/{session.gh.repo}/pulls/{entry['number']}")
+            for child in closing_issues(raw.get("body") or "", session.gh.repo) & (
+                set(children) or {parent.number}
+            ):
+                require_implementation(session, child)
         prs = select_prs(
             [p["number"] for p in request["prs"]],
             session.gh.pulls(),

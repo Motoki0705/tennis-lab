@@ -167,6 +167,9 @@ class DispatchHarness:
             "requirements_sha256": policy.digest(
                 execution.requirement_body(self.h.gh.issues[child]["body"])
             ),
+            "preflight": importlib.import_module("parent.worker_preflight").new(
+                delegation_id
+            ),
         }
 
     def now(self, value: str) -> Any:
@@ -895,19 +898,12 @@ def test_children_redelegation_cannot_hide_live_workers(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture_runtime(d, monkeypatch)
-    d.prepare()
+    d.prepare_family(10, 11, 12)
     d.control.assign()
     env = d.accepted()
     row = d.row()
     for n in (10, 11, 12):
-        row["tasks"][str(n)] = {
-            "delegated": True,
-            "delegation_id": str(n),
-            "agent": "codex",
-            "authorization": row["dispatch"]["authorization"],
-            "worktree": str(d.h.work),
-            "branch": "test",
-        }
+        row["tasks"][str(n)] = d.child_task(n, str(n))
     # Reservation policy normally prevents the third; the runtime entry refuses
     # even if another caller changes that policy directly.
     d.update(row)
@@ -940,19 +936,12 @@ def test_child_end_event_releases_only_matching_delegation_and_resumes_same_pare
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture_runtime(d, monkeypatch)
-    d.prepare()
+    d.prepare_family(10)
     d.control.assign()
     env = d.accepted()
     original_parent = d.job()
     row = d.row()
-    row["tasks"]["10"] = {
-        "delegated": True,
-        "delegation_id": "d1",
-        "agent": "codex",
-        "authorization": row["dispatch"]["authorization"],
-        "worktree": str(d.h.work),
-        "branch": "test",
-    }
+    row["tasks"]["10"] = d.child_task(10, "d1")
     d.update(row)
     child_id = d.control.start_child(1, 10, "d1", "task", env)
     row = d.row()
@@ -1176,18 +1165,14 @@ def test_new_child_delegation_resumes_previous_child_session(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fixture_runtime(d, monkeypatch)
-    d.prepare()
+    d.prepare_family(10)
     d.control.assign()
     env = d.accepted()
     row = d.row()
-    row["tasks"]["10"] = {
-        "delegated": True,
-        "delegation_id": "d1",
-        "agent": "codex",
-        "authorization": row["dispatch"]["authorization"],
-        "worktree": str(d.h.work),
-        "branch": "test",
-    }
+    row["tasks"]["10"] = d.child_task(10, "d1")
+    row["tasks"]["10"]["preflight"].update(
+        phase="implementing", skip_reason="session継続fixtureの自明な変更。"
+    )
     d.update(row)
     job_id = d.control.start_child(1, 10, "d1", "initial", env)
     row = d.row()
@@ -1196,10 +1181,15 @@ def test_new_child_delegation_resumes_previous_child_session(
     d.update(row)
     d.runtime(child)
     d.control.reconcile()
-    row = d.row()
-    row["tasks"]["10"]["delegation_id"] = "d2"
-    row["tasks"]["10"].pop("worker_ended")
-    d.update(row)
+    with d.control.store.locked():
+        row = d.control.store.parents["o/r#1"]
+        session = d.control._session("o/r#1", row)
+        preflight = importlib.import_module("parent.worker_preflight")
+        prepared, _ = preflight.prepare_turn(session, 10, "fix", resume=True)
+        row["tasks"]["10"]["delegation_id"] = "d2"
+        row["tasks"]["10"].pop("worker_ended")
+        preflight.commit_turn(row["tasks"]["10"], prepared)
+        d.control.store.save()
     resumed = d.control.start_child(1, 10, "d2", "fix", env)
     assert d.row()["dispatch"]["jobs"][resumed]["resume_from"] == str(
         Path(child["directory"]) / "runtime"
@@ -1414,7 +1404,8 @@ def test_real_implementation_slots_and_sol_astra_wiring(
         ]
         d.control.launch_reserved()
         wait_until(
-            lambda: all(initialized(d.row()["dispatch"]["jobs"][j]) for j in jobs)
+            lambda: all(initialized(d.row()["dispatch"]["jobs"][j]) for j in jobs),
+            timeout=30,
         )
         row = d.row()
         row["tasks"]["12"] = {**row["tasks"]["10"], "delegation_id": "12"}

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import os
 import signal
 import uuid
@@ -9,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from parent import worker_preflight
 from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
     authorization,
@@ -20,6 +23,7 @@ from parent.github import GitHub
 from parent.policy import closing_issues, digest, nonempty, number
 from parent.session import ParentSession
 from parent.state import Store, session_identity
+from parent.worker_instruction import worker_instruction
 
 from . import judgement
 from .collect import assert_material_fresh, collect, material, source_references
@@ -122,6 +126,17 @@ def occupies(row: dict[str, Any]) -> bool:
             or value["phase"] in {"reserved", "running", "recovery_required"}
         )
     )
+
+
+def check_handoff_capacity(rows: dict[str, Any], schedule: Schedule, key: str) -> None:
+    """An idle handed-off owner must reacquire the parent execution slot."""
+    dispatch = managed(rows[key])
+    if dispatch and dispatch.get("controller_mode") == "handoff":
+        used = sum(occupies(row) for other, row in rows.items() if other != key)
+        if used >= schedule.read()["config"]["max_parents"]:
+            raise ValueError(
+                "parent execution slots are occupied; wait before continuing the saved worker"
+            )
 
 
 def event(dispatch: dict[str, Any], kind: str, **detail: Any) -> None:
@@ -288,7 +303,7 @@ class Supervisor:
                 or task.get("branch") != job["branch"]
             ):
                 raise ValueError("current child delegation changed or stopped")
-            _, children = session.work_items()
+            parent, children = session.work_items()
             child = children.get(job["child"])
             if child is None or task.get("requirements_sha256") != digest(
                 requirement_body(child.body)
@@ -297,6 +312,17 @@ class Supervisor:
                     "delegated child requirements or formal parent changed"
                 )
             check_task_adoptions(self.gh, child.body)
+            worker_preflight.check_admission(
+                session,
+                job["child"],
+                job.get("preflight"),
+                current=worker_preflight.context(
+                    session,
+                    job["child"],
+                    authorized=job["authorization"],
+                    work_items=(parent, children),
+                ),
+            )
             planned = next(
                 t
                 for t in session.launch_plan(restart_child=job["child"])["tasks"]
@@ -437,6 +463,18 @@ class Supervisor:
         event(dispatch, "runtime_cancelled", job_id=job["id"], reason=reason)
         task = row["tasks"].get(str(job["child"]), {})
         if (
+            "preflight" in job
+            and "preflight" in task
+            and task.get("delegation_id") == job["delegation_id"]
+        ):
+            phase = worker_preflight.state(task)
+            for turn in phase["turns"]:
+                if turn["snapshot"]["turn_id"] == job["preflight"]["turn_id"]:
+                    turn["cancelled"] = True
+                    for decision in phase["decisions"]:
+                        if decision["delivered_turn_id"] == turn["snapshot"]["turn_id"]:
+                            decision["delivered_turn_id"] = None
+        if (
             job["child"] is not None
             and task.get("delegation_id") == job["delegation_id"]
         ):
@@ -513,6 +551,27 @@ class Supervisor:
             "candidate_sha256": digest(dispatch["candidate"]),
             "start_input_sha256": digest(material(snapshot, parent, sources)),
         }
+        if child is not None:
+            phase = worker_preflight.state(task)
+            if not phase["turns"] or phase["turns"][-1]["source"] is not None:
+                raise ValueError(
+                    "reserve the current planning/implementation turn before start-child"
+                )
+            job["preflight"] = copy.deepcopy(phase["turns"][-1]["snapshot"])
+            prompt_sha = hashlib.sha256(
+                nonempty(prompt, "worker prompt").encode("utf-8")
+            ).hexdigest()
+            if phase["turns"][-1].get("prompt_sha256", prompt_sha) != prompt_sha:
+                raise ValueError(
+                    "worker instruction differs from the saved planning turn"
+                )
+            phase["turns"][-1]["prompt_sha256"] = prompt_sha
+            phase["turns"][-1]["source"] = str(directory / "runtime")
+            if resume_from is not None:
+                # Authority may change, but the resumed runner task is immutable.
+                job["task_id"] = load(Path(resume_from) / "result.json")["contract"][
+                    "task_id"
+                ]
         Store.write_json(directory / "start-input.json", snapshot)
         if child is None:
             inputs = {
@@ -778,12 +837,19 @@ class Supervisor:
             if (
                 not dispatch
                 or row["session"] != session_identity(env)
-                or dispatch["phase"] != "running"
+                or (
+                    dispatch["phase"] != "running"
+                    and not (
+                        dispatch.get("controller_mode") == "handoff"
+                        and dispatch["phase"] == "waiting"
+                    )
+                )
             ):
                 raise ValueError(
                     "only the accepted running parent may launch implementation workers"
                 )
             self._authorized(key, row)
+            check_handoff_capacity(self.store.parents, self.schedule, key)
             task = row["tasks"].get(str(child), {})
             if (
                 not task.get("delegated")
@@ -817,6 +883,35 @@ class Supervisor:
             if related:
                 previous = max(related, key=lambda j: j["sequence"])
                 resume_from = self.resume_source(row, previous)
+            cwd = nonempty(task.get("worktree"), "delegated worktree")
+            nonempty(task.get("branch"), "delegated branch")
+            if not Path(cwd).is_absolute():
+                raise ValueError("delegated worktree must be absolute")
+            phase = worker_preflight.state(task)
+            if not phase["turns"]:
+                # The dispatcher CLI is also an initial entry, never a planning bypass.
+                session = self._session(key, row)
+                prepared, specific = worker_preflight.prepare_turn(
+                    session, child, prompt, resume=False
+                )
+                turn = worker_preflight.commit_turn(task, prepared)
+                _, items = session.work_items()
+                prompt = worker_instruction(
+                    parent,
+                    child,
+                    Path(task["worktree"]),
+                    task["branch"],
+                    items[child].body,
+                    specific,
+                    turn,
+                )
+            worker_preflight.check_admission(
+                self._session(key, row),
+                child,
+                phase["turns"][-1]["snapshot"]
+                if phase["turns"]
+                else task["preflight"]["turns"][-1]["snapshot"],
+            )
             job = self._job(
                 key,
                 row,
@@ -840,6 +935,14 @@ class Supervisor:
                 "stopped",
             }:
                 raise ValueError("resume requires an idle managed parent")
+            if dispatch.get("controller_mode") == "handoff":
+                self._authorized(key, row)
+                dispatch.update(
+                    phase="waiting", reason=nonempty(reason, "resume reason")
+                )
+                event(dispatch, "owner_resume_requested", reason=reason)
+                self.store.save()
+                return
             self._authorized(key, row)
             previous = dispatch["jobs"][dispatch["active_job"]]
             if self.resume_source(row, previous) is None or row["session"].startswith(
@@ -880,6 +983,9 @@ class Supervisor:
                     "evidence": f"dispatcher runtime {record['run_id']}: terminal result, cleanup_complete, no live runner/CLI/group",
                 }
             dispatch["wake_requested"] = True
+            if dispatch.get("controller_mode") == "handoff":
+                dispatch.update(phase="waiting", wake_requested=False)
+                return
             if dispatch["phase"] == "waiting":
                 dispatch.update(
                     phase="resume_pending", reason="子runtimeの終了イベントを確認する"
