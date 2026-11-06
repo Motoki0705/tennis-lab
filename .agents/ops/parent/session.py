@@ -878,11 +878,18 @@ class ParentSession:
                             worker_preflight.state(task)
                         )
                         and worker_preflight.observe(self, n)["phase"] == "implementing"
-                        and task["preflight"].get("accepted_turn_id")
-                        == (
-                            task["preflight"]["turns"][-1]["snapshot"]["turn_id"]
-                            if task["preflight"]["turns"]
-                            else "not_started"
+                        and (
+                            (
+                                not task["preflight"]["turns"]
+                                and worker_preflight.legacy_authorized(
+                                    task["preflight"]
+                                )
+                            )
+                            or (
+                                bool(task["preflight"]["turns"])
+                                and task["preflight"].get("accepted_turn_id")
+                                == task["preflight"]["turns"][-1]["snapshot"]["turn_id"]
+                            )
                         )
                     ),
                     "artifact_status": "承認前成果・受理不可"
@@ -1232,9 +1239,10 @@ class ParentSession:
         }
         recorded = self.row["tasks"][str(child)]
         if recorded.get("delegated"):
-            recorded["preflight"]["accepted_turn_id"] = recorded["preflight"]["turns"][
-                -1
-            ]["snapshot"]["turn_id"]
+            turns = recorded["preflight"]["turns"]
+            recorded["preflight"]["accepted_turn_id"] = (
+                turns[-1]["snapshot"]["turn_id"] if turns else None
+            )
         self.store.save()
         return {
             "child": child,

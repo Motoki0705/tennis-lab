@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
 import json
@@ -13,7 +14,7 @@ import pytest
 
 from tests.e2e.agents_ops.test_dispatcher_supervisor import FixtureRuntime
 from tests.e2e.agents_ops.test_merge_gate import GateEnv, make_gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -466,3 +467,240 @@ def test_closed_issue_never_allows_initial_parent_or_implementation_start(
         else "parent issue is not open"
     )
     assert expected in rejected["diagnostic"]
+
+
+@pytest.mark.parametrize("merged", [False, True], ids=["reviewing", "merged"])
+def test_legacy_result_migration_preserves_review_and_completion(
+    completion_workflow: CompletionWorkflow, merged: bool
+) -> None:
+    """An explicit migration can adopt proven old work without inventing turns."""
+    flow = completion_workflow
+    p, control = flow.gate.review.p, flow.control
+    # Review fixtures use short local branch names; a real worker's checkout
+    # must also match its recorded remote branch, not only its commit.
+    pr = p.state()["prs"][0]
+    worktree = p.repo / ".claude/worktrees/pr-0"
+    run_git(worktree, "switch", "-C", pr["head"]["ref"])
+    if merged:
+        (worktree / "change.txt").write_text("reviewed fix\n")
+        run_git(worktree, "add", "change.txt")
+        run_git(worktree, "commit", "-m", "verified legacy fix")
+        head = run_git(worktree, "rev-parse", "HEAD")
+        state = p.state()
+        state["prs"][0]["head"]["sha"] = head
+        p.save(state)
+        flow.gate.review.cli(
+            "resolve",
+            "--run",
+            flow.gate.review.request["review_run_id"],
+            "--pr",
+            "100",
+            "--fixed-head",
+            head,
+            "--finding",
+            "changes",
+            "--evidence",
+            p.spec(
+                {
+                    "ci": "対象headのPython成功。",
+                    "regression_tests": "代表回帰が成功。",
+                    "resolution": "親が旧委任の修正差分を確認。",
+                    "reviewed_paths": ["change.txt"],
+                }
+            ),
+        )
+        response = flow.gate.cli("merge")
+        assert response.returncode == 0, response.stderr + response.stdout
+    with control.store.locked():
+        task = flow.session.row["tasks"]["1"]
+        task.pop("preflight")
+        task.pop("review_preflight")
+        job = flow.session.row["dispatch"]["jobs"][flow.implementation["id"]]
+        job.pop("preflight", None)
+        control.store.save()
+    old_request = flow.gate.review.request_path.read_bytes()
+    old_result = (
+        Path(flow.implementation["directory"]) / "runtime/result.json"
+    ).read_bytes()
+    status = json.loads(p.cli("status").stdout)
+    assert status["tasks"]["1"]["worker_phase"]["status"] == "migration_required"
+    blocked = p.cli(
+        "record-result", "--child", "1", "--evidence-file", p.note(), ok=False
+    )
+    assert "migrate-worker-phase" in blocked.stderr
+    before = flow.row()
+    result_path = Path(flow.implementation["directory"]) / "runtime/result.json"
+    unclean = json.loads(old_result)
+    unclean["cleanup_complete"] = False
+    result_path.write_text(json.dumps(unclean))
+    rejected = p.cli(
+        "migrate-worker-phase", "--child", "1", "--evidence-file", p.note(), ok=False
+    )
+    assert "termination" in rejected.stderr
+    assert flow.row() == before
+    result_path.write_bytes(old_result)
+    if merged:
+        rejected = p.cli(
+            "migrate-worker-phase",
+            "--child",
+            "1",
+            "--replan",
+            "--evidence-file",
+            p.note(),
+            ok=False,
+        )
+        assert "not open" in rejected.stderr
+        assert flow.row() == before
+        # The real #1693 merge has a resolved head, rather than the first
+        # reviewed head. An unpublished/missing resolution must not adopt it.
+        resolution = next(flow.gate.review.run_dir.glob("resolution-*.diff"))
+        diff = resolution.read_bytes()
+        resolution.unlink()
+        rejected = p.cli(
+            "migrate-worker-phase",
+            "--child",
+            "1",
+            "--evidence-file",
+            p.note(),
+            ok=False,
+        )
+        assert "fix coverage" in rejected.stderr
+        assert flow.row() == before
+        resolution.write_bytes(diff)
+    else:
+        with control.store.locked():
+            flow.session.row["reviews"] = []
+            control.store.save()
+        rejected = p.cli(
+            "migrate-worker-phase",
+            "--child",
+            "1",
+            "--evidence-file",
+            p.note(),
+            ok=False,
+        )
+        assert "saved review" in rejected.stderr
+        assert "preflight" not in flow.row()["tasks"]["1"]
+        replanned = p.cli(
+            "migrate-worker-phase",
+            "--child",
+            "1",
+            "--replan",
+            "--evidence-file",
+            p.note(),
+        )
+        assert json.loads(replanned.stdout)["worker_phase"]["phase"] == "planning"
+        refused = p.cli(
+            "record-result", "--child", "1", "--evidence-file", p.note(), ok=False
+        )
+        assert "planning approval" in refused.stderr
+        with control.store.locked():
+            flow.session.row["tasks"]["1"] = before["tasks"]["1"]
+            flow.session.row["reviews"] = before["reviews"]
+            control.store.save()
+    migrated = p.cli(
+        "migrate-worker-phase",
+        "--child",
+        "1",
+        "--evidence-file",
+        p.note("旧CLIのPR・review・結果検証・終了を照合して明示移行する。"),
+    )
+    assert migrated.returncode == 0, migrated.stderr
+    assert json.loads(migrated.stdout)["worker_phase"]["phase"] == "implementing"
+    phase = flow.row()["tasks"]["1"]["preflight"]
+    assert not phase["turns"] and not phase["decisions"]
+    assert flow.gate.review.request_path.read_bytes() == old_request
+    assert (
+        Path(flow.implementation["directory"]) / "runtime/result.json"
+    ).read_bytes() == old_result
+    p.cli("record-result", "--child", "1", "--evidence-file", p.note())
+    assert (
+        json.loads(p.cli("status").stdout)["tasks"]["1"]["worker_phase"]["phase"]
+        == "implementing"
+    )
+    assert (
+        json.loads(p.cli("reconcile").stdout)["tasks"][0]["artifacts_accepted"] is True
+    )
+    if merged:
+        original = p.state()
+        changed = copy.deepcopy(original)
+        extra = copy.deepcopy(changed["prs"][0])
+        extra.update(number=101, state="open", merged=False, merged_at=None)
+        extra["head"]["sha"] = "f" * 40
+        changed["prs"].append(extra)
+        p.save(changed)
+        rejected = p.cli(
+            "record-result", "--child", "1", "--evidence-file", p.note(), ok=False
+        )
+        assert "legacy result PR set changed" in rejected.stderr
+        p.save(original)
+    if not merged:
+        decision = flow.gate.results(flow.gate.cli("merge", AGENT_AUTO_MERGE="0"))[100]
+        assert decision["decision"] == "merge", decision
+        requested = p.cli(
+            "review-request",
+            "--prs",
+            "100",
+            "--reason-file",
+            p.note("移行後に追加確認の対象を明示する。"),
+            "--evidence-file",
+            p.note(),
+            "--instruction-file",
+            p.note("旧委任の結果と移行の証拠を確認する。"),
+        )
+        assert json.loads(requested.stdout)["review_state"] == "instructed"
+        changed = p.state()
+        changed["prs"][0]["head"]["sha"] = "f" * 40
+        p.save(changed)
+        rejected = p.cli(
+            "record-result", "--child", "1", "--evidence-file", p.note(), ok=False
+        )
+        assert "legacy" in rejected.stderr
+    else:
+        development = importlib.import_module("parent.development")
+        with control.store.locked():
+            assert development.verify_completion(flow.session) == [100]
+        flow.finish(flow.parent, "waiting")
+        control.resume(1, "旧委任を明示移行し、完了照合へ戻る。")
+        control.reconcile()
+        row = flow.row()
+        resumed = row["dispatch"]["jobs"][row["dispatch"]["active_job"]]
+        assert control.claim("o/r#1", resumed["id"]) is not None
+        flow.accept(resumed)
+        report = p.cli(
+            "workflow-report",
+            "--spec",
+            p.spec(
+                {
+                    "schema_version": 1,
+                    "state": "completed",
+                    "reason": "既存のmerge・review・終了を照合した。",
+                    "resume_condition": "完了。",
+                    "evidence": "旧委任を明示移行し、元の証拠を保持して完了確認した。",
+                }
+            ),
+        )
+        flow.finish(resumed, "completed", json.loads(report.stdout))
+        assert flow.row()["status"] == "ended"
+        run_git(p.repo, "worktree", "remove", "--force", str(worktree))
+        with control.store.locked():
+            task = flow.session.row["tasks"]["1"]
+            task.pop("preflight")
+            task.pop("review_preflight")
+            control.store.save()
+        rejected = p.cli(
+            "migrate-worker-phase",
+            "--child",
+            "1",
+            "--evidence-file",
+            p.note(),
+            extra={"CLAUDE_CODE_SESSION_ID": "another-owner"},
+            ok=False,
+        )
+        assert "saved owner" in rejected.stderr
+        p.cli("migrate-worker-phase", "--child", "1", "--evidence-file", p.note())
+        assert flow.row()["status"] == "ended"
+        assert (
+            json.loads(p.cli("status").stdout)["tasks"]["1"]["worker_phase"]["phase"]
+            == "implementing"
+        )

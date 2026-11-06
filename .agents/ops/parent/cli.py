@@ -192,9 +192,23 @@ def parser() -> argparse.ArgumentParser:
     )
     decision.add_argument("--answer-file", required=True)
     for name in ("migrate-worker-phase", "refresh-worker-plan"):
-        phase_parser = commands.add_parser(name)
+        phase_parser = commands.add_parser(
+            name,
+            description=(
+                "Explicitly verify legacy termination/result/review evidence. A verified PR is adopted; "
+                "without a PR the worker enters planning. Closed completed issues require merged evidence."
+                if name == "migrate-worker-phase"
+                else "Rebind a managed worker to the current basis/owner before replanning."
+            ),
+        )
         phase_parser.add_argument("--child", type=int, required=True)
         phase_parser.add_argument("--evidence-file", required=True)
+        if name == "migrate-worker-phase":
+            phase_parser.add_argument(
+                "--replan",
+                action="store_true",
+                help="explicitly replan an open legacy worker instead of adopting a verified PR/result",
+            )
     for command in ("stop", "resume", "improvement"):
         sub = commands.add_parser(command)
         sub.add_argument("--child", type=int, required=True)
@@ -464,7 +478,10 @@ def _main(argv: list[str] | None = None) -> int:
                     )
                 elif command == "migrate-worker-phase":
                     result = worker_preflight.migrate(
-                        session, number(args.child), read_text(args.evidence_file)
+                        session,
+                        number(args.child),
+                        read_text(args.evidence_file),
+                        replan=args.replan,
                     )
                 else:
                     from .development import refresh_worker_plan

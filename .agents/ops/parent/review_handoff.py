@@ -11,7 +11,7 @@ from .snapshot import prepare, transition
 from .worker_preflight import require_implementation
 
 
-def runner_ended(session: ParentSession, child: int) -> None:
+def runner_ended(session: ParentSession, child: int, *, persist: bool = True) -> None:
     task = session.row["tasks"].get(str(child), {})
     if not task.get("delegated"):
         return
@@ -54,6 +54,8 @@ def runner_ended(session: ParentSession, child: int) -> None:
                 f"#{child}: runner completion does not match the current delegation"
             )
     if task.get("worker_ended", {}).get("delegation_id") == task["delegation_id"]:
+        return
+    if not persist:
         return
     task["worker_ended"] = {
         "delegation_id": task["delegation_id"],

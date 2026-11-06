@@ -187,6 +187,8 @@ def invalidate(
     value.update(phase="planning", refresh_required=True, skip_reason=None)
     for decision in value["decisions"]:
         decision["invalidated"] = True
+    if "legacy_result" in value:
+        value["legacy_result"]["invalidated"] = True
     if task is not None:
         if "verification" in task:
             task["verification"]["preflight_invalidated"] = reason
@@ -368,6 +370,11 @@ def summary(task: dict[str, Any], *, stale: bool = False) -> dict[str, Any]:
             "decision_pending_delivery",
             "run-worker --resume / continue-worker",
         )
+    elif not turns and legacy_authorized(value):
+        status, action = (
+            "implementing",
+            "verify migrated legacy result/review or completion",
+        )
     elif not turns:
         status, action = "not_started", "run-worker / start-worker"
     elif value["phase"] == "planning":
@@ -391,6 +398,7 @@ def summary(task: dict[str, Any], *, stale: bool = False) -> dict[str, Any]:
         "turn_id": turns[-1]["snapshot"]["turn_id"] if turns else None,
         "decision_pending": len(pending),
         "planning_skipped": bool(value["skip_reason"]),
+        "legacy_result_migrated": "legacy_result" in value,
     }
 
 
@@ -426,7 +434,9 @@ def bind_runtime(value: dict[str, Any], record: dict[str, Any]) -> None:
     value["runtime"] = observed
 
 
-def latest_evidence(session: ParentSession, child: int) -> tuple[Path, dict[str, Any]]:
+def latest_evidence(
+    session: ParentSession, child: int, *, persist_ended: bool = True
+) -> tuple[Path, dict[str, Any]]:
     """Reuse the launcher's completion checks; never infer end from a final."""
     task = session.row["tasks"][str(child)]
     if session.row.get("dispatch") is not None:
@@ -452,7 +462,7 @@ def latest_evidence(session: ParentSession, child: int) -> tuple[Path, dict[str,
     from .manual_workers import RUNNER, latest_run, validate_run
     from .review_handoff import runner_ended
 
-    runner_ended(session, child)
+    runner_ended(session, child, persist=persist_ended)
     directory = latest_run(session, task)
     validate_run(task, directory)
     proof = Runtime(RUNNER).inspect(directory)
@@ -724,6 +734,7 @@ def implementation_authorized(value: dict[str, Any]) -> bool:
         and not value["refresh_required"]
         and (
             value["skip_reason"]
+            or legacy_authorized(value)
             or any(
                 d["action"] == "approve"
                 and d["delivered_turn_id"] is not None
@@ -731,6 +742,19 @@ def implementation_authorized(value: dict[str, Any]) -> bool:
                 for d in value["decisions"]
             )
         )
+    )
+
+
+def legacy_authorized(value: dict[str, Any]) -> bool:
+    receipt = value.get("legacy_result", {})
+    allowed = {value["delegation_id"]} | {c["from"] for c in value["continuations"]}
+    return bool(
+        receipt
+        and receipt.get("invalidated") is False
+        and receipt.get("lineage_id") == value["lineage_id"]
+        and receipt.get("delegation_id") in allowed
+        and receipt.get("context_sha256") == digest(value["context"])
+        and receipt.get("runtime") == value["runtime"]
     )
 
 
@@ -744,6 +768,11 @@ def require_implementation(session: ParentSession, child: int) -> None:
         raise ValueError(
             "worker planning approval required; implementation artifacts are not accepted"
         )
+    if not value["turns"] and legacy_authorized(value):
+        from .worker_migration import require_result
+
+        require_result(session, child, value)
+        return
     if not value["turns"] or value["turns"][-1]["snapshot"]["phase"] != "implementing":
         raise ValueError(
             "completed implementation turn required after planning approval"
@@ -761,12 +790,34 @@ def require_implementation(session: ParentSession, child: int) -> None:
     bind_runtime(value, record)
 
 
-def migrate(session: ParentSession, child: int, evidence: str) -> dict[str, Any]:
-    session.agreed()
+def migrate(
+    session: ParentSession, child: int, evidence: str, *, replan: bool = False
+) -> dict[str, Any]:
+    row = session.row
+    if (
+        not row
+        or row["session"] != session.session
+        or row["status"] not in {"active", "ended"}
+    ):
+        raise ValueError(
+            "legacy migration requires the saved owner; no reassignment or handoff"
+        )
     nonempty(evidence, "worker phase migration evidence")
     task = session.row["tasks"].get(str(child), {})
     if not task.get("delegated") or "preflight" in task:
         raise ValueError("migration requires an existing worker without a phase")
+    prs = [
+        pr
+        for pr in session.gh.pulls({child})
+        if child in closing_issues(pr.get("body") or "", session.gh.repo)
+    ]
+    adopting = bool(prs) and not replan
+    if not adopting:
+        session.agreed()
+        if session.gh.issue(child)["state"] != "open":
+            raise ValueError(
+                "closed legacy issue requires verified merged-result migration"
+            )
     unstarted = False
     if session.row.get("dispatch") is None:
         from .manual_workers import worker_runs
@@ -796,8 +847,38 @@ def migrate(session: ParentSession, child: int, evidence: str) -> dict[str, Any]
 
         validate_worktree(Path(task["worktree"]), task["branch"])
     else:
-        _, record = latest_evidence(session, child)
+        directory, record = latest_evidence(session, child, persist_ended=False)
         bind_runtime(value, record)
+        if adopting:
+            from .worker_migration import adopt
+
+            staged = copy.deepcopy(task)
+            adopt(session, child, staged, value, directory, record, prs, evidence)
+            with session.gh.fresh_reads():
+                if context(session, child) != value["context"] or any(
+                    session.gh.get(f"repos/{session.gh.repo}/pulls/{pr['number']}")
+                    != pr
+                    for pr in prs
+                ):
+                    raise ValueError(
+                        "legacy inputs/PR changed during migration; retry explicitly"
+                    )
+            task["review_preflight"] = staged["review_preflight"]
+        task["worker_ended"] = {
+            "delegation_id": task["delegation_id"],
+            "evidence": evidence,
+        }
+    if adopting and unstarted:
+        raise ValueError(
+            "legacy result cannot be adopted without a completed worker run"
+        )
+    if not adopting:
+        if "verification" in task:
+            task["verification"]["preflight_invalidated"] = (
+                "legacy worker explicitly migrated to planning"
+            )
+        if "review_preflight" in task:
+            task["review_preflight"]["invalidated"] = True
     task["preflight"] = value
     session.store.save()
     return {"child": child, "worker_phase": summary(task)}

@@ -632,11 +632,44 @@ merge gate本体・policyは変更しない。familyでは影響を受けたPR�
 停止・終了未確認・cleanup失敗は承認や枠の解放の証拠ではない。未起動取消はターン履歴に残し、
 未配送回答は次の同session継続へ戻す。#1610の起動前拒否による欠落runは従来の復旧対象であり、古いrunへ黙って戻らない。
 
-フェーズ欄のない旧委任は `migration_required`。`migrate-worker-phase --child N --evidence-file tmp/migration.md` で
-最新runの終了・contract・sessionを照合してからplanningへ移し、同じsessionで再調査する。
-実装済み・承認済みとは推定しない。移行と再調査により通常は子のターンが1回増え、追加調査ごとにさらに1回増える。
-記録方式が明示された未起動予約（当該委任のrunがない、または全jobが起動証拠なしの初回取消）は、
-worktreeと記録を明示照合して初回planningへ移行できる。run記録方式自体が不明な委任を未起動とは扱わない。
+フェーズ欄のない旧委任は読取で補完せず `migration_required` と表示する。保存された担当の同じsessionが
+`migrate-worker-phase --child N --evidence-file tmp/migration.md` で明示移行する。
+理由だけで実装済み・承認済みとは推定せず、次の証拠で移行先を決める。
+
+| 旧委任の状態 | 必要な証拠・操作 | 移行結果 |
+| --- | --- | --- |
+| 未着手・PRなし | 記録方式が明示された空のrun記録、または全jobが起動証拠のない初回取消。worktree・branchを照合 | planning。初回の調査から始める |
+| 実行中・終了未確認・cleanup未確認 | 生存や未回収の疑いがある間は移行不可。既存のinspect/reconcile/cleanup確認と終了記録を先に行う | 拒否。承認・枠の解放と読み替えない |
+| 終了済み・PRなし | 最新runの終了・cleanup・session・contract・委任を照合 | planning。同じworker sessionで再調査 |
+| PR作成済み・レビュー中、workerは正常終了済み | 一意の同repo PR、現在のauthorization・要件に対する親の結果検証、最新の保存/公開レビュー、PRとworktreeのhead・branch・repoを照合 | implementing。照合した既存結果だけを明示採用し、元のレビュー状態を維持 |
+| レビュー後の修正head | 上記に加え、親の公開済み修正確認、保存されたresolutionと実diff、現在snapshotへのcoverageを照合 | implementing。最初のレビューheadと異なっても、確認済みの修正headだけを採用 |
+| merge済み・issueはclosed/completed | 正常終了と現在の結果検証に加え、実PRのmerge/close、gateのmerge journal、保存/公開レビュー結果・修正確認を照合 | implementingの既存結果receipt。完了後再開・終了照合を通常の証拠検査へ戻す |
+| 親の担当も終了済み | merge済みの証拠を同じ保存担当sessionで照合。担当の再登録・generation更新はしない | 既存結果だけを移行し、親のended状態を維持 |
+| 証拠不足・不一致、未mergeのclosed PR | 移行を拒否。open issueを調査からやり直す場合だけ、終了照合後に `--replan` を明示 | `--replan` はplanning。旧PR・旧レビューを成果として受理しない。closed issueの再実装は不可 |
+
+既存結果の採用はtaskの `preflight.legacy_result` に、移行理由・現在入力・元runtime/final・レビュー/結果検証と
+照合したPR snapshotを束ねて記録する。旧run/jobのphaseやturn、過去のplanning承認を捏造しない。
+status/reconcileは `legacy_result_migrated` を表示する。成果再登録でも元のruntime/finalとPR headを再照合し、
+別headの成果は同じsessionで実際の継続turnを終えるまで受理しない。要件・根拠・世代・依存変更時には、この採用も失効する。
+移行だけを理由に、鮮度のある既存レビューを再実行しない。移行はmerge/完了の認定ではなく、
+その後も通常のreview-request・merge gate・verify_completionの条件を通す。merge gate本体の判定は変えない。
+merge済みのclosed/completed結果は、元runtimeのcontractとPR・レビュー・merge journalを使って照合し、
+削除済みworktreeの再作成を要求しない。未mergeのPRでは、現在のworktreeとhead・branchの一致も必須とする。
+
+```bash
+# 新しい版のCLIを持つ親checkoutから、現在の担当sessionのまま実行する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 status
+# 手動は共通runnerのstatus、自律はinspect-workerで最新runの終了・cleanupを照合する
+# 終了・回収を確認してから、親が照合した根拠をprivateなファイルへ書く
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  migrate-worker-phase --child 1217 --evidence-file tmp/migration.md
+# openの旧委任を再調査へ戻す場合だけ明示する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  migrate-worker-phase --child 1217 --replan --evidence-file tmp/replan.md
+```
+
+planningへ移行する場合は通常、子の調査ターンが1回増え、追加調査ごとにさらに1回増える。
+証拠に基づく既存結果の採用にはworkerの追加ターンは不要。run記録方式が不明な委任を未起動とは扱わない。
 実モデルの待時間・費用は固定せず、予算が必要な調査は既存の資源手順へ戻す。
 
 ### stacked branchの確認とrebase

@@ -322,17 +322,18 @@ def current_basis(session: ParentSession) -> dict[str, Any]:
 
 def observed_authorization(session: ParentSession) -> dict[str, Any]:
     """Validate the saved owner/basis without granting the viewer ownership."""
+    return observed_review_authorization(session)
+
+
+def observed_review_authorization(
+    session: ParentSession, request: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    """Read saved authority, including the old review's representation of it."""
     row = session.row
     if not row:
         raise ValueError("worker freshness requires a saved parent owner")
     basis = _current_basis(session, row["generation"])
-    return validate_authorization(
-        {
-            "generation": row["generation"],
-            "execution_basis_kind": basis["kind"],
-            "execution_basis_sha256": digest(basis),
-        }
-    )
+    return _basis_authorization(basis, row["generation"], request)
 
 
 def validate_candidate(
@@ -357,11 +358,9 @@ def validate_candidate(
     }
 
 
-def authorization(
-    session: ParentSession, request: Mapping[str, Any] | None = None
+def _basis_authorization(
+    basis: Mapping[str, Any], generation: int, request: Mapping[str, Any] | None
 ) -> dict[str, Any]:
-    basis = current_basis(session)
-    generation = session.owner()["generation"]
     if request is not None and request["schema_version"] == 1:
         if basis["kind"] != "human_agreement":
             raise ValueError("legacy review requires a human agreement")
@@ -375,22 +374,29 @@ def authorization(
                 "human_confirmation",
             )
         }
-        from .worker_preflight import refresh_review, require_review
-
-        refresh_review(session, dict(request), observed_authorization(session))
-        require_review(session, dict(request), None)
         return {"generation": generation, "agreement_sha256": digest(agreement)}
-    auth = validate_authorization(
+    return validate_authorization(
         {
             "generation": generation,
             "execution_basis_kind": basis["kind"],
             "execution_basis_sha256": digest(basis),
         }
     )
-    if request is not None:
-        from .worker_preflight import refresh_review
 
-        refresh_review(session, dict(request), auth)
+
+def authorization(
+    session: ParentSession, request: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
+    basis = current_basis(session)
+    generation = session.owner()["generation"]
+    auth = _basis_authorization(basis, generation, request)
+    if request is not None:
+        from .worker_preflight import refresh_review, require_review
+
+        canonical = _basis_authorization(basis, generation, None)
+        refresh_review(session, dict(request), canonical)
+        if request["schema_version"] == 1:
+            require_review(session, dict(request), None)
     return auth
 
 
@@ -480,6 +486,18 @@ def require_request_authorization(
     from .worker_preflight import require_review
 
     require_review(session, dict(request), required_issues)
+    require_review_inputs(session, request, auth, required_issues=required_issues)
+    return auth
+
+
+def require_review_inputs(
+    session: ParentSession,
+    request: Mapping[str, Any],
+    auth: Mapping[str, Any],
+    *,
+    required_issues: set[int] | None = None,
+) -> None:
+    """Frozen review inputs; explicit legacy migration validates phase separately."""
     if request["schema_version"] == 2 and request.get("authorization") != auth:
         raise ValueError("review targets belong to an old execution basis/owner")
     if request["schema_version"] == 2:
@@ -496,7 +514,6 @@ def require_request_authorization(
                 raise ValueError(
                     f"#{n}: reviewed requirements changed; prepare a new run with reason"
                 )
-    return auth
 
 
 def authorization_revoked(event: Mapping[str, Any], auth: Mapping[str, Any]) -> bool:
@@ -528,6 +545,13 @@ def require_run_authorization(
     auth = require_request_authorization(
         session, request, required_issues=required_issues
     )
+    require_review_history(session, request, auth)
+    return auth
+
+
+def require_review_history(
+    session: ParentSession, request: Mapping[str, Any], auth: Mapping[str, Any]
+) -> None:
     started = False
     for event in session.history():
         relevant = (
@@ -542,7 +566,6 @@ def require_run_authorization(
             raise ValueError(
                 "review execution basis was revoked; prepare a new run with reason"
             )
-    return auth
 
 
 def task_input_errors(
