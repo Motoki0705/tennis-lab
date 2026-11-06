@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import json
 from dataclasses import dataclass
@@ -48,6 +49,10 @@ class CompletionWorkflow:
             if state == "failed"
             else "completed",
             "cleanup_complete": not live,
+            "exit_code": None if live else 1 if state == "failed" else 0,
+            "task_success": None,
+            "runner": None,
+            "process": None,
             "_alive": live,
             "runtime": {
                 "session_id": self.gate.review.p.env["CLAUDE_CODE_SESSION_ID"]
@@ -56,6 +61,7 @@ class CompletionWorkflow:
             },
             "contract": {
                 "cwd": job["cwd"],
+                "branch": job["branch"],
                 "task_id": job["task_id"],
                 "mode": "write",
                 "settings": {
@@ -64,6 +70,9 @@ class CompletionWorkflow:
                     "profile": None,
                 },
             },
+            "prompt_sha256": hashlib.sha256(
+                (Path(job["directory"]) / "prompt.md").read_bytes()
+            ).hexdigest(),
         }
         (directory / "result.json").write_text(json.dumps(record))
         (directory / "final.md").write_text(
@@ -240,6 +249,17 @@ def completion_workflow(
                 execution.requirement_body(p.state()["issues"]["1"]["body"])
             ),
         }
+        preflight = importlib.import_module("parent.worker_preflight")
+        task = session.row["tasks"]["1"]
+        task["preflight"] = preflight.new(task["delegation_id"])
+        prepared, _ = preflight.prepare_turn(
+            session,
+            1,
+            "検証済みの実装。",
+            resume=False,
+            skip_reason="親の完了・再開だけを検証する自明な変更のfixture。",
+        )
+        preflight.commit_turn(task, prepared)
         parent = control._job(session.key, session.row)
         implementation = control._job(
             session.key,
@@ -423,12 +443,17 @@ def test_closed_issue_never_allows_initial_parent_or_implementation_start(
             job["resume_from"] = None
         else:
             row["tasks"]["1"].pop("worker_ended")
+            # A stale caller can still construct a reservation; the public
+            # claim must reject it because the standalone issue is closed.
+            row["tasks"]["1"]["preflight"]["turns"][-1]["source"] = None
             job = flow.control._job(
                 row=row,
                 key="o/r#1",
                 child=1,
                 delegation_id="fixture-delegation",
-                prompt="closed issueでの実装は禁止。",
+                prompt=(
+                    Path(flow.implementation["directory"]) / "prompt.md"
+                ).read_text(),
             )
         flow.control.store.save()
     assert flow.control.claim("o/r#1", job["id"]) is None
