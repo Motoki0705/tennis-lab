@@ -1,0 +1,13 @@
+{
+  "base_head": "4a4f48a616f81c85dd7039187d1a88a5e4ec7709",
+  "reproduction_python": "import sys\nfrom types import ModuleType\nimport pytest\nfrom src.submodules.models.dino import architecture\nname = f'{architecture._DINO_MODELS_PACKAGE}.dino.ops.functions.ms_deform_attn_func'\nprevious = ModuleType('previous_functions')\nprevious.MSDA = ModuleType('previous_extension')\nsys.modules[name] = previous\nraise SystemExit(pytest.main(['-n', '0', '-q', 'tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch']))\n",
+  "before_patch": "1 failed in 0.51s",
+  "failure": "RuntimeError: DINO functions already reference a different extension; start a fresh process",
+  "raw_failure_log_sha256": "814acc2a464bac6748967ad180fe168dfcd33e1acfc67becf38e5e9896ac9394",
+  "source_commit": "a8982a7e0",
+  "source_pr": 1679,
+  "only_file": "tests/unit/submodules/models/dino/test_extension.py",
+  "patched_file_sha256": "712cc2119846be4ed610a96515b338785a335456f1fc3c4614d836195c4d4908",
+  "exact_source_blob": true,
+  "after_patch_tests": "ci-fix-tests.json"
+}

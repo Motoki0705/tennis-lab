@@ -1,0 +1,2522 @@
+{
+  "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12984587298706174
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032596170203760266
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007170240278355777
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12223460298264399
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004599687003064901
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006034399848431349
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11495467304484919
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038845730014145374
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00047376903239637613
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.14386638603173196
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.006130689987912774
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004717460251413286
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.15230833797249943
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00377931899856776
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005224689957685769
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.15314966399455443
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004496973007917404
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0008692840347066522
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_segment_physics_values_are_composition_owned_and_overrides_reach_runtime": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.16500856599304825
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004150457039941102
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006025729817338288
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_topk_missing_composed_setting_is_rejected": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12875882600201294
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004435783019289374
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005326679674908519
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.07382433401653543
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033139429870061576
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005290870321914554
+    }
+  },
+  "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.08016505598789081
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005278832977637649
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006415150128304958
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_ball_detection_is_used_without_refiner_assets": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.15002242801710963
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0021243239752948284
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006677380297333002
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_default_coco_source_and_explicit_finetuned_comparison": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.26228969398653135
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001840848010033369
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005564440507441759
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_defaults_associate_players_and_decide_sides": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.25654474494513124
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001896845002193004
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005228499649092555
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11953981401165947
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0021808589808642864
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006172420107759535
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11439118796261027
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019672029884532094
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004871809505857527
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides2]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12767465598881245
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019133530440740287
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005677699809893966
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides3]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.14501988695701584
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018462160369381309
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005173060344532132
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_inputs_or_dependency_choices_fail_before_models[overrides4]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.13215658598346636
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018819470424205065
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005812849849462509
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[data_sigma_m=.nan]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1261364389793016
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002149030042346567
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005255139549262822
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[max_nfev=0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1203077569953166
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018349629826843739
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005960990092717111
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_joints=18]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1314482659799978
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001934619969688356
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004958119825460017
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[min_scale=2]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12306440901011229
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0020064860000275075
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005235219723545015
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_invalid_placement_is_rejected_before_model_loading[temporal_weight=-1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1450621670228429
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002009543008171022
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006638559862039983
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[../escape]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.13558527000714093
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002108435961417854
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004941289662383497
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[/tmp/escape]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12695312598953024
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019021619809791446
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005930020124651492
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_output_paths_cannot_escape_authority[outputs/repeated]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.14793542597908527
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002404677972663194
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005924440338276327
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_pipeline_outputs_and_stage_cache_use_their_declared_roots": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.1495630189892836
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004063240019604564
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005166150513105094
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_placement_override_is_typed_and_part_of_cache_settings": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12744071398628876
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001970238983631134
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004904639790765941
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-+]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12161598703823984
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0023034769692458212
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005295820301398635
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.detector=dino-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11734586401144043
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0023582049761898816
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005395340267568827
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-+]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.13025040901266038
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002089479996357113
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006834300002083182
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.runtime.tracking.yolo_confidence=0.5-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11124210001435131
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019696189556270838
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000520795991178602
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-+]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11543651699321344
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002584704023320228
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005752239958383143
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_removed_detector_settings_are_rejected[people_models.yolo_checkpoint=retired.pt-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11283063801238313
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002390870009548962
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006039660074748099
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_retired_refiner_config_is_rejected": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12725371500710025
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019158620270900428
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005258329911157489
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_stage_only_composition_does_not_bind_dummy_video_inputs": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.18076730601023883
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0029896440100856125
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005707429954782128
+    }
+  },
+  "tests/unit/tennis_scene/test_pipeline_configuration.py::test_unknown_placement_parameter_is_rejected": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.11436818598303944
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017488289740867913
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0007578350487165153
+    }
+  },
+  "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_broad_covariance_ellipse_stays_inside_its_trajectory_panel": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.023437536030542105
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002969440014567226
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006491749663837254
+    }
+  },
+  "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.025897515006363392
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001491656992584467
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0008280280162580311
+    }
+  },
+  "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0008620870066806674
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004136137955356389
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033104000613093376
+    }
+  },
+  "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.02407520601991564
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019338149577379227
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004480670322664082
+    }
+  },
+  "tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006342160049825907
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002488122961949557
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00047455396270379424
+    }
+  },
+  "tests/unit/utils/configuration/test_audit.py::test_ordinary_source_edits_need_no_snapshot_refresh": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0027708670240826905
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0030100399744696915
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003238149802200496
+    }
+  },
+  "tests/unit/utils/configuration/test_audit.py::test_raw_configuration_aliases_remain_auditable": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0030218320316635072
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003370254999026656
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000336061988491565
+    }
+  },
+  "tests/unit/utils/configuration/test_audit.py::test_raw_configuration_fallbacks_fail_closed": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003785300999879837
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003763565036933869
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041182496352121234
+    }
+  },
+  "tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 35.391846250975505
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001473281008657068
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005612939712591469
+    }
+  },
+  "tests/unit/utils/configuration/test_audit.py::test_typed_children_and_persisted_records_are_not_configuration_findings": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0035036579938605428
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003050952043849975
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003885490004904568
+    }
+  },
+  "tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.3225314909941517
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003144672024063766
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006266579730436206
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_dispatch_preserves_arguments_and_restores_argv_on_failure": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015739829977974296
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015318529913201928
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032782205380499363
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_invalid_selector_never_imports_or_runs_a_stage": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014322669594548643
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015164039796218276
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034551002318039536
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_nested_route_records_the_actual_leaf_validator": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0027665619854815304
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0030577360303141177
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003219459904357791
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[dynamic_routes]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002638508041854948
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0030578089645132422
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003348850295878947
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.entry'}]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002613560005556792
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003082290990278125
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033949996577575803
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'coordinates': 'src.missing'}]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0029939620289951563
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003109500976279378
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003707470023073256
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{'duplicate': 'src.leaf', 'duplicate': 'src.nested'}]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0026527059962973
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031935449806042016
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036839296808466315
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_unresolvable_duplicate_dynamic_and_cyclic_routes_fail_closed[{}]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002456026035360992
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032609530026093125
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00038669101195409894
+    }
+  },
+  "tests/unit/utils/configuration/test_cli.py::test_unvalidated_leaf_invalidates_the_whole_router": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0030013659852556884
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003271144989412278
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003985040239058435
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014453820185735822
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015170139959082007
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003274609916843474
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_all_inventoried_runtime_boundaries_expose_truthful_authorities": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017012619646266103
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015301689854823053
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003170620184391737
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 3.5841081800172105
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001592320972122252
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000442925957031548
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.submodules]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003821469726972282
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018023130251094699
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00048692600103095174
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.synthetic_data_generation]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003667400451377034
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019401139579713345
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003600699710659683
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.ball_detection]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000385503051802516
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00158130400814116
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00031190895242616534
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.blcs]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006193680455908179
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019039009930565953
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0011556429672054946
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.court_detection]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006507390062324703
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002825481991749257
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005980039713904262
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.plcs]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006827390170656145
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0023804279626347125
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00045595801202580333
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tasks.slcs]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004233790095895529
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002074487041682005
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000361473998054862
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_issue_domain_has_runtime_boundary_constraint_metadata[src.tennis_scene]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00042815000051632524
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019143709796480834
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003673809696920216
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.submodules]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00035904801916331053
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015698929782956839
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034865899942815304
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.synthetic_data_generation]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00039905100129544735
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015395139926113188
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003183219814673066
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.ball_detection]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004402319900691509
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017046589637175202
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003195810131728649
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.base]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00037914200220257044
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015681280056014657
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034216500353068113
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.blcs]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003652440500445664
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015503470203839242
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003151110140606761
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.court_detection]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003644280368462205
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016259229741990566
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003175779711455107
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.plcs]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00036565697519108653
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015821820124983788
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003178879851475358
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tasks.slcs]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004025209927931428
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015494999825023115
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003509210073389113
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.tennis_scene]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00041161803528666496
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0021936609991826117
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003196119796484709
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_runtime_domain_has_required_inspectable_authorities[src.utils.configuration.operations]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003951480030082166
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0014879869995638728
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003124360227957368
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_every_strict_schema_field_rejects_an_invalid_exact_type": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0051974839880131185
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017776130116544664
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003486289642751217
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_hybrid_audit_declares_input_output_and_optional_scene_paths": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003715530037879944
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017021300154738128
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003118569729849696
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_operation_build_json_is_optional_and_absence_maps_to_none": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00034342502476647496
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015416110400110483
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033746601548045874
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_contracts]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00041986897122114897
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017038329970091581
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000308079004753381
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.configuration_validation]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00039519905112683773
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015995610156096518
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003125289804302156
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_removed_configuration_modules_do_not_redirect[src.utils.configuration.validation]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00040914997225627303
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0014682440087199211
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003190549905411899
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.submodules.configuration.SubmoduleRuntimeConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003684649709612131
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019370479858480394
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037292600609362125
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.synthetic_data_generation.configuration.ScenePipelineConfiguration]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003852549707517028
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0020570100168697536
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003988860407844186
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.configuration.BallRuntimePaths]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00046637695049867034
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019233039929531515
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039431097684428096
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.ball_detection.inference.heatmap_decoding.HeatmapDecodingConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006080499733798206
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002024219953455031
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003506629727780819
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.base.configuration.TrainingRuntimeConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003938570152968168
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002061445964500308
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034640898229554296
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.blcs.configuration.AxialModelConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004367720102891326
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002040236024186015
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003834890085272491
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.court_detection.configuration.CourtTrainingConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00038363400381058455
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018153240089304745
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033874704968184233
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.plcs.configuration.PLCSTrainingConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003729569725692272
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016705110319890082
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000422521959990263
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tasks.slcs.configuration.SLCSTrainingRuntimeConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005387899582274258
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002369948022533208
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034889800008386374
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.configuration.PipelineRuntimeConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00039953598752617836
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0020983919966965914
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033607304794713855
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_representative_domain_adapter_is_source_discovered[src.tennis_scene.pipeline.components.ball_detection.BallDetectionConfig]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00043074198765680194
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018610580009408295
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003466460038907826
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_slcs_boundaries_bind_only_their_actual_public_boundary_schema": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004629390314221382
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018618740141391754
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040781800635159016
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_slcs_review_declares_its_required_read_only_dataset_root": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004278300330042839
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016583990072831511
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00031782599398866296
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_synthetic_boundary_catalog_exposes_exact_canonical_path_roles": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00037879199953749776
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0014591359649784863
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003124359645880759
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_synthetic_registry_exposes_only_supported_runtime_boundaries": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003867430496029556
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016463779611513019
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00031730998307466507
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.generate_dataset:main-src.tasks.blcs.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000459406990557909
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0021129929809831083
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040185899706557393
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.blcs.scripts.visualize:main-src.tasks.blcs.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004559059743769467
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002090936992317438
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036117498530074954
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.generate_dataset:main-src.tasks.plcs.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00035789201501756907
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017890330054797232
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003984829527325928
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_task_local_boundaries_keep_task_local_configuration_authority[src.tasks.plcs.scripts.visualize:main-src.tasks.plcs.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00035059102810919285
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017042559920810163
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003275950439274311
+    }
+  },
+  "tests/unit/utils/configuration/test_contracts.py::test_topk_settings_are_discovered_as_required_composition_owned_fields": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003700139932334423
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017673179972916842
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00030349299777299166
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_catalog_and_audit_depend_on_lower_discovery_without_a_back_edge": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007966799894347787
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001533480011858046
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003545299987308681
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_catalog_does_not_publish_legacy_synthetic_boundaries": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007211660267785192
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018868939951062202
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003392699873074889
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_catalog_keeps_task_local_generation_boundaries_distinct": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00039785896660760045
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002231399994343519
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003976220032200217
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 79.2591927080066
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001882245996966958
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0047557930229231715
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 73.30177986301715
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034588980488479137
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0012887549819424748
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registration_preserves_neighbor_boundary_checks": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00895849900553003
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0039145530317910016
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005665759672410786
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registrations_have_sources_reasons_and_no_repo_imports": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.12164308503270149
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019753059605136514
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0008240330498665571
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_external_runtime_sources_still_reject_configuration_fallbacks": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00581072096247226
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003956405038479716
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004708640044555068
+    }
+  },
+  "tests/unit/utils/configuration/test_discovery.py::test_runtime_boundary_discovery_has_one_canonical_owner": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0452628229977563
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002441277028992772
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0009642480290494859
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_court_learning_presentation_has_an_explicit_hydra_boundary": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004114379989914596
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001843567006289959
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0002995250397361815
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_default_inventory_contains_only_current_policy": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003330429899506271
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016022500349208713
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00030455400701612234
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_duplicate_boundaries": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004811800317838788
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0014957370003685355
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034563097869977355
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_inventory_rejects_incomplete_validator_binding": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005389939760789275
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001530740992166102
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00030766200507059693
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_manual_court_editor_has_an_explicit_non_hydra_path_boundary": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004892860306426883
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.002426715975161642
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00046396604739129543
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_mixed_court_training_boundary_remains_explicitly_registered": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00031544797820970416
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0014307759702205658
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0002940109698101878
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_smpl_asset_installer_has_an_explicit_non_hydra_path_boundary": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00046963500790297985
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0023227540077641606
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0002945589949376881
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_synthetic_inventory_has_only_the_canonical_production_clis": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000685923034325242
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0028461869806051254
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000525281997397542
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_task_local_generation_and_visualization_boundaries_remain_in_inventory": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00032907899003475904
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001543968974146992
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003384849987924099
+    }
+  },
+  "tests/unit/utils/configuration/test_inventory.py::test_temporal_ball_evaluation_registers_the_shared_runtime_boundary": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.03585752804065123
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0014711919939145446
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004274119855836034
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[ 0]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003845799947157502
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017960270051844418
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003491620300337672
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[2]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003925309865735471
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001610902021639049
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003240079968236387
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005031530163250864
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0015497520216740668
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00038817396853119135
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[true]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003989950055256486
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016495520249009132
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003260429948568344
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_boolean_environment_tokens_are_exact[yes]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00038883398519828916
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016945430543273687
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032782903872430325
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation0-Unknown]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006086640059947968
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003336618945468217
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003433279925957322
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation1-source_role]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016821309691295028
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004539893998298794
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003493370022624731
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation2-destination_role]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017530809855088592
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003451185009907931
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035033997846767306
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation3-relative]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018411920173093677
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004015808983240277
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003536950098350644
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation4-escapes]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002577340987045318
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032812929712235928
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042405695421621203
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation5-expected str]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006848390330560505
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035647000186145306
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039330602157860994
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation6-Unknown]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005462020053528249
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003474893979728222
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003484920016489923
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_invalid_inputs[mutation7-Unknown]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0004839570028707385
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003292506968136877
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003864800091832876
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[.-explicit absolute]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007894620066508651
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036752489977516234
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004478060291148722
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{other}-exactly match]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0007848250097595155
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003557461022865027
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035460403887555003
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_rejects_noncanonical_serialized_project_root[{unresolved}-resolved absolute]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0009211280266754329
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003486964968033135
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000412996974773705
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_dino_build_contract_resolves_all_roles": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003158629988320172
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036263969959691167
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00038415699964389205
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_enabled_build_requires_strict_json_contract": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006007960182614625
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003443554975092411
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037005101330578327
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_enabled_build_uses_serialized_absolute_project_root": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.003313808992970735
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003046428959351033
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003752040211111307
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_MOE_REFERENCE]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00036951497895643115
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016844539786688983
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032658001873642206
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_FORCE_TIME_LOCAL_REFERENCE]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00040351797360926867
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0016557890339754522
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003261450328864157
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_TYPO]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0006958559970371425
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0018489889916963875
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036524998722597957
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_operation_environment_rejects_unknown_inputs[TENNIS_LAB_USE_TIME_LOCAL_CUDA]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00039176695281639695
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017126949969679117
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036331999581307173
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_rejects_unknown_build_target": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0005256119766272604
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00157708500046283
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036092399386689067
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[0-False]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00041902699740603566
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017753639840520918
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039790000300854445
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[1-True]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0003757930244319141
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001814045011997223
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003377320244908333
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_switch_authority[None-False]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00037457398138940334
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.001705425966065377
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033301301300525665
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[None-all]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00043317500967532396
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017738770111463964
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003376789973117411
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[all-all]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00037314899964258075
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0017390070133842528
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033747300039976835
+    }
+  },
+  "tests/unit/utils/configuration/test_operations.py::test_runtime_environment_reuses_standalone_build_target_authority[compressed_time_local-compressed_time_local]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.000428321014624089
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0019414580310694873
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003370289923623204
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014879819937050343
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032388950348831713
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033447897294536233
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016640819958411157
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034488729434087873
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033478799741715193
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015043590101413429
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033552469685673714
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036127399653196335
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014480819809250534
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033036480308510363
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043581798672676086
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015603770152665675
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003173178993165493
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003304100246168673
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016398669686168432
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003274860035162419
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004130279994569719
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[records-root/child-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014939609682187438
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003244324994739145
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003378859837539494
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0022074439912103117
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004101102997083217
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040891801472753286
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001499320031143725
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033949610078707337
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003677179920487106
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002082385995890945
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00364509696373716
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004469389677979052
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014677129802294075
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031487480155192316
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00032603199360892177
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015262190136127174
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003315729962196201
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003466529888100922
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017800729838199914
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037532930145971477
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004076479817740619
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[runs-root/child-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015957850264385343
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003167447983287275
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003284580307081342
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016417040023952723
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033076239633373916
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003555750008672476
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015788610326126218
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031877909786999226
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003782609710469842
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014792559668421745
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032423530356027186
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000399553042370826
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001562163990456611
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032764190109446645
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034066400257870555
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001567926025018096
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032374690053984523
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003763920394703746
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001432727964129299
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031467039952985942
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037248904118314385
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[samples-root/child-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015382910496555269
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032023399835452437
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003869039937853813
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001984288974199444
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035356630105525255
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005467080045491457
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001826869964133948
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003442595014348626
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004520299844443798
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002005055022891611
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003717813000548631
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040027598151937127
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015127640217542648
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032413930166512728
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034057098673656583
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015251970035023987
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035118089872412384
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003567929961718619
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0019110580324195325
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004034467972815037
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036795600317418575
+    }
+  }
+}

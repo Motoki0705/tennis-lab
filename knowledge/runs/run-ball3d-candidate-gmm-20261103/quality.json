@@ -1,0 +1,16 @@
+{
+  "pytest_collected": 121,
+  "pytest_passed": 121,
+  "pytest_elapsed_seconds": 28.76,
+  "pytest_collection_seconds": 6.87,
+  "max_case_seconds": 2.713612245977856,
+  "max_setup_seconds": 0.011837869009468704,
+  "new_cases": 26,
+  "ruff": "passed",
+  "mypy_checked_source_files": 23,
+  "mypy": "passed",
+  "knowledge_errors": 0,
+  "knowledge_warnings_existing": 219,
+  "repro_missing": 0,
+  "repro_unverifiable_existing": 28
+}

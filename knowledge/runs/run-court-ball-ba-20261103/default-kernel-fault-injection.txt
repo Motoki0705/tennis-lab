@@ -1,0 +1,51 @@
+Mutation: current production speed gate changed from 65 to 1 m/s. Frozen main reference remains unchanged.
+F                                                                        [100%]
+=================================== FAILURES ===================================
+_______________ test_fixed_default_matches_captured_main_arrays ________________
+
+tmp_path = PosixPath('/tmp/pytest-of-kamimura/pytest-87/test_fixed_default_matches_cap0')
+
+    def test_fixed_default_matches_captured_main_arrays(tmp_path):
+        inputs = main_regression_inputs()
+        source, artifacts = calibration_pipeline_artifacts(inputs, tmp_path)
+        cfg = runtime(tmp_path, "fixed")
+        assert cfg.ball_bundle_adjustment is None
+        assert (cfg.ball_reprojection_px, cfg.ball_min_frames) == (20., 5)
+        node = next(n for n in standard_definition(cfg, source, code_identity="contract") if n.name == "ball_triangulation")
+        assert isinstance(node.component, BallTriangulationModule)
+        assert node.io.version == 1
+        assembled = node.assembler.assemble(AssemblyContext(source), artifacts)
+        actual = node.component.process(assembled).ball
+        frozen = json.loads((Path(__file__).parents[2] / "support/fixtures/court_ball_main.json").read_text())
+        for field, expected in frozen["ball"].items():
+            np.testing.assert_array_equal(getattr(actual, field), np.array(expected, dtype=getattr(actual, field).dtype))
+        expected_main = frozen_main_ball(inputs)
+        for field in frozen["trajectory"]:
+>           np.testing.assert_array_equal(getattr(actual.trajectory, field), getattr(expected_main.trajectory, field))
+E           AssertionError: 
+E           Arrays are not equal
+E           
+E           Mismatched elements: 33 / 36 (91.7%)
+E           First 5 mismatches are at indices:
+E            [0, 0]: 0.0 (ACTUAL), 0.03852519392967224 (DESIRED)
+E            [0, 1]: 0.0 (ACTUAL), -3.896056652069092 (DESIRED)
+E            [0, 2]: 0.0 (ACTUAL), 1.158854365348816 (DESIRED)
+E            [1, 0]: 0.0 (ACTUAL), 0.1731593906879425 (DESIRED)
+E            [1, 1]: 0.0 (ACTUAL), -3.6202642917633057 (DESIRED)
+E           Max absolute difference among violations: 3.8960567
+E           Max relative difference among violations: 1.
+E            ACTUAL: array([[0., 0., 0.],
+E                  [0., 0., 0.],
+E                  [0., 0., 0.],...
+E            DESIRED: array([[ 0.038525, -3.896057,  1.158854],
+E                  [ 0.173159, -3.620264,  1.224691],
+E                  [ 0.307237, -3.342475,  1.288481],...
+
+tests/integration/tennis_scene/test_court_ball_ba.py:112: AssertionError
+=========================== short test summary info ============================
+FAILED tests/integration/tennis_scene/test_court_ball_ba.py::test_fixed_default_matches_captured_main_arrays
+1 failed in 4.67s
+
+Original bytes restored:
+.                                                                        [100%]
+1 passed in 4.59s

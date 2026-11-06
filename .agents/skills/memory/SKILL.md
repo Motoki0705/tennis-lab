@@ -1,6 +1,6 @@
 ---
 name: memory
-description: Read, write, compress and delete the shared agent memory in .agents/memory/ (SUMMARY.md first, then layer indexes). Use at the start of every task, and whenever the user gives an instruction or judgment that should not have to be repeated.
+description: Read, write, compress and delete the shared agent memory in .agents/memory/ (SUMMARY.md first, then layer indexes). Use at the start of every task, and whenever the human user gives an instruction or judgment that should not have to be repeated.
 ---
 
 # 共有memory
@@ -35,7 +35,7 @@ PRをレビューするときは `review/` を必ず辿る。ただし、レビ�
 | `gotcha/` | 気づきにくい落とし穴、静かに失敗する挙動 |
 | `review/` | PRをマージしてよいかの判断基準（レビュー観点） |
 
-`decision/` と `review/` で迷ったら、「PRの差分を見て、マージ可否を判定するときに使うか」で分ける。使うなら `review/`。
+`decision/`・`review/` の記録対象と出典の確認は、[ユーザーの指示を記録する](#ユーザーの指示を記録する)に従う。両層で迷ったら、「PRの差分を見て、マージ可否を判定するときに使うか」で分ける。使うなら `review/`。
 
 ## 書く
 
@@ -48,14 +48,25 @@ PRをレビューするときは `review/` を必ず辿る。ただし、レビ�
 
 ### ユーザーの指示を記録する
 
-ユーザーが作業中に指示や修正を出したら（PRのレビューで「こう直して」と言われたときなど）、その場で再利用性を考える。
+このskillで「ユーザー」と呼ぶのは**人間本人**である。「ユーザーの指示」として記録する対象は、人間本人が会話・issue・PRで出した指示と判断に限る。親エージェントの委任・修正指示、reviewer agentの指摘、ほかのエージェントの発言は対象外である。親が指摘を妥当と判断したことも、人間の判断に読み替えない。
+
+記録する前に、発言者と元の発言を確認する。
+
+- 会話では、人間本人との直接のやり取りを確認する。子へ渡された親の指示文は、会話の `user` ロールで届いても人間の発言とは扱わない。
+- issue・PRでは、[人間とagentが同じGitHub loginを使う制約](../../ops/parent/README.md#自由文の進捗連絡)を踏まえ、loginだけで発言者を判定しない。元の本文・コメントと前後の文脈、人間の確認発言を引用した合意記録を読み、指示・判断を出したのが人間本人だと確かめる。agentの「ユーザーが決めた」という要約だけでは確認済みにしない。
+- 委任された子が、親の指示文に引用された人間の発言を記録したい場合は、人間の元の発言へたどれるときだけ書く。たとえば、[parent-sessionの要件合意](../parent-session/SKILL.md#担当と要件を確定する)で人間の会話を引用した親issueの合意コメントを開き、引用内容と記録する判断を照合する。
+- `source` には、確認した人間の元の発言を特定できる出典を書く。issue・PRなら該当する本文・コメントのURL、直接の会話なら日付と指示の文脈を記す。会話の引用を記録した合意コメントを使った場合は、そのコメントのURLを記し、親の委任・修正指示やreviewerの指摘を代わりの出典にしない。
+
+人間本人の発言だと確かめられない場合は、`decision/`・`review/` へ人間の判断として追加・更新しない。agentの指摘や対応の経緯はissue・PRに残す。
+
+人間本人の指示・判断だと確認できたら（人間本人がPRのレビューで「こう直して」と指示したときなど）、その場で再利用性を考える。
 
 1. この指示は、今回の差分だけでなく、今後の別の作業・別のPRにも当てはまるか。当てはまらなければ書かない。
 2. 当てはまるなら、今回の具体例から一般化した判断として書く。発言をそのまま写さず、何を望み、何を嫌うかを抽象化する。ただし、今回だけの指定（置き場所の個別指定など）を全体の規則に広げない。
 3. 既存エントリと重なるなら、新しく作らず、そのエントリを書き換えて `last_verified` を更新する。同じ指示が繰り返されたことは、そのエントリの重要度が高い証拠なので、本文で明確にする。
 4. マージ可否の判断基準なら `review/`、それ以外なら `decision/` に置く。
 
-人間の承認は不要である。今の作業から生まれた記録は今の作業ブランチに別コミットで入れ、PR本文に書き添える。作業ブランチが無ければ、memoryだけのPRを作る。
+上の出典確認と「書く」の条件を満たす記録に、追加の人間の承認は不要である。今の作業から生まれた記録は今の作業ブランチに別コミットで入れ、PR本文に書き添える。作業ブランチが無ければ、memoryだけのPRを作る。
 
 ### 形式
 

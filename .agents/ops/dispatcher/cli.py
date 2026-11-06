@@ -70,7 +70,12 @@ def parser() -> argparse.ArgumentParser:
     child.add_argument("--child", type=int, required=True)
     child.add_argument("--delegation-id", required=True)
     child.add_argument("--prompt-file", type=Path, required=True)
-    child.add_argument("--model", choices=("gpt-6.1-sol", "gpt-6-astra"))
+    from lib.agent_settings import implementation_models
+
+    try:
+        child.add_argument("--model", choices=implementation_models())
+    except (OSError, ValueError) as exc:
+        result.error(str(exc))
     return result
 
 

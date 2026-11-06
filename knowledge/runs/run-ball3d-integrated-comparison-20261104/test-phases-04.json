@@ -1,0 +1,2522 @@
+{
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[scratch-root/child-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014845850528217852
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003383179020602256
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034070498077198863
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016531660221517086
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038247070042416453
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035396398743614554
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015706410049460828
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033737410558387637
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034344097366556525
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015988719533197582
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003640946000814438
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000365094980224967
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016151159652508795
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035400199703872204
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041469105053693056
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016309450147673488
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032931570312939584
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004073070012964308
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001660704961977899
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003358521033078432
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005321999778971076
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[vendors-root/child-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001824442995712161
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035694700200110674
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036399997770786285
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015278810169547796
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003226864035241306
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040808296762406826
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001754153985530138
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032452649902552366
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003770010080188513
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016299019916914403
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003109562036115676
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035960099194198847
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014107960159890354
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003197023004759103
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000388369953725487
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015458179987035692
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003696747007779777
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041163404239341617
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015369480242952704
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003343207004945725
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036890601040795445
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[weights-root/child-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015052469680085778
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032664029859006405
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037725898437201977
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001816771982703358
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00342326401732862
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035289005609229207
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016606739955022931
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032977109658531845
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000345817010384053
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001770065980963409
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003356609959155321
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035323097836226225
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015671610017307103
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034129690029658377
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034199602669104934
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016481580096296966
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033923480077646673
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00045952596701681614
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015754219493828714
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033004680299200118
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003779610269702971
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_every_configured_root_basename[workspace-root/child-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017181679722853005
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035258010029792786
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037197204073891044
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001611045969184488
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003435263002756983
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004089800058864057
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002002276945859194
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005435846978798509
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004787009675055742
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015722940443083644
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003723337023984641
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003812860231846571
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017634480027481914
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034542010398581624
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003660349757410586
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017361360369250178
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00370960304280743
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003883499884977937
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016993029857985675
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033295460161753
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004496960318647325
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[.cache/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016126990085467696
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003454283985774964
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004341870080679655
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015635790186934173
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038263489841483533
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039214896969497204
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016950900317169726
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003448696981649846
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035288999788463116
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001666000986006111
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00353680900298059
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037703197449445724
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017574700177647173
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031081270426511765
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000418718031141907
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016481479979120195
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032852989970706403
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000412853027228266
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016164790140464902
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034139910130761564
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003505669883452356
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[artifacts/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014716460136696696
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003287023981101811
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004530110163614154
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0024870199849829078
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.006578167027328163
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005618559662252665
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020227119675837457
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004350413044448942
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004400109755806625
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002602308988571167
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005290312983561307
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005589339998550713
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0022882240009494126
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00474407896399498
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005985029856674373
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0022012689732946455
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004346466972492635
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005322929937392473
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021143450285308063
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004932240000925958
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004929309943690896
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[build/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001952898979652673
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004579472995828837
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005330879939720035
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018210259731858969
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035162600106559694
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00041137594962492585
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020845230319537222
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003867167979478836
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005325099918991327
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016257510287687182
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00533462199382484
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003536340082064271
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001884602999780327
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037128659896552563
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005433940095826983
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0030066940234974027
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0044928890420123935
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0010045930393971503
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017603809828869998
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036486799945123494
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003542949561960995
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[cache/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001685031980741769
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033564759651198983
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000404520018491894
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001617067027837038
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035490759764797986
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004396800068207085
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016353230457752943
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034262689878232777
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004141029785387218
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018891770159825683
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003503145999275148
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00038328999653458595
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014658119762316346
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033525730250403285
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00037538999458774924
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014915239880792797
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003492242016363889
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036408298183232546
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017552180215716362
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036195300053805113
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003548520035110414
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoint/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015708690043538809
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033675659797154367
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004632640047930181
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018418430117890239
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003242869977839291
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003530760295689106
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015326219727285206
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003464506007730961
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003724779817275703
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015890729846432805
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034440919989719987
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034809805219992995
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001577002985868603
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00328335800440982
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003318770322948694
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015688749845139682
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00319830299122259
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003658590139821172
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015613689902238548
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033371869940310717
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003380420384928584
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[checkpoints/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015385999577119946
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003914294997230172
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003502359613776207
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017844819813035429
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003299136005807668
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040808197809383273
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014994859811849892
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037655909545719624
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034073699498549104
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016344250179827213
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003314180998131633
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003427910269238055
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017278959858231246
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037705060094594955
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035427400143817067
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016870360122993588
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036131280357949436
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003676870255731046
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014139339909888804
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003255838993936777
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043037597788497806
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[ckpt/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017486090073361993
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003561827994417399
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004246970056556165
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017295780126005411
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038346509682014585
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039465801091864705
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017176729743368924
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035710909869521856
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000362111022695899
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016347039490938187
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037902179756201804
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039507198380306363
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015494730323553085
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003475688979960978
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00040269200690090656
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001545125967822969
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003834857023321092
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004054279997944832
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017905330169014633
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036600599996745586
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003769799950532615
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[data/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016277849790640175
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032789489487186074
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003512169932946563
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017204710165970027
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004360584018286318
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003756689839065075
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0020109720062464476
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004535814980044961
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006618219777010381
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017155660316348076
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003984748967923224
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000631514994893223
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017984120058827102
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005549484980292618
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004541049711406231
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0026121909613721073
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005160907981917262
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005439309752546251
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021026040194556117
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004203535965643823
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005531520000658929
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[external/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021174739813432097
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005898314993828535
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005386330303736031
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016223639831878245
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004024576977826655
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035833101719617844
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016486129607073963
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003833886992651969
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035328196827322245
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001671165053267032
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003370394988451153
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003631530562415719
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015189910191111267
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003340305993333459
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004488999838940799
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001626205979846418
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033820639946497977
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003900010487996042
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015272409655153751
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00352009100606665
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000356576987542212
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[output/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016257200040854514
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034346330212429166
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035460403887555003
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016006900114007294
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003439332009293139
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00047895999159663916
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017371790017932653
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003234909032471478
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003386919852346182
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015755569911561906
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0031049659592099488
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003320520045235753
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015479749999940395
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035997239756397903
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000333559000864625
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015293689793907106
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033186619984917343
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003528789966367185
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015020249993540347
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003475948004052043
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003376280074007809
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[outputs/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016360669978894293
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003123925009276718
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003339929971843958
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014700460014864802
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035254090325906873
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000468746991828084
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016144959954544902
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035303549957461655
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033410702599212527
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001756993995513767
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036186730139888823
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003893609973601997
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016888019745238125
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034588580019772053
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004564800183288753
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016029520193114877
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003332499007228762
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034508301177993417
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014780799974687397
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003454561985563487
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033792800968512893
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_legacy_root_prefixed_children[third_party/legacy-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015743690310046077
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035633560037240386
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034641497768461704
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0023466679849661887
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005028653016779572
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000531074998434633
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0024291219888255
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005462808010634035
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005340380012057722
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015354090137407184
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00333150802180171
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005892719491384923
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001607607991900295
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003805170999839902
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034170702565461397
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021581259788945317
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00493880599969998
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039081700379028916
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0023580060224048793
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004482327029109001
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006157580064609647
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[artifact/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00164131197379902
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003954917017836124
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036299903877079487
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001940982008818537
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0041854039882309735
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039039301918819547
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017571900389157236
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036370320012792945
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000429106003139168
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002317116013728082
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004060315026436001
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039249996189028025
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021157069713808596
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004143623984418809
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004746739869005978
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001637047971598804
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036217710003256798
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003611610154621303
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018483269959688187
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037233990151435137
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003999350010417402
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[cache/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017881469684652984
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038504390395246446
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003785190056078136
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001503853010945022
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033756199991330504
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004265860188752413
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016633479972369969
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0036149660008959472
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004363649641163647
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015386519953608513
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034925509826280177
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042431498877704144
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017232280224561691
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035737240104936063
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042415899224579334
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017032059840857983
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037146530230529606
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043905002530664206
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015481929876841605
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003321636002510786
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003328879829496145
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[checkpoint/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0022697399836033583
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003743989043869078
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004077100311405957
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017541329725645483
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003437410981860012
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003435759572312236
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016071849968284369
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033018210087902844
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00047463300870731473
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001505495049059391
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034470250247977674
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003658279892988503
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017166509642265737
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003931776969693601
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003735010395757854
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001653683022595942
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003922515024896711
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003783020074479282
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016660739784128964
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003417915024328977
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034249096643179655
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001671609003096819
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033368050353601575
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00039512303192168474
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016705140005797148
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032834199955686927
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003404269809834659
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001599606010131538
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003288851003162563
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003858290147036314
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014653059770353138
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033630540128797293
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000343833991792053
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015719630173407495
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032781839836388826
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003382680006325245
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017492600018158555
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003305796009954065
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034188199788331985
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016181610408239067
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035912159946747124
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003386609605513513
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[data_root/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014607529737986624
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033393659978173673
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003322789561934769
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016363139729946852
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003436936007346958
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00047582003753632307
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015225220122374594
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033484420273452997
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003351090126670897
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015586939989589155
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003300921991467476
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036930799251422286
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.00159916200209409
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003969651996158063
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036814098712056875
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015813179779797792
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003381145012099296
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003558630123734474
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015076429699547589
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034412110107950866
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00035107199801132083
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017939090030267835
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003463815024588257
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004001930356025696
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015255690086632967
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003243085986468941
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034484599018469453
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001540046010632068
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032653179951012135
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034671503817662597
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016318020061589777
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003817229997366667
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034359702840447426
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016198959783650935
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032401129719801247
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00036596303107216954
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0019993549794889987
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032223929883912206
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000487539975438267
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017228670185431838
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003378192021045834
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.000399212003685534
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[external_asset_root/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015198789769783616
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035019280039705336
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034299801336601377
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014618569985032082
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034388559870421886
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004158790106885135
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016849710373207927
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003331539046484977
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004110670415684581
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014962739660404623
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033611120306886733
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00043632404413074255
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018795219948515296
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003384489973541349
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00034287397284060717
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001828542968723923
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0038200190174393356
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00042419100645929575
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015436899848282337
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00335812900448218
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003411190118640661
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[output/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015037810080684721
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0034550990094430745
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004126459825783968
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-artifact]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0019881930202245712
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003914367000106722
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004545290139503777
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-cache]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0018927700002677739
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0043769399635493755
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004043960361741483
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-checkpoint]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0025042429915629327
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.005507869995199144
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005552680231630802
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-data]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0031148690031841397
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004745121987070888
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006728500011377037
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-external_asset]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0015921200392767787
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0037978600012138486
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003374009975232184
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-output]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0021036879625171423
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00405913800932467
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004353219992481172
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_role_named_child_prefixes[project/work-project]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002531306992750615
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004464844998437911
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004601660184562206
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001575402042362839
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003295356989838183
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033478898694738746
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014046619762666523
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0033371360041201115
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003531170077621937
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001656584965530783
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032211749930866063
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0006936049903742969
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[artifact-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.001423248031642288
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003330009989440441
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003963210037909448
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002185481018386781
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.00414001097669825
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004798989975824952
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017909150337800384
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004588281037285924
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004234790103510022
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002059730002656579
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.004576345032546669
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0004898849874734879
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[cache-]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.002198242989834398
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.003784920962061733
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005058069946244359
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint- ]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0016336400294676423
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032265550107695162
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0005253229755908251
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-.]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0017113839858211577
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0032818189938552678
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.00033994100522249937
+    }
+  },
+  "tests/unit/utils/configuration/test_paths.py::test_every_role_rejects_root_collapsing_children[checkpoint-\\t]": {
+    "call": {
+      "outcome": "passed",
+      "seconds": 0.0014675160055048764
+    },
+    "setup": {
+      "outcome": "passed",
+      "seconds": 0.0035404230002313852
+    },
+    "teardown": {
+      "outcome": "passed",
+      "seconds": 0.0003348500467836857
+    }
+  }
+}

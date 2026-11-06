@@ -487,6 +487,9 @@ activeな担当本人が `delegate` の予約を確認して次を呼ぶ。共�
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --prompt-file tmp/task.md
+# 高難度の委任で親が代替モデルを選ぶ場合。理由は親issueのnoteにも残す
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  run-worker --child 1217 --prompt-file tmp/task.md --model gpt-6-astra --model-reason-file tmp/model-reason.md
 # 同じ委任・sessionの修正ターン。終了枠を解放済みなら再開証拠も渡す
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --resume --prompt-file tmp/fix.md --restart-evidence-file tmp/restart.md
@@ -496,10 +499,20 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 ```
 
 `run-worker` は現在の32桁hexの委任ID・Codex担当・worktree・branchと、有効な根拠・要件・停止・依存を検査する。
-初回は終了未記録かつ当該委任のrun未登録に限る。モデル・effort引数を持たず、
-共通ランナーを `--role implementation --mode write --task-id 委任ID --cwd worktree --branch branch`
-で呼び、[`agents.conf`](../lib/agents.conf) の実装子の既定値を使う。
+初回は終了未記録かつ当該委任のrun未登録に限る。`--model` の選択肢は
+[`agents.conf`](../lib/agents.conf) の `CODEX_MODEL`（既定Sol）と `CODEX_ALTERNATE_MODEL`（Astra）のみ。
+effortはmax固定で引数に出さない。判断基準は [AGENTS.md](../../../AGENTS.md#開発ルール) を参照する。
+高難度の委任では親がAstraを明示選択でき、人間との合意による指定を優先する。
+選択理由は親issueの `note` と `--model-reason-file` に残す。初回の代替選択には理由ファイルを必須とし、
+既定の採用で省略した場合は既定採用の理由を記録する。委任taskの `model` / privateな `model_reason` と各runへ保存する。
+共通ランナーを `--role implementation --mode write --task-id 委任ID --cwd worktree --branch branch --model 選択値`
+で呼ぶ。選択値・実効値・設定の出典はrunnerの `contract.settings` と `runtime.effective` で照合する。
+利用不可・実効値不一致はエラーとし、別モデルへのfallbackは行わない。
 Codex CLIを直接起動せず、この入口から共通ランナーへ渡す。
+指示は `start-worker` / `continue-worker` と同じ `worker_instruction.py` で組み立てる。
+[標準のworker指示](worker_prompt.md)、親・担当issueの番号、worktree・branch、担当issueの現在の原文の後に、
+`--prompt-file` の内容を「親の具体的な指示」として続け、共通ランナーへ標準入力（`--prompt-file -`）で渡す。
+継続のターンも同じ構成で、指示ファイルには案件固有の内容だけを書く。
 
 runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ランナーの起動前にregistryへ保存する。
 実行中はregistry・親の操作ロックを保持しない。終了値は共通ランナーの値を返し、stdoutは
@@ -509,27 +522,33 @@ runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ラ�
 
 `--resume` は現在の委任で最後に記録したrunの契約と終了・cleanupを検査し、
 共通ランナーの `resume --resume-from` で同じsessionへ戻す。委任IDは共通ランナーのtask IDなので保持する。
+model省略時は直前runの保存contractから継承し、同値の再指定は許可する。異値はrunner起動・run追記・予約枠変更より前に拒否する。
+導入前のmodel欄がない委任も保存contractの選択値から復元し、判別できなければ拒否する。既定値とは推定しない。
+以前のrunにmodel overrideがなければrunnerへの引数も省略し、`overrides` / `selection_sources` の契約を保持する。
+理由は省略時に引き継ぐ。導入前の理由未取得はnullのまま残し、`--model-reason-file` で親の理由を補足できる。
 `record-worker-ended` 済みなら非空の `--restart-evidence-file` と空き枠を必須とし、
 同じトランザクションで終了記録を取り除き、予約枠を取り直して継続runを保存する。
 終了未記録なら予約枠を保持したまま継続する。既存PRがある修正も同じbranch・worktreeを使う。
 `launch_plan` の停止・依存・上限判定は省略しない。再開証拠はprivateな `restart_evidence` に残す。
 
 `record-worker-run` は存在する `result.json` / `invocation.json` のすべてでschemaと
-`contract.task_id`・`contract.cwd`・`contract.branch` を現在の委任と照合する。
+`contract.task_id`・`contract.cwd`・`contract.branch` と実装子のmodel/max effort・profile・modeを現在の委任と照合する。
+複数の保存記録間でmodel設定が異なる場合や、modelを特定できない場合も拒否する。
 どちらも無い場合や片方でも不一致なら拒否し、同一runの再登録は冪等とする。
-起動はせず、既存の終了記録や委任フィールドも変更しない。
+起動はせず、既存の終了記録は変更しない。保存contractから委任のmodel欄を補完する。
 
 `delegate` は委任予約を保存するとき、子taskのprivateな `worker_runs` を必ず設定する。
 既存の記録は保持し、なければ空配列にする。このキーがある子は `run-worker` / `record-worker-run`
 でrunを記録する方式の委任であり、現在の委任IDに対応するrunがなければ「委任予約済み・未起動」を意味する。
 `delegate --restart-evidence-file` による再委任でも旧委任のrunを保持し、新しい委任IDのrunがない状態から始める。
+新しい委任のtaskのmodel・理由はクリアし、初回に選び直す。旧runのmodel・理由はそのまま保持する。
 この変更より前の、キーを持たない旧委任は「run記録なし」であり、未起動とは区別する。
 読取だけで旧委任へキーを補わない。
 
-`worker_runs` は次の4キーの配列を記録順で保持する。
+`worker_runs` は次の6キーの配列を記録順で保持する。導入前の4キー記録も読み取る。
 
 ```json
-[{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00"}]
+[{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00","model":"gpt-6.1-sol","model_reason":"通常の実装として既定を選択。"}]
 ```
 
 `kind` は `initial` / `resume` / `registered`。`run_dir` は親state dir基準の相対パスで、

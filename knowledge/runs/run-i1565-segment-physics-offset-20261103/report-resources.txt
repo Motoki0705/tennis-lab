@@ -1,0 +1,23 @@
+	Command being timed: ".venv/bin/python knowledge/runs/run-i1565-segment-physics-offset-20261103/finalize.py --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1 --annotations /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json --prior /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_v1 --output /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_v3 --prior-manifest-sha256 b9d6106da804fc4d62b9366e69865d4f5742e175635e8511ec9acaff0dfb5890 --bundle-sha256 7aede6d7410f6a3f8e153d231d08b74c2bf7067819cdb82b3e7515b379752b8a --annotations-sha256 dc7cf0809cee56d10c58ea3cfd661e958756590666de6843cd6c0e4ce6ce9c09"
+	User time (seconds): 15.09
+	System time (seconds): 2.53
+	Percent of CPU this job got: 105%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:16.65
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 699876
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 5
+	Minor (reclaiming a frame) page faults: 162644
+	Voluntary context switches: 72
+	Involuntary context switches: 78
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

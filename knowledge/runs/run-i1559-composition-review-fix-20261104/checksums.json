@@ -1,0 +1,22 @@
+{
+  "verification.sha256": {
+    "sha256": "def3247967aca4d7d1abf6f3c3486f290761d119ded4860b6c9e3ccd6fc940bb",
+    "bytes": 65
+  },
+  "test-collection.txt": {
+    "sha256": "ae8253d2269679a801da75c9c46dd29b0b8a224793c4636dd039fbe7686c797f",
+    "bytes": 52319
+  },
+  "test-durations.txt": {
+    "sha256": "31eeaec95c4d52c6c0d8dd0ac24fc86afbb3f8a781768f5a960278425d17ff48",
+    "bytes": 290698
+  },
+  "test-results.json": {
+    "sha256": "1c6f7b5517865f23e0c4e74532a330ca9764460fec78a81ca1649f258516a97b",
+    "bytes": 103251
+  },
+  "verification.json": {
+    "sha256": "1f02662d101f7a6ebefdf8b3801b1699d746b8fed3197045cf774767c07545d8",
+    "bytes": 3779
+  }
+}

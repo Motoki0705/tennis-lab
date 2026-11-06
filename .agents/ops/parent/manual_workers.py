@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from dispatcher.runtime import Runtime, load
+from lib.agent_settings import implementation_model
 
 from .execution import authorization, task_errors
 from .github import GitHub
@@ -18,6 +19,7 @@ from .policy import closing_issues, nonempty, object_value
 from .session import ParentSession
 from .snapshot import git, validate_worktree
 from .state import Store, unique_object
+from .worker_instruction import worker_instruction
 
 RUNNER = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
 SUMMARY_KEYS = {
@@ -28,6 +30,8 @@ SUMMARY_KEYS = {
     "exit_code",
     "task_success",
 }
+RUN_KEYS = {"delegation_id", "run_dir", "kind", "recorded_at"}
+MODEL_KEYS = {"model", "model_reason"}
 
 
 def current_task(session: ParentSession, child: int) -> dict[str, Any]:
@@ -58,13 +62,27 @@ def worker_runs(task: dict[str, Any]) -> list[dict[str, Any]]:
     for run in runs:
         if (
             not isinstance(run, dict)
-            or set(run) != {"delegation_id", "run_dir", "kind", "recorded_at"}
+            or set(run) not in (RUN_KEYS, RUN_KEYS | MODEL_KEYS)
             or not isinstance(run["delegation_id"], str)
             or not re.fullmatch(r"[0-9a-f]{32}", run["delegation_id"])
             or not isinstance(run["run_dir"], str)
             or not run["run_dir"]
             or run["kind"] not in {"initial", "resume", "registered"}
             or not isinstance(run["recorded_at"], str)
+            or (
+                "model" in run
+                and (
+                    not isinstance(run["model"], str)
+                    or not run["model"]
+                    or (
+                        run["model_reason"] is not None
+                        and (
+                            not isinstance(run["model_reason"], str)
+                            or not run["model_reason"].strip()
+                        )
+                    )
+                )
+            )
         ):
             raise ValueError("malformed private worker run records")
         try:
@@ -110,10 +128,32 @@ def matching_contract(task: dict[str, Any], record: dict[str, Any]) -> None:
         raise ValueError("runner contract does not match the current delegation")
 
 
-def validate_run(task: dict[str, Any], directory: Path) -> None:
+def model_settings(task: dict[str, Any], record: dict[str, Any]) -> dict[str, Any]:
+    """Read evidence, never infer a legacy run's model from today's defaults."""
+    matching_contract(task, record)
+    contract = object_value(record.get("contract"))
+    settings: dict[str, Any] = object_value(contract.get("settings"))
+    selected = object_value(settings.get("selected"))
+    overrides = object_value(settings.get("overrides"))
+    model = nonempty(selected.get("model"), "saved worker model")
+    implementation_model(model)
+    if (
+        contract.get("mode") != "write"
+        or settings.get("agent") != "codex"
+        or settings.get("role") != "implementation"
+        or settings.get("profile") is not None
+        or selected.get("effort") != "max"
+        or overrides.get("model", model) != model
+        or (task.get("model") is not None and task["model"] != model)
+    ):
+        raise ValueError("saved worker model/settings do not match the delegation")
+    return settings
+
+
+def validate_run(task: dict[str, Any], directory: Path) -> dict[str, Any]:
     """Check every available contract; invocation alone covers an in-flight run."""
     try:
-        found = False
+        settings = None
         for name in ("result.json", "invocation.json"):
             path = directory / name
             if path.exists() or path.is_symlink():
@@ -123,10 +163,13 @@ def validate_run(task: dict[str, Any], directory: Path) -> None:
                     or record["schema_version"] != 1
                 ):
                     raise ValueError("unsupported runner record")
-                matching_contract(task, record)
-                found = True
-        if not found:
+                observed = model_settings(task, record)
+                if settings is not None and settings != observed:
+                    raise ValueError("conflicting saved model settings")
+                settings = observed
+        if settings is None:
             raise ValueError("runner records missing")
+        return settings
     except (OSError, ValueError, KeyError, TypeError):
         raise ValueError(
             "runner records unavailable or do not match the current delegation"
@@ -134,7 +177,12 @@ def validate_run(task: dict[str, Any], directory: Path) -> None:
 
 
 def append_run(
-    session: ParentSession, task: dict[str, Any], directory: Path, kind: str
+    session: ParentSession,
+    task: dict[str, Any],
+    directory: Path,
+    kind: str,
+    model: str,
+    model_reason: str | None,
 ) -> None:
     root = session.store.directory.resolve()
     path = directory.resolve()
@@ -146,8 +194,11 @@ def append_run(
             "run_dir": stored,
             "kind": kind,
             "recorded_at": datetime.now(UTC).isoformat(),
+            "model": model,
+            "model_reason": model_reason,
         },
     ]
+    task.update(model=model, model_reason=model_reason)
     session.store.save()
 
 
@@ -156,13 +207,18 @@ def record_worker_run(
 ) -> dict[str, Any]:
     task = current_task(session, child)
     path = directory.resolve()
-    validate_run(task, path)
+    settings = validate_run(task, path)
+    model = settings["selected"]["model"]
+    reason = task.get("model_reason")
     if not any(
         r["delegation_id"] == task["delegation_id"]
         and run_directory(session.store, r) == path
         for r in worker_runs(task)
     ):
-        append_run(session, task, path, "registered")
+        append_run(session, task, path, "registered", model, reason)
+    else:
+        task.update(model=model, model_reason=reason)
+        session.store.save()
     return {
         "child": child,
         "delegation_id": task["delegation_id"],
@@ -176,7 +232,9 @@ def prepare_run(
     prompt: Path,
     resume: bool,
     restart_evidence: str | None,
-) -> tuple[list[str], str]:
+    model: str | None = None,
+    model_reason: str | None = None,
+) -> tuple[list[str], str, str]:
     task = current_task(session, child)
     session.agreed()
     parent, items = session.work_items()
@@ -193,7 +251,7 @@ def prepare_run(
             "worker delegation inputs changed; reconcile the current reservation"
         )
     try:
-        nonempty(prompt.read_text(encoding="utf-8"), "worker instruction")
+        instruction = nonempty(prompt.read_text(encoding="utf-8"), "worker instruction")
     except OSError:
         raise ValueError("worker instruction file unavailable") from None
     ended = task.get("worker_ended")
@@ -238,16 +296,30 @@ def prepare_run(
             cwd=Path(task["worktree"]),
         )
     previous: Path | None = None
+    runner_model: str | None
     if not resume:
         if any(r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)):
             raise ValueError("worker already has a run; inspect it and use --resume")
         if restart_evidence is not None:
             raise ValueError("restart evidence requires --resume")
+        model = implementation_model(model)
+        if model_reason is None:
+            if model != implementation_model(None):
+                raise ValueError("initial alternate model requires --model-reason-file")
+            model_reason = "通常の実装として agents.conf の既定モデルを選択。"
+        runner_model = model
     else:
         previous = latest_run(session, task)
-        validate_run(task, previous)
+        settings = validate_run(task, previous)
+        model = implementation_model(model, previous=settings["selected"]["model"])
+        # A legacy default run has no model override. Adding one would change
+        # the runner's frozen selection_sources/overrides even for the same model.
+        runner_model = settings["overrides"].get("model")
+        if model_reason is None:
+            model_reason = task.get("model_reason")
         proof = Runtime(RUNNER).inspect(previous)
-        matching_contract(task, proof["record"])
+        if model_settings(task, proof["record"]) != settings:
+            raise ValueError("saved model settings changed during inspection")
         if not Runtime(RUNNER).ended(proof):
             raise ValueError(
                 "worker termination and cleanup must be confirmed before resume"
@@ -272,18 +344,33 @@ def prepare_run(
         task["worktree"],
         "--branch",
         task["branch"],
+        # The same standard instruction as managed workers, sent on stdin.
         "--prompt-file",
-        str(prompt.resolve()),
+        "-",
         "--run-dir",
         str(directory),
     ]
+    if runner_model is not None:
+        command += ["--model", runner_model]
+    if model_reason is not None:
+        model_reason = nonempty(model_reason, "model selection reason")
+    text = worker_instruction(
+        session.parent,
+        child,
+        Path(task["worktree"]),
+        task["branch"],
+        items[child].body,
+        instruction,
+    )
     # Claim a released slot and save the run in one transaction, before execution.
     if ended:
         task.pop("worker_ended")
     if restart_evidence is not None:
         task["restart_evidence"] = nonempty(restart_evidence, "restart evidence")
-    append_run(session, task, directory, "resume" if resume else "initial")
-    return command, task["delegation_id"]
+    append_run(
+        session, task, directory, "resume" if resume else "initial", model, model_reason
+    )
+    return command, task["delegation_id"], text
 
 
 def run_worker(
@@ -296,15 +383,23 @@ def run_worker(
     prompt: Path,
     resume: bool,
     restart_evidence: str | None,
+    model: str | None = None,
+    model_reason: str | None = None,
 ) -> tuple[int, dict[str, Any]]:
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
-        command, delegation = prepare_run(
-            session, child, prompt, resume, restart_evidence
+        command, delegation, instruction = prepare_run(
+            session, child, prompt, resume, restart_evidence, model, model_reason
         )
     # A foreground runner must not hold a registry or parent operation lock.
+    # Bytes in both directions: the runner reads UTF-8 and the locale may not be.
     try:
-        proc = subprocess.run(command, capture_output=True, text=True, check=False)
+        proc = subprocess.run(
+            command,
+            input=instruction.encode("utf-8"),
+            capture_output=True,
+            check=False,
+        )
     except OSError:
         raise ValueError(
             "common runner could not start; inspect the recorded private run"

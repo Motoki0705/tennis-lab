@@ -1,0 +1,6 @@
+.                                                                        [100%]
+============================== slowest durations ===============================
+0.37s call     tests/integration/tennis_scene/test_court_ball_ba.py::test_fixed_default_matches_captured_main_arrays
+0.01s setup    tests/integration/tennis_scene/test_court_ball_ba.py::test_fixed_default_matches_captured_main_arrays
+0.00s teardown tests/integration/tennis_scene/test_court_ball_ba.py::test_fixed_default_matches_captured_main_arrays
+1 passed in 4.70s

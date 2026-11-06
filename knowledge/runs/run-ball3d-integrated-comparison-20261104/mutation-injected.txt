@@ -1,0 +1,45 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 1 item
+
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py F     [100%]
+
+=================================== FAILURES ===================================
+_ test_explicit_cells_refine_two_distinct_peaks_without_argmax_or_padding_bias _
+
+decoding_config = HeatmapDecodingConfig(method='legacy', patch_size=5, temperature=1.0, coordinate_correction='none', model_stride=4, scale_xy=(1.0, 1.0), offset_xy=(0.0, 0.0))
+
+    def test_explicit_cells_refine_two_distinct_peaks_without_argmax_or_padding_bias(decoding_config):
+        yy, xx = np.mgrid[:13, :23]
+        centers = np.array([[4.21, 3.16], [17.28, 8.32]])
+        maps = [1 / (1 + np.exp(np.clip(((xx-x)/1.4)**2+((yy-y)/.9)**2-3, -50, 50))) for x,y in centers]
+        image = np.maximum(*maps).astype(np.float32)
+        original = image.copy()
+        cfg = replace(decoding_config, method="quadratic_logit", patch_size=3,
+            coordinate_correction="affine", scale_xy=(1.01,.99), offset_xy=(.01,-.02))
+        uv, codes = refine_peak_cells(image, np.array([[4,3],[17,8],[0,0]],np.int64), np.array([True,True,False]), cfg)
+        expected = centers / [22,12] * [1.01,.99] + [.01,-.02]
+>       np.testing.assert_allclose(uv[:2],expected,atol=1e-6,rtol=0)
+E       AssertionError: 
+E       Not equal to tolerance rtol=0, atol=1e-06
+E       
+E       Mismatched elements: 4 / 4 (100%)
+E       Mismatch at indices:
+E        [0, 0]: 0.19363637268543243 (ACTUAL), 0.20327727272727275 (DESIRED)
+E        [0, 1]: 0.22750000655651093 (ACTUAL), 0.24070000000000005 (DESIRED)
+E        [1, 0]: 0.7904545068740845 (ACTUAL), 0.803309090909091 (DESIRED)
+E        [1, 1]: 0.64000004529953 (ACTUAL), 0.6664 (DESIRED)
+E       Max absolute difference among violations: 0.02639995
+E       Max relative difference among violations: 0.05484002
+E        ACTUAL: array([[0.193636, 0.2275  ],
+E              [0.790455, 0.64    ]], dtype=float32)
+E        DESIRED: array([[0.203277, 0.2407  ],
+E              [0.803309, 0.6664  ]])
+
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py:155: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_refine_two_distinct_peaks_without_argmax_or_padding_bias
+============================== 1 failed in 4.88s ===============================

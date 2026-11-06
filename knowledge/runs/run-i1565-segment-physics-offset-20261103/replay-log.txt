@@ -1,0 +1,4 @@
+Inputs verified. Running blind full-view/LOVO physics; labels remain unloaded.
+All predictions saved and reloaded. Loading labels only for scoring.
+Scores and diagnostics saved. Rendering one source frame at a time.
+Saved /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_v1/index.html; 541.0s

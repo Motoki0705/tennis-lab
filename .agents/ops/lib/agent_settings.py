@@ -9,6 +9,8 @@ import shlex
 from pathlib import Path
 from typing import Any
 
+DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
+
 
 def _parse_pins(raw: bytes) -> dict[str, str]:
     pins: dict[str, str] = {}
@@ -28,6 +30,40 @@ def _parse_pins(raw: bytes) -> dict[str, str]:
 def read_pins(config: Path) -> dict[str, str]:
     """Read literal pins for all runtimes without evaluating shell or environment."""
     return _parse_pins(config.read_bytes())
+
+
+def _implementation_models(pins: dict[str, str]) -> tuple[str, str]:
+    models = []
+    for key in ("CODEX_MODEL", "CODEX_ALTERNATE_MODEL"):
+        value = pins.get(key)
+        if not value:
+            raise ValueError(f"agents.conf must set {key}")
+        if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]*", value):
+            raise ValueError(f"invalid model pin: {key}")
+        models.append(value)
+    return models[0], models[1]
+
+
+def implementation_models(config: Path | None = None) -> tuple[str, str]:
+    """The implementation CLI choices, from the runner's literal config."""
+    return _implementation_models(read_pins(config or DEFAULT_CONFIG))
+
+
+def implementation_model(
+    model: str | None, *, previous: str | None = None, config: Path | None = None
+) -> str:
+    """Validate a selection and preserve the original model on continuation."""
+    if previous is not None and model is not None and model != previous:
+        raise ValueError("continuation cannot change the worker model")
+    settings = resolve(
+        config or DEFAULT_CONFIG,
+        "codex",
+        None,
+        previous if previous is not None else model,
+        None,
+        "write",
+    )
+    return str(settings["selected"]["model"])
 
 
 def resolve(
@@ -73,12 +109,7 @@ def resolve(
         if selected["service_tier"] not in {"default", "fast", "flex", "priority"}:
             raise ValueError("invalid service tier")
         if profile is None:
-            alternate = pins.get("CODEX_ALTERNATE_MODEL")
-            if not alternate:
-                raise ValueError("agents.conf must set CODEX_ALTERNATE_MODEL")
-            if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]*", alternate):
-                raise ValueError("invalid alternate model pin")
-            if selected["model"] not in {defaults["model"], alternate}:
+            if selected["model"] not in _implementation_models(pins):
                 raise ValueError(
                     "implementation model must be the default or configured alternate"
                 )

@@ -1,0 +1,45 @@
+{
+  "original_ids": [
+    "right",
+    "near",
+    "far"
+  ],
+  "permutation": [
+    2,
+    0,
+    1
+  ],
+  "identical_initial_parameters": true,
+  "identical_bounds": true,
+  "residual_and_jacobian_rows_are_exact_permutation": true,
+  "records": [
+    {
+      "initial_parameters_sha256": "96a245c3fddfd745326d6e850370e91be89483d44aab5a75209f4392aab19e56",
+      "initial_objective": 50.44579768424815,
+      "nfev": 11,
+      "cost": 45.608343494085375,
+      "optimality": 0.014042984656683475,
+      "termination": "`ftol` termination condition is satisfied."
+    },
+    {
+      "initial_parameters_sha256": "96a245c3fddfd745326d6e850370e91be89483d44aab5a75209f4392aab19e56",
+      "initial_objective": 50.44579768424815,
+      "nfev": 11,
+      "cost": 45.60834059880783,
+      "optimality": 0.015169413607781302,
+      "termination": "`ftol` termination condition is satisfied."
+    }
+  ],
+  "offset_seconds": [
+    0.004460798853300611,
+    -0.007657749425858513,
+    0.0
+  ],
+  "permuted_offset_seconds": [
+    0.0,
+    0.00446948276290387,
+    -0.007659944596860845
+  ],
+  "max_offset_difference_seconds": 8.683909603258815e-06,
+  "ci_reported_max_difference_seconds": 1.7e-05
+}

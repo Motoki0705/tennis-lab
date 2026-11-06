@@ -1,0 +1,17 @@
+{
+  "collected": 495,
+  "passed": 494,
+  "skipped": 1,
+  "pytest_seconds": 279.81,
+  "collection_seconds": 69.16,
+  "wrapper_seconds": 282.0452301450423,
+  "max_case_seconds": 75.0902409790433,
+  "max_setup_seconds": 0.09937661298317835,
+  "skip_reason": "Existing empty parametrization: visualization/test_contracts.py::test_compact_domains_require_scene_and_camera[NOTSET]",
+  "full_logs": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_ci_checks_v1",
+  "raw_file_sha256": {
+    "ci-test-durations.txt": "1f79ea4e0ba3beb5f46cfd191f79ac1d33847cc835e14868a54c2f805fe11cc7",
+    "ci-test-collection.txt": "ad04bbea3d90a564c3f01265e4022f2e8ba3479321799716c4b2552384bbdec1",
+    "ci-test-results.json": "650f00f47cd019a1c15465fa82f7095de827bcc4dcec7ad27c2a597e744a7857"
+  }
+}

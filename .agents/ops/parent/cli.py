@@ -12,6 +12,7 @@ from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
+from lib.agent_settings import implementation_models
 from lib.identity import session_identity
 
 from . import metrics
@@ -35,6 +36,10 @@ def read_object(path: str) -> dict[str, Any]:
 
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
+    try:
+        models = implementation_models()
+    except (OSError, ValueError) as exc:
+        root.error(str(exc))
     root.add_argument("--repo", help="owner/repo; default: gh repo view")
     root.add_argument(
         "--state-dir", type=Path, help="the same registry as dispatcher/review/merge"
@@ -82,7 +87,7 @@ def parser() -> argparse.ArgumentParser:
         worker.add_argument("--child", type=int, required=True)
         if name in {"start-worker", "continue-worker"}:
             worker.add_argument("--prompt-file", required=True)
-            worker.add_argument("--model", choices=("gpt-6.1-sol", "gpt-6-astra"))
+            worker.add_argument("--model", choices=models)
         if name == "start-worker":
             worker.add_argument("--branch", required=True)
             worker.add_argument("--worktree", type=Path, required=True)
@@ -144,6 +149,15 @@ def parser() -> argparse.ArgumentParser:
     manual.add_argument("--prompt-file", type=Path, required=True)
     manual.add_argument("--resume", action="store_true")
     manual.add_argument("--restart-evidence-file")
+    manual.add_argument(
+        "--model",
+        choices=models,
+        help="initial model; resume inherits the saved model and rejects changes",
+    )
+    manual.add_argument(
+        "--model-reason-file",
+        help="parent's selection reason; required for an initial alternate model",
+    )
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True)
     run_record.add_argument("--run-dir", type=Path, required=True)
@@ -226,6 +240,10 @@ def _main(argv: list[str] | None = None) -> int:
                 child=number(args.child),
                 prompt=args.prompt_file,
                 resume=args.resume,
+                model=args.model,
+                model_reason=read_text(args.model_reason_file)
+                if args.model_reason_file
+                else None,
                 restart_evidence=read_text(args.restart_evidence_file)
                 if args.restart_evidence_file
                 else None,

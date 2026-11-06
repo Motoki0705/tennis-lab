@@ -1,0 +1,67 @@
+{
+  "review_finding": "cross-1",
+  "review_run": "parent-1554-5647a023173b48feac926b069d0a207c",
+  "reviewed_head": "32bac92aca62aa2dd59d0240b3f239f2530e0993",
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_cohort_v1",
+  "checksums_json_sha256": "1ceee645fcefb9f7f9f54ca790667302533b664cbd7a90c2ac41512915f551e2",
+  "files": {
+    "cohorts.json": {
+      "sha256": "c6da1d4261fa944a6acac158b4e697b1e477477fcb1c129c0d282a4fec119e97",
+      "size_bytes": 653656
+    },
+    "cohorts.csv": {
+      "sha256": "92593dc37c869c24c06d416be2384e529ed5118cff978d76ad6e2b583bf726e8",
+      "size_bytes": 126701
+    },
+    "samples.csv": {
+      "sha256": "94b6c0ff146b82a742e1587dce3fd8dd17eba3fb1e2b6debd3b6e062265b925a",
+      "size_bytes": 1526228
+    },
+    "primary.md": {
+      "sha256": "98fdf14a81dec18eb568aaf4c8ab49180e73dfe5dfa5e8b343b4b2db769f299b",
+      "size_bytes": 1388
+    }
+  },
+  "analysis_code_commit": "4058bb2dda3c5406f237f2265d1d5e3e21eb9f35",
+  "analysis_script_sha256": "d34a235361e9c1918465a49de284c0c295c560a9b4dd8b61c49289f2a68e4b9a",
+  "scorer_sha256": "1226506bcbe023ad978a57a85b1f47b9900f60ed1eb97d70dc3caeac4949a2a8",
+  "command": [
+    "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-dense-likelihood/.venv/bin/python",
+    "knowledge/runs/run-ball3d-dense-likelihood-20261103/cohorts.py",
+    "--bundle",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1",
+    "--annotations",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json",
+    "--source",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2",
+    "--output",
+    "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_cohort_v1"
+  ],
+  "native_thread_environment": {
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "PYTHONPATH": "."
+  },
+  "checks": {
+    "all_row_counts_verified": true,
+    "camera_kind_time_subtotals_verified": true,
+    "original_all_point_scores_exactly_matched": true,
+    "predictions_rerun": false,
+    "retuning": false,
+    "conditions": 8,
+    "lovo_runs_loaded": 24,
+    "partition_rows": 288
+  },
+  "analysis_seconds_excluding_import": 2.1135978450183757,
+  "process_wall_seconds": 8.2,
+  "maximum_rss_kib": 642044,
+  "all_output_checksums_verified": true,
+  "source_comparison_directory": {
+    "path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2",
+    "manifest_sha256": "3b53a53ff5ca34bfdb6c4c764039bf1e3fe8eb3a4ea20b2a363f2fd6d97c9d6c",
+    "scores_sha256": "630563ee095e30bf2d13f37a9c0659aebc46e83f1ecf8b0d613246eea4edc306"
+  },
+  "source_prediction_arrays_copied_to_knowledge": false,
+  "samples_csv_retained_at_output_only": true
+}

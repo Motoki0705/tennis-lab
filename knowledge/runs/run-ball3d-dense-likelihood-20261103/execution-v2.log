@@ -1,0 +1,9 @@
+FROZEN selection 8fc64fa4f1c58c11ca176ed405ace504ee08212eaece358bc87fc5fae160257d: DenseLikelihoodConfig(interpolation='bicubic_logit', initialization='candidates', temperature=1.0, background=0.05, view_temperatures=(('cam0', 2.0), ('cam2', 2.0)), view_backgrounds=(('cam1', 0.2), ('cam2', 0.2)), support_logit_drop=5.0, min_peak_probability=0.05, x_bounds=(-12.0, 12.0), y_bounds=(-24.0, 24.0), z_bounds=(-0.2, 12.0), coarse_spacing_m=2.0, coarse_levels=3, coarse_keep=16, multistart=2, max_iterations=40, min_ray_angle_deg=1.0, temporal_weight=0.0, acceleration_scale_mps2=100.0, event_acceleration_mps2=350.0, window_size=9)
+Completed pipeline_baseline: 55.2s, valid frames [856, 540, 474, 646]
+Completed without_loess: 67.9s, valid frames [829, 523, 445, 634]
+Completed dense_selected: 141.9s, valid frames [1010, 1002, 1010, 1010]
+Completed dense_quadratic_logit: 256.9s, valid frames [850, 893, 904, 907]
+Completed dense_quadratic_log: 391.9s, valid frames [745, 896, 924, 916]
+Completed dense_coarse: 252.0s, valid frames [1010, 1007, 1010, 1010]
+Completed dense_temporal: 188.6s, valid frames [986, 996, 1006, 1001]
+DONE /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2/index.html, artifact manifest 3b53a53ff5ca34bfdb6c4c764039bf1e3fe8eb3a4ea20b2a363f2fd6d97c9d6c

@@ -14,6 +14,7 @@ from dispatcher.schedule import Schedule
 from dispatcher.state import DispatchStore
 from dispatcher.supervisor import Supervisor, children_pending, managed, unstarted
 from issues import Issue, task_status
+from lib.agent_settings import implementation_model
 
 from .adopted_tasks import check_task_adoptions
 from .execution import authorization, require_request_authorization, task_errors
@@ -28,6 +29,7 @@ from .policy import (
 )
 from .session import ParentSession
 from .state import Store
+from .worker_instruction import worker_instruction
 
 OPS = Path(__file__).resolve().parents[1]
 
@@ -114,8 +116,7 @@ def start_worker(
     A failure between the two claims intentionally leaves the delegation intact.
     """
     nonempty(prompt, "worker instruction")
-    if model not in {None, "gpt-6.1-sol", "gpt-6-astra"}:
-        raise ValueError("unknown implementation model")
+    implementation_model(model)
     with session.store.locked():
         dispatch = accepted(session, env)
         session.agreed()
@@ -145,16 +146,16 @@ def start_worker(
                     raise ValueError(
                         "existing PR has no implementation session to resume"
                     )
-                if model is not None and model != jobs[-1]["model"]:
-                    raise ValueError("continuation cannot change the worker model")
+                implementation_model(
+                    model, previous=implementation_model(jobs[-1]["model"])
+                )
                 model = jobs[-1]["model"]
             else:
                 record = load(Path(source) / "result.json")
-                if (
-                    model
-                    and model != record["contract"]["settings"]["selected"]["model"]
-                ):
-                    raise ValueError("continuation cannot change the worker model")
+                settings = record["contract"]["settings"]
+                implementation_model(model, previous=settings["selected"]["model"])
+                # A same-value request must retain the original override provenance.
+                model = settings["overrides"].get("model")
             task = session.row["tasks"][str(child)]
             branch, worktree = task["branch"], Path(task["worktree"])
         elif jobs:
@@ -184,13 +185,8 @@ def start_worker(
             raise ValueError(
                 "worker inputs changed after delegation; reconcile the saved reservation"
             )
-        text = Path(__file__).with_name("worker_prompt.md").read_text(encoding="utf-8")
-        text += (
-            f"\n\n親issue: #{session.parent}\n担当issue: #{child}\n"
-            f"worktree: {worktree.resolve()}\nbranch: {branch}\n"
-            "pytestは共有lockなしで他の親・子と並列実行できる。\n\n"
-            f"## 担当issueの原文\n\n{items[child].body}\n\n"
-            f"## 親の具体的な指示\n\n{prompt}\n"
+        text = worker_instruction(
+            session.parent, child, worktree, branch, items[child].body, prompt
         )
         delegation = claim["assignment"]["delegation_id"]
     job_id = control.start_child(session.parent, child, delegation, text, env, model)

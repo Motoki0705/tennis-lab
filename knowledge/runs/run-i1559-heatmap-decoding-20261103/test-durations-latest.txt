@@ -1,0 +1,532 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-heatmap-decoding/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-heatmap-decoding
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collecting ... collected 130 items
+
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05] PASSED [  0%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05] PASSED [  1%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05] PASSED [  2%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05] PASSED [  3%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05] PASSED [  3%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05] PASSED [  4%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15] PASSED [  5%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15] PASSED [  6%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002] PASSED [  6%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05] PASSED [  7%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001] PASSED [  8%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002] PASSED [  9%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[centroid-centre3-0.65] PASSED [ 10%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65] PASSED [ 10%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24] PASSED [ 11%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit] PASSED [ 12%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log] PASSED [ 13%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit] PASSED [ 13%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid] PASSED [ 14%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax] PASSED [ 15%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian] PASSED [ 16%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes PASSED [ 16%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_coordinate_hypotheses_have_known_pixel_displacements PASSED [ 17%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change0] PASSED [ 18%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change1] PASSED [ 19%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change2] PASSED [ 20%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change3] PASSED [ 20%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change4] PASSED [ 21%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_nan_input_and_disabled_refinement_are_rejected PASSED [ 22%]
+tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_isotropic_gaussian_and_exactly_saturated_plateau PASSED [ 23%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames PASSED [ 23%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction PASSED [ 24%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream PASSED [ 25%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding PASSED [ 26%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False] PASSED [ 26%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True] PASSED [ 27%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9] PASSED [ 28%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4] PASSED [ 29%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_stride_cannot_leave_silent_holes PASSED [ 30%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_checkpoint_normalization_mismatch_is_rejected_before_inference PASSED [ 30%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1] PASSED [ 31%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3] PASSED [ 32%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill] PASSED [ 33%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[4-drop] PASSED [ 33%]
+tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays PASSED [ 34%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer PASSED [ 35%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing] PASSED [ 36%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline] PASSED [ 36%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan] PASSED [ 37%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask] PASSED [ 38%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch] PASSED [ 39%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot] PASSED [ 40%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype] PASSED [ 40%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence PASSED [ 41%]
+tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence PASSED [ 42%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root PASSED [ 43%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id] PASSED [ 43%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root] PASSED [ 44%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path] PASSED [ 45%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id] PASSED [ 46%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths] PASSED [ 46%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids] PASSED [ 47%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0] PASSED [ 48%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536] PASSED [ 49%]
+tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1] PASSED [ 50%]
+tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0] PASSED [ 50%]
+tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4] PASSED [ 51%]
+tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1] PASSED [ 52%]
+tests/unit/tennis_scene/test_configuration.py::test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict PASSED [ 53%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults PASSED [ 53%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml] PASSED [ 54%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs] PASSED [ 55%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]] PASSED [ 56%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui] PASSED [ 56%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5] PASSED [ 57%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt] PASSED [ 58%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0] PASSED [ 59%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1] PASSED [ 60%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1] PASSED [ 60%]
+tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0] PASSED [ 61%]
+tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction PASSED [ 62%]
+tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own PASSED [ 63%]
+tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer PASSED [ 63%]
+tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association PASSED [ 64%]
+tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api PASSED [ 65%]
+tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy PASSED [ 66%]
+tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows PASSED [ 66%]
+tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera] PASSED [ 67%]
+tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame] PASSED [ 68%]
+tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates PASSED [ 69%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera] PASSED [ 70%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame] PASSED [ 70%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame] PASSED [ 71%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask] PASSED [ 72%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation] PASSED [ 73%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid] PASSED [ 73%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position] PASSED [ 74%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance] PASSED [ 75%]
+tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order] PASSED [ 76%]
+tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing] PASSED [ 76%]
+tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera] PASSED [ 77%]
+tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count] PASSED [ 78%]
+tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection] PASSED [ 79%]
+tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request PASSED [ 80%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation PASSED [ 80%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera PASSED [ 81%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames PASSED [ 82%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only PASSED [ 83%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals PASSED [ 83%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries PASSED [ 84%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest] PASSED [ 85%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count] PASSED [ 86%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id] PASSED [ 86%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count] PASSED [ 87%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash] PASSED [ 88%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs PASSED [ 89%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing PASSED [ 90%]
+tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods PASSED [ 90%]
+tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media PASSED [ 91%]
+tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity PASSED [ 92%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip PASSED [ 93%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum] PASSED [ 93%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera] PASSED [ 94%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation] PASSED [ 95%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input PASSED [ 96%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores] PASSED [ 96%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order] PASSED [ 97%]
+tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame] PASSED [ 98%]
+tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report PASSED [ 99%]
+tests/integration/tennis_scene/test_ball3d_heatmap_decoding.py::test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order PASSED [100%]
+
+---------------- generated xml file: /tmp/i1559-tests-final.xml ----------------
+============================== slowest durations ===============================
+2.85s call     tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+2.10s call     tests/integration/tennis_scene/test_ball3d_heatmap_decoding.py::test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order
+0.65s call     tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates
+0.59s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip
+0.56s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer
+0.53s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]
+0.48s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]
+0.47s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]
+0.43s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype]
+0.39s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]
+0.36s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream
+0.35s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding
+0.33s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence
+0.33s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]
+0.33s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot]
+0.29s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing]
+0.28s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence
+0.28s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan]
+0.28s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]
+0.27s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline]
+0.27s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask]
+0.26s call     tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch]
+0.19s call     tests/unit/tennis_scene/test_configuration.py::test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict
+0.14s call     tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]
+0.14s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input
+0.11s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]
+0.11s call     tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api
+0.11s call     tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction
+0.08s call     tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own
+0.04s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1]
+0.04s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs
+0.03s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.03s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.03s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.02s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays
+0.02s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3]
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.02s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]
+0.01s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002]
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]
+0.01s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]
+0.01s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05]
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1]
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[4-drop]
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays
+0.01s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes
+0.01s call     tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True]
+0.01s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9]
+0.01s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_stride_cannot_leave_silent_holes
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames
+0.01s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]
+0.01s setup    tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_checkpoint_normalization_mismatch_is_rejected_before_inference
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction
+0.01s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]
+0.01s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer
+0.01s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]
+0.01s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill]
+0.01s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]
+0.01s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_isotropic_gaussian_and_exactly_saturated_plateau
+0.01s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]
+0.00s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_checkpoint_normalization_mismatch_is_rejected_before_inference
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]
+0.00s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[4-drop]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change2]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05]
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05]
+0.00s setup    tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002]
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot]
+0.00s call     tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_stride_cannot_leave_silent_holes
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[centroid-centre3-0.65]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch]
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[centroid-centre3-0.65]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_isotropic_gaussian_and_exactly_saturated_plateau
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]
+0.00s setup    tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05]
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict
+0.00s setup    tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_nan_input_and_disabled_refinement_are_rejected
+0.00s setup    tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05]
+0.00s setup    tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change4]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05]
+0.00s setup    tests/integration/tennis_scene/test_ball3d_heatmap_decoding.py::test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_coordinate_hypotheses_have_known_pixel_displacements
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change3]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_coordinate_hypotheses_have_known_pixel_displacements
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change0]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change1]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]
+0.00s setup    tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_nan_input_and_disabled_refinement_are_rejected
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[1-backfill]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_trajectory_gate_zeroes_rejected_pipeline_frames
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]
+0.00s setup    tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_rejects_padding_and_drop[4-drop]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[3]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]
+0.00s setup    tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_checkpoint_normalization_mismatch_is_rejected_before_inference
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_centre_policy_matches_training_owners_without_score_selection[1]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change2]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[centroid-centre3-0.65]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change4]
+0.00s call     tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change1]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_predict_video_consumes_typed_task_prediction
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change1]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_isotropic_gaussian_and_exactly_saturated_plateau
+0.00s teardown tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_stride_cannot_leave_silent_holes
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[dtype]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change4]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[False]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_heatmap_decoding.py::test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_annotation_or_disabled_outputs_cannot_claim_model_evidence
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[nan]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_video_to_predictor_is_always_raw_rgb[True]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_incomplete_timeline_stops_instead_of_padding
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit]
+0.00s call     tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change3]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_coordinate_hypotheses_have_known_pixel_displacements
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]
+0.00s call     tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change0]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_detection.py::test_process_exposes_one_unidentified_observation_stream
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_trajectory_gate_does_not_erase_raw_evidence
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change2]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[patch]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_nan_input_and_disabled_refinement_are_rejected
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change0]
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.00s call     tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]
+0.00s teardown tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[mask]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[invalid_slot]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]
+0.00s teardown tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_invalid_decoding_settings_are_rejected[change3]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[missing]
+0.00s teardown tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]
+0.00s teardown tests/unit/tennis_scene/pipeline/components/test_ball_evidence.py::test_corrupt_evidence_is_rejected[timeline]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]
+0.00s call     tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.00s teardown tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows
+0.00s teardown tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity
+0.00s teardown tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+============================= 130 passed in 25.33s =============================
