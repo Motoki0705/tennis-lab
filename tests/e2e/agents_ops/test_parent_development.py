@@ -155,11 +155,21 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
         d.control.reconcile(stop=True)
 
 
-@pytest.mark.parametrize("cancel_fix", [False, True])
+@pytest.mark.parametrize(
+    "cancel_fix,initial_model,resume_model",
+    [
+        (False, "gpt-6-astra", None),
+        (True, "gpt-6-astra", None),
+        (False, None, "gpt-6.1-sol"),
+    ],
+    ids=["False", "True", "sol_same"],
+)
 def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
     d: DispatchHarness,
     monkeypatch: pytest.MonkeyPatch,
     cancel_fix: bool,
+    initial_model: str | None,
+    resume_model: str | None,
 ) -> None:
     mod, session, env = workflow(d, monkeypatch, family=True)
     tree = child_tree(d)
@@ -169,7 +179,7 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
         env,
         child=10,
         prompt="実装。",
-        model="gpt-6-astra",
+        model=initial_model,
         branch="codex/parser",
         worktree=tree,
     )
@@ -189,6 +199,8 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
                 },
             }
         )
+        reserved = d.row()
+        initial_calls = (d.h.root / "runtime-calls.jsonl").read_bytes()
         with pytest.raises(ValueError, match="model"):
             mod.start_worker(
                 session,
@@ -196,9 +208,11 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
                 env,
                 child=10,
                 prompt="修正。",
-                model="gpt-6.1-sol",
+                model="gpt-6-astra" if initial_model is None else "gpt-6.1-sol",
                 continuation="終了・差分を確認した。",
             )
+        assert d.row() == reserved  # No delegation, job or slot may be reserved.
+        assert (d.h.root / "runtime-calls.jsonl").read_bytes() == initial_calls
         with pytest.raises(ValueError, match="existing worker"):
             mod.start_worker(
                 session,
@@ -216,9 +230,19 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
             env,
             child=10,
             prompt="指摘と回帰テストを修正。",
-            model=None,
+            model=resume_model,
             continuation="前turn終了・同じPRの差分とHEADを確認。",
         )
+        before = json.loads(
+            (Path(previous["directory"]) / "runtime/result.json").read_text()
+        )
+        settings = before["contract"]["settings"]
+        assert settings["overrides"] == (
+            {} if initial_model is None else {"model": initial_model}
+        )
+        if initial_model is None:
+            assert settings["selection_sources"]["model"] == "CODEX_MODEL"
+            assert d.row()["dispatch"]["jobs"][second["job_id"]]["model"] is None
         if cancel_fix:
             cancelled = d.row()["dispatch"]["jobs"][second["job_id"]]
             with session.store.locked():
@@ -256,15 +280,15 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
             )
         launch(d, monkeypatch)
         current = drain(d, second["job_id"])
-        before = json.loads(
-            (Path(previous["directory"]) / "runtime/result.json").read_text()
-        )
         after = json.loads(
             (Path(current["directory"]) / "runtime/result.json").read_text()
         )
         assert current["resume_from"] == str(Path(previous["directory"]) / "runtime")
         assert before["runtime"]["session_id"] == after["runtime"]["session_id"]
-        assert after["contract"]["settings"]["selected"]["model"] == "gpt-6-astra"
+        assert before["contract"] == after["contract"]
+        assert after["contract"]["settings"]["selected"]["model"] == (
+            initial_model or "gpt-6.1-sol"
+        )
         assert first["delegation_id"] != second["delegation_id"]
         assert len((d.h.root / "runtime-calls.jsonl").read_text().splitlines()) == 2
         calls = [

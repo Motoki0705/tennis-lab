@@ -152,9 +152,10 @@ def start_worker(
                 model = jobs[-1]["model"]
             else:
                 record = load(Path(source) / "result.json")
-                implementation_model(
-                    model, previous=record["contract"]["settings"]["selected"]["model"]
-                )
+                settings = record["contract"]["settings"]
+                implementation_model(model, previous=settings["selected"]["model"])
+                # A same-value request must retain the original override provenance.
+                model = settings["overrides"].get("model")
             task = session.row["tasks"][str(child)]
             branch, worktree = task["branch"], Path(task["worktree"])
         elif jobs:
