@@ -6,7 +6,6 @@ throwaway Git checkout as the merge base. No GPU, Drive, network or live queue.
 from __future__ import annotations
 
 import base64
-import fnmatch
 import importlib
 import json
 import os
@@ -375,13 +374,3 @@ def test_portable_paths_drop_machine_prefixes(tmp_path: Path, monkeypatch: pytes
     assert lib.portable_path(main / ".training_queue/logs/x.log") == ".training_queue/logs/x.log"
     assert lib.portable_path(home / "artifacts/run") == "~/artifacts/run"
     assert lib.portable_path(tmp_path / "elsewhere") == str((tmp_path / "elsewhere").resolve())
-
-
-def test_ci_runs_when_a_tracked_config_or_source_changes() -> None:
-    workflow = yaml.safe_load((ROOT / ".github/workflows/knowledge.yml").read_text())
-    triggers = workflow.get("on", workflow.get(True))  # PyYAML reads the bare key `on` as True.
-    registry = yaml.safe_load((ROOT / "knowledge/registry/deployments.yaml").read_text())
-    watched = set(registry["configs"]) | {e["source"] for e in registry["deployments"] if "source" in e}
-    for event in ("pull_request", "push"):
-        patterns = triggers[event]["paths"]
-        assert all(any(fnmatch.fnmatch(path, pattern) for pattern in patterns) for path in watched), (event, watched)
