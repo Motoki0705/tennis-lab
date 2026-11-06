@@ -1,0 +1,8 @@
+{
+  "prediction_code_commit": "3ddbe0f458280ce1c3aafcce2faced805d7e2486",
+  "report_code_commit": "345ae65f7beb7ceb593e9b16a5e426eb50f65bc1",
+  "v1": "Completed blind prediction, scoring and full video render/decode. Frozen method settings unchanged.",
+  "v2": "Report-only draft started before report script commit; excluded as final provenance. No prediction/model change. Preserved without overwrite.",
+  "v3": "Final report from committed script, validated v1 inventory and exact rescore, adds baseline/candidate common cohort; original 16 predictions and video bytes preserved.",
+  "retuning_after_evaluation": false
+}

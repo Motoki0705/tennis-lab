@@ -1,0 +1,38 @@
+{
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/dense_likelihood_v2",
+  "files": {
+    "artifacts.json": {
+      "sha256": "3b53a53ff5ca34bfdb6c4c764039bf1e3fe8eb3a4ea20b2a363f2fd6d97c9d6c",
+      "size_bytes": 83217
+    },
+    "scores.json": {
+      "sha256": "630563ee095e30bf2d13f37a9c0659aebc46e83f1ecf8b0d613246eea4edc306",
+      "size_bytes": 731712
+    },
+    "paired-scores.json": {
+      "sha256": "6d0465f1917a5f15c94474c6f3f8d03d90397054efd7165d8026080078c09b10",
+      "size_bytes": 211144
+    },
+    "selection.json": {
+      "sha256": "8fc64fa4f1c58c11ca176ed405ace504ee08212eaece358bc87fc5fae160257d",
+      "size_bytes": 9656
+    },
+    "index.html": {
+      "sha256": "f0bbfde24fd92ffaaff0f139799f3964d54a5f93a98541c4ca7f5440d8647cca",
+      "size_bytes": 7343261
+    },
+    "comparison.mp4": {
+      "sha256": "dfb07b17167cac63fc592f86ce6c1829e06895dabb311efe5c5f266a4dd4d82c",
+      "size_bytes": 1854972
+    },
+    "metrics-table.png": {
+      "sha256": "279150e63e6321d99a0e6710d0c9e738830837ad4639c3ea450e109fa1e4b058",
+      "size_bytes": 497305
+    },
+    "likelihood-slices.png": {
+      "sha256": "bc4b5e3d89b9f4a805ea850f567db98e0485ead4d60fc94ac4bafeeb53171e46",
+      "size_bytes": 359209
+    }
+  },
+  "all_manifest_entries_verified": true
+}

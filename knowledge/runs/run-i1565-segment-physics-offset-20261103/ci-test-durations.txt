@@ -1,0 +1,47 @@
+Full --durations=0 --durations-min=0 stdout is preserved outside Git at:
+/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/segment_physics_offset_ci_checks_v1/ci-test-durations.txt
+SHA-256: 1f79ea4e0ba3beb5f46cfd191f79ac1d33847cc835e14868a54c2f805fe11cc7
+
+
+75.09s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]
+72.80s call     tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]
+26.64s call     tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit
+15.14s call     tests/integration/tennis_scene/test_ball3d_segment_physics.py::test_opt_in_pipeline_codec_and_lovo_use_same_solver_without_heldout_evidence
+3.41s call     tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report
+3.08s call     tests/unit/utils/configuration/test_contracts.py::test_catalog_has_exact_source_declaration_parity
+1.72s call     tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_joint_fit_recovers_signed_offsets_drag_bounce_and_camera_reordering
+1.50s call     tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_dense_heatmap_fit_is_independent_of_candidate_coordinates_and_keeps_gaps
+0.69s call     tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_filled_and_rejected_points_cannot_supply_the_second_real_view
+0.63s call     tests/integration/tennis_scene/test_ball3d_segment_physics.py::test_default_pipeline_matches_fixed_main_arrays
+0.55s call     tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates
+0.45s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip
+0.45s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]
+0.41s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]
+0.39s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]
+0.27s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]
+0.27s call     tests/unit/utils/configuration/test_audit.py::test_unvalidated_runtime_paths_fail_closed
+0.26s call     tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_failed_optimizer_has_explicit_status_and_no_baseline_fallback
+0.24s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]
+0.24s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]
+0.22s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations
+0.14s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]
+0.14s call     tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input
+0.13s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people
+0.13s call     tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_detect_bounce_and_hit_without_crossing_long_missing_run
+0.12s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]
+0.12s call     tests/unit/utils/configuration/test_discovery.py::test_external_runtime_registrations_have_sources_reasons_and_no_repo_imports
+0.12s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]
+0.11s call     tests/unit/tennis_scene/test_configuration.py::test_segment_physics_values_are_composition_owned_and_overrides_reach_runtime
+0.11s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights
+0.11s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]
+0.10s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition
+0.10s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built
+0.10s call     tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node
+0.10s setup    tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_detect_bounce_and_hit_without_crossing_long_missing_run
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]
+0.10s call     tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association
+0.09s call     tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_invalid_solver_configuration_fails[kwargs1]
+0.09s call     tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]
+0.09s call     tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py::test_invalid_solver_conf

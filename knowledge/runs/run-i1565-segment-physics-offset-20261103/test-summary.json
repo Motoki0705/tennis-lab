@@ -1,0 +1,76 @@
+{
+  "exit_code": 0,
+  "wall_seconds": 65.73912867699983,
+  "collection_wall_seconds": 14.296777170035057,
+  "collected_cases": 99,
+  "passed_cases": 99,
+  "pytest_display_seconds": 61.43,
+  "collection_display_seconds": 8.64,
+  "by_file": {
+    "tests/unit/tennis_scene/ball_trajectory/test_segment_physics.py": {
+      "cases": 11,
+      "phase_sum_seconds": 4.535532329056878
+    },
+    "tests/integration/tennis_scene/test_ball3d_segment_physics.py": {
+      "cases": 2,
+      "phase_sum_seconds": 32.220246257958934
+    },
+    "tests/unit/tennis_scene/test_configuration.py": {
+      "cases": 30,
+      "phase_sum_seconds": 3.436756792012602
+    },
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py": {
+      "cases": 10,
+      "phase_sum_seconds": 1.497496057068929
+    },
+    "tests/unit/tennis_scene/pipeline/components/test_ball_points.py": {
+      "cases": 3,
+      "phase_sum_seconds": 1.3261959471274167
+    },
+    "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py": {
+      "cases": 3,
+      "phase_sum_seconds": 0.014081584056839347
+    },
+    "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py": {
+      "cases": 1,
+      "phase_sum_seconds": 0.8346170539734885
+    },
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py": {
+      "cases": 9,
+      "phase_sum_seconds": 0.3267706861370243
+    },
+    "tests/unit/tennis_scene/evaluation/ball3d/test_court.py": {
+      "cases": 5,
+      "phase_sum_seconds": 0.17702214804012328
+    },
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py": {
+      "cases": 13,
+      "phase_sum_seconds": 0.6178797469474375
+    },
+    "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py": {
+      "cases": 2,
+      "phase_sum_seconds": 0.02144943200983107
+    },
+    "tests/unit/tennis_scene/visualization/test_ball3d_tables.py": {
+      "cases": 1,
+      "phase_sum_seconds": 0.0036514740204438567
+    },
+    "tests/integration/tennis_scene/test_ball3d_bundle.py": {
+      "cases": 8,
+      "phase_sum_seconds": 5.875075782008935
+    },
+    "tests/integration/tennis_scene/test_ball3d_media.py": {
+      "cases": 1,
+      "phase_sum_seconds": 3.515681621967815
+    }
+  },
+  "new_cases": 13,
+  "max_case": [
+    "tests/integration/tennis_scene/test_ball3d_segment_physics.py::test_opt_in_pipeline_codec_and_lovo_use_same_solver_without_heldout_evidence",
+    {
+      "seconds": 31.38818223401904,
+      "setup_seconds": 0.00467623199801892
+    }
+  ],
+  "max_setup_seconds": 0.2107769440044649
+}

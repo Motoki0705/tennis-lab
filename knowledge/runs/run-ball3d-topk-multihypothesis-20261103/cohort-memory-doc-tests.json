@@ -1,0 +1,2061 @@
+{
+  "pytest_arguments": [
+    "--verbose",
+    "--import-mode=importlib",
+    "-n",
+    "auto",
+    "--strict-markers",
+    "--disable-warnings",
+    "-n",
+    "0",
+    "--durations=0",
+    "--durations-min=0",
+    "tests/e2e/agents_ops/test_agents_docs.py"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 2.33894191600848,
+  "collected_count": 107,
+  "nodes": [
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[AGENTS.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[CLAUDE.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/README.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/memory/SKILL.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/SKILL.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-board/SKILL.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/task-template.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/parent/README.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/board/README.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/herdr_labels/README.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-session/SKILL.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/SUMMARY.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/workflow/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/decision/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/environment/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/gotcha/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/review/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/SUMMARY.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/copilot-instructions.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/agents/guided-implementer.agent.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_entry_chain_from_agents_md_to_memory_summary",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_deepseek_harness_skill_is_discoverable_from_both_agents",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_parent_board_skill_is_discoverable_from_both_agents_and_parent_workflow",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_parent_session_skill_is_discoverable_from_agents",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_dir_holds_only_summary_layers_and_dedicated_area",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[workflow]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[decision]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[environment]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[gotcha]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[review]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[ops-report]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_is_not_empty",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_summary_stays_small",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_dedicated_memory_is_not_in_the_always_loaded_summary",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/broadcast-to-parents-check-targets.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/worktree-needs-venv-symlink.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/annotation-worker-effort-max.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ask-only-open-decisions.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ckpt-force-delete-policy.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/colab-single-session-sequential.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/keep-test-values-out-of-production-plans.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/pr-ci-required.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/public-docs-english-default.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-host-ram-silent-kill.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-vram-overflow-freezes-host.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/agents-ops-local-failures-not-regressions.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/bash-script-edit-while-running.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/claude-background-monitor-dies-with-session.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/codex-followup-timer-script-path.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-exec-transport-lost-pending.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-idle-vm-reclaimed.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-submodule-checkout-lags-pointer.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-tree-main-lags-origin.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/precommit-mypy-follow-imports-skip.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/rclone-default-client-rate-limit.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/shared-venv-lags-lockfile.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/src-imported-from-cwd.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/tests-dir-not-a-package.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/coverage-cohort-quality.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/focused-pull-requests.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/one-off-experiment-code-not-in-src.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/semantic-implementation-names.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[SUMMARY.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/SUMMARY.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/index.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/broadcast-to-parents-check-targets.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/worktree-needs-venv-symlink.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/annotation-worker-effort-max.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ask-only-open-decisions.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ckpt-force-delete-policy.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/colab-single-session-sequential.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/keep-test-values-out-of-production-plans.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/pr-ci-required.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/public-docs-english-default.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-host-ram-silent-kill.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-vram-overflow-freezes-host.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/agents-ops-local-failures-not-regressions.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/bash-script-edit-while-running.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/claude-background-monitor-dies-with-session.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/codex-followup-timer-script-path.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-exec-transport-lost-pending.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-idle-vm-reclaimed.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-submodule-checkout-lags-pointer.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-tree-main-lags-origin.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/precommit-mypy-follow-imports-skip.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/rclone-default-client-rate-limit.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/shared-venv-lags-lockfile.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/src-imported-from-cwd.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/tests-dir-not-a-package.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/coverage-cohort-quality.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/focused-pull-requests.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/one-off-experiment-code-not-in-src.md]",
+    "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/semantic-implementation-names.md]"
+  ],
+  "reports": [
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[AGENTS.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.00825202401028946
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[AGENTS.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.002818659006152302
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[AGENTS.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00019726401660591364
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[CLAUDE.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0012679500505328178
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[CLAUDE.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0010581219685263932
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[CLAUDE.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00021648703841492534
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/README.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001291388995014131
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/README.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.009003899991512299
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/README.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00023546599550172687
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/memory/SKILL.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0012319190427660942
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/memory/SKILL.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0018843840225599706
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/memory/SKILL.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018778600497171283
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/SKILL.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0012918669963255525
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/SKILL.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.004351367009803653
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/SKILL.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00030567601788789034
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-board/SKILL.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0012339649838395417
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-board/SKILL.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0021959450095891953
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-board/SKILL.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00020412600133568048
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/task-template.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0013057650066912174
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/task-template.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007313700043596327
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/deepseek-harness/task-template.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002402710379101336
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/parent/README.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001221584971062839
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/parent/README.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.008025039045605808
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/parent/README.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000224194023758173
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/board/README.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001412964949849993
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/board/README.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.008966290042735636
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/board/README.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002485479926690459
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/herdr_labels/README.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.00148781796451658
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/herdr_labels/README.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0026763329515233636
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/ops/herdr_labels/README.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000215265026781708
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-session/SKILL.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0012983620399609208
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-session/SKILL.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.006886881019454449
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/skills/parent-session/SKILL.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00021177297458052635
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/SUMMARY.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001249826978892088
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/SUMMARY.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0009928600047715008
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/SUMMARY.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00022880599135532975
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/workflow/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0011183760361745954
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/workflow/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0012531569809652865
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/workflow/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002495869994163513
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/decision/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0011582660372368991
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/decision/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001376016007270664
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/decision/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018824398284778
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/environment/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001133037032559514
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/environment/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001468789007049054
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/environment/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00021052098600193858
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/gotcha/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016395619604736567
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/gotcha/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0025453289854340255
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/gotcha/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018411997007206082
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/review/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010811620159074664
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/review/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0011265109642408788
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/review/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000196542008779943
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/SUMMARY.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0011222949833609164
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/SUMMARY.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007979469955898821
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/SUMMARY.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00023720599710941315
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001151862961705774
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007018850301392376
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.agents/memory/ops-report/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001798439770936966
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/copilot-instructions.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001087221025954932
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/copilot-instructions.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0008517960086464882
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/copilot-instructions.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018110702512785792
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/agents/guided-implementer.agent.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.00111629901221022
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/agents/guided-implementer.agent.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0009201609645970166
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_relative_links_resolve[.github/agents/guided-implementer.agent.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017525203293189406
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_entry_chain_from_agents_md_to_memory_summary",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0011072210036218166
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_entry_chain_from_agents_md_to_memory_summary",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000782918999902904
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_entry_chain_from_agents_md_to_memory_summary",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016666902229189873
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_deepseek_harness_skill_is_discoverable_from_both_agents",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.000967833970207721
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_deepseek_harness_skill_is_discoverable_from_both_agents",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0013226560549810529
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_deepseek_harness_skill_is_discoverable_from_both_agents",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017447798745706677
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_parent_board_skill_is_discoverable_from_both_agents_and_parent_workflow",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001020604046061635
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_parent_board_skill_is_discoverable_from_both_agents_and_parent_workflow",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0015349070308730006
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_parent_board_skill_is_discoverable_from_both_agents_and_parent_workflow",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018316303612664342
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_parent_session_skill_is_discoverable_from_agents",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009992530103772879
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_parent_session_skill_is_discoverable_from_agents",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0004882890498265624
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_parent_session_skill_is_discoverable_from_agents",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001657630200497806
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_dir_holds_only_summary_layers_and_dedicated_area",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009519809973426163
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_dir_holds_only_summary_layers_and_dedicated_area",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0006734179914928973
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_dir_holds_only_summary_layers_and_dedicated_area",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002212619874626398
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[workflow]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010816720314323902
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[workflow]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0029406120302155614
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[workflow]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001833060523495078
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[decision]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001133484998717904
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[decision]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0042017410160042346
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[decision]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017176999244838953
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[environment]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010524410172365606
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[environment]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.004309909010771662
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[environment]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00019501399947330356
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[gotcha]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0012444520252756774
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[gotcha]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.014894766034558415
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[gotcha]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00020121503621339798
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[review]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001210151007398963
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[review]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0026385000091977417
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[review]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001730730291455984
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[ops-report]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001084971008822322
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[ops-report]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003126399824395776
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_layer_index_matches_entry_files[ops-report]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001635539811104536
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_is_not_empty",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010456909658387303
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_is_not_empty",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000261184002738446
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_is_not_empty",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015883997548371553
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_summary_stays_small",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009584759827703238
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_summary_stays_small",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002925319713540375
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_summary_stays_small",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015535805141553283
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_dedicated_memory_is_not_in_the_always_loaded_summary",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008997510303743184
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_dedicated_memory_is_not_in_the_always_loaded_summary",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00031603098614141345
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_dedicated_memory_is_not_in_the_always_loaded_summary",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000155774992890656
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/broadcast-to-parents-check-targets.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009703590185381472
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/broadcast-to-parents-check-targets.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0009406390017829835
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/broadcast-to-parents-check-targets.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016442895866930485
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/worktree-needs-venv-symlink.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001003590994514525
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/worktree-needs-venv-symlink.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000772156985476613
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[workflow/worktree-needs-venv-symlink.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017814303282648325
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/annotation-worker-effort-max.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001029409992042929
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/annotation-worker-effort-max.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000751152983866632
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/annotation-worker-effort-max.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016748398775234818
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ask-only-open-decisions.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010702279978431761
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ask-only-open-decisions.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000719438015948981
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ask-only-open-decisions.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001642360002733767
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ckpt-force-delete-policy.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009741969988681376
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ckpt-force-delete-policy.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0008003090042620897
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/ckpt-force-delete-policy.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002055320073850453
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/colab-single-session-sequential.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010240959818474948
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/colab-single-session-sequential.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007610389729961753
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/colab-single-session-sequential.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016638502711430192
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/keep-test-values-out-of-production-plans.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010608609882183373
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/keep-test-values-out-of-production-plans.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007440770277753472
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/keep-test-values-out-of-production-plans.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016481697093695402
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/pr-ci-required.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009801019914448261
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/pr-ci-required.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000760123017244041
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/pr-ci-required.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017699296586215496
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/public-docs-english-default.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001005138037726283
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/public-docs-english-default.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000819123990368098
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[decision/public-docs-english-default.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015688501298427582
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010330560035072267
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0008742869831621647
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001609270111657679
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-host-ram-silent-kill.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009695549961179495
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-host-ram-silent-kill.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007781549938954413
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-host-ram-silent-kill.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001555010094307363
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009500060114078224
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00085044204024598
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017044699052348733
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-vram-overflow-freezes-host.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009389800252392888
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-vram-overflow-freezes-host.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007766680209897459
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[environment/wsl2-vram-overflow-freezes-host.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015853397781029344
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/agents-ops-local-failures-not-regressions.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001013232977129519
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/agents-ops-local-failures-not-regressions.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007564669940620661
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/agents-ops-local-failures-not-regressions.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015731202438473701
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/bash-script-edit-while-running.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009302030084654689
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/bash-script-edit-while-running.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007253229850903153
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/bash-script-edit-while-running.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015835202066227794
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/claude-background-monitor-dies-with-session.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010314260143786669
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/claude-background-monitor-dies-with-session.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007508479757234454
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/claude-background-monitor-dies-with-session.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017259502783417702
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/codex-followup-timer-script-path.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.000956817006226629
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/codex-followup-timer-script-path.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007453900179825723
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/codex-followup-timer-script-path.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015984801575541496
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-exec-transport-lost-pending.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010054029989987612
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-exec-transport-lost-pending.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0008238890441134572
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-exec-transport-lost-pending.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015387102030217648
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-idle-vm-reclaimed.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009779949905350804
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-idle-vm-reclaimed.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007287439657375216
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/colab-idle-vm-reclaimed.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017740100156515837
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009884909959509969
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007504099630750716
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015705800615251064
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-submodule-checkout-lags-pointer.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009338780073449016
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-submodule-checkout-lags-pointer.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007475489983335137
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-submodule-checkout-lags-pointer.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00019811902893707156
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-tree-main-lags-origin.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009679759969003499
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-tree-main-lags-origin.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007396480068564415
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/main-tree-main-lags-origin.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017675902927294374
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/precommit-mypy-follow-imports-skip.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009145340300165117
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/precommit-mypy-follow-imports-skip.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007832549745216966
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/precommit-mypy-follow-imports-skip.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002228710218332708
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/rclone-default-client-rate-limit.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009542209445498884
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/rclone-default-client-rate-limit.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0008374099852517247
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/rclone-default-client-rate-limit.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015600997721776366
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009140659822151065
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007757609710097313
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015278201317414641
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/shared-venv-lags-lockfile.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.000998184026684612
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/shared-venv-lags-lockfile.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0008472760091535747
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/shared-venv-lags-lockfile.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001558160292916
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/src-imported-from-cwd.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.000965511950198561
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/src-imported-from-cwd.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007261779974214733
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/src-imported-from-cwd.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015344400890171528
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/tests-dir-not-a-package.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010166940046474338
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/tests-dir-not-a-package.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0006648249691352248
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[gotcha/tests-dir-not-a-package.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015235500177368522
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/coverage-cohort-quality.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009401699644513428
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/coverage-cohort-quality.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007081160438247025
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/coverage-cohort-quality.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001536269555799663
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/focused-pull-requests.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009418610134162009
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/focused-pull-requests.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007709359633736312
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/focused-pull-requests.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015458400594070554
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/one-off-experiment-code-not-in-src.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009258249774575233
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/one-off-experiment-code-not-in-src.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000716515991371125
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/one-off-experiment-code-not-in-src.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017067097360268235
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/semantic-implementation-names.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009052790119312704
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/semantic-implementation-names.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007466329843737185
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_frontmatter[review/semantic-implementation-names.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00019291695207357407
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[SUMMARY.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008986199973151088
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[SUMMARY.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0004615130019374192
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[SUMMARY.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018843699945136905
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/SUMMARY.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009211520082317293
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/SUMMARY.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00020292599219828844
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/SUMMARY.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014910695608705282
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009649209678173065
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000245646049734205
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014734501019120216
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009660120122134686
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003006060142070055
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015146902296692133
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009237070335075259
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003039240255020559
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001500530051998794
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009605030063539743
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0004803990013897419
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00029359100153669715
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0015389799955300987
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003282079705968499
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018345797434449196
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/index.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.000948549946770072
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/index.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00019435299327597022
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[ops-report/index.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014903501141816378
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/broadcast-to-parents-check-targets.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008778300252743065
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/broadcast-to-parents-check-targets.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00027666898677125573
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/broadcast-to-parents-check-targets.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001578219817019999
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/worktree-needs-venv-symlink.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008973780204541981
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/worktree-needs-venv-symlink.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00027021404821425676
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[workflow/worktree-needs-venv-symlink.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014654098777100444
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/annotation-worker-effort-max.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008861479582265019
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/annotation-worker-effort-max.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00025066599482670426
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/annotation-worker-effort-max.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014604197349399328
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ask-only-open-decisions.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009480310254730284
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ask-only-open-decisions.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002593609970062971
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ask-only-open-decisions.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016826798673719168
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ckpt-force-delete-policy.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009164480143226683
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ckpt-force-delete-policy.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002893249620683491
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/ckpt-force-delete-policy.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014443398686125875
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/colab-single-session-sequential.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008955560042522848
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/colab-single-session-sequential.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00030436302768066525
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/colab-single-session-sequential.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016094802413135767
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/keep-test-values-out-of-production-plans.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009961070027202368
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/keep-test-values-out-of-production-plans.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00024224602384492755
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/keep-test-values-out-of-production-plans.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015763903502374887
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/pr-ci-required.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0010139759979210794
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/pr-ci-required.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002797539927996695
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/pr-ci-required.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017950800247490406
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/public-docs-english-default.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008976930403150618
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/public-docs-english-default.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00031059299362823367
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[decision/public-docs-english-default.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001449429546482861
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009042709716595709
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00030547200003638864
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-blender-eevee-gpu-needs-d3d12-env.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001451050047762692
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-host-ram-silent-kill.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009370549814775586
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-host-ram-silent-kill.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00029155402444303036
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-host-ram-silent-kill.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00017959001706913114
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009334200294688344
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00034280697582289577
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-review-isolated-cpu-probe-fails.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001519880024716258
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-vram-overflow-freezes-host.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008600529981777072
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-vram-overflow-freezes-host.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00030494300881400704
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[environment/wsl2-vram-overflow-freezes-host.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014964601723477244
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/agents-ops-local-failures-not-regressions.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008757630130276084
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/agents-ops-local-failures-not-regressions.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002983970334753394
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/agents-ops-local-failures-not-regressions.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001824609935283661
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/bash-script-edit-while-running.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008909230236895382
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/bash-script-edit-while-running.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003524899948388338
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/bash-script-edit-while-running.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014676497085019946
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/claude-background-monitor-dies-with-session.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009145740186795592
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/claude-background-monitor-dies-with-session.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002716190065257251
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/claude-background-monitor-dies-with-session.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014411797747015953
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/codex-followup-timer-script-path.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009329630411230028
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/codex-followup-timer-script-path.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00028435600688681006
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/codex-followup-timer-script-path.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016027595847845078
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-exec-transport-lost-pending.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009029170032590628
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-exec-transport-lost-pending.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003430720535106957
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-exec-transport-lost-pending.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014414801262319088
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-idle-vm-reclaimed.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009495169506408274
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-idle-vm-reclaimed.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003165389643982053
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/colab-idle-vm-reclaimed.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014529901091009378
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008523050346411765
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00026374903973191977
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/gitignore-generic-rules-hide-new-paths.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00018769397865980864
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-submodule-checkout-lags-pointer.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008824929827824235
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-submodule-checkout-lags-pointer.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003207240370102227
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-submodule-checkout-lags-pointer.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000144116987939924
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-tree-main-lags-origin.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009423090377822518
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-tree-main-lags-origin.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00027583399787545204
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/main-tree-main-lags-origin.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014301802730187774
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/precommit-mypy-follow-imports-skip.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.000925988017115742
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/precommit-mypy-follow-imports-skip.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002973570371977985
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/precommit-mypy-follow-imports-skip.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014260096941143274
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/rclone-default-client-rate-limit.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.000953222974203527
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/rclone-default-client-rate-limit.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00032890995498746634
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/rclone-default-client-rate-limit.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014351698337122798
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008868210134096444
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003666119882836938
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/setup-nht-binds-global-tool-to-checkout.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00016800302546471357
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/shared-venv-lags-lockfile.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001052684965543449
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/shared-venv-lags-lockfile.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003132820129394531
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/shared-venv-lags-lockfile.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001735830446705222
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/src-imported-from-cwd.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008770260028541088
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/src-imported-from-cwd.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000321374973282218
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/src-imported-from-cwd.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001699069980531931
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/tests-dir-not-a-package.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009296729695051908
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/tests-dir-not-a-package.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00025868898956105113
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[gotcha/tests-dir-not-a-package.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015967502258718014
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/coverage-cohort-quality.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009164169896394014
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/coverage-cohort-quality.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0002875740174204111
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/coverage-cohort-quality.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0001468359841965139
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/focused-pull-requests.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009467380004934967
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/focused-pull-requests.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00026433897437527776
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/focused-pull-requests.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015063397586345673
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/one-off-experiment-code-not-in-src.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0009194719605147839
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/one-off-experiment-code-not-in-src.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0003145340015180409
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/one-off-experiment-code-not-in-src.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00014823098899796605
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/semantic-implementation-names.md]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0008754989830777049
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/semantic-implementation-names.md]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00030273396987468004
+    },
+    {
+      "node": "tests/e2e/agents_ops/test_agents_docs.py::test_memory_entry_has_no_personal_data[review/semantic-implementation-names.md]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00015517504652962089
+    }
+  ],
+  "shared_memory_change_status": {
+    "status": "retracted_at_parent_request",
+    "historical_only": true,
+    "reason": "memory変更は親の指示で取り消した。cross-1の出典はreviewer agentと親であり、ユーザー判断ではない。",
+    "record": "knowledge/runs/run-ball3d-topk-multihypothesis-20261103/cohort-memory-retraction.json"
+  }
+}

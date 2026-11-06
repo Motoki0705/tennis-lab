@@ -1,0 +1,22 @@
+
+==================================== ERRORS ====================================
+_ ERROR collecting tests/unit/synthetic_data_generation/visualization/test_contracts.py _
+import file mismatch:
+imported module 'test_contracts' has this __file__ attribute:
+  /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-court-ball-bundle-adjustment/tests/unit/utils/configuration/test_contracts.py
+which is not the same as the test file we want to collect:
+  /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-court-ball-bundle-adjustment/tests/unit/synthetic_data_generation/visualization/test_contracts.py
+HINT: remove __pycache__ / .pyc files and/or use a unique basename for your test file modules
+=============================== warnings summary ===============================
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+src/tasks/person_tracking/deep_ocsort_vendor/track.py:203
+  /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-court-ball-bundle-adjustment/src/tasks/person_tracking/deep_ocsort_vendor/track.py:203: SyntaxWarning: invalid escape sequence '\D'
+    """
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+ERROR tests/unit/synthetic_data_generation/visualization/test_contracts.py
+!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!
+4 warnings, 1 error in 81.79s (0:01:21)

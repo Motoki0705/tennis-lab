@@ -1,0 +1,133 @@
+{
+  "scope": "configuration audit directory, original topk related suite, synthetic visualization contracts, DINO extension tests",
+  "collection": {
+    "pytest_arguments": [
+      "--verbose",
+      "--import-mode=importlib",
+      "-n",
+      "auto",
+      "--strict-markers",
+      "--disable-warnings",
+      "-n",
+      "0",
+      "--collect-only",
+      "-q",
+      "tests/unit/tennis_scene/ball_association/test_topk.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_court.py",
+      "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py",
+      "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py",
+      "tests/unit/tennis_scene/visualization/test_ball3d_tables.py",
+      "tests/unit/tennis_scene/test_configuration.py",
+      "tests/unit/tennis_scene/pipeline/components/test_ball_points.py",
+      "tests/unit/tennis_scene/pipeline/test_artifact_codec.py",
+      "tests/unit/tennis_scene/pipeline/test_orchestrator.py",
+      "tests/integration/tennis_scene/test_ball3d_bundle.py",
+      "tests/integration/tennis_scene/test_ball3d_media.py",
+      "tests/integration/tennis_scene/test_ball3d_topk.py",
+      "tests/unit/utils/configuration/",
+      "tests/unit/synthetic_data_generation/visualization/test_contracts.py",
+      "tests/unit/submodules/models/dino/test_extension.py"
+    ],
+    "exit_code": 0,
+    "wall_seconds": 80.13804136298131,
+    "collected_count": 532,
+    "nodes_equal_execution_receipt": true,
+    "execution_receipt_sha256": "18b0cc700067a264117c8f1d061c98f546308aa9e1aef3e053191c90f526320c"
+  },
+  "pytest_summary": "531 passed, 1 skipped, 7 warnings in 298.83s",
+  "outcomes": {
+    "passed": 531,
+    "skipped": 1
+  },
+  "collected_count": 532,
+  "execution_wrapper_seconds": 301.74348230601754,
+  "pytest_seconds": 298.83,
+  "new_cases": [
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_topk_missing_composed_setting_is_rejected",
+      "seconds": 0.08820035995449871,
+      "setup_seconds": 0.0027448219479992986,
+      "outcomes": {
+        "setup": "passed",
+        "call": "passed",
+        "teardown": "passed"
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_topk_settings_are_discovered_as_required_composition_owned_fields",
+      "seconds": 0.001965301053132862,
+      "setup_seconds": 0.0013518230407498777,
+      "outcomes": {
+        "setup": "passed",
+        "call": "passed",
+        "teardown": "passed"
+      }
+    }
+  ],
+  "cases_over_5_seconds": [
+    {
+      "node": "tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit",
+      "seconds": 28.561109423055314,
+      "setup_seconds": 0.0013624330167658627,
+      "outcomes": {
+        "setup": "passed",
+        "call": "passed",
+        "teardown": "passed"
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules0]",
+      "seconds": 83.09424904698972,
+      "setup_seconds": 0.001109272998291999,
+      "outcomes": {
+        "setup": "passed",
+        "call": "passed",
+        "teardown": "passed"
+      }
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_discovery.py::test_configuration_modules_import_cold_in_either_order[modules1]",
+      "seconds": 83.47039863502141,
+      "setup_seconds": 0.0024296370102092624,
+      "outcomes": {
+        "setup": "passed",
+        "call": "passed",
+        "teardown": "passed"
+      }
+    }
+  ],
+  "setups_over_1_second": [],
+  "audit_group_collected": 390,
+  "max_setup_seconds": 0.11289396800566465,
+  "maximum_workers": 0,
+  "ruff": "passed on 11 changed Python files",
+  "mypy": "passed on 11 changed Python files",
+  "knowledge_validation": {
+    "errors": 0,
+    "warnings": 219,
+    "check_summary": true,
+    "base_ref": "origin/main"
+  },
+  "source_commit": "df93a3e415e05f8c4e247ff537c579409ab5c106",
+  "collection_pytest_seconds": 77.63,
+  "predictions": {
+    "verification_path": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_composition_verification_v1/verification.json",
+    "verification_sha256": "b7285be023e20ebf36b5e4bc5a7dc50f7b3539f5efb1ea8534b64b8e2fe5cfe1",
+    "v2_predictions_and_diagnostics_unchanged": true,
+    "original_v2_files_verified": 129,
+    "prediction_files_persisted": false,
+    "scoring_recomputed": false
+  },
+  "reproduction": {
+    "tests": "bash knowledge/runs/run-ball3d-topk-multihypothesis-20261103/composition-tests.sh",
+    "configuration": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=. .venv/bin/python knowledge/runs/run-ball3d-topk-multihypothesis-20261103/verify_composition.py --output knowledge/runs/run-ball3d-topk-multihypothesis-20261103/composition-authority.json",
+    "predictions": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. .venv/bin/python knowledge/runs/run-ball3d-topk-multihypothesis-20261103/verify_ci_predictions.py --bundle /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1 --prior /home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_v2 --output NEW_VERIFICATION_DIRECTORY"
+  },
+  "repro_path_validation": {
+    "missing": 0,
+    "unverifiable": 28
+  }
+}

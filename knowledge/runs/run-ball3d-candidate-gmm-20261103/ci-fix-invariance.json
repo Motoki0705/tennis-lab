@@ -1,0 +1,77 @@
+{
+  "before": "2fd5385abf1e35298e7044b655f3a514f9e5298a",
+  "composed_defaults_equal_previous_python_defaults": true,
+  "composed_values": {
+    "top_k": 3,
+    "covariance_scale": 1.0,
+    "presence_slope": 1.0,
+    "presence_bias": 0.0,
+    "min_multiview_mass": 0.05,
+    "min_variance_cells2": 0.04,
+    "max_variance_cells2": 25.0,
+    "log_floor": 1e-07,
+    "prior_mean_m": [
+      0.0,
+      0.0,
+      2.0
+    ],
+    "prior_std_m": [
+      8.0,
+      16.0,
+      6.0
+    ],
+    "max_components": 1024,
+    "max_nfev": 150,
+    "estimator": "map",
+    "temporal": "none",
+    "acceleration_std_mps2": 150.0,
+    "initial_velocity_std_mps": 40.0
+  },
+  "unchanged_kernel_sha256": {
+    "src/tennis_scene/ball_gmm/heatmap.py": "f9478c0b4824634e2924a7d82891ddc311b67ae919f5565484ab64393a36df16",
+    "src/tennis_scene/ball_gmm/reconstruction.py": "b8cb66bc6d9398c19d67b76bc60ee29d6c599d4cf56878ebb7f62d8c1fa5d948",
+    "src/utils/geometry/kalman.py": "506fb3e44768eea0c916f23673e70cbb1909cb448a1cf6b56216f4d1d9c9f438",
+    "src/utils/geometry/probabilistic_triangulation/solver.py": "b3c4daab764490f57c179d0a53cc6a42fa6109470d7fab957e3682a52e0e8cba",
+    "src/utils/geometry/probabilistic_triangulation/distributions.py": "39c85c5a0b656700467239ab2e725eb286304eef59ee9f9fbaa85c51f6cdd99d",
+    "src/tennis_scene/configs/pipeline.yaml": "8160f811df6010f9622319747c77752e1d616f71ab55b4c66edd9f0e0b6c9b7e"
+  },
+  "default_route_sources_equal_origin_main": {
+    "src/tennis_scene/pipeline/components/ball_reconstruction.py": "e3b23844a9941008ee939cf7d8b6700eec4988265e334d887c5fe4e19ce477f2",
+    "src/tennis_scene/pipeline/components/triangulation.py": "2e8657336e38684656623626a1056fc502787272b16943aa0eb876f49e219ffe",
+    "src/tennis_scene/pipeline/input_assembly/reconstruction.py": "1ee2bb7ddbfee393f6d91c84123f12b1621424fa9d3360791478cf28e450779a",
+    "src/tennis_scene/pipeline/input_assembly/observations.py": "b0e41ef33eaff0bde3e9e7674ba20418fd4877fcda368e3e310e84676b04d4f9",
+    "src/tennis_scene/pipeline/components/ball_points.py": "541e351ff20e134440591598e3b128866c166c05bad10cdd54347c191b5c517e",
+    "src/utils/geometry/triangulation.py": "2e0e48646e251b30d42f6f1b9a6bc65a21f7d03649fb2fd50ac5c8bcc6fcc992"
+  },
+  "default_route_main_ref": "6372e2267a8fee7b88f9c77d8be1691620bf2030",
+  "config_validation_and_explicit_adapter_call_ast_unchanged": true,
+  "real_data_2d_gaussian_replay_exact": [
+    "cam0/means_px",
+    "cam0/covariance_px2",
+    "cam0/weights",
+    "cam0/presence",
+    "cam0/indices",
+    "cam0/bounded",
+    "cam0/rejected",
+    "cam1/means_px",
+    "cam1/covariance_px2",
+    "cam1/weights",
+    "cam1/presence",
+    "cam1/indices",
+    "cam1/bounded",
+    "cam1/rejected",
+    "cam2/means_px",
+    "cam2/covariance_px2",
+    "cam2/weights",
+    "cam2/presence",
+    "cam2/indices",
+    "cam2/bounded",
+    "cam2/rejected"
+  ],
+  "real_data_frames_per_camera": 1010,
+  "full_3d_replay_performed": false,
+  "prediction_equivalence_basis": "same YAML values, explicit settings, identical validation/call AST and unchanged numerical kernels; real 2D Gaussians also replayed exactly",
+  "stored_manifest_sha256": "46ecf147cb52139fb6cdf81a5da82f7fb0d94403e4d63c19e2abdfad179136b5",
+  "reprojection_tolerance_float32_ulps": 4,
+  "fixture_max_four_ulp_bound_px": 5.820766091346741e-11
+}

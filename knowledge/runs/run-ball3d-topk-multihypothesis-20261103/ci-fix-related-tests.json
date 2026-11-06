@@ -1,0 +1,2603 @@
+{
+  "pytest_arguments": [
+    "--verbose",
+    "--import-mode=importlib",
+    "-n",
+    "auto",
+    "--strict-markers",
+    "--disable-warnings",
+    "-n",
+    "0",
+    "--durations=0",
+    "--durations-min=0",
+    "tests/unit/tennis_scene/ball_association/test_topk.py",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_court.py",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py",
+    "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py",
+    "tests/unit/tennis_scene/visualization/test_ball3d_tables.py",
+    "tests/unit/tennis_scene/test_configuration.py",
+    "tests/unit/tennis_scene/pipeline/components/test_ball_points.py",
+    "tests/unit/tennis_scene/pipeline/test_artifact_codec.py",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py",
+    "tests/integration/tennis_scene/test_ball3d_media.py",
+    "tests/integration/tennis_scene/test_ball3d_topk.py",
+    "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy",
+    "tests/unit/submodules/models/dino/test_extension.py"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 110.92151858599391,
+  "collected_count": 135,
+  "nodes": [
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order0]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order1]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_missing_limit_reacquires_without_fabricating_points",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_turn_cost_keeps_bounce_and_hit",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_zero_score_is_not_a_candidate_threshold",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-9]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[beam_width-0]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[max_missing_frames--1]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[reprojection_px-0.0]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight-nan]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-True]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight--1]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[acceleration_weight-True]",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_source_axes_mismatch_fails_before_association",
+    "tests/unit/tennis_scene/ball_association/test_topk.py::test_unequal_candidate_counts_do_not_drop_lower_rank_in_other_views",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing",
+    "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+    "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media",
+    "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks",
+    "tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]",
+    "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]",
+    "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]",
+    "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]",
+    "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults",
+    "tests/unit/tennis_scene/test_configuration.py::test_ball_method_and_all_topk_settings_come_from_composition",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]",
+    "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]",
+    "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction",
+    "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own",
+    "tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer",
+    "tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association",
+    "tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api",
+    "tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy",
+    "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_only_observed_points_survive_storage_and_join",
+    "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_assembler_checks_camera_timeline_and_payload_type",
+    "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_filled_and_rejected_points_cannot_supply_the_second_real_view",
+    "tests/unit/tennis_scene/pipeline/test_artifact_codec.py::test_pep695_array_alias_accepts_numeric_arrays_and_rejects_json_lists",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0]",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1]",
+    "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2]",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]",
+    "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]",
+    "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+    "tests/integration/tennis_scene/test_ball3d_topk.py::test_default_pipeline_matches_main_arrays",
+    "tests/integration/tennis_scene/test_ball3d_topk.py::test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algorithm",
+    "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error",
+    "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[unset]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[relative]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[missing]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[not_binary]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_different_cached_binary_is_rejected",
+    "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[selected]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[other]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[atomic_replace]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[in_place]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_removed_cached_module_cannot_be_reimported",
+    "tests/unit/submodules/models/dino/test_extension.py::test_binary_changed_during_import_requires_fresh_process",
+    "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[False]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[True]",
+    "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch",
+    "tests/unit/submodules/models/dino/test_extension.py::test_build_rejects_existing_binary_before_build"
+  ],
+  "reports": [
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004307861963752657
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.37419833499006927
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000494793988764286
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001837449031881988
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.42445559304906055
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_multiview_distractor_and_sticking_recover_asymmetric_trajectory[order1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000652702001389116
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_missing_limit_reacquires_without_fabricating_points",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0019335600081831217
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_missing_limit_reacquires_without_fabricating_points",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.422271580027882
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_missing_limit_reacquires_without_fabricating_points",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00045295502059161663
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_turn_cost_keeps_bounce_and_hit",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001555557013489306
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_turn_cost_keeps_bounce_and_hit",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.5002675919677131
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_turn_cost_keeps_bounce_and_hit",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004840939654968679
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0019273380166850984
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.009331085020676255
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_second_order_path_rejects_high_score_zigzag_and_uses_real_gap_time",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00047275301767513156
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_zero_score_is_not_a_candidate_threshold",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001747950038406998
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_zero_score_is_not_a_candidate_threshold",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.4574668869609013
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_zero_score_is_not_a_candidate_threshold",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00048182898899540305
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-9]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.002204611955676228
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-9]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.000547484029084444
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-9]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003246429841965437
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[beam_width-0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0017301770276390016
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[beam_width-0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00047333299880847335
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[beam_width-0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003765809815376997
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[max_missing_frames--1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001832128968089819
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[max_missing_frames--1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00043317803647369146
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[max_missing_frames--1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00032796000596135855
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[reprojection_px-0.0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001659773988649249
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[reprojection_px-0.0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00041438202606514096
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[reprojection_px-0.0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005137599655427039
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight-nan]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0017295450088568032
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight-nan]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0004875310114584863
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight-nan]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003061179886572063
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-True]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.002499479043763131
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-True]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0005291600245982409
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[top_k-True]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00031992397271096706
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight--1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0018058389541693032
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight--1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0005141199799254537
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[score_weight--1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00030866300221532583
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[acceleration_weight-True]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016865840298123658
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[acceleration_weight-True]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0004975100164301693
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_invalid_configuration_or_axes_fail[acceleration_weight-True]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00032103603007271886
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_source_axes_mismatch_fails_before_association",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001421683991793543
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_source_axes_mismatch_fails_before_association",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.3644599160179496
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_source_axes_mismatch_fails_before_association",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00041765900095924735
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_unequal_candidate_counts_do_not_drop_lower_rank_in_other_views",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016762539744377136
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_unequal_candidate_counts_do_not_drop_lower_rank_in_other_views",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.36028123198775575
+    },
+    {
+      "node": "tests/unit/tennis_scene/ball_association/test_topk.py::test_unequal_candidate_counts_do_not_drop_lower_rank_in_other_views",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00043657998321577907
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016802670434117317
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.003187715949025005
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00030416896333917975
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016096429899334908
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0015865799505263567
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002968250191770494
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0014849250437691808
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0012616310268640518
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_annotations.py::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00029673398239538074
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001368955010548234
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.763144517026376
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_baseline.py::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005713980062864721
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0018700590007938445
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.010800170013681054
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003810349735431373
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0015153830172494054
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.010981684958096594
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005043899873271585
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0017552690114825964
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.011109210026916116
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003085979842580855
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0014979810221120715
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.01130214601289481
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003713269834406674
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0015790740144439042
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0104474289692007
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003449760260991752
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001537956006359309
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0004177250084467232
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003131660050712526
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001385216019116342
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00040958001045510173
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00028086401289328933
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001396937994286418
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0004260609857738018
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00027539400616660714
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001746974012348801
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.010289006982930005
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_contracts.py::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003404879826121032
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001466781017370522
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.010364411980845034
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[missing]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003664179821498692
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0015405510202981532
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.011735781037714332
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[camera]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005831000162288547
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0020393309532664716
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.013896962977014482
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[frame_count]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006694930489175022
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.002237036998849362
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.017716440954245627
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_view_rejects_missing_or_misbound_raw_court_observations[selection]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0008611890370957553
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003257578006014228
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.021564177004620433
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_court.py::test_sparse_source_court_frames_are_not_broadcast_and_missing_lines_fail_on_request",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006256609922274947
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0019759800052270293
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.03887693304568529
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005300079938024282
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001886159006971866
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.03423190297326073
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005045599536970258
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016803680337034166
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.012244401965290308
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00035589694743975997
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0015921290032565594
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.03040183597477153
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004355480195954442
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001709171978291124
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0319920809706673
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005515789962373674
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001900586998090148
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.023245726013556123
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005569799686782062
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003068750025704503
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.021791259001474828
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005278550088405609
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0018200940103270113
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.014138294965960085
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004626809968613088
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001962434034794569
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.014421423024032265
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004630120238289237
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0018586069927550852
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.013331710011698306
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004188569728285074
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.00165325595298782
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.014872953004669398
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00046629703138023615
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.002006608003284782
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.047264966007787734
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005918359966017306
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0023509429884143174
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.01632537698606029
+    },
+    {
+      "node": "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00044931500451639295
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0018017389811575413
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.025669378985185176
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005131060024723411
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005561253987252712
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001379003981128335
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_html_reference_audit_detects_missing_sibling_media",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00040421896846964955
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0017429669969715178
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.06699851801386103
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_comparison.py::test_candidate_overlay_marks_selected_raw_pixel_and_keeps_other_peaks",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0009620810160413384
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0020960389520041645
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007214830256998539
+    },
+    {
+      "node": "tests/unit/tennis_scene/visualization/test_ball3d_tables.py::test_main_table_reports_lovo_counts_coverage_separately_from_all_view_validity",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003876269911415875
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005432017031125724
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.016182596038561314
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_resolves_each_path_from_its_declared_root",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000666078005451709
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004419039993081242
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.007239156984724104
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[match_id]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0007257810211740434
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004160267009865493
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.006691813992802054
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00045635795686393976
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0037610980216413736
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.006107573048211634
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[project_path]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003770680050365627
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003675954998470843
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.005978507047984749
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[recording_id]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00042853603372350335
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003587246988900006
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.005909995990805328
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[video_paths]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00037710799369961023
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003640748036559671
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00577964901458472
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003490750095807016
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003173889999743551
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.009254130010958761
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005233259871602058
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0036369410227052867
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.009986674995161593
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[65536]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005056720110587776
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003627041995059699
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.009504627960268408
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_clip_studio_rejects_invalid_port[-1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004699240089394152
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004203319025691599
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.16748755099251866
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00046635797480121255
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0035058509674854577
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.13500521599780768
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005530230118893087
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0034810640499927104
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.14385032298741862
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005099700065329671
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0031194170005619526
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.1282670969958417
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_defaults",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006901539745740592
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_ball_method_and_all_topk_settings_come_from_composition",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005028610001318157
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_ball_method_and_all_topk_settings_come_from_composition",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.13121771201258525
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_ball_method_and_all_topk_settings_come_from_composition",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004974160110577941
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003483659995254129
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.1265268750139512
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004496959736570716
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0033387939911335707
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.10955235897563398
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005701950285583735
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003642061958089471
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.12105304596479982
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005147699848748744
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003676487016491592
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.11635012703482062
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005042199627496302
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0037235969793982804
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.13182364497333765
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0009897130075842142
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005801290972158313
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.12342839903431013
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004902330110780895
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005204255983699113
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.13916437199804932
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004860250046476722
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003656510030850768
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.11584650800796226
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000735719979275018
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004546292999293655
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.17304152197903022
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006017960258759558
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004508341022301465
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.1435630940250121
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000507304968778044
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003306843980681151
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.07872723700711504
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_defaults_to_automatic_reconstruction",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005076259840279818
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0037536550080403686
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.08946815098170191
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005594849935732782
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003255566000007093
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.13659695000387728
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_default_person_capacity_covers_doubles_with_buffer",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005547759938053787
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003814210998825729
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.13383453100686893
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_pipeline_and_task_default_use_fitted_association",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00048369000433012843
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0036189890233799815
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.1364707690081559
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_legacy_association_is_available_only_through_comparison_api",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00046741898404434323
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0033212029957212508
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.11315861297771335
+    },
+    {
+      "node": "tests/unit/tennis_scene/test_configuration.py::test_missing_fitted_config_does_not_load_available_legacy",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000617726007476449
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_only_observed_points_survive_storage_and_join",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0037659989902749658
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_only_observed_points_survive_storage_and_join",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.014661067980341613
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_only_observed_points_survive_storage_and_join",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005206309724599123
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_assembler_checks_camera_timeline_and_payload_type",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003797749988734722
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_assembler_checks_camera_timeline_and_payload_type",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001090325997211039
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_assembler_checks_camera_timeline_and_payload_type",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00037103600334376097
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_filled_and_rejected_points_cannot_supply_the_second_real_view",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0030935389804653823
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_filled_and_rejected_points_cannot_supply_the_second_real_view",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.9004466129699722
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/components/test_ball_points.py::test_filled_and_rejected_points_cannot_supply_the_second_real_view",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004577490035444498
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_artifact_codec.py::test_pep695_array_alias_accepts_numeric_arrays_and_rejects_json_lists",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016040580230765045
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_artifact_codec.py::test_pep695_array_alias_accepts_numeric_arrays_and_rejects_json_lists",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0005154000245966017
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_artifact_codec.py::test_pep695_array_alias_accepts_numeric_arrays_and_rejects_json_lists",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0002679390017874539
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0029780379845760763
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.26451544399606064
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_runtime_dependencies_come_from_component_declarations",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00046379101695492864
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0033749419962987304
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.11483707698062062
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_enabled_asset_stops_the_definition",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005501959822140634
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003412883961573243
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.15091918502002954
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_missing_coco_checkpoint_does_not_select_available_player_weights",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004509270074777305
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.002899188024457544
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.12482728203758597
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_the_association_records_its_encoder_weights_and_needs_them_only_with_people",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004678390105254948
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003339374961797148
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.129520335001871
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_a_side_without_ball_detection_fails_when_the_definition_is_built",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0007500450010411441
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0021119320299476385
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0006200479692779481
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_ball_only_features_and_strict_missing_dependencies",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00038288801442831755
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0036843399866484106
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.1571080909925513
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_every_standard_component_has_one_execution_mode_and_node",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000654233037494123
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0019441039767116308
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0007010619738139212
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different0]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00033276196336373687
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.001488477981183678
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0005906919832341373
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different1]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00030468899058178067
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0014830179861746728
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00047916005132719874
+    },
+    {
+      "node": "tests/unit/tennis_scene/pipeline/test_orchestrator.py::test_unsynchronized_sources_fail_before_inference[different2]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0003374720108695328
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0037270610337145627
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.8680652269977145
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006225029937922955
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005387918034102768
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.5756801990210079
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006045390036888421
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005389380967244506
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.7647139350301586
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.001189931994304061
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.008540990995243192
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.7000751969753765
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005929970066063106
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0037131969584152102
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.17785074701532722
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000653400958981365
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004013016005046666
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.4461671059834771
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[missing_raw_scores]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005757140461355448
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004985726031009108
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.39785274100722745
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[camera_order]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005702630151063204
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003670016012620181
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.5161441499949433
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_bundle.py::test_bundle_rejects_checksummed_court_observation_provenance_errors[source_frame]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006553060375154018
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0035229860222898424
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 4.892562016961165
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_media.py::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005063439602963626
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_topk.py::test_default_pipeline_matches_main_arrays",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0036558870342560112
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_topk.py::test_default_pipeline_matches_main_arrays",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.9332208380219527
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_topk.py::test_default_pipeline_matches_main_arrays",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005030969623476267
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_topk.py::test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algorithm",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003632312989793718
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_topk.py::test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algorithm",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 1.4099768919986673
+    },
+    {
+      "node": "tests/integration/tennis_scene/test_ball3d_topk.py::test_config_definition_assembly_codec_and_lovo_use_the_same_candidate_algorithm",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006026370101608336
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0016545989783480763
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001503362029325217
+    },
+    {
+      "node": "tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005039300303906202
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004809935053344816
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0028505760128609836
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_checks_forward_and_backward_on_cpu",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004434440052136779
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004495086031965911
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0009084990015253425
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-forward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00044455600436776876
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005118501954711974
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0010325349867343903
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Undefined backend is not a valid device type-backward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000429928011726588
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0047770930104888976
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0011991119827143848
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-forward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006078269798308611
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.007113290019333363
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0013901659986004233
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[Unrecognized tensor type ID: Undefined-backward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006500769522972405
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.006343784974887967
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001175107026938349
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-forward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005725200171582401
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0063287970260716975
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001224020030349493
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[unrelated runtime error-backward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.001067009987309575
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005688487028237432
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001092078979127109
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-forward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006377940298989415
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0064809059840627015
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0013924899976700544
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_legacy_and_unrelated_errors[-backward]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005724799702875316
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.007528991962317377
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0016053459839895368
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[missing]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.000660618010442704
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0061593850259669125
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001176489982753992
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_rejects_unexpected_extension[accepts_cpu]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005928779719397426
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004145000013522804
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0012186699896119535
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_preflight_preserves_import_error",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005428540171124041
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[unset]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004931035975459963
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[unset]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00082995998673141
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[unset]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006192289874888957
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[relative]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0043603500234894454
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[relative]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0010174470371566713
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[relative]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005640229792334139
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[missing]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005590290995314717
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[missing]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0013957570190541446
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[missing]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0008230870007537305
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[not_binary]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005478407954797149
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[not_binary]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0013189400197006762
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_selection_fails_closed_with_a_cached_candidate[not_binary]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006988309905864298
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_different_cached_binary_is_rejected",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005977027001790702
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_different_cached_binary_is_rejected",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0009576730080880225
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_different_cached_binary_is_rejected",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004142079851590097
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[selected]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003724328998941928
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[selected]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0015190310077741742
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[selected]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00040413899114355445
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[other]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004581561021041125
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[other]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0014767009997740388
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_untracked_cached_module_cannot_be_retried_after_removal[other]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0006696039927192032
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[atomic_replace]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0049238919746130705
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[atomic_replace]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.001608020975254476
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[atomic_replace]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0005848730215802789
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[in_place]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.006494752014987171
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[in_place]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0015123990015126765
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_cached_binary_must_still_match_selected_file[in_place]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00043824396561831236
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_removed_cached_module_cannot_be_reimported",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004532938008196652
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_removed_cached_module_cannot_be_reimported",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0009137990418821573
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_removed_cached_module_cannot_be_reimported",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00041825597872957587
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_binary_changed_during_import_requires_fresh_process",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.005890020984224975
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_binary_changed_during_import_requires_fresh_process",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0021593599813058972
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_binary_changed_during_import_requires_fresh_process",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00045540696009993553
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[False]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.0036881300038658082
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[False]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0031142079969868064
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[False]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00038584397407248616
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[True]",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003607757040299475
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[True]",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.00325776101090014
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_explicit_file_loading_bypasses_cwd_shadow[True]",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0004666280001401901
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.004177441995125264
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.0040329559706151485
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.00036766001721844077
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_build_rejects_existing_binary_before_build",
+      "phase": "setup",
+      "outcome": "passed",
+      "seconds": 0.003616945003159344
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_build_rejects_existing_binary_before_build",
+      "phase": "call",
+      "outcome": "passed",
+      "seconds": 0.014804609993007034
+    },
+    {
+      "node": "tests/unit/submodules/models/dino/test_extension.py::test_build_rejects_existing_binary_before_build",
+      "phase": "teardown",
+      "outcome": "passed",
+      "seconds": 0.0008312119753099978
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "code_fingerprint_unchanged": true,
+  "final_manifest_sha256": "7fe0f5f906020527d9e8b744d68a60da5fd07d3727da8c3701b200b5b0908667",
+  "sealed_files_verified": 1671,
+  "changed_python_files": [
+    "src/tasks/ball_detection/inference/heatmap_decoding.py",
+    "src/tennis_scene/ball_association/topk.py",
+    "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py",
+    "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py",
+    "tests/unit/tennis_scene/ball_association/test_topk.py",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py"
+  ],
+  "run_scripts_ast_valid": 12,
+  "static": [
+    {
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison/.venv/bin/ruff",
+        "check",
+        "src/tasks/ball_detection/inference/heatmap_decoding.py",
+        "src/tennis_scene/ball_association/topk.py",
+        "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py",
+        "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py",
+        "tests/unit/tennis_scene/ball_association/test_topk.py",
+        "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.04564236797159538,
+      "output": "All checks passed!\n"
+    },
+    {
+      "command": [
+        "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison/.venv/bin/mypy",
+        "--follow-imports=skip",
+        "src/tasks/ball_detection/inference/heatmap_decoding.py",
+        "src/tennis_scene/ball_association/topk.py",
+        "tests/integration/tennis_scene/test_ball3d_integrated_comparison.py",
+        "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py",
+        "tests/unit/tennis_scene/ball_association/test_topk.py",
+        "tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.6309569829609245,
+      "output": "pyproject.toml: note: unused section(s): module = ['MultiScaleDeformableAttention', 'cmds', 'cv2.*', 'deep_sort_realtime.*', 'experiments.*.scripts.*', 'gdown.*', 'gsplat.*', 'mpl_toolkits.*', 'plyfile.*', 'pytorch_lightning.*', 'src.submodules.vendor.*', 'src.synthetic_data_generation.alignment.manual.models', 'src.synthetic_data_generation.alignment.manual.web', 'src.synthetic_data_generation.appearance.configuration', 'src.synthetic_data_generation.appearance.contracts', 'src.synthetic_data_generation.dataset.court.review.web', 'src.synthetic_data_generation.scripts.*', 'src.tasks.*.scripts.*', 'src.tasks.ball_detection.evaluation.heatmap_cli', 'src.tasks.ball_detection.evaluation.manifest_cli', 'src.tasks.ball_detection.training.convnext_heatmap.cli', 'src.tasks.ball_detection.visualization.preview.heatmaps', 'src.tasks.ball_detection.visualization.preview.spatial', 'src.tasks.base.visualization.detection.web', 'src.tasks.base.visualization.review.web', 'src.tasks.blcs.visualization.review.web', 'src.tasks.plcs.visualization.inference.web', 'src.tasks.plcs.visualization.review.dataset_web', 'src.tasks.plcs.visualization.review.web', 'src.tennis_scene.scripts.*', 'tensorboard.*', 'third_party.*', 'torchreid.*', 'torchvision.*', 'tqdm.*', 'transformers.*']\nSuccess: no issues found in 6 source files\n"
+    }
+  ],
+  "shared_memory_changed": false,
+  "knowledge_validation": {
+    "errors": 0,
+    "warnings": 219,
+    "log_sha256": "eb4303428c449f282770298034b07373ad7a693c9d1183132a6041465d9567f1"
+  },
+  "repro_path_validation": {
+    "missing": 0,
+    "unverifiable": 28,
+    "log_sha256": "606e6370fbac297d3243041e9c77942ef372e21ea247f1b69010e86195f4b283"
+  }
+}

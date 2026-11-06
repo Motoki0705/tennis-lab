@@ -1,0 +1,29 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+created: 2/2 workers
+2 workers [3 items]
+
+scheduling tests via LoadScheduling
+
+tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera 
+tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured 
+[gw0] [ 33%] PASSED tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured 
+tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy 
+[gw0] [ 66%] PASSED tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy 
+[gw1] [100%] PASSED tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera 
+
+============================== slowest durations ===============================
+0.60s call     tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera
+0.03s call     tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured
+0.01s setup    tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera
+0.01s setup    tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured
+0.00s setup    tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy
+0.00s teardown tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_ba_camera_composition_uses_each_fold_and_never_applies_clock_or_heldout_camera
+0.00s teardown tests/integration/tennis_scene/test_ball3d_integrated_comparison.py::test_portable_report_uses_relative_video_files_after_copy
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_integrated_tables.py::test_fold_table_uses_scoring_coverage_and_keeps_empty_errors_unmeasured
+============================== 3 passed in 10.27s ==============================

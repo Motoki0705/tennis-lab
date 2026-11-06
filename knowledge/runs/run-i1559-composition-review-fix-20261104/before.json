@@ -1,0 +1,26 @@
+{
+  "review_head": "bea51b496df199c5d263e6a8753053f96ce8e22d",
+  "python_defaults": {
+    "method": "legacy",
+    "patch_size": 5,
+    "temperature": 1.0,
+    "coordinate_correction": "none",
+    "model_stride": 4,
+    "scale_xy": [
+      1.0,
+      1.0
+    ],
+    "offset_xy": [
+      0.0,
+      0.0
+    ]
+  },
+  "declarations": {
+    "src.tasks.ball_detection.inference.heatmap_decoding.HeatmapDecodingConfig": false,
+    "src.tennis_scene.pipeline.components.ball_detection.BallDetectionConfig": false
+  },
+  "catalog": {
+    "src.tasks.ball_detection.inference.heatmap_decoding.HeatmapDecodingConfig": false,
+    "src.tennis_scene.pipeline.components.ball_detection.BallDetectionConfig": false
+  }
+}

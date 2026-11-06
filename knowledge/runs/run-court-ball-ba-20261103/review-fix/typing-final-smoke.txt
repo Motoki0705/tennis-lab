@@ -1,0 +1,6 @@
+.                                                                        [100%]
+============================== slowest durations ===============================
+1.09s call     tests/integration/tennis_scene/test_court_ball_ba.py::test_public_config_assembly_optional_stage_and_real_codec
+0.01s setup    tests/integration/tennis_scene/test_court_ball_ba.py::test_public_config_assembly_optional_stage_and_real_codec
+0.00s teardown tests/integration/tennis_scene/test_court_ball_ba.py::test_public_config_assembly_optional_stage_and_real_codec
+1 passed in 5.33s

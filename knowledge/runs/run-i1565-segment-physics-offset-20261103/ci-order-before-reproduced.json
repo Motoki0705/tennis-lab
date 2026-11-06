@@ -1,0 +1,43 @@
+{
+  "revision": "e067580d69ea6f917118823f87d7726b540b6751",
+  "permutation": [
+    2,
+    0,
+    1
+  ],
+  "records": [
+    {
+      "residual_camera_order": [
+        "right",
+        "near",
+        "far"
+      ],
+      "initial_parameters_sha256": "96a245c3fddfd745326d6e850370e91be89483d44aab5a75209f4392aab19e56",
+      "initial_residual_sha256": "956efe1ea138c90e82da243e51b892bf3df34264378810232cb42b2e8ec0f9fe",
+      "nfev": 11,
+      "cost": 45.608343494085375,
+      "optimality": 0.014042984656683475,
+      "termination": "`ftol` termination condition is satisfied."
+    },
+    {
+      "residual_camera_order": [
+        "far",
+        "right",
+        "near"
+      ],
+      "initial_parameters_sha256": "96a245c3fddfd745326d6e850370e91be89483d44aab5a75209f4392aab19e56",
+      "initial_residual_sha256": "ec88ad03e681693b7e0a7888235741de54e5f4b1444e85c06563cc6fe5d2da0c",
+      "nfev": 11,
+      "cost": 45.60834059880783,
+      "optimality": 0.015169413607781302,
+      "termination": "`ftol` termination condition is satisfied."
+    }
+  ],
+  "initial_parameters_equal": true,
+  "solver_residual_rows_equal": false,
+  "solver_sparsity_equal": false,
+  "max_offset_difference_seconds": 8.683909603258815e-06,
+  "positions_bitwise_equal": false,
+  "offsets_bitwise_equal": false,
+  "covariance_bitwise_equal": false
+}
