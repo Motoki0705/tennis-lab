@@ -511,12 +511,31 @@ def test_legacy_result_migration_preserves_review_and_completion(
         )
         response = flow.gate.cli("merge")
         assert response.returncode == 0, response.stderr + response.stdout
+    else:
+        # The reviewer has returned its result, but the parent has not yet
+        # accepted/confirmed it: the existing PR is genuinely still in review.
+        state = p.state()
+        policy = importlib.import_module("parent.policy")
+        state["comments"]["1"] = [
+            comment
+            for comment in state["comments"]["1"]
+            if not any(
+                event.get("event") == "review"
+                and event.get("review_run_id")
+                == flow.gate.review.request["review_run_id"]
+                and event.get("state") in {"result_received", "fixes_verified"}
+                for event in policy.events([comment], "operator", 1)
+            )
+        ]
+        p.save(state)
     with control.store.locked():
         task = flow.session.row["tasks"]["1"]
         task.pop("preflight")
         task.pop("review_preflight")
         job = flow.session.row["dispatch"]["jobs"][flow.implementation["id"]]
         job.pop("preflight", None)
+        if not merged:
+            flow.session.row["reviews"][-1]["state"] = "instructed"
         control.store.save()
     old_request = flow.gate.review.request_path.read_bytes()
     old_result = (
@@ -635,6 +654,19 @@ def test_legacy_result_migration_preserves_review_and_completion(
         assert "legacy result PR set changed" in rejected.stderr
         p.save(original)
     if not merged:
+        decision = flow.gate.results(flow.gate.cli("merge", AGENT_AUTO_MERGE="0"))[100]
+        assert decision["decision"] == "blocked", decision
+        assert "parent_review_not_confirmed" in decision["reasons"], decision
+        repeated = p.cli(
+            "review-request",
+            "--run-id",
+            flow.gate.review.request["review_run_id"],
+            "--instruction-file",
+            p.note("旧委任のレビューを同じrunで継続する。"),
+        )
+        assert json.loads(repeated.stdout)["review_state"] == "instructed"
+        assert len(flow.gate.review.calls()) == 1
+        flow.gate.confirm()
         decision = flow.gate.results(flow.gate.cli("merge", AGENT_AUTO_MERGE="0"))[100]
         assert decision["decision"] == "merge", decision
         requested = p.cli(
