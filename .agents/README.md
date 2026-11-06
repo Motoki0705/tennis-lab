@@ -34,7 +34,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [knowledge/](../knowledge/README.md) | 実験結果・考察・関連論文（1 run = 1ノード） | 運用ルール |
 | 各ディレクトリの `README.md` | モジュールの仕様・使い方・設計判断 | 横断的な運用ルール |
 | GitHub issue / PR | 作業の目的・進捗・決定の経緯 | 恒久的な規則（決まったらここか AGENTS.md へ移す） |
-| 各ツールのローカルmemory（Claude auto-memory など） | ユーザー個人の環境、そのツールの使い方に閉じた好み | プロジェクトの知見、ユーザーの判断（共有memoryへ） |
+| 各ツールのローカルmemory（Claude auto-memory など） | ユーザー個人の環境、そのツールの使い方に閉じた好み | プロジェクトの知見、ユーザーの判断（[記録対象と出典の確認](skills/memory/SKILL.md#ユーザーの指示を記録する)に従い共有memoryへ） |
 
 ツール固有のファイル:
 
