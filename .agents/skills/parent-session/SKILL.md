@@ -121,7 +121,13 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
    既定のCodexへ共通ランナー経由で委任する。
    自律親は開発workflowの `start-worker`（delegate → dispatcher start-child）、
    手動親は `delegate` の `action: launch` 後に [run-worker](../../ops/parent/README.md#手動workerの起動継続とrun記録) をこの親セッションからバックグラウンド実行する。
-   この入口だけを使い、Codex CLIの直接実行や `--model`・`--effort` 指定はしない。共通ランナーの既定値を使う。
+   この入口だけを使い、Codex CLIは直接実行しない。モデルは [AGENTS.md](../../../AGENTS.md#開発ルール) の判断基準に従い、
+   通常はSol/max、高難度の数理・幾何アルゴリズムや広範囲の統合設計では親がAstra/maxを選べる。
+   人間との合意で指定されたモデルを優先する。選択理由を親issueの `note` と具体指示へ書き、
+   手動親は `run-worker --model-reason-file` でも委任・runへ保存する（既定採用の理由は入口が記録する）。
+   初回だけ必要に応じて `--model` を渡し、effortはmax固定で指定しない。
+   resumeの省略は初回モデルを継承し、同値の再指定は許可、異値は拒否される。同一委任・sessionの途中で変えない。
+   利用不可や実効値不一致を別モデル・別sessionで補わず、理由と再開条件を親へ返す。
    dshを案件で明示指定された場合は [deepseek-harness skill](../deepseek-harness/SKILL.md) に従う。
 4. 先に起動した子の完了を待たず、残る `launchable_children` を再計算してすべて委任する。
 5. 子が実装・検証・PRを作り、親が成果物と検証記録を集約する（[子の報告を受け取る](#子の報告を受け取る)）。

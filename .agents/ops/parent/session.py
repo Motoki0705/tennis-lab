@@ -89,7 +89,11 @@ def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any
             return [redact(item) for item in value]
         return value
 
-    return {key: redact(value) for key, value in task.items() if key != "worker_runs"}
+    return {
+        key: redact(value)
+        for key, value in task.items()
+        if key not in {"worker_runs", "model_reason"}
+    }
 
 
 class ParentSession:
@@ -966,6 +970,9 @@ class ParentSession:
         if restart:
             task["restart_evidence"] = restart
         task.pop("worker_ended", None)
+        # A new delegation makes its own selection. Historical runs retain theirs.
+        task.pop("model", None)
+        task.pop("model_reason", None)
         # The final admission check must observe edits made during local validation.
         with self.gh.fresh_reads():
             if source is not None:

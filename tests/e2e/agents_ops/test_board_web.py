@@ -614,8 +614,12 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
             "task_id": delegation,
             "cwd": str(worktree),
             "branch": branch,
+            "mode": "write",
             "settings": {
                 "agent": "codex",
+                "role": "implementation",
+                "profile": None,
+                "overrides": {},
                 "selected": {"model": "gpt-6.1-sol", "effort": "max"},
             },
         },
@@ -684,7 +688,14 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
         )
         manual.record_worker_run(session, 11, run)
         [record] = registry.parents["o/r#1"]["tasks"]["11"]["worker_runs"]
-        assert set(record) == {"delegation_id", "run_dir", "kind", "recorded_at"}
+        assert set(record) == {
+            "delegation_id",
+            "run_dir",
+            "kind",
+            "recorded_at",
+            "model",
+            "model_reason",
+        }
     if case == "missing":
         runtime["contract"].pop("branch")
     elif case == "mismatch":

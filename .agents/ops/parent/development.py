@@ -14,6 +14,7 @@ from dispatcher.schedule import Schedule
 from dispatcher.state import DispatchStore
 from dispatcher.supervisor import Supervisor, children_pending, managed, unstarted
 from issues import Issue, task_status
+from lib.agent_settings import implementation_model
 
 from .adopted_tasks import check_task_adoptions
 from .execution import authorization, require_request_authorization, task_errors
@@ -115,8 +116,7 @@ def start_worker(
     A failure between the two claims intentionally leaves the delegation intact.
     """
     nonempty(prompt, "worker instruction")
-    if model not in {None, "gpt-6.1-sol", "gpt-6-astra"}:
-        raise ValueError("unknown implementation model")
+    implementation_model(model)
     with session.store.locked():
         dispatch = accepted(session, env)
         session.agreed()
@@ -146,16 +146,15 @@ def start_worker(
                     raise ValueError(
                         "existing PR has no implementation session to resume"
                     )
-                if model is not None and model != jobs[-1]["model"]:
-                    raise ValueError("continuation cannot change the worker model")
+                implementation_model(
+                    model, previous=implementation_model(jobs[-1]["model"])
+                )
                 model = jobs[-1]["model"]
             else:
                 record = load(Path(source) / "result.json")
-                if (
-                    model
-                    and model != record["contract"]["settings"]["selected"]["model"]
-                ):
-                    raise ValueError("continuation cannot change the worker model")
+                implementation_model(
+                    model, previous=record["contract"]["settings"]["selected"]["model"]
+                )
             task = session.row["tasks"][str(child)]
             branch, worktree = task["branch"], Path(task["worktree"])
         elif jobs:
