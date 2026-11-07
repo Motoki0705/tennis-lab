@@ -1198,8 +1198,8 @@ def test_rechecking_revokes_agreement_and_missing_confirmation_fails(
     p.agreed()
     p.child("before-change")
     p.cli("checking")
-    assert json.loads(p.cli("status").stdout)["phase"] == "要件確認中"
-    p.child("cannot-split", ok=False)
+    assert json.loads(p.cli("status").stdout)["phase"] == "要件合意済み"
+    p.child("independent-work")
     agreement = {
         "purpose": "目的",
         "scope": "範囲",
@@ -1211,7 +1211,7 @@ def test_rechecking_revokes_agreement_and_missing_confirmation_fails(
     agreement["human_confirmation"] = "この変更した要件で合意します。"
     p.cli("agree", "--spec", p.spec(agreement))
     p.child("after-change")
-    assert len(p.state()["issues"]) == 4
+    assert len(p.state()["issues"]) == 5
 
 
 def test_report_and_human_assignment_share_entry_and_never_imply_consent(
@@ -2316,7 +2316,6 @@ def test_explicit_parent_review_runs_codex_exactly_once_and_records_all_prs(
         "no_instruction",
         "foreign_instruction",
         "quoted_instruction",
-        "old_generation",
         "wrong_session",
         "duplicate_pr",
         "changed_request",
@@ -2337,7 +2336,7 @@ def test_invalid_or_uninstructed_review_never_launches(
     elif case in {"ended", "handoff"}:
         row["status"] = "ended" if case == "ended" else "handoff_pending"
     elif case == "checking":
-        p.cli("checking")
+        p.cli("basis-revoke", "--reason-file", p.note("親が実行根拠を取り消した。"))
         state = p.state()
     elif case in {"no_instruction", "foreign_instruction", "quoted_instruction"}:
         instruction = state["comments"]["1"][-1]

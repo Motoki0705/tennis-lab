@@ -27,7 +27,7 @@ from agent_events import (
     parse_json,
 )
 from agent_output import OutputSchema
-from agent_settings import command, resolve
+from agent_settings import command, execution_contract, resolve
 from opsproc import (
     _live_group_members,
     _terminate_group,
@@ -355,7 +355,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if head.returncode:
             raise ValueError("failed to read detached worktree HEAD")
         contract["detached_head"] = head.stdout.strip()
-    if previous and contract != previous["contract"]:
+    if previous and execution_contract(contract) != execution_contract(
+        previous["contract"]
+    ):
         raise ValueError(
             "resume task/worktree/branch/read_dirs/json_schema/settings differ from the saved contract"
         )

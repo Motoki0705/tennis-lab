@@ -378,9 +378,10 @@ runner=.agents/ops/lib/agent_exec.sh
 log dir既定は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/logs/`。
 task ID省略時は初回promptのSHA-256をキーにする。後続workflowは明示キーとrun dirを使う。
 
-再開では初回と同じagent/profile/mode/task/worktree/branch/read_dirs/configを指定する。
-前回の明示model/effort overrideは省略すれば保持し、異なる値の指定は拒否する。
-configはパスとファイル全体のSHA-256も照合するため、コメントだけの変更でも再開を止める。
+再開では初回と同じagent/profile/mode/task/worktree/branch/read_dirsと実行設定を使う。
+前回の明示model/effort overrideは省略すれば保持し、異なる実行値の指定は拒否する。
+configのパス・全体のSHA・既定値とoverrideの出典は来歴として保存する。
+照合は選択されたmodel/effort/service tier等の実行値で行い、コメント・他profile・configパスだけの変更では止めない。
 初回sessionのlockを全ターンで共有し、稼働中・古いrunからの再開を拒否する。
 Codex transcriptに別経路の継続が見つかった場合も拒否する。
 同一branch上の実装commitによるHEADの前進は許容する。

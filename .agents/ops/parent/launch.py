@@ -125,16 +125,6 @@ def plan_launches(
         for dep in sorted(ancestors(n)):
             if states[dep] != "continue":
                 continue
-            if tasks.get(str(dep), {}).get("delegated") and not tasks[str(dep)].get(
-                "_preflight_accepted", False
-            ):
-                reasons.append(
-                    reason(
-                        "dependency_planning_unapproved",
-                        f"依存先 #{dep}: 承認前成果・受理不可。計画判断と実装移行を確認する。",
-                    )
-                )
-                continue
             candidates = [
                 p for p in matching[dep] if p["state"] == "open" or p.get("merged_at")
             ]

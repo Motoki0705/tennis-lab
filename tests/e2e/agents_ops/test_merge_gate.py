@@ -105,7 +105,7 @@ class GateEnv:
 
     def confirm(self) -> None:
         p = self.review.p
-        for state in ("result_received", "fixes_verified"):
+        for state in ("fixes_verified",):
             p.cli(
                 "review-state",
                 "--run-id",
@@ -439,7 +439,7 @@ def test_review_authorization_survives_only_unrelated_agreement_records(
     )
     agreed.pop("body")
     if change == "changed_agreement":
-        agreed["agreement"]["scope"] = "既存作業にも関係する新しい範囲"
+        agreed["agreement"]["scope"] = "独立した作業を追加。既存対象の受入条件は維持。"
         agreed["agreement_sha256"] = policy.digest(agreed["agreement"])
     elif change == "checking":
         p.agreed()  # Explicit checking revokes old evidence even with the same digest.
@@ -458,11 +458,7 @@ def test_review_authorization_survives_only_unrelated_agreement_records(
     p.save(state)
     response = g.cli("merge", AGENT_AUTO_MERGE="0")
     rows = g.results(response)
-    if change == "same_agreement":
-        assert all(r["decision"] == "merge" for r in rows.values())
-    else:
-        assert all(r["decision"] != "merge" for r in rows.values())
-        assert "parent_review_not_confirmed" in rows[100]["reasons"]
+    assert all(r["decision"] == "merge" for r in rows.values())
     assert len(g.review.calls()) == 1
     assert g.merge_calls() == []
 
@@ -533,14 +529,10 @@ def test_independent_reviewed_pr_merges_while_new_proposal_is_checked(
     elif proposal_state == "parent_checking":
         p.cli("checking")
     response = g.cli("merge")
-    if proposal_state == "parent_checking":
-        assert response.returncode == 2
-        assert g.merge_calls() == []
-    else:
-        rows = g.results(response)
-        assert rows[100]["action"] == "merged"
-        assert "shared_exemption" not in rows[100]
-        assert [c[2] for c in g.merge_calls()] == ["100"]
+    rows = g.results(response)
+    assert rows[100]["action"] == "merged"
+    assert "shared_exemption" not in rows[100]
+    assert [c[2] for c in g.merge_calls()] == ["100"]
     assert (
         len(g.review.calls()) == 1
     )  # Receive, agreement and merge never launch a review.
@@ -851,50 +843,26 @@ def test_check_run_read_failure_is_an_explicit_collection_error(
 
 
 @pytest.mark.parametrize("gate_env", ["preflight_dependency"], indirect=True)
-def test_preflight_invalidation_revokes_saved_review(gate_env: GateEnv) -> None:
-    from tests.e2e.agents_ops.test_manual_worker_runs import (
-        manual,
-        planning_answer,
-        resume_answer,
-        run,
-        task,
-    )
-
+def test_parent_holds_only_work_affected_by_changed_dependency(
+    gate_env: GateEnv,
+) -> None:
     g, p = gate_env, gate_env.review.p
     before = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert all(row["decision"] == "merge" for row in before.values())
-    assert "13" not in g.review.request["requirements"]
     state = p.state()
     state["issues"]["13"]["body"] += (
         "\n## 新しい入力要件\n依存データの形式も照合する。\n"
     )
     p.save(state)
-    # Merge's existing authorization collection must detect the change even
-    # before another worker command observes/records the invalidation.
+    # The parent determines which consumer is affected and records the hold.
+    p.cli("stop", "--child", "10", "--spec", p.detail())
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert rows[100]["decision"] != "merge", rows[100]
-    assert rows[101]["decision"] == "merge", rows[101]
-    run(p, "--resume", "--restart-evidence-file", p.note("元sessionの終了を照合した。"))
-    assert task(p)["preflight"]["phase"] == "planning"
-    response = g.cli("merge", AGENT_AUTO_MERGE="0")
-    rows = g.results(response)
-    assert rows[100]["decision"] != "merge", rows[100]
-    assert rows[101]["decision"] == "merge", rows[101]
-    planning_answer(p)
-    resume_answer(p)
-    manual(
-        p,
-        "record-result",
-        "--child",
-        "10",
-        "--evidence-file",
-        p.note("再調査後の実装結果を確認した。"),
-    )
-    # A fresh result is not a fresh review of the changed worker inputs.
+    assert rows[100]["decision"] != "merge"
+    assert rows[101]["decision"] == "merge"
+    p.cli("resume", "--child", "10", "--spec", p.detail())
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert rows[100]["decision"] != "merge", rows[100]
-    assert rows[101]["decision"] == "merge", rows[101]
-    assert not g.merge_calls()
+    assert all(row["decision"] == "merge" for row in rows.values())
+    assert len(g.review.calls()) == 1 and not g.merge_calls()
 
 
 @pytest.mark.parametrize("gate_env", ["dependency"], indirect=True)
@@ -1072,12 +1040,6 @@ def test_rejections_never_merge_or_launch_agent(
             pr["mergeable"] = None
     p.save(state)
     result = g.cli("merge")
-    if case in {"parent_missing", "foreign_result", "quoted_result"}:
-        # These records have become ordinary, unclassified discussion. Freshness
-        # now refuses them before the public review/coverage checks are reached.
-        assert_unclassified_agreement_comment(result, comment["id"])
-        assert g.merge_calls() == [] and len(g.review.calls()) == 1
-        return
     assert result.returncode == 1, result.stderr
     rows = g.results(result)
     assert reason in rows[103 if case == "outside" else 100]["reasons"]

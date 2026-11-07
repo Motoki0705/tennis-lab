@@ -37,9 +37,9 @@ def prepare_instruction(
             f"turn_id: {turn['turn_id']}\ndecision_id: {turn['decision_id'] or 'なし'}\n"
         )
         if turn["phase"] == "planning":
-            phase += "調査と設計提案だけを行い、実装・commit・PR作成は行わず、必須6節の最終報告でターンを終える。\n"
+            phase += "親が今回は調査を選択した。根拠・提案・未解決点を報告する。実装へ進む時点は親の具体指示に従う。\n"
         else:
-            phase += "親の判断または理由付き省略に基づいて実装・検証・commit・PR作成を進める。\n"
+            phase += "親の具体指示に基づいて作業し、成果と検証・未解決点を報告する。\n"
     standard = TEMPLATE.read_bytes()
     text = (
         standard.decode("utf-8")

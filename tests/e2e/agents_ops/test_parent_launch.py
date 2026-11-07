@@ -290,6 +290,8 @@ def test_phase_change_and_unknown_policy_never_allow_launch(
     p.agreed()
     p.child("a")
     p.cli("checking")
+    assert plan(p)["launchable_children"] == [10]
+    p.cli("basis-revoke", "--reason-file", p.note("全体を停止する。"))
     assert plan(p)["launchable_children"] == []
     assert plan(p)["tasks"][0]["reasons"][0]["code"] == "execution_basis_required"
     path = (

@@ -183,7 +183,7 @@ def test_unassigned_record_and_owner_generation_handoff(parent_env: ParentEnv) -
     p.cli("handoff", "--accept", "--note-file", p.note(), extra=second)
     p.child("stale-owner", ok=False)
     p.env.update(second)
-    p.child("stale-basis", ok=False)
+    p.child("inherited-basis")
     assert record(p)["generation"] == 2
     p.child("next")
     assert "10" in json.loads(registry(p).read_text())["parents"]["o/r#1"]["tasks"]
@@ -342,13 +342,23 @@ def test_material_changes_and_explicit_holds_block_autonomous_work(
     else:
         state["issues"]["1"]["labels"].append({"name": "needs-human"})
         p.save(state)
+    if change == "checking":
+        p.child("independent")
+        return
+    if change in {"body", "instruction"}:
+        notices = json.loads(p.cli("status").stdout)["input_changes"]
+        assert notices["body_changed"] or notices["comments"]
+        p.cli(
+            "basis-revoke",
+            "--reason-file",
+            p.note("親が実質変更・停止指示を確認した。"),
+        )
     p.child("blocked", ok=False)
     before = p.state()
     p.cli("basis-record", "--spec", p.spec(value), ok=False)
     assert p.state() == before
-    if change in {"checking", "revocation"}:
-        p.cli("basis-record", "--spec", p.spec(spec(p)), ok=False)
-        p.agreed()  # Only the existing explicit human agreement path lifts this hold.
+    if change == "revocation":
+        p.agreed()
         p.child("human-resumed")
 
 
@@ -367,7 +377,7 @@ def test_progress_and_classified_unrelated_comments_keep_basis_identity(
     unrelated = {"id": 900, "user": {"login": "human"}, "body": "表示を確認しました。"}
     state["comments"]["1"].append(unrelated)
     p.save(state)
-    p.child("unclassified", ok=False)
+    p.child("assessed-comment")
     execution = importlib.import_module("parent.execution")
     ignored = [
         {
@@ -384,6 +394,9 @@ def test_progress_and_classified_unrelated_comments_keep_basis_identity(
         "停止してください。"
     )
     p.save(state)
+    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
+    assert any(c["id"] == 900 and c["change"] == "edited" for c in notices)
+    p.cli("basis-revoke", "--reason-file", p.note("親が停止指示を確認した。"))
     p.child("edited-observation", ok=False)
 
 
@@ -471,37 +484,19 @@ def test_autonomous_merge_keeps_basis_valid_through_progress_updates(
     assert all(row["action"] == "merged" for row in g.results(response).values())
 
 
-def test_new_basis_does_not_reauthorize_old_review(
+def test_new_basis_preserves_existing_review_evidence(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     p = parent_env
     g = auto_gate(p, monkeypatch)
-    before = len(g.review.calls())
+    original = (g.review.run_dir / "result.json").read_bytes()
     value = spec(p)
-    value["basis"]["scope"] = "異なる範囲で作業する"
+    value["basis"]["scope"] = "独立した作業の計画を更新。既存PRの受入条件は同じ。"
     record(p, value)
-    response = g.cli("merge", AGENT_AUTO_MERGE="0")
-    assert all(row["decision"] == "blocked" for row in g.results(response).values())
-    g.review.cli(
-        "run",
-        "--request",
-        str(g.review.request_path),
-        "--agent-exec",
-        str(g.review.fake),
-        ok=False,
-    )
-    p.cli(
-        "review-state",
-        "--run-id",
-        g.review.request["review_run_id"],
-        "--state",
-        "complete",
-        "--evidence-file",
-        p.note(),
-        ok=False,
-    )
-    assert len(g.review.calls()) == before
-    assert g.merge_calls() == []
+    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert all(row["decision"] == "merge" for row in rows.values())
+    assert (g.review.run_dir / "result.json").read_bytes() == original
+    assert len(g.review.calls()) == 1 and not g.merge_calls()
 
 
 def test_classifying_unrelated_comment_preserves_existing_review(
@@ -575,7 +570,7 @@ def test_stale_delegation_needs_explicit_parent_result_verification(
         record(p)
     p.cli("review-prepare", "--prs", "100", ok=False)
     assert (
-        "planning approval"
+        "no recorded run"
         in p.cli(
             "record-result", "--child", "10", "--evidence-file", p.note(), ok=False
         ).stderr
@@ -627,35 +622,23 @@ def test_recording_basis_does_not_resume_a_stopped_child(parent_env: ParentEnv) 
     )
 
 
-def test_child_requirement_edit_invalidates_review_even_after_result_adoption(
+def test_parent_can_reuse_review_after_assessing_child_text_change(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     p = parent_env
     g = auto_gate(p, monkeypatch)
     state = p.state()
-    state["issues"]["10"]["body"] = state["issues"]["10"]["body"].replace(
-        "動作する", "新しい境界を確認する"
-    )
+    state["issues"]["10"]["body"] += "\n\n## 補足\n既存の受入条件の説明。\n"
     p.save(state)
     p.cli(
         "record-result",
         "--child",
         "10",
         "--evidence-file",
-        p.note("変更後の要件で成果を確認した。レビューは別途必要。"),
+        p.note("同じ対象・条件を確認。既存レビューが適用できる。"),
     )
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
-    assert rows[100]["decision"] == "blocked"
-    assert rows[101]["decision"] == rows[102]["decision"] == "merge"
-    assert "issue_10_reviewed_requirements_changed" in rows[100]["reasons"]
-    g.review.cli(
-        "run",
-        "--request",
-        str(g.review.request_path),
-        "--agent-exec",
-        str(g.review.fake),
-        ok=False,
-    )
+    assert all(row["decision"] == "merge" for row in rows.values())
     assert g.merge_calls() == [] and len(g.review.calls()) == 1
 
 
@@ -965,45 +948,19 @@ def test_human_agreement_comment_changes_block_delegation_review_and_merge(
                 c for c in state["comments"]["1"] if c["id"] != comment["id"]
             ]
         p.save(state)
-    worktree = p.worktree("unclassified")
     before = p.state(), registry(p).read_bytes()
-    responses = [
-        p.child("unclassified", ok=False),
-        p.cli(
-            "delegate",
-            "--child",
-            "10",
-            "--agent",
-            "codex",
-            "--branch",
-            "codex/unclassified",
-            "--worktree",
-            str(worktree),
-            ok=False,
-        ),
-        p.cli(
-            "review-request",
-            "--run-id",
-            g.review.request["review_run_id"],
-            "--instruction-file",
-            p.note(),
-            ok=False,
-        ),
-        g.cli("merge"),
-    ]
-    for response in responses:
-        assert response.returncode == 2
-        error = (
-            json.loads(response.stderr)["error"]
-            if response.stderr.startswith("{")
-            else response.stderr
-        )
-        assert f"ID={comment['id']}" in error
-        assert f"https://github.com/o/r/issues/1#issuecomment-{comment['id']}" in error
-        assert f"({change})" in error
-        assert "agreement-ignore-comments" in error and "checking → agree" in error
-    p.cli("status")  # Stale authorization never prevents reading an existing parent.
+    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
+    notice = next(c for c in notices if c["id"] == comment["id"])
+    assert notice["change"] == change
+    assert notice["url"].endswith(f"#issuecomment-{comment['id']}")
     assert (p.state(), registry(p).read_bytes()) == before
+    p.cli(
+        "basis-revoke",
+        "--reason-file",
+        p.note("親が変更を確認し、対象の実行を保留する。"),
+    )
+    p.child("blocked", ok=False)
+    assert g.cli("merge").returncode == 2
     assert g.merge_calls() == [] and len(g.review.calls()) == 1
 
 
@@ -1125,13 +1082,10 @@ def test_legacy_human_agreement_remains_readable_and_requires_reagreement_for_ch
             body="対象範囲を変更します。", updated_at="2026-10-22T03:01:00Z"
         )
         p.save(state)
-    response = p.child("blocked", ok=False)
-    assert f"ID={comment['id']}" in response.stderr and f"({change})" in response.stderr
-    p.cli("status")
-    p.cli(
-        "agree", "--spec", p.spec(agreement), ok=False
-    )  # Retrying agree is not consent.
-    p.cli("checking")
+    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
+    assert any(c["id"] == comment["id"] and c["change"] == change for c in notices)
+    p.cli("basis-revoke", "--reason-file", p.note("親が変更・停止指示を確認した。"))
+    p.child("blocked", ok=False)
     p.cli("agree", "--spec", p.spec(agreement))
     p.child("reagreed")
 
@@ -1154,8 +1108,8 @@ def test_human_agreement_detects_changes_to_existing_instruction_comments(
             c for c in state["comments"]["1"] if c["id"] != comment["id"]
         ]
     p.save(state)
-    response = p.child("stale-comment", ok=False)
-    assert f"ID={comment['id']}" in response.stderr and f"({change})" in response.stderr
+    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
+    assert any(c["id"] == comment["id"] and c["change"] == change for c in notices)
 
 
 @pytest.mark.parametrize("change", ["replace", "add"])
@@ -1217,9 +1171,8 @@ def test_changed_closing_targets_require_new_review_before_instruction(
         new["review_run_id"],
         "--instruction-file",
         p.note(),
-        ok=False,
     )
-    assert "#11: reviewed requirements changed" in response.stderr
+    assert json.loads(response.stdout)["review_run_id"] == new["review_run_id"]
 
 
 def test_review_collection_rejects_new_closing_child_after_result_adoption(

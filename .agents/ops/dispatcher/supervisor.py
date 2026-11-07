@@ -15,7 +15,6 @@ from parent import worker_preflight
 from parent.adopted_tasks import check_task_adoptions
 from parent.execution import (
     authorization,
-    requirement_body,
     validate_authorization,
     validate_candidate,
 )
@@ -63,14 +62,11 @@ def managed(row: dict[str, Any]) -> dict[str, Any] | None:
         or not isinstance(value.get("assignment_id"), str)
         or not value["assignment_id"]
         or not isinstance(value.get("session"), str)
-        or value["session"] != row["session"]
     ):
         raise ValueError(
             "malformed dispatcher assignment or owner changed; reconcile explicitly"
         )
     validate_authorization(value.get("authorization"))
-    if value["authorization"]["generation"] != row["generation"]:
-        raise ValueError("dispatcher owner generation changed")
     if value.get("active_job") not in value["jobs"]:
         raise ValueError("active parent runtime is missing")
     for key, job in value["jobs"].items():
@@ -197,11 +193,9 @@ class Supervisor:
 
     def _authorized(self, key: str, row: dict[str, Any]) -> None:
         dispatch = managed(row)
-        if (
-            not dispatch
-            or authorization(self._session(key, row)) != dispatch["authorization"]
-        ):
-            raise ValueError("managed execution basis changed")
+        if not dispatch or dispatch["session"] != row["session"]:
+            raise ValueError("managed controller differs from the current owner")
+        authorization(self._session(key, row))
 
     def _validate_completion_resume(
         self,
@@ -274,7 +268,6 @@ class Supervisor:
         if (
             not dispatch
             or dispatch["phase"] in {"stopped", "recovery_required"}
-            or job["authorization"] != dispatch["authorization"]
             or job["assignment_id"] != dispatch["assignment_id"]
             or job["candidate_sha256"] != digest(dispatch["candidate"])
         ):
@@ -283,6 +276,8 @@ class Supervisor:
             )
         self._authorized(key, row)
         session = self._session(key, row)
+        if job["role"] == "parent" and dispatch.get("controller_mode") == "handoff":
+            raise ValueError("parent runtime was handed off to the current owner")
         issue = self.gh.issue(session.parent)
         if job["role"] == "parent" and issue["state"] == "closed":
             self._validate_completion_resume(session, row, job, issue)
@@ -307,9 +302,7 @@ class Supervisor:
                 raise ValueError("current child delegation changed or stopped")
             parent, children = session.work_items()
             child = children.get(job["child"])
-            if child is None or task.get("requirements_sha256") != digest(
-                requirement_body(child.body)
-            ):
+            if child is None:
                 raise ValueError(
                     "delegated child requirements or formal parent changed"
                 )
@@ -339,15 +332,22 @@ class Supervisor:
                 ]
                 if related and (
                     len(related) != 1
-                    or related[0]["state"] != "open"
+                    or (
+                        related[0]["state"] != "open"
+                        and not related[0].get("merged_at")
+                    )
                     or related[0]["head"]["ref"] != job["branch"]
                     or related[0]["head"]["repo"]["full_name"].casefold()
                     != self.gh.repo.casefold()
                 ):
                     raise ValueError(
-                        "continuation requires the same open implementation PR"
+                        "continuation requires the same open or merged implementation PR"
                     )
-                reasons = [r for r in reasons if r["code"] != "existing_pr"]
+                reasons = [
+                    r
+                    for r in reasons
+                    if r["code"] not in {"existing_pr", "completed", "parent_closed"}
+                ]
             if reasons:
                 raise ValueError(
                     "child launch is blocked: "
@@ -360,6 +360,8 @@ class Supervisor:
             != job["start_input_sha256"]
         ):
             raise ValueError("reserved runtime input digest changed")
+        if job["role"] != "parent" or job["resume_from"] is not None:
+            return  # The active parent interprets changes; do not gate an entire family on prose.
         cited_issues, _, _ = source_references(self.gh.repo.casefold(), sources)
         current = collect(
             self.gh,
@@ -1013,6 +1015,13 @@ class Supervisor:
                 dispatch.update(
                     phase="resume_pending", reason="子runtimeの終了イベントを確認する"
                 )
+            return
+        if (
+            dispatch.get("controller_mode") == "handoff"
+            or job["id"] != dispatch["active_job"]
+            or job["authorization"]["generation"] != row["generation"]
+        ):
+            event(dispatch, "previous_parent_ended", job_id=job["id"])
             return
         if dispatch["phase"] == "stopped":
             return

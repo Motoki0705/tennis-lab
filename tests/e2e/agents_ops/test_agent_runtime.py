@@ -167,7 +167,7 @@ def test_event_receipts_match_exact_cli_bytes_and_utc_receive_times(
         assert receipt["schema_version"] == 1
         assert receipt["event_start"] == end
         end = receipt["event_end"]
-        line = raw[receipt["event_start"]:end].removesuffix(b"\n")
+        line = raw[receipt["event_start"] : end].removesuffix(b"\n")
         assert receipt["sha256"] == hashlib.sha256(line).hexdigest()
         when = datetime.fromisoformat(receipt["received_at"])
         offset = when.utcoffset()
@@ -565,7 +565,11 @@ def test_resume_refuses_changed_contract_before_launch(h: Harness, change: str) 
         h.git("checkout", "-qb", "other-branch")
     elif change == "settings":
         config = h.root / "other.conf"
-        config.write_bytes(CONFIG.read_bytes() + b"\n# config changed\n")
+        config.write_text(
+            CONFIG.read_text().replace(
+                'CODEX_SERVICE_TIER="default"', 'CODEX_SERVICE_TIER="priority"'
+            )
+        )
         extra += ("--config-file", str(config))
     elif change == "mode":
         extra += ("--mode", "write")
@@ -1480,3 +1484,20 @@ def test_existing_or_reused_process_identity_prevents_unsafe_actions(
     finally:
         sleeper.terminate()
         sleeper.wait(timeout=5)
+
+
+def test_resume_accepts_config_relocation_and_comment_only_changes(h: Harness) -> None:
+    assert h.run().returncode == 0
+    config = h.root / "relocated.conf"
+    config.write_bytes(CONFIG.read_bytes() + b"\n# documentation update\n")
+    resumed = h.run(
+        "relocated",
+        action="resume",
+        extra=("--resume-from", str(h.root / "initial"), "--config-file", str(config)),
+    )
+    assert resumed.returncode == 0, resumed.stderr
+    assert (
+        h.result("relocated")["runtime"]["session_id"]
+        == h.result()["runtime"]["session_id"]
+    )
+    assert h.result("relocated")["contract"]["settings"]["source"] == str(config)

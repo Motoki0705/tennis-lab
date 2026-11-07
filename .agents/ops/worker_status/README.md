@@ -59,9 +59,9 @@ children = refreshed["parents"][0]["children"]
   `registry_changed_retry`で全体を失敗させる。ローカル取得には自動再試行を加えない。
 - 手動workerはtaskの`worker_runs`を読む。形式・保存側の契約は#1548。
   新しいrunのフェーズsnapshotと旧4/6キー形式を読み、現在のフェーズはtaskの `preflight` の公開要約で返す。
-  snapshot・判断・移行の契約は [parent README](../parent/README.md#workerの調査親判断実装フェーズ) を参照する。
+  snapshot・判断の契約は [parent README](../parent/README.md#workerの調査親判断実装フェーズ) を参照する。
   `worker_phase.input_freshness` はローカルの担当世代差分を検出した場合に `stale`、それ以外は `not_checked`。
-  GitHubの根拠・要件・依存headの鮮度はparent CLIの読取・起動・成果受理で照合する。
+  これは担当変更の観測であり、証拠の失効や再調査の指示ではない。GitHubの変更への影響は親が判断する。
   現在の`delegation_id`と一致する記録の最後の要素を選び、古い委任へ戻らない。
   相対runパスは親state内、外部runは絶対パスでなければならない。
   `worker_runs`キーがある委任で現在の委任IDに対応するrunがなければ、旧委任のrunが残っていても

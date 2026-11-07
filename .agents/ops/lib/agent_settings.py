@@ -139,6 +139,21 @@ def resolve(
     }
 
 
+def execution_contract(contract: dict[str, Any]) -> dict[str, Any]:
+    """Compare runtime inputs, retaining config provenance in the original record.
+
+    A configuration path, comment or unrelated profile does not change the
+    selected agent/model/effort/permissions. Unknown fields remain significant.
+    """
+    provenance = {"source", "sha256", "defaults", "overrides", "selection_sources"}
+    return {
+        **contract,
+        "settings": {
+            k: v for k, v in contract["settings"].items() if k not in provenance
+        },
+    }
+
+
 def command(
     settings: dict[str, Any],
     mode: str,

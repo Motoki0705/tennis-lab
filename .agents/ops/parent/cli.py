@@ -109,15 +109,16 @@ def parser() -> argparse.ArgumentParser:
                 help="extra instructions appended separately to a pending planning answer",
             )
             worker.add_argument("--model", choices=models)
-        if name == "start-worker":
             worker.add_argument(
-                "--skip-planning-reason-file",
-                help="explicit reason to skip planning for a trivial initial task",
+                "--planning",
+                action="store_true",
+                help="investigate and report before implementation",
             )
+        if name == "start-worker":
             worker.add_argument("--branch", required=True)
             worker.add_argument("--worktree", type=Path, required=True)
         if name == "continue-worker":
-            worker.add_argument("--evidence-file", required=True)
+            worker.add_argument("--evidence-file")
         if name == "stop-worker":
             worker.add_argument("--spec", required=True)
     inputs = commands.add_parser("basis-input")
@@ -177,11 +178,12 @@ def parser() -> argparse.ArgumentParser:
         help="task/fix instructions; pending planning answers are sent automatically",
     )
     manual.add_argument("--additional-instruction-file")
-    manual.add_argument(
-        "--skip-planning-reason-file",
-        help="explicit reason; initial trivial tasks only",
-    )
     manual.add_argument("--resume", action="store_true")
+    manual.add_argument(
+        "--planning",
+        action="store_true",
+        help="investigate and report before implementation",
+    )
     manual.add_argument("--restart-evidence-file")
     manual.add_argument(
         "--model",
@@ -204,24 +206,12 @@ def parser() -> argparse.ArgumentParser:
         "--action", choices=("approve", "investigate", "reject"), required=True
     )
     decision.add_argument("--answer-file", required=True)
-    for name in ("migrate-worker-phase", "refresh-worker-plan"):
-        phase_parser = commands.add_parser(
-            name,
-            description=(
-                "Explicitly verify legacy termination/result/review evidence. A verified PR is adopted; "
-                "without a PR the worker enters planning. Closed completed issues require merged evidence."
-                if name == "migrate-worker-phase"
-                else "Rebind a managed worker to the current basis/owner before replanning."
-            ),
-        )
-        phase_parser.add_argument("--child", type=int, required=True)
-        phase_parser.add_argument("--evidence-file", required=True)
-        if name == "migrate-worker-phase":
-            phase_parser.add_argument(
-                "--replan",
-                action="store_true",
-                help="explicitly replan an open legacy worker instead of adopting a verified PR/result",
-            )
+    refresh = commands.add_parser(
+        "refresh-worker-plan",
+        help="refresh the saved controller; normal continuation does this automatically",
+    )
+    refresh.add_argument("--child", type=int, required=True)
+    refresh.add_argument("--evidence-file", required=True)
     for command in ("stop", "resume", "improvement"):
         sub = commands.add_parser(command)
         sub.add_argument("--child", type=int, required=True)
@@ -330,12 +320,10 @@ def _main(argv: list[str] | None = None) -> int:
                 child=number(args.child),
                 prompt=args.prompt_file,
                 resume=args.resume,
+                planning=args.planning,
                 model=args.model,
                 model_reason=read_text(args.model_reason_file)
                 if args.model_reason_file
-                else None,
-                skip_reason=read_text(args.skip_planning_reason_file)
-                if args.skip_planning_reason_file
                 else None,
                 additional=read_original(args.additional_instruction_file)
                 if args.additional_instruction_file
@@ -506,7 +494,6 @@ def _main(argv: list[str] | None = None) -> int:
                 result = session.improvement(number(args.child), read_object(args.spec))
             elif command in {
                 "decide-worker-plan",
-                "migrate-worker-phase",
                 "refresh-worker-plan",
             }:
                 from . import worker_preflight
@@ -517,13 +504,6 @@ def _main(argv: list[str] | None = None) -> int:
                         number(args.child),
                         args.action,
                         read_original(args.answer_file),
-                    )
-                elif command == "migrate-worker-phase":
-                    result = worker_preflight.migrate(
-                        session,
-                        number(args.child),
-                        read_text(args.evidence_file),
-                        replan=args.replan,
                     )
                 else:
                     from .development import refresh_worker_plan

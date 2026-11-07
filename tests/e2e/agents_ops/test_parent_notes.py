@@ -170,9 +170,11 @@ def test_note_does_not_classify_existing_unclassified_comments(
     p.agreed()
     comment = ordinary_comment(p, "範囲を変更してください。", "operator")
     p.cli("note", "--body-file", p.note("変更の確認待ち。"))
-    response = p.child("unclassified", ok=False)
-    assert f"ID={comment['id']}" in response.stderr
-    assert "agreement-ignore-comments" in response.stderr
+    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
+    assert any(c["id"] == comment["id"] for c in notices)
+    # The parent reads the instruction and suspends the affected authority.
+    p.cli("basis-revoke", "--reason-file", p.note("範囲変更を確認するため保留。"))
+    p.child("unclassified", ok=False)
 
 
 @pytest.mark.parametrize("kind", ["human", "autonomous"])
@@ -223,33 +225,15 @@ def test_note_preserves_review_and_merge_but_ordinary_comments_block(
     )
     current = json.loads(p.cli("basis-input").stdout)
     assert current["comments"][-1]["id"] == added["id"]
-    before = p.state(), registry(p).read_bytes()
-    responses = [
-        p.child("unclassified", ok=False),
-        p.cli(
-            "delegate",
-            "--child",
-            child,
-            "--agent",
-            "codex",
-            "--branch",
-            "codex/note-worker",
-            "--worktree",
-            str(worktree),
-            ok=False,
-        ),
-        p.cli(
-            "review-request",
-            "--run-id",
-            g.review.request["review_run_id"],
-            "--instruction-file",
-            p.note(),
-            ok=False,
-        ),
-        g.cli("merge"),
-    ]
-    assert all(response.returncode == 2 for response in responses)
-    assert (p.state(), registry(p).read_bytes()) == before
+    notices = json.loads(p.cli("status").stdout)["input_changes"]["comments"]
+    assert any(c["id"] == added["id"] for c in notices)
+    if comment == "human-instruction":
+        p.cli("basis-revoke", "--reason-file", p.note("親が停止指示を確認した。"))
+        assert g.cli("merge").returncode == 2
+        p.child("unclassified", ok=False)
+    else:
+        rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+        assert all(row["decision"] == "merge" for row in rows.values())
     assert not g.merge_calls() and len(g.review.calls()) == 1
 
 
