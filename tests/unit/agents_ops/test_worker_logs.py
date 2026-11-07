@@ -162,6 +162,22 @@ def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
     )
     schema.additions(raw, expected)
     if case in {"repository", "base", "head"}:
+        if case == "repository":
+            normalize = importlib.import_module(
+                "worker_logs.publication"
+            ).canonical_remote
+            assert normalize("https://github.com/o/r") == normalize(
+                "https://github.com/O/R.git"
+            )
+            assert normalize("git@github.com:o/r.git") == normalize(
+                "git@github.com:O/R"
+            )
+            assert normalize("https://github.com/other/r.git") != normalize(
+                "https://github.com/o/r"
+            )
+            assert normalize("https://user:pass@github.com/o/r.git") != normalize(
+                "https://github.com/o/r"
+            )
         row = {
             "source": {"repo": "o/r"},
             "branch": "worker-log/d-abc/0001",

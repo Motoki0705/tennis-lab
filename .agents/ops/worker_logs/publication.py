@@ -12,6 +12,12 @@ from .journal import PublicationError, require
 from .sources import guard_for, render
 
 
+def canonical_remote(value: str) -> str:
+    if value.casefold().startswith(("https://github.com/", "git@github.com:")):
+        return value.casefold().rstrip("/").removesuffix(".git")
+    return value
+
+
 class GitHub:
     def __init__(self, repo: str) -> None:
         self.repo = repo
@@ -344,7 +350,15 @@ class Publisher:
                 repository = self.github.repository()
                 origin = self.git("remote", "get-url", "origin").decode().strip()
                 require(
-                    origin in {repository.get("clone_url"), repository.get("ssh_url")},
+                    canonical_remote(origin)
+                    in {
+                        canonical_remote(u)
+                        for u in (
+                            repository.get("clone_url"),
+                            repository.get("ssh_url"),
+                        )
+                        if isinstance(u, str)
+                    },
                     "repository_changed",
                 )
                 main = self.main()
