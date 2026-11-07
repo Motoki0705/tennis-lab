@@ -23,7 +23,9 @@ from parent.github import GitHub
 from parent.policy import closing_issues, digest, nonempty, number
 from parent.session import ParentSession
 from parent.state import Store, session_identity
-from parent.worker_instruction import worker_instruction
+from parent.worker_instruction import prepare_instruction
+from worker_logs import service as worker_logs
+from worker_logs import sources as log_sources
 
 from . import judgement
 from .collect import assert_material_fresh, collect, material, source_references
@@ -559,7 +561,7 @@ class Supervisor:
                 )
             job["preflight"] = copy.deepcopy(phase["turns"][-1]["snapshot"])
             prompt_sha = hashlib.sha256(
-                nonempty(prompt, "worker prompt").encode("utf-8")
+                log_sources.original(prompt).encode("utf-8")
             ).hexdigest()
             if phase["turns"][-1].get("prompt_sha256", prompt_sha) != prompt_sha:
                 raise ValueError(
@@ -572,6 +574,15 @@ class Supervisor:
                 job["task_id"] = load(Path(resume_from) / "result.json")["contract"][
                     "task_id"
                 ]
+            log_path = phase["turns"][-1].get("log", {}).get("journal")
+            if log_path:
+                log_sources.bind(
+                    Path(log_path),
+                    directory / "runtime",
+                    job["task_id"],
+                    resume=resume_from is not None,
+                )
+                job["log_journal"] = log_path
         Store.write_json(directory / "start-input.json", snapshot)
         if child is None:
             inputs = {
@@ -594,8 +605,12 @@ class Supervisor:
                 .read_text(encoding="utf-8")
             )
             prompt += f"\n\nbootstrap_input: {directory / 'input.json'}\n"
-        (directory / "prompt.md").write_text(
-            nonempty(prompt, "runtime prompt"), encoding="utf-8"
+        (directory / "prompt.md").write_bytes(
+            (
+                log_sources.original(prompt)
+                if child is not None
+                else nonempty(prompt, "runtime prompt")
+            ).encode("utf-8")
         )
         dispatch["jobs"][job_id] = job
         if child is None:
@@ -896,7 +911,7 @@ class Supervisor:
                 )
                 turn = worker_preflight.commit_turn(task, prepared)
                 _, items = session.work_items()
-                prompt = worker_instruction(
+                prepared_instruction = prepare_instruction(
                     parent,
                     child,
                     Path(task["worktree"]),
@@ -904,6 +919,10 @@ class Supervisor:
                     items[child].body,
                     specific,
                     turn,
+                )
+                prompt = prepared_instruction.text
+                worker_logs.capture(
+                    session, child, items[child].body, prepared_instruction
                 )
             worker_preflight.check_admission(
                 self._session(key, row),
@@ -976,6 +995,10 @@ class Supervisor:
             reason=record["turn_end_reason"],
         )
         if job["role"] == "implementation":
+            if job.get("log_journal"):
+                worker_logs.finish(
+                    Path(job["log_journal"]), evidence, publish_now=False
+                )
             task = row["tasks"].get(str(job["child"]), {})
             if task.get("delegation_id") == job["delegation_id"]:
                 task["worker_ended"] = {
@@ -1038,6 +1061,7 @@ class Supervisor:
             dispatch.update(phase="failed", reason=str(exc))
 
     def reconcile(self, *, stop: bool = False, parent: int | None = None) -> None:
+        publications = []
         with self.store.locked():
             state = self.schedule.read()
             for key, row in self.store.parents.items():
@@ -1084,6 +1108,8 @@ class Supervisor:
                         and not alive(job["worker"])
                     ):
                         self._finish(key, row, job, evidence)
+                        if job.get("log_journal"):
+                            publications.append(Path(job["log_journal"]))
                 if (
                     not stop
                     and state["enabled"]
@@ -1111,6 +1137,9 @@ class Supervisor:
                         except (ValueError, OSError) as exc:
                             dispatch.update(phase="failed", reason=str(exc))
             self.store.save()
+        # GitHub/Git publication must not hold a registry/parent-operation lock.
+        for path in publications:
+            worker_logs.publish(path)
 
     def launch_reserved(self) -> None:
         with self.store.locked():

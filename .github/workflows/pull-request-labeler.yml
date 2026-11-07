@@ -2,6 +2,10 @@ name: Pull request labeler
 
 on:
   pull_request_target:
+    paths-ignore:
+      - '.agents/logs/parents/**/instruction.md'
+      - '.agents/logs/parents/**/final.md'
+      - '.agents/logs/parents/**/meta.json'
     types:
       - opened
       - synchronize

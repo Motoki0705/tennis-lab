@@ -2,13 +2,20 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 TEMPLATE = Path(__file__).with_name("worker_prompt.md")
 
 
-def worker_instruction(
+@dataclass(frozen=True)
+class PreparedInstruction:
+    text: str
+    standard: bytes
+
+
+def prepare_instruction(
     parent: int,
     child: int,
     worktree: Path,
@@ -16,7 +23,7 @@ def worker_instruction(
     issue_body: str,
     parent_instruction: str,
     turn: dict[str, Any] | None = None,
-) -> str:
+) -> PreparedInstruction:
     """Return the standard worker prompt followed by this delegation's specifics.
 
     Managed (``start-worker`` / ``continue-worker``) and manual (``run-worker``)
@@ -33,8 +40,9 @@ def worker_instruction(
             phase += "調査と設計提案だけを行い、実装・commit・PR作成は行わず、必須6節の最終報告でターンを終える。\n"
         else:
             phase += "親の判断または理由付き省略に基づいて実装・検証・commit・PR作成を進める。\n"
-    return (
-        TEMPLATE.read_text(encoding="utf-8")
+    standard = TEMPLATE.read_bytes()
+    text = (
+        standard.decode("utf-8")
         + phase
         + (
             f"\n\n親issue: #{parent}\n担当issue: #{child}\n"
@@ -44,3 +52,18 @@ def worker_instruction(
             f"## 親の具体的な指示\n\n{parent_instruction}\n"
         )
     )
+    return PreparedInstruction(text, standard)
+
+
+def worker_instruction(
+    parent: int,
+    child: int,
+    worktree: Path,
+    branch: str,
+    issue_body: str,
+    parent_instruction: str,
+    turn: dict[str, Any] | None = None,
+) -> str:
+    return prepare_instruction(
+        parent, child, worktree, branch, issue_body, parent_instruction, turn
+    ).text

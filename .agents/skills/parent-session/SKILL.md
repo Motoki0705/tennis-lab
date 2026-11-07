@@ -198,6 +198,9 @@ workerは報告・質問を最終メッセージで返し、親issueへはコメ
 
 ## 子の報告を受け取る
 
+指示・回答・最終報告の保存結果も [workerログ保存](../../ops/worker_logs/README.md#状態と復旧cli) で確認する。
+公開失敗は同じturnの保存だけを再開し、workerを起動し直したり実装PRへログを混ぜたりしない。
+
 workerは既定でplanningから始める。最初の報告は [標準worker指示](../../ops/parent/worker_prompt.md) の6節で読み、
 `decide-worker-plan --child N --action approve|investigate|reject --answer-file tmp/answer.md` で判断を記録する。
 質問なしでも省略せず、既存の実行根拠の範囲内なら親AIが判断する。範囲・要件を変える判断だけ再合意へ戻す。

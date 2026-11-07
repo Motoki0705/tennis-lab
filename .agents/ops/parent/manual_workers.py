@@ -13,6 +13,8 @@ from typing import Any
 
 from dispatcher.runtime import Runtime, load
 from lib.agent_settings import implementation_model
+from worker_logs import service as worker_logs
+from worker_logs.sources import read_original
 
 from . import worker_preflight
 from .execution import authorization, task_input_errors
@@ -21,7 +23,7 @@ from .policy import closing_issues, nonempty, object_value
 from .session import ParentSession
 from .snapshot import git, validate_worktree
 from .state import Store, unique_object
-from .worker_instruction import worker_instruction
+from .worker_instruction import prepare_instruction
 
 RUNNER = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
 SUMMARY_KEYS = {
@@ -268,11 +270,7 @@ def prepare_run(
             "worker delegation inputs changed; reconcile the current reservation"
         )
     try:
-        instruction = (
-            nonempty(prompt.read_text(encoding="utf-8"), "worker instruction")
-            if prompt is not None
-            else None
-        )
+        instruction = read_original(prompt) if prompt is not None else None
     except OSError:
         raise ValueError("worker instruction file unavailable") from None
     ended = task.get("worker_ended")
@@ -390,7 +388,7 @@ def prepare_run(
         previous_record=previous_record,
     )
     turn = worker_preflight.commit_turn(task, phase, directory)
-    text = worker_instruction(
+    prepared_instruction = prepare_instruction(
         session.parent,
         child,
         Path(task["worktree"]),
@@ -399,6 +397,8 @@ def prepare_run(
         instruction,
         turn,
     )
+    text = prepared_instruction.text
+    worker_logs.capture(session, child, items[child].body, prepared_instruction)
     task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
         text.encode("utf-8")
     ).hexdigest()
@@ -454,6 +454,11 @@ def run_worker(
             skip_reason,
             additional,
         )
+        log_path = (
+            session.row["tasks"][str(child)]["preflight"]["turns"][-1]
+            .get("log", {})
+            .get("journal")
+        )
     # A foreground runner must not hold a registry or parent operation lock.
     # Bytes in both directions: the runner reads UTF-8 and the locale may not be.
     try:
@@ -494,9 +499,13 @@ def run_worker(
             ) from None
     elif code == 0:
         raise ValueError("common runner returned no summary; inspect private records")
+    log_result = worker_logs.finish_manual(
+        log_path, Path(command[command.index("--run-dir") + 1]), RUNNER
+    )
     return code, {
         "child": child,
         "delegation_id": delegation,
         "exit_code": code,
         "runner_summary": summary,
+        "log_publication": log_result,
     }

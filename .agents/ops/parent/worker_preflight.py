@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues import Issue
+from worker_logs.sources import original as original_text
 
 from .execution import ExecutionBasisStale, observed_authorization, requirement_body
 from .policy import closing_issues, dependencies, digest, nonempty
@@ -44,6 +45,7 @@ def new(delegation: str) -> dict[str, Any]:
     return {
         "schema_version": 1,
         "lineage_id": uuid.uuid4().hex,
+        "public_key": uuid.uuid4().hex,
         "delegation_id": delegation,
         "phase": "planning",
         "context": None,
@@ -605,7 +607,7 @@ def prepare_turn(
             raise ValueError(
                 "changed inputs require the same session's planning resume"
             )
-        text = nonempty(instruction, "revised instructions for planning refresh")
+        text = original_text(instruction, "revised instructions for planning refresh")
         value.update(context=fresh, refresh_required=False, phase="planning")
     elif pending:
         if not resume or instruction is not None:
@@ -639,7 +641,7 @@ def prepare_turn(
             raise ValueError(
                 "planning is awaiting decide-worker-plan; no undelivered decision"
             )
-        text = nonempty(instruction, "worker instruction")
+        text = original_text(instruction, "worker instruction")
         if value["context"] is None:
             value["context"] = fresh
         if skip_reason is not None:
@@ -649,7 +651,7 @@ def prepare_turn(
             raise ValueError(
                 "additional instructions require an undelivered planning decision"
             )
-        text += "\n\n## 親の追加指示\n\n" + nonempty(
+        text += "\n\n## 親の追加指示\n\n" + original_text(
             additional, "additional instruction"
         )
     turn_id = uuid.uuid4().hex
@@ -673,6 +675,13 @@ def prepare_turn(
             "source": None,
             "head_at_start": None,
             "reply_only": reply_only,
+            "instruction_source": {
+                "kind": "answer" if decision is not None else "task",
+                "text": decision["answer"]
+                if decision is not None
+                else original_text(instruction),
+                "additional": [additional] if additional is not None else [],
+            },
         }
     )
     if value["phase"] == "implementing" and not implementation_authorized(value):

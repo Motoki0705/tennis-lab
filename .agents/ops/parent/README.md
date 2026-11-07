@@ -566,6 +566,9 @@ version 1/2とも既存フィールドと過去の委任のrunを保持し、新
 
 ### workerの調査・親判断・実装フェーズ
 
+指示・回答・最終報告のGit保存と公開再開CLIは [workerログ保存](../worker_logs/README.md) を参照する。
+手動応答の `log_publication` はrunnerの終了値と独立した保存結果であり、PR作成をmain保存成功と扱わない。
+
 手動・自律の全workerは既定で `planning` から始まる。書込み権限を制限する方式ではなく、
 親判断前の成果受理を止める方式である。runnerは両フェーズとも `mode=write`、同じcontractとモデルで継続する。
 planningではコード・実データ・指示の整合と設計を確認し、実装・commit・PR作成をせずターンを終える。
