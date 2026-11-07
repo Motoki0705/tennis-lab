@@ -260,13 +260,14 @@ class Harness:
         self.calls = root / "agent-calls.jsonl"
         bin_dir = root / "bin"
         bin_dir.mkdir()
-        fake = bin_dir / "claude"
+        fake = bin_dir / "codex"
         fake.write_bytes(FAKE_CLI.read_bytes())
         fake.chmod(0o700)
         self.fake_runner = bin_dir / "fake-judgement-runner"
         self.fake_runner.write_bytes(FAKE_RUNNER.read_bytes())
         self.fake_runner.chmod(0o700)
         monkeypatch.setenv("PATH", str(bin_dir) + os.pathsep + os.environ["PATH"])
+        monkeypatch.setenv("CODEX_HOME", str(root / "codex-home"))
         monkeypatch.setenv("FAKE_JUDGEMENT_RESPONSE", str(self.output))
         monkeypatch.setenv("FAKE_JUDGEMENT_CALLS", str(self.calls))
         monkeypatch.setenv("PYTHONDONTWRITEBYTECODE", "1")
@@ -422,18 +423,15 @@ def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
     invocation = json.loads((h.run_dir / "agent-runtime/invocation.json").read_text())
     calls = [json.loads(line) for line in h.calls.read_text().splitlines()]
     args = calls[0]["args"]
-    assert args[args.index("--model") + 1] == "claude-opus-5-5"
-    assert args[args.index("--tools") + 1 : args.index("--permission-mode")] == [
-        "Read",
-        "Grep",
-        "Glob",
-    ]
-    assert "dontAsk" in args and invocation
-    assert args[args.index("--add-dir") + 1] == str(h.run_dir / "agent-input")
+    assert args[args.index("--model") + 1] == "gpt-6.1-sol"
+    assert args[args.index("--sandbox") + 1] == "read-only"
+    assert 'model_reasoning_effort="xhigh"' in args and invocation
     output_schema = ROOT / ".agents/ops/dispatcher/judgement.schema.json"
-    assert json.loads(args[args.index("--json-schema") + 1]) == json.loads(
-        output_schema.read_text()
-    )
+    transport = json.loads(Path(args[args.index("--output-schema") + 1]).read_text())
+    decision_shape = transport["definitions"]["decision"]
+    assert set(decision_shape["required"]) == h.schema.DECISION_KEYS
+    assert "allOf" not in decision_shape
+    assert "items" in decision_shape["properties"]["facts"]
     contract = json.loads((h.run_dir / "agent-runtime/result.json").read_text())[
         "contract"
     ]
@@ -443,7 +441,6 @@ def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
         == hashlib.sha256(output_schema.read_bytes()).hexdigest()
     )
     assert json.loads((h.run_dir / "agent-runtime/final.md").read_text())["decisions"]
-    assert "I'm writing" in (h.run_dir / "agent-runtime/events.jsonl").read_text()
     assert (h.run_dir / "result.json").stat().st_mode & 0o077 == 0
 
 
@@ -675,7 +672,7 @@ def test_missing_structured_output_is_not_recovered_from_prose(
     result = h.run()
     evidence = json.loads((h.run_dir / "agent-runtime/result.json").read_text())
     assert evidence["turn_end_reason"] == "invalid_output"
-    assert "missing structured_output" in evidence["error"]
+    assert "empty final message" in evidence["error"]
     assert result["result"] == "failed" and result["candidates"] == []
     assert h.gh.writes == []
 
@@ -768,14 +765,14 @@ def test_schema_preflight_refusal_is_diagnosed_without_starting_cli(
     agent = importlib.import_module("dispatcher.agent")
     incompatible = h.root / "incompatible.schema.json"
     schema = json.loads(agent.OUTPUT_SCHEMA.read_text())
-    schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    schema["$schema"] = "https://example.invalid/unsupported-dialect"
     incompatible.write_text(json.dumps(schema))
     monkeypatch.setattr(agent, "OUTPUT_SCHEMA", incompatible)
     h.response(decision(1))
     result = h.run()
     assert result["result"] == "failed" and result["candidates"] == []
     assert "failed with exit 2" in result["diagnostics"][0]
-    assert "Claude CLI (Ajv default)" in result["diagnostics"][0]
+    assert "unsupported schema dialect" in result["diagnostics"][0]
     assert not h.calls.exists() and not (h.run_dir / "agent-runtime").exists()
     assert h.gh.writes == []
 
@@ -792,7 +789,7 @@ def test_cli_schema_refusal_before_first_turn_has_diagnostic_stderr(
     assert evidence["runtime"]["session_id"] is None
     assert "turn_end_reason=cli_error" in result["diagnostics"][0]
     assert (
-        'no schema with key or ref "https://json-schema.org/draft/2020-12/schema"'
+        '--output-schema rejected schema "https://json-schema.org/draft/2020-12/schema"'
         in result["diagnostics"][0]
     )
     assert h.gh.writes == []

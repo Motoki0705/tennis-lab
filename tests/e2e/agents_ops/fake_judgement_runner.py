@@ -21,7 +21,7 @@ def main() -> None:
     assert input_dir.is_absolute() and input_dir.is_dir()
     assert input_dir == runtime.parent / "agent-input"
     assert args.count("--read-dir") == 1
-    assert opt("--role") == "parent" and opt("--mode") == "read-only"
+    assert opt("--profile") == "issue_judgement" and opt("--mode") == "read-only"
     index = json.loads((input_dir / "index.json").read_text())
     prompt = Path(opt("--prompt-file")).read_text()
     with Path(os.environ["FAKE_JUDGEMENT_CALLS"]).open("a") as stream:
@@ -39,7 +39,7 @@ def main() -> None:
         "exit_code": 0,
         "task_success": None,
     }
-    selected = {"model": "offline-parent"}
+    selected = {"model": "offline-judgement"}
     contract = {
         "mode": opt("--mode"),
         "cwd": opt("--cwd"),
@@ -49,9 +49,9 @@ def main() -> None:
             Path(opt("--json-schema")).read_bytes()
         ).hexdigest(),
         "settings": {
-            "role": "parent",
-            "agent": "claude",
-            "profile": None,
+            "role": "issue_judgement",
+            "agent": "codex",
+            "profile": "issue_judgement",
             "overrides": {},
             "selected": selected,
             "defaults": selected,

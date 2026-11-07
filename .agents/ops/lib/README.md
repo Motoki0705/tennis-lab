@@ -341,10 +341,9 @@ effortはmaxを必須とする。親effortは設定または `--effort` で変�
 
 - プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
   overrideがあっても不足・不正な既定設定を許容しない。
-- `--profile review` / `ops_report`: そのプロファイルの完全な固定値だけを使う。
-  通常の既定値へ戻らず、`--model` / `--effort` / `--role` との併用を拒否する。
-  reviewとops_reportの従来のmodel/effort/service tierは維持する。
-  ops_reportだけnative multi_agentと設定されたthreads/depthを有効にする。
+- `--profile review` / `ops_report` / `ops_scout` / `issue_judgement`: プロファイルの固定値を使う。
+  `--model` / `--effort` / `--role` との併用を拒否する。
+  `ops_report` はClaude親、`ops_scout` はCodex調査子、`issue_judgement` はCodex着手判定に対応する。
 - configは隣の `agents.conf`。明示設定は `--config-file FILE`。内容はリテラルな
   `NAME=value` とコメントだけで、shellとして評価しない。環境変数の同名pinは読まない。
   CLI自身のmodel/effort/service tier設定より明示引数を優先し、実効値も別途照合する。
@@ -395,14 +394,16 @@ JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.
 
 ### JSON Schemaによる構造化出力
 
-`--mcp-config FILE` はread-onlyのCodex review/ops_reportだけで使うホスト提供MCP接続。
-JSONはserver名をキーにcommand/args/env/tool_timeout_sec/startup_timeout_secを指定する。
+`--mcp-config FILE` はread-onlyのCodex `review` / `ops_scout` とClaude `ops_report` で使うホスト提供MCP接続。
+JSONはserver名をキーにcommand/args/envを指定する。Codexはtool_timeout_sec/startup_timeout_secも指定できる。
+Claudeの調査親には固定の `ops_report` サーバーだけを登録し、そのツールの利用を許可する。
 原文をrun dirへ保存し、SHA-256をcontractへ固定する。resume時の変更は拒否する。
 この指定でsandboxや追加agentの設定を変更しない。
 
 `--json-schema FILE` を指定すると、そのUTF-8 JSON Schemaを起動前に検査し、原文をrun dirの
 `output-schema.json`へ固定する。検証にはproject依存の`jsonschema`を使う（導入時は`uv sync --locked`）。
-未指定のreview / ops_reportを含む既存呼出しの引数・テキスト出力・profile設定は変わらない。
+着手判定profileでは、Codexが返す構造を生成用の `transport-schema.json` で指定し、
+返却後に固定した元のスキーマで条件・範囲まで検証する。
 
 Claude/Codex共通の方言はdraft-07とし、`$schema`省略時もローカル検証には`Draft7Validator`を使う。
 Claude Code 2.1.308はAjv既定のmeta-schemaだけを受理するため、draft-07以外の宣言を起動前に終了値2で拒否する。

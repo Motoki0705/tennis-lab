@@ -711,7 +711,7 @@ def test_resume_refuses_changed_read_dirs_before_launch(
     assert not (h.root / "rejected").exists()
 
 
-@pytest.mark.parametrize("profile", ["review", "ops_report"])
+@pytest.mark.parametrize("profile", ["review", "ops_scout"])
 def test_read_dirs_do_not_change_codex_profile_arguments(
     h: Harness, profile: str
 ) -> None:

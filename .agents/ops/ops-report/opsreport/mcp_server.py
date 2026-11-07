@@ -17,6 +17,7 @@ from lib.review_tools.mcp_server import (  # noqa: F401
 from .audit_tools import AuditTools
 from .repro_isolation import LinuxRunner, TestRunner
 from .retrieval import Retrieval, RetrievalError, strict_json
+from .scouts import ScoutPool
 
 
 def source(args: argparse.Namespace, *, runner: TestRunner | None = None) -> Retrieval:
@@ -74,7 +75,9 @@ def main() -> int:
     parser.add_argument("--max-threads", type=int)
     parser.add_argument("--cpu-tests-file", type=Path)
     parser.add_argument("--isolation-proof", type=Path)
+    parser.add_argument("--scout-runner", type=Path)
     args = parser.parse_args()
+    scouts = None
     try:
         retrieval = source(args)
         server: Retrieval | AuditTools = retrieval
@@ -85,6 +88,12 @@ def main() -> int:
             args.ending_path,
             args.max_threads,
         )
+        if args.scout_runner is not None:
+            if args.runtime_dir is None:
+                raise ValueError("scout runner requires the audit runtime directory")
+            scouts = ScoutPool(
+                args.runtime_dir, args.scout_runner, retrieval.repo, retrieval.base_sha
+            )
         if any(value is not None for value in state_args):
             if any(value is None for value in state_args):
                 raise ValueError(
@@ -97,6 +106,7 @@ def main() -> int:
                 input_path=args.input_path,
                 ending_path=args.ending_path,
                 max_threads=args.max_threads,
+                scouts=scouts,
             )
         serve(cast(Retrieval, server), sys.stdin.buffer, sys.stdout.buffer)
     except (OSError, ValueError, RetrievalError) as exc:
@@ -107,6 +117,9 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+    finally:
+        if scouts is not None:
+            scouts.close()
     return 0
 
 

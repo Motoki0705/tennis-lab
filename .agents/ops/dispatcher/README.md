@@ -1,6 +1,6 @@
 # issueの自律着手判断
 
-`judgement` はopen issueを収集し、固定した入力とコードをread-onlyのClaude親に渡す。
+`judgement` はopen issueを収集し、固定した入力とコードをread-onlyのCodex判定エージェントに渡す。
 構造化結果を検証したスクリプトだけが判断コメントと自律着手根拠を記録する。
 正式な子は既存の最上位親へ戻し、単独issueは自身を候補にする。新しい階層や担当は作らない。
 親の起動・予約・実行枠・再開・schedule/systemd、実装子への委任、レビュー・mergeはこの入口の責務に含めない。
@@ -32,12 +32,13 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher.judgement \
 ```
 
 `--timeout` は有限正数の秒（既定1800）。`--agent-exec` は通常共通ランナーのまま使い、テストで差し替えられる。
-モデル・effort設定の正本は [共通ランナー](../lib/README.md)。必ず `--role parent --mode read-only` で呼ぶ。
+モデル・effort設定の正本は [共通ランナー](../lib/README.md)。`--agent codex --profile issue_judgement --mode read-only` で呼ぶ。
 `--read-dir <run-dir>/agent-input` でagent入力だけを追加の読み取り対象にし、runtimeの`contract.read_dirs`とも照合する。
-Claudeの`--add-dir`への変換とCodexのsandbox契約は共通ランナーが扱う。
+Codexのsandboxと入力ディレクトリの記録は共通ランナーが扱う。
 `--json-schema judgement.schema.json`で構造化出力を必須にし、runtimeの`contract.json_schema_sha256`を
-渡したschemaと照合する。Claudeの自由文からJSONを探さず、ランナーが保存した検証済みの`final.md`を厳格に読む。
-返却形式のschema検査に加え、`schema.py`による全subjects・出典・routing・依存等の検証を続ける。
+渡したschemaと照合する。自由文からJSONを探さず、ランナーが保存した検証済みの`final.md`を厳格に読む。
+Codexへの生成用schemaは返却構造に絞り、ランナーは元の固定schemaで返却を厳密に検証する。
+さらに `schema.py` が全subjects・出典・routing・依存等を検証する。
 schemaの方言と配列制約は[共通ランナーの契約](../lib/README.md#json-schemaによる構造化出力)に従う。
 ランナーの起動前拒否はrunnerのstderr、`cli_error`はprivateなruntimeの`error`（CLI stderr先頭を含む）を
 判定結果の`diagnostics`に残す。これらから判断コメントや割当候補を生成しない。

@@ -6,13 +6,13 @@ import fcntl
 import hashlib
 import json
 import os
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import handoff, native, shell
+from . import handoff, native, scouts, shell
 from .ledger import Ledger
 from .retrieval import RetrievalError, strict_json
 
@@ -143,7 +143,7 @@ def interrupt_tasks(book: Ledger, reason: str) -> None:
                         {
                             "scope": " / ".join(task["scope"]),
                             "reason": reason,
-                            "resume": "同じタスクIDの新しいnative子で再開",
+                            "resume": "同じタスクIDの新しい調査子で再開",
                         }
                     ],
                 },
@@ -158,7 +158,7 @@ def capture_unreceived(book: Ledger, runtime_dir: Path) -> None:
         for key, row in book.snapshot["tasks"].items()
         if row["status"] in {"planned", "failed", "interrupted"}
     }
-    if not eligible:
+    if not eligible or (scouts.directory(runtime_dir) / "retrieval.json").is_file():
         return
     try:
         observed = native.inspect_run(runtime_dir)
@@ -292,7 +292,7 @@ def verify(
         imported_tasks, imported_evidence = migration.verify_import(book)
     except (ValueError, KeyError, TypeError, OSError) as exc:
         errors.append(f"旧checkpoint移行根拠の照合: {exc}")
-    observed: dict[str, native.NativeAgent] = {}
+    observed: dict[str, native.NativeAgent | scouts.Scout] = {}
     history = strict_json(book.path.read_bytes())["events"]
     owners: dict[str, str] = {}
     for event in history:
@@ -304,13 +304,20 @@ def verify(
             owners[key] = row["id"]
     for path in attempts:
         try:
-            run = native.inspect_run(
-                Path(path),
-                allow_interrupted_spawn=path != attempts[-1]
-                and _interrupted_attempt(Path(path)),
-            )
+            runtime = Path(path)
+            agents: Sequence[native.NativeAgent | scouts.Scout]
+            if (scouts.directory(runtime) / "retrieval.json").is_file():
+                agents = scouts.inspect(
+                    runtime, book.snapshot["base_sha"], historical=path != attempts[-1]
+                )
+            else:
+                agents = native.inspect_run(
+                    runtime,
+                    allow_interrupted_spawn=path != attempts[-1]
+                    and _interrupted_attempt(runtime),
+                ).agents
             run_agents = {}
-            for child in run.agents:
+            for child in agents:
                 if child.agent_id in observed or owners.get(
                     child.agent_id
                 ) != child.task_name.removeprefix("/root/"):
@@ -318,10 +325,10 @@ def verify(
                         "unassigned/duplicate native launch or task name mismatch"
                     )
                 run_agents[child.agent_id] = child
-            intervals = [(datetime.fromisoformat(c.started_at), 1) for c in run.agents]
+            intervals = [(datetime.fromisoformat(c.started_at), 1) for c in agents]
             intervals += [
                 (datetime.fromisoformat(c.completed_at), -1)
-                for c in run.agents
+                for c in agents
                 if c.completed_at
             ]
             active = 0
@@ -332,7 +339,7 @@ def verify(
                         "native concurrency exceeds OPS_REPORT_MAX_THREADS"
                     )
             observed.update(run_agents)
-        except native.NativeEvidenceError as exc:
+        except (ValueError, OSError, TypeError, KeyError) as exc:
             # A prior startup failure remains recorded as a failed attempt, but
             # does not invalidate a later run that actually completed the work.
             if path == attempts[-1] or not _failed_before_session(Path(path)):
@@ -351,7 +358,7 @@ def verify(
             )
             invalid_tasks.add(key)
     if not observed and not imported_tasks:
-        errors.append("native起動0件: 実行証拠を確認できない")
+        errors.append("調査子の起動0件: 実行証拠を確認できない")
     invalid_evidence = set()
     finding_refs = {
         key: finding_evidence_refs(finding)
