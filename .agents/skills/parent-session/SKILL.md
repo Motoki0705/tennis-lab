@@ -114,6 +114,8 @@ dispatcherのbootstrapで起動された親は、予約と実runtimeを `accept`
    `ci` / `tests` / `dependencies` / `third-party` / `knowledge` 等から選ぶ。
    一覧の正本は [.github/labels.yml](../../../.github/labels.yml) の `area` 軸を参照する。
    テストの設計は[テスト設計を委任へ渡す](#テスト設計を委任へ渡す)に従って子の本文へ書く。
+   子issueの「依存関係」節の `#番号` はPR番号もすべて先行依存として解析されるため、参照用のPR番号は別の節に書く。
+   解析仕様は [子manifestの説明](../../ops/parent/README.md#子の作成委任再開) を参照する。
 2. `status` / `reconcile` の `launch_plan` で完了済み・既存PR・既存委任と起動対象を照合する。
    **依存が許す子は、設定された枠内ですべて並列に起動するのが既定。** 手動親の既定枠は全子であり、
    固定3件にはしない。自律ループの各親の実装子2件という初期値は別の実行枠で、その設定を守る。
@@ -182,6 +184,9 @@ workerは報告・質問を最終メッセージで返し、親issueへはコメ
   [training queue](../training-queue/SKILL.md) の `half` / `all` 枠とメインrepoの共有stateを使う。
 
 ### 依存先がPR作成済みならstacked branchで進める
+
+依存先が親CLI・共通ランナー・worker指示など委任の基盤自体を変える場合は、例外として依存先のmerge後にmainから開始する。
+旧CLIで委任すると、merge後に `migrate-worker-phase` などの[明示移行](../../ops/parent/README.md#workerの調査親判断実装フェーズ)が必要になるため。
 
 1. 依存先のPR・branch・headと停止事項を確認する。merge待ちだけで後続を止めず、
    `launch_plan.tasks[].stacked_on` の全headを含む専用branch/worktreeを作る。
