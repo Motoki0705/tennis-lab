@@ -184,8 +184,10 @@ def phase(history: Sequence[Mapping[str, Any]]) -> str:
     current = "assigned"
     for event in history:
         kind = event.get("event")
-        if kind in {"checking", "agreed"}:
-            current = str(kind)
+        if kind == "agreed":
+            current = "agreed"
+        elif kind == "checking" and current == "assigned":
+            current = "checking"
         elif kind == "execution_basis":
             current = "autonomous"
         elif kind == "basis_revoked":
@@ -226,7 +228,11 @@ def review_state(
         if state not in REVIEW_STATES or event.get("request_sha256") != digest(request):
             raise ValueError("review event has an invalid state or request digest")
         expected = 0 if current is None else REVIEW_STATES.index(current) + 1
-        if state != current and REVIEW_STATES.index(state) != expected:
+        if (
+            state != current
+            and REVIEW_STATES.index(state) != expected
+            and (current, state) != ("instructed", "fixes_verified")
+        ):
             raise ValueError("public review state skips or reverses a transition")
         current = str(state)
     return current
@@ -251,12 +257,14 @@ def registration(records: Mapping[str, Any], key: str, session: str) -> None:
 
 
 def dependencies(body: str) -> list[int]:
-    return sorted(
-        {
-            int(n)
-            for n in re.findall(r"#([1-9][0-9]*)", parse_sections(body)["依存関係"])
-        }
+    # This section is the parent's explicit dependency declaration. Preserve
+    # existing issue references, but distinguish typed PR references from issues.
+    section = parse_sections(body).get("依存関係", "")
+    section = re.sub(
+        r"\[[^\]]*\]\(https://github\.com/[^\s)]+/pull/[0-9]+\)", "", section
     )
+    section = re.sub(r"\b(?:PR|pull request)\s*#\d+", "", section, flags=re.I)
+    return sorted({int(n) for n in re.findall(r"#([1-9][0-9]*)", section)})
 
 
 def progress(
@@ -279,7 +287,7 @@ def progress(
         visiting.add(n)
         if any(d not in children for d in deps[n]):
             raise ValueError(
-                f"#{n}: dependency outside this parent; provide explicit dependencies"
+                f"#{n}: dependency outside this parent: {sorted(d for d in deps[n] if d not in children)}; provide explicit dependencies"
             )
         upstream = [visit(d) for d in deps[n]]
         state = task_status(children[n])

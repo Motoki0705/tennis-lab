@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import re
@@ -17,7 +18,7 @@ from worker_logs import service as worker_logs
 from worker_logs.sources import read_original
 
 from . import worker_preflight
-from .execution import authorization, task_input_errors
+from .execution import authorization
 from .github import GitHub
 from .policy import closing_issues, nonempty, object_value
 from .session import ParentSession
@@ -248,12 +249,11 @@ def prepare_run(
     restart_evidence: str | None,
     model: str | None = None,
     model_reason: str | None = None,
-    skip_reason: str | None = None,
     additional: str | None = None,
+    planning: bool = False,
 ) -> tuple[list[str], str, str]:
     task = current_task(session, child)
     worker_preflight.observe(session, child, persist=True)
-    phase_state = worker_preflight.state(task)
     session.agreed()
     parent, items = session.work_items()
     if child not in items:
@@ -264,22 +264,18 @@ def prepare_run(
 
     check_task_adoptions(session.gh, parent.body)
     check_task_adoptions(session.gh, items[child].body)
-    changed = task_input_errors(task, authorization(session), items[child].body)
-    if changed and not (resume and worker_preflight.state(task)["refresh_required"]):
-        raise ValueError(
-            "worker delegation inputs changed; reconcile the current reservation"
-        )
     try:
         instruction = read_original(prompt) if prompt is not None else None
     except OSError:
         raise ValueError("worker instruction file unavailable") from None
     ended = task.get("worker_ended")
-    if ended:
-        if not resume:
-            raise ValueError(
-                "ended delegation requires an explicit resume with restart evidence"
-            )
-        nonempty(restart_evidence, "restart evidence for the ended delegation")
+    retry_unstarted = bool(task.get("launch_failures")) and not any(
+        r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)
+    )
+    if ended and not resume and not retry_unstarted:
+        raise ValueError(
+            "ended delegation requires an explicit resume with restart evidence"
+        )
     plan = session.launch_plan(restart_child=child)
     if ended:
         limit = plan["policy"]["max_parallel_children"]
@@ -287,7 +283,9 @@ def prepare_run(
             raise ValueError("implementation reservation limit reached")
     planned = next(t for t in plan["tasks"] if t["child"] == child)
     reasons = [
-        r for r in planned["reasons"] if not (resume and r["code"] == "existing_pr")
+        r
+        for r in planned["reasons"]
+        if not (resume and r["code"] in {"existing_pr", "completed", "parent_closed"})
     ]
     if reasons:
         raise ValueError(
@@ -300,10 +298,12 @@ def prepare_run(
             if child in closing_issues(p.get("body") or "", session.gh.repo)
         ]
         if len(prs) > 1 or any(
-            p["state"] != "open" or p["head"]["ref"] != task["branch"] for p in prs
+            (p["state"] != "open" and not p.get("merged_at"))
+            or p["head"]["ref"] != task["branch"]
+            for p in prs
         ):
             raise ValueError(
-                "worker continuation requires a unique open PR on the reserved branch"
+                "worker continuation requires a unique open or merged PR on the reserved branch"
             )
     validate_worktree(Path(task["worktree"]), task["branch"])
     for base in planned["stacked_on"]:
@@ -317,7 +317,9 @@ def prepare_run(
     previous: Path | None = None
     previous_record = None
     runner_model: str | None
-    unstarted_migration = bool(phase_state.get("migration_unstarted")) and not any(
+    unstarted_migration = bool(
+        worker_preflight.state(task).get("migration_unstarted")
+    ) and not any(
         r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)
     )
     if not resume or unstarted_migration:
@@ -383,9 +385,9 @@ def prepare_run(
         child,
         instruction,
         resume=resume,
-        skip_reason=skip_reason,
         additional=additional,
         previous_record=previous_record,
+        planning=planning,
     )
     turn = worker_preflight.commit_turn(task, phase, directory)
     prepared_instruction = prepare_instruction(
@@ -407,13 +409,10 @@ def prepare_run(
         task.pop("worker_ended")
     if restart_evidence is not None:
         task["restart_evidence"] = nonempty(restart_evidence, "restart evidence")
-    if changed:
-        task.update(
-            authorization=authorization(session),
-            requirements_sha256=worker_preflight.context(session, child)[
-                "requirements"
-            ],
-        )
+    task.update(
+        authorization=authorization(session),
+        requirements_sha256=phase["context"]["requirements"],
+    )
     append_run(
         session,
         task,
@@ -438,11 +437,12 @@ def run_worker(
     restart_evidence: str | None,
     model: str | None = None,
     model_reason: str | None = None,
-    skip_reason: str | None = None,
     additional: str | None = None,
+    planning: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
+        previous_task = copy.deepcopy(current_task(session, child))
         command, delegation, instruction = prepare_run(
             session,
             child,
@@ -451,8 +451,8 @@ def run_worker(
             restart_evidence,
             model,
             model_reason,
-            skip_reason,
             additional,
+            planning,
         )
         log_path = (
             session.row["tasks"][str(child)]["preflight"]["turns"][-1]
@@ -468,11 +468,55 @@ def run_worker(
             capture_output=True,
             check=False,
         )
-    except OSError:
-        raise ValueError(
-            "common runner could not start; inspect the recorded private run"
-        ) from None
+    except OSError as exc:
+        proc = subprocess.CompletedProcess(command, 127, b"", str(exc).encode("utf-8"))
     code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
+    directory = Path(command[command.index("--run-dir") + 1])
+    if code in {2, 127} and not directory.exists():
+        with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
+            session = ParentSession(gh, store, parent, identity)
+            current = current_task(session, child)
+            if (
+                current["delegation_id"] != delegation
+                or latest_run(session, current) != directory
+            ):
+                raise ValueError("worker reservation changed after rejected launch")
+            failure = directory.parent / "rejected" / directory.name
+            failure.mkdir(parents=True, mode=0o700)
+            (failure / "stderr.txt").write_bytes(proc.stderr)
+            previous_task.setdefault("launch_failures", []).append(
+                {
+                    "attempt": directory.name,
+                    "exit_code": code,
+                    "stderr_file": str(failure / "stderr.txt"),
+                }
+            )
+            attempted = copy.deepcopy(current["preflight"])
+            attempted_turn = attempted["turns"][-1]
+            attempted_turn["cancelled"] = True
+            for decision in attempted["decisions"]:
+                if (
+                    decision["delivered_turn_id"]
+                    == attempted_turn["snapshot"]["turn_id"]
+                ):
+                    decision["delivered_turn_id"] = None
+            previous_task["preflight"] = attempted
+            previous_task["worker_ended"] = {
+                "delegation_id": delegation,
+                "evidence": "Common runner rejected this attempt before creating a runtime; no worker started.",
+            }
+            session.row["tasks"][str(child)] = previous_task
+            store.save()
+        log_result = worker_logs.reject_unstarted(log_path)
+        return code, {
+            "child": child,
+            "delegation_id": delegation,
+            "exit_code": code,
+            "runner_summary": None,
+            "launch_state": "rejected_before_start",
+            "next_action": "retry_same_operation",
+            "log_publication": log_result,
+        }
     summary = None
     if proc.stdout.strip():
         try:
@@ -499,6 +543,18 @@ def run_worker(
             ) from None
     elif code == 0:
         raise ValueError("common runner returned no summary; inspect private records")
+    if summary is not None:
+        from .review_handoff import runner_ended
+
+        with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
+            session = ParentSession(gh, store, parent, identity)
+            current = current_task(session, child)
+            if (
+                current["delegation_id"] != delegation
+                or latest_run(session, current) != directory
+            ):
+                raise ValueError("worker reservation changed during execution")
+            runner_ended(session, child)
     log_result = worker_logs.finish_manual(
         log_path, Path(command[command.index("--run-dir") + 1]), RUNNER
     )
@@ -508,4 +564,7 @@ def run_worker(
         "exit_code": code,
         "runner_summary": summary,
         "log_publication": log_result,
+        "final_file": str(directory / "final.md")
+        if (directory / "final.md").exists()
+        else None,
     }

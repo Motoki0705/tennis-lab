@@ -50,16 +50,15 @@ GPU・Blenderはtraining queueを使い、未指定の資源予算を作らな�
 ## 結果確認・修正・部分停止
 
 同じparent共通引数で `inspect-worker --child N` を呼び、最新job・終了理由・設定・最終文のprivateな参照先を読む。
-初回はplanning。報告の6節を確認し、`decide-worker-plan --child N --action approve|investigate|reject --answer-file tmp/answer.md`
-で最新finalへ親判断を束ねる。次の `continue-worker --child N --evidence-file tmp/continuation.md` は回答を自動配送する。
-未配送判断がある場合は `--prompt-file` で置換せず、補足だけ `--additional-instruction-file` に分ける。
-質問なしでも判断を待ち、自明な初回の省略だけ `start-worker --skip-planning-reason-file` で明示する。
-状態と失効・移行の正本は [parent README](README.md#workerの調査親判断実装フェーズ)。
+既定は親の具体指示に従って作業する。先に調査させる場合だけ `--planning` を指定する。
+報告書式は固定しない。親は `continue-worker --prompt-file` で次の作業を指示できる。
+必要なら `decide-worker-plan` で報告に回答を結び付け、次の継続で配送する。
+ターン来歴の正本は [parent README](README.md#workerの調査親判断実装フェーズ)。
 runnerのexit 0も `result=completed` もCLIターンの終了であり、常に `task_success=null`。
 dispatcherが終了・回収・worker lifetime lockを照合して現在のdelegationへ `worker_ended` を記録するまで枠を保持する。
 親は実diff、受入条件ごとの証拠、テストコマンドと結果、PRのclosing指示・branch/HEADを自分で確認し、
 `record-result --child N --evidence-file tmp/tests.md` へ記録する。子の最終文の転記だけで合格にしない。
-この成果受理は、親判断を配送したimplementingターンの終了後に限る。planningの終了は親判断待ちであり、実装完了ではない。
+実行終了と成果の受入は別に確認する。調査ターンの成果も、親が実物と証拠を照合して扱う。
 
 修正は終了照合後、同じworkerへ戻す。PRが既にある場合も新しいsession・worktreeを作らない。
 
@@ -69,7 +68,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
   continue-worker --child 124 --prompt-file tmp/fix.md --evidence-file tmp/continuation.md
 ```
 
-continuation証拠には終了・既存PR/HEAD・差分確認・残る指摘・今回の修正範囲を書く。
+継続時の終了はrunnerから照合する。`--evidence-file` は補足が必要な場合だけ使い、作業の範囲は具体指示へ書く。
 同じbranch/worktree・現在の根拠/要件・正式関係・採用・停止・上限を再検査して新しいdelegation_idを予約し、
 dispatcherが前の最新runから同じsessionをresumeする。モデル省略時は前回の選択を保持し、変更指定は拒否する。
 旧runtimeの終了未確認・session欠落・設定不一致を新規sessionへ置換しない。
@@ -86,8 +85,7 @@ runner喪失後は [共通ランナーの回収確認](../lib/README.md#状態�
 保留になった依存子にも、起動済みruntimeへの停止要求または未起動予約の取消を伝える。推移的な依存も対象とし、
 独立子は継続する。停止要求後もsupervisorが終了を照合するまで実行枠を保持する。
 停止要求は終了証拠ではない。supervisorの照合後、解除証拠をparentの `resume --child N --spec ...` へ記録してから
-`continue-worker` を使う。根拠の鮮度不一致は明示再判断/再合意へ戻す。
-単独issue自身の停止・再開で根拠の本文が変わった場合も、古い自律判断を流用しない。
+`continue-worker` を使う。本文や条件の変更は親が確認し、必要な範囲の判断を更新する。
 予約取消もdispatcher共通の検査で行い、既に起動証拠がある予約は解放しない。
 `inspect-worker` は起動前取消を明示し、実行結果・最終文を捏造しない。
 

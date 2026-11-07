@@ -124,12 +124,6 @@ def ended(p: ParentEnv) -> None:
     )
 
 
-def skip_planning(p: ParentEnv) -> tuple[str, str]:
-    reason = p.root / "planning-skip.md"
-    reason.write_text("起動・終了の回帰fixtureで扱う自明な1行の変更。")
-    return "--skip-planning-reason-file", str(reason)
-
-
 def planning_answer(
     p: ParentEnv, action: str = "approve", text: str = "提案の範囲で進める。"
 ) -> subprocess.CompletedProcess[str]:
@@ -212,10 +206,11 @@ def test_launch_is_durable_private_and_preserves_registry(
     assert {
         k: v
         for k, v in after.items()
-        if k not in {"worker_runs", "model", "model_reason", "preflight"}
+        if k
+        not in {"worker_runs", "model", "model_reason", "preflight", "worker_ended"}
     } == {k: v for k, v in before.items() if k not in {"worker_runs", "preflight"}}
-    assert after["preflight"]["phase"] == "planning"
-    assert after["worker_runs"][-1]["preflight"]["phase"] == "planning"
+    assert after["preflight"]["phase"] == "implementing"
+    assert after["worker_runs"][-1]["preflight"]["phase"] == "implementing"
     [kept, record] = after["worker_runs"]
     assert kept == previous
     assert set(record) == {
@@ -262,7 +257,7 @@ def test_launch_is_durable_private_and_preserves_registry(
         assert "worker_runs" not in output and record["run_dir"] not in output
         assert reason not in output
     assert record["run_dir"] not in json.dumps(p.state())
-    assert str(latest(p)) not in result.stdout + result.stderr
+    assert json.loads(result.stdout).get("final_file") == str(latest(p) / "final.md")
     # A second initial launch must not create a new session for this reservation.
     assert "resume" in run(p, ok=False).stderr
     assert len(task(p)["worker_runs"]) == 2
@@ -355,7 +350,6 @@ def test_legacy_reservation_gains_run_tracking_only_when_redelegated(
         "legacy",
         "branch",
         "stopped",
-        "requirements",
         "managed",
     ],
 )
@@ -406,17 +400,16 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
         "--reason-file",
         p.note(),
     )
-    run(p, *skip_planning(p))
+    run(p)
     bodies = [issue_body(p, 10)]
     assert len(task(p)["preflight"]["turns"]) == 1
-    assert task(p)["preflight"]["skip_reason"]
     assert task(p)["preflight"]["phase"] == "implementing"
     first = latest(p)
     original = task(p)["delegation_id"]
     ended(p)
     p.child("other")
     p.cli(*delegation_args(p.worktree("other"), child=11))
-    assert "evidence" in run(p, "--resume", ok=False).stderr
+    assert "limit" in run(p, "--resume", ok=False).stderr
     assert (
         "limit"
         in run(p, "--resume", "--restart-evidence-file", p.note(), ok=False).stderr
@@ -439,7 +432,7 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
     result = run(p, "--resume", "--restart-evidence-file", p.note())
     bodies.append(issue_body(p, 10))
     assert json.loads(result.stdout)["exit_code"] == 0
-    assert task(p)["delegation_id"] == original and "worker_ended" not in task(p)
+    assert task(p)["delegation_id"] == original and "worker_ended" in task(p)
     assert [r["kind"] for r in task(p)["worker_runs"]] == ["initial", "resume"]
     calls = [
         json.loads(line)
@@ -466,7 +459,7 @@ def test_resume_reacquires_same_delegation_slot_with_evidence(
         == json.loads((latest(p) / "result.json").read_text())["runtime"]
     )
     plan = json.loads(p.cli("status").stdout)["launch_plan"]
-    assert plan["active_reservations"] == [10]
+    assert plan["active_reservations"] == []
 
 
 @pytest.mark.parametrize("model", ["gpt-6.1-sol", "gpt-6-astra"])
@@ -481,7 +474,6 @@ def test_resume_uses_latest_run_without_implicitly_releasing_slot(
         model,
         "--model-reason-file",
         p.note("親が難易度から選択した。"),
-        *skip_planning(p),
     )
     first = latest(p)
     # Simulate a pre-selection registry. The saved runner contract is authoritative.
@@ -514,7 +506,7 @@ def test_resume_uses_latest_run_without_implicitly_releasing_slot(
     assert store(p).read_data() == before
     assert (p.root / "runner-calls.jsonl").read_bytes() == before_calls
     assert task(p)["worker_runs"][-1]["kind"] == "resume"
-    assert "worker_ended" not in task(p)
+    assert "worker_ended" in task(p)
     result = latest(p) / "result.json"
     record = json.loads(result.read_text())
     record["result"] = "running"
@@ -671,8 +663,13 @@ def test_runner_failure_preserves_record_and_exit_code(
     output = json.loads(result.stdout)
     assert output["exit_code"] == result.returncode == (2 if preflight else 7)
     assert (output["runner_summary"] is None) == preflight
-    assert len(task(p)["worker_runs"]) == 1 and "worker_ended" not in task(p)
-    assert str(latest(p)) not in result.stdout + result.stderr
+    if preflight:
+        assert task(p)["worker_runs"] == []
+        assert output["launch_state"] == "rejected_before_start"
+        assert len(task(p)["launch_failures"]) == 1
+    else:
+        assert len(task(p)["worker_runs"]) == 1 and "worker_ended" in task(p)
+        assert output["final_file"] == str(latest(p) / "final.md")
 
 
 @pytest.mark.parametrize(
@@ -687,7 +684,7 @@ def test_review_request_uses_current_registry_run(
     run_git(tree, "add", "feature.txt")
     run_git(tree, "commit", "-m", "worker implementation")
     if mode != "missing":
-        run(p, *skip_planning(p))
+        run(p)
     if mode in {"missing", "mismatch"}:
         ended(p)  # A manual end marker alone must not bypass runner inspection.
     if mode in {"latest_running", "earlier_running"}:
@@ -768,11 +765,8 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
     body = "\n\n".join(
         f"## {h}\n\n{c}" for h, c in zip(headings, contents, strict=True)
     )
-    run(p, MANUAL_PLANNING_FINAL=body)
+    run(p, "--planning", MANUAL_PLANNING_FINAL=body)
     first = latest(p)
-    before = store(p).read_data()
-    assert "decide-worker-plan" in run(p, "--resume", ok=False).stderr
-    assert store(p).read_data() == before
     answer = (
         "現行CI規則を使い、提案の範囲で実装する。"
         if action == "approve"
@@ -784,12 +778,6 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
         == decision_id
     )
     assert "worker_ended" in task(p)
-    before = store(p).read_data()
-    assert (
-        "cannot be replaced"
-        in run(p, "--resume", "--restart-evidence-file", p.note(), ok=False).stderr
-    )
-    assert store(p).read_data() == before
     extra = p.root / "additional.md"
     extra.write_bytes("\n対象外の学習は起動しない。\r\n".encode())
     resume_answer(p, "--additional-instruction-file", str(extra))
@@ -828,73 +816,31 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
     )
 
 
-def test_preapproval_artifacts_are_not_accepted(reserved: ParentEnv) -> None:
+def test_parent_can_verify_artifacts_independent_of_planning_phase(
+    reserved: ParentEnv,
+) -> None:
     p = reserved
-    run(p)
+    run(p, "--planning")
     tree = Path(task(p)["worktree"])
-    (tree / "feature.txt").write_text("premature implementation\n")
+    (tree / "feature.txt").write_text("implementation\n")
     run_git(tree, "add", "feature.txt")
-    run_git(tree, "commit", "-m", "premature implementation")
+    run_git(tree, "commit", "-m", "implementation")
     gh = p.state()
     gh["prs"] = [p.pr(100, 10, run_git(tree, "rev-parse", "HEAD"), "codex/worker")]
     p.save(gh)
-    for command in (
-        ("record-result", "--child", "10", "--evidence-file", p.note()),
-        ("review-prepare", "--prs", "100"),
-        (
-            "review-request",
-            "--prs",
-            "100",
-            "--instruction-file",
-            p.note(),
-            "--evidence-file",
-            p.note(),
-        ),
-    ):
-        assert "planning approval" in manual(p, *command, ok=False).stderr
     item = json.loads(p.cli("reconcile").stdout)["tasks"][0]
-    assert not item["artifacts_accepted"] and item["commits_since_planning"]
-    assert item["prs"][0]["number"] == 100
-    assert not (state_dir(p) / "reviews").exists()
-    p.child("downstream", deps=[10])
-    planned = json.loads(p.cli("status").stdout)["launch_plan"]["tasks"]
-    assert any(
-        r["code"] == "dependency_planning_unapproved" for r in planned[1]["reasons"]
-    )
-    planning_answer(p)
-    assert (
-        "planning approval"
-        in manual(
-            p, "record-result", "--child", "10", "--evidence-file", p.note(), ok=False
-        ).stderr
-    )
-    resume_answer(p)
+    assert not item["artifacts_accepted"]
     manual(
         p,
         "record-result",
         "--child",
         "10",
         "--evidence-file",
-        p.note("承認後に差分と回帰を確認。"),
+        p.note("実差分とテストを親が確認した。"),
     )
-    prepared = json.loads(manual(p, "review-prepare", "--prs", "100").stdout)
-    with store(p).locked() as registry:
-        registry.parents["o/r#1"]["tasks"]["10"]["preflight"]["decisions"][0][
-            "invalidated"
-        ] = True
-        registry.save()
-    assert (
-        "planning approval"
-        in manual(
-            p,
-            "review-request",
-            "--run-id",
-            prepared["review_run_id"],
-            "--instruction-file",
-            p.note(),
-            ok=False,
-        ).stderr
-    )
+    assert json.loads(p.cli("reconcile").stdout)["tasks"][0]["artifacts_accepted"]
+    manual(p, "review-prepare", "--prs", "100")
+    assert len(task(p)["worker_runs"]) == 1
 
 
 def test_readonly_status_preserves_approved_worker_and_dependency(
@@ -902,7 +848,7 @@ def test_readonly_status_preserves_approved_worker_and_dependency(
 ) -> None:
     p = reserved
     p.child("downstream", deps=[10])
-    run(p)
+    run(p, "--planning")
     planning_answer(p)
     resume_answer(p)
     tree = Path(task(p)["worktree"])
@@ -931,70 +877,36 @@ def test_readonly_status_preserves_approved_worker_and_dependency(
         assert store(p).read_data() == before
 
 
-def test_stale_approval_replans_existing_session(reserved: ParentEnv) -> None:
+def test_input_change_is_observed_without_forced_replanning(
+    reserved: ParentEnv,
+) -> None:
     p = reserved
-    run(p)
+    run(p, "--planning")
     planning_answer(p)
     resume_answer(p)
-    first = latest(p)
-    ended(p)
-    before_read = store(p).read_data()
-    gh = p.state()
-    gh["issues"]["10"]["body"] += "\n## 追加の受入条件\n\n実データの形式も照合する。\n"
-    p.save(gh)
-    item = json.loads(p.cli("reconcile").stdout)["tasks"][0]
-    assert item["worker_phase"]["status"] == "refresh_required"
-    assert store(p).read_data() == before_read
-    run(p, "--resume", "--restart-evidence-file", p.note())
-    current = task(p)
-    assert current["preflight"]["phase"] == "planning"
-    assert all(d["invalidated"] for d in current["preflight"]["decisions"])
-    assert (
-        json.loads((first / "result.json").read_text())["runtime"]["session_id"]
-        == json.loads((latest(p) / "result.json").read_text())["runtime"]["session_id"]
-    )
-    planning_answer(p, text="新要件の調査を確認した。")
-    resume_answer(p)
-    assert task(p)["preflight"]["phase"] == "implementing"
+    first = task(p)["delegation_id"]
+    data = p.state()
+    data["issues"]["10"]["body"] += "\n\n## 説明\n順序を整理した。\n"
+    p.save(data)
+    status = json.loads(p.cli("status").stdout)["tasks"]["10"]["worker_phase"]
+    assert status["inputs_changed"] and status["phase"] == "implementing"
+    run(p, "--resume")
+    assert task(p)["delegation_id"] == first
+    assert len(task(p)["worker_runs"]) == 3
 
 
 @pytest.mark.parametrize("started", [False, True])
-def test_legacy_phase_needs_explicit_migration(
+def test_legacy_phase_records_are_optional_for_continuation(
     reserved: ParentEnv, started: bool
 ) -> None:
     p = reserved
     if started:
         run(p)
-    original = latest(p) if started else None
     with store(p).locked() as registry:
-        saved = registry.parents["o/r#1"]["tasks"]["10"]
-        saved.pop("preflight")
-        if started:
-            saved["worker_runs"][-1].pop("preflight")
+        registry.parents["o/r#1"]["tasks"]["10"].pop("preflight")
         registry.save()
     before = store(p).read_data()
-    assert (
-        json.loads(p.cli("status").stdout)["tasks"]["10"]["worker_phase"]["status"]
-        == "migration_required"
-    )
+    p.cli("status")
     assert store(p).read_data() == before
-    assert "migrate-worker-phase" in run(p, "--resume", ok=False).stderr
-    manual(
-        p,
-        "migrate-worker-phase",
-        "--child",
-        "10",
-        "--evidence-file",
-        p.note("終了・contract・worktree・モデルを確認。"),
-    )
-    if started:
-        run(p, "--resume", "--restart-evidence-file", p.note())
-    else:
-        run(p)
-    assert task(p)["preflight"]["phase"] == "planning"
-    if original is not None:
-        assert "preflight" not in task(p)["worker_runs"][0]
-        assert (
-            json.loads((original / "result.json").read_text())["contract"]
-            == json.loads((latest(p) / "result.json").read_text())["contract"]
-        )
+    run(p, *(["--resume"] if started else []))
+    assert task(p)["preflight"]["decisions"] == []
