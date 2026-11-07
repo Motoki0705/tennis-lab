@@ -92,6 +92,7 @@ def main() -> int:
         "task_success": None,
     }
     directory.mkdir(parents=True, mode=0o700)
+    (directory / "prompt.md").write_bytes(raw)
     (directory / "result.json").write_text(
         json.dumps(
             {
@@ -99,6 +100,8 @@ def main() -> int:
                 "contract": contract,
                 "prompt_sha256": hashlib.sha256(raw).hexdigest(),
                 "cleanup_complete": True,
+                "started_at": 1794013200,
+                "finished_at": 1794013201,
                 "runtime": {
                     "session_id": session_id,
                     "effective": {

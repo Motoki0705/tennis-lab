@@ -23,6 +23,8 @@ from dispatcher.supervisor import (
 )
 from issues import Issue, task_status
 from lib.agent_settings import implementation_model
+from worker_logs import service as worker_logs
+from worker_logs.sources import original, read_original
 
 from . import worker_preflight
 from .adopted_tasks import check_task_adoptions
@@ -43,7 +45,7 @@ from .policy import (
 )
 from .session import ParentSession
 from .state import Store
-from .worker_instruction import worker_instruction
+from .worker_instruction import prepare_instruction
 
 OPS = Path(__file__).resolve().parents[1]
 
@@ -240,16 +242,17 @@ def start_worker(
             )
         turn = worker_preflight.commit_turn(task, prepared)
         session.store.save()
-        text = worker_instruction(
+        prepared_instruction = prepare_instruction(
             session.parent,
             child,
             worktree,
             branch,
             items[child].body,
-            nonempty(prompt, "worker instruction"),
+            original(prompt),
             turn,
         )
-        text = nonempty(text, "worker instruction")
+        text = prepared_instruction.text
+        worker_logs.capture(session, child, items[child].body, prepared_instruction)
         task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
             text.encode("utf-8")
         ).hexdigest()
@@ -691,9 +694,7 @@ def worker_command(
         args.dispatcher_state_dir,
         dict(os.environ),
         child=args.child,
-        prompt=Path(args.prompt_file).read_text(encoding="utf-8")
-        if args.prompt_file
-        else None,
+        prompt=read_original(args.prompt_file) if args.prompt_file else None,
         model=args.model,
         branch=getattr(args, "branch", None),
         worktree=getattr(args, "worktree", None),
@@ -703,7 +704,7 @@ def worker_command(
         skip_reason=Path(args.skip_planning_reason_file).read_text(encoding="utf-8")
         if getattr(args, "skip_planning_reason_file", None)
         else None,
-        additional=Path(args.additional_instruction_file).read_text(encoding="utf-8")
+        additional=read_original(args.additional_instruction_file)
         if getattr(args, "additional_instruction_file", None)
         else None,
     )

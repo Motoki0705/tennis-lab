@@ -59,6 +59,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/issue_rewrite/](ops/issue_rewrite/README.md) | 作成直後の親issueをGeminiで書き直すworkflow。不変条件・独立した意味検査・照合付きの書き込みを行う |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](ops/parent/development_workflow.md) がCodex workerの起動・継続・停止・結果照合と既存レビュー/mergeを接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
 | [ops/worker_status/](ops/worker_status/README.md) | 親registry・共通ランナー記録から子の実行状況・根拠・鮮度・秘匿済み要約を返す読み取り専用Python API/JSON CLI。GitHub取得は明示指定時のみ |
+| [ops/worker_logs/](ops/worker_logs/README.md) | workerの具体指示・最終報告・来歴を無害化し、ターン別のログ専用PRへ追記する。公開検査・追加専用merge・CI除外の限定例外と復旧の正本 |
 | [ops/board/](ops/board/README.md) | 親issueに結び付く名前・名簿・投稿と状態・呼び鈴を管理する掲示板CLI |
 | [ops/herdr_labels/](ops/herdr_labels/README.md) | 親担当をHerdrの表示へ同期する。会話からの設定・修復は [herdr-session-label](skills/herdr-session-label/SKILL.md) |
 
@@ -86,4 +87,5 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 
 - ルールは仮説である。合わなくなったら、運用レポートの提案として改訂する。
 - `AGENTS.md` と `.agents/**` を含む変更も通常のレビュー・merge条件で扱う。
+- workerログだけの限定例外は [workerログ保存](ops/worker_logs/README.md#専用prと限定merge例外) を参照する。保存実装・検査・workflowを変えるコードPRは通常条件で扱う。
 - 規則を追加する前に、memoryの観察で済まないか、既存の規則を消せないかを先に検討する。

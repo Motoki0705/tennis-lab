@@ -1489,7 +1489,7 @@ def test_preflight_decision_paths(
         d.schedule.directory,
         env,
         child=10,
-        prompt="根拠と設計を調査する。",
+        prompt="\n根拠と設計を調査する。\r\n",
         model=None,
         branch="codex/parser",
         worktree=tree,
@@ -1541,6 +1541,20 @@ def test_preflight_decision_paths(
         assert old["contract"] == new["contract"]
         assert old["runtime"]["session_id"] == new["runtime"]["session_id"]
         assert first["delegation_id"] != second["delegation_id"]
+        logged = [
+            json.loads(Path(t["log"]["journal"]).read_text())
+            for t in d.row()["tasks"]["10"]["preflight"]["turns"]
+        ]
+        assert logged[0]["source"]["public_key"] == logged[1]["source"]["public_key"]
+        assert logged[0]["files"]["instruction.md"] == "\n根拠と設計を調査する。\r\n"
+        assert logged[1]["files"]["instruction.md"] == answer
+        metadata = json.loads(logged[1]["files"]["meta.json"])
+        assert metadata["turn"]["phase"] == job["preflight"]["phase"]
+        assert metadata["decision"] == {"action": action, "source_sequence": 1}
+        assert metadata["worker"]["selected"] == {
+            "model": "gpt-6.1-sol",
+            "effort": "max",
+        }
         assert len((d.h.root / "runtime-calls.jsonl").read_text().splitlines()) == 2
         if action == "reject":
             with pytest.raises(ValueError, match="headings"):

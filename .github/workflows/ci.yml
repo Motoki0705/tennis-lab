@@ -3,7 +3,15 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.agents/logs/parents/**/instruction.md'
+      - '.agents/logs/parents/**/final.md'
+      - '.agents/logs/parents/**/meta.json'
   pull_request:
+    paths-ignore:
+      - '.agents/logs/parents/**/instruction.md'
+      - '.agents/logs/parents/**/final.md'
+      - '.agents/logs/parents/**/meta.json'
   workflow_dispatch:
     inputs:
       shards:

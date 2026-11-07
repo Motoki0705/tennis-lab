@@ -791,7 +791,7 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
     )
     assert store(p).read_data() == before
     extra = p.root / "additional.md"
-    extra.write_text("対象外の学習は起動しない。")
+    extra.write_bytes("\n対象外の学習は起動しない。\r\n".encode())
     resume_answer(p, "--additional-instruction-file", str(extra))
     current = task(p)
     assert current["preflight"]["phase"] == (
@@ -808,6 +808,20 @@ def test_preflight_decision_paths(reserved: ParentEnv, action: str) -> None:
     ]
     assert answer in prompts[-1] and "## 親の追加指示" in prompts[-1]
     assert len(prompts) == 2
+    log_rows = [
+        json.loads(Path(t["log"]["journal"]).read_text())
+        for t in current["preflight"]["turns"]
+    ]
+    assert log_rows[0]["source"]["public_key"] == log_rows[1]["source"]["public_key"]
+    assert log_rows[1]["files"]["instruction.md"] == answer
+    assert "## 親の計画判断" not in log_rows[1]["files"]["instruction.md"]
+    meta = json.loads(log_rows[1]["files"]["meta.json"])
+    assert meta["instruction"]["additional_instructions"] == [
+        "\n対象外の学習は起動しない。\r\n"
+    ]
+    assert meta["turn"]["phase"] == current["preflight"]["phase"]
+    assert meta["worker"]["selected"] == {"model": "gpt-6.1-sol", "effort": "max"}
+    assert meta["decision"] == {"action": action, "source_sequence": 1}
     assert (
         json.loads((first / "result.json").read_text())["runtime"]
         == json.loads((latest(p) / "result.json").read_text())["runtime"]

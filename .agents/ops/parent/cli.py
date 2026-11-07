@@ -14,6 +14,7 @@ from typing import Any
 
 from lib.agent_settings import implementation_models
 from lib.identity import session_identity
+from worker_logs.sources import read_original
 
 from . import metrics
 from .agreement_comments import record_ignored
@@ -62,6 +63,18 @@ def parser() -> argparse.ArgumentParser:
     ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
+    for name in ("worker-log-status", "publish-worker-log"):
+        log = commands.add_parser(name)
+        log.add_argument("--child", type=int, required=True)
+        log.add_argument("--turn", type=int)
+        log.add_argument("--delegation-key")
+        if name == "publish-worker-log":
+            log.add_argument("--dry-run", action="store_true")
+            log.add_argument(
+                "--retry",
+                action="store_true",
+                help="recheck a repaired blocked publication without changing its frozen input",
+            )
     from project_progress.schema import EVENTS, OWNER, PROJECT_NUMBER
 
     for command in ("project-setup", "project-sync"):
@@ -255,7 +268,14 @@ def _main(argv: list[str] | None = None) -> int:
         identity = (
             None
             if args.command
-            in {"status", "basis-input", "basis-record", "basis-check", "wait-rewrite"}
+            in {
+                "status",
+                "basis-input",
+                "basis-record",
+                "basis-check",
+                "wait-rewrite",
+                "worker-log-status",
+            }
             else session_identity(dict(os.environ))
         )
         args.state_dir = (args.state_dir or state_directory()).resolve()
@@ -269,6 +289,28 @@ def _main(argv: list[str] | None = None) -> int:
             store = Store(args.state_dir)
         gh = GitHub(args.repo, store=None if args.command == "wait-rewrite" else store)
         parent = issue_number(args.parent, gh.repo)
+        if args.command in {"worker-log-status", "publish-worker-log"}:
+            from worker_logs.service import command as log_command
+
+            log_result = log_command(
+                gh,
+                store,
+                parent,
+                number(args.child),
+                identity,
+                publish_logs=args.command == "publish-worker-log",
+                sequence=number(args.turn) if args.turn is not None else None,
+                key=args.delegation_key,
+                dry_run=getattr(args, "dry_run", False),
+                retry=getattr(args, "retry", False),
+            )
+            print(json.dumps(log_result, ensure_ascii=False, sort_keys=True))
+            return (
+                2
+                if log_result["unavailable_logs"]
+                or any(r.get("error") for r in log_result["logs"])
+                else 0
+            )
         if args.command == "wait-rewrite":
             from .rewrite import wait_rewrite
 
@@ -295,7 +337,7 @@ def _main(argv: list[str] | None = None) -> int:
                 skip_reason=read_text(args.skip_planning_reason_file)
                 if args.skip_planning_reason_file
                 else None,
-                additional=read_text(args.additional_instruction_file)
+                additional=read_original(args.additional_instruction_file)
                 if args.additional_instruction_file
                 else None,
                 restart_evidence=read_text(args.restart_evidence_file)
@@ -474,7 +516,7 @@ def _main(argv: list[str] | None = None) -> int:
                         session,
                         number(args.child),
                         args.action,
-                        read_text(args.answer_file),
+                        read_original(args.answer_file),
                     )
                 elif command == "migrate-worker-phase":
                     result = worker_preflight.migrate(

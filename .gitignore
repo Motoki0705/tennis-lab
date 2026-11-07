@@ -84,6 +84,9 @@ ckpt/
 
 # Training artifacts
 logs/
+!/.agents/logs/
+!/.agents/logs/parents/
+!/.agents/logs/parents/**/meta.json
 outputs/
 results/
 wandb/

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import importlib
 import json
 import os
@@ -35,12 +36,48 @@ def _ci_job() -> dict[str, Any]:
     return cast(dict[str, Any], workflow["jobs"]["tests"])
 
 
-def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs() -> None:
+@pytest.mark.parametrize("event", ["pull_request", "push", "pull_request_target"])
+@pytest.mark.parametrize("changes", ["logs", "code", "mixed"])
+def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
+    event: str, changes: str
+) -> None:
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
     triggers = workflow.get("on", workflow.get(True))
     assert triggers["push"]["branches"] == ["main"]
-    assert triggers["pull_request"] is None
-    assert "paths" not in triggers["push"] and "paths-ignore" not in triggers["push"]
+    if event == "pull_request_target":
+        labeler = yaml.safe_load(
+            (REPO_ROOT / ".github/workflows/pull-request-labeler.yml").read_text()
+        )
+        selected = labeler.get("on", labeler.get(True))[event]
+        assert selected["types"] == [
+            "opened",
+            "synchronize",
+            "reopened",
+            "ready_for_review",
+        ]
+    else:
+        selected = triggers[event]
+    assert "paths" not in selected
+    ignored = selected["paths-ignore"]
+    assert set(ignored) == {
+        f".agents/logs/parents/**/{n}"
+        for n in ("instruction.md", "final.md", "meta.json")
+    }
+    log = ".agents/logs/parents/parent-1/child-10/d-abc/0001-initial/"
+    files = (
+        [log + n for n in ("instruction.md", "final.md", "meta.json")]
+        if changes != "code"
+        else []
+    )
+    if changes != "logs":
+        files.append("src/utils/example.py")
+    assert any(
+        not any(fnmatch.fnmatchcase(p, pattern) for pattern in ignored) for p in files
+    ) is (changes != "logs")
+    assert not any(
+        fnmatch.fnmatchcase(".agents/ops/worker_logs/schema.py", pattern)
+        for pattern in ignored
+    )
     assert workflow["concurrency"] == {
         "group": "ci-${{ github.event.pull_request.number || github.ref }}",
         "cancel-in-progress": "${{ github.event_name == 'pull_request' }}",

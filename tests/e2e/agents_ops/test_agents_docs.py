@@ -36,6 +36,7 @@ DOCS = [
     BOARD_SKILL,
     DSH_SKILL.with_name("task-template.md"),
     ROOT / ".agents/ops/parent/README.md",
+    ROOT / ".agents/ops/worker_logs/README.md",
     ROOT / ".agents/ops/board/README.md",
     ROOT / ".agents/ops/herdr_labels/README.md",
     ROOT / ".agents/skills/parent-session/SKILL.md",
