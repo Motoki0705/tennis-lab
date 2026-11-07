@@ -45,6 +45,26 @@ class OutputSchema:
         self.validator = validator(schema, registry=Registry())
         self.sha256 = hashlib.sha256(self.raw).hexdigest()
 
+    def codex_transport_schema(self) -> dict[str, Any]:
+        """Keep the output shape, with stricter constraints checked locally."""
+
+        def shape(node: dict[str, Any]) -> dict[str, Any]:
+            result = {
+                k: v
+                for k, v in node.items()
+                if k in {"type", "$ref", "additionalProperties", "required", "enum"}
+            }
+            for key in ("definitions", "properties"):
+                if key in node:
+                    result[key] = {k: shape(v) for k, v in node[key].items()}
+            if "items" in node:
+                result["items"] = shape(node["items"])
+            if "anyOf" in node:
+                result["anyOf"] = [shape(v) for v in node["anyOf"]]
+            return result
+
+        return shape(self.validator.schema)
+
     def validate(self, value: Any) -> None:
         from jsonschema import ValidationError
         from referencing.exceptions import Unresolvable

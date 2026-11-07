@@ -26,6 +26,7 @@ from . import (
     proposals,
     report,
     schedule,
+    scouts,
     shell,
     triage,
 )
@@ -101,7 +102,7 @@ def _parser() -> argparse.ArgumentParser:
         "--agent",
         choices=agent.AGENT_CHOICES,
         default=None,
-        help="default: $OPS_REPORT_AGENT or 'codex'",
+        help="default: $OPS_REPORT_AGENT or 'claude'",
     )
     rep.add_argument(
         "--base-ref",
@@ -357,7 +358,7 @@ def _generate_report(
     initial_since: datetime,
     store: memory_pr.Store,
 ) -> tuple[str | None, list[str], bool]:
-    setting = args.agent or os.environ.get("OPS_REPORT_AGENT") or "codex"
+    setting = args.agent or os.environ.get("OPS_REPORT_AGENT") or "claude"
     agent_name = agent.resolve_agent(setting)
     repo_root = args.repo_root.resolve()
     if "OPS_REPORT_AGENT_TIMEOUT" in os.environ:
@@ -423,7 +424,12 @@ def _generate_report(
     from agent_settings import resolve
 
     max_threads = resolve(
-        OPS_DIR / "lib" / "agents.conf", "codex", "ops_report", None, None, "read-only"
+        OPS_DIR / "lib" / "agents.conf",
+        agent_name,
+        "ops_report",
+        None,
+        None,
+        "read-only",
     )["max_threads"]
     if collected is None:
         collected = collect.collect_all(
@@ -552,21 +558,32 @@ def _generate_report(
                     str(round_dir / "sources"),
                     "--ops-memory-sha",
                     collected["ops_memory"].get("base_sha", base.sha),
-                    "--ledger-path",
-                    str(ledger_path),
-                    "--runtime-dir",
-                    str(runtime_dir),
-                    "--input-path",
-                    str(input_path),
-                    "--ending-path",
-                    str(ending_path),
-                    "--max-threads",
-                    str(max_threads),
                 ],
                 "env": {"PYTHONPATH": str(PROMPT_FILE.parent)},
             }
+            # Scouts share the pinned retrieval journal and have no ledger,
+            # launch, or CPU-test tools in their MCP configuration.
+            scout_dir = scouts.directory(runtime_dir)
+            scout_dir.mkdir(mode=0o700)
+            memory_pr._atomic_json(
+                scout_dir / "retrieval.json", {"ops_report": connection}
+            )
             mcp_config = run_dir / "mcp.json"
-            connection["args"] += cpu_arguments
+            connection["args"] += [
+                "--ledger-path",
+                str(ledger_path),
+                "--runtime-dir",
+                str(runtime_dir),
+                "--input-path",
+                str(input_path),
+                "--ending-path",
+                str(ending_path),
+                "--max-threads",
+                str(max_threads),
+                "--scout-runner",
+                str(OPS_DIR / "lib" / "agent_exec.sh"),
+                *cpu_arguments,
+            ]
             memory_pr._atomic_json(mcp_config, {"ops_report": connection})
             prompt = agent.build_prompt(
                 PROMPT_FILE.read_text(encoding="utf-8"),

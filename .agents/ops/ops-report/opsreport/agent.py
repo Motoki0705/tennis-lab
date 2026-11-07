@@ -10,7 +10,7 @@ from typing import Any, cast
 from . import memory, shell
 from .retrieval import strict_json
 
-AGENT_CHOICES = ("codex",)
+AGENT_CHOICES = ("claude",)
 METADATA_FIELDS = {
     "slot",
     "base_sha",

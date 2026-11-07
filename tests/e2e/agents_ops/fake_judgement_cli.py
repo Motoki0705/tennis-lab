@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Offline Claude stream for dispatcher tests; never calls an API or another agent."""
+"""Offline Codex stream for dispatcher tests; never calls an API or another agent."""
 
 from __future__ import annotations
 
 import json
 import os
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,7 @@ def main() -> None:
     args = sys.argv[1:]
     task = Path(os.environ["AGENT_RUNTIME_RUN_DIR"]).parent
     input_dir = task / "agent-input"
-    assert args[args.index("--add-dir") + 1] == str(input_dir)
+    assert args[args.index("--sandbox") + 1] == "read-only"
     index = json.loads((input_dir / "index.json").read_text())
     response = Path(os.environ["FAKE_JUDGEMENT_RESPONSE"]).read_text()
     response = response.replace("INPUT_DIGEST", index["input_sha256"])
@@ -29,50 +30,49 @@ def main() -> None:
     scenario = os.environ.get("FAKE_JUDGEMENT_SCENARIO", "success")
     if scenario == "schema_cli_error":
         print(
-            "Error: --json-schema is not a valid JSON Schema: no schema with key or ref "
+            "Error: --output-schema rejected schema "
             '"https://json-schema.org/draft/2020-12/schema"',
             file=sys.stderr,
         )
         raise SystemExit(1)
     model = args[args.index("--model") + 1]
     session = "private-judgement-session"
-    emit(
-        {
-            "type": "system",
-            "subtype": "init",
-            "session_id": session,
-            "model": "wrong-model" if scenario == "wrong_model" else model,
-        }
-    )
+    home = Path(os.environ["CODEX_HOME"]) / "sessions"
+    home.mkdir(parents=True, exist_ok=True)
+    with (home / f"rollout-{session}.jsonl").open("w") as log:
+        for kind, payload in (
+            ("session_meta", {"id": session}),
+            (
+                "turn_context",
+                {
+                    "turn_id": str(uuid.uuid4()),
+                    "cwd": str(Path.cwd()),
+                    "model": "wrong-model" if scenario == "wrong_model" else model,
+                    "effort": "xhigh",
+                },
+            ),
+        ):
+            log.write(json.dumps({"type": kind, "payload": payload}) + "\n")
+    emit({"type": "thread.started", "thread_id": session})
+    emit({"type": "turn.started"})
     if scenario == "cli_error":
         print("injected CLI failure", file=sys.stderr)
         raise SystemExit(1)
     if scenario == "empty":
         response = ""
-    text = "I'm writing the final JSON now.\n\n" + response
+    if scenario != "missing_structured_output":
+        Path(args[args.index("--output-last-message") + 1]).write_text(response)
     emit(
         {
-            "type": "assistant",
-            "session_id": session,
-            "message": {"content": [{"type": "text", "text": text}]},
+            "type": "item.completed",
+            "item": {
+                "id": "item-1",
+                "type": "agent_message",
+                "text": response,
+            },
         }
     )
-    result = {
-        "type": "result",
-        "subtype": "success",
-        "session_id": session,
-        "is_error": False,
-        "result": text,
-        "usage": {"input_tokens": 20, "output_tokens": 10},
-    }
-    if "--json-schema" in args and scenario != "missing_structured_output":
-        # Preserve deliberately corrupt JSON/duplicate keys for runner rejection.
-        print(
-            json.dumps(result)[:-1] + ', "structured_output": ' + response + "}",
-            flush=True,
-        )
-    else:
-        emit(result)
+    emit({"type": "turn.completed", "usage": {"input_tokens": 20, "output_tokens": 10}})
 
 
 if __name__ == "__main__":
