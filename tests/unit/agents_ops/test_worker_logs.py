@@ -105,13 +105,37 @@ def test_publication_safety_preserves_or_blocks(case: str) -> None:
         return
     if case == "ordinary":
         assert guard.sanitize(value) == (value, 0)
+        for url in (
+            "HTTPS://EXAMPLE.COM/path",
+            "Http://example.com/path",
+            "%48%54%54%50%53%3A%2F%2Fexample.com/path",
+        ):
+            assert guard.sanitize(url) == (url, 0)
+        return
+    if case == "url_credentials":
+        for url in (
+            "https://user:pass@example.com/path",
+            "HTTPS://user:pass@example.com/path",
+            "Http://user:pass@example.com/path",
+            "%48%54%54%50%53%3A%2F%2Fuser%3Apass%40example.com/path",
+        ):
+            with pytest.raises(journal.PublicationError, match="unsafe_url"):
+                guard.check(url)
+        # Non-HTTP schemes must remain subject to the local-path check.
+        for url in (
+            "file:///home/unknown/report.md",
+            "FiLe://user:pass@example.com/path",
+            "%46%49%4C%45%3A%2F%2F%2Fhome/unknown/report.md",
+            "FTP://user:pass@example.com/path",
+        ):
+            with pytest.raises(journal.PublicationError, match="absolute_path"):
+                guard.check(url)
         return
     value = {
         "external_path": "保存先 /home/unknown/run",
         "credential": "ghp_" + "x" * 30,
         "encoded_link": "https://example.com/?x=private%2dvalue",
         "private_link": "https://example.com/?file=/home/unknown/file",
-        "url_credentials": "https://user:pass@example.com/path",
         "controls": "visible\x1b[0m",
         "metadata": {"https://example.com/private-value": ["otherwise ordinary"]},
     }[case]

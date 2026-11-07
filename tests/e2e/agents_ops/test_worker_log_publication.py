@@ -25,6 +25,48 @@ class Crash(BaseException):
     """Emulate process loss without allowing the publisher's error handler to run."""
 
 
+def test_gitignore_tracks_only_public_worker_log_files(tmp_path: Path) -> None:
+    git(tmp_path, "init", "-q")
+    (tmp_path / ".gitignore").write_bytes(
+        (Path(__file__).resolve().parents[3] / ".gitignore").read_bytes()
+    )
+    directory = ".agents/logs/parents/parent-1/child-10/d-example/0001-initial"
+    allowed = {
+        f"{directory}/{name}" for name in ("instruction.md", "final.md", "meta.json")
+    }
+    ignored = {
+        ".agents/logs/raw.md",
+        ".agents/logs/instruction.md",
+        ".agents/logs/final.md",
+        ".agents/logs/meta.json",
+        ".agents/logs/notes/meta.json",
+        ".agents/logs/parents/raw.md",
+        ".agents/logs/parents/parent-1/private.txt",
+        f"{directory}/raw.md",
+        f"{directory}/stderr.log",
+        f"{directory}/events.json",
+        f"{directory}/payload.txt",
+        f"{directory}/code.py",
+        f"{directory}/README.md",
+    }
+    for name in allowed | ignored:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text("fixture\n")
+    result = subprocess.run(
+        ["git", "check-ignore", "--no-index", "--stdin", "-z"],
+        cwd=tmp_path,
+        input="\0".join(sorted(allowed | ignored)) + "\0",
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    assert set(result.stdout.rstrip("\0").split("\0")) == ignored
+    git(tmp_path, "add", ".")
+    assert set(git(tmp_path, "ls-files").splitlines()) == {".gitignore", *allowed}
+
+
 @pytest.mark.parametrize(
     "point",
     [
@@ -185,10 +227,12 @@ def test_runner_failure_is_not_log_success(logs: LogEnv, failure: str) -> None:
 def test_standalone_worker_uses_same_log_entry(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    credential = "opaque-fixture-credential"
+    monkeypatch.setenv("worker_api_key", credential)
     instruction = (
         "\n実際に送った指示\r\n"
         + str(logs.root / ".claude/worktrees/worker-7-7/code.py")
-        + " private-parent-session\r\n"
+        + f" private-parent-session {credential}\r\n"
     )
     path = logs.ready(parent=7, child=7, instruction=instruction)
     service: Any = importlib.import_module("worker_logs.service")
@@ -262,10 +306,11 @@ def test_standalone_worker_uses_same_log_entry(
     assert meta["parent"] == meta["issue"] == 7
     assert (
         row["files"]["instruction.md"]
-        == "\n実際に送った指示\r\n./code.py [private identifier]\r\n"
+        == "\n実際に送った指示\r\n./code.py [private identifier] [private identifier]\r\n"
     )
     assert "親の計画判断" not in row["files"]["instruction.md"]
     public = json.dumps(logs.github.rows, ensure_ascii=False) + json.dumps(result)
     for name in logs.main_files():
         public += git(logs.upstream, "show", "main:" + name)
     assert str(logs.root) not in public and "private-parent-session" not in public
+    assert credential not in public

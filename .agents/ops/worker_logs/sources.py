@@ -133,7 +133,11 @@ def freeze(session: Any, child: int, prompt: str, standard: bytes) -> Path:
     private.update(
         v
         for k, v in os.environ.items()
-        if v and (k in IDENTITIES or re.search(r"TOKEN|PASSWORD|SECRET|API_KEY", k))
+        if v
+        and (
+            k in IDENTITIES
+            or re.search(r"TOKEN|PASSWORD|SECRET|API_KEY", k, re.IGNORECASE)
+        )
     )
     source = {
         "repo": session.gh.repo,

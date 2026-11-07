@@ -18,7 +18,7 @@ TOKEN = re.compile(
     r"|\b(?:token|password|secret|api[_-]?key)\s*[:=]",
     re.IGNORECASE,
 )
-URL = re.compile(r"https?://[^\s<>\"'`\)\]]+")
+URL = re.compile(r"https?://[^\s<>\"'`\)\]]+", re.IGNORECASE)
 ATTACHED_OPTION_PATH = re.compile(
     r"""(?:^|[\s"'`;&|()<>])-[^\s"'`;&|()<>]*[A-Za-z0-9]/"""
 )
