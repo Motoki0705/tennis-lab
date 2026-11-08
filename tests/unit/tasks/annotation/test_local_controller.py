@@ -269,7 +269,9 @@ def test_quota_requires_recorded_resume_and_explicit_retry(
     )
     from src.tasks.annotation.recovery import recover
 
-    save(session)
+    # Even a fully saved revision must not bypass a quota stop. Without a
+    # completion receipt, an explicit retry can recover the final decision.
+    save(session, 3)
     ended(session, "quota")
     controller = controller_for(session)
     result = recover_annotation(

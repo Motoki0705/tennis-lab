@@ -407,7 +407,9 @@ def recover(
                 from .review_progress import camera_status
 
                 saved = camera_status(layout, controller.plan, operation.request)
-                if saved.completion is not None or saved.summary["complete"]:
+                if saved.completion is not None or (
+                    row["state"] == "timed_out" and saved.summary["complete"]
+                ):
                     raise ValueError(
                         "camera annotation is already complete; run a tick to recover its completion without another worker"
                     )
