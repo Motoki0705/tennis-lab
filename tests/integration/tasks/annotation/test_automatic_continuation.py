@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -24,6 +27,7 @@ from src.tasks.base.annotation.editing.contracts import BlankAnnotationContext, 
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.workers.contracts import ExitReceipt, Launch, WorkRequest
 from src.tasks.base.annotation.workers.processes import ProcessIdentity, owned_members
+from src.utils.paths import PROJECT_ROOT
 from tests.support.tasks.annotation_events import AnnotationEvents
 from tests.support.tasks.blank_agent import fake_worker
 from tests.support.tasks.local_annotation import local_configuration
@@ -32,6 +36,28 @@ from tests.support.tasks.local_annotation import local_configuration
 def test_three_camera_workflow_continues_saved_timeout_without_restarting_completed_cameras(
     tmp_path: Path,
 ) -> None:
+    # The real budget counts its controller once. A full-suite xdist process has
+    # unrelated model/test assets resident; it must not become this controller's
+    # baseline. Keep the same fixed 1 GiB budget in a clean CPU process, with all
+    # resource accounting, service stages and supervisors still real.
+    environment = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "tests.integration.tasks.annotation.test_automatic_continuation",
+            str(tmp_path),
+        ],
+        cwd=PROJECT_ROOT,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=240,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _exercise_three_camera_workflow(tmp_path: Path) -> None:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     configuration = local_configuration(layout, review_timeout=5400, three_cameras=True)
     budget = configuration.campaign.resources.model_copy(
@@ -296,3 +322,7 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
             ):
                 child.wait(timeout=15)
         events.close()
+
+
+if __name__ == "__main__":
+    _exercise_three_camera_workflow(Path(sys.argv[1]))

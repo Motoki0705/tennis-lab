@@ -175,7 +175,9 @@ dataset公開はこのcontrollerの完了条件に含めず、planの `publish_d
 `blocked` でも `live=true` の間は他camera・サービス工程の処理と終了回収を続ける。
 完成時も、稼働中の資源stageが終了するまでcampaign全体を完了と報告しない。
 
-代表のCPU integrationは `test_automatic_continuation.py`。3camera×12frameの合成動画と正式な
+代表のCPU integrationは `test_automatic_continuation.py`。controllerを独立したCPU processで動かし、
+他テストが読み込んだモデル等の常駐メモリをfixtureの資源予算へ混在させない。
+3camera×12frameの合成動画と正式な
 画像/編集サービス、実controller・資源stage・store・supervisorを使い、cam0のframe 0〜3保存通知後に
 監督側のtest clockを5399.999→5400秒へ進め、停止・回収・controller再起動・frame 4〜11完了を確認する。
 cam1/cam2の完成結果とcam0の既存編集・最終unknownを保持する。
