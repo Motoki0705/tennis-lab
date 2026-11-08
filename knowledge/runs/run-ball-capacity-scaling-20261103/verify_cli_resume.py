@@ -24,7 +24,7 @@ ROOT = Path("outputs/ball_detection/train/capacity_scaling/s42-20261103-main")
 PREPARED = Path("outputs/ball_detection/precompute/sequential_length/observed-packs-20261025")
 
 
-def inspect_stage(directory, entry, code):
+def inspect_stage(directory, entry, code, expected_runtime):
     run = json.loads((directory / "run.json").read_text())
     latest = json.loads((directory / "latest.json").read_text())
     recipe = run["recipe"]
@@ -37,6 +37,7 @@ def inspect_stage(directory, entry, code):
     assert dual_sha256(directory / f"weights-update-{latest['update']:08d}.pt") == saved["artifact_sha256"]
     assert recipe["model"] == entry["model"]
     assert recipe["budget"] == entry["budget"]
+    assert recipe["runtime"] == expected_runtime
     assert recipe["runtime"]["precision"] == "bf16"
     assert recipe["model"]["activation_checkpointing"] is False
     assert recipe["model"]["frame_chunk_size"] is None
@@ -91,6 +92,9 @@ def main():
     assert str(torchvision.__version__) == "0.29.1+cu130"
     root = a.workspace / ROOT
     plan = json.loads((root / "plan.json").read_text())
+    benchmark = json.loads((root / "benchmark.json").read_text())
+    expected_runtime = benchmark["cases"][0]["runtime"]
+    assert all(case["runtime"] == expected_runtime for case in benchmark["cases"])
     code = source_identity()
     assert code["directory"] == "/content/tennis-lab/.claude/worktrees/ball-capacity"
     assert code["source_sha256"] == plan["code"]["source_sha256"]
@@ -126,13 +130,13 @@ def main():
             a.destination, remote="mounted_drive", remote_root=(ROOT / stage).as_posix(),
             config_path=a.config, timeout_seconds=3600,
         ).restore(receipt["generation"], manifest_sha256=receipt["manifest_sha256"])
-        stages.append(inspect_stage(a.destination, entry, code))
+        stages.append(inspect_stage(a.destination, entry, code, expected_runtime))
         assert restored["status"] == "verified"
     else:
         for entry in plan["stages"]:
             directory = root / entry["name"]
             if directory.exists():
-                stages.append(inspect_stage(directory, entry, code))
+                stages.append(inspect_stage(directory, entry, code, expected_runtime))
     result = dict(schema="ball_capacity_cli_resume_verification.v1", verified=True,
                   commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
                   source_files=len(code["source_sha256"]), frozen_digests=True,
