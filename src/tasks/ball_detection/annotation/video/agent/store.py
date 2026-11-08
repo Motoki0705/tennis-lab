@@ -16,6 +16,7 @@ from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.editing.contracts import BlankAnnotationContext, Revision
 from src.tasks.base.annotation.editing.store import RevisionConflict
 from src.tasks.base.annotation.paths import AnnotationLayout
+from src.tasks.base.annotation.plan import LocalAnnotationPlan, require_execution_layout
 from src.tasks.base.annotation.registry import Registry
 from src.tasks.base.annotation.storage import StorageCatalog
 from src.tasks.base.annotation.storage.references import protection
@@ -35,6 +36,10 @@ class VideoRevisionStore:
     def __init__(self, layout: AnnotationLayout, run_ref: ArtifactRef) -> None:
         self.layout, self.run_ref = layout, run_ref
         self.run = read_document(layout, run_ref, AnnotationRun)
+        plan = read_document(layout, self.run.plan, LocalAnnotationPlan)
+        require_execution_layout(layout, plan)
+        if plan.annotation_root != str(layout.root):
+            raise ValueError("blank revision plan belongs to another annotation root")
         self.context = read_document(layout, self.run.context, BlankAnnotationContext)
         # Import lazily: registration owns validation against the fixed plan inputs.
         from src.tasks.annotation.reviews import read_local_context

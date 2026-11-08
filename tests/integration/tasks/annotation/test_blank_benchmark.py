@@ -13,7 +13,11 @@ from src.tasks.annotation.benchmark.blank import (
 )
 from src.tasks.annotation.configuration import configure_local_videos
 from src.tasks.annotation.local_videos import LocalVideoConfigurationReceipt
-from src.tasks.ball_detection.annotation.video.agent.contracts import AnnotationPolicy
+from src.tasks.ball_detection.annotation.video.agent.contracts import (
+    AgentTask,
+    AnnotationPolicy,
+)
+from src.tasks.ball_detection.annotation.video.agent.store import VideoRevisionStore
 from src.tasks.ball_detection.annotation.video.agent.worker import BallVideoWorker
 from src.tasks.ball_detection.annotation.video.contracts import (
     PixelPosition,
@@ -26,7 +30,7 @@ from src.tasks.ball_detection.annotation.video.io import write_annotation
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher import (
     BallPublisher,
 )
-from src.tasks.base.annotation.artifacts import read_document
+from src.tasks.base.annotation.artifacts import annotation_reference, read_document
 from src.tasks.base.annotation.editing.contracts import BlankAnnotationContext
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import LocalAnnotationPlan
@@ -145,6 +149,13 @@ def test_two_strategies_share_exact_inputs_but_not_progress_and_compare_usage_an
             try:
                 state = drive(local, plan, pool, request, directory)
                 assert state["state"] == "complete", state
+                task = read_document(
+                    local,
+                    annotation_reference(local, directory / "request.json"),
+                    AgentTask,
+                )
+                with pytest.raises(ValueError, match="benchmark"):
+                    VideoRevisionStore(layout, task.run).initialize()
                 history = pool.ledger.history(plan, request)
                 report = verify_report(local, history[0].telemetry)
                 assert report.responses == 4 and report.duplicate_usage_records == 1
