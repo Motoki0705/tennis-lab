@@ -67,12 +67,12 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
         "module: tennis-scene",
         "issue:parent",
         "issue:child",
-        "rewrite:done",
-        "rewrite:failed",
-        "rewrite:skipped",
+        "supplement:done",
+        "supplement:failed",
+        "supplement:skipped",
     } == names
     assert all(
-        spec.axis == "status" for spec in specs if spec.name.startswith("rewrite:")
+        spec.axis == "status" for spec in specs if spec.name.startswith("supplement:")
     )
     for name, color in (("issue:parent", "F97316"), ("issue:child", "FED7AA")):
         assert next(s.color for s in specs if s.name == name) == color

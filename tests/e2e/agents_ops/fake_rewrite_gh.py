@@ -156,7 +156,7 @@ if endpoint.startswith("repos/o/r/issues/1/labels/") and method == "DELETE":
     for name in state.get("label_delete_race", []):
         state["issue"]["labels"].append({"name": name})
     name = unquote(endpoint.rsplit("/", 1)[-1])
-    assert name == "rewrite:failed"
+    assert name == "supplement:failed"
     state["issue"]["labels"] = [
         item for item in state["issue"]["labels"] if item["name"] != name
     ]

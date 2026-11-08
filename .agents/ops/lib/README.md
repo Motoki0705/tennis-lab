@@ -12,7 +12,7 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
 | `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
-| `agy_headless.py` | issue書き直し用agyの読み取り専用1回実行。固定版・logのモデル・構造化結果を照合 |
+| `agy_headless.py` | issue補足追加用agyの読み取り専用1回実行。固定版・logのモデル・構造化結果を照合 |
 | `agy_permissions.py` | コマンド・引数・フラグの定義から、両端を固定したagyの権限規則を生成 |
 | `agy_hook.py` | 使い捨てworkspaceのPreToolUse設定と、controller側で動く拒否・記録処理 |
 | `agy_capture.py` | 本番と調査ハーネスで共有するstreamのコマンド捕捉・正規化・集計 |
@@ -23,7 +23,7 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 
 ## agyの共通呼び出し部品
 
-`agy_headless.py` は `agent_exec.sh` とは独立した、issue書き直しの writer/verifier 用の同期Python API。
+`agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加の writer/verifier 用の同期Python API。
 導入・ログイン・更新・手動疎通は [runner README](../../../scripts/github_actions/README.md#agyの導入と疎通) にある。
 `sys.path` にこの `lib/` を加え、次の公開APIを使う。`jsonschema` が必要で、schemaの方言と
 外部参照の拒否は既存の `OutputSchema` に従う。

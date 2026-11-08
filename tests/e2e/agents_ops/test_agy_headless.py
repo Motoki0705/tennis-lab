@@ -678,6 +678,16 @@ def test_smoke_publishes_only_validated_diagnostics(
         assert report["status"] == "failed"
 
 
+def test_supplement_smoke_checks_the_production_contract_without_agy() -> None:
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/github_actions/agy_smoke.py"),
+         "--supplement-contract", "--agy", "/does-not-exist/agy"],
+        cwd=ROOT, text=True, capture_output=True, timeout=30,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert json.loads(proc.stdout) == {"status": "passed", "stage": "supplement_contract"}
+
+
 @pytest.mark.parametrize(
     ("scenario", "failure"),
     [

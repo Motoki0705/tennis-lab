@@ -1,8 +1,9 @@
-# 親issue本文の書き直し
+# 親issue本文の補足追加
 
-[`issue-rewrite.yml`](../../../.github/workflows/issue-rewrite.yml) は、作成直後の親issueの本文を
-Geminiで書き直す。何を書くかは起票者、表現・言い換え・説明構造はGeminiが担当する。
-用語・参照先の短い説明だけを補足できる。起票者への書き方の指示は追加しない。
+[`issue-rewrite.yml`](../../../.github/workflows/issue-rewrite.yml) は、作成直後の親issueの本文へ
+Geminiで背景を補足する。原文は空白・改行を含めそのまま保存する。
+補足する箇所と要否はGeminiが判断し、既存コード・READMEに根拠のある客観的背景だけを追加する。
+新しい決定・推測・仕様・タスクや起票者への指示は追加しない。
 
 ## 起動と状態
 
@@ -10,7 +11,7 @@ repository ownerによる `issues.opened`（`issue:parent` がある場合）、
 `issues.labeled`（`issue:parent` を付けた場合）、mainへの `workflow_dispatch` だけを受け付ける。
 `ISSUE_REWRITE_ENABLED_SINCE` が未設定ならjobを起動しない。
 対象・確定状態・有効化時刻・ラベル定数は
-[`issues.rewrite_state`](../issues/README.md#親issueの書き直し状態)を使う。
+[`issues.rewrite_state`](../issues/README.md#親issueの補足追加状態)を使う。
 workflowは `vars.ISSUE_REWRITE_ENABLED_SINCE` の値をCLIの `--enabled-since` へ明示的に渡し、
 共通の `rewrite_state` で日時と状態を検証する。空値は未設定として渡す。
 Variables APIの追加権限を持たないjobでは `read_enabled_since` を呼ばず、権限エラー後のfallbackも行わない。
@@ -20,7 +21,7 @@ workflow以外の親CLI・dispatcherの取得契約は変更しない。
 
 同じissueのrunをconcurrencyで直列化し、実行中のrunは取り消さない。
 workflowファイル名 `issue-rewrite.yml` と表示名 `issue-rewrite #<番号>` は
-[`parent wait-rewrite`](../parent/README.md#書き直しの確定待ち)との共有契約。
+[`parent wait-rewrite`](../parent/README.md#補足追加の確定待ち)との共有契約。
 本文競合によるattempt 2も同じrun内で実行し、runの表示名とowner起点の認可を保持する。
 wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起動や追跡は行わない。
 
@@ -30,7 +31,7 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
 |---|---|
 | `pipeline.prepare` / job `prepare` | GitHub-hosted runnerで手動のfailed再実行をpendingに戻してから合意を確認する |
 | `pipeline.generate` / job `rewrite`・`rewrite_retry` | self-hosted runnerで入力を保存し、安定待ち・writer・不変条件・verifierを実行する。GitHubへの変更権限は持たない |
-| `invariants.py` | 元の本文から保持すべき情報を抽出し、違反した項目と理由を列挙する |
+| `invariants.py` | 原文と挿入指示から本文を組み立て、原文完全保存と補足領域を検査する |
 | `workspace.py` | 呼び出しごとの使い捨てworktreeと、検査側checkout・使用したprompt/schemaの完全性を管理する |
 | `github.py` | 既存の合意・実行根拠の解析、GitHubへの要求、編集履歴の全ページ取得と照合 |
 | `publication.py` | 公開する項目の選別、token等の検査、summaryの出力。生のagent診断は公開しない |
@@ -44,8 +45,8 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    本文が60秒変わらなくなるまで10秒以下の間隔で確認する。10分以内に安定しなければ失敗。
 2. repository ownerをpublisherとして `parent.policy.events` の合意・実行根拠と、
    `parent.judgement_comments.owned_comment` が完全検証した `startable` の判定記録を調べる。
-   既に記録があれば本文を変更せず `rewrite:skipped` にする。引用・別publisher・保留判定は実行根拠にしない。
-   壊れた所有コメントは解析失敗とし、書き直さず `rewrite:failed` にする。
+   既に記録があれば本文を変更せず `supplement:skipped` にする。引用・別publisher・保留判定は実行根拠にしない。
+   壊れた所有コメントは解析失敗とし、補足せず `supplement:failed` にする。
 3. writerとverifierは、[`agy_headless.py` の公開API](../lib/README.md#agyの共通呼び出し部品)を使う。
    版・モデルは同部品と `agents.conf` のpinだけに従う。呼び出しごとに別の会話とlogを作り、
    repo・関連issue/PRはGemini自身が読み取る。1呼び出しの上限は共通部品の既定値（600秒）。
@@ -54,9 +55,9 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    streamのシェル・読み取り試行は同じtool・stepと、コマンド全文またはPathがhook記録と一致することを必須とし、照合できない試行や拒否後の実行形跡は
    `command_hook_mismatch` として失敗する。末尾省略の復元はハーネスと同じ共通部品を使う。
    拒否があっても、以下のschema・不変条件・意味検査・照合付き書き込みの合格条件は変えない。
-4. writerの構造化出力をschemaで検査してから不変条件を調べる。通った本文だけを別会話のverifierへ渡す。
+4. writerの挿入指示をschemaで検査し、Pythonでdetailsを生成して不変条件を調べる。通った本文だけを別会話のverifierへ渡す。
    `verdict=pass` かつ `differences=[]` だけが意味検査の合格。自由文やCLIの終了値から結果を補わない。
-5. 不変条件か意味検査で落ちた場合、直前の本文と具体的な理由をwriterへ渡して1回だけ修正する。
+5. 不変条件か意味検査で落ちた場合、直前の挿入指示と具体的な理由をwriterへ渡して1回だけ修正する。
    schema不正・構造化出力なし・版/モデル/認証等の呼び出し失敗は修正を試さず失敗する。
    rewrite / rewrite_retry のjob上限は各60分。最大4呼び出し（writer/verifierと1回の修正/再検査）の40分、
    本文の安定待ち最大10分、checkout・依存準備・完全性検査・artifact処理の10分を確保する。
@@ -67,27 +68,46 @@ wait-rewriteはこの1つのrunが全jobを終えるまで待つ。別runの起�
    dispatchは行わず、最終label以外のGitHub変更は手動再実行のfailed削除と本文PATCHに限る。
    本文PATCHの直前の最後の読み取りでも、合意・実行根拠の記録を確認してから書く。
 7. PATCH後にGraphQLの `userContentEdits` を全ページ取得し、以前の履歴が変わっておらず、
-   今のGitHub tokenのviewerによる編集が1件だけ増えたことと現在の本文を確認して `rewrite:done` にする。
+   今のGitHub tokenのviewerによる編集が1件だけ増えたことと現在の本文を確認して `supplement:done` にする。
    GitHubが最初の編集時に作成時の版も追加する場合は、`includesCreatedEdit` のfalse→true、
    変更前の空履歴、作成時刻・作者が一致する一意の作成記録を照合して、その記録を区別する。
    同一作者の追加編集、履歴の欠損・取得失敗・曖昧さも不合格。
    編集者と作成者は `User` なら `login`、`Bot` なら `login + "[bot]"` に正規化し、viewerとの本人判定・creation recordの照合に使う。
    `editor=null` は不一致、未知の型・`__typename`/`login` の欠落は取得エラーにする。
 
-不変条件は、必須 `##` 節の集合と順序、`validate_body`、
-`parent.execution.PROGRESS_SECTIONS` の節内の原文（前後の空白を含む）、
-引用ブロック全体（`>`を省略したlazy continuationを含む）、HTMLコメント、fenced code、字下げのcode block、inline codeの原文と順序を保持する。
-`#番号`・HTTP(S) URL・`@mention`・数値は多重集合で比較する。
-引用範囲・コード・URLはmarkdown-it-pyのCommonMark解析を使う。
-`fence`・`code_block` tokenの `map` で原文の行全体を切り出し、リスト・入れ子のリスト・引用の中の
-backtick/tilde fence、4空白以上の字下げ、未閉鎖のfenceも保護する。inline codeは同じ解析の
-backtick規則で正規化前のspanを記録し、ブロック内のbacktickをinline codeとして拾わない。
-本文書式の受理は既存の `validate_body` に従い、同validatorが拒否するトップレベルの未閉鎖fenceは受理しない。
-URLは括弧を含むリンク先を完全に取得する。
-参照リンクの使用回数をURL出現数へ重複計上せず、強調や句読点をURLへ取り込まない。
-workflowの隔離Pythonにも `markdown-it-py==4.0.0` を明示する。
-数値の字面も保持するが、行頭のMarkdownの番号付きリストの番号は除く。
-checkboxの数とchecked/uncheckedは節ごとに比較する。段落・箇条書き・表・小見出し等の表現はGeminiに任せる。
+## 原文保存と構造化出力
+
+Writerは本文全体を返さず、`{supplements: [{after, content}], notes}` を返す。
+`after` は原文中に1回だけ現れる文字列で、完全な段落・見出し・リスト・引用ブロックの末尾を指す。
+すべてのanchorは原文を参照し、複数の補足は原文上の位置順に挿入する。
+文・リスト・引用・コード・既存HTMLの内部、機械管理節への挿入、曖昧なanchor・重複位置は拒否する。
+`markdown.py` がCommonMarkのblock境界を原文のoffsetへ対応付ける。CRLF・CR・LFを区別し、
+Unicodeの行区切り文字を改行offsetへ誤計上しない。
+
+`content` は補足Markdownだけで、wrapperはコードが次の固定形で生成する。
+
+```html
+<details>
+<summary>Geminiによる補足・背景情報</summary>
+
+確認した既存の事実と、その根拠ファイルへのリンク。
+
+</details>
+```
+
+空の補足、raw HTML、details/summaryのdelimiter、未閉鎖fence、`#` / `##` 見出し、
+タスクのcheckbox、原文のリンク先を変えうる参照定義は拒否する。
+数値・参照・URLの追加は補足内で許可し、原文側は一切変更できない。
+`check_invariants` は原文と宣言された補足から本文を再構築し、候補全体と完全一致で比較する。
+原文のsubstring/subsequence照合や任意のdetailsを除去する方式は使わない。
+既存のdetails・引用・コメント・codeも原文の一部として保存し、`validate_body` も検査する。
+補足不要なら空配列を受理する。Verifier合格後、本文PATCHなしで `supplement:done` を付ける。
+
+Verifierには原文、挿入指示、生成済みの `supplemented` を渡す。根拠を独立に読み、
+原文の完全保持、補足の各主張の実在性、推測・仕様追加・要件の変更がないことを検証する。
+差分の引用fieldは `original` / `supplemented`。`verdict=pass` かつ `differences=[]` のみ合格。
+公開handoffのschema_versionは2で、検査済み本文と `supplements` を保持する。
+apply側でもschema・不変条件を再検査し、挿入指示と一致しない本文や旧schemaのartifactは適用しない。
 
 編集履歴APIのフィールドは[GitHubのIssueの仕様](https://docs.github.com/en/graphql/reference/issues#issue)と
 [UserContentEditの仕様](https://docs.github.com/en/graphql/reference/users#usercontentedit)に従う。
@@ -147,12 +167,12 @@ verifierの自由文説明や拒否コマンドの生文字列は出さない。
 
 ## 失敗、skip、手動の再実行
 
-failed jobは本文と編集履歴を再取得し、未書き込みなら `rewrite:failed`、候補本文への本人の編集1件を確認できれば `rewrite:done`（`confirmed_after_apply_error`）にする。
-他者だけの編集や割り込みがあれば、その本文を巻き戻さず `rewrite:failed` として確定する。
+failed jobは本文と編集履歴を再取得し、未書き込みなら `supplement:failed`、候補本文への本人の編集1件を確認できれば `supplement:done`（`confirmed_after_apply_error`）にする。
+他者だけの編集や割り込みがあれば、その本文を巻き戻さず `supplement:failed` として確定する。
 取得失敗・履歴の不整合、新しい編集がないのに元本文と違う場合、またはbundle欠落・不正で本人の編集がある場合は、`write_state_unconfirmed` で非ゼロ終了し、確定ラベルを付けない。
 実行記録の解析失敗時は、本人の書き込みなしを確認できた場合だけ `invalid_execution_record` でfailedにし、それ以外は `write_state_unconfirmed` としてdone・failedを付けない。
-pendingのまま親CLI・dispatcherのgateが止めるため、人間が状態を確認して判断するか `rewrite:skipped` を付ける。
-`rewrite:failed` では親CLI・dispatcherは現在の本文で進められる。
+pendingのまま親CLI・dispatcherのgateが止めるため、人間が状態を確認して判断するか `supplement:skipped` を付ける。
+`supplement:failed` では親CLI・dispatcherは現在の本文で進められる。
 summaryの理由を確認してから、合意・実行根拠の記録がまだ無いfailed issueだけをownerが再実行できる。
 Actions → **Issue rewrite** → **Run workflow** でmain・issue番号を選ぶか、次を使う。
 
@@ -166,11 +186,14 @@ gh workflow run issue-rewrite.yml --ref main -f issue_number=123
 追加APIの直後にも再確認し、残る競合は明示的な失敗として検出する。人間が付けたラベルを消して修復しない。
 done/skippedは手動実行でも再度書き直さない。
 
-`rewrite:skipped` は「この本文で進めてよいと人間が判断した」か、「既に合意・実行根拠があるため書き直さなかった」を表す。
+`supplement:skipped` は「この本文で進めてよいと人間が判断した」か、「既に合意・実行根拠があるため書き直さなかった」を表す。
 runner待ちを省略する判断は人間が行い、GitHubのissue画面でこのラベルを付ける。
 成功や失敗と競合しないよう、他の確定ラベルとは同時に付けない。
 実行中に人間がskipした場合、後続の失敗jobはそれをfailedへ置き換えない。
-書き直しworkflowはコメントを投稿しない。
+補足追加workflowはコメントを投稿しない。
+
+識別子 `issue_rewrite`、`rewrite` コマンド、workflowファイル名・run名、`wait-rewrite`、
+`issues.rewrite_state` とその定数・有効化変数は既存の接続契約として維持する。本文のリライト経路はない。
 
 CLIは `.agents/ops` を `PYTHONPATH` にして `python -m issue_rewrite prepare|rewrite|apply|fail` を使う。
 `--repo`・`--issue-number`・`--enabled-since` が必須、prepare以外では `--bundle` も必須。
@@ -183,7 +206,8 @@ CLIは `.agents/ops` を `PYTHONPATH` にして `python -m issue_rewrite prepare
 ## 検証
 
 ```bash
-.venv/bin/python -m pytest tests/e2e/agents_ops/test_issue_rewrite.py \
+.venv/bin/python -m pytest tests/unit/agents_ops/test_issue_supplements.py \
+  tests/e2e/agents_ops/test_issue_rewrite.py \
   tests/e2e/agents_ops/test_issue_rewrite_state.py \
   tests/e2e/agents_ops/test_issue_content_edits.py \
   tests/e2e/agents_ops/test_agy_headless.py tests/e2e/agents_ops/test_agents_docs.py -n 2 -q
@@ -195,3 +219,30 @@ GitHubへの変更・GPUは使わず、安定待ちを実時間のsleepで検証
 拒否し、作業領域だけの変更は許可し、正常・失敗時ともworktreeが残らないことを確認する。
 依存部品の版・モデル・schema・read-only設定は既存の `test_agy_headless.py`、
 対象状態は `test_issue_rewrite_state.py`、待機の接続は `test_parent_session.py::test_wait_rewrite_*` も使って確認する。
+
+## ラベル移行と実機検証
+
+確定ラベルは `supplement:done` / `supplement:failed` / `supplement:skipped`。
+旧 `rewrite:*` を未処理とみなすと既に確定した本文へ再度手を加えてしまうため、共有判定は
+旧ラベルを明示的な移行エラーとして拒否する。旧状態を推測する互換経路は設けない。
+
+切替時は実行中の旧workflowがないことを確認し、GitHubの既存ラベル自体をrenameして
+open/closedを含む付与済みの状態を維持する。新ラベルを先に作る通常のsync/pruneは使わない。
+
+```bash
+gh label edit rewrite:done --name supplement:done --repo Motoki0705/tennis-lab
+gh label edit rewrite:failed --name supplement:failed --repo Motoki0705/tennis-lab
+gh label edit rewrite:skipped --name supplement:skipped --repo Motoki0705/tennis-lab
+.venv/bin/python scripts/sync_github_labels.py sync --repo Motoki0705/tennis-lab --apply
+```
+
+同名の移行先ラベルが既にある場合はrenameせず止める。移行先ラベルを付けた検証issueを控え、
+その検証ラベルを整理してからrenameし、控えたissueに同じ新状態を戻す。本文は編集しない。
+過去の本文を新方式で補足し直す一括処理はしない。
+
+`agy-smoke.yml` の `--supplement-contract` は同じpinのmarkdown-it-py・本番schema・
+原文保存検査をモデル呼び出しなしで確認する。実Issueによる検証では、テスト用親issueの
+原文を保存し、ownerの手動workflowからself-hostedのWriter/VerifierとGitHub-hostedのapplyを
+実行する。handoffとGitHubの本文・編集履歴・新ラベルを照合し、原文完全保存と補足の出典を確認する。
+本番workflowのowner/main制限は維持する。merge前の検証に限り、同じ処理を実行する
+検証branchでref条件をそのbranchへ固定して手動起動し、検証後に条件を本番へ戻す。

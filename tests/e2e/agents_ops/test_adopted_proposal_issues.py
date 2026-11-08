@@ -795,7 +795,7 @@ def test_checklist_recovers_rewrite_between_get_and_patch_once(
                 ),
             )
             # The rewrite workflow has also published its final label before our PATCH.
-            h.gh.issues[n]["labels"].append({"name": "rewrite:done"})
+            h.gh.issues[n]["labels"].append({"name": "supplement:done"})
 
     h.gh.before_body_patch = interrupt
     result = h.run()
@@ -806,7 +806,7 @@ def test_checklist_recovers_rewrite_between_get_and_patch_once(
         == "Geminiが書き直した重要な説明。"
     )
     assert f"#{child}" in h.gh.issues[parent]["body"]
-    assert {"name": "rewrite:done"} in h.gh.issues[parent]["labels"]
+    assert {"name": "supplement:done"} in h.gh.issues[parent]["labels"]
     assert [event["state"] for event in result.checklist_updates] == [
         "interrupted",
         "reapplied",

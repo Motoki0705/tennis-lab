@@ -10,11 +10,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["kind", "original", "rewritten", "explanation"],
+        "required": ["kind", "original", "supplemented", "explanation"],
         "properties": {
           "kind": {"enum": ["addition", "deletion", "change"]},
           "original": {"type": "string"},
-          "rewritten": {"type": "string"},
+          "supplemented": {"type": "string"},
           "explanation": {"type": "string", "minLength": 1}
         }
       }

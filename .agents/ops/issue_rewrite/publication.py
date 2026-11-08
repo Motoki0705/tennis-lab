@@ -66,8 +66,8 @@ def diagnostic_differences(
             "original": public_text(item["original"])
             if item["original"] in original
             else "[non-excerpt omitted]",
-            "rewritten": public_text(item["rewritten"])
-            if item["rewritten"] in candidate
+            "supplemented": public_text(item["supplemented"])
+            if item["supplemented"] in candidate
             else "[non-excerpt omitted]",
         }
         for item in verdict["differences"]
@@ -82,7 +82,7 @@ def summary(path: Path | None, report: dict[str, Any]) -> None:
 
     with path.open("a", encoding="utf-8") as handle:
         handle.write(
-            "## Issue rewrite\n\n<pre>"
+            "## Issue supplement\n\n<pre>"
             + html.escape(
                 json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2)
             )

@@ -26,8 +26,6 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / ".agents/ops"), str(ROOT / ".agents/ops/lib")]
 cli: Any = importlib.import_module("issue_rewrite.cli")
 pipeline: Any = importlib.import_module("issue_rewrite.pipeline")
-invariants: Any = importlib.import_module("issue_rewrite.invariants")
-markdown: Any = importlib.import_module("issue_rewrite.markdown")
 github: Any = importlib.import_module("issue_rewrite.github")
 publication: Any = importlib.import_module("issue_rewrite.publication")
 issue_format: Any = importlib.import_module("issues.format")
@@ -55,324 +53,6 @@ def original() -> str:
                 "依存関係・進め方": "先行依存なし。",
             }
         )
-    )
-
-
-@pytest.mark.parametrize(
-    ("old", "new", "rule"),
-    [
-        ("## 全体のスコープ", "## 別のスコープ", "required_sections"),
-        ("未着手。", "開始済み。", "managed_section"),
-        ("> 続きも保つ。", "> 続きは変える。", "quotes"),
-        ("metadata: a  b", "metadata: a b", "html_comments"),
-        ("value = 17", "value=17", "fenced_code"),
-        ("`model_v2`", "`model_v3`", "inline_code"),
-        ("#17 を", "#18 を", "references"),
-        ("/guide で", "/other で", "urls"),
-        ("@reviewer と", "@other と", "mentions"),
-        ("2.5 秒", "2.6 秒", "numbers"),
-        ("- [ ] 推論", "- [x] 推論", "checkboxes"),
-        ("- [ ] 推論", "- [ ] 新しい項目\n- [ ] 推論", "checkboxes"),
-        ("確認する。@reviewer", "確認する。#17 @reviewer", "references"),
-    ],
-)
-def test_each_invariant_rejects_a_concrete_violation(
-    original: str, old: str, new: str, rule: str
-) -> None:
-    errors = invariants.check_invariants(original, original.replace(old, new, 1))
-    assert any(error["rule"] == rule and error["detail"] for error in errors), errors
-
-
-def test_required_order_and_body_validation_are_independent(original: str) -> None:
-    swapped = (
-        original.replace("## 全体のスコープ", "## temporary")
-        .replace("## 全体方針・合意事項", "## 全体のスコープ")
-        .replace("## temporary", "## 全体方針・合意事項")
-    )
-    assert any(
-        x["rule"] == "required_sections"
-        for x in invariants.check_invariants(original, swapped)
-    )
-    invalid = original.replace("未分割（子issue未作成）", "broken child row")
-    errors = invariants.check_invariants(original, invalid)
-    assert any(
-        x["rule"] == "validate_body" and "child checklist" in x["detail"]
-        for x in errors
-    )
-
-
-def test_rephrasing_ordered_list_renumbering_and_nonrequired_subheadings_pass(
-    original: str,
-) -> None:
-    candidate = (
-        original.replace("確認する。@reviewer", "分かりやすく確認する。@reviewer")
-        .replace("1. 準備", "9. 準備")
-        .replace("2. 確認", "10. 確認")
-        .replace("先行依存なし。", "### 進め方\n\n先行依存はない。")
-    )
-    assert invariants.check_invariants(original, candidate) == []
-
-
-@pytest.mark.parametrize(
-    "code",
-    [
-        pytest.param(
-            "- item\n\n    ~~~python\n    result = value\n    ~~~", id="list-tilde"
-        ),
-        pytest.param(
-            "- item\n\n    ```python\n    result = value\n    ```", id="list-backtick"
-        ),
-        pytest.param(
-            "- outer\n    - inner\n\n        ~~~python\n        result = value\n        ~~~",
-            id="nested-tilde",
-        ),
-        pytest.param(
-            "- outer\n    - inner\n\n        ```python\n        result = value\n        ```",
-            id="nested-backtick",
-        ),
-        pytest.param("> ~~~python\n> result = value\n> ~~~", id="quote-tilde"),
-        pytest.param("> ```python\n> result = value\n> ```", id="quote-backtick"),
-        pytest.param("    result = value", id="indented-four"),
-        pytest.param("        result = value", id="indented-eight"),
-        pytest.param("- item\n\n      result = value", id="list-indented"),
-        pytest.param(
-            "- outer\n    - inner\n\n          result = value", id="nested-indented"
-        ),
-        pytest.param(">     result = value", id="quote-indented"),
-        pytest.param(
-            "- item\n\n    ~~~python\n    result = value", id="list-unclosed-tilde"
-        ),
-        pytest.param(
-            "- item\n\n    ```python\n    result = value", id="list-unclosed-backtick"
-        ),
-        pytest.param("> ~~~python\n> result = value", id="quote-unclosed-tilde"),
-        pytest.param("> ```python\n> result = value", id="quote-unclosed-backtick"),
-    ],
-)
-def test_container_code_preserves_every_source_character(
-    original: str, code: str
-) -> None:
-    body = original.replace("インラインは", code + "\n\nインラインは")
-    assert invariants.check_invariants(body, body) == []
-    changed = body.replace("result = value", "result= value")
-    errors = invariants.check_invariants(body, changed)
-    assert any(error["rule"] in {"fenced_code", "indented_code"} for error in errors), (
-        errors
-    )
-
-
-@pytest.mark.parametrize("marker", ["~~~", "```"])
-def test_unclosed_fence_source_is_protected_through_eof(marker: str) -> None:
-    body = f"{marker}python\nresult = value\n`not inline`\n"
-    protected = invariants.protected(body)
-    assert protected["fenced_code"] == [body]
-    assert protected["inline_code"] == []
-    assert protected != invariants.protected(
-        body.replace("result = value", "result=value")
-    )
-
-
-def test_inline_code_uses_parser_spans_and_keeps_raw_whitespace() -> None:
-    body = "` outside ` and ``a\n b``.\n\n- item\n\n    ~~~\n    `inside`\n    ~~~\n"
-    assert invariants.protected(body)["inline_code"] == ["` outside `", "``a\n b``"]
-
-
-def test_unicode_line_separator_does_not_hide_fence_change(original: str) -> None:
-    example = "a\u2028b\u2028c\n\n~~~\nresult = value\n~~~\n"
-    body = original.replace("インラインは", example + "\nインラインは")
-    assert invariants.check_invariants(body, body) == []
-    errors = invariants.check_invariants(
-        body, body.replace("result = value", "result= value")
-    )
-    assert any(error["rule"] == "fenced_code" for error in errors), errors
-
-
-@pytest.mark.parametrize(
-    "separator",
-    [
-        pytest.param("\u2028", id="line-separator"),
-        pytest.param("\u2029", id="paragraph-separator"),
-        pytest.param("\u0085", id="next-line"),
-        pytest.param("\v", id="vertical-tab"),
-        pytest.param("\f", id="form-feed"),
-        pytest.param("\r", id="cr"),
-        pytest.param("\r\n", id="crlf"),
-        pytest.param("\n", id="lf"),
-        pytest.param("\x1c", id="file-separator"),
-        pytest.param("\x1d", id="group-separator"),
-        pytest.param("\x1e", id="record-separator"),
-        pytest.param("\0", id="nul"),
-    ],
-)
-def test_source_line_maps_preserve_code_and_quotes_in_all_containers(
-    original: str,
-    separator: str,
-) -> None:
-    newline = separator if separator in {"\r", "\r\n"} else "\n"
-    example = (
-        (
-            "a{separator}b{separator}c\n\n"
-            "~~~\nresult = value\n~~~\n\n"
-            "    plain_code = value\n\n"
-            "> a{separator}b{separator}c\n>\n"
-            "> ~~~\n> quoted_code = value\n> ~~~\n>\n"
-            ">     quoted_indent = value\n>\n> quote target\n\n"
-            "- a{separator}b{separator}c\n\n"
-            "    ~~~\n    list_code = value\n    ~~~\n\n"
-            "      list_indent = value\n\n"
-        )
-        .replace("\n", newline)
-        .format(separator=separator)
-    )
-    body = original.replace("インラインは", example + "\nインラインは")
-    assert invariants.check_invariants(body, body) == []
-    fragments = invariants.protected(body)
-    assert (
-        "~~~\nresult = value\n~~~\n".replace("\n", newline) in fragments["fenced_code"]
-    )
-    assert (
-        "    plain_code = value\n".replace("\n", newline) in fragments["indented_code"]
-    )
-    assert any(f"> a{separator}b{separator}c" in quote for quote in fragments["quotes"])
-    for text, rule in (
-        ("result = value", "fenced_code"),
-        ("plain_code = value", "indented_code"),
-        ("quoted_code = value", "fenced_code"),
-        ("quoted_indent = value", "indented_code"),
-        ("list_code = value", "fenced_code"),
-        ("list_indent = value", "indented_code"),
-        ("quote target", "quotes"),
-    ):
-        changed = body.replace(text, text.replace(" ", "", 1), 1)
-        errors = invariants.check_invariants(body, changed)
-        assert any(error["rule"] == rule for error in errors), (text, errors)
-
-
-@pytest.mark.parametrize("drift", ["added_line", "missing_line", "nul_replacement"])
-def test_normalization_drift_fails_before_source_slicing(
-    original: str,
-    monkeypatch: pytest.MonkeyPatch,
-    drift: str,
-) -> None:
-    from markdown_it.rules_core.normalize import normalize
-
-    parser_type = markdown.MarkdownIt
-
-    def parser(*args: Any, **kwargs: Any) -> Any:
-        instance = parser_type(*args, **kwargs)
-
-        def normalize_with_drift(state: Any) -> None:
-            normalize(state)
-            if drift == "added_line":
-                state.src += "\n"
-            elif drift == "missing_line":
-                state.src = state.src.replace("\n", "", 1)
-            else:
-                state.src = state.src.replace("\ufffd", "?")
-
-        instance.core.ruler.at("normalize", normalize_with_drift)
-        return instance
-
-    monkeypatch.setattr(markdown, "MarkdownIt", parser)
-    body = original.replace("インラインは", "NUL: \0\n\nインラインは")
-    with pytest.raises(ValueError, match="markdown_source_line_mapping_changed"):
-        invariants.check_invariants(body, body)
-
-
-@pytest.mark.parametrize(
-    ("before", "after", "changed"),
-    [
-        (
-            "[参照](https://example.org/method(alpha))",
-            "[参照](https://example.org/method(beta))",
-            True,
-        ),
-        (
-            "[参照](<https://example.org/method(alpha)>)",
-            "[参照](<https://example.org/method(beta)>)",
-            True,
-        ),
-        ("https://example.org/guide", "**https://example.org/guide**", False),
-        ("https://example.org/guide", "<https://example.org/guide>", False),
-        (
-            "[https://example.org/source](https://example.org/target)",
-            "[https://example.org/other](https://example.org/target)",
-            True,
-        ),
-        (
-            "![https://example.org/source](https://example.org/image)",
-            "![https://example.org/other](https://example.org/image)",
-            True,
-        ),
-        ("https://example.org/guide", "~~https://example.org/guide~~", False),
-        (
-            "https://example.org/guide",
-            "| 参照 |\n| --- |\n| https://example.org/guide |",
-            False,
-        ),
-        (
-            '<a href="https://example.org/method(alpha)">参照</a>',
-            '<a href="https://example.org/method(beta)">参照</a>',
-            True,
-        ),
-        (
-            "https://example.org/method(alpha).",
-            "**https://example.org/method(alpha)**.",
-            False,
-        ),
-        (
-            "[参照](https://example.org/method(alpha))",
-            "[参照][doc]\n\n[doc]: https://example.org/method(alpha)",
-            False,
-        ),
-    ],
-)
-def test_urls_preserve_complete_destinations_and_ignore_markdown_decoration(
-    original: str, before: str, after: str, changed: bool
-) -> None:
-    source = original.replace("先行依存なし。", "関連資料: " + before)
-    candidate = source.replace(before, after)
-    errors = invariants.check_invariants(source, candidate)
-    assert any(error["rule"] == "urls" for error in errors) is changed
-    if not changed:
-        assert errors == []
-
-
-@pytest.mark.parametrize(
-    "quote",
-    [
-        "> 引用の先頭\nlazy continuation\n",
-        "> 外側の引用\n> > 内側の引用\nlazy continuation\n",
-        "> - 引用内の項目\n>   続き\nlazy continuation\n",
-    ],
-)
-def test_quote_lazy_continuations_are_protected_as_raw_blocks(
-    original: str, quote: str
-) -> None:
-    source = original.replace("> 人間の引用はそのまま。\n> 続きも保つ。\n", quote)
-    candidate = source.replace("lazy continuation", "changed continuation")
-    errors = invariants.check_invariants(source, candidate)
-    assert any(
-        item["rule"] == "quotes" and "continuation" in item["detail"] for item in errors
-    )
-    assert (
-        invariants.check_invariants(
-            source, source.replace("先行依存なし。", "先行する依存はない。")
-        )
-        == []
-    )
-
-
-def test_protected_fragments_and_managed_section_whitespace_are_exact(
-    original: str,
-) -> None:
-    fragments = invariants.protected(original)
-    assert fragments["inline_code"] == ["`model_v2`", "`` `nested` ``"]
-    assert fragments["fenced_code"] == ["```python\n## 見出しの例\nvalue = 17\n```\n"]
-    candidate = original.replace("\n\n未着手。", "\n未着手。")
-    assert any(
-        x["rule"] == "managed_section"
-        for x in invariants.check_invariants(original, candidate)
     )
 
 
@@ -458,7 +138,7 @@ class RewriteEnv:
     root: Path
     repo: Path
     original: str
-    rewritten: str
+    supplemented: str
     agy: Path
 
     def state(self) -> dict[str, Any]:
@@ -491,9 +171,18 @@ class RewriteEnv:
             json.dumps([{"structured_output": output} for output in outputs])
         )
 
-    def writer(self, body: str | None = None) -> dict[str, Any]:
+    def writer(
+        self, content: str | None = None, *, after: str = "## 目的・背景"
+    ) -> dict[str, Any]:
         return {
-            "body": body if body is not None else self.rewritten,
+            "supplements": [
+                {
+                    "after": after,
+                    "content": content
+                    if content is not None
+                    else "背景の根拠は [guide](https://example.invalid/background) にある。7秒の例。",
+                }
+            ],
             "notes": "private-log conversation_id=private-conversation /home/private-person/token.json",
         }
 
@@ -621,7 +310,11 @@ def rewrite_env(
         tmp_path,
         repo,
         original,
-        original.replace("確認する。@reviewer", "分かりやすく確認する。@reviewer"),
+        original.replace(
+            "## 目的・背景",
+            "## 目的・背景\n\n<details>\n<summary>Geminiによる補足・背景情報</summary>\n\n背景の根拠は [guide](https://example.invalid/background) にある。7秒の例。\n\n</details>\n",
+            1,
+        ),
         tmp_path / "agy",
     )
     env.save(
@@ -633,7 +326,7 @@ def rewrite_env(
                 "id": 10,
                 "number": 1,
                 "repository_url": "https://api.github.com/repos/o/r",
-                "title": "[書き直し] 本文を確認する",
+                "title": "[補足追加] 本文を確認する",
                 "body": original,
                 "labels": [{"name": "issue:parent"}, {"name": "enhancement"}],
                 "created_at": "2026-10-31T00:00:00Z",
@@ -683,7 +376,7 @@ def test_model_tampering_fails_before_any_body_write(
     assert reason in {item["rule"] for item in bundle["report"]["reasons"]}
     assert len(env.calls("agy")) == turn + 1
     assert env.run("fail") == 0
-    assert "rewrite:failed" in labels(env)
+    assert "supplement:failed" in labels(env)
     assert env.state()["issue"]["body"] == env.original
     assert not any(call["method"] == "PATCH" for call in env.calls("gh"))
     assert all(not Path(call["cwd"]).exists() for call in env.calls("workspace"))
@@ -709,7 +402,7 @@ def test_workspace_changes_are_discarded_between_turns_and_do_not_affect_results
     )
     head = git(env.repo, "rev-parse", "HEAD")
     assert env.run("rewrite") == env.run("apply") == 0
-    assert env.state()["issue"]["body"] == env.rewritten
+    assert env.state()["issue"]["body"] == env.supplemented
     workspaces = env.calls("workspace")
     assert len(workspaces) == 2
     assert len({call["cwd"] for call in workspaces}) == 2
@@ -747,8 +440,8 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert env.run("rewrite") == 0
     assert env.state()["issue"]["body"] == env.original and env.mutations() == []
     assert env.run("apply") == 0
-    assert env.state()["issue"]["body"] == env.rewritten
-    assert labels(env) == {"issue:parent", "enhancement", "rewrite:done"}
+    assert env.state()["issue"]["body"] == env.supplemented
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:done"}
     assert len(env.calls("agy")) == 2
     assert all("--resume" not in call for call in env.calls("agy"))
     summary = (env.root / "summary.md").read_text()
@@ -765,7 +458,7 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert '"total_tokens": 120' in exported
     assert (env.root / "private-1/input.json").is_file()
     assert (env.root / "private-1").stat().st_mode & 0o777 == 0o700
-    assert env.mutations()[0]["payload"] == {"body": env.rewritten}
+    assert env.mutations()[0]["payload"] == {"body": env.supplemented}
     calls = env.calls("gh")
     patch = next(i for i, call in enumerate(calls) if call["method"] == "PATCH")
     assert "/comments?" in calls[patch - 1]["endpoint"]
@@ -814,7 +507,7 @@ def test_hook_recovery_records_commands_and_keeps_failures_private(
     assert [entry["command"] for entry in capture["commands"]] == writer["commands"]
     if ending == "success":
         assert env.run("apply") == 0
-        assert env.state()["issue"]["body"] == env.rewritten
+        assert env.state()["issue"]["body"] == env.supplemented
     else:
         failure = json.loads((env.root / "private-1/failure.json").read_text())
         assert failure["reason"] == ("timeout" if ending == "timeout" else "cli_error")
@@ -914,7 +607,7 @@ def test_unsafe_user_settings_keep_original_body_and_finalize_failed(
     }
     assert not env.calls("agy") and not env.mutations()
     assert env.run("fail") == 0
-    assert "rewrite:failed" in labels(env)
+    assert "supplement:failed" in labels(env)
     assert env.state()["issue"]["body"] == env.original
     assert not any(call["method"] == "PATCH" for call in env.calls("gh"))
     assert "agy_unsafe_user_settings" in (env.root / "summary.md").read_text()
@@ -926,9 +619,7 @@ def test_a_single_repair_receives_the_actual_failure_and_can_succeed(
 ) -> None:
     env = rewrite_env
     if failure == "invariant":
-        env.turns(
-            env.writer(env.rewritten.replace("#17 を", "#18 を")), env.writer(), PASS
-        )
+        env.turns(env.writer(after="原文に存在しないanchor"), env.writer(), PASS)
         expected = 3
     else:
         rejected = {
@@ -937,15 +628,13 @@ def test_a_single_repair_receives_the_actual_failure_and_can_succeed(
                 {
                     "kind": "addition",
                     "original": "",
-                    "rewritten": "学習も対象。",
+                    "supplemented": "学習も対象。",
                     "explanation": "学習が追加された。",
                 }
             ],
         }
         env.turns(
-            env.writer(
-                env.rewritten.replace("先行依存なし。", "先行依存なし。学習も対象。")
-            ),
+            env.writer("学習も対象。"),
             rejected,
             env.writer(),
             PASS,
@@ -954,11 +643,13 @@ def test_a_single_repair_receives_the_actual_failure_and_can_succeed(
     assert env.run("rewrite") == 0
     assert len(env.calls("agy")) == expected
     last_writer = (env.root / "private-1/writer-2.md").read_text()
-    assert "previous_body" in last_writer and "violations" in last_writer
+    assert "previous_supplements" in last_writer and "violations" in last_writer
     assert (
-        "references" if failure == "invariant" else "学習が追加された。"
+        "supplement_anchor_must_be_unique_in_original"
+        if failure == "invariant"
+        else "学習が追加された。"
     ) in last_writer
-    assert env.run("apply") == 0 and "rewrite:done" in labels(env)
+    assert env.run("apply") == 0 and "supplement:done" in labels(env)
 
 
 @pytest.mark.parametrize(
@@ -970,15 +661,15 @@ def test_exhausted_repairs_keep_original_body_and_record_failure(
     env = rewrite_env
     if failure == "invariant":
         env.turns(
-            env.writer(env.rewritten.replace("2.5 秒", "3.5 秒")),
-            env.writer(env.rewritten.replace("2.5 秒", "4.5 秒")),
+            env.writer(after="存在しないanchor 3"),
+            env.writer(after="存在しないanchor 4"),
         )
         expected = 2
     else:
         difference = {
             "kind": "change",
             "original": "先行依存なし。",
-            "rewritten": "先行依存なし。",
+            "supplemented": "先行依存なし。",
             "explanation": "private-log conversation_id=private-conversation",
         }
         rejected = {
@@ -990,9 +681,9 @@ def test_exhausted_repairs_keep_original_body_and_record_failure(
     assert env.run("rewrite") == 1
     assert env.bundle()["status"] == "failed" and env.bundle()["body"] is None
     assert env.run("fail") == 0
-    assert env.state()["issue"]["body"] == env.original and "rewrite:failed" in labels(
-        env
-    )
+    assert env.state()["issue"][
+        "body"
+    ] == env.original and "supplement:failed" in labels(env)
     assert all("body" not in call["payload"] for call in env.mutations())
     assert len(env.calls("agy")) == expected
     assert "repair_exhausted" in (env.root / "summary.md").read_text()
@@ -1001,7 +692,11 @@ def test_exhausted_repairs_keep_original_body_and_record_failure(
 
 @pytest.mark.parametrize(
     "bad_turn",
-    [{"status": "SUCCESS"}, {"structured_output": {"body": "missing notes"}}],
+    [
+        {"status": "SUCCESS"},
+        {"structured_output": {"body": "legacy rewrite", "notes": ""}},
+        {"structured_output": {"supplements": [], "notes": "", "body": "extra"}},
+    ],
 )
 def test_missing_structured_output_or_bad_schema_never_reaches_verifier(
     rewrite_env: RewriteEnv, bad_turn: dict[str, Any]
@@ -1010,7 +705,7 @@ def test_missing_structured_output_or_bad_schema_never_reaches_verifier(
     (env.root / "turns.json").write_text(json.dumps([bad_turn]))
     assert env.run("rewrite") == 1
     assert len(env.calls("agy")) == 1
-    assert env.run("fail") == 0 and "rewrite:failed" in labels(env)
+    assert env.run("fail") == 0 and "supplement:failed" in labels(env)
     assert env.state()["issue"]["body"] == env.original
 
 
@@ -1027,14 +722,12 @@ def test_unsafe_candidate_is_never_exported_even_on_failure(
     rewrite_env: RewriteEnv, unsafe: str
 ) -> None:
     env = rewrite_env
-    env.turns(
-        env.writer(env.rewritten.replace("先行依存なし。", "先行依存なし。" + unsafe))
-    )
+    env.turns(env.writer("補足 " + unsafe))
     assert env.run("rewrite") == 1
     exported = (env.root / "handoff-1.json").read_text()
     assert unsafe not in exported and env.bundle()["source"] is None
     assert unsafe not in (env.root / "summary.md").read_text()
-    assert env.run("fail") == 0 and "rewrite:failed" in labels(env)
+    assert env.run("fail") == 0 and "supplement:failed" in labels(env)
     assert env.state()["issue"]["body"] == env.original
 
 
@@ -1128,7 +821,7 @@ def test_existing_execution_records_skip_without_agent_calls_or_body_writes(
     assert env.calls("agy") == []
     assert env.run("apply") == 0
     assert (
-        "rewrite:skipped" in labels(env)
+        "supplement:skipped" in labels(env)
         and env.state()["issue"]["body"] == env.original
     )
 
@@ -1161,7 +854,7 @@ def test_corrupt_owned_judgement_fails_closed_instead_of_using_substring_detecti
     env.save(state)
     assert env.run("rewrite") == 1 and env.calls("agy") == []
     assert env.mutations() == [] and env.state()["issue"]["body"] == env.original
-    assert env.run("fail") == 0 and "rewrite:failed" in labels(env)
+    assert env.run("fail") == 0 and "supplement:failed" in labels(env)
     assert "invalid_execution_record" in (env.root / "summary.md").read_text()
 
 
@@ -1181,7 +874,7 @@ def test_non_targets_and_already_final_automatic_runs_do_nothing(
     elif change == "disabled":
         state["variable_status"] = 404
     else:
-        state["issue"]["labels"].append({"name": "rewrite:" + change})
+        state["issue"]["labels"].append({"name": "supplement:" + change})
     env.save(state)
     assert env.run("rewrite") == 0 and env.bundle()["status"] == "not_target"
     assert env.run("apply") == 0
@@ -1193,16 +886,16 @@ def test_manual_retry_of_failed_issue_replaces_only_the_final_label(
 ) -> None:
     env = rewrite_env
     state = env.state()
-    state["issue"]["labels"].append({"name": "rewrite:failed"})
+    state["issue"]["labels"].append({"name": "supplement:failed"})
     env.save(state)
     assert env.run("prepare", manual=True) == 0
-    assert "rewrite:failed" not in labels(env)
+    assert "supplement:failed" not in labels(env)
     parent_reader = importlib.import_module("parent.github").GitHub("o/r")
     with pytest.raises(ValueError, match="pending"):
         importlib.import_module("parent.rewrite").require_final(parent_reader, 1)
     assert env.run("rewrite") == 0
     assert env.run("apply") == 0
-    assert labels(env) == {"issue:parent", "enhancement", "rewrite:done"}
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:done"}
 
 
 @pytest.mark.parametrize(
@@ -1213,7 +906,7 @@ def test_manual_retry_closes_gate_before_records_and_checks_again_before_patch(
 ) -> None:
     env = rewrite_env
     state = env.state()
-    state["issue"]["labels"].append({"name": "rewrite:failed"})
+    state["issue"]["labels"].append({"name": "supplement:failed"})
     if timing == "before_prepare":
         state["comments"] = [comment(agreement())]
     elif timing == "during_label_removal":
@@ -1237,7 +930,7 @@ def test_manual_retry_closes_gate_before_records_and_checks_again_before_patch(
         assert env.run("apply") == 0
     else:
         assert not env.calls("agy")
-    assert labels(env) == {"issue:parent", "enhancement", "rewrite:skipped"}
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:skipped"}
     assert env.state()["issue"]["body"] == env.original
     assert not any(call["method"] == "PATCH" for call in env.mutations())
 
@@ -1247,7 +940,7 @@ def test_readonly_generation_cannot_bypass_manual_prepare(
 ) -> None:
     env = rewrite_env
     state = env.state()
-    state["issue"]["labels"].append({"name": "rewrite:failed"})
+    state["issue"]["labels"].append({"name": "supplement:failed"})
     env.save(state)
     assert env.run("rewrite") == 0 and env.bundle()["status"] == "not_target"
     assert not env.calls("agy") and not env.mutations()
@@ -1258,18 +951,18 @@ def test_manual_prepare_stops_if_human_skip_appears_during_failed_removal(
 ) -> None:
     env = rewrite_env
     state = env.state()
-    state["issue"]["labels"].append({"name": "rewrite:failed"})
-    state["label_delete_race"] = ["rewrite:skipped", "needs-human"]
+    state["issue"]["labels"].append({"name": "supplement:failed"})
+    state["label_delete_race"] = ["supplement:skipped", "needs-human"]
     env.save(state)
     assert env.run("prepare", manual=True) == 1
     assert labels(env) == {
         "issue:parent",
         "enhancement",
-        "rewrite:skipped",
+        "supplement:skipped",
         "needs-human",
     }
     assert not env.calls("agy") and env.state()["issue"]["body"] == env.original
-    assert "rewrite_label_conflict" in (env.root / "summary.md").read_text()
+    assert "supplement_label_conflict" in (env.root / "summary.md").read_text()
 
 
 def test_final_label_addition_preserves_unrelated_concurrent_labels(
@@ -1280,13 +973,18 @@ def test_final_label_addition_preserves_unrelated_concurrent_labels(
     state["label_add_race"] = ["needs-human"]
     env.save(state)
     client = github.GitHub("o/r", enabled_since=state["enabled_since"])
-    assert pipeline.final_label(client, 1, "rewrite:done") == "done"
-    assert labels(env) == {"issue:parent", "enhancement", "needs-human", "rewrite:done"}
+    assert pipeline.final_label(client, 1, "supplement:done") == "done"
+    assert labels(env) == {
+        "issue:parent",
+        "enhancement",
+        "needs-human",
+        "supplement:done",
+    }
     assert env.mutations() == [
         {
             "method": "POST",
             "endpoint": "repos/o/r/issues/1/labels",
-            "payload": {"labels": ["rewrite:done"]},
+            "payload": {"labels": ["supplement:done"]},
         }
     ]
 
@@ -1300,15 +998,15 @@ def test_final_label_conflict_stops_without_removing_human_skip(
     if timing == "before_add":
         state["mutation"] = {
             "read": 1,
-            "add_labels": ["rewrite:skipped", "needs-human"],
+            "add_labels": ["supplement:skipped", "needs-human"],
         }
     else:
-        state["label_add_race"] = ["rewrite:skipped", "needs-human"]
+        state["label_add_race"] = ["supplement:skipped", "needs-human"]
     env.save(state)
     client = github.GitHub("o/r", enabled_since=state["enabled_since"])
-    with pytest.raises(ValueError, match="rewrite_label_conflict"):
-        pipeline.final_label(client, 1, "rewrite:done")
-    assert {"rewrite:skipped", "needs-human"} <= labels(env)
+    with pytest.raises(ValueError, match="supplement_label_conflict"):
+        pipeline.final_label(client, 1, "supplement:done")
+    assert {"supplement:skipped", "needs-human"} <= labels(env)
     assert not any(call["method"] in {"PATCH", "DELETE"} for call in env.mutations())
     assert len(env.mutations()) == (0 if timing == "before_add" else 1)
 
@@ -1332,7 +1030,7 @@ def test_agreement_added_during_generation_is_rechecked_before_apply(
     state = env.state()
     state["comments"] = [comment(agreement())]
     env.save(state)
-    assert env.run("apply") == 0 and "rewrite:skipped" in labels(env)
+    assert env.run("apply") == 0 and "supplement:skipped" in labels(env)
     assert env.state()["issue"]["body"] == env.original
 
 
@@ -1352,9 +1050,7 @@ def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts
     assert labels(env) == {"issue:parent", "enhancement"}
     (env.root / "agy-calls.jsonl").unlink()
     env.turns(
-        env.writer(
-            latest.replace("確認する。@reviewer", "分かりやすく確認する。@reviewer")
-        ),
+        env.writer(),
         PASS,
     )
     assert env.run("rewrite", attempt=2) == 0
@@ -1367,7 +1063,7 @@ def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts
     env.save(state)
     assert env.run("apply", attempt=2) == 1
     assert env.run("fail", attempt=2) == 0
-    assert "rewrite:failed" in labels(env)
+    assert "supplement:failed" in labels(env)
     assert not any("/dispatches" in call["endpoint"] for call in env.calls("gh"))
     assert "人間がさらに編集した。" in env.state()["issue"]["body"]
     assert "body_conflict_retry_exhausted" in (env.root / "summary.md").read_text()
@@ -1387,15 +1083,13 @@ def test_body_conflict_static_retry_can_finish_done_without_dispatch(
     assert labels(env) == {"issue:parent", "enhancement"}
     (env.root / "agy-calls.jsonl").unlink()
     env.turns(
-        env.writer(
-            latest.replace("確認する。@reviewer", "分かりやすく確認する。@reviewer")
-        ),
+        env.writer(),
         PASS,
     )
     assert env.run("rewrite", attempt=2) == 0
     assert env.bundle(2)["source"]["body"] == latest
     assert env.run("apply", attempt=2) == 0
-    assert "rewrite:done" in labels(env)
+    assert "supplement:done" in labels(env)
     assert not any("/dispatches" in call["endpoint"] for call in env.calls("gh"))
     assert (env.root / "github-output").read_text().endswith("needs_retry=false\n")
 
@@ -1416,12 +1110,12 @@ def test_interference_between_read_and_patch_is_failure_without_rollback(
     assert env.run("fail") == int(missing_history)
     if missing_history:
         assert labels(env) == {"issue:parent", "enhancement"}
-        assert env.state()["issue"]["body"] == env.rewritten
+        assert env.state()["issue"]["body"] == env.supplemented
         assert "write_state_unconfirmed" in (env.root / "summary.md").read_text()
         with pytest.raises(ValueError, match="pending"):
             env.require_final()
     else:
-        assert "rewrite:failed" in labels(env)
+        assert "supplement:failed" in labels(env)
     assert "interrupted_during_write" in (env.root / "summary.md").read_text()
     assert len([call for call in env.mutations() if "body" in call["payload"]]) == 1
     if interference == "after":
@@ -1472,7 +1166,7 @@ def test_failure_job_reconciles_history_after_apply_error(
         invalid_response=failure == "invalid",
     )
     assert env.run("apply") == 1
-    expected_body = env.original if failure == "before_patch" else env.rewritten
+    expected_body = env.original if failure == "before_patch" else env.supplemented
     assert env.state()["issue"]["body"] == expected_body
     assert labels(env) == {"issue:parent", "enhancement"}
     unconfirmed = failure in {"always", "invalid"}
@@ -1486,7 +1180,7 @@ def test_failure_job_reconciles_history_after_apply_error(
             env.require_final()
     else:
         final = "failed" if failure == "before_patch" else "done"
-        assert labels(env) == {"issue:parent", "enhancement", "rewrite:" + final}
+        assert labels(env) == {"issue:parent", "enhancement", "supplement:" + final}
         assert env.require_final()["body"] == expected_body
         if failure == "once":
             assert "confirmed_after_apply_error" in report
@@ -1509,11 +1203,11 @@ def test_failure_job_can_finalize_when_the_generation_artifact_is_missing(
     elif state_after_apply == "unavailable":
         env.fail_history(repeat=True)
     assert env.run("fail") == int(state_after_apply != "original")
-    expected_body = env.rewritten if state_after_apply == "written" else env.original
+    expected_body = env.supplemented if state_after_apply == "written" else env.original
     assert env.state()["issue"]["body"] == expected_body
     report = (env.root / "summary.md").read_text()
     if state_after_apply == "original":
-        assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+        assert labels(env) == {"issue:parent", "enhancement", "supplement:failed"}
         assert env.require_final()["body"] == env.original
         assert "workflow_job_failed" in report
     else:
@@ -1540,12 +1234,12 @@ def test_failure_job_rejects_a_corrupt_artifact_and_checks_write_state(
     assert unsafe not in report
     if written:
         assert labels(env) == {"issue:parent", "enhancement"}
-        assert env.state()["issue"]["body"] == env.rewritten
+        assert env.state()["issue"]["body"] == env.supplemented
         assert "write_state_unconfirmed" in report
         with pytest.raises(ValueError, match="pending"):
             env.require_final()
     else:
-        assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+        assert labels(env) == {"issue:parent", "enhancement", "supplement:failed"}
         assert "invalid_failure_artifact" in report
         assert env.state()["issue"]["body"] == env.original
         assert env.require_final()["body"] == env.original
@@ -1563,7 +1257,7 @@ def test_failure_job_preserves_foreign_only_edits(rewrite_env: RewriteEnv) -> No
     assert env.run("apply") == 0
     assert "needs_retry=true" in (env.root / "github-output").read_text()
     assert env.run("fail") == 0
-    assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:failed"}
     assert env.state()["issue"]["body"] == "human's latest body"
     assert env.require_final()["body"] == "human's latest body"
     assert not any(call["method"] == "PATCH" for call in env.mutations())
@@ -1585,7 +1279,7 @@ def test_failure_job_with_invalid_execution_record_only_finalizes_without_our_wr
     body = env.state()["issue"]["body"]
     expected_body = {
         "unwritten": env.original,
-        "completed": env.rewritten,
+        "completed": env.supplemented,
         "interrupted": "human's latest body",
     }[write_state]
     assert body == expected_body
@@ -1603,7 +1297,7 @@ def test_failure_job_with_invalid_execution_record_only_finalizes_without_our_wr
         with pytest.raises(ValueError, match="pending"):
             env.require_final()
     else:
-        assert labels(env) == {"issue:parent", "enhancement", "rewrite:failed"}
+        assert labels(env) == {"issue:parent", "enhancement", "supplement:failed"}
         assert "invalid_execution_record" in report
         assert env.require_final()["body"] == env.original
     assert len([call for call in env.mutations() if call["method"] == "PATCH"]) == int(
@@ -1628,10 +1322,10 @@ def test_failure_job_preserves_a_concurrently_finalized_issue(
 ) -> None:
     env = rewrite_env
     state = env.state()
-    state["issue"]["labels"].append({"name": "rewrite:" + final})
+    state["issue"]["labels"].append({"name": "supplement:" + final})
     env.save(state)
     assert env.run("fail") == 0
-    assert "rewrite:failed" not in labels(env) and not env.mutations()
+    assert "supplement:failed" not in labels(env) and not env.mutations()
 
 
 @pytest.mark.parametrize(
@@ -1770,16 +1464,35 @@ def test_history_normalizes_author_for_first_edit(
     assert before["author"] == after["author"] == expected_login
 
 
+@pytest.mark.parametrize("tamper", ["body", "supplements", "legacy_schema"])
 def test_apply_revalidates_the_artifact_instead_of_trusting_its_ready_status(
     rewrite_env: RewriteEnv,
+    tamper: str,
 ) -> None:
     env = rewrite_env
     assert env.run("rewrite") == 0
     value = env.bundle()
-    value["body"] = env.rewritten.replace("#17 を", "#18 を")
+    if tamper == "body":
+        value["body"] = env.supplemented.replace("#17 を", "#18 を")
+    elif tamper == "supplements":
+        value["supplements"][0]["content"] = "別の補足。"
+    else:
+        value["schema_version"] = 1
     (env.root / "handoff-1.json").write_text(json.dumps(value))
     assert env.run("apply") == 1 and env.mutations() == []
     assert env.state()["issue"]["body"] == env.original
+
+
+def test_no_supplement_is_a_verified_noop_without_body_edit(
+    rewrite_env: RewriteEnv,
+) -> None:
+    env = rewrite_env
+    env.turns({"supplements": [], "notes": "背景の説明は十分。"}, PASS)
+    assert env.run("rewrite") == env.run("apply") == 0
+    assert env.state()["issue"]["body"] == env.original
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:done"}
+    assert env.bundle()["supplements"] == []
+    assert not any(call["method"] == "PATCH" for call in env.mutations())
 
 
 def test_workflow_guards_and_permission_boundary_are_structural() -> None:
@@ -1939,7 +1652,7 @@ def test_manual_validation_uses_production_repair_flow_without_github_writes(
     profile.write_text('{"agentMode":"auto"}')
     runner = validation.Runner(env.root, env.agy, validation.saved_digest())
     runner.phase, runner.number = "pipeline", 1
-    env.turns(env.writer(env.rewritten.replace("#17 を", "#18 を")), env.writer(), PASS)
+    env.turns(env.writer(after="原文に存在しないanchor"), env.writer(), PASS)
     monkeypatch.setattr(pipeline, "run_headless", runner.turn)
     with runner.policy.scope():
         assert env.run("rewrite") == 0

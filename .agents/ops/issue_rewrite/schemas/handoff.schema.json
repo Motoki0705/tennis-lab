@@ -3,7 +3,7 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": 1
+      "const": 2
     },
     "repo": {
       "type": "string",
@@ -188,7 +188,7 @@
                 "required": [
                   "kind",
                   "original",
-                  "rewritten",
+                  "supplemented",
                   "explanation"
                 ],
                 "properties": {
@@ -202,7 +202,7 @@
                   "original": {
                     "type": "string"
                   },
-                  "rewritten": {
+                  "supplemented": {
                     "type": "string"
                   },
                   "explanation": {
@@ -271,14 +271,14 @@
                     "original": {
                       "type": "string"
                     },
-                    "rewritten": {
+                    "supplemented": {
                       "type": "string"
                     }
                   },
                   "required": [
                     "kind",
                     "original",
-                    "rewritten"
+                    "supplemented"
                   ]
                 }
               }
@@ -446,6 +446,37 @@
         "reasons",
         "turns"
       ]
+    },
+    "supplements": {
+      "anyOf": [
+        {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "after",
+              "content"
+            ],
+            "properties": {
+              "after": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60000
+              },
+              "content": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12000
+              }
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "required": [
@@ -457,7 +488,8 @@
     "source",
     "body",
     "verification",
-    "report"
+    "report",
+    "supplements"
   ],
   "$schema": "http://json-schema.org/draft-07/schema#"
 }

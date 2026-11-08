@@ -15,6 +15,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
+sys.path.insert(0, str(ROOT / ".agents/ops"))
 
 from agy_headless import (  # noqa: E402 - standalone script bootstraps the ops imports
     DEFAULT_AGY,
@@ -23,6 +24,46 @@ from agy_headless import (  # noqa: E402 - standalone script bootstraps the ops 
     run_headless,
 )
 from agy_permission_probe import ProbeFailure, run_permission_probe  # noqa: E402
+
+
+def supplement_contract() -> dict[str, Any]:
+    """Check installed dependencies and production schemas without a model turn."""
+    from agent_output import OutputSchema
+    from issue_rewrite.invariants import (
+        Supplement,
+        check_invariants,
+        render_supplements,
+    )
+    from issues.format import render_parent_body
+
+    source = render_parent_body(
+        {
+            "目的・背景": "原文。  \n改行と空白を維持する。",
+            "全体のスコープ": "対象は背景の補足。対象外は要件の変更。",
+            "全体方針・合意事項": "未合意。",
+            "全体の完了条件": "- [ ] 原文の保存を確認する。",
+            "進捗概要": "未着手。",
+            "依存関係・進め方": "依存なし。",
+        }
+    )
+    supplements: list[Supplement] = [
+        {"after": "## 目的・背景", "content": "客観的な背景。"}
+    ]
+    package = ROOT / ".agents/ops/issue_rewrite"
+    OutputSchema(package / "schemas/writer.schema.json", agent="agy").validate(
+        {"supplements": supplements, "notes": "probe"}
+    )
+    OutputSchema(package / "schemas/verifier.schema.json", agent="agy").validate(
+        {"verdict": "pass", "differences": []}
+    )
+    candidate = render_supplements(source, supplements)
+    if check_invariants(
+        source, candidate, supplements=supplements
+    ) or not check_invariants(
+        source, candidate.replace("原文。", "変更。"), supplements=supplements
+    ):
+        raise ValueError("supplement_contract_failed")
+    return {"status": "passed", "stage": "supplement_contract"}
 
 
 def template_smoke(
@@ -94,7 +135,13 @@ def main() -> int:
     parser.add_argument("--config-file", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--timeout", type=float, default=300)
     parser.add_argument("--permissions-probe", action="store_true")
+    parser.add_argument("--supplement-contract", action="store_true")
     args = parser.parse_args()
+    if args.supplement_contract:
+        try:
+            return publish(supplement_contract())
+        except ValueError:
+            return publish({"status": "failed", "stage": "supplement_contract"})
     report: dict[str, Any]
     state = (
         Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
