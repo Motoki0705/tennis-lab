@@ -133,20 +133,26 @@ def test_invalid_arguments_are_rejected(tmp_path: Path, bad_args: list[str]) -> 
     assert result.returncode == 2
 
 
-def _codex_args(tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+def _agent_args(
+    tmp_path: Path, agent: str, *extra: str
+) -> subprocess.CompletedProcess[str]:
     work = tmp_path / "work"
     work.mkdir(exist_ok=True)
     prompt = tmp_path / "prompt.md"
     prompt.write_text("profile\n", encoding="utf-8")
     return _run(
         tmp_path,
-        "--agent", "codex",
+        "--agent", agent,
         "--cwd", str(work),
         "--prompt-file", str(prompt),
         "--out", str(tmp_path / "out.md"),
         "--log-dir", str(tmp_path / "logs"),
         *extra,
     )  # fmt: skip
+
+
+def _codex_args(tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]:
+    return _agent_args(tmp_path, "codex", *extra)
 
 
 def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
@@ -161,20 +167,25 @@ def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
     assert "profile=review" in result.stderr
 
 
-def test_audit_profile_enables_native_scouts_and_retains_session_logs(
+def test_audit_parent_uses_claude_with_read_only_tools(
     tmp_path: Path,
 ) -> None:
-    result = _codex_args(tmp_path, "--profile", "ops_report")
+    result = _agent_args(tmp_path, "claude", "--profile", "ops_report")
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text().splitlines()
-    assert args[args.index("--enable") + 1] == "multi_agent"
-    assert "--json" in args and "--ephemeral" not in args
-    assert "agents.max_threads=3" in args and "agents.max_depth=1" in args
-    assert "read-only" in args
-    assert not any("agents.scout" in a for a in args)  # child definition owns its model
-    rejected = _codex_args(tmp_path, "--profile", "ops_report", "--mode", "write")
+    assert args[args.index("--model") + 1] == "claude-opus-5-5"
+    assert args[args.index("--effort") + 1] == "xhigh"
+    assert args[args.index("--output-format") + 1] == "stream-json"
+    assert args[args.index("--tools") + 1 : args.index("--permission-mode")] == [
+        "Read", "Grep", "Glob"
+    ]
+    assert args[args.index("--permission-mode") + 1] == "dontAsk"
+    assert "--strict-mcp-config" in args
+    rejected = _agent_args(
+        tmp_path, "claude", "--profile", "ops_report", "--mode", "write"
+    )
     assert rejected.returncode == 2
-    assert "requires codex in read-only mode" in rejected.stderr
+    assert "requires read-only mode" in rejected.stderr
 
 
 @pytest.mark.parametrize(
@@ -525,7 +536,7 @@ def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
     ] + (["--disable", "multi_agent"] if profile == "review" else []) + ["-"]
 
 
-def test_audit_mcp_arguments_are_after_exec_and_only_on_audit_profile(
+def test_audit_mcp_arguments_are_after_exec_on_read_only_scout_profile(
     tmp_path: Path,
 ) -> None:
     config = tmp_path / "audit-mcp.json"
@@ -541,7 +552,7 @@ def test_audit_mcp_arguments_are_after_exec_and_only_on_audit_profile(
         )
     )
     result = _codex_args(
-        tmp_path, "--profile", "ops_report", "--mcp-config", str(config)
+        tmp_path, "--profile", "ops_scout", "--mcp-config", str(config)
     )
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text().splitlines()
@@ -552,7 +563,9 @@ def test_audit_mcp_arguments_are_after_exec_and_only_on_audit_profile(
     assert any(
         a.startswith("mcp_servers.ops_report.env.PYTHONPATH=") for a in overrides
     )
-    assert "agents.max_threads=3" in args and "agents.max_depth=1" in args
+    assert args[args.index("--model") + 1] == "gpt-6.1-sol"
+    assert 'model_reasoning_effort="max"' in args
+    assert args[args.index("multi_agent") - 1] == "--disable"
     assert (
         "--sandbox" in args and "--dangerously-bypass-approvals-and-sandbox" not in args
     )
@@ -567,6 +580,6 @@ def test_audit_explicit_connection_missing_or_malformed_never_falls_back(
     path = tmp_path / "connection.json"
     if connection is not None:
         path.write_text(connection)
-    result = _codex_args(tmp_path, "--profile", "ops_report", "--mcp-config", str(path))
+    result = _codex_args(tmp_path, "--profile", "ops_scout", "--mcp-config", str(path))
     assert result.returncode != 0, result.stderr
     assert not (tmp_path / "args.txt").exists()

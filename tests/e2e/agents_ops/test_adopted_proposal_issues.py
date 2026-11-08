@@ -392,12 +392,14 @@ class Harness:
             + Path(__file__).with_name("fake_organization_cli.py").read_text()
         )
         codex.chmod(0o700)
-        claude = bin_dir / "claude"
-        claude.write_text(
+        self.judgement_bin = tmp / "judgement-bin"
+        self.judgement_bin.mkdir()
+        judgement_cli = self.judgement_bin / "codex"
+        judgement_cli.write_text(
             f"#!{sys.executable}\n"
             + Path(__file__).with_name("fake_judgement_cli.py").read_text()
         )
-        claude.chmod(0o700)
+        judgement_cli.chmod(0o700)
         monkeypatch.setenv("PATH", str(bin_dir) + ":" + os.environ["PATH"])
         monkeypatch.setenv("CODEX_HOME", str(tmp / "codex-home"))
         monkeypatch.setenv("XDG_STATE_HOME", str(tmp / "state"))
@@ -506,13 +508,15 @@ class Harness:
             )
         )
         judgement: Any = importlib.import_module("dispatcher.judgement")
-        result: dict[str, Any] = judgement.run(
-            self.gh,
-            state.Store(self.tmp / "state/parent"),
-            self.root,
-            self.tmp / name,
-            apply=True,
-        )
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setenv("PATH", str(self.judgement_bin) + ":" + os.environ["PATH"])
+            result: dict[str, Any] = judgement.run(
+                self.gh,
+                state.Store(self.tmp / "state/parent"),
+                self.root,
+                self.tmp / name,
+                apply=True,
+            )
         return result
 
 
@@ -1740,7 +1744,12 @@ def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
         json.loads(line)
         for line in h.tmp.joinpath("judgement-calls.jsonl").read_text().splitlines()
     ]
-    assert len(calls) == 2 and all("--json-schema" in c["args"] for c in calls)
+    assert len(calls) == 2 and all("--output-schema" in c["args"] for c in calls)
+    assert all(
+        c["args"][c["args"].index("--model") + 1] == "gpt-6.1-sol"
+        and 'model_reasoning_effort="xhigh"' in c["args"]
+        for c in calls
+    )
     assert len(h.calls()) == 1  # Only the proposal organizer used a runtime here.
     comments = h.gh.comment_rows[101]
     basis = next(
