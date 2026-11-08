@@ -13,3 +13,5 @@ VMでの読み取り専用qualificationは verify_cli_resume.py に分離する�
 実測: 新規adapter 10件は0.29秒、全件5秒以内。既存復元/snapshotを含む初回43件は12.11秒で成功。既存controller再開の最初のcaseのみ6.42秒（import/初期化込み）、新規caseの重いfixtureはない。新規のremote前後差分2件を追加後、adapter10件を再実行して成功した。
 
 実VMで追加発見: bootstrap repoの git ls-files --others が登録worktreeをディレクトリとして返し、現行Colab CLIのsource収集が read_bytes() で失敗する。VMのprivate Git info/excludeへ登録済みの指定worktreeだけを明示追加する。tracked sourceは変更しない。実Gitの小さなrepo/worktreeで、再現→除外→実験側tracked sourceが残ることを検証するunit 1件を追加（合計11件、5秒以内）。
+
+2026-11-09 recovery qualification: preserve the frozen controller and historical JSON wrapper; parameterize only the existing CPU guard suite's explicit expected active stage/update. Protect wrong-stage, wrong checkpoint pointer/update, unknown or completed target rejection, and actual unchanged model/budget at the controller's training boundary. Reuse all10 historical no-GPU guards; add lightweight target-validation unit cases with a tiny plan and no checkpoint/GPU. Cost: <=10 added cases, <5s each. Real restored d768500 checkpoint and strict full-state/source/receipt proof remain required on VM before queue admission; do not replace them with fixtures.

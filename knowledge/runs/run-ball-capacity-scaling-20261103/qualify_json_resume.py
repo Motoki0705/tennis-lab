@@ -1,7 +1,8 @@
-"""Reuse the historical no-update guard suite at the verified 5500 checkpoint."""
+"""Reuse historical no-update guards at an explicitly restored checkpoint."""
 
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 import sys
@@ -18,14 +19,29 @@ sys.modules[spec.name] = historical
 spec.loader.exec_module(historical)
 
 
+def verified_target(plan, stage, update, latest):
+    entries = [entry for entry in plan["stages"] if entry["name"] == stage]
+    if len(entries) != 1:
+        raise ValueError("Expected exactly one planned recovery stage")
+    entry = entries[0]
+    if not 0 < update < entry["budget"]["updates"]:
+        raise ValueError("Recovery target must be an incomplete saved update")
+    if (latest["update"] != update
+            or latest["checkpoint"] != f"checkpoint-update-{update:08d}.pt"):
+        raise ValueError("Restored checkpoint pointer/update differs from explicit target")
+    return entry
+
+
 class CurrentFrozenJsonResume(historical.TestFrozenJsonResume):
     """Keep all historical guards; update the explicit restored test boundary."""
 
+    resume_stage = "query-d512-l4-T64"
+    resume_update = 5500
+
     def test_adapter_reaches_real_training_boundary_with_recovered_checkpoint(self):
-        output = historical.ROOT / "query-d512-l4-T64"
+        output = historical.ROOT / self.resume_stage
         latest = json.loads((output / "latest.json").read_text())
-        self.assertEqual(latest["update"], 5500)
-        self.assertEqual(latest["checkpoint"], "checkpoint-update-00005500.pt")
+        entry = verified_target(self.plan, self.resume_stage, self.resume_update, latest)
         with self.boundary(True) as sentinel:
             with self.assertRaises(historical.TrainingBoundaryReached):
                 self.controller.train(self.args)
@@ -34,14 +50,20 @@ class CurrentFrozenJsonResume(historical.TestFrozenJsonResume):
         self.assertEqual(kwargs["output"], output)
         self.assertEqual(kwargs["resume"], output / latest["checkpoint"])
         self.assertIsInstance(kwargs["model_config"].stem_channels, tuple)
-        self.assertEqual(kwargs["model_config"].dim, 512)
-        self.assertEqual(kwargs["budget"].updates, 6000)
-        self.assertEqual(kwargs["budget"].schedule_updates, 12000)
+        self.assertEqual(kwargs["model_config"].dim, entry["model"]["dim"])
+        self.assertEqual(kwargs["model_config"].frames, entry["model"]["frames"])
+        self.assertEqual(kwargs["budget"].payload(), entry["budget"])
 
 
 if __name__ == "__main__":
     import torch
 
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--stage", default="query-d512-l4-T64")
+    parser.add_argument("--update", type=int, default=5500)
+    args = parser.parse_args()
+    CurrentFrozenJsonResume.resume_stage = args.stage
+    CurrentFrozenJsonResume.resume_update = args.update
     assert not torch.cuda.is_initialized()
     result = unittest.TextTestRunner(verbosity=2).run(
         unittest.defaultTestLoader.loadTestsFromTestCase(CurrentFrozenJsonResume)
@@ -53,7 +75,8 @@ if __name__ == "__main__":
                 schema="ball_capacity_current_json_resume_guard_suite.v1",
                 successful=result.wasSuccessful(),
                 tests=result.testsRun,
-                restored_update=5500,
+                restored_stage=args.stage,
+                restored_update=args.update,
                 gpu_updates=0,
                 controller_changed=False,
                 historical_suite="test_resume_json_plan.py",
