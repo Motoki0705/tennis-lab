@@ -166,6 +166,8 @@ def test_duplicate_positions_and_overlapping_anchor_matches_are_rejected(
         ("- [ ] タスク追加", "task_checkboxes"),
         ("[元リンク]: https://other.invalid", "reference_definition"),
         ("~~~python\nopen = True", "unclosed_code_fence"),
+        ("~~~python\n> ~~~", "unclosed_code_fence"),
+        ("> ~~~python\n> > ~~~", "unclosed_code_fence"),
         ("```", "unclosed_code_fence"),
         ("- item\n\n    ~~~\n    open = True", "unclosed_code_fence"),
     ],
@@ -211,6 +213,7 @@ def test_artifact_metadata_must_explain_every_added_character(original: str) -> 
         "~~~python\nvalue = 17\n~~~",
         "````python\nvalue = 17\n``````",
         "> ~~~python\n> value = 17\n> ~~~",
+        "> > ~~~python\n> > value = 17\n> > ~~~",
         "- 説明\n\n    ~~~python\n    value = 17\n    ~~~",
     ],
 )

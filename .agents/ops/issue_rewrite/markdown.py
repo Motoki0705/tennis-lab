@@ -102,7 +102,7 @@ def validate_supplement_markdown(content: str) -> None:
     if env.get("references"):
         raise ValueError("supplement_reference_definition_can_change_original_links")
 
-    def check(token: Token) -> None:
+    def check(token: Token, quote_depth: int) -> None:
         if token.type in {"html_block", "html_inline"}:
             raise ValueError("supplement_raw_html")
         if token.type == "heading_open" and token.tag in {"h1", "h2"}:
@@ -113,13 +113,25 @@ def validate_supplement_markdown(content: str) -> None:
             assert token.map is not None
             lines = _source_lines(content)
             closing_line = lines[token.map[1] - 1]
-            last = re.sub(r"^(?:[ \t]*>[ \t]?)+", "", closing_line).strip()
+            # Strip only actual quote containers. In a top-level unclosed
+            # fence, a code line such as '> ~~~' is not a closing delimiter.
+            for _ in range(quote_depth):
+                prefix = re.match(r"[ \t]*>[ \t]?", closing_line)
+                if prefix is None:
+                    raise ValueError("supplement_unclosed_code_fence")
+                closing_line = closing_line[prefix.end() :]
+            last = closing_line.strip()
             if token.map[1] - token.map[0] < 2 or not re.fullmatch(
                 re.escape(token.markup[0]) + "{" + str(len(token.markup)) + ",}", last
             ):
                 raise ValueError("supplement_unclosed_code_fence")
         for child in token.children or []:
-            check(child)
+            check(child, quote_depth)
 
+    quote_depth = 0
     for token in tokens:
-        check(token)
+        if token.type == "blockquote_open":
+            quote_depth += 1
+        elif token.type == "blockquote_close":
+            quote_depth -= 1
+        check(token, quote_depth)
