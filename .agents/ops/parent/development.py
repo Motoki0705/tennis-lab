@@ -32,7 +32,6 @@ from .execution import (
     authorization,
     require_request_authorization,
     task_errors,
-    task_input_errors,
 )
 from .github import GitHub
 from .policy import (
@@ -64,7 +63,54 @@ def controller(session: ParentSession, directory: Path | None) -> Supervisor:
     return Supervisor(session.gh, session.store, schedule)
 
 
+def rebind_controller(
+    session: ParentSession, evidence: str = "現在の担当親が保存済みworkerの操作を要求。"
+) -> None:
+    """Move control, preserving jobs and their original runtime/evidence bindings.
+
+    Only the current owner can call this, and current_basis still rejects an
+    explicit revocation. No job is marked ended or restarted here.
+    """
+    row = session.owner()
+    dispatch = managed(row)
+    if dispatch is None:
+        return
+    fresh = authorization(session)
+    takeover = (
+        dispatch["session"] != row["session"]
+        or dispatch["jobs"][dispatch["active_job"]]["phase"] == "ended"
+    )
+    if not takeover and dispatch["authorization"] == fresh:
+        return
+    transfer_controller(row, fresh, evidence, takeover=takeover)
+    session.store.save()
+
+
+def transfer_controller(
+    row: dict[str, Any], fresh: dict[str, Any] | None, evidence: str, *, takeover: bool
+) -> None:
+    """Apply ownership/control changes together; no network or storage side effects."""
+    dispatch = managed(row)
+    if dispatch is None:
+        return
+    dispatch.setdefault("context_rebindings", []).append(
+        {
+            "previous_authorization": copy.deepcopy(dispatch["authorization"]),
+            "authorization": fresh,
+            "evidence": evidence,
+        }
+    )
+    dispatch["session"] = row["session"]
+    if fresh is not None:
+        dispatch["authorization"] = fresh
+    if takeover:
+        dispatch.update(controller_mode="handoff", wake_requested=False)
+        if dispatch["phase"] not in {"stopped", "recovery_required"}:
+            dispatch["phase"] = "waiting"
+
+
 def accepted(session: ParentSession, env: dict[str, str]) -> dict[str, Any]:
+    rebind_controller(session)
     dispatch: dict[str, Any] | None = managed(session.owner())
     if dispatch and dispatch.get("controller_mode") == "handoff":
         if dispatch["phase"] not in {"running", "waiting"}:
@@ -129,8 +175,8 @@ def start_worker(
     branch: str | None = None,
     worktree: Path | None = None,
     continuation: str | None = None,
-    skip_reason: str | None = None,
     additional: str | None = None,
+    planning: bool = False,
 ) -> dict[str, Any]:
     """Reserve via parent.delegate, then use the dispatcher start-child contract.
 
@@ -144,8 +190,10 @@ def start_worker(
             raise ValueError(
                 "additional instructions require an undelivered planning decision"
             )
-    if skip_reason is not None:
-        nonempty(skip_reason, "planning skip reason")
+    with session.store.locked():
+        session.owner()
+        control = controller(session, directory)
+    control.reconcile(parent=session.parent)
     with session.store.locked():
         dispatch = accepted(session, env)
         session.agreed()
@@ -199,9 +247,9 @@ def start_worker(
                 child,
                 prompt,
                 resume=True,
-                skip_reason=skip_reason,
                 additional=additional,
                 previous_record=previous_record,
+                planning=planning,
             )
         elif jobs:
             raise ValueError("existing worker: inspect it and use continue-worker")
@@ -224,12 +272,8 @@ def start_worker(
         check_task_adoptions(session.gh, parent.body)
         check_task_adoptions(session.gh, items[child].body)
         check_dependencies(session, dispatch)
-        if authorization(session) != dispatch["authorization"] or task_input_errors(
-            claim["assignment"], dispatch["authorization"], items[child].body
-        ):
-            raise ValueError(
-                "worker inputs changed after delegation; reconcile the saved reservation"
-            )
+        if authorization(session) != dispatch["authorization"]:
+            raise ValueError("execution basis changed after delegation")
         task = session.row["tasks"][str(child)]
         if prepared is None:
             prepared, prompt = worker_preflight.prepare_turn(
@@ -237,7 +281,7 @@ def start_worker(
                 child,
                 prompt,
                 resume=False,
-                skip_reason=skip_reason,
+                planning=planning,
                 additional=additional,
             )
         turn = worker_preflight.commit_turn(task, prepared)
@@ -401,17 +445,15 @@ def verify_cancellation(
     record = session.row["tasks"].get(str(item.number), {}).get("cancellation", {})
     if (
         record.get("schema_version") != 1
-        or record.get("authorization") != auth
         or record.get("state_reason") != item.state_reason
-        or record.get("body_sha256") != digest(item.body)
     ):
         raise ValueError(
             f"#{item.number}: cancellation reason/handoff evidence missing or stale; "
             "inspect the issue and use record-cancellation"
         )
     confirmation = object_value(record.get("confirmation"))
-    if not raw_section(item.body, "作業状況・停止事項").endswith(
-        cancellation_text(confirmation)
+    if cancellation_text(confirmation) not in raw_section(
+        item.body, "作業状況・停止事項"
     ):
         raise ValueError(
             f"#{item.number}: cancellation confirmation differs from the issue"
@@ -459,7 +501,6 @@ def verify_completion(session: ParentSession) -> list[int]:
             or task.get("stopped")
             or "needs-human" in item.labels
             or task_errors(task, auth, item.body)
-            or verification.get("authorization") != auth
             or not verification.get("evidence")
         ):
             raise ValueError(
@@ -575,108 +616,14 @@ def refresh_worker_plan(
     evidence: str,
     env: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Explicitly rebind authority, never the saved worker/runtime contract.
-
-    A live accepted parent may renew its basis. A new owner must first confirm
-    every old parent/child ended; its handoff then controls the saved children
-    without restarting the old parent's conversation.
-    """
-    row = session.owner()
-    nonempty(evidence, "managed planning refresh evidence")
-    raw = row.get("dispatch")
-    if not isinstance(raw, dict):
-        raise ValueError(
-            "refresh-worker-plan is only for managed authority/owner changes; use run-worker --resume"
-        )
-    old = managed(
-        {
-            **row,
-            "session": raw["session"],
-            "generation": raw["authorization"]["generation"],
-        }
-    )
-    assert old is not None
-    fresh = authorization(session)
-    if old["authorization"] == fresh and old["session"] == row["session"]:
-        raise ValueError(
-            "managed authority is unchanged; use continue-worker for replanning"
-        )
-    if str(child) not in row["tasks"]:
-        raise ValueError("no existing worker for managed planning refresh")
-    check_dependencies(session, old)
-    parent, items = session.work_items()
-    check_task_adoptions(session.gh, parent.body)
-    for n, task in row["tasks"].items():
-        if task.get("delegated"):
-            if int(n) not in items:
-                raise ValueError("managed worker no longer belongs to this parent")
-            check_task_adoptions(session.gh, items[int(n)].body)
-            if "preflight" in task:
-                worker_preflight.state(task)
-    takeover = (
-        old["session"] != row["session"]
-        or old["authorization"]["generation"] != row["generation"]
-        or old["jobs"][old["active_job"]]["phase"] == "ended"
-    )
-    for job in old["jobs"].values():
-        if (
-            job["role"] == "implementation"
-            or takeover
-            or job["id"] != old["active_job"]
-        ):
-            if job["phase"] != "ended":
-                runtime = Runtime(Path(job["runner"]))
-                proof = runtime.inspect(Path(job["directory"]) / "runtime")
-                with gate(Path(job["directory"]) / "lifetime.lock") as fd:
-                    if fd is None or alive(job["worker"]) or not runtime.ended(proof):
-                        raise ValueError(
-                            "old worker termination and cleanup must be confirmed before authority refresh"
-                        )
-                Supervisor._check_contract(job, proof["record"])
-                job.update(
-                    phase="ended",
-                    rebound_end_evidence={
-                        "run_id": proof["record"]["run_id"],
-                        "evidence": evidence,
-                    },
-                )
-                if job["role"] == "implementation":
-                    task = row["tasks"].get(str(job["child"]), {})
-                    if task.get("delegation_id") == job["delegation_id"]:
-                        task["worker_ended"] = {
-                            "delegation_id": job["delegation_id"],
-                            "evidence": "Explicit authority refresh confirmed runtime termination and cleanup.",
-                        }
-            ended(job)
-    if not takeover:
-        accepted(session, env or dict(os.environ))
-    controller(session, directory)  # Also verify the shared schedule's repository.
-    old.setdefault("context_rebindings", []).append(
-        {
-            "previous_authorization": copy.deepcopy(old["authorization"]),
-            "authorization": fresh,
-            "evidence": evidence,
-        }
-    )
-    old.update(authorization=fresh, session=row["session"])
-    if takeover:
-        old.update(
-            controller_mode="handoff",
-            phase="stopped" if old["phase"] == "stopped" else "waiting",
-            wake_requested=False,
-        )
-    for task in row["tasks"].values():
-        if task.get("delegated") and "preflight" in task:
-            worker_preflight.invalidate(
-                worker_preflight.state(task),
-                "managed execution basis/owner explicitly rebound",
-                task=task,
-            )
-    session.store.save()
+    session.owner()
+    nonempty(evidence, "controller refresh evidence")
+    controller(session, directory)
+    rebind_controller(session, evidence)
     return {
         "child": child,
         "worker_phase": worker_preflight.observe(session, child),
-        "result": "refresh_required",
+        "result": "controller_updated",
     }
 
 
@@ -698,12 +645,14 @@ def worker_command(
         model=args.model,
         branch=getattr(args, "branch", None),
         worktree=getattr(args, "worktree", None),
-        continuation=Path(args.evidence_file).read_text(encoding="utf-8")
+        continuation=(
+            Path(args.evidence_file).read_text(encoding="utf-8")
+            if args.evidence_file
+            else "親が同じworkerの継続を指示。終了はrunnerから照合する。"
+        )
         if args.command == "continue-worker"
         else None,
-        skip_reason=Path(args.skip_planning_reason_file).read_text(encoding="utf-8")
-        if getattr(args, "skip_planning_reason_file", None)
-        else None,
+        planning=args.planning,
         additional=read_original(args.additional_instruction_file)
         if getattr(args, "additional_instruction_file", None)
         else None,

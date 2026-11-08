@@ -92,6 +92,7 @@ PUBLIC_ERRORS = frozenset(
         "runner_contract_changed",
         "runner_evidence_unavailable",
         "runner_not_ended",
+        "runner_not_started",
         "runner_settings_changed",
         "runner_time_unavailable",
         "runtime_changed",
@@ -257,6 +258,7 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
         in {
             None,
             "awaiting_final",
+            "not_started",
             "receipt_verified",
             "committed",
             "pushed",

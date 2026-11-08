@@ -169,7 +169,7 @@ def test_legacy_human_snapshot_with_judgement_remains_executable(
     ],
 )
 @pytest.mark.parametrize("gate_env", ["multiple"], indirect=True)
-def test_forged_judgement_and_human_instructions_still_stop_work(
+def test_judgement_validation_and_parent_control_of_instructions(
     gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
     g, p = gate_env, gate_env.review.p
@@ -202,7 +202,39 @@ def test_forged_judgement_and_human_instructions_still_stop_work(
                 2 if change == "issue" else 1,
                 data["detail"],
             )
-    ordinary_comment(p, body, login)
+    comment = ordinary_comment(p, body, login)
+    before = p.state(), registry(p).read_bytes()
+    if change not in {"plain", "quoted", "publisher"}:
+        # Corrupted publisher records still fail structural validation.
+        response = p.cli("status", ok=False)
+        assert response.returncode == 2
+        expected = "Expecting value" if change == "prefix_only" else "judgement comment"
+        assert expected in response.stderr
+        assert (p.state(), registry(p).read_bytes()) == before
+        assert g.merge_calls() == [] and len(g.review.calls()) == 1
+        return
+    notices = json.loads(p.cli("status").stdout)["input_changes"]
+    assert notices["comments"] == [
+        {
+            "id": comment["id"],
+            "change": "added",
+            "url": f"https://github.com/o/r/issues/1#issuecomment-{comment['id']}",
+        }
+    ]
+    assert (p.state(), registry(p).read_bytes()) == before
+    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert all(row["decision"] == "merge" for row in rows.values())
+    p.cli(
+        "review-prepare",
+        "--prs",
+        "100",
+        "101",
+        "102",
+        "--reason-file",
+        p.note("追加コメントを確認し、既存の対象と証拠が適用できると判断した。"),
+    )
+    # The parent interprets the notice and explicitly revokes execution authority.
+    p.cli("basis-revoke", "--reason-file", p.note("追加の停止指示を親が確認した。"))
     before = p.state(), registry(p).read_bytes()
     responses = [
         p.cli(*delegation_args(p.worktree("blocked")), ok=False),

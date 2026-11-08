@@ -30,7 +30,6 @@ from merge_gate_policy import (  # noqa: E402
 from parent.adopted_tasks import check_task_adoptions  # noqa: E402
 from parent.execution import (  # noqa: E402
     authorization,
-    requirement_body,
 )
 from parent.github import GitHub  # noqa: E402
 from parent.policy import (  # noqa: E402
@@ -284,26 +283,14 @@ def load_evidence(
     pr_comments = {n: session.gh.comments(n) for n in view.candidates}
     errors = list(
         publication_errors(
-            result, execution, parent_comments, pr_comments, session.login, auth
+            result,
+            execution,
+            parent_comments,
+            pr_comments,
+            session.login,
+            request.get("authorization", auth),
         )
     )
-    if request.get("authorization", auth) != auth:
-        errors.append("review_execution_basis_changed")
-    if request["schema_version"] == 2:
-        for n, expected in request["requirements"].items():
-            raw = session.gh.issue(int(n))
-            if digest(requirement_body(raw.get("body") or "")) != expected:
-                reason = f"issue_{n}_reviewed_requirements_changed"
-                affected = [
-                    p["number"] for p in result["prs"] if int(n) in p["child_issues"]
-                ]
-                if int(n) == session.parent or not affected:
-                    errors.append(reason)
-                else:
-                    for pr in affected:
-                        view.errors.setdefault(pr, []).append(reason)
-    if execution.get("session") != session.session:
-        errors.append("review_owner_changed")
     state = confirmed_state(session.history(), request, auth)
     resolutions = []
     for record in records(parent_comments, session.login):

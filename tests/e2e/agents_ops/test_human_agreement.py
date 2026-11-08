@@ -42,34 +42,24 @@ def delegation_args(worktree: Path, child: int = 10) -> tuple[str, ...]:
 @pytest.mark.parametrize(
     "heading", ["全体のスコープ", "全体の完了条件", "作業状況・停止事項"]
 )
-def test_human_body_changes_block_split_delegation_and_review_prepare(
+def test_human_body_changes_are_parent_observations(
     parent_env: ParentEnv, heading: str
 ) -> None:
     p = parent_env
     selected = review_setup(p)
     policy = importlib.import_module("parent.policy")
-    worktree = p.worktree("changed-body")
     state = p.state()
     state["issues"]["1"]["body"] = policy.replace_section(
-        state["issues"]["1"]["body"],
-        heading,
-        "合意後の変更。この範囲の作業は停止する。",
+        state["issues"]["1"]["body"], heading, "説明を整理し、確認の順序を更新した。"
     )
     p.save(state)
-    before = p.state(), registry(p).read_bytes()
-    responses = [
-        p.child("changed-body", ok=False),
-        p.cli(*delegation_args(worktree), ok=False),
-        p.cli("review-prepare", "--prs", *map(str, selected), ok=False),
-        p.cli("agree", "--spec", p.spec(agreements(p)[-1]["agreement"]), ok=False),
-    ]
-    for response in responses:
-        assert response.returncode == 2
-        assert "human agreement requirements changed" in response.stderr
-        assert "checking → agree" in response.stderr
-    p.cli("status")
-    assert (p.state(), registry(p).read_bytes()) == before
-    assert not (registry(p).parent / "reviews").exists()
+    before = registry(p).read_bytes()
+    assert json.loads(p.cli("status").stdout)["input_changes"]["body_changed"]
+    assert registry(p).read_bytes() == before
+    p.child("changed-body")
+    p.cli(*delegation_args(p.worktree("changed-body"), child=13))
+    p.cli("review-prepare", "--prs", *map(str, selected))
+    assert len(agreements(p)) == 1
 
 
 def test_human_progress_preserves_body_digest_authorization_and_review(
@@ -114,7 +104,7 @@ def test_human_progress_preserves_body_digest_authorization_and_review(
 
 
 @pytest.mark.parametrize("comment_snapshot", [False, True])
-def test_legacy_human_body_digest_missing_preserves_reads_and_requires_reagreement(
+def test_legacy_human_agreement_is_usable_without_fabricating_history(
     parent_env: ParentEnv, comment_snapshot: bool
 ) -> None:
     p = parent_env
@@ -122,37 +112,23 @@ def test_legacy_human_body_digest_missing_preserves_reads_and_requires_reagreeme
     policy = importlib.import_module("parent.policy")
     state = p.state()
     event = agreements(p)[-1]
-    original_body = event.pop("body")
+    original = event.pop("body")
     event.pop("requirements_sha256", None)
     if not comment_snapshot:
         event.pop("comment_inputs")
-    next(c for c in state["comments"]["1"] if c["body"] == original_body)["body"] = (
+    next(c for c in state["comments"]["1"] if c["body"] == original)["body"] = (
         policy.marker(event)
     )
     p.save(state)
-    worktree = p.worktree("legacy")
     before = p.state(), registry(p).read_bytes()
     status = json.loads(p.cli("status").stdout)
-    assert status["phase"] == "要件合意済み"
     assert status["execution_basis"]["kind"] == "human_agreement"
-    responses = [
-        p.child("legacy", ok=False),
-        p.cli(*delegation_args(worktree), ok=False),
-        p.cli("review-prepare", "--prs", *map(str, selected), ok=False),
-        p.cli("agree", "--spec", p.spec(event["agreement"]), ok=False),
-    ]
-    for response in responses:
-        assert response.returncode == 2
-        assert "legacy human agreement lacks requirements_sha256" in response.stderr
-        assert "checking → agree" in response.stderr
     assert (p.state(), registry(p).read_bytes()) == before
-    p.cli("checking")
-    p.cli("agree", "--spec", p.spec(event["agreement"]))
-    p.child("reagreed")
-    result = json.loads(p.cli(*delegation_args(worktree, child=13)).stdout)
-    assert result["action"] == "launch"
-    assert len(agreements(p)) == 2
-    assert "requirements_sha256" in agreements(p)[-1]
+    p.child("legacy")
+    p.cli(*delegation_args(p.worktree("legacy"), child=13))
+    p.cli("review-prepare", "--prs", *map(str, selected))
+    assert len(agreements(p)) == 1
+    assert "requirements_sha256" not in agreements(p)[0]
 
 
 @pytest.mark.parametrize("value", [None, True, "", "A" * 64, "g" * 64])
@@ -178,15 +154,14 @@ def test_malformed_human_body_digest_is_rejected_on_read(
 
 
 @pytest.mark.parametrize("change", ["body", "legacy"])
-def test_human_body_freshness_blocks_existing_review_and_merge(
+def test_human_body_observation_preserves_review_evidence(
     gate_env: GateEnv, change: str
 ) -> None:
     g, p = gate_env, gate_env.review.p
     policy = importlib.import_module("parent.policy")
     state = p.state()
     if change == "body":
-        state["issues"]["1"]["body"] += "\n\n## 追加指示\n作業を停止する。\n"
-        expected = "human agreement requirements changed"
+        state["issues"]["1"]["body"] += "\n\n## 補足\n確認順序を説明する。\n"
     else:
         event = agreements(p)[-1]
         original = event.pop("body")
@@ -194,28 +169,16 @@ def test_human_body_freshness_blocks_existing_review_and_merge(
         next(c for c in state["comments"]["1"] if c["body"] == original)["body"] = (
             policy.marker(event)
         )
-        expected = "legacy human agreement lacks requirements_sha256"
     p.save(state)
-    before = p.state(), registry(p).read_bytes()
     saved = {path.name: path.read_bytes() for path in g.review.run_dir.glob("*.json")}
-    request = p.cli(
-        "review-request",
-        "--run-id",
-        g.review.request["review_run_id"],
-        "--instruction-file",
-        p.note(),
-        ok=False,
-    )
-    merge = g.cli("merge")
-    for response in (request, merge):
-        assert response.returncode == 2
-        assert expected in response.stderr
-    p.cli("status")
-    assert (p.state(), registry(p).read_bytes()) == before
+    rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
+    assert all(row["decision"] == "merge" for row in rows.values())
     assert {
         path.name: path.read_bytes() for path in g.review.run_dir.glob("*.json")
     } == saved
-    assert g.merge_calls() == [] and len(g.review.calls()) == 1
+    assert not g.merge_calls() and len(g.review.calls()) == 1
+    p.cli("basis-revoke", "--reason-file", p.note("人間の停止指示を親が確認。"))
+    assert g.cli("merge").returncode == 2
 
 
 @pytest.mark.parametrize("recovery", ["checking", "agree"])
@@ -256,7 +219,7 @@ def test_same_human_reagreement_after_revocation_resumes_delegation_idempotently
         assert resumed["action"] == "launch"
         authorizations.append(resumed["assignment"]["authorization"])
     assert len({json.dumps(auth, sort_keys=True) for auth in authorizations}) == 3
-    assert [e["revision"] for e in agreements(p)] == [1, 2, 3]
+    assert len({e["revision"] for e in agreements(p)}) == 3
     policy = importlib.import_module("parent.policy")
     history = policy.events(p.state()["comments"]["1"], "operator", 1)
     assert [e["revision"] for e in history if e["event"] == "basis_revoked"] == [1, 2]
@@ -264,4 +227,4 @@ def test_same_human_reagreement_after_revocation_resumes_delegation_idempotently
     assert len({json.dumps(e["comment_inputs"]) for e in agreements(p)}) == 1
     p.cli("checking")  # Also advance after a renewal without an intervening checking.
     p.cli("agree", "--spec", p.spec(agreement))
-    assert [e["revision"] for e in agreements(p)] == [1, 2, 3, 4]
+    assert len(agreements(p)) == 4

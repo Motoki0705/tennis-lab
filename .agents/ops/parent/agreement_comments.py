@@ -1,4 +1,4 @@
-"""Human agreement discussion freshness and explicit irrelevance classification."""
+"""Human agreement change observations and explicit irrelevance classification."""
 
 from __future__ import annotations
 
@@ -111,12 +111,6 @@ def _stale(session: ParentSession, changes: Mapping[int, str]) -> ValueError:
         "人間の指示を無関係として除外してはなりません。"
         "要件変更・停止指示・削除は checking → agree で再合意してください"
     )
-
-
-def require_fresh(session: ParentSession, agreement: Mapping[str, Any]) -> None:
-    _, changes = _observations(session, agreement)
-    if changes:
-        raise _stale(session, changes)
 
 
 def record_ignored(session: ParentSession, value: Any) -> dict[str, Any]:

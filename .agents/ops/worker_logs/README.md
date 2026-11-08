@@ -136,6 +136,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 | `closed_unmerged` | 未merge close。別PRを作り直さず親へ返す |
 | `legacy / pre_capture_turn` | 導入前。公開せず次の正規turnから記録 |
 
+起動前に拒否され実行されなかった指示は `worker_failed / not_started` として残す。
+`--retry` はその記録の最終報告を探さず、後続の公開可能なログを処理する。指示の再試行には別のsequenceを使う。
+
 commit直後のjournal中断は期待した親・内容からcommitを再利用する。PR作成直後・merge直後の応答喪失も
 同じbranch・marker・HEADを照合して再利用する。dirtyな専用worktreeや破損journalを自動reset・初期化しない。
 親が対象worktreeだけを明示修復してから再検査する。非公開原文、固定payload、HEADを書き換えて復旧を装わない。

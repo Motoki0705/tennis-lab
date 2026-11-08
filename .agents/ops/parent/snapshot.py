@@ -14,7 +14,6 @@ from .execution import (
     require_requirement_targets,
     require_run_authorization,
     requirement_body,
-    task_input_errors,
 )
 from .policy import (
     REVIEW_LABELS,
@@ -27,7 +26,6 @@ from .policy import (
     select_prs,
 )
 from .session import ParentSession
-from .worker_preflight import bind_review, review_errors, review_tasks
 
 
 def git(*args: str, cwd: Path | None = None) -> bytes:
@@ -129,26 +127,6 @@ def prepare(
             closing_issues(pr.get("body") or "", session.gh.repo) & child_numbers
         ):
             require_implementation(session, child)
-            if (
-                row["tasks"]
-                .get(str(child), {})
-                .get("verification", {})
-                .get("preflight_invalidated")
-            ):
-                raise ValueError(
-                    "worker result invalidated; record-result before preparing a new review"
-                )
-    for pr in prs:
-        for child in closing_issues(pr.get("body") or "", session.gh.repo) & set(
-            children
-        ):
-            errors = task_input_errors(
-                row["tasks"].get(str(child), {}), auth, children[child].body
-            )
-            if errors:
-                raise ValueError(
-                    f"#{child}: stale delegation/result: {errors}; verify it with record-result before preparing review"
-                )
     entries, diffs = [], {}
     for item in prs:
         entry, diff = snapshot(dict(item))
@@ -186,23 +164,16 @@ def prepare(
         reviews
         and reviews[-1]["state"] == "targets_fixed"
         and reviews[-1]["request"]["prs"] == entries
-        and (
-            (
-                reviews[-1]["request"].get("authorization") == auth
-                and reviews[-1]["request"].get("requirements") == requirements
-                and not any(
-                    review_errors(task)
-                    for task in review_tasks(session, reviews[-1]["request"]).values()
-                )
-            )
-            or reviews[-1]["request"]["schema_version"] == 1
-        )
+        and set(reviews[-1]["request"].get("requirements", requirements))
+        == set(requirements)
+        and (reason is None or reason == reviews[-1]["request"].get("reason"))
     ):
         request = object_value(reviews[-1]["request"])
         require_run_authorization(session, request)
         publish_targets(session, request)
         return request
-    if reviews and not reason:
+    previously_reviewed = {p["number"] for r in reviews for p in r["request"]["prs"]}
+    if previously_reviewed.intersection(selected) and not reason:
         raise ValueError(
             "a new review run requires an explicit reason; no automatic re-review"
         )
@@ -227,7 +198,6 @@ def prepare(
         (run_dir / f"pr-{n}.diff").write_bytes(diff)
     session.store.write_json(run_dir / "request.json", request)
     reviews.append({"state": "targets_fixed", "request": request})
-    bind_review(session, request)
     session.store.save()
     publish_targets(session, request)
     return request
@@ -277,9 +247,9 @@ def transition(
         run["state"] = current
         session.store.save()
         return {**run["request"], "review_state": target}
-    if (
-        target != current
-        and REVIEW_STATES.index(target) != REVIEW_STATES.index(current) + 1
+    if target != current and not (
+        REVIEW_STATES.index(target) == REVIEW_STATES.index(current) + 1
+        or (current == "instructed" and target == "fixes_verified")
     ):
         raise ValueError(f"invalid review transition {current} -> {target}")
     if target == "instructed":

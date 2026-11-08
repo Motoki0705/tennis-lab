@@ -75,6 +75,21 @@ def finish(
         }
 
 
+def reject_unstarted(path: str | None) -> dict[str, Any]:
+    """Retain a captured instruction without waiting for an impossible final."""
+    if path is not None:
+        try:
+            target = Path(path)
+            with journal.locked(target):
+                row = journal.read(target)
+                row["stage"] = "not_started"
+                journal.fail(target, row, "runner_not_started", state="worker_failed")
+                return journal.view(row)
+        except (ValueError, OSError, KeyError, TypeError):
+            pass
+    return {"state": "blocked", "error": "journal_unavailable", "saved_to_main": False}
+
+
 def finish_manual(path: str | None, directory: Path, runner: Path) -> dict[str, Any]:
     if path is None:
         return {
@@ -153,6 +168,9 @@ def _command(
             "journal_identity_changed",
         )
         if publish_logs:
+            if row.get("stage") == "not_started":
+                results.append(journal.view(row))
+                continue
             if row["state"] == "captured" or retry and "receipt" not in row:
                 # Reconcile the original recorded run. Never launch/resume a worker.
                 task = copy.deepcopy(owner.get("tasks", {}).get(str(child), {}))

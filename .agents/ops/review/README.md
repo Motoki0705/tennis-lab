@@ -54,9 +54,8 @@ runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の
 1. version=2（旧version=1も読取可）の要求を厳密に検査する。prepareだけのJSONは拒否する。
    ローカルregistryのactive担当、環境由来ID、openな親、有効な実行根拠、保存済みrun、
    同じrun ID/request digestの公開指示を照合する。
-   公開指示の担当generation・根拠の種別/digestも一致させ、引継ぎ前の指示を流用しない。
-   自律根拠の入力が変われば起動・結果の受理・修正確認・mergeを停止する。
-   旧version=1はgeneration/agreement digestで人間合意と照合し、新たな自律根拠へ読み替えない。
+   現在の担当権限と有効な実行根拠を確認する。過去のrequest・実行の担当は来歴として保持し、
+   担当交代や本文の文字列変化だけで証拠を失効させない。現在の条件への適用可能性は親が判断する。
 2. 実行前に `execution.json` をflock下で保存する。起動回数0の準備失敗は履歴を残して同run IDで明示再試行できる。
    起動後の同run ID再送は既存結果を返し、Codexは再実行しない。異なるスナップショット・古い指示・変更後の対象に再送した場合はエラー。
    他のセッションへの自動振替も行わない。
@@ -124,14 +123,9 @@ findingはidに加えて `{severity,path,line,rule,detail}`。pathはrepo相対P
 PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各担当へ振り分ける。
 `validate_result` は対象digest・全PR集合・判定/coverage・指摘IDを厳密に検査する。
 外側のresult/projection/resolutionと `parent-review:v1` マーカーはversion=1を維持する。
-新requestのversion=2に含むauthorizationもrequest/result digestへ入り、coverage・修正確認を同じ根拠と担当世代へ結び付ける。
-requirementsに固定した親・対象子の要件本文digestも起動・状態遷移・修正確認・mergeで再照合する。
-指示・収集時のclosing対象は固定した要件集合と一致させ、収集中の対象変更も拒否する。
-結果の全 `child_issues` に対応する要件digestがなければ、結果受理・修正確認・gateでも拒否する。
-進捗更新は除外し、要件変更は親による結果の採用だけでは旧reviewへ取り込めない。
-親の要件変更は全件、子の要件変更はその子を含むPRのcoverageを止める。runの進捗記録は子のcoverageを承認しない。
-修正確認は当該PRの子を照合し、別の子の停止/変更を独立PRの確認へ持ち込まない。
-旧公開記録は書き換えず、保存済みrequest/result/executionと元のdigestで照合する。
+version=2のauthorizationとrequirementsは、作成時の担当・根拠・本文の観測記録である。
+意味のある要件変更と証拠への影響は親が判断し、必要な再検証や確認を記録する。
+PRとclosing対象・対象コードの同一性は機械的に照合し、過去のrequest/result/executionを書き換えない。
 未知のrequest/basis/policy versionや破損は拒否し、未レビューの空記録へ移行しない。
 
 各PRの `kind=pr` は `{schema_version,kind,review_run_id,parent_issue,pr,request_sha256,
@@ -221,15 +215,12 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 - repository情報から取得した既定branchとREST PRの `base.ref` が一致すること。
   不一致は `base_not_default_branch` で停止し、baseは自動で付け替えない。既存のmerge済み対象も確認する。
 - 各PRの最新の明示runのローカルresult/request/executionと、同じgh loginによる親result・全対象PRの
-  projectionの内容/digest/permalink。executionはpublished・agent実行1回・現在の担当/実行根拠との一致が必須。
+  projectionの内容/digest/permalink。executionはpublished・agent実行1回・保存済みrequestに対する来歴の整合が必須。
   pending、同runの失敗結果、他人のコメント、引用、未公開・部分公開は通さない。
 - 親の公開review状態が `fixes_verified` または `complete`。結果受領だけ・修正中・中断・
   `needs-human` label（親/子/PR）・子の停止/依存保留ではmergeしない。
-  runの実行根拠digest・担当generationを照合し、無関係な後続の提案合意や同じ根拠の再記録では
-  既存の確認を失効させない。親全体の明示的な `checking`、合意内容の変更、
-  引継ぎ後は古い確認を流用しない。親issue全体の完了は要求しない。
-  新しい委任/結果のauthorizationと子要件digestも照合する。根拠変更後の既存成果は親がrecord-resultで
-  現在の要件へ明示的に結び付けるまで使わず、旧レビュー自体は新しい理由/runで取り直す。
+  確認は対象runへ結び付け、担当交代や記録revisionだけで失効させない。
+  現在の目的・受入条件への適用可能性は親が判断する。親issue全体の完了は要求しない。
 - #1218の `evaluate_coverage` と未解決指摘。対象集合等の全体不整合は全件停止するが、
   他PRだけのcoverage不成立や未解決指摘は独立した当該PRの判定に持ち込まない。
   merge済み対象も集合に残し、GitHubのmerge済みhead・branch・base ref/repoを確認済みsnapshotと照合する。

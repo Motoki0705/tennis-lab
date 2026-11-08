@@ -1,8 +1,4 @@
-"""Planning decisions and turn provenance, independent of runner permissions.
-
-The task is authoritative. Run/job metadata is an immutable launch snapshot;
-neither a successful turn nor a discovered PR grants implementation approval.
-"""
+"""Optional parent-directed investigation and immutable worker-turn provenance."""
 
 from __future__ import annotations
 
@@ -14,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues import Issue
+from lib.agent_settings import execution_contract
 from worker_logs.sources import original as original_text
 
 from .execution import ExecutionBasisStale, observed_authorization, requirement_body
@@ -22,14 +19,6 @@ from .policy import closing_issues, dependencies, digest, nonempty
 if TYPE_CHECKING:
     from .session import ParentSession
 
-HEADINGS = (
-    "確認した根拠",
-    "指示との不一致",
-    "実装案",
-    "テスト設計",
-    "制約・未確認事項",
-    "親に決めてほしい点",
-)
 SNAPSHOT_KEYS = {
     "schema_version",
     "lineage_id",
@@ -43,18 +32,17 @@ SNAPSHOT_KEYS = {
 
 def new(delegation: str) -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "lineage_id": uuid.uuid4().hex,
         "public_key": uuid.uuid4().hex,
         "delegation_id": delegation,
-        "phase": "planning",
+        "phase": "implementing",
         "context": None,
         "runtime": None,
         "turns": [],
         "decisions": [],
         "continuations": [],
         "invalidations": [],
-        "skip_reason": None,
         "refresh_required": False,
         "accepted_turn_id": None,
     }
@@ -63,11 +51,11 @@ def new(delegation: str) -> dict[str, Any]:
 def state(task: dict[str, Any]) -> dict[str, Any]:
     value = task.get("preflight")
     if value is None:
-        raise ValueError("worker phase is unknown; migrate-worker-phase explicitly")
+        return new(task["delegation_id"])
     if (
         not isinstance(value, dict)
         or type(value.get("schema_version")) is not int
-        or value["schema_version"] != 1
+        or value["schema_version"] not in {1, 2}
         or value.get("phase") not in {"planning", "implementing"}
         or value.get("delegation_id") != task.get("delegation_id")
         or not isinstance(value.get("lineage_id"), str)
@@ -176,28 +164,6 @@ def context(
     }
 
 
-def invalidate(
-    value: dict[str, Any], reason: str, *, task: dict[str, Any] | None = None
-) -> None:
-    if not value["refresh_required"]:
-        value["invalidations"].append(
-            {
-                "context_sha256": digest(value["context"]),
-                "reason": reason,
-            }
-        )
-    value.update(phase="planning", refresh_required=True, skip_reason=None)
-    for decision in value["decisions"]:
-        decision["invalidated"] = True
-    if "legacy_result" in value:
-        value["legacy_result"]["invalidated"] = True
-    if task is not None:
-        if "verification" in task:
-            task["verification"]["preflight_invalidated"] = reason
-        if "review_preflight" in task:
-            task["review_preflight"]["invalidated"] = True
-
-
 def observe_context(
     session: ParentSession,
     child: int,
@@ -206,124 +172,17 @@ def observe_context(
     persist: bool,
     current: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, bool]:
-    # Retrieval/validation failures (including Store's concurrent-write error)
-    # must abort without saving. Only successfully compared inputs may expire
-    # an approval; errors are never silently converted to stale material.
     try:
         fresh = context(session, child) if current is None else current
-        reason = (
-            "worker requirements/authorization/generation/dependencies changed"
-            if value["context"] is not None and value["context"] != fresh
-            else None
-        )
-    except ExecutionBasisStale as exc:
-        fresh, reason = None, str(exc)
-    if reason and persist:
-        invalidate(value, reason, task=session.row["tasks"][str(child)])
-        session.store.save()
-    return fresh, reason is not None
+    except ExecutionBasisStale:
+        return None, True
+    return fresh, value["context"] is not None and value["context"] != fresh
 
 
 def review_errors(task: dict[str, Any]) -> tuple[str, ...]:
-    """Freshness of the latest saved review for this worker's PR.
-
-    Merge already selects the latest request per PR and consumes task_errors.
-    Keep this binding separate from result verification: verifying a new
-    implementation must not revive the previous review.
-    """
-    if not task.get("delegated"):
-        return ()
-    if "preflight" not in task:
-        return ("worker_phase_unknown",)
-    value = state(task)
-    if not implementation_authorized(value):
-        return ("worker_planning_changed",)
-    if task.get("verification", {}).get("preflight_invalidated"):
-        return ("worker_result_invalidated",)
-    binding = task.get("review_preflight")
-    if (
-        not binding
-        or binding.get("invalidated") is not False
-        or binding.get("context_sha256") != digest(value["context"])
-        or binding.get("invalidations") != len(value["invalidations"])
-    ):
-        return ("worker_review_inputs_changed",)
-    return ()
-
-
-def review_tasks(
-    session: ParentSession, request: dict[str, Any]
-) -> dict[int, dict[str, Any]]:
-    branches = {entry["branch"] for entry in request["prs"]}
-    return {
-        int(child): task
-        for child, task in session.row["tasks"].items()
-        if task.get("delegated") and task.get("branch") in branches
-    }
-
-
-def bind_review(session: ParentSession, request: dict[str, Any]) -> None:
-    for task in review_tasks(session, request).values():
-        value = state(task)
-        task["review_preflight"] = {
-            "review_run_id": request["review_run_id"],
-            "context_sha256": digest(value["context"]),
-            "invalidations": len(value["invalidations"]),
-            "invalidated": False,
-        }
-
-
-def require_review(
-    session: ParentSession,
-    request: dict[str, Any],
-    required_issues: set[int] | None,
-) -> None:
-    if not any(r["request"] == request for r in session.row["reviews"]):
-        return
-    for child, task in review_tasks(session, request).items():
-        if (
-            required_issues is not None
-            and child != session.parent
-            and child not in required_issues
-        ):
-            continue
-        errors = review_errors(task)
-        if (
-            errors
-            or task["review_preflight"]["review_run_id"] != request["review_run_id"]
-        ):
-            raise ValueError(
-                f"#{child}: worker planning approval/review inputs changed ({errors}); verify the new result and prepare a new review with reason"
-            )
-
-
-def refresh_review(
-    session: ParentSession, request: dict[str, Any], auth: dict[str, Any]
-) -> None:
-    """Reuse review authorization's collection point without changing the gate.
-
-    Families retain per-PR task_errors; the standalone gate has no child loop,
-    so its single worker is checked here as part of request authorization.
-    """
-    if not any(r["request"] == request for r in session.row["reviews"]):
-        return  # A new request is bound by snapshot.prepare before publication.
-    tasks = review_tasks(session, request)
-    if not tasks:
-        return
-    work_items = session.work_items()
-    for child, task in tasks.items():
-        if "preflight" in task:
-            observe_context(
-                session,
-                child,
-                state(task),
-                persist=True,
-                current=context(session, child, authorized=auth, work_items=work_items),
-            )
-        if child == session.parent and review_errors(task):
-            raise ValueError(
-                "worker review inputs changed; prepare a new review after replanning/verification"
-            )
+    # An explicit task stop is a decision. Planning provenance is not evidence
+    # that the reviewed code is invalid, and may predate this recording format.
+    return ("worker_stopped",) if task.get("stopped") else ()
 
 
 def observe(
@@ -337,92 +196,34 @@ def observe(
             "next_action": "delegate",
         }
     if "preflight" not in task:
-        return {
-            "phase": "unknown",
-            "status": "migration_required",
-            "next_action": "migrate-worker-phase",
-        }
+        return summary(task)
     value = state(task)
-    _, stale = observe_context(session, child, value, persist=persist)
-    return summary(task, stale=stale)
+    _, changed = observe_context(session, child, value, persist=False)
+    return {**summary(task), "inputs_changed": changed}
 
 
 def summary(task: dict[str, Any], *, stale: bool = False) -> dict[str, Any]:
     if "preflight" not in task:
         return {
-            "phase": "unknown",
-            "status": "migration_required",
-            "next_action": "migrate-worker-phase",
+            "phase": "unrecorded",
+            "status": "unrecorded",
+            "next_action": "continue_existing_worker",
+            "refresh_required": False,
         }
     value = state(task)
-    refresh = stale or value["refresh_required"]
-    turns = value["turns"]
-    pending = [
-        d
-        for d in value["decisions"]
-        if not d["invalidated"] and d["delivered_turn_id"] is None
-    ]
-    if refresh:
-        status, action = (
-            "refresh_required",
-            "resume with revised instructions; managed basis/owner changes require refresh-worker-plan",
-        )
-    elif pending:
-        status, action = (
-            "decision_pending_delivery",
-            "run-worker --resume / continue-worker",
-        )
-    elif not turns and legacy_authorized(value):
-        status, action = (
-            "implementing",
-            "verify migrated legacy result/review or completion",
-        )
-    elif not turns:
-        status, action = "not_started", "run-worker / start-worker"
-    elif value["phase"] == "planning":
-        confirmed = task.get("worker_ended", {}).get("delegation_id") == task.get(
-            "delegation_id"
-        )
-        status, action = (
-            "awaiting_decision" if confirmed else "planning_turn",
-            "confirm termination, then decide-worker-plan",
-        )
-    else:
-        status, action = (
-            "implementing",
-            "confirm implementation turn and verify results",
-        )
     return {
-        "phase": "planning" if refresh else value["phase"],
-        "status": status,
-        "next_action": action,
-        "turn_count": len(turns),
-        "turn_id": turns[-1]["snapshot"]["turn_id"] if turns else None,
-        "decision_pending": len(pending),
-        "planning_skipped": bool(value["skip_reason"]),
+        "phase": value["phase"],
+        "status": value["phase"],
+        "next_action": "parent_judgement",
+        "refresh_required": False,
         "legacy_result_migrated": "legacy_result" in value,
     }
-
-
-def report_missing(text: str) -> tuple[str, ...]:
-    # Fenced examples are not report sections.
-    clean = re.sub(r"(?ms)^```[^\n]*\n.*?^```[^\n]*$", "", text)
-    sections = list(re.finditer(r"(?m)^## ([^\n]+)\s*$", clean))
-    contents: dict[str, list[str]] = {}
-    for i, match in enumerate(sections):
-        end = sections[i + 1].start() if i + 1 < len(sections) else len(clean)
-        contents.setdefault(match[1].strip(), []).append(
-            clean[match.end() : end].strip()
-        )
-    return tuple(
-        h for h in HEADINGS if len(contents.get(h, [])) != 1 or not contents[h][0]
-    )
 
 
 def runtime_binding(record: dict[str, Any]) -> dict[str, str]:
     contract = record["contract"]
     return {
-        "contract_sha256": digest(contract),
+        "contract_sha256": digest(execution_contract(contract)),
         "session_id": nonempty(
             record.get("runtime", {}).get("session_id"), "saved worker session"
         ),
@@ -431,7 +232,8 @@ def runtime_binding(record: dict[str, Any]) -> dict[str, str]:
 
 def bind_runtime(value: dict[str, Any], record: dict[str, Any]) -> None:
     observed = runtime_binding(record)
-    if value["runtime"] is not None and value["runtime"] != observed:
+    legacy = {**observed, "contract_sha256": digest(record["contract"])}
+    if value["runtime"] is not None and value["runtime"] not in (observed, legacy):
         raise ValueError("worker session/contract differs from the planning lineage")
     value["runtime"] = observed
 
@@ -482,11 +284,7 @@ def decide(
         raise ValueError("unknown worker planning decision")
     task = session.row["tasks"][str(child)]
     value = state(task)
-    fresh, stale = observe_context(session, child, value, persist=True)
-    if fresh is None or stale:
-        raise ValueError("planning inputs changed; resume a new planning turn")
-    if value["refresh_required"] or value["context"] != fresh:
-        raise ValueError("planning inputs changed; resume a new planning turn")
+    fresh, _ = observe_context(session, child, value, persist=False)
     if not value["turns"] or value["turns"][-1]["snapshot"]["phase"] != "planning":
         raise ValueError("decision requires the latest planning turn")
     turn = value["turns"][-1]
@@ -502,12 +300,6 @@ def decide(
     raw = (directory / "final.md").read_bytes()
     text = raw.decode("utf-8")
     nonempty(text, "planning final")
-    missing = report_missing(text)
-    if action == "approve" and (missing or turn.get("reply_only")):
-        raise ValueError(
-            "planning final missing required report headings: "
-            + ", ".join(missing or HEADINGS)
-        )
     final_sha = hashlib.sha256(raw).hexdigest()
     previous = [
         d
@@ -554,41 +346,19 @@ def decide(
     }
 
 
-def decision_matches(value: dict[str, Any], decision: dict[str, Any]) -> bool:
-    turns = {t["snapshot"]["turn_id"]: t for t in value["turns"]}
-    turn = turns.get(decision.get("turn_id"), {})
-    allowed = {value["delegation_id"]} | {c["from"] for c in value["continuations"]}
-    return bool(
-        not decision.get("invalidated")
-        and decision.get("lineage_id") == value["lineage_id"]
-        and decision.get("delegation_id") in allowed
-        and turn.get("delegation_id") == decision.get("delegation_id")
-        and turn.get("final_sha256") == decision.get("final_sha256")
-        and decision.get("context_sha256") == digest(value["context"])
-        and decision.get("runtime") == value["runtime"]
-    )
-
-
 def prepare_turn(
     session: ParentSession,
     child: int,
     instruction: str | None,
     *,
     resume: bool,
-    skip_reason: str | None = None,
     additional: str | None = None,
     previous_record: dict[str, Any] | None = None,
+    planning: bool = False,
 ) -> tuple[dict[str, Any], str]:
     task = session.row["tasks"][str(child)]
-    saved = state(task)
-    fresh, _ = observe_context(session, child, saved, persist=True)
-    if fresh is None:
-        raise ValueError("worker execution basis cannot be verified; refresh_required")
-    value = copy.deepcopy(saved)
-    if skip_reason is not None:
-        nonempty(skip_reason, "planning skip reason")
-        if resume or value["turns"]:
-            raise ValueError("--skip-planning-reason-file is initial-only")
+    value = copy.deepcopy(state(task))
+    fresh = context(session, child)
     if previous_record is not None:
         bind_runtime(value, previous_record)
     pending = [
@@ -597,74 +367,52 @@ def prepare_turn(
         if not d["invalidated"] and d["delivered_turn_id"] is None
     ]
     if len(pending) > 1:
-        raise ValueError(
-            "multiple undelivered planning decisions; reconcile explicitly"
-        )
-    decision = None
-    reply_only = False
-    if value["refresh_required"]:
+        raise ValueError("multiple undelivered planning answers")
+    decision = pending[0] if pending else None
+    if decision:
         if not resume:
-            raise ValueError(
-                "changed inputs require the same session's planning resume"
-            )
-        text = original_text(instruction, "revised instructions for planning refresh")
-        value.update(context=fresh, refresh_required=False, phase="planning")
-    elif pending:
-        if not resume or instruction is not None:
-            raise ValueError(
-                "pending planning answer cannot be replaced by --prompt-file; use --additional-instruction-file"
-            )
-        decision = pending[0]
-        if not decision_matches(value, decision):
-            raise ValueError(
-                "planning decision belongs to another delegation/plan/context"
-            )
-        original = next(
+            raise ValueError("a saved answer requires the existing worker session")
+        source = next(
             t for t in value["turns"] if t["snapshot"]["turn_id"] == decision["turn_id"]
         )
-        raw = (Path(original["source"]) / "final.md").read_bytes()
-        if hashlib.sha256(raw).hexdigest() != decision["final_sha256"]:
-            raise ValueError("planning final changed after the parent's decision")
-        text = "## 親の計画判断\n\n" + decision["action"] + "\n\n" + decision["answer"]
-        value["phase"] = (
+        if (
+            hashlib.sha256(
+                (Path(source["source"]) / "final.md").read_bytes()
+            ).hexdigest()
+            != decision["final_sha256"]
+        ):
+            raise ValueError("planning final changed after the parent answer")
+        text = "## 親の判断\n\n" + decision["answer"]
+        if instruction is not None:
+            text += "\n\n" + original_text(instruction)
+        selected_phase = (
             "implementing" if decision["action"] == "approve" else "planning"
         )
-        reply_only = decision["action"] == "reject"
     else:
-        if (
-            resume
-            and value["phase"] == "planning"
-            and value["turns"]
-            and not value["turns"][-1].get("cancelled")
-            and (previous_record is None or previous_record.get("result") != "failed")
-        ):
-            raise ValueError(
-                "planning is awaiting decide-worker-plan; no undelivered decision"
-            )
         text = original_text(instruction, "worker instruction")
-        if value["context"] is None:
-            value["context"] = fresh
-        if skip_reason is not None:
-            value.update(phase="implementing", skip_reason=skip_reason)
+        selected_phase = "planning" if planning else "implementing"
     if additional is not None:
-        if decision is None:
-            raise ValueError(
-                "additional instructions require an undelivered planning decision"
-            )
-        text += "\n\n## 親の追加指示\n\n" + original_text(
-            additional, "additional instruction"
-        )
+        text += "\n\n## 親の追加指示\n\n" + original_text(additional)
+    value.update(
+        schema_version=2,
+        context=fresh,
+        refresh_required=False,
+        phase=selected_phase,
+    )
     turn_id = uuid.uuid4().hex
+    previous_turn = next(
+        (t for t in reversed(value["turns"]) if not t.get("cancelled")), None
+    )
     snapshot = {
         "schema_version": 1,
         "lineage_id": value["lineage_id"],
         "turn_id": turn_id,
-        "previous_turn_id": value["turns"][-1]["snapshot"]["turn_id"]
-        if value["turns"]
+        "previous_turn_id": previous_turn["snapshot"]["turn_id"]
+        if previous_turn
         else None,
-        "phase": value["phase"],
+        "phase": selected_phase,
         "decision_id": decision["decision_id"] if decision else None,
-        "context_sha256": digest(value["context"]),
+        "context_sha256": digest(fresh),
     }
     if decision:
         decision["delivered_turn_id"] = turn_id
@@ -674,20 +422,17 @@ def prepare_turn(
             "delegation_id": task["delegation_id"],
             "source": None,
             "head_at_start": None,
-            "reply_only": reply_only,
+            "reply_only": False,
             "instruction_source": {
-                "kind": "answer" if decision is not None else "task",
-                "text": decision["answer"]
-                if decision is not None
-                else original_text(instruction),
-                "additional": [additional] if additional is not None else [],
+                "kind": "answer" if decision else "task",
+                "text": decision["answer"] if decision else original_text(instruction),
+                "additional": (
+                    [instruction] if decision and instruction is not None else []
+                )
+                + ([additional] if additional is not None else []),
             },
         }
     )
-    if value["phase"] == "implementing" and not implementation_authorized(value):
-        raise ValueError(
-            "implementation requires the current parent's planning approval"
-        )
     return value, text
 
 
@@ -719,175 +464,23 @@ def check_admission(
     current: dict[str, Any] | None = None,
 ) -> None:
     value = state(session.row["tasks"][str(child)])
-    fresh, stale = observe_context(session, child, value, persist=True, current=current)
     validate_snapshot(snapshot)
-    if (
-        stale
-        or fresh is None
-        or value["refresh_required"]
-        or not value["turns"]
-        or value["turns"][-1]["snapshot"] != snapshot
-        or digest(fresh) != snapshot["context_sha256"]
-        or value["phase"] != snapshot["phase"]
-    ):
-        raise ValueError("worker planning turn/context changed; refresh_required")
-    if snapshot["phase"] == "implementing" and not implementation_authorized(value):
-        raise ValueError(
-            "implementation requires the current parent's planning approval"
-        )
-
-
-def implementation_authorized(value: dict[str, Any]) -> bool:
-    return bool(
-        value["phase"] == "implementing"
-        and not value["refresh_required"]
-        and (
-            value["skip_reason"]
-            or legacy_authorized(value)
-            or any(
-                d["action"] == "approve"
-                and d["delivered_turn_id"] is not None
-                and decision_matches(value, d)
-                for d in value["decisions"]
-            )
-        )
-    )
-
-
-def legacy_authorized(value: dict[str, Any]) -> bool:
-    receipt = value.get("legacy_result", {})
-    allowed = {value["delegation_id"]} | {c["from"] for c in value["continuations"]}
-    return bool(
-        receipt
-        and receipt.get("invalidated") is False
-        and receipt.get("lineage_id") == value["lineage_id"]
-        and receipt.get("delegation_id") in allowed
-        and receipt.get("context_sha256") == digest(value["context"])
-        and receipt.get("runtime") == value["runtime"]
-    )
+    # Admit exactly the turn reserved by the current parent. Changed prose is
+    # supplied as an observation; it does not fabricate a different instruction.
+    if not value["turns"] or value["turns"][-1]["snapshot"] != snapshot:
+        raise ValueError("worker turn differs from the reserved instruction")
 
 
 def require_implementation(session: ParentSession, child: int) -> None:
     task = session.row["tasks"].get(str(child), {})
     if not task.get("delegated"):
         return
-    observe(session, child, persist=True)
-    value = state(task)
-    if not implementation_authorized(value):
-        raise ValueError(
-            "worker planning approval required; implementation artifacts are not accepted"
-        )
-    if not value["turns"] and legacy_authorized(value):
-        from .worker_migration import require_result
-
-        require_result(session, child, value)
-        return
-    if not value["turns"] or value["turns"][-1]["snapshot"]["phase"] != "implementing":
-        raise ValueError(
-            "completed implementation turn required after planning approval"
-        )
     directory, record = latest_evidence(session, child)
-    if (
-        value["turns"][-1]["source"] != str(directory)
-        or record["result"] != "completed"
+    value = state(task)
+    turn = next((t for t in reversed(value["turns"]) if not t.get("cancelled")), None)
+    if turn is not None and (
+        turn["source"] != str(directory)
+        or record.get("prompt_sha256") != turn.get("prompt_sha256")
     ):
-        raise ValueError(
-            "completed implementation turn required after planning approval"
-        )
-    if record.get("prompt_sha256") != value["turns"][-1].get("prompt_sha256"):
-        raise ValueError("implementation instruction does not match the saved turn")
+        raise ValueError("worker result does not match the saved instruction")
     bind_runtime(value, record)
-
-
-def migrate(
-    session: ParentSession, child: int, evidence: str, *, replan: bool = False
-) -> dict[str, Any]:
-    row = session.row
-    if (
-        not row
-        or row["session"] != session.session
-        or row["status"] not in {"active", "ended"}
-    ):
-        raise ValueError(
-            "legacy migration requires the saved owner; no reassignment or handoff"
-        )
-    nonempty(evidence, "worker phase migration evidence")
-    task = session.row["tasks"].get(str(child), {})
-    if not task.get("delegated") or "preflight" in task:
-        raise ValueError("migration requires an existing worker without a phase")
-    prs = [
-        pr
-        for pr in session.gh.pulls({child})
-        if child in closing_issues(pr.get("body") or "", session.gh.repo)
-    ]
-    adopting = bool(prs) and not replan
-    if not adopting:
-        session.agreed()
-        if session.gh.issue(child)["state"] != "open":
-            raise ValueError(
-                "closed legacy issue requires verified merged-result migration"
-            )
-    unstarted = False
-    if session.row.get("dispatch") is None:
-        from .manual_workers import worker_runs
-
-        unstarted = "worker_runs" in task and not any(
-            r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)
-        )
-    else:
-        from .development import ended, worker_jobs
-
-        jobs = worker_jobs(session.row["dispatch"], child)
-        unstarted = bool(jobs) and all(
-            j.get("cancelled_before_start")
-            and ended(j) is None
-            and j["resume_from"] is None
-            for j in jobs
-        )
-    value = new(task["delegation_id"])
-    value.update(
-        context=context(session, child),
-        refresh_required=not unstarted,
-        migration_evidence=evidence,
-        migration_unstarted=unstarted,
-    )
-    if unstarted:
-        from .snapshot import validate_worktree
-
-        validate_worktree(Path(task["worktree"]), task["branch"])
-    else:
-        directory, record = latest_evidence(session, child, persist_ended=False)
-        bind_runtime(value, record)
-        if adopting:
-            from .worker_migration import adopt
-
-            staged = copy.deepcopy(task)
-            adopt(session, child, staged, value, directory, record, prs, evidence)
-            with session.gh.fresh_reads():
-                if context(session, child) != value["context"] or any(
-                    session.gh.get(f"repos/{session.gh.repo}/pulls/{pr['number']}")
-                    != pr
-                    for pr in prs
-                ):
-                    raise ValueError(
-                        "legacy inputs/PR changed during migration; retry explicitly"
-                    )
-            task["review_preflight"] = staged["review_preflight"]
-        task["worker_ended"] = {
-            "delegation_id": task["delegation_id"],
-            "evidence": evidence,
-        }
-    if adopting and unstarted:
-        raise ValueError(
-            "legacy result cannot be adopted without a completed worker run"
-        )
-    if not adopting:
-        if "verification" in task:
-            task["verification"]["preflight_invalidated"] = (
-                "legacy worker explicitly migrated to planning"
-            )
-        if "review_preflight" in task:
-            task["review_preflight"]["invalidated"] = True
-    task["preflight"] = value
-    session.store.save()
-    return {"child": child, "worker_phase": summary(task)}

@@ -12,6 +12,21 @@ Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携す�
 担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
 同じ位置で[board](../board/README.md)の名前も同期し、結果を`board_sync`へ返す。
 
+## 判断と機械的な検査
+
+目的・範囲・受入条件・権限への影響と、既存証拠の適用可能性は担当親が判断する。
+CLIは現在の担当、対象repo/issue/PR/branch、runとsession、終了と回収、保存と公開の実状態を照合する。
+ハッシュは記録・対象バイト列の同一性に使い、自由文の意味や計画の妥当性の代わりにしない。
+
+`status.input_changes` は合意時からの本文変化とコメントの追加・編集・削除の参照を返す。
+親は変更を読み、合意の範囲内なら進め、実質変更なら必要な範囲を確認する。読み取りでは来歴を改変しない。
+`checking` は確認中の表示。既存の合意は明示的な `basis-revoke` まで残る。`agree` の前にcheckingを強制しない。
+子だけの停止は `stop`、ログ保留は公開、merge条件不足はそのmergeへ限定する。
+
+レビューの出典は作成時のrequest・実行記録・公開結果として保持する。
+担当や合意revisionの変化でその証拠を捨てず、親が現在の対象との関係を確認する。
+実際のコード差分・CI・指摘解消はreview/merge入口が引き続き照合する。
+
 ## 責務と状態の正本
 
 | 対象 | 正本 |
@@ -106,7 +121,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 5キーだけを持つJSON object。値はすべて非空の文章とし、最後の値に人間の確認発言を引用する。
 `checking` → 会話で認識合わせ・合意 → `agree` の順。担当指定だけでは「担当指定のみ」、
 `checking` で「要件確認中」、有効な合意コメントで「要件合意済み」となる。
-再度 `checking` に戻したら、新しい合意の記録まで分割・委任を拒否する。
+再度 `checking` に戻しても、既存の親合意と提案別の合意は維持する。停止・取消は `basis-revoke` で明示する。
 `checking` / `agreed` のrevisionは両イベントの過去最大値から進め、取消の連番とは分ける。
 取消後の `checking` は新しいrevisionを作り、人間が同じ内容へ再合意しても新しい `agreed` を残す。
 取消による要件確認中の状態から直接 `agree` で実際の再合意を記録する場合も、新しいrevisionを使う。
@@ -162,33 +177,10 @@ canonical JSONはUTF-8、`ensure_ascii=False, sort_keys=True, separators=(",", "
 再実行時は同一イベントを再投稿しない。別ghアカウントへの移管は自動で信用せず、
 新しい担当アカウントで改めて要件確認・合意を記録する。
 
-人間合意でも親の要件本文とコメントの鮮度を分割・委任・レビュー・merge前に検査する。
-新しい `agreed` は要件本文の `requirements_sha256` と、通常コメントのID/login/digestを `comment_inputs` に固定する。
-本文は自律根拠・reviewと共通の `requirement_body` 射影を使い、進捗の除外範囲も
-[自律着手の実行根拠](#自律着手の実行根拠と呼出契約)と同じ。実質的な本文変更は `checking` → 実際の認識合わせ → `agree` を要する。
-同じ `agree` の再送やコメントの無関係分類で変更後の本文を取り込まず、review-prepare前にも拒否する。
-現在のpublisherによる先頭行の `parent-session:v1` / `parent-review:v1` 記録を除き、
-コメントの追加・編集・削除は未分類の変更として操作を拒否する。
-`issue-start-judgement:v1` の表示も、[判定コメントの厳密な識別条件](../dispatcher/README.md#判断結果と保留コメント)を
-満たすものだけ同じく除外する。合意時の旧snapshotに含まれる表示も、現在の形式を検証してから除外し、元の記録は書き換えない。
-エラーは対象のID・URL・変更種別と解除方法を示す。`status` や旧記録の読取は維持し、
-snapshotのない旧合意は合意コメントのID・作成時刻と通常コメントのID・編集時刻で照合する。
-旧マーカー・registry・保存済みレビューを読取時に書き換えない。
-
-親が対象コメントを読んで要件と無関係と確認した場合だけ、次の明示入口で分類できる。
-
-```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agreement-ignore-comments --ignored-comments tmp/ignored-comments.json
-```
-
-入力は自律根拠の `ignored_comments` と同じ
-`[{"id":123,"sha256":"parent.execution.comment_snapshotのcanonical JSON digest","reason":"要件と無関係な理由"}]`。
-未分類変更をすべて含め、現存する本文・login・IDのdigestを指定する。重複・古いdigest・欠落は拒否する。
-`event=agreement_comments` に元の合意digest/revision・分類連番・現在のsnapshot・分類理由を記録し、
-実行根拠・要件・担当generation・既存レビューは変更しない。再送は冪等。
-分類済みコメントも編集・削除を再検査する。人間の指示を無関係として除外してはならない。
-要件変更・停止指示・削除への対応は `checking` → 実際の認識合わせ → `agree` で再合意する。
-同じ `agree` の再送だけでは鮮度不一致を解除せず、再合意後も旧レビューを流用しない。
+合意時の本文・コメントのsnapshotは履歴として保存する。変更は `status.input_changes` に表示し、
+意味・影響先・既存証拠の適用可能性は親が判断する。合意の本文と変更可能な計画を同一視しない。
+実質的な要件変更は、必要な人間の判断を確認して `agree` へ記録する。既存の発言を聞き直さない。
+`agreement-ignore-comments` は既存の明示分類を記録する入口として残るが、操作を再開するための必須手順ではない。
 
 `create-child` と `delegate` は、ローカル担当がactiveであり、親がopenであり、
 親コメントに有効な人間合意または自律着手根拠があることを**書き込み前**に検査する。
@@ -215,7 +207,7 @@ activeな担当セッション本人だけが実行でき、要件確認中で�
 
 noteは合意後コメント検査、自律根拠の指示コメント射影、review/mergeの要件digestから除外され、
 根拠・要件・既存レビューを変更しない。noteに要件を書いても要件変更の合意にはならない。
-要件変更は従来どおり `checking` → 人間との認識合わせ → `agree` で扱う。
+実質的な要件変更は必要な人間の判断を確認して `agree` で記録する。
 note後の通常コメントも毎回検査し、同じ本文でもマーカーのないコメントは自動除外しない。
 
 人間とagentが同じGitHub loginを使うため、loginから両者を区別できない。
@@ -224,50 +216,10 @@ note後の通常コメントも毎回検査し、同じ本文でもマーカー�
 
 ### 稼働中の親への移行
 
-`requirements_sha256` がない旧合意（#1204・#1216・#1261・#1318等を含む）は、`status` と履歴の読取を維持する。
-ただし合意時点の本文を証明できないため、分割・委任・レビュー準備/指示・merge等の実行根拠検証は
-`legacy human agreement lacks requirements_sha256` と復旧手順を示して停止する。従来動作への黙った切替は行わない。
-担当親は現在の本文・指示を確認し、`checking` → `agree` で本文digestを記録する。
-旧合意の記録後に本文の要件（目的・範囲・受入条件・停止事項）と指示コメントが実質的に変わっていないことを
-親がGitHubの編集履歴・コメントで確認できた場合は、上記の「記録形式を移すためだけの再承認は求めない」に従い、
-同じ合意内容と元の人間の確認発言の引用で記録してよい。実質的な変更があるか確認できない場合は、人間と再合意する。
-現在の本文digestを旧記録へ自動補完せず、registry・既存task・旧reviewを読み取りや移行で書き換えない。
-再合意後も旧reviewを新しい根拠へ付け替えず、現在の要件で成果を検証し、新しい理由付きrunでレビューする。
-
-本文digestを持つ親に合意後の素の進捗コメントがある場合、merge後の次の委任・レビュー・mergeで
-未分類コメントとして停止する。registryや合意を一括で書き換えず、担当親が次を一度行う。
-
-1. 拒否メッセージの全ID・URL・変更種別から本文を読み、進捗だけか、要件変更・停止指示かを確認する。
-2. 要件と無関係な現存コメントだけなら、次の例で現在のsnapshotのdigestと個別理由を作る。
-   `reasons` は例のIDを、確認した全未分類コメントのIDと理由に置き換える。#1216では取得先とCLIの親番号も変える。
-
-```bash
-gh api --paginate --slurp repos/Motoki0705/tennis-lab/issues/1204/comments > tmp/parent-comments.json
-PYTHONPATH=.agents/ops .venv/bin/python - <<'PY'
-import json
-from pathlib import Path
-from parent.execution import comment_snapshot
-from parent.policy import digest
-
-pages = json.loads(Path("tmp/parent-comments.json").read_text(encoding="utf-8"))
-comments = {c["id"]: c for page in pages for c in page}
-reasons = {123: "本文を確認済み。合意済み範囲の進捗だけで、要件や停止の指示を含まない"}
-ignored = [
-    {"id": n, "sha256": digest(comment_snapshot(comments[n])), "reason": reason}
-    for n, reason in sorted(reasons.items())
-]
-Path("tmp/ignored-comments.json").write_text(
-    json.dumps(ignored, ensure_ascii=False, indent=2), encoding="utf-8"
-)
-PY
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1204 agreement-ignore-comments --ignored-comments tmp/ignored-comments.json
-```
-
-3. 元の操作を再実行する。分類は要件・根拠・担当generation・既存レビューを変更しない。
-   分類後の本文編集や新しい通常コメントは再検査する。以降の自由文の進捗には `note` を使う。
-
-要件変更・停止の指示や削除が含まれる場合は分類で解除せず、`checking` → 実際の認識合わせ → `agree` で再合意する。
-旧レビューを変更後の要件へ流用しない。人間の指示を無関係と自動分類する移行処理は設けない。
+旧合意・worker・reviewの記録はそのまま読む。欠けた本文digestやplanning承認を生成しない。
+担当親は現在の合意・本文・コメントと保存済み成果を確認して通常の入口を使う。
+旧記録にphaseがなくてもrun/session/終了の証拠が揃えば継続できる。
+保存形式の移行が必要な場合だけ [状態の移行](#状態の移行) を使い、現在の実行記録と照合する。
 
 ## 自律着手の実行根拠と呼出契約
 
@@ -308,14 +260,14 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
 `kind=human_agreement, policy_version=human-agreement/v1` の同形式（実際のhuman_confirmation付き）へ
 読み替える。合意原文・agreement digest・公開マーカーは保持し、自律判断からagreedを作らない。
 本文digestを持つ人間合意の `input_sha256` は `{agreement_sha256, requirements_sha256}` のcanonical JSON digestとする。
-本文digestのない旧合意は読取時だけ従来のagreement digestで表現し、実行操作には使わない。
+本文digestのない旧合意も元の合意として保持し、現在への適用可能性は親が確認する。
 旧review schema version=1のauthorizationは従来どおりagreement digestと照合する。
 
 `inputs` はrepo・親番号・タイトル・要件本文digest・needs-human・指示コメントのID/login/digest・contextを含む。
 長い本文・議論を公開マーカーへ複製せず、元の判断入力は収集側が保存する。contextにも小さな参照/digestを渡す。
 子タスクのチェックリスト、進捗概要、成果物・関連PR、次の改善候補の節と、Acceptance checklist / 全体の完了条件の完了チェックを除外する。
 停止事項・対象外・未知の節は残す。現在のpublisherのparent-session:v1 / parent-review:v1記録は
-進捗として分離する。新しい未分類コメント、本文/指示の編集・削除は鮮度不一致となり、次の予定回または明示再判断へ戻す。
+進捗として分離する。本文・指示の変化は親が確認するための入力であり、既存作業を一律失効させない。
 判定コメントも人間合意と同じ厳密な形式検証で分離し、新しい根拠の `ignored_comments` には固定しない。
 旧根拠の除外リストに判定表示がある場合は、現在のコメント全体を検証できたものだけ表示のdigest変更を許す。
 それ以外の明示除外は従来どおり本文変更・削除を拒否する。
@@ -340,12 +292,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 basis-check --ba
   contextの外部資料・依存・採用状態の再取得と意味の検証は呼出元の責任で、contextの自己申告だけを鮮度証拠にしない。
 
 自律根拠は記録時の次/現generationへ結び付く。担当交代・再登録後は明示的な再判断を要し、旧委任を再起動しない。
-有効な根拠の変更は旧reviewを失効させる。新しい根拠の記録だけで旧runを再承認できず、新しい理由とrunが必要。
-`basis-revoke --reason-file tmp/reason.md` と既存の `checking` は明示的な取消/保留として扱い、
-自律根拠の再登録では解除できない。人間との実際の再合意を既存agree経路で記録する。
-子の停止もbasis-recordでは解除しない。
-ops-report報告容器への根拠登録を拒否し、提案由来の子には従来の採用/受領/別途合意の検証を維持する。
-採用済み提案の新たなIssue化経路はtriage側の後続実装が接続する。
+根拠・担当が変わっても、保存済みreviewの対象と実行記録は保持する。
+`basis-revoke --reason-file` は親全体の明示的な取消。`checking` は確認中の表示であり取消ではない。
+一部だけの停止は子の `stop` を使う。新しい根拠が必要か、どの証拠を再利用できるかは親が判断する。
 
 ## 採用提案の受領
 
@@ -366,9 +315,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --report 1
 同じ5キー形式の合意specを渡す。`event: proposal_agreed` に受領時のsource・提案digestと合意内容を記録し、
 その提案由来のcreate-child/delegateだけを許可する。他の受領提案や既存の親合意を流用しない。
 statusの `proposal_receipts` / `proposal_agreements` で未合意と合意済みを照合でき、受領直後の中断も
-GitHubコメントから復元する。明示的な `checking` は親全体と提案別の合意を取り消すため、
+GitHubコメントから復元する。明示的な `basis-revoke` は親全体と提案別の合意を取り消すため、
 親の `agree` と各提案の合意を再記録するまで、それぞれの実装を拒否する。
-既存提案の合意内容を変更する場合も `checking` で明示的に取り消してから記録する。
+既存提案の合意内容を変更する場合も `basis-revoke` で明示的に取り消してから記録する。
 未取消の合意は同じ内容の再送だけを許可し、レビュー後に対象作業の要件だけを黙って差し替えない。
 親未指定・未登録・停止中なら受領できない。人間の指定/再開後に親自身がregister/handoffして同じ入口へ戻る。
 採用チェック・選択肢・提案本文が後から変われば起票/委任時も拒否し、担当親が採用と要件を再整理する。
@@ -389,6 +338,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 delegate --child
 `spec` は [issues renderの子spec](../issues/README.md#cliと整合検査) をそのまま使う。
 親番号・識別名は実際の担当親と一致させる。`key` は同一作業で固定する小文字英数・ハイフンの1〜64文字。
 `dependencies` 省略時は子本文の依存欄の `#番号` を先行依存として扱う。
+`PR #番号` と `/pull/番号` を指すMarkdownリンクは参照PRとして区別し、依存issueには数えない。
 明示した場合はその値で依存欄も生成する。依存先は同じ親の既存の直属子に限り、循環は拒否する。
 既存の自由文に後続タスク番号が混じる場合は、`delegate --dependencies 番号...` で先行だけを明示する。
 進捗判定は常に最新の子本文の依存欄を読む。明示CLI入力は委任時に本文へも反映し、古いローカル記録で上書きしない。
@@ -424,7 +374,7 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 `record-result --child N --evidence-file tmp/tests.md` はclosing指示とbranchを照合し、
 子の成果物欄へPRと検証結果を追記する。記録だけで子を完了扱いにせず、過去の検証記録も残す。
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
-根拠/担当/子の要件が変わった既存成果は、親が現在の要件で確認してrecord-resultを実行するまで新review/mergeへ渡さない。
+根拠・担当・子の要件が変わったときは親が成果への影響を判断し、必要な部分を再確認してrecord-resultへ記録する。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
 単独issueの結果も同じ入口を使い、親用の子一覧は生成しない。
 
@@ -519,8 +469,8 @@ Codex CLIを直接起動せず、この入口から共通ランナーへ渡す�
 runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ランナーの起動前にregistryへ保存する。
 実行中はregistry・親の操作ロックを保持しない。終了値は共通ランナーの値を返し、stdoutは
 `{child, delegation_id, exit_code, runner_summary}`。`runner_summary` はランナーの公開要約JSONであり、
-起動前拒否等で要約が無い非ゼロ終了ではnullとする。最終文・stderr・ローカルパスは出力しない。
-失敗・中断しても予約とrun記録を残し、自動再試行や別session起動をしない。
+起動前拒否等で要約が無い非ゼロ終了ではnullとする。最終文のprivateな参照先は `final_file` へ返す。
+起動前の明確な拒否は診断を残して予約を復元し、起動有無が不明な中断は予約とrunを保持する。別sessionを自動起動しない。
 
 `--resume` は現在の委任で最後に記録したrunの契約と終了・cleanupを検査し、
 共通ランナーの `resume --resume-from` で同じsessionへ戻す。委任IDは共通ランナーのtask IDなので保持する。
@@ -528,7 +478,7 @@ model省略時は直前runの保存contractから継承し、同値の再指定�
 導入前のmodel欄がない委任も保存contractの選択値から復元し、判別できなければ拒否する。既定値とは推定しない。
 以前のrunにmodel overrideがなければrunnerへの引数も省略し、`overrides` / `selection_sources` の契約を保持する。
 理由は省略時に引き継ぐ。導入前の理由未取得はnullのまま残し、`--model-reason-file` で親の理由を補足できる。
-`record-worker-ended` 済みなら非空の `--restart-evidence-file` と空き枠を必須とし、
+`record-worker-ended` 済みなら保存済みrunの終了・回収と空き枠を照合し、
 同じトランザクションで終了記録を取り除き、予約枠を取り直して継続runを保存する。
 終了未記録なら予約枠を保持したまま継続する。既存PRがある修正も同じbranch・worktreeを使う。
 `launch_plan` の停止・依存・上限判定は省略しない。再開証拠はprivateな `restart_evidence` に残す。
@@ -566,114 +516,35 @@ version 1/2とも既存フィールドと過去の委任のrunを保持し、新
 
 ### workerの調査・親判断・実装フェーズ
 
-指示・回答・最終報告のGit保存と公開再開CLIは [workerログ保存](../worker_logs/README.md) を参照する。
-手動応答の `log_publication` はrunnerの終了値と独立した保存結果であり、PR作成をmain保存成功と扱わない。
+各ターンの作業は親の具体指示で決める。既定は `implementing`、調査だけを依頼するときは
+`run-worker` / `start-worker` / `continue-worker` の `--planning` を使う。
+planningの報告は任意の書式でよく、親は直接 `--resume --prompt-file` で次の作業を指示できる。
+回答を報告と結び付けて保存したい場合は `decide-worker-plan --action approve|investigate|reject --answer-file` を使う。
+保存済み回答は次の同session継続に送られ、具体指示や追加指示も併記できる。
 
-手動・自律の全workerは既定で `planning` から始まる。書込み権限を制限する方式ではなく、
-親判断前の成果受理を止める方式である。runnerは両フェーズとも `mode=write`、同じcontractとモデルで継続する。
-planningではコード・実データ・指示の整合と設計を確認し、実装・commit・PR作成をせずターンを終える。
-報告の6節は [標準worker指示](worker_prompt.md) が正本。質問がなくても親判断を待つ。
-
-```bash
-# 最新の終了確認済みplanning finalを読み、親AIが既存の根拠内で判断する
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  decide-worker-plan --child 1217 --action approve --answer-file tmp/answer.md
-# 保存した回答は同じsessionへ自動配送。判断後の継続ではprompt-fileを指定しない
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  run-worker --child 1217 --resume --restart-evidence-file tmp/restart.md
-# 自律の場合
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  continue-worker --child 1217 --evidence-file tmp/restart.md
-```
-
-`decide-worker-plan` は最新planningターンの終了・cleanup・元sessionを照合し、finalのdigest・ターンに回答を束ねる。
-`approve` は必須見出しの欠落・空節・重複を拒否する。`investigate` は不完全な報告の再提出にも使える。
-`reject` は実装移行を拒否し、回答確認だけのplanningターンへ戻す。その回答確認を実装承認へ読み替えない。
-判断は親のprivate stateに保存する。plan.jsonの作成や親issueのnoteへの転記は不要。
-同じ未配送判断の再送登録は冪等で、異なる未配送判断の重複登録は拒否する。
-
-未配送判断が1件あればresume/continueがその回答を送る。`--prompt-file` による回答の置換は拒否する。
-補足は `--additional-instruction-file` で渡し、回答と別の節で送る。判断待ちで未配送判断がなければ継続を拒否する。
-通常の実装修正は従来どおり `--prompt-file` を使う。初回の自明な作業だけは
-`run-worker` / `start-worker --skip-planning-reason-file tmp/reason.md` で親が理由を明示して省略できる。
-空の理由、resumeでの省略、承認失効後の省略は拒否する。
-
-正本はtaskのversion付きprivateな `preflight`。run/jobの `preflight` は起動時の履歴で、
-`schema_version/lineage_id/turn_id/previous_turn_id/phase/decision_id/context_sha256` を持つ。
-自律continueの委任ID更新は、終了確認済みの同sessionの系列として明示的に結合する。
-既存4/6キーrunは保持し、新しいrunにだけsnapshotを追加する。ランナーのcontractは変更しない。
-status/reconcile/inspect-workerは、runtimeの終了状態と別に `worker_phase` と次の操作を返す。
-閲覧者のsession identityと、保存された担当generation・実行根拠の鮮度は別に照合する。
-identityなし・別sessionからのstatusでも、有効な承認はimplementingと表示し、読取だけではstateを変更しない。
-回答原文・runtimeの私的な識別子は公開表示へ出さない。
-導入時は手動親・自律親・dispatcherのCLI呼出元を同じ版へ更新する。registry外側のversionは1/2を維持し、
-読取だけで旧委任にフェーズを補わない。旧CLIはフェーズ判定を実装していないため、新旧CLIの混在を強制の保証範囲に含めない。
-
-親判断前のcommit・PRは実物を表示して「承認前成果・受理不可」と扱い、成果登録・レビュー準備/指示・
-後続の依存headへの採用を拒否する。承認の保存だけでは成果を受理せず、回答を送った実装ターンの正常終了を確認する。
-外部コマンドによる書込みやPR作成の物理的な阻止、外部変更の常時監視は行わない。
-
-要件・根拠・担当generation・依存集合/headが変わると、読取は `refresh_required` を返し、
-起動・claim・成果受理は承認を失効させる。読取だけではstateを書き換えない。
-完了済み・family外の依存も、依存issue集合を明示したtimeline取得でPRとheadを束ねる。
-registryの並行更新、GitHub取得失敗、応答・保存記録の構造検証失敗は、そのまま中断し保存しない。
-取得できた入力の差と、型で区別した既知の実行根拠の失効だけをrefresh_requiredとして扱う。
-
-失効は現在のverificationと保存レビューの鮮度にも伝わる。元のレビュー証拠は保持し、
-taskの `review_preflight` にreview run・context digest・失効回数を束ねる。
-再調査・親判断・実装を終え、record-resultで再検証しても旧レビューは復活しない。
-理由付きで新しいレビューを準備する。既存のレビュー根拠検証とtask_errorsを通してmerge受付も止め、
-merge gate本体・policyは変更しない。familyでは影響を受けたPRだけを止め、単独issueも同じ鮮度を検査する。
-レビューbindingのない既存workerのレビューは承認済みと推定せず、現在の結果を確認して新しいレビューを準備する。
-手動は終了・回収確認後の通常の `run-worker --resume --prompt-file tmp/changed.md` を再調査に使う。
-自律の要件/依存だけの変更も `continue-worker --prompt-file` で再調査する。自律の根拠・担当変更だけは
-新しい有効根拠と元runtimeを照合して `refresh-worker-plan --child N --evidence-file tmp/rebind.md` を明示する。
-旧親/子が残る引継ぎは拒否する。引継ぎ後は現担当が保存済みの子sessionを操作し、旧親sessionを自動再起動しない。
-旧jobのauthorizationとcontractは保持する。
-
-判断待ちは終了確認後に枠を解放する。判断記録は枠を取得せず、継続時に再取得・上限照合する。
-停止・終了未確認・cleanup失敗は承認や枠の解放の証拠ではない。未起動取消はターン履歴に残し、
-未配送回答は次の同session継続へ戻す。#1610の起動前拒否による欠落runは従来の復旧対象であり、古いrunへ黙って戻らない。
-
-フェーズ欄のない旧委任は読取で補完せず `migration_required` と表示する。保存された担当の同じsessionが
-`migrate-worker-phase --child N --evidence-file tmp/migration.md` で明示移行する。
-理由だけで実装済み・承認済みとは推定せず、次の証拠で移行先を決める。
-
-| 旧委任の状態 | 必要な証拠・操作 | 移行結果 |
-| --- | --- | --- |
-| 未着手・PRなし | 記録方式が明示された空のrun記録、または全jobが起動証拠のない初回取消。worktree・branchを照合 | planning。初回の調査から始める |
-| 実行中・終了未確認・cleanup未確認 | 生存や未回収の疑いがある間は移行不可。既存のinspect/reconcile/cleanup確認と終了記録を先に行う | 拒否。承認・枠の解放と読み替えない |
-| 終了済み・PRなし | 最新runの終了・cleanup・session・contract・委任を照合 | planning。同じworker sessionで再調査 |
-| PR作成済み・レビュー中、workerは正常終了済み | 一意の同repo PR、現在のauthorization・要件に対する親の結果検証、最新の保存/公開レビュー、PRとworktreeのhead・branch・repoを照合 | implementing。照合した既存結果だけを明示採用し、元のレビュー状態を維持 |
-| レビュー後の修正head | 上記に加え、親の公開済み修正確認、保存されたresolutionと実diff、現在snapshotへのcoverageを照合 | implementing。最初のレビューheadと異なっても、確認済みの修正headだけを採用 |
-| merge済み・issueはclosed/completed | 正常終了と現在の結果検証に加え、実PRのmerge/close、gateのmerge journal、保存/公開レビュー結果・修正確認を照合 | implementingの既存結果receipt。完了後再開・終了照合を通常の証拠検査へ戻す |
-| 親の担当も終了済み | merge済みの証拠を同じ保存担当sessionで照合。担当の再登録・generation更新はしない | 既存結果だけを移行し、親のended状態を維持 |
-| 証拠不足・不一致、未mergeのclosed PR | 移行を拒否。open issueを調査からやり直す場合だけ、終了照合後に `--replan` を明示 | `--replan` はplanning。旧PR・旧レビューを成果として受理しない。closed issueの再実装は不可 |
-
-既存結果の採用はtaskの `preflight.legacy_result` に、移行理由・現在入力・元runtime/final・レビュー/結果検証と
-照合したPR snapshotを束ねて記録する。旧run/jobのphaseやturn、過去のplanning承認を捏造しない。
-status/reconcileは `legacy_result_migrated` を表示する。成果再登録でも元のruntime/finalとPR headを再照合し、
-別headの成果は同じsessionで実際の継続turnを終えるまで受理しない。要件・根拠・世代・依存変更時には、この採用も失効する。
-移行だけを理由に、鮮度のある既存レビューを再実行しない。移行はmerge/完了の認定ではなく、
-その後も通常のreview-request・merge gate・verify_completionの条件を通す。merge gate本体の判定は変えない。
-merge済みのclosed/completed結果は、元runtimeのcontractとPR・レビュー・merge journalを使って照合し、
-削除済みworktreeの再作成を要求しない。未mergeのPRでは、現在のworktreeとhead・branchの一致も必須とする。
+`preflight` はターン・指示・回答・runtimeの来歴。本文・担当世代・依存の状態変化で自動失効させない。
+新しいtask記録はversion=2。旧version=1も読み、次の明示操作で新しい来歴を追記する。run/jobのsnapshotはversion=1のまま保持する。
+旧CLIは新しいtask versionを扱えないため、呼出元を新CLIへ更新してから利用する。稼働中の記録を一括変換しない。
+statusの `inputs_changed` は親が意味と影響を確認するための通知であり、再調査の強制ではない。
+旧委任にphase記録がなくても、通常のrun・session・終了照合を経て継続できる。過去の承認を生成しない。
+過去のrunとレビューは作成時の対象を保持し、今の条件への適用可能性は親が判断する。
 
 ```bash
-# 新しい版のCLIを持つ親checkoutから、現在の担当sessionのまま実行する
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 status
-# 手動は共通runnerのstatus、自律はinspect-workerで最新runの終了・cleanupを照合する
-# 終了・回収を確認してから、親が照合した根拠をprivateなファイルへ書く
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  migrate-worker-phase --child 1217 --evidence-file tmp/migration.md
-# openの旧委任を再調査へ戻す場合だけ明示する
+  run-worker --child 1217 --prompt-file tmp/task.md
+# 調査を先に依頼する場合だけ --planning を追加
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  migrate-worker-phase --child 1217 --replan --evidence-file tmp/replan.md
+  run-worker --child 1217 --resume --prompt-file tmp/next.md
 ```
 
-planningへ移行する場合は通常、子の調査ターンが1回増え、追加調査ごとにさらに1回増える。
-証拠に基づく既存結果の採用にはworkerの追加ターンは不要。run記録方式が不明な委任を未起動とは扱わない。
-実モデルの待時間・費用は固定せず、予算が必要な調査は既存の資源手順へ戻す。
+通常再開の終了・cleanup・同一sessionは保存済みrunner記録から照合する。`--restart-evidence-file` は補足任意。
+PRがmerge済み、issueがclosed/completedでも、同じworkerへ残る受入確認を依頼できる。
+取消・明示停止・生存不明・worktree/branchの取り違えは別に検査する。
+`run-worker` は最新runの `final_file` を返す。起動前拒否でrun dirが作られていない場合は
+失敗の診断をprivateな履歴へ保存し、実行runと予約を元に戻す。起動有無が不明な場合は予約を維持する。
+
+ログ保存と公開は [workerログ保存](../worker_logs/README.md) の独立した結果。
+`pending` は `publish-worker-log` で再開し、workerの終了や他の作業の可否へ読み替えない。
 
 ### stacked branchの確認とrebase
 
@@ -836,27 +707,23 @@ git diff --no-ext-diff --no-textconv --binary --full-index --no-renames --no-col
 本文のJSONコードブロックにmanifest全体を載せる。この時点ではレビュー未指示。
 `review-request` は同じ対象が現在も有効なことを再検査して、親の明示指示をコメントへ記録する。
 出力は上記manifestに `"review_state":"instructed"` を追加したJSON。
-reviewイベントにもmanifestと同じauthorizationを記録する。
-requirementsは親と対象PRが閉じる子の要件本文digest。進捗表示を除く同じ射影を使い、
-子の要件変更をrecord-resultだけで旧レビューのcoverageへ持ち込まない。
-prepare中の再取得・指示・収集時にclosing対象と固定した要件集合を照合し、HEADが同じでも
-対象子の追加・差替え・欠落は新しい理由/runで固定し直す。結果の全 `child_issues` にdigestを必須とし、
-欠落する旧結果は結果受理・修正確認・merge gateでも拒否する（version=1の読取契約は維持）。
-起動/指示時は全対象、修正確認は当該PRの子、mergeはPRごとに照合する。親全体の要件/根拠変更は全件を止める。
-結果受領などのrun進捗だけでは子のcoverageを承認せず、子の停止・変更が独立PRを一律に止めないようgateで判定する。
-旧version=1は従来のgeneration/agreement_sha256を使い、human_agreement経路だけで照合する。
-保存済みmanifestを変換してdigestを書き換えず、旧runへの指示の付け替えも拒否する。
+reviewイベントには操作時のauthorizationを記録し、manifestは作成時の来歴を保持する。
+requirementsは親・対象子の本文の観測記録。文字列変化による自動失効には使わない。
+prepare中の再取得・指示・収集時はPRとclosing対象の同一性を照合する。
+実際のコード・CI・指摘解消はreview/mergeで照合し、要件の意味と変更の影響は親が判断する。
+保存済みmanifestと過去のrunを新しい承認へ書き換えない。
 `request_sha256` は `review_state` 追加前のprepare manifestのcanonical JSONに対して計算する。
 **#1218はこのJSONだけで起動せず、親コメントの同じrun ID/request digest/指示済み記録と最新対象を照合し、
 run IDごとの実行を一度だけ受理する責任を持つ。** prepareだけのJSONは実行指示にしない。
 受理・実行・修正確認・結果スキーマは [親レビュー入口](../review/README.md) を参照する。
 同じprepareの再実行は同じrun ID、同じrequestの再送は同じ指示を使う。
-次のrunや対象変更には `review-prepare --reason-file` で新しい理由を必須とする。
+既にレビュー対象となったPRの再レビューには `--reason-file` を付ける。別PRの初回レビューには不要。
 PR open/push/CI完了ではこの入口もレビューも起動しない。
 
 未指示 → `targets_fixed`（対象確定）→ `instructed`（指示済み）→ `result_received`（結果受領）→
 `fixes_verified`（修正確認）→ `complete`（完了）の順。
-後半3段階は `review-state --run-id ID --state 状態 --evidence-file tmp/evidence.md` で証拠を残す。
+後半は `review-state --run-id ID --state 状態 --evidence-file tmp/evidence.md` で証拠を残す。
+受領と確認が同時なら `instructed` から `fixes_verified` へ直接進めてよい。指示前の確認や状態の後退は拒否する。
 結果受領は成功判定ではなく、失敗・阻害指摘も受領して記録する。親が指摘と修正を照合し、
 各PRのCIなどを確認した証拠が揃うまで完了へ進めない。CLIは#1219のmerge gateの代用ではない。
 

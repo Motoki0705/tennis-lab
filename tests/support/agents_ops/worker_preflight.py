@@ -27,8 +27,7 @@ with store.locked():
     session = ParentSession(GitHub('o/r', store=store), store, 1, session_identity(dict(os.environ)))
     task = session.row['tasks'][str(child)]
     task['preflight'] = phase.new(task['delegation_id'])
-    value, text = phase.prepare_turn(session, child, 'offline fixture', resume=False,
-        skip_reason='結果・レビューの検証fixtureにある自明な1行変更。')
+    value, text = phase.prepare_turn(session, child, 'offline fixture', resume=False)
     directory = store.directory / 'fixture-workers' / task['delegation_id']
     directory.mkdir(parents=True, exist_ok=True)
     snapshot = phase.commit_turn(task, value, directory)

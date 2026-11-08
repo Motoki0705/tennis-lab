@@ -268,7 +268,7 @@ def test_old_parent_agreement_does_not_authorize_newly_received_proposal(
     _create(ops)
 
 
-def test_proposal_agreement_checks_plain_comment_after_parent_note(
+def test_proposal_agreement_observes_plain_comment_after_parent_note(
     ops_env: Any,
 ) -> None:
     ops = ops_env
@@ -286,7 +286,7 @@ def test_proposal_agreement_checks_plain_comment_after_parent_note(
     _parent(ops, "note", "--body-file", str(note))
     _create(ops)
 
-    # The same login/body without a progress marker still needs classification.
+    # A plain comment remains visible for the parent's assessment.
     posted = subprocess.run(
         [
             str(ops.tmp / "bin/gh"),
@@ -306,11 +306,12 @@ def test_proposal_agreement_checks_plain_comment_after_parent_note(
     )
     comment = json.loads(posted.stdout)
     before = ops.state
-    rejected = _create(ops, ok=False)
-    assert "unclassified agreement comments" in rejected.stderr
-    assert f"ID={comment['id']}" in rejected.stderr
-    assert comment["html_url"] in rejected.stderr and "(added)" in rejected.stderr
+    notices = json.loads(_parent(ops, "status").stdout)["input_changes"]
+    assert notices["comments"] == [
+        {"id": comment["id"], "change": "added", "url": comment["html_url"]}
+    ]
     assert ops.state == before
+    assert json.loads(_create(ops).stdout)["reused"]
     assert len(_children(ops)) == 1
     execution = importlib.import_module("parent.execution")
     policy = importlib.import_module("parent.policy")
@@ -333,6 +334,7 @@ def test_proposal_agreement_checks_plain_comment_after_parent_note(
     assert _events(ops, "agreed") == [agreement]
     assert len(_events(ops, "proposal_received")) == 1
     assert len(_events(ops, "proposal_agreed")) == 1
+    assert json.loads(_parent(ops, "status").stdout)["input_changes"]["comments"] == []
 
 
 def test_pending_proposal_preserves_independent_creation_and_delegation(
@@ -401,7 +403,7 @@ def test_pending_proposal_preserves_independent_creation_and_delegation(
     assert ops.state == before
 
 
-def test_proposal_agreements_are_scoped_and_parent_checking_revokes_them(
+def test_proposal_agreements_are_scoped_and_only_explicit_revocation_cancels_them(
     ops_env: Any,
 ) -> None:
     ops = ops_env
@@ -441,9 +443,17 @@ def test_proposal_agreements_are_scoped_and_parent_checking_revokes_them(
     assert (
         len(_events(ops, "agreed")) == 1
     )  # Proposal consent leaves the parent digest intact.
-    _parent(ops, "checking")
+    agreements = json.loads(_parent(ops, "status").stdout)["proposal_agreements"]
+    checking = json.loads(_parent(ops, "checking").stdout)
+    assert checking["proposal_agreements"] == agreements
     independent = _manifest(key="independent")
     independent["spec"].pop("source")
+    _create(ops, manifest=independent)
+    assert json.loads(_create(ops).stdout)["reused"]
+    assert json.loads(_create(ops, manifest=other).stdout)["reused"]
+    reason = ops.tmp / "revoke.md"
+    reason.write_text("人間の停止指示を親が確認し、既存の合意を取り消す。")
+    _parent(ops, "basis-revoke", "--reason-file", str(reason))
     _create(ops, manifest=independent, ok=False)
     _create(ops, ok=False)
     _agree(ops)

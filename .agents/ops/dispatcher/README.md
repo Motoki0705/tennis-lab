@@ -328,12 +328,13 @@ dispatcherは起動選択を再実装せず、既存の委任予約を受け取�
 確認後に現在のdelegation_idへだけparentの `worker_ended` 形式の証拠を記録する。
 子の結果は親へ終了イベントとして戻す。exit 0や子の最終文を成果物の合格に読み替えない。
 
-子taskの計画承認は [parentのフェーズ契約](../parent/README.md#workerの調査親判断実装フェーズ) を使う。
+子taskの任意の調査とターン来歴は [parentの契約](../parent/README.md#workerの調査親判断実装フェーズ) を使う。
 jobの `phase` はruntimeの状態、jobの `preflight.phase` は起動時のplanning/implementingである。
-start-childとworkerのclaimは同じ共通判定で、ターン・判断・現在の根拠と依存を照合する。
+start-childとworkerのclaimは予約したターン・実行対象・現在の操作権限を照合する。本文や依存の意味は親が判断する。
 未起動取消は履歴を保持し、そのターンに割り当てた回答を次の同session継続へ戻す。
 担当/根拠の変更を明示再結合した引継ぎでは、旧jobは書き換えず、子のrunner task IDも保存値を維持する。
-旧親と全子の終了確認後は現担当が継続を操作し、旧親のconversationを自動再起動しない。
+引継ぎで操作する親を切り替え、継続対象workerの終了を照合する。他のworkerの実行記録は保持する。
+旧親のconversationを自動再起動せず、その終了によって新担当の状態を上書きしない。
 
 親のwaiting/failed/stoppedは担当activeを保持する。親runtimeも子も終了済みなら実行枠は空く。
 子終了イベントまたは明示resumeは既存親を再開待ちにし、枠とauthorizationを再確認して、最新runから同じsessionをresumeする。

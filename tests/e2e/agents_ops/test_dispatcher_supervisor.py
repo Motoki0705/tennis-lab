@@ -673,7 +673,7 @@ def test_worker_rechecks_child_stop_and_authorization_after_reservation(
             else:
                 session.revoke_basis("実行根拠を取り消す")
     elif change == "requirements":
-        d.h.gh.issues[10]["body"] += "\n新しい受入条件。"
+        d.h.gh.issues[10]["body"] += "\n既存の受入条件を説明する補足。"
     else:
         row = d.row()
         if change == "generation":
@@ -686,7 +686,12 @@ def test_worker_rechecks_child_stop_and_authorization_after_reservation(
                 "execution_basis_sha256": "f" * 64,
             }
         d.update(row)
-    assert invoke_worker(d, monkeypatch, child_id) == []
+    calls = invoke_worker(d, monkeypatch, child_id)
+    if change in {"requirements", "generation"}:
+        assert len(calls) == 1
+        assert not d.row()["dispatch"]["jobs"][child_id].get("cancelled_before_start")
+        return
+    assert calls == []
     row = d.row()
     child = row["dispatch"]["jobs"][child_id]
     assert child["phase"] == "ended" and child["cancelled_before_start"] is True

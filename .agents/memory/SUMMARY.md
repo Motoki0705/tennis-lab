@@ -31,7 +31,6 @@
 - Colabの `exec` 直後の接続断では job が `pending` のまま起動しない（`transport_alive: false`）。`running` 後の `transport_alive: false` は提出clientの不在だけで、異常ではない。Claudeのbackground監視は会話のプロセスと一緒に止まる。
 - メインtreeのローカル `main` と submodule の checkout は自動で追従しない。規則・memory・skillは `git fetch` 後に `origin/main` から読む。`spin setup-nht` は実行したtreeに全体の `nht-render` を結び付けるので、メインtreeでだけ実行する。
 - Claude Code配下のローカル `tests/e2e/agents_ops` には変更と無関係な失敗がある。退行と判断する前に origin/main で同じテストを比べる。
-- 親issue本文の進捗4節以外を書き換えると、合意とレビュー要求が無効になる。経過は `note` に書く。再合意すると、それまでの委任は `run-worker --resume` できず、新しい委任とsessionが要る。
 
 ## [review](review/index.md) — マージ可否の判断基準
 

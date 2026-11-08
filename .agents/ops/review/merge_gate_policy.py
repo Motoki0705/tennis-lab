@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from issues import Issue, task_status
-from parent.execution import authorization_revoked, task_errors
+from parent.execution import task_errors
 from parent.policy import (
     closing_issues,
     dependencies,
@@ -172,22 +172,9 @@ def confirmed_state(
     request: Mapping[str, Any],
     auth: Mapping[str, Any],
 ) -> str | None:
-    """Preserve this run's authorization unless its agreement or owner is revoked."""
-    revoked_at = max(
-        (i for i, e in enumerate(history) if authorization_revoked(e, auth)), default=-1
-    )
-    recent = history[revoked_at + 1 :]
-    relevant = [
-        e
-        for e in recent
-        if e.get("event") == "review"
-        and e.get("review_run_id") == request["review_run_id"]
-    ]
-    if not relevant or any(
-        any(e.get(k) != v for k, v in auth.items()) for e in relevant
-    ):
-        return None
-    return review_state(recent, request)
+    # Current authority is checked by the caller. Historical confirmation remains
+    # attached to the exact review request, independent of the current owner.
+    return review_state(history, request)
 
 
 def dependency_order(

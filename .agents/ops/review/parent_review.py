@@ -96,8 +96,8 @@ def authorized(
         and e.get("state") == "instructed"
     )
     auth = require_run_authorization(session, request, required_issues=required_issues)
-    if any(instruction.get(k) != v for k, v in auth.items()):
-        raise ValueError("review instruction belongs to an old owner/agreement")
+    if instruction.get("request_sha256") != digest(request):
+        raise ValueError("review instruction refers to another request")
     return auth
 
 
@@ -401,7 +401,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
             "request_sha256": digest(request),
             "status": "running",
             "started_at": now(),
-            "authorization": auth,
+            "authorization": request.get("authorization", auth),
+            "operator_authorization": auth,
             "session": identity,
             "agent_invocations": 0,
         }
