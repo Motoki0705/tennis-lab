@@ -30,6 +30,11 @@ def inspect_stage(directory, entry, code):
     recipe = run["recipe"]
     saved = read_resume(directory / latest["checkpoint"], output=directory,
                         recipe=recipe, code=code)
+    prepared = Path("/content/tennis-lab") / PREPARED
+    frames = recipe["model"]["frames"]
+    assert dual_sha256(prepared / f"train_T{frames}.json") == recipe["manifest_sha256"]
+    assert dual_sha256(prepared / f"evaluation_T{frames}.json") == recipe["evaluation_manifest_sha256"]
+    assert dual_sha256(directory / f"weights-update-{latest['update']:08d}.pt") == saved["artifact_sha256"]
     assert recipe["model"] == entry["model"]
     assert recipe["budget"] == entry["budget"]
     assert recipe["runtime"]["precision"] == "bf16"
@@ -80,6 +85,7 @@ def main():
     p.add_argument("--destination", type=Path)
     p.add_argument("--output", type=Path, required=True)
     a = p.parse_args()
+    torch.set_num_threads(2)
     assert sys.version_info[:2] == (3, 11)
     assert str(torch.__version__) == "2.14.1+cu130"
     assert str(torchvision.__version__) == "0.29.1+cu130"
@@ -98,8 +104,10 @@ def main():
     }
     for key, path in checks.items():
         assert dual_sha256(path) == plan[key], key
-    for name in (root / "prepared").glob("*.json"):
-        assert dual_sha256(name) == dual_sha256(a.workspace / PREPARED / name.name)
+    original_inputs = Path("/tmp/ball-capacity-inputs-v1")
+    for name in ("audit.json", "experiments.json", "train_T32.json", "train_T64.json",
+                 "evaluation_T32.json", "evaluation_T64.json"):
+        assert dual_sha256(original_inputs / "prepared" / name) == dual_sha256(a.workspace / PREPARED / name)
     download = json.loads((a.workspace / "outputs/ball_detection/precompute/sequential_length/drive-download-20261025/progress.json").read_text())
     assert download["complete"] and download["verified_files"] == download["expected_files"] == 2925
     assert download["verified_bytes"] == download["expected_bytes"] == 157028755547
