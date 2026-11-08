@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "job_id": "blender-calibration",
+  "argv": [
+    "bash",
+    "-lc",
+    "set -euo pipefail\nexport PYTHONDONTWRITEBYTECODE=1\nuv run --no-project --python 3.11 --with bpy==4.5.3 -- python knowledge/runs/run-player-depth-compositing-20261108/blender_probe.py --output outputs/synthetic_data_generation/profile/player-depth-study/blender"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [
+    "outputs/synthetic_data_generation/profile/player-depth-study/blender"
+  ],
+  "runner_outputs": [],
+  "execution_backend": "notebook_kernel",
+  "created_at": "2026-11-08T13:55:25.942588+00:00",
+  "source_commit": "49eb7b4ab5ad04e2f2592cf90c5b2d777e02a567",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/player-depth-study-20261108/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/player-depth-study-20261108/remote.py",
+      "bytes": 28570,
+      "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+    }
+  }
+}

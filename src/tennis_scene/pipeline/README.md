@@ -118,6 +118,9 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 モデル実行では `evidence` は必須。注釈importと無効な検出器は `None` を明示し、
 `score_semantics` で区別する。
 下流のside・幾何・三角測量は、観測maskを保持する `ball_points` を使う。
+
+保存v3注釈と固定幾何を使う別経路は[保存済み入力](imports/README.ja.md)を参照する。
+taskの位置利用可・直接観測を分離した専用schemaを使用し、通常モデル経路の観測限定契約を維持する。
 v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
 
 ## ボール点と欠損

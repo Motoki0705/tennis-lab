@@ -1,0 +1,309 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0 -- /home/kamimura/projects/tennis-lab/.claude/worktrees/player-view-depth-compositing/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/player-view-depth-compositing
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+created: 2/2 workers
+2 workers [59 items]
+
+scheduling tests via LoadScheduling
+
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[weighted] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[normalized] 
+[gw0] [  1%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[weighted] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[normalized] 
+[gw0] [  3%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[normalized] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[closed_normalized] 
+[gw0] [  5%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[closed_normalized] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[weighted] 
+[gw1] [  6%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[normalized] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[closed_normalized] 
+[gw1] [  8%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[closed_normalized] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_full_alpha_closure_matches_original_even_if_accumulation_is_not_one 
+[gw1] [ 10%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_full_alpha_closure_matches_original_even_if_accumulation_is_not_one 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_half_linear_light_is_not_half_encoded_rgb 
+[gw1] [ 11%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_half_linear_light_is_not_half_encoded_rgb 
+[gw0] [ 13%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[weighted] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_decoder_scales_have_independent_hand_calculated_values 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[normalized] 
+[gw1] [ 15%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_decoder_scales_have_independent_hand_calculated_values 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_normalized_feature_is_invariant_to_uniform_prefix_attenuation 
+[gw1] [ 16%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_normalized_feature_is_invariant_to_uniform_prefix_attenuation 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_tiny_prefix_is_explicitly_ignored_without_nan 
+[gw0] [ 18%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[normalized] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[closed_normalized] 
+[gw0] [ 20%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[closed_normalized] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[weighted] 
+[gw1] [ 22%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_tiny_prefix_is_explicitly_ignored_without_nan 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_sphere_depth_matches_two_independently_known_surface_points 
+[gw0] [ 23%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[weighted] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[-0.1-1] 
+[gw0] [ 25%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[-0.1-1] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[1.1-1] 
+[gw1] [ 27%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_sphere_depth_matches_two_independently_known_surface_points 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_subpixel_ball_has_four_known_samples_on_common_ssaa2_grid 
+[gw0] [ 28%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[1.1-1] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0-0.9] 
+[gw0] [ 30%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0-0.9] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0.5-0] 
+[gw0] [ 32%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0.5-0] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[nan-1] 
+[gw0] [ 33%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[nan-1] 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_unknown_approximation 
+[gw0] [ 35%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_unknown_approximation 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_invalid_foreground_mask_and_rgb 
+[gw0] [ 37%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_invalid_foreground_mask_and_rgb 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1] 
+[gw0] [ 38%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1] 
+[gw0] [ 40%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1] 
+[gw0] [ 42%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion 
+[gw0] [ 44%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb 
+[gw0] [ 45%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr 
+[gw0] [ 47%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0] 
+[gw0] [ 49%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1] 
+[gw0] [ 50%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2] 
+[gw0] [ 52%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3] 
+[gw0] [ 54%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4] 
+[gw0] [ 55%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale 
+[gw1] [ 57%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_subpixel_ball_has_four_known_samples_on_common_ssaa2_grid 
+knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_covered_surface_does_not_use_suffix_rgb_at_fixed_opacity 
+[gw1] [ 59%] PASSED knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_covered_surface_does_not_use_suffix_rgb_at_fixed_opacity 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0] 
+[gw1] [ 61%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1] 
+[gw1] [ 62%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1] 
+knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75] 
+[gw1] [ 64%] PASSED knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError] 
+[gw0] [ 66%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError] 
+[gw0] [ 67%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0] 
+[gw0] [ 69%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0] 
+[gw0] [ 71%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan] 
+[gw1] [ 72%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError] 
+[gw0] [ 74%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf] 
+[gw1] [ 76%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError] 
+[gw0] [ 77%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError] 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale 
+[gw1] [ 79%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError] 
+[gw0] [ 81%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale 
+tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload 
+[gw1] [ 83%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request 
+[gw0] [ 84%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images 
+[gw1] [ 86%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids 
+[gw0] [ 88%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls 
+[gw1] [ 89%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls 
+[gw1] [ 91%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01] 
+[gw0] [ 93%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls 
+[gw1] [ 94%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01] 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01] 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan] 
+[gw0] [ 96%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01] 
+[gw1] [ 98%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan] 
+tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger 
+[gw0] [100%] PASSED tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger 
+
+============================== slowest durations ===============================
+0.04s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_subpixel_ball_has_four_known_samples_on_common_ssaa2_grid
+0.02s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale
+0.01s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError]
+0.01s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[weighted]
+0.01s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload
+0.01s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[normalized]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_sphere_depth_matches_two_independently_known_surface_points
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_covered_surface_does_not_use_suffix_rgb_at_fixed_opacity
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_decoder_scales_have_independent_hand_calculated_values
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_full_alpha_closure_matches_original_even_if_accumulation_is_not_one
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_invalid_foreground_mask_and_rgb
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[weighted]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[normalized]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_half_linear_light_is_not_half_encoded_rgb
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[closed_normalized]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[closed_normalized]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[weighted]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[closed_normalized]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_normalized_feature_is_invariant_to_uniform_prefix_attenuation
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[1.1-1]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[weighted]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[weighted]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[normalized]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0-0.9]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[weighted]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[nan-1]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_tiny_prefix_is_explicitly_ignored_without_nan
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[normalized]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0.5-0]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[-0.1-1]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[-0.1-1]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_unknown_approximation
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[normalized]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0-0.9]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[closed_normalized]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[normalized]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[1.1-1]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1]
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0.5-0]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[closed_normalized]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[weighted]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[closed_normalized]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_unknown_approximation
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale
+0.00s call     knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[nan-1]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[normalized]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_subpixel_ball_has_four_known_samples_on_common_ssaa2_grid
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_sphere_depth_matches_two_independently_known_surface_points
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_covered_surface_does_not_use_suffix_rgb_at_fixed_opacity
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_invalid_foreground_mask_and_rgb
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[closed_normalized]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_unknown_approximation
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[-0.1-1]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_decoder_scales_have_independent_hand_calculated_values
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_empty_prefix_keeps_foreground_without_decoder_bias[weighted]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0.5-0]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_covered_surface_does_not_use_suffix_rgb_at_fixed_opacity
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[1.1-1]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[0-0.9]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_inconsistent_opacity_instead_of_falling_back[nan-1]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_half_linear_light_is_not_half_encoded_rgb
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[weighted]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_reject_invalid_foreground_mask_and_rgb
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_subpixel_ball_has_four_known_samples_on_common_ssaa2_grid
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[normalized]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_no_foreground_keeps_public_rgb_bits[closed_normalized]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[closed_normalized]
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_normalized_feature_is_invariant_to_uniform_prefix_attenuation
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_zero_background_alpha_outside_foreground_preserves_rgb[normalized]
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_decoder_scales_have_independent_hand_calculated_values
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_full_alpha_closure_matches_original_even_if_accumulation_is_not_one
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_tiny_prefix_is_explicitly_ignored_without_nan
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_half_linear_light_is_not_half_encoded_rgb
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_full_alpha_closure_matches_original_even_if_accumulation_is_not_one
+0.00s teardown knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_normalized_feature_is_invariant_to_uniform_prefix_attenuation
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_sphere_depth_matches_two_independently_known_surface_points
+0.00s setup    knowledge/runs/run-player-prefix-approximation-20261108/test_approximation.py::test_tiny_prefix_is_explicitly_ignored_without_nan
+============================== 59 passed in 3.72s ==============================

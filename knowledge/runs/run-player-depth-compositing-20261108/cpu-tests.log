@@ -1,0 +1,116 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/player-view-depth-compositing
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+created: 2/2 workers
+2 workers [35 items]
+
+...................................                                      [100%]
+============================== slowest durations ===============================
+0.03s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError]
+0.03s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale
+0.01s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload
+0.01s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1]
+0.01s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0]
+0.01s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request
+0.01s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1]
+0.00s setup    tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_preserves_zero_and_converts_scale
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_request_writes_strict_public_payload
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_boolean_scale
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_combines_observed_and_file_request
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_rejects_overlapping_camera_ids
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[inf]
+0.00s call     knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan]
+0.00s call     tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[-1.0]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[nan]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_render_command_explicitly_omits_source_images
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[-0.01]
+0.00s setup    knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_writes_policy_and_per_camera_controls
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[0.0]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_policy_rejects_unknown_order_and_invalid_stagger
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_staged_request_requires_policy_exactly_with_controls
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_depth.py::test_nht_depth_to_metric_rejects_invalid_scale[nan]
+0.00s teardown tests/unit/synthetic_data_generation/rendering/nht/test_contracts.py::test_appearance_controls_reject_values_outside_unit_interval[1.01]
+0.00s teardown knowledge/runs/run-player-depth-compositing-20261108/test_layers.py::test_identical_rgb_alpha_ed_cannot_determine_occlusion
+============================== 35 passed in 3.88s ==============================

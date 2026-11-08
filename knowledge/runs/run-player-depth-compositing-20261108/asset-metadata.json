@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "source": "adopted court-scene-assets-v1 manifest",
+  "rendered_scenes_planned": [
+    "B00"
+  ],
+  "scenes": [
+    {
+      "scene": "B00",
+      "schema": "semantic_multi_court_alignment_v2",
+      "nht_units_per_metre": 0.06983810646574976,
+      "court_ids": [
+        "court-000",
+        "court-001"
+      ],
+      "primary_court": "court-000",
+      "reciprocal_transforms_verified": true,
+      "alignment_sha256": "d973abf8f6e8f82ac4322562f1b468c24e4472d7ed7164f79eac06a264a86581",
+      "checkpoint_bytes": 236331206
+    },
+    {
+      "scene": "B01",
+      "schema": "human_confirmed_multi_court_alignment_v1",
+      "nht_units_per_metre": 0.04226524189551289,
+      "court_ids": [
+        "court-000",
+        "court-001",
+        "court-002"
+      ],
+      "primary_court": "court-000",
+      "reciprocal_transforms_verified": true,
+      "alignment_sha256": "c3b0da3cfdc8aac390acfcb758395033ced707c05554651e2c67d1edeb24d4a9",
+      "checkpoint_bytes": 236331206
+    },
+    {
+      "scene": "B02",
+      "schema": "human_confirmed_multi_court_alignment_v1",
+      "nht_units_per_metre": 0.06625391875418457,
+      "court_ids": [
+        "court-000"
+      ],
+      "primary_court": "court-000",
+      "reciprocal_transforms_verified": true,
+      "alignment_sha256": "5cf7a69e60df3a6551f21404047df27e9e5808742518da6c7540f58232207b9d",
+      "checkpoint_bytes": 236331206
+    },
+    {
+      "scene": "B03",
+      "schema": "semantic_multi_court_alignment_v2",
+      "nht_units_per_metre": 0.06338622918035165,
+      "court_ids": [
+        "court-000"
+      ],
+      "primary_court": "court-000",
+      "reciprocal_transforms_verified": true,
+      "alignment_sha256": "8e1029f091a8d0a1bbea4992353b7dd3836bdb1b8c3bb7ecab0a00d51dba8e99",
+      "checkpoint_bytes": 236331206
+    }
+  ]
+}
