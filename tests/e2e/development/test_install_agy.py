@@ -31,7 +31,7 @@ def installation(tmp_path: Path) -> tuple[Path, Path, Path, bytes]:
     config.write_text(
         f'AGY_VERSION="1.4.11"\nAGY_URL="{archive.as_uri()}"\n'
         f'AGY_SHA256="{hashlib.sha256(archive.read_bytes()).hexdigest()}"\n'
-        'ISSUE_REWRITE_AGY_MODEL="gemini-3.8-flash-high"\n'
+        'ISSUE_SUPPLEMENT_AGY_MODEL="gemini-3.8-flash-high"\n'
     )
     return archive, config, tmp_path / "install root/bin", content
 

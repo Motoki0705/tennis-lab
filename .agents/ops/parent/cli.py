@@ -56,7 +56,7 @@ def parser() -> argparse.ArgumentParser:
         "register",
         "status",
         "checking",
-        "wait-rewrite",
+        "wait-supplement",
         "reconcile",
         "sync",
         "state-migrate",
@@ -263,7 +263,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "basis-input",
                 "basis-record",
                 "basis-check",
-                "wait-rewrite",
+                "wait-supplement",
                 "worker-log-status",
             }
             else session_identity(dict(os.environ))
@@ -277,7 +277,7 @@ def _main(argv: list[str] | None = None) -> int:
             store = workflow_store(args.state_dir, args.dispatcher_state_dir)
         else:
             store = Store(args.state_dir)
-        gh = GitHub(args.repo, store=None if args.command == "wait-rewrite" else store)
+        gh = GitHub(args.repo, store=None if args.command == "wait-supplement" else store)
         parent = issue_number(args.parent, gh.repo)
         if args.command in {"worker-log-status", "publish-worker-log"}:
             from worker_logs.service import command as log_command
@@ -301,12 +301,12 @@ def _main(argv: list[str] | None = None) -> int:
                 or any(r.get("error") for r in log_result["logs"])
                 else 0
             )
-        if args.command == "wait-rewrite":
-            from .rewrite import wait_rewrite
+        if args.command == "wait-supplement":
+            from .supplement import wait_supplement
 
             # Waiting does not need ownership, a registry transaction or an operation lock.
             print(
-                json.dumps(wait_rewrite(gh, parent), ensure_ascii=False, sort_keys=True)
+                json.dumps(wait_supplement(gh, parent), ensure_ascii=False, sort_keys=True)
             )
             return 0
         if args.command == "run-worker":

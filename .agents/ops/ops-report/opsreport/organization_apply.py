@@ -8,7 +8,7 @@ from typing import Any
 
 from issues import (
     NO_CHILDREN,
-    REWRITE_FINAL_LABELS,
+    SUPPLEMENT_FINAL_LABELS,
     TASKS_HEADING,
     ChildTask,
     Issue,
@@ -149,9 +149,9 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
             actual_labels = {v["name"] for v in raw["labels"]}
             expected_labels = set(draft["labels"])
             if node["role"] == "parent":
-                # Rewrite completion changes these machine states while triage publishes children.
-                actual_labels -= REWRITE_FINAL_LABELS
-                expected_labels -= REWRITE_FINAL_LABELS
+                # Supplement completion changes these machine states while triage publishes children.
+                actual_labels -= SUPPLEMENT_FINAL_LABELS
+                expected_labels -= SUPPLEMENT_FINAL_LABELS
             if raw["comments"] or actual_labels != expected_labels:
                 raise ValueError(
                     "new task instructions/labels changed during publication"
@@ -193,9 +193,9 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
             if actual_tasks not in ({t.number: t for t in original_tasks}, allowed):
                 raise ValueError("existing parent checklist changed outside this plan")
             raw["body"] = original["body"]
-            if {label["name"] for label in raw["labels"]} - REWRITE_FINAL_LABELS == {
+            if {label["name"] for label in raw["labels"]} - SUPPLEMENT_FINAL_LABELS == {
                 label["name"] for label in original["labels"]
-            } - REWRITE_FINAL_LABELS:
+            } - SUPPLEMENT_FINAL_LABELS:
                 raw["labels"] = original["labels"]
         raw["children"] = [child for child in raw["children"] if child not in new_ids]
     normalized["subjects"] = [n for n in normalized["subjects"] if n not in new_ids]

@@ -59,8 +59,8 @@ issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml)
 
 ## 親issueの補足追加状態
 
-判定の正本は `issues.rewrite_state`。ローカルregistryやworkflowの終了状態から本文の確定を推測しない。
-有効化の正本はrepository variable `ISSUE_REWRITE_ENABLED_SINCE`（UTCの `YYYY-MM-DDTHH:MM:SSZ`）。
+判定の正本は `issues.supplement_state`。ローカルregistryやworkflowの終了状態から本文の確定を推測しない。
+有効化の正本はrepository variable `ISSUE_SUPPLEMENT_ENABLED_SINCE`（UTCの `YYYY-MM-DDTHH:MM:SSZ`）。
 未設定のHTTP 404だけを無効とし、403・5xx・通信失敗・不正な応答や日時は例外にする。
 設定とGitHub上のラベル作成は管理者が別途行う。
 
@@ -70,9 +70,9 @@ issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml)
 
 | 公開定数 | ラベル | 状態・意味 |
 |---|---|---|
-| `REWRITE_DONE_LABEL` | `supplement:done` | `done`: 補足追加完了 |
-| `REWRITE_FAILED_LABEL` | `supplement:failed` | `failed`: 補足追加に失敗し、原文で確定 |
-| `REWRITE_SKIPPED_LABEL` | `supplement:skipped` | `skipped`: 人間が補足追加を省略 |
+| `SUPPLEMENT_DONE_LABEL` | `supplement:done` | `done`: 補足追加完了 |
+| `SUPPLEMENT_FAILED_LABEL` | `supplement:failed` | `failed`: 補足追加に失敗し、原文で確定 |
+| `SUPPLEMENT_SKIPPED_LABEL` | `supplement:skipped` | `skipped`: 人間が補足追加を省略 |
 
 ### Python API（workflowとの共有契約）
 
@@ -80,20 +80,20 @@ import rootは `.agents/ops`。workflowも次の公開名をそのまま使う�
 
 ```python
 from issues.cli import GitHub
-from issues.rewrite_state import (
-    REWRITE_DONE_LABEL,
-    REWRITE_FAILED_LABEL,
-    REWRITE_SKIPPED_LABEL,
-    REWRITE_FINAL_LABELS,
-    REWRITE_ENABLED_SINCE_VARIABLE,
+from issues.supplement_state import (
+    SUPPLEMENT_DONE_LABEL,
+    SUPPLEMENT_FAILED_LABEL,
+    SUPPLEMENT_SKIPPED_LABEL,
+    SUPPLEMENT_FINAL_LABELS,
+    SUPPLEMENT_ENABLED_SINCE_VARIABLE,
     read_enabled_since,
-    rewrite_state,
+    supplement_state,
 )
 
 gh = GitHub("owner/repo")
 enabled_since = read_enabled_since(gh)
 issue = gh.get("repos/owner/repo/issues/123")
-state = rewrite_state(
+state = supplement_state(
     [label["name"] for label in issue["labels"]],
     issue["created_at"],
     enabled_since,
@@ -102,15 +102,15 @@ state = rewrite_state(
 
 - `read_enabled_since(gh) -> str | None`: `repo` と `get(endpoint) -> object` を持つ読み取りclientを受け取る。
   共通 `issues.cli.GitHub`（`parent.github.GitHub` も可）が `gh api --include --method GET` で
-  `repos/{repo}/actions/variables/ISSUE_REWRITE_ENABLED_SINCE` を取得する。
+  `repos/{repo}/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE` を取得する。
   `GitHubHTTPError.status == 404` のときだけ `None`、設定済みなら検証したUTC文字列を返す。
-- `rewrite_state(labels, created_at, enabled_since) -> RewriteState`: `labels` はラベル**名の文字列**のiterable。
+- `supplement_state(labels, created_at, enabled_since) -> SupplementState`: `labels` はラベル**名の文字列**のiterable。
   RESTのラベルobjectそのものは渡さない。日時はUTC秒形式の文字列、無効の場合だけ `enabled_since=None`。
-  不正な日時・確定ラベルの競合は `ValueError`。戻り値の型 `RewriteState` は上記5状態の `Literal`。
-- `REWRITE_FINAL_LABELS` は3つの確定ラベルの `frozenset[str]`、
-  `REWRITE_ENABLED_SINCE_VARIABLE` はrepository variableの名前。
+  不正な日時・確定ラベルの競合は `ValueError`。戻り値の型 `SupplementState` は上記5状態の `Literal`。
+- `SUPPLEMENT_FINAL_LABELS` は3つの確定ラベルの `frozenset[str]`、
+  `SUPPLEMENT_ENABLED_SINCE_VARIABLE` はrepository variableの名前。
   定数・型・`read_enabled_since` は `issues` packageからも公開する。
-  `from issues import rewrite_state` は関数ではなく同名の**module**を返す。
+  `from issues import supplement_state` は関数ではなく同名の**module**を返す。
 
 親CLIのgateと待機は [parent README](../parent/README.md#補足追加の確定待ち)、
 自律着手の保留と再照合は [dispatcher README](../dispatcher/README.md#判断結果と保留コメント)を参照する。

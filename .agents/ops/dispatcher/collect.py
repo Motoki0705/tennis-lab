@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from issues import parse_proposal_source, parse_sections, parse_task_metadata
-from issues.rewrite_state import read_enabled_since, rewrite_state
+from issues.supplement_state import read_enabled_since, supplement_state
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
 from parent.policy import closing_issues, digest, events, nonempty, number, object_value
@@ -217,7 +217,7 @@ def collect(
             "source_reports": sorted(source_reports),
             "comments": sorted(normalized_comments, key=lambda x: x["id"]),
         }
-        rewrite_state(
+        supplement_state(
             [label["name"] for label in issues[str(n)]["labels"]],
             issues[str(n)]["created_at"],
             enabled_since,
@@ -255,7 +255,7 @@ def collect(
         "schema_version": 1,
         "repo": gh.repo.casefold(),
         "publisher": login,
-        "rewrite_enabled_since": enabled_since,
+        "supplement_enabled_since": enabled_since,
         "code": code_snapshot(root),
         "subjects": subjects,
         "issues": issues,
@@ -330,11 +330,24 @@ def source_references(
     return issues, pulls, comments
 
 
+def require_current_snapshot(snapshot: Mapping[str, Any]) -> None:
+    """Old saved inputs must be recollected, never relabelled under their digest."""
+    if (
+        "rewrite_enabled_since" in snapshot
+        or "supplement_enabled_since" not in snapshot
+    ):
+        raise ValueError(
+            "unsupported dispatcher activation key; recollect the judgement input "
+            "with supplement_enabled_since before resuming"
+        )
+
+
 def material(
     snapshot: Mapping[str, Any],
     issue: int | None = None,
     sources: Sequence[str] = (),
 ) -> dict[str, Any]:
+    require_current_snapshot(snapshot)
     cited_issues, cited_pulls, cited_comments = source_references(
         snapshot["repo"], sources
     )
@@ -372,7 +385,7 @@ def material(
         "schema_version": 1,
         "repo": snapshot["repo"],
         "publisher": snapshot["publisher"],
-        "rewrite_enabled_since": snapshot["rewrite_enabled_since"],
+        "supplement_enabled_since": snapshot["supplement_enabled_since"],
         "code": snapshot["code"],
         "subjects": snapshot["subjects"] if issue is None else [issue],
         "issues": issues,

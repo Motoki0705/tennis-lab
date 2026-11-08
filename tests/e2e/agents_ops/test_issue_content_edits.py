@@ -125,7 +125,7 @@ def test_patch_identity_uses_revision_ids_and_content_with_equal_timestamps(
     before = api.Checkpoint("old", "base", 1, CREATED)
     base = api.Edit("base", "old", EDITED)
     own = api.Edit("own", "our checklist", EDITED)
-    foreign = api.Edit("foreign", "Gemini rewrite", EDITED)
+    foreign = api.Edit("foreign", "Gemini supplement", EDITED)
     revisions: tuple[Any, ...] = (own, base)
     if scenario == "before":
         revisions = (own, foreign, base)

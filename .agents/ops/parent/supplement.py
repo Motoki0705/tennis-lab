@@ -7,33 +7,33 @@ import sys
 from typing import Any
 
 from issues.cli import GitHubHTTPError
-from issues.rewrite_state import (
-    REWRITE_SKIPPED_LABEL,
-    RewriteState,
+from issues.supplement_state import (
+    SUPPLEMENT_SKIPPED_LABEL,
+    SupplementState,
     read_enabled_since,
-    rewrite_state,
+    supplement_state,
 )
 
 from .github import GitHub
 from .policy import nonempty, number, object_value
 
-WORKFLOW = "issue-rewrite.yml"
+WORKFLOW = "issue-supplement.yml"
 
 
 def _current_issue_state(
     gh: GitHub, parent: int
-) -> tuple[dict[str, Any], RewriteState]:
+) -> tuple[dict[str, Any], SupplementState]:
     with gh.fresh_reads():
         enabled_since = read_enabled_since(gh)
         raw = gh.issue(parent)
-    return raw, rewrite_state(
+    return raw, supplement_state(
         [label["name"] for label in raw["labels"]],
         raw["created_at"],
         enabled_since,
     )
 
 
-def current_state(gh: GitHub, parent: int) -> RewriteState:
+def current_state(gh: GitHub, parent: int) -> SupplementState:
     return _current_issue_state(gh, parent)[1]
 
 
@@ -43,7 +43,7 @@ def require_final(gh: GitHub, parent: int) -> dict[str, Any]:
     if state == "pending":
         raise ValueError(
             f"#{parent}: issue supplement is pending; run parent --parent {parent} "
-            f"wait-rewrite, or ask a human to add {REWRITE_SKIPPED_LABEL} to proceed"
+            f"wait-supplement, or ask a human to add {SUPPLEMENT_SKIPPED_LABEL} to proceed"
         )
     return raw
 
@@ -74,7 +74,7 @@ def latest_run(gh: GitHub, parent: int) -> int | None:
                 raise ValueError("duplicate workflow run within/across pages")
             seen.add(run_id)
             created_at = nonempty(run.get("created_at"), "run created_at")
-            if run.get("display_title") == f"issue-rewrite #{parent}":
+            if run.get("display_title") == f"issue-supplement #{parent}":
                 matching.append((created_at, run_id))
         if matching:
             return max(matching)[1]
@@ -83,19 +83,19 @@ def latest_run(gh: GitHub, parent: int) -> int | None:
         page += 1
 
 
-def wait_rewrite(gh: GitHub, parent: int) -> dict[str, Any]:
+def wait_supplement(gh: GitHub, parent: int) -> dict[str, Any]:
     state = current_state(gh, parent)
     if state != "pending":
-        return {"parent": parent, "rewrite_state": state, "run_id": None}
+        return {"parent": parent, "supplement_state": state, "run_id": None}
     run_id = latest_run(gh, parent)
     if run_id is None:
         # The workflow may have finished while its runs were being fetched.
         state = current_state(gh, parent)
         if state != "pending":
-            return {"parent": parent, "rewrite_state": state, "run_id": None}
+            return {"parent": parent, "supplement_state": state, "run_id": None}
         raise ValueError(
             f"#{parent}: no matching {WORKFLOW} run; manually start workflow_dispatch "
-            f"for this issue, or ask a human to add {REWRITE_SKIPPED_LABEL}"
+            f"for this issue, or ask a human to add {SUPPLEMENT_SKIPPED_LABEL}"
         )
     result = subprocess.run(
         ["gh", "run", "watch", str(run_id), "--repo", gh.repo],
@@ -109,6 +109,6 @@ def wait_rewrite(gh: GitHub, parent: int) -> dict[str, Any]:
     if state == "pending":
         raise ValueError(
             f"#{parent}: run {run_id} ended but issue supplement is still pending; "
-            f"inspect the run, retry workflow_dispatch or ask a human to add {REWRITE_SKIPPED_LABEL}"
+            f"inspect the run, retry workflow_dispatch or ask a human to add {SUPPLEMENT_SKIPPED_LABEL}"
         )
-    return {"parent": parent, "rewrite_state": state, "run_id": run_id}
+    return {"parent": parent, "supplement_state": state, "run_id": run_id}

@@ -67,7 +67,8 @@ exit 0や`task_success:null`をタスク成功に読み替えない。失敗時�
 `input.json` schema_version=1:
 
 - `repo`（casefoldしたowner/repo）、`publisher`（現在のgh login）、`subjects`（全open issue番号の昇順配列）。
-- `rewrite_enabled_since`（共有APIが取得・検証したrepository variableのUTC文字列、無効ならnull）。
+- `supplement_enabled_since`（共有APIが取得・検証したrepository variableのUTC文字列、無効ならnull）。
+  旧キーを持つ保存済み入力は再利用せず、[補足処理の移行手順](../issue_supplement/README.md#名称設定ラベルの移行)に従い再収集する。
   記録前の再取得でも同じ値との一致を確認する。設定が変わったら古い判断を延期し、別の境界へ黙って切り替えない。
 - `issues`（番号文字列→本文・コメント・state/state_reason・labels・assignees・正式parent/children・dependencies・source_reports）。
   GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の補足追加判定](../issues/README.md#親issueの補足追加状態)へ渡す。

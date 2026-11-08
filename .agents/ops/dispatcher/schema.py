@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any, TypedDict
 
-from issues.rewrite_state import rewrite_state
+from issues.supplement_state import supplement_state
 from parent.policy import (
     child_stopped,
     digest,
@@ -16,7 +16,7 @@ from parent.policy import (
     phase,
 )
 
-from .collect import is_container, route
+from .collect import is_container, require_current_snapshot, route
 from .records import owned_comment
 
 DISPOSITIONS = {
@@ -98,6 +98,7 @@ def source_url(snapshot: dict[str, Any], source: str) -> str:
 
 def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
     """Mechanical vetoes supplement, rather than replace, semantic agent judgment."""
+    require_current_snapshot(snapshot)
     issues = snapshot["issues"]
     raw = issues[str(n)]
     target = route(issues, n)
@@ -123,11 +124,11 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
     history = events(raw["comments"], snapshot["publisher"], n)
     facts = []
     if (
-        rewrite_state(labels, raw["created_at"], snapshot["rewrite_enabled_since"])
+        supplement_state(labels, raw["created_at"], snapshot["supplement_enabled_since"])
         == "pending"
     ):
         facts.append(
-            f"#{n} のissue supplementはpending。parent --parent {n} wait-rewriteで確定を待つ。"
+            f"#{n} のissue supplementはpending。parent --parent {n} wait-supplementで確定を待つ。"
             "人間がsupplement:skippedを付けても進められる。"
         )
     if "needs-human" in labels:
@@ -179,6 +180,7 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
 def validate(
     value: Any, snapshot: dict[str, Any]
 ) -> tuple[list[dict[str, Any]], list[str]]:
+    require_current_snapshot(snapshot)
     data = object_value(value)
     if (
         set(data) != {"schema_version", "input_sha256", "decisions"}

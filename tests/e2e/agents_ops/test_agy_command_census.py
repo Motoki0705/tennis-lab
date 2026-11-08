@@ -54,7 +54,7 @@ def test_fake_run_is_private_pinned_and_retains_partial_stream(
     settings_change: bool,
 ) -> None:
     source = tmp_path / "source"
-    assets = source / ".agents/ops/issue_rewrite"
+    assets = source / ".agents/ops/issue_supplement"
     (assets / "prompts").mkdir(parents=True)
     (assets / "schemas").mkdir()
     template = "Production template fixture\n" + (

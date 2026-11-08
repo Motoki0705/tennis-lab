@@ -116,7 +116,7 @@ TRAINING_QUEUE_DIR=/var/lib/tennis-lab-actions/training-queue \
 固定版の導入とログインはデスクトップで人間が行う。GPU runnerの導入スクリプトとは独立している。
 Linux x64のversion・版付きURL・sha256・モデルの正本は
 [`agents.conf`](../../.agents/ops/lib/agents.conf) の `AGY_VERSION`, `AGY_URL`,
-`AGY_SHA256`, `ISSUE_REWRITE_AGY_MODEL`。環境変数でこれらを上書きしない。
+`AGY_SHA256`, `ISSUE_SUPPLEMENT_AGY_MODEL`。環境変数でこれらを上書きしない。
 
 ### 導入とログイン
 
@@ -194,7 +194,7 @@ log・prompt・会話ID・認証情報・コマンド全文をartifactへ公開�
 認証・モデル・版・構造化出力のいずれかで失敗したら修正して手動でやり直す。
 この疎通だけでは補足追加の本体を有効化しない。
 最後の `--supplement-contract` 段階は本番schemaと原文保存検査を確認する。
-契約の正本は[補足追加README](../../.agents/ops/issue_rewrite/README.md#原文保存と構造化出力)を参照する。
+契約の正本は[補足追加README](../../.agents/ops/issue_supplement/README.md#原文保存と構造化出力)を参照する。
 
 続くpermissions probe段階は、使い捨ての作業領域で読み取りの成功と、危険なコマンドの拒否・ファイル不変を確認する。
 読み取りの前に許可外の `pwd` をhookで拒否し、その後も読み取りを続けて構造化結果を返すことを必須とする。

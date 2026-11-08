@@ -24,10 +24,10 @@ from tests.support.agents_ops.directory_seed import DirectorySeed
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / ".agents/ops"), str(ROOT / ".agents/ops/lib")]
-cli: Any = importlib.import_module("issue_rewrite.cli")
-pipeline: Any = importlib.import_module("issue_rewrite.pipeline")
-github: Any = importlib.import_module("issue_rewrite.github")
-publication: Any = importlib.import_module("issue_rewrite.publication")
+cli: Any = importlib.import_module("issue_supplement.cli")
+pipeline: Any = importlib.import_module("issue_supplement.pipeline")
+github: Any = importlib.import_module("issue_supplement.github")
+publication: Any = importlib.import_module("issue_supplement.publication")
 issue_format: Any = importlib.import_module("issues.format")
 policy: Any = importlib.import_module("parent.policy")
 judgements: Any = importlib.import_module("parent.judgement_comments")
@@ -134,7 +134,7 @@ def test_stability_deadline_includes_time_spent_reading_github() -> None:
 
 
 @dataclass
-class RewriteEnv:
+class SupplementEnv:
     root: Path
     repo: Path
     original: str
@@ -164,7 +164,7 @@ class RewriteEnv:
 
     def require_final(self) -> dict[str, Any]:
         reader = importlib.import_module("parent.github").GitHub("o/r")
-        return importlib.import_module("parent.rewrite").require_final(reader, 1)  # type: ignore[no-any-return]
+        return importlib.import_module("parent.supplement").require_final(reader, 1)  # type: ignore[no-any-return]
 
     def turns(self, *outputs: dict[str, Any]) -> None:
         (self.root / "turns.json").write_text(
@@ -204,7 +204,7 @@ class RewriteEnv:
             "--summary",
             str(self.root / "summary.md"),
         ]
-        if command == "rewrite":
+        if command == "supplement":
             args += [
                 "--run-dir",
                 str(self.root / f"private-{attempt}"),
@@ -249,11 +249,11 @@ def git(repo: Path, *args: str) -> str:
 
 @pytest.fixture(scope="module")
 def controller_seed(tmp_path_factory: pytest.TempPathFactory) -> DirectorySeed:
-    root = tmp_path_factory.mktemp("rewrite-controller")
+    root = tmp_path_factory.mktemp("supplement-controller")
     repo = root / "repo"
-    package = repo / ".agents/ops/issue_rewrite"
+    package = repo / ".agents/ops/issue_supplement"
     shutil.copytree(
-        ROOT / ".agents/ops/issue_rewrite",
+        ROOT / ".agents/ops/issue_supplement",
         package,
         ignore=shutil.ignore_patterns("__pycache__"),
     )
@@ -272,21 +272,24 @@ def controller_seed(tmp_path_factory: pytest.TempPathFactory) -> DirectorySeed:
 
 
 @pytest.fixture
-def rewrite_env(
+def supplement_env(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     original: str,
     controller_seed: DirectorySeed,
-) -> RewriteEnv:
+) -> SupplementEnv:
     profile_home = tmp_path / "user-home"
     profile_home.mkdir()
     monkeypatch.setenv("HOME", str(profile_home))
     repo = tmp_path / "repo"
     controller_seed.restore(repo)
-    package = repo / ".agents/ops/issue_rewrite"
+    package = repo / ".agents/ops/issue_supplement"
     monkeypatch.setattr(pipeline, "PACKAGE", package)
     monkeypatch.setattr(cli, "PACKAGE", package)
-    for name, source in (("agy", "fake_rewrite_agy.py"), ("gh", "fake_rewrite_gh.py")):
+    for name, source in (
+        ("agy", "fake_supplement_agy.py"),
+        ("gh", "fake_supplement_gh.py"),
+    ):
         executable = tmp_path / name
         executable.write_text(
             f"#!{sys.executable}\n"
@@ -297,7 +300,7 @@ def rewrite_env(
         Path(__file__).with_name("fake_agy_tools.py").read_text()
     )
     monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
-    monkeypatch.setenv("REWRITE_FAKE_ROOT", str(tmp_path))
+    monkeypatch.setenv("SUPPLEMENT_FAKE_ROOT", str(tmp_path))
     monkeypatch.delenv("GITHUB_STEP_SUMMARY", raising=False)
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "github-output"))
     clock = Clock()
@@ -306,7 +309,7 @@ def rewrite_env(
         "stable_issue",
         functools.partial(pipeline.stable_issue, clock=clock.now, sleep=clock.sleep),
     )
-    env = RewriteEnv(
+    env = SupplementEnv(
         tmp_path,
         repo,
         original,
@@ -339,7 +342,7 @@ def rewrite_env(
     return env
 
 
-def labels(env: RewriteEnv) -> set[str]:
+def labels(env: SupplementEnv) -> set[str]:
     return {item["name"] for item in env.state()["issue"]["labels"]}
 
 
@@ -360,17 +363,17 @@ def labels(env: RewriteEnv) -> set[str]:
     ],
 )
 def test_model_tampering_fails_before_any_body_write(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
     target: str,
     turn: int,
     exit_code: int,
     reason: str,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     (env.root / "attacks.json").write_text(
         json.dumps([{"target": target, "turn": turn, "exit": exit_code}])
     )
-    assert env.run("rewrite") == 1
+    assert env.run("supplement") == 1
     bundle = env.bundle()
     assert bundle["status"] == "failed" and bundle["body"] is None
     assert reason in {item["rule"] for item in bundle["report"]["reasons"]}
@@ -389,11 +392,11 @@ def test_model_tampering_fails_before_any_body_write(
 
 @pytest.mark.parametrize("relative_paths", [False, True])
 def test_workspace_changes_are_discarded_between_turns_and_do_not_affect_results(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
     monkeypatch: pytest.MonkeyPatch,
     relative_paths: bool,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     if relative_paths:
         monkeypatch.chdir(env.root)
         env.root = Path(".")
@@ -401,7 +404,7 @@ def test_workspace_changes_are_discarded_between_turns_and_do_not_affect_results
         json.dumps([{"target": "workspace", "turn": 0}])
     )
     head = git(env.repo, "rev-parse", "HEAD")
-    assert env.run("rewrite") == env.run("apply") == 0
+    assert env.run("supplement") == env.run("apply") == 0
     assert env.state()["issue"]["body"] == env.supplemented
     workspaces = env.calls("workspace")
     assert len(workspaces) == 2
@@ -425,19 +428,21 @@ def test_workspace_changes_are_discarded_between_turns_and_do_not_affect_results
 
 
 def test_uncommitted_prompt_is_rejected_before_calling_the_model(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
-    (env.repo / ".agents/ops/issue_rewrite/prompts/writer.md").write_text("changed\n")
-    assert env.run("rewrite") == 1
+    env = supplement_env
+    (env.repo / ".agents/ops/issue_supplement/prompts/writer.md").write_text(
+        "changed\n"
+    )
+    assert env.run("supplement") == 1
     assert not env.calls("agy") and not env.mutations()
 
 
 def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     assert env.state()["issue"]["body"] == env.original and env.mutations() == []
     assert env.run("apply") == 0
     assert env.state()["issue"]["body"] == env.supplemented
@@ -468,11 +473,11 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
 
 @pytest.mark.parametrize("ending", ["success", "error", "timeout"])
 def test_hook_recovery_records_commands_and_keeps_failures_private(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
     monkeypatch: pytest.MonkeyPatch,
     ending: str,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
     profile.parent.mkdir(parents=True)
     profile.write_text('{"agentMode":"plan"}')
@@ -492,7 +497,7 @@ def test_hook_recovery_records_commands_and_keeps_failures_private(
     )
     if ending == "timeout":
         monkeypatch.setattr(cli, "generate", functools.partial(cli.generate, timeout=5))
-    assert env.run("rewrite") == (0 if ending == "success" else 1)
+    assert env.run("supplement") == (0 if ending == "success" else 1)
     public = (env.root / "handoff-1.json").read_text() + (
         env.root / "summary.md"
     ).read_text()
@@ -525,9 +530,9 @@ def test_hook_recovery_records_commands_and_keeps_failures_private(
 
 
 def test_missing_hook_decision_keeps_failure_and_denials_private(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     (env.root / "turns.json").write_text(
         json.dumps(
             [
@@ -539,7 +544,7 @@ def test_missing_hook_decision_keeps_failure_and_denials_private(
             ]
         )
     )
-    assert env.run("rewrite") == 1
+    assert env.run("supplement") == 1
     failure = json.loads((env.root / "private-1/failure.json").read_text())
     assert failure["reason"] == "command_hook_mismatch"
     assert (
@@ -556,10 +561,10 @@ def test_missing_hook_decision_keeps_failure_and_denials_private(
 
 @pytest.mark.parametrize("fault", ["missing", "denied_execution", "step", "path"])
 def test_unverified_read_never_applies_a_body_or_publishes_its_path(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
     fault: str,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     (env.root / "turns.json").write_text(
         json.dumps(
             [
@@ -570,7 +575,7 @@ def test_unverified_read_never_applies_a_body_or_publishes_its_path(
             ]
         )
     )
-    assert env.run("rewrite") == 1
+    assert env.run("supplement") == 1
     failure = json.loads((env.root / "private-1/failure.json").read_text())
     assert failure["reason"] == "command_hook_mismatch"
     capture = json.loads(
@@ -591,15 +596,15 @@ def test_unverified_read_never_applies_a_body_or_publishes_its_path(
 
 
 def test_unsafe_user_settings_keep_original_body_and_finalize_failed(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     profile_home = Path(os.environ["HOME"])
     assert profile_home == env.root / "user-home"
     settings = profile_home / ".gemini/antigravity-cli/settings.json"
     settings.parent.mkdir(parents=True)
     settings.write_text(json.dumps({"agentMode": "auto"}))
-    assert env.run("rewrite") == 1
+    assert env.run("supplement") == 1
     bundle = env.bundle()
     assert bundle["status"] == "failed" and bundle["body"] is None
     assert "agy_unsafe_user_settings" in {
@@ -615,9 +620,9 @@ def test_unsafe_user_settings_keep_original_body_and_finalize_failed(
 
 @pytest.mark.parametrize("failure", ["invariant", "verifier"])
 def test_a_single_repair_receives_the_actual_failure_and_can_succeed(
-    rewrite_env: RewriteEnv, failure: str
+    supplement_env: SupplementEnv, failure: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     if failure == "invariant":
         env.turns(env.writer(after="原文に存在しないanchor"), env.writer(), PASS)
         expected = 3
@@ -640,7 +645,7 @@ def test_a_single_repair_receives_the_actual_failure_and_can_succeed(
             PASS,
         )
         expected = 4
-    assert env.run("rewrite") == 0
+    assert env.run("supplement") == 0
     assert len(env.calls("agy")) == expected
     last_writer = (env.root / "private-1/writer-2.md").read_text()
     assert "previous_supplements" in last_writer and "violations" in last_writer
@@ -656,9 +661,9 @@ def test_a_single_repair_receives_the_actual_failure_and_can_succeed(
     "failure", ["invariant", "verifier", "contradictory_verdict", "empty_rejection"]
 )
 def test_exhausted_repairs_keep_original_body_and_record_failure(
-    rewrite_env: RewriteEnv, failure: str
+    supplement_env: SupplementEnv, failure: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     if failure == "invariant":
         env.turns(
             env.writer(after="存在しないanchor 3"),
@@ -678,7 +683,7 @@ def test_exhausted_repairs_keep_original_body_and_record_failure(
         }
         env.turns(env.writer(), rejected, env.writer(), rejected)
         expected = 4
-    assert env.run("rewrite") == 1
+    assert env.run("supplement") == 1
     assert env.bundle()["status"] == "failed" and env.bundle()["body"] is None
     assert env.run("fail") == 0
     assert env.state()["issue"][
@@ -694,16 +699,16 @@ def test_exhausted_repairs_keep_original_body_and_record_failure(
     "bad_turn",
     [
         {"status": "SUCCESS"},
-        {"structured_output": {"body": "legacy rewrite", "notes": ""}},
+        {"structured_output": {"body": "legacy supplement", "notes": ""}},
         {"structured_output": {"supplements": [], "notes": "", "body": "extra"}},
     ],
 )
 def test_missing_structured_output_or_bad_schema_never_reaches_verifier(
-    rewrite_env: RewriteEnv, bad_turn: dict[str, Any]
+    supplement_env: SupplementEnv, bad_turn: dict[str, Any]
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     (env.root / "turns.json").write_text(json.dumps([bad_turn]))
-    assert env.run("rewrite") == 1
+    assert env.run("supplement") == 1
     assert len(env.calls("agy")) == 1
     assert env.run("fail") == 0 and "supplement:failed" in labels(env)
     assert env.state()["issue"]["body"] == env.original
@@ -719,11 +724,11 @@ def test_missing_structured_output_or_bad_schema_never_reaches_verifier(
     ],
 )
 def test_unsafe_candidate_is_never_exported_even_on_failure(
-    rewrite_env: RewriteEnv, unsafe: str
+    supplement_env: SupplementEnv, unsafe: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     env.turns(env.writer("補足 " + unsafe))
-    assert env.run("rewrite") == 1
+    assert env.run("supplement") == 1
     exported = (env.root / "handoff-1.json").read_text()
     assert unsafe not in exported and env.bundle()["source"] is None
     assert unsafe not in (env.root / "summary.md").read_text()
@@ -811,13 +816,13 @@ def judgement(disposition: str = "startable") -> str:
 
 @pytest.mark.parametrize("record", [agreement(), execution_basis(), judgement()])
 def test_existing_execution_records_skip_without_agent_calls_or_body_writes(
-    rewrite_env: RewriteEnv, record: str
+    supplement_env: SupplementEnv, record: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["comments"] = [comment(record)]
     env.save(state)
-    assert env.run("rewrite") == 0 and env.bundle()["status"] == "skipped"
+    assert env.run("supplement") == 0 and env.bundle()["status"] == "skipped"
     assert env.calls("agy") == []
     assert env.run("apply") == 0
     assert (
@@ -835,24 +840,24 @@ def test_existing_execution_records_skip_without_agent_calls_or_body_writes(
     ],
 )
 def test_marker_quotes_other_publishers_and_hold_are_not_execution_evidence(
-    rewrite_env: RewriteEnv, record: dict[str, Any]
+    supplement_env: SupplementEnv, record: dict[str, Any]
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["comments"] = [record]
     env.save(state)
-    assert env.run("rewrite") == 0 and env.bundle()["status"] == "ready"
+    assert env.run("supplement") == 0 and env.bundle()["status"] == "ready"
     assert len(env.calls("agy")) == 2
 
 
 def test_corrupt_owned_judgement_fails_closed_instead_of_using_substring_detection(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["comments"] = [comment(judgement() + "\n後から加えた指示")]
     env.save(state)
-    assert env.run("rewrite") == 1 and env.calls("agy") == []
+    assert env.run("supplement") == 1 and env.calls("agy") == []
     assert env.mutations() == [] and env.state()["issue"]["body"] == env.original
     assert env.run("fail") == 0 and "supplement:failed" in labels(env)
     assert "invalid_execution_record" in (env.root / "summary.md").read_text()
@@ -863,9 +868,9 @@ def test_corrupt_owned_judgement_fails_closed_instead_of_using_substring_detecti
     ["label", "created_before_activation", "disabled", "done", "failed", "skipped"],
 )
 def test_non_targets_and_already_final_automatic_runs_do_nothing(
-    rewrite_env: RewriteEnv, change: str
+    supplement_env: SupplementEnv, change: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     if change == "label":
         state["issue"]["labels"] = [{"name": "issue:child"}]
@@ -876,15 +881,15 @@ def test_non_targets_and_already_final_automatic_runs_do_nothing(
     else:
         state["issue"]["labels"].append({"name": "supplement:" + change})
     env.save(state)
-    assert env.run("rewrite") == 0 and env.bundle()["status"] == "not_target"
+    assert env.run("supplement") == 0 and env.bundle()["status"] == "not_target"
     assert env.run("apply") == 0
     assert not env.calls("agy") and not env.mutations()
 
 
 def test_manual_retry_of_failed_issue_replaces_only_the_final_label(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["issue"]["labels"].append({"name": "supplement:failed"})
     env.save(state)
@@ -892,8 +897,8 @@ def test_manual_retry_of_failed_issue_replaces_only_the_final_label(
     assert "supplement:failed" not in labels(env)
     parent_reader = importlib.import_module("parent.github").GitHub("o/r")
     with pytest.raises(ValueError, match="pending"):
-        importlib.import_module("parent.rewrite").require_final(parent_reader, 1)
-    assert env.run("rewrite") == 0
+        importlib.import_module("parent.supplement").require_final(parent_reader, 1)
+    assert env.run("supplement") == 0
     assert env.run("apply") == 0
     assert labels(env) == {"issue:parent", "enhancement", "supplement:done"}
 
@@ -902,9 +907,9 @@ def test_manual_retry_of_failed_issue_replaces_only_the_final_label(
     "timing", ["before_prepare", "during_label_removal", "before_patch"]
 )
 def test_manual_retry_closes_gate_before_records_and_checks_again_before_patch(
-    rewrite_env: RewriteEnv, timing: str
+    supplement_env: SupplementEnv, timing: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["issue"]["labels"].append({"name": "supplement:failed"})
     if timing == "before_prepare":
@@ -920,7 +925,7 @@ def test_manual_retry_closes_gate_before_records_and_checks_again_before_patch(
     )
     assert deletion < first_records
     if timing == "before_patch":
-        assert env.run("rewrite") == 0
+        assert env.run("supplement") == 0
         state = env.state()
         state["comments_mutation"] = {
             "read": state["comments_reads"] + 2,
@@ -936,20 +941,20 @@ def test_manual_retry_closes_gate_before_records_and_checks_again_before_patch(
 
 
 def test_readonly_generation_cannot_bypass_manual_prepare(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["issue"]["labels"].append({"name": "supplement:failed"})
     env.save(state)
-    assert env.run("rewrite") == 0 and env.bundle()["status"] == "not_target"
+    assert env.run("supplement") == 0 and env.bundle()["status"] == "not_target"
     assert not env.calls("agy") and not env.mutations()
 
 
 def test_manual_prepare_stops_if_human_skip_appears_during_failed_removal(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["issue"]["labels"].append({"name": "supplement:failed"})
     state["label_delete_race"] = ["supplement:skipped", "needs-human"]
@@ -966,9 +971,9 @@ def test_manual_prepare_stops_if_human_skip_appears_during_failed_removal(
 
 
 def test_final_label_addition_preserves_unrelated_concurrent_labels(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["label_add_race"] = ["needs-human"]
     env.save(state)
@@ -991,9 +996,9 @@ def test_final_label_addition_preserves_unrelated_concurrent_labels(
 
 @pytest.mark.parametrize("timing", ["before_add", "during_add"])
 def test_final_label_conflict_stops_without_removing_human_skip(
-    rewrite_env: RewriteEnv, timing: str
+    supplement_env: SupplementEnv, timing: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     if timing == "before_add":
         state["mutation"] = {
@@ -1012,21 +1017,21 @@ def test_final_label_conflict_stops_without_removing_human_skip(
 
 
 def test_invalid_activation_is_never_treated_as_disabled(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["enabled_since"] = "invalid-activation-time"
     env.save(state)
-    assert env.run("rewrite") == 1 and env.bundle()["status"] == "failed"
+    assert env.run("supplement") == 1 and env.bundle()["status"] == "failed"
     assert not env.calls("agy") and not env.mutations()
 
 
 def test_agreement_added_during_generation_is_rechecked_before_apply(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     state = env.state()
     state["comments"] = [comment(agreement())]
     env.save(state)
@@ -1035,10 +1040,10 @@ def test_agreement_added_during_generation_is_rechecked_before_apply(
 
 
 def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     state = env.state()
     latest = env.original.replace("先行依存なし。", "先行する依存はない。")
     state["mutation"] = {"read": state["issue_reads"] + 1, "body": latest}
@@ -1053,7 +1058,7 @@ def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts
         env.writer(),
         PASS,
     )
-    assert env.run("rewrite", attempt=2) == 0
+    assert env.run("supplement", attempt=2) == 0
     assert env.bundle(2)["source"]["body"] == latest
     state = env.state()
     state["mutation"] = {
@@ -1070,10 +1075,10 @@ def test_body_conflict_requests_one_static_retry_from_latest_input_then_exhausts
 
 
 def test_body_conflict_static_retry_can_finish_done_without_dispatch(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     state = env.state()
     latest = env.original.replace("先行依存なし。", "先行する依存はない。")
     state["issue"]["body"] = latest
@@ -1086,7 +1091,7 @@ def test_body_conflict_static_retry_can_finish_done_without_dispatch(
         env.writer(),
         PASS,
     )
-    assert env.run("rewrite", attempt=2) == 0
+    assert env.run("supplement", attempt=2) == 0
     assert env.bundle(2)["source"]["body"] == latest
     assert env.run("apply", attempt=2) == 0
     assert "supplement:done" in labels(env)
@@ -1098,10 +1103,10 @@ def test_body_conflict_static_retry_can_finish_done_without_dispatch(
     "interference", ["before", "after", "same_author", "missing_history"]
 )
 def test_interference_between_read_and_patch_is_failure_without_rollback(
-    rewrite_env: RewriteEnv, interference: str
+    supplement_env: SupplementEnv, interference: str
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     state = env.state()
     state["interference"] = interference
     env.save(state)
@@ -1123,9 +1128,9 @@ def test_interference_between_read_and_patch_is_failure_without_rollback(
 
 
 def test_history_detects_aba_even_when_the_body_matches_and_pages_all_edits(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["edits"] = [
         {
@@ -1137,7 +1142,7 @@ def test_history_detects_aba_even_when_the_body_matches_and_pages_all_edits(
         for i in range(101)
     ]
     env.save(state)
-    assert env.run("rewrite") == 0
+    assert env.run("supplement") == 0
     assert len(env.bundle()["source"]["history"]["edits"]) == 101
     state = env.state()
     state["edits"].append(
@@ -1156,10 +1161,10 @@ def test_history_detects_aba_even_when_the_body_matches_and_pages_all_edits(
 
 @pytest.mark.parametrize("failure", ["before_patch", "once", "always", "invalid"])
 def test_failure_job_reconciles_history_after_apply_error(
-    rewrite_env: RewriteEnv, failure: str
+    supplement_env: SupplementEnv, failure: str
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     env.fail_history(
         1 if failure == "before_patch" else 2,
         repeat=failure in {"always", "invalid"},
@@ -1191,12 +1196,12 @@ def test_failure_job_reconciles_history_after_apply_error(
 
 @pytest.mark.parametrize("state_after_apply", ["original", "written", "unavailable"])
 def test_failure_job_can_finalize_when_the_generation_artifact_is_missing(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
     state_after_apply: str,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     if state_after_apply == "written":
-        assert env.run("rewrite") == 0
+        assert env.run("supplement") == 0
         env.fail_history(2)
         assert env.run("apply") == 1
         (env.root / "handoff-1.json").unlink()
@@ -1219,12 +1224,12 @@ def test_failure_job_can_finalize_when_the_generation_artifact_is_missing(
 
 @pytest.mark.parametrize("written", [False, True])
 def test_failure_job_rejects_a_corrupt_artifact_and_checks_write_state(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
     written: bool,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     if written:
-        assert env.run("rewrite") == 0
+        assert env.run("supplement") == 0
         env.fail_history(2)
         assert env.run("apply") == 1
     unsafe = "ghs_" + "a" * 36
@@ -1245,9 +1250,11 @@ def test_failure_job_rejects_a_corrupt_artifact_and_checks_write_state(
         assert env.require_final()["body"] == env.original
 
 
-def test_failure_job_preserves_foreign_only_edits(rewrite_env: RewriteEnv) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+def test_failure_job_preserves_foreign_only_edits(
+    supplement_env: SupplementEnv,
+) -> None:
+    env = supplement_env
+    assert env.run("supplement") == 0
     state = env.state()
     state["mutation"] = {
         "read": state["issue_reads"] + 1,
@@ -1265,10 +1272,10 @@ def test_failure_job_preserves_foreign_only_edits(rewrite_env: RewriteEnv) -> No
 
 @pytest.mark.parametrize("write_state", ["unwritten", "completed", "interrupted"])
 def test_failure_job_with_invalid_execution_record_only_finalizes_without_our_write(
-    rewrite_env: RewriteEnv, write_state: str
+    supplement_env: SupplementEnv, write_state: str
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     if write_state == "interrupted":
         state = env.state()
         state["interference"] = "after"
@@ -1306,21 +1313,21 @@ def test_failure_job_with_invalid_execution_record_only_finalizes_without_our_wr
 
 
 def test_record_added_during_stability_wait_prevents_any_model_usage(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["mutation"] = {"read": 3, "comments": [comment(agreement())]}
     env.save(state)
-    assert env.run("rewrite") == 0 and env.bundle()["status"] == "skipped"
+    assert env.run("supplement") == 0 and env.bundle()["status"] == "skipped"
     assert not env.calls("agy") and not env.mutations()
 
 
 @pytest.mark.parametrize("final", ["done", "skipped"])
 def test_failure_job_preserves_a_concurrently_finalized_issue(
-    rewrite_env: RewriteEnv, final: str
+    supplement_env: SupplementEnv, final: str
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     state = env.state()
     state["issue"]["labels"].append({"name": "supplement:" + final})
     env.save(state)
@@ -1466,11 +1473,11 @@ def test_history_normalizes_author_for_first_edit(
 
 @pytest.mark.parametrize("tamper", ["body", "supplements", "legacy_schema"])
 def test_apply_revalidates_the_artifact_instead_of_trusting_its_ready_status(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
     tamper: str,
 ) -> None:
-    env = rewrite_env
-    assert env.run("rewrite") == 0
+    env = supplement_env
+    assert env.run("supplement") == 0
     value = env.bundle()
     if tamper == "body":
         value["body"] = env.supplemented.replace("#17 を", "#18 を")
@@ -1484,11 +1491,11 @@ def test_apply_revalidates_the_artifact_instead_of_trusting_its_ready_status(
 
 
 def test_no_supplement_is_a_verified_noop_without_body_edit(
-    rewrite_env: RewriteEnv,
+    supplement_env: SupplementEnv,
 ) -> None:
-    env = rewrite_env
+    env = supplement_env
     env.turns({"supplements": [], "notes": "背景の説明は十分。"}, PASS)
-    assert env.run("rewrite") == env.run("apply") == 0
+    assert env.run("supplement") == env.run("apply") == 0
     assert env.state()["issue"]["body"] == env.original
     assert labels(env) == {"issue:parent", "enhancement", "supplement:done"}
     assert env.bundle()["supplements"] == []
@@ -1498,34 +1505,34 @@ def test_no_supplement_is_a_verified_noop_without_body_edit(
 def test_workflow_guards_and_permission_boundary_are_structural() -> None:
     # BaseLoader preserves the YAML key 'on' as a string.
     workflow = yaml.load(
-        (ROOT / ".github/workflows/issue-rewrite.yml").read_text(),
+        (ROOT / ".github/workflows/issue-supplement.yml").read_text(),
         Loader=yaml.BaseLoader,
     )
     assert set(workflow["on"]) == {"issues", "workflow_dispatch"}
     assert workflow["on"]["issues"]["types"] == ["opened", "labeled"]
     assert (
         workflow["run-name"]
-        == "issue-rewrite #${{ github.event.issue.number || inputs.issue_number }}"
+        == "issue-supplement #${{ github.event.issue.number || inputs.issue_number }}"
     )
     assert workflow["concurrency"]["cancel-in-progress"] == "false"
     jobs = workflow["jobs"]
-    rewrite = jobs["rewrite"]
+    supplement = jobs["supplement"]
     guard = jobs["prepare"]["if"]
     assert "github.actor == github.repository_owner" in guard
-    assert "vars.ISSUE_REWRITE_ENABLED_SINCE != ''" in guard
+    assert "vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != ''" in guard
     assert "github.event.label.name == 'issue:parent'" in guard
     assert "github.ref == 'refs/heads/main'" in guard
-    assert rewrite["runs-on"] == ["self-hosted", "linux", "x64", "tennis-lab"]
-    assert rewrite["permissions"] == {
+    assert supplement["runs-on"] == ["self-hosted", "linux", "x64", "tennis-lab"]
+    assert supplement["permissions"] == {
         "contents": "read",
         "issues": "read",
         "pull-requests": "read",
     }
-    assert rewrite["env"]["HOME"] == "/var/lib/tennis-lab-actions/home"
-    assert rewrite["env"]["AGY_CLI_DISABLE_AUTO_UPDATE"] == "true"
+    assert supplement["env"]["HOME"] == "/var/lib/tennis-lab-actions/home"
+    assert supplement["env"]["AGY_CLI_DISABLE_AUTO_UPDATE"] == "true"
     assert (
-        workflow["env"]["ISSUE_REWRITE_ENABLED_SINCE"]
-        == "${{ vars.ISSUE_REWRITE_ENABLED_SINCE }}"
+        workflow["env"]["ISSUE_SUPPLEMENT_ENABLED_SINCE"]
+        == "${{ vars.ISSUE_SUPPLEMENT_ENABLED_SINCE }}"
     )
     for name in ("prepare", "apply", "apply_retry", "failed"):
         assert jobs[name]["runs-on"] == "ubuntu-latest"
@@ -1547,7 +1554,7 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
         )
         assert checkout["with"]["persist-credentials"] == "false"
         assert checkout["with"]["ref"] == "${{ github.sha }}"
-    for name in ("rewrite", "rewrite_retry"):
+    for name in ("supplement", "supplement_retry"):
         # Four turns: writer/verifier, then at most one repair and verification.
         # Plus the existing 10-minute stability deadline and 10 minutes setup/I/O.
         assert int(jobs[name]["timeout-minutes"]) == 4 * 600 // 60 + 10 + 10
@@ -1559,7 +1566,7 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
         assert checkout["with"]["fetch-depth"] == "0"
     upload = next(
         step
-        for step in rewrite["steps"]
+        for step in supplement["steps"]
         if step.get("uses", "").startswith("actions/upload-artifact@")
     )
     assert upload["with"]["path"].endswith("/public/handoff.json")
@@ -1571,39 +1578,76 @@ def test_workflow_guards_and_permission_boundary_are_structural() -> None:
 
 def test_workflow_retries_once_inside_the_original_owner_authorized_run() -> None:
     workflow = yaml.load(
-        (ROOT / ".github/workflows/issue-rewrite.yml").read_text(),
+        (ROOT / ".github/workflows/issue-supplement.yml").read_text(),
         Loader=yaml.BaseLoader,
     )
     jobs = workflow["jobs"]
     assert set(jobs) == {
         "prepare",
-        "rewrite",
+        "supplement",
         "apply",
-        "rewrite_retry",
+        "supplement_retry",
         "apply_retry",
         "failed",
     }
-    assert jobs["rewrite"]["needs"] == "prepare"
-    assert "needs.prepare.outputs.status == 'ready'" in jobs["rewrite"]["if"]
-    assert jobs["apply"]["needs"] == "rewrite"
-    assert set(jobs["rewrite_retry"]["needs"]) == {"prepare", "apply"}
-    assert "needs.apply.outputs.needs_retry == 'true'" in jobs["rewrite_retry"]["if"]
+    assert jobs["supplement"]["needs"] == "prepare"
+    assert "needs.prepare.outputs.status == 'ready'" in jobs["supplement"]["if"]
+    assert jobs["apply"]["needs"] == "supplement"
+    assert set(jobs["supplement_retry"]["needs"]) == {"prepare", "apply"}
+    assert "needs.apply.outputs.needs_retry == 'true'" in jobs["supplement_retry"]["if"]
     assert "github.actor == github.repository_owner" in jobs["prepare"]["if"]
-    assert "github.actor == github.repository_owner" in jobs["rewrite_retry"]["if"]
-    assert jobs["apply_retry"]["needs"] == "rewrite_retry"
+    assert "github.actor == github.repository_owner" in jobs["supplement_retry"]["if"]
+    assert jobs["apply_retry"]["needs"] == "supplement_retry"
     assert (
         jobs["apply"]["outputs"]["needs_retry"]
         == "${{ steps.apply.outputs.needs_retry }}"
     )
     for name, attempt in (
-        ("rewrite", 1),
+        ("supplement", 1),
         ("apply", 1),
-        ("rewrite_retry", 2),
+        ("supplement_retry", 2),
         ("apply_retry", 2),
     ):
         scripts = "\n".join(step.get("run", "") for step in jobs[name]["steps"])
         assert f"--attempt {attempt}" in scripts
         assert "--manual" not in scripts
+    for attempt, producer, consumer in (
+        (1, "supplement", "apply"),
+        (2, "supplement_retry", "apply_retry"),
+    ):
+        upload = next(
+            step
+            for step in jobs[producer]["steps"]
+            if step.get("uses", "").startswith("actions/upload-artifact@")
+        )
+        download = next(
+            step
+            for step in jobs[consumer]["steps"]
+            if step.get("uses", "").startswith("actions/download-artifact@")
+        )
+        assert (
+            upload["with"]["name"]
+            == download["with"]["name"]
+            == (
+                "issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-"
+                + str(attempt)
+            )
+        )
+        assert (
+            download["with"]["path"] == "${{ runner.temp }}/issue-supplement-incoming"
+        )
+    assert set(jobs["failed"]["needs"]) == set(jobs) - {"failed"}
+    failure_download = next(
+        step
+        for step in jobs["failed"]["steps"]
+        if step.get("uses", "").startswith("actions/download-artifact@")
+    )
+    assert failure_download["with"]["name"] == (
+        "issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-${{ env.SUPPLEMENT_ATTEMPT }}"
+    )
+    assert jobs["failed"]["env"]["SUPPLEMENT_ATTEMPT"] == (
+        "${{ needs.apply.outputs.needs_retry == 'true' && '2' || '1' }}"
+    )
     for job in jobs.values():
         assert "actions" not in job["permissions"]
         assert all(
@@ -1627,7 +1671,7 @@ def test_privileged_workflow_actions_match_verified_official_release_tags() -> N
         ),
         "astral-sh/setup-uv": ("37802adc94f370d6bfd71619e3f0bf239e1f3b78", "v7.6.0"),
     }
-    text = (ROOT / ".github/workflows/issue-rewrite.yml").read_text()
+    text = (ROOT / ".github/workflows/issue-supplement.yml").read_text()
     uses = re.findall(r"(?m)^\s*uses: (\S+)@(\S+) # (v\S+)$", text)
     workflow = yaml.load(text, Loader=yaml.BaseLoader)
     count = sum(
@@ -1642,11 +1686,11 @@ def test_privileged_workflow_actions_match_verified_official_release_tags() -> N
 
 
 def test_manual_validation_uses_production_repair_flow_without_github_writes(
-    rewrite_env: RewriteEnv, monkeypatch: pytest.MonkeyPatch
+    supplement_env: SupplementEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sys.path.insert(0, str(ROOT / "scripts/github_actions"))
     validation = importlib.import_module("agy_allowlist_validation")
-    env = rewrite_env
+    env = supplement_env
     profile = Path(os.environ["HOME"]) / ".gemini/antigravity-cli/settings.json"
     profile.parent.mkdir(parents=True)
     profile.write_text('{"agentMode":"auto"}')
@@ -1655,7 +1699,7 @@ def test_manual_validation_uses_production_repair_flow_without_github_writes(
     env.turns(env.writer(after="原文に存在しないanchor"), env.writer(), PASS)
     monkeypatch.setattr(pipeline, "run_headless", runner.turn)
     with runner.policy.scope():
-        assert env.run("rewrite") == 0
+        assert env.run("supplement") == 0
     assert env.bundle()["status"] == "ready"
     assert len(runner.ledger.rows()) == 3
     assert [item["role"] for item in runner.ledger.rows()] == [

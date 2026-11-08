@@ -19,12 +19,12 @@ from agy_headless import (
     run_headless,
 )
 from issues.format import CHILD_LABEL, validate_body
-from issues.rewrite_state import (
-    REWRITE_DONE_LABEL,
-    REWRITE_FAILED_LABEL,
-    REWRITE_FINAL_LABELS,
-    REWRITE_SKIPPED_LABEL,
-    rewrite_state,
+from issues.supplement_state import (
+    SUPPLEMENT_DONE_LABEL,
+    SUPPLEMENT_FAILED_LABEL,
+    SUPPLEMENT_FINAL_LABELS,
+    SUPPLEMENT_SKIPPED_LABEL,
+    supplement_state,
 )
 from parent.execution import PROGRESS_SECTIONS
 
@@ -71,7 +71,7 @@ class Handoff(TypedDict):
 def issue_state(gh: GitHub, issue: dict[str, Any]) -> str:
     return cast(
         str,
-        rewrite_state(
+        supplement_state(
             [item["name"] for item in issue["labels"]],
             issue["created_at"],
             gh.enabled_since,
@@ -90,7 +90,7 @@ def prepare(gh: GitHub, number: int, *, manual: bool) -> dict[str, Any]:
             raise ValueError("supplement_label_conflict")
         gh.request(
             "DELETE",
-            f"repos/{gh.repo}/issues/{number}/labels/{quote(REWRITE_FAILED_LABEL, safe='')}",
+            f"repos/{gh.repo}/issues/{number}/labels/{quote(SUPPLEMENT_FAILED_LABEL, safe='')}",
             {},
         )
         state = issue_state(gh, gh.issue(number))
@@ -103,7 +103,7 @@ def prepare(gh: GitHub, number: int, *, manual: bool) -> dict[str, Any]:
     ):
         return outcome(
             bundle,
-            final_label(gh, number, REWRITE_SKIPPED_LABEL),
+            final_label(gh, number, SUPPLEMENT_SKIPPED_LABEL),
             "execution_record_exists",
         )["report"]
     return outcome(bundle, "ready")["report"]
@@ -403,9 +403,9 @@ def final_label(gh: GitHub, number: int, label: str) -> str:
     state = issue_state(gh, issue)
     if state == "not_target":
         return state
-    if set(labels) & (REWRITE_FINAL_LABELS - {label}):
+    if set(labels) & (SUPPLEMENT_FINAL_LABELS - {label}):
         raise ValueError("supplement_label_conflict")
-    if set(labels) & REWRITE_FINAL_LABELS == {label}:
+    if set(labels) & SUPPLEMENT_FINAL_LABELS == {label}:
         return label.removeprefix("supplement:")
     gh.request(
         "POST",
@@ -414,7 +414,7 @@ def final_label(gh: GitHub, number: int, label: str) -> str:
     )
     confirmed = {
         item["name"] for item in gh.issue(number)["labels"]
-    } & REWRITE_FINAL_LABELS
+    } & SUPPLEMENT_FINAL_LABELS
     if confirmed != {label}:
         # GitHub has no atomic add-if-absent for labels. Detect the residual
         # race explicitly; never erase the competing label to conceal it.
@@ -438,11 +438,13 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
     if has_execution_record(
         gh.comments(number), gh.repo.split("/")[0], gh.repo, number
     ):
-        state = final_label(gh, number, REWRITE_SKIPPED_LABEL)
+        state = final_label(gh, number, SUPPLEMENT_SKIPPED_LABEL)
         return outcome(bundle, state, "execution_record_exists")["report"]
     if bundle["status"] == "skipped":
         # A record removed since generation is not permission to apply stale input.
-        return outcome(bundle, final_label(gh, number, REWRITE_SKIPPED_LABEL))["report"]
+        return outcome(bundle, final_label(gh, number, SUPPLEMENT_SKIPPED_LABEL))[
+            "report"
+        ]
     source, candidate, verification, supplements = (
         bundle["source"],
         bundle["body"],
@@ -491,7 +493,7 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
     ):
         return outcome(
             bundle,
-            final_label(gh, number, REWRITE_SKIPPED_LABEL),
+            final_label(gh, number, SUPPLEMENT_SKIPPED_LABEL),
             "execution_record_exists",
         )["report"]
     if candidate != source["body"]:
@@ -505,7 +507,7 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
             raise ValueError("interrupted_during_write")
     elif gh.history(number) != before:
         raise ValueError("interrupted_during_write")
-    return outcome(bundle, final_label(gh, number, REWRITE_DONE_LABEL))["report"]
+    return outcome(bundle, final_label(gh, number, SUPPLEMENT_DONE_LABEL))["report"]
 
 
 def failure_result(
@@ -560,7 +562,9 @@ def fail(
         recorded = False
         record_error = "invalid_execution_record"
     if recorded:
-        return final_label(gh, number, REWRITE_SKIPPED_LABEL), "execution_record_exists"
+        return final_label(
+            gh, number, SUPPLEMENT_SKIPPED_LABEL
+        ), "execution_record_exists"
     try:
         status, reason = failure_result(current, gh.history(number), bundle)
         if record_error is not None:
@@ -571,5 +575,5 @@ def fail(
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired):
         # No final label may release the parent gate without write-state evidence.
         raise ValueError("write_state_unconfirmed") from None
-    label = REWRITE_DONE_LABEL if status == "done" else REWRITE_FAILED_LABEL
+    label = SUPPLEMENT_DONE_LABEL if status == "done" else SUPPLEMENT_FAILED_LABEL
     return final_label(gh, number, label), reason

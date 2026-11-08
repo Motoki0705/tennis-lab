@@ -29,7 +29,7 @@ from agy_permission_probe import ProbeFailure, run_permission_probe  # noqa: E40
 def supplement_contract() -> dict[str, Any]:
     """Check installed dependencies and production schemas without a model turn."""
     from agent_output import OutputSchema
-    from issue_rewrite.invariants import (
+    from issue_supplement.invariants import (
         Supplement,
         check_invariants,
         render_supplements,
@@ -49,7 +49,7 @@ def supplement_contract() -> dict[str, Any]:
     supplements: list[Supplement] = [
         {"after": "## 目的・背景", "content": "客観的な背景。"}
     ]
-    package = ROOT / ".agents/ops/issue_rewrite"
+    package = ROOT / ".agents/ops/issue_supplement"
     OutputSchema(package / "schemas/writer.schema.json", agent="agy").validate(
         {"supplements": supplements, "notes": "probe"}
     )
