@@ -327,6 +327,8 @@ def shot_reports(inputs: Inputs, tmp_path: Path) -> tuple[Path, Path]:
             frame: np.ndarray = np.full(
                 (72, 128, 3), 25 + index * 20 if ok else 0, np.uint8
             )
+            if not ok:
+                frame[0, 0, 0] = 3  # Observed Blender 5.2 quantization dither.
             assert cv2.imwrite(str(directory / "frames" / f"{index:05d}.png"), frame)
         report = {
             "schema": "tennis_scene_player_view_render_v1",
@@ -402,7 +404,9 @@ def test_publication_rejects_incorrect_blender_audit(
         validate_render(shot, renders / "player_7", 7)
 
 
-@pytest.mark.parametrize("fault", ["truncated", "missing-png", "bad-png"])
+@pytest.mark.parametrize(
+    "fault", ["truncated", "missing-png", "bad-png", "nonblank-camera"]
+)
 def test_video_publication_refuses_missing_frames_and_cleans_failed_encoding(
     shot_reports: tuple[Path, Path], tmp_path: Path, fault: str
 ) -> None:
@@ -417,9 +421,15 @@ def test_video_publication_refuses_missing_frames_and_cleans_failed_encoding(
             (path.parent / "frames" / "00004.png").unlink()
     elif fault == "missing-png":
         (renders / "player_7" / "frames" / "00001.png").unlink()
-    else:
+    elif fault == "bad-png":
         (renders / "player_7" / "frames" / "00001.png").write_bytes(b"broken PNG")
-    with pytest.raises(ValueError, match="entire input timeline|PNG"):
+    else:
+        path = renders / "player_7" / "frames" / "00002.png"
+        frame = cv2.imread(str(path))
+        assert frame is not None
+        frame[60, 20] = 255
+        assert cv2.imwrite(str(path), frame)
+    with pytest.raises(ValueError, match="entire input timeline|PNG|blank frame"):
         publish_player_views(package=shot, renders=renders, output=output)
     assert not output.exists()
     assert not list(tmp_path.glob(".videos-*"))

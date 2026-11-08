@@ -251,7 +251,9 @@ def publish_player_views(
                 if frame is None or frame.shape != (height, width, 3):
                     raise ValueError(f"Missing/invalid rendered PNG: {path}")
                 valid = report["frames"][index]["camera_valid"]
-                if not valid and np.ptp(frame.astype(np.int16), axis=(0, 1)).max() > 2:
+                # Blender 5.2's default 8-bit dithering spans three levels in
+                # the actual black-frame fixture; allow at most four LSBs.
+                if not valid and np.ptp(frame.astype(np.int16), axis=(0, 1)).max() > 4:
                     raise ValueError("Camera-missing render must be a blank frame")
                 cv2.rectangle(frame, (0, 0), (width, min(50, height)), (15, 15, 15), -1)
                 text = f"ID {identity} | source frame {source_frame} | camera {'VALID' if valid else 'MISSING'}"
