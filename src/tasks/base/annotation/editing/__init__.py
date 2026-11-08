@@ -1,6 +1,7 @@
 """Revisioned task edits and adoption sealing."""
 
 from .contracts import (
+    BlankAnnotationContext,
     ChangeResult,
     ChangeSummary,
     EditCommand,
@@ -11,6 +12,7 @@ from .contracts import (
 from .store import RevisionConflict, RevisionStore
 
 __all__ = [
+    "BlankAnnotationContext",
     "ChangeResult",
     "ChangeSummary",
     "EditCommand",

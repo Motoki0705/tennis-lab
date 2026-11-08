@@ -18,6 +18,7 @@ from src.tasks.annotation.configuration import (
     ExistingBudget,
     NewBudget,
     configure,
+    configure_local_videos,
 )
 from src.tasks.annotation.contracts import Runtime, RuntimeSettings, StageCost
 from src.tasks.annotation.controller import Controller
@@ -44,6 +45,7 @@ from src.tasks.base.annotation.resources import ResourceManager
 from src.tasks.base.annotation.screening.contracts import ScreeningPolicy
 from src.tasks.player_detection.annotation.contracts import DinoInferenceConfig
 from src.utils.paths import PROJECT_ROOT
+from tests.support.tasks.local_annotation import local_configuration
 
 
 @dataclass
@@ -170,9 +172,51 @@ def example(tmp_path: Path) -> Example:
     return Example(layout, configuration, blob)
 
 
+@pytest.mark.parametrize("input_kind", ["prediction", "blank"])
 def test_configuration_freezes_inputs_without_launching_or_resetting(
-    example: Example,
+    example: Example, monkeypatch: pytest.MonkeyPatch, input_kind: str,
 ) -> None:
+    if input_kind == "blank":
+        from src.tasks.annotation import reviews
+        from src.tasks.annotation.contracts import LocalAnnotationRuntime
+        from src.tasks.annotation.local_videos import LocalVideoConfigurationReceipt
+        from src.tasks.ball_detection.annotation.inference import BallPredictionAdapter
+        from src.tasks.base.annotation.collection.service import Collection
+        from src.tasks.base.annotation.plan import LocalAnnotationPlan
+        from src.tasks.base.annotation.predictions import Predictions
+        from src.tasks.base.annotation.workers.ledger import WorkerLedger
+
+        def forbidden(*_args: Any, **_kwargs: Any) -> None:
+            pytest.fail("blank annotation must not collect, screen or infer")
+
+        monkeypatch.setattr(Collection, "acquire", forbidden)
+        monkeypatch.setattr(Collection, "select", forbidden)
+        monkeypatch.setattr(Predictions, "completed", forbidden)
+        monkeypatch.setattr(Predictions, "run", forbidden)
+        monkeypatch.setattr(BallPredictionAdapter, "produce", forbidden)
+        data = local_configuration(example.layout)
+        first = configure_local_videos(example.layout, data)
+        receipt = read_document(example.layout, first, LocalVideoConfigurationReceipt)
+        runtime = read_document(example.layout, receipt.runtime, LocalAnnotationRuntime)
+        plan = read_document(example.layout, receipt.plan, LocalAnnotationPlan)
+        resources = ResourceManager(example.layout, receipt.scope)
+        inode = example.layout.artifact_path(resources.scope.baseline).stat().st_ino
+        with resources.registry.transaction() as db:
+            db.execute("UPDATE resource_scopes SET stop_reason='keep stopped'")
+        assert configure_local_videos(example.layout, data) == first
+        assert example.layout.artifact_path(resources.scope.baseline).stat().st_ino == inode
+        assert resources.scope.previously_allocated_bytes == 123
+        assert runtime.plan == receipt.plan and runtime.scope == receipt.scope
+        assert len(reviews.requests(example.layout, plan, receipt.plan)) == 2
+        with WorkerLedger(example.layout).registry.transaction() as db:
+            assert db.execute("SELECT count(*) FROM campaigns").fetchone()[0] == 1
+            assert db.execute("SELECT count(*) FROM worker_tasks WHERE state='ready'").fetchone()[0] == 2
+            assert db.execute("SELECT count(*) FROM worker_attempts").fetchone()[0] == 0
+            assert db.execute("SELECT count(*) FROM annotation_tasks").fetchone()[0] == 0
+            assert db.execute("SELECT count(*) FROM local_annotation_inputs").fetchone()[0] == 2
+            assert db.execute("SELECT stop_reason FROM resource_scopes").fetchone()[0] == "keep stopped"
+            assert not db.execute("SELECT name FROM sqlite_master WHERE name='annotation_predictions'").fetchall()
+        return
     ref = configure(example.layout, example.configuration)
     receipt = example.receipt(ref)
     runtime = read_document(example.layout, receipt.runtime, Runtime)
@@ -450,11 +494,39 @@ def test_next_campaign_reuses_stopped_scope_and_cumulative_usage(
 
 @pytest.mark.parametrize(
     "damage",
-    ["missing_cost", "gpu_kind", "pss", "codex_home", "queue", "selection", "root"],
+    ["missing_cost", "gpu_kind", "pss", "codex_home", "queue", "selection", "root",
+     "blank_cost", "blank_gpu", "blank_pts", "blank_bytes", "blank_camera", "blank_model", "blank_queue"],
 )
 def test_invalid_configuration_does_not_create_budget_or_plan(
     example: Example, damage: str
 ) -> None:
+    if damage.startswith("blank_"):
+        local = local_configuration(example.layout)
+        if damage == "blank_model":
+            local = local.model_copy(update={"campaign": example.configuration.plan.model_copy(update={"phase": "production"})})
+        elif damage == "blank_queue":
+            local = local.model_copy(update={"runtime": example.configuration.runtime})
+        elif damage == "blank_cost":
+            local = local.model_copy(update={"runtime": local.runtime.model_copy(update={"costs": local.runtime.costs[:1]})})
+        elif damage == "blank_gpu":
+            costs = (local.runtime.costs[0].model_copy(update={"gpu_seconds": 1.0}), local.runtime.costs[1])
+            local = local.model_copy(update={"runtime": local.runtime.model_copy(update={"costs": costs})})
+        elif damage == "blank_bytes":
+            Path(local.videos[0].path).write_bytes(b"same input was replaced")
+        else:
+            video = local.videos[0]
+            expected = video.annotation
+            if damage == "blank_pts":
+                expected = expected.model_copy(update={"frames": (expected.frames[0].model_copy(update={"pts": expected.frames[0].pts + 1}), *expected.frames[1:])})
+            else:
+                expected = expected.model_copy(update={"source": expected.source.model_copy(update={"camera_id": "cam2"})})
+            local = local.model_copy(update={"videos": (video.model_copy(update={"annotation": expected}), *local.videos[1:])})
+        with pytest.raises(ValueError):
+            configure_local_videos(example.layout, local)
+        assert not example.layout.path("resources", "local-scope", "scope.json").exists()
+        assert not example.layout.path("campaigns", "local-fixture").exists()
+        assert not example.layout.path("clips").exists()
+        return
     data = example.configuration
     if damage == "missing_cost":
         data = data.model_copy(

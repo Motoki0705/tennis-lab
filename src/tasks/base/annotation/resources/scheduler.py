@@ -24,7 +24,7 @@ from ..artifacts import (
 )
 from ..contracts import ArtifactRef, content_digest
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, load_plan
+from ..plan import ExecutionPlan, load_execution_plan
 from ..registry import Registry
 from ..workers.processes import ProcessIdentity, owned_members, process_snapshot
 from . import host_space
@@ -259,7 +259,7 @@ class ResourceManager:
                 )
         return cls(layout, reference)
 
-    def bind(self, plan: CampaignPlan) -> None:
+    def bind(self, plan: ExecutionPlan) -> None:
         if (
             plan.annotation_root != str(self.layout.root)
             or BudgetLimits.from_budget(plan.resources) != self.scope.limits
@@ -314,7 +314,7 @@ class ResourceManager:
         *,
         inputs: tuple[ArtifactRef, ...] | None = None,
     ) -> None:
-        plan = load_plan(verify_reference(self.layout, request.plan))
+        plan = load_execution_plan(verify_reference(self.layout, request.plan))
         self.bind(plan)
         stages = [
             stage for stage in plan.resources.stages if stage.stage == request.stage
@@ -750,9 +750,9 @@ class ResourceManager:
             if sample.stopped_reason is not None:
                 raise BudgetStopped(sample.stopped_reason)
             active = self._active()
-            plan = load_plan(verify_reference(self.layout, request.plan))
+            plan = load_execution_plan(verify_reference(self.layout, request.plan))
             plans = [plan] + [
-                load_plan(
+                load_execution_plan(
                     verify_reference(
                         self.layout,
                         ResourceRequest.model_validate_json(item["request"]).plan,
@@ -877,7 +877,7 @@ class ResourceManager:
                 )
             ]
         plans = {
-            row["campaign"]: load_plan(
+            row["campaign"]: load_execution_plan(
                 verify_reference(
                     self.layout,
                     ResourceRequest.model_validate_json(row["request"]).plan,

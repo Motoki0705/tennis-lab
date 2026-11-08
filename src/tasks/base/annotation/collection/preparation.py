@@ -6,6 +6,7 @@ import os
 import tempfile
 from bisect import bisect_left, bisect_right
 from pathlib import Path
+from typing import Literal
 
 from ..artifacts import (
     annotation_reference,
@@ -90,12 +91,47 @@ def prepare_clip(
         raise ValueError(
             "selected window has too few real frames; padding is not permitted"
         )
-    clip_id = content_digest([source.canonical_id, media_range.model_dump()])
     digest = preparation_identity(source, configuration, selection, window)
+    return prepare_frame_range(
+        layout,
+        source,
+        timeline,
+        source_range=media_range,
+        target_range=target_range,
+        preparation_digest=digest,
+        retained_media=config.retained_media,
+        crf=config.crf,
+        preset=config.preset,
+    )
+
+
+def prepare_frame_range(
+    layout: AnnotationLayout,
+    source: SourceIdentity,
+    timeline: Timeline,
+    *,
+    source_range: FrameRange,
+    target_range: FrameRange,
+    preparation_digest: str,
+    retained_media: Literal["video", "jpeg_q90"],
+    crf: int | None = None,
+    preset: str | None = None,
+) -> ArtifactRef:
+    """Prepare an explicit native interval without selection or inference constraints."""
+    if (
+        source_range.stop > len(timeline.pts)
+        or target_range.stop > source_range.stop - source_range.start
+    ):
+        raise ValueError("preparation range lies outside the real source frames")
+    if retained_media == "video" and (crf is None or preset is None):
+        raise ValueError("video preparation requires explicit encoding settings")
+    if retained_media == "jpeg_q90" and (crf is not None or preset is not None):
+        raise ValueError("JPEG preparation must not encode an intermediate video")
+    media_range = source_range
+    digest = preparation_digest
+    clip_id = content_digest([source.canonical_id, media_range.model_dump()])
     provenance = (
-        SourceProvenance.from_source(source)
-        if config.retained_media == "jpeg_q90"
-        else source
+        SourceProvenance.from_source(source) if retained_media == "jpeg_q90" else source
     )
     destination = layout.path("clips", clip_id)
     with artifact_lock(layout, "clip-" + clip_id):
@@ -120,17 +156,15 @@ def prepare_clip(
             prefix="building-", dir=destination.parent
         ) as temporary:
             staging = Path(temporary)
-            filename = (
-                "frames.bin" if config.retained_media == "jpeg_q90" else "media.mp4"
-            )
+            filename = "frames.bin" if retained_media == "jpeg_q90" else "media.mp4"
             video = staging / filename
             start, stop = media_range.start, media_range.stop
             source_path = verify_reference(layout, source.media)
             jpeg = None
-            if config.retained_media == "jpeg_q90":
+            if retained_media == "jpeg_q90":
                 jpeg = write_jpeg_archive(video, source_path, timeline, start, stop)
             else:
-                assert config.crf is not None and config.preset is not None
+                assert crf is not None and preset is not None
                 encode_video(
                     video,
                     width=timeline.width,
@@ -147,8 +181,8 @@ def prepare_clip(
                             decode_range(source_path, timeline, start, stop), start
                         )
                     ),
-                    crf=config.crf,
-                    preset=config.preset,
+                    crf=crf,
+                    preset=preset,
                 )
             media = ArtifactRef(
                 role="annotation",

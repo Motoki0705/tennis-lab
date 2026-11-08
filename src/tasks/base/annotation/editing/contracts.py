@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol, Self, TypeVar, cast
+from typing import Literal, Protocol, Self, TypeVar, cast
 
 from pydantic import Field
 
@@ -30,10 +30,25 @@ _after = cast(_Validator, after_validator)
 
 
 class ReviewContext(Document):
+    """Prediction review input; this type always requires a real receipt."""
+
     plan: ArtifactRef
     task: Identifier
     manifest: ArtifactRef
     prediction: ArtifactRef
+
+
+class BlankAnnotationContext(Document):
+    """Pinned direct input. Only the task adapter interprets ``task_input``."""
+
+    schema_version: Literal["annotation.blank-context.v1"] = (
+        "annotation.blank-context.v1"
+    )
+    plan: ArtifactRef
+    task: Identifier
+    manifest: ArtifactRef
+    task_input: ArtifactRef
+    source_media: ArtifactRef
 
 
 class Revision(Document):

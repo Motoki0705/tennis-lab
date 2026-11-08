@@ -11,6 +11,11 @@ previewや別campaignの予測は編集開始に使わない。
 baseは球状態・bbox・ID・教師maskの意味を解釈しない。画像提示の共通APIは
 [images](../images/README.md)を参照する。
 
+予測のない入力登録には別型の`BlankAnnotationContext`を使う。task入力・画像manifest・
+保持した元動画を参照し、prediction fieldを持たない。
+[白紙入力サービス](../../../annotation/README.md#ローカル動画の白紙入力登録)が登録を所有し、
+この段階では予測レビュー用のRevisionStoreを初期化しない。
+
 1. `initialize(context, adapter)` は元予測を変更せずrevision 0を保存する。同じcontextの再開は
    現行版を返し、初期payloadに戻さない。
 2. `apply(EditCommand, adapter)` は期待するrevision、編集入力、actorの根拠、理由を固定する。

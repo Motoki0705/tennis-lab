@@ -6,6 +6,12 @@ screeningが所有し、このモジュールは明示された `SelectionReceip
 均等時刻からの自動選定、短いクリップへのpadding、品質を下げて容量に合わせる処理は行わない。
 統合CLI・実行枠・資源予算監視は[全体設計](../README.md)の対応モジュールが所有する。
 
+sceneが明示したローカル動画には、取得・画像選別を経ない
+[白紙入力登録サービス](../../../annotation/README.md#ローカル動画の白紙入力登録)がある。
+`prepare_frame_range()`で指定された全実frameの画像を準備し、`LocalInputLedger`が同じ
+campaign/worker台帳へopaqueなtask入力と要求を登録する。予測用のannotation_tasksや
+PredictionReceiptを作らず、元動画と画像の両方をworker入力の保持対象にする。
+
 ## 入力と進捗
 
 - `SourceCandidate` は配信元のcanonical channel/video ID、選定理由と証拠、取得先を持つ。

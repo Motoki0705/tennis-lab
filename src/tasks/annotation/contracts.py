@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from src.tasks.ball_detection.annotation.video import VideoAnnotationInput
 from src.tasks.base.annotation.collection.contracts import (
     HistoricalSource,
     SourceCandidate,
@@ -31,13 +32,13 @@ class StageCost(Document):
     gpu_seconds: float = Field(ge=0)
 
 
-class RuntimeSettings(Document):
-    queue: QueueConfiguration
+class WorkerRuntimeSettings(Document):
+    """Worker/service costs independent of collection, inference and GPU queues."""
+
     codex_binary: str = Field(min_length=1)
     codex_home: str = Field(min_length=1)
     costs: tuple[StageCost, ...] = Field(min_length=1)
     maximum_services_per_attempt: PositiveInt = 100
-    maximum_clips_per_prediction_batch: PositiveInt = 4
 
     def cost(self, stage: str) -> StageCost:
         matching = [cost for cost in self.costs if cost.stage == stage]
@@ -48,10 +49,35 @@ class RuntimeSettings(Document):
         return matching[0]
 
 
+class RuntimeSettings(WorkerRuntimeSettings):
+    queue: QueueConfiguration
+    maximum_clips_per_prediction_batch: PositiveInt = 4
+
+
 class Runtime(RuntimeSettings, CodeBoundDocument):
     schema_version: Literal["annotation.runtime.v1"] = "annotation.runtime.v1"
     plan: ArtifactRef
     scope: ArtifactRef
+
+
+class LocalAnnotationRuntime(WorkerRuntimeSettings, CodeBoundDocument):
+    schema_version: Literal["annotation.local-runtime.v1"] = (
+        "annotation.local-runtime.v1"
+    )
+    plan: ArtifactRef
+    scope: ArtifactRef
+
+
+class LocalVideoInput(Document):
+    """A scene-selected original and the task-owned exact expected input."""
+
+    path: str = Field(min_length=1)
+    annotation: VideoAnnotationInput
+
+
+class LocalVideoManifest(Document):
+    schema_version: Literal["annotation.local-videos.v1"] = "annotation.local-videos.v1"
+    videos: tuple[LocalVideoInput, ...] = Field(min_length=1)
 
 
 class HistoryEntry(Document):

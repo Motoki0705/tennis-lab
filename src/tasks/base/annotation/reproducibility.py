@@ -15,7 +15,7 @@ from .contracts import ArtifactRef, Digest, Document, manifest_serializer
 from .paths import AnnotationLayout
 
 if TYPE_CHECKING:
-    from .plan import CampaignPlan
+    from .plan import ExecutionPlan
 
 _serialize = cast(
     Callable[[Callable[..., dict[str, object]]], Callable[..., dict[str, object]]],
@@ -73,7 +73,7 @@ def checkout_identity(root: Path) -> tuple[str, str]:
 
 def require_frozen_code(
     root: Path,
-    plan: CampaignPlan,
+    plan: ExecutionPlan,
     *,
     layout: AnnotationLayout | None = None,
     revision: ArtifactRef | None = None,
@@ -81,12 +81,12 @@ def require_frozen_code(
 ) -> None:
     expected = (plan.code_commit, plan.code_diff_digest)
     if revision is not None:
-        from .plan import CampaignPlan as Plan
+        from .plan import load_execution_plan
 
         if layout is None or scope is None:
             raise ValueError("a code revision requires its layout and resource scope")
         update = read_document(layout, revision, CodeRevision)
-        if read_document(layout, update.plan, Plan) != plan or update.scope != scope:
+        if load_execution_plan(verify_reference(layout, update.plan)) != plan or update.scope != scope:
             raise ValueError("code revision belongs to another plan or resource scope")
         verify_reference(layout, update.previous_runtime)
         verify_reference(layout, update.verification)

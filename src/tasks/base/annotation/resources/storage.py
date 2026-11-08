@@ -6,7 +6,7 @@ import sqlite3
 
 from ..contracts import ArtifactRef, Document
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan
+from ..plan import ExecutionPlan
 from ..storage import StorageCatalog
 from ..storage.contracts import Protection
 from ..storage.references import distinct, protection
@@ -36,7 +36,7 @@ class ResourceReferences:
         self,
         key: str,
         plan_ref: ArtifactRef,
-        plan: CampaignPlan,
+        plan: ExecutionPlan,
         scope_ref: ArtifactRef,
         scope: BudgetScope,
         inputs: tuple[ArtifactRef, ...] | None,
