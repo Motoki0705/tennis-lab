@@ -63,12 +63,12 @@ def read_bundle(path: Path, repo: str, number: int, attempt: int) -> Handoff:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("prepare", "rewrite", "apply", "fail"))
+    parser.add_argument("command", choices=("prepare", "supplement", "apply", "fail"))
     parser.add_argument("--repo", required=True)
     parser.add_argument(
         "--enabled-since",
         required=True,
-        help="explicit workflow vars.ISSUE_REWRITE_ENABLED_SINCE (empty means unset)",
+        help="explicit workflow vars.ISSUE_SUPPLEMENT_ENABLED_SINCE (empty means unset)",
     )
     parser.add_argument("--issue-number", required=True, type=int)
     parser.add_argument("--attempt", type=int, choices=(1, 2), default=1)
@@ -84,12 +84,12 @@ def main(argv: list[str] | None = None) -> int:
         else None,
     )
     args = parser.parse_args(argv)
-    if args.issue_number < 1 or (args.command == "rewrite" and args.run_dir is None):
+    if args.issue_number < 1 or (args.command == "supplement" and args.run_dir is None):
         parser.error(
-            "positive issue number and a private rewrite run directory are required"
+            "positive issue number and a private supplement run directory are required"
         )
     if args.command != "prepare" and args.bundle is None:
-        parser.error("--bundle is required for rewrite, apply and fail")
+        parser.error("--bundle is required for supplement, apply and fail")
     if args.manual and args.command != "prepare":
         parser.error("--manual is supported only by prepare")
     bundle = bundle_for(args.repo, args.issue_number, args.attempt)
@@ -98,7 +98,7 @@ def main(argv: list[str] | None = None) -> int:
         gh = GitHub(args.repo, enabled_since=args.enabled_since or None)
         if args.command == "prepare":
             report = prepare(gh, args.issue_number, manual=args.manual)
-        elif args.command == "rewrite":
+        elif args.command == "supplement":
             bundle = generate(
                 gh,
                 args.issue_number,

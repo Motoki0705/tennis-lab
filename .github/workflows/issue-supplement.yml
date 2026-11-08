@@ -1,5 +1,5 @@
 name: Issue supplement
-run-name: 'issue-rewrite #${{ github.event.issue.number || inputs.issue_number }}'
+run-name: 'issue-supplement #${{ github.event.issue.number || inputs.issue_number }}'
 'on':
   issues:
     types:
@@ -13,15 +13,15 @@ run-name: 'issue-rewrite #${{ github.event.issue.number || inputs.issue_number }
         required: true
 permissions: {}
 concurrency:
-  group: issue-rewrite-${{ github.event.issue.number || inputs.issue_number }}
+  group: issue-supplement-${{ github.event.issue.number || inputs.issue_number }}
   cancel-in-progress: false
 env:
   PYTHONPATH: .agents/ops
-  REWRITE_ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
-  ISSUE_REWRITE_ENABLED_SINCE: ${{ vars.ISSUE_REWRITE_ENABLED_SINCE }}
+  SUPPLEMENT_ISSUE_NUMBER: ${{ github.event.issue.number || inputs.issue_number }}
+  ISSUE_SUPPLEMENT_ENABLED_SINCE: ${{ vars.ISSUE_SUPPLEMENT_ENABLED_SINCE }}
 jobs:
   prepare:
-    if: ${{ github.actor == github.repository_owner && vars.ISSUE_REWRITE_ENABLED_SINCE != '' && github.ref
+    if: ${{ github.actor == github.repository_owner && vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != '' && github.ref
       == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.action == 'opened'
       && contains(github.event.issue.labels.*.name, 'issue:parent')) || (github.event.action == 'labeled' &&
       github.event.label.name == 'issue:parent')) }}
@@ -56,10 +56,10 @@ jobs:
           manual_args+=(--manual)
         fi
         uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
-          python -m issue_rewrite prepare \
-          --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
-          --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" "${manual_args[@]}"
-  rewrite:
+          python -m issue_supplement prepare \
+          --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
+          --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" "${manual_args[@]}"
+  supplement:
     needs: prepare
     if: ${{ needs.prepare.outputs.status == 'ready' }}
     runs-on:
@@ -89,22 +89,22 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        task_root="${RUNNER_TEMP}/issue-rewrite-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-1"
+        task_root="${RUNNER_TEMP}/issue-supplement-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-1"
         uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
-          python -m issue_rewrite rewrite \
-          --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
-          --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" --attempt 1 \
+          python -m issue_supplement supplement \
+          --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
+          --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 1 \
           --run-dir "$task_root/private" --bundle "$task_root/public/handoff.json"
     - name: Upload only the validated handoff or sanitized failure report
       if: ${{ always() }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
-        name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}-1
-        path: ${{ runner.temp }}/issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}-1/public/handoff.json
+        name: issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-1
+        path: ${{ runner.temp }}/issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-1/public/handoff.json
         if-no-files-found: ignore
         retention-days: 7
   apply:
-    needs: rewrite
+    needs: supplement
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -125,8 +125,8 @@ jobs:
     - name: Download this attempt's handoff
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
-        name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}-1
-        path: ${{ runner.temp }}/issue-rewrite-incoming
+        name: issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-1
+        path: ${{ runner.temp }}/issue-supplement-incoming
     - name: Set up lightweight Python
       uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
       with:
@@ -138,22 +138,22 @@ jobs:
       run: |
         set -euo pipefail
         uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
-          python -m issue_rewrite apply \
-          --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
-          --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" --attempt 1 \
-          --bundle "${RUNNER_TEMP}/issue-rewrite-incoming/handoff.json"
-  rewrite_retry:
+          python -m issue_supplement apply \
+          --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
+          --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 1 \
+          --bundle "${RUNNER_TEMP}/issue-supplement-incoming/handoff.json"
+  supplement_retry:
     needs:
     - prepare
     - apply
-    if: ${{ github.actor == github.repository_owner && vars.ISSUE_REWRITE_ENABLED_SINCE != '' && github.ref
+    if: ${{ github.actor == github.repository_owner && vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != '' && github.ref
       == 'refs/heads/main' && needs.apply.outputs.needs_retry == 'true' }}
     runs-on:
     - self-hosted
     - linux
     - x64
     - tennis-lab
-    # Same turn/stability/setup budget as rewrite; this is a separate attempt.
+    # Same turn/stability/setup budget as supplement; this is a separate attempt.
     timeout-minutes: 60
     permissions:
       contents: read
@@ -175,22 +175,22 @@ jobs:
       shell: bash
       run: |
         set -euo pipefail
-        task_root="${RUNNER_TEMP}/issue-rewrite-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-2"
+        task_root="${RUNNER_TEMP}/issue-supplement-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-2"
         uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
-          python -m issue_rewrite rewrite \
-          --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
-          --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" --attempt 2 \
+          python -m issue_supplement supplement \
+          --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
+          --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 2 \
           --run-dir "$task_root/private" --bundle "$task_root/public/handoff.json"
     - name: Upload only the validated handoff or sanitized failure report
       if: ${{ always() }}
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
-        name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}-2
-        path: ${{ runner.temp }}/issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}-2/public/handoff.json
+        name: issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-2
+        path: ${{ runner.temp }}/issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-2/public/handoff.json
         if-no-files-found: ignore
         retention-days: 7
   apply_retry:
-    needs: rewrite_retry
+    needs: supplement_retry
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -211,8 +211,8 @@ jobs:
     - name: Download this attempt's handoff
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
-        name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}-2
-        path: ${{ runner.temp }}/issue-rewrite-incoming
+        name: issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-2
+        path: ${{ runner.temp }}/issue-supplement-incoming
     - name: Set up lightweight Python
       uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
       with:
@@ -224,18 +224,18 @@ jobs:
       run: |
         set -euo pipefail
         uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
-          python -m issue_rewrite apply \
-          --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
-          --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" --attempt 2 \
-          --bundle "${RUNNER_TEMP}/issue-rewrite-incoming/handoff.json"
+          python -m issue_supplement apply \
+          --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
+          --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt 2 \
+          --bundle "${RUNNER_TEMP}/issue-supplement-incoming/handoff.json"
   failed:
     needs:
     - prepare
-    - rewrite
+    - supplement
     - apply
-    - rewrite_retry
+    - supplement_retry
     - apply_retry
-    if: ${{ always() && github.actor == github.repository_owner && vars.ISSUE_REWRITE_ENABLED_SINCE != '' &&
+    if: ${{ always() && github.actor == github.repository_owner && vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != '' &&
       github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -244,7 +244,7 @@ jobs:
       issues: write
     env:
       GH_TOKEN: ${{ github.token }}
-      REWRITE_ATTEMPT: ${{ needs.apply.outputs.needs_retry == 'true' && '2' || '1' }}
+      SUPPLEMENT_ATTEMPT: ${{ needs.apply.outputs.needs_retry == 'true' && '2' || '1' }}
     steps:
     - name: Checkout trusted workflow commit
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -256,8 +256,8 @@ jobs:
       continue-on-error: true
       uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
-        name: issue-rewrite-${{ github.run_id }}-${{ github.run_attempt }}-${{ env.REWRITE_ATTEMPT }}
-        path: ${{ runner.temp }}/issue-rewrite-incoming
+        name: issue-supplement-${{ github.run_id }}-${{ github.run_attempt }}-${{ env.SUPPLEMENT_ATTEMPT }}
+        path: ${{ runner.temp }}/issue-supplement-incoming
     - name: Set up lightweight Python
       uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
       with:
@@ -268,7 +268,7 @@ jobs:
       run: |
         set -euo pipefail
         uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 \
-          python -m issue_rewrite fail \
-          --repo "$GITHUB_REPOSITORY" --issue-number "$REWRITE_ISSUE_NUMBER" \
-          --enabled-since "$ISSUE_REWRITE_ENABLED_SINCE" --attempt "$REWRITE_ATTEMPT" \
-          --bundle "${RUNNER_TEMP}/issue-rewrite-incoming/handoff.json"
+          python -m issue_supplement fail \
+          --repo "$GITHUB_REPOSITORY" --issue-number "$SUPPLEMENT_ISSUE_NUMBER" \
+          --enabled-since "$ISSUE_SUPPLEMENT_ENABLED_SINCE" --attempt "$SUPPLEMENT_ATTEMPT" \
+          --bundle "${RUNNER_TEMP}/issue-supplement-incoming/handoff.json"

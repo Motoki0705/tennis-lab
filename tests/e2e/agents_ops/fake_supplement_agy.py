@@ -11,7 +11,7 @@ from pathlib import Path
 
 fake_tools = importlib.import_module("fake_agy_tools")
 
-root = Path(os.environ["REWRITE_FAKE_ROOT"])
+root = Path(os.environ["SUPPLEMENT_FAKE_ROOT"])
 args = sys.argv[1:]
 if args == ["--version"]:
     print("Antigravity CLI 1.4.11")
@@ -64,7 +64,7 @@ attacks = (
 for attack in attacks:
     if attack["turn"] != index:
         continue
-    package = root / "repo/.agents/ops/issue_rewrite"
+    package = root / "repo/.agents/ops/issue_supplement"
     target = attack["target"]
     paths = {
         "invariants": package / "invariants.py",
@@ -83,7 +83,7 @@ for attack in attacks:
         (root / "repo/planted.py").write_text("tampered\n")
         git("-C", str(root / "repo"), "add", "planted.py")
     elif target == "workspace":
-        (Path.cwd() / ".agents/ops/issue_rewrite/invariants.py").write_text(
+        (Path.cwd() / ".agents/ops/issue_supplement/invariants.py").write_text(
             "tampered\n"
         )
         (Path.cwd() / "previous-turn.txt").write_text("do not carry to another turn\n")

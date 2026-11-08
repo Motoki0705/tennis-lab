@@ -18,16 +18,19 @@ PARENT = ["issue:parent"]
 @pytest.fixture
 def api(monkeypatch: pytest.MonkeyPatch) -> Any:
     monkeypatch.syspath_prepend(str(OPS))
-    return importlib.import_module("issues.rewrite_state")
+    return importlib.import_module("issues.supplement_state")
 
 
 @pytest.mark.parametrize("status", ["done", "failed", "skipped"])
 def test_legacy_labels_cannot_silently_become_pending(api: Any, status: str) -> None:
     with pytest.raises(ValueError, match="must be migrated"):
-        api.rewrite_state(PARENT + ["rewrite:" + status], ENABLED, ENABLED)
-    assert api.rewrite_state(
-        PARENT + ["rewrite:" + status], "2026-10-30T11:59:59Z", ENABLED
-    ) == "not_target"
+        api.supplement_state(PARENT + ["rewrite:" + status], ENABLED, ENABLED)
+    assert (
+        api.supplement_state(
+            PARENT + ["rewrite:" + status], "2026-10-30T11:59:59Z", ENABLED
+        )
+        == "not_target"
+    )
 
 
 @pytest.mark.parametrize(
@@ -48,10 +51,10 @@ def test_legacy_labels_cannot_silently_become_pending(api: Any, status: str) -> 
         (PARENT + ["supplement:done"], "2026-10-30T11:59:59Z", ENABLED, "not_target"),
     ],
 )
-def test_rewrite_state_boundaries(
+def test_supplement_state_boundaries(
     api: Any, labels: list[str], created: str, enabled: str | None, expected: str
 ) -> None:
-    assert api.rewrite_state(labels, created, enabled) == expected
+    assert api.supplement_state(labels, created, enabled) == expected
 
 
 @pytest.mark.parametrize(
@@ -67,7 +70,7 @@ def test_conflicting_final_labels_are_always_errors(
     api: Any, labels: list[str]
 ) -> None:
     with pytest.raises(ValueError, match="conflicting"):
-        api.rewrite_state(labels, ENABLED, None)
+        api.supplement_state(labels, ENABLED, None)
 
 
 @pytest.mark.parametrize(
@@ -81,22 +84,22 @@ def test_conflicting_final_labels_are_always_errors(
         "2026-10-30T24:00:00Z",
     ],
 )
-def test_invalid_timestamps_do_not_disable_rewrite(api: Any, value: str) -> None:
+def test_invalid_timestamps_do_not_disable_supplement(api: Any, value: str) -> None:
     with pytest.raises(ValueError):
-        api.rewrite_state(PARENT, ENABLED, value)
+        api.supplement_state(PARENT, ENABLED, value)
     with pytest.raises(ValueError):
-        api.rewrite_state(PARENT, value, ENABLED)
+        api.supplement_state(PARENT, value, ENABLED)
 
 
 @pytest.mark.parametrize(
     ("status", "payload", "expected"),
     [
-        (200, {"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": ENABLED}, ENABLED),
+        (200, {"name": "ISSUE_SUPPLEMENT_ENABLED_SINCE", "value": ENABLED}, ENABLED),
         (404, {"message": "Not Found"}, None),
         (403, {"message": "Forbidden"}, "error"),
         (500, {"message": "Server Error"}, "error"),
-        (200, {"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": ""}, "error"),
-        (200, {"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": None}, "error"),
+        (200, {"name": "ISSUE_SUPPLEMENT_ENABLED_SINCE", "value": ""}, "error"),
+        (200, {"name": "ISSUE_SUPPLEMENT_ENABLED_SINCE", "value": None}, "error"),
         (200, {"name": "other", "value": ENABLED}, "error"),
     ],
 )
@@ -126,7 +129,7 @@ def test_enabled_since_uses_http_status_and_validates_response(
     else:
         assert api.read_enabled_since(client) == expected
     assert len(calls) == 1
-    assert calls[0][-1] == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE"
+    assert calls[0][-1] == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE"
     assert calls[0][:4] == ("api", "--include", "--method", "GET")
 
 
@@ -147,10 +150,32 @@ def test_network_failure_without_http_status_is_not_disabled(
 
 def test_package_exports_module_and_workflow_constants(api: Any) -> None:
     package = importlib.import_module("issues")
-    assert package.rewrite_state is api
+    assert package.supplement_state is api
     assert package.read_enabled_since is api.read_enabled_since
     assert {
         "supplement:done",
         "supplement:failed",
         "supplement:skipped",
-    } == api.REWRITE_FINAL_LABELS
+    } == api.SUPPLEMENT_FINAL_LABELS
+
+
+@pytest.mark.parametrize(
+    "snapshot",
+    [
+        {"rewrite_enabled_since": ENABLED},
+        {"rewrite_enabled_since": ENABLED, "supplement_enabled_since": ENABLED},
+        {},
+    ],
+)
+def test_saved_dispatcher_input_requires_recollection_before_reuse(
+    api: Any, snapshot: dict[str, Any]
+) -> None:
+    collect = importlib.import_module("dispatcher.collect")
+    schema = importlib.import_module("dispatcher.schema")
+    # Rejection must precede even the first issue lookup/digest/publication.
+    with pytest.raises(ValueError, match="recollect.*supplement_enabled_since"):
+        collect.material(snapshot)
+    with pytest.raises(ValueError, match="recollect.*supplement_enabled_since"):
+        schema.guard(snapshot, 1)
+    with pytest.raises(ValueError, match="recollect.*supplement_enabled_since"):
+        schema.validate({}, snapshot)

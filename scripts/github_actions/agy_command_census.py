@@ -184,7 +184,7 @@ def run_turn(
             os.fchmod(saved_handle.fileno(), 0o600)
             saved_handle.write(saved_bytes)
         context = events.parse_json(within_private(inputs).read_text())
-        assets = ".agents/ops/issue_rewrite/"
+        assets = ".agents/ops/issue_supplement/"
         template = git("show", commit + ":" + assets + f"prompts/{role}.md")
         schema = git("show", commit + ":" + assets + f"schemas/{role}.schema.json")
         prompt = (

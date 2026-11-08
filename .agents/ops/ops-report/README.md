@@ -520,7 +520,7 @@ JSON出力とrun dirの `result.json` の `checklist_updates` に `{issue, attem
 PATCH前に本文と履歴checkpointをjournalの `checklist_recovery` へ保存し、競合時の復旧対象本文も保持する。
 2回目の競合やPATCH/履歴応答の喪失後は、同じtriageを再実行すれば保存した履歴根拠を再検証し、
 最新の復旧対象から不足する一覧更新を再開する（`verified` / `not_applied` も出力する）。作成済みissue・正式関係は再利用する。
-対象親に並行して付く書き直しの確定ラベルは既知の機械状態として保持する。ほかのラベルや出典を無視する例外は設けない。
+対象親に並行して付く補足追加の確定ラベルは既知の機械状態として保持する。ほかのラベルや出典を無視する例外は設けない。
 履歴以外の入力・採用・出典に変化があれば従来のguardで停止し、journalやissueを作り直さず明示照合する。
 この検査は [GitHubのUserContentEdit](https://docs.github.com/en/graphql/reference/users#usercontentedit) を使う。
 

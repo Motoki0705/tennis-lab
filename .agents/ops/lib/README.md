@@ -45,7 +45,7 @@ except AgyError as error:
     reason = error.reason
     denied_actions = error.denied_actions
 else:
-    rewritten = result.structured_output
+    supplements = result.structured_output
 ```
 
 `run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
@@ -64,10 +64,10 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
 - `load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig` は `agents.conf` の4キーだけを設定元とする。
   `AgyConfig` は `version: str`, `url: str`, `sha256: str`, `model: str` を持つfrozen dataclass。
   `DEFAULT_CONFIG` はこのモジュールの隣の設定ファイル。環境変数の同名キーは読まない。
-  4キーは `AGY_VERSION`, `AGY_URL`, `AGY_SHA256`, `ISSUE_REWRITE_AGY_MODEL`。
+  4キーは `AGY_VERSION`, `AGY_URL`, `AGY_SHA256`, `ISSUE_SUPPLEMENT_AGY_MODEL`。
   導入テスト用の明示configでは `file://` のtarballも使える。通常は公式GitHub Releaseの版付きasset URLと
   release APIが返したSHA-256 digestを固定する。
-- `model` の省略時は `ISSUE_REWRITE_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
+- `model` の省略時は `ISSUE_SUPPLEMENT_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
   `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
   logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
   新しいモデルを採用するときは設定と `MODEL_LABELS` の対応を一緒に更新する。

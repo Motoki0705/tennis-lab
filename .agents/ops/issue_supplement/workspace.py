@@ -100,7 +100,7 @@ class TrustedCheckout:
         # Each turn starts clean: a writer cannot plant context for a verifier
         # or a repair. History/remote are shared, working files are independent.
         with tempfile.TemporaryDirectory(
-            prefix="issue-rewrite-", dir=self.run_dir.parent
+            prefix="issue-supplement-", dir=self.run_dir.parent
         ) as temporary:
             checkout = Path(temporary) / "checkout"
             try:

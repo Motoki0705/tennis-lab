@@ -125,12 +125,15 @@ class FakeGitHub:
             raise ValueError("injected API failure: " + endpoint)
         if endpoint == "user":
             return {"login": "operator"}
-        if endpoint == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE":
+        if endpoint == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
             if self.enabled_since is None:
                 raise importlib.import_module("issues.cli").GitHubHTTPError(
                     endpoint, 404, "Not Found"
                 )
-            return {"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": self.enabled_since}
+            return {
+                "name": "ISSUE_SUPPLEMENT_ENABLED_SINCE",
+                "value": self.enabled_since,
+            }
         path, _, query = endpoint.partition("?")
         params = parse_qs(query)
         page = int(params.get("page", ["1"])[0])
@@ -326,8 +329,10 @@ def h(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
     return Harness(tmp_path, monkeypatch)
 
 
-@pytest.mark.parametrize("label", ["supplement:done", "supplement:failed", "supplement:skipped"])
-def test_final_rewrite_allows_recording_with_pinned_activation(
+@pytest.mark.parametrize(
+    "label", ["supplement:done", "supplement:failed", "supplement:skipped"]
+)
+def test_final_supplement_allows_recording_with_pinned_activation(
     h: Harness, label: str
 ) -> None:
     h.gh.enabled_since = "2026-10-30T00:00:00Z"
@@ -336,12 +341,12 @@ def test_final_rewrite_allows_recording_with_pinned_activation(
     result = h.run(runner=h.fake_runner)
     assert result["result"] == "recorded", result
     assert [c["parent"] for c in result["candidates"]] == [1]
-    assert h.snapshot()["rewrite_enabled_since"] == h.gh.enabled_since
+    assert h.snapshot()["supplement_enabled_since"] == h.gh.enabled_since
     assert h.snapshot()["issues"]["1"]["created_at"] == "2026-10-31T00:00:00Z"
 
 
 @pytest.mark.parametrize("change", ["activation", "labels"])
-def test_rewrite_changes_before_recording_defer_without_writes(
+def test_supplement_changes_before_recording_defer_without_writes(
     h: Harness, monkeypatch: pytest.MonkeyPatch, change: str
 ) -> None:
     h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
@@ -1297,7 +1302,7 @@ def test_parent_record_error_without_input_changes_is_fatal(
         ("cancelled_dependency", "dependency_wait", "not_planned"),
         ("closed_unmerged_pr", "existing_owner", "PR #100"),
         ("needs_human", "human_hold", "needs-human"),
-        ("rewrite_pending", "human_hold", "supplementはpending"),
+        ("supplement_pending", "human_hold", "supplementはpending"),
         ("checking", "human_hold", "phaseはchecking"),
         ("revoked", "human_hold", "phaseはchecking"),
         ("agreed", "human_hold", "phaseはagreed"),
@@ -1331,7 +1336,7 @@ def test_mechanical_guard_is_exposed_and_enforced(
         ]
     elif blocker == "needs_human":
         h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
-    elif blocker == "rewrite_pending":
+    elif blocker == "supplement_pending":
         h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
         h.gh.enabled_since = "2026-10-30T00:00:00Z"
     elif blocker == "agreed":

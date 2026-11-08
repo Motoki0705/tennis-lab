@@ -83,7 +83,7 @@ def load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig:
             version=pins["AGY_VERSION"],
             url=pins["AGY_URL"],
             sha256=pins["AGY_SHA256"],
-            model=pins["ISSUE_REWRITE_AGY_MODEL"],
+            model=pins["ISSUE_SUPPLEMENT_AGY_MODEL"],
         )
         if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", config.version):
             raise ValueError("invalid AGY_VERSION")
@@ -96,7 +96,7 @@ def load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig:
                 "AGY_URL requires an HTTPS URL (file:// for local fixtures)"
             )
         if config.model not in MODEL_LABELS:
-            raise ValueError("ISSUE_REWRITE_AGY_MODEL needs a known log label")
+            raise ValueError("ISSUE_SUPPLEMENT_AGY_MODEL needs a known log label")
         return config
     except (OSError, UnicodeError, KeyError, ValueError) as exc:
         raise AgyError("invalid_input", f"invalid agy config: {exc}") from exc
@@ -337,7 +337,7 @@ def run_headless(
     config = load_config(config_file)
     selected_model = config.model if model is None else model
     if selected_model != config.model:
-        raise AgyError("invalid_input", "model differs from ISSUE_REWRITE_AGY_MODEL")
+        raise AgyError("invalid_input", "model differs from ISSUE_SUPPLEMENT_AGY_MODEL")
     if not math.isfinite(timeout) or timeout <= 0:
         raise AgyError("invalid_input", "timeout must be finite and positive")
     _check_user_settings(cwd)

@@ -27,7 +27,7 @@ def main() -> None:
     code = 200
     if path == "user":
         result = {"login": "operator"}
-    elif path == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE":
+    elif path == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
         result, code = {"message": "Not Found"}, 404
     elif path == "repos/o/r/pulls":
         result = paged(state["prs"])

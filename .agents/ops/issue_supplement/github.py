@@ -170,9 +170,7 @@ def new_edits(
     before: dict[str, Any], after: dict[str, Any]
 ) -> list[dict[str, Any]] | None:
     """Return added edits excluding creation; None means histories cannot be compared."""
-    if any(
-        before[key] != after[key] for key in ("viewer", "created_at", "author")
-    ):
+    if any(before[key] != after[key] for key in ("viewer", "created_at", "author")):
         return None
     old, new = before["edits"], after["edits"]
     if any(new.get(identity) != edit for identity, edit in old.items()):

@@ -34,7 +34,7 @@ sys.path[:0] = [
 agy: Any = importlib.import_module("agy_headless")
 census: Any = importlib.import_module("agy_command_census")
 probe: Any = importlib.import_module("agy_permission_probe")
-pipeline: Any = importlib.import_module("issue_rewrite.pipeline")
+pipeline: Any = importlib.import_module("issue_supplement.pipeline")
 CAP = 20
 
 

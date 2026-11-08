@@ -326,7 +326,7 @@ class ParentSession:
 
     def checking(self) -> dict[str, Any]:
         self.owner()
-        from .rewrite import require_final
+        from .supplement import require_final
 
         require_final(self.gh, self.parent)
         history = self.history()
@@ -394,7 +394,7 @@ class ParentSession:
         pid: str | None = None,
     ) -> dict[str, Any]:
         self.owner()
-        from .rewrite import require_final
+        from .supplement import require_final
 
         require_final(self.gh, self.parent)
         if (report is None) != (pid is None):
@@ -493,7 +493,7 @@ class ParentSession:
         )
 
     def update_body(self, n: int, body: str, expected_body: str) -> None:
-        from .rewrite import require_final
+        from .supplement import require_final
 
         self.public(body)
         raw = require_final(self.gh, n)

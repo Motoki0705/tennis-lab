@@ -113,17 +113,17 @@ def paged(rows):
     return rows[(page-1)*100:page*100]
 if endpoint == "user":
     response({"login": "operator"})
-if path == "repos/o/r/actions/variables/issue_rewrite_enabled_since":
-    rewrite = state.pop("complete_rewrite_on_activation_read", None)
-    if rewrite:
-        row = state["issues"][str(rewrite["number"])]
-        row["body"] = rewrite["body"]
+if path == "repos/o/r/actions/variables/issue_supplement_enabled_since":
+    supplement = state.pop("complete_supplement_on_activation_read", None)
+    if supplement:
+        row = state["issues"][str(supplement["number"])]
+        row["body"] = supplement["body"]
         row["labels"].append({"name": "supplement:done"})
         save()
-    code = state.get("rewrite_variable_status", 200 if "rewrite_enabled_since" in state else 404)
-    response({"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": state.get("rewrite_enabled_since")}, code)
-if path == "repos/o/r/actions/workflows/issue-rewrite.yml/runs":
-    response({"workflow_runs": paged(state.get("rewrite_runs", []))}, state.get("rewrite_workflow_status", 200))
+    code = state.get("supplement_variable_status", 200 if "supplement_enabled_since" in state else 404)
+    response({"name": "ISSUE_SUPPLEMENT_ENABLED_SINCE", "value": state.get("supplement_enabled_since")}, code)
+if path == "repos/o/r/actions/workflows/issue-supplement.yml/runs":
+    response({"workflow_runs": paged(state.get("supplement_runs", []))}, state.get("supplement_workflow_status", 200))
 if path == "repos/o/r":
     response({"default_branch": state["default_branch"]})
 checks = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})/check-runs", path)
@@ -531,14 +531,14 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
 @pytest.mark.parametrize(
     "final", [None, "supplement:done", "supplement:failed", "supplement:skipped", "old_parent"]
 )
-def test_rewrite_gates_checking_and_agree_before_writes(
+def test_supplement_gates_checking_and_agree_before_writes(
     parent_env: ParentEnv, final: str | None
 ) -> None:
     p = parent_env
     p.cli("register")
     p.cli("checking")
     state = p.state()
-    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    state["supplement_enabled_since"] = "2026-10-30T00:00:00Z"
     if final == "old_parent":
         state["issues"]["1"]["created_at"] = "2026-10-29T23:59:59Z"
     elif final:
@@ -564,7 +564,7 @@ def test_rewrite_gates_checking_and_agree_before_writes(
         for result in (checked, agreed):
             assert "pending" in result.stderr
             assert (
-                "wait-rewrite" in result.stderr and "supplement:skipped" in result.stderr
+                "wait-supplement" in result.stderr and "supplement:skipped" in result.stderr
             )
         assert not any(
             "--method" in call and call[call.index("--method") + 1] != "GET"
@@ -576,37 +576,37 @@ def test_rewrite_gates_checking_and_agree_before_writes(
 
 
 @pytest.mark.parametrize("final", ["supplement:done", "supplement:failed", "supplement:skipped"])
-def test_wait_rewrite_watches_latest_exact_title_and_refreshes_labels(
+def test_wait_supplement_watches_latest_exact_title_and_refreshes_labels(
     parent_env: ParentEnv, final: str
 ) -> None:
     p = parent_env
     state = p.state()
     state.update(
-        rewrite_enabled_since="2026-10-30T00:00:00Z",
-        rewrite_runs=[
+        supplement_enabled_since="2026-10-30T00:00:00Z",
+        supplement_runs=[
             {
                 "id": 104,
-                "display_title": "issue-rewrite #11",
+                "display_title": "issue-supplement #11",
                 "created_at": "2026-10-31T04:00:00Z",
             },
             {
                 "id": 102,
-                "display_title": "issue-rewrite #1",
+                "display_title": "issue-supplement #1",
                 "created_at": "2026-10-31T02:00:00Z",
             },
             {
                 "id": 101,
-                "display_title": "issue-rewrite #1",
+                "display_title": "issue-supplement #1",
                 "created_at": "2026-10-31T01:00:00Z",
             },
         ],
         watch_label=final,
     )
     p.save(state)
-    result = p.cli("wait-rewrite", extra={"CLAUDE_CODE_SESSION_ID": ""})
+    result = p.cli("wait-supplement", extra={"CLAUDE_CODE_SESSION_ID": ""})
     assert json.loads(result.stdout) == {
         "parent": 1,
-        "rewrite_state": final.removeprefix("supplement:"),
+        "supplement_state": final.removeprefix("supplement:"),
         "run_id": 102,
     }
     assert [c for c in p.calls() if c[:2] == ["run", "watch"]] == [
@@ -618,58 +618,58 @@ def test_wait_rewrite_watches_latest_exact_title_and_refreshes_labels(
 
 
 @pytest.mark.parametrize("workflow_status", [200, 404])
-def test_wait_rewrite_without_run_guides_dispatch_or_human_skip(
+def test_wait_supplement_without_run_guides_dispatch_or_human_skip(
     parent_env: ParentEnv, workflow_status: int
 ) -> None:
     p = parent_env
     state = p.state()
     state.update(
-        rewrite_enabled_since="2026-10-30T00:00:00Z",
-        rewrite_workflow_status=workflow_status,
+        supplement_enabled_since="2026-10-30T00:00:00Z",
+        supplement_workflow_status=workflow_status,
     )
     p.save(state)
-    result = p.cli("wait-rewrite", ok=False)
+    result = p.cli("wait-supplement", ok=False)
     assert all(
         word in result.stderr
-        for word in ("issue-rewrite.yml", "workflow_dispatch", "supplement:skipped")
+        for word in ("issue-supplement.yml", "workflow_dispatch", "supplement:skipped")
     )
     assert not any(c[:2] == ["run", "watch"] for c in p.calls())
 
 
 @pytest.mark.parametrize("watch_code", [0, 1])
-def test_wait_rewrite_does_not_claim_success_when_watch_or_final_state_fails(
+def test_wait_supplement_does_not_claim_success_when_watch_or_final_state_fails(
     parent_env: ParentEnv, watch_code: int
 ) -> None:
     p = parent_env
     state = p.state()
     state.update(
-        rewrite_enabled_since="2026-10-30T00:00:00Z",
-        rewrite_runs=[
+        supplement_enabled_since="2026-10-30T00:00:00Z",
+        supplement_runs=[
             {
                 "id": 101,
-                "display_title": "issue-rewrite #1",
+                "display_title": "issue-supplement #1",
                 "created_at": "2026-10-31T01:00:00Z",
             }
         ],
         watch_returncode=watch_code,
     )
     p.save(state)
-    result = p.cli("wait-rewrite", ok=False)
+    result = p.cli("wait-supplement", ok=False)
     assert ("still pending" if watch_code == 0 else "watch 101 failed") in result.stderr
     assert len([c for c in p.calls() if c[:2] == ["run", "watch"]]) == 1
 
 
-def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
+def test_wait_supplement_pages_runs_once_and_skips_wait_for_final_state(
     parent_env: ParentEnv,
 ) -> None:
     p = parent_env
     state = p.state()
     state.update(
-        rewrite_enabled_since="2026-10-30T00:00:00Z",
-        rewrite_runs=[
+        supplement_enabled_since="2026-10-30T00:00:00Z",
+        supplement_runs=[
             {
                 "id": 200 + n,
-                "display_title": "issue-rewrite #2",
+                "display_title": "issue-supplement #2",
                 "created_at": "2026-10-31T02:00:00Z",
             }
             for n in range(100)
@@ -677,19 +677,19 @@ def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
         + [
             {
                 "id": 101,
-                "display_title": "issue-rewrite #1",
+                "display_title": "issue-supplement #1",
                 "created_at": "2026-10-31T01:00:00Z",
             }
         ],
         watch_label="supplement:done",
     )
     p.save(state)
-    assert json.loads(p.cli("wait-rewrite").stdout)["run_id"] == 101
+    assert json.loads(p.cli("wait-supplement").stdout)["run_id"] == 101
     assert any("page=2" in a for c in p.calls() for a in c)
     offset = len(p.calls())
-    assert json.loads(p.cli("wait-rewrite").stdout) == {
+    assert json.loads(p.cli("wait-supplement").stdout) == {
         "parent": 1,
-        "rewrite_state": "done",
+        "supplement_state": "done",
         "run_id": None,
     }
     assert not any(c[:2] == ["run", "watch"] for c in p.calls()[offset:])
@@ -698,20 +698,20 @@ def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
 @pytest.mark.parametrize(
     "state_label", [None, "supplement:done", "supplement:failed", "supplement:skipped"]
 )
-def test_sync_cannot_patch_parent_during_rewrite_even_without_agreement(
+def test_sync_cannot_patch_parent_during_supplement_even_without_agreement(
     parent_env: ParentEnv, state_label: str | None
 ) -> None:
     p = parent_env
     p.cli("register")
     state = p.state()
-    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    state["supplement_enabled_since"] = "2026-10-30T00:00:00Z"
     if state_label:
         state["issues"]["1"]["labels"].append({"name": state_label})
     p.save(state)
     offset = len(p.calls())
     result = p.cli("sync", ok=state_label is not None)
     if state_label is None:
-        assert "pending" in result.stderr and "wait-rewrite" in result.stderr
+        assert "pending" in result.stderr and "wait-supplement" in result.stderr
         assert not any("PATCH" in call for call in p.calls()[offset:])
         assert p.state()["issues"]["1"]["body"] == state["issues"]["1"]["body"]
     else:
@@ -725,7 +725,7 @@ def test_update_body_gates_target_issue_instead_of_session_parent(
     for key, value in p.env.items():
         monkeypatch.setenv(key, value)
     state = p.state()
-    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    state["supplement_enabled_since"] = "2026-10-30T00:00:00Z"
     state["issues"]["1"]["labels"].append({"name": "supplement:done"})
     p.save(state)
     store_module = importlib.import_module("parent.state")
@@ -747,7 +747,7 @@ def test_update_body_gates_target_issue_instead_of_session_parent(
     assert not any("PATCH" in call for call in p.calls())
 
 
-def test_parent_body_update_detects_rewrite_despite_cached_issue(
+def test_parent_body_update_detects_supplement_despite_cached_issue(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     p = parent_env
@@ -776,20 +776,20 @@ def test_parent_body_update_detects_rewrite_despite_cached_issue(
     assert not any("PATCH" in c for c in p.calls())
 
 
-def test_update_body_rechecks_body_with_final_rewrite_state(
+def test_update_body_rechecks_body_with_final_supplement_state(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     p = parent_env
     for key, value in p.env.items():
         monkeypatch.setenv(key, value)
     state = p.state()
-    state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
+    state["supplement_enabled_since"] = "2026-10-30T00:00:00Z"
     p.save(state)
     store_module = importlib.import_module("parent.state")
     github_module = importlib.import_module("parent.github")
     session_module = importlib.import_module("parent.session")
     policy_module = importlib.import_module("parent.policy")
-    with store_module.Store(p.root / "rewrite-race-state").locked() as store:
+    with store_module.Store(p.root / "supplement-race-state").locked() as store:
         gh = github_module.GitHub("o/r", store=store)
         session = session_module.ParentSession(gh, store, 1, None)
         old = gh.issue(1)["body"]
@@ -802,7 +802,7 @@ def test_update_body_rechecks_body_with_final_rewrite_state(
         state = p.state()
         # The old implementation compares a fresh body before this activation
         # read, then accepts done from a second issue GET without comparing it.
-        state["complete_rewrite_on_activation_read"] = {
+        state["complete_supplement_on_activation_read"] = {
             "number": 1,
             "body": rewritten,
         }
@@ -810,7 +810,7 @@ def test_update_body_rechecks_body_with_final_rewrite_state(
         with pytest.raises(ValueError, match="#1: body changed"):
             session.update_body(1, proposed, old)
     final = p.state()
-    assert "complete_rewrite_on_activation_read" not in final
+    assert "complete_supplement_on_activation_read" not in final
     assert final["issues"]["1"]["body"] == rewritten
     assert {label["name"] for label in final["issues"]["1"]["labels"]} >= {
         "supplement:done"

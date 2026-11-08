@@ -132,7 +132,7 @@ class FakeGitHub:
             raise ValueError("injected GET failure")
         if endpoint == "user":
             return {"login": "operator"}
-        if endpoint == "repos/o/r/actions/variables/ISSUE_REWRITE_ENABLED_SINCE":
+        if endpoint == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
             raise importlib.import_module("issues.cli").GitHubHTTPError(
                 endpoint, 404, "Not Found"
             )
@@ -716,7 +716,7 @@ def test_adds_child_to_unowned_existing_parent_and_preserves_old_requirements(
     assert all(after[k] == v for k, v in before.items() if k != fmt.TASKS_HEADING)
 
 
-def test_parent_checklist_race_preserves_rewrite_and_journal_for_retry(
+def test_parent_checklist_race_preserves_supplement_and_journal_for_retry(
     harness: Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     h = harness
@@ -732,14 +732,18 @@ def test_parent_checklist_race_preserves_rewrite_and_journal_for_retry(
     )
     h.response(plan([task_node(role="child", parent=1)]))
     original_family = h.gh.family
-    rewritten_body = policy.replace_section(
-        original_body, "目的・背景", "Geminiが文脈を説明し直した本文。"
+    purpose = fmt.parse_sections(original_body)["目的・背景"]
+    supplemented_body = policy.replace_section(
+        original_body,
+        "目的・背景",
+        purpose
+        + "\n\n<details>\n<summary>Geminiによる補足・背景情報</summary>\n\n背景の事実。\n\n</details>\n",
     )
 
     def racing_family(n: int) -> dict[int, Any]:
         family: dict[int, Any] = original_family(n)
         if n == 1 and h.gh.parents.get(101) == 1:
-            h.gh.issues[1]["body"] = rewritten_body
+            h.gh.issues[1]["body"] = supplemented_body
         return family
 
     monkeypatch.setattr(h.gh, "family", racing_family)
@@ -747,7 +751,7 @@ def test_parent_checklist_race_preserves_rewrite_and_journal_for_retry(
     assert any(
         "body changed before checklist PATCH" in error for error in result.errors
     )
-    assert h.gh.issues[1]["body"] == rewritten_body
+    assert h.gh.issues[1]["body"] == supplemented_body
     assert not any(
         method == "PATCH" and endpoint == "repos/o/r/issues/1"
         for method, endpoint, _ in h.gh.writes
@@ -764,7 +768,7 @@ def test_parent_checklist_race_preserves_rewrite_and_journal_for_retry(
 
 
 @pytest.mark.parametrize("new_parent", [False, True])
-def test_checklist_recovers_rewrite_between_get_and_patch_once(
+def test_checklist_recovers_supplement_between_get_and_patch_once(
     harness: Harness, new_parent: bool
 ) -> None:
     h = harness
@@ -784,21 +788,28 @@ def test_checklist_recovers_rewrite_between_get_and_patch_once(
         h.response(plan([task_node(role="child", parent=1)]))
         parent, child = 1, 101
     patches = []
+    original_purpose = ""
+    supplement = (
+        "\n\n<details>\n<summary>Geminiによる補足・背景情報</summary>\n\n"
+        "既存コードの背景説明。\n\n</details>\n"
+    )
 
     def interrupt(n: int) -> None:
+        nonlocal original_purpose
         if n != parent:
             return
         patches.append(n)
         if len(patches) == 1:
+            original_purpose = fmt.parse_sections(h.gh.issues[n]["body"])["目的・背景"]
             h.gh.edit_body(
                 n,
                 policy.replace_section(
                     h.gh.issues[n]["body"],
                     "目的・背景",
-                    "Geminiが書き直した重要な説明。",
+                    original_purpose + supplement,
                 ),
             )
-            # The rewrite workflow has also published its final label before our PATCH.
+            # The supplement workflow has also published its final label before our PATCH.
             h.gh.issues[n]["labels"].append({"name": "supplement:done"})
 
     h.gh.before_body_patch = interrupt
@@ -807,7 +818,7 @@ def test_checklist_recovers_rewrite_between_get_and_patch_once(
     assert patches == [parent, parent]
     assert (
         fmt.parse_sections(h.gh.issues[parent]["body"])["目的・背景"].strip()
-        == "Geminiが書き直した重要な説明。"
+        == (original_purpose + supplement).strip()
     )
     assert f"#{child}" in h.gh.issues[parent]["body"]
     assert {"name": "supplement:done"} in h.gh.issues[parent]["labels"]

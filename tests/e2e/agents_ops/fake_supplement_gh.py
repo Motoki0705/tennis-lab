@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Stateful fake GitHub for rewrite/apply, including edits between read and PATCH."""
+"""Stateful fake GitHub for supplement/apply, including edits between read and PATCH."""
 
 import json
 import os
@@ -11,7 +11,7 @@ from urllib.parse import unquote
 BOT_EDITOR = {"__typename": "Bot", "login": "github-actions"}
 HUMAN_EDITOR = {"__typename": "User", "login": "human"}
 
-root = Path(os.environ["REWRITE_FAKE_ROOT"])
+root = Path(os.environ["SUPPLEMENT_FAKE_ROOT"])
 args = sys.argv[1:]
 state_file = root / "github.json"
 state = json.loads(state_file.read_text())
@@ -62,9 +62,9 @@ def edit(body: str, editor: dict[str, str]) -> None:
 
 if state.get("fail_endpoint") == endpoint:
     response({"message": "private-error ghs_" + "a" * 36}, 403)
-if endpoint.endswith("/actions/variables/ISSUE_REWRITE_ENABLED_SINCE"):
+if endpoint.endswith("/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE"):
     response(
-        {"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": state["enabled_since"]},
+        {"name": "ISSUE_SUPPLEMENT_ENABLED_SINCE", "value": state["enabled_since"]},
         state.get("variable_status", 200),
     )
 if endpoint == "repos/o/r/issues/1" and method == "GET":

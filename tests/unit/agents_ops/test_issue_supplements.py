@@ -11,7 +11,7 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / ".agents/ops"))
-api: Any = importlib.import_module("issue_rewrite.invariants")
+api: Any = importlib.import_module("issue_supplement.invariants")
 formatting: Any = importlib.import_module("issues.format")
 
 

@@ -137,13 +137,13 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 担当登録・session identityは不要で、registryや親の操作lockを保持したまま待たない。
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 wait-rewrite
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 wait-supplement
 ```
 
-workflowファイル名は `issue-rewrite.yml`、runの表示名は厳密に `issue-rewrite #<親番号>`。
+workflowファイル名は `issue-supplement.yml`、runの表示名は厳密に `issue-supplement #<親番号>`。
 ページを辿って一致する最新runを探し、`gh run watch <ID> --repo <repo>` で終了を待ってから
 GitHubのラベルを再取得する。定期的にrunやラベルを確認するループは持たない。
-JSONは `{parent, rewrite_state, run_id}`（既に確定または非対象なら `run_id=null`）。watchの表示はstderrへ出す。
+JSONは `{parent, supplement_state, run_id}`（既に確定または非対象なら `run_id=null`）。watchの表示はstderrへ出す。
 runが無いまま保留なら `workflow_dispatch` の手動実行、または人間によるskipの付与を案内する。
 runの終了後も保留なら成功扱いにせず、runの確認と再実行を案内する。待機コマンド自身はラベルを変更しない。
 
@@ -162,7 +162,7 @@ PATCH直前に `require_final` が書込み対象 `n` をキャッシュを使�
 確認してから書く。このため、通常の初回補足追加とは直列になる。本文を計算した後に補足追加が
 完了していれば、確定ラベルがあっても本文の不一致で止まる。合意を要する操作では
 `checking`・`agree` のgateも通す。ただし最終確認からPATCH送信までの窓はatomicではなく、
-通信遅延にも左右される。この窓で手動再実行が確定ラベルを外してpendingへ戻し、本文を書き直すと、
+通信遅延にも左右される。この窓で手動再実行が確定ラベルを外してpendingへ戻し、本文へ補足すると、
 すでに走っている書込みと重なる場合が残る。
 手動再実行時は担当親の本文更新を止めてから行い、競合を疑う場合は編集履歴と現在の本文を照合する。
 triageの履歴検査と再適用は [ops-report README](../ops-report/README.md#採用提案の自動issue化) を参照する。
