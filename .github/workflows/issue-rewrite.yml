@@ -22,7 +22,7 @@ env:
 jobs:
   prepare:
     if: ${{ github.actor == github.repository_owner && vars.ISSUE_REWRITE_ENABLED_SINCE != '' && github.ref
-      == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.action == 'opened'
+      == 'refs/heads/codex/issue-supplement-validation' && (github.event_name == 'workflow_dispatch' || (github.event.action == 'opened'
       && contains(github.event.issue.labels.*.name, 'issue:parent')) || (github.event.action == 'labeled' &&
       github.event.label.name == 'issue:parent')) }}
     runs-on: ubuntu-latest
@@ -147,7 +147,7 @@ jobs:
     - prepare
     - apply
     if: ${{ github.actor == github.repository_owner && vars.ISSUE_REWRITE_ENABLED_SINCE != '' && github.ref
-      == 'refs/heads/main' && needs.apply.outputs.needs_retry == 'true' }}
+      == 'refs/heads/codex/issue-supplement-validation' && needs.apply.outputs.needs_retry == 'true' }}
     runs-on:
     - self-hosted
     - linux
@@ -236,7 +236,7 @@ jobs:
     - rewrite_retry
     - apply_retry
     if: ${{ always() && github.actor == github.repository_owner && vars.ISSUE_REWRITE_ENABLED_SINCE != '' &&
-      github.ref == 'refs/heads/main' && contains(needs.*.result, 'failure') }}
+      github.ref == 'refs/heads/codex/issue-supplement-validation' && contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
