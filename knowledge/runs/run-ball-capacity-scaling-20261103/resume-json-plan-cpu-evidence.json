@@ -1,0 +1,134 @@
+{
+  "schema": "ball_capacity_json_resume_cpu_evidence.v1",
+  "status": "passed",
+  "design": "resume-json-plan-test-design.json",
+  "collected_and_executed_methods": 10,
+  "cases": [
+    {
+      "name": "test_adapter_reaches_real_training_boundary_with_recovered_checkpoint",
+      "seconds": 21.941,
+      "status": "passed"
+    },
+    {
+      "name": "test_changed_budget_is_rejected_before_training",
+      "seconds": 0.075,
+      "status": "passed"
+    },
+    {
+      "name": "test_changed_model_is_rejected_before_training",
+      "seconds": 0.018,
+      "status": "passed"
+    },
+    {
+      "name": "test_changed_source_is_rejected_before_training",
+      "seconds": 0.045,
+      "status": "passed"
+    },
+    {
+      "name": "test_entrypoint_requires_existing_resume_and_explicit_restored_benchmark",
+      "seconds": 0.015,
+      "status": "passed"
+    },
+    {
+      "name": "test_nonfinite_metadata_fails_explicitly",
+      "seconds": 0.011,
+      "status": "passed"
+    },
+    {
+      "name": "test_original_resume_guard_rejects_restored_json_arrays",
+      "seconds": 0.068,
+      "status": "passed"
+    },
+    {
+      "name": "test_real_controller_hash_must_match_both_saved_records",
+      "seconds": 0.015,
+      "status": "passed"
+    },
+    {
+      "name": "test_serialization_binding_is_local_and_model_objects_are_intact",
+      "seconds": 0.015,
+      "status": "passed"
+    },
+    {
+      "name": "test_unrelated_controller_byte_change_is_rejected",
+      "seconds": 0.011,
+      "status": "passed"
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        ".venv/bin/python",
+        "-B",
+        "-m",
+        "ruff",
+        "check",
+        "knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py",
+        "knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.051458739999816316,
+      "output": "All checks passed!\n"
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-B",
+        "-m",
+        "ruff",
+        "format",
+        "--check",
+        "knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py",
+        "knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py"
+      ],
+      "returncode": 0,
+      "seconds": 0.04359182400003192,
+      "output": "2 files already formatted\n"
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-o",
+        "addopts=",
+        "--confcutdir=knowledge/runs/run-ball-capacity-scaling-20261103",
+        "--collect-only",
+        "-q",
+        "knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py"
+      ],
+      "returncode": 0,
+      "seconds": 1.7249962089999826,
+      "output": "knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_adapter_reaches_real_training_boundary_with_recovered_checkpoint\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_budget_is_rejected_before_training\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_model_is_rejected_before_training\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_source_is_rejected_before_training\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_entrypoint_requires_existing_resume_and_explicit_restored_benchmark\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_nonfinite_metadata_fails_explicitly\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_original_resume_guard_rejects_restored_json_arrays\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_real_controller_hash_must_match_both_saved_records\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_serialization_binding_is_local_and_model_objects_are_intact\nknowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_unrelated_controller_byte_change_is_rejected\n\n10 tests collected in 0.03s\n"
+    },
+    {
+      "command": [
+        ".venv/bin/python",
+        "-B",
+        "-m",
+        "pytest",
+        "-o",
+        "addopts=",
+        "--confcutdir=knowledge/runs/run-ball-capacity-scaling-20261103",
+        "-q",
+        "--durations=0",
+        "--durations-min=0",
+        "--junitxml=/tmp/ball-capacity-recovery/attempt-3-cpu-junit.xml",
+        "knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py"
+      ],
+      "returncode": 0,
+      "seconds": 25.818878728000072,
+      "output": "..........                                                               [100%]\n============================== slowest durations ===============================\n21.94s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_adapter_reaches_real_training_boundary_with_recovered_checkpoint\n0.07s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_budget_is_rejected_before_training\n0.07s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_original_resume_guard_rejects_restored_json_arrays\n0.04s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_source_is_rejected_before_training\n0.02s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_model_is_rejected_before_training\n0.01s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_serialization_binding_is_local_and_model_objects_are_intact\n0.01s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_real_controller_hash_must_match_both_saved_records\n0.01s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_entrypoint_requires_existing_resume_and_explicit_restored_benchmark\n0.01s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_nonfinite_metadata_fails_explicitly\n0.01s call     knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_unrelated_controller_byte_change_is_rejected\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_adapter_reaches_real_training_boundary_with_recovered_checkpoint\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_adapter_reaches_real_training_boundary_with_recovered_checkpoint\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_budget_is_rejected_before_training\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_source_is_rejected_before_training\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_entrypoint_requires_existing_resume_and_explicit_restored_benchmark\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_model_is_rejected_before_training\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_source_is_rejected_before_training\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_budget_is_rejected_before_training\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_nonfinite_metadata_fails_explicitly\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_real_controller_hash_must_match_both_saved_records\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_serialization_binding_is_local_and_model_objects_are_intact\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_unrelated_controller_byte_change_is_rejected\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_changed_model_is_rejected_before_training\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_original_resume_guard_rejects_restored_json_arrays\n0.00s setup    knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_original_resume_guard_rejects_restored_json_arrays\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_entrypoint_requires_existing_resume_and_explicit_restored_benchmark\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_real_controller_hash_must_match_both_saved_records\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_unrelated_controller_byte_change_is_rejected\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_serialization_binding_is_local_and_model_objects_are_intact\n0.00s teardown knowledge/runs/run-ball-capacity-scaling-20261103/test_resume_json_plan.py::TestFrozenJsonResume::test_nonfinite_metadata_fails_explicitly\n10 passed in 22.26s\n"
+    }
+  ],
+  "compile": "passed",
+  "frozen_artifacts_unchanged": true,
+  "code_sha256": {
+    "resume_json_plan.py": "afcad68c7bae670351b84d0e7ac4d531717a893137a4fb8d3823a82b66841155",
+    "test_resume_json_plan.py": "ebae8b21e92c277cc44ef95a6330377374dc51ae1db8d4e0c284bcbbd1804e1a"
+  },
+  "cost_note": "Measured 21.941 seconds for the first acceptance case, including the one-time real Torch/training imports and true SHA/load checks for three completed checkpoints before the live stage boundary. Remaining cases each took at most 0.075 seconds. The actual frozen controller is needed to expose this resume integration defect; no model, forward, GPU initialization or update is run. This explicit one-case asset/import cost exceeds the 5-second target and is retained instead of weakening completed-stage guards.",
+  "negative_entrypoint_inputs": 5,
+  "negative_controller_record_inputs": 2
+}
