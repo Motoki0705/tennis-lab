@@ -56,6 +56,7 @@ class PrefixRenderer:
         self.renderer, self.camera, self.scale = renderer, camera, scale
         self.e = renderer.shader.encoded_dim
         self.cache = OrderedDict()
+        self.raw_seconds, self.decode_seconds = [], []
         splats, config = renderer.splats, renderer.config
         self.config = dict(config)
         self.args = dict(
@@ -100,13 +101,35 @@ class PrefixRenderer:
                 np.nextafter(np.float32(cutoff_m * self.scale), np.float32(-np.inf))
             )
         )
+        torch.cuda.synchronize()
+        started = time.perf_counter()
         with torch.inference_mode():
             latent, alpha, _ = rasterization(**self.args, far_plane=far)
+        torch.cuda.synchronize()
+        self.raw_seconds.append(time.perf_counter() - started)
         return latent, alpha
 
     def decode(self, latent):
+        torch.cuda.synchronize()
+        started = time.perf_counter()
         with torch.inference_mode():
-            return self.renderer.shader(latent)[0][0].float().cpu().numpy()
+            rgb = self.renderer.shader(latent)[0][0].float().cpu().numpy()
+        self.decode_seconds.append(time.perf_counter() - started)
+        return rgb
+
+    def timing(self):
+        return {
+            name: {
+                "count": len(values),
+                "min_seconds": min(values),
+                "median_seconds": float(np.median(values)),
+                "max_seconds": max(values),
+            }
+            for name, values in (
+                ("scalar_raster", self.raw_seconds),
+                ("shader_and_readback", self.decode_seconds),
+            )
+        }
 
     def at_depth(self, cutoff_m):
         key = float(cutoff_m)
@@ -285,7 +308,7 @@ def large_gaussian(renderer, output):
         dtype=torch.float32,
     )
     scales = torch.tensor(
-        [[0.3, 0.5, 1.8], [20, 20, 0.02]], device="cuda", dtype=torch.float32
+        [[0.3, 0.5, 1.8], [100, 100, 0.02]], device="cuda", dtype=torch.float32
     )
     features = (
         renderer.splats["features"][:2]
@@ -375,6 +398,7 @@ def large_gaussian(renderer, output):
         "peak_before_4m_but_mean_behind_pixels": int(((peak_z < 4) & active).sum()),
         "relevant_pixels": int(active.sum()),
         "known_large_gaussian_warning": True,
+        "full_alpha_min": float(full_a.min()),
     }
 
 
@@ -386,9 +410,20 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     cameras, scale, descriptions = HELPERS["cameras"](args.asset_root, "court-000")
+    ssaa_cameras = []
+    for index in (0, 1):
+        camera = json.loads(json.dumps(cameras[index]))
+        camera["camera_id"] += "-ssaa2"
+        camera["width"] *= 2
+        camera["height"] *= 2
+        k = np.asarray(camera["intrinsics"]["matrix"], float)
+        k[:2] *= 2
+        camera["intrinsics"]["matrix"] = k.tolist()
+        camera["intrinsics"]["params"] = [k[0, 0], k[1, 1], k[0, 2], k[1, 2]]
+        ssaa_cameras.append(camera)
     dump(
         output / "camera-request.json",
-        {"schema": "nht_render_request_v1", "cameras": cameras},
+        {"schema": "nht_render_request_v1", "cameras": cameras + ssaa_cameras},
     )
     scene = args.asset_root / "reconstruction/export/scene.json"
     public = nht.render_scene(
@@ -474,18 +509,21 @@ def main():
                 )
             )
         dump(output / "metrics.json", report)
+        record["timing"] = p.timing()
         print(json.dumps(record), flush=True)
         del p
     # Repeat two cameras with a common 2x2 sampling grid, for thin balls/edges.
-    for index in (0, 1):
-        camera = json.loads(json.dumps(cameras[index]))
-        camera["width"] *= 2
-        camera["height"] *= 2
-        k = np.asarray(camera["intrinsics"]["matrix"], float)
-        k[:2] *= 2
-        camera["intrinsics"]["matrix"] = k.tolist()
-        camera["intrinsics"]["params"] = [k[0, 0], k[1, 1], k[0, 2], k[1, 2]]
+    for index, camera in enumerate(ssaa_cameras):
         p = PrefixRenderer(renderer, camera, scale)
+        original = np.load(
+            output / "public" / public["renders"][index + 3]["rgb"], allow_pickle=False
+        )
+        record = {
+            "camera": camera["camera_id"],
+            "public_rgb_error": error(p.background, original),
+            "endpoints": endpoints(p),
+        }
+        report["views"].append(record)
         depth = 10 if index == 0 else 6
         for step, u in enumerate(np.linspace(125.1, 130.9, 8)):
             z, valid = sphere_field(camera, depth, u, 69.83)
@@ -514,6 +552,7 @@ def main():
                 save=True,
             )
         )
+        record["timing"] = p.timing()
         del p
     report["large_gaussian"] = large_gaussian(renderer, output)
     report["cuda_peak_allocated_bytes"] = torch.cuda.max_memory_allocated()
