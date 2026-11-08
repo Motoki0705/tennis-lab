@@ -1,0 +1,424 @@
+"""Saved v2 scene -> portable mesh/pose/timeline inputs, without source videos."""
+
+from __future__ import annotations
+
+import json
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+import numpy as np
+import pytest
+import torch
+
+from src.tennis_scene.archive import load_scene_result, save_scene_result
+from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from src.tennis_scene.pipeline.storage.scene_export import export_scene
+from src.tennis_scene.schema import SCENE_MASK_FIELDS, SCENE_REASON_FIELDS, SceneResult
+from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
+from src.tennis_scene.visualization.player_view import (
+    BUNDLE_SCHEMA,
+    PlayerViewBundleConfig,
+    export_player_view_bundle,
+)
+from src.tennis_scene.visualization.player_view.__main__ import main
+from src.utils.checksum import dual_sha256
+
+pytestmark = pytest.mark.integration
+
+
+@dataclass(frozen=True)
+class Inputs:
+    scene: Path
+    faces: Path
+    regressor: Path
+    model: Path
+
+
+@pytest.fixture
+def inputs(tmp_path: Path) -> Inputs:
+    players, frames, views = 2, 7, 2
+    valid = np.array(
+        [
+            [False, True, True, False, True, True, True],
+            [True, False, True, True, True, False, True],
+        ]
+    )
+    root_valid = valid.copy()
+    root_valid[0, 3] = True  # A valid root/heading does not revive a missing mesh.
+    ball_valid = np.array([True, True, False, True, True, False, True])
+    local = np.tile(
+        [[1, 2, 3], [3, 2, 3], [1, 6, 3], [1, 2, 9]], (players, frames, 1, 1)
+    ).astype(np.float32)
+    local[0] *= 1.5
+    local[1] *= 0.75
+    orient: np.ndarray = np.zeros((players, frames, 3), np.float32)
+    orient[0, :, 2] = np.pi / 2
+    orient[1, :, 0] = np.pi / 2
+    pose = (
+        np.arange(players * frames * 63, dtype=np.float32).reshape(players, frames, 63)
+        / 1000
+    )
+    position = np.array([[[5, -3, 2]] * frames, [[-4, 8, 1]] * frames], np.float32)
+    yaw: np.ndarray = np.zeros((players, frames), np.float32)
+    yaw[0] = np.pi / 2
+    for value in (local, orient, pose):
+        value[~valid] = 0
+    position[~root_valid] = 0
+    yaw[~root_valid] = 0
+    ball = np.stack(
+        [np.arange(frames), np.arange(frames) * 2, np.ones(frames)], -1
+    ).astype(np.float32)
+    ball[~ball_valid] = 0
+    scene = SceneResult(
+        num_frames=frames,
+        fps=59.94,
+        width=64,
+        height=48,
+        court_kp=np.zeros((views, frames, 14, 2), np.float32),
+        court_vis=np.ones((views, frames, 14), np.float32),
+        player_position=position,
+        player_yaw=yaw,
+        smpl_body_pose=pose,
+        smpl_global_orient=orient,
+        smpl_betas=np.array([[0.1] * 10, [0.2] * 10], np.float32),
+        smpl_vertices_local=local,
+        player_kp_3d=np.zeros((players, frames, 17, 3), np.float32),
+        human_kp_2d=np.zeros((players, views, frames, 17, 2), np.float32),
+        human_kp_vis=np.zeros((players, views, frames, 17), np.float32),
+        ball_3d=ball,
+        ball_uv=np.zeros((views, frames, 2), np.float32),
+        ball_vis=np.ones((views, frames), bool),
+        player_track_ids=np.array([7, 42], np.int32),
+        player_observed=root_valid.copy(),
+        player_valid=root_valid.copy(),
+        player_heading_valid=root_valid.copy(),
+        player_smpl_valid=valid.copy(),
+        player_kp_3d_vis=np.zeros((players, frames, 17), bool),
+        ball_3d_valid=ball_valid,
+        player_rejection_code=(~root_valid).astype(np.uint8),
+        player_kp_3d_rejection_code=np.ones((players, frames, 17), np.uint8),
+        ball_rejection_code=(~ball_valid).astype(np.uint8),
+        metadata={
+            "scene_schema_version": 2,
+            "camera_ids": ["cam0", "cam1"],
+            "video_paths": ["/unavailable/cam0.mp4", "/unavailable/cam1.mp4"],
+            "court_reference": {"reference_id": "cam0"},
+            "body_placement": {"players": {"7": {"scale": 1.5}, "42": {"scale": 0.75}}},
+        },
+    )
+    scene_path = tmp_path / "scene.npz"
+    save_scene_result(scene, scene_path)
+    faces = tmp_path / "faces.npz"
+    regressor = tmp_path / "regressor.pt"
+    model = tmp_path / "neutral.npz"
+    np.savez(faces, f=np.array([[0, 1, 2], [0, 2, 3]], np.int64))
+    joint_regressor: np.ndarray = np.zeros((24, 4), np.float32)
+    joint_regressor[:, 0] = 1
+    joint_regressor[15] = [0, 0, 1, 0]
+    torch.save(torch.from_numpy(joint_regressor), regressor)
+    np.savez(
+        model,
+        v_template=np.array([[1, 2, 3], [0, 0, 0], [0, 0, 0], [0, 0, 0]], np.float32),
+        J_regressor=joint_regressor[:22],
+        shapedirs=np.ones((4, 3, 10), np.float32) / 10,
+        kintree_table=np.array(
+            [
+                [
+                    -1,
+                    0,
+                    0,
+                    0,
+                    1,
+                    2,
+                    3,
+                    4,
+                    5,
+                    6,
+                    7,
+                    8,
+                    9,
+                    9,
+                    9,
+                    12,
+                    13,
+                    14,
+                    16,
+                    17,
+                    18,
+                    19,
+                ],
+                range(22),
+            ],
+            np.int32,
+        ),
+    )
+    return Inputs(scene_path, faces, regressor, model)
+
+
+def _export(
+    inputs: Inputs,
+    output: Path,
+    *,
+    source: Path | None = None,
+    config: PlayerViewBundleConfig | None = None,
+) -> Path:
+    return export_player_view_bundle(
+        scene_path=inputs.scene if source is None else source,
+        smpl_faces_path=inputs.faces,
+        smpl_joint_regressor_path=inputs.regressor,
+        smplx_model_path=inputs.model,
+        output_dir=output,
+        config=PlayerViewBundleConfig(frames=(1, 6)) if config is None else config,
+    )
+
+
+def _snapshot(root: Path) -> dict[str, str]:
+    return {
+        str(path.relative_to(root)): dual_sha256(path)
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _store(inputs: Inputs, root: Path) -> ClipStore:
+    scene = load_scene_result(inputs.scene)
+    store = ClipStore(root, {"clip": "fixture"})
+    codec = ArtifactCodec(SceneResult)
+    body = store.publish(
+        "body_placement",
+        scene,
+        codec,
+        schema="placed_bodies",
+        version=1,
+        identity={"revision": 1},
+        dependencies={},
+        provenance={},
+    )
+    assembled = store.publish(
+        "scene_assembly",
+        scene,
+        codec,
+        schema="scene_result",
+        version=2,
+        identity={"revision": 1},
+        dependencies={"body": body},
+        provenance={},
+    )
+    export_scene(store, scene, assembled)
+    return store
+
+
+def test_saved_scene_bundle_preserves_ids_frames_masks_and_placed_geometry(
+    inputs: Inputs, tmp_path: Path
+) -> None:
+    before = _snapshot(tmp_path)
+    output = tmp_path / "bundle"
+    manifest = json.loads(_export(inputs, output).read_text())
+    assert {k: dual_sha256(tmp_path / k) for k in before} == before
+    assert manifest["schema"] == BUNDLE_SCHEMA
+    assert (manifest["num_frames"], manifest["fps"]) == (5, 59.94)
+    assert manifest["frames"] == {"start": 1, "stop": 6, "source_num_frames": 7}
+    assert [
+        (p["player_id"], p["index"], p["source_index"], p["scale"])
+        for p in manifest["players"]
+    ] == [(7, 0, 0, 1.5), (42, 1, 1, 0.75)]
+    assert manifest["coordinates"]["units"] == "m"
+    assert not (output / "plate").exists()
+    assert not list(output.glob(".*"))
+    np.testing.assert_array_equal(
+        np.load(output / "source_frames.npy"), [1, 2, 3, 4, 5]
+    )
+    np.testing.assert_allclose(
+        np.load(output / "source_time_seconds.npy"), np.arange(1, 6) / 59.94
+    )
+    np.testing.assert_array_equal(
+        np.load(output / "player_smpl_valid.npy"),
+        [[True, True, False, True, True], [False, True, True, True, False]],
+    )
+    np.testing.assert_array_equal(
+        np.load(output / "ball_3d_valid.npy"), [True, False, True, True, False]
+    )
+    np.testing.assert_array_equal(
+        np.load(output / "ball_positions.npy"),
+        [[1, 2, 1], [0, 0, 0], [3, 6, 1], [4, 8, 1], [0, 0, 0]],
+    )
+    mesh, start, rate = read_pc2(output / "player_0.pc2")
+    assert (start, rate) == (0, 1)
+    # Independent hand calculation: inverse encoded Z rotation, Y->Z, yaw,
+    # root-centering and translation. The scale is already in the local mesh.
+    np.testing.assert_allclose(
+        mesh[0], [[5, -3, 2], [5, -3, -1], [5, 3, 2], [14, -3, 2]], atol=2e-6
+    )
+    assert (mesh[2] == 0).all()  # An isolated gap is not filled.
+    assert np.load(output / "player_valid.npy")[0, 2]
+    other, _, _ = read_pc2(output / "player_1.pc2")
+    np.testing.assert_allclose(
+        other[1], [[-4, 8, 1], [-2.5, 8, 1], [-4, 11, 1], [-4, 8, 5.5]], atol=2e-6
+    )
+    assert (other[[0, 4]] == 0).all()
+    np.testing.assert_allclose(
+        np.load(output / "body_to_court_rotation.npy")[1, 1], np.eye(3), atol=1e-6
+    )
+    np.testing.assert_allclose(
+        np.load(output / "smpl_root_local.npy")[0, 0], [1.5, 3, 4.5]
+    )
+    scene = load_scene_result(inputs.scene)
+    for field in (
+        *SCENE_MASK_FIELDS,
+        *SCENE_REASON_FIELDS,
+        "smpl_body_pose",
+        "smpl_global_orient",
+        "player_position",
+        "player_yaw",
+    ):
+        value = getattr(scene, field)
+        np.testing.assert_array_equal(
+            np.load(output / f"{field}.npy"),
+            value[1:6] if field.startswith("ball_") else value[:, 1:6],
+        )
+    np.testing.assert_array_equal(np.load(output / "smpl_betas.npy"), scene.smpl_betas)
+    np.testing.assert_allclose(np.load(output / "smplx_rest_joints.npy")[0], [1, 2, 3])
+    np.testing.assert_allclose(np.load(output / "smplx_joint_shapedirs.npy")[0], 0.1)
+    assert np.load(output / "smplx_parents.npy")[0] == -1
+    existing = _snapshot(output)
+    with pytest.raises(FileExistsError):
+        _export(inputs, output)
+    assert _snapshot(output) == existing
+
+
+@pytest.mark.parametrize("index_input", [False, True], ids=["store", "scene-json"])
+def test_cli_resolves_only_adopted_scene_and_selects_ids(
+    inputs: Inputs,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    index_input: bool,
+) -> None:
+    store = _store(inputs, tmp_path / "store")
+    before = _snapshot(store.root)
+    source = store.index_path if index_input else store.root
+    output = tmp_path / "bundle"
+    selected_ids = ["42", "7"] if index_input else ["42"]
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "player-view",
+            "--input",
+            str(source),
+            "--output",
+            str(output),
+            "--smpl-faces",
+            str(inputs.faces),
+            "--smpl-joint-regressor",
+            str(inputs.regressor),
+            "--smplx-model",
+            str(inputs.model),
+            "--frames",
+            "2",
+            "7",
+            "--player-ids",
+            *selected_ids,
+        ],
+    )
+    main()
+    assert capsys.readouterr().out.strip() == str(output / "manifest.json")
+    manifest = json.loads((output / "manifest.json").read_text())
+    expected_players = [(42, 0, 1), (7, 1, 0)] if index_input else [(42, 0, 1)]
+    assert [
+        (p["player_id"], p["index"], p["source_index"]) for p in manifest["players"]
+    ] == expected_players
+    assert manifest["source"]["store_index"]["sha256"] == dual_sha256(store.index_path)
+    expected_betas = [[0.2] * 10, [0.1] * 10] if index_input else [[0.2] * 10]
+    np.testing.assert_allclose(np.load(output / "smpl_betas.npy"), expected_betas)
+    assert _snapshot(store.root) == before
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    ["unknown-id", "v1", "missing-scale", "duplicate-ids", "missing-pose", "frames"],
+)
+def test_rejects_invalid_inputs_before_publication(
+    inputs: Inputs, tmp_path: Path, invalid: str
+) -> None:
+    scene = load_scene_result(inputs.scene)
+    config = PlayerViewBundleConfig()
+    if invalid == "unknown-id":
+        config = PlayerViewBundleConfig(player_ids=(1,))
+    elif invalid == "v1":
+        scene.metadata.pop("scene_schema_version")
+        for field in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS):
+            setattr(scene, field, None)
+    elif invalid == "missing-scale":
+        scene.metadata["body_placement"]["players"]["7"].pop("scale")
+    elif invalid == "duplicate-ids":
+        scene.player_track_ids = np.array([7, 7], np.int32)
+    elif invalid == "missing-pose":
+        scene.smpl_betas = None
+    elif invalid == "frames":
+        config = PlayerViewBundleConfig(frames=(1, 8))
+    save_scene_result(scene, inputs.scene)
+    before = _snapshot(tmp_path)
+    output = tmp_path / "bundle"
+    expected_error = {
+        "unknown-id": "Unknown player IDs",
+        "v1": "requires SceneResult v2",
+        "missing-scale": "requires a recorded positive",
+        "duplicate-ids": "unique non-negative player_track_ids",
+        "missing-pose": "requires smpl_betas",
+        "frames": "exceed the source scene timeline",
+    }[invalid]
+    with pytest.raises(ValueError, match=expected_error):
+        _export(inputs, output, config=config)
+    assert _snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("stale", [False, True], ids=["incomplete", "stale-lineage"])
+def test_store_does_not_search_for_another_export(
+    inputs: Inputs, tmp_path: Path, stale: bool
+) -> None:
+    store = _store(inputs, tmp_path / "store")
+    index = json.loads(store.index_path.read_text())
+    old_export = index["exports"]["scene"]
+    scene = load_scene_result(inputs.scene)
+    store.publish(
+        "body_placement",
+        scene,
+        ArtifactCodec(SceneResult),
+        schema="placed_bodies",
+        version=1,
+        identity={"revision": 2},
+        dependencies={},
+        provenance={},
+    )
+    if stale:
+        index = json.loads(store.index_path.read_text())
+        index["exports"]["scene"] = old_export
+        store.index_path.write_text(json.dumps(index))
+    before = _snapshot(store.root)
+    output = tmp_path / "bundle"
+    with pytest.raises(ValueError, match="superseded|no completed scene export"):
+        _export(inputs, output, source=store.root)
+    assert not output.exists()
+    assert _snapshot(store.root) == before
+
+
+def test_failed_writer_never_publishes_and_removes_staging(
+    inputs: Inputs, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "bundle"
+    before = _snapshot(tmp_path)
+
+    def fail(*args: object, **kwargs: object) -> None:
+        assert not output.exists()
+        raise OSError("Injected disk failure")
+
+    monkeypatch.setattr(
+        "src.tennis_scene.visualization.player_view.bundle.write_pc2", fail
+    )
+    with pytest.raises(OSError, match="disk failure"):
+        _export(inputs, output)
+    assert _snapshot(tmp_path) == before
+    assert not list(tmp_path.glob(".bundle-*"))
