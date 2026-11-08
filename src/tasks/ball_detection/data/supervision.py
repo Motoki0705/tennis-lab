@@ -26,6 +26,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.ball_detection.data.store import (
+    LEGACY_POINT_KIND_CODES,
     LOCATED_POINT_KINDS,
     POINT_KIND_CODES,
     BallFrameStore,
@@ -36,7 +37,12 @@ ROLES: Final = ("positive", "absent", "ignore")
 
 @dataclass(frozen=True, slots=True)
 class FrameSupervisionPolicy:
-    """A total, disjoint assignment of every point kind to one role."""
+    """A total, disjoint assignment of the legacy store kinds to one role.
+
+    General v3 estimates belong to the separate active_ball store/reader, which
+    this policy explicitly rejects. Existing frozen legacy policies retain their
+    original enum and serialized configuration.
+    """
 
     positive: frozenset[str]
     absent: frozenset[str]
@@ -49,9 +55,9 @@ class FrameSupervisionPolicy:
             raise ValueError(
                 "A point kind is assigned to more than one supervision role"
             )
-        if set(assigned) != set(POINT_KIND_CODES):
-            missing = sorted(set(POINT_KIND_CODES) - set(assigned))
-            unknown = sorted(set(assigned) - set(POINT_KIND_CODES))
+        if set(assigned) != set(LEGACY_POINT_KIND_CODES):
+            missing = sorted(set(LEGACY_POINT_KIND_CODES) - set(assigned))
+            unknown = sorted(set(assigned) - set(LEGACY_POINT_KIND_CODES))
             raise ValueError(
                 f"Supervision roles must cover every point kind exactly once "
                 f"(missing {missing}, unknown {unknown})"
@@ -103,6 +109,7 @@ def resolve_frame_supervision(
     store: BallFrameStore, policy: FrameSupervisionPolicy
 ) -> FrameSupervision:
     """Apply ``policy`` to every frame and instance of ``store``."""
+    store.require_target_semantics("legacy_ball")
     kinds = store.instances["point_kind"]
     ignored = np.isin(kinds, policy.codes("ignore"))
     counts = store.frames["inst_count"]

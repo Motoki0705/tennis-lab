@@ -11,6 +11,7 @@ RGB shardを複製・hardlinkせずに配布ファイルと全量の内容manife
 | 系列 | コード対応・保存先 | 入力と教師 | 用途・制限 |
 |---|---|---|---|
 | 統一ball frame store | `ball_detection_frames.v1` / `v2`。`BallFrameStore` がschemaを検証。通常学習の既定は `ball-mix-v2` | 1カメラの連続RGB JPEGと、point_kind付き2D ball注釈。全フレームを保存 | 学習・validation・test・データ品質レビュー。使用source・混合比・教師方針は[学習data設定](../configs/data/rgb_sequence.yaml)が正本 |
+| 元動画active_ball snapshot | `ball_detection_frames.v4`。注釈schema v3やsnapshotの版名とは独立 | native RGB JPEG、元v3全体、位置あり推定を含む明示教師maskと均一重み | `ActiveBallWindowDataset`で読み、従来の汎用教師readerとの対象意味の混在を拒否 |
 | 派生player pose store | `ball_detection_player_poses.v1`。`data/ball_detection/*/manifest.json` と保存済みcampaign artifact | ball storeのRGBからモデル推定した2D pose・人物枠・クリップ内選手/raw ID | ボールレビューの補助表示。ボール教師や独立したpose GTではない。manifestの元ball store hashとclipの対応を検証して表示 |
 
 `tracknet`・`meiji`・`chat_annotation` は3つの出自であり、3つの学習データ形式ではありません。
@@ -24,6 +25,47 @@ publication時に全native frameを従来と同じQ90 JPEGへ変換して、fram
 既存の`offset/length`はvideo clipでは仮想JPEG列上の位置であり、MP4のbyte rangeではありません。
 物理payloadの場所は`BallFrameStore.image_path()`、video窓は`read_video_window()`を使用します。
 `v3`の教師maskは`v2`と同じで、旧clipの画素・教師・splitは保持します。
+
+## active_ballの学習reader
+
+公開・状態別教師・重み・group/split・修正の方針の正本は
+[元動画v3の公開方針](../generate_dataset/frame_store/publishing/README.md#元動画v3の公開方針)です。
+`BallFrameStore`はv4の元v3・native座標・PTSと明示maskの一致を検証し、
+`video_annotations[clip_id]`から状態・遮蔽・由来・support・notesを再読込できます。
+`estimated`は独立した点種として保持します。
+
+```python
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot import load_snapshot
+from src.tasks.ball_detection.data.windows.active_ball import ActiveBallWindowDataset, collate_active_ball_windows
+from torch.utils.data import DataLoader
+
+snapshot, store = load_snapshot(layout, publication_receipt.snapshot)
+dataset = ActiveBallWindowDataset(store, split="train", window_length=32, stride=16)
+sample = dataset[0]
+# 同じnative解像度の窓をbatchにする。nullを含む由来も保持する専用collateを使う。
+loader = DataLoader(dataset, batch_size=1, collate_fn=collate_active_ball_windows)
+```
+
+このreaderは全native frameを覆う窓と末尾窓を作り、短すぎるclipや被覆に隙間のあるstrideを拒否します。
+プレイ密度・観測点数で推定教師を落とす選別は行いません。batchの選択・モデル選択・学習起動は呼出側の責務です。
+RGBは初回のarchive hash検証後に読み、使用中のファイル変更も検出します。
+
+| 出力 | 契約 |
+|---|---|
+| `rgb` / `source_size` | native uint8 `(T,3,H,W)` RGB / native `(width,height)`。resizeしない |
+| `xy` / `uv` | native pixel座標 / `(width−1,height−1)`端点正規化。1pixelの軸は0。無効行は0とmaskで表す |
+| `position_valid` / `heatmap_valid` | 保存した位置教師mask / 正例またはactive_ball負例mask。unknownと座標なし遮蔽は両方false |
+| `position_weight` / `heatmap_weight` | 対応する有効教師は1、無効は0。観測と全点種の推定は同重み |
+| `direct_observation` / `estimated` / `active_ball_negative` | v3共通usageの独立mask。推定を観測へ偽装しない |
+| `state` / `occlusion` / `position_provenance` | 元v3の状態・遮蔽・点種とsupport |
+| `frame_indices` / `pts` / `time_base` / `native_fps` | 元動画のframe番号・実整数PTSと正確な有理数時刻係数。`timestamps`は窓先頭からの秒 |
+| `target_semantics` / `recording_id` / `group_id` / `camera_id` / `split` | `active_ball`と公開時に固定した元収録・camera・分割 |
+
+従来の`BallStoreDataset`、observed-only supervision、旧凍結window preparationはv4を明示的に拒否します。
+逆に専用readerも旧v1〜v3や異なるtarget semanticsを拒否します。これによりプレー球の不在を
+全ボール不在の負例へ無条件に取り込みません。既存学習CLIへの新しいdata選択や旧データ移行の実行は含みません。
+
+## 既存sourceと教師
 
 | source | store生成の入力 | clipとsplitの単位 | レビュー時の注意 |
 |---|---|---|---|
