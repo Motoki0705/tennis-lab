@@ -5,9 +5,10 @@ from __future__ import annotations
 
 import json
 import os
+import select
 import subprocess
 import sys
-import time
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -33,6 +34,22 @@ def call(server: subprocess.Popen[str], name: str, **arguments: Any) -> Any:
 
 
 def audit(server: subprocess.Popen[str], prompt: str) -> str:
+    control = Path(os.environ["FAKE_SCOUT_CONTROL"])
+    control.mkdir()
+    with ExitStack() as stack:
+        channels = {}
+        for name in ("first", "independent", "followup", "release"):
+            path = control / name
+            os.mkfifo(path)
+            descriptor = os.open(path, os.O_RDWR | os.O_NONBLOCK)
+            stack.callback(os.close, descriptor)
+            channels[name] = descriptor
+        return audit_tasks(server, prompt, channels)
+
+
+def audit_tasks(
+    server: subprocess.Popen[str], prompt: str, channels: dict[str, int]
+) -> str:
     def ok(name: str, **args: Any) -> Any:
         reply = call(server, name, **args)
         assert reply["ok"], reply
@@ -66,12 +83,18 @@ def audit(server: subprocess.Popen[str], prompt: str) -> str:
     )
 
     def finish(task: str) -> None:
-        deadline = time.monotonic() + 15
-        while time.monotonic() < deadline:
-            result = ok("audit_scout_result", id=task)
-            if result["status"] != "running":
-                break
-            time.sleep(0.05)
+        assert select.select([channels[task]], [], [], 15)[0], task
+        runner_pid = json.loads(os.read(channels[task], 512))
+        try:
+            finished = os.pidfd_open(runner_pid)
+        except ProcessLookupError:
+            pass  # The runner has already exited after sending its notification.
+        else:
+            try:
+                assert select.select([finished], [], [], 15)[0], task
+            finally:
+                os.close(finished)
+        result = ok("audit_scout_result", id=task)
         assert result["status"] == "completed", result
         ok("audit_evidence", id=f"e_{task}", receipt=result["text"].strip())
         ok(
@@ -88,7 +111,7 @@ def audit(server: subprocess.Popen[str], prompt: str) -> str:
     ok("audit_start_task", id="followup")
     finish("followup")
     assert ok("audit_scout_result", id="independent")["status"] == "running"
-    Path(os.environ["FAKE_SCOUT_RELEASE"]).touch()
+    os.write(channels["release"], b"1")
     finish("independent")
     ok(
         "audit_end",
@@ -106,15 +129,18 @@ def scout(server: subprocess.Popen[str], prompt: str) -> str:
     tools = request(server, "tools/list")["tools"]
     assert all(not tool["name"].startswith(("audit_", "cpu_")) for tool in tools)
     assert "問い: Investigate" in prompt
-    if "問い: Investigate independent" in prompt:
-        deadline = time.monotonic() + 15
-        while not Path(os.environ["FAKE_SCOUT_RELEASE"]).exists():
-            assert time.monotonic() < deadline
-            time.sleep(0.05)
+    task = prompt.split("問い: Investigate ", 1)[1].splitlines()[0]
+    control = Path(os.environ["FAKE_SCOUT_CONTROL"])
+    if task == "independent":
+        with (control / "release").open("rb", buffering=0) as release:
+            assert select.select([release], [], [], 15)[0]
+            assert release.read(1) == b"1"
     record = call(server, "code_file", path="big.py", start_line=2, line_count=3)
     assert record["ok"], record
     receipt = record["receipt"]
     assert isinstance(receipt, str)
+    with (control / task).open("w") as notification:
+        notification.write(json.dumps(os.getppid()) + "\n")
     return receipt
 
 

@@ -422,7 +422,7 @@ def test_managed_audit_uses_claude_parent_and_parallel_sol_scouts(ops_env: Any) 
         "report",
         "--dry-run",
         OPS_REPORT_AGENT_EXEC=str(runner),
-        FAKE_SCOUT_RELEASE=str(ops_env.tmp / "release-scout"),
+        FAKE_SCOUT_CONTROL=str(ops_env.tmp / "scout-control"),
     )
     assert result.returncode == 0, result.stderr
     assert "status=complete" in result.stdout
