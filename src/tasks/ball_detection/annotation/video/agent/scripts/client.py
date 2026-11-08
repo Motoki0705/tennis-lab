@@ -1,4 +1,4 @@
-"""Standalone stdlib-only worker client, copied into the private attempt input.
+"""Standalone stdlib-only worker entrypoint, copied into the private attempt input.
 
 No project import, media path resolver, arbitrary file service or output writer is
 available here. The parent validates every request, including ones bypassing this

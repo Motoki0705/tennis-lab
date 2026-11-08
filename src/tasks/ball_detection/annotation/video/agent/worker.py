@@ -153,7 +153,7 @@ class BallVideoWorker:
         bridge = write_asset(
             layout,
             directory / "input/tools.py",
-            Path(__file__).with_name("bridge.py").read_bytes(),
+            (Path(__file__).parent / "scripts/client.py").read_bytes(),
         )
         schema = write_asset(
             layout,
@@ -188,7 +188,8 @@ class BallVideoWorker:
             or read_document(layout, attempt.launch.plan, LocalAnnotationPlan) != plan
         ):
             raise ValueError("image telemetry belongs to another camera/plan")
-        return image_catalog(layout, attempt)
+        result: tuple[RenderedImage, ...] = image_catalog(layout, attempt)
+        return result
 
     def classify_tool(self, name: str | None, raw_input: str) -> str:
         if name and "view_image" in name:
