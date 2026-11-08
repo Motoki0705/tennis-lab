@@ -25,6 +25,9 @@ def api(monkeypatch: pytest.MonkeyPatch) -> Any:
 def test_legacy_labels_cannot_silently_become_pending(api: Any, status: str) -> None:
     with pytest.raises(ValueError, match="must be migrated"):
         api.rewrite_state(PARENT + ["rewrite:" + status], ENABLED, ENABLED)
+    assert api.rewrite_state(
+        PARENT + ["rewrite:" + status], "2026-10-30T11:59:59Z", ENABLED
+    ) == "not_target"
 
 
 @pytest.mark.parametrize(

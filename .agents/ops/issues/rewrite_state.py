@@ -67,8 +67,6 @@ def rewrite_state(
     names = set(labels)
     if any(not isinstance(name, str) or not name for name in names):
         raise ValueError("labels must contain nonempty names")
-    if any(name.startswith("rewrite:") for name in names):
-        raise ValueError("legacy rewrite labels must be migrated to supplement labels")
     final = names & REWRITE_FINAL_LABELS
     if len(final) > 1:
         raise ValueError(f"conflicting issue supplement labels: {sorted(final)}")
@@ -80,6 +78,8 @@ def rewrite_state(
     )
     if enabled is None or PARENT_LABEL not in names or created < enabled:
         return "not_target"
+    if any(name.startswith("rewrite:") for name in names):
+        raise ValueError("legacy rewrite labels must be migrated to supplement labels")
     if REWRITE_DONE_LABEL in final:
         return "done"
     if REWRITE_FAILED_LABEL in final:
