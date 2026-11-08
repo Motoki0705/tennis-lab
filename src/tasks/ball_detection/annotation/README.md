@@ -4,6 +4,10 @@
 教師公開を接続する。新規clipへの座標・hybrid推論は以下、差分編集・画像確認・教師採用の仕様は
 [review](review/README.md)を正本とする。
 
+元動画からのプレー球注釈 `video_ball_annotation.v3` のschema・reader/writer・状態別の
+利用判定・v2との移行境界は [video](video/README.md) を正本とする。
+これは既存の予測レビュー契約とは別の入口で、推定座標も位置利用可として保持する。
+
 `BallPredictionAdapter` を共通 `Predictions(layout, plan).run(manifest, adapter)` に
 渡す。収集台帳に準備済みとして登録されたclipと、そのcampaignに固定したモデル・
 推論設定だけを受け付ける。既存予測はhashとframe対応を検証して返し、モデルを
