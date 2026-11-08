@@ -16,6 +16,7 @@ from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SCENE_MASK_FIELDS, SCENE_REASON_FIELDS, SceneResult
+from src.tennis_scene.scripts.export_player_view_cameras import main as camera_main
 from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
 from src.tennis_scene.visualization.player_view import (
     BUNDLE_SCHEMA,
@@ -23,6 +24,12 @@ from src.tennis_scene.visualization.player_view import (
     export_player_view_bundle,
 )
 from src.tennis_scene.visualization.player_view.__main__ import main
+from src.tennis_scene.visualization.player_view.camera_bundle import (
+    CAMERA_SCHEMA,
+    export_head_cameras,
+    load_head_cameras,
+)
+from src.tennis_scene.visualization.player_view.head_camera import HeadCameraConfig
 from src.utils.checksum import dual_sha256
 
 pytestmark = pytest.mark.integration
@@ -164,7 +171,7 @@ def _export(
     source: Path | None = None,
     config: PlayerViewBundleConfig | None = None,
 ) -> Path:
-    return export_player_view_bundle(
+    manifest_path: Path = export_player_view_bundle(
         scene_path=inputs.scene if source is None else source,
         smpl_faces_path=inputs.faces,
         smpl_joint_regressor_path=inputs.regressor,
@@ -172,6 +179,7 @@ def _export(
         output_dir=output,
         config=PlayerViewBundleConfig(frames=(1, 6)) if config is None else config,
     )
+    return manifest_path
 
 
 def _snapshot(root: Path) -> dict[str, str]:
@@ -422,3 +430,130 @@ def test_failed_writer_never_publishes_and_removes_staging(
         _export(inputs, output)
     assert _snapshot(tmp_path) == before
     assert not list(tmp_path.glob(".bundle-*"))
+
+
+def test_head_camera_cli_preserves_selected_ids_timeline_and_isolated_gaps(
+    inputs: Inputs,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle, output = tmp_path / "bundle", tmp_path / "cameras"
+    _export(
+        inputs, bundle, config=PlayerViewBundleConfig(frames=(1, 6), player_ids=(42, 7))
+    )
+    before = _snapshot(bundle)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "head-camera",
+            "--bundle",
+            str(bundle),
+            "--output",
+            str(output),
+            "--face-offset-head-m",
+            "0",
+            "0",
+            "0",
+        ],
+    )
+    camera_main()
+    assert _snapshot(bundle) == before
+    manifest = json.loads((output / "manifest.json").read_text())
+    assert manifest["schema"] == CAMERA_SCHEMA
+    assert [p["player_id"] for p in manifest["players"]] == [42, 7]
+    assert manifest["players"][0]["rejection_counts"] == {
+        "VALID": 3,
+        "MESH_INVALID": 2,
+        "HEAD_POSE_NONFINITE": 0,
+        "PLACEMENT_ROTATION_INVALID": 0,
+        "HEAD_POSITION_NONFINITE": 0,
+    }
+    assert manifest["source_bundle"]["path"] == "../bundle"
+    assert (
+        manifest["source_bundle"]["files"]["manifest.json"] == before["manifest.json"]
+    )
+    for player_id, mask, valid_index, center in [
+        (42, [False, True, True, True, False], 1, [-4, 11, 1]),
+        (7, [True, True, False, True, True], 0, [5, 3, 2]),
+    ]:
+        saved = load_head_cameras(output, player_id=player_id)
+        assert saved.player_id == player_id and saved.fps == 59.94
+        np.testing.assert_array_equal(saved.source_frames, [1, 2, 3, 4, 5])
+        np.testing.assert_allclose(saved.source_time_seconds, np.arange(1, 6) / 59.94)
+        np.testing.assert_array_equal(saved.series.camera_valid, mask)
+        np.testing.assert_allclose(
+            saved.series.pinhole(valid_index).center, center, atol=1e-6
+        )
+        missing_index = mask.index(False)
+        with pytest.raises(ValueError, match="MESH_INVALID"):
+            saved.series.pinhole(missing_index)
+        if player_id == 7:
+            # The source root is valid at this mesh gap. Preserve its reason 0
+            # separately; the head camera must still be rejected as MESH_INVALID.
+            assert saved.source_player_rejection_code[missing_index] == 0
+            assert saved.series.camera_rejection_code[missing_index] == 1
+    with pytest.raises(ValueError, match="exactly one player ID"):
+        load_head_cameras(output, player_id=99)
+    # Consumers do not need the original scene or even the source bundle.
+    bundle.rename(tmp_path / "moved-bundle")
+    assert load_head_cameras(output, player_id=42).series.camera_valid.sum() == 3
+
+
+@pytest.mark.parametrize("corrupt", ["zero-missing-pose", "false-valid-mask"])
+def test_camera_reader_never_treats_missing_as_origin_or_fixed_camera(
+    inputs: Inputs,
+    tmp_path: Path,
+    corrupt: str,
+) -> None:
+    bundle, output = tmp_path / "bundle", tmp_path / "cameras"
+    _export(inputs, bundle)
+    export_head_cameras(bundle_dir=bundle, output_dir=output, config=HeadCameraConfig())
+    path = output / "player_0.npz"
+    with np.load(path) as data:
+        values = {name: data[name] for name in data.files}
+    if corrupt == "zero-missing-pose":
+        values["camera_to_court"][2] = np.eye(4)
+    else:
+        values["camera_valid"][2] = True
+    np.savez(path, **values)
+    with pytest.raises(ValueError, match="inconsistent validity"):
+        load_head_cameras(output, player_id=7)
+
+
+def test_camera_export_refuses_existing_output_and_cleans_failed_staging(
+    inputs: Inputs,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle, output = tmp_path / "bundle", tmp_path / "cameras"
+    _export(inputs, bundle)
+    output.mkdir()
+    sentinel = output / "sentinel"
+    sentinel.write_text("preserve")
+    with pytest.raises(FileExistsError):
+        export_head_cameras(
+            bundle_dir=bundle, output_dir=output, config=HeadCameraConfig()
+        )
+    assert sentinel.read_text() == "preserve"
+    sentinel.unlink()
+    output.rmdir()
+    before = _snapshot(bundle)
+    with pytest.raises(ValueError, match="outside the read-only"):
+        export_head_cameras(
+            bundle_dir=bundle, output_dir=bundle / "cameras", config=HeadCameraConfig()
+        )
+    assert _snapshot(bundle) == before
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise OSError("Injected camera archive failure")
+
+    monkeypatch.setattr(
+        "src.tennis_scene.visualization.player_view.camera_bundle.np.savez", fail
+    )
+    with pytest.raises(OSError, match="archive failure"):
+        export_head_cameras(
+            bundle_dir=bundle, output_dir=output, config=HeadCameraConfig()
+        )
+    assert not output.exists() and not list(tmp_path.glob(".cameras-*"))
+    assert _snapshot(bundle) == before

@@ -528,6 +528,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.player_view_bundle",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.scripts.export_player_view_cameras": (
+        "tennis_scene.player_view_head_cameras",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.court_side.scripts.benchmark_synthetic": (
         "court_side.benchmark_synthetic",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -752,6 +756,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.tennis_scene.visualization.player_view.__main__",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.export_player_view_cameras",
         "main",
         domain="tennis_scene",
         executable_module=True,
