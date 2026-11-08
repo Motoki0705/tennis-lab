@@ -334,14 +334,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         contract["json_schema_sha256"] = output_schema.sha256
     mcp_bytes = None
     if args.mcp_config is not None:
-        if (
-            agent != "codex"
-            or args.profile not in {"review", "ops_report"}
-            or args.mode != "read-only"
-        ):
-            raise ValueError(
-                "MCP config requires a read-only Codex review/audit profile"
-            )
+        if args.mode != "read-only" or (agent, args.profile) not in {
+            ("codex", "review"),
+            ("codex", "ops_scout"),
+            ("claude", "ops_report"),
+        }:
+            raise ValueError("MCP config requires a read-only review/audit profile")
         mcp_bytes = args.mcp_config.read_bytes()
         contract["mcp_config_sha256"] = hashlib.sha256(mcp_bytes).hexdigest()
     if branch == "(detached)":
@@ -485,6 +483,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if schema_path is not None:
             assert output_schema is not None
             schema_path.write_bytes(output_schema.raw)
+            if args.profile == "issue_judgement":
+                schema_path = run_dir / "transport-schema.json"
+                write_json(schema_path, output_schema.codex_transport_schema())
         mcp_path = run_dir / "mcp-config.json" if mcp_bytes is not None else None
         if mcp_path is not None:
             assert mcp_bytes is not None

@@ -147,7 +147,7 @@ def test_unavailable_spawn_is_incomplete_and_never_uses_independent_cli(
     result = ops_env.run("report", FAKE_AUDIT_SPAWN_UNAVAILABLE="1")
     assert result.returncode == 1, result.stderr
     assert "status=incomplete" in _reports(ops_env)[0]["body"]
-    assert "native起動0件" in _reports(ops_env)[0]["body"]
+    assert "調査子の起動0件" in _reports(ops_env)[0]["body"]
     assert not native.inspect_run(_latest(ops_env) / "agent-runtime").agents
     assert not _state_path(ops_env, "memory.json").exists()
 
@@ -296,7 +296,7 @@ def test_no_whole_audit_timeout_and_mcp_is_explicit(
     )
     agent.execute(
         agent.AgentRun(
-            "codex",
+            "claude",
             tmp_path / "exec",
             tmp_path,
             tmp_path / "prompt",
@@ -409,3 +409,34 @@ def test_publication_before_local_binding_recovers_without_rerunning_agent(
     assert not Path(ops_env.env["FAKE_AGENT_USED"]).exists()
     assert len(_reports(ops_env)) == 1
     assert _json(path)["events"][-1]["data"]["report_issue"] == 100
+
+
+def test_managed_audit_uses_claude_parent_and_parallel_sol_scouts(ops_env: Any) -> None:
+    fixture = Path(__file__).with_name("fake_managed_audit_cli.py").read_text()
+    for name in ("claude", "codex"):
+        executable = ops_env.tmp / "bin" / name
+        executable.write_text(f"#!{sys.executable}\n" + fixture.partition("\n")[2])
+        executable.chmod(0o700)
+    runner = Path(__file__).resolve().parents[3] / ".agents/ops/lib/agent_exec.sh"
+    result = ops_env.run(
+        "report",
+        "--dry-run",
+        OPS_REPORT_AGENT_EXEC=str(runner),
+        FAKE_SCOUT_CONTROL=str(ops_env.tmp / "scout-control"),
+    )
+    assert result.returncode == 0, result.stderr
+    assert "status=complete" in result.stdout
+    run = _latest(ops_env)
+    tasks = _tasks(run)
+    assert set(tasks) == {"first", "independent", "followup"}
+    assert all(t["status"] == "completed" for t in tasks.values())
+    assert tasks["first"]["finished_at"] < tasks["followup"]["started_at"]
+    assert tasks["followup"]["finished_at"] < tasks["independent"]["finished_at"]
+    assert _json(run / "agent-runtime/result.json")["contract"]["settings"][
+        "selected"
+    ] == {"model": "claude-opus-5-5", "effort": "xhigh"}
+    for row in tasks.values():
+        evidence = _json(run / "scouts" / row["agent_id"] / "runtime/result.json")
+        assert evidence["contract"]["settings"]["selected"]["model"] == "gpt-6.1-sol"
+        assert evidence["contract"]["settings"]["selected"]["effort"] == "max"
+        assert evidence["cleanup_complete"] is True

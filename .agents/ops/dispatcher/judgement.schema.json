@@ -48,15 +48,15 @@
         "requirements": {"anyOf": [{"$ref": "#/definitions/requirements"}, {"type": "null"}]},
         "rationale": {"$ref": "#/definitions/text"},
         "facts": {
-          "type": "array", "minItems": 1,
-          "allOf": [{"$ref": "#/definitions/texts"}]
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"$ref": "#/definitions/text"}
         },
         "missing_information": {"$ref": "#/definitions/texts"},
         "resume_condition": {"$ref": "#/definitions/text"},
         "next_action": {"$ref": "#/definitions/text"},
         "sources": {
-          "type": "array", "minItems": 1,
-          "allOf": [{"$ref": "#/definitions/texts"}]
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"$ref": "#/definitions/text"}
         },
         "dependencies": {
           "type": "array",

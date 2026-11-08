@@ -415,9 +415,10 @@ def test_scheduled_judgement_uses_split_read_directory_and_output_schema(
         ).hexdigest()
     )
     args = json.loads(d.h.calls.read_text())["args"]
-    assert args[args.index("--add-dir") + 1] == str(directory / "agent-input")
-    assert json.loads(args[args.index("--json-schema") + 1])["$schema"] == (
-        "http://json-schema.org/draft-07/schema#"
+    assert args[args.index("--model") + 1] == "gpt-6.1-sol"
+    assert args[args.index("--sandbox") + 1] == "read-only"
+    assert Path(args[args.index("--output-schema") + 1]) == (
+        directory / "agent-runtime/transport-schema.json"
     )
 
 

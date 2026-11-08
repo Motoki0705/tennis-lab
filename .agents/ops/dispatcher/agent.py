@@ -1,4 +1,4 @@
-"""A single read-only Opus parent turn, with the shared runner's evidence checks."""
+"""A single read-only Codex judgement turn, with the shared runner's evidence checks."""
 
 from __future__ import annotations
 
@@ -26,8 +26,10 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
     result = subprocess.run(
         [
             str(runner),
-            "--role",
-            "parent",
+            "--agent",
+            "codex",
+            "--profile",
+            "issue_judgement",
             "--mode",
             "read-only",
             "--cwd",
@@ -94,9 +96,9 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
         or contract.get("read_dirs") != [str(input_dir)]
         or contract.get("json_schema_sha256") != schema_sha256
         or contract.get("task_id") != "issue-start-judgement"
-        or settings.get("role") != "parent"
-        or settings.get("agent") != "claude"
-        or settings.get("profile") is not None
+        or settings.get("role") != "issue_judgement"
+        or settings.get("agent") != "codex"
+        or settings.get("profile") != "issue_judgement"
         or settings.get("overrides") != {}
         or selected != settings.get("defaults")
         or model.get("status") != "observed"

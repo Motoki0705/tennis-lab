@@ -116,9 +116,12 @@ def resolve(
             if defaults["effort"] != "max" or selected["effort"] != "max":
                 raise ValueError("implementation effort must be max")
     threads = None
+    if (
+        profile in {"ops_report", "ops_scout", "issue_judgement"}
+        and mode != "read-only"
+    ):
+        raise ValueError(f"{profile} requires read-only mode")
     if profile == "ops_report":
-        if agent != "codex" or mode != "read-only":
-            raise ValueError("ops_report requires codex in read-only mode")
         value = pins.get("OPS_REPORT_MAX_THREADS", "")
         if not value.isdecimal() or int(value) < 2:
             raise ValueError("agents.conf must set OPS_REPORT_MAX_THREADS >= 2")
@@ -192,6 +195,24 @@ def command(
                     ensure_ascii=False,
                 ),
             ]
+        if mcp_config is not None:
+            servers = json.loads(mcp_config.read_text(encoding="utf-8"))
+            if (
+                settings["profile"] != "ops_report"
+                or not isinstance(servers, dict)
+                or set(servers) != {"ops_report"}
+                or not isinstance(servers["ops_report"], dict)
+                or set(servers["ops_report"]) - {"command", "args", "env"}
+            ):
+                raise ValueError(
+                    "Claude audit requires the host-provided ops_report MCP server"
+                )
+            cmd += [
+                "--mcp-config",
+                json.dumps({"mcpServers": servers}),
+                "--allowedTools",
+                "mcp__ops_report__*",
+            ]
         if session:
             cmd += ["--resume", session]
         return cmd
@@ -218,7 +239,7 @@ def command(
     if json_schema is not None:
         cmd += ["--output-schema", str(json_schema)]
     if mcp_config is not None:
-        if settings["profile"] not in {"review", "ops_report"} or mode != "read-only":
+        if settings["profile"] not in {"review", "ops_scout"} or mode != "read-only":
             raise ValueError("MCP connection requires a read-only review/audit profile")
         servers = json.loads(mcp_config.read_text(encoding="utf-8"))
         if not isinstance(servers, dict) or not servers:
@@ -252,17 +273,8 @@ def command(
                         ]
                 else:
                     cmd += ["-c", f"mcp_servers.{name}.{key}=" + json.dumps(value)]
-    if settings["profile"] == "review":
+    if settings["profile"] in {"review", "ops_scout", "issue_judgement"}:
         cmd += ["--disable", "multi_agent"]
-    if settings["profile"] == "ops_report":
-        cmd += [
-            "--enable",
-            "multi_agent",
-            "-c",
-            f"agents.max_threads={settings['max_threads']}",
-            "-c",
-            "agents.max_depth=1",
-        ]
     if session:
         cmd += [session]
     return [*cmd, "-"]

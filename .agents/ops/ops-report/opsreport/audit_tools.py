@@ -23,6 +23,7 @@ from .retrieval import (
     strict_json,
     text_page,
 )
+from .scouts import SCOUT_ID, ScoutPool
 
 OBJECT = {"type": "object"}
 STRINGS = {"type": "array", "items": {"type": "string", "minLength": 1}}
@@ -54,6 +55,7 @@ class AuditTool(Tool):
             "audit_records",
             "audit_context",
             "audit_previous_handoffs",
+            "audit_scout_result",
         }
         return result
 
@@ -70,6 +72,7 @@ class AuditTools:
         input_path: Path,
         ending_path: Path,
         max_threads: int,
+        scouts: ScoutPool | None = None,
     ) -> None:
         self.retrieval = retrieval
         self.ledger_path = ledger_path
@@ -77,6 +80,7 @@ class AuditTools:
         self.input_path = input_path
         self.ending_path = ending_path
         self.max_threads = max_threads
+        self.scouts = scouts
         for path in (ledger_path, runtime_dir, input_path, ending_path):
             if not path.is_absolute() or path.resolve().is_relative_to(retrieval.repo):
                 raise ValueError(
@@ -126,14 +130,16 @@ class AuditTools:
             ),
             AuditTool(
                 "audit_plan_task",
-                "Register a distinct question before native spawn. id must also be the native task_name; origin identifies the goal, task or finding.",
+                "Register a distinct question before launch. Origin identifies the goal, task or finding.",
                 self.plan,
                 {"id": STRING, "question": STRING, "scope": STRINGS, "origin": OBJECT},
                 ("id", "question", "scope", "origin"),
             ),
             AuditTool(
                 "audit_start_task",
-                "After spawn_agent returns, resolve /root/<id> to its actual native session ID from runtime metadata. Enforces the existing concurrency pin. Read the returned task record.",
+                "Launch the registered question on a read-only Codex scout. Enforces the concurrency pin. Read the returned task record."
+                if scouts is not None
+                else "Bind an existing native scout session from runtime metadata.",
                 self.start,
                 {"id": STRING},
                 ("id",),
@@ -184,12 +190,22 @@ class AuditTools:
             ),
             AuditTool(
                 "audit_end",
-                "Request an end with checked/excluded scopes and unresolved risks. The host verifies native transcripts/receipts and prepares proposal IDs before actually ending/publishing. No fixed task count is a completion criterion.",
+                "Request an end with checked/excluded scopes and unresolved risks. The host verifies runtime evidence and retrieval receipts and prepares proposal IDs before actually ending/publishing. No fixed task count is a completion criterion.",
                 self.end,
                 ENDING,
                 tuple(ENDING),
             ),
         ]
+        if scouts is not None:
+            definitions.append(
+                AuditTool(
+                    "audit_scout_result",
+                    "Read a scout's status and completed response in bounded ranges. A running scout can be checked later while you continue other work.",
+                    self.scout_result,
+                    {"id": STRING, **TEXT},
+                    ("id",),
+                )
+            )
         if "cpu_test_status" not in retrieval.tools:
             retrieval.tools["cpu_test_status"] = Tool(
                 "cpu_test_status",
@@ -375,7 +391,7 @@ class AuditTools:
             )
         if not re.fullmatch(r"[a-z][a-z0-9_]{0,79}", id):
             raise LedgerError(
-                "task id must be a native task_name: lowercase letters, digits, underscores"
+                "task id must contain lowercase letters, digits, underscores and start with a letter"
             )
         book = self.writable()
         book.record_task(
@@ -409,6 +425,25 @@ class AuditTools:
             raise LedgerError(
                 "OPS_REPORT_MAX_THREADS exhausted; receive a finished child before another launch"
             )
+        if self.scouts is not None:
+            agent_id = self.scouts.new_id()
+            started_at = audit.timestamp()
+            book.record_task(
+                {
+                    **task,
+                    "agent_id": agent_id,
+                    "status": "running",
+                    "started_at": started_at,
+                    "finished_at": None,
+                    "conclusion": "",
+                    "evidence": [],
+                    "next_questions": [],
+                    "unconfirmed": [],
+                },
+                at=started_at,
+            )
+            self.scouts.launch(task, agent_id=agent_id, started_at=started_at)
+            return self.response(book.snapshot["tasks"][id])
         result = strict_json((self.runtime_dir / "result.json").read_bytes())
         if result["contract"]["mode"] != "read-only" or result["contract"][
             "cwd"
@@ -450,6 +485,17 @@ class AuditTools:
         )
         return self.response(book.snapshot["tasks"][id])
 
+    def scout_result(self, id: str, **ranges: Any) -> Retrieved:
+        task = self.book().snapshot["tasks"][id]
+        assert self.scouts is not None
+        status, output = self.scouts.result(task["agent_id"] or "")
+        data, pagination = text_page(output, **ranges)
+        result = self.response({"status": status, **data})
+        result.pagination = pagination
+        if result.pagination["next"] is not None:
+            result.pagination["next"]["id"] = id
+        return result
+
     def finish(
         self,
         id: str,
@@ -461,6 +507,12 @@ class AuditTools:
     ) -> Retrieved:
         book = self.writable()
         task = book.snapshot["tasks"][id]
+        if self.scouts is not None and SCOUT_ID.fullmatch(task["agent_id"] or ""):
+            actual, _ = self.scouts.result(task["agent_id"])
+            if actual == "running" or (status == "completed" and actual != "completed"):
+                raise LedgerError(
+                    "scout must have matching terminal execution evidence"
+                )
         book.record_task(
             {
                 **task,
@@ -513,6 +565,6 @@ class AuditTools:
         return self.response(
             {
                 "requested": record["status"],
-                "verification": "pending host native/receipt reconciliation",
+                "verification": "pending host runtime/receipt reconciliation",
             }
         )

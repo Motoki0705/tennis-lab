@@ -210,9 +210,9 @@ def test_duplicate_ids_in_body_are_rejected() -> None:
         _parse("- [ ] **R-20261012-01** a\n- [ ] **R-20261012-01** b")
 
 
-def test_native_scout_parent_is_codex() -> None:
-    assert agent.resolve_agent("codex") == "codex"
-    for unsupported in ("claude", "alternate"):
+def test_audit_parent_is_claude() -> None:
+    assert agent.resolve_agent("claude") == "claude"
+    for unsupported in ("codex", "alternate"):
         with pytest.raises(ValueError):
             agent.resolve_agent(unsupported)
 
@@ -243,8 +243,8 @@ def test_dry_run_prints_body_and_creates_nothing(ops_env: Any) -> None:
     assert "big.py を分割する" in out
     assert "status=complete" in out
     assert _mutating_calls(ops_env.calls()) == []
-    # The native scout parent is Codex.
-    assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
+    # The audit parent is Claude.
+    assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "claude"
 
     (run_dir,) = ops_env.run_dirs()
     for name in ("collected.json", "prompt.md", "report.md", "run.log"):
@@ -256,7 +256,7 @@ def test_dry_run_prints_body_and_creates_nothing(ops_env: Any) -> None:
 
 
 def test_report_creates_issue_and_label(ops_env: Any) -> None:
-    result = ops_env.run("report", "--agent", "codex")
+    result = ops_env.run("report", "--agent", "claude")
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "https://github.com/o/r/issues/100"
@@ -265,8 +265,8 @@ def test_report_creates_issue_and_label(ops_env: Any) -> None:
     issue = next(i for i in state["issues"] if i["number"] == 100)
     assert issue["title"] == "運用レポート 2026-10-12"
     assert issue["labels"] == ["ops-report"]
-    assert "agent: `codex`" in issue["body"]
-    assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "codex"
+    assert "agent: `claude`" in issue["body"]
+    assert (ops_env.tmp / "agent_used.txt").read_text().strip() == "claude"
 
 
 def test_triage_creates_labels_with_styles_from_manifest(

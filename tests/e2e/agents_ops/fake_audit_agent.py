@@ -237,7 +237,11 @@ def main() -> None:
 
     repo = Path(option("--repo"))
     assert Path.cwd() == repo
-    runtime = FakeNative(Path(option("--runtime-dir")), repo)
+    # This fixture replays historical native attempts. The managed launch
+    # path is exercised separately with the actual common runner and MCP.
+    runtime_path = Path(option("--runtime-dir"))
+    (runtime_path.parent / "scouts/retrieval.json").unlink(missing_ok=True)
+    runtime = FakeNative(runtime_path, repo)
     server = AuditTools(
         Retrieval(
             repo,
