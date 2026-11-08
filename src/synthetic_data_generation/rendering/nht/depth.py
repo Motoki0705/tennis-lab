@@ -13,7 +13,11 @@ def nht_depth_to_metric(
     *,
     nht_scene_units_per_metre: float,
 ) -> NDArray[np.float32]:
-    """Convert finite public NHT depth into metric-scene metres."""
+    """Convert expected camera z-depth to metres, preserving its statistic.
+
+    Public NHT depth is an opacity-weighted mean, not a nearest surface or a
+    ray distance. Zero (empty accumulation) remains zero after conversion.
+    """
     scale = _depth_scale(nht_scene_units_per_metre)
     if depth_nht_scene.dtype != np.dtype(np.float32):
         raise TypeError("NHT background depth must use float32 dtype.")
