@@ -28,6 +28,13 @@ description: Run tennis-lab annotation campaigns with pinned inputs, local image
 
 ## 依頼を条件へ分解する
 
+- sceneの`ball_detection.method=gpt_annotation`は、予測なしのローカル白紙注釈に対応する。
+  [sceneの一連実行](../../../src/tennis_scene/pipeline/direct_annotation/README.ja.md)に従って
+  元動画/frame/PTS・plan/予算・版付き探索方針・固定幾何・公開選択をrequestへ固定する。
+  この経路では予測の定性確認を開始条件にせず、追加学習を起動しない。
+  比較は`blank-register`で独立conditionを作り、そのruntimeを実行して`blank-compare`で計測する。
+  比較runを通常datasetへ公開せず、合成試験と実GPTの認識受入を区別する。
+
 - task/product、件数（channel×video×最大clip）、使用モデル、レビュー方針、学習・採用条件、
   資源予算に分ける。ユーザーが決めた値と未決定の主要な判断を分け、未決定のものだけを質問する。
   テストfixture・過去planの値やソースの既定値で埋めない。

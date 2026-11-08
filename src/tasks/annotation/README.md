@@ -49,7 +49,10 @@ session失敗は明示的な工程再試行を必要とし、勝手に次のsess
 `configure_local_videos(layout, LocalVideoConfiguration)` は、sceneが選んだ元動画を保持し、
 camera別の画像manifest・白紙context・`WorkRequest`を共有台帳へ登録するサービスAPI。
 checkpoint、予測receipt、YouTube取得・プレー窓選別・推論・GPU queue設定は不要である。
-worker起動、注釈編集・採用、dataset writer、scene CLIの配線はこのAPIでは実行しない。
+worker起動、注釈編集・採用、dataset writerはこの登録APIでは実行しない。
+scene CLIの一連実行は[白紙注釈composition](../../tennis_scene/pipeline/direct_annotation/README.ja.md)が所有する。
+統合CLIの`schema --type scene_annotation`で固定request、`blank_condition`と`blank_comparison`で
+探索方針の比較入力schemaを取得できる。
 
 ```python
 from src.tasks.annotation.configuration import (
@@ -111,7 +114,7 @@ task入力の`frame_index`は元動画番号、画像manifestの`frame_index`は
 camera/frame/PTS・公開選択で既存登録を上書きしない。登録結果にはcamera単位の入力だけを
 `WorkRequest.inputs`として列挙し、全cameraを列挙するplan manifestは親サービスの照合用とする。
 workerの実効的な画像隔離・編集・途中保存・完成は [白紙worker](../ball_detection/annotation/video/agent/README.md) が所有する。
-[自動継続controller](#白紙注釈の自動継続)が時間切れを処理する。scene CLIの配線は別工程である。
+[自動継続controller](#白紙注釈の自動継続)が時間切れを処理する。
 
 検証は`tests/unit/tasks/annotation/test_configuration.py`、`test_local_videos.py`と
 `tests/integration/tasks/annotation/test_local_videos.py`。integrationは2cameraの短いVFR動画で、
@@ -161,6 +164,10 @@ for camera in progress["reviews"]:
 元のworker終了履歴は `timed_out` のまま保持し、cameraの `state=complete` と
 `completion` で完成を表す。`worker_state` と完成判断を混同しない。
 dataset公開はこのcontrollerの完了条件に含めず、planの `publish_dataset` を後続へ渡す。
+`run`・`tick`・`status`・`recover`・`resume-budget`・`report`は保存済み`LocalAnnotationRuntime`も受け付ける。
+sceneの公開だけの再開は上記compositionの`direct_annotation.resume=publication`を使う。
+`blank-register`で作った比較conditionのruntimeも同じCLIで実行でき、benchmark namespaceを検証して
+専用サービスstageを使う。通常のdataset公開へ進めず、計測は`blank-compare`で保存する。
 
 | 状態・原因 | 保存する判断と次の対応 |
 |---|---|

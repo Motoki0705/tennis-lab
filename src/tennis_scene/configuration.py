@@ -38,6 +38,7 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPPostprocessConfig,
 )
 from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
+from src.tennis_scene.pipeline.direct_annotation import DirectAnnotationConfig
 from src.tennis_scene.pipeline.feature_flags import (
     OPTIONAL_FEATURES,
     validate_requested_features,
@@ -197,7 +198,8 @@ _BALL_SCHEMA = StrictConfigSchema(
     name="tennis_scene.ball_detection",
     fields={
         "enabled": ConfigField.of(bool),
-        "checkpoint": ConfigField.of(str),
+        "method": ConfigField.of(str),
+        "checkpoint": ConfigField.of(str, type(None)),
         "batch_size": ConfigField.of(int),
         "image_size": ConfigField.sequence(ConfigField.of(int)),
         "normalize_imagenet": ConfigField.of(bool),
@@ -251,6 +253,11 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
+_DIRECT_ANNOTATION_SCHEMA = StrictConfigSchema(name="tennis_scene.direct_annotation", fields={
+    "request": ConfigField.of(str, type(None)), "request_sha256": ConfigField.of(str, type(None)),
+    "bundle": ConfigField.of(str, type(None)), "bundle_sha256": ConfigField.of(str, type(None)),
+    "court_detection": ConfigField.of(str), "publish_dataset": ConfigField.of(bool), "resume": ConfigField.of(str),
+})
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "person_tracking": ConfigField.mapping(StrictConfigSchema(name='tennis_scene.person_tracking', fields={
         'method': ConfigField.of(str), 'encoder': ConfigField.of(str), 'aflink_checkpoint': ConfigField.of(str),
@@ -258,6 +265,8 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "execution": ConfigField.mapping(_EXECUTION_SCHEMA),
     "paths": ConfigField.mapping(PATHS_SCHEMA), "video_paths": ConfigField.sequence(ConfigField.of(str)),
     "camera_ids": ConfigField.sequence(ConfigField.of(str)), "output_name": ConfigField.of(str),
+    "clip_id": ConfigField.of(str, type(None)),
+    "direct_annotation": ConfigField.mapping(_DIRECT_ANNOTATION_SCHEMA),
     "output_directory": ConfigField.of(str), "device": ConfigField.of(str), "max_frames": ConfigField.of(int, type(None)),
     "court_kp": ConfigField.mapping(_COURT_SCHEMA), "people_models": ConfigField.mapping(_PEOPLE_MODELS_SCHEMA),
     "person_observations": ConfigField.mapping(_PERSON_OBSERVATION_SCHEMA), "ball_detection": ConfigField.mapping(_BALL_SCHEMA),
@@ -295,7 +304,7 @@ class PipelineRuntimeConfig:
     max_frames: int | None
     court_kp: CourtKPConfig
     people: PeopleModelConfig
-    ball_detection: BallDetectionConfig
+    ball_detection: BallDetectionConfig | None
     sampling_max_frames: int
     camera_geometry: CameraGeometryConfig
     court_side: CourtSideConfig
@@ -320,6 +329,9 @@ class PipelineRuntimeConfig:
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
+    ball_method: str = "model"
+    direct_annotation: DirectAnnotationConfig | None = None
+    clip_id: str | None = None
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
@@ -372,7 +384,37 @@ class PipelineRuntimeConfig:
         tracking_weights = encoder_weights(tracking.encoder, checkpoint_root=roots.checkpoint_root,
                                            external_root=roots.external_asset_root)
         aflink_checkpoint = resolver.resolve(PathRole.CHECKPOINT, cast(str, tracking_section['aflink_checkpoint']))
-        ball_config = build_ball_detection_config(_mapping(value["ball_detection"], name="ball_detection"), resolver, device=device)
+        ball_section = _mapping(value["ball_detection"], name="ball_detection")
+        ball_method = cast(str, ball_section["method"])
+        if ball_method not in {"model", "gpt_annotation"}:
+            raise SemanticConfigurationError("ball_detection.method must be model/gpt_annotation")
+        direct = _mapping(value["direct_annotation"], name="direct_annotation")
+        direct_config = None
+        if ball_method == "gpt_annotation":
+            import re
+            if any(direct[k] is None for k in ("request", "request_sha256", "bundle", "bundle_sha256")):
+                raise SemanticConfigurationError("GPT annotation requires a pinned request and fixed geometry bundle")
+            if any(re.fullmatch(r"[0-9a-f]{64}", str(direct[k])) is None for k in ("request_sha256", "bundle_sha256")):
+                raise SemanticConfigurationError("Annotation request/bundle digests must be SHA256")
+            if direct["court_detection"] not in {"stored_artifact", "verified_calibration_frame0"} or direct["resume"] not in {"workflow", "publication"}:
+                raise SemanticConfigurationError("Unknown direct annotation court storage or resume mode")
+            direct_config = DirectAnnotationConfig(
+                request=resolver.resolve(PathRole.ARTIFACT, cast(str, direct["request"])),
+                request_sha256=cast(str, direct["request_sha256"]),
+                bundle=resolver.resolve(PathRole.ARTIFACT, cast(str, direct["bundle"])),
+                bundle_sha256=cast(str, direct["bundle_sha256"]),
+                court_detection=cast(Any, direct["court_detection"]),
+                publish_dataset=cast(bool, direct["publish_dataset"]), resume=cast(Any, direct["resume"]),
+            )
+            if not ball_section["enabled"]:
+                raise SemanticConfigurationError("GPT annotation requires ball_detection.enabled")
+            ball_config = None
+        else:
+            if ball_section["checkpoint"] is None:
+                raise SemanticConfigurationError("Model ball detection requires a checkpoint")
+            if any(direct[k] is not None for k in ("request", "request_sha256", "bundle", "bundle_sha256")) or direct["publish_dataset"] or direct["resume"] != "workflow":
+                raise SemanticConfigurationError("Direct annotation options require ball_detection.method=gpt_annotation")
+            ball_config = build_ball_detection_config(ball_section, resolver, device=device)
         ball_smoothing = TemporalSmoothingConfig(**cast(dict[str, Any], dict(_mapping(value["ball_smoothing"], name="ball_smoothing"))))
         sampling_max_frames = cast(int, _mapping(value["frame_sampling"], name="frame_sampling")["max_frames"])
         _positive(sampling_max_frames, name="frame_sampling.max_frames")
@@ -413,11 +455,18 @@ class PipelineRuntimeConfig:
         component_sources = {name: str(mode) for name, mode in _mapping(value["execution"], name="execution").items()}
         if any(mode not in {"execute", "load"} for mode in component_sources.values()):
             raise SemanticConfigurationError("Component execution modes must be execute/load")
+        if ball_method == "gpt_annotation":
+            if not enabled["ball_reconstruction"]:
+                raise SemanticConfigurationError("GPT scene annotation requires ball reconstruction")
+            component_sources.update(dict.fromkeys(("court_detection", "court_calibration", "court_side", "camera_alignment", "ball_detection"), "load"))
+            if cache_source == "load" and direct_config is not None and direct_config.resume != "publication":
+                raise SemanticConfigurationError("Use direct_annotation.resume=publication for publication-only recovery")
         settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
-            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing)
+            tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
+            ball_method, direct_config, cast(str | None, value["clip_id"]))
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

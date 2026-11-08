@@ -120,3 +120,127 @@ def test_review_cli_annotation_and_adoption(tmp_path: Path) -> None:
     finally:
         if pool.ledger.task(session.request.work_id)["state"] in {"running", "exited"}:
             pool.stop(session.request, reason="synthetic E2E teardown")
+
+
+def test_scene_entrypoint_annotates_continues_reloads_triangulates_and_publishes(tmp_path: Path) -> None:
+    """A clean CPU process keeps unrelated pytest model memory out of the budget."""
+    from src.utils.paths import PROJECT_ROOT
+    result = subprocess.run([sys.executable, "-m", "tests.e2e.tasks.annotation.test_workflow", str(tmp_path)],
+        cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=240)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _exercise_direct_scene(tmp_path: Path) -> None:
+    import json
+    from inspect import unwrap
+
+    import numpy as np
+
+    from src.tasks.annotation.benchmark.blank import BlankRunMeasurements
+    from src.tasks.annotation.local_controller import LocalAnnotationController
+    from src.tasks.annotation.scene_workflow import CompletedSceneAnnotations
+    from src.tasks.ball_detection.annotation.video.agent.contracts import (
+        AgentTask,
+        AnnotationRun,
+    )
+    from src.tasks.ball_detection.data.windows.active_ball import (
+        ActiveBallWindowDataset,
+    )
+    from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot import (
+        load_snapshot,
+    )
+    from src.tasks.base.annotation.artifacts import annotation_reference, read_document
+    from src.tasks.base.annotation.contracts import ArtifactRef, PublicationReceipt
+    from src.tennis_scene.archive import load_scene_result
+    from src.tennis_scene.pipeline import TennisSceneOrchestrator
+    from src.tennis_scene.pipeline.components.annotation_triangulation import (
+        BallAnnotationTriangulationOutput,
+    )
+    from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+    from src.tennis_scene.scripts import run_pipeline
+    from tests.support.tasks.annotation_events import AnnotationEvents
+    from tests.support.tasks.blank_agent import fake_worker
+    from tests.support.tennis_scene.direct_workflow import direct_fixture
+
+    fixture = direct_fixture(tmp_path)
+    layout = fixture.layout
+    controllers = []
+    events = AnnotationEvents(layout.path("campaigns"))
+    clocks, timed_out = set(), set()
+    def factory(*args, **kwargs):
+        result = LocalAnnotationController(*args, **kwargs, test_clock=True,
+            test_command=fake_worker(pause_after_save=True, pause_camera="right", save_limit=1, decisions=fixture.decisions))
+        controllers.append(result)
+        return result
+
+    def wait(controller):
+        events.refresh()
+        for attempt, control in controller.pool.test_controls.items():
+            if attempt not in clocks:
+                control.settimeout(10)
+                assert json.loads(control.recv(4096))["timeout_seconds"] == 5400
+                clocks.add(attempt)
+        for path in layout.path("campaigns").glob("*/workers/*/attempt-0001/work/saved.json"):
+            actor = read_document(layout, annotation_reference(layout, path.parent.parent / "request.json"), AgentTask)
+            camera = read_document(layout, actor.run, AnnotationRun).context
+            from src.tasks.ball_detection.annotation.video import VideoAnnotationInput
+            from src.tasks.base.annotation.editing.contracts import (
+                BlankAnnotationContext,
+            )
+            context = read_document(layout, camera, BlankAnnotationContext)
+            if read_document(layout, context.task_input, VideoAnnotationInput).source.camera_id != "right":
+                continue
+            from src.tasks.base.annotation.workers.contracts import Launch
+            launch = read_document(layout, annotation_reference(layout, path.parent.parent / "launch.json"), Launch)
+            if launch.attempt in timed_out:
+                continue
+            control = controller.pool.test_controls[launch.attempt]
+            control.send(json.dumps({"elapsed_seconds": 5400}).encode())
+            assert json.loads(control.recv(4096))["state"] == "timed_out"
+            timed_out.add(launch.attempt)
+        events.refresh()
+        events.wait([child for c in controllers for child in (*c.pool.children.values(), *c.jobs.stages.children.values())], 30)
+
+    orchestrator = TennisSceneOrchestrator(fixture.config, annotation_layout=layout,
+        annotation_controller_factory=factory, annotation_wait=wait)
+    try:
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(TennisSceneOrchestrator, "from_runtime_config", lambda cfg: orchestrator)
+            assert unwrap(run_pipeline.main)(fixture.hydra_config) == 0
+        scene = load_scene_result(fixture.config.output_path)
+        np.testing.assert_array_equal(scene.ball_3d_valid, [True, True, True, False])
+        np.testing.assert_allclose(scene.ball_3d[:3], fixture.fixed.truth[:3], atol=2e-5)
+        assert len(timed_out) == 1 and len(clocks) == 4
+        receipt = orchestrator.last_receipt
+        assert receipt["annotation"]["status"] == receipt["scene"]["status"] == receipt["dataset"]["status"] == "complete"
+        assert receipt["learning"]["status"] == "not_requested"
+        assert orchestrator.last_store is not None
+        references = orchestrator.last_store.references()
+        ball = orchestrator.last_store.load(references["ball_triangulation"], ArtifactCodec(BallAnnotationTriangulationOutput))
+        assert ball.estimated[1, 0] and ball.used_views[1, 0] and not ball.observed[1, 0]
+        assert ball.missing_reasons[-1] == "insufficient_views"
+        publication = read_document(layout, ArtifactRef.model_validate(receipt["dataset"]["receipt"]), PublicationReceipt)
+        _, store = load_snapshot(layout, publication.snapshot)
+        assert {c.split for c in store.clips} == {"val"} and len({c.group_id for c in store.clips}) == 1
+        dataset = ActiveBallWindowDataset(store, split="val", window_length=2)
+        assert any(sample["estimated"].any() for sample in dataset)
+        completed = read_document(layout, annotation_reference(layout, Path(receipt["annotation"]["receipt"])), CompletedSceneAnnotations)
+        measurements = read_document(layout, completed.measurements, BlankRunMeasurements)
+        assert {r.worker_kind for r in measurements.results} == {"synthetic"}
+        assert measurements.acceptance == "unverified"
+    finally:
+        for controller in controllers:
+            for ref in controller.production.requests:
+                from src.tasks.base.annotation.workers.contracts import WorkRequest
+                request = read_document(layout, ref, WorkRequest)
+                if controller.pool.ledger.task(request.work_id)["state"] in {"running", "exited"}:
+                    controller.pool.stop(request, reason="E2E teardown")
+            for child in (*controller.pool.children.values(), *controller.jobs.stages.children.values()):
+                child.wait(timeout=15)
+            for control in controller.pool.test_controls.values():
+                control.close()
+        events.close()
+
+
+if __name__ == "__main__":
+    _exercise_direct_scene(Path(sys.argv[1]))

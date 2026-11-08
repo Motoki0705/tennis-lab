@@ -58,6 +58,17 @@ class BlankCondition(Document):
     requests: tuple[ArtifactRef, ...] = Field(min_length=1)
 
 
+class BlankConditionRegistration(Document):
+    source_plan: ArtifactRef
+    condition_id: Identifier
+    policy: AnnotationPolicy
+
+
+class BlankComparisonRequest(Document):
+    conditions: tuple[ArtifactRef, ...] = Field(min_length=2)
+    reference_annotations: tuple[ArtifactRef, ...] = ()
+
+
 class FrameComparison(Document):
     camera_id: str
     frame_index: int
@@ -107,6 +118,24 @@ class BlankComparison(Document):
     results: tuple[tuple[CameraComparison, ...], ...]
     evidence_kind: Literal["operational_measurements"] = "operational_measurements"
     acceptance: Literal["unverified"] = "unverified"
+
+
+class BlankRunMeasurements(Document):
+    """Production telemetry is evidence of execution, not recognition acceptance."""
+
+    plan: ArtifactRef
+    results: tuple[CameraComparison, ...]
+    acceptance: Literal["unverified"] = "unverified"
+
+
+def measure_blank_plan(layout: AnnotationLayout, plan_ref: ArtifactRef) -> ArtifactRef:
+    plan = read_document(layout, plan_ref, LocalAnnotationPlan)
+    if plan.phase != "production" or layout.review_namespace is not None:
+        raise ValueError("Use compare_blank_conditions for isolated comparison runs")
+    report = BlankRunMeasurements(plan=plan_ref, results=tuple(
+        _camera(layout, plan, entry.request, ()) for entry in LocalInputLedger(layout).entries(plan)
+    ))
+    return write_document(layout, layout.path("campaigns", plan.campaign_id, "reports", "blank-runs", report.sha256 + ".json"), report)
 
 
 def register_blank_condition(

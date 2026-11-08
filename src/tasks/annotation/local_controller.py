@@ -5,6 +5,10 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from src.tasks.ball_detection.annotation.video.agent.contracts import (
+    DEFAULT_POLICY,
+    AnnotationPolicy,
+)
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     artifact_lock,
@@ -31,18 +35,32 @@ class LocalAnnotationController:
         *,
         test_command: tuple[str, ...] | None = None,
         test_clock: bool = False,
+        annotation_policy: AnnotationPolicy = DEFAULT_POLICY,
     ) -> None:
         self.layout, self.runtime = layout, runtime
         self.plan = read_document(layout, runtime.plan, LocalAnnotationPlan)
-        if self.plan.phase != "production" or layout.review_namespace is not None:
+        if (
+            self.plan.phase not in {"production", "benchmark"}
+            or (self.plan.phase == "production" and layout.review_namespace is not None)
+            or (
+                self.plan.phase == "benchmark"
+                and layout.review_namespace != self.plan.campaign_id
+            )
+        ):
             raise ValueError(
-                "local controller requires production direct annotation inputs"
+                "local controller requires production inputs or an isolated registered blank condition"
             )
         self.resources = ResourceManager(layout, runtime.scope)
         self.resources.bind(self.plan)
         self.resources.observe(os.getpid())
         validate_runtime(layout, runtime, self.plan, self.resources.scope.roots)
-        self.jobs = Operations(layout, runtime, self.plan, self.resources)
+        self.jobs = Operations(
+            layout,
+            runtime,
+            self.plan,
+            self.resources,
+            command="benchmark-stage" if self.plan.phase == "benchmark" else "stage",
+        )
         self.broker = ServiceBroker(
             layout,
             runtime.plan,
@@ -58,6 +76,7 @@ class LocalAnnotationController:
             self._services,
             test_command=test_command,
             test_clock=test_clock,
+            annotation_policy=annotation_policy,
         )
         self.pool = self.production.pool
 
