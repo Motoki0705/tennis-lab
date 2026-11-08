@@ -553,7 +553,7 @@ def test_supplement_gates_checking_and_agree_before_writes(
             {
                 "purpose": "本文を固定する",
                 "scope": "親issue",
-                "behavior": "書き直し確定後に合意する",
+                "behavior": "補足確定後に合意する",
                 "acceptance": "書込み順を守る",
                 "human_confirmation": "この内容で合意する。",
             }
@@ -747,6 +747,17 @@ def test_update_body_gates_target_issue_instead_of_session_parent(
     assert not any("PATCH" in call for call in p.calls())
 
 
+def body_with_supplement(body: str) -> str:
+    anchor = "## 全体のスコープ"
+    assert body.count(anchor) == 1
+    return body.replace(
+        anchor,
+        "<details>\n<summary>Geminiによる補足・背景情報</summary>\n\n"
+        "既存コードに基づく背景の事実。\n\n</details>\n\n" + anchor,
+        1,
+    )
+
+
 def test_parent_body_update_detects_supplement_despite_cached_issue(
     parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -765,14 +776,12 @@ def test_parent_body_update_detects_supplement_despite_cached_issue(
             old, "進捗概要", "子タスクを照合した。"
         )
         state = p.state()
-        rewritten = policy_module.replace_section(
-            old, "目的・背景", "Geminiによる読みやすい本文。"
-        )
-        state["issues"]["1"]["body"] = rewritten
+        supplemented = body_with_supplement(old)
+        state["issues"]["1"]["body"] = supplemented
         p.save(state)
         with pytest.raises(ValueError, match="body changed"):
             session.update_body(1, proposed, old)
-    assert p.state()["issues"]["1"]["body"] == rewritten
+    assert p.state()["issues"]["1"]["body"] == supplemented
     assert not any("PATCH" in c for c in p.calls())
 
 
@@ -796,22 +805,20 @@ def test_update_body_rechecks_body_with_final_supplement_state(
         proposed = policy_module.replace_section(
             old, "進捗概要", "子タスクを照合した。"
         )
-        rewritten = policy_module.replace_section(
-            old, "目的・背景", "Geminiによる読みやすい本文。"
-        )
+        supplemented = body_with_supplement(old)
         state = p.state()
         # The old implementation compares a fresh body before this activation
         # read, then accepts done from a second issue GET without comparing it.
         state["complete_supplement_on_activation_read"] = {
             "number": 1,
-            "body": rewritten,
+            "body": supplemented,
         }
         p.save(state)
         with pytest.raises(ValueError, match="#1: body changed"):
             session.update_body(1, proposed, old)
     final = p.state()
     assert "complete_supplement_on_activation_read" not in final
-    assert final["issues"]["1"]["body"] == rewritten
+    assert final["issues"]["1"]["body"] == supplemented
     assert {label["name"] for label in final["issues"]["1"]["labels"]} >= {
         "supplement:done"
     }
