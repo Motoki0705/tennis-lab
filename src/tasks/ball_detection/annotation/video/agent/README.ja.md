@@ -47,7 +47,8 @@ remaining = tuple(row.frame_index for row in annotation.frames if is_unprocessed
 ```
 
 `video_handoff` は未処理だけをpageで返し、最終unknownを含めない。次attemptのinitial_revisionは保存head。
-時間切れの自動継続は #1709 が担当し、このモジュールはattemptの起動・再試行を行わない。
+時間切れの自動継続は[ローカルcontroller](../../../../annotation/local_controller.py)が担当し、
+このモジュールはattemptの起動・再試行を行わない。
 
 最終AgentDecisionは現在のrevisionを指定する。worker/rollout identity、構文、入力/frame/PTS、状態・
 由来を機械検証する。推定frameの独立目視や人手QAを追加せず、未処理0ならunknownを残して完成できる。

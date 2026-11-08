@@ -68,6 +68,34 @@ class LocalAnnotationRuntime(WorkerRuntimeSettings, CodeBoundDocument):
     scope: ArtifactRef
 
 
+class AnnotationContinuationPolicy(Document):
+    """Prior authorization for this direct-annotation workflow only."""
+
+    schema_version: Literal["annotation.automatic-continuation.v1"] = (
+        "annotation.automatic-continuation.v1"
+    )
+    plan: ArtifactRef
+    runtime: ArtifactRef
+    scope: ArtifactRef
+    timeout_seconds: Literal[5400] = 5400
+    trigger: Literal["timed_out_with_new_processed_frames"] = (
+        "timed_out_with_new_processed_frames"
+    )
+
+
+class AnnotationContinuation(Document):
+    policy: ArtifactRef
+    request: ArtifactRef
+    after_attempt: str = Field(min_length=1)
+    action: Literal["continue", "complete", "hold"]
+    state: str
+    revision: ArtifactRef | None
+    processed_before: int | None = Field(ge=0)
+    processed_after: int | None = Field(ge=0)
+    remaining: int | None = Field(ge=0)
+    reason: str = Field(min_length=1)
+
+
 class LocalVideoInput(Document):
     """A scene-selected original and the task-owned exact expected input."""
 

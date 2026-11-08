@@ -886,6 +886,22 @@ def test_authorized_retry_records_decision_and_waits_for_admission(
         pool.authorize_retry(setup.request, after_attempt=first, reason=" ")
     with pytest.raises(ValueError, match="attempt changed"):
         pool.authorize_retry(setup.request, after_attempt="older", reason="continue")
+    with pytest.raises(ValueError, match="accepted states"):
+        pool.authorize_retry(
+            setup.request,
+            after_attempt=first,
+            reason="only a timeout can continue automatically",
+            accepted_states=frozenset({"timed_out"}),
+        )
+    assert pool.ledger.task(setup.request.work_id)["state"] == "deferred"
+    for invalid in (frozenset(), frozenset({"running"})):
+        with pytest.raises(ValueError, match="nonempty subset of stopped states"):
+            pool.authorize_retry(
+                setup.request,
+                after_attempt=first,
+                reason="invalid policy",
+                accepted_states=invalid,
+            )
     row = pool.authorize_retry(
         setup.request, after_attempt=first, reason="continue saved progress"
     )
@@ -992,6 +1008,45 @@ def test_settle_dead_slots_preserves_concurrent_completion(
     pool._settle_dead_slots()
     state = pool.ledger.task(setup.request.work_id)
     assert state["state"] == "complete" and state["result"] is not None
+
+
+@pytest.mark.parametrize(
+    ("stopped", "failure", "quota", "expected"),
+    [
+        ("timed_out", None, False, "timed_out"),
+        ("timed_out", "usage limit", True, "quota"),
+        ("timed_out", "external service unavailable", False, "failed"),
+        ("cancelled", "usage limit", True, "cancelled"),
+    ],
+)
+def test_timeout_does_not_hide_preceding_service_errors(
+    stopped: str,
+    failure: str | None,
+    quota: bool,
+    expected: str,
+) -> None:
+    from src.tasks.base.annotation.workers.supervisor import exit_status
+
+    state, reason = exit_status(
+        stopped, "supervisor stop", 124, ("thread", False, failure, quota)
+    )
+    assert state == expected
+    assert reason == (failure if expected in {"failed", "quota"} else "supervisor stop")
+
+
+def test_supervisor_test_clock_is_rejected_before_production_admission(
+    setup: Setup,
+) -> None:
+    production_layout = AnnotationLayout(
+        setup.layout.repository,
+        setup.layout.repository / "outputs/chat_annotation",
+        "production",
+    )
+    plan = setup.plan.model_copy(
+        update={"annotation_root": str(production_layout.root)}
+    )
+    with pytest.raises(ValueError, match="test commands/clocks are forbidden"):
+        WorkerPool(production_layout, plan, (setup.adapter,), test_clock=True)
 
 
 def test_timeout_and_owned_stop_terminate_descendants(setup: Setup) -> None:
