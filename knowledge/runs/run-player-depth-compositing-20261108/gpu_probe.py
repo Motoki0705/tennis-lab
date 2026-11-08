@@ -299,7 +299,9 @@ def main():
                 )
                 n_rgb = renderer.shader(normalized)[0][0].cpu().numpy()
             normalized_candidate = p_alpha * n_rgb + t * foreground
-            ed_candidate = np.where(depth < cutoff_m * scale, rgb, foreground)
+            ed_candidate = np.where(
+                (alpha > 0) & (depth > 0) & (depth < cutoff_m * scale), rgb, foreground
+            )
             np.savez_compressed(
                 root / f"prefix-{cutoff_m:g}m.npz",
                 alpha=p_alpha,
