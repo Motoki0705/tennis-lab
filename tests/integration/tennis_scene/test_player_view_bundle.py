@@ -324,7 +324,7 @@ def shot_reports(inputs: Inputs, tmp_path: Path) -> tuple[Path, Path]:
                     "pc2_max_error_m": [0, 0],
                 }
             )
-            frame = np.full((72, 128, 3), 25 + index * 20 if ok else 0, np.uint8)
+            frame: np.ndarray = np.full((72, 128, 3), 25 + index * 20 if ok else 0, np.uint8)
             assert cv2.imwrite(str(directory / "frames" / f"{index:05d}.png"), frame)
         report = {
             "schema": "tennis_scene_player_view_render_v1",
