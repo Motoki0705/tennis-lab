@@ -106,6 +106,7 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 
 ## 他の入口
 
+- [player_view](visualization/player_view/README.ja.md): 元動画なしで保存済みv2の人物・球・時刻・mask・頭部姿勢用資産を共通bundleへ書き出す。
 - [evaluation](evaluation/README.md): 固定入力でのball 3D CPU replay・LOVO採点・比較可視化。
 - [ground_truth](ground_truth/README.md): 人間提供の評価用正解の厳格な reader（再構成入力への接続なし）。
 - [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。
