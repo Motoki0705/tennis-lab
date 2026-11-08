@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "session": "player-depth-study-20261108",
+  "phase": "stopped",
+  "created_at": "2026-11-08T13:29:34.635695+00:00",
+  "stopped_at": "2026-11-08T13:59:56.764647+00:00",
+  "compositing_accepted": false,
+  "nht_submodule_modified": false,
+  "jobs": [
+    {
+      "job_id": "blender-calibration",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T13:56:07.637852+00:00",
+      "drive_saved_at": "2026-11-08T13:56:39.913355+00:00",
+      "finished_at": "2026-11-08T13:56:39.913372+00:00"
+    },
+    {
+      "job_id": "inputs-and-runtime-check",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T13:50:11.721488+00:00",
+      "drive_saved_at": "2026-11-08T13:51:55.773869+00:00",
+      "finished_at": "2026-11-08T13:51:55.773886+00:00"
+    },
+    {
+      "job_id": "probe",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T13:53:31.255517+00:00",
+      "drive_saved_at": "2026-11-08T13:54:25.523625+00:00",
+      "finished_at": "2026-11-08T13:54:25.523644+00:00"
+    },
+    {
+      "job_id": "setup",
+      "status": "failed",
+      "returncode": 1,
+      "started_at": "2026-11-08T13:31:44.677202+00:00",
+      "drive_saved_at": "2026-11-08T13:47:58.135210+00:00",
+      "finished_at": "2026-11-08T13:47:58.135229+00:00"
+    }
+  ],
+  "session_elapsed_seconds_upper_bound": 1822.128952
+}

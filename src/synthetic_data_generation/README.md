@@ -108,6 +108,8 @@ its camera request in bounded GPU batches (default four cameras). Resolution
 changes split a batch without changing request order. Court generation already
 submits a camera shard per invocation, so every shard reuses one loaded scene.
 The batch CLI and shader constraints belong to [NHT's README](../../third_party/nht/README.md).
+The [public render data semantics](rendering/nht/README.md) distinguish expected
+z-depth from surface depth and decoded RGB from alpha-associated color.
 
 Alignment uses measured court-line evidence with disjoint fit and holdout
 partitions. Before detection, the complete fixed camera prefix is rendered from

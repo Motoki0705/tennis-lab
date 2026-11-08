@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "checks": [
+    {
+      "log": "pre-commit.log",
+      "argv": [
+        ".venv/bin/pre-commit",
+        "run",
+        "--files",
+        "src/synthetic_data_generation/rendering/nht/depth.py"
+      ],
+      "returncode": 0
+    },
+    {
+      "log": "lint.log",
+      "argv": [
+        ".venv/bin/ruff",
+        "check",
+        "knowledge/runs/run-player-prefix-approximation-20261108"
+      ],
+      "returncode": 0
+    },
+    {
+      "log": "format.log",
+      "argv": [
+        ".venv/bin/ruff",
+        "format",
+        "--check",
+        "knowledge/runs/run-player-prefix-approximation-20261108"
+      ],
+      "returncode": 0
+    },
+    {
+      "log": "knowledge-validation.log",
+      "argv": [
+        ".venv/bin/python",
+        ".agents/skills/knowledge-control/scripts/kg_validate.py",
+        "--check-summary",
+        "--base-ref",
+        "origin/main"
+      ],
+      "returncode": 0
+    }
+  ],
+  "base_ref": "origin/main",
+  "base_commit": "6a3a6eb375ba959af3c3f32b161e70d4f99b8265",
+  "knowledge_validation_errors": 0,
+  "knowledge_validation_warnings": 0,
+  "repro_paths": {
+    "missing": 0,
+    "historical_unverifiable": 20,
+    "this_pr_references": [
+      {
+        "run": "run-player-depth-compositing-20261108",
+        "reference": "knowledge/runs/run-player-depth-compositing-20261108/gpu_probe.py",
+        "kind": "file",
+        "status": "ok",
+        "detail": "saved in a run bundle"
+      },
+      {
+        "run": "run-player-prefix-approximation-20261108",
+        "reference": "knowledge/runs/run-player-prefix-approximation-20261108/probe.py",
+        "kind": "file",
+        "status": "ok",
+        "detail": "saved in a run bundle"
+      }
+    ]
+  },
+  "nht_submodule_changed": false,
+  "whitespace_check": {
+    "scope": "staged files excluding captured *.log",
+    "returncode": 0,
+    "reason": "Preserve original stdout bytes, including pytest verbose trailing spaces"
+  }
+}

@@ -1,0 +1,2852 @@
+{
+  "schema_version": 1,
+  "git_commit": "c33420fd38f8fa83755830afe3a3282bebb090cd",
+  "modes": [
+    "weighted",
+    "normalized",
+    "closed_normalized"
+  ],
+  "background": "B00",
+  "camera_descriptions": [
+    {
+      "camera_id": "court-eye-0",
+      "eye_court_m": [
+        0,
+        -8,
+        1.65
+      ],
+      "target_court_m": [
+        0,
+        4,
+        0.4
+      ]
+    },
+    {
+      "camera_id": "court-eye-1",
+      "eye_court_m": [
+        0,
+        -3,
+        1.65
+      ],
+      "target_court_m": [
+        0,
+        4,
+        0.4
+      ]
+    },
+    {
+      "camera_id": "court-eye-2",
+      "eye_court_m": [
+        3,
+        -8,
+        1.65
+      ],
+      "target_court_m": [
+        0,
+        4,
+        0.4
+      ]
+    }
+  ],
+  "prefix_gate": "mean_center_z_strict_foreground_wins",
+  "rgb_blend": "assumed_srgb_linearized",
+  "views": [
+    {
+      "camera": "court-eye-0",
+      "public_rgb_error": {
+        "max": 0.0,
+        "mean": 0.0
+      },
+      "endpoints": {
+        "weighted": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.014503836631774902,
+            "mean": 9.262061185263856e-05
+          },
+          "opacity_rescaling_straight_rgb_error": 0.4853515625
+        },
+        "normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.01382070779800415,
+            "mean": 0.000132361387403324
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        },
+        "closed_normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        }
+      },
+      "timing": {
+        "scalar_raster": {
+          "count": 12,
+          "min_seconds": 0.002244828000129928,
+          "median_seconds": 0.003178093000087756,
+          "max_seconds": 0.0066009510001094895
+        },
+        "shader_and_readback": {
+          "count": 58,
+          "min_seconds": 0.000387475000025006,
+          "median_seconds": 0.00046600850009781425,
+          "max_seconds": 0.0035968750003121386
+        }
+      }
+    },
+    {
+      "camera": "court-eye-1",
+      "public_rgb_error": {
+        "max": 0.0,
+        "mean": 0.0
+      },
+      "endpoints": {
+        "weighted": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.017576545476913452,
+            "mean": 8.621608048997587e-05
+          },
+          "opacity_rescaling_straight_rgb_error": 0.515869140625
+        },
+        "normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.017255544662475586,
+            "mean": 0.00012644614994146482
+          },
+          "opacity_rescaling_straight_rgb_error": 0.000732421875
+        },
+        "closed_normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        }
+      },
+      "timing": {
+        "scalar_raster": {
+          "count": 60,
+          "min_seconds": 0.0017949510001926683,
+          "median_seconds": 0.0019773759997860907,
+          "max_seconds": 0.004266541000106372
+        },
+        "shader_and_readback": {
+          "count": 58,
+          "min_seconds": 0.00037098399980095564,
+          "median_seconds": 0.0004498984999372624,
+          "max_seconds": 0.0008596329998908914
+        }
+      }
+    },
+    {
+      "camera": "court-eye-2",
+      "public_rgb_error": {
+        "max": 0.0,
+        "mean": 0.0
+      },
+      "endpoints": {
+        "weighted": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.007755786180496216,
+            "mean": 7.200160015835772e-05
+          },
+          "opacity_rescaling_straight_rgb_error": 0.474609375
+        },
+        "normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.007520735263824463,
+            "mean": 0.00011160416950049155
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        },
+        "closed_normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        }
+      },
+      "timing": {
+        "scalar_raster": {
+          "count": 12,
+          "min_seconds": 0.002284235999923112,
+          "median_seconds": 0.0029756409996934963,
+          "max_seconds": 0.009183790999941266
+        },
+        "shader_and_readback": {
+          "count": 58,
+          "min_seconds": 0.0003769550003198674,
+          "median_seconds": 0.0004680325000663288,
+          "max_seconds": 0.0008094309996522497
+        }
+      }
+    },
+    {
+      "camera": "court-eye-0-ssaa2",
+      "public_rgb_error": {
+        "max": 0.0,
+        "mean": 0.0
+      },
+      "endpoints": {
+        "weighted": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.015300005674362183,
+            "mean": 9.259018051360963e-05
+          },
+          "opacity_rescaling_straight_rgb_error": 0.491455078125
+        },
+        "normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.015187442302703857,
+            "mean": 0.0001325674324343035
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        },
+        "closed_normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        }
+      },
+      "timing": {
+        "scalar_raster": {
+          "count": 35,
+          "min_seconds": 0.0028687209996860474,
+          "median_seconds": 0.002953712999897107,
+          "max_seconds": 0.005331150000074558
+        },
+        "shader_and_readback": {
+          "count": 49,
+          "min_seconds": 0.0006716380003126687,
+          "median_seconds": 0.0008302769997499126,
+          "max_seconds": 0.0009195299999191775
+        }
+      }
+    },
+    {
+      "camera": "court-eye-1-ssaa2",
+      "public_rgb_error": {
+        "max": 0.0,
+        "mean": 0.0
+      },
+      "endpoints": {
+        "weighted": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.02032148838043213,
+            "mean": 8.611721545161413e-05
+          },
+          "opacity_rescaling_straight_rgb_error": 0.52783203125
+        },
+        "normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.019215375185012817,
+            "mean": 0.00012668278940576851
+          },
+          "opacity_rescaling_straight_rgb_error": 0.00048828125
+        },
+        "closed_normalized": {
+          "no_foreground": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "empty_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "full_prefix": {
+            "max": 0.0,
+            "mean": 0.0
+          },
+          "opacity_rescaling_straight_rgb_error": 0.0006103515625
+        }
+      },
+      "timing": {
+        "scalar_raster": {
+          "count": 102,
+          "min_seconds": 0.002509882000140351,
+          "median_seconds": 0.00256325200007268,
+          "max_seconds": 0.0043705759999284055
+        },
+        "shader_and_readback": {
+          "count": 49,
+          "min_seconds": 0.0006581519996871066,
+          "median_seconds": 0.0008186999998542888,
+          "max_seconds": 0.0017930129997694166
+        }
+      }
+    }
+  ],
+  "cases": [
+    {
+      "name": "eye-0-body-before",
+      "samples": 1852,
+      "coverage_pixels": 1852.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.044448018000366574
+      },
+      "full_alpha_min_on_foreground": 0.999300479888916,
+      "prefix_alpha_mean": 0.2116813212633133,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.690948943857689e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.7883186882309471,
+          "image_vs_original_mean_abs_delta": 0.005606517195701599,
+          "ball_green_response_sum_linear": 262.7939231971814
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.917955339830195e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.7883186882309471,
+          "image_vs_original_mean_abs_delta": 0.0054229144006967545,
+          "ball_green_response_sum_linear": 262.79392265138335
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.858930623465653e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.7882928068138454,
+          "image_vs_original_mean_abs_delta": 0.005422839429229498,
+          "ball_green_response_sum_linear": 262.785295347641
+        }
+      }
+    },
+    {
+      "name": "eye-0-body-after",
+      "samples": 1852,
+      "coverage_pixels": 1852.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0041260140001213585
+      },
+      "full_alpha_min_on_foreground": 0.999300479888916,
+      "prefix_alpha_mean": 0.5641318559646606,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 8.320409125572858e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.43586818661468335,
+          "image_vs_original_mean_abs_delta": 0.003756575519219041,
+          "ball_green_response_sum_linear": 145.3010214027211
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.183552800856587e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.43586818661468335,
+          "image_vs_original_mean_abs_delta": 0.003861251287162304,
+          "ball_green_response_sum_linear": 145.30102106929706
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 8.366642740946506e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.43580105223691795,
+          "image_vs_original_mean_abs_delta": 0.0038610370829701424,
+          "ball_green_response_sum_linear": 145.2786414475795
+        }
+      }
+    },
+    {
+      "name": "eye-0-sphere-before",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.010888716999943426
+      },
+      "full_alpha_min_on_foreground": 0.9998929500579834,
+      "prefix_alpha_mean": 0.046391963958740234,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.39565910232065e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9850571155548096,
+          "foreground_transmission_mean": 0.9536080360412598,
+          "image_vs_original_mean_abs_delta": 5.457943552755751e-05,
+          "ball_green_response_sum_linear": 3.8144321199941658
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.126043783361013e-08,
+          "finite": true,
+          "range_min": 0.05107719823718071,
+          "range_max": 0.9845730662345886,
+          "foreground_transmission_mean": 0.9536080360412598,
+          "image_vs_original_mean_abs_delta": 5.645885175908916e-05,
+          "ball_green_response_sum_linear": 3.8144321833292514
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.177547190982068e-08,
+          "finite": true,
+          "range_min": 0.05102304741740227,
+          "range_max": 0.9845811128616333,
+          "foreground_transmission_mean": 0.9536032326893666,
+          "image_vs_original_mean_abs_delta": 5.645728742820211e-05,
+          "ball_green_response_sum_linear": 3.814413034637023
+        }
+      }
+    },
+    {
+      "name": "eye-0-sphere-after",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0040158140000130516
+      },
+      "full_alpha_min_on_foreground": 0.9998953342437744,
+      "prefix_alpha_mean": 0.40533530712127686,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.445146951579602e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5946646928787231,
+          "image_vs_original_mean_abs_delta": 7.170127446443075e-06,
+          "ball_green_response_sum_linear": 0.5946646684272536
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.537330666742889e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5946646928787231,
+          "image_vs_original_mean_abs_delta": 5.6720855354797095e-06,
+          "ball_green_response_sum_linear": 0.5946646475054165
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.1369103880554121e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5946222637113975,
+          "image_vs_original_mean_abs_delta": 5.671576218446717e-06,
+          "ball_green_response_sum_linear": 0.5946222750805014
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-0",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.004309678000026906
+      },
+      "full_alpha_min_on_foreground": 0.9998944401741028,
+      "prefix_alpha_mean": 0.48379969596862793,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.249848378241495e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5162003040313721,
+          "image_vs_original_mean_abs_delta": 6.450812179537024e-06,
+          "ball_green_response_sum_linear": 0.5162002515328883
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.2170975116632121e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5162003040313721,
+          "image_vs_original_mean_abs_delta": 5.18415527039906e-06,
+          "ball_green_response_sum_linear": 0.516200291860397
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.751931835857761e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.516149228828207,
+          "image_vs_original_mean_abs_delta": 5.183591838431312e-06,
+          "ball_green_response_sum_linear": 0.5161491613088887
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-1",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.003897197999776836
+      },
+      "full_alpha_min_on_foreground": 0.9998944401741028,
+      "prefix_alpha_mean": 0.48379969596862793,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.249848378241495e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5162003040313721,
+          "image_vs_original_mean_abs_delta": 6.450812179537024e-06,
+          "ball_green_response_sum_linear": 0.5162002515328883
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.2170975116632121e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5162003040313721,
+          "image_vs_original_mean_abs_delta": 5.18415527039906e-06,
+          "ball_green_response_sum_linear": 0.516200291860397
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.751931835857761e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.516149228828207,
+          "image_vs_original_mean_abs_delta": 5.183591838431312e-06,
+          "ball_green_response_sum_linear": 0.5161491613088887
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-2",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0037823980001121527
+      },
+      "full_alpha_min_on_foreground": 0.9998968839645386,
+      "prefix_alpha_mean": 0.4095466136932373,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.3383870678396192e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5904533863067627,
+          "image_vs_original_mean_abs_delta": 7.114474556146888e-06,
+          "ball_green_response_sum_linear": 0.5904533996906334
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.075050151821415e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5904533863067627,
+          "image_vs_original_mean_abs_delta": 5.652238542097621e-06,
+          "ball_green_response_sum_linear": 0.5904533255562612
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.0384973426222928e-09,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5904111511284978,
+          "image_vs_original_mean_abs_delta": 5.648689239023952e-06,
+          "ball_green_response_sum_linear": 0.5904111480900005
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-3",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0038800130000709032
+      },
+      "full_alpha_min_on_foreground": 0.9998929500579834,
+      "prefix_alpha_mean": 0.396234929561615,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.217025534851814e-09,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.603765070438385,
+          "image_vs_original_mean_abs_delta": 7.227708920254372e-06,
+          "ball_green_response_sum_linear": 0.6037650672213595
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.678054111804329e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.603765070438385,
+          "image_vs_original_mean_abs_delta": 5.820236765430309e-06,
+          "ball_green_response_sum_linear": 0.6037650972189261
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.971834389686734e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.6037226489709349,
+          "image_vs_original_mean_abs_delta": 5.8179953157377895e-06,
+          "ball_green_response_sum_linear": 0.603722619252591
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-4",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0007400489998872217
+      },
+      "full_alpha_min_on_foreground": 0.9998953342437744,
+      "prefix_alpha_mean": 0.40533530712127686,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.445146951579602e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5946646928787231,
+          "image_vs_original_mean_abs_delta": 7.170127446443075e-06,
+          "ball_green_response_sum_linear": 0.5946646684272536
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.537330666742889e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5946646928787231,
+          "image_vs_original_mean_abs_delta": 5.6720855354797095e-06,
+          "ball_green_response_sum_linear": 0.5946646475054165
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.1369103880554121e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5946222637113975,
+          "image_vs_original_mean_abs_delta": 5.671576218446717e-06,
+          "ball_green_response_sum_linear": 0.5946222750805014
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-5",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0005585220001194102
+      },
+      "full_alpha_min_on_foreground": 0.9998878836631775,
+      "prefix_alpha_mean": 0.3905053734779358,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.2554574047030087e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.6094946265220642,
+          "image_vs_original_mean_abs_delta": 7.310909040825209e-06,
+          "ball_green_response_sum_linear": 0.6094946139674902
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.6873657410497742e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.6094946265220642,
+          "image_vs_original_mean_abs_delta": 5.905548732698662e-06,
+          "ball_green_response_sum_linear": 0.6094946533957216
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.7772791339207856e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.6094508395808489,
+          "image_vs_original_mean_abs_delta": 5.902033080928959e-06,
+          "ball_green_response_sum_linear": 0.6094508773536402
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-6",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.000547507999726804
+      },
+      "full_alpha_min_on_foreground": 0.9998981356620789,
+      "prefix_alpha_mean": 0.4366430640220642,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.559885418726651e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5633569359779358,
+          "image_vs_original_mean_abs_delta": 7.087648100423394e-06,
+          "ball_green_response_sum_linear": 0.5633568803790816
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.3436788459664228e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5633569359779358,
+          "image_vs_original_mean_abs_delta": 5.991756552248262e-06,
+          "ball_green_response_sum_linear": 0.5633569225411473
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.029085287626799e-09,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5633124530900915,
+          "image_vs_original_mean_abs_delta": 5.994379989715526e-06,
+          "ball_green_response_sum_linear": 0.5633124571191768
+        }
+      }
+    },
+    {
+      "name": "eye-0-ball-7",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0005115859999023087
+      },
+      "full_alpha_min_on_foreground": 0.9998981356620789,
+      "prefix_alpha_mean": 0.4366430640220642,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.559885418726651e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5633569359779358,
+          "image_vs_original_mean_abs_delta": 7.087648100423394e-06,
+          "ball_green_response_sum_linear": 0.5633568803790816
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.3436788459664228e-08,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5633569359779358,
+          "image_vs_original_mean_abs_delta": 5.991756552248262e-06,
+          "ball_green_response_sum_linear": 0.5633569225411473
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.029085287626799e-09,
+          "finite": true,
+          "range_min": 0.061767578125,
+          "range_max": 0.9248046875,
+          "foreground_transmission_mean": 0.5633124530900915,
+          "image_vs_original_mean_abs_delta": 5.994379989715526e-06,
+          "ball_green_response_sum_linear": 0.5633124571191768
+        }
+      }
+    },
+    {
+      "name": "eye-1-body-before",
+      "samples": 1852,
+      "coverage_pixels": 1852.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0025616399998398265
+      },
+      "full_alpha_min_on_foreground": 0.9993279576301575,
+      "prefix_alpha_mean": 0.0,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 0.0,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.92919921875,
+          "foreground_transmission_mean": 1.0,
+          "image_vs_original_mean_abs_delta": 0.007565048057585955,
+          "ball_green_response_sum_linear": 333.3600057672385
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 0.0,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.92919921875,
+          "foreground_transmission_mean": 1.0,
+          "image_vs_original_mean_abs_delta": 0.007565048057585955,
+          "ball_green_response_sum_linear": 333.3600057672385
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 0.0,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.92919921875,
+          "foreground_transmission_mean": 1.0,
+          "image_vs_original_mean_abs_delta": 0.007565048057585955,
+          "ball_green_response_sum_linear": 333.3600057672385
+        }
+      }
+    },
+    {
+      "name": "eye-1-body-after",
+      "samples": 1852,
+      "coverage_pixels": 1852.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.003473600999768678
+      },
+      "full_alpha_min_on_foreground": 0.9993279576301575,
+      "prefix_alpha_mean": 0.41920632123947144,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.199275460489154e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.92919921875,
+          "foreground_transmission_mean": 0.5807936725812134,
+          "image_vs_original_mean_abs_delta": 0.005746376700699329,
+          "ball_green_response_sum_linear": 193.61338239553908
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.0989265213784405e-07,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.92919921875,
+          "foreground_transmission_mean": 0.5807936725812134,
+          "image_vs_original_mean_abs_delta": 0.005894184112548828,
+          "ball_green_response_sum_linear": 193.6133825061413
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 8.938451607001796e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.92919921875,
+          "foreground_transmission_mean": 0.5807429122067229,
+          "image_vs_original_mean_abs_delta": 0.00589410588145256,
+          "ball_green_response_sum_linear": 193.5964610701439
+        }
+      }
+    },
+    {
+      "name": "eye-1-sphere-before",
+      "samples": 30,
+      "coverage_pixels": 30.0,
+      "prefix_retrieval": {
+        "cutoffs": 30,
+        "seconds": 0.0644904509999833
+      },
+      "full_alpha_min_on_foreground": 0.9998739957809448,
+      "prefix_alpha_mean": 0.0,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 0.0,
+          "finite": true,
+          "range_min": 0.0,
+          "range_max": 1.0,
+          "foreground_transmission_mean": 1.0,
+          "image_vs_original_mean_abs_delta": 0.000431859923992306,
+          "ball_green_response_sum_linear": 30.0
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 0.0,
+          "finite": true,
+          "range_min": 0.0,
+          "range_max": 1.0,
+          "foreground_transmission_mean": 1.0,
+          "image_vs_original_mean_abs_delta": 0.000431859923992306,
+          "ball_green_response_sum_linear": 30.0
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 0.0,
+          "finite": true,
+          "range_min": 0.0,
+          "range_max": 1.0,
+          "foreground_transmission_mean": 1.0,
+          "image_vs_original_mean_abs_delta": 0.000431859923992306,
+          "ball_green_response_sum_linear": 30.0
+        }
+      }
+    },
+    {
+      "name": "eye-1-sphere-after",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.011784713999986707
+      },
+      "full_alpha_min_on_foreground": 0.9998827576637268,
+      "prefix_alpha_mean": 0.12237529456615448,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.894520194171804e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.958275318145752,
+          "foreground_transmission_mean": 0.8776247054338455,
+          "image_vs_original_mean_abs_delta": 4.221745621180162e-05,
+          "ball_green_response_sum_linear": 3.510498846017671
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.252578760828186e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9503753781318665,
+          "foreground_transmission_mean": 0.8776247054338455,
+          "image_vs_original_mean_abs_delta": 4.718830678029917e-05,
+          "ball_green_response_sum_linear": 3.510498882348805
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.962076321530674e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9503698348999023,
+          "foreground_transmission_mean": 0.8776114765412133,
+          "image_vs_original_mean_abs_delta": 4.718768468592316e-05,
+          "ball_green_response_sum_linear": 3.5104458369496565
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-0",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.011772907000249688
+      },
+      "full_alpha_min_on_foreground": 0.9998974800109863,
+      "prefix_alpha_mean": 0.12107589840888977,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.95963073335426e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9589818120002747,
+          "foreground_transmission_mean": 0.8789241015911102,
+          "image_vs_original_mean_abs_delta": 4.270556746632792e-05,
+          "ball_green_response_sum_linear": 3.515696493260174
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.677993097918943e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9511407017707825,
+          "foreground_transmission_mean": 0.8789241015911102,
+          "image_vs_original_mean_abs_delta": 4.757945134770125e-05,
+          "ball_green_response_sum_linear": 3.5156965025556306
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.029174892674405e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.951135516166687,
+          "foreground_transmission_mean": 0.8789117453727564,
+          "image_vs_original_mean_abs_delta": 4.757962597068399e-05,
+          "ball_green_response_sum_linear": 3.515647042789893
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-1",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.011448310000105266
+      },
+      "full_alpha_min_on_foreground": 0.9998739957809448,
+      "prefix_alpha_mean": 0.12178613245487213,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.6151482302470015e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9586374163627625,
+          "foreground_transmission_mean": 0.8782138675451279,
+          "image_vs_original_mean_abs_delta": 4.239493500790559e-05,
+          "ball_green_response_sum_linear": 3.512855571772629
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.966898126124164e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9508063197135925,
+          "foreground_transmission_mean": 0.8782138675451279,
+          "image_vs_original_mean_abs_delta": 4.727499617729336e-05,
+          "ball_green_response_sum_linear": 3.5128554662795475
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.029174892674405e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9508011937141418,
+          "foreground_transmission_mean": 0.8782000857154451,
+          "image_vs_original_mean_abs_delta": 4.727701161755249e-05,
+          "ball_green_response_sum_linear": 3.5128003585000016
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-2",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.011474815999918064
+      },
+      "full_alpha_min_on_foreground": 0.9998739957809448,
+      "prefix_alpha_mean": 0.12220761179924011,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.6151482302470015e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9584234952926636,
+          "foreground_transmission_mean": 0.8777923882007599,
+          "image_vs_original_mean_abs_delta": 4.206659286865033e-05,
+          "ball_green_response_sum_linear": 3.511169652159991
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.836229594573638e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9505501389503479,
+          "foreground_transmission_mean": 0.8777923882007599,
+          "image_vs_original_mean_abs_delta": 4.6981127525214106e-05,
+          "ball_green_response_sum_linear": 3.5111695404772876
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.199202091077382e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9505438804626465,
+          "foreground_transmission_mean": 0.8777778983053828,
+          "image_vs_original_mean_abs_delta": 4.698219709098339e-05,
+          "ball_green_response_sum_linear": 3.511111528349759
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-3",
+      "samples": 3,
+      "coverage_pixels": 3.0,
+      "prefix_retrieval": {
+        "cutoffs": 3,
+        "seconds": 0.008691639000062423
+      },
+      "full_alpha_min_on_foreground": 0.9998827576637268,
+      "prefix_alpha_mean": 0.12228278070688248,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.005392184591727e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.958275318145752,
+          "foreground_transmission_mean": 0.8777172168095907,
+          "image_vs_original_mean_abs_delta": 3.13254859065637e-05,
+          "ball_green_response_sum_linear": 2.633151733656263
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.252578760828186e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9503753781318665,
+          "foreground_transmission_mean": 0.8777172168095907,
+          "image_vs_original_mean_abs_delta": 3.5081684472970665e-05,
+          "ball_green_response_sum_linear": 2.6331516881273807
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.645885531839866e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9503698348999023,
+          "foreground_transmission_mean": 0.8777039042284102,
+          "image_vs_original_mean_abs_delta": 3.508215377223678e-05,
+          "ball_green_response_sum_linear": 2.6331117030907967
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-4",
+      "samples": 3,
+      "coverage_pixels": 3.0,
+      "prefix_retrieval": {
+        "cutoffs": 3,
+        "seconds": 0.0010347050001655589
+      },
+      "full_alpha_min_on_foreground": 0.9998827576637268,
+      "prefix_alpha_mean": 0.12227901071310043,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.894520194171804e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.958275318145752,
+          "foreground_transmission_mean": 0.8777209917704264,
+          "image_vs_original_mean_abs_delta": 3.1409315852215514e-05,
+          "ball_green_response_sum_linear": 2.6331629595396464
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.252578760828186e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9502747058868408,
+          "foreground_transmission_mean": 0.8777209917704264,
+          "image_vs_original_mean_abs_delta": 3.5185032174922526e-05,
+          "ball_green_response_sum_linear": 2.6331630842869984
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.962076321530674e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9502692222595215,
+          "foreground_transmission_mean": 0.8777078014707124,
+          "image_vs_original_mean_abs_delta": 3.5184584703529254e-05,
+          "ball_green_response_sum_linear": 2.6331232923309185
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-5",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.0009734019999996235
+      },
+      "full_alpha_min_on_foreground": 0.9998942017555237,
+      "prefix_alpha_mean": 0.12232892215251923,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.527633433783819e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9582363367080688,
+          "foreground_transmission_mean": 0.8776710778474808,
+          "image_vs_original_mean_abs_delta": 4.2735235183499753e-05,
+          "ball_green_response_sum_linear": 3.5106842905415987
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.252578760828186e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9502747058868408,
+          "foreground_transmission_mean": 0.8776710778474808,
+          "image_vs_original_mean_abs_delta": 4.7773322876309976e-05,
+          "ball_green_response_sum_linear": 3.5106844543778086
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.962076321530674e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9502692222595215,
+          "foreground_transmission_mean": 0.8776583565481785,
+          "image_vs_original_mean_abs_delta": 4.7772722609806806e-05,
+          "ball_green_response_sum_linear": 3.5106333580978757
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-6",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.011573395999675995
+      },
+      "full_alpha_min_on_foreground": 0.9998911619186401,
+      "prefix_alpha_mean": 0.12210972607135773,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.527633433783819e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9582905769348145,
+          "foreground_transmission_mean": 0.8778902739286423,
+          "image_vs_original_mean_abs_delta": 4.271382204024121e-05,
+          "ball_green_response_sum_linear": 3.5115611673734706
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.3783924324737313e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9502706527709961,
+          "foreground_transmission_mean": 0.8778902739286423,
+          "image_vs_original_mean_abs_delta": 4.782538962899707e-05,
+          "ball_green_response_sum_linear": 3.511561216540297
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.391111603687989e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9502654075622559,
+          "foreground_transmission_mean": 0.8778774431018281,
+          "image_vs_original_mean_abs_delta": 4.7823872591834515e-05,
+          "ball_green_response_sum_linear": 3.5115097870407084
+        }
+      }
+    },
+    {
+      "name": "eye-1-ball-7",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.011537045999830298
+      },
+      "full_alpha_min_on_foreground": 0.9998853206634521,
+      "prefix_alpha_mean": 0.12175779044628143,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.087180737246456e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9584221839904785,
+          "foreground_transmission_mean": 0.8782422095537186,
+          "image_vs_original_mean_abs_delta": 4.27781451435294e-05,
+          "ball_green_response_sum_linear": 3.5129688433502557
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.691730275980689e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9503422975540161,
+          "foreground_transmission_mean": 0.8782422095537186,
+          "image_vs_original_mean_abs_delta": 4.796834764420055e-05,
+          "ball_green_response_sum_linear": 3.512968900962613
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.51659386055303e-08,
+          "finite": true,
+          "range_min": 0.058990478515625,
+          "range_max": 0.9503371715545654,
+          "foreground_transmission_mean": 0.8782292545059338,
+          "image_vs_original_mean_abs_delta": 4.7965837438823655e-05,
+          "ball_green_response_sum_linear": 3.512917001215324
+        }
+      }
+    },
+    {
+      "name": "eye-2-body-before",
+      "samples": 1852,
+      "coverage_pixels": 1852.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.002981359999921551
+      },
+      "full_alpha_min_on_foreground": 0.9993064403533936,
+      "prefix_alpha_mean": 0.19899234175682068,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.870652764084939e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.8010076528362785,
+          "image_vs_original_mean_abs_delta": 0.00587540864944458,
+          "ball_green_response_sum_linear": 267.0239166412167
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.179036307092268e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.8010076528362785,
+          "image_vs_original_mean_abs_delta": 0.005547492764890194,
+          "ball_green_response_sum_linear": 267.0239157132739
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.142382795963242e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.8009825232189268,
+          "image_vs_original_mean_abs_delta": 0.005547310691326857,
+          "ball_green_response_sum_linear": 267.0155389703326
+        }
+      }
+    },
+    {
+      "name": "eye-2-body-after",
+      "samples": 1852,
+      "coverage_pixels": 1852.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.003895719999945868
+      },
+      "full_alpha_min_on_foreground": 0.9993064403533936,
+      "prefix_alpha_mean": 0.46286478638648987,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.227324450356011e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5371351753789971,
+          "image_vs_original_mean_abs_delta": 0.004209507256746292,
+          "ball_green_response_sum_linear": 179.05938520832706
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.152390852834591e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5371351753789971,
+          "image_vs_original_mean_abs_delta": 0.004430028144270182,
+          "ball_green_response_sum_linear": 179.0593860238007
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.203115483927271e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5370781572267246,
+          "image_vs_original_mean_abs_delta": 0.004429852124303579,
+          "ball_green_response_sum_linear": 179.040378123047
+        }
+      }
+    },
+    {
+      "name": "eye-2-sphere-before",
+      "samples": 4,
+      "coverage_pixels": 4.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.011020387999906234
+      },
+      "full_alpha_min_on_foreground": 0.9998881220817566,
+      "prefix_alpha_mean": 0.017171964049339294,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.480530345687185e-08,
+          "finite": true,
+          "range_min": 0.03473994880914688,
+          "range_max": 0.9957137107849121,
+          "foreground_transmission_mean": 0.9828280359506607,
+          "image_vs_original_mean_abs_delta": 5.930060797254555e-05,
+          "ball_green_response_sum_linear": 3.931312185435485
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.848582285139514e-08,
+          "finite": true,
+          "range_min": 0.0586833655834198,
+          "range_max": 0.9969478249549866,
+          "foreground_transmission_mean": 0.9828280359506607,
+          "image_vs_original_mean_abs_delta": 5.763876106357202e-05,
+          "ball_green_response_sum_linear": 3.9313120020970755
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.299721200253572e-08,
+          "finite": true,
+          "range_min": 0.05868866667151451,
+          "range_max": 0.9969475269317627,
+          "foreground_transmission_mean": 0.9828262314297125,
+          "image_vs_original_mean_abs_delta": 5.7637615100247785e-05,
+          "ball_green_response_sum_linear": 3.9313049528198185
+        }
+      }
+    },
+    {
+      "name": "eye-2-sphere-after",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.003790406999996776
+      },
+      "full_alpha_min_on_foreground": 0.9998949766159058,
+      "prefix_alpha_mean": 0.4837208390235901,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.805997055878919e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5162791609764099,
+          "image_vs_original_mean_abs_delta": 6.077818852645578e-06,
+          "ball_green_response_sum_linear": 0.5162792090363805
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.11852341120067e-09,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5162791609764099,
+          "image_vs_original_mean_abs_delta": 6.810354989283951e-06,
+          "ball_green_response_sum_linear": 0.5162791650949333
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.087738166205554e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5162283536409804,
+          "image_vs_original_mean_abs_delta": 6.813081654399866e-06,
+          "ball_green_response_sum_linear": 0.5162283645183621
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-0",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.003871777000313159
+      },
+      "full_alpha_min_on_foreground": 0.9998781681060791,
+      "prefix_alpha_mean": 0.4959102272987366,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.2538246269299123e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5040897727012634,
+          "image_vs_original_mean_abs_delta": 5.88402235734975e-06,
+          "ball_green_response_sum_linear": 0.5040897952395097
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.291325644307676e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5040897727012634,
+          "image_vs_original_mean_abs_delta": 6.5608619479462504e-06,
+          "ball_green_response_sum_linear": 0.504089719788007
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.883740540278069e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5040293476573594,
+          "image_vs_original_mean_abs_delta": 6.560225301655009e-06,
+          "ball_green_response_sum_linear": 0.5040293864947648
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-1",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0035900309999306046
+      },
+      "full_alpha_min_on_foreground": 0.9998781681060791,
+      "prefix_alpha_mean": 0.4959102272987366,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.2538246269299123e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5040897727012634,
+          "image_vs_original_mean_abs_delta": 5.88402235734975e-06,
+          "ball_green_response_sum_linear": 0.5040897952395097
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.291325644307676e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5040897727012634,
+          "image_vs_original_mean_abs_delta": 6.5608619479462504e-06,
+          "ball_green_response_sum_linear": 0.504089719788007
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.883740540278069e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5040293476573594,
+          "image_vs_original_mean_abs_delta": 6.560225301655009e-06,
+          "ball_green_response_sum_linear": 0.5040293864947648
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-2",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0036235289999240194
+      },
+      "full_alpha_min_on_foreground": 0.9998990893363953,
+      "prefix_alpha_mean": 0.49300241470336914,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.4957129867987362e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5069975852966309,
+          "image_vs_original_mean_abs_delta": 5.933321517659351e-06,
+          "ball_green_response_sum_linear": 0.506997570339501
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.2667888656164905e-09,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5069975852966309,
+          "image_vs_original_mean_abs_delta": 6.65600600768812e-06,
+          "ball_green_response_sum_linear": 0.506997579029842
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.218219751273011e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5069478310750729,
+          "image_vs_original_mean_abs_delta": 6.6554835029819515e-06,
+          "ball_green_response_sum_linear": 0.5069478732572704
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-3",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0035827740002787323
+      },
+      "full_alpha_min_on_foreground": 0.9998984336853027,
+      "prefix_alpha_mean": 0.4858466386795044,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.271406456839543e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5141533613204956,
+          "image_vs_original_mean_abs_delta": 6.00701196162845e-06,
+          "ball_green_response_sum_linear": 0.5141533940345602
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.377596174442999e-09,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5141533613204956,
+          "image_vs_original_mean_abs_delta": 6.743337053194409e-06,
+          "ball_green_response_sum_linear": 0.5141533656980918
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.104134893572308e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5141040106555317,
+          "image_vs_original_mean_abs_delta": 6.742817276972346e-06,
+          "ball_green_response_sum_linear": 0.5141040416968806
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-4",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0007774320001772139
+      },
+      "full_alpha_min_on_foreground": 0.9998949766159058,
+      "prefix_alpha_mean": 0.4837208390235901,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.805997055878919e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5162791609764099,
+          "image_vs_original_mean_abs_delta": 6.077818852645578e-06,
+          "ball_green_response_sum_linear": 0.5162792090363805
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.11852341120067e-09,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5162791609764099,
+          "image_vs_original_mean_abs_delta": 6.810354989283951e-06,
+          "ball_green_response_sum_linear": 0.5162791650949333
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.087738166205554e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5162283536409804,
+          "image_vs_original_mean_abs_delta": 6.813081654399866e-06,
+          "ball_green_response_sum_linear": 0.5162283645183621
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-5",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0005579990001933766
+      },
+      "full_alpha_min_on_foreground": 0.9998990297317505,
+      "prefix_alpha_mean": 0.47320324182510376,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.5438564204828253e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5267967581748962,
+          "image_vs_original_mean_abs_delta": 6.235444288904546e-06,
+          "ball_green_response_sum_linear": 0.526796742736332
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.980932578555695e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5267967581748962,
+          "image_vs_original_mean_abs_delta": 6.937498255865648e-06,
+          "ball_green_response_sum_linear": 0.526796787984222
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.9523856359681133e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5267489738918407,
+          "image_vs_original_mean_abs_delta": 6.936991667316761e-06,
+          "ball_green_response_sum_linear": 0.5267490034156971
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-6",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.000545690000308241
+      },
+      "full_alpha_min_on_foreground": 0.9998995661735535,
+      "prefix_alpha_mean": 0.46697497367858887,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.746067483463179e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5330250263214111,
+          "image_vs_original_mean_abs_delta": 6.396611297532218e-06,
+          "ball_green_response_sum_linear": 0.5330249788607363
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.8462083245806014e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5330250263214111,
+          "image_vs_original_mean_abs_delta": 7.0484052230312955e-06,
+          "ball_green_response_sum_linear": 0.5330249978593279
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.064686820459684e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5329781215271219,
+          "image_vs_original_mean_abs_delta": 7.045842266961699e-06,
+          "ball_green_response_sum_linear": 0.5329780808802537
+        }
+      }
+    },
+    {
+      "name": "eye-2-ball-7",
+      "samples": 1,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0005854949999957171
+      },
+      "full_alpha_min_on_foreground": 0.9998995661735535,
+      "prefix_alpha_mean": 0.46697497367858887,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.746067483463179e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5330250263214111,
+          "image_vs_original_mean_abs_delta": 6.396611297532218e-06,
+          "ball_green_response_sum_linear": 0.5330249788607363
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 2.8462083245806014e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5330250263214111,
+          "image_vs_original_mean_abs_delta": 7.0484052230312955e-06,
+          "ball_green_response_sum_linear": 0.5330249978593279
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.064686820459684e-08,
+          "finite": true,
+          "range_min": 0.07720947265625,
+          "range_max": 0.947265625,
+          "foreground_transmission_mean": 0.5329781215271219,
+          "image_vs_original_mean_abs_delta": 7.045842266961699e-06,
+          "ball_green_response_sum_linear": 0.5329780808802537
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-0",
+      "samples": 5,
+      "coverage_pixels": 1.25,
+      "prefix_retrieval": {
+        "cutoffs": 5,
+        "seconds": 0.017753818999608484
+      },
+      "full_alpha_min_on_foreground": 0.9998906850814819,
+      "prefix_alpha_mean": 0.652208685874939,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.806823043576827e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.34779131412506104,
+          "image_vs_original_mean_abs_delta": 4.9847849368234165e-06,
+          "ball_green_response_sum_linear": 0.4347391450351
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 8.518012106772943e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.34779131412506104,
+          "image_vs_original_mean_abs_delta": 4.3718828237615526e-06,
+          "ball_green_response_sum_linear": 0.4347391305989994
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.086700714969524e-07,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.34772281402385097,
+          "image_vs_original_mean_abs_delta": 4.373470346763497e-06,
+          "ball_green_response_sum_linear": 0.43465348724058633
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-1",
+      "samples": 4,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.014615821999996115
+      },
+      "full_alpha_min_on_foreground": 0.9998949766159058,
+      "prefix_alpha_mean": 0.7190210223197937,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 8.536239204381957e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.2809790074825287,
+          "image_vs_original_mean_abs_delta": 2.9925538456154754e-06,
+          "ball_green_response_sum_linear": 0.2809790133367664
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.0653248323252456e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.2809790074825287,
+          "image_vs_original_mean_abs_delta": 2.1517826098715886e-06,
+          "ball_green_response_sum_linear": 0.2809790151696038
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.9046301192335875e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.2809047819521099,
+          "image_vs_original_mean_abs_delta": 2.1504877167899394e-06,
+          "ball_green_response_sum_linear": 0.280904785765308
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-2",
+      "samples": 5,
+      "coverage_pixels": 1.25,
+      "prefix_retrieval": {
+        "cutoffs": 5,
+        "seconds": 0.017747207999946113
+      },
+      "full_alpha_min_on_foreground": 0.9998846054077148,
+      "prefix_alpha_mean": 0.5838296413421631,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.223034310608554e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.41617034673690795,
+          "image_vs_original_mean_abs_delta": 6.04940032644663e-06,
+          "ball_green_response_sum_linear": 0.5202129275548545
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.700205673089044e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.41617034673690795,
+          "image_vs_original_mean_abs_delta": 5.197088285058271e-06,
+          "ball_green_response_sum_linear": 0.5202129330434777
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.730943280519597e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.4161087120120537,
+          "image_vs_original_mean_abs_delta": 5.195762241783086e-06,
+          "ball_green_response_sum_linear": 0.5201358931477509
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-3",
+      "samples": 5,
+      "coverage_pixels": 1.25,
+      "prefix_retrieval": {
+        "cutoffs": 5,
+        "seconds": 0.017597689000012906
+      },
+      "full_alpha_min_on_foreground": 0.9998791813850403,
+      "prefix_alpha_mean": 0.6270429491996765,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.717094241410649e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.37295701503753664,
+          "image_vs_original_mean_abs_delta": 5.330144631443545e-06,
+          "ball_green_response_sum_linear": 0.46619628267594876
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 8.292636199946912e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.37295701503753664,
+          "image_vs_original_mean_abs_delta": 4.757628630613908e-06,
+          "ball_green_response_sum_linear": 0.4661962614835798
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.768019744640696e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.3728857197491127,
+          "image_vs_original_mean_abs_delta": 4.756813268613769e-06,
+          "ball_green_response_sum_linear": 0.46610719549818347
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-4",
+      "samples": 5,
+      "coverage_pixels": 1.25,
+      "prefix_retrieval": {
+        "cutoffs": 5,
+        "seconds": 0.002018335000229854
+      },
+      "full_alpha_min_on_foreground": 0.9998896718025208,
+      "prefix_alpha_mean": 0.6496249437332153,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.278886988646647e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.3503751039505005,
+          "image_vs_original_mean_abs_delta": 5.0782973630703054e-06,
+          "ball_green_response_sum_linear": 0.4379688852707594
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 3.674494974958975e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.3503751039505005,
+          "image_vs_original_mean_abs_delta": 4.545430329017108e-06,
+          "ball_green_response_sum_linear": 0.43796887411294516
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.180642198039266e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.3503072106913237,
+          "image_vs_original_mean_abs_delta": 4.544438979792176e-06,
+          "ball_green_response_sum_linear": 0.4378840436785344
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-5",
+      "samples": 5,
+      "coverage_pixels": 1.25,
+      "prefix_retrieval": {
+        "cutoffs": 5,
+        "seconds": 0.017618032999962452
+      },
+      "full_alpha_min_on_foreground": 0.9998786449432373,
+      "prefix_alpha_mean": 0.596025288105011,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.278150637723968e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.40397474765777586,
+          "image_vs_original_mean_abs_delta": 5.967511242488399e-06,
+          "ball_green_response_sum_linear": 0.5049684145037203
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.248706285212236e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.40397474765777586,
+          "image_vs_original_mean_abs_delta": 5.23781409356161e-06,
+          "ball_green_response_sum_linear": 0.5049684475574412
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.741680991766529e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.4039101471187638,
+          "image_vs_original_mean_abs_delta": 5.235509433987318e-06,
+          "ball_green_response_sum_linear": 0.5048876761703818
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-6",
+      "samples": 4,
+      "coverage_pixels": 1.0,
+      "prefix_retrieval": {
+        "cutoffs": 4,
+        "seconds": 0.014277693000167346
+      },
+      "full_alpha_min_on_foreground": 0.9998786449432373,
+      "prefix_alpha_mean": 0.7247876524925232,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.0622050884463476e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.275212362408638,
+          "image_vs_original_mean_abs_delta": 3.032772156075225e-06,
+          "ball_green_response_sum_linear": 0.27521235845342706
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.19748527444608e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.275212362408638,
+          "image_vs_original_mean_abs_delta": 2.114028347932617e-06,
+          "ball_green_response_sum_linear": 0.2752123749496659
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 8.94820406660557e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.2751313232518176,
+          "image_vs_original_mean_abs_delta": 2.113731170538813e-06,
+          "ball_green_response_sum_linear": 0.27513134910768444
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-ball-7",
+      "samples": 5,
+      "coverage_pixels": 1.25,
+      "prefix_retrieval": {
+        "cutoffs": 5,
+        "seconds": 0.017600686000150745
+      },
+      "full_alpha_min_on_foreground": 0.9998835921287537,
+      "prefix_alpha_mean": 0.6245697140693665,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.260883516657657e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.3754302620887756,
+          "image_vs_original_mean_abs_delta": 5.456318376673153e-06,
+          "ball_green_response_sum_linear": 0.4692878419308073
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.0231094749180158e-07,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.3754302620887756,
+          "image_vs_original_mean_abs_delta": 4.811788130609784e-06,
+          "ball_green_response_sum_linear": 0.4692878382665121
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 7.88055458667003e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.37536170697231463,
+          "image_vs_original_mean_abs_delta": 4.810447990166722e-06,
+          "ball_green_response_sum_linear": 0.46920211915168597
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-0-body",
+      "samples": 7366,
+      "coverage_pixels": 1841.5,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.004160103999765852
+      },
+      "full_alpha_min_on_foreground": 0.9994567036628723,
+      "prefix_alpha_mean": 0.5648525953292847,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.569440907741811e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.43514738252329305,
+          "image_vs_original_mean_abs_delta": 0.003724365960806608,
+          "ball_green_response_sum_linear": 144.23830581095777
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.787361400503958e-08,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.43514738252329305,
+          "image_vs_original_mean_abs_delta": 0.003859355580061674,
+          "ball_green_response_sum_linear": 144.2383045645703
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.0441227171753553e-07,
+          "finite": true,
+          "range_min": 0.06842041015625,
+          "range_max": 0.9267578125,
+          "foreground_transmission_mean": 0.4350803641769989,
+          "image_vs_original_mean_abs_delta": 0.00385910551995039,
+          "ball_green_response_sum_linear": 144.21609039049403
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-0",
+      "samples": 13,
+      "coverage_pixels": 3.25,
+      "prefix_retrieval": {
+        "cutoffs": 13,
+        "seconds": 0.03963053100005709
+      },
+      "full_alpha_min_on_foreground": 0.9998798370361328,
+      "prefix_alpha_mean": 0.1210777685046196,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.467615110139491e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.958999752998352,
+          "foreground_transmission_mean": 0.8789222377997178,
+          "image_vs_original_mean_abs_delta": 3.458162609604187e-05,
+          "ball_green_response_sum_linear": 2.8564973120667734
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.32284333779154e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9512037038803101,
+          "foreground_transmission_mean": 0.8789222377997178,
+          "image_vs_original_mean_abs_delta": 3.8561378460144624e-05,
+          "ball_green_response_sum_linear": 2.856497290272767
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.807992908835047e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9511983394622803,
+          "foreground_transmission_mean": 0.8789095526782437,
+          "image_vs_original_mean_abs_delta": 3.856084731523879e-05,
+          "ball_green_response_sum_linear": 2.856456077824782
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-1",
+      "samples": 13,
+      "coverage_pixels": 3.25,
+      "prefix_retrieval": {
+        "cutoffs": 13,
+        "seconds": 0.039604286000212596
+      },
+      "full_alpha_min_on_foreground": 0.9998764991760254,
+      "prefix_alpha_mean": 0.12170354276895523,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.1731662620291274e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9587764143943787,
+          "foreground_transmission_mean": 0.8782964669741117,
+          "image_vs_original_mean_abs_delta": 3.4278778912266716e-05,
+          "ball_green_response_sum_linear": 2.85446352839986
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.32284333779154e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9508426189422607,
+          "foreground_transmission_mean": 0.8782964669741117,
+          "image_vs_original_mean_abs_delta": 3.8265665352810174e-05,
+          "ball_green_response_sum_linear": 2.854463496621557
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.337022124241031e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9508452415466309,
+          "foreground_transmission_mean": 0.8782833969170702,
+          "image_vs_original_mean_abs_delta": 3.826396641670726e-05,
+          "ball_green_response_sum_linear": 2.854421058786512
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-2",
+      "samples": 11,
+      "coverage_pixels": 2.75,
+      "prefix_retrieval": {
+        "cutoffs": 11,
+        "seconds": 0.03361993899989102
+      },
+      "full_alpha_min_on_foreground": 0.9998790621757507,
+      "prefix_alpha_mean": 0.1220516636967659,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.1731662620291274e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9585022926330566,
+          "foreground_transmission_mean": 0.8779483383352106,
+          "image_vs_original_mean_abs_delta": 2.8600603400263935e-05,
+          "ball_green_response_sum_linear": 2.414357913521326
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.318491985179975e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9505615234375,
+          "foreground_transmission_mean": 0.8779483383352106,
+          "image_vs_original_mean_abs_delta": 3.201726212864742e-05,
+          "ball_green_response_sum_linear": 2.4143578680100886
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.969843941411312e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9505643844604492,
+          "foreground_transmission_mean": 0.8779350957357298,
+          "image_vs_original_mean_abs_delta": 3.2015399483498186e-05,
+          "ball_green_response_sum_linear": 2.4143215154031816
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-3",
+      "samples": 13,
+      "coverage_pixels": 3.25,
+      "prefix_retrieval": {
+        "cutoffs": 13,
+        "seconds": 0.040038677000211464
+      },
+      "full_alpha_min_on_foreground": 0.9998752474784851,
+      "prefix_alpha_mean": 0.12229890376329422,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.517715373493104e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9583529829978943,
+          "foreground_transmission_mean": 0.8777011036872864,
+          "image_vs_original_mean_abs_delta": 3.3939148124773055e-05,
+          "ball_green_response_sum_linear": 2.8525285671506295
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.2926035604427e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9504479169845581,
+          "foreground_transmission_mean": 0.8777011036872864,
+          "image_vs_original_mean_abs_delta": 3.797299723373726e-05,
+          "ball_green_response_sum_linear": 2.8525286191237593
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.184547807208673e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9504427313804626,
+          "foreground_transmission_mean": 0.8776880848539806,
+          "image_vs_original_mean_abs_delta": 3.7972840800648555e-05,
+          "ball_green_response_sum_linear": 2.852486293396551
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-4",
+      "samples": 13,
+      "coverage_pixels": 3.25,
+      "prefix_retrieval": {
+        "cutoffs": 13,
+        "seconds": 0.04054945600000792
+      },
+      "full_alpha_min_on_foreground": 0.9998752474784851,
+      "prefix_alpha_mean": 0.12234441936016083,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.446897760081782e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9582787156105042,
+          "foreground_transmission_mean": 0.877655579493596,
+          "image_vs_original_mean_abs_delta": 3.4303335269214585e-05,
+          "ball_green_response_sum_linear": 2.8523806350844616
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.2926035604427e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503449201583862,
+          "foreground_transmission_mean": 0.877655579493596,
+          "image_vs_original_mean_abs_delta": 3.8379021134460345e-05,
+          "ball_green_response_sum_linear": 2.8523806544281536
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.184547807208673e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503393769264221,
+          "foreground_transmission_mean": 0.8776424708536348,
+          "image_vs_original_mean_abs_delta": 3.837883923551999e-05,
+          "ball_green_response_sum_linear": 2.8523380263259193
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-5",
+      "samples": 11,
+      "coverage_pixels": 2.75,
+      "prefix_retrieval": {
+        "cutoffs": 11,
+        "seconds": 0.03385680900009902
+      },
+      "full_alpha_min_on_foreground": 0.999889075756073,
+      "prefix_alpha_mean": 0.12223856896162033,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.446897760081782e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9582516551017761,
+          "foreground_transmission_mean": 0.8777614344250072,
+          "image_vs_original_mean_abs_delta": 2.9035987608949654e-05,
+          "ball_green_response_sum_linear": 2.413844011550589
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.2345799422527364e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503030776977539,
+          "foreground_transmission_mean": 0.8777614344250072,
+          "image_vs_original_mean_abs_delta": 3.253559407312423e-05,
+          "ball_green_response_sum_linear": 2.4138439038929596
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.964596283547507e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503065943717957,
+          "foreground_transmission_mean": 0.8777485231544678,
+          "image_vs_original_mean_abs_delta": 3.25355285895057e-05,
+          "ball_green_response_sum_linear": 2.4138084351999414
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-6",
+      "samples": 13,
+      "coverage_pixels": 3.25,
+      "prefix_retrieval": {
+        "cutoffs": 13,
+        "seconds": 0.039911437000228034
+      },
+      "full_alpha_min_on_foreground": 0.9998810887336731,
+      "prefix_alpha_mean": 0.12207981199026108,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.446897760081782e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.958316445350647,
+          "foreground_transmission_mean": 0.87792019202159,
+          "image_vs_original_mean_abs_delta": 3.448489951551892e-05,
+          "ball_green_response_sum_linear": 2.8532406853924495
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 4.801745656646261e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503139853477478,
+          "foreground_transmission_mean": 0.87792019202159,
+          "image_vs_original_mean_abs_delta": 3.865090184262954e-05,
+          "ball_green_response_sum_linear": 2.85324062779147
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.175457056833977e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503170847892761,
+          "foreground_transmission_mean": 0.8779070102552937,
+          "image_vs_original_mean_abs_delta": 3.865058533847332e-05,
+          "ball_green_response_sum_linear": 2.853197799736132
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-ball-7",
+      "samples": 13,
+      "coverage_pixels": 3.25,
+      "prefix_retrieval": {
+        "cutoffs": 13,
+        "seconds": 0.03990400399970895
+      },
+      "full_alpha_min_on_foreground": 0.9998812079429626,
+      "prefix_alpha_mean": 0.12176485359668732,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.281341147218455e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9584510922431946,
+          "foreground_transmission_mean": 0.8782351429645832,
+          "image_vs_original_mean_abs_delta": 3.456562262726948e-05,
+          "ball_green_response_sum_linear": 2.8542642494791712
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 5.142889425435726e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503867030143738,
+          "foreground_transmission_mean": 0.8782351429645832,
+          "image_vs_original_mean_abs_delta": 3.879075302393176e-05,
+          "ball_green_response_sum_linear": 2.854264233894941
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 6.11454251675525e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.9503815770149231,
+          "foreground_transmission_mean": 0.8782220867692436,
+          "image_vs_original_mean_abs_delta": 3.879050200339407e-05,
+          "ball_green_response_sum_linear": 2.8542218172849214
+        }
+      }
+    },
+    {
+      "name": "ssaa2-eye-1-body",
+      "samples": 7366,
+      "coverage_pixels": 1841.5,
+      "prefix_retrieval": {
+        "cutoffs": 1,
+        "seconds": 0.0038470300000881252
+      },
+      "full_alpha_min_on_foreground": 0.9991399049758911,
+      "prefix_alpha_mean": 0.4190009832382202,
+      "monotonic_violation": 0.0,
+      "harmonic_envelope_violation": 0.0,
+      "modes": {
+        "weighted": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.671137459615897e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.93212890625,
+          "foreground_transmission_mean": 0.5809989853087179,
+          "image_vs_original_mean_abs_delta": 0.005676298402249813,
+          "ball_green_response_sum_linear": 192.58373659046106
+        },
+        "normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 9.985492255282225e-08,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.93212890625,
+          "foreground_transmission_mean": 0.5809989853087179,
+          "image_vs_original_mean_abs_delta": 0.005822444334626198,
+          "ball_green_response_sum_linear": 192.5837370072814
+        },
+        "closed_normalized": {
+          "outside_mask_max_error": 0.0,
+          "response_max_error": 1.046611813708409e-07,
+          "finite": true,
+          "range_min": 0.061187744140625,
+          "range_max": 0.93212890625,
+          "foreground_transmission_mean": 0.5809478341785224,
+          "image_vs_original_mean_abs_delta": 0.005822342820465565,
+          "ball_green_response_sum_linear": 192.56678157163023
+        }
+      }
+    }
+  ],
+  "quality_is_not_ground_truth_error": true,
+  "large_gaussian": {
+    "mean_z": 4.2,
+    "cutoffs_m": [
+      4.199,
+      4.201
+    ],
+    "max_prefix_alpha_jump": 0.7974688410758972,
+    "closed_rgb_jump_max": 0.6169567704200745,
+    "peak_before_4m_but_mean_behind_pixels": 388,
+    "relevant_pixels": 576,
+    "known_large_gaussian_warning": true,
+    "full_alpha_min": 0.9891817569732666,
+    "full_alpha_min_all": 0.9468093514442444,
+    "foreground_samples": 576,
+    "foreground_roi_xyxy": [
+      16,
+      9,
+      48,
+      27
+    ],
+    "backplane_sigma_xy": 20
+  },
+  "cuda_peak_allocated_bytes": 585277440,
+  "cuda_peak_reserved_bytes": 639631360
+}

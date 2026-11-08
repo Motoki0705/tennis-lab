@@ -1,0 +1,339 @@
+{
+  "schema_version": 1,
+  "foreground_z": 4,
+  "cases": {
+    "opaque_before": {
+      "background_rgb_premult": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "background_alpha": 1.0,
+      "expected_z": 2.0,
+      "prefix_rgb_premult": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 0.0,
+      "composite_rgb": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "input": {
+        "z": [
+          2,
+          8
+        ],
+        "alpha": [
+          1,
+          1
+        ],
+        "rgb": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "always_foreground_rgb": [
+        0,
+        1,
+        0
+      ],
+      "ed_compare_rgb": [
+        1.0,
+        0.0,
+        0.0
+      ]
+    },
+    "opaque_behind": {
+      "background_rgb_premult": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "background_alpha": 1.0,
+      "expected_z": 8.0,
+      "prefix_rgb_premult": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 1.0,
+      "composite_rgb": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "input": {
+        "z": [
+          8
+        ],
+        "alpha": [
+          1
+        ],
+        "rgb": [
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "always_foreground_rgb": [
+        0,
+        1,
+        0
+      ],
+      "ed_compare_rgb": [
+        0,
+        1,
+        0
+      ]
+    },
+    "net_before_opaque_behind": {
+      "background_rgb_premult": [
+        0.25,
+        0.0,
+        0.75
+      ],
+      "background_alpha": 1.0,
+      "expected_z": 6.5,
+      "prefix_rgb_premult": [
+        0.25,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 0.75,
+      "composite_rgb": [
+        0.25,
+        0.75,
+        0.0
+      ],
+      "input": {
+        "z": [
+          2,
+          8
+        ],
+        "alpha": [
+          0.25,
+          1
+        ],
+        "rgb": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "always_foreground_rgb": [
+        0,
+        1,
+        0
+      ],
+      "ed_compare_rgb": [
+        0,
+        1,
+        0
+      ]
+    },
+    "net_behind": {
+      "background_rgb_premult": [
+        0.25,
+        0.0,
+        0.75
+      ],
+      "background_alpha": 1.0,
+      "expected_z": 7.5,
+      "prefix_rgb_premult": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 1.0,
+      "composite_rgb": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "input": {
+        "z": [
+          6,
+          8
+        ],
+        "alpha": [
+          0.25,
+          1
+        ],
+        "rgb": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            1
+          ]
+        ]
+      },
+      "always_foreground_rgb": [
+        0,
+        1,
+        0
+      ],
+      "ed_compare_rgb": [
+        0,
+        1,
+        0
+      ]
+    },
+    "same_ed_a": {
+      "background_rgb_premult": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "background_alpha": 1.0,
+      "expected_z": 5.0,
+      "prefix_rgb_premult": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 0.5,
+      "composite_rgb": [
+        0.5,
+        0.5,
+        0.0
+      ],
+      "input": {
+        "z": [
+          2,
+          8
+        ],
+        "alpha": [
+          0.5,
+          1
+        ],
+        "rgb": [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            0
+          ]
+        ]
+      },
+      "always_foreground_rgb": [
+        0,
+        1,
+        0
+      ],
+      "ed_compare_rgb": [
+        0,
+        1,
+        0
+      ]
+    },
+    "same_ed_b": {
+      "background_rgb_premult": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "background_alpha": 1.0,
+      "expected_z": 5.0,
+      "prefix_rgb_premult": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 1.0,
+      "composite_rgb": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "input": {
+        "z": [
+          5
+        ],
+        "alpha": [
+          1
+        ],
+        "rgb": [
+          [
+            1,
+            0,
+            0
+          ]
+        ]
+      },
+      "always_foreground_rgb": [
+        0,
+        1,
+        0
+      ],
+      "ed_compare_rgb": [
+        0,
+        1,
+        0
+      ]
+    },
+    "empty": {
+      "background_rgb_premult": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "background_alpha": 0.0,
+      "expected_z": null,
+      "prefix_rgb_premult": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 1.0,
+      "composite_rgb": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "input": {
+        "z": [],
+        "alpha": [],
+        "rgb": []
+      },
+      "always_foreground_rgb": [
+        0,
+        1,
+        0
+      ],
+      "ed_compare_rgb": [
+        0,
+        1,
+        0
+      ]
+    }
+  }
+}
