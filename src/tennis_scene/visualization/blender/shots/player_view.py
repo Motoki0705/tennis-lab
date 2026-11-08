@@ -80,6 +80,7 @@ def build(package, viewer_id, backend):
     devices = configure_gpu(scene, backend)
     scene.render.use_motion_blur = False
     scene.render.dither_intensity = 0.0
+    scene.render.use_persistent_data = True
     fps = info["fps"]
     scene.render.fps = round(fps)
     scene.render.fps_base = scene.render.fps / fps
@@ -305,6 +306,7 @@ def main():
             "gpu_devices": devices,
             "motion_blur": scene.render.use_motion_blur,
             "dither_intensity": scene.render.dither_intensity,
+            "persistent_data": scene.render.use_persistent_data,
             "material": {
                 name: {
                     "alpha": bpy.data.materials[name]
