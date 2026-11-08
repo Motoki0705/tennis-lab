@@ -1,0 +1,19 @@
+{
+  "cameras": 5.0,
+  "foreground_cases": 54.0,
+  "public_rgb_max_error": 0.0,
+  "selected_full_prefix_max_error": 0.0,
+  "selected_opacity_rescaling_rgb_max_error": 0.00061,
+  "selected_response_max_error": 0.0,
+  "full_alpha_min_on_foreground": 0.99914,
+  "prefix_alpha_consistency_max_error": 0.0,
+  "harmonic_envelope_max_error": 0.0,
+  "ssaa2_ball_min_coverage_pixels": 1.0,
+  "large_gaussian_alpha_jump": 0.797469,
+  "large_gaussian_rgb_jump": 0.616957,
+  "large_gaussian_peak_mean_disagreement_pixels": 388.0,
+  "cuda_peak_allocated_bytes": 585277440.0,
+  "cuda_peak_reserved_bytes": 639631360.0,
+  "cpu_tests_passed": 56.0,
+  "cpu_test_wall_seconds": 6.95
+}

@@ -82,6 +82,9 @@ tags:
 
 ## 結論
 
+初回の観察を保持するnode。人間の近似判断を受けた
+[継続run](000031-run-player-prefix-approximation-20261108.md)でC5向けの方式を選定した。
+
 現行NHTのRGB・alpha・expected depthだけを使う前景合成は採用しない。
 同じRGB/alpha/EDでも正しい遮蔽色が異なる反例をCPUで構成し、通常eval3dの4つの既知層を
 GPUでも最大差1.29e-8で確認した。NHTの非線形shaderは部分特徴量をRGB寄与へ変換する
@@ -96,8 +99,8 @@ B00の3 cameraを256×144で描き、全背景alphaの平均が.9998でも前景
 前景までのlinear RGB寄与・透過率を返す必要な目標契約を固定し、単位・座標・色・alphaと
 公開API変更案を[研究bundle](../../runs/run-player-depth-compositing-20261108/README.md)へまとめた。
 局所linear RGBを取得するAPI/モデルは未実装であり、C5の本番合成は未達。
-現在のcheckpointを保つ近似の受容、または局所radiance decoderの学習・蒸留を許す追加範囲を、
-親と人間が判断する必要がある。背景再学習・NHT本体変更・C5実装は実施していない。
+初回は近似の受容または局所radiance学習の判断を親へ返した。その後の人間回答と
+近似の選定は上記の継続runを参照。背景再学習・NHT本体変更・C5実装は実施していない。
 
 ## 単位・色・性能の確認
 

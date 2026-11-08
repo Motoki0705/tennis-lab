@@ -17,7 +17,7 @@ def linear_to_srgb(rgb):
     return np.where(rgb <= 0.0031308, 12.92 * rgb, 1.055 * rgb ** (1 / 2.4) - 0.055)
 
 
-def prefix_parameters(transmittance, full_alpha, mode):
+def prefix_parameters(transmittance, full_alpha, mode, *, foreground_valid=None):
     """Return decoder feature scale and appearance weight (not physical opacity)."""
     if mode not in MODES:
         raise ValueError(f"Unknown approximation mode: {mode}")
@@ -27,17 +27,31 @@ def prefix_parameters(transmittance, full_alpha, mode):
         raise ValueError("Transmission and full alpha shapes must match (...,1)")
     if not np.isfinite(t).all() or not np.isfinite(full).all():
         raise ValueError("Transmission and alpha must be finite")
-    if np.any((t < 0) | (t > 1)) or np.any((full <= 0) | (full > 1)):
-        raise ValueError("Transmission must be [0,1] and full alpha (0,1]")
+    valid = np.ones_like(full, dtype=bool)
+    if foreground_valid is not None:
+        valid = np.asarray(foreground_valid)
+        if valid.dtype != np.bool_ or valid.shape != full.shape:
+            raise ValueError("Foreground valid must be bool and match alpha shape")
+    if (
+        np.any((t < 0) | (t > 1))
+        or np.any((full < 0) | (full > 1))
+        or np.any((full == 0) & valid)
+    ):
+        raise ValueError(
+            "Transmission/alpha must be [0,1]; valid full alpha must be >0"
+        )
     alpha = 1 - t
     if np.any(alpha > full + CONSISTENCY_ATOL):
         raise ValueError("Prefix alpha exceeds full alpha")
     alpha = np.minimum(alpha, full)  # only already-validated float32 roundoff
-    active = alpha > ALPHA_EPS
+    active = (alpha > ALPHA_EPS) & valid
     scale = np.ones_like(alpha)
     if mode in ("normalized", "closed_normalized"):
         np.divide(1 if mode == "normalized" else full, alpha, out=scale, where=active)
-    weight = np.divide(alpha, full) if mode == "closed_normalized" else alpha
+    weight = alpha
+    if mode == "closed_normalized":
+        weight = np.zeros_like(alpha)
+        np.divide(alpha, full, out=weight, where=valid)
     return np.where(active, scale, 0), np.where(active, weight, 0)
 
 
@@ -72,7 +86,9 @@ def composite_decoded(
     for rgb in (prefix, foreground, background):
         if not np.isfinite(rgb).all() or np.any((rgb < 0) | (rgb > 1)):
             raise ValueError("Assumed-sRGB inputs must be finite and in [0,1]")
-    _, weight = prefix_parameters(transmittance, full_alpha, mode)
+    _, weight = prefix_parameters(
+        transmittance, full_alpha, mode, foreground_valid=valid
+    )
     if weight.shape != valid.shape:
         raise ValueError("Alpha shapes do not match RGB")
     value = linear_to_srgb(

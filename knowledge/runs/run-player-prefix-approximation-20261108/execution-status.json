@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "session": "player-prefix-approx-20261108",
+  "gpu": "L4",
+  "phase": "stopped",
+  "created_at": "2026-11-08T14:39:07.832281+00:00",
+  "stopped_at": "2026-11-08T15:31:39.640836+00:00",
+  "gpu_allocation_elapsed_upper_bound_seconds": 3151.808555,
+  "gpu_budget_seconds": 10800,
+  "all_jobs_terminal_and_drive_saved": true,
+  "jobs": [
+    {
+      "job_id": "inputs",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T15:02:20.098903+00:00",
+      "finished_at": "2026-11-08T15:04:24.582810+00:00",
+      "drive_saved_at": "2026-11-08T15:04:24.582794+00:00"
+    },
+    {
+      "job_id": "probe",
+      "status": "failed",
+      "returncode": 1,
+      "started_at": "2026-11-08T15:17:18.870038+00:00",
+      "finished_at": "2026-11-08T15:19:51.959394+00:00",
+      "drive_saved_at": "2026-11-08T15:19:51.959376+00:00"
+    },
+    {
+      "job_id": "probe-v2",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T15:26:10.472284+00:00",
+      "finished_at": "2026-11-08T15:28:40.943268+00:00",
+      "drive_saved_at": "2026-11-08T15:28:40.943252+00:00"
+    },
+    {
+      "job_id": "setup",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T14:43:00.536663+00:00",
+      "finished_at": "2026-11-08T14:58:39.717574+00:00",
+      "drive_saved_at": "2026-11-08T14:58:39.717557+00:00"
+    },
+    {
+      "job_id": "stress-diagnostic",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T15:22:11.233459+00:00",
+      "finished_at": "2026-11-08T15:22:36.787080+00:00",
+      "drive_saved_at": "2026-11-08T15:22:36.787062+00:00"
+    },
+    {
+      "job_id": "sync-code",
+      "status": "cancelled",
+      "returncode": 130,
+      "finished_at": "2026-11-08T15:09:59.080109+00:00",
+      "drive_saved_at": "2026-11-08T15:09:59.080089+00:00"
+    },
+    {
+      "job_id": "sync-code-2",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T15:15:38.925039+00:00",
+      "finished_at": "2026-11-08T15:15:56.594003+00:00",
+      "drive_saved_at": "2026-11-08T15:15:56.593986+00:00"
+    },
+    {
+      "job_id": "sync-code-3",
+      "status": "completed",
+      "returncode": 0,
+      "started_at": "2026-11-08T15:24:31.933374+00:00",
+      "finished_at": "2026-11-08T15:24:51.134552+00:00",
+      "drive_saved_at": "2026-11-08T15:24:51.134532+00:00"
+    }
+  ],
+  "recovered_source_diff_bytes": 0,
+  "local_transport_cleanup_after_vm_stop": [],
+  "notes": [
+    "sync-code had a Notebook connection error; reconnected, cancelled and saved before sync-code-2",
+    "probe failed on a background stress sheet with zero native alpha; saved before bounded stress-diagnostic and probe-v2",
+    "Only probe-v2 supplies final candidate metrics; historical failure records are retained",
+    "Probe source differs from the final docs/CPU reference commit; the final reference skips division for zero background alpha outside foreground_valid. Positive-alpha B00 valid-sample equations are unchanged; 59 CPU tests pass."
+  ]
+}

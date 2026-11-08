@@ -22,3 +22,5 @@ alpha 的 RGB。`alpha.npy`是单独累积的 Gaussian 不透明度，并非最�
 
 拟议契约与实测限制见[合成研究记录](../../../../knowledge/runs/run-player-depth-compositing-20261108/README.md)，
 它们尚未实现为公开 schema 扩展。
+[C5 的命名近似契约](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation)
+同样属于实现提案，不改变上述现有数组的语义。

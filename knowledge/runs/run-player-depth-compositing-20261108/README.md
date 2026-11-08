@@ -1,5 +1,10 @@
 # NHTと不透明前景の奥行き合成の検証
 
+この文書は初回調査の観察を保持する。人間の「再学習せず近似」判断を受け、
+[継続run](../run-player-prefix-approximation-20261108/README.md)でfull-alpha closureを
+選定した。現在のC5向け方式は[別名の近似契約](contract.md#c5-approximation)を参照する。
+以下で未採用とする方式・未決の判断は初回調査時点のもの。
+
 親 #1723 / C4 #1728。C5 #1729へ渡す方式の研究記録。**調査は完了したが、現行NHTの
 RGB/alpha/EDを使う合成方式は採用していない。** 前景までのlinear RGB寄与と透過率を
 返す目標契約を[contract.md](contract.md)へ固定した。数式、Blender/NHTの入出力、

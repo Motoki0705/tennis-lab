@@ -2,11 +2,14 @@
 
 ## 結論の位置付け
 
-以下のlinear RGB prefix合成を**必要な目標契約**とする。現行NHT checkpointと
+以下のlinear RGB prefix合成は **`radiance_prefix_linear_v1` の目標契約**である。現行NHT checkpointと
 公開RGB/alpha/EDからこの契約を満たす出力を得られる、という採用宣言ではない。
 既存shaderの非線形性・部分特徴量の色の不定性が残り、C5はv1出力だけで
-この合成器を実装した扱いにしてはいけない。背景再学習・受入条件変更の必要性は
-親へ返す判断であり、この調査で暗黙に許可・実施しない。
+この合成器を実装した扱いにしてはいけない。
+[2026-11-08の人間判断](https://github.com/Motoki0705/tennis-lab/issues/1723#issuecomment-6722754922)
+により、背景再学習をせず現行shaderを使う近似へ進む。別名の
+[`nht_prefix_alpha_closed_srgb_v1`](#c5-approximation)を後述する。
+局所radianceの学習・蒸留、ネット遮蔽の省略は採らない。
 
 ## 合成式
 
@@ -99,7 +102,8 @@ linear radianceではない。入力動画のtransfer functionまで校正済み
 目標APIは `rgb_encoding=linear_rec709` と `alpha_association=premultiplied` を宣言し、
 最後のvideo出力で一度だけ選択したdisplay transform/OETFを適用する。
 現行NHTの最終RGBをsRGB逆変換するだけでは、層ごとのlinear寄与は復元されない。
-encoded RGB上でのalpha合成を採るなら別の近似契約と人間の判断が必要である。
+以下の近似ではsRGBと仮定して逆変換した値を混合するが、物理的な局所radianceの
+復元とは呼ばない。人間が第2フェーズの動画で見た目を判断する。
 
 ## 現行shaderと整合しない理由
 
@@ -123,7 +127,7 @@ D(0) = 0
 最大0.1901だった（0〜1のencoded RGB上）。これは単なる丸めの差ではない。
 `D(F_<)`が正しいpremultiplied色という候補は棄却する。alphaで掛け直す候補と
 特徴を正規化する候補は最大0.1263異なったが、その差をground truthに対する誤差と
-解釈しない。どちらもこの調査では採用していない。
+解釈しない。この初回probeでは採用せず、後述の継続比較へ引き継いだ。
 
 現行EDは別のeval3d passの `sum(w_i z_mean_i)` をNHT alphaで割る。
 `z_mean_i`はGaussian中心のcamera zである。NHTのnear/farもprojectionで中心を
@@ -131,7 +135,7 @@ D(0) = 0
 **mean-zによる選別**であり、任意の前景surfaceまでの物理的な積分の実装ではない。
 大きいGaussianが前景を跨ぐ場合、中心の前後判定だけでは不十分になる。
 
-## 提案する公開file境界
+## 目標契約の公開file境界（現行NHTでは未達）
 
 既存の`nht_render_request_v1/result_v1`の意味を変更しない。以下はC5がNHT側で
 実装するなら必要となる独立したversion付き境界の案であり、このPRには実装しない。
@@ -165,7 +169,11 @@ foreground深度のarray単位・dtype・camera ID・解像度・sample順の不
 sample-depth順への変更も既存tileのmean-z順と同一とは限らず、既存描画との一致を
 未検証のまま宣言しない。
 
-## C5の実装前に満たす検証
+## 初回の目標契約に対する検証設計
+
+これは正確なlinear prefix RGBを検討した初回の設計記録である。採用近似の必須数値検査は
+後述の別節に置く。既知層は遮蔽の正のcontrolとして再利用し、NHTの局所radiance学習を
+C5の前提に追加しない。
 
 1. CPUの独立した既知層とGPUの薄いGaussian sheetで、手前opaque・奥opaque・
    手前net/奥opaque・奥netの期待色と透過率を照合する。GPUの.999 opacity上限と
@@ -178,9 +186,176 @@ sample-depth順への変更も既存tileのmean-z順と同一とは限らず、�
    大きいGaussianが前景を跨ぐ位置で、元RGB保存・色の変化・遮蔽漏れを測る。
    現状、局所色の正解を持たないB00だけで物理的に正しい色を実証したとはしない。
 
-現行重みを保つ近似を採用するか、局所radianceを学習する範囲を追加するかは親と
-人間が決める必要がある。C3の人間受入も独立したC5開始条件であり、この調査の
-PR/CI成功では解除されない。
+近似で進める判断は上記の人間回答で確定した。C3の人間受入は独立したC5開始条件であり、
+この調査のPR/CI成功では解除されない。
+
+<a id="c5-approximation"></a>
+
+## C5近似契約: full-alpha closure
+
+識別子は **`nht_prefix_alpha_closed_srgb_v1`**。B00の3視点＋うち2視点のSSAA2、
+54配置の比較で下記の数値検査を全て通し、C5向けの近似として採用した。
+[`run-player-prefix-approximation-20261108`](../run-player-prefix-approximation-20261108/README.md)
+が比較・実測の正本。この節は上の正確なlinear prefix契約とは異なる近似である。
+
+### 量と比較候補
+
+`F_< = sum(z_mean_i < z_fg, w_i h_i)`、`T_<`は同じprefixのnative透過率、
+`a=1-T_<`。`F_all`、`A`は同じcamera/sample・near/farの全背景特徴とalpha、
+`B=D(F_all,ray)`は現行public背景RGB。`D`は固定済み学習shaderであり、
+ray encodingを正規化・alpha除算しない。`F`はharmonic特徴のchannelだけを指す。
+
+| 候補 | straight RGB proxy `Q` | 背景proxyの混合重み |
+|---|---|---|
+| W: alpha掛け直し | `D(F_<,ray)` | `a` |
+| N: 特徴正規化 | `D(F_</a,ray)` | `a` |
+| R: full-alpha closure | `D(A F_</a,ray)` | `rho=a/A` |
+
+Rでは、`tau=1-rho=(T_<-(1-A))/A`を前景の**近似混合重み**とする。
+`tau`をnativeな物理透過率`T_<`と同一と呼ばない。既存decoderがほぼopaqueな
+全背景特徴を教師にした点を保ち、同じ特徴平均のopacityだけを変えてもproxy色を変えず、
+全prefixで元の入力`F_all`へ戻すための補正である。
+
+```text
+valid == false: out = B                         # bitwise original RGB
+a <= 1e-6:      out = E_fg                      # skip biased D(0)
+otherwise:
+    Q = D((A/a) * F_<, ray)                     # straight, encoded proxy
+    rho = a/A; tau = 1-rho
+    L_out = rho * srgb_eotf(Q) + tau * srgb_eotf(E_fg)
+    out = srgb_oetf(L_out)
+```
+
+`E_fg`は前景のstraightなdisplay RGB。sRGB EOTFは`e<=.04045`で`e/12.92`、
+それ以外`((e+.055)/1.055)^2.4`。OETFはその逆であり、EOTF後の値を
+scene-linear radianceと称さない。撮影動画のtransferがsRGBだった証拠はなく、
+この仮定は見た目の制約として残す。式は`approximation.py`のCPU参照実装を正本とする。
+
+空prefixでは前景色そのもの。全prefixでは`a=A,F_<=F_all`なので`rho=1,Q=B`、
+全背景alphaが1未満でも元画像へ戻る。不透明前景にsuffixのRGBを加える項はない。
+ただし補正に全背景alpha `A`を使うので、suffixのopacityまで変えれば結果は変わり得る。
+`A>=.98`のサポート条件では`|tau-T_<|<=1-A<=.02`。これは重みの上限であり、
+局所色の正解に対する誤差上限ではない。
+
+NHTのharmonic sin/cos特徴は各channelの絶対値が1以下なので`|F_<|<=a`。
+Rのdecoder入力は`|A F_</a|<=A`となるが、相関や意味が学習分布内という保証はない。
+`a<=1e-6`を捨てた場合、同じ式とのlinearized RGB差の上限は`1e-6/.98`、
+encoded差は最大約`1.32e-5`。これは量子化方針の数値上限である。
+
+### 深度選別と共通sample
+
+既存near/farとtileのmean-z順を保ち、各sampleで**Gaussian中心のcamera zが
+前景zより小さい**寄与だけを蓄積する。同値は前景を優先。ED/median depth/ray-peakへ
+置換しない。現在のfar選別を画素ごとの前景深度へ拡張する案であり、Gaussian体積を
+不透明surfaceで物理的に切る機能ではない。大きいGaussianの跨ぎ・順序の誤りは残る。
+
+初期profileは出力に対しSSAA2: NHTとBlenderを`2W x 2H`、Kの第1・2行を2倍で描き、
+同じpixel-center rayの**binaryな不透明coverage**と最近面camera-zを使う。
+各working sampleで上式を適用してから、2x2の`L_out`を平均しOETFを一度かける。
+Blenderの最近面Z/Positionから作るbinary maskを使い、filtered Combined alphaの
+しきい値だけで幾何maskを作らない。C5ではPositionから求めたrayとpixel-center rayの
+最大差<=1e-3 px、既知面のcamera-z差<=1e-5 mを確認し、Combinedのstraight色が
+有効幾何sampleに供給できない場合はcoverage不整合として拒否する。
+背景だけの場合の基準も同じworking-gridのpublic背景を同じ方法で縮小した画像とする。
+native低解像度画像との完全一致は要求しない。AA済みRGBAと別sampleのZを混ぜず、
+DOF・motion blur・TAAはこのprofileに含めない。
+
+Blenderのpremultiplied scene-linear Combinedは有効sampleのalphaで一度だけstraight化し、
+明示したdisplay transformで`E_fg`へ変換する。初期契約はStandard/exposure0/gamma1/sRGB。
+AgXを二重にかけない。HDRのclipping数を記録し、色transformをmetadataへ残す。
+C3の承認済み球・材質・時刻を尊重し、probeの球radius .0335 mを本番既定にしない。
+
+球のsample消失は遮蔽と区別する。保守的なサポート条件は
+`q * min(fx,fy) * radius_m / (z_center_m + radius_m) >= 1`（`q=2`）。
+満たさない有効球は`undersampling`として検出し、承認済みの解像度または明示した固定qを
+上げる。欠測や全遮蔽として黙って落とさない。この条件でも物理的な可視色は保証しない。
+
+### C5が追加する公開file境界
+
+既存v1を変更せず、version付きrequest/resultの新modeとして追加する。
+foreground入力のshape・dtype・単位・camera/sample対応は上記の目標APIと共通だが、
+`requested_color_model=nht_prefix_alpha_closed_srgb_v1`を明示する。非対応なら拒否する。
+NHTコマンド内で固定shaderを適用し、consumerはNHT internalsやcheckpointをimportしない。
+背景のnear/farは保存runtimeのNHT単位をそのまま保つ。前景のBlender clipは別にmで記録し、
+有効zがその範囲内かつ背景nearより先・背景farより手前であることを検査する。
+前景farだけが100 m等の場合も、元背景のfarを暗黙に100 mへ変えない。
+
+| result | 近似modeの意味 |
+|---|---|
+| `background_rgb_encoded.npy` | 同じworking gridの元public RGB `B`、float32 HxWx3 |
+| `background_alpha.npy` | native全背景alpha `A`、float32 HxWx1 |
+| `prefix_features.npy` | native蓄積harmonic特徴 `F_<`、float32 HxWxE。view-rayを含めない |
+| `prefix_transmittance.npy` | native `T_<`、float32 HxWx1。全背景alphaから代用しない |
+| `prefix_rgb_proxy.npy` | `D(A F_</a,ray)`、**straight encoded RGB proxy**。物理premultiplied RGBではない |
+| metadata | model/scene・adapter・camera・frame/time・q・pixel origin・near/far・mean-z strict gate・encoded RGB/assumed-sRGB・前景display transform・mode/schema version |
+| diagnostics | support違反・undersampling・HDR clipping・非有限・範囲/shape不一致をframe/objectに対応させる |
+
+入力はvalidで有限・near<z<far、invalidならz=0。`A`は有限[0,1]、foreground valid上で
+`A>=.98`をサポート条件とする。mask外の`A=0`は許可し、除算をせず元RGBを保存する。
+`a<=A+2e-6`を検査し、差が丸めの範囲の場合だけaをAへclampする。
+それ以上の不整合、単位やshapeの誤りは失敗とし、ED合成や最前面貼りへフォールバックしない。
+特徴・Tの出力は全背景特徴と同じraster passで取得し、prefix skipはsuffixのRGBを読まない。
+native早期終了とopacity閾値は明示し、全prefixを元rendererと照合する。
+
+変更箇所の案はNHTの`nht_pipeline/schemas/{render-request,render-result}.schema.json`に対応する
+新version、`nht_pipeline/render.py::ResidentSceneRenderer`、gsplatのNHT world-raster CUDA境界。
+per-pixel zを読み、現行tile順の最初の`z_mean>=z_fg`で蓄積特徴とTをsnapshotし、
+全背景の蓄積は続ける。harmonic特徴だけを上式でscaleし、同じview-rayを使ってdecodeする。
+consumerの`NHTRenderClient`は公開fileだけを読み、schema/shape/encoding/unitsを検査する。
+本issueでこのNHT変更を実装したとはしない。
+
+### 描画時間とメモリの見積り方
+
+実測時間・PyTorch peak・研究用depth別renderの回数は継続runのREADME/数値を参照する。
+本番のper-pixel kernelは未実装なので、そのframe時間を実測済みとは呼ばない。
+初期見積りは同じworking-gridのnative raster 1回とshader 1回をprefix追加分とする。
+full RGB/alphaのrasterとdecoder、Blender、file I/O、resizeは別に加算する。
+研究probeがsurface上の各異なるzごとにscalar renderする時間を、本番時間へ外挿しない。
+
+`F_<`と`T_<`だけでもFP32で`4(E+1)q^2WH` byte必要。B00のE=24なら
+256x144/q1で3.52 MiB、同じ出力のq2で14.06 MiB。例として1920x1080/q2では
+791.02 MiBであり、全背景特徴・RGB・depth/mask・tile/Gaussian workspace・TCNNを含まない。
+GPU batch1でframeごとに処理し、配列を全動画分GPU/RAMへ蓄積しない。
+Fpを公開fileへ保存するI/O・保持容量も同じ式で見積もり、C5が固定入力で実測する。
+今回のPyTorch peakはTCNN等の外部allocationを含む総VRAM上限ではない。
+
+### 自動で検査する数値条件
+
+以下は0〜1 floatのworking-grid値。公開API実装時の固定入力受入にも再利用する。
+物理的な正解色への精度基準ではなく、再現・境界条件・計算の整合を測る。
+比較候補の選定器は継続runの`evaluate.py`であり、閾値はGPU実行前に固定した。
+
+| 検査する量 | 合格条件 |
+|---|---|
+| raw全特徴をdecodeしたRGB vs同gridのpublic RGB | 最大絶対差 <=2e-5 |
+| 前景なし・mask外RGB vs元背景 | bitwise同一、最大差0 |
+| 空prefix vs前景色 | 最大差 <=2e-6 |
+| 全prefix vs元背景RGB | 最大差 <=2e-5 |
+| 同一特徴平均をalpha .005/.02/.1/.5/.99で減衰したstraight proxy色 | 全alpha対の最大差 <=.005 |
+| 前景色変更時のlinearized応答 vs `tau * delta(L_fg)` | 最大差 <=2e-6 |
+| 同じprefix/T/AでsuffixのRGBだけ変更した有効面 | bitwise不変（CPU参照テスト） |
+| `a>A` / `abs(F_<)>a`の超過 | 各最大 <=2e-6 |
+| foreground valid上の全背景alpha | 最小 >=.98 |
+| 全出力 | finite、RGB/Tは[0,1] |
+| 固定3cameraのnet前後の球 | 後のprefix alpha平均が前より >=.02大きい |
+| SSAA2・2camera・各8位置の細い球 | 各位置の有効working sample数 >0、coverage面積を併記 |
+| 大きいGaussianの既知破綻fixture | 中心を跨ぐprefix alpha jump >.05、ray-peakとmean-zの前後不一致 >0画素を**検出・記録** |
+
+最後の行は問題を解消したという合格ではない。mean-z近似の失敗条件を再現する検査である。
+薄い不透明sheetの期待式と前後関係は初回runの既知層CPU/GPU検査で独立に守る。
+実モデルには局所色のground truthがなく、net ROIの数値をsemantic segmentationとは呼ばない。
+
+### 人間が第2フェーズ動画で確認する点
+
+- ネット・テープ・支柱の手前／奥で、人物と球の見え方が切り替わるか。
+- 細い球の移動中の消失・ちらつきと、人物輪郭のhalo・背景の色のにじみ。
+- 低alpha領域の灰色化・彩度変化、背景と人物の露出・照明・ぼけの違い。
+- 大きいGaussianを跨ぐときの突然の遮蔽変化と、ネット本体以外の誤った遮蔽。
+- support/undersampling等の診断を元frame/object IDで追え、欠測・遮蔽と区別できるか。
+
+不具合をopacity調整・ネット除去・無記録のdepth biasで隠さない。見た目が不合格なら
+そのframeと診断を親へ返し、人間の再判断を得る。C3の動画受入と、この近似による第2フェーズの
+動画受入は別の条件として残る。B00の小規模比較の合格をB01〜B03の受入に一般化しない。
 
 ## 参照する実装・一次資料
 

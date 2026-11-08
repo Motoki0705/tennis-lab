@@ -28,3 +28,5 @@ input and the result has no depth-conditioned RGB contribution or transmittance.
 The proposed contract and measured limitations are research evidence in
 [the compositing study](../../../../knowledge/runs/run-player-depth-compositing-20261108/README.md),
 not an implemented extension of these public schemas.
+The [named approximation for C5](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation)
+is also a proposal; it does not change the current array semantics above.

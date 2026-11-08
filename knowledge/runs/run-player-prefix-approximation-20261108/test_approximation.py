@@ -27,6 +27,25 @@ def test_no_foreground_keeps_public_rgb_bits(mode):
 
 
 @pytest.mark.parametrize("mode", _module["MODES"])
+def test_zero_background_alpha_outside_foreground_preserves_rgb(mode):
+    background = np.asarray([[0.1, 0.2, 0.3], [0.25, 0.5, 0.75]], np.float32)
+    actual = composite(
+        [[1, 0, 0], [0, 0, 0]],
+        [[0.75], [1]],
+        [[1], [0]],
+        [[0, 1, 0], [1, 1, 1]],
+        background,
+        np.asarray([[True], [False]]),
+        mode=mode,
+    )
+    # First sample: independent sRGB values for linear red .25 + green .75.
+    np.testing.assert_allclose(
+        actual[0], [0.53709873, 0.88082502, 0], atol=1e-7, rtol=0
+    )
+    assert actual[1].tobytes() == background[1].tobytes()
+
+
+@pytest.mark.parametrize("mode", _module["MODES"])
 def test_empty_prefix_keeps_foreground_without_decoder_bias(mode):
     foreground = np.asarray([[0.2, 0.5, 0.9]], dtype=np.float32)
     actual = composite(
@@ -175,3 +194,34 @@ def test_subpixel_ball_has_four_known_samples_on_common_ssaa2_grid():
     assert valid[143:145, 255:257].all()
     assert ((z[valid] > 9.96) & (z[valid] < 10)).all()
     assert (z[~valid] == 0).all()
+
+
+def test_covered_surface_does_not_use_suffix_rgb_at_fixed_opacity():
+    # Only the public full RGB changes; prefix features/decoded color and full
+    # opacity stay fixed. A full-background overlay would leak that change.
+    foreground = np.asarray([[0.1, 0.6, 0.2], [0.7, 0.3, 0.8]], np.float32)
+    proxy = np.asarray([[0.2, 0.3, 0.5], [0.5, 0.4, 0.2]], np.float32)
+    valid = np.asarray([[True], [False]])
+    background_a = np.asarray([[0.01, 0.02, 0.03], [0.2, 0.4, 0.6]], np.float32)
+    background_b = np.asarray([[0.99, 0.98, 0.97], [0.8, 0.6, 0.4]], np.float32)
+    a = composite(
+        proxy,
+        [[0.5], [0.5]],
+        [[0.999], [0.999]],
+        foreground,
+        background_a,
+        valid,
+        mode="closed_normalized",
+    )
+    b = composite(
+        proxy,
+        [[0.5], [0.5]],
+        [[0.999], [0.999]],
+        foreground,
+        background_b,
+        valid,
+        mode="closed_normalized",
+    )
+    np.testing.assert_array_equal(a[0], b[0])
+    np.testing.assert_array_equal(a[1], background_a[1])
+    np.testing.assert_array_equal(b[1], background_b[1])

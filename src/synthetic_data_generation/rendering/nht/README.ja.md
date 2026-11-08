@@ -24,3 +24,5 @@ depthで条件付けたRGB寄与・透過率の出力がありません。
 
 提案する契約と実測上の制約は[合成方式の研究記録](../../../../knowledge/runs/run-player-depth-compositing-20261108/README.md)
 に置いています。公開schemaに実装済みの拡張ではありません。
+[C5向けの別名の近似契約](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation)
+も実装案であり、上記の現行配列の意味は変更しません。

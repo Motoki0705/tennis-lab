@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "limits": {
+    "public_rgb_max_error": 2e-05,
+    "no_foreground_max_error": 0,
+    "empty_prefix_max_error": 2e-06,
+    "full_prefix_max_error": 2e-05,
+    "opacity_rescaling_straight_rgb_max_error": 0.005,
+    "outside_mask_max_error": 0,
+    "response_max_error": 2e-06,
+    "prefix_alpha_consistency_max_error": 2e-06,
+    "harmonic_envelope_max_error": 2e-06,
+    "full_alpha_min_on_foreground": 0.98
+  },
+  "candidates": {
+    "weighted": {
+      "metrics": {
+        "no_foreground_max_error": 0.0,
+        "empty_prefix_max_error": 0.0,
+        "full_prefix_max_error": 0.02032148838043213,
+        "opacity_rescaling_straight_rgb_max_error": 0.52783203125,
+        "outside_mask_max_error": 0.0,
+        "response_max_error": 9.671137459615897e-08
+      },
+      "failures": [
+        "full_prefix_max_error",
+        "opacity_rescaling_straight_rgb_max_error"
+      ],
+      "eligible": false
+    },
+    "normalized": {
+      "metrics": {
+        "no_foreground_max_error": 0.0,
+        "empty_prefix_max_error": 0.0,
+        "full_prefix_max_error": 0.019215375185012817,
+        "opacity_rescaling_straight_rgb_max_error": 0.000732421875,
+        "outside_mask_max_error": 0.0,
+        "response_max_error": 1.0989265213784405e-07
+      },
+      "failures": [
+        "full_prefix_max_error"
+      ],
+      "eligible": false
+    },
+    "closed_normalized": {
+      "metrics": {
+        "no_foreground_max_error": 0.0,
+        "empty_prefix_max_error": 0.0,
+        "full_prefix_max_error": 0.0,
+        "opacity_rescaling_straight_rgb_max_error": 0.0006103515625,
+        "outside_mask_max_error": 0.0,
+        "response_max_error": 1.086700714969524e-07
+      },
+      "failures": [],
+      "eligible": true
+    }
+  },
+  "global_failures": [],
+  "selected": "closed_normalized",
+  "net_pairs": [
+    {
+      "camera": 0,
+      "prefix_alpha_before": 0.046391963958740234,
+      "prefix_alpha_after": 0.40533530712127686
+    },
+    {
+      "camera": 1,
+      "prefix_alpha_before": 0.0,
+      "prefix_alpha_after": 0.12237529456615448
+    },
+    {
+      "camera": 2,
+      "prefix_alpha_before": 0.017171964049339294,
+      "prefix_alpha_after": 0.4837208390235901
+    }
+  ],
+  "ssaa2_ball_min_coverage_pixels": 1.0,
+  "physical_local_color_accuracy_measured": false,
+  "large_gaussian_is_known_limitation": true
+}

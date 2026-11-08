@@ -66,7 +66,7 @@
 
 - **現行の方針**（2026-10-22のユーザー判断）: Courtの合成画像はすべてtrainに使い、実画像は動画単位で分けたval/testの評価専用にします。B00〜B03の3DGSシーンから層別counterのproduction recipeで生成し（[設計文書](reports/court-scale-trajectory-design.md)）、L4での分割生成とDriveからの復旧を[確認](nodes/synthetic_data_generation/000027-run-court-scale-colab-resume-l4-20261023.md)しました。
 - **限界**: コート全体が写る視点が少なく、狭角ではKPの支持が減り、ぼけ・線の不一致も残ります（[描画品質の診断](nodes/synthetic_data_generation/000025-run-court-novel-view-quality-20261022.md)）。SfMの地面に高さの不整合があり、合成教師の幾何的な不確実性として扱います（[診断](nodes/synthetic_data_generation/000023-run-court-sfm-all-scenes-drift-20260920.md)）。
-- **動的前景の合成**: 現行NHTのRGB/alpha/EDだけでは、ネット等の途中へ不透明面を正しく挿入する情報が不足します。B00の小規模L4 probeで非線形shaderとprefixの制約を[確認](nodes/synthetic_data_generation/000030-run-player-depth-compositing-20261108.md)しました。linear RGB寄与・透過率の公開契約が必要で、C5には近似の受容または局所radiance学習の判断が残ります。
+- **動的前景の合成**: 現行NHTのRGB/alpha/EDだけでは[情報不足](nodes/synthetic_data_generation/000030-run-player-depth-compositing-20261108.md)です。人間の「再学習せず近似」判断に従い、prefix特徴・透過率を使うfull-alpha closureを[選定](nodes/synthetic_data_generation/000031-run-player-prefix-approximation-20261108.md)しました。C5で公開APIと共通sample合成を実装します。局所色の正確さは保証せず、大きいGaussianの深度跨ぎも残ります。C3受入と第2フェーズ動画の人間確認は独立に必要です。
 - **次の実験**: 写り方別の評価と、生成・学習の費用の確認（#1356）。
 
 ## 注釈（annotation・player_pose_annotation）
