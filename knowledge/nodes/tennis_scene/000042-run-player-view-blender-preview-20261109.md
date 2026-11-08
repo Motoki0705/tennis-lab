@@ -101,8 +101,11 @@ Colab job `c3-preview-24` はcompleted・returncode=0、Drive保存は2026-11-08
 `outputs/tennis_scene/visualize/player_view/blender-acceptance-20261109/package`。
 元bundle/保存cameraのdigest・ID・時間軸・maskをCPUで照合してから作成した。
 保存記録の`881dc286c`へ同梱`uncommitted.patch`を適用すると、この実描画のMesh Cache CUSTOM指定になる。
-歴史的commandは`repro.sh`、実行したqueue scriptは同梱`c3-preview-queue.sh`。
-新規Colab checkoutでpackageを元のrepo相対pathへ取得し、同scriptをcommandが参照するoutputs配下へ配置する。
+履歴から生成した元の再現commandは`colab-original-repro.sh`へ原文のまま保持した。
+実行したqueue scriptは同梱`c3-preview-queue.sh`で、`repro.sh`はこれを元のoutputs位置へ配置してから
+元commandを呼ぶ。既存scriptが異なる場合は上書きせず停止する。
+run bundleは`TENNIS_REPO`で指定する新規checkoutの外へ置き、packageを元のrepo相対pathへ取得する。
+再現時にcheckoutが元のGit refへ切り替わっても、保存patchとqueue scriptはbundle側に残る。
 既存の出力やqueue stateを再利用して上書きしない。GPU実行・帰属はプロジェクトの資源手順に従う。
 
 全frameの描画記録とPNGは`artifacts.drive_outputs`、運用記録とsource snapshotは`artifacts.drive_record`に保存。
