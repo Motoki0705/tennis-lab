@@ -5,13 +5,35 @@ from pathlib import Path
 import pytest
 
 from src.tasks.base.annotation.artifacts import write_document
-from src.tasks.base.annotation.contracts import Document
+from src.tasks.base.annotation.contracts import (
+    ArtifactRef,
+    Document,
+    PublicationReceipt,
+)
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.publication import publish_directory
 
 
 class Snapshot(Document):
     value: int
+
+
+def test_publication_receipt_requires_one_explicit_teacher_input_and_preserves_legacy_bytes() -> None:
+    reference = ArtifactRef(role="annotation", path="annotations/original.json", digest="a" * 64, size_bytes=10)
+    payload = dict(task="ball", product="frames", request_id="b" * 64, base_snapshot=None,
+                   snapshot=reference, adoptions=(), added_clips=("c" * 64,), reused_clips=())
+    with pytest.raises(ValueError, match="adoption receipts or saved annotations"):
+        PublicationReceipt(**payload)
+    direct = PublicationReceipt(**dict(payload, annotations=(reference,)))
+    assert direct.adoptions == ()
+    assert PublicationReceipt.model_validate_json(direct.canonical_bytes()) == direct
+    with pytest.raises(ValueError, match="one explicit teacher input mode"):
+        PublicationReceipt(**dict(payload, annotations=(reference,), adoptions=(reference,)))
+    with pytest.raises(ValueError, match="annotation revisions must be unique"):
+        PublicationReceipt(**dict(payload, annotations=(reference, reference)))
+    legacy = PublicationReceipt(**dict(payload, adoptions=(reference,)))
+    assert "annotations" not in legacy.model_dump(mode="json")
+    assert PublicationReceipt.model_validate_json(legacy.canonical_bytes()).canonical_bytes() == legacy.canonical_bytes()
 
 
 def test_foreign_or_unowned_staging_is_never_deleted(tmp_path: Path):

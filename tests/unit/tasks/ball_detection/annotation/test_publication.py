@@ -8,7 +8,8 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
+from unittest.mock import Mock
 
 import numpy as np
 import pytest
@@ -37,6 +38,7 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts 
     LegacySourceGroup,
     PublishRequest,
     SourceSplit,
+    VideoPublishRequest,
 )
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher import (
     BallPublisher,
@@ -62,6 +64,10 @@ from src.tasks.base.annotation.learning.validation import check_completion
 from src.tasks.base.annotation.paths import AnnotationLayout
 from tests.support.tasks.ball_detection.annotation import Environment
 from tests.support.tasks.ball_detection.store import ball, frame, write_store_clip
+from tests.support.tasks.ball_detection.video_publication import (
+    VideoEnvironment,
+    incremental_case,
+)
 
 
 def test_snapshot_does_not_reexport_shared_data_reference() -> None:
@@ -145,8 +151,7 @@ def seal(env: Environment, *, sealed: bool = True) -> ArtifactRef:
     return adopted
 
 
-@pytest.fixture
-def setup(tmp_path: Path) -> tuple[Environment, PublishRequest, Path]:
+def legacy_setup(tmp_path: Path) -> tuple[Environment, PublishRequest, Path]:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     base = write_store_clip(
         tmp_path / "data/ball_detection/baseline",
@@ -177,7 +182,17 @@ def setup(tmp_path: Path) -> tuple[Environment, PublishRequest, Path]:
     return env, request, base
 
 
-def destination(env: Environment) -> Path:
+@pytest.fixture
+def setup(tmp_path: Path) -> tuple[Environment, PublishRequest, Path]:
+    return legacy_setup(tmp_path)
+
+
+@pytest.fixture(params=("review", "video"))
+def interrupted_setup(request: pytest.FixtureRequest, tmp_path: Path) -> tuple[Environment | VideoEnvironment, PublishRequest | VideoPublishRequest, Path]:
+    return incremental_case(tmp_path) if request.param == "video" else legacy_setup(tmp_path)
+
+
+def destination(env: Environment | VideoEnvironment) -> Path:
     path: Path = env.layout.repository / "data/ball_detection/incremental/frames"
     return path
 
@@ -257,7 +272,7 @@ def test_publication_pointer_and_protection_are_atomic_after_files_appear(
 
 
 def result(
-    env: Environment, reference: ArtifactRef
+    env: Environment | VideoEnvironment, reference: ArtifactRef
 ) -> tuple[PublicationReceipt, BallSnapshot, BallFrameStore]:
     receipt = read_document(env.layout, reference, PublicationReceipt)
     snapshot, store = load_snapshot(env.layout, receipt.snapshot)
@@ -312,7 +327,7 @@ def test_publication_preserves_base_bytes_rows_and_sealed_review_masks(
     )
     assert len(receipt.reused_clips) == 1 and len(snapshot.clips) == 2
     assert store.clips[0] == old.clips[0]
-    assert store.metadata["clips"][0] == old.metadata["clips"][0]
+    assert cast(list[Any], store.metadata["clips"])[0] == cast(list[Any], old.metadata["clips"])[0]
     for path, payload in before.items():
         assert path.read_bytes() == payload
     for row in range(len(old)):
@@ -339,7 +354,7 @@ def test_publication_preserves_base_bytes_rows_and_sealed_review_masks(
     assert store.instances_of(int(rows[4])).xy.tolist() == [[16.0, 12.0]]
     assert store.instances_of(int(rows[5])).occluded.tolist() == [True]
     assert store.frames["segment_break"][rows[2]]
-    assert len(store.metadata["append_history"]) == 1
+    assert len(cast(list[Any], store.metadata["append_history"])) == 1
     assert snapshot.clips[0].split == "val" and snapshot.clips[1].split == "train"
     with BallPublisher(env.layout).registry.transaction() as db:
         registered = db.execute("SELECT receipt FROM ball_publications").fetchone()
@@ -403,11 +418,15 @@ def test_replay_and_concurrent_publications_encode_new_clip_only_once(
     ],
 )
 def test_interrupted_publication_recovers_without_duplicate_additions(
-    setup: tuple[Environment, PublishRequest, Path],
+    interrupted_setup: tuple[Environment | VideoEnvironment, PublishRequest | VideoPublishRequest, Path],
     monkeypatch: pytest.MonkeyPatch,
     phase: str,
 ) -> None:
-    env, request, base = setup
+    env, request, base = interrupted_setup
+    previous_history = cast(list[Any], BallFrameStore(base).metadata.get("append_history", []))
+    submit, register = Mock(), Mock()
+    monkeypatch.setattr("src.tasks.base.annotation.execution.runner.StageRunner.submit", submit)
+    monkeypatch.setattr("src.tasks.base.annotation.learning.service.Learning.register", register)
     original_encode, original_json, original_rename, original_write = (
         publishing.encode_clip,
         publishing._durable_document,
@@ -483,9 +502,13 @@ def test_interrupted_publication_recovers_without_duplicate_additions(
     receipt, _, store = result(env, reference)
     assert receipt.added_clips == (env.manifest.clip_id,)
     assert len(store.clips) == 2
-    assert len(store.metadata["append_history"]) == 1
+    history = cast(list[Any], store.metadata["append_history"])
+    assert history[:-1] == previous_history
+    assert len(history) == len(previous_history) + 1
     assert calls == [env.manifest.clip_id]
     assert service.publish(request) == reference
+    submit.assert_not_called()
+    register.assert_not_called()
 
 
 def test_foreign_destination_reservation_is_not_overwritten(
@@ -735,7 +758,7 @@ def test_second_append_preserves_explicit_masks_and_existing_snapshot(
         assert old.semantic_digest == copied.semantic_digest
         assert old.clip_id == copied.clip_id and old.source_id == copied.source_id
         assert old.shard.digest == copied.shard.digest
-    assert len(store.metadata["append_history"]) == 2
+    assert len(cast(list[Any], store.metadata["append_history"])) == 2
     load_snapshot(env.layout, first_receipt.snapshot)
 
 

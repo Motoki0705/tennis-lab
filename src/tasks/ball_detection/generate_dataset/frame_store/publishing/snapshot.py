@@ -77,6 +77,10 @@ def validate_snapshot(
             raise ValueError("snapshot video hash differs from its storage contract")
         if splits.setdefault(identity.source_id, identity.split) != identity.split:
             raise ValueError("snapshot splits one source across partitions")
+        if store.target_semantics == "active_ball" and identity.source_id != clip.group_id:
+            raise ValueError("snapshot source differs from its original recording group")
+        if store.target_semantics == "active_ball" and identity.shard.digest != clip.media_sha256:
+            raise ValueError("snapshot images differ from the registered native JPEG archive")
     return store
 
 

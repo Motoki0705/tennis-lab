@@ -66,6 +66,7 @@ class AnnotationStates:
 
 
 def annotation_states(store: BallFrameStore, clip: ClipRecord) -> AnnotationStates:
+    store.require_target_semantics("legacy_ball")
     rows = store.clip_rows(clip)
     n = clip.frame_count
     counts = store.frames['inst_count'][rows].astype(np.int64)

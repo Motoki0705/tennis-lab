@@ -1,6 +1,7 @@
 # Ball frame storeの増分公開
 
-`BallPublisher.publish(PublishRequest(...))`は、seal済みのballレビューを
+`BallPublisher.publish(PublishRequest(...))`は、seal済みのballレビューを、
+`BallPublisher.publish(VideoPublishRequest(...))`は、登録済み元動画の完成v3注釈を
 `data/ball_detection/<version>/frames/`へ新しい不変snapshotとして公開する。
 `ProductPlan`の`dataset_task=ball_detection`、`component=frames`を要求する。
 別componentのposeは同じversion配下へ独立に公開できる。
@@ -11,9 +12,69 @@ data-rootのファイル参照を作る`data_reference`は、共有APIの
 [`src.tasks.base.annotation.artifacts`](../../../../base/annotation/artifacts.py)から
 直接importする。`snapshot.py`はこの共通APIを再exportしない。
 
+## 元動画v3の公開方針
+
+元の[`video_ball_annotation.v3`](../../../annotation/video/README.md)を正式readerで直接読み、
+登録済みの独立した`VideoAnnotationInput`と照合する。sceneの三角測量・平滑化した座標を
+GPTの元注釈へ戻さない。新しい独立QA・observed_onlyの採用gateは加えない。
+
+- 対象はcameraが向くコートでプレーする生きた1球、`target_semantics="active_ball"`。
+  手持ち球・予備球・隣接コートの球を網羅する教師ではない。
+- 位置利用可の全点（observed / interpolated / estimated / occlusion_estimated）を
+  座標・heatmapの正例とする。**観測と推定は同じ重み1という初期設計案**を明示的に採用し、
+  `position_weighting="uniform_observed_and_estimated"`とsnapshotの`position_weights`へ固定する。
+  低重み化、追加の補間時間制限、observedへの由来の付替えを行わない。
+- `no_active_ball`と`out_of_frame`はactive_ballだけのheatmap負例。座標教師はない。
+  最終`unknown`と座標なしの遮蔽は両教師maskを無効にする。状態・遮蔽・点種・support・notesを
+  元v3のままsnapshot metadataに保持し、不在とunknownを合流させない。
+- planの`publish_dataset=True`と、登録した全camera・全関連clipの完成を要求する。
+  最終unknownは完成に含めるが、未処理が1frameでもあれば公開を拒否する。部分集合の公開も拒否する。
+  公開しなくても保存済み注釈は残る。
+- `image_storage="jpeg", jpeg_quality=90`を要求する。登録時のnative Q90 JPEG archiveを
+  bytes・offset・frame別hashを照合してhardlinkし、再圧縮・resize・paddingしない。
+  storeの`pts`はrebased clip時刻ではなく元v3の実整数PTS、frameの元番号は保持したv3にある。
+  元解像度、time_base、native FPS、camera、元動画identityも保存する。
+- `recording_source_id(recording_id)`（登録時の収録channel IDと同じ）をgroup/source IDとする。
+  全cameraと関連clipは同じgroup/splitになる。`source_splits`または`source_partition`を明示し、
+  既存baseのholdoutを含むsplit変更は拒否する。local planのpartition件数は動画本数ではなく
+  **新規収録group数**である。少数収録で比率を正確に表せなければ明示splitを使う。
+- 注釈schemaのv3、frame store schemaの`ball_detection_frames.v4`、
+  `ProductPlan.dataset_version`（任意の新snapshot版名）は別々の版である。
+  旧storeの教師対象は自動的にactive_ballと解釈しない。v3公開のbaseにはactive_ball snapshotだけを
+  認め、旧v1〜v3の汎用教師との混在はtarget semantics不一致として拒否する。旧データ移行は別工程。
+- 同じrequestの再送は同じreceiptを返す。別requestで既存clipや同じ元動画/cameraの重なる
+  frame区間を追加することは、修正版の注釈であっても拒否する。修正は旧注釈revisionと旧snapshotを
+  保存し、新revisionから新しい系列を明示して公開する。既存教師の上書き・自動置換はしない。
+- 公開先はrepo内の`data/ball_detection/<dataset_version>/frames/`のみ。
+  外部配布・元動画の削除・学習submit・モデル採用を行わない。CLIの公開選択との配線はcomposition rootが担う。
+
+```python
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts import (
+    SavedVideoAnnotation, VideoPublishRequest,
+)
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher import BallPublisher
+
+# plan_ref: configure_local_videosが保存したpublish_dataset=Trueのlocal plan
+# output: ProductPlan(ball_detection/frames、新dataset_version、上記policy参照、任意のactive_ball base)
+# saved: 全登録contextと各cameraの保存済みv3 annotation revisionのArtifactRef
+request = VideoPublishRequest(
+    plan=plan_ref, output=output,
+    annotations=tuple(sorted(
+        (SavedVideoAnnotation(context=context, annotation=revision) for context, revision in saved),
+        key=lambda entry: entry.context.digest,
+    )),
+)
+receipt_ref = BallPublisher(layout).publish(request)
+```
+
+既存のintent・staging・rename・receipt・registryの復旧手順をそのまま通す。
+共通`PublicationReceipt.annotations`へ保存v3 revisionを記録し、旧レビュー向け`adoptions`は空にする。
+snapshotは元v3全体を内包するため学習時にlive注釈を必要とせず、来歴参照は公開保護へ登録する。
+専用学習readerと出力maskは[data README](../../../data/README.md#active_ballの学習reader)を参照。
+
 ## 入力と教師
 
-- requestは不変campaign plan、product名、digest順の採用receiptを固定する。
+- 旧レビューrequestは不変campaign plan、product名、digest順の採用receiptを固定する。
 - 各receiptは同じplanの現在revisionにsealされ、実画像根拠・方針・教師maskを再検証できなければならない。
 - `BallPublicationPolicy`は画像保存方式とsplitの決め方を固定する。`source_splits`によるcanonical source IDの列挙か、`source_partition`によるIDとseedのhash順での配分を明示する。両方の併用、既存sourceのsplit変更を拒否する。
 - partition方式は収集前にseedとtrain/validation/testの整数比を固定し、要求動画数が揃った公開時に新規sourceだけを配分する。例えば100動画と8:1:1なら80/10/10動画で、同一動画のclipは同じsplitになる。途中の候補差替えでplanを変更する必要はない。ラベル・モデル誤差は配分に使わず、比率を正確に表せない件数や部分公開は拒否する。既存snapshotのsplitは維持する。
