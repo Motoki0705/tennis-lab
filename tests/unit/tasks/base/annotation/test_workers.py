@@ -886,6 +886,22 @@ def test_authorized_retry_records_decision_and_waits_for_admission(
         pool.authorize_retry(setup.request, after_attempt=first, reason=" ")
     with pytest.raises(ValueError, match="attempt changed"):
         pool.authorize_retry(setup.request, after_attempt="older", reason="continue")
+    with pytest.raises(ValueError, match="accepted states"):
+        pool.authorize_retry(
+            setup.request,
+            after_attempt=first,
+            reason="only a timeout can continue automatically",
+            accepted_states=frozenset({"timed_out"}),
+        )
+    assert pool.ledger.task(setup.request.work_id)["state"] == "deferred"
+    for invalid in (frozenset(), frozenset({"running"})):
+        with pytest.raises(ValueError, match="nonempty subset of stopped states"):
+            pool.authorize_retry(
+                setup.request,
+                after_attempt=first,
+                reason="invalid policy",
+                accepted_states=invalid,
+            )
     row = pool.authorize_retry(
         setup.request, after_attempt=first, reason="continue saved progress"
     )

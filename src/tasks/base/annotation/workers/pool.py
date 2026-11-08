@@ -811,16 +811,27 @@ class WorkerPool:
         return self._task(request.work_id)
 
     def authorize_retry(
-        self, request: WorkRequest, *, after_attempt: str, reason: str
+        self,
+        request: WorkRequest,
+        *,
+        after_attempt: str,
+        reason: str,
+        accepted_states: frozenset[str] = RETRYABLE_STATES,
     ) -> dict[str, Any]:
         """Return a stopped work to ``ready`` so normal admission starts its next attempt.
 
         This records an explicit decision only: it starts no process and reserves
         no capacity, so shared limits and backpressure still decide when the next
         attempt runs. The stopped attempt and its receipts stay in the history.
+        ``accepted_states`` can restrict the transition source for an automatic
+        policy. It is checked under the same locks as the conditional update.
         """
         if not reason.strip():
             raise ValueError("retry authorization requires a reason")
+        if not accepted_states or not accepted_states <= RETRYABLE_STATES:
+            raise ValueError(
+                "accepted retry states must be a nonempty subset of stopped states"
+            )
         self._registered_task(request)
         try:
             with (
@@ -832,8 +843,10 @@ class WorkerPool:
                     raise ValueError(
                         "worker attempt changed; inspect its current state"
                     )
-                if row["state"] not in RETRYABLE_STATES:
-                    raise ValueError("only a stopped or failed worker can be retried")
+                if row["state"] not in accepted_states:
+                    raise ValueError(
+                        "only a stopped or failed worker in accepted states can be retried"
+                    )
                 with self.ledger.registry.transaction() as database:
                     updated = database.execute(
                         "UPDATE worker_tasks SET state='ready',reason=?,result=NULL "

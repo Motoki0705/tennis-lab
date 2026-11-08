@@ -81,6 +81,7 @@ def recover_annotation(
                 request,
                 after_attempt=result["current_attempt"],
                 reason=result["reason"],
+                accepted_states=frozenset({"timed_out"}),
             )
         except (ValueError, WorkerBusy):
             current = pool.ledger.task(request.work_id)
@@ -295,6 +296,11 @@ def _annotation_decision(
             reason=reason,
         )
         decision_ref = write_document(layout, decision_path, decision)
+    if decision.action in {"continue", "complete"} and row["state"] != "timed_out":
+        # A concurrent stop can supersede an already persisted timeout decision.
+        # Retain that immutable evidence without applying it to the new state.
+        result["continuation"] = decision_ref.model_dump(mode="json")
+        return result
     result.update(
         reason=decision.reason, continuation=decision_ref.model_dump(mode="json")
     )

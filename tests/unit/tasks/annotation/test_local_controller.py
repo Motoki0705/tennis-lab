@@ -12,6 +12,7 @@ from src.tasks.annotation.local_controller import LocalAnnotationController
 from src.tasks.annotation.recovery import recover_annotation
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
+    artifact_lock,
     read_document,
     write_document,
 )
@@ -255,6 +256,85 @@ def test_concurrent_explicit_retry_supersedes_the_old_automatic_decision(
     assert [
         h.state for h in controller.pool.ledger.history(session.plan, session.request)
     ] == ["timed_out", "running"]
+
+
+def test_cancellation_after_automatic_decision_requires_explicit_retry(
+    session: BlankSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    save(session)
+    ended(session)
+    controller = controller_for(session)
+    pool = controller.pool
+    reference = session.receipt.registrations[0].request
+    after = session.launch.attempt
+    decision_path = session.layout.path(
+        "campaigns",
+        session.plan.campaign_id,
+        "workflow",
+        "continuations",
+        session.request.work_id,
+        after + ".json",
+    )
+    original = pool.authorize_retry
+    saved_decision = b""
+    cancellation = "operator cancelled while timeout continuation was being authorized"
+
+    def cancel_before_authorization(request, **kwargs):
+        nonlocal saved_decision
+        # The decision is durable and its locks have been released. Model only
+        # the final locked commit of a stop that began while this attempt ran.
+        saved_decision = decision_path.read_bytes()
+        decision = AnnotationContinuation.model_validate_json(saved_decision)
+        assert decision.action == "continue" and decision.after_attempt == after
+        with (
+            artifact_lock(session.layout, "worker-" + request.work_id),
+            artifact_lock(session.layout, "worker-services-" + request.work_id),
+        ):
+            assert pool._mark(
+                request.work_id,
+                "cancelled",
+                cancellation,
+                attempt=after,
+                from_states=("timed_out",),
+            )
+        return original(request, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(pool, "authorize_retry", cancel_before_authorization)
+        result = recover_annotation(
+            session.layout, controller.production.policy, pool, reference
+        )
+    assert (result["state"], result["current_attempt"], result["reason"]) == (
+        "cancelled",
+        after,
+        cancellation,
+    )
+    assert pool.ledger.task(session.request.work_id)["state"] == "cancelled"
+    assert decision_path.read_bytes() == saved_decision
+
+    restarted = controller_for(session)
+    monkeypatch.setattr(
+        restarted.pool,
+        "start",
+        lambda *_a, **_k: pytest.fail("cancelled work must not launch automatically"),
+    )
+    # Exercise the actual scheduling tick without charging this unit test's
+    # unrelated pytest imports to the controller's production PSS inventory.
+    progress = restarted.production.cycle()
+    assert progress["state"] == "blocked"
+    (camera,) = [r for r in progress["reviews"] if r["current_attempt"] == after]
+    assert (camera["state"], camera["reason"]) == ("cancelled", cancellation)
+    assert restarted.status()["state"] == "blocked"
+    assert [h.state for h in pool.ledger.history(session.plan, session.request)] == [
+        "cancelled"
+    ]
+    assert decision_path.read_bytes() == saved_decision
+    # The default manual authorization still accepts an explicit cancelled retry.
+    manual = restarted.pool.authorize_retry(
+        session.request, after_attempt=after, reason="explicitly retry cancelled work"
+    )
+    assert (manual["state"], manual["current_attempt"]) == ("ready", after)
 
 
 def test_quota_requires_recorded_resume_and_explicit_retry(

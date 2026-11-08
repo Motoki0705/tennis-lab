@@ -53,6 +53,8 @@ state = pool.reconcile(request)
   `authorize_retry(request, after_attempt=..., reason=...)` は停止したworkを理由付きで `ready` へ
   戻す明示の判断だけを記録する。processを起動せず枠も確保しないため、次のattemptは通常の受付・
   待機・資源管理で始まる。現在のattemptと停止状態をwork lock内で照合する。
+  `accepted_states` で受理する停止状態を限定できる。状態の照合と `ready` への条件付き更新は
+  同じwork/service lock内で行う。省略時は従来の手動retry対象の停止状態をすべて受理する。
   quotaイベントはcampaign全体の新規投入を止め、明示的な `resume_campaign` を要求する。
   期限前に記録されたquota/失敗イベントは通常timeoutで隠さず、取消は取消として保持する。
   admission時にも終了receiptを検証し、quota状態とcampaign停止を同じtransactionで保存する。

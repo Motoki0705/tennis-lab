@@ -150,6 +150,9 @@ for camera in progress["reviews"]:
 保存して `authorize_retry` で `ready` に戻す。そのtickでは次workerを起動しない。
 次tickの通常の資源受付で同じplan/scope/WorkRequestを起動し、開始revisionに保存済みheadを渡す。
 許可保存前後や起動後のcontroller再起動、二重tickでも同じattemptを二重起動しない。
+自動許可の確定は同じattemptの現在状態が `timed_out` の場合だけに限定し、共通lock内の
+条件付き更新で照合する。保存した判断と許可の間に取消が確定した場合や、その判断を再読込した
+場合も、`cancelled` と取消理由を保持する。保存済み判断は変更せず、明示retryまで起動しない。
 継続ごとに未処理数の減少を要求するため、通常の継続回数も入力frame数で有限になる。
 処理済みframeを未処理へ戻した保存は異常として扱う。
 
