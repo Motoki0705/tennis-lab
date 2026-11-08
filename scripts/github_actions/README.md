@@ -1,6 +1,6 @@
 # Local GPU GitHub Actions runner
 
-この構成は、公開リポジトリ `Motoki0705/tennis-lab` のGPUジョブと、親issue書き直し用のagyを
+この構成は、公開リポジトリ `Motoki0705/tennis-lab` のGPUジョブと、親issue補足追加用のagyを
 WSL2上のself-hosted runnerで実行する。通常のPR CIは引き続きGitHub-hosted runnerで
 実行し、ローカルrunnerはリポジトリownerが手動実行したジョブだけを受け付ける。
 
@@ -112,7 +112,7 @@ TRAINING_QUEUE_DIR=/var/lib/tennis-lab-actions/training-queue \
 
 ## agyの導入と疎通
 
-親issueの書き直しは `tennis-actions` のGoogleアカウントログインを使う。
+親issueの補足追加は `tennis-actions` のGoogleアカウントログインを使う。
 固定版の導入とログインはデスクトップで人間が行う。GPU runnerの導入スクリプトとは独立している。
 Linux x64のversion・版付きURL・sha256・モデルの正本は
 [`agents.conf`](../../.agents/ops/lib/agents.conf) の `AGY_VERSION`, `AGY_URL`,
@@ -174,7 +174,7 @@ gh api repos/google-antigravity/antigravity-cli/releases/tags/1.4.11 \
 
 新しい版を採用するときは上のtagを変更し、返されたassetを取得してSHA-256の一致と
 tarball内の実行ファイル名を確認してから、同じPRで `agents.conf` を更新する。
-merge後に導入コマンドを再実行し、疎通が成功してから書き直しに使う。
+merge後に導入コマンドを再実行し、疎通が成功してから補足追加に使う。
 
 ### 手動の疎通
 
@@ -192,7 +192,9 @@ log・prompt・会話ID・認証情報・コマンド全文をartifactへ公開�
 非公開の生stream・hook判定・捕捉結果は成功・失敗・timeoutとも
 `${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/agy-smoke/run-*/` に残し、作業workspaceは片付ける。
 認証・モデル・版・構造化出力のいずれかで失敗したら修正して手動でやり直す。
-この疎通だけでは書き直しの本体を有効化しない。
+この疎通だけでは補足追加の本体を有効化しない。
+最後の `--supplement-contract` 段階は本番schemaと原文保存検査を確認する。
+契約の正本は[補足追加README](../../.agents/ops/issue_rewrite/README.md#原文保存と構造化出力)を参照する。
 
 続くpermissions probe段階は、使い捨ての作業領域で読み取りの成功と、危険なコマンドの拒否・ファイル不変を確認する。
 読み取りの前に許可外の `pwd` をhookで拒否し、その後も読み取りを続けて構造化結果を返すことを必須とする。
@@ -223,9 +225,8 @@ log・prompt・会話ID・認証情報・コマンド全文をartifactへ公開�
 `agy_command_census.py` は本番のwriter/verifierのprompt・schemaを指定commitから読み、
 入力JSONを `pipeline.generate` と同じ方法で連結する調査用CLI。
 GitHubへの書き込み・公開・本番の権限変更は行わない。
-入力はpipelineのcontext（`repo`, `issue_number`, `url`, `issue`, `comments`,
-`managed_sections`）と同じ形で用意し、verifierでは合格したwriterの `body` を
-`rewritten` に加える。修正turnのfeedbackもcontext側に明示する。
+入力はpipelineのcontext（`repo`, `source_revision`, `issue_number`, `url`, `issue`, `comments`,
+`managed_sections`）と同じ形で用意し、verifierでは検査済みの挿入指示を `supplements`、生成本文を `supplemented` に加える。修正turnのfeedbackもcontext側に明示する。
 
 すべての入力・使い捨てclone・生ログ・結果は
 `~/.local/state/tennis-lab-agents/manual-runs/1566/agy-census/` に置く。

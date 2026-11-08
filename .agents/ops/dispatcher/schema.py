@@ -127,8 +127,8 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
         == "pending"
     ):
         facts.append(
-            f"#{n} のissue rewriteはpending。parent --parent {n} wait-rewriteで確定を待つ。"
-            "人間がrewrite:skippedを付けても進められる。"
+            f"#{n} のissue supplementはpending。parent --parent {n} wait-rewriteで確定を待つ。"
+            "人間がsupplement:skippedを付けても進められる。"
         )
     if "needs-human" in labels:
         facts.append(f"#{n} にneeds-humanラベルがある。")

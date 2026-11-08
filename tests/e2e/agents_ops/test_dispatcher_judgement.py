@@ -326,7 +326,7 @@ def h(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
     return Harness(tmp_path, monkeypatch)
 
 
-@pytest.mark.parametrize("label", ["rewrite:done", "rewrite:failed", "rewrite:skipped"])
+@pytest.mark.parametrize("label", ["supplement:done", "supplement:failed", "supplement:skipped"])
 def test_final_rewrite_allows_recording_with_pinned_activation(
     h: Harness, label: str
 ) -> None:
@@ -347,7 +347,7 @@ def test_rewrite_changes_before_recording_defer_without_writes(
     h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
     if change == "labels":
         h.gh.enabled_since = "2026-10-30T00:00:00Z"
-        h.gh.issues[1]["labels"].append({"name": "rewrite:done"})
+        h.gh.issues[1]["labels"].append({"name": "supplement:done"})
     original = h.mod.record_decision
 
     def race(*args: Any, **kwargs: Any) -> Any:
@@ -1297,7 +1297,7 @@ def test_parent_record_error_without_input_changes_is_fatal(
         ("cancelled_dependency", "dependency_wait", "not_planned"),
         ("closed_unmerged_pr", "existing_owner", "PR #100"),
         ("needs_human", "human_hold", "needs-human"),
-        ("rewrite_pending", "human_hold", "rewriteはpending"),
+        ("rewrite_pending", "human_hold", "supplementはpending"),
         ("checking", "human_hold", "phaseはchecking"),
         ("revoked", "human_hold", "phaseはchecking"),
         ("agreed", "human_hold", "phaseはagreed"),

@@ -2,9 +2,21 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "additionalProperties": false,
-  "required": ["body", "notes"],
+  "required": ["supplements", "notes"],
   "properties": {
-    "body": {"type": "string", "minLength": 1, "maxLength": 60000},
+    "supplements": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["after", "content"],
+        "properties": {
+          "after": {"type": "string", "minLength": 1, "maxLength": 60000},
+          "content": {"type": "string", "minLength": 1, "maxLength": 12000}
+        }
+      }
+    },
     "notes": {"type": "string"}
   }
 }

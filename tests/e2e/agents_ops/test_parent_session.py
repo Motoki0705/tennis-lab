@@ -118,7 +118,7 @@ if path == "repos/o/r/actions/variables/issue_rewrite_enabled_since":
     if rewrite:
         row = state["issues"][str(rewrite["number"])]
         row["body"] = rewrite["body"]
-        row["labels"].append({"name": "rewrite:done"})
+        row["labels"].append({"name": "supplement:done"})
         save()
     code = state.get("rewrite_variable_status", 200 if "rewrite_enabled_since" in state else 404)
     response({"name": "ISSUE_REWRITE_ENABLED_SINCE", "value": state.get("rewrite_enabled_since")}, code)
@@ -529,7 +529,7 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
 
 
 @pytest.mark.parametrize(
-    "final", [None, "rewrite:done", "rewrite:failed", "rewrite:skipped", "old_parent"]
+    "final", [None, "supplement:done", "supplement:failed", "supplement:skipped", "old_parent"]
 )
 def test_rewrite_gates_checking_and_agree_before_writes(
     parent_env: ParentEnv, final: str | None
@@ -564,7 +564,7 @@ def test_rewrite_gates_checking_and_agree_before_writes(
         for result in (checked, agreed):
             assert "pending" in result.stderr
             assert (
-                "wait-rewrite" in result.stderr and "rewrite:skipped" in result.stderr
+                "wait-rewrite" in result.stderr and "supplement:skipped" in result.stderr
             )
         assert not any(
             "--method" in call and call[call.index("--method") + 1] != "GET"
@@ -575,7 +575,7 @@ def test_rewrite_gates_checking_and_agree_before_writes(
         assert json.loads(agreed.stdout)["phase"] == "要件合意済み"
 
 
-@pytest.mark.parametrize("final", ["rewrite:done", "rewrite:failed", "rewrite:skipped"])
+@pytest.mark.parametrize("final", ["supplement:done", "supplement:failed", "supplement:skipped"])
 def test_wait_rewrite_watches_latest_exact_title_and_refreshes_labels(
     parent_env: ParentEnv, final: str
 ) -> None:
@@ -606,7 +606,7 @@ def test_wait_rewrite_watches_latest_exact_title_and_refreshes_labels(
     result = p.cli("wait-rewrite", extra={"CLAUDE_CODE_SESSION_ID": ""})
     assert json.loads(result.stdout) == {
         "parent": 1,
-        "rewrite_state": final.removeprefix("rewrite:"),
+        "rewrite_state": final.removeprefix("supplement:"),
         "run_id": 102,
     }
     assert [c for c in p.calls() if c[:2] == ["run", "watch"]] == [
@@ -631,7 +631,7 @@ def test_wait_rewrite_without_run_guides_dispatch_or_human_skip(
     result = p.cli("wait-rewrite", ok=False)
     assert all(
         word in result.stderr
-        for word in ("issue-rewrite.yml", "workflow_dispatch", "rewrite:skipped")
+        for word in ("issue-rewrite.yml", "workflow_dispatch", "supplement:skipped")
     )
     assert not any(c[:2] == ["run", "watch"] for c in p.calls())
 
@@ -681,7 +681,7 @@ def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
                 "created_at": "2026-10-31T01:00:00Z",
             }
         ],
-        watch_label="rewrite:done",
+        watch_label="supplement:done",
     )
     p.save(state)
     assert json.loads(p.cli("wait-rewrite").stdout)["run_id"] == 101
@@ -696,7 +696,7 @@ def test_wait_rewrite_pages_runs_once_and_skips_wait_for_final_state(
 
 
 @pytest.mark.parametrize(
-    "state_label", [None, "rewrite:done", "rewrite:failed", "rewrite:skipped"]
+    "state_label", [None, "supplement:done", "supplement:failed", "supplement:skipped"]
 )
 def test_sync_cannot_patch_parent_during_rewrite_even_without_agreement(
     parent_env: ParentEnv, state_label: str | None
@@ -726,7 +726,7 @@ def test_update_body_gates_target_issue_instead_of_session_parent(
         monkeypatch.setenv(key, value)
     state = p.state()
     state["rewrite_enabled_since"] = "2026-10-30T00:00:00Z"
-    state["issues"]["1"]["labels"].append({"name": "rewrite:done"})
+    state["issues"]["1"]["labels"].append({"name": "supplement:done"})
     p.save(state)
     store_module = importlib.import_module("parent.state")
     github_module = importlib.import_module("parent.github")
@@ -736,7 +736,7 @@ def test_update_body_gates_target_issue_instead_of_session_parent(
         gh = github_module.GitHub("o/r", store=store)
         session = session_module.ParentSession(gh, store, 1, None)
         old = gh.issue(2)["body"]
-        with pytest.raises(ValueError, match="#2: issue rewrite is pending"):
+        with pytest.raises(ValueError, match="#2: issue supplement is pending"):
             session.update_body(
                 2,
                 policy_module.replace_section(
@@ -813,7 +813,7 @@ def test_update_body_rechecks_body_with_final_rewrite_state(
     assert "complete_rewrite_on_activation_read" not in final
     assert final["issues"]["1"]["body"] == rewritten
     assert {label["name"] for label in final["issues"]["1"]["labels"]} >= {
-        "rewrite:done"
+        "supplement:done"
     }
     assert not any("PATCH" in call for call in p.calls())
 

@@ -1,4 +1,4 @@
-"""Wait for the issue rewrite workflow and gate requirement recording."""
+"""Wait for the issue supplement workflow and gate requirement recording."""
 
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def require_final(gh: GitHub, parent: int) -> dict[str, Any]:
     raw, state = _current_issue_state(gh, parent)
     if state == "pending":
         raise ValueError(
-            f"#{parent}: issue rewrite is pending; run parent --parent {parent} "
+            f"#{parent}: issue supplement is pending; run parent --parent {parent} "
             f"wait-rewrite, or ask a human to add {REWRITE_SKIPPED_LABEL} to proceed"
         )
     return raw
@@ -108,7 +108,7 @@ def wait_rewrite(gh: GitHub, parent: int) -> dict[str, Any]:
     state = current_state(gh, parent)
     if state == "pending":
         raise ValueError(
-            f"#{parent}: run {run_id} ended but issue rewrite is still pending; "
+            f"#{parent}: run {run_id} ended but issue supplement is still pending; "
             f"inspect the run, retry workflow_dispatch or ask a human to add {REWRITE_SKIPPED_LABEL}"
         )
     return {"parent": parent, "rewrite_state": state, "run_id": run_id}

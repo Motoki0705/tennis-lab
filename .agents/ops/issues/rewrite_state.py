@@ -1,4 +1,7 @@
-"""GitHub-only state shared by rewrite workflows, parent CLI and dispatcher."""
+"""GitHub-only supplement state shared by workflow, parent CLI and dispatcher.
+
+Module/API and enablement-variable names are retained as workflow contracts.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +12,9 @@ from typing import Literal, Protocol
 
 from .format import PARENT_LABEL
 
-REWRITE_DONE_LABEL = "rewrite:done"
-REWRITE_FAILED_LABEL = "rewrite:failed"
-REWRITE_SKIPPED_LABEL = "rewrite:skipped"
+REWRITE_DONE_LABEL = "supplement:done"
+REWRITE_FAILED_LABEL = "supplement:failed"
+REWRITE_SKIPPED_LABEL = "supplement:skipped"
 REWRITE_ENABLED_SINCE_VARIABLE = "ISSUE_REWRITE_ENABLED_SINCE"
 REWRITE_FINAL_LABELS = frozenset(
     {REWRITE_DONE_LABEL, REWRITE_FAILED_LABEL, REWRITE_SKIPPED_LABEL}
@@ -66,7 +69,7 @@ def rewrite_state(
         raise ValueError("labels must contain nonempty names")
     final = names & REWRITE_FINAL_LABELS
     if len(final) > 1:
-        raise ValueError(f"conflicting issue rewrite labels: {sorted(final)}")
+        raise ValueError(f"conflicting issue supplement labels: {sorted(final)}")
     created = _utc_timestamp(created_at, "created_at")
     enabled = (
         _utc_timestamp(enabled_since, REWRITE_ENABLED_SINCE_VARIABLE)
@@ -75,6 +78,8 @@ def rewrite_state(
     )
     if enabled is None or PARENT_LABEL not in names or created < enabled:
         return "not_target"
+    if any(name.startswith("rewrite:") for name in names):
+        raise ValueError("legacy rewrite labels must be migrated to supplement labels")
     if REWRITE_DONE_LABEL in final:
         return "done"
     if REWRITE_FAILED_LABEL in final:

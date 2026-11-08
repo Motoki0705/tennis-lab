@@ -21,6 +21,15 @@ def api(monkeypatch: pytest.MonkeyPatch) -> Any:
     return importlib.import_module("issues.rewrite_state")
 
 
+@pytest.mark.parametrize("status", ["done", "failed", "skipped"])
+def test_legacy_labels_cannot_silently_become_pending(api: Any, status: str) -> None:
+    with pytest.raises(ValueError, match="must be migrated"):
+        api.rewrite_state(PARENT + ["rewrite:" + status], ENABLED, ENABLED)
+    assert api.rewrite_state(
+        PARENT + ["rewrite:" + status], "2026-10-30T11:59:59Z", ENABLED
+    ) == "not_target"
+
+
 @pytest.mark.parametrize(
     ("labels", "created", "enabled", "expected"),
     [
@@ -30,13 +39,13 @@ def api(monkeypatch: pytest.MonkeyPatch) -> Any:
         (PARENT, "2026-10-30T11:59:59Z", ENABLED, "not_target"),
         (PARENT, ENABLED, ENABLED, "pending"),
         (PARENT, "2026-10-30T12:00:01Z", ENABLED, "pending"),
-        (PARENT + ["rewrite:done"], ENABLED, ENABLED, "done"),
-        (PARENT + ["rewrite:failed"], ENABLED, ENABLED, "failed"),
-        (PARENT + ["rewrite:skipped"], ENABLED, ENABLED, "skipped"),
+        (PARENT + ["supplement:done"], ENABLED, ENABLED, "done"),
+        (PARENT + ["supplement:failed"], ENABLED, ENABLED, "failed"),
+        (PARENT + ["supplement:skipped"], ENABLED, ENABLED, "skipped"),
         (PARENT + ["issue:child", "enhancement"], ENABLED, ENABLED, "pending"),
-        (["rewrite:done"], ENABLED, ENABLED, "not_target"),
-        (PARENT + ["rewrite:failed"], ENABLED, None, "not_target"),
-        (PARENT + ["rewrite:done"], "2026-10-30T11:59:59Z", ENABLED, "not_target"),
+        (["supplement:done"], ENABLED, ENABLED, "not_target"),
+        (PARENT + ["supplement:failed"], ENABLED, None, "not_target"),
+        (PARENT + ["supplement:done"], "2026-10-30T11:59:59Z", ENABLED, "not_target"),
     ],
 )
 def test_rewrite_state_boundaries(
@@ -48,10 +57,10 @@ def test_rewrite_state_boundaries(
 @pytest.mark.parametrize(
     "labels",
     [
-        ["rewrite:done", "rewrite:failed"],
-        ["rewrite:done", "rewrite:skipped"],
-        ["rewrite:failed", "rewrite:skipped"],
-        ["rewrite:done", "rewrite:failed", "rewrite:skipped"],
+        ["supplement:done", "supplement:failed"],
+        ["supplement:done", "supplement:skipped"],
+        ["supplement:failed", "supplement:skipped"],
+        ["supplement:done", "supplement:failed", "supplement:skipped"],
     ],
 )
 def test_conflicting_final_labels_are_always_errors(
@@ -141,7 +150,7 @@ def test_package_exports_module_and_workflow_constants(api: Any) -> None:
     assert package.rewrite_state is api
     assert package.read_enabled_since is api.read_enabled_since
     assert {
-        "rewrite:done",
-        "rewrite:failed",
-        "rewrite:skipped",
+        "supplement:done",
+        "supplement:failed",
+        "supplement:skipped",
     } == api.REWRITE_FINAL_LABELS

@@ -35,7 +35,7 @@ from .github import (
     new_edits,
     uninterrupted,
 )
-from .invariants import check_invariants
+from .invariants import Supplement, check_invariants, render_supplements
 from .publication import (
     diagnostic_differences,
     public_text,
@@ -63,6 +63,7 @@ class Handoff(TypedDict):
     status: str
     source: dict[str, Any] | None
     body: str | None
+    supplements: list[Supplement] | None
     verification: dict[str, Any] | None
     report: dict[str, Any]
 
@@ -86,7 +87,7 @@ def prepare(gh: GitHub, number: int, *, manual: bool) -> dict[str, Any]:
         # Re-read immediately before the targeted deletion. Never clear a human
         # skip or a completed run which appeared after the first read.
         if issue_state(gh, gh.issue(number)) != "failed":
-            raise ValueError("rewrite_label_conflict")
+            raise ValueError("supplement_label_conflict")
         gh.request(
             "DELETE",
             f"repos/{gh.repo}/issues/{number}/labels/{quote(REWRITE_FAILED_LABEL, safe='')}",
@@ -94,7 +95,7 @@ def prepare(gh: GitHub, number: int, *, manual: bool) -> dict[str, Any]:
         )
         state = issue_state(gh, gh.issue(number))
         if state != "pending":
-            raise ValueError("rewrite_label_conflict")
+            raise ValueError("supplement_label_conflict")
     if state != "pending":
         return outcome(bundle, "not_target", f"state_{state}")["report"]
     if has_execution_record(
@@ -135,13 +136,14 @@ def stable_issue(
 
 def bundle_for(repo: str, number: int, attempt: int) -> Handoff:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "repo": repo,
         "issue_number": number,
         "attempt": attempt,
         "status": "failed",
         "source": None,
         "body": None,
+        "supplements": None,
         "verification": None,
         "report": {
             "issue_number": number,
@@ -231,6 +233,7 @@ def generate(
         }
         context = {
             "repo": gh.repo,
+            "source_revision": checkout.head,
             "issue_number": number,
             "url": f"https://github.com/{gh.repo}/issues/{number}",
             "issue": {
@@ -310,15 +313,25 @@ def generate(
         feedback: dict[str, Any] = {}
         for revision in (1, 2):
             writer = turn("writer", revision, {**context, **feedback})
-            candidate = writer["body"]
-            unsafe = publication_errors(candidate)
+            supplements = writer["supplements"]
+            unsafe = publication_errors(json.dumps(supplements, ensure_ascii=False))
             if unsafe:
                 return outcome(bundle, "failed", unsafe[0])
-            problems = check_invariants(original, candidate, is_child=is_child)
+            candidate = None
+            try:
+                candidate = render_supplements(original, supplements)
+                problems = check_invariants(
+                    original, candidate, supplements=supplements, is_child=is_child
+                )
+            except ValueError as exc:
+                problems = [{"rule": "invalid_supplement", "detail": str(exc)}]
             verification = None
             if not problems:
+                assert candidate is not None
                 verification = turn(
-                    "verifier", revision, {**context, "rewritten": candidate}
+                    "verifier",
+                    revision,
+                    {**context, "supplemented": candidate, "supplements": supplements},
                 )
                 if verification["verdict"] != "pass" or verification["differences"]:
                     problems = [
@@ -337,18 +350,20 @@ def generate(
                         }
                     )
             if not problems:
+                assert isinstance(candidate, str)
                 bundle["source"], bundle["body"], bundle["verification"] = (
                     source,
                     candidate,
                     verification,
                 )
+                bundle["supplements"] = supplements
                 return outcome(bundle, "ready")
             report["reasons"].extend(
                 {**item, "detail": public_text(item["detail"]), "revision": revision}
                 for item in problems
             )
             feedback = {
-                "previous_body": candidate,
+                "previous_supplements": supplements,
                 "violations": problems,
                 "verification": verification,
             }
@@ -389,9 +404,9 @@ def final_label(gh: GitHub, number: int, label: str) -> str:
     if state == "not_target":
         return state
     if set(labels) & (REWRITE_FINAL_LABELS - {label}):
-        raise ValueError("rewrite_label_conflict")
+        raise ValueError("supplement_label_conflict")
     if set(labels) & REWRITE_FINAL_LABELS == {label}:
-        return label.removeprefix("rewrite:")
+        return label.removeprefix("supplement:")
     gh.request(
         "POST",
         f"repos/{gh.repo}/issues/{number}/labels",
@@ -403,8 +418,8 @@ def final_label(gh: GitHub, number: int, label: str) -> str:
     if confirmed != {label}:
         # GitHub has no atomic add-if-absent for labels. Detect the residual
         # race explicitly; never erase the competing label to conceal it.
-        raise ValueError("rewrite_label_conflict")
-    return label.removeprefix("rewrite:")
+        raise ValueError("supplement_label_conflict")
+    return label.removeprefix("supplement:")
 
 
 def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
@@ -428,24 +443,29 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
     if bundle["status"] == "skipped":
         # A record removed since generation is not permission to apply stale input.
         return outcome(bundle, final_label(gh, number, REWRITE_SKIPPED_LABEL))["report"]
-    source, candidate, verification = (
+    source, candidate, verification, supplements = (
         bundle["source"],
         bundle["body"],
         bundle["verification"],
+        bundle["supplements"],
     )
     if (
         source is None
         or not isinstance(candidate, str)
         or not isinstance(verification, dict)
+        or not isinstance(supplements, list)
     ):
-        raise ValueError("missing_validated_rewrite")
+        raise ValueError("missing_validated_supplement")
     OutputSchema(PACKAGE / "schemas/verifier.schema.json", agent="agy").validate(
         verification
     )
     if verification["verdict"] != "pass" or verification["differences"]:
         raise ValueError("verifier_did_not_pass")
     if check_invariants(
-        source["body"], candidate, is_child=CHILD_LABEL in source["labels"]
+        source["body"],
+        candidate,
+        supplements=supplements,
+        is_child=CHILD_LABEL in source["labels"],
     ):
         raise ValueError("artifact_invariants_failed")
     before = gh.history(number)
