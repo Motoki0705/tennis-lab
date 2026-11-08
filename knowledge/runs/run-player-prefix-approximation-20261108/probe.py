@@ -218,6 +218,12 @@ def inspect_case(p, depth, valid, foreground, *, name, q, output, save=False):
             )
     if save:
         panels(output / f"{name}.png", images)
+    if "ball-" in name or "sphere-" in name:
+        crops = []
+        for label, image in images:
+            crop = image[62:78, 120:136]
+            crops.append((label, np.repeat(np.repeat(crop, 6, axis=0), 6, axis=1)))
+        panels(output / f"{name}-crop.png", crops)
     return record
 
 
