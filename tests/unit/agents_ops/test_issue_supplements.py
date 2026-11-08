@@ -21,7 +21,7 @@ def original() -> str:
         formatting.render_parent_body(
             {
                 "目的・背景": (
-                    "目的の原文。  \n続きは #17 と 2.5 秒、@reviewer、`code`。\n\n"
+                    "目的の原文。  \n続きは #17 と 2.5 秒、@reviewer、`code`。https://example.org/original\n\n"
                     "> 引用の原文\nlazy continuation\n\n"
                     "<!-- metadata: a  b -->\n\n"
                     "~~~python\nvalue = 17\n~~~\n\n"
@@ -80,6 +80,8 @@ def test_multiple_insertions_preserve_every_original_character(
         ("2.5", "2.6"),
         ("@reviewer", "@other"),
         ("`code`", "`other`"),
+        ("https://example.org/original", "https://example.org/changed"),
+        ("## 全体のスコープ", "## 別のスコープ"),
         ("value = 17", "value=17"),
         ("a  b", "a b"),
         ("lazy continuation", "changed continuation"),
@@ -199,4 +201,48 @@ def test_artifact_metadata_must_explain_every_added_character(original: str) -> 
         original,
         expected.replace("<details>", "<details open>", 1),
         supplements=supplements,
+    )
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "### 既存部品\n\n- 客観的な背景。",
+        "~~~python\nvalue = 17\n~~~",
+        "````python\nvalue = 17\n``````",
+        "> ~~~python\n> value = 17\n> ~~~",
+        "- 説明\n\n    ~~~python\n    value = 17\n    ~~~",
+    ],
+)
+def test_self_contained_markdown_and_closed_container_fences_are_allowed(
+    original: str, content: str
+) -> None:
+    supplements = [{"after": "## 目的・背景", "content": content}]
+    expected = original.replace("## 目的・背景", "## 目的・背景" + details(content))
+    assert api.render_supplements(original, supplements) == expected
+    assert api.check_invariants(original, expected, supplements=supplements) == []
+
+
+def test_parent_that_is_also_a_child_requires_both_body_contracts(
+    original: str,
+) -> None:
+    assert api.check_invariants(original, original, supplements=[], is_child=True)
+    sections = formatting.parse_sections(original)
+    sections.pop("子タスクのチェックリスト")
+    sections.update(
+        {
+            "このタスクの目的": "親の要件に沿って背景を補足する。",
+            "具体的な変更内容・対象範囲": "本文の背景。",
+            "対象外": "要件の変更。",
+            "依存関係": "親issue。",
+            "作業状況・停止事項": "検証中。",
+            "Acceptance checklist": "- [ ] 原文を保つ。\n  文脈: 要件を維持する。\n  下流への影響: 合意を変えない。\n  検証方法・証拠: 原文の完全一致を検査する。",
+        }
+    )
+    source = formatting.render_parent_body(sections, parent_number=8)
+    supplements = [{"after": "## 目的・背景", "content": "背景。"}]
+    expected = source.replace("## 目的・背景", "## 目的・背景" + details("背景。"))
+    assert (
+        api.check_invariants(source, expected, supplements=supplements, is_child=True)
+        == []
     )

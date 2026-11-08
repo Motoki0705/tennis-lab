@@ -112,7 +112,8 @@ def validate_supplement_markdown(content: str) -> None:
         if token.type == "fence":
             assert token.map is not None
             lines = _source_lines(content)
-            last = lines[token.map[1] - 1].strip()
+            closing_line = lines[token.map[1] - 1]
+            last = re.sub(r"^(?:[ \t]*>[ \t]?)+", "", closing_line).strip()
             if token.map[1] - token.map[0] < 2 or not re.fullmatch(
                 re.escape(token.markup[0]) + "{" + str(len(token.markup)) + ",}", last
             ):
