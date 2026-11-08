@@ -182,6 +182,7 @@ readerは保存済み変換・maskを検証し、入力bundleを必要としま�
 `pinhole()`は無効sampleを拒否するため、描画側は時間枠を保持して欠測表示frameにします。
 Blenderのcamera回転は`T[:3,:3] @ diag(1,-1,-1)`、位置は`T[:3,3]`です。
 保存した解像度・内部行列・clip値を使い、両backendで頭部運動を再計算しません。
+
 ## Blenderの選手視点動画
 
 対応する保存済みscene/camera bundleからportableなshot入力を作ります。cameraの入力digest・人物ID・元frame・FPS・maskを照合し、必要な数値資産をコピーします。Blender側は同梱PythonとNumPyだけで動き、camera再推定やrepoのimportを行いません。

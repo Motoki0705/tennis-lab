@@ -324,7 +324,9 @@ def shot_reports(inputs: Inputs, tmp_path: Path) -> tuple[Path, Path]:
                     "pc2_max_error_m": [0, 0],
                 }
             )
-            frame: np.ndarray = np.full((72, 128, 3), 25 + index * 20 if ok else 0, np.uint8)
+            frame: np.ndarray = np.full(
+                (72, 128, 3), 25 + index * 20 if ok else 0, np.uint8
+            )
             assert cv2.imwrite(str(directory / "frames" / f"{index:05d}.png"), frame)
         report = {
             "schema": "tennis_scene_player_view_render_v1",
@@ -334,7 +336,10 @@ def shot_reports(inputs: Inputs, tmp_path: Path) -> tuple[Path, Path]:
             "engine": "CYCLES",
             "gpu_devices": [{"name": "synthetic audit fixture"}],
             "motion_blur": False,
-            "material": {"player": {"alpha": 1, "emission_strength": 0}},
+            "material": {
+                name: {"alpha": 1, "emission_strength": 0}
+                for name in ("OpaqueGrayPlayer", "OpaqueGreenBall")
+            },
             "frames": rows,
         }
         (directory / "render.json").write_text(json.dumps(report))
@@ -361,7 +366,8 @@ def test_video_publication_preserves_all_source_frames_and_missing_camera_slots(
 
 
 @pytest.mark.parametrize(
-    "fault", ["frame", "mask", "camera", "ball", "opacity", "incomplete"]
+    "fault",
+    ["frame", "mask", "camera", "ball", "opacity", "incomplete", "missing-material"],
 )
 def test_publication_rejects_incorrect_blender_audit(
     shot_reports: tuple[Path, Path], fault: str
@@ -378,12 +384,37 @@ def test_publication_rejects_incorrect_blender_audit(
     elif fault == "ball":
         report["frames"][0]["ball_position"][0] += 1
     elif fault == "opacity":
-        report["material"]["player"]["alpha"] = 0.5
-    else:
+        report["material"]["OpaqueGrayPlayer"]["alpha"] = 0.5
+    elif fault == "incomplete":
         report["complete"] = False
+    else:
+        report["material"].pop("OpaqueGreenBall")
     path.write_text(json.dumps(report))
     with pytest.raises(ValueError):
         validate_render(shot, renders / "player_7", 7)
+
+
+@pytest.mark.parametrize("fault", ["truncated", "missing-png", "bad-png"])
+def test_video_publication_refuses_missing_frames_and_cleans_failed_encoding(
+    shot_reports: tuple[Path, Path], tmp_path: Path, fault: str
+) -> None:
+    shot, renders = shot_reports
+    output = tmp_path / "videos"
+    if fault == "truncated":
+        for identity in (7, 42):
+            path = renders / f"player_{identity}" / "render.json"
+            report = json.loads(path.read_text())
+            report["frames"].pop()
+            path.write_text(json.dumps(report))
+            (path.parent / "frames" / "00004.png").unlink()
+    elif fault == "missing-png":
+        (renders / "player_7" / "frames" / "00001.png").unlink()
+    else:
+        (renders / "player_7" / "frames" / "00001.png").write_bytes(b"broken PNG")
+    with pytest.raises(ValueError, match="entire input timeline|PNG"):
+        publish_player_views(package=shot, renders=renders, output=output)
+    assert not output.exists()
+    assert not list(tmp_path.glob(".videos-*"))
 
 
 def _snapshot(root: Path) -> dict[str, str]:

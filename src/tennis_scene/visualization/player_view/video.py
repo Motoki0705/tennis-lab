@@ -31,6 +31,8 @@ def validate_render(package: Path, render: Path, player_id: int) -> dict[str, An
         or report["player_id"] != player_id
     ):
         raise ValueError("Render report does not match its completed shot/player")
+    if set(report["material"]) != {"OpaqueGrayPlayer", "OpaqueGreenBall"}:
+        raise ValueError("Render must audit both foreground materials")
     if report["motion_blur"] or any(
         v["alpha"] != 1 or v["emission_strength"] != 0
         for v in report["material"].values()
@@ -112,13 +114,22 @@ def verify_video(
                 "-select_streams",
                 "v:0",
                 "-show_entries",
-                "stream=width,height,avg_frame_rate,nb_frames,duration",
+                "stream=width,height,avg_frame_rate,nb_frames,duration:frame=best_effort_timestamp_time",
+                "-show_frames",
                 "-of",
                 "json",
                 str(path),
             ]
         )
-    )["streams"][0]
+    )
+    timestamps = np.array(
+        [float(row["best_effort_timestamp_time"]) for row in probe["frames"]]
+    )
+    if timestamps.shape != (frames,) or not np.allclose(
+        timestamps, np.arange(frames) / fps, rtol=0, atol=1e-5
+    ):
+        raise ValueError("Encoded frame presentation times differ from the source FPS")
+    probe = probe["streams"][0]
     actual_fps = float(Fraction(probe["avg_frame_rate"]))
     if (probe["width"], probe["height"]) != (width, height) or abs(
         actual_fps - fps
@@ -145,6 +156,7 @@ def verify_video(
         raise ValueError(f"Decoded {count} frames, expected {frames}")
     return {
         "decoded_frames": count,
+        "presentation_timestamps_checked": frames,
         "fps": actual_fps,
         "duration_seconds": float(probe["duration"]),
         "width": width,

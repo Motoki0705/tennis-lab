@@ -181,6 +181,7 @@ reader 验证保存的变换和 mask，无需输入 bundle。
 `pinhole()` 拒绝无效 sample；渲染器应保留其时间槽并显示相机缺失帧。
 Blender 相机旋转为 `T[:3,:3] @ diag(1,-1,-1)`，位置为 `T[:3,3]`。
 使用已保存的分辨率、内参和裁剪值，两个 backend 均不重新计算头部运动。
+
 ## Blender选手视角视频
 
 从对应的已保存scene/camera bundle生成可移植的shot输入。准备阶段核对camera输入摘要、人物ID、原始帧、FPS和mask，并复制必要的数值资产。Blender脚本仅使用自带Python和NumPy，不重新估计camera，也不导入仓库模块。

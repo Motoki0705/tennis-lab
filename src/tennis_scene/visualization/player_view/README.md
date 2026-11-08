@@ -218,6 +218,7 @@ The reader validates the saved transforms and masks and needs no source bundle.
 and show a missing-camera frame. Blender uses camera rotation
 `T[:3,:3] @ diag(1,-1,-1)` and location `T[:3,3]`, with the saved resolution,
 intrinsics and clipping. Neither backend should recompute head kinematics.
+
 ## Blender player-view videos
 
 Prepare a portable shot package from matching saved scene/camera bundles. Preparation checks camera input digests, IDs, frames, FPS and masks, then copies the necessary numerical assets. The Blender script uses only Blender Python and NumPy; it never estimates cameras or imports the repository.
