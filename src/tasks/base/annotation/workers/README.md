@@ -116,3 +116,25 @@ attemptの保護を同じtransactionで解放する。`exited` は結果検証�
 並列枠、quota、timeout、結果改変、preview採用拒否、receipt後の中断を確認する。
 `test_command` は明示的なtest layoutでのみ使え、productionでの別コマンドへの
 置換は拒否する。実Codex・ball/player adapter接続はそれぞれの受入試験で扱う。
+
+## Private input workers
+
+`PreparedWorker.isolate_inputs=True` はCLI自体と全子孫へLinux Landlockの読取/書込境界を適用する。
+Linux x86_64/aarch64・Landlock ABI 3以上が必要で、利用できなければ起動を失敗させる。
+workerはattemptの `input` / `exchange` を読め、`work` だけを書ける。サービスは親側で動き、
+受理した結果だけをexchangeへ不変保存する。元のartifact rootやcode rootをworkerへ開放しない。
+
+OSの実行ファイル・library・TLS/DNS設定と、Codex本体および同梱のcode-mode-host/exec-serverだけを
+実行用に許す。元入力やrepositoryが許可したsystem runtime配下にある場合は拒否する。
+専用Codex homeへ共有するのはauth.jsonのみで、他threadのsession・cache・config・rulesは渡さない。
+環境変数も限定し、project探索を専用のmarkerへ固定する。
+
+Codex内側のworkspace-writeはhost mount情報の読取を必要とするため、このmodeだけは
+`-s danger-full-access` とし、**外側の必須Landlock**がファイル権限を所有する。
+Codex引数によってこのOS境界を解除することはできない。これはファイル入力の境界であり、
+CLIのAPI通信は残る。通常workerのworkspace-write設定は変えない。
+kernelの契約は [Landlock documentation](https://docs.kernel.org/userspace-api/landlock.html)、
+project探索設定は [Codex configuration](https://developers.openai.com/codex/config-reference/) を参照。
+
+白紙ball workerはこのmodeを必須にし、実行中に追加したrevision・画像・サービス由来も保持する。
+状態・進捗・完成・探索方針の契約は [task側](../../../ball_detection/annotation/video/agent/README.md) が所有する。

@@ -19,7 +19,7 @@ from ..artifacts import (
 )
 from ..contracts import ArtifactRef, canonical_bytes, content_digest
 from ..paths import AnnotationLayout
-from ..plan import file_digest, load_plan, references
+from ..plan import file_digest, load_execution_plan, references
 from ..workers.contracts import ExitReceipt, Launch
 from .contracts import (
     RenderedImage,
@@ -127,7 +127,7 @@ def capture(
             "production rollouts must be located from the owning Codex home/thread"
         )
     path = rollout if rollout is not None else locate_rollout(launch, execution)
-    plan = load_plan(verify_reference(layout, launch.plan))
+    plan = load_execution_plan(verify_reference(layout, launch.plan))
     for entry in catalog:
         for ref in references(entry):
             verify_reference(layout, ref)
@@ -562,7 +562,7 @@ def presented_images(
             "conflicting response IDs cannot prove image presentation"
         )
     launch = read_document(layout, report.launch, Launch)
-    plan = load_plan(verify_reference(layout, launch.plan))
+    plan = load_execution_plan(verify_reference(layout, launch.plan))
     if not report.model_contexts:
         raise ImagePresentationUnavailable(
             "logged model is missing; image presentation cannot be verified"

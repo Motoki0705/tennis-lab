@@ -16,7 +16,11 @@ from src.tasks.base.annotation.collection.ledger import CollectionLedger
 from src.tasks.base.annotation.collection.service import Collection, SourceExcluded
 from src.tasks.base.annotation.contracts import ArtifactRef, Document
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import load_plan, references
+from src.tasks.base.annotation.plan import (
+    LocalAnnotationPlan,
+    load_execution_plan,
+    references,
+)
 from src.tasks.base.annotation.predictions import PredictionAdapter, Predictions
 from src.tasks.base.annotation.screening.contracts import (
     ScreeningPolicy,
@@ -98,7 +102,7 @@ def execute(
     if os.environ.get("TENNIS_ANNOTATION_STAGE_OPERATION") != reference.digest:
         raise ValueError("operation must be launched by its resource-accounted stage")
     data = read_document(layout, reference, OperationInput)
-    plan = load_plan(verify_reference(layout, data.plan))
+    plan = load_execution_plan(verify_reference(layout, data.plan))
     if layout.artifact_path(reference).parent.parent != layout.path(
         "campaigns", plan.campaign_id, "jobs"
     ):
@@ -118,9 +122,13 @@ def _execute(
     session: ArtifactRef | None = None,
 ) -> ArtifactRef:
     data = read_document(layout, reference, OperationInput)
-    plan = load_plan(verify_reference(layout, data.plan))
+    plan = load_execution_plan(verify_reference(layout, data.plan))
     if plan.phase == "benchmark" or layout.review_namespace is not None:
         raise ValueError("benchmark review requires its dedicated operation boundary")
+    if isinstance(plan, LocalAnnotationPlan):
+        from .video_services import execute_video_operation
+
+        return execute_video_operation(layout, reference, plan, session=session)
     directory = layout.artifact_path(reference).parent
     expected = layout.path("campaigns", plan.campaign_id, "jobs")
     if session is None:
@@ -178,7 +186,9 @@ def _execute(
                     "acquisition attempt differs from its pinned operation directory"
                 )
             result = (
-                Collection(layout, plan).acquire(op.source_id, retry=op.retry or attempt > 1),
+                Collection(layout, plan).acquire(
+                    op.source_id, retry=op.retry or attempt > 1
+                ),
             )
         elif isinstance(op, RestoreSourceOperation):
             from src.tasks.base.annotation.collection.restoration import (

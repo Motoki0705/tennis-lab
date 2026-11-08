@@ -16,7 +16,7 @@ from ..artifacts import (
     write_document,
 )
 from ..contracts import ArtifactRef, ClipManifest
-from ..editing.contracts import ReviewContext, Revision
+from ..editing.contracts import BlankAnnotationContext, ReviewContext, Revision
 from ..media import clip_timeline, decode_clip
 from ..paths import AnnotationLayout
 from ..predictions import PredictionReceipt
@@ -42,7 +42,13 @@ def _verify_annotation(layout: AnnotationLayout, request: RenderRequest) -> None
         verify_reference(layout, prediction.prediction.artifact)
     else:
         revision = read_document(layout, request.annotation, Revision)
-        context = read_document(layout, revision.context, ReviewContext)
+        context = read_document(
+            layout,
+            revision.context,
+            BlankAnnotationContext
+            if request.annotation_kind == "video_revision"
+            else ReviewContext,
+        )
         manifest = context.manifest
         verify_reference(layout, revision.payload)
     if manifest != request.manifest:
@@ -191,7 +197,9 @@ def render_page(layout: AnnotationLayout, request: RenderRequest) -> RenderedIma
                             labels = ImageDraw.Draw(header)
                             labels.text(
                                 (0, 0),
-                                f"frame={frame_index} pts={receipt.clip_pts}",
+                                f"frame={receipt.source_frame_index} pts={receipt.source_pts}"
+                                if request.annotation_kind == "video_revision"
+                                else f"frame={frame_index} pts={receipt.clip_pts}",
                                 fill="white",
                             )
                             labels.text(

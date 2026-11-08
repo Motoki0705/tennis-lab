@@ -18,12 +18,13 @@ from ..contracts import (
     relative_path,
 )
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan
+from ..plan import CampaignPlan, LocalAnnotationPlan
 from ..reproducibility import CodeBoundDocument
 from ..resources.contracts import ResourceRequest
 from ..telemetry.contracts import RenderedImage, ToolEvidence
 
 _M = TypeVar("_M")
+_Plan = TypeVar("_Plan", CampaignPlan, LocalAnnotationPlan, contravariant=True)
 
 
 class _Validator(Protocol):
@@ -53,6 +54,7 @@ class PreparedWorker(Document):
     inputs: tuple[ArtifactRef, ...] = ()
     result_path: str = "work/result.json"
     writable_directories: tuple[str, ...] = ("work",)
+    isolate_inputs: bool = False
 
     @_after
     def inside_attempt(self) -> Self:
@@ -61,6 +63,8 @@ class PreparedWorker(Document):
             relative_path(directory)
         if "work" not in self.writable_directories:
             raise ValueError("worker work directory must be writable")
+        if self.isolate_inputs and self.writable_directories != ("work",):
+            raise ValueError("private input workers may only write attempt/work")
         result = Path(self.result_path)
         if not result.is_relative_to("work"):
             raise ValueError("worker result must be in attempt/work")
@@ -172,14 +176,14 @@ class AttemptEvidence(Document):
     telemetry: ArtifactRef | None
 
 
-class TaskAdapter(Protocol):
+class TaskAdapter(Protocol[_Plan]):
     name: str
     version: str
 
     def input_references(
         self,
         layout: AnnotationLayout,
-        plan: CampaignPlan,
+        plan: _Plan,
         request: WorkRequest,
     ) -> tuple[ArtifactRef, ...]:
         """Enumerate dependencies of the opaque payload, without changing it."""
@@ -188,7 +192,7 @@ class TaskAdapter(Protocol):
     def prepare(
         self,
         layout: AnnotationLayout,
-        plan: CampaignPlan,
+        plan: _Plan,
         request: WorkRequest,
         directory: Path,
         *,
@@ -204,7 +208,7 @@ class TaskAdapter(Protocol):
     def telemetry_images(
         self,
         layout: AnnotationLayout,
-        plan: CampaignPlan,
+        plan: _Plan,
         request: WorkRequest,
         directory: Path,
     ) -> tuple[RenderedImage, ...]: ...
@@ -218,7 +222,7 @@ class TaskAdapter(Protocol):
     def validate(
         self,
         layout: AnnotationLayout,
-        plan: CampaignPlan,
+        plan: _Plan,
         request: WorkRequest,
         directory: Path,
         result: ArtifactRef,

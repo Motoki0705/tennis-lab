@@ -1,5 +1,9 @@
 # 固定予測からの並列レビュー実行
 
+予測を使わない単一cameraの探索方針比較には `blank.py` の `register_blank_condition()` /
+`compare_blank_conditions()` を使う。既存namespaceとusage集計を共有し、固定10/25/50比較とは
+別のcondition型を持つ。契約は [白紙注釈](../../ball_detection/annotation/video/agent/README.md#strategy-comparison) を参照。
+
 `BenchmarkRunner` は保存済みball予測を、10→25→50の条件別review台帳へ参照登録して
 `BallReviewWorker` を動かす。現在の対応範囲はballレビューのみ。画像・編集は
 通常controllerと共通の `ServiceBroker` / `Operations` を通じ、CPUの `render` 枠で実行する。

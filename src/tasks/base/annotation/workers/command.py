@@ -5,11 +5,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from ..plan import CampaignPlan
+from ..plan import ExecutionPlan
 from .contracts import Launch
 
 
-def codex_command(launch: Launch, plan: CampaignPlan) -> list[str]:
+def codex_command(launch: Launch, plan: ExecutionPlan) -> list[str]:
     directory = Path(launch.directory)
     command = [
         launch.codex_binary,
@@ -34,10 +34,17 @@ def codex_command(launch: Launch, plan: CampaignPlan) -> list[str]:
         "sandbox_workspace_write.exclude_tmpdir_env_var=true",
     ):
         command.extend(("-c", setting))
+    if launch.prepared.isolate_inputs:
+        # The entire CLI is already inside the inherited Landlock boundary. A
+        # second bwrap mount namespace needs host reads that this boundary denies.
+        # Anchor project discovery here so parent repo config is never consulted.
+        command.extend(("-c", 'project_root_markers=[".camera-input-root"]'))
     command.extend(
         (
             "-s",
-            "workspace-write",
+            "danger-full-access"
+            if launch.prepared.isolate_inputs
+            else "workspace-write",
             "-C",
             str(directory / "work"),
             "--skip-git-repo-check",
@@ -54,10 +61,22 @@ def codex_command(launch: Launch, plan: CampaignPlan) -> list[str]:
     return [*command, "-"]
 
 
-def worker_environment(launch: Launch, plan: CampaignPlan) -> dict[str, str]:
-    environment = os.environ.copy()
+def worker_environment(launch: Launch, plan: ExecutionPlan) -> dict[str, str]:
+    environment = (
+        {
+            key: os.environ[key]
+            for key in ("LANG", "TZ", "OPENAI_API_KEY")
+            if key in os.environ
+        }
+        if launch.prepared.isolate_inputs
+        else os.environ.copy()
+    )
     environment.pop("CODEX_THREAD_ID", None)
-    environment["PYTHONPATH"] = launch.code_root
+    if launch.prepared.isolate_inputs:
+        environment["HOME"] = str(Path(launch.directory) / "work")
+        environment["PATH"] = "/usr/bin:/bin"
+    else:
+        environment["PYTHONPATH"] = launch.code_root
     environment["CODEX_HOME"] = launch.codex_home
     environment["CUDA_VISIBLE_DEVICES"] = ""
     temporary = Path(launch.directory) / "work" / "tmp"

@@ -122,7 +122,21 @@ class ServiceBroker:
             key=lambda path: (path.stat().st_mtime_ns, path.name),
         )
         for path in paths:
-            if (directory / "services" / path.stem / "reply.json").exists():
+            existing_reply = directory / "services" / path.stem / "reply.json"
+            if existing_reply.exists():
+                if (
+                    launch.prepared.isolate_inputs
+                    and not (directory / "exchange" / path.stem / "reply.json").exists()
+                ):
+                    publish_reply(
+                        self.layout,
+                        annotation_reference(self.layout, path),
+                        read_document(
+                            self.layout,
+                            annotation_reference(self.layout, existing_reply),
+                            ServiceReply,
+                        ),
+                    )
                 continue
             if path.stat().st_size > 32768:
                 raise ValueError("worker service request exceeds 32 KiB")
@@ -149,6 +163,20 @@ class ServiceBroker:
                     _service, review = service_input(self.layout, service_ref)
                     if review.input.work != request:
                         raise ValueError("review service refers to another worker")
+                    op = OperationInput(
+                        plan=self.plan,
+                        operation=ReviewOperation(service_request=service_ref),
+                    )
+                elif request.adapter == "ball_video_annotation":
+                    from src.tasks.ball_detection.annotation.video.agent.services import (
+                        service_input as video_input,
+                    )
+
+                    _service, video = video_input(self.layout, service_ref)
+                    if video.task.work != request:
+                        raise ValueError(
+                            "blank service refers to another camera worker"
+                        )
                     op = OperationInput(
                         plan=self.plan,
                         operation=ReviewOperation(service_request=service_ref),

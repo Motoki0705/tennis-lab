@@ -20,7 +20,7 @@ from ..artifacts import (
     write_document,
 )
 from ..paths import AnnotationLayout
-from ..plan import load_plan, references
+from ..plan import load_execution_plan, references
 from ..resources import CapacityUnavailable, ResourceManager
 from ..workers.processes import (
     ProcessIdentity,
@@ -118,7 +118,7 @@ def supervise(
             directory / "owner.json",
             (json.dumps(owner.document(), sort_keys=True) + "\n").encode(),
         )
-        plan = load_plan(verify_reference(layout, launch.resource.plan))
+        plan = load_execution_plan(verify_reference(layout, launch.resource.plan))
         stage = next(
             stage
             for stage in plan.resources.stages
