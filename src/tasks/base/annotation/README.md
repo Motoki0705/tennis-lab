@@ -15,10 +15,13 @@
 `AnnotationLayout.testing(absolute_path)` を使う。
 `save_plan()` は参照ファイルのhash/sizeを検証してから原子的に保存し、
 同一campaignへの異なるplanを拒否する。実行前にも `validate_inputs()` を呼ぶ。
-`load_plan(expected_digest=...)` で登録済みplanの改変を検出する。
+予測campaignは`load_plan(expected_digest=...)`で登録済みplanの改変を検出する。
+白紙の`LocalAnnotationPlan`を含む共通の読込は`load_execution_plan()`が明示schemaで分岐する。
+白紙入力の登録範囲は[ローカル動画サービス](../../annotation/README.md#ローカル動画の白紙入力登録)を参照する。
 ballとposeが同じdataset versionを参照するときは、公開する `component` を分ける。
 素材の共有台帳・取得・明示区間の準備APIは [collection](collection/README.md) を参照する。
-ballのJPEG保存方式では、準備・照合後に動画を削除し、推論・GPT確認・公開・学習で同じJPEGを使う。
+収集campaignで動画削除を選んだballのJPEG保存方式では、準備・照合後に動画を削除し、
+推論・GPT確認・公開・学習で同じJPEGを使う。
 URL・元動画hash・実時刻の来歴は保持する。保持条件と削除後の再開は
 [collectionの保存契約](collection/README.md#jpegを残して動画を削除する保存方式)を正本とする。
 工程の受付・予約と予算計測のAPIは [resources](resources/README.md) を参照する。

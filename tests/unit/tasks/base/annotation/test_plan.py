@@ -12,6 +12,8 @@ from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import (
     CampaignPlan,
     CollectionCounts,
+    LocalAnnotationPlan,
+    load_execution_plan,
     load_plan,
     save_plan,
 )
@@ -111,18 +113,32 @@ def test_nested_values_are_immutable(tmp_path: Path) -> None:
     assert isinstance(plan.resources.stages, tuple)
 
 
+@pytest.mark.parametrize("input_kind", ["prediction", "blank"])
 def test_concurrent_registration_reuses_exact_plan_and_refuses_changes(
-    tmp_path: Path,
+    tmp_path: Path, input_kind: str,
 ) -> None:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
-    plan = CampaignPlan.model_validate_json(json.dumps(payload(layout.root)))
+    raw = payload(layout.root)
+    plan: CampaignPlan | LocalAnnotationPlan
+    if input_kind == "blank":
+        raw.update(schema_version="annotation.local-plan.v1", phase="production", task="opaque-task", input_manifest=raw["selection"], publish_dataset=False)
+        for name in ("tasks", "counts", "selection", "preparation"):
+            del raw[name]
+        plan = LocalAnnotationPlan.model_validate_json(json.dumps(raw))
+    else:
+        plan = CampaignPlan.model_validate_json(json.dumps(raw))
     with ThreadPoolExecutor(max_workers=4) as pool:
         paths = list(pool.map(lambda _: save_plan(layout, plan), range(8)))
     assert len(set(paths)) == 1
-    assert load_plan(paths[0], expected_digest=plan.sha256) == plan
-    raw = plan.model_dump(mode="json")
-    raw["tasks"][0]["model"]["version"] = "changed"
-    changed = CampaignPlan.model_validate_json(json.dumps(raw))
+    assert load_execution_plan(paths[0], expected_digest=plan.sha256) == plan
+    if isinstance(plan, CampaignPlan):
+        raw = plan.model_dump(mode="json")
+        raw["tasks"][0]["model"]["version"] = "changed"
+        changed = CampaignPlan.model_validate_json(json.dumps(raw))
+    else:
+        with pytest.raises(ValidationError):
+            load_plan(paths[0])
+        changed = plan.model_copy(update={"publish_dataset": True})
     before = paths[0].read_bytes()
     with pytest.raises(ValueError, match="hash mismatch"):
         save_plan(layout, changed)

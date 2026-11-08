@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from fractions import Fraction
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field
@@ -11,6 +13,7 @@ from src.tasks.ball_detection.annotation.review.worker import (
     BallReviewServices,
     BallReviewWorker,
 )
+from src.tasks.ball_detection.annotation.video import VideoAnnotationInput
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
     read_document,
@@ -19,10 +22,22 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.collection.contracts import PreparationReceipt
 from src.tasks.base.annotation.collection.ledger import CollectionLedger
-from src.tasks.base.annotation.contracts import ArtifactRef, Digest, Document
+from src.tasks.base.annotation.collection.local import (
+    LocalInputLedger,
+    LocalInputRegistration,
+)
+from src.tasks.base.annotation.contracts import (
+    ArtifactRef,
+    ClipManifest,
+    Digest,
+    Document,
+    SourceProvenance,
+    content_digest,
+)
 from src.tasks.base.annotation.editing import ReviewContext, RevisionStore
+from src.tasks.base.annotation.editing.contracts import BlankAnnotationContext
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, references
+from src.tasks.base.annotation.plan import CampaignPlan, LocalAnnotationPlan, references
 from src.tasks.base.annotation.predictions import PredictionReceipt, Predictions
 from src.tasks.base.annotation.workers.contracts import (
     AttemptResult,
@@ -30,6 +45,12 @@ from src.tasks.base.annotation.workers.contracts import (
     WorkRequest,
 )
 from src.tasks.base.annotation.workers.ledger import WorkerLedger
+
+from .contracts import LocalVideoManifest
+
+# The blank task adapter is implemented by the subsequent worker integration.
+LOCAL_VIDEO_ADAPTER = "ball_video_annotation"
+LOCAL_VIDEO_ADAPTER_VERSION = "3"
 
 # Review worker states that block publication until an explicit decision.
 DECISION_STATES = frozenset(
@@ -80,9 +101,32 @@ def require_supported(plan: CampaignPlan) -> None:
 
 
 def requests(
-    layout: AnnotationLayout, plan: CampaignPlan, plan_ref: ArtifactRef
+    layout: AnnotationLayout,
+    plan: CampaignPlan | LocalAnnotationPlan,
+    plan_ref: ArtifactRef,
 ) -> tuple[ArtifactRef, ...]:
-    """A prediction maps to exactly one immutable request; no inference is run here."""
+    """Resolve immutable requests from explicit prediction or blank input types."""
+    if isinstance(plan, LocalAnnotationPlan):
+        if read_document(layout, plan_ref, LocalAnnotationPlan) != plan:
+            raise ValueError("local request plan differs from its immutable reference")
+        entries = LocalInputLedger(layout).entries(plan)
+        manifest = read_document(layout, plan.input_manifest, LocalVideoManifest)
+        inputs = [
+            read_local_context(layout, entry.context, plan_ref) for entry in entries
+        ]
+        if len(inputs) != len(manifest.videos) or set(inputs) != {
+            v.annotation for v in manifest.videos
+        }:
+            raise ValueError(
+                "local input registration does not cover the frozen video set"
+            )
+        for entry in entries:
+            request = read_document(layout, entry.request, WorkRequest)
+            if request.payload != entry.context:
+                raise ValueError(
+                    "local work request belongs to a different camera context"
+                )
+        return tuple(entry.request for entry in entries)
     require_supported(plan)
     return prediction_requests(
         layout,
@@ -90,6 +134,121 @@ def requests(
         plan_ref,
         Predictions(layout, plan).completed(BallPredictionAdapter()),
     )
+
+
+def read_local_context(
+    layout: AnnotationLayout, reference: ArtifactRef, plan_ref: ArtifactRef
+) -> VideoAnnotationInput:
+    """Task boundary for later worker/publisher consumers of a blank context."""
+    context = read_document(layout, reference, BlankAnnotationContext)
+    if context.plan != plan_ref or context.task != "ball":
+        raise ValueError("blank context belongs to another plan/task")
+    return _validate_local_context(layout, context)
+
+
+def _validate_local_context(
+    layout: AnnotationLayout, context: BlankAnnotationContext
+) -> VideoAnnotationInput:
+    plan = read_document(layout, context.plan, LocalAnnotationPlan)
+    inputs = read_document(layout, plan.input_manifest, LocalVideoManifest)
+    expected = read_document(layout, context.task_input, VideoAnnotationInput)
+    video = next((v for v in inputs.videos if v.annotation == expected), None)
+    if plan.task != context.task or context.task != "ball" or video is None:
+        raise ValueError("blank task input is not in the frozen plan input manifest")
+    manifest = read_document(layout, context.manifest, ClipManifest)
+    source = expected.source
+    if (
+        not isinstance(manifest.source, SourceProvenance)
+        or manifest.jpeg is None
+        or (
+            manifest.source.provider,
+            manifest.source.channel_id,
+            manifest.source.video_id,
+            manifest.source.origin_url,
+        )
+        != (
+            "local",
+            content_digest(source.recording_id),
+            source.sha256,
+            Path(video.path).as_uri(),
+        )
+        or (manifest.source.media.digest, manifest.source.media.size_bytes)
+        != (source.media_sha256, source.size_bytes)
+        or (context.source_media.digest, context.source_media.size_bytes)
+        != (source.media_sha256, source.size_bytes)
+        or manifest.preparation_digest != expected.sha256
+        or (
+            manifest.width,
+            manifest.height,
+            Fraction(manifest.time_base),
+            Fraction(manifest.nominal_fps),
+        )
+        != (
+            source.width,
+            source.height,
+            Fraction(source.time_base),
+            Fraction(source.nominal_fps),
+        )
+        or manifest.source_range != expected.frame_range
+        or (manifest.target_range.start, manifest.target_range.stop)
+        != (0, len(expected.frames))
+        or tuple((r.source_frame_index, r.source_pts) for r in manifest.frames)
+        != tuple((r.frame_index, r.pts) for r in expected.frames)
+    ):
+        raise ValueError(
+            "blank image manifest mixes a different camera/input/frame/PTS"
+        )
+    verify_reference(layout, context.source_media)
+    verify_reference(layout, manifest.media)
+    return expected
+
+
+def local_video_request(
+    layout: AnnotationLayout,
+    plan: LocalAnnotationPlan,
+    plan_ref: ArtifactRef,
+    manifest_ref: ArtifactRef,
+    task_input: ArtifactRef,
+    source_media: ArtifactRef,
+) -> LocalInputRegistration:
+    """Bind one camera's real images and v3 input without a prediction receipt."""
+    if read_document(layout, plan_ref, LocalAnnotationPlan) != plan:
+        raise ValueError("local request plan differs from its immutable reference")
+    context = BlankAnnotationContext(
+        plan=plan_ref,
+        task="ball",
+        manifest=manifest_ref,
+        task_input=task_input,
+        source_media=source_media,
+    )
+    _validate_local_context(layout, context)
+    manifest = read_document(layout, manifest_ref, ClipManifest)
+    context_ref = write_document(
+        layout,
+        layout.path("annotations", "ball", manifest.clip_id, "context.json"),
+        context,
+    )
+    request = WorkRequest(
+        adapter=LOCAL_VIDEO_ADAPTER,
+        adapter_version=LOCAL_VIDEO_ADAPTER_VERSION,
+        stage="review",
+        subject_id=manifest.clip_id,
+        payload=context_ref,
+        inputs=(manifest_ref, task_input, source_media),
+    )
+    request_ref = write_document(
+        layout,
+        layout.path(
+            "campaigns",
+            plan.campaign_id,
+            "review",
+            "ball",
+            manifest.clip_id,
+            "request.json",
+        ),
+        request,
+    )
+    return LocalInputRegistration(context=context_ref, request=request_ref)
 
 
 def prediction_requests(

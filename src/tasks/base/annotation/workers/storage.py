@@ -6,7 +6,7 @@ import sqlite3
 
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan
+from ..plan import ExecutionPlan
 from ..storage import StorageCatalog
 from ..storage.contracts import Protection
 from ..storage.references import protection
@@ -30,7 +30,7 @@ class WorkerReferences:
     def register(
         self,
         plan_ref: ArtifactRef,
-        plan: CampaignPlan,
+        plan: ExecutionPlan,
         request: WorkRequest,
         dependencies: tuple[ArtifactRef, ...],
         *,

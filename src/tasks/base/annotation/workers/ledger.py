@@ -9,7 +9,14 @@ from typing import Any
 from ..artifacts import annotation_reference, read_document, verify_reference
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, references, require_execution_layout, save_plan
+from ..plan import (
+    CampaignPlan,
+    LocalAnnotationPlan,
+    load_execution_plan,
+    references,
+    require_execution_layout,
+    save_plan,
+)
 from ..registry import Registry
 from ..telemetry.capture import verify_report
 from .contracts import AttemptEvidence, AttemptResult, ExitReceipt, Launch, WorkRequest
@@ -49,7 +56,7 @@ class WorkerLedger:
 
     def register(
         self,
-        plan: CampaignPlan,
+        plan: CampaignPlan | LocalAnnotationPlan,
         request: WorkRequest,
         *,
         dependencies: tuple[ArtifactRef, ...],
@@ -85,7 +92,7 @@ class WorkerLedger:
             )
 
     @staticmethod
-    def require(row: sqlite3.Row, plan: CampaignPlan, request: WorkRequest) -> None:
+    def require(row: sqlite3.Row, plan: CampaignPlan | LocalAnnotationPlan, request: WorkRequest) -> None:
         if (row["campaign"], row["plan_digest"], row["request"]) != (
             plan.campaign_id,
             plan.sha256,
@@ -111,7 +118,7 @@ class WorkerLedger:
             )
 
     def history(
-        self, plan: CampaignPlan, request: WorkRequest
+        self, plan: CampaignPlan | LocalAnnotationPlan, request: WorkRequest
     ) -> tuple[AttemptEvidence, ...]:
         """Read immutable attempt files, never the replaceable task.result column."""
         with self.registry.transaction() as database:
@@ -140,7 +147,7 @@ class WorkerLedger:
                 launch.request != request
                 or launch.work_id != request.work_id
                 or launch.attempt != row["id"]
-                or read_document(self.layout, launch.plan, CampaignPlan) != plan
+                or load_execution_plan(verify_reference(self.layout, launch.plan)) != plan
                 or Path(launch.directory) != directory
                 or self.layout.artifact_path(launch_ref) != directory / "launch.json"
             ):

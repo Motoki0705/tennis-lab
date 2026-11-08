@@ -10,7 +10,13 @@ from typing import Any
 from ..artifacts import read_document, verify_reference
 from ..contracts import ArtifactRef, ClipManifest, SourceIdentity, content_digest
 from ..paths import AnnotationLayout
-from ..plan import CampaignPlan, require_execution_layout, save_plan
+from ..plan import (
+    CampaignPlan,
+    ExecutionPlan,
+    LocalAnnotationPlan,
+    require_execution_layout,
+    save_plan,
+)
 from ..registry import Registry
 from .contracts import (
     AcquisitionReceipt,
@@ -66,7 +72,7 @@ class CollectionLedger:
         self.registry = Registry(layout)
         self.registry.initialize("collection.v1", SCHEMA)
 
-    def register_campaign(self, plan: CampaignPlan) -> None:
+    def register_campaign(self, plan: CampaignPlan | LocalAnnotationPlan) -> None:
         require_execution_layout(self.layout, plan)
         save_plan(self.layout, plan)
         with self.registry.transaction() as database:
@@ -85,7 +91,7 @@ class CollectionLedger:
             )
 
     @staticmethod
-    def _require_plan(database: sqlite3.Connection, plan: CampaignPlan) -> None:
+    def _require_plan(database: sqlite3.Connection, plan: ExecutionPlan) -> None:
         row = database.execute(
             "SELECT digest FROM campaigns WHERE id=?", (plan.campaign_id,)
         ).fetchone()

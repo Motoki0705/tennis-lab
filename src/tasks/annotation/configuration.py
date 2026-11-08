@@ -25,6 +25,7 @@ from src.tasks.base.annotation.execution.queue import validate_queue
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import (
     CampaignPlan,
+    ExecutionPlan,
     load_plan,
     references,
     save_plan,
@@ -38,7 +39,7 @@ from src.tasks.base.annotation.resources.measurements import free_bytes
 from src.tasks.base.annotation.screening.contracts import ScreeningPolicy
 from src.utils.paths import PROJECT_ROOT
 
-from .contracts import Runtime, RuntimeSettings
+from .contracts import LocalVideoInput, Runtime, RuntimeSettings, WorkerRuntimeSettings
 
 
 class ExistingBudget(Document):
@@ -72,10 +73,32 @@ class ConfigurationReceipt(Document):
     runtime: ArtifactRef
 
 
+class LocalVideoConfiguration(Document):
+    """Scene service input; campaign has no model/collection requirements."""
+
+    schema_version: Literal["annotation.local-configuration.v1"] = (
+        "annotation.local-configuration.v1"
+    )
+    campaign: ExecutionPlan
+    videos: tuple[LocalVideoInput, ...] = Field(min_length=1)
+    publish_dataset: bool
+    budget: Annotated[ExistingBudget | NewBudget, Field(discriminator="action")]
+    runtime: WorkerRuntimeSettings
+
+
+def configure_local_videos(
+    layout: AnnotationLayout, data: LocalVideoConfiguration
+) -> ArtifactRef:
+    """Freeze local inputs and register camera work, without launching any worker."""
+    from .local_videos import register_local_videos
+
+    return register_local_videos(layout, data)
+
+
 def validate_runtime(
     layout: AnnotationLayout,
-    settings: RuntimeSettings,
-    plan: CampaignPlan,
+    settings: WorkerRuntimeSettings,
+    plan: ExecutionPlan,
     roots: tuple[str, ...],
 ) -> None:
     """Read-only validation shared by configuration and controller startup."""
@@ -96,31 +119,34 @@ def validate_runtime(
         Path(root).is_dir() and codex_home.is_relative_to(Path(root)) for root in roots
     ):
         raise ValueError("Codex state must be inside the resource inventory")
-    validate_queue(layout, settings.queue)
+    if isinstance(settings, RuntimeSettings):
+        validate_queue(layout, settings.queue)
 
 
-def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
+def _scope(
+    layout: AnnotationLayout, plan: ExecutionPlan, budget: ExistingBudget | NewBudget
+) -> BudgetScope:
     scope: BudgetScope
-    established = isinstance(data.budget, ExistingBudget)
-    if isinstance(data.budget, ExistingBudget):
-        scope = read_document(layout, data.budget.scope, BudgetScope)
-        if layout.artifact_path(data.budget.scope) != layout.path(
+    established = isinstance(budget, ExistingBudget)
+    if isinstance(budget, ExistingBudget):
+        scope = read_document(layout, budget.scope, BudgetScope)
+        if layout.artifact_path(budget.scope) != layout.path(
             "resources", scope.scope_id, "scope.json"
         ):
             raise ValueError("reuse requires the canonical budget scope file")
         verify_reference(layout, scope.baseline)
     else:
         scope = BudgetScope(
-            scope_id=data.budget.scope_id,
-            limits=BudgetLimits.from_budget(data.plan.resources),
-            roots=data.budget.roots,
-            free_space_mounts=data.budget.free_space_mounts,
+            scope_id=budget.scope_id,
+            limits=BudgetLimits.from_budget(plan.resources),
+            roots=budget.roots,
+            free_space_mounts=budget.free_space_mounts,
             baseline=ArtifactRef(
                 role="annotation", path="pending", digest="0" * 64, size_bytes=0
             ),
-            previously_allocated_bytes=data.budget.previously_allocated_bytes,
-            previously_used_gpu_seconds=data.budget.previously_used_gpu_seconds,
-            max_pending_per_stage=data.budget.max_pending_per_stage,
+            previously_allocated_bytes=budget.previously_allocated_bytes,
+            previously_used_gpu_seconds=budget.previously_used_gpu_seconds,
+            max_pending_per_stage=budget.max_pending_per_stage,
         )
         path = layout.path("resources", scope.scope_id, "scope.json")
         if path.exists():
@@ -133,7 +159,7 @@ def _scope(layout: AnnotationLayout, data: Configuration) -> BudgetScope:
                 )
             verify_reference(layout, existing.baseline)
             scope, established = existing, True
-    if scope.limits != BudgetLimits.from_budget(data.plan.resources):
+    if scope.limits != BudgetLimits.from_budget(plan.resources):
         raise ValueError("campaign limits differ from the reused budget scope")
     roots = tuple(Path(root) for root in scope.roots)
     for root in roots:
@@ -210,7 +236,7 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
         required.update(("review", "publish_ball"))
         if plan.tasks[0].learning is not None:
             required.update(("train_ball", "evaluate_ball"))
-    scope = _scope(layout, data)
+    scope = _scope(layout, plan, data.budget)
     validate_runtime(layout, data.runtime, plan, scope.roots)
     declared = {stage.stage: stage for stage in plan.resources.stages}
     for stage in required:
@@ -220,9 +246,7 @@ def configure(layout: AnnotationLayout, data: Configuration) -> ArtifactRef:
                 "screen/review must use Codex capacity; other operations cannot"
             )
         if stage == "infer_player" and declared[stage].kind != "gpu":
-            raise ValueError(
-                "infer_player requires an explicit shared GPU reservation"
-            )
+            raise ValueError("infer_player requires an explicit shared GPU reservation")
         if stage in {"train_ball", "evaluate_ball"} and declared[stage].kind != "gpu":
             raise ValueError("learning stages require explicit shared GPU reservations")
     for cost in data.runtime.costs:

@@ -117,23 +117,20 @@ class TaskPlan(Document):
         return self
 
 
-class CampaignPlan(Document):
-    schema_version: Literal["annotation.plan.v1"] = "annotation.plan.v1"
+class ExecutionPlan(Document):
+    """Execution identity shared by prediction campaigns and direct annotation."""
+
     campaign_id: Identifier
     phase: Literal["preview", "production", "benchmark"]
     annotation_root: str
-    counts: CollectionCounts
-    selection: ArtifactRef
-    preparation: ArtifactRef
     code_commit: str = Field(pattern=r"^[0-9a-f]{40}$")
     code_diff_digest: Digest
     agent_model: Literal["gpt-6.1-sol"]
     agent_effort: Literal["low", "medium", "high", "xhigh", "max", "ultra"]
     resources: ResourceBudget
-    tasks: tuple[TaskPlan, ...] = Field(min_length=1)
 
     @_after
-    def consistent(self) -> Self:
+    def normalized_root(self) -> Self:
         root = Path(self.annotation_root)
         if (
             not root.is_absolute()
@@ -141,6 +138,32 @@ class CampaignPlan(Document):
             or ".." in root.parts
         ):
             raise ValueError("annotation_root must be a normalized absolute path")
+        return self
+
+    @property
+    def allows_adoption(self) -> bool:
+        return self.phase in {"production", "benchmark"}
+
+
+class LocalAnnotationPlan(ExecutionPlan):
+    """Blank task input is opaque to base; no model, selection or inference."""
+
+    schema_version: Literal["annotation.local-plan.v1"] = "annotation.local-plan.v1"
+    phase: Literal["production"] = "production"
+    task: Identifier
+    input_manifest: ArtifactRef
+    publish_dataset: bool
+
+
+class CampaignPlan(ExecutionPlan):
+    schema_version: Literal["annotation.plan.v1"] = "annotation.plan.v1"
+    counts: CollectionCounts
+    selection: ArtifactRef
+    preparation: ArtifactRef
+    tasks: tuple[TaskPlan, ...] = Field(min_length=1)
+
+    @_after
+    def consistent(self) -> Self:
         if len({task.task for task in self.tasks}) != len(self.tasks):
             raise ValueError("campaign task names must be unique")
         if self.phase in {"production", "benchmark"} and any(
@@ -158,12 +181,8 @@ class CampaignPlan(Document):
             raise ValueError("products must have unambiguous publication destinations")
         return self
 
-    @property
-    def allows_adoption(self) -> bool:
-        return self.phase in {"production", "benchmark"}
 
-
-def require_execution_layout(layout: AnnotationLayout, plan: CampaignPlan) -> None:
+def require_execution_layout(layout: AnnotationLayout, plan: ExecutionPlan) -> None:
     if plan.phase == "benchmark":
         if layout.review_namespace != plan.campaign_id:
             raise ValueError(
@@ -191,7 +210,26 @@ def load_plan(path: Path, *, expected_digest: str | None = None) -> CampaignPlan
     return plan
 
 
-def validate_new_plan_worker(layout: AnnotationLayout, plan: CampaignPlan) -> None:
+def load_execution_plan(
+    path: Path, *, expected_digest: str | None = None
+) -> CampaignPlan | LocalAnnotationPlan:
+    """Dispatch on the saved schema, never infer a blank input from missing fields."""
+    payload = path.read_bytes()
+    value = json.loads(payload, object_pairs_hook=_reject_duplicate_keys)
+    plan: CampaignPlan | LocalAnnotationPlan
+    if (
+        isinstance(value, dict)
+        and value.get("schema_version") == "annotation.local-plan.v1"
+    ):
+        plan = LocalAnnotationPlan.model_validate_json(payload)
+    else:
+        plan = CampaignPlan.model_validate_json(payload)
+    if expected_digest is not None and plan.sha256 != expected_digest:
+        raise ValueError("campaign plan hash mismatch")
+    return plan
+
+
+def validate_new_plan_worker(layout: AnnotationLayout, plan: ExecutionPlan) -> None:
     """Apply the current decision to new plans, preserving frozen campaign inputs."""
     if not layout.path("campaigns", plan.campaign_id, "plan.json").exists():
         load_worker_decision().require(
@@ -199,9 +237,15 @@ def validate_new_plan_worker(layout: AnnotationLayout, plan: CampaignPlan) -> No
         )
 
 
-def save_plan(layout: AnnotationLayout, plan: CampaignPlan) -> Path:
+def save_plan(
+    layout: AnnotationLayout, plan: CampaignPlan | LocalAnnotationPlan
+) -> Path:
     """Create once, or return exactly the same plan under the campaign lock."""
-    plan = CampaignPlan.model_validate_json(plan.canonical_bytes())
+    plan = (
+        LocalAnnotationPlan.model_validate_json(plan.canonical_bytes())
+        if isinstance(plan, LocalAnnotationPlan)
+        else CampaignPlan.model_validate_json(plan.canonical_bytes())
+    )
     if plan.annotation_root != str(layout.root):
         raise ValueError("plan annotation root differs from the execution root")
     validate_new_plan_worker(layout, plan)
@@ -215,7 +259,7 @@ def save_plan(layout: AnnotationLayout, plan: CampaignPlan) -> Path:
         fcntl.flock(guard, fcntl.LOCK_EX)
         layout.path("campaigns", plan.campaign_id, "plan.json")
         if path.exists():
-            load_plan(path, expected_digest=plan.sha256)
+            load_execution_plan(path, expected_digest=plan.sha256)
             return path
         temporary: str | None = None
         try:
@@ -251,7 +295,7 @@ def references(document: Document) -> Iterator[ArtifactRef]:
                     yield from references(child)
 
 
-def validate_inputs(layout: AnnotationLayout, plan: CampaignPlan) -> None:
+def validate_inputs(layout: AnnotationLayout, plan: ExecutionPlan) -> None:
     seen: set[ArtifactRef] = set()
     for reference in references(plan):
         if reference in seen:

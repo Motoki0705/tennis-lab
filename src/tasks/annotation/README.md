@@ -7,8 +7,8 @@ preview campaignでは取得→プレー窓選別→clip準備→ball/player予�
 保存済み予測の定性確認には、以下の `prediction_preview` を使う。
 production campaignでは、現在 **ball / framesのみ**、レビュー→全clipの採用確認→
 累積snapshot公開→追加学習・固定評価・モデル採用まで接続している。
-player bbox/poseを含むproduction planは明示的に拒否する。レビューは保存済みの予測receiptを
-初期値にするため、予測を使わない評価用の正解づくり（動画からの直接注釈）は対象外である。
+player bbox/poseを含むproduction planは明示的に拒否する。CLIのレビューは保存済みの予測receiptを
+初期値にする。sceneが指定した動画の白紙入力は、以下の[サービスAPI](#ローカル動画の白紙入力登録)で登録する。
 実装の経緯と未完了の受入条件は[親Issue](https://github.com/Motoki0705/tennis-lab/issues/1088)に残っている。
 
 ```mermaid
@@ -43,6 +43,76 @@ session失敗は明示的な工程再試行を必要とし、勝手に次のsess
 新attemptの進行を妨げない。注釈編集のrevision照合・実画像確認・採用条件は維持する。
 通常のrun/statusでは、同じcontrollerが照合済みの終了stageをメモリ内で再利用する。
 `status --details` は全履歴とログhashを再照合し、再起動時にもcacheを持ち越さない。
+
+## ローカル動画の白紙入力登録
+
+`configure_local_videos(layout, LocalVideoConfiguration)` は、sceneが選んだ元動画を保持し、
+camera別の画像manifest・白紙context・`WorkRequest`を共有台帳へ登録するサービスAPI。
+checkpoint、予測receipt、YouTube取得・プレー窓選別・推論・GPU queue設定は不要である。
+worker起動、注釈編集・採用、dataset writer、scene CLIの配線はこのAPIでは実行しない。
+
+```python
+from src.tasks.annotation.configuration import (
+    LocalVideoConfiguration,
+    configure_local_videos,
+)
+from src.tasks.annotation.contracts import LocalVideoInput
+from src.tasks.annotation.local_videos import LocalVideoConfigurationReceipt
+from src.tasks.annotation.reviews import read_local_context
+from src.tasks.base.annotation.artifacts import read_document
+from src.tasks.base.annotation.workers.contracts import WorkRequest
+
+# layout: 共通AnnotationLayout
+# campaign_settings: ExecutionPlan（code版・worker条件・明示した資源予算）
+# worker_settings: WorkerRuntimeSettings（Codex保存先・review/renderのcost）
+# budget_selection: ExistingBudget または明示した NewBudget
+# expected_input: sceneが固定した既存のVideoAnnotationInput。cameraごとに作る。
+configuration = LocalVideoConfiguration(
+    campaign=campaign_settings,
+    videos=(LocalVideoInput(path=str(video_path.resolve()), annotation=expected_input),),
+    publish_dataset=publish_dataset,
+    budget=budget_selection,
+    runtime=worker_settings,
+)
+reference = configure_local_videos(layout, configuration)
+receipt = read_document(layout, reference, LocalVideoConfigurationReceipt)
+for entry in receipt.registrations:
+    request = read_document(layout, entry.request, WorkRequest)
+    camera_input = read_local_context(layout, entry.context, receipt.plan)
+```
+
+`LocalVideoInput.annotation`は[v3のVideoAnnotationInput](../ball_detection/annotation/video/README.md)
+そのものを使う。元収録groupは`source.recording_id`、cameraは`source.camera_id`で指定し、
+同一収録の全camera・関連clipでrecording_idを共有する。対象区間は元動画のframe indexによる
+半開区間、各行のPTSは元動画の整数tickを指定する。登録時に元bytes・全動画metadata・
+対象全frameの実PTSを復号して照合する。FPSからPTSを補わない。
+同じ元動画/camera内の重複・重なる対象区間は1要求へ混在させない。
+同じ収録group/cameraに複数の切出し済み動画がある場合も、元動画identityごとに
+file-relativeなframe/PTSとworkを分ける。groupを元動画identityの代わりに使わない。
+
+元動画は呼出元pathを削除せず、`media/sources/blobs/`にも元bytesを保持する。
+指定範囲の全native frameをQ90 JPEGへ直接保存し、画像manifestから元frame/PTSを辿れる。
+task入力の`frame_index`は元動画番号、画像manifestの`frame_index`はclip内の0始まりであり、
+`source_frame_index`で対応付ける。
+画像path・clip/worker identityはcamera別になり、数frameの短clipにも間引き・paddingを行わない。
+`BlankAnnotationContext`はtask入力・画像manifest・元動画を参照し、`ReviewContext`の
+必須predictionとは別型である。baseはボール状態を解釈せず、v3入力の照合はtask境界で行う。
+
+保存されるplanは`LocalAnnotationPlan`、runtimeは`LocalAnnotationRuntime`。
+共通の`ExecutionPlan`にはselection/preparation/model/inferenceを持たせず、
+新規worker条件とcode版は通常planと同じ検証を行う。`review`はCodex、`render`はCPUの
+明示した枠・costが必要で、予算scopeのbaseline・累計・停止状態を再送で初期化しない。
+`publish_dataset`は常に明示してplanへ固定する。後続の公開処理はこの選択とrecording_idを受け取る。
+
+同じconfigurationの再送は同じ参照と台帳行を返す。画像・要求の公開後や台帳commit後に
+中断しても、再送で保存済み入力を検証して登録を補完する。異なるplan・元動画版・
+camera/frame/PTS・公開選択で既存登録を上書きしない。登録結果にはcamera単位の入力だけを
+`WorkRequest.inputs`として列挙し、全cameraを列挙するplan manifestは親サービスの照合用とする。
+workerの実効的な画像隔離・編集・継続は後続の白紙worker/controller接続が所有する。
+
+検証は`tests/unit/tasks/annotation/test_configuration.py`、`test_local_videos.py`と
+`tests/integration/tasks/annotation/test_local_videos.py`。integrationは2cameraの短いVFR動画で、
+元画像を独立に復号してJPEG画像とのframe対応、元動画保持、groupと公開選択を確認する。
 
 ## 固定入力と起動
 
