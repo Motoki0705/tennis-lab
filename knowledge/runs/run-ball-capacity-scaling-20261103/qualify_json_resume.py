@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -13,6 +14,7 @@ spec = importlib.util.spec_from_file_location(
     "historical_capacity_resume_tests", DIRECTORY / "test_resume_json_plan.py"
 )
 historical = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = historical
 spec.loader.exec_module(historical)
 
 
