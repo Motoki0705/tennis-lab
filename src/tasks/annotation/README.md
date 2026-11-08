@@ -108,7 +108,8 @@ task入力の`frame_index`は元動画番号、画像manifestの`frame_index`は
 中断しても、再送で保存済み入力を検証して登録を補完する。異なるplan・元動画版・
 camera/frame/PTS・公開選択で既存登録を上書きしない。登録結果にはcamera単位の入力だけを
 `WorkRequest.inputs`として列挙し、全cameraを列挙するplan manifestは親サービスの照合用とする。
-workerの実効的な画像隔離・編集・継続は後続の白紙worker/controller接続が所有する。
+workerの実効的な画像隔離・編集・途中保存・完成は [白紙worker](../ball_detection/annotation/video/agent/README.md) が所有する。
+時間切れの自動継続とscene CLIの配線は後続のcontroller接続が担当する。
 
 検証は`tests/unit/tasks/annotation/test_configuration.py`、`test_local_videos.py`と
 `tests/integration/tasks/annotation/test_local_videos.py`。integrationは2cameraの短いVFR動画で、

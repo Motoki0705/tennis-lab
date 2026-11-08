@@ -23,6 +23,8 @@ from src.tasks.base.annotation.execution.runner import StageRunner
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import (
     CampaignPlan,
+    LocalAnnotationPlan,
+    load_execution_plan,
     references,
     require_execution_layout,
 )
@@ -37,11 +39,13 @@ from src.utils.paths import PROJECT_ROOT
 
 from .contracts import (
     AcquireOperation,
+    LocalAnnotationRuntime,
     OperationInput,
     OperationReceipt,
     PredictOperation,
     PrepareOperation,
     RestoreSourceOperation,
+    ReviewOperation,
     Runtime,
     ScreenOperation,
     ServiceSessionOperation,
@@ -52,8 +56,8 @@ class Operations:
     def __init__(
         self,
         layout: AnnotationLayout,
-        runtime: Runtime,
-        plan: CampaignPlan,
+        runtime: Runtime | LocalAnnotationRuntime,
+        plan: CampaignPlan | LocalAnnotationPlan,
         resources: ResourceManager,
         *,
         command: Literal["stage", "benchmark-stage"] = "stage",
@@ -68,8 +72,12 @@ class Operations:
         require_execution_layout(layout, plan)
         if (plan.phase == "benchmark") != (command == "benchmark-stage"):
             raise ValueError("operation command must match the plan phase")
+        if isinstance(plan, LocalAnnotationPlan) != isinstance(
+            runtime, LocalAnnotationRuntime
+        ):
+            raise ValueError("operation runtime schema must match its plan schema")
         if (
-            read_document(layout, runtime.plan, CampaignPlan) != plan
+            load_execution_plan(verify_reference(layout, runtime.plan)) != plan
             or runtime.scope != resources.reference
         ):
             raise ValueError(
@@ -83,6 +91,12 @@ class Operations:
         if data.plan != self.runtime.plan or (attempt is not None and attempt < 1):
             raise ValueError(
                 "operation belongs to another runtime, or has an invalid attempt"
+            )
+        if isinstance(self.plan, LocalAnnotationPlan) and not isinstance(
+            data.operation, ReviewOperation
+        ):
+            raise ValueError(
+                "local operation runner currently permits camera services only"
             )
         jobs = self.layout.path("campaigns", self.plan.campaign_id, "jobs")
         attempts = [
@@ -157,6 +171,8 @@ class Operations:
             command += ["--attempt", str(attempt)]
         if self.layout.mode == "test":
             command += ["--test-root", str(self.layout.root)]
+        if cost.gpu_seconds and not isinstance(self.runtime, Runtime):
+            raise ValueError("blank camera services cannot reserve GPU work")
         launch = StageLaunch(
             code_revision=self.runtime.code_revision,
             scope=self.runtime.scope,
@@ -173,7 +189,9 @@ class Operations:
             dependencies=tuple(references(data)),
             code_root=str(PROJECT_ROOT),
             timeout_seconds=cost.timeout_seconds,
-            queue=self.runtime.queue if cost.gpu_seconds else None,
+            queue=self.runtime.queue
+            if cost.gpu_seconds and isinstance(self.runtime, Runtime)
+            else None,
             test_root=str(self.layout.root) if self.layout.mode == "test" else None,
         )
         path = directory / "launch.json"
@@ -292,8 +310,11 @@ class Operations:
             for dependency in references(acquisition):
                 if dependency == acquisition.source.media:
                     verify_acquisition_media(
-                        self.layout, self.plan, operation.source_id,
-                        receipt.results[0], acquisition,
+                        self.layout,
+                        self.plan,
+                        operation.source_id,
+                        receipt.results[0],
+                        acquisition,
                     )
                 else:
                     verify_reference(self.layout, dependency)
@@ -307,8 +328,11 @@ class Operations:
             if len(receipt.results) != 1:
                 raise ValueError("source restoration must return exactly one receipt")
             restoration = verify_restoration(
-                self.layout, self.plan, operation.source_id,
-                operation.attempt, receipt.results[0],
+                self.layout,
+                self.plan,
+                operation.source_id,
+                operation.attempt,
+                receipt.results[0],
             )
             expected_status = (
                 "complete" if restoration.status == "restored" else "not_applicable"
@@ -317,7 +341,9 @@ class Operations:
                 None if restoration.status == "restored" else restoration.reason
             )
             if (receipt.status, receipt.reason) != (expected_status, expected_reason):
-                raise ValueError("operation result differs from the restoration outcome")
+                raise ValueError(
+                    "operation result differs from the restoration outcome"
+                )
         elif receipt.status == "not_applicable":
             raise ValueError("this operation cannot return a source exclusion")
         if isinstance(data.operation, PredictOperation):

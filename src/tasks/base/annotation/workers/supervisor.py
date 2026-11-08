@@ -18,11 +18,12 @@ from ..artifacts import (
     write_document,
 )
 from ..paths import AnnotationLayout
-from ..plan import load_plan, references
+from ..plan import load_execution_plan, references
 from ..reproducibility import require_frozen_code
 from ..resources import ResourceManager
 from .command import codex_command, worker_environment
 from .contracts import ChildIdentity, ChildReceipt, ExitReceipt, Launch
+from .isolation import restrict_attempt
 from .processes import capture_supervisor, owned_members, process_snapshot, signal_owned
 
 
@@ -101,7 +102,7 @@ def supervise(
         launch.test_command is not None or launch.test_root is not None
     ):
         raise ValueError("test command/root is forbidden in production")
-    plan = load_plan(verify_reference(layout, launch.plan))
+    plan = load_execution_plan(verify_reference(layout, launch.plan))
     if layout.mode == "production":
         require_frozen_code(
             Path(launch.code_root),
@@ -161,6 +162,9 @@ def supervise(
                     stderr=errors,
                     cwd=directory / "work",
                     env=worker_environment(launch, plan),
+                    preexec_fn=(lambda: restrict_attempt(directory, Path(command[0])))
+                    if launch.prepared.isolate_inputs
+                    else None,
                 )
                 snapshot = process_snapshot(child.pid)
                 write_document(
@@ -198,7 +202,7 @@ def supervise(
                 )
             except InterruptedError as error:
                 status, reason, code = "cancelled", str(error), 130
-            except OSError as error:
+            except (OSError, subprocess.SubprocessError) as error:
                 status, reason, code = "failed", f"{type(error).__name__}: {error}", 127
             except (ValueError, RuntimeError, KeyError) as error:
                 status, reason, code = (

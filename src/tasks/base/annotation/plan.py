@@ -149,7 +149,7 @@ class LocalAnnotationPlan(ExecutionPlan):
     """Blank task input is opaque to base; no model, selection or inference."""
 
     schema_version: Literal["annotation.local-plan.v1"] = "annotation.local-plan.v1"
-    phase: Literal["production"] = "production"
+    phase: Literal["production", "benchmark"] = "production"
     task: Identifier
     input_manifest: ArtifactRef
     publish_dataset: bool

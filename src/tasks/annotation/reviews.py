@@ -48,7 +48,7 @@ from src.tasks.base.annotation.workers.ledger import WorkerLedger
 
 from .contracts import LocalVideoManifest
 
-# The blank task adapter is implemented by the subsequent worker integration.
+# Registration binds the ball-owned blank adapter without launching a worker.
 LOCAL_VIDEO_ADAPTER = "ball_video_annotation"
 LOCAL_VIDEO_ADAPTER_VERSION = "3"
 

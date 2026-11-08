@@ -22,6 +22,10 @@ __all__ = [
 
 
 EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
+    "src.tasks.ball_detection.annotation.video.agent.scripts.client": (
+        "Copied stdlib-only client in a Landlock-isolated worker, without repo imports; "
+        "the parent validates camera/input paths and owns all artifact writes."
+    ),
     "src.tennis_scene.visualization.blender.shots.ball_diffusion": (
         "Blender bundled Python; displays an exported schematic concept without repo imports."
     ),

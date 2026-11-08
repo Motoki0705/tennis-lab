@@ -19,7 +19,11 @@ from src.tasks.base.annotation.benchmarks.contracts import (
     LiveWorker,
     Observation,
 )
-from src.tasks.base.annotation.benchmarks.report import _Resources, _usage, build_report
+from src.tasks.base.annotation.benchmarks.report import (
+    _Resources,
+    build_report,
+    summarize_usage,
+)
 from src.tasks.base.annotation.benchmarks.validation import comparison, condition
 from src.tasks.base.annotation.editing.contracts import ReviewContext
 from src.tasks.base.annotation.predictions import PredictionReceipt
@@ -627,7 +631,7 @@ def test_usage_aggregates_unique_responses_images_and_missing_fields(
         )
     )
     measured = attempt.model_copy(update={"telemetry": telemetry})
-    summary = _usage(fixture.layout, (measured,))
+    summary = summarize_usage(fixture.layout, (measured,))
     assert summary.unobserved_response_attempts == 0
     assert (
         summary.exact_api_responses == 1
@@ -642,7 +646,7 @@ def test_usage_aggregates_unique_responses_images_and_missing_fields(
         summary.tool_output_chars,
         summary.compactions,
     ) == (5, 7, 1)
-    missing = _usage(fixture.layout, (measured, fixture.attempt(number=2)))
+    missing = summarize_usage(fixture.layout, (measured, fixture.attempt(number=2)))
     assert (
         missing.exact_api_responses is None and missing.totals["input_tokens"] is None
     )

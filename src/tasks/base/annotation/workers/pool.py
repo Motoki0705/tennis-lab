@@ -26,7 +26,8 @@ from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
 from ..plan import (
     CampaignPlan,
-    load_plan,
+    LocalAnnotationPlan,
+    load_execution_plan,
     references,
     require_execution_layout,
     save_plan,
@@ -60,8 +61,8 @@ class WorkerPool:
     def __init__(
         self,
         layout: AnnotationLayout,
-        plan: CampaignPlan,
-        adapters: tuple[TaskAdapter, ...],
+        plan: CampaignPlan | LocalAnnotationPlan,
+        adapters: tuple[TaskAdapter[Any], ...],
         *,
         codex_binary: str = "codex",
         codex_home: Path | None = None,
@@ -141,7 +142,7 @@ class WorkerPool:
         elif read_document(self.layout, final.launch, Launch).test_command is None:
             raise ValueError("a real Codex result requires rollout telemetry")
 
-    def _adapter(self, request: WorkRequest) -> TaskAdapter:
+    def _adapter(self, request: WorkRequest) -> TaskAdapter[Any]:
         adapter = self.adapters.get(request.adapter)
         if adapter is None or adapter.version != request.adapter_version:
             raise ValueError("exact requested adapter/version is not registered")
@@ -333,7 +334,8 @@ class WorkerPool:
         if (
             (launch.work_id, launch.attempt, launch.request, launch.resource_scope)
             != (request.work_id, attempt, request, self.resources.reference)
-            or load_plan(verify_reference(self.layout, launch.plan)) != self.plan
+            or load_execution_plan(verify_reference(self.layout, launch.plan))
+            != self.plan
             or launch.resource_request is None
         ):
             raise ValueError("unregistered launch differs from the worker request")
@@ -467,7 +469,9 @@ class WorkerPool:
                 stage_count = 0
                 for item in active:
                     _ref, launch = self._launch(item)
-                    active_plan = load_plan(verify_reference(self.layout, launch.plan))
+                    active_plan = load_execution_plan(
+                        verify_reference(self.layout, launch.plan)
+                    )
                     limits.append(active_plan.resources.codex_workers)
                     if launch.request.stage == request.stage:
                         stage_count += 1
@@ -539,6 +543,13 @@ class WorkerPool:
                         storage_bytes=self.worker_storage_bytes,
                         gpu_seconds=0.0,
                     )
+                from .isolation import private_home
+
+                codex_home = (
+                    private_home(directory, self.codex_home)
+                    if prepared.isolate_inputs
+                    else self.codex_home
+                )
                 launch = Launch(
                     code_revision=self.code_revision,
                     work_id=request.work_id,
@@ -553,7 +564,7 @@ class WorkerPool:
                     directory=str(directory),
                     code_root=str(code_root),
                     codex_binary=binary or self.binary,
-                    codex_home=str(self.codex_home),
+                    codex_home=str(codex_home),
                     timeout_seconds=self.timeout,
                     test_command=self.test_command,
                     test_root=str(self.layout.root)
@@ -748,13 +759,8 @@ class WorkerPool:
                     execution,
                     telemetry,
                 )
-                outcome = WorkOutcome.model_validate_json(
-                    outcome.canonical_bytes()
-                )
-                if (
-                    outcome.adoption is not None
-                    and not self.plan.allows_adoption
-                ):
+                outcome = WorkOutcome.model_validate_json(outcome.canonical_bytes())
+                if outcome.adoption is not None and not self.plan.allows_adoption:
                     raise ValueError("preview campaigns cannot adopt teachers")
                 for reference in references(outcome):
                     verify_reference(self.layout, reference)
@@ -802,7 +808,9 @@ class WorkerPool:
             ):
                 row = self._reconcile_locked(request)
                 if row["current_attempt"] != after_attempt:
-                    raise ValueError("worker attempt changed; inspect its current state")
+                    raise ValueError(
+                        "worker attempt changed; inspect its current state"
+                    )
                 if row["state"] not in RETRYABLE_STATES:
                     raise ValueError("only a stopped or failed worker can be retried")
                 with self.ledger.registry.transaction() as database:

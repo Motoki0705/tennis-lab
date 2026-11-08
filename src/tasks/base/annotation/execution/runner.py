@@ -18,7 +18,7 @@ from ..artifacts import (
 )
 from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
-from ..plan import load_plan, references
+from ..plan import load_execution_plan, references
 from ..reproducibility import require_frozen_code
 from ..resources import BudgetStopped, ResourceManager
 from .contracts import StageExit, StageLaunch
@@ -26,7 +26,7 @@ from .queue import enqueue
 
 
 def stage_directory(layout: AnnotationLayout, launch: StageLaunch) -> Path:
-    plan = load_plan(verify_reference(layout, launch.resource.plan))
+    plan = load_execution_plan(verify_reference(layout, launch.resource.plan))
     result: Path = layout.path(
         "campaigns", plan.campaign_id, "jobs", launch.resource.request_id
     )
@@ -39,7 +39,7 @@ def stage_lock(launch: StageLaunch) -> str:
 
 
 def validate_launch(layout: AnnotationLayout, launch: StageLaunch) -> None:
-    plan = load_plan(verify_reference(layout, launch.resource.plan))
+    plan = load_execution_plan(verify_reference(layout, launch.resource.plan))
     for reference in references(launch):
         verify_reference(layout, reference)
     gpu = launch.resource.gpu_seconds > 0
