@@ -1,0 +1,55 @@
+# 研究トピック（knowledge/nodes/<task>/）の登録簿。各nodesディレクトリと論文のtasksは、ここに1件ずつ必要。
+# status: active / retired。moduleは対応するrepo相対パス。moduleの無いトピックと廃止したトピックはnoteで説明する。
+# retiredには新しい記録を追加しない。後継があればsuccessorに書く。
+schema_version: 1
+tasks:
+  annotation:
+    status: active
+    module: src/tasks/annotation
+  ball_detection:
+    status: active
+    module: src/tasks/ball_detection
+  ball_refiner:
+    status: retired
+    since: '2026-10-06'
+    successor: ball_refiner_3d
+    note: >-
+      2D Ball Refiner（#935・#991・#1014）。2026-10-06のユーザー判断で実装を廃止し、結果は実験履歴として保持する。
+      #935で学習したball検出器の混合FT（現行の標準pipelineのball checkpoint）の根拠ノードもここにある。
+  ball_refiner_3d:
+    status: active
+    module: src/tasks/ball_refiner_3d
+  blcs:
+    status: active
+    module: src/tasks/blcs
+  court_detection:
+    status: active
+    module: src/tasks/court_detection
+  court_side:
+    status: active
+    module: src/tasks/court_side
+  person_tracking:
+    status: active
+    module: src/tasks/person_tracking
+  player_association:
+    status: active
+    module: src/tasks/player_association
+  player_detection:
+    status: active
+    module: src/tasks/player_detection
+  player_pose_annotation:
+    status: active
+    note: >-
+      ボール検出の学習データ用に、選手のposeを生成・蓄積する注釈campaign（#988）。専用のsrcモジュールはない。
+  plcs:
+    status: active
+    module: src/tasks/plcs
+  slcs:
+    status: active
+    module: src/tasks/slcs
+  synthetic_data_generation:
+    status: active
+    module: src/synthetic_data_generation
+  tennis_scene:
+    status: active
+    module: src/tennis_scene

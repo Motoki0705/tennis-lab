@@ -1,0 +1,40 @@
+{
+  "pytest_arguments": [
+    "--verbose",
+    "--import-mode=importlib",
+    "-n",
+    "auto",
+    "--strict-markers",
+    "--disable-warnings",
+    "-n",
+    "0",
+    "--collect-only",
+    "-q",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 7.537904365977738,
+  "collected_count": 18,
+  "nodes": [
+    "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_camera_frame_join_and_strata_preserve_reordered_asymmetric_points",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_duplicate_camera_frame_is_rejected",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_common_reference_kind_mismatch_is_rejected_before_stratification",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_incomplete_partition_counts_stop_the_report[totals0]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_topk_cohorts.py::test_incomplete_partition_counts_stop_the_report[totals1]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs",
+    "tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing"
+  ],
+  "reports": []
+}

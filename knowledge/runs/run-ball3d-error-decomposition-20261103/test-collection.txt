@@ -1,0 +1,65 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-error-decomposition
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 35 items
+
+<Dir ball3d-error-decomposition>
+  <Dir tests>
+    <Dir unit>
+      <Dir tennis_scene>
+        <Dir evaluation>
+          <Dir ball3d>
+            <Module test_annotations.py>
+              <Function test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows>
+              <Function test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]>
+              <Function test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]>
+            <Module test_baseline.py>
+              <Function test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates>
+            <Module test_contracts.py>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]>
+              <Function test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[covariance]>
+              <Function test_result_rejects_mask_geometry_and_camera_corruption[camera_order]>
+            <Module test_error_decomposition.py>
+              <Function test_position_regression_signed_slope_and_temporal_support>
+              <Function test_candidate_recovery_exact_threshold_invalid_slots_and_camera_axis>
+              <Function test_interpolation_and_image_speed_do_not_cross_gaps_or_split>
+              <Function test_event_union_and_smoothing_keep_matched_mask_and_reference_kind>
+              <Function test_clock_fit_recovers_signed_subframe_offsets_without_evaluation_labels>
+              <Function test_timing_oracle_scores_original_heldout_clock_and_never_fills_label_gaps>
+              <Function test_candidate_oracle_retains_acceptance_and_excludes_heldout_labels>
+            <Module test_scoring.py>
+              <Function test_paired_scoring_matches_camera_frame_intersection_with_different_coverage>
+              <Function test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation>
+              <Function test_method_runner_excludes_labels_reference_and_heldout_camera>
+              <Function test_fractional_offsets_and_motion_never_bridge_invalid_frames>
+              <Function test_annotation_oracle_uses_retained_observations_only>
+              <Function test_camera_event_rows_use_union_windows_without_multiplying_residuals>
+              <Function test_motion_outliers_respect_gaps_and_split_boundaries>
+    <Dir integration>
+      <Dir tennis_scene>
+        <Module test_ball3d_bundle.py>
+          <Function test_real_component_codec_bundle_and_cpu_runner_roundtrip>
+          <Function test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]>
+          <Function test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]>
+          <Function test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]>
+          <Function test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input>
+    <Dir unit>
+      <Dir tennis_scene>
+        <Dir visualization>
+          <Module test_ball3d_comparison.py>
+            <Function test_trajectory_segments_omit_gap_endpoints_and_support_many_methods>
+            <Function test_html_reference_audit_detects_missing_sibling_media>
+    <Dir integration>
+      <Dir tennis_scene>
+        <Module test_ball3d_media.py>
+          <Function test_synchronized_two_method_video_full_decode_and_portable_reference_report>
+
+========================= 35 tests collected in 6.24s ==========================

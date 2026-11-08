@@ -59,9 +59,7 @@ artifacts:
   output_dir: gdrive:tennis_lab/outputs/court_detection/profile/i983-throughput/s42/batch08-attempt02
 parents:
 - run-i983-court-dinov3-splus-s42
-relations:
-- to: group-i983-court-throughput-s42
-  rel: compared_in
+relations: []
 papers: []
 tags:
 - issue-983

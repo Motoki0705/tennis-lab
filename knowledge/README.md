@@ -1,7 +1,7 @@
 # Knowledge Control — 研究ライブラリ
 
 実験の結果・考察・関連研究をgitで共有する。**1 run = 1ノード**。実験群はgroupで束ね、前提・比較・反証の関係はIDで繋ぐ。
-現在の判断は [summary.md](summary.md)、閲覧は [Web UI](webui/README.md)、登録・更新の手順は [knowledge-control skill](../.agents/skills/knowledge-control/SKILL.md) を起点にする。このREADMEが保存形式の正本。
+現在の判断は [summary.md](summary.md)、閲覧は [Web UI](webui/README.md)、登録・更新・検索の手順は [knowledge-control skill](../.agents/skills/knowledge-control/SKILL.md) を起点にする。このREADMEが保存形式の正本。
 
 実RGB SLCSの教師・学習結果・採否の総括は [結果レポート](reports/slcs-real-rgb.md) を参照。
 
@@ -10,7 +10,12 @@
 ```text
 knowledge/
   README.md
-  summary.md                         # 横断的な研究判断。詳細の正本は各ノード
+  summary.md                         # タスクごとの現在の判断。詳細の正本は各ノード
+  history/summary-2026-11-05.md      # 2026-11-05までのsummary本文の凍結アーカイブ（追記しない）
+  registry/                          # タスク・関係の語彙と、標準pipelineのcheckpoint対応表
+    tasks.yaml
+    relations.yaml
+    deployments.yaml
   nodes/
     plcs/.sequence                  # 過去に予約した最大番号（削除後も保持）
     plcs/000001-run-<slug>.md
@@ -20,13 +25,14 @@ knowledge/
   Papers/
     paper-2024-gvhmr/
       paper.md                       # 書誌情報・読解・プロジェクトとの関係
-      paper.pdf                      # 出典の版を固定したPDF
+      paper.pdf                      # 出典の版を固定したPDF（再配布条件を確認した場合だけ）
+  reports/                           # 複数ノードにまたがる結果レポート
   runs/<run-id>/                     # 小さな再現性bundle・指標・図・削除記録
   run-storage-exceptions.json        # 既存bundleの固定例外（自動追加しない）
   webui/
 ```
 
-タスクは小文字snake_caseの**拡張可能なトピック**。`plcs` / `blcs` / `court_detection` / `ball_detection` に限定しない。合成データ生成、統合、独立した研究クラスタも追加できる。ノードは主目的となる1タスクに置き、タスク横断の関係はparents / relations / membersで表す。同じノード・論文を複製しない。issueは分類階層ではなく検索用メタデータ。
+タスクは小文字snake_caseの**拡張可能なトピック**。`plcs` / `blcs` / `court_detection` / `ball_detection` に限定しない。合成データ生成、統合、独立した研究クラスタも追加できる。新しいトピックは[タスク登録簿](#レジストリ)に1件追加してから最初のノードを登録する。ノードは主目的となる1タスクに置き、タスク横断の関係はparents / relations / membersで表す。同じノード・論文を複製しない。issueは分類階層ではなく検索用メタデータ。
 
 ### ID・連番・ファイル名
 
@@ -51,13 +57,14 @@ issue: 900                         # 整数または整数配列
 provider: codex                    # claude / codex / gemini / human / other
 date: '2026-09-20'                 # 実験日が不明なら省略
 status: done                      # done / failed / running / planned
+summary_impact: none               # updated / none（追加・status変更したノードで必須）
 config: {model: multiview_axial_base, run.seed: 42}
 metrics: {position_error_m: 0.38}   # 実測値のみ。split・単位を本文に記す
 repro: {commit: '<sha>', command: '<exact command>'}
 artifacts:
   run_dir: knowledge/runs/run-i900-geometry-s42
 parents: []                        # baseline / 前提 → このノード
-relations: []                      # [{to: run-..., rel: compares}]
+relations: []                      # [{to: run-..., rel: compares, note: 任意の補足}]
 papers: [paper-2024-gvhmr]         # 論文ID。本文で関係を説明
 tags: []
 ---
@@ -65,7 +72,7 @@ tags: []
 
 `id` / `type` / `task` / `sequence` / `recorded_at` / `title` が必須。titleは空白だけでない文字列。
 `session`、`repro.branch` / `remote`、`artifacts.predictions` / `curves` / `log` / `output_dir` / `tb_logdir` は利用可能な根拠を記す。
-`parents`, `members`, `tags`, `papers` は空でない文字列の配列（重複不可、配列自体は空でも可）。`relations` は空でない文字列の `to` と `rel` を持つmappingの配列。これらは未使用なら省略できる。
+`parents`, `members`, `tags`, `papers` は空でない文字列の配列（重複不可、配列自体は空でも可）。`relations` は空でない文字列の `to` と `rel`、任意の `note` だけを持つmappingの配列。これらは未使用なら省略できる。
 
 `config`, `metrics`, `repro`, `artifacts` はmapping。文字列キー、JSON互換の値（数値・真偽・文字列・null・配列・入れ子mapping）を使う。NaN/InfinityやYAML固有オブジェクトは不可。未測定は省略・空mapping・null値とし、理由を本文に記す。任意の `issue` は正の整数またはその非空配列。`status` / `provider` は上記の値を使い、未確認なら省略またはnull。`date` / `recorded_at` は実在する `YYYY-MM-DD`（引用推奨）。`date_source` は移行由来の `experiment_date` / `git_added` のみで、前者には `date` が必要。
 
@@ -73,13 +80,28 @@ frontmatterはYAML mappingとして記述し、重複キー・alias/mergeを使�
 
 - **group**: `type: group`、`id: group-...` とし、`members` に既存run/groupのIDを列挙する。本文は群の結論を書く。
 - **parents**: baseline / 前提から子への有向関係。循環不可。groupの `members` 入れ子も循環不可。すべての関係で自己参照は禁止。
-- **relations**: 非階層の有向関係。`compares` / `confirms` / `contradicts` / `supersedes` など。
+- **relations**: 非階層の有向関係。`rel` は[関係の語彙](registry/relations.yaml)から選び、補足は `note` に書く（`related` はnote必須）。
 - **papers**: 関連研究の出典。引用だけで再現・実証したとはみなさない。背景、実装採用、比較対象、仮説のどれかを本文に説明する。
 
-runに `members` は指定しない。groupには1件以上のmemberが必要。`relations.rel` は拡張可能であり、比較関係同士の循環は許可する。
+- **summary_impact**: summary.mdとの照合結果。`updated` はこの変更でsummaryの判断を書き換えたこと、`none` は判断を変えないことを示し、理由は本文に書く。ブランチで追加したノードと `status` を変えたノードに必須（[summaryと履歴](#summaryと履歴)）。
 
-`artifacts.run_dir` を記録した場合は、そのノード自身の `knowledge/runs/<id>/` ディレクトリが必須。通常はrepo相対パスを使う。`KNOWLEDGE_DIR` で隔離したライブラリを使う場合はそのライブラリの `runs/<id>` を指す。`log` / `output_dir` / checkpoint等のローカルパスはCIでの存在を要求しない。
+runに `members` は指定しない。groupには1件以上のmemberが必要。関係の種類を増やすときは `registry/relations.yaml` を改訂する。比較関係同士の循環は許可する。
+
+`artifacts.run_dir` を記録した場合は、そのノード自身の `knowledge/runs/<id>/` ディレクトリが必須。通常はrepo相対パスを使う。
+ローカルの場所はcheckout相対（メインcheckoutの `.training_queue/` や `.claude/worktrees/` も含む）、それ以外のホーム配下は `~/` で記録し、Drive上の場所はDrive root相対の `drive_record`（Colabの運用記録）・`drive_outputs`（出力ディレクトリ）で記録する。新規ノードのartifactsにホームディレクトリの絶対パスを書くとエラーにする。登録スクリプトはこの形へ変換する。`KNOWLEDGE_DIR` で隔離したライブラリを使う場合はそのライブラリの `runs/<id>` を指す。`log` / `output_dir` / checkpoint等のローカルパスはCIでの存在を要求しない。
 `runs/` の再現コマンド・`repro.sh`・`run.json`・patchは歴史的証拠なので、保存基準の変更やノード移動に伴って書き換えない。
+
+## レジストリ
+
+`registry/` の3ファイルは、ノード以外の語彙と対応表の正本。どれも必須で、欠落・不正はエラーにする。ファイル内のパスはライブラリの親ディレクトリ（repo root）からの相対パス。
+
+| ファイル | 内容 | 検査 |
+|---|---|---|
+| `tasks.yaml` | トピックごとの `status`（`active` / `retired`）、`module`、`note`、`successor`、`since` | `nodes/` の全ディレクトリと論文の `tasks` が登録済みで、`module` が実在する。moduleの無いトピックと廃止したトピックは `note` 必須。廃止したトピックには新しいノードを登録できない |
+| `relations.yaml` | `relations[].rel` の語彙と説明。`note_required: true` の関係はnote必須 | 未知の `rel`、`to` / `rel` / `note` 以外のキー |
+| `deployments.yaml` | `configs` に挙げたconfigが選ぶcheckpointごとの採用根拠。学習したモデルは `evidence`（ノードID）、外部の公開重みは `source`（重みの出典を記した文書）、任意で `papers` / `since` / `note` | configの `checkpoint` / `*_checkpoint` キーと登録簿が1対1で、値も一致する。根拠ノード・論文・出典文書が実在し、出典文書がファイル名に言及する |
+
+標準pipelineのcheckpointを変えるPRは、`deployments.yaml`・根拠ノード・summary.mdを同時に更新する。CIは追跡するconfigと `LICENSES.md` の変更でも動く。
 
 ## run成果物の保存基準
 
@@ -164,7 +186,7 @@ mkdir -p tmp
 ## Papersの仕様
 
 論文はタスクをまたぐため、`Papers/` に一元化する。UIは `tasks` によりタスク別に絞り込む。
-ディレクトリIDは `paper-<発表年4桁>-<短いkebab-case名>`（年は1000〜9999）。同名論文は著者名などで区別し、版を追加する場合は別IDに `-v2` などを付ける。ファイル名は `paper.md` と `paper.pdf` に統一し、論文ディレクトリ内はこの2つの通常ファイルだけにする（symlink不可）。直下のREADME以外の孤立PDF・未認識ディレクトリもエラー。
+ディレクトリIDは `paper-<発表年4桁>-<短いkebab-case名>`（年は1000〜9999）。同名論文は著者名などで区別し、版を追加する場合は別IDに `-v2` などを付ける。ファイル名は `paper.md` と `paper.pdf` に統一し、論文ディレクトリ内はこの2つの通常ファイルだけにする（symlink不可）。PDFは再配布条件を確認できた場合だけ保存し、それ以外は `paper.md` だけのmetadata登録にする。直下のREADME以外の孤立PDF・未認識ディレクトリもエラー。
 
 `paper.md` の必須frontmatter:
 
@@ -173,19 +195,20 @@ mkdir -p tmp
 | `id` / `type` | ディレクトリID / `paper` |
 | `title` / `year` / `authors` | 正式題名 / 発表年 / 著者名の配列 |
 | `tasks` | 関係するタスクの配列（未実験のタスクも可） |
-| `source` | 保存した版の一次資料URL |
-| `license` | PDFの利用条件を確認できるURL |
-| `pdf` | `paper.pdf` |
-| `sha256` | 保存PDFのSHA-256。登録スクリプトで計算 |
+| `source` | 参照した版の一次資料URL（arXivのabsページなど） |
+| `license` | 利用条件を確認できるURL。PDFを保存する場合は必須 |
+| `pdf` | PDFを保存する場合だけ `paper.pdf` |
+| `sha256` | 保存PDFのSHA-256。PDFを保存する場合だけ。登録スクリプトで計算 |
 
 本文には研究の要点、プロジェクトとの関係、検証仮説と適用限界を記す。参照元実験の一覧はノードの `papers` からUIが生成するので手で二重管理しない。
-`authors` / `tasks` は非空・重複なしの文字列配列。title・著者名は空白のみ不可。`tasks` はノードと同じ命名規則、`source` / `license` はHTTP(S) URL。yearはIDの発表年と一致する整数。PDF signatureとhashを検証するが、内容の読解や転載条件の適合性は人間・agentが確認する。
+`authors` / `tasks` は非空・重複なしの文字列配列。title・著者名は空白のみ不可。`tasks` は[タスク登録簿](#レジストリ)のトピック、`source` / `license` はHTTP(S) URL。yearはIDの発表年と一致する整数。PDFを保存した論文はPDF signatureとhashを検証し、保存しない論文に `paper.pdf` や `sha256` があればエラーにする。内容の読解や転載条件の適合性は人間・agentが確認する。
 公開PRにPDFを含める際は転載条件を確認し、著者・原論文・ライセンス・改変の有無を併記する。PDF固有のライセンスはrepo本体のMITとは別に維持する。
 
-## summaryの継続更新
+## summaryと履歴
 
-`summary.md` は自動生成したノード一覧ではなく、現在の判断・根拠・未解決課題・次の実験を要約する。正確な更新手順はskillに集約する。
-`kg_summary.py` はノード本文・metadata、論文ノート、summary本文の指紋で未レビューの変更を検出する。summaryは本文と有効な日付のreview markerが1つ必要。`--mark-reviewed` は**内容を見直したという記録**であり、考察を自動生成したり、その正しさを証明したりしない。更新手順はSKILLに集約する。
+`summary.md` は自動生成したノード一覧ではなく、タスクごとの**現在の判断**（採用中の構成と根拠、未解決課題、次の実験）だけを書く入口で、20,000文字以内に保つ。判断が変わったら該当節を書き換え、日付つきの記録を追記しない。確定した経緯はgroupノードにまとめる。2026-11-05までの日付順の本文は `history/summary-2026-11-05.md` に凍結した（追記しない）。更新手順はSKILLに集約する。
+
+`--check-summary` は、本文の有無と文字数、summary・README・reportsの相対リンク、historyからライブラリ内へのリンクを検査する。`--base-ref` と併用すると、追加したノードと `status` を変えたノードに `summary_impact` を要求し、`updated` を宣言したのにsummary.mdが変わっていない場合と、`deployments.yaml` が変わったのにsummary.mdが変わっていない場合をエラーにする。この検査は照合したという宣言を求めるだけで、判断の正しさは保証しない。
 
 ## 移行・検証
 
@@ -194,6 +217,8 @@ mkdir -p tmp
 ```bash
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary
 ```
+
+`--base-ref` を付けない検証は、ブランチの変更に対する検査（番号・identity、削除記録、追加ノード、summary照合）を実行せず、その旨を表示する。
 
 run bundleの`repro.sh`は、checkoutするcommitで追跡されたファイル、bundleに保存したファイル（`$SCRIPT_DIR/...`）、
 保存した`uncommitted.patch`が追加するファイルだけをscriptとして参照する（`*.py`/`*.sh`/`*.yaml`、`-m` module、`PYTHONPATH`）。
@@ -205,12 +230,12 @@ CLIへ渡すtest等のscript参照は、引き続き上記の保存先で検証�
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
 ```
 
-PRの番号衝突・既存identityの変更は、マージ先commitを比較元として追加検証する。既存IDのtask / sequence / recorded_at変更、counterの削除・縮小、新規IDによる予約済み番号の再利用をエラーにする。比較元が初回移行前のflat形式なら番号履歴の比較は適用しない。参照先はローカルにfetchしておく。
+PRの番号衝突・既存identityの変更は、マージ先commitを比較元として追加検証する。既存IDのtask / sequence / recorded_at変更、counterの削除・縮小、新規IDによる予約済み番号の再利用をエラーにする。追加したノードについては、廃止したトピックへの登録とartifactsのホームディレクトリ絶対パスをエラー、issue未記録のrunをWARNにする。比較元は、ライブラリを含むGit checkoutの履歴から読む。比較元が初回移行前のflat形式なら番号履歴の比較は適用しない。参照先はローカルにfetchしておく。
 
 ```bash
 .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main
 ```
 
-CI `Knowledge library` は関連ファイルのPR・main push・手動実行で動く。上記検証、CPUのみのstorage/登録/曲線テスト、SKILLの例を実行して成果物を検証するテスト、Web UIのlint/test/build/E2Eを行う。PRはbase commit、main pushは直前commitと比較する。手動実行は現在の構造を検証する。
+CI `Knowledge library` は関連ファイル（標準pipelineのconfigと `LICENSES.md` を含む）のPR・main push・手動実行で動く。上記検証、CPUのみのstorage/登録/曲線テスト、SKILLの例を実行して成果物を検証するテスト、Web UIのlint/test/build/E2Eを行う。PRはbase commit、main pushは直前commitと比較する。手動実行は現在の構造を検証する。
 
-ERRORは修正必須。issue未記録のWARNは任意の追跡情報の不足であり、CI失敗にしない。科学的な妥当性・実験間の公平性・本文と数値の意味的一致・PDF転載条件は機械検証の範囲外。
+ERRORは修正必須。WARNは追加したrunのissue未記録だけで、任意の追跡情報の不足としてCI失敗にしない。科学的な妥当性・実験間の公平性・本文と数値の意味的一致・PDF転載条件は機械検証の範囲外。

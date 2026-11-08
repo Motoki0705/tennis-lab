@@ -1,0 +1,36 @@
+{
+  "environment": {
+    "python": "3.12.3",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1"
+  },
+  "variants": [
+    {
+      "OPENBLAS_CORETYPE": null,
+      "NPY_DISABLE_CPU_FEATURES": null
+    },
+    {
+      "OPENBLAS_CORETYPE": "Sandybridge",
+      "NPY_DISABLE_CPU_FEATURES": null
+    }
+  ],
+  "exact_arrays": {
+    "positions": true,
+    "valid": true,
+    "inliers": true,
+    "uv_px": true,
+    "reasons": true
+  },
+  "float64_fit_x_max_abs_difference_m": 4.070077608275824e-13,
+  "reprojection_mismatches": 7,
+  "reprojection_max_abs_difference_px": 1.4551915228366852e-11,
+  "reprojection_max_float32_ulp_difference": 1,
+  "evidence_scope": "sequential synthetic baseline probes; BLAS core type only changed in the second probe",
+  "ci_original_failure": {
+    "run": 41611770627,
+    "job": 125835334069,
+    "mismatches": 7,
+    "max_abs_difference_px": 3.637979e-12,
+    "max_relative_difference": 1.8868853e-07
+  }
+}

@@ -1,0 +1,60 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-candidate-gmm
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 16 items
+
+tests/unit/tennis_scene/ball_gmm/test_cohort_report.py ...               [ 18%]
+tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py .............  [100%]
+
+============================== slowest durations ===============================
+0.03s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs
+0.03s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.02s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.01s setup    tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_camera_frame_partition_errors_and_split_boundary_match_hand_values
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.01s call     tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]
+0.00s call     tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_camera_frame_partition_errors_and_split_boundary_match_hand_values
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.00s setup    tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_duplicate_lovo_identity_is_rejected
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.00s setup    tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_common_identity_cannot_change_reference_kind
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.00s setup    tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]
+0.00s call     tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_duplicate_lovo_identity_is_rejected
+0.00s call     tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_common_identity_cannot_change_reference_kind
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[clip_id]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_runner_stops_before_method_when_required_line_observations_are_missing
+0.00s teardown tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_duplicate_lovo_identity_is_rejected
+0.00s teardown tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_camera_frame_partition_errors_and_split_boundary_match_hand_values
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_camera_event_rows_use_union_windows_without_multiplying_residuals
+0.00s teardown tests/unit/tennis_scene/ball_gmm/test_cohort_report.py::test_common_identity_cannot_change_reference_kind
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[frame_count]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_method_runner_excludes_labels_reference_and_heldout_camera
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_annotation_oracle_uses_retained_observations_only
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_fractional_offsets_and_motion_never_bridge_invalid_frames
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_common_lovo_intersection_compares_identical_camera_frame_pairs
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_scoring_rejects_reference_identity_mismatch[video_hash]
+0.00s teardown tests/unit/tennis_scene/evaluation/ball3d/test_scoring.py::test_motion_outliers_respect_gaps_and_split_boundaries
+============================== 16 passed in 4.34s ==============================

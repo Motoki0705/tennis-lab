@@ -1,0 +1,33 @@
+{
+  "output_dir": "/home/kamimura/projects/tennis-lab/outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/topk_multihypothesis_cohort_v1",
+  "artifacts_json_sha256": "d2026ae2c33079dfc0ad07930a80fa19303987e4e910d76f53336046bfd2cbe6",
+  "files": {
+    "cohorts.csv": {
+      "sha256": "3a81d0618d8e338ff6abde2f370058899a5d9cb0d1fa33b879f560be3c275809",
+      "size_bytes": 16486
+    },
+    "cohorts.json": {
+      "sha256": "10e3ae2529b1fbe8bc354f95a5749c6e0ed91aa7da084fe850617a4142e21ea5",
+      "size_bytes": 58050
+    },
+    "cohorts.md": {
+      "sha256": "0831cc8256c9f4721dfb1ba6be6fd2f5a4b9c948e8733d32b6ad283a8058aeec",
+      "size_bytes": 11874
+    },
+    "samples.csv": {
+      "sha256": "17b5b81f406093e7bf7d14451a946ce62d6640ac670a9920a5b699383bb9dc89",
+      "size_bytes": 175073
+    }
+  },
+  "source_comparison_files_checked": 68,
+  "all_read_comparison_files_unchanged": true,
+  "analysis_code_commit": "842165d650857d8ad344f5abcd55a032fe8379fe",
+  "strata_count": 36,
+  "count_checks": 72,
+  "all_count_checks_passed": true,
+  "original_metric_values_exactly_matched": 48,
+  "elapsed_seconds": 1.5237838490284048,
+  "max_rss_kib": 633668,
+  "method_reexecuted": false,
+  "src_changed": false
+}

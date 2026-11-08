@@ -84,9 +84,7 @@ artifacts:
   isolated_comparison: knowledge/runs/run-i991-i1014-coordinates-report-20261005-v2/comparison.json
 parents:
 - run-i991-coordinate-gpu-smoke-20261005
-relations:
-- to: run-i991-i1014-coordinates-report-20261005-v2
-  rel: 同一入力の再集計・単独GPU計測
+relations: []
 papers: []
 tags:
 - coordinate-refiner

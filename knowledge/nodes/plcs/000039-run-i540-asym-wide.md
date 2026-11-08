@@ -50,9 +50,7 @@ artifacts:
 parents:
 - run-i525-asym
 - run-i518-exp10
-relations:
-- to: run-i535-asym-wide-rerun
-  rel: supersededby
+relations: []
 tags:
 - plcs
 - canonical

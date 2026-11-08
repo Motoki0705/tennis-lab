@@ -1,0 +1,68 @@
+# 実装前のテスト設計 (#1567)
+
+2026-11-03。親 #1554 revision 6、基盤 #1669 merge後のmainを使用する。
+
+| 守る契約・期待値の根拠 | 検出したい故障 | 層・再利用 | 予算 |
+|---|---|---|---|
+| 固定されたメートルcourt、非対称3camera・非直線ballの独立投影から、既知の焦点距離/姿勢/位置摂動と正負のfractional offsetを復元 | camera交換、half-turn/時刻符号誤り、gauge未固定、ball残差の脱落 | 新unit `ball_calibration/test_bundle_adjustment.py`、24–36frame | solver代表2case、各5秒目標、CPUのみ |
+| fitは元homography採用KPのみ、未採用KPはoptimizerから隔離する。x_reflectedは既存Hで元templateへ戻っている | holdout混入、二重反転、同名cameraの取り違え | 同unit、非対称KP subset/破壊したholdout | 3case、各1秒以下 |
+| 時刻再標本化はt-offset、隣接実観測のみ、端/欠測を跨がない | sign反転、欠測補完、範囲外外挿 | 同unit、手計算する非対称2D座標 | 2case、各0.1秒以下 |
+| court幾何不足・非有限設定・solver失敗は明示的に拒否 | 静かなbaseline代替、退化校正を採用 | 同unit、最小拒否fixture | 8case以下、各0.1秒以下 |
+| 公開config→definition→assembler→BA→実codecを通し、camera/offset/maskを保存。LOVOは保持viewだけ | 設定無視、保存脱落、held-out evidence漏れ | 新integration、既存 `test_ball3d_bundle.py::test_real_component_codec_bundle_and_cpu_runner_roundtrip` を再利用 | 3case、各5秒目標 |
+| fixed既定の位置・mask・inlier・理由・再投影配列が変更前mainと厳密一致 | 既定経路/設定/入出力schemaの意図しない変更 | integration、変更前mainの小さな固定fixtureの期待配列、既存baseline unit再利用 | 1case、1秒目標 |
+
+新規は合計20件程度を上限とし、直積parametrizeを避ける。`--collect-only` と
+`--durations=0 --durations-min=0`（`-n 0`、必要時も最大`-n 2`）で全node/件数/phase時間を保存する。
+setupは小fixtureのみ、GPU/動画/実資産はunit・integrationへ持ち込まない。
+時刻の符号を一時反転する故障注入で数値assert失敗を確認し、復元して再実行する。
+
+実資産は別のCPU replayで4fold・3区間・LOVO coverage/common cohort、court holdout、
+変更camera/offsetのtyped再読込、既存baselineの配列一致を確認する。
+全method予測保存後にGTを採点側だけで読み、設定は事前固定する（後半を使った調整なし）。
+動画は共有rendererで逐次処理する。比較図/動画/HTMLはoutputsの新directoryへ出し、
+checksum・資源実測・目視検証と再現scriptをknowledgeへ記録する。
+
+## 最終接続確認で追加した回帰
+
+v1の保存内容を確認し、source-frameの2Dと時刻補正後の2Dを区別する契約を追加した。
+新しいcaseを増やさず、公開config→sceneの既存integrationで、非ゼロoffsetでも
+ball artifact/SceneResultの画素・maskが元観測と一致し、再標本化座標は診断欄にだけあることを確認する。
+v2を新規directoryで実行し、v1の位置・valid・使用view・camera・offsetのbitwise一致も確認する。
+v1は上書きせず、測定記録をv1/とoutputsへ保持する。設定や最適化の残差は変更しない。
+
+## CIの設定監査による追加確認
+
+runtime型の新fieldにPython defaultを置くと、構成所有の既定値という既存契約に反する。
+型のdefaultを削除し、from_configでYAMLから決めた値を常に渡す。
+既存の `tests/unit/utils/configuration/test_contracts.py::test_adapter_fields_have_truthful_default_precedence_and_absence_policy`
+を再利用して契約を守り、新規caseは増やさない。収集はrepo標準のimportlibモードを明示し、
+ミラー配置の同名test moduleを衝突させない。
+
+CIの別数値環境では、記録したmainのfloat32位置と1 ULP程度の差が出ることも確認した。
+許容差を広げず、checksum固定の元main計算核を同じNumPy/SciPyで動かし、全trajectory配列を
+厳密比較する回帰へ変更する。元frameの画素・maskの固定期待値も引き続き厳密比較する。
+凍結したgeometryとreconstructionはmainの原文で、現行の計算核を参照しない。
+
+## 全体CIのDINO namespace分離修正
+
+CI lane 9の既存 `tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch`
+は、先行する実DINO loss testが残した子moduleを消さず、親moduleだけをfakeへ置換するため失敗した。
+productionと当該testはmainから未変更であることを差分で確認した。
+守る契約は明示選択binaryのimportとcached mismatch拒否で、productionの拒否を維持する。
+見逃したくない不具合は先行testの子moduleがfake repositoryのfresh importへ混入すること。
+既存unit nodeのnamespaceをmonkeypatchで分離/復元し、assertや拒否条件は変えない。
+新規caseは作らず、同じnodeへ古いMSDA参照を事前注入するCPU再現で修正前失敗・修正後成功を確認する。
+`reproduce_dino_cache.py` でcollect-onlyと全phase時間を残し、当該file全体も直列で確認する。
+予算は既存1nodeの再現5秒目標と既存file全体、GPU・実モデルforward・検出再推論は使わない。
+
+## 明示レビュー pr-1681-1（2026-11-04）の修正前設計
+
+| 契約 | 検出する故障 | 層・再利用node | コスト |
+|---|---|---|---|
+| BA6項目の既定値はHydra compositionだけが所有し、評価adapterへ明示渡しする | Python default/default_factoryの再導入、YAML overrideを評価が無視 | 既存unitのinvalid設定/復元nodeをcomposition由来の設定へ変更。既存integration `test_public_config_assembly_optional_stage_and_real_codec` へ6項目の非対称overrideと実run factory→数値出力の一致を追加 | 新規integrationなし。小さな20frame、各case5秒目標 |
+| `BundleAdjustmentConfig` が実際の監査catalogに入り、6fieldがcomposition-ownedである | default付きネスト型が探索から落ち、中央監査成功だけで見逃す | BA unitへ1case追加し、既存 `SOURCE_CONTRACT_DECLARATIONS` / `ADAPTER_CONTRACTS` と `inspect_typed_adapter` の結果を確認。`tests/unit/utils/configuration/` 全体も実行 | 新規1case。catalogは既存監査のcollectionと共有、実測を残す。監査自体は変更しない |
+| 元の設定値と実データの予測を維持する | YAMLと旧Python値の差、設定の受渡しによる数値変更 | CPU replayで全view+3 LOVOを共通runnerへ通し、既存v2の位置/valid/used_views/camera/offsetを厳密比較 | 保存済み入力のみ、逐次4fold、動画/GT/検出再推論なし。新directoryへ照合JSONだけを保存 |
+| DINOのfake importは事前読込の有無にかかわらず選択binaryを使い、stale参照は拒否 | テスト順序依存とcached mismatch拒否の脱落 | 指定commit a8982a7e0の既存unit差分をそのまま採用。既存nodeの事前読込False/Trueの2caseとfile全体 | base比1case増。CPU marker moduleのみ、GPU/実forwardなし |
+
+収集と全phase時間は `review-fix/` に新規保存し、従来の測定ログを上書きしない。
+YAML・監査src・正式v2成果物は変更しない。DINOの差分はbase mainから指定commitとbytes比較する。

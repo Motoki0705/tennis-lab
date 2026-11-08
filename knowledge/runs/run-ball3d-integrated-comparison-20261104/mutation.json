@@ -1,0 +1,22 @@
+{
+  "injected": {
+    "exit_code": 1,
+    "command": [
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison/.venv/bin/python",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison/knowledge/runs/run-ball3d-integrated-comparison-20261104/mutation_check.py",
+      "inject"
+    ]
+  },
+  "restored": {
+    "exit_code": 0,
+    "command": [
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-integrated-comparison/.venv/bin/python",
+      "-m",
+      "pytest",
+      "-n",
+      "0",
+      "-q",
+      "tests/unit/tasks/ball_detection/inference/test_heatmap_decoding.py::test_explicit_cells_refine_two_distinct_peaks_without_argmax_or_padding_bias"
+    ]
+  }
+}

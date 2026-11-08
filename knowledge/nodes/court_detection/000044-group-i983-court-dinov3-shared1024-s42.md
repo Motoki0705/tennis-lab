@@ -50,6 +50,7 @@ artifacts:
 relations:
 - to: group-i983-court-throughput-s42
   rel: related
+  note: 同じ#983の一連の実験
 ---
 
 #983で合意した4条件をすべて20epoch学習し、各val/loss最小checkpointを同じ合成test886画像・実画像val2211画像で評価した。入力版・順序・前処理・学習条件・共通後段と定性サンプルを照合し、[比較表と36パネル](../../runs/group-i983-court-dinov3-shared1024-s42/comparison/comparison.md)、[条件・考察・制約](../../runs/group-i983-court-dinov3-shared1024-s42/README.md)、再現記録を保存した。

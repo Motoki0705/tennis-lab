@@ -1,0 +1,51 @@
+{
+  "prior_head": "4363c2ada1eff420e8c4511527362c62d45d1820",
+  "base_main": "6372e2267a8fee7b88f9c77d8be1691620bf2030",
+  "workflow_url": "https://github.com/Motoki0705/tennis-lab/actions/runs/41630915362",
+  "failed_job_id": 125900106597,
+  "other_cpu_test_lanes_succeeded": 9,
+  "node": "tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch",
+  "prior_sources": [
+    {
+      "path": "src/submodules/models/dino/architecture.py",
+      "prior_head_equals_main": true,
+      "sha256_before_fix": "263bf8aabadf7aa315f492b774ddb52ce7a8ff43b02c37735bbaa02a0c9607aa"
+    },
+    {
+      "path": "tests/unit/submodules/models/dino/test_extension.py",
+      "prior_head_equals_main": true,
+      "sha256_before_fix": "ab3c91763cd640a07583e5887654c093c1bb3182ebec3486475dcaf5c610c172"
+    },
+    {
+      "path": "tests/integration/tasks/player_detection/test_publication_loss.py",
+      "prior_head_equals_main": true,
+      "sha256_before_fix": "a678a06bb843ff0f40263c27dc3ed86014973cee7a7579374dd815836c865795"
+    }
+  ],
+  "error": "DINO functions already reference a different extension; start a fresh process",
+  "cause": "Fake repository replaced the root package but retained earlier real-upstream child modules.",
+  "change": "Restore-isolated child namespace with monkeypatch in the existing test; production and asserts unchanged.",
+  "reproducer": "PYTHONPATH=. .venv/bin/python knowledge/runs/run-court-ball-ba-20261103/reproduce_dino_cache.py",
+  "prior_cache_reproducer": {
+    "before_failed": 1,
+    "before_pytest_seconds": 4.41,
+    "after_passed": 1,
+    "after_pytest_seconds": 12.15,
+    "case_phases_seconds_rounded": {
+      "setup": 0.02,
+      "call": 0.01,
+      "teardown": 0.0
+    },
+    "collected": 1,
+    "collection_seconds": 4.77
+  },
+  "existing_extension_file": {
+    "collected": 27,
+    "collection_seconds": 8.8,
+    "passed": 27,
+    "pytest_seconds": 7.31
+  },
+  "new_test_cases": 0,
+  "ball_method_changed": false,
+  "experiment_commit": "9fc9adc0b8986460e7978c4a79d7c44c9cd30310"
+}

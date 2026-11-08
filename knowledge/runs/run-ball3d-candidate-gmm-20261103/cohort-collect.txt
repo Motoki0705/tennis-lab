@@ -1,0 +1,34 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/ball3d-candidate-gmm
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 16 items
+
+<Dir ball3d-candidate-gmm>
+  <Dir tests>
+    <Dir unit>
+      <Dir tennis_scene>
+        <Dir ball_gmm>
+          <Module test_cohort_report.py>
+            <Function test_camera_frame_partition_errors_and_split_boundary_match_hand_values>
+            <Function test_duplicate_lovo_identity_is_rejected>
+            <Function test_common_identity_cannot_change_reference_kind>
+        <Dir evaluation>
+          <Dir ball3d>
+            <Module test_scoring.py>
+              <Function test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation>
+              <Function test_method_runner_excludes_labels_reference_and_heldout_camera>
+              <Function test_fractional_offsets_and_motion_never_bridge_invalid_frames>
+              <Function test_annotation_oracle_uses_retained_observations_only>
+              <Function test_camera_event_rows_use_union_windows_without_multiplying_residuals>
+              <Function test_motion_outliers_respect_gaps_and_split_boundaries>
+              <Function test_scoring_rejects_results_from_other_bundle_or_timeline[bundle_digest]>
+              <Function test_scoring_rejects_results_from_other_bundle_or_timeline[frame_count]>
+              <Function test_scoring_rejects_reference_identity_mismatch[clip_id]>
+              <Function test_scoring_rejects_reference_identity_mismatch[frame_count]>
+              <Function test_scoring_rejects_reference_identity_mismatch[video_hash]>
+              <Function test_common_lovo_intersection_compares_identical_camera_frame_pairs>
+              <Function test_runner_stops_before_method_when_required_line_observations_are_missing>
+
+========================= 16 tests collected in 4.42s ==========================

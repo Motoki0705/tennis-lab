@@ -11,11 +11,8 @@ test("real library loads task nodes, stable ids, papers and linked summary", asy
   assert.ok(graph.nodes.filter((n) => n.type === "run").length >= 173);
   assert.ok(new Set(graph.nodes.map((n) => n.task)).size >= 7);
   assert.equal(new Set(graph.nodes.map((n) => n.id)).size, graph.nodes.length);
-  assert.ok(
-    graph.summaryHtml.includes(
-      "/?node=run-plcs-accad-gvhmr-meiji-1000-v1-train",
-    ),
-  );
+  // The summary changes with research decisions; only its node links are a contract.
+  assert.match(graph.summaryHtml, /href="\/\?node=run-[a-z0-9-]+"/);
   const paper = graph.papers.find((p) => p.id === "paper-2024-gvhmr")!;
   assert.equal(paper.pdfUrl, "/api/papers/paper-2024-gvhmr");
   assert.ok(graph.nodes.filter((n) => n.papers.includes(paper.id)).length >= 3);

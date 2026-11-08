@@ -1,0 +1,465 @@
+{
+  "command": "OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 .venv/bin/python -m pytest -n 0 --durations=0 --durations-min=0 --junitxml=knowledge/runs/run-i1559-heatmap-decoding-20261103/test-results.xml [paths recorded in test-collection.txt]",
+  "test_count": 114,
+  "failures": 0,
+  "pytest_wall_seconds": 51.03,
+  "collection_seconds": 8.09,
+  "tests": [
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[legacy-5-False-False-2e-05]",
+      "setup_call_teardown_seconds": 0.042
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[axis_logit-3-True-False-5e-05]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-3-False-True-2e-05]",
+      "setup_call_teardown_seconds": 0.026
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_log-5-False-True-2e-05]",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-3-True-True-5e-05]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[quadratic_logit-5-True-True-5e-05]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[centroid-5-False-False-0.15]",
+      "setup_call_teardown_seconds": 0.01
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[softargmax-5-False-False-0.15]",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_known_centres_include_rotation_anisotropy_and_saturation[gaussian-5-False-True-0.002]",
+      "setup_call_teardown_seconds": 0.061
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_border_uses_only_observed_patch_cells[quadratic_log-centre0-2e-05]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_border_uses_only_observed_patch_cells[quadratic_logit-centre1-0.0001]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_border_uses_only_observed_patch_cells[gaussian-centre2-0.002]",
+      "setup_call_teardown_seconds": 0.015
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_border_uses_only_observed_patch_cells[centroid-centre3-0.65]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_border_uses_only_observed_patch_cells[softargmax-centre4-0.65]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_border_uses_only_observed_patch_cells[axis_logit-centre5-0.24]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[axis_logit]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_log]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[quadratic_logit]",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[centroid]",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[softargmax]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_unidentifiable_flat_patch_reports_reason_and_keeps_lattice[gaussian]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_default_matches_main_decoder_arrays_and_preserves_camera_time_axes",
+      "setup_call_teardown_seconds": 0.012
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_coordinate_hypotheses_have_known_pixel_displacements",
+      "setup_call_teardown_seconds": 0.009
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_invalid_decoding_settings_are_rejected[change0]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_invalid_decoding_settings_are_rejected[change1]",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_invalid_decoding_settings_are_rejected[change2]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_invalid_decoding_settings_are_rejected[change3]",
+      "setup_call_teardown_seconds": 0.003
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_invalid_decoding_settings_are_rejected[change4]",
+      "setup_call_teardown_seconds": 0.004
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_nan_input_and_disabled_refinement_are_rejected",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests.unit.tasks.ball_detection.inference.test_heatmap_decoding::test_isotropic_gaussian_and_exactly_saturated_plateau",
+      "setup_call_teardown_seconds": 0.006
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_trajectory_gate_zeroes_rejected_pipeline_frames",
+      "setup_call_teardown_seconds": 0.014
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_predict_video_consumes_typed_task_prediction",
+      "setup_call_teardown_seconds": 0.074
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_process_exposes_one_unidentified_observation_stream",
+      "setup_call_teardown_seconds": 0.446
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_incomplete_timeline_stops_instead_of_padding",
+      "setup_call_teardown_seconds": 0.489
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_video_to_predictor_is_always_raw_rgb[False]",
+      "setup_call_teardown_seconds": 0.023
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_video_to_predictor_is_always_raw_rgb[True]",
+      "setup_call_teardown_seconds": 0.023
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_overlapping_windows_select_all_evidence_atomically[max_score-0.9]",
+      "setup_call_teardown_seconds": 0.025
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_overlapping_windows_select_all_evidence_atomically[last_window_wins-0.4]",
+      "setup_call_teardown_seconds": 0.022
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_stride_cannot_leave_silent_holes",
+      "setup_call_teardown_seconds": 0.011
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_checkpoint_normalization_mismatch_is_rejected_before_inference",
+      "setup_call_teardown_seconds": 0.045
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_centre_policy_matches_training_owners_without_score_selection[1]",
+      "setup_call_teardown_seconds": 0.081
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_centre_policy_matches_training_owners_without_score_selection[3]",
+      "setup_call_teardown_seconds": 0.034
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_centre_policy_rejects_padding_and_drop[1-backfill]",
+      "setup_call_teardown_seconds": 0.017
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_centre_policy_rejects_padding_and_drop[4-drop]",
+      "setup_call_teardown_seconds": 0.014
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_detection::test_selected_decoding_reaches_pipeline_and_default_keeps_predictor_arrays",
+      "setup_call_teardown_seconds": 0.037
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_artifact_roundtrip_is_exact_and_load_only_does_not_infer",
+      "setup_call_teardown_seconds": 0.691
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_corrupt_evidence_is_rejected[missing]",
+      "setup_call_teardown_seconds": 0.739
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_corrupt_evidence_is_rejected[timeline]",
+      "setup_call_teardown_seconds": 0.562
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_corrupt_evidence_is_rejected[nan]",
+      "setup_call_teardown_seconds": 0.563
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_corrupt_evidence_is_rejected[mask]",
+      "setup_call_teardown_seconds": 0.659
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_corrupt_evidence_is_rejected[patch]",
+      "setup_call_teardown_seconds": 0.599
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_corrupt_evidence_is_rejected[invalid_slot]",
+      "setup_call_teardown_seconds": 0.586
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_corrupt_evidence_is_rejected[dtype]",
+      "setup_call_teardown_seconds": 0.547
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_annotation_or_disabled_outputs_cannot_claim_model_evidence",
+      "setup_call_teardown_seconds": 0.547
+    },
+    {
+      "node": "tests.unit.tennis_scene.pipeline.components.test_ball_evidence::test_trajectory_gate_does_not_erase_raw_evidence",
+      "setup_call_teardown_seconds": 0.623
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_config_resolves_each_path_from_its_declared_root",
+      "setup_call_teardown_seconds": 0.119
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_config_rejects_removed_path_aliases[match_id]",
+      "setup_call_teardown_seconds": 0.033
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_config_rejects_removed_path_aliases[dataset_root]",
+      "setup_call_teardown_seconds": 0.03
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_config_rejects_removed_path_aliases[project_path]",
+      "setup_call_teardown_seconds": 0.031
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_config_rejects_removed_path_aliases[recording_id]",
+      "setup_call_teardown_seconds": 0.033
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_config_rejects_removed_path_aliases[video_paths]",
+      "setup_call_teardown_seconds": 0.033
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_config_rejects_removed_path_aliases[camera_ids]",
+      "setup_call_teardown_seconds": 0.031
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_rejects_invalid_port[0]",
+      "setup_call_teardown_seconds": 0.038
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_rejects_invalid_port[65536]",
+      "setup_call_teardown_seconds": 0.061
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_clip_studio_rejects_invalid_port[-1]",
+      "setup_call_teardown_seconds": 0.04
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.max_candidates=0]",
+      "setup_call_teardown_seconds": 0.62
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.nms_kernel=4]",
+      "setup_call_teardown_seconds": 0.448
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_invalid_ball_candidate_config_fails_before_inference[ball_detection.candidates.patch_size=-1]",
+      "setup_call_teardown_seconds": 0.663
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_ball_decoding_config_reaches_typed_runtime_and_rejects_conflict",
+      "setup_call_teardown_seconds": 0.895
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_defaults",
+      "setup_call_teardown_seconds": 0.486
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+ball_confidence=legacy.yaml]",
+      "setup_call_teardown_seconds": 0.445
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_motion.source=plcs]",
+      "setup_call_teardown_seconds": 0.474
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+court_reference.view_half_turns=[false,false,true]]",
+      "setup_call_teardown_seconds": 0.4
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+player_association.mode=manual_ui]",
+      "setup_call_teardown_seconds": 0.353
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+association.min_player_probability=0.5]",
+      "setup_call_teardown_seconds": 0.478
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_removed_manual_and_3d_settings[+plcs_reid.checkpoint=plcs/player-reid-v2.ckpt]",
+      "setup_call_teardown_seconds": 0.557
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_invalid_operating_thresholds[frame_sampling.max_frames=0]",
+      "setup_call_teardown_seconds": 0.46
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_invalid_operating_thresholds[camera_geometry.side_max_cost=-1]",
+      "setup_call_teardown_seconds": 0.482
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.sideline_margin_m=-1]",
+      "setup_call_teardown_seconds": 0.477
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_automatic_pipeline_rejects_invalid_operating_thresholds[person_observations.max_tracks_per_camera=0]",
+      "setup_call_teardown_seconds": 0.466
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_visualize_tasks_defaults_to_automatic_reconstruction",
+      "setup_call_teardown_seconds": 0.333
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_visualize_tasks_accepts_gvhmr_alignment_on_its_own",
+      "setup_call_teardown_seconds": 0.31
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_default_person_capacity_covers_doubles_with_buffer",
+      "setup_call_teardown_seconds": 0.428
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_pipeline_and_task_default_use_fitted_association",
+      "setup_call_teardown_seconds": 0.488
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_legacy_association_is_available_only_through_comparison_api",
+      "setup_call_teardown_seconds": 0.414
+    },
+    {
+      "node": "tests.unit.tennis_scene.test_configuration::test_missing_fitted_config_does_not_load_available_legacy",
+      "setup_call_teardown_seconds": 0.55
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_annotations::test_reader_adapter_preserves_estimates_exclusions_axes_and_source_rows",
+      "setup_call_teardown_seconds": 0.034
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_annotations::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[camera]",
+      "setup_call_teardown_seconds": 0.017
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_annotations::test_reader_adapter_rejects_scoring_camera_or_frame_mismatch[frame]",
+      "setup_call_teardown_seconds": 0.035
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_baseline::test_without_loess_keeps_acceptance_but_uses_original_detector_coordinates",
+      "setup_call_teardown_seconds": 3.025
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_asymmetric_input_axes_and_detector_masks_reject_corruption[camera]",
+      "setup_call_teardown_seconds": 0.043
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_asymmetric_input_axes_and_detector_masks_reject_corruption[frame]",
+      "setup_call_teardown_seconds": 0.051
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_asymmetric_input_axes_and_detector_masks_reject_corruption[evidence_frame]",
+      "setup_call_teardown_seconds": 0.048
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_asymmetric_input_axes_and_detector_masks_reject_corruption[mask]",
+      "setup_call_teardown_seconds": 0.045
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_asymmetric_input_axes_and_detector_masks_reject_corruption[annotation]",
+      "setup_call_teardown_seconds": 0.041
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_result_rejects_mask_geometry_and_camera_corruption[unsupported_valid]",
+      "setup_call_teardown_seconds": 0.007
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_result_rejects_mask_geometry_and_camera_corruption[invalid_position]",
+      "setup_call_teardown_seconds": 0.008
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_result_rejects_mask_geometry_and_camera_corruption[covariance]",
+      "setup_call_teardown_seconds": 0.005
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_contracts::test_result_rejects_mask_geometry_and_camera_corruption[camera_order]",
+      "setup_call_teardown_seconds": 0.036
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_heatmap_decoding::test_legacy_redecode_matches_foundation_detector_and_runner_retains_view_order",
+      "setup_call_teardown_seconds": 6.624
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_scoring::test_lovo_heldout_pixels_missingness_and_time_splits_match_hand_calculation",
+      "setup_call_teardown_seconds": 0.088
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_scoring::test_method_runner_excludes_labels_reference_and_heldout_camera",
+      "setup_call_teardown_seconds": 0.095
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_scoring::test_fractional_offsets_and_motion_never_bridge_invalid_frames",
+      "setup_call_teardown_seconds": 0.039
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_scoring::test_annotation_oracle_uses_retained_observations_only",
+      "setup_call_teardown_seconds": 0.072
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_scoring::test_camera_event_rows_use_union_windows_without_multiplying_residuals",
+      "setup_call_teardown_seconds": 0.097
+    },
+    {
+      "node": "tests.unit.tennis_scene.evaluation.ball3d.test_scoring::test_motion_outliers_respect_gaps_and_split_boundaries",
+      "setup_call_teardown_seconds": 0.068
+    },
+    {
+      "node": "tests.unit.tennis_scene.visualization.test_ball3d_comparison::test_trajectory_segments_omit_gap_endpoints_and_support_many_methods",
+      "setup_call_teardown_seconds": 0.035
+    },
+    {
+      "node": "tests.unit.tennis_scene.visualization.test_ball3d_comparison::test_html_reference_audit_detects_missing_sibling_media",
+      "setup_call_teardown_seconds": 0.013
+    },
+    {
+      "node": "tests.integration.tennis_scene.test_ball3d_bundle::test_real_component_codec_bundle_and_cpu_runner_roundtrip",
+      "setup_call_teardown_seconds": 1.567
+    },
+    {
+      "node": "tests.integration.tennis_scene.test_ball3d_bundle::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[checksum]",
+      "setup_call_teardown_seconds": 1.553
+    },
+    {
+      "node": "tests.integration.tennis_scene.test_ball3d_bundle::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[camera]",
+      "setup_call_teardown_seconds": 1.602
+    },
+    {
+      "node": "tests.integration.tennis_scene.test_ball3d_bundle::test_bundle_rejects_file_corruption_camera_reordering_and_undeclared_labels[extra_annotation]",
+      "setup_call_teardown_seconds": 1.769
+    },
+    {
+      "node": "tests.integration.tennis_scene.test_ball3d_bundle::test_annotation_origin_in_a_valid_checksummed_store_cannot_become_method_input",
+      "setup_call_teardown_seconds": 0.437
+    },
+    {
+      "node": "tests.integration.tennis_scene.test_ball3d_media::test_synchronized_two_method_video_full_decode_and_portable_reference_report",
+      "setup_call_teardown_seconds": 6.289
+    }
+  ]
+}

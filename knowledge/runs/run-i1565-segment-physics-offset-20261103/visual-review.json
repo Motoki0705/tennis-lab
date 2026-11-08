@@ -1,0 +1,30 @@
+{
+  "previews_reviewed": [
+    0,
+    252,
+    505,
+    757,
+    1009
+  ],
+  "extreme_frames_reviewed": [
+    109,
+    108,
+    107,
+    105,
+    104,
+    103
+  ],
+  "figures_reviewed": [
+    "physics-diagnostics.png",
+    "paired-metrics-table.png"
+  ],
+  "observations": [
+    "Green observed references and white approved estimates are distinct.",
+    "cam0 frame1009 extrapolation and cam1 unknown references are absent, predictions remain separate.",
+    "Dense has no valid predictions; final diagnostic marks optimization_failed and last iterates.",
+    "Candidate side-view flights show discontinuities and large LOVO failure in the extreme crops.",
+    "Method legends, source frames and synchronized three-camera panels are legible."
+  ],
+  "full_video_decode": 1010,
+  "broken_html_references": []
+}

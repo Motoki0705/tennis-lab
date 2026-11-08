@@ -66,6 +66,7 @@ parents:
 relations:
 - to: run-court-novel-view-quality-20261022
   rel: related
+  note: 新規視点の描画品質を診断した先行run
 papers: []
 tags:
 - scene-diversity

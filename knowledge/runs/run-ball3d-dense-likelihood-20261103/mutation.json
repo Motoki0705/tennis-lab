@@ -1,0 +1,19 @@
+{
+  "kind": "process-local prior removal",
+  "source_sha256_before": "2a81087e9e41ebb869bc25a1c2fd0f91f70b85a28ba2630f72d0ad6e72ddbfe6",
+  "source_sha256_after": "2a81087e9e41ebb869bc25a1c2fd0f91f70b85a28ba2630f72d0ad6e72ddbfe6",
+  "cases": [
+    {
+      "mutation": "no_acceleration_prior",
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_acceleration_prior_reduces_flight_jitter_and_preserves_gap_and_turn_boundaries",
+      "returncode": 1,
+      "elapsed_seconds": 22.732363698014524
+    },
+    {
+      "mutation": "restored",
+      "node": "tests/unit/tennis_scene/ball_likelihood/test_likelihood.py::test_acceleration_prior_reduces_flight_jitter_and_preserves_gap_and_turn_boundaries",
+      "returncode": 0,
+      "elapsed_seconds": 12.706144005001988
+    }
+  ]
+}

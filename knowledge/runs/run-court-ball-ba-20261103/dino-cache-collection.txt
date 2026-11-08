@@ -1,0 +1,4 @@
+Injected prior upstream module: _tennis_lab_third_party_dino_models.dino.ops.functions.ms_deform_attn_func
+tests/unit/submodules/models/dino/test_extension.py::test_runtime_import_uses_selected_module_and_rejects_cached_mismatch
+
+1 test collected in 4.77s

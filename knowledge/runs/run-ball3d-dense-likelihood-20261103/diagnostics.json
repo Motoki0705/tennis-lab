@@ -1,0 +1,50 @@
+{
+  "dense_selected": {
+    "all_frames_valid": 1010,
+    "primary_valid": 505,
+    "event_boundaries": 930,
+    "exact_one_native_pixels": 0,
+    "rejection_codes": {
+      "0": 1010
+    }
+  },
+  "dense_quadratic_logit": {
+    "all_frames_valid": 850,
+    "primary_valid": 429,
+    "event_boundaries": 424,
+    "exact_one_native_pixels": 0,
+    "rejection_codes": {
+      "0": 850,
+      "7": 160
+    }
+  },
+  "dense_quadratic_log": {
+    "all_frames_valid": 745,
+    "primary_valid": 357,
+    "event_boundaries": 312,
+    "exact_one_native_pixels": 0,
+    "rejection_codes": {
+      "0": 745,
+      "7": 265
+    }
+  },
+  "dense_coarse": {
+    "all_frames_valid": 1010,
+    "primary_valid": 505,
+    "event_boundaries": 936,
+    "exact_one_native_pixels": 0,
+    "rejection_codes": {
+      "0": 1010
+    }
+  },
+  "dense_temporal": {
+    "all_frames_valid": 986,
+    "primary_valid": 493,
+    "event_boundaries": 930,
+    "exact_one_native_pixels": 0,
+    "rejection_codes": {
+      "0": 986,
+      "7": 24
+    }
+  }
+}

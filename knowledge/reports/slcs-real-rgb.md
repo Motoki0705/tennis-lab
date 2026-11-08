@@ -2,7 +2,7 @@
 
 2026-09-19時点。Meiji全56clipの教師生成・全件監査、broadcast 5clipとの統合、PLCS/BLCSおよびSLCSの60epoch学習を完了した。全体版SLCSは定数に近いball出力から前進し、RGBの寄与も確認できた。一方、欠損境界の不連続・domain別の退行・裾誤差が残り、**頑健な最終モデルは未達**である。固定test 239窓は最終モデル評価にまだ使っていない。
 
-この文書はレビュー時の結論と根拠をまとめる。生成・評価の操作は[データ生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、各試行の設定・数値・失敗履歴は[実験グループ](../nodes/slcs/000009-group-slcs-real-rgb.md)とリンク先のrunを正本とする。
+この文書はレビュー時の結論と根拠をまとめる。生成・評価の操作は[データ生成ガイド](https://github.com/Motoki0705/tennis-lab/blob/f09592f3d306729f158b2deac4ee43c84329120c/src/tennis_scene/dataset_pipeline/README.md)、各試行の設定・数値・失敗履歴は[実験グループ](../nodes/slcs/000009-group-slcs-real-rgb.md)とリンク先のrunを正本とする。
 
 ## 要求と現在の状態
 
@@ -12,7 +12,7 @@
 | 指定CourtとMeiji outsourceから教師生成 | [v9 Court](../nodes/slcs/000104-run-slcs-meiji-v9-court-v1.md)、[全件QC](../nodes/slcs/000108-run-slcs-meiji-v9-full-qc-v2.md) | 56clip完了。疑似3D教師であり実測GTではない |
 | PLCS/BLCSを60epoch学習し比較 | 下記の教師評価、各runの曲線・予測 | 完走・validationによる重み選定済み。実映像の全指標改善ではない |
 | 実RGB SLCSの学習と欠損頑健化 | 全61clip、60epoch比較、固定valの5入力条件 | 学習成立と部分効果を確認。最終採用・固定test評価は未完了 |
-| 1コマンドで教師・RGB特徴まで生成 | [生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)、[cold/warm/cold検証](../nodes/slcs/000094-run-slcs-meiji-one-clip-repro-takeover-v1.md) | 通常経路を実装し1clipで3回完走。coldのbit-exact一致は不成立 |
+| 1コマンドで教師・RGB特徴まで生成 | [生成ガイド](https://github.com/Motoki0705/tennis-lab/blob/f09592f3d306729f158b2deac4ee43c84329120c/src/tennis_scene/dataset_pipeline/README.md)、[cold/warm/cold検証](../nodes/slcs/000094-run-slcs-meiji-one-clip-repro-takeover-v1.md) | 通常経路を実装し1clipで3回完走。coldのbit-exact一致は不成立 |
 | 学習・誤差・実映像を可視化してレビュー | run添付の曲線、条件別・分布図、[Meiji](../nodes/slcs/000136-run-slcs-temporal-context-meiji-visual-v1.md)・[broadcast](../nodes/slcs/000135-run-slcs-temporal-context-broadcast-visual-v1.md)の可視化 | 保存成果と根拠を提示。単一clipの見た目を採用根拠にはしない |
 | 別会場を追加して頑健化 | [候補在庫](../nodes/slcs/000058-run-slcs-broadcast-unused-source-inventory-v1.md)、生成ガイドの監査付きdetector入口 | 入口は実装済み。候補の教師生成・QC・追加採用・学習は未実施 |
 
@@ -28,7 +28,7 @@
 | val | `video_001` | indoor hard | 22 / 343 |
 | test | `video_002` | Eastbourne | 24 / 239 |
 
-Meiji ball入力はoutsourceの2D注釈、Courtは指定checkpointによる推定と幾何fit、人物はDINO/ViTPose観測である。PLCS/BLCS推論と多視点幾何補正から3D教師を作り、支持・再投影・速度等の品質条件を適用する。人物軸は視点ごとのnear/farから共通軸へ対応付ける。単眼broadcastのballは保存scene由来の疑似2D観測で、Meijiの人手注釈とは異なる。単眼ball教師weightは0.15で、奥行きの不確かさを残す。教師の定義・支持mask・補間・除外の規則は[品質判定](../../src/tennis_scene/dataset_pipeline/README.md#品質判定と教師の意味)を参照。
+Meiji ball入力はoutsourceの2D注釈、Courtは指定checkpointによる推定と幾何fit、人物はDINO/ViTPose観測である。PLCS/BLCS推論と多視点幾何補正から3D教師を作り、支持・再投影・速度等の品質条件を適用する。人物軸は視点ごとのnear/farから共通軸へ対応付ける。単眼broadcastのballは保存scene由来の疑似2D観測で、Meijiの人手注釈とは異なる。単眼ball教師weightは0.15で、奥行きの不確かさを残す。教師の定義・支持mask・補間・除外の規則は[品質判定](https://github.com/Motoki0705/tennis-lab/blob/f09592f3d306729f158b2deac4ee43c84329120c/src/tennis_scene/dataset_pipeline/README.md#品質判定と教師の意味)を参照。
 
 以下のSLCS誤差は、有効な疑似教師へのwindow occurrence単位の非加重平均である。重複窓の同じframeも別occurrenceとして数える。学習の品質weightやtrain平均baselineのfit重みとは区別する。独立実測3D正解はなく、再投影の改善も同じ観測との整合性である。全体valの333窓がMeiji、10窓がbroadcastなので、全体平均だけで採否を決めない。
 
@@ -88,7 +88,7 @@ OneSidedContextの直接対照はDomainBalancedではなく非均衡TemporalCont
 
 [Meiji全件QC](../nodes/slcs/000108-run-slcs-meiji-v9-full-qc-v2.md)は9clipの退避付き修復後に欠落・不正0を確認した。以前のproducer/teacher記録不整合や再生成を消していない。全体SLCSの[初回CRC停止](../nodes/slcs/000074-run-slcs-full-real-rgb-no-ball-smooth-start-failure-v1.md)、[process消失による中断](../nodes/slcs/000073-run-slcs-full-real-rgb-no-ball-smooth-interrupted-v2.md)、[速度評価の空出力](../nodes/slcs/000081-run-slcs-full-real-rgb-velocity-val-interrupted-v1.md)も、成功した後続runと別記録で残す。
 
-[checkpoint読取snapshot比較](../nodes/slcs/000097-run-slcs-meiji-stream-byte-diff-v1.md)では1byte/1bitの差を保存内容から確認した。[Windows監査](../nodes/slcs/000083-run-slcs-host-storage-audit-v1.md)にNVMe resetとbugcheck記録はあるが、SHA不一致やクラッシュとの因果は未確定で、SSD故障・Windowsアプリ・GPU等へ原因を断定しない。再取得や後続の成功も原因解決の証拠とは扱わない。DINO/ViTPoseに限る明示的なcheckpoint警告方針と、その内容認証上の限界は[生成ガイド](../../src/tennis_scene/dataset_pipeline/README.md)に記載している。
+[checkpoint読取snapshot比較](../nodes/slcs/000097-run-slcs-meiji-stream-byte-diff-v1.md)では1byte/1bitの差を保存内容から確認した。[Windows監査](../nodes/slcs/000083-run-slcs-host-storage-audit-v1.md)にNVMe resetとbugcheck記録はあるが、SHA不一致やクラッシュとの因果は未確定で、SSD故障・Windowsアプリ・GPU等へ原因を断定しない。再取得や後続の成功も原因解決の証拠とは扱わない。DINO/ViTPoseに限る明示的なcheckpoint警告方針と、その内容認証上の限界は[生成ガイド](https://github.com/Motoki0705/tennis-lab/blob/f09592f3d306729f158b2deac4ee43c84329120c/src/tennis_scene/dataset_pipeline/README.md)に記載している。
 
 ## 残る判断
 

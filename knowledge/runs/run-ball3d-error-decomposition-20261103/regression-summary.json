@@ -1,0 +1,3260 @@
+{
+  "all": {
+    "cam0": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 40,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -41.63560655353721,
+                -2.982398576331153
+              ],
+              [
+                -1137.2255463207985,
+                -436.30058928561584
+              ]
+            ],
+            "count": 970,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -21.908529252765636,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.207764460656592,
+              0.10750390828556533
+            ],
+            "rmse_px": 112.11088713788078,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -807.1168998775044,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 40,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -67.0460826480239,
+                -18.77186832007468
+              ],
+              [
+                -376.2717647021793,
+                -122.63368130704097
+              ]
+            ],
+            "count": 970,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -40.20201057687923,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 27.70238851515139,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -234.62756816108666,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 40,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.577812953855654,
+                1.9444355032491947
+              ],
+              [
+                -22.96236876948552,
+                0.7236538914722277
+              ]
+            ],
+            "count": 795,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.282594226539342,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18759770713913498,
+              0.10005211047420537
+            ],
+            "rmse_px": 4.539641828935166,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -10.678466440052272,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 40,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -10.019707357947574,
+                -3.452759526616066
+              ],
+              [
+                -54.0927330350155,
+                -17.25761681496805
+              ]
+            ],
+            "count": 795,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -6.350964984419219,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 5.3374693883876905,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -34.92253745435545,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "block_count": 29,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -64.72867983909875,
+                12.771603864264787
+              ],
+              [
+                -2243.5617803323053,
+                -738.7625240885441
+              ]
+            ],
+            "count": 256,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -26.46045535557781,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18759770713913498,
+              0.10750390828556533
+            ],
+            "rmse_px": 125.76358365623092,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -1508.4715816159285,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 29,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -55.94320499398221,
+                7.151924454726142
+              ],
+              [
+                -356.27428624403757,
+                -0.7306429102151114
+              ]
+            ],
+            "count": 256,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -16.911022432283175,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.260982391102873,
+              -0.049212233549582984
+            ],
+            "rmse_px": 24.873180761252062,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -134.46864819532442,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 26,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.5682829106761783,
+                2.6496053581188788
+              ],
+              [
+                -49.4401601927722,
+                9.167749253742473
+              ]
+            ],
+            "count": 179,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.6971358517743225,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18759770713913498,
+              0.10005211047420537
+            ],
+            "rmse_px": 4.707657301657297,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -17.96391755280135,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 26,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -22.515067494313122,
+                -2.437617214361723
+              ],
+              [
+                -114.45691527569889,
+                -13.917524538802507
+              ]
+            ],
+            "count": 179,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -9.597556850345244,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.260982391102873,
+              -0.049212233549582984
+            ],
+            "rmse_px": 4.911949979600977,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -51.560600734754,
+            "status": "measured"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 39,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -28.169173107026623,
+                4.156364527086002
+              ],
+              [
+                -1013.2968504856439,
+                -298.1600520293496
+              ]
+            ],
+            "count": 714,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -11.806574861047848,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.207764460656592,
+              0.10521104742053156
+            ],
+            "rmse_px": 102.99260117958877,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -658.5065453691874,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 39,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -70.40559930678275,
+                -18.016297825164795
+              ],
+              [
+                -388.34151943624687,
+                -106.88341741272963
+              ]
+            ],
+            "count": 714,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -40.07973358216028,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 28.497944268316502,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -225.88204294352164,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 38,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.4152002419098572,
+                1.9525023521384828
+              ],
+              [
+                -22.94808817810092,
+                1.3779270047823526
+              ]
+            ],
+            "count": 616,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.189933988155339,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.1867118290776446,
+              0.09233976029181867
+            ],
+            "rmse_px": 4.481271619605297,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -10.373543414213643,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 38,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -9.774630290132256,
+                -3.3321999905048405
+              ],
+              [
+                -53.28055271847942,
+                -13.57093814560649
+              ]
+            ],
+            "count": 616,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -6.117760370346968,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 5.448685715146362,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -33.28826898024674,
+            "status": "measured"
+          }
+        }
+      }
+    },
+    "cam1": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -16.28282118016872,
+                4.131857228797019
+              ],
+              [
+                -284.7947650537343,
+                -56.9288874317153
+              ]
+            ],
+            "count": 985,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -5.633990038045213,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 91.19868808311183,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -168.8444482512323,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -13.528245127298561,
+                1.3513230992364336
+              ],
+              [
+                -57.96105170180712,
+                8.911226440108218
+              ]
+            ],
+            "count": 985,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -3.9489920138205066,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 39.82032256297604,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -15.044899899247039,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -1.1897791756948342,
+                0.2548766599915748
+              ],
+              [
+                -15.710189087281883,
+                -3.9783205053949042
+              ]
+            ],
+            "count": 913,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -0.3669707101900885,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 4.120607285897326,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -9.652788950378044,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.028963309317460887,
+                1.5371334645959873
+              ],
+              [
+                -17.89024436114993,
+                1.4929024625883194
+              ]
+            ],
+            "count": 913,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.8537640142818533,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 4.519139688529099,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -6.219173102004596,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          },
+          "y": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          },
+          "y": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -16.28282118016872,
+                4.131857228797019
+              ],
+              [
+                -284.7947650537343,
+                -56.9288874317153
+              ]
+            ],
+            "count": 985,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -5.633990038045213,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 91.19868808311183,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -168.8444482512323,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -13.528245127298561,
+                1.3513230992364336
+              ],
+              [
+                -57.96105170180712,
+                8.911226440108218
+              ]
+            ],
+            "count": 985,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -3.9489920138205066,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 39.82032256297604,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -15.044899899247039,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -1.1897791756948342,
+                0.2548766599915748
+              ],
+              [
+                -15.710189087281883,
+                -3.9783205053949042
+              ]
+            ],
+            "count": 913,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -0.3669707101900885,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 4.120607285897326,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -9.652788950378044,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.028963309317460887,
+                1.5371334645959873
+              ],
+              [
+                -17.89024436114993,
+                1.4929024625883194
+              ]
+            ],
+            "count": 913,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.8537640142818533,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 4.519139688529099,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -6.219173102004596,
+            "status": "measured"
+          }
+        }
+      }
+    },
+    "cam2": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -9.53729016363899,
+                22.3586904824783
+              ],
+              [
+                -485.22697180531134,
+                -99.7283607208545
+              ]
+            ],
+            "count": 1004,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 4.193612729870088,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2662324127149557,
+              0.09431995831162066
+            ],
+            "rmse_px": 75.13515429304847,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -264.2654200342053,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -36.461773741303126,
+                -0.714261952023167
+              ],
+              [
+                -319.87405203083506,
+                -71.66233144300853
+              ]
+            ],
+            "count": 1004,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -18.992785713785292,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.30074142724745134,
+              0.2692307692307693
+            ],
+            "rmse_px": 49.95160223189522,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -204.71745881186936,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 40,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -2.5822379853606416,
+                -0.2893518322055083
+              ],
+              [
+                -77.42431788077968,
+                -20.952039360132638
+              ]
+            ],
+            "count": 758,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -1.520550636150771,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.26185513288170925,
+              0.09431995831162066
+            ],
+            "rmse_px": 5.249826914034104,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -38.19730946197533,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 40,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.3613234764702606,
+                2.4584979042525954
+              ],
+              [
+                -13.020180067567749,
+                -0.22269414305614263
+              ]
+            ],
+            "count": 758,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.4584289079844037,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2974050046339203,
+              0.2692307692307693
+            ],
+            "rmse_px": 5.053651214331962,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -6.31939207266114,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "block_count": 12,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -31.92272656040996,
+                11.28148673518898
+              ],
+              [
+                -983.9606730215502,
+                115.78418966060406
+              ]
+            ],
+            "count": 114,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -7.4017765061605925,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.1775924960917144,
+              0.02438770192808748
+            ],
+            "rmse_px": 33.049937092905274,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -333.4695650165243,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 12,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -112.54234429376415,
+                75.51293159279707
+              ],
+              [
+                -713.7052424617551,
+                272.2797322137349
+              ]
+            ],
+            "count": 114,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 11.460060493710708,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.29490268767377203,
+              -0.12372567191844303
+            ],
+            "rmse_px": 31.90196544292573,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -9.288280272362504,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 11,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -3.9947075716570395,
+                1.549787629285099
+              ],
+              [
+                -94.05003016714328,
+                45.99589429742832
+              ]
+            ],
+            "count": 65,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -1.2660550880670403,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.1775924960917144,
+              0.02438770192808748
+            ],
+            "rmse_px": 6.578377440094312,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": 2.109998711040056,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 11,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -29.158431645338176,
+                7.4387201055510035
+              ],
+              [
+                -168.43937577252436,
+                16.95505519354974
+              ]
+            ],
+            "count": 65,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -3.2342231053487054,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.29490268767377203,
+              -0.14068582020389253
+            ],
+            "rmse_px": 6.344079865234955,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -25.692227688802554,
+            "status": "measured"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -9.557065353943681,
+                25.253722142314885
+              ],
+              [
+                -504.594538117023,
+                -101.53942566121526
+              ]
+            ],
+            "count": 890,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 5.396141976591732,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2662324127149557,
+              0.09431995831162066
+            ],
+            "rmse_px": 78.83035757953799,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -268.13257024729063,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 41,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -37.16285473141089,
+                -1.010179914711506
+              ],
+              [
+                -334.462133315494,
+                -75.1057898561825
+              ]
+            ],
+            "count": 890,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -19.402344398524452,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.30074142724745134,
+              0.2692307692307693
+            ],
+            "rmse_px": 51.64998861237472,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -214.37132270916024,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 39,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -2.459478144979592,
+                -0.42836404051079763
+              ],
+              [
+                -78.20869399330473,
+                -20.9812142080246
+              ]
+            ],
+            "count": 693,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -1.461470139893277,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.26185513288170925,
+              0.09431995831162066
+            ],
+            "rmse_px": 5.084674014676308,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -39.740818098497165,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 39,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.3363597109655977,
+                2.6414129917008404
+              ],
+              [
+                -12.605020212902573,
+                0.2637628586459485
+              ]
+            ],
+            "count": 693,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.50953249264148,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2974050046339203,
+              0.2692307692307693
+            ],
+            "rmse_px": 4.902461871069893,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -6.420448378800733,
+            "status": "measured"
+          }
+        }
+      }
+    }
+  },
+  "evaluation": {
+    "cam0": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 20,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -51.43654801585139,
+                -2.52789028378238
+              ],
+              [
+                -941.2006750838768,
+                -224.35143194606667
+              ]
+            ],
+            "count": 473,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -26.35050661081043,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18759770713913498,
+              0.08186555497655024
+            ],
+            "rmse_px": 113.44927208461712,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -545.607601377172,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 20,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -47.24799905988179,
+                -6.622500918334047
+              ],
+              [
+                -294.4986397209182,
+                -56.24627712369358
+              ]
+            ],
+            "count": 473,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -17.507556117344066,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 25.010855472740527,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -121.1068179571132,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 20,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.4308317101018973,
+                2.544396629365479
+              ],
+              [
+                -29.287945305062713,
+                9.82080355345338
+              ]
+            ],
+            "count": 400,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.382589613399234,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18759770713913498,
+              0.08186555497655024
+            ],
+            "rmse_px": 4.995158900986752,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -5.215994396082896,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 20,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -14.18322634005153,
+                -3.0934968830999816
+              ],
+              [
+                -68.64446567585674,
+                -13.623967383032578
+              ]
+            ],
+            "count": 400,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -5.715147839717048,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 5.411334791128384,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -30.466704228147318,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "block_count": 15,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -93.05264563040119,
+                0.5854445637667303
+              ],
+              [
+                -1849.6935339885779,
+                23.30237514521373
+              ]
+            ],
+            "count": 132,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -48.37368936540251,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18759770713913498,
+              0.07811360083376762
+            ],
+            "rmse_px": 140.52471931378065,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -1082.4114658056412,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 15,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -77.885640673417,
+                8.408410035574684
+              ],
+              [
+                -473.43426639151494,
+                11.816940523762199
+              ]
+            ],
+            "count": 132,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -13.042380027826976,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.260982391102873,
+              -0.049212233549582984
+            ],
+            "rmse_px": 31.287521564037668,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -122.98083365347249,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 13,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                0.08100049622757757,
+                3.565036928484644
+              ],
+              [
+                -46.596214343485514,
+                32.41652310716876
+              ]
+            ],
+            "count": 100,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 2.081565547396733,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18759770713913498,
+              0.07144346013548719
+            ],
+            "rmse_px": 4.706544117503019,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -4.358945296390387,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 13,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -19.552129109774004,
+                1.8632580262479912
+              ],
+              [
+                -94.9706999160684,
+                7.473887678381086
+              ]
+            ],
+            "count": 100,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -3.713736418047303,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.260982391102873,
+              -0.049212233549582984
+            ],
+            "rmse_px": 4.923950587506922,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -20.123375206064765,
+            "status": "measured"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -38.49668717646875,
+                5.317539112160739
+              ],
+              [
+                -878.3736096333706,
+                -105.52327989694345
+              ]
+            ],
+            "count": 341,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -15.53441926686331,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18280354351224593,
+              0.08186555497655024
+            ],
+            "rmse_px": 97.143294973929,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -414.163300811033,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -48.42248475527776,
+                -6.376674677305722
+              ],
+              [
+                -271.1342124850733,
+                -43.3081765719354
+              ]
+            ],
+            "count": 341,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -16.222667436764006,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 21.795709505651587,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -102.72195604420808,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.032191541492562106,
+                2.3365722925388006
+              ],
+              [
+                -29.909458326468215,
+                10.671741026867632
+              ]
+            ],
+            "count": 300,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.1475421582421947,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.18280354351224593,
+              0.08186555497655024
+            ],
+            "rmse_px": 5.066046990553114,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -5.6274331792876255,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -13.929874583084716,
+                -2.8340284501709614
+              ],
+              [
+                -68.11460760568526,
+                -10.585247746148456
+              ]
+            ],
+            "count": 300,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -5.888135515459681,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2618164967562558,
+              -0.020945319740500512
+            ],
+            "rmse_px": 5.56046548102983,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -31.72810194998868,
+            "status": "measured"
+          }
+        }
+      }
+    },
+    "cam1": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -27.55491894815453,
+                -0.9696585469835729
+              ],
+              [
+                -272.98922712655843,
+                -43.18237621616225
+              ]
+            ],
+            "count": 484,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -17.346866742364362,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 84.10178243509816,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -172.2804800745654,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -2.4779785053820036,
+                1.6248143828011814
+              ],
+              [
+                -14.64969276271259,
+                17.452124434779176
+              ]
+            ],
+            "count": 484,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.22882925198630974,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 26.0607570727794,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": 5.0977642691621385,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -2.111938971747848,
+                1.3062591650061754
+              ],
+              [
+                -24.819610265045743,
+                -2.7183750399986897
+              ]
+            ],
+            "count": 456,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.470481972351709,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 4.02686815862574,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -9.622892350353677,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -0.6468661026386909,
+                1.7468611877349633
+              ],
+              [
+                -18.876519940479255,
+                5.264708272538153
+              ]
+            ],
+            "count": 456,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.6557059404582607,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 4.476910858339692,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -2.8323641210307917,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          },
+          "y": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          },
+          "y": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -27.55491894815453,
+                -0.9696585469835729
+              ],
+              [
+                -272.98922712655843,
+                -43.18237621616225
+              ]
+            ],
+            "count": 484,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -17.346866742364362,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 84.10178243509816,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -172.2804800745654,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -2.4779785053820036,
+                1.6248143828011814
+              ],
+              [
+                -14.64969276271259,
+                17.452124434779176
+              ]
+            ],
+            "count": 484,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.22882925198630974,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 26.0607570727794,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": 5.0977642691621385,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -2.111938971747848,
+                1.3062591650061754
+              ],
+              [
+                -24.819610265045743,
+                -2.7183750399986897
+              ]
+            ],
+            "count": 456,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.470481972351709,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.24252214695153723,
+              0.29286086503387176
+            ],
+            "rmse_px": 4.02686815862574,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -9.622892350353677,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -0.6468661026386909,
+                1.7468611877349633
+              ],
+              [
+                -18.876519940479255,
+                5.264708272538153
+              ]
+            ],
+            "count": 456,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.6557059404582607,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22391102873030588,
+              0.1405004633920297
+            ],
+            "rmse_px": 4.476910858339692,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -2.8323641210307917,
+            "status": "measured"
+          }
+        }
+      }
+    },
+    "cam2": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -1.9395396073552549,
+                61.12237690772948
+              ],
+              [
+                -647.3958342301223,
+                540.6233252222905
+              ]
+            ],
+            "count": 505,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 20.077791208475997,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.12777488275143306,
+              0.09431995831162066
+            ],
+            "rmse_px": 91.10748074462114,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -165.52111818822658,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -41.5786433194143,
+                5.162562435029687
+              ],
+              [
+                -322.8221591656264,
+                -36.690195785686825
+              ]
+            ],
+            "count": 505,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -20.22508389662261,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.30074142724745134,
+              0.2692307692307693
+            ],
+            "rmse_px": 56.933930299553666,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -195.62934461547744,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -2.245569207105658,
+                0.5979678912613506
+              ],
+              [
+                -116.17207397324704,
+                -38.73181945792261
+              ]
+            ],
+            "count": 384,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -0.5535683768412478,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.12777488275143306,
+              0.09431995831162066
+            ],
+            "rmse_px": 4.819537997144214,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -64.94569278404909,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -0.4188531481299259,
+                2.422431724892898
+              ],
+              [
+                -15.430792532867844,
+                -0.9180906903783734
+              ]
+            ],
+            "count": 384,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.1647877010689571,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2974050046339203,
+              0.2692307692307693
+            ],
+            "rmse_px": 5.096894884494032,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -7.443660910510851,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "block_count": 4,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -89.78463701298246,
+                164.1757598334075
+              ],
+              [
+                -2917.142951545958,
+                5527.789267740598
+              ]
+            ],
+            "count": 46,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 17.54655109144113,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.03157894736842104,
+              -0.011568525273579988
+            ],
+            "rmse_px": 22.762664129588988,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": 292.58225207820414,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 4,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -112.67016573371782,
+                38.01111213761851
+              ],
+              [
+                -629.2917396949924,
+                126.89026180738074
+              ]
+            ],
+            "count": 46,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -1.8777143608243552,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.29490268767377203,
+              -0.15236329935125115
+            ],
+            "rmse_px": 31.751914569227658,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -34.693615514412315,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 4,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -89.78463701298246,
+                31.301482440051185
+              ],
+              [
+                -2842.634299331272,
+                1110.9588463228004
+              ]
+            ],
+            "count": 34,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.4342399725961517,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.03157894736842104,
+              -0.011568525273579988
+            ],
+            "rmse_px": 6.321917896016196,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": 49.06156060614209,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 4,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -65.09475724534549,
+                14.076198343442206
+              ],
+              [
+                -333.3608953052268,
+                42.08238257443447
+              ]
+            ],
+            "count": 34,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -10.307028748255451,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.29490268767377203,
+              -0.1581093605189991
+            ],
+            "rmse_px": 6.425916272745613,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -50.58085287958585,
+            "status": "measured"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -1.8741365277987818,
+                63.45177779429567
+              ],
+              [
+                -660.1676649231898,
+                508.87936074709916
+              ]
+            ],
+            "count": 459,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 21.262348346276376,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.12777488275143306,
+              0.09431995831162066
+            ],
+            "rmse_px": 95.18362152086902,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -178.57070446220396,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -42.13099711523253,
+                4.884724531909765
+              ],
+              [
+                -344.02649377654086,
+                -44.36710244654641
+              ]
+            ],
+            "count": 459,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -20.358851502126072,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.30074142724745134,
+              0.2692307692307693
+            ],
+            "rmse_px": 58.51248616626956,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -209.71333514218054,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -2.2154630954404406,
+                0.718260879907721
+              ],
+              [
+                -117.45294620819563,
+                -38.81475058804811
+              ]
+            ],
+            "count": 350,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -0.49495062149992136,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.12777488275143306,
+              0.09431995831162066
+            ],
+            "rmse_px": 4.634785477612431,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -65.77801206739768,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -0.13374284867865582,
+                2.4555787384648244
+              ],
+              [
+                -15.543987852138459,
+                -1.267214943510245
+              ]
+            ],
+            "count": 350,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.2407233526256782,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2974050046339203,
+              0.2692307692307693
+            ],
+            "rmse_px": 4.893001459350661,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -7.825242912778588,
+            "status": "measured"
+          }
+        }
+      }
+    }
+  },
+  "tuning": {
+    "cam0": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -54.112924544498775,
+                9.143433116512432
+              ],
+              [
+                -1420.1018374269152,
+                -374.30483440646765
+              ]
+            ],
+            "count": 497,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -20.530255690210222,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.207764460656592,
+              0.10750390828556533
+            ],
+            "rmse_px": 108.48438497662644,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -963.4014040710331,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -94.27151983923798,
+                -24.799487232377412
+              ],
+              [
+                -550.091286985834,
+                -148.60188085591219
+              ]
+            ],
+            "count": 497,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -60.628209787099046,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22196478220574606,
+              -0.053938832252085234
+            ],
+            "rmse_px": 28.828525204729296,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -350.21773177181655,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.2050535312902011,
+                1.85386326727968
+              ],
+              [
+                -28.47609463162232,
+                -5.787105495979745
+              ]
+            ],
+            "count": 395,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.0781314208908863,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.1867118290776446,
+              0.10005211047420537
+            ],
+            "rmse_px": 3.989543698904429,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -16.064267692407302,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -13.708479615672616,
+                -1.604202879089444
+              ],
+              [
+                -81.7894088290969,
+                -3.457414603237404
+              ]
+            ],
+            "count": 395,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -7.53520343668486,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22196478220574606,
+              -0.06144578313253013
+            ],
+            "rmse_px": 5.236453691085252,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -43.33344704255319,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "block_count": 14,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -11.572393871792233,
+                59.11120411804891
+              ],
+              [
+                -2957.249380634456,
+                -712.9088751901279
+              ]
+            ],
+            "count": 124,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 19.18563386431573,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.052423137050547186,
+              0.10750390828556533
+            ],
+            "rmse_px": 94.88110636190872,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -2272.8865703349084,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 14,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -55.11246649166219,
+                13.063084368754179
+              ],
+              [
+                -337.7370842147757,
+                14.852622476310767
+              ]
+            ],
+            "count": 124,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -13.126412554045288,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22177942539388323,
+              -0.16227988878591293
+            ],
+            "rmse_px": 15.152470556958395,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -106.03486383115,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 13,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                0.5708872919197604,
+                3.2499377356519203
+              ],
+              [
+                -78.50671104450097,
+                -7.9794956183501675
+              ]
+            ],
+            "count": 79,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.686965267609173,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.052423137050547186,
+              0.10005211047420537
+            ],
+            "rmse_px": 4.4943138489240075,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -43.61342113184561,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 13,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -42.5305648477995,
+                -10.083620940011365
+              ],
+              [
+                -219.59139071071456,
+                -50.80295845228772
+              ]
+            ],
+            "count": 79,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -26.150276356779436,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22177942539388323,
+              -0.16311399443929564
+            ],
+            "rmse_px": 4.2739823340921195,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -139.99678579583946,
+            "status": "measured"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -45.6476256240126,
+                7.544743813094515
+              ],
+              [
+                -1254.7406131801536,
+                -286.85773310581897
+              ]
+            ],
+            "count": 373,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -12.95404566750455,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.207764460656592,
+              0.10521104742053156
+            ],
+            "rmse_px": 105.78273992298257,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -805.9461371784469,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -97.19467645439046,
+                -23.964287039163388
+              ],
+              [
+                -560.4593175127284,
+                -136.74003873935672
+              ]
+            ],
+            "count": 373,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -62.1964760976802,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22196478220574606,
+              -0.053938832252085234
+            ],
+            "rmse_px": 31.97441462378069,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -358.5951847057309,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -0.036897364691630026,
+                2.2381348950586775
+              ],
+              [
+                -26.699917929548455,
+                -1.1643074614033202
+              ]
+            ],
+            "count": 316,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 1.1174870107391714,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.1867118290776446,
+              0.09233976029181867
+            ],
+            "rmse_px": 3.818352009034231,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -14.438707834023297,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -12.452254841622239,
+                -0.6948888978929817
+              ],
+              [
+                -71.35837613156131,
+                2.4539099196238423
+              ]
+            ],
+            "count": 316,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -6.518936831806719,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.22196478220574606,
+              -0.06144578313253013
+            ],
+            "rmse_px": 5.337794846095206,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -36.16075072045246,
+            "status": "measured"
+          }
+        }
+      }
+    },
+    "cam1": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -24.534194982364475,
+                13.976769927188318
+              ],
+              [
+                -535.2361060129115,
+                -18.62130828989003
+              ]
+            ],
+            "count": 501,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 3.0593494624138837,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2306409588327254,
+              0.21417404898384573
+            ],
+            "rmse_px": 96.29337727486661,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -190.55817501429283,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -22.720094106357084,
+                1.727867009673148
+              ],
+              [
+                -130.94024623185007,
+                83.84900090570007
+              ]
+            ],
+            "count": 501,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -6.696083503650983,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.13772011121408712,
+              0.12344763670064884
+            ],
+            "rmse_px": 49.45015761858594,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -17.86565587790302,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -1.8477131959100734,
+                -0.22959191885388183
+              ],
+              [
+                -13.448713662208155,
+                1.9333911203527385
+              ]
+            ],
+            "count": 457,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -0.9305271814218424,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2306409588327254,
+              0.21417404898384573
+            ],
+            "rmse_px": 4.033717867901968,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -6.774213475805359,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -0.12198248787727119,
+                1.8157710857855642
+              ],
+              [
+                -32.32066556306972,
+                2.1802520862033417
+              ]
+            ],
+            "count": 457,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.9653095939320894,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.13772011121408712,
+              0.12344763670064884
+            ],
+            "rmse_px": 4.4803355583363045,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -14.783263877930299,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          },
+          "y": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          },
+          "y": {
+            "ci_contains_negative_hypothesis": null,
+            "ci_contains_positive_hypothesis": null,
+            "count": 0,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "status": "insufficient_position_support"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -24.534194982364475,
+                13.976769927188318
+              ],
+              [
+                -535.2361060129115,
+                -18.62130828989003
+              ]
+            ],
+            "count": 501,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 3.0593494624138837,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2306409588327254,
+              0.21417404898384573
+            ],
+            "rmse_px": 96.29337727486661,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -190.55817501429283,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -22.720094106357084,
+                1.727867009673148
+              ],
+              [
+                -130.94024623185007,
+                83.84900090570007
+              ]
+            ],
+            "count": 501,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -6.696083503650983,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.13772011121408712,
+              0.12344763670064884
+            ],
+            "rmse_px": 49.45015761858594,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -17.86565587790302,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -1.8477131959100734,
+                -0.22959191885388183
+              ],
+              [
+                -13.448713662208155,
+                1.9333911203527385
+              ]
+            ],
+            "count": 457,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -0.9305271814218424,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2306409588327254,
+              0.21417404898384573
+            ],
+            "rmse_px": 4.033717867901968,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -6.774213475805359,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -0.12198248787727119,
+                1.8157710857855642
+              ],
+              [
+                -32.32066556306972,
+                2.1802520862033417
+              ]
+            ],
+            "count": 457,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 0.9653095939320894,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.13772011121408712,
+              0.12344763670064884
+            ],
+            "rmse_px": 4.4803355583363045,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -14.783263877930299,
+            "status": "measured"
+          }
+        }
+      }
+    },
+    "cam2": {
+      "all": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -21.691141207110547,
+                -1.4580352973605022
+              ],
+              [
+                -568.4254964365737,
+                -160.14602451530976
+              ]
+            ],
+            "count": 499,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -11.205185046898409,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2662324127149557,
+              0.06383533090151117
+            ],
+            "rmse_px": 50.02718408136944,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -302.9559985289509,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -54.74169019281808,
+                -2.237551329264537
+              ],
+              [
+                -439.7035351077106,
+                -58.46581513870922
+              ]
+            ],
+            "count": 499,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -19.659326433112863,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.25032437442075994,
+              0.042724745134383735
+            ],
+            "rmse_px": 41.520480415376845,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -225.88496007216702,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 20,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -4.323117109163706,
+                -1.3294096537742612
+              ],
+              [
+                -63.98582440494991,
+                -4.0051688850319405
+              ]
+            ],
+            "count": 374,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -2.808335048950024,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.26185513288170925,
+              0.06383533090151117
+            ],
+            "rmse_px": 5.175673481267339,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -30.016616948394606,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 20,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -0.09499470406512762,
+                4.682949933227257
+              ],
+              [
+                -18.299496996073557,
+                12.352367430669057
+              ]
+            ],
+            "count": 374,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 2.1242255743700986,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2419833178869324,
+              0.042724745134383735
+            ],
+            "rmse_px": 4.99624614876403,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -2.6421348249098684,
+            "status": "measured"
+          }
+        }
+      },
+      "estimated": {
+        "all_peaks": {
+          "x": {
+            "block_count": 8,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -45.48569853975746,
+                -4.653826843346654
+              ],
+              [
+                -1184.1783099799813,
+                -16.138520734136833
+              ]
+            ],
+            "count": 68,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -15.516356779658473,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.1775924960917144,
+              0.02438770192808748
+            ],
+            "rmse_px": 36.74057419158979,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -375.43687529509174,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 8,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -181.99501553982265,
+                117.87389829311725
+              ],
+              [
+                -1129.5013220618366,
+                533.00372604606
+              ]
+            ],
+            "count": 68,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -97.44560719201708,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.20129749768303984,
+              -0.12372567191844303
+            ],
+            "rmse_px": 28.642930664620593,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -663.3272439564998,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 7,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -7.543074545549414,
+                1.0965635203917539
+              ],
+              [
+                -107.6822961550299,
+                35.396080953437554
+              ]
+            ],
+            "count": 31,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -3.2633521166722605,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.1775924960917144,
+              0.02438770192808748
+            ],
+            "rmse_px": 6.394314702635215,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -6.1367656100184425,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 7,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -56.322252924026586,
+                24.03135450872969
+              ],
+              [
+                -364.39454711809276,
+                107.58896496422325
+              ]
+            ],
+            "count": 31,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -16.83291988664681,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.20129749768303984,
+              -0.14068582020389253
+            ],
+            "rmse_px": 5.694894593403772,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -111.1974592434706,
+            "status": "measured"
+          }
+        }
+      },
+      "observed": {
+        "all_peaks": {
+          "x": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -22.939191291284516,
+                -0.0047346729062659465
+              ],
+              [
+                -563.0831778575439,
+                -165.71343593741233
+              ]
+            ],
+            "count": 431,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -10.829268522347283,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2662324127149557,
+              0.06383533090151117
+            ],
+            "rmse_px": 51.7943243658391,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -301.08720671738763,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 21,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": false,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -52.41193759777356,
+                -1.5978540933489054
+              ],
+              [
+                -444.74991125781406,
+                -45.90311743302513
+              ]
+            ],
+            "count": 431,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -18.9604817048968,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.25032437442075994,
+              0.042724745134383735
+            ],
+            "rmse_px": 43.0871983013071,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -222.71811804208355,
+            "status": "measured"
+          }
+        },
+        "within20_px": {
+          "x": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": false,
+            "coefficient_ci95": [
+              [
+                -4.201210299193726,
+                -1.029936693150788
+              ],
+              [
+                -68.14151739310029,
+                -5.914777271757137
+              ]
+            ],
+            "count": 343,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": -2.7160945387506734,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.26185513288170925,
+              0.06383533090151117
+            ],
+            "rmse_px": 5.025773373723793,
+            "slope_ci_excludes_zero": true,
+            "slope_px_per_extent": -31.32126646051506,
+            "status": "measured"
+          },
+          "y": {
+            "block_count": 19,
+            "block_frames": 25,
+            "bootstrap_repetitions": 499,
+            "bootstrap_seed": 1558,
+            "ci_contains_negative_hypothesis": true,
+            "ci_contains_positive_hypothesis": true,
+            "coefficient_ci95": [
+              [
+                -0.12224723764027132,
+                4.4370071043826895
+              ],
+              [
+                -18.896342645430238,
+                13.41086097080371
+              ]
+            ],
+            "count": 343,
+            "hypothesized_edge_magnitude_px": 5.625,
+            "hypothesized_slope_magnitude": 11.25,
+            "intercept_px": 2.1991257185283244,
+            "interpretation": "descriptive association; serial blocks; not causal identification",
+            "position_range_centered": [
+              -0.2419833178869324,
+              0.042724745134383735
+            ],
+            "rmse_px": 4.8977762667046925,
+            "slope_ci_excludes_zero": false,
+            "slope_px_per_extent": -2.1290471037827823,
+            "status": "measured"
+          }
+        }
+      }
+    }
+  }
+}

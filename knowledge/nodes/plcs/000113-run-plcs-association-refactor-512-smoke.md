@@ -58,7 +58,8 @@ artifacts:
 parents: []
 relations:
 - to: run-blcs-association-refactor-512-smoke
-  rel: companion
+  rel: related
+  note: 同時に行った対の実行
 papers: []
 tags:
 - association
