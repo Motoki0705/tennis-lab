@@ -9,6 +9,11 @@ from src.tennis_scene.visualization.blender.export.camera import (
     PinholeCamera,
     to_blender_camera,
 )
+from src.tennis_scene.visualization.player_view.head_camera import (
+    HeadCameraConfig,
+    build_head_camera_series,
+)
+from src.utils.schema.player import SMPLH_BODY_JOINT_NAMES, SMPLH_SKELETON
 
 WIDTH, HEIGHT = 1920, 1080
 
@@ -43,12 +48,51 @@ def _blender_project(
     return projected
 
 
-def test_blender_pose_reproduces_opencv_projection() -> None:
-    camera = _look_camera(
-        np.array([-7.0, -18.2, 2.7]), np.array([1.0, 3.0, 0.0]), 1044.3
-    )
+@pytest.mark.parametrize(
+    "neck_turn", [None, 0.0, 0.63], ids=["court-fit", "head-neutral", "head-neck-turn"]
+)
+def test_blender_pose_reproduces_opencv_projection(neck_turn: float | None) -> None:
+    if neck_turn is None:
+        camera = _look_camera(
+            np.array([-7.0, -18.2, 2.7]), np.array([1.0, 3.0, 0.0]), 1044.3
+        )
+        points = np.array([[0.0, 0.0, 0.0], [5.485, 11.885, 0.0], [-3.0, -9.0, 1.8]])
+        expected_center = [-7.0, -18.2, 2.7]
+    else:
+        parents: np.ndarray = np.full(22, -1, np.int32)
+        for parent, child in SMPLH_SKELETON:
+            parents[child] = parent
+        pose = np.zeros((1, 63))
+        pose[0, 34] = neck_turn  # change the neck while keeping the body fixed
+        pose[0, 44] = 0.21  # retain a head roll
+        regressor = np.tile([0.0, 1.0], (24, 1))
+        series = build_head_camera_series(
+            placed_vertices=np.array([[[0, 0, 1], [2, -4, 1.8]]]),
+            body_pose=pose,
+            body_to_court_rotation=np.array([[[1, 0, 0], [0, 0, -1], [0, 1, 0]]]),
+            mesh_valid=np.array([True]),
+            scale=1.2,
+            joint_regressor=regressor,
+            parents=parents,
+            body_joint_names=SMPLH_BODY_JOINT_NAMES,
+            mesh_joint_names=(*SMPLH_BODY_JOINT_NAMES, "left_hand", "right_hand"),
+            config=HeadCameraConfig(
+                width=WIDTH, height=HEIGHT, face_offset_head_m=(0, 0, 0)
+            ),
+        )
+        camera = series.pinhole(0)
+        # The third point represents an off-screen ball; do not clip it into view.
+        points = (
+            np.array([[-1, 0.4, 5], [0.8, -0.3, 2], [5, -2, 1]]) @ camera.R
+            + camera.center
+        )
+        np.testing.assert_allclose(
+            camera.project(points),
+            [[768, 616.8], [1344, 396], [5760, -1380]],
+            atol=1e-6,
+        )
+        expected_center = [2, -4, 1.8]
     pose = to_blender_camera(camera, sensor_width_mm=36.0)
-    points = np.array([[0.0, 0.0, 0.0], [5.485, 11.885, 0.0], [-3.0, -9.0, 1.8]])
 
     for point in points:
         expected = camera.project(point)
@@ -60,7 +104,7 @@ def test_blender_pose_reproduces_opencv_projection() -> None:
             point,
         )
         np.testing.assert_allclose(actual, expected, atol=1e-9)
-    np.testing.assert_allclose(pose.location, [-7.0, -18.2, 2.7], atol=1e-12)
+    np.testing.assert_allclose(pose.location, expected_center, atol=1e-12)
     assert np.isclose(np.linalg.det(pose.rotation_matrix), 1.0)
 
 

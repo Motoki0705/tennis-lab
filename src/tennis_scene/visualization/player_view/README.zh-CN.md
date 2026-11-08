@@ -3,7 +3,7 @@
 [English](README.md) · [日本語](README.ja.md)
 
 此 CPU 导出器将已保存的 SceneResult v2 转成 Blender 与 3DGS 共用的输入，
-复用现有网格放置、PC2 和球场几何。头部相机与渲染由下游负责。
+复用现有网格放置、PC2 和球场几何。下述头部相机导出器只读取此 bundle，渲染由下游负责。
 
 ```bash
 .venv/bin/python -m src.tennis_scene.visualization.player_view \
@@ -87,5 +87,97 @@ SMPL-X FK 关节与转换后的 SMPL 网格拓扑不同，不可直接假定位�
 单位尺度骨架与 offset 使用保存的 scale，不要再次缩放 PC2。
 有有效网格的人物必须有已保存的正 scale；仅全部帧无效时允许 `scale: null`。
 
-bundle 保留头部旋转与基于网格的头部位置所需的信息。
-头部相机、正面轴、面部 offset 与相机缺失策略由下游定义。
+## 头部相机
+
+只生成一次相机序列，然后把同一份保存的姿态交给 Blender 和 3DGS。
+CPU 命令只读取 scene bundle v1，无需原始 store、视频、body model 或推理。
+保留所有人物的原始 ID 和时间轴。输出必须是输入 bundle 以外的新目录；
+完整结果原子发布，失败时删除临时输出。
+
+```bash
+.venv/bin/python -m src.tennis_scene.visualization.player_view.camera_cli \
+  --bundle outputs/tennis_scene/visualize/player_view/example/bundle \
+  --output outputs/tennis_scene/visualize/player_view/example/cameras \
+  --width 1280 --height 720 --horizontal-fov-degrees 90 \
+  --face-offset-head-m 0 0.08 0.12 --near-m 0.05 --far-m 100
+```
+
+### 配置与方向
+
+上述命令显示原型默认值。面部 offset 相对于网格回归的 head 关节，采用
+**单位尺度 SMPL 头部轴**，单位为应用人物 scale 之前的米。
+near/far 是球场米单位的相机 +Z 深度，与人物 scale 无关。manifest 保存所有设置。
+像素为正方形、skew 为零、主点为 `(width/2,height/2)`，
+`fx=fy=width/(2*tan(horizontal_fov/2))`，不使用镜头畸变。
+
+在选择 `head` 之前验证具名骨架与网格关节顺序。
+joint j 由 pose triple j-1 控制，旋转链依次为
+`spine1 → spine2 → spine3 → neck → head`。列向量采用以下公式：
+
+```text
+H = body_to_court_rotation @ R_spine1 @ R_spine2 @ R_spine3 @ R_neck @ R_head
+head_position = smpl_joint_regressor[mesh_head_row] @ placed_PC2_vertices
+camera_center = head_position + H @ (player_scale * face_offset_head_m)
+camera_to_court[:3,:3] = H @ diag(-1,-1,1)
+camera_to_court[:3,3] = camera_center
+```
+
+SMPL/SMPL-X 的 neutral 头部轴为 +Y 向上、+Z 面向前、+X 朝人物左侧。
+因此 OpenCV 相机的 +X 右、+Y 下、+Z 前对应头部的 −X、−Y、+Z。
+正面方向已用上游 [vertex ID](https://github.com/vchoutas/smplx/blob/main/smplx/vertex_ids.py)
+指定的 neutral 模型鼻、眼、耳位置核对。保存的 63 值 pose 是线性 SMPL-X→SMPL
+拓扑转换前使用的 SMPL-X body 关节旋转，并非 SMPL 的 69 值 pose。
+旋转 FK 使用该骨架，位置使用**转换且放置后的 SMPL 网格**。
+不要用 SMPL-X FK 位置替代，不要重新居中或缩放 PC2，
+也不要把编码的 global orientation 当作头部旋转。
+
+每个原始帧使用静态针孔并保留 roll。不额外平滑、插值、稳定或追踪球。
+头部姿态允许相机朝向球场外，或让对手、球离开画面。
+
+### 相机输出 schema
+
+`manifest.json` 使用 `tennis_scene_player_view_head_cameras_v1`，记录输入 bundle
+引用和已使用文件的 digest、原始帧区间、FPS、ID/index 对应、人物 scale、有效数与
+无效原因计数、配置、轴和投影、头部计算方式及缺失策略。
+各 `players[index].path` 为可独立读取的 NPZ（F 帧）。
+
+| Key | Shape | 类型与含义 |
+|---|---|---|
+| `K` | 3,3 | float64，固定内参，像素 |
+| `camera_to_court` | F,4,4 | float64，OpenCV 相机→球场齐次变换，平移单位米 |
+| `camera_valid` | F | bool，使用姿态前必须检查 |
+| `camera_rejection_code` | F | uint8，下述原因码 |
+| `head_position` | F,3 | float64，从已放置网格回归的 head 位置，米 |
+| `source_frames` | F | int64，原始零起始帧号 |
+| `source_time_seconds` | F | float64，原始帧/FPS |
+| `source_player_rejection_code` | F | uint8，保留输入人物原因，与相机原因独立 |
+
+对于有效 T，`X_camera=T[:3,:3].T @ (X_court-T[:3,3])`，然后使用 K 投影。
++Z 为深度。画面和 near/far 裁剪由渲染器依据保存配置处理，不修改姿态。
+无效变换和 head 位置**全部为 NaN**，不使用单位矩阵或零姿态；K 始终有定义。
+
+原因按优先级为 `0 VALID`、`1 MESH_INVALID`、`2 HEAD_POSE_NONFINITE`、
+`3 PLACEMENT_ROTATION_INVALID`、`4 HEAD_POSITION_NONFINITE`。
+网格缺失 mask 优先于填零数值检查。相机需要有限的正旋转及头部链 pose。
+骨架、regressor 或时间轴不一致会拒绝整个导出。
+仅完全缺失的人物允许 null scale，其全部相机保持无效。
+不回退到身体 yaw、相邻帧或固定相机。
+
+### 读取相机
+
+```python
+from pathlib import Path
+from src.tennis_scene.visualization.player_view.camera_bundle import load_head_cameras
+from src.tennis_scene.visualization.blender.export.camera import to_blender_camera
+
+saved = load_head_cameras(Path("outputs/tennis_scene/visualize/player_view/example/cameras"), player_id=7)
+index = 0  # cache index；原始帧为 saved.source_frames[index]
+if saved.series.camera_valid[index]:
+    camera = saved.series.pinhole(index)
+    blender_pose = to_blender_camera(camera, sensor_width_mm=36.0)
+```
+
+reader 验证保存的变换和 mask，无需输入 bundle。
+`pinhole()` 拒绝无效 sample；渲染器应保留其时间槽并显示相机缺失帧。
+Blender 相机旋转为 `T[:3,:3] @ diag(1,-1,-1)`，位置为 `T[:3,3]`。
+使用已保存的分辨率、内参和裁剪值，两个 backend 均不重新计算头部运动。
