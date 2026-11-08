@@ -97,6 +97,84 @@ TRAINING_QUEUE_DIR=/content/tennis-lab/.training_queue .venv/bin/python -B \
 
 ## 保存・再開
 
+### 新VM向けの追補（2026-11-04、attempt-3以降）
+
+元の`run.py train --resume`は、保存JSONの配列listとdataclassのtupleを直接比較して停止した。
+24項目の型表現以外は計画全体・モデルsourceが一致し、学習更新前に失敗した。
+`resume_json_plan.py`は元controllerの`asdict` bindingだけをJSON正規化する明示的な復旧ランチャーである。
+モデル設定オブジェクト・学習module・stdlib・hash関数は変更せず、元の全guardを維持する。
+元controllerの実hashを保存済みplanとbenchmarkの両方へ照合してから適用する。追加の実効コードと由来はJSONで記録する。
+CPU10件で実際の再開境界の通過、予算・model・source・controller変更の拒否、bindingの局所性を確認した。
+
+元の[Issue引き継ぎ手順](https://github.com/Motoki0705/tennis-lab/issues/1675#issuecomment-6606918328)の
+データ全件検証、Git bundle・専用worktree・環境の復元、`recover.py`による最新checkpoint復元は引き続き使う。
+**再開コマンドだけを下記ランチャーへ変更する。元の計画・checkpointを編集してguardを回避しない。**
+
+追加ランチャーは元の不変`inputs-v1/source.bundle`には含まれない。
+Driveの同じcampaign rootに、次の不変snapshotと外部receiptを保存した。
+
+- `recovery/attempt-3-inputs/`、`recovery/attempt-3-inputs-receipt.json`: ランチャー・CPU検証・由来の7ファイル。
+- `documentation/resume-attempt-3/`、`documentation/resume-attempt-3-receipt.json`: このREADME、追加コード、旧500更新のknowledge、共通10k完了・今回の再開証拠、未commit差分。
+
+新VMでは元bundleのworktreeへ戻した後、少なくとも追加ランチャーを以下で検証付き復元する。
+`/tmp`の復元先が既にある場合は、上書きせず既存内容とreceiptを確認する。
+コマンドのcwdは元の専用worktree、PATHはrcloneを含むものとする。
+
+```bash
+PATH=/tmp/ball-tools:$PATH .venv/bin/python -B - <<'PY'
+import json
+import shutil
+from pathlib import Path
+from src.utils.artifact_store import RcloneSnapshotStore
+
+relative = "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/recovery"
+drive = Path("/content/drive/MyDrive/tennis_lab")
+receipt = json.loads((drive / relative / "attempt-3-inputs-receipt.json").read_text())
+assert receipt["schema"] == "verified_artifact_snapshot.v1"
+assert receipt["status"] == "verified" and receipt["generation"] == "attempt-3-inputs"
+assert receipt["remote"] == f"mounted_drive:{relative}/attempt-3-inputs"
+destination = Path("/tmp/ball-capacity-attempt-3-inputs")
+RcloneSnapshotStore(destination, remote="mounted_drive", remote_root=relative,
+    config_path=Path("/tmp/ball-drive-mount.conf")).restore(
+        "attempt-3-inputs", manifest_sha256=receipt["manifest_sha256"])
+for source in (destination / "knowledge").rglob("*"):
+    if not source.is_file():
+        continue
+    relative_file = source.relative_to(destination)
+    target = Path.cwd() / relative_file
+    if target.exists():
+        assert target.read_bytes() == source.read_bytes(), f"Existing file differs: {relative_file}"
+        continue
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(source, target)
+print("Additional resume inputs restored and verified; training not started.")
+PY
+```
+
+knowledge全体を復元する場合はdocumentation側の外部receiptから同じAPIで別の空ディレクトリへ復元し、
+差分を確認して専用worktreeへ反映する。未知の既存変更を上書きしない。Gitのauthor未設定のため、今回の差分は
+commit済みとは扱わず、documentation snapshotの`repro/knowledge.patch`と全変更ファイルで保全している。
+
+起動は親が外部queue serviceを保持し、共通ランナーの既定Codex子へ委任する。
+共有queue・GPU実プロセスと既存attemptを照合し、次回は新しいattempt key（次はattempt-4）を使う。
+以下はqueueへ渡すコマンド本体であり、親が直接GPUを起動しない。
+
+```bash
+PATH=/tmp/ball-tools:$PATH OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONWARNINGS=ignore \
+.venv/bin/python -B knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py train \
+  --workspace-root /content/tennis-lab --run-id s42-20261103-main \
+  --rclone-config /tmp/ball-drive-mount.conf \
+  --benchmark /content/tennis-lab/outputs/ball_detection/train/capacity_scaling/s42-20261103-main/benchmark.json \
+  --resume
+```
+
+今回の再開は1,500→2,000更新の全500更新でloss/勾配がfinite、次の周期checkpointのDrive全7 payloadを
+独立復元して照合した。起動担当の実終了後も2,097更新までの継続を親が一度確認した。
+[再開と保存の証拠](resume-attempt-3-startup.json)を参照する。これは全8段52k更新の完了ではない。
+checkpoint選択は引き続き最新の検証済みreceiptを使い、上記の更新数へ固定しない。
+VMと共に消えるqueue/監視/通知先は新VMで登録し直し、起動担当は最初の周期保存までで終了する。
+その後は親が終了イベントだけを監視し、定期的な進捗ポーリングはしない。
+
 正本は`outputs/ball_detection/train/capacity_scaling/s42-20261103-main/`。
 `plan.json`を学習前に固定し、コードのGit bundle・全prepared manifest・benchmark・理論計算量を
 検証付きの不変inputs snapshotへ保存する。500更新ごとに完全checkpoint・weights・設定・manifest・ログを

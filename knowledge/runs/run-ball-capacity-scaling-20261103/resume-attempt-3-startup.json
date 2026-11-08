@@ -1,0 +1,410 @@
+{
+  "schema": "ball_capacity_resume_startup.v1",
+  "verified_at": "2026-11-04T04:18:55.161518+00:00",
+  "stage": "query-d512-l4-T64",
+  "resumed_from_update": 1500,
+  "verified_drive_update": 2000,
+  "continuous_finite_updates": 500,
+  "resume_evidence": {
+    "original_checkpoint": {
+      "checkpoint": "checkpoint-update-00001500.pt",
+      "sha256": "21499b48181cf83c8bdf6caa121ca720fe067d765ec2a7a0b1723af651fb0b65",
+      "update": 1500
+    },
+    "original_sample_position": 11500,
+    "current_sample_position": 12000,
+    "initialized_receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "initialized-00001500-71083a3f",
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/initialized-00001500-71083a3f",
+      "manifest_sha256": "c48ade1ec102ec4a0de24b3b6fce5bc14ff527eb5e581931e0fa28450ed4d523",
+      "manifest_md5": "e3acac24cb116d84cf92b91527cf3303",
+      "files": 7,
+      "size_bytes": 347153495,
+      "marker_id": null,
+      "seconds": 39.90457377799976,
+      "status": "verified"
+    },
+    "initialized_payloads_match_recovered": true,
+    "original_committed_log_prefix_preserved": true,
+    "continuous_updates_verified": 500,
+    "finite_loss_gradient_updates": 500,
+    "deterministic_pack_draws_verified": 500,
+    "saved_checkpoint_summary": {
+      "schema": "ball_temporal_checkpoint.v2",
+      "updates_completed": 2000,
+      "sample_position": 12000,
+      "recipe_sha256": "f2319d464d195f3ec65d68cef8ab8a46196f68aab25500d73969655963e427ec",
+      "torch_version": "2.14.1+cu130",
+      "model_artifact_keys": [
+        "schema",
+        "model_kind",
+        "model_config",
+        "input_contract",
+        "state_dict",
+        "training"
+      ],
+      "model_artifact_digest": "961ec0e94ffc824345bb0456c67b62554ebe5d98826e0846e735d541e839c943",
+      "optimizer_digest": "d87aba30b3ecfe1bdf9bce050561df365702adab8b021173a0cb0bbc20a2beef",
+      "optimizer_groups": [
+        {
+          "role": "encoder",
+          "parameters": 133,
+          "states_with_step": 133,
+          "step_values": [
+            11400.0
+          ],
+          "lr": 6.8743766329346e-06
+        },
+        {
+          "role": "decoder",
+          "parameters": 149,
+          "states_with_step": 149,
+          "step_values": [
+            2000.0
+          ],
+          "lr": 6.8743766329346e-05
+        }
+      ],
+      "optimizer_finite": true,
+      "rng_keys": [
+        "torch",
+        "python",
+        "numpy",
+        "cuda"
+      ],
+      "rng_digest": "8acf780087c9cca1190cd52e34d33db120fb86d76288b5e65919ba5d75b47be6",
+      "cuda_rng_states": 1,
+      "train_log": {
+        "bytes": 2134368,
+        "sha256": "f7e6504f8ffbba9e621e739a4cb78739578d4797910a75a0d602a3ced4a9e038"
+      },
+      "artifact_sha256": "1229d78773ca677ddac6de4382fbfddf8f7068a454ab5add0491bad868ef19b3"
+    },
+    "optimizer_steps_advance_by": 500,
+    "model_state_tensors_changed": 273,
+    "original_rng_digest": "fbbc4275020189ddf555af155db7be5cebc0e277a1b7b33822f69c29426605be",
+    "current_rng_digest": "8acf780087c9cca1190cd52e34d33db120fb86d76288b5e65919ba5d75b47be6",
+    "rng_digest_equal": false,
+    "restoration_method": "Unchanged strict training resume path loads the checkpoint model, optimizer and saved update/sample position before initialized persistence, then restores Python/NumPy/Torch/CUDA RNG before update1501. Matching initialized payloads, preserved log prefix, 500 continued optimizer steps and deterministic resumed pack draws provide execution evidence.",
+    "direct_live_tensor_probe": null,
+    "direct_live_tensor_probe_reason": "No runtime instrumentation or training-function patch was installed."
+  },
+  "representative_records": [
+    {
+      "update": 1501,
+      "sample_position": 11501,
+      "loss": 0.004120213747024536,
+      "gradient_norm": 1.6283305883407593,
+      "pack_indices": [
+        7665
+      ],
+      "input_frames": 128,
+      "learning_rate": 7.083955269019858e-05,
+      "encoder_learning_rate": 7.083955269019858e-06,
+      "encoder_frozen": false,
+      "augmentation_sha256": [
+        "33a1b99ea856591ab8489b2ac3de4dc1c3f37b44efc5732708361737d0ba3abd"
+      ]
+    },
+    {
+      "update": 1600,
+      "sample_position": 11600,
+      "loss": 0.0050684917386215516,
+      "gradient_norm": 1.8494590520858765,
+      "pack_indices": [
+        3647
+      ],
+      "input_frames": 128,
+      "learning_rate": 7.046821290707247e-05,
+      "encoder_learning_rate": 7.046821290707247e-06,
+      "encoder_frozen": false,
+      "augmentation_sha256": [
+        "d3b2093a13b0d7867e0d59d07b7b2fde688d35cb40ecd710cbb11624c4e008e5"
+      ]
+    },
+    {
+      "update": 1800,
+      "sample_position": 11800,
+      "loss": 0.013801876638756424,
+      "gradient_norm": 1.4844050407409668,
+      "pack_indices": [
+        13707
+      ],
+      "input_frames": 128,
+      "learning_rate": 6.965032974333282e-05,
+      "encoder_learning_rate": 6.965032974333282e-06,
+      "encoder_frozen": false,
+      "augmentation_sha256": [
+        "7a7233ac0235d28bd6d776e0f8d5926cde33ea136ca57aaf2f28c3a409a3ca3e"
+      ]
+    },
+    {
+      "update": 2000,
+      "sample_position": 12000,
+      "loss": 0.02124571252842339,
+      "gradient_norm": 3.8092041015625,
+      "pack_indices": [
+        8326
+      ],
+      "input_frames": 128,
+      "learning_rate": 6.8743766329346e-05,
+      "encoder_learning_rate": 6.8743766329346e-06,
+      "encoder_frozen": false,
+      "augmentation_sha256": [
+        "92d3e16bab39c91ed3ce280ed7260052c4c8fae08bbc102583a429d77bce74c1"
+      ]
+    }
+  ],
+  "original_current_checks": {
+    "immutable_inputs": {
+      "benchmark.json": {
+        "original": {
+          "size_bytes": 69904,
+          "sha256": "1437f1c0ac3cd5ac734491332891aa332ce8c60a6d734319aaf9a8c12be5c480"
+        },
+        "current": {
+          "size_bytes": 69904,
+          "sha256": "1437f1c0ac3cd5ac734491332891aa332ce8c60a6d734319aaf9a8c12be5c480"
+        },
+        "equal": true
+      },
+      "download.json": {
+        "original": {
+          "size_bytes": 634,
+          "sha256": "a1cfe192f65916a6ac2c6e733278050f6a0e9e802bd203b92b2dc8525641f76f"
+        },
+        "current": {
+          "size_bytes": 634,
+          "sha256": "a1cfe192f65916a6ac2c6e733278050f6a0e9e802bd203b92b2dc8525641f76f"
+        },
+        "equal": true
+      },
+      "plan.json": {
+        "original": {
+          "size_bytes": 29982,
+          "sha256": "922d582258c528fe468df385f4600b43a3729db90e93681aa832e820817f5524"
+        },
+        "current": {
+          "size_bytes": 29982,
+          "sha256": "922d582258c528fe468df385f4600b43a3729db90e93681aa832e820817f5524"
+        },
+        "equal": true
+      },
+      "prepared/audit.json": {
+        "original": {
+          "size_bytes": 29513,
+          "sha256": "3a7142d7d916c50cc787f13a4773e215b3f7dc8a867a6582bd9720130633fbb2"
+        },
+        "current": {
+          "size_bytes": 29513,
+          "sha256": "3a7142d7d916c50cc787f13a4773e215b3f7dc8a867a6582bd9720130633fbb2"
+        },
+        "equal": true
+      },
+      "prepared/evaluation_T32.json": {
+        "original": {
+          "size_bytes": 4704058,
+          "sha256": "fb0ef368e1535bccb5ca1997b39c2e32871fd1f72cb9bb077d4ffe10ac41653d"
+        },
+        "current": {
+          "size_bytes": 4704058,
+          "sha256": "fb0ef368e1535bccb5ca1997b39c2e32871fd1f72cb9bb077d4ffe10ac41653d"
+        },
+        "equal": true
+      },
+      "prepared/evaluation_T64.json": {
+        "original": {
+          "size_bytes": 3317433,
+          "sha256": "84d7714369a882f983e0e58bf48ff3d367ad6656af76ca4890416785733e2cea"
+        },
+        "current": {
+          "size_bytes": 3317433,
+          "sha256": "84d7714369a882f983e0e58bf48ff3d367ad6656af76ca4890416785733e2cea"
+        },
+        "equal": true
+      },
+      "prepared/experiments.json": {
+        "original": {
+          "size_bytes": 34138,
+          "sha256": "66b20dda048f1f43874dae2dcb9590714053fa8b94feab15726a298fb4c77b68"
+        },
+        "current": {
+          "size_bytes": 34138,
+          "sha256": "66b20dda048f1f43874dae2dcb9590714053fa8b94feab15726a298fb4c77b68"
+        },
+        "equal": true
+      },
+      "prepared/train_T32.json": {
+        "original": {
+          "size_bytes": 3156690,
+          "sha256": "a5fac8828f2a5c67064f39216ea24a47e0f9d7bdfaa45bb40611698da8a6b107"
+        },
+        "current": {
+          "size_bytes": 3156690,
+          "sha256": "a5fac8828f2a5c67064f39216ea24a47e0f9d7bdfaa45bb40611698da8a6b107"
+        },
+        "equal": true
+      },
+      "prepared/train_T64.json": {
+        "original": {
+          "size_bytes": 3156689,
+          "sha256": "4efd2d30a928ed53dc9289d759cfeacd9a0bac7f65749634717258d0c973113c"
+        },
+        "current": {
+          "size_bytes": 3156689,
+          "sha256": "4efd2d30a928ed53dc9289d759cfeacd9a0bac7f65749634717258d0c973113c"
+        },
+        "equal": true
+      },
+      "source.bundle": {
+        "original": {
+          "size_bytes": 555427621,
+          "sha256": "e0a256ba199363285d8d63c96a44bfc26a4109b5576c16bb5877d0f58265606c"
+        },
+        "current": {
+          "size_bytes": 555427621,
+          "sha256": "e0a256ba199363285d8d63c96a44bfc26a4109b5576c16bb5877d0f58265606c"
+        },
+        "equal": true
+      },
+      "theory.json": {
+        "original": {
+          "size_bytes": 37428,
+          "sha256": "89d7b14621d6b80e05ef6cb129553e48a777480a6a2b5792323e787c3229adc8"
+        },
+        "current": {
+          "size_bytes": 37428,
+          "sha256": "89d7b14621d6b80e05ef6cb129553e48a777480a6a2b5792323e787c3229adc8"
+        },
+        "equal": true
+      }
+    },
+    "recipe_sha256": "f2319d464d195f3ec65d68cef8ab8a46196f68aab25500d73969655963e427ec",
+    "recipe_equal": true,
+    "run_metadata_equal": true,
+    "source_equal": true,
+    "controller_and_recipe_checks": {
+      "controller_sha256": {
+        "original": "d4795e660fd079922b067e9c6f9867de054ef66434ba095490ddd408b69f0d5a",
+        "current": "d4795e660fd079922b067e9c6f9867de054ef66434ba095490ddd408b69f0d5a",
+        "equal": true
+      },
+      "prior_recipe_sha256": {
+        "original": "9f14fdf45702f413a30f4c4f1beada454dc07e4718d3f470ddbed7a5bc98b77f",
+        "current": "9f14fdf45702f413a30f4c4f1beada454dc07e4718d3f470ddbed7a5bc98b77f",
+        "equal": true
+      },
+      "analysis_sha256": {
+        "original": "04705a88d6db624a4efa0b7428a3e5710e22fd4c8fb7db25d79864a45af9ae6b",
+        "current": "04705a88d6db624a4efa0b7428a3e5710e22fd4c8fb7db25d79864a45af9ae6b",
+        "equal": true
+      },
+      "theory_sha256": {
+        "original": "89d7b14621d6b80e05ef6cb129553e48a777480a6a2b5792323e787c3229adc8",
+        "current": "89d7b14621d6b80e05ef6cb129553e48a777480a6a2b5792323e787c3229adc8",
+        "equal": true
+      },
+      "benchmark_sha256": {
+        "original": "1437f1c0ac3cd5ac734491332891aa332ce8c60a6d734319aaf9a8c12be5c480",
+        "current": "1437f1c0ac3cd5ac734491332891aa332ce8c60a6d734319aaf9a8c12be5c480",
+        "equal": true
+      }
+    },
+    "source_canonical_sha256": "03b0081bfc0535ba9a9717dfc138307933d5bcbf719d8ab0f8d4565a48309a0a",
+    "source_files": 162,
+    "torch_version": "2.14.1+cu130",
+    "actual_effective_additional_code": {
+      "action": "train",
+      "adapter": "knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py",
+      "adapter_sha256": "afcad68c7bae670351b84d0e7ac4d531717a893137a4fb8d3823a82b66841155",
+      "benchmark_sha256": "1437f1c0ac3cd5ac734491332891aa332ce8c60a6d734319aaf9a8c12be5c480",
+      "effect": "Only the imported controller.asdict binding uses dataclasses.asdict followed by a JSON roundtrip with allow_nan=False. Model objects, the training module, stdlib bindings, true hashes and all original guards remain in effect.",
+      "original_controller": "knowledge/runs/run-ball-capacity-scaling-20261103/run.py",
+      "original_controller_sha256": "d4795e660fd079922b067e9c6f9867de054ef66434ba095490ddd408b69f0d5a",
+      "plan_sha256": "922d582258c528fe468df385f4600b43a3729db90e93681aa832e820817f5524",
+      "resume": true,
+      "run_id": "s42-20261103-main",
+      "schema": "ball_capacity_json_representation_adapter.v1"
+    }
+  },
+  "drive": {
+    "publication_receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00002000-d29bc745",
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/checkpoint-00002000-d29bc745",
+      "manifest_sha256": "e6ffe38d626962dcc361800dce16076ebd225e998cfb4ec69e13169ae09a0d3c",
+      "manifest_md5": "db370b25f64ae2d78f46f31146edc629",
+      "files": 7,
+      "size_bytes": 347482096,
+      "marker_id": null,
+      "seconds": 39.61638402600056,
+      "status": "verified"
+    },
+    "independent_restore_receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00002000-d29bc745",
+      "status": "verified",
+      "files": 7,
+      "manifest_sha256": "e6ffe38d626962dcc361800dce16076ebd225e998cfb4ec69e13169ae09a0d3c",
+      "seconds": 21.949156865999612
+    },
+    "latest": {
+      "checkpoint": "checkpoint-update-00002000.pt",
+      "sha256": "7aee2038a3088c9dc03fb85a999708877a0eb15d9b2cec2b40cdeb0a380b8583",
+      "update": 2000
+    },
+    "payloads_verified": 7,
+    "parent_rechecked_restored_payloads": true
+  },
+  "adapter": {
+    "inputs_receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "attempt-3-inputs",
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/recovery/attempt-3-inputs",
+      "manifest_sha256": "e5ba4d67130b509f202966c22899dab4986feeac265906d3ebd49fdec0be53f6",
+      "manifest_md5": "ac42e301aad0487431d911368b0bd702",
+      "files": 7,
+      "size_bytes": 34367,
+      "marker_id": null,
+      "seconds": 0.7250573510000322,
+      "status": "verified"
+    },
+    "parent_independent_restore_receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "attempt-3-inputs",
+      "status": "verified",
+      "files": 7,
+      "manifest_sha256": "e5ba4d67130b509f202966c22899dab4986feeac265906d3ebd49fdec0be53f6",
+      "seconds": 0.3479922709998391
+    },
+    "provenance": {
+      "action": "train",
+      "adapter": "knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py",
+      "adapter_sha256": "afcad68c7bae670351b84d0e7ac4d531717a893137a4fb8d3823a82b66841155",
+      "benchmark_sha256": "1437f1c0ac3cd5ac734491332891aa332ce8c60a6d734319aaf9a8c12be5c480",
+      "effect": "Only the imported controller.asdict binding uses dataclasses.asdict followed by a JSON roundtrip with allow_nan=False. Model objects, the training module, stdlib bindings, true hashes and all original guards remain in effect.",
+      "original_controller": "knowledge/runs/run-ball-capacity-scaling-20261103/run.py",
+      "original_controller_sha256": "d4795e660fd079922b067e9c6f9867de054ef66434ba095490ddd408b69f0d5a",
+      "plan_sha256": "922d582258c528fe468df385f4600b43a3729db90e93681aa832e820817f5524",
+      "resume": true,
+      "run_id": "s42-20261103-main",
+      "schema": "ball_capacity_json_representation_adapter.v1"
+    },
+    "cpu_tests_passed": 10
+  },
+  "post_operator_exit": {
+    "operator_exited_cleanly": true,
+    "cleanup_complete": true,
+    "training_survived": true,
+    "observed_update": 2097,
+    "loss": 0.014231719931618113,
+    "gradient_norm": 2.2305259704589844,
+    "event_monitor": "armed; inotify+pidfd; terminal or service-exit events only"
+  },
+  "scope": "Startup/resume integrity and first durable save. Three stages completed; the seven-query comparison and full52000-update campaign remain unfinished.",
+  "limitations": [
+    "One seed42 and fixed validation only; no independent test/seed-variance claim.",
+    "The new serialization adapter is explicit additional operational code; original controller/model sources, plan, benchmark and checkpoint metadata remain unchanged."
+  ]
+}

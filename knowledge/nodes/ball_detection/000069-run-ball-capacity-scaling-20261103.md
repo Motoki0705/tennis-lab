@@ -114,3 +114,10 @@ CPU219件と最終修正後35件（重複する再検証）が通り、halo11の
 次は新規共通DPT10kからquery7条件各6kを独立に学習する。seed42のみ・validationのみであり、
 条件差がseedのばらつきを超えるかは判断しない。既存モデルの採用判断は変更しない。
 TensorBoardは使用せず、更新JSONLを正本とする。
+
+2026-11-04の新VM復旧では、元controllerのJSON配列とdataclass tupleの比較が同じ計画を拒否したため、
+元の実装・plan・benchmarkを保持したまま、controller内のメタデータ出力だけをJSON正規化する追加ランチャーを検証した。
+CPU10件で再開境界の通過と実質変更の拒否を確認し、追加コードを別のDrive snapshotへ保全した。
+1,500→2,000更新の全500更新はfiniteで、周期checkpointの全7 payloadを独立復元して照合し、
+起動担当の実終了後も継続することを親が確認した。[再開証拠](../../runs/run-ball-capacity-scaling-20261103/resume-attempt-3-startup.json)と
+更新した再開手順を参照する。これは起動安定の確認であり、7条件の容量比較の完了・仮説の支持を意味しない。
