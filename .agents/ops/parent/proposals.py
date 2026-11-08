@@ -162,7 +162,7 @@ def receipts(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def agreed_receipts(history: list[dict[str, Any]]) -> list[dict[str, Any]]:
     agreed: dict[tuple[int, str], dict[str, Any]] = {}
     for event in history:
-        if event.get("event") == "checking":
+        if event.get("event") == "basis_revoked":
             agreed.clear()
         elif event.get("event") == "proposal_agreed":
             source = event_source(event)

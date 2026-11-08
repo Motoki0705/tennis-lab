@@ -360,7 +360,7 @@ def test_closed_standalone_parent_resumes_same_session_and_finishes(
         "worker",
     ],
 )
-def test_closed_parent_resume_rejects_unconfirmed_completion(
+def test_closed_parent_resume_checks_execution_evidence(
     completion_workflow: CompletionWorkflow, change: str
 ) -> None:
     flow = completion_workflow
@@ -410,6 +410,22 @@ def test_closed_parent_resume_rejects_unconfirmed_completion(
             else:
                 row["generation"] += 1
             control.store.save()
+    if change == "generation":
+        # A new owner generation alone does not invalidate saved execution facts.
+        previous = flow.row()
+        assert control.claim("o/r#1", resumed["id"]) is not None
+        flow.accept(resumed)
+        row = flow.row()
+        assert row["generation"] != resumed["authorization"]["generation"]
+        assert (
+            row["tasks"]["1"]["verification"] == previous["tasks"]["1"]["verification"]
+        )
+        assert (
+            row["dispatch"]["jobs"][resumed["id"]]["authorization"]
+            == resumed["authorization"]
+        )
+        assert len(flow.gate.merge_calls()) == 1
+        return
     assert control.claim("o/r#1", resumed["id"]) is None
     row = flow.row()
     assert row["status"] == "active"

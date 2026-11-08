@@ -426,7 +426,7 @@ class ParentSession:
                 )
                 if previous["agreement_sha256"] != sha:
                     raise ValueError(
-                        "proposal agreement changed; run checking before revising requirements"
+                        "proposal agreement changed; run basis-revoke before revising requirements"
                     )
             event = {
                 "event": "proposal_agreed",

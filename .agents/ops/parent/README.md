@@ -121,7 +121,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 5キーだけを持つJSON object。値はすべて非空の文章とし、最後の値に人間の確認発言を引用する。
 `checking` → 会話で認識合わせ・合意 → `agree` の順。担当指定だけでは「担当指定のみ」、
 `checking` で「要件確認中」、有効な合意コメントで「要件合意済み」となる。
-再度 `checking` に戻したら、新しい合意の記録まで分割・委任を拒否する。
+再度 `checking` に戻しても、既存の親合意と提案別の合意は維持する。停止・取消は `basis-revoke` で明示する。
 `checking` / `agreed` のrevisionは両イベントの過去最大値から進め、取消の連番とは分ける。
 取消後の `checking` は新しいrevisionを作り、人間が同じ内容へ再合意しても新しい `agreed` を残す。
 取消による要件確認中の状態から直接 `agree` で実際の再合意を記録する場合も、新しいrevisionを使う。
@@ -315,9 +315,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --report 1
 同じ5キー形式の合意specを渡す。`event: proposal_agreed` に受領時のsource・提案digestと合意内容を記録し、
 その提案由来のcreate-child/delegateだけを許可する。他の受領提案や既存の親合意を流用しない。
 statusの `proposal_receipts` / `proposal_agreements` で未合意と合意済みを照合でき、受領直後の中断も
-GitHubコメントから復元する。明示的な `checking` は親全体と提案別の合意を取り消すため、
+GitHubコメントから復元する。明示的な `basis-revoke` は親全体と提案別の合意を取り消すため、
 親の `agree` と各提案の合意を再記録するまで、それぞれの実装を拒否する。
-既存提案の合意内容を変更する場合も `checking` で明示的に取り消してから記録する。
+既存提案の合意内容を変更する場合も `basis-revoke` で明示的に取り消してから記録する。
 未取消の合意は同じ内容の再送だけを許可し、レビュー後に対象作業の要件だけを黙って差し替えない。
 親未指定・未登録・停止中なら受領できない。人間の指定/再開後に親自身がregister/handoffして同じ入口へ戻る。
 採用チェック・選択肢・提案本文が後から変われば起票/委任時も拒否し、担当親が採用と要件を再整理する。

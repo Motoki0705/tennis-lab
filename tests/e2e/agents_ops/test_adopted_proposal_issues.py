@@ -1437,12 +1437,23 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
             with pytest.raises(ValueError, match="adoption"):
                 tasks.check_task_adoptions(h.gh, h.gh.issues[n]["body"])
         h.gh.issues[100]["body"] = adopted
-        h.gh.write(
+        comment = h.gh.write(
             "POST",
             "repos/o/r/issues/101/comments",
             {"body": "要件を追加してください。"},
         )
-        with pytest.raises(ValueError, match="inputs changed"):
+        status = session.status()
+        assert status["input_changes"]["comments"] == [
+            {
+                "id": comment["id"],
+                "change": "added",
+                "url": f"https://github.com/o/r/issues/101#issuecomment-{comment['id']}",
+            }
+        ]
+        assert execution.authorization(session) == auth
+        session.agreed()
+        session.revoke_basis("親が追加要件を確認し、再合意まで停止する。")
+        with pytest.raises(ValueError, match="有効な実行根拠"):
             session.agreed()
     history = policy.events(h.gh.comment_rows[101], "operator", 101)
     assert any(e["event"] == "note" for e in history)
