@@ -42,7 +42,7 @@ from src.tasks.base.annotation.contracts import (
 from src.tasks.base.annotation.editing import ReviewContext, Revision, RevisionStore
 from src.tasks.base.annotation.handoff import read_handoff
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan
+from src.tasks.base.annotation.plan import CampaignPlan, LocalAnnotationPlan
 from src.tasks.base.annotation.telemetry.capture import verify_report
 from src.tasks.base.annotation.workers.contracts import (
     AttemptEvidence,
@@ -151,6 +151,94 @@ class ContinuationDecision(Document):
     action: Literal["continue", "hold"]
     reason: str = Field(min_length=1)
     recovery: ArtifactRef | None = None
+
+
+class CameraAnnotationStatus(Document):
+    """v3 decisions, including final unknowns; no prediction-review coverage gate."""
+
+    request: ArtifactRef
+    camera_id: str
+    state: str
+    reason: str | None
+    current_attempt: str | None
+    revision: ArtifactRef | None
+    completion: ArtifactRef | None
+    summary: dict[str, int | bool]
+    processed_before: int
+    processed_after: int
+    new_processed: tuple[int, ...]
+
+
+def camera_status(
+    layout: AnnotationLayout, plan: LocalAnnotationPlan, request_ref: ArtifactRef
+) -> CameraAnnotationStatus:
+    """Read the committed head and current attempt's immutable starting revision.
+
+    Uncommitted payloads do not count. The task reader checks camera/frame/PTS,
+    syntax and states; final unknown is processed according to the shared v3 API.
+    """
+    from src.tasks.annotation.reviews import read_local_context
+    from src.tasks.ball_detection.annotation.video.agent.contracts import AgentTask
+    from src.tasks.ball_detection.annotation.video.agent.store import (
+        VideoRevisionStore,
+        progress_summary,
+    )
+    from src.tasks.ball_detection.annotation.video.usage import is_processed
+    from src.tasks.base.annotation.editing.contracts import BlankAnnotationContext
+
+    request = read_document(layout, request_ref, WorkRequest)
+    if (request.adapter, request.adapter_version) != ("ball_video_annotation", "3"):
+        raise ValueError("automatic progress requires the direct annotation adapter")
+    context = read_document(layout, request.payload, BlankAnnotationContext)
+    expected = read_local_context(layout, request.payload, context.plan)
+    if read_document(layout, context.plan, LocalAnnotationPlan) != plan:
+        raise ValueError("camera progress belongs to another plan")
+    ledger = WorkerLedger(layout)
+    row = ledger.task(request.work_id)
+    history = ledger.history(plan, request)
+    revision = completion = None
+    summary: dict[str, int | bool] = {
+        "total": len(expected.frames),
+        "processed": 0,
+        "unprocessed": len(expected.frames),
+        "final_unknown": 0,
+        "complete": False,
+    }
+    before: set[int] = set()
+    after: set[int] = set()
+    if history:
+        launch = read_document(layout, history[-1].launch, Launch)
+        task = read_document(
+            layout,
+            annotation_reference(layout, Path(launch.directory) / "request.json"),
+            AgentTask,
+        )
+        if task.work != request or launch.attempt != row["current_attempt"]:
+            raise ValueError("saved progress belongs to another camera/attempt")
+        store = VideoRevisionStore(layout, task.run)
+        if store.run.context != request.payload or store.run.plan != context.plan:
+            raise ValueError("saved progress belongs to another run/plan")
+        revision, completion = store.current()
+        initial = store.annotation(task.initial_revision)
+        annotation = store.annotation(revision)
+        before = {f.frame_index for f in initial.frames if is_processed(f)}
+        after = {f.frame_index for f in annotation.frames if is_processed(f)}
+        if not before <= after:
+            raise ValueError("saved progress changed processed frames to unprocessed")
+        summary = progress_summary(annotation)
+    return CameraAnnotationStatus(
+        request=request_ref,
+        camera_id=expected.source.camera_id,
+        state=row["state"],
+        reason=row["reason"],
+        current_attempt=row["current_attempt"],
+        revision=revision,
+        completion=completion,
+        summary=summary,
+        processed_before=len(before),
+        processed_after=len(after),
+        new_processed=tuple(sorted(after - before)),
+    )
 
 
 def required_frames(policy: BallReviewPolicy, target_frames: int) -> int:

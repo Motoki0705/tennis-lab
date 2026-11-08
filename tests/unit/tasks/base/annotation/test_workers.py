@@ -994,6 +994,45 @@ def test_settle_dead_slots_preserves_concurrent_completion(
     assert state["state"] == "complete" and state["result"] is not None
 
 
+@pytest.mark.parametrize(
+    ("stopped", "failure", "quota", "expected"),
+    [
+        ("timed_out", None, False, "timed_out"),
+        ("timed_out", "usage limit", True, "quota"),
+        ("timed_out", "external service unavailable", False, "failed"),
+        ("cancelled", "usage limit", True, "cancelled"),
+    ],
+)
+def test_timeout_does_not_hide_preceding_service_errors(
+    stopped: str,
+    failure: str | None,
+    quota: bool,
+    expected: str,
+) -> None:
+    from src.tasks.base.annotation.workers.supervisor import exit_status
+
+    state, reason = exit_status(
+        stopped, "supervisor stop", 124, ("thread", False, failure, quota)
+    )
+    assert state == expected
+    assert reason == (failure if expected in {"failed", "quota"} else "supervisor stop")
+
+
+def test_supervisor_test_clock_is_rejected_before_production_admission(
+    setup: Setup,
+) -> None:
+    production_layout = AnnotationLayout(
+        setup.layout.repository,
+        setup.layout.repository / "outputs/chat_annotation",
+        "production",
+    )
+    plan = setup.plan.model_copy(
+        update={"annotation_root": str(production_layout.root)}
+    )
+    with pytest.raises(ValueError, match="test commands/clocks are forbidden"):
+        WorkerPool(production_layout, plan, (setup.adapter,), test_clock=True)
+
+
 def test_timeout_and_owned_stop_terminate_descendants(setup: Setup) -> None:
     setup.program(delay=30)
     pool = setup.pool(timeout=0.1)

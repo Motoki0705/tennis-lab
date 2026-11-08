@@ -235,9 +235,12 @@ def synthetic_telemetry(
 
 
 class BlankSession:
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, *, timeout_seconds: float = 10) -> None:
         self.layout = AnnotationLayout.testing(root)
-        self.configuration = local_configuration(self.layout)
+        self.timeout_seconds = timeout_seconds
+        self.configuration = local_configuration(
+            self.layout, review_timeout=timeout_seconds
+        )
         receipt = configure_local_videos(self.layout, self.configuration)
         self.receipt = read_document(
             self.layout, receipt, LocalVideoConfigurationReceipt
@@ -259,7 +262,11 @@ class BlankSession:
         )
         self.directory.mkdir(parents=True, exist_ok=True)
         prepared = self.worker.prepare(
-            self.layout, self.plan, self.request, self.directory, timeout_seconds=10
+            self.layout,
+            self.plan,
+            self.request,
+            self.directory,
+            timeout_seconds=self.timeout_seconds,
         )
         self.task_ref = annotation_reference(
             self.layout, self.directory / "request.json"
@@ -276,7 +283,7 @@ class BlankSession:
             code_root=str(self.layout.repository),
             codex_binary="/usr/bin/true",
             codex_home=str(self.directory / "work/.codex"),
-            timeout_seconds=10,
+            timeout_seconds=self.timeout_seconds,
             test_command=("/usr/bin/true",),
             test_root=str(self.layout.root),
         )
@@ -362,6 +369,8 @@ def fake_worker(
     pause_after_save: bool = False,
     probes: tuple[str, ...] = (),
     refresh_after_edit: bool = False,
+    save_limit: int = 1,
+    pause_camera: str | None = None,
 ) -> tuple[str, ...]:
     """Only the model is replaced; service inboxes, kernel sandbox and saves are real."""
     source = r"""
@@ -369,6 +378,7 @@ import json, subprocess, signal
 from pathlib import Path
 fixed = json.loads(Path('../input/tool-input.json').read_text())
 camera = fixed['input']['source']['camera_id']
+pause = PAUSE and (PAUSE_CAMERA is None or camera == PAUSE_CAMERA) and fixed['summary']['processed'] == 0
 print(json.dumps({'type':'thread.started','thread_id':'00000000-0000-0000-0000-000000000001'}), flush=True)
 for path in PROBES:
     try:
@@ -420,7 +430,7 @@ image = service('video_image', query)
 assert Path(image['image_path']).read_bytes()[:2] == b'\xff\xd8'
 if REFRESH:
     before = dict(envelopes)
-remaining = handoff['remaining'][:1] if PAUSE else handoff['remaining']
+remaining = handoff['remaining'][:SAVE_LIMIT] if pause else handoff['remaining']
 updates = []
 for row in rows:
     if row['frame_index'] not in remaining:
@@ -454,14 +464,16 @@ if REFRESH:
         assert replay == original['view']
         assert envelopes[-1][1]['video_service'] == original['video_service']
 Path('saved.json').write_text(json.dumps(handoff))
-if PAUSE:
+if pause:
     signal.pause()
 Path('result.json').write_text(json.dumps({'status':'complete','revision':handoff['revision'],'reason':'all target frames processed'}))
 print(json.dumps({'type':'turn.completed'}), flush=True)
 """
     source = (
         source.replace("PROBES", repr(probes))
+        .replace("PAUSE_CAMERA", repr(pause_camera))
         .replace("PAUSE", repr(pause_after_save))
+        .replace("SAVE_LIMIT", repr(save_limit))
         .replace("REFRESH", repr(refresh_after_edit))
     )
     return ("/usr/bin/python3", "-I", "-S", "-c", source)

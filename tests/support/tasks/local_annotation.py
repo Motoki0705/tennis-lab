@@ -30,15 +30,29 @@ from src.tasks.base.annotation.plan import (
 )
 
 
-def local_configuration(layout: AnnotationLayout) -> LocalVideoConfiguration:
+def local_configuration(
+    layout: AnnotationLayout, *, review_timeout: float = 10, three_cameras: bool = False
+) -> LocalVideoConfiguration:
     videos = []
-    for camera, width, height, start, stop in (
-        ("cam0", 64, 48, 1, 4),
-        ("cam2", 80, 32, 2, 4),
-    ):
+    cameras = (
+        (
+            ("cam0", 64, 48, 1, 4),
+            ("cam2", 80, 32, 2, 4),
+        )
+        if not three_cameras
+        else (
+            ("cam0", 64, 48, 0, 12),
+            ("cam1", 80, 32, 0, 12),
+            ("cam2", 48, 64, 0, 12),
+        )
+    )
+    for camera, width, height, start, stop in cameras:
         path = layout.repository / (camera + ".mp4")
-        pts = (0, 640, 1920, 2560, 4480)
-        durations = (640, 1280, 640, 1920, 640)
+        pts: tuple[int, ...] = (0, 640, 1920, 2560, 4480)
+        durations: tuple[int, ...] = (640, 1280, 640, 1920, 640)
+        if three_cameras:
+            pts = tuple(index * 640 for index in range(12))
+            durations = (640,) * 12
         random = np.random.default_rng(17 if camera == "cam0" else 213)
         frames = [
             av.VideoFrame.from_ndarray(
@@ -70,7 +84,7 @@ def local_configuration(layout: AnnotationLayout) -> LocalVideoConfiguration:
                         size_bytes=path.stat().st_size,
                         width=width,
                         height=height,
-                        frame_count=5,
+                        frame_count=len(pts),
                         time_base=str(timeline.time_base),
                         nominal_fps=str(timeline.rate),
                     ),
@@ -124,7 +138,7 @@ def local_configuration(layout: AnnotationLayout) -> LocalVideoConfiguration:
                     stage=s.stage,
                     pss_bytes=16 * 1024**2,
                     storage_bytes=1024**2,
-                    timeout_seconds=10,
+                    timeout_seconds=review_timeout if s.stage == "review" else 10,
                     gpu_seconds=0,
                 )
                 for s in stages

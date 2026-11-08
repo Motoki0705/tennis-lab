@@ -41,7 +41,7 @@ remaining = tuple(row.frame_index for row in annotation.frames if is_unprocessed
 ```
 
 video_handoff分页返回未处理frame，不包含最终unknown。后续attempt的initial_revision为保存的head。
-超时自动继续属于 #1709；本模块不调度attempt或自动重试。
+超时自动继续由[本地controller](../../../../annotation/local_controller.py)负责；本模块不调度attempt或自动重试。
 
 最终AgentDecision指定当前revision。机器验证worker/rollout identity、语法、输入/frame/PTS、状态及来源。
 推断frame不需要独立目视或人工QA。未处理数为0即可保留unknown并完成。WorkOutcome.adoption指向VideoCompletion，

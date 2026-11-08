@@ -53,8 +53,9 @@ remaining = tuple(row.frame_index for row in annotation.frames if is_unprocessed
 ```
 
 `video_handoff` pages only unprocessed indices, excluding final unknowns. The next
-attempt's `initial_revision` is the saved head. Automatic time-limit continuation is
-#1709's responsibility; this module neither schedules attempts nor retries errors.
+attempt's `initial_revision` is the saved head. The
+[local controller](../../../../annotation/local_controller.py) owns automatic
+time-limit continuation; this module neither schedules attempts nor retries errors.
 
 The final `AgentDecision` names the current revision. Machine validation checks worker
 and rollout identity, syntax, input/frame/PTS, state and provenance. Estimated frames

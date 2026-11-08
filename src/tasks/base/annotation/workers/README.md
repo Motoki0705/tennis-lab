@@ -54,6 +54,7 @@ state = pool.reconcile(request)
   戻す明示の判断だけを記録する。processを起動せず枠も確保しないため、次のattemptは通常の受付・
   待機・資源管理で始まる。現在のattemptと停止状態をwork lock内で照合する。
   quotaイベントはcampaign全体の新規投入を止め、明示的な `resume_campaign` を要求する。
+  期限前に記録されたquota/失敗イベントは通常timeoutで隠さず、取消は取消として保持する。
   admission時にも終了receiptを検証し、quota状態とcampaign停止を同じtransactionで保存する。
   回収はwork lock取得後に現在のattemptを読み、状態更新は検証したattemptと遷移元状態に限定する。
   停止の最終状態更新も同じwork lock内でattemptと保存済みreceiptを再確認する。
@@ -116,6 +117,11 @@ attemptの保護を同じtransactionで解放する。`exited` は結果検証�
 並列枠、quota、timeout、結果改変、preview採用拒否、receipt後の中断を確認する。
 `test_command` は明示的なtest layoutでのみ使え、productionでの別コマンドへの
 置換は拒否する。実Codex・ball/player adapter接続はそれぞれの受入試験で扱う。
+
+`test_clock=True` はtest layoutだけでsupervisorへの制御socketを作る。
+socketの時計更新と実childのpidfdを同じselectorで待ち、期限到達後は通常の停止・子孫回収を通る。
+制御fdはworkerへ継承しない。production poolとsupervisorはこの境界を拒否する。
+直接注釈だけの事前許可された自動継続は[task側controller](../../../annotation/README.md#白紙注釈の自動継続)が所有する。
 
 ## Private input workers
 
