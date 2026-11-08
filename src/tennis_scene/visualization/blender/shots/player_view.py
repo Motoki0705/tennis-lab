@@ -236,9 +236,14 @@ def main():
     static = [
         o for o in scene.objects if o.type == "MESH" and o not in players and o != ball
     ]
-    for output_index, source_frame in enumerate(selected):
-        index = int(source_frame - source_frames[0])
-        scene.frame_set(index)
+    indices = [int(source - source_frames[0]) for source in selected]
+    output_indices = {index: output for output, index in enumerate(indices)}
+    staging = args.output / ".animation"
+    staging.mkdir()
+    failures = []
+
+    def apply_frame(current_scene):
+        index = current_scene.frame_current
         camera_valid = bool(cameras["valid"][index])
         for obj in static:
             obj.hide_render = not camera_valid
@@ -258,6 +263,14 @@ def main():
         scene.world.node_tree.nodes["Background"].inputs["Color"].default_value = (
             (0.13, 0.16, 0.20, 1) if camera_valid else (0.005, 0.005, 0.005, 1)
         )
+
+    def record_frame(current_scene):
+        index = current_scene.frame_current
+        output_index = output_indices[index]
+        source_frame = int(source_frames[index])
+        camera_valid = bool(cameras["valid"][index])
+        if output_index != len(records):
+            raise ValueError("Animation wrote a duplicate or out-of-order frame")
         bpy.context.view_layer.update()
         errors = []
         graph = bpy.context.evaluated_depsgraph_get()
@@ -275,9 +288,13 @@ def main():
             o.animation_data for o in players + [ball, scene.camera]
         ):
             raise ValueError("Unexpected interpolation/motion blur/animation")
+        # render_write runs only after the PNG is closed. Keep Blender's frame
+        # number equal to the cache index, then publish the selected output index.
+        rendered = staging / f"{index:05d}.png"
         frame_path = args.output / "frames" / f"{output_index:05d}.png"
-        scene.render.filepath = str(frame_path.resolve())
-        bpy.ops.render.render(write_still=True)
+        if frame_path.exists():
+            raise FileExistsError(frame_path)
+        rendered.replace(frame_path)
         records.append(
             {
                 "output_index": output_index,
@@ -307,6 +324,7 @@ def main():
             "motion_blur": scene.render.use_motion_blur,
             "dither_intensity": scene.render.dither_intensity,
             "persistent_data": scene.render.use_persistent_data,
+            "render_dispatch": "contiguous_animation_batches",
             "material": {
                 name: {
                     "alpha": bpy.data.materials[name]
@@ -326,6 +344,47 @@ def main():
         temporary = args.output / ".render.json.tmp"
         temporary.write_text(json.dumps(report, indent=2, allow_nan=False))
         temporary.replace(args.output / "render.json")
+
+    def guarded(handler):
+        def callback(current_scene, *_unused):
+            if failures:
+                return
+            try:
+                handler(current_scene)
+            except Exception as error:
+                # Blender logs handler exceptions without propagating them to
+                # render(). Carry failures back to the CLI and never complete.
+                failures.append(error)
+                current_scene.frame_end = current_scene.frame_current
+                print(f"PLAYER_VIEW_FAILED: {error}", file=sys.stderr, flush=True)
+
+        return callback
+
+    before = guarded(apply_frame)
+    written = guarded(record_frame)
+    bpy.app.handlers.frame_change_pre.append(before)
+    bpy.app.handlers.render_write.append(written)
+    scene.render.filepath = str((staging / "#####").resolve())
+    runs = []
+    for index in indices:
+        if runs and index == runs[-1][1] + 1:
+            runs[-1][1] = index
+        else:
+            runs.append([index, index])
+    try:
+        for start, stop in runs:
+            scene.frame_start, scene.frame_end, scene.frame_step = start, stop, 1
+            # One animation call retains Cycles' render context between frames.
+            # There are no keyframes, curves, interpolation or resampling.
+            bpy.ops.render.render(animation=True)
+            if failures:
+                raise RuntimeError("Player-view frame handler failed") from failures[0]
+        if len(records) != len(selected):
+            raise ValueError("Animation did not write every selected frame")
+    finally:
+        bpy.app.handlers.frame_change_pre.remove(before)
+        bpy.app.handlers.render_write.remove(written)
+    staging.rmdir()
     print(f"PLAYER_VIEW_COMPLETE ID{args.player_id}: {len(records)} frames", flush=True)
 
 
