@@ -241,7 +241,7 @@ blender --background --factory-startup --python-exit-code 1 --threads 4 \
   --output outputs/tennis_scene/visualize/player_view/example/videos
 ```
 
-Run the Blender command once for each original player ID, naming its directory `renders/player_<ID>`. Use the saved camera resolution, intrinsics, clipping and original FPS. Prototype appearance is recorded in the shot manifest: hide the viewer's entire mesh, gray opponents, green ball of radius 0.05m, alpha 1, emission 0, simple court/net and 16 Cycles samples. An explicit OPTIX/CUDA GPU is required; the script refuses CPU fallback. Follow the project resource workflow for execution.
+Run the Blender command once for each original player ID, naming its directory `renders/player_<ID>`. Use the saved camera resolution, intrinsics, clipping and original FPS. Prototype appearance is recorded in the shot manifest: hide the viewer's entire mesh, gray opponents, green ball of radius 0.05m, alpha 1, emission 0, simple court/net and 16 Cycles samples. OpenImageDenoise explicitly requests GPU denoising; render reports retain this setting and each frame's render duration. An explicit OPTIX/CUDA GPU is required; the script refuses CPU fallback. Follow the project resource workflow for execution.
 
 Blender frame/cache index `i` corresponds exactly to `source_frames[i]`. PC2 uses explicit sample indices and no interpolation. Camera/ball transforms are assigned per frame with no animation curves or motion blur. Missing objects are hidden. A missing camera produces a blank frame of the same duration, labeled during publication. `render.json` records evaluated PC2 error, camera pose, object visibility, ball position, GPU and material settings for every completed PNG.
 

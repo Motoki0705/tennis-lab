@@ -204,7 +204,7 @@ blender --background --factory-startup --python-exit-code 1 --threads 4 \
   --output outputs/tennis_scene/visualize/player_view/example/videos
 ```
 
-为每个原始人物ID运行一次Blender命令，目录命名为`renders/player_<ID>`。分辨率、内参、裁剪面和原始FPS使用已保存camera。临时外观配置记录在manifest中：隐藏本人完整mesh，对手为灰色，球为绿色、半径0.05m、alpha=1、发光强度0，背景为简易球场/球网，Cycles 16采样。明确使用OPTIX/CUDA GPU，拒绝回退到CPU。执行资源遵循项目操作流程。
+为每个原始人物ID运行一次Blender命令，目录命名为`renders/player_<ID>`。分辨率、内参、裁剪面和原始FPS使用已保存camera。临时外观配置记录在manifest中：隐藏本人完整mesh，对手为灰色，球为绿色、半径0.05m、alpha=1、发光强度0，背景为简易球场/球网，Cycles 16采样。OpenImageDenoise显式请求使用GPU，并在绘制记录中保存设置和逐帧耗时。明确使用OPTIX/CUDA GPU，拒绝回退到CPU。执行资源遵循项目操作流程。
 
 Blender/cache帧`i`严格对应`source_frames[i]`。PC2使用明确的采样索引且不插值，camera和球逐帧直接赋值，不使用动画曲线或运动模糊。缺失物体隐藏；camera缺失时渲染相同时长的空白帧，发布时添加缺失标记。`render.json`逐个完成的PNG记录PC2求值误差、camera姿态、物体可见性、球位置、GPU和材质。
 

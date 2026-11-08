@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "c3-perf-persistent",
+  "status": "completed",
+  "updated_at": "2026-11-08T18:20:52.666023+00:00",
+  "returncode": 0,
+  "worker_pid": 99903,
+  "worker_token": "692007",
+  "launch_guarded": true,
+  "pid": 100364,
+  "process_token": "701805",
+  "started_at": "2026-11-08T18:13:53.242912+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-11-08T18:22:56.136346+00:00",
+  "finished_at": "2026-11-08T18:22:56.136368+00:00"
+}

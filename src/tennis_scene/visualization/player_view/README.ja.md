@@ -205,7 +205,7 @@ blender --background --factory-startup --python-exit-code 1 --threads 4 \
   --output outputs/tennis_scene/visualize/player_view/example/videos
 ```
 
-Blenderコマンドは元の人物IDごとに実行し、出力名を`renders/player_<ID>`とします。解像度・内部行列・clip・元FPSは保存cameraを使います。仮の外観はmanifestへ記録します。本人のmesh全体を隠し、相手は灰色、球は緑色・半径0.05m、alpha=1・発光0、簡素なコート/ネット、Cycles 16sampleです。OPTIX/CUDA GPUを明示使用し、CPUへのfallbackは拒否します。実行資源はプロジェクトの運用手順に従います。
+Blenderコマンドは元の人物IDごとに実行し、出力名を`renders/player_<ID>`とします。解像度・内部行列・clip・元FPSは保存cameraを使います。仮の外観はmanifestへ記録します。本人のmesh全体を隠し、相手は灰色、球は緑色・半径0.05m、alpha=1・発光0、簡素なコート/ネット、Cycles 16sampleです。OpenImageDenoiseはGPU使用を明示し、設定と各frameの描画秒数を描画記録へ残します。OPTIX/CUDA GPUを明示使用し、CPUへのfallbackは拒否します。実行資源はプロジェクトの運用手順に従います。
 
 Blender/cache frame `i`は`source_frames[i]`と厳密に対応します。PC2は明示sampleで補間なし、camera/球はframeごとに直接設定し、animation curveとmotion blurを使いません。物体欠測は非表示、camera欠測は同じ長さの空白frameとして描画し、公開時に欠測表示を入れます。`render.json`は完成PNGごとのPC2評価誤差・camera姿勢・物体表示・球位置・GPU・材質を記録します。
 

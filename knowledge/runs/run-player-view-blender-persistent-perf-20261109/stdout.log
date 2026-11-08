@@ -1,0 +1,69 @@
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=1 failed=0 cancelled=1
+executing=0 waiting=0
+completed (latest 10):
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+cancelled (latest 10):
+  0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+queued: 0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job
+[worker] 2026-11-08T18:13:54+00:00 running: 0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all (log: /content/tennis-lab/.training_queue/logs/0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.log)
+[worker] 2026-11-08T18:20:39+00:00 done: 0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all
+[worker] queue empty for 1s; exiting.
+[worker] 2026-11-08T18:20:40+00:00 worker exited.
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=2 failed=0 cancelled=1
+executing=0 waiting=0
+completed (latest 10):
+  0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all pid=100535 pgid=100535 state=done wait=none
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+cancelled (latest 10):
+  0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all pid=100535 pgid=100535 state=done wait=none
+0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+[capture-repro] wrote /content/tennis-lab/.training_queue/repro/0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf (commit=d8fa68cb2894 provider=codex session=01a1bbf4-360d-78e1-b9b8-acd8b98b0237)
+{
+  "schema_version": 1,
+  "action": "upload",
+  "rclone_config": "/content/.tennis-colab/player-view-c3-20261109/secrets/rclone.conf",
+  "source": "/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/checkpoints/player_0_00384_00387.tar",
+  "destination": "gdrive:tennis_lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/checkpoints/player_0_00384_00387.tar",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}
+00:01.190  cycles           | WARNING HIPEW initialization failed: Error opening HIP dynamic library
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:23: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  value.use_nodes = True
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:165: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  net_mat.use_nodes = True
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:188: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+00:07.584  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_0/frames/00000.png'
+00:11.794  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_0/frames/00001.png'
+00:15.956  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_0/frames/00002.png'
+00:20.134  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_0/frames/00003.png'
+00:24.385  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_0/frames/00004.png'
+PLAYER_VIEW_COMPLETE ID0: 5 frames
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 02:12:34)
+
+Blender quit
+00:01.182  cycles           | WARNING HIPEW initialization failed: Error opening HIP dynamic library
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:23: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  value.use_nodes = True
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:165: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  net_mat.use_nodes = True
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:188: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+00:07.605  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_1/frames/00000.png'
+00:11.862  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_1/frames/00001.png'
+00:16.050  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_1/frames/00002.png'
+00:20.290  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_1/frames/00003.png'
+00:24.454  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-preview/player_1/frames/00004.png'
+PLAYER_VIEW_COMPLETE ID1: 5 frames
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 02:12:34)
+
+Blender quit
+C3_PERF_COMPLETE {"git_ref": "d8fa68cb2894d6e5036f246a73a83df4103465e1", "package_sha256": "708affe5b630ba50014bf9f3f7a5ff4a730440906c1b1a4f99e920bfe5247280", "source_frames": [16, 17, 19, 731, 735], "players": [{"player_id": 0, "intervals_seconds": [4.211463928222656, 4.160458326339722, 4.178460121154785, 4.251468181610107], "mean_interval_seconds": 4.200462639331818, "max_interval_seconds": 4.251468181610107, "persistent_data": true, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "image_reference_match": true, "images": [{"source_frame": 16, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, false], "reference_mean_abs_difference": 0.27289388020833333, "pixel_span": 182}, {"source_frame": 17, "camera_valid": true, "ball_hidden": true, "player_hidden": [true, false], "reference_mean_abs_difference": 0.2728363715277778, "pixel_span": 173}, {"source_frame": 19, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, false], "reference_mean_abs_difference": 0.27186885127314814, "pixel_span": 182}, {"source_frame": 731, "camera_valid": false, "ball_hidden": true, "player_hidden": [true, true], "reference_mean_abs_difference": 0.45642505787037035, "pixel_span": 2}, {"source_frame": 735, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, true], "reference_mean_abs_difference": 0.2755537471064815, "pixel_span": 176}]}, {"player_id": 1, "intervals_seconds": [4.256468772888184, 4.1894614696502686, 4.239467144012451, 4.164458751678467], "mean_interval_seconds": 4.2124640345573425, "max_interval_seconds": 4.256468772888184, "persistent_data": true, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "image_reference_match": true, "images": [{"source_frame": 16, "camera_valid": true, "ball_hidden": false, "player_hidden": [false, true], "reference_mean_abs_difference": 0.27553855613425926, "pixel_span": 183}, {"source_frame": 17, "camera_valid": true, "ball_hidden": true, "player_hidden": [false, true], "reference_mean_abs_difference": 0.2757378472222222, "pixel_span": 178}, {"source_frame": 19, "camera_valid": true, "ball_hidden": false, "player_hidden": [false, true], "reference_mean_abs_difference": 0.2760814525462963, "pixel_span": 184}, {"source_frame": 731, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, true], "reference_mean_abs_difference": 0.27501048900462965, "pixel_span": 175}, {"source_frame": 735, "camera_valid": false, "ball_hidden": true, "player_hidden": [true, true], "reference_mean_abs_difference": 0.45642505787037035, "pixel_span": 2}]}], "prefix_counts": [388, 0], "metadata_and_crc_passed": true, "image_reference_match": true}

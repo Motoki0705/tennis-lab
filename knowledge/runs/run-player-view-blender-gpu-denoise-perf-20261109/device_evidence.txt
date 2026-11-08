@@ -1,0 +1,5 @@
+00:01.183  cycles           | Device with id "CUDA_NVIDIA L4_0000:00:03" supports OpenImageDenoise.
+| Path tracing on: NVIDIA L4 (OptiX) [CUDA_NVIDIA L4_0000:00:03_OptiX]
+| Denoising on: NVIDIA L4 (OptiX) [CUDA_NVIDIA L4_0000:00:03_OptiX]
+|   Type: OpenImageDenoise
+00:01.125  cycles           | Device with id "CUDA_NVIDIA L4_0000:00:03" supports OpenImageDenoise.
