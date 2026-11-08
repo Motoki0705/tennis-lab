@@ -12,7 +12,7 @@ VM側の管理領域は `/content/.tennis-colab/<session>/`、通常のcheckout�
 
 公式CLI 0.7.4のSSH proxyは、local registryにないsession名を自動作成する。
 skillはowned stateとregistryの存在を先に確認し、欠落時はproxyを呼ばない。
-startも既存のstate名を上書きしない。読み取りや再接続をGPU新規割当として扱わない。
+startも既存のstate名を上書きしない。読み取りや再接続をruntime新規割当として扱わない。
 
 公式CLIのglobal `--config` / `--auth oauth2` をOpenSSH ProxyCommandにも明示する。
 独立したSSH tunnelの同時接続は429になり得るため、ControlMasterと同じControlPathを使う。

@@ -135,15 +135,22 @@ def bootstrap(request: dict[str, Any]) -> dict[str, Any]:
     github_url(cfg["repo_url"])
     if not re.fullmatch(r"[0-9a-f]{40}", cfg["commit"]):
         raise ColabError("An exact Git commit is required")
-    gpu = (
-        checked(
-            ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
-            timeout=60,
-        )
-        .stdout.decode()
-        .strip()
-    )
-    if cfg["gpu"].casefold() not in gpu.casefold():
+    gpu = None
+    if cfg["gpu"] is not None or shutil.which("nvidia-smi") is not None:
+        gpu = (
+            checked(
+                ["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader"],
+                timeout=60,
+            )
+            .stdout.decode()
+            .strip()
+        ) or None
+    if cfg["gpu"] is None:
+        if gpu:
+            raise ColabError(
+                f"Requested CPU, observed {gpu}; no accelerator fallback"
+            )
+    elif not gpu or cfg["gpu"].casefold() not in gpu.casefold():
         raise ColabError(
             f"Requested {cfg['gpu']}, observed {gpu}; no accelerator fallback"
         )

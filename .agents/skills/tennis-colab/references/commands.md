@@ -7,6 +7,8 @@ repo rootで実行する。session名・commit・task・run IDは実際の対象
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py doctor --remote
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py start --session court-work --ref HEAD --dry-run
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py start --session court-work --ref EXACT_COMMIT
+.venv/bin/python .agents/skills/tennis-colab/scripts/colab.py start --session cpu-work --ref EXACT_COMMIT --cpu --dry-run
+.venv/bin/python .agents/skills/tennis-colab/scripts/colab.py start --session cpu-work --ref EXACT_COMMIT --cpu
 
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py exec --session court-work --job-id setup -- bash -lc 'uv sync --locked && git submodule update --init third_party/dinov3'
 .venv/bin/python .agents/skills/tennis-colab/scripts/colab.py status --session court-work --job-id setup
@@ -17,7 +19,11 @@ repo rootで実行する。session名・commit・task・run IDは実際の対象
 GitHubのSSH originは同じrepositoryのcredential-free HTTPS URLへ変換する。秘密をURLへ埋め込まない。
 private repositoryのGit認証は自動注入しない。fetchできない場合は理由を確認する。
 
-`start` はGPUを確保してGit checkout・rclone/uvの準備を行う。taskのPython環境や入力データは後続execで準備する。
+`start` はruntimeを確保してGit checkout・rclone/uvの準備を行う。既定はL4で、`--gpu` で変更できる。
+`--cpu` は公式CLIの `new` にGPU/TPU指定を渡さず、CPU runtimeを作る。`--gpu` と併用できない。
+plan・state・remote config・観測結果の `gpu: null` はCPUを表す。CPUでは `nvidia-smi` を必須にしないが、
+存在する場合はqueryし、GPUを検出した場合やquery自体が失敗した場合はsetupを拒否する。
+taskのPython環境や入力データは後続execで準備する。
 同名のlocal stateがあればnewで上書きしない。setupの一部が失敗した場合は、状態を調べて `setup --session ...` で残りを再実行できる。
 このsetupは、既存checkoutの未commit変更や異なるcommitを上書きしない。
 Git取得・checkoutは一時pathで完了を確認してから確定するため、途中失敗後もsetupを再試行できる。

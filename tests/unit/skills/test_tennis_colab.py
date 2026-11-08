@@ -149,9 +149,89 @@ def test_git_credentials_and_ambiguous_urls_rejected(
         core.github_url(url)
 
 
+@pytest.mark.parametrize(
+    "runtime_flags, expected_gpu, expected_new",
+    [
+        ([], "L4", ("new", "-s", "owned", "--gpu", "L4")),
+        (["--gpu", "T4"], "T4", ("new", "-s", "owned", "--gpu", "T4")),
+        (["--cpu"], None, ("new", "-s", "owned")),
+    ],
+)
+def test_start_allocates_only_the_requested_runtime_and_records_it(
+    modules: tuple[ModuleType, ModuleType],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    runtime_flags: list[str],
+    expected_gpu: str | None,
+    expected_new: tuple[str, ...],
+) -> None:
+    core, _ = modules
+    frontend = importlib.import_module("colab")
+    commit = "a" * 40
+    monkeypatch.setattr(
+        frontend, "_repo_source",
+        lambda *a: ("https://github.com/test/project.git", commit),
+    )
+    monkeypatch.setattr(frontend, "_drive_binding", lambda *a: {
+        "drive_remote": "test", "drive_root": "project", "drive_root_id": "test-root",
+    })
+    monkeypatch.setattr(
+        frontend, "_credential_copy", lambda remote, path: path.write_text("PRIVATE")
+    )
+    monkeypatch.setattr(frontend, "checked", lambda argv, **kw:
+        subprocess.CompletedProcess(argv, 0, b"0.7.4"))
+    session = core.Session("owned", state_root=tmp_path)
+    session.directory.mkdir()
+    allocations: list[tuple[str, ...]] = []
+    uploaded_config: dict[str, Any] = {}
+
+    def upload(local: Path, destination: str) -> dict[str, Any]:
+        if destination.endswith("/session.json"):
+            uploaded_config.update(json.loads(local.read_text()))
+        return {"path": destination}
+
+    monkeypatch.setattr(session, "cli", lambda *args, **kw: allocations.append(args))
+    monkeypatch.setattr(session, "upload", upload)
+    monkeypatch.setattr(session, "rpc", lambda *args, **kw: {"gpu": expected_gpu})
+    args = frontend.parser().parse_args(["start", "--session", "owned", *runtime_flags])
+    plan = frontend.start(argparse.Namespace(**{**vars(args), "dry_run": True}), session)
+    assert plan["status"] == "planned"
+    assert plan["gpu"] == expected_gpu
+    assert not allocations
+    assert not session.state_file.exists()
+    state = frontend.start(args, session)
+    assert allocations == [expected_new]
+    assert state["phase"] == "ready"
+    assert state["gpu"] == uploaded_config["gpu"] == expected_gpu
+    assert uploaded_config["commit"] == commit
+    assert not (session.directory / "rclone-upload.conf").exists()
+
+
+@pytest.mark.parametrize(
+    "runtime_flags", [["--cpu", "--gpu", "L4"], ["--gpu", "T4", "--cpu"]]
+)
+def test_cpu_and_gpu_cannot_be_requested_together(
+    modules: tuple[ModuleType, ModuleType],
+    capsys: pytest.CaptureFixture[str],
+    runtime_flags: list[str],
+) -> None:
+    frontend = importlib.import_module("colab")
+    with pytest.raises(SystemExit) as error:
+        frontend.parser().parse_args(
+            ["start", "--session", "owned", *runtime_flags]
+        )
+    assert error.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "requested_gpu, available_gpu",
+    [(None, None), (None, ""), ("L4", "NVIDIA L4, 23034 MiB")],
+)
 def test_bootstrap_fetch_failure_leaves_setup_retryable_and_preserves_edits(
     modules: tuple[ModuleType, ModuleType], tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, requested_gpu: str | None,
+    available_gpu: str | None,
 ) -> None:
     core, remote = modules
     origin = tmp_path / "origin"
@@ -169,16 +249,18 @@ def test_bootstrap_fetch_failure_leaves_setup_retryable_and_preserves_edits(
     secret.chmod(0o600)
     core.atomic_json(root / "session.json", {
         "repo_root": str(repo), "repo_url": "https://github.com/test/project.git",
-        "commit": commit, "gpu": "L4", "rclone_config": str(secret), "drive_remote": "test",
+        "commit": commit, "gpu": requested_gpu, "rclone_config": str(secret), "drive_remote": "test",
     })
     monkeypatch.setattr(remote, "ROOT", root)
-    monkeypatch.setattr(remote.shutil, "which", lambda name: "/bin/" + name)
+    monkeypatch.setattr(remote.shutil, "which", lambda name:
+        None if name == "nvidia-smi" and available_gpu is None else "/bin/" + name)
     fail_fetch = True
 
     def checked(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
         nonlocal fail_fetch
         if argv[0] == "nvidia-smi":
-            return subprocess.CompletedProcess(argv, 0, b"NVIDIA L4, 23034 MiB")
+            assert available_gpu is not None, "CPU runtime has no nvidia-smi"
+            return subprocess.CompletedProcess(argv, 0, available_gpu.encode())
         if argv[0] == "rclone":
             return subprocess.CompletedProcess(argv, 0, b"{}")
         if argv[1] == "clone":
@@ -194,12 +276,51 @@ def test_bootstrap_fetch_failure_leaves_setup_retryable_and_preserves_edits(
         remote.bootstrap({})
     assert not repo.exists()
     assert not list(tmp_path.glob(".tennis-colab-checkout-*"))
-    assert remote.bootstrap({})["commit"] == commit
+    observed = remote.bootstrap({})
+    assert observed["commit"] == commit
+    assert observed["gpu"] == (available_gpu or None)
     assert (repo / "model.py").read_text() == "requested"
     (repo / "model.py").write_text("remote fix")
     with pytest.raises(core.ColabError, match="has changes"):
         remote.bootstrap({})
     assert (repo / "model.py").read_text() == "remote fix"
+
+
+@pytest.mark.parametrize(
+    "requested_gpu, available_gpu, message",
+    [
+        (None, b"NVIDIA L4", "Requested CPU"),
+        ("L4", b"Tesla T4", "Requested L4"),
+        ("L4", b"", "Requested L4"),
+        (None, None, "GPU query failed"),
+    ],
+)
+def test_bootstrap_rejects_unverified_runtime_before_checkout(
+    modules: tuple[ModuleType, ModuleType],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    requested_gpu: str | None,
+    available_gpu: bytes | None,
+    message: str,
+) -> None:
+    core, remote = modules
+    monkeypatch.setattr(remote, "config", lambda: {
+        "repo_root": str(tmp_path / "checkout"),
+        "repo_url": "https://github.com/test/project.git",
+        "commit": "a" * 40, "gpu": requested_gpu,
+    })
+    monkeypatch.setattr(remote.shutil, "which", lambda name: "/bin/" + name)
+
+    def checked(argv: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        assert argv[0] == "nvidia-smi", "Reject mismatches before setup side effects"
+        if available_gpu is None:
+            raise core.ColabError("GPU query failed")
+        return subprocess.CompletedProcess(argv, 0, available_gpu)
+
+    monkeypatch.setattr(remote, "checked", checked)
+    with pytest.raises(core.ColabError, match=message):
+        remote.bootstrap({})
+    assert not (tmp_path / "checkout").exists()
 
 
 @pytest.mark.parametrize("phase, evidence", [

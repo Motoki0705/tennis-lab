@@ -107,9 +107,10 @@ def _credential_copy(remote: str, destination: Path) -> None:
 def start(args: argparse.Namespace, session: Session) -> dict[str, Any]:
     repo = Path(args.repo).resolve()
     url, commit = _repo_source(repo, args.ref)
+    gpu = None if args.cpu else (args.gpu or "L4")
     plan = {
         "session": session.name,
-        "gpu": args.gpu,
+        "gpu": gpu,
         "repo_url": url,
         "commit": commit,
         "drive": args.drive_root,
@@ -152,7 +153,10 @@ def start(args: argparse.Namespace, session: Session) -> dict[str, Any]:
         **binding,
     )
     try:
-        session.cli("new", "-s", session.name, "--gpu", args.gpu, timeout=300)
+        allocation = ["new", "-s", session.name]
+        if gpu is not None:
+            allocation.extend(["--gpu", gpu])
+        session.cli(*allocation, timeout=300)
         session.save(phase="allocated")
         scripts = Path(__file__).resolve().parent
         helpers = {
@@ -378,8 +382,14 @@ def parser() -> argparse.ArgumentParser:
     start_parser.add_argument("--session", required=True)
     start_parser.add_argument("--repo", default=".")
     start_parser.add_argument("--ref", default="HEAD")
-    start_parser.add_argument(
-        "--gpu", choices=("L4", "T4", "A100", "H100", "G4"), default="L4"
+    runtime = start_parser.add_mutually_exclusive_group()
+    runtime.add_argument(
+        "--gpu", choices=("L4", "T4", "A100", "H100", "G4"),
+        help="GPU variant (default: L4 when --cpu is absent).",
+    )
+    runtime.add_argument(
+        "--cpu", action="store_true",
+        help="Explicitly create a CPU runtime without a GPU or TPU request.",
     )
     start_parser.add_argument(
         "--drive-root",

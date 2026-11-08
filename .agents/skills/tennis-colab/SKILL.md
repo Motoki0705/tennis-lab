@@ -1,11 +1,11 @@
 ---
 name: tennis-colab
-description: Run and debug tennis-lab workloads on Google Colab GPUs from the local agent. Use for L4 session management, Git-based remote setup, arbitrary Python or shell execution, long training, logs, remote fixes, and recovery with mandatory Drive persistence.
+description: Run and debug tennis-lab workloads on Google Colab CPU or GPU runtimes from the local agent. Use for session management, Git-based remote setup, arbitrary Python or shell execution, long training, logs, remote fixes, and recovery with mandatory Drive persistence.
 ---
 
 # Tennis Lab Colab
 
-ローカルで開発し、Gitの正確なcommitをColabへ反映して実行する。既定GPUはL4。
+ローカルで開発し、Gitの正確なcommitをColabへ反映して実行する。既定GPUはL4。CPUは `start --cpu` で明示する。
 Colab上の調査・修正も可能で、変更はローカルへ回収する。
 Driveの配置・版・保持・整理は [tennis-drive](../tennis-drive/SKILL.md) とそのreferencesが正本。
 このスキルへ管理方針を複製しない。
@@ -21,9 +21,10 @@ Driveの配置・版・保持・整理は [tennis-drive](../tennis-drive/SKILL.m
    現在のLinux/WSL CLIを対象とする。Google認証の同意が必要なら利用者へ案内し、tokenを会話へ貼らせない。
 2. 専用worktreeでコードを検証・commitし、ColabからfetchできるGitHubの版を用意する。
    Driveスキルの認証手順で接続設定を選び、その`RCLONE_CONFIG`を引き継いで実行する。
-   `start --dry-run` でrepo/commit/GPU/Driveを確認する。作業ツリーの未commit変更は送られない。
-3. 一意なsession名で `start --session ... --ref <commit>`。GPU確保はこの明示操作だけで行う。
-   観測GPUが要求と違えば停止して状況を確認し、CPUや別GPUへ切り替えない。
+   `start --dry-run` でrepo/commit/runtime/Driveを確認する。作業ツリーの未commit変更は送られない。
+3. 一意なsession名で `start --session ... --ref <commit>`。runtime確保はこの明示操作だけで行う。
+   CPUを指定された場合は `--cpu` を付ける。`--gpu` との同時指定は拒否する。
+   観測GPUが要求と違えば停止して状況を確認し、CPUや別GPUへ切り替えない。CPU要求でGPUを観測した場合も停止する。
 4. `exec` で `uv sync --locked` と必要なsubmodule等を準備する。task READMEに従い、必要な入力をDriveから取得・検証する。
 
 コマンド例は [references/commands.md](references/commands.md)、通信・状態・復旧の契約は
