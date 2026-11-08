@@ -116,7 +116,7 @@ def build(package, viewer_id, backend):
         modifier.frame_start = 0
         modifier.forward_axis, modifier.up_axis = "POS_Y", "POS_Z"
         modifier.interpolation = "NONE"
-        modifier.use_time_override, modifier.time_mode = True, "FRAME"
+        modifier.play_mode, modifier.time_mode = "CUSTOM", "FRAME"
         players.append(obj)
         with cache.open("rb") as handle:
             _, _, points, _, _, samples = struct.unpack("<12siiffi", handle.read(32))
