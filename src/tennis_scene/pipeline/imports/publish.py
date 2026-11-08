@@ -62,8 +62,10 @@ def publish_import(bound: BoundImport, store: ClipStore, value: Any, *, importer
     reserved = {"importer", "importer_version", "source_sha256"} & (set(identity) | set(provenance))
     if reserved or "origin" in provenance:
         raise ValueError(f"Importer documents cannot override reserved fields: {sorted(reserved | ({'origin'} & set(provenance)))}")
+    import_identity = {"importer": importer, "importer_version": version, "source_sha256": store.source_key, **identity}
+    node.validate_import_identity(import_identity,
+                                  {"origin": IMPORT_ORIGIN, **provenance})
     return store.publish(node.name, value, ArtifactCodec(node.io.output_type), schema=node.io.output_schema,
-        version=node.io.version, identity={"importer": importer, "importer_version": version,
-                                           "source_sha256": store.source_key, **identity},
+        version=node.io.version, identity=import_identity,
         dependencies=bound.references,
         provenance={"origin": IMPORT_ORIGIN, "importer": importer, "importer_version": version, **provenance})

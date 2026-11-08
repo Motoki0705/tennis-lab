@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -19,11 +20,16 @@ from src.tennis_scene.pipeline.imports.ball_annotations import (
     convert_ball_annotation,
     import_ball_annotations,
 )
+from src.tennis_scene.pipeline.imports.fixed_geometry import (
+    FixedGeometryImporter,
+    geometry_nodes,
+)
 from src.tennis_scene.pipeline.imports.publish import bind_import
 from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
 from src.tennis_scene.pipeline.source import build_clip_source
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+from tests.support.tennis_scene.ball_imports import write_fixed_bundle
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     TrackIdentities,
     camera_stages,
@@ -103,6 +109,37 @@ def test_imports_drive_the_declared_pipeline_and_stay_bound_to_their_inputs(tmp_
     rerun = ComponentRunner(nodes, store)
     rerun.run()
     assert rerun.statuses["court_side"] == "executed" and rerun.references["court_side"] != runner.references["court_side"]
+
+    # The same saved geometry can instead be selected as an external input.
+    # Every original process is now a tripwire: no court/side/alignment inference
+    # may occur, and no old ball/3D is adopted in the new store.
+    digest = write_fixed_bundle(store, tmp_path / "fixed_bundle")
+    fixed = FixedGeometryImporter(tmp_path / "fixed_bundle/bundle.json", digest)
+    names = set(geometry_nodes(source))
+
+    def forbidden(*args: Any, **kwargs: Any) -> Any:
+        pytest.fail("Fixed geometry attempted to execute a model or solver")
+
+    for node in nodes:
+        if node.name in names:
+            monkeypatch.setattr(node.component, "process", forbidden)
+    fixed_nodes = fixed.bind_nodes(tuple(replace(n, source="load") if n.name in names else n for n in nodes))
+    target = ClipStore(tmp_path / "fixed_scene", json_value(source))
+    geometry = fixed.publish(fixed_nodes, target, source)
+    assert target.active("ball_points/cam0") is target.active("ball_triangulation") is None
+    different_ball = ["observed"] * source.num_frames
+    different_ball[7] = "interpolated"
+    write_ball_annotation(annotations / "cam1_annotations.json", source.video("cam1"), balls[1].uv_px, different_ball)
+    import_ball_annotations(fixed_nodes, target, source, annotations)
+    reconstructed = ComponentRunner(fixed_nodes, target)
+    reconstructed.run(targets=["ball_triangulation"])
+    assert reconstructed.statuses["court_calibration"] == reconstructed.statuses["camera_alignment"] == "loaded"
+    assert reconstructed.statuses["ball_points/cam0"] == reconstructed.statuses["ball_triangulation"] == "executed"
+    assert reconstructed.output("ball_triangulation").ball.trajectory.valid.any()
+    descriptor = target.descriptor(geometry["court_side"])
+    assert descriptor["dependencies"] == {}
+    assert descriptor["provenance"]["source_dependencies"]["ball_cam1"] == json_value(store.references()["ball_points/cam1"])
+    assert descriptor["provenance"]["source_dependencies"]["ball_cam1"] != json_value(reconstructed.references["ball_points/cam1"])
 
 
 def test_imports_require_a_load_only_node_and_adopted_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

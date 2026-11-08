@@ -29,12 +29,21 @@ class ComponentNode:
     settings: Mapping[str, Any]
     implementation: str
     source: str = "execute"
+    required_import_identity: Mapping[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if self.source not in ("execute", "load"):
             raise ValueError("Component source must be execute or load")
         if set(self.bindings) != set(self.io.inputs):
             raise ValueError(f"Bindings disagree with declared inputs: {self.name}")
+        if self.required_import_identity is not None and self.source != "load":
+            raise ValueError("Pinned external inputs must be load-only")
+
+    def validate_import_identity(self, identity: Mapping[str, Any], provenance: Mapping[str, Any]) -> None:
+        if self.required_import_identity is not None and (
+                provenance.get("origin") != "import"
+                or any(identity.get(key) != json_value(value) for key, value in self.required_import_identity.items())):
+            raise ValueError(f"Loaded import identity changed: {self.name}")
 
 
 class ComponentRunner:
@@ -106,6 +115,7 @@ class ComponentRunner:
                     raise ValueError(f"Loaded component contract mismatch: {name}")
                 if descriptor["dependencies"] != json_value(dependencies):
                     raise ValueError(f"Loaded artifact dependencies changed: {name}")
+                node.validate_import_identity(descriptor["identity"], descriptor["provenance"])
                 if descriptor["provenance"].get("origin") == "component" and reference.execution_key != document_digest(identity):
                     raise ValueError(f"Loaded component identity changed: {name}")
                 self.store.load(reference, ArtifactCodec(node.io.output_type))
