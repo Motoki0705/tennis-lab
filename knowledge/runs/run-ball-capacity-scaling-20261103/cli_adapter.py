@@ -16,6 +16,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path, PurePosixPath
 
@@ -243,12 +244,50 @@ def controls(config, stage):
 
 
 def bootstrap(config, workspace):
-    sys.path.insert(0, str(workspace))
-    from src.utils.artifact_store import RcloneSnapshotStore
     target = Path("/tmp/ball-capacity-inputs-v1")
-    RcloneSnapshotStore(target, remote="mounted_drive", remote_root=CAMPAIGN + "/inputs",
-                        config_path=config, timeout_seconds=3600).restore(
-                            "inputs-v1", manifest_sha256=INPUT_MARKER)
+    if target.exists():
+        raise ValueError("Input restore destination exists; inspect before reuse")
+    remote = "mounted_drive:" + CAMPAIGN
+    receipt = json.loads(rclone(config, "cat", remote + "/inputs-receipt.json"))
+    if (receipt.get("schema") != "verified_artifact_snapshot.v1"
+            or receipt.get("status") != "verified"
+            or receipt.get("generation") != "inputs-v1"
+            or receipt.get("remote") != remote + "/inputs/inputs-v1"
+            or receipt.get("manifest_sha256") != INPUT_MARKER):
+        raise ValueError("Frozen input receipt differs")
+    remote += "/inputs/inputs-v1"
+    raw = rclone(config, "cat", remote + "/_SNAPSHOT.json")
+    if hashlib.sha256(raw).hexdigest() != INPUT_MARKER:
+        raise ValueError("Frozen input marker differs")
+    marker = json.loads(raw)
+    if (marker["schema"] != "verified_artifact_snapshot.v1"
+            or marker["generation"] != "inputs-v1" or len(marker["files"]) != 11):
+        raise ValueError("Input snapshot membership differs")
+    expected = {relative(n): identity for n, identity in marker["files"].items()}
+    observed = inventory(config, remote)
+    if set(observed) != set(expected) | {"_SNAPSHOT.json"}:
+        raise ValueError("Remote input payload membership differs")
+    for name, identity in expected.items():
+        if (observed[name]["Size"] != identity["size_bytes"]
+                or observed[name]["Hashes"].get("md5") != identity["md5"]):
+            raise ValueError("Remote input size/MD5 differs: " + name)
+    scratch = Path(tempfile.mkdtemp(prefix=".ball-restore-inputs-", dir="/tmp"))
+    rclone(config, "copy", remote, scratch, "--exclude", "/_SNAPSHOT.json", "--checksum")
+    paths = list(scratch.rglob("*"))
+    if (any(p.is_symlink() for p in paths)
+            or {p.relative_to(scratch).as_posix() for p in paths if p.is_file()} != set(expected)):
+        raise ValueError("Restored input payload membership differs")
+    for name, identity in expected.items():
+        verify_file((scratch, dict(path=name, **identity)))
+        md5 = hashlib.md5(usedforsecurity=False)
+        with (scratch / name).open("rb") as stream:
+            while chunk := stream.read(4 * 1024 * 1024):
+                md5.update(chunk)
+        if md5.hexdigest() != identity["md5"]:
+            raise ValueError("Restored input MD5 differs: " + name)
+    if inventory(config, remote) != observed or rclone(config, "cat", remote + "/_SNAPSHOT.json") != raw:
+        raise ValueError("Remote inputs changed during restore")
+    scratch.rename(target)
     bundle = target / "source.bundle"
     subprocess.run(["git", "bundle", "verify", str(bundle)], cwd=workspace, check=True)
     subprocess.run(["git", "fetch", str(bundle), "HEAD"], cwd=workspace, check=True)
