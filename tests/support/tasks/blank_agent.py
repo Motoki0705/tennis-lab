@@ -10,6 +10,7 @@ import select
 import time
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from src.tasks.annotation.configuration import configure_local_videos
 from src.tasks.annotation.local_videos import LocalVideoConfigurationReceipt
@@ -87,7 +88,7 @@ def _drive(
 ) -> dict[str, Any]:
     deadline = time.monotonic() + 20
     while time.monotonic() < deadline:
-        state = pool.reconcile(request)
+        state: dict[str, Any] = pool.reconcile(request)
         if state["state"] not in {"running", "exited"}:
             return state
         for path in sorted((directory / "work/service-requests").glob("*.json")):
@@ -303,6 +304,8 @@ class BlankSession:
         return camera
 
     def service_ref(self, operation: str, parameters: dict) -> ArtifactRef:
+        if operation in {"video_handoff", "video_rows", "video_image"}:
+            parameters = {"read_id": uuid4().hex, **parameters}
         service = ServiceRequest(
             task_request=self.task_ref, operation=operation, parameters=parameters
         )
@@ -355,7 +358,10 @@ class BlankSession:
 
 
 def fake_worker(
-    *, pause_after_save: bool = False, probes: tuple[str, ...] = ()
+    *,
+    pause_after_save: bool = False,
+    probes: tuple[str, ...] = (),
+    refresh_after_edit: bool = False,
 ) -> tuple[str, ...]:
     """Only the model is replaced; service inboxes, kernel sandbox and saves are real."""
     source = r"""
@@ -384,6 +390,7 @@ for path in PROBES:
         raise AssertionError('symlink escape')
 Path('boundary-checked.json').write_text(json.dumps(PROBES))
 counter = 0
+envelopes = []
 def service(operation, parameters):
     global counter
     counter += 1
@@ -392,10 +399,14 @@ def service(operation, parameters):
     reply = subprocess.run(['/usr/bin/python3','-I','-S','../input/tools.py',operation,'--parameters',str(query)],capture_output=True,text=True)
     assert reply.returncode == 0, reply.stderr
     envelope = json.loads(reply.stdout)
+    envelopes.append((operation, envelope))
     print(json.dumps({'type':'tool.synthetic','envelope':envelope}), flush=True)
     return envelope['view']
 handoff = service('video_handoff', {'camera_id':camera})
 rows = fixed['input']['frames']
+if REFRESH:
+    row_query = {'camera_id':camera,'frames':[rows[0]['frame_index']]}
+    service('video_rows', row_query)
 selected = rows[0]['frame_index']
 if handoff['remaining']:
     selected = handoff['remaining'][-1]
@@ -407,6 +418,8 @@ image = service('video_image', query)
 query['reason'] = 'revisit the same camera frame'
 image = service('video_image', query)
 assert Path(image['image_path']).read_bytes()[:2] == b'\xff\xd8'
+if REFRESH:
+    before = dict(envelopes)
 remaining = handoff['remaining'][:1] if PAUSE else handoff['remaining']
 updates = []
 for row in rows:
@@ -417,13 +430,38 @@ for row in rows:
     updates.append(dict(row, state=state, occlusion='unknown' if state=='unknown' else 'not_occluded', position=None if state=='unknown' else {'x':12.0,'y':9.0,'provenance':{'kind':'estimated','support_frames':[selected]}}))
 if updates:
     handoff = service('video_edit', {'camera_id':camera,'expected_revision':handoff['revision'],'rows':updates,'reason':'inference from same-camera anchor'})
+if REFRESH:
+    refreshed = service('video_handoff', {'camera_id':camera})
+    assert refreshed['revision'] == handoff['revision'], 'fresh handoff returned a cached revision after edit'
+    assert refreshed['revision'] != before['video_handoff']['view']['revision']
+    assert refreshed['remaining'] == []
+    assert (refreshed['summary']['processed'],refreshed['summary']['unprocessed'],refreshed['summary']['final_unknown']) == (3,0,1)
+    current_rows = service('video_rows', row_query)
+    assert current_rows['revision'] == handoff['revision']
+    assert current_rows['summary'] == refreshed['summary']
+    assert current_rows['rows'][0]['state'] == 'unknown'
+    current_image = service('video_image', query)
+    assert current_image['revision'] == handoff['revision']
+    assert current_image['summary'] == refreshed['summary']
+    # A re-read revision must support another atomic edit, including self-correction.
+    corrected = dict(current_rows['rows'][0],state='no_active_ball',occlusion='not_applicable')
+    handoff = service('video_edit', {'camera_id':camera,'expected_revision':current_rows['revision'],'rows':[corrected],'reason':'correct the earlier final unknown'})
+    assert handoff['summary']['final_unknown'] == 0
+    # Exact requests, with the original read_id, still replay the original snapshot.
+    for operation, original in before.items():
+        parameters = json.loads(Path('service-requests',original['video_service']+'.json').read_text())['parameters']
+        replay = service(operation, parameters)
+        assert replay == original['view']
+        assert envelopes[-1][1]['video_service'] == original['video_service']
 Path('saved.json').write_text(json.dumps(handoff))
 if PAUSE:
     signal.pause()
 Path('result.json').write_text(json.dumps({'status':'complete','revision':handoff['revision'],'reason':'all target frames processed'}))
 print(json.dumps({'type':'turn.completed'}), flush=True)
 """
-    source = source.replace("PROBES", repr(probes)).replace(
-        "PAUSE", repr(pause_after_save)
+    source = (
+        source.replace("PROBES", repr(probes))
+        .replace("PAUSE", repr(pause_after_save))
+        .replace("REFRESH", repr(refresh_after_edit))
     )
     return ("/usr/bin/python3", "-I", "-S", "-c", source)

@@ -17,6 +17,11 @@ crop/zoom, inference and corrections use the same tools without a fixed viewing 
 fixes model, effort, code and resources; runtime fixes worker/service conditions.
 New attempts reuse the run; changed policies or conditions are rejected.
 
+`camera-tools.v2` requires a `read_id` for handoff, rows and images. The client
+generates one per invocation, so an edit followed by the same range query reads the
+current revision and progress. Supplying the original `read_id` and parameters
+replays the original snapshot. Edits retain their `expected_revision` CAS contract.
+
 The parent validates camera, original frame/PTS, crop geometry and ownership before
 returning plain images. All frame arguments use **original source indices**, including
 nonzero starts. Only supplied same-camera frames may be requested or cited as supports.

@@ -39,7 +39,7 @@ class AnnotationRun(Document):
     runtime: ArtifactRef
     timeout_seconds: float = Field(gt=0)
     worker_version: Literal["3"] = "3"
-    tools_version: Literal["camera-tools.v1"] = "camera-tools.v1"
+    tools_version: Literal["camera-tools.v2"] = "camera-tools.v2"
 
 
 class AgentTask(Document):
@@ -48,8 +48,14 @@ class AgentTask(Document):
     initial_revision: ArtifactRef
 
 
-class FrameQuery(Document):
+class ReadQuery(Document):
     camera_id: Identifier
+    # A new observation of mutable progress must not replay an earlier snapshot.
+    # The exact same query/read_id remains an idempotent retry.
+    read_id: Identifier = Field(max_length=128)
+
+
+class FrameQuery(ReadQuery):
     frames: tuple[int, ...] = Field(min_length=1, max_length=128)
 
 
@@ -58,8 +64,7 @@ class ImageTile(Document):
     crop: Crop
 
 
-class ImageQuery(Document):
-    camera_id: Identifier
+class ImageQuery(ReadQuery):
     tiles: tuple[ImageTile, ...] = Field(min_length=1, max_length=16)
     columns: int = Field(ge=1, le=4)
     tile_width: int = Field(ge=32, le=1024)
@@ -74,8 +79,7 @@ class EditQuery(Document):
     reason: str = Field(min_length=1, max_length=500)
 
 
-class HandoffQuery(Document):
-    camera_id: Identifier
+class HandoffQuery(ReadQuery):
     after_frame: int | None = Field(default=None, ge=0)
     limit: int = Field(default=128, ge=1, le=128)
 

@@ -237,7 +237,7 @@ def execute_service(
             if any(not scope.start <= t.frame_index < scope.stop for t in query.tiles):
                 raise ValueError("image frame lies outside the assigned camera input")
             render = RenderRequest(
-                **query.model_dump(exclude={"camera_id", "tiles"}),
+                **query.model_dump(exclude={"camera_id", "read_id", "tiles"}),
                 manifest=store.context.manifest,
                 annotation=head,
                 annotation_kind="video_revision",

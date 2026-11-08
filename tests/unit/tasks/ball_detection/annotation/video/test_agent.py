@@ -133,6 +133,38 @@ def test_batch_save_is_atomic_idempotent_and_uses_cas(session: BlankSession) -> 
     assert session.store.current()[0] == saved
 
 
+@pytest.mark.parametrize("operation", ["video_handoff", "video_rows", "video_image"])
+def test_read_service_requires_explicit_identity_when_bypassing_client(
+    session: BlankSession, operation: str
+) -> None:
+    from src.tasks.ball_detection.annotation.video.agent.services import execute_service
+    from src.tasks.base.annotation.artifacts import write_document
+    from src.tasks.base.annotation.workers.services import ServiceRequest
+
+    parameters: dict[str, Any] = {"camera_id": session.camera}
+    if operation == "video_rows":
+        parameters["frames"] = [1]
+    elif operation == "video_image":
+        parameters.update(
+            tiles=[dict(frame_index=1, crop=dict(left=0, top=0, right=32, bottom=32))],
+            columns=1,
+            tile_width=64,
+            tile_height=48,
+            reason="same assigned frame",
+        )
+    request = ServiceRequest(
+        task_request=session.task_ref, operation=operation, parameters=parameters
+    )
+    reference = write_document(
+        session.layout,
+        session.directory / "work/service-requests" / (request.sha256 + ".json"),
+        request,
+    )
+    with pytest.raises(ValueError, match="read_id"):
+        execute_service(session.layout, session.plan, reference)
+    assert not list((session.directory / "services").glob("*/event.json"))
+
+
 @pytest.mark.parametrize("boundary", ["completion_file", "seal_commit"])
 def test_recovery_after_completion_publication_or_seal_reuses_original_adoption(
     session: BlankSession, monkeypatch: pytest.MonkeyPatch, boundary: str

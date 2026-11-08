@@ -12,6 +12,10 @@ AnnotationPolicy提供探索策略。时间序列总览、任意参考点、crop
 AnnotationRun固定context、plan、runtime、策略和tool/worker版本。model、effort、代码及资源由plan固定，
 worker/service条件由runtime固定；后续attempt不能替换这些条件。
 
+`camera-tools.v2` 要求handoff、rows和image带有 `read_id`。client每次调用自动生成一个，
+编辑后重新读取相同范围会返回当前revision及进度。使用原 `read_id` 和parameters重发相同请求时，
+返回原snapshot。编辑仍使用 `expected_revision` 的CAS契约。
+
 父服务验证camera、原frame/PTS、crop及所有权后返回plain图像。frame参数始终使用**原视频frame编号**，
 包括非零起点。只能请求或引用提供区间内的同camera frame。receipt保留native crop、缩放比例及原PTS。
 运行边界见 [private input boundary](../../../../base/annotation/workers/README.md#private-input-workers)。

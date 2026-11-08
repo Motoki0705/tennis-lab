@@ -229,3 +229,50 @@ def test_real_interruption_before_final_response_keeps_saved_unknown_and_resumes
     finally:
         if pool.ledger.task(request.work_id)["state"] in {"running", "exited"}:
             pool.stop(request, reason="test cleanup")
+
+
+def test_same_attempt_client_refreshes_reads_after_edit_and_replays_exact_requests(
+    tmp_path: Path,
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    receipt = read_document(
+        layout,
+        configure_local_videos(layout, local_configuration(layout)),
+        LocalVideoConfigurationReceipt,
+    )
+    plan = read_document(layout, receipt.plan, LocalAnnotationPlan)
+    request = read_document(layout, receipt.registrations[0].request, WorkRequest)
+    pool = WorkerPool(
+        layout,
+        plan,
+        (BallVideoWorker(),),
+        test_command=fake_worker(refresh_after_edit=True),
+        timeout_seconds=10,
+    )
+    pool.start(request)
+    directory = layout.path(
+        "campaigns", plan.campaign_id, "workers", request.work_id, "attempt-0001"
+    )
+    try:
+        state = drive(layout, plan, pool, request, directory)
+        assert state["state"] == "complete", (
+            state,
+            (directory / "stderr.log").read_text(),
+        )
+        final = read_document(
+            layout, ArtifactRef.model_validate_json(state["result"]), AttemptResult
+        )
+        completion = read_document(layout, final.outcome.adoption, VideoCompletion)
+        annotation = read_annotation(
+            layout.artifact_path(completion.annotation), require_complete=True
+        )
+        assert [row.state for row in annotation.frames] == [
+            "no_active_ball",
+            "in_frame",
+            "in_frame",
+        ]
+        # The three exact read retries create no second service event/render.
+        assert len(list((directory / "services").glob("*/event.json"))) == 9
+    finally:
+        if pool.ledger.task(request.work_id)["state"] in {"running", "exited"}:
+            pool.stop(request, reason="test cleanup")

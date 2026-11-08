@@ -29,6 +29,13 @@ Tools: write a JSON parameters file inside work, then run
 `/usr/bin/python3 -I -S ../input/tools.py OPERATION --parameters PARAMETERS.json`.
 The parent saves each accepted edit as an atomic revision before replying. Keep
 the returned revision for the next edit; a stale expected_revision is rejected.
+For handoff, rows and image, the client automatically assigns a new read_id on
+each invocation, so re-running the same parameters after an edit reads current
+progress. To replay an exact earlier read, supply its original read_id in the
+parameters; identical requests return the original snapshot, even after edits.
+The saved service-requests file named by video_service contains that read_id.
+Direct requests bypassing the client must include a read_id (1..128 characters,
+letters/digits/underscore/dot/hyphen, first character letter/digit/underscore/hyphen).
 
 - video_handoff: {camera_id, after_frame?: null, limit?: 128}. Returns remaining
   unprocessed source indices and counts. Follow next_after_frame for more; you are

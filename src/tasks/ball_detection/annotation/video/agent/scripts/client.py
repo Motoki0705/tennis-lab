@@ -13,6 +13,7 @@ import json
 import os
 import tempfile
 import time
+import uuid
 from pathlib import Path
 
 
@@ -36,10 +37,15 @@ def main() -> None:
     args = parser.parse_args()
     directory = Path(__file__).resolve().parent.parent
     fixed = json.loads((directory / "input/tool-input.json").read_text())
+    parameters = json.loads(args.parameters.read_text())
+    if args.operation in {"video_handoff", "video_rows", "video_image"}:
+        # Each invocation is a fresh read unless the caller explicitly replays
+        # the same read_id and parameters. Keep it fixed while awaiting a reply.
+        parameters.setdefault("read_id", uuid.uuid4().hex)
     request = {
         "task_request": fixed["task_request"],
         "operation": args.operation,
-        "parameters": json.loads(args.parameters.read_text()),
+        "parameters": parameters,
     }
     data = canonical(request)
     if len(data) + 1 > 32768:

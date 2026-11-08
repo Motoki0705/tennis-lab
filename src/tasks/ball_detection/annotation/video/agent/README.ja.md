@@ -15,6 +15,10 @@ crop/拡大、推測、自己修正で同じ道具を使い、閲覧順を固定
 `AnnotationRun` はcontext・plan・runtime・方針・tool/worker版を固定する。model・effort・code・資源は
 plan、worker/service条件はruntimeが正本。次attemptで方針や条件を変更せず、同じrunを使う。
 
+`camera-tools.v2` はhandoff・rows・imageに `read_id` を必須とする。clientが呼出しごとに自動生成し、
+編集後に同じ範囲を読み直すと現在のrevision・進捗を返す。元の `read_id` とparametersを指定した再送は、
+元のsnapshotを返す。編集の `expected_revision` によるCAS契約は維持する。
+
 親はcamera、元frame/PTS、crop、所有者を検証してplain画像を返す。非zero開始でもframe引数は
 **元動画のframe番号**。提供区間内の同じcameraのframeだけを要求・supportへ指定できる。
 receiptにnative crop・倍率・元PTSを保持する。実行境界は
