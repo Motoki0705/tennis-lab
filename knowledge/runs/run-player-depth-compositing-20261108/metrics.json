@@ -1,0 +1,21 @@
+{
+  "cpu_tests_passed": 35.0,
+  "real_camera_count": 3.0,
+  "gaussian_count": 1000000.0,
+  "known_sheet_max_abs_error": 0.0,
+  "public_three_camera_seconds_including_load": 3.799703,
+  "resident_load_seconds": 0.179523,
+  "steady_full_min_seconds": 0.006339,
+  "steady_full_max_seconds": 0.014194,
+  "prefix_min_seconds": 0.002796,
+  "prefix_max_seconds": 0.005169,
+  "cuda_peak_allocated_bytes": 518069248.0,
+  "cuda_peak_reserved_bytes": 541065216.0,
+  "decoder_zero_features_min_rgb": 0.231934,
+  "decoder_zero_features_max_rgb": 0.702637,
+  "decoder_affinity_max_abs_error": 0.190125,
+  "blender_z_vs_camera_z_max_error_m": 0.0,
+  "blender_z_vs_ray_distance_max_error_m": 0.70114,
+  "blender_linear_premult_max_error": 0.0,
+  "blender_pixel_center_ray_max_error_px": 0.00053
+}

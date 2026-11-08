@@ -74,6 +74,13 @@ integer-center由来の別Kを導入する場合は、その座標原点から�
 off-center・非square pixelは現行Blender exporterが拒否するため、C5で必要になれば
 shift/pixel-aspectまで実装・投影検証し、中央cameraへ置換しない。
 
+今回のBlender 4.5.3 LTS / Cycles CPUでは、z=4 mの既知平面上の273 sampleすべてで
+Z passはcamera zと一致した（最大差0 m）。ray距離との最大差は0.70114 mだった。
+この組合せのZを使うならmをNHT単位へ変換するだけであり、さらにr_zを掛けない。
+pixel-center rayの差は最大0.0005301 pxだった。C3/C5が別のversion/engineを選ぶ場合は
+このprobeを再実行するか、Position passのcamera座標変換からzを明示的に作る。
+この結果を未検証のEEVEEや別versionのZへ一般化しない。
+
 ## RGB・alpha
 
 Blenderの取得対象は、view transformを焼き込まないfloatのscene-linear Rec.709
@@ -81,6 +88,8 @@ Combined RGBA。premultipliedをstraightへ直す必要がある操作では、v
 一度だけ除算し、色変換後に再度premultiplyする。α=0のRGBは契約上0とする。
 不透明SMPL/球の材質opacityは1であり、境界のcoverage alphaとは区別する。
 AgX/Filmic、exposure、contrast、gammaを片側だけに適用しない。
+Blender probeでは132の部分coverage画素を含め、CombinedのRGBが
+alpha×既知linear emission色に最大差0で一致した。
 
 NHTのtrainerは画像byteを255で割った値を教師にし、public rendererはsigmoid
 出力をfloatで保存する。これは撮影画像と同じdisplay-referredな符号化であり、
@@ -109,6 +118,12 @@ D(0) = 0
 `D(F_<)-T_< D(0)`というbias補正も、非負・alpha以下のRGB寄与を保証しない。
 ネット奥の特徴量を除いた色の教師は元の画像教師には含まれず、depth/alpha出力を
 足すだけのAPI変更ではこの色の問題は解決しない。
+
+今回のB00 shaderでは空特徴のRGBが0.2319〜0.7026になり、affineな混合との差は
+最大0.1901だった（0〜1のencoded RGB上）。これは単なる丸めの差ではない。
+`D(F_<)`が正しいpremultiplied色という候補は棄却する。alphaで掛け直す候補と
+特徴を正規化する候補は最大0.1263異なったが、その差をground truthに対する誤差と
+解釈しない。どちらもこの調査では採用していない。
 
 現行EDは別のeval3d passの `sum(w_i z_mean_i)` をNHT alphaで割る。
 `z_mean_i`はGaussian中心のcamera zである。NHTのnear/farもprojectionで中心を

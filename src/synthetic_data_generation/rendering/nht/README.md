@@ -4,6 +4,7 @@
 
 `NHTRenderClient` consumes only `nht-render` public files. Request/result schemas
 and the CUDA runtime belong to [NHT](../../../../third_party/nht/README.md#standard-renderer).
+The semantics below describe the adopted B00–B03 exports with view encoding enabled.
 
 `rgb.npy` is float32 decoded RGB in the training-image encoding. The current
 renderer accumulates harmonic features and applies a nonlinear learned shader;

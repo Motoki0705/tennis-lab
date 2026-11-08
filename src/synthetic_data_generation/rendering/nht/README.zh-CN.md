@@ -4,6 +4,7 @@
 
 `NHTRenderClient`仅使用`nht-render`的公开文件。请求/结果 schema 和 CUDA
 运行环境由[NHT](../../../../third_party/nht/README.md#standard-renderer)维护。
+以下语义针对已采用且启用了 view encoding 的 B00–B03 导出。
 
 `rgb.npy`为采用训练图像编码的 float32 解码 RGB。当前渲染器先累积谐波特征，
 再通过学习到的非线性 shader 解码，因此不保证输出为线性光、直通 alpha 或预乘

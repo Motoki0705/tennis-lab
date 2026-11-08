@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "pytest": {
+    "passed": 35,
+    "failed": 0,
+    "wall_seconds": 3.88,
+    "workers": 2,
+    "max_displayed_phase_seconds": {
+      "setup": 0.03,
+      "call": 0.01,
+      "teardown": 0
+    },
+    "new_research_cases": 14,
+    "existing_nht_cases": 21,
+    "largest_new_parametrize_expansion": 6,
+    "collection_seconds": 0.21,
+    "max_reported_case_phase_total_seconds": 0.03,
+    "duration_display_precision_seconds": 0.01
+  },
+  "pre_commit": {
+    "ruff": "passed",
+    "mypy": "passed"
+  },
+  "knowledge_validation": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "research_tests_are_outside_default_testpaths": true
+}

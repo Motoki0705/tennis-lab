@@ -1,0 +1,96 @@
+Downloading cython (3.3MiB)
+Downloading zstandard (5.3MiB)
+Downloading numpy (17.4MiB)
+Downloading bpy (355.7MiB)
+ Downloaded cython
+ Downloaded zstandard
+ Downloaded numpy
+ Downloaded bpy
+Installed 9 packages in 48ms
+Fra:1 Mem:8.41M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Plane
+Fra:1 Mem:8.41M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:1 Mem:8.25M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Waiting for render to start
+Fra:1 Mem:8.25M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene
+Fra:1 Mem:8.25M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Shaders
+Fra:1 Mem:8.25M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Procedurals
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Background
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Camera
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Meshes Flags
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Particle Systems
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Meshes
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene BVH | Building BVH 0%
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects Flags
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Camera Volume
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Lights
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Integrator
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Film
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.08M | Scene, ViewLayer | Updating Lookup Tables
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.09M, Peak:0.09M | Scene, ViewLayer | Updating Baking
+Fra:1 Mem:8.33M (Peak 8.41M) | Time:00:00.00 | Mem:0.09M, Peak:0.09M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:1 Mem:8.34M (Peak 8.41M) | Time:00:00.00 | Mem:0.09M, Peak:0.09M | Scene, ViewLayer | Sample 0/1
+Fra:1 Mem:8.41M (Peak 8.41M) | Time:00:00.00 | Mem:0.12M, Peak:0.12M | Scene, ViewLayer | Sample 1/1
+Fra:1 Mem:8.41M (Peak 8.41M) | Time:00:00.00 | Mem:0.12M, Peak:0.12M | Scene, ViewLayer | Finished
+Fra:1 Mem:8.27M (Peak 8.41M) | Time:00:00.00 | Compositing
+Saved: '/content/tennis-lab/outputs/synthetic_data_generation/profile/player-depth-study/blender/Image-0001.exr'
+Saved: '/content/tennis-lab/outputs/synthetic_data_generation/profile/player-depth-study/blender/Position-0001.exr'
+Saved: '/content/tennis-lab/outputs/synthetic_data_generation/profile/player-depth-study/blender/Depth-0001.exr'
+Fra:2 Mem:10.41M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Synchronizing object | Plane
+Fra:2 Mem:10.41M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Initializing
+Fra:2 Mem:10.25M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Waiting for render to start
+Fra:2 Mem:10.25M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene
+Fra:2 Mem:10.25M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Shaders
+Fra:2 Mem:10.25M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Loading render kernels (may take a few minutes the first time)
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Procedurals
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Background
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Camera
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Meshes Flags
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects | Copying Transformations to device
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Particle Systems
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Particle Systems | Copying Particles to device
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Meshes
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects | Applying Static Transformations
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Computing attributes
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Copying Attributes to device
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene BVH | Building
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene BVH | Building BVH
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Scene BVH | Copying BVH to device
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Computing normals
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Mesh | Copying Mesh to device
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Objects Flags
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Primitive Offsets
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Images
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Camera Volume
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.00M | Scene, ViewLayer | Updating Lookup Tables
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Lights
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Lights | Computing tree
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Integrator
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.08M, Peak:0.08M | Scene, ViewLayer | Updating Film
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.00M, Peak:0.08M | Scene, ViewLayer | Updating Lookup Tables
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.09M, Peak:0.09M | Scene, ViewLayer | Updating Baking
+Fra:2 Mem:10.33M (Peak 10.41M) | Time:00:00.00 | Mem:0.09M, Peak:0.09M | Scene, ViewLayer | Updating Device | Writing constant memory
+Fra:2 Mem:10.34M (Peak 10.41M) | Time:00:00.00 | Mem:0.09M, Peak:0.09M | Scene, ViewLayer | Sample 0/16
+Fra:2 Mem:10.39M (Peak 10.41M) | Time:00:00.00 | Remaining:00:00.00 | Mem:0.12M, Peak:0.12M | Scene, ViewLayer | Sample 1/16
+Fra:2 Mem:10.41M (Peak 10.41M) | Time:00:00.00 | Mem:0.12M, Peak:0.12M | Scene, ViewLayer | Sample 16/16
+Fra:2 Mem:10.41M (Peak 10.41M) | Time:00:00.00 | Mem:0.12M, Peak:0.12M | Scene, ViewLayer | Finished
+Fra:2 Mem:10.27M (Peak 10.41M) | Time:00:00.00 | Compositing
+Saved: '/content/tennis-lab/outputs/synthetic_data_generation/profile/player-depth-study/blender/Image-0002.exr'
+Saved: '/content/tennis-lab/outputs/synthetic_data_generation/profile/player-depth-study/blender/Position-0002.exr'
+Saved: '/content/tennis-lab/outputs/synthetic_data_generation/profile/player-depth-study/blender/Depth-0002.exr'
+{"schema_version": 1, "blender_version": "4.5.3 LTS", "engine": "CYCLES", "device": "CPU", "resolution": [32, 18], "camera_z_m": 4, "single_sample_valid_pixels": 273, "z_pass_vs_ray_distance_max_error_m": 0.7011399269104004, "z_pass_vs_camera_z_max_error_m": 0.0, "pixel_center_ray_max_error_px": 0.0005300045013423293, "z_pass_interpretation": "camera_z", "combined_vs_premultiplied_linear_max_error": 0.0, "partial_coverage_pixels": 132}

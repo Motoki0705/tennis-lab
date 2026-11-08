@@ -16,7 +16,7 @@ def main():
     draw = ImageDraw.Draw(image)
     draw.text(
         (12, 8),
-        "Known layers: foreground = opaque green, z=4. Colors below are linear RGB swatches.",
+        "Known layers: opaque green foreground, z=4. Numeric labels: linear RGB; swatches: sRGB display.",
         fill="black",
     )
     columns = [
@@ -45,7 +45,13 @@ def main():
             fill="black",
         )
         for index, (key, _) in enumerate(columns):
-            color = tuple(round(c * 255) for c in case[key])
+            color = tuple(
+                round(
+                    255
+                    * (12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055)
+                )
+                for c in case[key]
+            )
             x = 330 + index * 220
             draw.rectangle((x, y, x + 80, y + 32), fill=color, outline="black")
             draw.text((x + 88, y + 10), str(case[key]), fill="black")

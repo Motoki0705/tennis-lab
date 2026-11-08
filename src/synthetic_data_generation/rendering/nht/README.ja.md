@@ -4,6 +4,7 @@
 
 `NHTRenderClient`は`nht-render`の公開ファイルだけを消費します。request/result
 schemaとCUDA runtimeは[NHT](../../../../third_party/nht/README.md#standard-renderer)が所有します。
+以下はview encodingが有効な、採用済みB00〜B03 exportについての意味です。
 
 `rgb.npy`は学習画像の符号化で得るfloat32のdecoded RGBです。現行rendererは
 調和特徴量を蓄積してから非線形の学習済みshaderを適用するため、linear-light、
