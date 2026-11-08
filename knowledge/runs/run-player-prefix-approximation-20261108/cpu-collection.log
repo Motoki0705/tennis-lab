@@ -1,0 +1,78 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.2.0, pluggy-1.7.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/player-view-depth-compositing
+configfile: pyproject.toml
+plugins: hydra-core-1.3.8, cov-7.1.0, platformdirs-4.14.0, xdist-3.8.0, anyio-4.15.1
+collected 55 items
+
+<Dir player-view-depth-compositing>
+  <Dir knowledge>
+    <Dir runs>
+      <Dir run-player-prefix-approximation-20261108>
+        <Module test_approximation.py>
+          <Function test_no_foreground_keeps_public_rgb_bits[weighted]>
+          <Function test_no_foreground_keeps_public_rgb_bits[normalized]>
+          <Function test_no_foreground_keeps_public_rgb_bits[closed_normalized]>
+          <Function test_empty_prefix_keeps_foreground_without_decoder_bias[weighted]>
+          <Function test_empty_prefix_keeps_foreground_without_decoder_bias[normalized]>
+          <Function test_empty_prefix_keeps_foreground_without_decoder_bias[closed_normalized]>
+          <Function test_full_alpha_closure_matches_original_even_if_accumulation_is_not_one>
+          <Function test_half_linear_light_is_not_half_encoded_rgb>
+          <Function test_decoder_scales_have_independent_hand_calculated_values>
+          <Function test_normalized_feature_is_invariant_to_uniform_prefix_attenuation>
+          <Function test_tiny_prefix_is_explicitly_ignored_without_nan>
+          <Function test_reject_inconsistent_opacity_instead_of_falling_back[-0.1-1]>
+          <Function test_reject_inconsistent_opacity_instead_of_falling_back[1.1-1]>
+          <Function test_reject_inconsistent_opacity_instead_of_falling_back[0-0.9]>
+          <Function test_reject_inconsistent_opacity_instead_of_falling_back[0.5-0]>
+          <Function test_reject_inconsistent_opacity_instead_of_falling_back[nan-1]>
+          <Function test_reject_unknown_approximation>
+          <Function test_reject_invalid_foreground_mask_and_rgb>
+          <Function test_sphere_depth_matches_two_independently_known_surface_points>
+          <Function test_subpixel_ball_has_four_known_samples_on_common_ssaa2_grid>
+      <Dir run-player-depth-compositing-20261108>
+        <Module test_layers.py>
+          <Function test_layer_insertion_matches_hand_calculation[depths0-alphas0-colors0-expected0-0]>
+          <Function test_layer_insertion_matches_hand_calculation[depths1-alphas1-colors1-expected1-1]>
+          <Function test_layer_insertion_matches_hand_calculation[depths2-alphas2-colors2-expected2-0.75]>
+          <Function test_layer_insertion_matches_hand_calculation[depths3-alphas3-colors3-expected3-1]>
+          <Function test_layer_insertion_matches_hand_calculation[depths4-alphas4-colors4-expected4-1]>
+          <Function test_layer_insertion_matches_hand_calculation[depths5-alphas5-colors5-expected5-1]>
+          <Function test_identical_rgb_alpha_ed_cannot_determine_occlusion>
+          <Function test_nonlinear_decode_of_accumulated_features_is_not_premultiplied_rgb>
+          <Function test_prefix_contract_uses_each_pixels_transmission_and_preserves_hdr>
+          <Function test_prefix_contract_rejects_invalid_inputs[prefix0-transmission0-foreground0]>
+          <Function test_prefix_contract_rejects_invalid_inputs[prefix1-transmission1-foreground1]>
+          <Function test_prefix_contract_rejects_invalid_inputs[prefix2-transmission2-foreground2]>
+          <Function test_prefix_contract_rejects_invalid_inputs[prefix3-transmission3-foreground3]>
+          <Function test_prefix_contract_rejects_invalid_inputs[prefix4-transmission4-foreground4]>
+  <Dir tests>
+    <Dir unit>
+      <Dir synthetic_data_generation>
+        <Dir rendering>
+          <Dir nht>
+            <Module test_depth.py>
+              <Function test_nht_depth_to_metric_preserves_zero_and_converts_scale>
+              <Function test_nht_depth_to_metric_rejects_invalid_public_arrays[depth0-TypeError]>
+              <Function test_nht_depth_to_metric_rejects_invalid_public_arrays[depth1-ValueError]>
+              <Function test_nht_depth_to_metric_rejects_invalid_public_arrays[depth2-ValueError]>
+              <Function test_nht_depth_to_metric_rejects_invalid_public_arrays[depth3-ValueError]>
+              <Function test_nht_depth_to_metric_rejects_invalid_scale[0.0]>
+              <Function test_nht_depth_to_metric_rejects_invalid_scale[-1.0]>
+              <Function test_nht_depth_to_metric_rejects_invalid_scale[nan]>
+              <Function test_nht_depth_to_metric_rejects_invalid_scale[inf]>
+              <Function test_nht_depth_to_metric_rejects_boolean_scale>
+              <Function test_nht_depth_to_metric_rejects_unrepresentable_scale_and_overflow>
+            <Module test_contracts.py>
+              <Function test_render_request_writes_strict_public_payload>
+              <Function test_render_command_combines_observed_and_file_request>
+              <Function test_render_command_explicitly_omits_source_images>
+              <Function test_render_command_rejects_overlapping_camera_ids>
+              <Function test_staged_request_writes_policy_and_per_camera_controls>
+              <Function test_staged_request_requires_policy_exactly_with_controls>
+              <Function test_appearance_controls_reject_values_outside_unit_interval[-0.01]>
+              <Function test_appearance_controls_reject_values_outside_unit_interval[1.01]>
+              <Function test_appearance_controls_reject_values_outside_unit_interval[nan]>
+              <Function test_appearance_policy_rejects_unknown_order_and_invalid_stagger>
+
+========================= 55 tests collected in 0.25s ==========================
