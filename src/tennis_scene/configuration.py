@@ -329,9 +329,9 @@ class PipelineRuntimeConfig:
     aflink_checkpoint: Path
     merge_duplicate_person_boxes: bool
     ball_smoothing: TemporalSmoothingConfig
-    ball_method: str = "model"
-    direct_annotation: DirectAnnotationConfig | None = None
-    clip_id: str | None = None
+    ball_method: str
+    direct_annotation: DirectAnnotationConfig | None
+    clip_id: str | None
 
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
