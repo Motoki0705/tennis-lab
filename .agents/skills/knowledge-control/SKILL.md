@@ -1,38 +1,58 @@
 ---
 name: knowledge-control
-description: Record experiment findings and related papers in knowledge/, update its summary, or use prior evidence to plan experiments.
+description: Record experiment results (training queue, Colab, logs, manual runs) and related papers in knowledge/, keep summary.md and the deployed-checkpoint registry current, and query prior evidence to plan experiments. Use after a training or evaluation run finishes, before deleting checkpoints or prediction arrays, when a pipeline checkpoint changes, and before proposing a new experiment.
 ---
 
 # Knowledge Control
 
-Use the relevant route below. Storage, naming, required fields, and CI error/warning
-rules have one source: [knowledge/README.md](../../../knowledge/README.md).
+Use the relevant route below. Storage, naming, required fields, registries, and CI
+error/warning rules have one source: [knowledge/README.md](../../../knowledge/README.md).
+Run the commands from the active checkout root with these variables:
+
+<!-- example:setup -->
+```bash
+PY=.venv/bin/python
+SKILL=.agents/skills/knowledge-control/scripts
+```
 
 ## Plan an experiment
 
-Read [summary.md](../../../knowledge/summary.md), then the relevant task's nodes,
-comparison evidence, and linked paper sections. Propose what changes, cite the
-existing node/paper IDs, and state which observation would test the hypothesis.
-Keep evaluation split, seed, and budget differences explicit. Tasks are extensible
-research topics; a new topic does not need an enum change.
+Read [summary.md](../../../knowledge/summary.md) for the current judgement of each
+task. Then narrow the evidence with `kg_query.py` instead of reading whole task
+directories; every subcommand accepts `--json`:
+
+<!-- example:query -->
+```bash
+$PY "$SKILL/kg_query.py" find --task "$TASK" --since 2020-01-01
+$PY "$SKILL/kg_query.py" show "$RUN_ID"
+$PY "$SKILL/kg_query.py" metrics --task "$TASK"
+```
+
+`metrics --key K` tabulates values for comparison, `deployments` lists what the
+standard pipeline runs and why, and `tasks` maps topics to modules. Propose what
+changes, cite node/paper IDs, and state which observation would test the
+hypothesis. Keep evaluation split, seed, and budget differences explicit.
+A new research topic needs one entry in the [task registry](../../../knowledge/registry/tasks.yaml)
+before its first node; retired topics take no new nodes.
 
 ## Record or correct evidence
 
-For queue promotion, historical logs, manual runs/groups, and PDF registration,
-use [record.md](references/record.md). It contains the commands and evidence guidance.
+For queue runs, Colab jobs, historical logs, manual runs/groups, and papers, use
+[record.md](references/record.md). It contains the commands and evidence guidance.
 Generated documents are drafts: fill findings/research notes before validation.
-One run belongs to one task; link other nodes and papers by ID.
+One run belongs to one task; link other nodes and papers by ID, with relation
+types from the [relation registry](../../../knowledge/registry/relations.yaml).
 Edit an existing node directly for corrections; `--force` replaces its content.
 Commit the allocator `.sequence` with new nodes and retain it after deletion.
 
 Apply the [run storage policy](../../../knowledge/README.md#run成果物の保存基準)
 before promoting evidence: keep reproducibility files, small metric summaries and
-figures within the documented limits. Registration never copies prediction arrays;
-it reports that they remain at the source. An oversized bundle fails before copying.
-Never expand the pinned legacy exceptions automatically. For approved deletions,
-preserve each file's path, size, SHA-256, reason and pre-deletion HEAD in the run's
-versioned `artifact-manifest.json`; update artifact/body references to its deletion
-records. Keep historical commands, run metadata and patches intact.
+figures within the documented limits. Registration never copies prediction arrays
+or checkpoints; it reports where they remain. An oversized bundle fails before
+copying. Never expand the pinned legacy exceptions automatically. For approved
+deletions, preserve each file's path, size, SHA-256, reason and pre-deletion HEAD in
+the run's versioned `artifact-manifest.json`; update artifact/body references to its
+deletion records. Keep historical commands, run metadata and patches intact.
 
 Write Japanese findings that separate observations from hypotheses, explain the
 comparison and its limits, and motivate the next experiment. Unknown evidence may
@@ -41,25 +61,34 @@ The CI checks structure and unfinished scaffolds, not the truth of research clai
 
 ## Complete a knowledge change
 
-After changing a node or paper, review the affected task's conclusions in
-[summary.md](../../../knowledge/summary.md). Update the baseline decision, findings,
-uncertainty, and next experiment where affected, linking supporting nodes. Include
-failed/negative results. If conclusions are unchanged, briefly record what was
-reviewed and why. Keep historical deployment claims tied to their as-of date.
-Do not copy every metric into the summary or treat a best score as a deployment.
+Every node you add, and every node whose `status` you change, declares
+`summary_impact` after you compare it with that task's section of
+[summary.md](../../../knowledge/summary.md):
 
-After the narrative review, run from the active checkout root:
+- `updated`: the current judgement changed (adopted configuration, baseline,
+  open problem, or next experiment). Rewrite that section in the same change.
+  Replace outdated statements instead of appending dated entries, and link the
+  supporting nodes.
+- `none`: the judgement stands. Say in the node how it relates to the current
+  judgement; summary.md stays untouched.
+
+When a tracked pipeline config selects a different checkpoint, update
+[deployments.yaml](../../../knowledge/registry/deployments.yaml) with its evidence
+and the summary in the same change. Include failed and negative results. Do not
+copy every metric into the summary or treat a best score as a deployment. Keep
+summary.md within its character budget by moving settled history into group nodes.
+
+Then validate against the merge target, usually `origin/main` after `git fetch`:
 
 <!-- example:review -->
 ```bash
-.venv/bin/python .agents/skills/knowledge-control/scripts/kg_summary.py --mark-reviewed
-.venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary
+$PY "$SKILL/kg_validate.py" --check-summary --base-ref "$BASE_REF"
 ```
 
-Fix all ERRORs; WARNs are advisory missing evidence. The review marker covers
-nodes, paper notes, and the summary narrative: rerun this completion step after
-further edits. It records review, not scientific correctness. For branch changes,
-use the README's base-ref check to catch numbering collisions before merge.
-That check also requires records for removed files, verifies their bytes against
-the base Git blobs and preserves existing deletion records. Do not approve a
-deletion using a structure-only check without a base ref.
+Fix all ERRORs. WARNs flag optional metadata missing from new runs (an issue
+number). Without `--base-ref` the identity, deletion-record, added-node and
+summary-review checks do not run; the validator prints that they were skipped.
+The base-ref check also catches numbering collisions before merge, requires
+records for removed run files, verifies their bytes against the base Git blobs and
+preserves existing deletion records. Do not approve a deletion with a structure-only
+check.

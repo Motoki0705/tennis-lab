@@ -19,12 +19,18 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import contextlib
 import re
 import sys
 from pathlib import Path
 
-from kg_lib import dump_frontmatter, portable_path, queue_dir, repo_root
+from kg_lib import (
+    config_from_command,
+    dump_frontmatter,
+    portable_path,
+    queue_dir,
+    repo_root,
+    test_metrics_from_log,
+)
 from kg_schema import PROVIDERS, iso_date
 from kg_storage import save_node
 
@@ -36,10 +42,6 @@ from src.utils.training_queue import (  # noqa: E402
 )
 
 QUEUE_DIR = queue_dir()
-METRIC_ROW_RE = re.compile(r"^[│|]\s*(test/\S+)\s*[│|]\s*([0-9.eE+-]+)\s*[│|]\s*$")
-OVERRIDE_RE = re.compile(r"(?:^|\s)([\w.]+)=([^\s]+)")
-# Hydra keys we surface into config (everything else is ignored as noise).
-CONFIG_KEYS = ("model", "loss", "data")
 
 
 def find_by_name(name: str) -> tuple[Path | None, Path | None]:
@@ -63,20 +65,11 @@ def parse_job(job: Path) -> tuple[str, dict, str]:
     name_m = re.search(r"^#\s*name:\s*(.+)$", text, re.MULTILINE)
     name = name_m.group(1).strip() if name_m else job_label(job.stem)
     cmd = next((ln for ln in text.splitlines() if "python" in ln and "-m " in ln), "")
-    overrides = dict(OVERRIDE_RE.findall(cmd))
-    config = {k: overrides[k] for k in CONFIG_KEYS if k in overrides}
-    return name, config, cmd
+    return name, config_from_command(cmd), cmd
 
 
 def parse_log_metrics(log: Path) -> dict[str, float]:
-    metrics: dict[str, float] = {}
-    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
-        m = METRIC_ROW_RE.match(line.strip())
-        if m:
-            key = m.group(1).replace("test/", "")
-            with contextlib.suppress(ValueError):
-                metrics[key] = round(float(m.group(2)), 6)
-    return metrics
+    return test_metrics_from_log(log.read_text(encoding="utf-8", errors="replace"))
 
 
 def status_from_job(job: Path | None) -> str:

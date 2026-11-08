@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-"""Register a locally available research PDF and its source metadata."""
+"""Register a related paper: source metadata, a research note and optionally its PDF.
+
+A PDF is stored only when its redistribution terms were checked (``--pdf`` with
+``--license``). Without ``--pdf`` the entry is metadata-only: the note cites the
+primary source URL and nothing is redistributed.
+"""
 from __future__ import annotations
 
 import argparse
@@ -10,6 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from kg_lib import Node, ValidationResult, dump_frontmatter, nodes_dir, parse_node
+from kg_registry import load_tasks
 from kg_schema import TASK_RE, has_prose, http_url, nonempty_text
 
 PAPER_RE = re.compile(r"^paper-[1-9][0-9]{3}-[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -57,15 +63,24 @@ def validate_papers(nodes: list[Node]) -> ValidationResult:
         tasks = meta.get("tasks")
         if isinstance(tasks, list) and any(not TASK_RE.fullmatch(str(t)) for t in tasks):
             result.errors.append(f"{loc}: invalid task slug")
-        for key in ("source", "license"):
-            if not http_url(meta.get(key)):
-                result.errors.append(f"{loc}: {key} must be an HTTP(S) URL")
+        if not http_url(meta.get("source")):
+            result.errors.append(f"{loc}: source must be an HTTP(S) URL")
+        if "license" in meta and not http_url(meta["license"]):
+            result.errors.append(f"{loc}: license must be an HTTP(S) URL")
         if not has_prose(paper.body):
             result.errors.append(f"{loc}: write a research note; headings and comments alone are unfinished")
         pdf = paper.path.parent / "paper.pdf"
-        if meta.get("pdf") != "paper.pdf" or not pdf.is_file():
-            result.errors.append(f"{loc}: local paper.pdf required")
+        if "pdf" not in meta:
+            # Metadata-only entry: nothing is redistributed, so no file or checksum.
+            if pdf.exists():
+                result.errors.append(f"{loc}: paper.pdf exists but the note does not record pdf/sha256/license")
+            if "sha256" in meta:
+                result.errors.append(f"{loc}: sha256 describes a stored PDF; remove it from a metadata-only entry")
+        elif meta.get("pdf") != "paper.pdf" or not pdf.is_file():
+            result.errors.append(f"{loc}: pdf must be paper.pdf with the local file present")
         else:
+            if "license" not in meta:
+                result.errors.append(f"{loc}: a stored PDF requires its license URL")
             data = pdf.read_bytes()
             if not data.startswith(b"%PDF-"):
                 result.errors.append(f"{loc}: not a PDF")
@@ -86,29 +101,42 @@ def main() -> None:
     parser.add_argument("--title", required=True)
     parser.add_argument("--authors", nargs="+", required=True)
     parser.add_argument("--tasks", nargs="+", required=True)
-    parser.add_argument("--source", required=True, help="version-specific source URL")
-    parser.add_argument("--license", required=True, help="verified redistribution license URL")
-    parser.add_argument("--pdf", type=Path, required=True)
+    parser.add_argument("--source", required=True, help="version-specific primary source URL (e.g. the arXiv abs page)")
+    parser.add_argument("--license", help="license URL; required with --pdf after checking redistribution terms")
+    parser.add_argument("--pdf", type=Path, help="store this PDF; omit for a metadata-only entry")
     args = parser.parse_args()
     if not PAPER_RE.fullmatch(args.id):
         parser.error("id must be paper-YYYY-kebab-slug")
     if any(not TASK_RE.fullmatch(t) for t in args.tasks):
         parser.error("invalid task slug")
-    for value in (args.source, args.license):
-        if not http_url(value):
-            parser.error("source/license must be HTTP(S) URLs")
+    if not http_url(args.source) or (args.license is not None and not http_url(args.license)):
+        parser.error("source/license must be HTTP(S) URLs")
+    if args.pdf is not None and args.license is None:
+        parser.error("--pdf requires --license (the verified redistribution terms)")
     if not nonempty_text(args.title) or any(not nonempty_text(a) for a in args.authors):
         parser.error("title and authors must be nonempty strings")
     if len(set(args.authors)) != len(args.authors) or len(set(args.tasks)) != len(args.tasks):
         parser.error("authors/tasks must not contain duplicates")
-    data = args.pdf.read_bytes()
-    if not data.startswith(b"%PDF-"):
+    try:
+        tasks, _ = load_tasks()
+    except ValueError as exc:
+        parser.error(str(exc))
+    unknown = [t for t in args.tasks if t not in tasks]
+    if unknown:
+        parser.error(f"tasks {unknown} are not registered in registry/tasks.yaml")
+    data = args.pdf.read_bytes() if args.pdf is not None else None
+    if data is not None and not data.startswith(b"%PDF-"):
         parser.error("input is not a PDF")
     target = papers_dir() / args.id
-    meta: dict[str, Any] = dict(id=args.id, type="paper", title=args.title, year=int(args.id.split("-")[1]), authors=args.authors, tasks=args.tasks, source=args.source, license=args.license, pdf="paper.pdf", sha256=hashlib.sha256(data).hexdigest())
+    meta: dict[str, Any] = dict(id=args.id, type="paper", title=args.title, year=int(args.id.split("-")[1]), authors=args.authors, tasks=args.tasks, source=args.source)
+    if args.license is not None:
+        meta["license"] = args.license
+    if data is not None:
+        meta.update(pdf="paper.pdf", sha256=hashlib.sha256(data).hexdigest())
     target.mkdir(parents=True, exist_ok=False)
     try:
-        (target / "paper.pdf").write_bytes(data)
+        if data is not None:
+            (target / "paper.pdf").write_bytes(data)
         (target / "paper.md").write_text(f"---\n{dump_frontmatter(meta)}---\n\n## 研究の要点\n\n## このプロジェクトとの関係\n\n## 検証したい仮説・適用限界\n", encoding="utf-8")
     except BaseException:
         shutil.rmtree(target)

@@ -1,12 +1,15 @@
 #!/usr/bin/env python
-"""Validate the knowledge graph under ``knowledge/nodes/``.
+"""Validate the knowledge library under ``knowledge/``.
 
-Checks frontmatter schema (id/type/title/status/...) and that every edge
-reference (``parents``, group ``members``, ``relations[].to``) resolves to an
-existing node. Exits non-zero if any error is found so it can gate CI / commits.
+Checks node frontmatter, graph edges, the registries (tasks, relation types,
+deployed checkpoints), papers and run storage. ``--check-summary`` adds the
+narrative documents. ``--base-ref`` adds the rules that judge a change against
+its Git base: immutable identities, deletion records, metadata of added nodes
+and, with ``--check-summary``, the summary review declarations. Exits non-zero
+on any error so it can gate CI and commits.
 
 Usage:
-    .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py
+    .venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main
 """
 
 from __future__ import annotations
@@ -14,17 +17,19 @@ from __future__ import annotations
 import argparse
 
 from kg_artifacts import validate_runs
-from kg_history import validate_history
+from kg_changes import validate_added_nodes, validate_summary_review
+from kg_history import load_base, validate_identity
 from kg_lib import load_nodes, nodes_dir, validate
-from kg_papers import validate_papers
+from kg_papers import load_papers, validate_papers
+from kg_registry import load_tasks, validate_registry
 from kg_storage import validate_counters
 from kg_summary import check_summary
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--check-summary", action="store_true")
-    parser.add_argument("--base-ref", help="Git base for immutable node identity and monotonic sequence checks")
+    parser.add_argument("--check-summary", action="store_true", help="also check summary.md and the other narrative documents")
+    parser.add_argument("--base-ref", help="Git base for identity, deletion and added-node checks (for example origin/main)")
     args = parser.parse_args()
     directory = nodes_dir()
     try:
@@ -36,13 +41,19 @@ def main() -> int:
         nodes = load_nodes(directory)
         res = validate(nodes)
         res.errors.extend(validate_counters(nodes))
-        papers = validate_papers(nodes)
-        res.errors.extend(papers.errors)
+        res.errors.extend(validate_papers(nodes).errors)
+        res.errors.extend(validate_registry(nodes, load_papers()))
         res.errors.extend(validate_runs(directory.parent, nodes, args.base_ref))
         if args.check_summary:
             res.errors.extend(check_summary())
         if args.base_ref:
-            res.errors.extend(validate_history(nodes, args.base_ref))
+            base = load_base(args.base_ref)
+            res.errors.extend(validate_identity(nodes, base))
+            errors, warnings = validate_added_nodes(nodes, base, load_tasks()[0])
+            res.errors.extend(errors)
+            res.warnings.extend(warnings)
+            if args.check_summary:
+                res.errors.extend(validate_summary_review(nodes, base))
     except (ValueError, OSError) as exc:
         print(f"ERROR: {exc}")
         return 1
@@ -57,6 +68,8 @@ def main() -> int:
         f"\n{len(nodes)} nodes ({runs} run, {groups} group) in {directory} — "
         f"{len(res.errors)} error(s), {len(res.warnings)} warning(s)."
     )
+    if not args.base_ref:
+        print("NOTE: no --base-ref; identity, deletion-record, added-node and summary-review checks were skipped.")
     return 0 if res.ok else 1
 
 

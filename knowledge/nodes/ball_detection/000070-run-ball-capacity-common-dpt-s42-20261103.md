@@ -9,6 +9,7 @@ issue: 1675
 provider: codex
 date: '2026-11-03'
 status: done
+summary_impact: updated
 config:
   encoder: x3d_csn
   input_channels: 5

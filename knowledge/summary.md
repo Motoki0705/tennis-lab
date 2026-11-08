@@ -33,6 +33,7 @@
 - **採否の原則**: offline F1の最高値だけでは採用しません。[scratch版](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md)はF1が高い一方、実clipのcoverage低下とteleportを起こしたため採用しませんでした。[#934の混合FT](nodes/ball_detection/000022-run-i934-meiji-holdout-e0-r7.md)でも、Meiji holdoutのrecallは上がりましたが採用検出のp95が悪化し、欠損の低減と誤検出の抑制は両立していません。
 - **長系列モデル**（親#1367）: 教師は入力Tの全frame、文脈はclip内・上限128と[決めました](nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)。配布storeの可搬化と、Colabでの逐次保存・新VMからの再開も確認済みです。[共通DPTからの逐次T64学習](nodes/ball_detection/000068-run-ball-sequential-length-20261025.md)では、query T64の平均/P95誤差（28.20/116.89 px）がDPT T64（36.56/183.20 px）より小さい一方、20 px以内の率は低くなりました（76.29%対86.58%）。追加の更新数と方式の差が交絡しており、seed42・validationだけの結果です。
 - **事前学習＋事後学習**: [ConvNeXt V2＋DPTとquery事後学習](nodes/ball_detection/000060-run-i1049-convnext-query-posttrain-s42.md)は通常評価で親より改善しましたが、camera stress（特に1/4 FPSで41.11 px）で大きく悪化しました。頑健性の要件は満たしていません。
+- **容量スケーリング**（#1675）: X3D/CSN型CNN＋4 query mHCの[事前実測](nodes/ball_detection/000069-run-ball-capacity-scaling-20261103.md)では、L4で全8構成のforward/backwardが成立しました。[共通DPT T32](nodes/ball_detection/000070-run-ball-capacity-common-dpt-s42-20261103.md)は10k更新と固定validationを完了しています。query T64の7条件は共通10kから独立に各6kへ分岐し、d256/d384各6k完了・d512-l4の検証済み5,500更新を復元して継続中です。全条件の容量比較、追加seed、独立testは未完了で、sceneの採用モデルは変更しません。
 - **次の実験**: 更新数をそろえたT比較、query T32の残差とoverlayの確認、#1476・PR #1489を前提とした独立testでの評価。
 
 ## 3D Ball Refiner（ball_refiner_3d）
