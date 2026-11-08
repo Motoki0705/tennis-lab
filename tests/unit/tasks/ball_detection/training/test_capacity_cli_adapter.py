@@ -105,3 +105,36 @@ def test_incomplete_expected_count_does_not_publish_files(tmp_path):
                                dict(expected_files=2, expected_bytes=entries[0]["size_bytes"]),
                                workers=1)
     assert not (tmp_path / "receipts/files.json").exists()
+
+
+@pytest.mark.parametrize("when", ["before", "after"])
+def test_remote_discrepancy_cannot_complete_download(tmp_path, monkeypatch, when):
+    original, entries, raw = dataset(tmp_path)
+    workspace = tmp_path / "workspace"
+    target = workspace / adapter.DATA
+    target.parent.mkdir(parents=True)
+    original.rename(target)
+    monkeypatch.setattr(adapter, "distribution", lambda value: entries)
+    monkeypatch.setattr(adapter, "EXPECTED_FILES", 1)
+    monkeypatch.setattr(adapter, "EXPECTED_BYTES", entries[0]["size_bytes"])
+    calls = []
+
+    def remote(*args):
+        calls.append(args[1])
+        return raw if args[1] == "cat" else b""
+
+    observed = {"part.bin": dict(Size=entries[0]["size_bytes"]),
+                "distribution.json": dict(Size=len(raw))}
+    inventories = [dict(observed)]
+    if when == "before":
+        inventories[0]["part.bin"] = dict(Size=0)
+    else:
+        inventories.append(dict(observed, unexpected=dict(Size=9)))
+    monkeypatch.setattr(adapter, "rclone", remote)
+    monkeypatch.setattr(adapter, "inventory", lambda *args: inventories.pop(0))
+    with pytest.raises(ValueError, match="Remote dataset"):
+        adapter.download(None, workspace, workers=1)
+    state = json.loads((workspace / adapter.DOWNLOAD / "progress.json").read_text())
+    assert state["complete"] is False
+    if when == "before":
+        assert "copy" not in calls
