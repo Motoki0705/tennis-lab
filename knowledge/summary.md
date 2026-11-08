@@ -46,7 +46,8 @@
 
 - **現行**: 2D検出はCOCO事前学習のDINO（personクラス、全画面、閾値.30）で全人物の候補を出し、選手かどうかはコート座標での滞在で判定します（#964のユーザー判断）。追跡はStrongSORT++＋pose/CLIPで、重複boxの統合は既定でoffです（[run 11](nodes/person_tracking/000013-run-i964-default-merge-r11-20260930.md)）。camera間の対応は、box下端の足元距離とCLIP-ReIDの外観をMILPで統合し、無ラベルclipで再較正した候補Aを既定にしました（[run 14](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)、[run 16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)）。
 - **根拠と限界**: 追跡方式は指標ごとに優位が入れ替わり、一律の勝者はありません（[run 10](nodes/person_tracking/000012-run-i964-tracker-hybrids-r10-20260930.md)）。予約した未見3clipの一回採点はpair F1 .720（3clip中2clipで決定）で、side欠測のclipも母数に残しています。旧追跡でのMeiji 4clip評価（[pair F1 0.997](nodes/player_association/000002-run-i933-association-meiji.md)）は、旧検出・旧追跡に限った結果です。AFLinkの重みは、利用条件が一次資料で未確認のまま使っています（[LICENSES.md](../LICENSES.md)）。
-- **次の実験**: clip_000の全pipelineでの品質確認と、ダブルスの実データでの検証。#937で学習した選手検出器は、明示的なcheckpoint指定のときだけ使います。
+- **新経路の方針**: ユーザー指定により、既存経路を維持し、人物対応・姿勢復元・追跡を3D主体で扱う別経路を検討します。[先行研究調査](reports/multiview-3d-player-tracking-survey.md)では幾何方式の参考を4D Association Graph、学習方式の比較候補をTEMPOとしました。今回の成果は調査のみで、新経路は未実装・未評価です。
+- **次の実験**: clip_000の全pipelineでの品質確認と、ダブルスの実データでの検証。新経路では、生の2D観測をそろえて3D仮説選択と時間情報の寄与を分離する評価を提案しています。#937で学習した選手検出器は、明示的なcheckpoint指定のときだけ使います。
 
 ## コートside（court_side）
 
