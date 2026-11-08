@@ -16,6 +16,7 @@ from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SCENE_MASK_FIELDS, SCENE_REASON_FIELDS, SceneResult
+from src.tennis_scene.scripts.export_player_view_cameras import main as camera_main
 from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
 from src.tennis_scene.visualization.player_view import (
     BUNDLE_SCHEMA,
@@ -28,7 +29,6 @@ from src.tennis_scene.visualization.player_view.camera_bundle import (
     export_head_cameras,
     load_head_cameras,
 )
-from src.tennis_scene.visualization.player_view.camera_cli import main as camera_main
 from src.tennis_scene.visualization.player_view.head_camera import HeadCameraConfig
 from src.utils.checksum import dual_sha256
 

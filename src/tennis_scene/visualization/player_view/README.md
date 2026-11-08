@@ -125,7 +125,7 @@ their original IDs and source timeline. Output must be new and outside the input
 bundle; publication is atomic and failures remove temporary output.
 
 ```bash
-.venv/bin/python -m src.tennis_scene.visualization.player_view.camera_cli \
+.venv/bin/python -m src.tennis_scene.scripts.export_player_view_cameras \
   --bundle outputs/tennis_scene/visualize/player_view/example/bundle \
   --output outputs/tennis_scene/visualize/player_view/example/cameras \
   --width 1280 --height 720 --horizontal-fov-degrees 90 \

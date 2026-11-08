@@ -96,7 +96,7 @@ CPUでscene bundle v1だけを読み、元store・動画・body model・推論�
 公開はatomicで、失敗時は一時出力を除去します。
 
 ```bash
-.venv/bin/python -m src.tennis_scene.visualization.player_view.camera_cli \
+.venv/bin/python -m src.tennis_scene.scripts.export_player_view_cameras \
   --bundle outputs/tennis_scene/visualize/player_view/example/bundle \
   --output outputs/tennis_scene/visualize/player_view/example/cameras \
   --width 1280 --height 720 --horizontal-fov-degrees 90 \

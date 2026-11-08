@@ -95,7 +95,7 @@ CPU 命令只读取 scene bundle v1，无需原始 store、视频、body model �
 完整结果原子发布，失败时删除临时输出。
 
 ```bash
-.venv/bin/python -m src.tennis_scene.visualization.player_view.camera_cli \
+.venv/bin/python -m src.tennis_scene.scripts.export_player_view_cameras \
   --bundle outputs/tennis_scene/visualize/player_view/example/bundle \
   --output outputs/tennis_scene/visualize/player_view/example/cameras \
   --width 1280 --height 720 --horizontal-fov-degrees 90 \

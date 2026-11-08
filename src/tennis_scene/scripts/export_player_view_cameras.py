@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from src.tennis_scene.visualization.player_view.camera_bundle import export_head_cameras
+from src.tennis_scene.visualization.player_view.head_camera import HeadCameraConfig
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -14,9 +16,6 @@ from src.utils.configuration import (
     PathRole,
     RuntimePathRoots,
 )
-
-from .camera_bundle import export_head_cameras
-from .head_camera import HeadCameraConfig
 
 PATH_BOUNDARY = NonHydraPathBoundary(
     name="tennis_scene.player_view_head_cameras",
