@@ -22,6 +22,9 @@ __all__ = [
 
 
 EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
+    "src.tennis_scene.visualization.blender.shots.player_view": (
+        "Standalone Blender Python; saved shot inputs are validated before rendering."
+    ),
     "src.tennis_scene.visualization.blender.shots.ball_diffusion": (
         "Blender bundled Python; displays an exported schematic concept without repo imports."
     ),

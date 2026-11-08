@@ -361,6 +361,14 @@ def test_video_publication_preserves_all_source_frames_and_missing_camera_slots(
         assert value["decoded_frames"] == 5
         assert value["fps"] == pytest.approx(59.94, abs=1e-6)
     assert manifest["verification"]["comparison.mp4"]["width"] == 256
+    capture = cv2.VideoCapture(str(output / "comparison.mp4"))
+    ok, first = capture.read()
+    capture.release()
+    assert ok
+    # Source frame 1: ID7 is valid/gray, ID42 has a blank missing-camera slot.
+    # Independent pixel evidence also catches swapped panels or skipped slots.
+    assert float(first[60:70, 50:80].mean()) == pytest.approx(25, abs=3)
+    assert float(first[60:70, 178:208].mean()) < 3
     with pytest.raises(FileExistsError):
         publish_player_views(package=shot, renders=renders, output=output)
 
