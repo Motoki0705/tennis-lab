@@ -243,6 +243,35 @@ def controls(config, stage):
     print(json.dumps(dict(control_stage=str(stage), controls=len(names))), flush=True)
 
 
+def exclude_registered_worktree(workspace):
+    """Keep the CLI bootstrap's untracked-file capture out of the linked repo.
+
+    The queue captures the experiment's own tracked Git source independently.
+    Only private Git metadata changes; no bootstrap or frozen source is edited.
+    """
+    worktree = workspace / ".claude/worktrees/ball-capacity"
+    registered = subprocess.check_output(
+        ["git", "-C", str(workspace), "worktree", "list", "--porcelain"], text=True
+    ).splitlines()
+    if "worktree " + str(worktree) not in registered:
+        raise ValueError("Only the registered experiment worktree may be excluded")
+    raw_path = subprocess.check_output(
+        ["git", "-C", str(workspace), "rev-parse", "--git-path", "info/exclude"], text=True
+    ).strip()
+    exclude = Path(raw_path)
+    if not exclude.is_absolute():
+        exclude = workspace / exclude
+    if exclude.is_symlink():
+        raise ValueError("Private Git exclude must not be a symlink")
+    raw = exclude.read_text() if exclude.exists() else ""
+    line = "/.claude/worktrees/ball-capacity/"
+    if line not in raw.splitlines():
+        exclude.parent.mkdir(parents=True, exist_ok=True)
+        exclude.write_text(raw + "\n" + line + "\n")
+    subprocess.run(["git", "-C", str(workspace), "check-ignore", "-q",
+                    ".claude/worktrees/ball-capacity/"], check=True)
+
+
 def bootstrap(config, workspace):
     target = Path("/tmp/ball-capacity-inputs-v1")
     if target.exists():
@@ -297,6 +326,7 @@ def bootstrap(config, workspace):
     subprocess.run(["git", "worktree", "add", "-b", "codex/ball-capacity",
                     str(worktree), SOURCE_HEAD], cwd=workspace, check=True)
     (worktree / ".venv").symlink_to(workspace / ".venv")
+    exclude_registered_worktree(workspace)
     print(json.dumps(dict(worktree=str(worktree), frozen_head=SOURCE_HEAD)), flush=True)
 
 

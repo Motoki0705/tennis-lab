@@ -3,6 +3,7 @@
 import hashlib
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -138,3 +139,23 @@ def test_remote_discrepancy_cannot_complete_download(tmp_path, monkeypatch, when
     assert state["complete"] is False
     if when == "before":
         assert "copy" not in calls
+
+
+def test_registered_worktree_is_private_excluded_without_hiding_its_source(tmp_path):
+    def git(*args):
+        return subprocess.check_output(["git", "-C", str(tmp_path), *args], text=True)
+
+    git("init", "-q")
+    git("config", "user.email", "fixture@example.invalid")
+    git("config", "user.name", "Fixture")
+    (tmp_path / "source.py").write_text("original = True\n")
+    git("add", "source.py")
+    git("commit", "-q", "-m", "fixture")
+    worktree = tmp_path / ".claude/worktrees/ball-capacity"
+    git("worktree", "add", "-q", "-b", "experiment", str(worktree))
+    assert ".claude/worktrees/ball-capacity/" in git("ls-files", "--others", "--exclude-standard")
+    adapter.exclude_registered_worktree(tmp_path)
+    adapter.exclude_registered_worktree(tmp_path)
+    assert git("ls-files", "--others", "--exclude-standard") == ""
+    assert (worktree / "source.py").read_text() == "original = True\n"
+    assert subprocess.check_output(["git", "-C", str(worktree), "ls-files"], text=True) == "source.py\n"
