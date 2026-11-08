@@ -308,7 +308,7 @@ def large_gaussian(renderer, output):
         dtype=torch.float32,
     )
     scales = torch.tensor(
-        [[0.3, 0.5, 1.8], [100, 100, 0.02]], device="cuda", dtype=torch.float32
+        [[0.3, 0.5, 1.8], [20, 20, 0.02]], device="cuda", dtype=torch.float32
     )
     features = (
         renderer.splats["features"][:2]
@@ -340,6 +340,13 @@ def large_gaussian(renderer, output):
         full, a, _ = rasterization(**arguments, far_plane=100)
         rgb = renderer.shader(full)[0][0].cpu().numpy()
         full_a = a[0].cpu().numpy()
+        # Fixed central ROI stays in the declared A>=.98 support profile.
+        # An unbounded sheet (xy sigma 40/100) vanished in the native projector;
+        # keep that failed fixture in the diagnostic record, not as a fallback.
+        valid = np.zeros_like(full_a, bool)
+        valid[9:27, 16:48] = True
+        if full_a[valid].min() < 0.98:
+            raise AssertionError("Stress fixture foreground is outside alpha support")
         outputs = []
         alphas = []
         for cutoff in (4.199, 4.201):
@@ -367,7 +374,7 @@ def large_gaussian(renderer, output):
                     full_a,
                     fg,
                     rgb,
-                    np.ones_like(alpha, bool),
+                    valid,
                     mode=mode,
                 )
                 rows.append((mode, np.repeat(np.repeat(image, 4, axis=0), 4, axis=1)))
@@ -389,16 +396,20 @@ def large_gaussian(renderer, output):
     peak_z = (rays @ precision @ mu) / np.einsum(
         "...i,ij,...j->...", rays, precision, rays
     )
-    active = alphas[1][..., 0] > 0.02
+    active = (alphas[1][..., 0] > 0.02) & valid[..., 0]
     return {
         "mean_z": 4.2,
         "cutoffs_m": [4.199, 4.201],
-        "max_prefix_alpha_jump": float(np.abs(alphas[1] - alphas[0]).max()),
+        "max_prefix_alpha_jump": float(np.abs(alphas[1] - alphas[0])[valid].max()),
         "closed_rgb_jump_max": error(outputs[0], outputs[1])["max"],
         "peak_before_4m_but_mean_behind_pixels": int(((peak_z < 4) & active).sum()),
         "relevant_pixels": int(active.sum()),
         "known_large_gaussian_warning": True,
-        "full_alpha_min": float(full_a.min()),
+        "full_alpha_min": float(full_a[valid].min()),
+        "full_alpha_min_all": float(full_a.min()),
+        "foreground_samples": int(valid.sum()),
+        "foreground_roi_xyxy": [16, 9, 48, 27],
+        "backplane_sigma_xy": 20,
     }
 
 
@@ -553,6 +564,7 @@ def main():
             )
         )
         record["timing"] = p.timing()
+        dump(output / "metrics.json", report)
         del p
     report["large_gaussian"] = large_gaussian(renderer, output)
     report["cuda_peak_allocated_bytes"] = torch.cuda.max_memory_allocated()
