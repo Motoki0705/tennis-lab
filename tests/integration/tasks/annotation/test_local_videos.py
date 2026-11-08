@@ -120,3 +120,50 @@ def test_short_vfr_cameras_retain_original_pixels_timeline_group_and_work(
     )
     assert all(any(path in document for document in documents) for path in image_paths)
     assert configure_local_videos(layout, data) == result
+
+
+def test_related_original_clips_share_group_without_aliasing_work(
+    tmp_path: Path,
+) -> None:
+    layout = AnnotationLayout.testing(tmp_path / "annotation")
+    data = local_configuration(layout)
+    first, second = data.videos
+    # Filenames are not camera identities. These are two original clip files
+    # from one camera/recording, each using its own file-relative frame clock.
+    second_input = second.annotation.model_copy(
+        update={
+            "source": second.annotation.source.model_copy(update={"camera_id": "cam0"}),
+            "frame_range": first.annotation.frame_range,
+            "frames": first.annotation.frames,
+        }
+    )
+    data = data.model_copy(
+        update={
+            "videos": (first, second.model_copy(update={"annotation": second_input}))
+        }
+    )
+    receipt = read_document(
+        layout, configure_local_videos(layout, data), LocalVideoConfigurationReceipt
+    )
+    inputs = [
+        read_local_context(layout, entry.context, receipt.plan)
+        for entry in receipt.registrations
+    ]
+    assert {(i.source.recording_id, i.source.camera_id) for i in inputs} == {
+        ("recording-a", "cam0")
+    }
+    assert len({i.source.media_sha256 for i in inputs}) == 2
+    contexts = [
+        read_document(layout, entry.context, BlankAnnotationContext)
+        for entry in receipt.registrations
+    ]
+    assert len({c.manifest for c in contexts}) == 2
+    assert (
+        len(
+            {
+                read_document(layout, entry.request, WorkRequest).work_id
+                for entry in receipt.registrations
+            }
+        )
+        == 2
+    )

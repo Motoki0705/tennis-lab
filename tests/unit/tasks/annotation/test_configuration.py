@@ -495,7 +495,7 @@ def test_next_campaign_reuses_stopped_scope_and_cumulative_usage(
 @pytest.mark.parametrize(
     "damage",
     ["missing_cost", "gpu_kind", "pss", "codex_home", "queue", "selection", "root",
-     "blank_cost", "blank_gpu", "blank_pts", "blank_bytes", "blank_camera", "blank_model", "blank_queue"],
+     "blank_cost", "blank_gpu", "blank_pts", "blank_bytes", "blank_overlap", "blank_model", "blank_queue"],
 )
 def test_invalid_configuration_does_not_create_budget_or_plan(
     example: Example, damage: str
@@ -513,13 +513,13 @@ def test_invalid_configuration_does_not_create_budget_or_plan(
             local = local.model_copy(update={"runtime": local.runtime.model_copy(update={"costs": costs})})
         elif damage == "blank_bytes":
             Path(local.videos[0].path).write_bytes(b"same input was replaced")
+        elif damage == "blank_overlap":
+            local = local.model_copy(update={"videos": (local.videos[0], local.videos[0])})
         else:
+            assert damage == "blank_pts"
             video = local.videos[0]
             expected = video.annotation
-            if damage == "blank_pts":
-                expected = expected.model_copy(update={"frames": (expected.frames[0].model_copy(update={"pts": expected.frames[0].pts + 1}), *expected.frames[1:])})
-            else:
-                expected = expected.model_copy(update={"source": expected.source.model_copy(update={"camera_id": "cam2"})})
+            expected = expected.model_copy(update={"frames": (expected.frames[0].model_copy(update={"pts": expected.frames[0].pts + 1}), *expected.frames[1:])})
             local = local.model_copy(update={"videos": (video.model_copy(update={"annotation": expected}), *local.videos[1:])})
         with pytest.raises(ValueError):
             configure_local_videos(example.layout, local)

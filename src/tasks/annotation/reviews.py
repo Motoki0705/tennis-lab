@@ -169,7 +169,7 @@ def _validate_local_context(
         != (
             "local",
             content_digest(source.recording_id),
-            content_digest([source.recording_id, source.camera_id]),
+            source.sha256,
             Path(video.path).as_uri(),
         )
         or (manifest.source.media.digest, manifest.source.media.size_bytes)

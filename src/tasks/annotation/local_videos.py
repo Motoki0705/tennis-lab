@@ -7,7 +7,6 @@ from pathlib import Path
 
 from pydantic import Field
 
-from src.tasks.ball_detection.annotation.video import VideoIdentity
 from src.tasks.ball_detection.annotation.video.inputs import validate_video_input
 from src.tasks.base.annotation.artifacts import (
     annotation_reference,
@@ -100,8 +99,7 @@ def register_local_videos(
     if layout.mode == "production":
         require_frozen_code(PROJECT_ROOT, plan)
 
-    identities: dict[tuple[str, str], VideoIdentity] = {}
-    scopes: dict[tuple[str, str], list[FrameRange]] = {}
+    scopes: dict[str, list[FrameRange]] = {}
     timelines = []
     for video in data.videos:
         expected = video.annotation
@@ -115,19 +113,15 @@ def register_local_videos(
             raise ValueError(
                 "local video path must be absolute, normalized and match the original file_name"
             )
-        key = (source.recording_id, source.camera_id)
-        previous = identities.setdefault(key, source)
-        if previous != source:
-            raise ValueError(
-                "one recording/camera cannot mix original video input versions"
-            )
-        intervals = scopes.setdefault(key, [])
+        # A recording group can contain several original files for one camera.
+        # Native frame indices are scoped to the full task-owned video identity.
+        intervals = scopes.setdefault(source.sha256, [])
         if any(
             r.start < expected.frame_range.stop and expected.frame_range.start < r.stop
             for r in intervals
         ):
             raise ValueError(
-                "local input repeats or overlaps a recording/camera frame range"
+                "local input repeats or overlaps an original video/camera frame range"
             )
         intervals.append(expected.frame_range)
         timelines.append(validate_video_input(path, expected))
@@ -167,12 +161,7 @@ def register_local_videos(
         # another plan. Source/camera and native range define the shared subject.
         for video in data.videos:
             expected = video.annotation
-            video_id = content_digest(
-                [
-                    expected.source.recording_id,
-                    expected.source.camera_id,
-                ]
-            )
+            video_id = expected.source.sha256
             clip_id = content_digest(
                 [
                     content_digest(["local", video_id]),
@@ -229,7 +218,7 @@ def register_local_videos(
             source = SourceIdentity(
                 provider="local",
                 channel_id=content_digest(identity.recording_id),
-                video_id=content_digest([identity.recording_id, identity.camera_id]),
+                video_id=identity.sha256,
                 media=original,
                 origin_url=Path(video.path).as_uri(),
             )

@@ -86,7 +86,9 @@ for entry in receipt.registrations:
 同一収録の全camera・関連clipでrecording_idを共有する。対象区間は元動画のframe indexによる
 半開区間、各行のPTSは元動画の整数tickを指定する。登録時に元bytes・全動画metadata・
 対象全frameの実PTSを復号して照合する。FPSからPTSを補わない。
-同じ収録/camera内の異なる元動画版、重複・重なる対象区間は1要求へ混在させない。
+同じ元動画/camera内の重複・重なる対象区間は1要求へ混在させない。
+同じ収録group/cameraに複数の切出し済み動画がある場合も、元動画identityごとに
+file-relativeなframe/PTSとworkを分ける。groupを元動画identityの代わりに使わない。
 
 元動画は呼出元pathを削除せず、`media/sources/blobs/`にも元bytesを保持する。
 指定範囲の全native frameをQ90 JPEGへ直接保存し、画像manifestから元frame/PTSを辿れる。
