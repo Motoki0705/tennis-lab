@@ -38,7 +38,7 @@ document.querySelector('[data-figure-id="error-plot"] output').textContent = inp
 })();"""
 STYLE = b"""body{margin:0;padding:28px;font:18px/1.7 system-ui;color:#202c39;background:#fff}
 section{padding:15px 10px;max-width:850px}h1,h2{line-height:1.3}img{width:160px;max-width:100%}
-#overview{min-height:600px}#geometry{min-height:600px}#limits{min-height:950px}
+#overview{min-height:900px}#limits{min-height:950px}
 input{max-width:100%}h2:focus-visible,figure:focus-visible{outline:3px solid #a94c00}
 @media(max-width:500px){body{padding:16px}}"""
 HTML = """<!doctype html><html lang="ja"><head><meta charset="utf-8">

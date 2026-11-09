@@ -132,6 +132,7 @@ async function reading() {
     ),
   );
   const before = await body.locator('#limits').evaluate((el) => el.getBoundingClientRect().top);
+  const beforeScroll = await body.evaluate(() => scrollY);
   const edit = await submit(page, 'hold add an explanation to the whole page');
   assert.deepEqual(edit.target, { kind: 'document' });
   assert.equal(edit.base_revision, first);
@@ -153,6 +154,10 @@ async function reading() {
       (await body.locator('#limits').evaluate((el) => el.getBoundingClientRect().top)) - before,
     ) < 4,
     'unchanged reading anchor must stay in place',
+  );
+  assert.ok(
+    (await body.evaluate(() => scrollY)) > beforeScroll,
+    'the added paragraph above the reading anchor must change its absolute scroll position',
   );
   assert.equal(await page.locator('.answer').count(), 0, 'answers belong in the document');
   assert.equal(await body.locator('[data-reader-changed="true"]#geometry').count(), 1);
