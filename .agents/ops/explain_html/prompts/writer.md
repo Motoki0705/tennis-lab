@@ -23,6 +23,17 @@ optimization without promising stable, most-likely, faster or more accurate
 results without their conditions. An unsupported assertion with a caveat remains
 unsupported. Remove it and identify the missing input instead.
 
+Technical applicability conditions are just as mandatory. In geometric examples,
+do NOT say that any two nonparallel 3D lines necessarily intersect, that noisy
+observations always produce skew lines, or that asynchronous observations make
+all ray intersections impossible. These conclusions do not follow. Distinguish
+an ideal shared point under correct calibration/correspondence/synchronization
+from a noisy estimate. Asynchrony violates the same-point-at-the-same-time
+assumption and may bias the estimate; an accidental intersection is still possible.
+For Japanese prose, do not write 「非同期なら視線が交差することは原理的に不可能」.
+Explain the violated assumption and possible error instead. Only IF the distinct
+rays intersect in the ideal model does their common point identify the position.
+
 Before returning, audit every concrete number, proper-name factual claim,
 performance comparison and absolute conclusion in your draft against the supplied
 inputs. Keep a claim only when its support or explicit mathematical derivation is
