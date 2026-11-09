@@ -213,7 +213,7 @@ The controller must still synchronize cancellation with its later commit.
 ## Local service and trusted integrations
 
 With `PYTHONPATH=.agents/ops`, construct
-`JobController(store, editor, validator, prepare=...)` and
+`JobController(store, editor_factory, validator, prepare=...)` and
 `create_app(controller, port=actual_bound_port, ui_files=...)`. The CLI always binds
 **127.0.0.1**, defaults to an OS-assigned port, and has no wildcard/LAN bind option.
 One controller holds a nonblocking filesystem lock on the runtime root until all
@@ -230,6 +230,14 @@ verdict. A visual safety/figure compiler alone does not prove browser rendering.
 Compile figures before independent semantic review; later HTML changes invalidate
 that review's digest.
 
+`EditorFactory(prepared)` creates an editor for each request. The CLI's required
+`--compiler module:factory` receives the request's mutable `prepared.assets` map
+and returns the adapter's required DocumentCompiler. The compiler places newly
+generated SVG/renderer bytes in that map before returning the final Document.
+Those same bytes go to staging and validation. Each request owns its compiler and
+map, so concurrent documents cannot mix resources. No implicit identity compiler
+is selected, including for figure-free documents.
+
 The optional trusted `AssetPreparer` returns PreparedEdit with WritingContext and
 new asset bytes. The default `preserve_resources` retains current evidence/assets
 and all change summaries. Inject figure/image capability planning here; the
@@ -240,11 +248,11 @@ field, so semantic capability planning must be supplied by the integration. The
 default does not claim to recognize image intent in arbitrary text.
 
 Run with the repository Python. Replace the example validator with an
-operator-controlled module implementing BundleValidator:
+operator-controlled module implementing BundleValidator and the compiler factory:
 
 ```bash
 export PYTHONPATH=.agents/ops
-.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --compiler my_rendering:compiler_for --validator my_rendering:validate_bundle
 .venv/bin/python -m explain_html status --root outputs/explain-html
 .venv/bin/python -m explain_html stop --root outputs/explain-html
 .venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
@@ -480,7 +488,7 @@ fixed real-time sleep.
 Runtime coverage adds 12 real-store integration cases in `test_jobs.py` and 6
 HTTP/CLI cases in `tests/e2e/agents_ops/explain_html/test_service.py`. Explicit fake
 editor/rendering boundaries, Event gates, OS-assigned ports and private temporary
-roots cover duplicate calls/commits, stale bases, cancel/undo/shutdown late
+roots cover duplicate calls/commits, request-scoped compiled bytes, stale bases, cancel/undo/shutdown late
 results, active-journal recovery, disk failure after pointer replacement,
 cross-session tokens, Host/Origin/path rejection, closed exports and public CLI
 startup/shutdown/restart/offline export.

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event
@@ -96,6 +96,16 @@ def fake_rendering(
     return schema.CheckResult(status="passed")
 
 
+def identity_compiler(assets: dict[str, bytes]) -> Callable[[Any], Any]:
+    """Explicit compiler for this test's figure-free CLI fixture."""
+
+    def compile_document(document: Any) -> Any:
+        assert not document.assets and not document.figures and not assets
+        return document
+
+    return compile_document
+
+
 class JobWorld:
     def __init__(self, root: Path):
         self.root = root
@@ -114,9 +124,8 @@ class JobWorld:
         self.controllers: list[Any] = []
 
     def controller(self, **kwargs: Any) -> Any:
-        controller = jobs.JobController(
-            self.store, self.editor, self.validator, **kwargs
-        )
+        factory = kwargs.pop("editor_factory", lambda prepared: self.editor)
+        controller = jobs.JobController(self.store, factory, self.validator, **kwargs)
         self.controllers.append(controller)
         return controller
 

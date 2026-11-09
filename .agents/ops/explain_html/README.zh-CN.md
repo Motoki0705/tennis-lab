@@ -154,7 +154,7 @@ process group 后返回 cancelled。预先 set 的 Event 阻止启动。timeout�
 
 ## 本地服务与受信集成
 
-设置 `PYTHONPATH=.agents/ops` 后构造 `JobController(store, editor, validator, prepare=...)` 和
+设置 `PYTHONPATH=.agents/ops` 后构造 `JobController(store, editor_factory, validator, prepare=...)` 和
 `create_app(controller, port=actual_bound_port, ui_files=...)`。CLI 始终绑定 **127.0.0.1**，默认使用
 OS 分配端口，不提供 wildcard/LAN bind 选项。runtime root 由一个 controller 持有非阻塞 filesystem lock，
 直到所有 worker 返回。不同文档可同时生成，同一文档串行执行。排队期间 base 过期的请求在生成前失败。
@@ -166,17 +166,22 @@ controller 将结果绑定到 editor 的同一候选 digest，所有检查 passe
 没有内置渲染验证器或默认 passed 判定。仅做 visual 安全检查/figure compile 不能证明浏览器渲染。
 应在独立语义检查前 compile figure；之后修改 HTML 会使该检查的 digest 失效。
 
+`EditorFactory(prepared)` 为每个请求创建 editor。CLI 必需的 `--compiler module:factory` 接收该请求的
+可变 `prepared.assets` map，并返回 adapter 必需的 DocumentCompiler。
+compiler 将生成的 SVG/renderer bytes 写入该 map 后返回最终 Document；同一 bytes 进入 stage/验证。
+每个请求独立持有 compiler 和 map，避免并行文档混合资源。没有 figure 时也不隐式选择 identity compiler。
+
 可选的受信 `AssetPreparer` 返回包含 WritingContext 和新 asset bytes 的 PreparedEdit。
 默认 `preserve_resources` 保留当前依据/assets 和完整变更摘要。在这里注入 figure/图像能力规划，
 服务不自行实现图像生成。阅读期间需要新 AI 图像时，规划必须抛出 `image_generation_unavailable`，
 使整个请求未完成并保留当前版。原始 EditRequest 指令没有类型化图像意图字段，语义能力规划需由集成方提供。
 默认处理不声称能识别任意自然语言的图像意图。
 
-使用仓库 Python，把示例 validator 名称替换成实现 BundleValidator 的运营者受控 module：
+使用仓库 Python，把示例 module 名称替换成实现 BundleValidator 和 compiler factory 的运营者受控 module：
 
 ```bash
 export PYTHONPATH=.agents/ops
-.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --compiler my_rendering:compiler_for --validator my_rendering:validate_bundle
 .venv/bin/python -m explain_html status --root outputs/explain-html
 .venv/bin/python -m explain_html stop --root outputs/explain-html
 .venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
@@ -344,6 +349,6 @@ editor 在 `test_editor.py` 添加 11 个 integration case，在
 
 runtime 在 `test_jobs.py` 添加 12 个真实 store integration case，在
 `tests/e2e/agents_ops/explain_html/test_service.py` 添加 6 个 HTTP/CLI case。
-使用假 editor/渲染判定、Event gate、OS 分配端口和私有临时 root，验证生成/commit 去重、过期 base、
+使用假 editor/渲染判定、Event gate、OS 分配端口和私有临时 root，验证生成/commit 去重、请求独立的 compile bytes、过期 base、
 cancel/undo/shutdown 后的延迟结果、活动 journal 恢复、pointer 切换后的 disk 错误、跨 session token、
 Host/Origin/path 拒绝、公开 export 清单和 CLI 启停/重启/离线 export。

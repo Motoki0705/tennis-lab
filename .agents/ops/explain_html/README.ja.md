@@ -162,7 +162,7 @@ timeout・cancel・model不一致・不正出力・意味検査失敗は共通�
 
 ## ローカルserviceと信頼する統合部品
 
-`PYTHONPATH=.agents/ops` で `JobController(store, editor, validator, prepare=...)` と
+`PYTHONPATH=.agents/ops` で `JobController(store, editor_factory, validator, prepare=...)` と
 `create_app(controller, port=actual_bound_port, ui_files=...)` を構築する。
 CLIのbindは常に **127.0.0.1**、portの既定はOS割当で、wildcard/LANへのbind指定はない。
 runtime rootは非待機のfilesystem lockで単一controllerが所有し、全workerの終了まで保持する。
@@ -176,6 +176,12 @@ controllerがeditorの候補digestへ結び付け、全検査がpassedの場合�
 browser描画の証拠にならない。figureは独立した意味検査より前にcompileする。
 意味検査後のHTML変更はそのdigestを無効にする。
 
+`EditorFactory(prepared)` は要求ごとにeditorを構築する。CLI必須の `--compiler module:factory` は
+要求単位の可変 `prepared.assets` mapを受け、adapterが要求するDocumentCompilerを返す。
+compilerは生成したSVG/renderer bytesをそのmapへ入れてから最終Documentを返す。
+同じbytesをstage/検証へ渡し、compilerとmapを要求単位に分けて文書間の混在を防ぐ。
+figureがない文書でも暗黙のidentity compilerは選ばない。
+
 任意の信頼する `AssetPreparer` はWritingContextと新しいasset bytesをPreparedEditとして返す。
 既定の `preserve_resources` は現在の根拠・assetsと全変更要約を保持する。ここへfigure/画像能力の
 準備を注入できるが、service独自の画像生成はない。計画で閲覧中の新規AI画像が必要と判定したら
@@ -183,11 +189,11 @@ browser描画の証拠にならない。figureは独立した意味検査より�
 生のEditRequest指示には型付き画像意図fieldがないので、意味に基づく能力判定は統合側が用意する。
 既定処理は任意の自然文から画像意図を認識できるとは主張しない。
 
-repoのPythonで実行する。例のvalidator名は、BundleValidatorを実装する運用者管理のmoduleへ置き換える。
+repoのPythonで実行する。例のmodule名は、BundleValidatorとcompiler factoryを実装する運用者管理のものへ置き換える。
 
 ```bash
 export PYTHONPATH=.agents/ops
-.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --compiler my_rendering:compiler_for --validator my_rendering:validate_bundle
 .venv/bin/python -m explain_html status --root outputs/explain-html
 .venv/bin/python -m explain_html stop --root outputs/explain-html
 .venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
@@ -364,6 +370,6 @@ editorの検証にはbrowser・固定の実時間sleepは不要。
 
 runtimeは `test_jobs.py` の実store integration 12件と、
 `tests/e2e/agents_ops/explain_html/test_service.py` のHTTP/CLI 6件を追加する。
-偽editor/描画判定、Event gate、OS割当port、privateな一時rootを使い、生成/commitの重複・古いbase・
+偽editor/描画判定、Event gate、OS割当port、privateな一時rootを使い、生成/commitの重複・要求単位のcompile bytes・古いbase・
 cancel/undo/shutdown後の遅延結果・進行中journalの復旧・現在版切替後のdiskエラー・session間のtoken分離・
 Host/Origin/path拒否・公開export範囲・CLIの起動/終了/再起動/offline exportを検査する。

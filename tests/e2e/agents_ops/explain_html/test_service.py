@@ -331,6 +331,8 @@ def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> No
             str(env.root / "agy"),
             "--validator",
             "tests.support.agents_ops.explain_jobs:fake_rendering",
+            "--compiler",
+            "tests.support.agents_ops.explain_jobs:identity_compiler",
         )
 
     first = start()

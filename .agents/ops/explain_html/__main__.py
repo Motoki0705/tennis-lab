@@ -74,7 +74,7 @@ def _serve(arguments: argparse.Namespace) -> None:
 
     from .editor import GeminiEditor
     from .gemini import DEFAULT_AGY, Gemini
-    from .jobs import JobController, preserve_resources
+    from .jobs import JobController, PreparedEdit, preserve_resources
     from .service import create_app
 
     controller: JobController | None = None
@@ -84,18 +84,19 @@ def _serve(arguments: argparse.Namespace) -> None:
         if arguments.document:
             store.current(arguments.document)
         validator = _load(arguments.validator)
+        compiler_factory = _load(arguments.compiler)
         prepare = _load(arguments.prepare) if arguments.prepare else preserve_resources
         ui = _load(arguments.ui)() if arguments.ui else None
-        controller = JobController(
-            store,
-            GeminiEditor(
-                Gemini(
-                    arguments.root / "private/gemini", agy=arguments.agy or DEFAULT_AGY
-                )
-            ),
-            validator,
-            prepare=prepare,
+        gemini = Gemini(
+            arguments.root / "private/gemini", agy=arguments.agy or DEFAULT_AGY
         )
+
+        def editor_factory(prepared: PreparedEdit) -> GeminiEditor:
+            return GeminiEditor(
+                gemini, compile_document=compiler_factory(prepared.assets)
+            )
+
+        controller = JobController(store, editor_factory, validator, prepare=prepare)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             # There is deliberately no configurable LAN/wildcard bind.
@@ -180,6 +181,8 @@ def _start(arguments: argparse.Namespace) -> None:
                 str(arguments.port),
                 "--validator",
                 arguments.validator,
+                "--compiler",
+                arguments.compiler,
                 "--ready-fd",
                 str(write_fd),
             ]
@@ -249,6 +252,11 @@ def main() -> int:
                 help="published document ID for the fixed UI launch fragment",
             )
             command.add_argument("--port", type=int, default=0)
+            command.add_argument(
+                "--compiler",
+                required=True,
+                help="trusted module:factory receiving request-scoped asset bytes and returning DocumentCompiler",
+            )
             command.add_argument(
                 "--validator",
                 required=True,

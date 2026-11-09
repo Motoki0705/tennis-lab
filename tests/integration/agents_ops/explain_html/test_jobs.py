@@ -7,8 +7,10 @@ not multiplied here. All writers and visual verdicts are explicit test doubles.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -30,7 +32,32 @@ def test_retries_and_status_cannot_duplicate_generation_or_publication(
 ) -> None:
     world = job_world
     gate = world.editor.gates["edit"] = Gate()
-    controller = world.controller()
+    compiled_svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 9 4"><path d="M1 1L4 3L8 1"/></svg>'
+
+    def editor_factory(prepared: Any) -> Any:
+        def edit(*args: Any, **kwargs: Any) -> Any:
+            result = world.editor.edit(*args, **kwargs)
+            document = result.candidate.document
+            assets = [
+                asset.model_copy(
+                    update={"sha256": hashlib.sha256(compiled_svg).hexdigest()}
+                )
+                if asset.asset_id == "court"
+                else asset
+                for asset in document.assets
+            ]
+            compiled = result.candidate.model_copy(
+                update={"document": document.model_copy(update={"assets": assets})}
+            )
+            prepared.assets["court"] = compiled_svg
+            return SimpleNamespace(
+                candidate=compiled,
+                validation=validation_for(compiled, rendering={"status": "not_run"}),
+            )
+
+        return SimpleNamespace(edit=edit)
+
+    controller = world.controller(editor_factory=editor_factory)
     request = world.request()
     with ThreadPoolExecutor(2) as pool:
         accepted = list(pool.map(controller.submit, [request, request]))
@@ -51,7 +78,15 @@ def test_retries_and_status_cannot_duplicate_generation_or_publication(
     assert len(world.editor.calls) == len(world.commits) == 1
     assert len(world.store.history("ray-geometry")) == 2
     assert done.changes[0].content_id == "geometry"
-    assert world.validator.seen[0][1] == PAYLOADS
+    assert world.validator.seen[0][1] == {**PAYLOADS, "court": compiled_svg}
+    assert (
+        world.store.asset_bytes("ray-geometry", done.revision_id, "court")
+        == compiled_svg
+    )
+    assert (
+        world.store.asset_bytes("ray-geometry", world.first.revision_id, "court")
+        == PAYLOADS["court"]
+    )
     assert world.editor.contexts[0].change_summaries == [world.first.change_summary]
     with pytest.raises(schema.ContractError, match="stale_revision"):
         controller.submit(world.request("stale"))
