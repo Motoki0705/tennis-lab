@@ -1,0 +1,13 @@
+{
+  "tests_passed": 56,
+  "wall_seconds": 6.95,
+  "collection_seconds": 0.37,
+  "max_displayed_setup_seconds": 0.06,
+  "max_displayed_sum_of_phases_seconds": 0.06,
+  "max_cases_per_function": 6,
+  "durations_precision_seconds": 0.01,
+  "research_approximation_cases": 21,
+  "retained_layer_cases": 14,
+  "existing_nht_cases": 21,
+  "pytest_workers": 2
+}

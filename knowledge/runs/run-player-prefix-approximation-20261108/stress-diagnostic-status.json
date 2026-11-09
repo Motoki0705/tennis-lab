@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "stress-diagnostic",
+  "status": "completed",
+  "updated_at": "2026-11-08T15:22:15.244874+00:00",
+  "returncode": 0,
+  "worker_pid": 17198,
+  "worker_token": "314166",
+  "launch_guarded": true,
+  "pid": 17363,
+  "process_token": "316835",
+  "started_at": "2026-11-08T15:22:11.233459+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-11-08T15:22:36.787062+00:00",
+  "finished_at": "2026-11-08T15:22:36.787080+00:00"
+}

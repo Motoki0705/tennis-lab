@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "probe",
+  "status": "completed",
+  "updated_at": "2026-11-08T13:53:41.283267+00:00",
+  "returncode": 0,
+  "worker_pid": 10259,
+  "worker_token": "154935",
+  "launch_guarded": true,
+  "pid": 10434,
+  "process_token": "157767",
+  "started_at": "2026-11-08T13:53:31.255517+00:00",
+  "completion_target": "completed",
+  "drive_saved_at": "2026-11-08T13:54:25.523625+00:00",
+  "finished_at": "2026-11-08T13:54:25.523644+00:00"
+}

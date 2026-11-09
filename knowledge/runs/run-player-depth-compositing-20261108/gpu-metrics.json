@@ -1,0 +1,629 @@
+{
+  "schema_version": 1,
+  "court": "court-000",
+  "nht_units_per_metre": 0.06983810646574976,
+  "cameras": [
+    {
+      "camera_id": "court-eye-0",
+      "eye_court_m": [
+        0,
+        -8,
+        1.65
+      ],
+      "target_court_m": [
+        0,
+        4,
+        0.4
+      ]
+    },
+    {
+      "camera_id": "court-eye-1",
+      "eye_court_m": [
+        0,
+        -3,
+        1.65
+      ],
+      "target_court_m": [
+        0,
+        4,
+        0.4
+      ]
+    },
+    {
+      "camera_id": "court-eye-2",
+      "eye_court_m": [
+        3,
+        -8,
+        1.65
+      ],
+      "target_court_m": [
+        0,
+        4,
+        0.4
+      ]
+    }
+  ],
+  "resolution": [
+    256,
+    144
+  ],
+  "gpu": "NVIDIA L4",
+  "python": "3.11.17",
+  "cuda": "13.0",
+  "git_commit": "49eb7b4ab5ad04e2f2592cf90c5b2d777e02a567",
+  "packages": {
+    "torch": "2.9.1+cu130",
+    "gsplat": "1.5.3",
+    "numpy": "2.4.6",
+    "tinycudann": "2.0"
+  },
+  "known_sheets": {
+    "opaque_before": {
+      "z": [
+        2.0
+      ],
+      "alpha": [
+        0.999
+      ],
+      "straight_rgb": [
+        [
+          1,
+          0,
+          0
+        ]
+      ],
+      "full_rgb": [
+        0.9990000128746033,
+        0.0,
+        0.0
+      ],
+      "full_alpha": 0.9990000128746033,
+      "expected_z": 2.0,
+      "prefix_rgb": [
+        0.9990000128746033,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 0.0009999871253967285,
+      "composite": [
+        0.9990000128746033,
+        0.0009999871253967285,
+        0.0
+      ],
+      "hand_expected": [
+        0.999,
+        0.001,
+        0
+      ],
+      "max_error": 1.2874603272372553e-08,
+      "ed_compare": [
+        0.9990000128746033,
+        0.0,
+        0.0
+      ]
+    },
+    "opaque_behind": {
+      "z": [
+        8.0
+      ],
+      "alpha": [
+        0.999
+      ],
+      "straight_rgb": [
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "full_rgb": [
+        0.0,
+        0.0,
+        0.9990000128746033
+      ],
+      "full_alpha": 0.9990000128746033,
+      "expected_z": 8.0,
+      "prefix_rgb": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 1.0,
+      "composite": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "hand_expected": [
+        0,
+        1,
+        0
+      ],
+      "max_error": 0.0,
+      "ed_compare": [
+        0,
+        1,
+        0
+      ]
+    },
+    "net_before": {
+      "z": [
+        2.0,
+        8.0
+      ],
+      "alpha": [
+        0.25,
+        0.999
+      ],
+      "straight_rgb": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "full_rgb": [
+        0.25,
+        0.0,
+        0.7492499947547913
+      ],
+      "full_alpha": 0.9992499947547913,
+      "expected_z": 6.498874187469482,
+      "prefix_rgb": [
+        0.25,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 0.75,
+      "composite": [
+        0.25,
+        0.75,
+        0.0
+      ],
+      "hand_expected": [
+        0.25,
+        0.75,
+        0
+      ],
+      "max_error": 0.0,
+      "ed_compare": [
+        0,
+        1,
+        0
+      ]
+    },
+    "net_behind": {
+      "z": [
+        6.0,
+        8.0
+      ],
+      "alpha": [
+        0.25,
+        0.999
+      ],
+      "straight_rgb": [
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1
+        ]
+      ],
+      "full_rgb": [
+        0.25,
+        0.0,
+        0.7492499947547913
+      ],
+      "full_alpha": 0.9992499947547913,
+      "expected_z": 7.499624729156494,
+      "prefix_rgb": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "prefix_transmittance": 1.0,
+      "composite": [
+        0.0,
+        1.0,
+        0.0
+      ],
+      "hand_expected": [
+        0,
+        1,
+        0
+      ],
+      "max_error": 0.0,
+      "ed_compare": [
+        0,
+        1,
+        0
+      ]
+    }
+  },
+  "views": [
+    {
+      "camera_id": "court-eye-0",
+      "full_alpha": {
+        "min": 0.9901798367500305,
+        "mean": 0.9998160454253795,
+        "q95": 0.9998994469642639,
+        "max": 0.9998999834060669
+      },
+      "full_depth_m": {
+        "min": 3.362412929534912,
+        "mean": 23.518544434104115,
+        "q95": 89.52868576049805,
+        "max": 318.171142578125
+      },
+      "capture_seconds": 0.012159601999883307,
+      "steady_seconds": [
+        0.010299080000095273,
+        0.009833943000103318,
+        0.009793433000140794
+      ],
+      "prefix": [
+        {
+          "cutoff_m": 2.0,
+          "seconds": 0.0034205530000690487,
+          "alpha": {
+            "min": 0.0,
+            "mean": 0.0,
+            "q95": 0.0,
+            "max": 0.0
+          },
+          "full_opaque_prefix_transparent_pixels": 36864,
+          "roi_mid_alpha_pixels": 0,
+          "raw_candidate_out_of_range_values": 36864,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.0,
+            "q95": 0.0,
+            "max": 0.0
+          }
+        },
+        {
+          "cutoff_m": 6.0,
+          "seconds": 0.0038322979999065865,
+          "alpha": {
+            "min": 0.0,
+            "mean": 0.2653807123586173,
+            "q95": 0.8375783175230025,
+            "max": 0.995060384273529
+          },
+          "full_opaque_prefix_transparent_pixels": 36555,
+          "roi_mid_alpha_pixels": 10483,
+          "raw_candidate_out_of_range_values": 28060,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.009375163969771713,
+            "q95": 0.026516837812960135,
+            "max": 0.09775324165821075
+          }
+        },
+        {
+          "cutoff_m": 10.0,
+          "seconds": 0.005139142999951218,
+          "alpha": {
+            "min": 0.0,
+            "mean": 0.4801638616320108,
+            "q95": 0.9555046498775482,
+            "max": 0.9996249675750732
+          },
+          "full_opaque_prefix_transparent_pixels": 28582,
+          "roi_mid_alpha_pixels": 8311,
+          "raw_candidate_out_of_range_values": 20795,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.011327591296597566,
+            "q95": 0.04360904917120933,
+            "max": 0.12626442313194275
+          }
+        }
+      ],
+      "zero_features_decoded_rgb": {
+        "min": 0.23193359375,
+        "mean": 0.4676350951194763,
+        "q95": 0.56298828125,
+        "max": 0.671875
+      },
+      "affinity_error": [
+        {
+          "weight": 0.25,
+          "error": {
+            "min": 0.0,
+            "mean": 0.024265073515750742,
+            "q95": 0.06298828125,
+            "max": 0.19012451171875
+          }
+        },
+        {
+          "weight": 0.5,
+          "error": {
+            "min": 0.0,
+            "mean": 0.026368795721619216,
+            "q95": 0.061248779296875,
+            "max": 0.17578125
+          }
+        },
+        {
+          "weight": 0.75,
+          "error": {
+            "min": 0.0,
+            "mean": 0.01650353603892856,
+            "q95": 0.03753662109375,
+            "max": 0.09283447265625
+          }
+        }
+      ]
+    },
+    {
+      "camera_id": "court-eye-1",
+      "full_alpha": {
+        "min": 0.9897958040237427,
+        "mean": 0.9998338567238534,
+        "q95": 0.9998995065689087,
+        "max": 0.9998999834060669
+      },
+      "full_depth_m": {
+        "min": 3.1237568855285645,
+        "mean": 14.65201127628744,
+        "q95": 44.91567726135249,
+        "max": 182.1634521484375
+      },
+      "capture_seconds": 0.0067986779999955615,
+      "steady_seconds": [
+        0.006470949999993536,
+        0.006606423999983235,
+        0.006339361999835091
+      ],
+      "prefix": [
+        {
+          "cutoff_m": 2.0,
+          "seconds": 0.002796419999867794,
+          "alpha": {
+            "min": 0.0,
+            "mean": 0.0,
+            "q95": 0.0,
+            "max": 0.0
+          },
+          "full_opaque_prefix_transparent_pixels": 36863,
+          "roi_mid_alpha_pixels": 0,
+          "raw_candidate_out_of_range_values": 36864,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.0,
+            "q95": 0.0,
+            "max": 0.0
+          }
+        },
+        {
+          "cutoff_m": 6.0,
+          "seconds": 0.004092726999942897,
+          "alpha": {
+            "min": 0.0,
+            "mean": 0.368778055262131,
+            "q95": 0.8689569592475891,
+            "max": 0.9992830157279968
+          },
+          "full_opaque_prefix_transparent_pixels": 35519,
+          "roi_mid_alpha_pixels": 10731,
+          "raw_candidate_out_of_range_values": 22835,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.013135615416243977,
+            "q95": 0.029434804618358613,
+            "max": 0.09279340505599976
+          }
+        },
+        {
+          "cutoff_m": 10.0,
+          "seconds": 0.005168995999838444,
+          "alpha": {
+            "min": 0.007007718086242676,
+            "mean": 0.5781279828257134,
+            "q95": 0.999893069267273,
+            "max": 0.9998999834060669
+          },
+          "full_opaque_prefix_transparent_pixels": 19692,
+          "roi_mid_alpha_pixels": 3321,
+          "raw_candidate_out_of_range_values": 17908,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.006624427633057537,
+            "q95": 0.021594345755875103,
+            "max": 0.06675523519515991
+          }
+        }
+      ],
+      "zero_features_decoded_rgb": {
+        "min": 0.2342529296875,
+        "mean": 0.4709031946129269,
+        "q95": 0.55615234375,
+        "max": 0.63525390625
+      },
+      "affinity_error": [
+        {
+          "weight": 0.25,
+          "error": {
+            "min": 0.0,
+            "mean": 0.018271022234801895,
+            "q95": 0.0592041015625,
+            "max": 0.18084716796875
+          }
+        },
+        {
+          "weight": 0.5,
+          "error": {
+            "min": 0.0,
+            "mean": 0.020099860926469166,
+            "q95": 0.05902099609375,
+            "max": 0.1729736328125
+          }
+        },
+        {
+          "weight": 0.75,
+          "error": {
+            "min": 0.0,
+            "mean": 0.013106551849179797,
+            "q95": 0.0362548828125,
+            "max": 0.10552978515625
+          }
+        }
+      ]
+    },
+    {
+      "camera_id": "court-eye-2",
+      "full_alpha": {
+        "min": 0.9955794811248779,
+        "mean": 0.9998494353737138,
+        "q95": 0.9998995065689087,
+        "max": 0.9998999834060669
+      },
+      "full_depth_m": {
+        "min": 3.475665807723999,
+        "mean": 22.788470014845693,
+        "q95": 74.49073677062987,
+        "max": 285.59368896484375
+      },
+      "capture_seconds": 0.014493153999865171,
+      "steady_seconds": [
+        0.01419369099994583,
+        0.014074178000100801,
+        0.014025243999867598
+      ],
+      "prefix": [
+        {
+          "cutoff_m": 2.0,
+          "seconds": 0.002890854000042964,
+          "alpha": {
+            "min": 0.0,
+            "mean": 0.0,
+            "q95": 0.0,
+            "max": 0.0
+          },
+          "full_opaque_prefix_transparent_pixels": 36864,
+          "roi_mid_alpha_pixels": 0,
+          "raw_candidate_out_of_range_values": 36864,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.0,
+            "q95": 0.0,
+            "max": 0.0
+          }
+        },
+        {
+          "cutoff_m": 6.0,
+          "seconds": 0.0039042289999997593,
+          "alpha": {
+            "min": 0.0,
+            "mean": 0.21618037503988793,
+            "q95": 0.8291522890329358,
+            "max": 0.9896326065063477
+          },
+          "full_opaque_prefix_transparent_pixels": 36446,
+          "roi_mid_alpha_pixels": 7205,
+          "raw_candidate_out_of_range_values": 29646,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.006262266533353879,
+            "q95": 0.022570526227355003,
+            "max": 0.1077328473329544
+          }
+        },
+        {
+          "cutoff_m": 10.0,
+          "seconds": 0.004880676999846401,
+          "alpha": {
+            "min": 0.004048526287078857,
+            "mean": 0.42314627359317253,
+            "q95": 0.9889128267765045,
+            "max": 0.9997701048851013
+          },
+          "full_opaque_prefix_transparent_pixels": 29696,
+          "roi_mid_alpha_pixels": 8481,
+          "raw_candidate_out_of_range_values": 22447,
+          "weighted_vs_normalized_error": {
+            "min": 0.0,
+            "mean": 0.0110890618819747,
+            "q95": 0.04032121226191516,
+            "max": 0.12038834393024445
+          }
+        }
+      ],
+      "zero_features_decoded_rgb": {
+        "min": 0.27001953125,
+        "mean": 0.4927322136031257,
+        "q95": 0.60302734375,
+        "max": 0.70263671875
+      },
+      "affinity_error": [
+        {
+          "weight": 0.25,
+          "error": {
+            "min": 0.0,
+            "mean": 0.02059175584603239,
+            "q95": 0.059600830078125,
+            "max": 0.1396484375
+          }
+        },
+        {
+          "weight": 0.5,
+          "error": {
+            "min": 0.0,
+            "mean": 0.022922657430171967,
+            "q95": 0.06005859375,
+            "max": 0.1326904296875
+          }
+        },
+        {
+          "weight": 0.75,
+          "error": {
+            "min": 0.0,
+            "mean": 0.014740102682952528,
+            "q95": 0.03570556640625,
+            "max": 0.079315185546875
+          }
+        }
+      ]
+    }
+  ],
+  "public_seconds_including_load": 3.799702899000067,
+  "resident_load_seconds": 0.17952324900011263,
+  "runtime_config": {
+    "schema": "nht_runtime_config_v1",
+    "camera_model": "pinhole",
+    "pose_opt": false,
+    "primitive_type": "3dgs",
+    "antialiased": false,
+    "packed": false,
+    "tile_size": 16,
+    "with_ut": true,
+    "with_eval3d": true,
+    "near_plane": 0.01,
+    "far_plane": 10000000000.0,
+    "deferred_opt_feature_dim": 48,
+    "deferred_opt_enable_view_encoding": true,
+    "deferred_opt_view_encoding_type": "sh",
+    "deferred_mlp_hidden_dim": 128,
+    "deferred_mlp_num_layers": 3,
+    "deferred_opt_sh_degree": 3,
+    "deferred_opt_sh_scale": 3.0,
+    "deferred_opt_fourier_num_freqs": 4,
+    "deferred_opt_center_ray_encoding": false,
+    "deferred_decode_activation": "sigmoid",
+    "post_processing": null
+  },
+  "gaussians": 1000000,
+  "encoded_dim": 24,
+  "cuda_peak_allocated_bytes": 518069248,
+  "cuda_peak_reserved_bytes": 541065216
+}

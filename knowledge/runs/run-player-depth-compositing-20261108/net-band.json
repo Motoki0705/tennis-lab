@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "camera": "court-eye-0",
+  "court": "court-000",
+  "roi_is_semantic_mask": false,
+  "box_uv_inclusive_exclusive": [
+    83,
+    65,
+    173,
+    75
+  ],
+  "court_net_center_uv": [
+    128.0,
+    69.83078827899298
+  ],
+  "net_center_camera_z_m": 8.033201349141184,
+  "nearest_sample_index_ij": [
+    69,
+    128
+  ],
+  "full_alpha_roi_mean": 0.9998778104782104,
+  "full_alpha_at_sample": 0.9998953342437744,
+  "prefix": [
+    {
+      "cutoff_m": 6,
+      "roi_alpha_mean": 0.04988500103354454,
+      "roi_mid_alpha_pixels": 900,
+      "roi_pixel_count": 900,
+      "sample_alpha": 0.04760324954986572,
+      "sample_transmittance": 0.9523967504501343
+    },
+    {
+      "cutoff_m": 10,
+      "roi_alpha_mean": 0.4016452729701996,
+      "roi_mid_alpha_pixels": 841,
+      "roi_pixel_count": 900,
+      "sample_alpha": 0.4582803249359131,
+      "sample_transmittance": 0.5417196750640869
+    }
+  ]
+}
