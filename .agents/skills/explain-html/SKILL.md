@@ -47,6 +47,10 @@ runtimeであり、このskillでschemaやpinを複製しない。CLIとbriefの
 - **グラフ**: 数値比較や操作はruntimeが対応する宣言的なグラフを用いる。元データ、軸、単位、範囲、
   前提を揃える。未対応のグラフは任意JSを埋めず、静的な図か対応追加が必要なことを説明する。
 
+数式はそのまま読める文字・HTMLのsub/supで表す。TeX rendererはなく、TeXの命令や区切りを残さない。
+managed graphはcompile時に元データ表をfigure内へ追加する。自作の表だけでなく、その表も狭幅で
+figure内に収めるか横スクロールできるCSSにする。元の根拠にない製品仕様や精度を説明へ足さない。
+
 briefには説明目的・読者・instruction、根拠、準備したassets/figures、文章とレイアウトの意図を渡す。
 構文の制約はruntime READMEを参照する。Geminiの本文をCodexの代筆へ切り替えない。
 helperはadapterの指定設定で執筆と独立した意味検査を実行し、同じ最終候補をstageする。

@@ -83,6 +83,8 @@ brief = brief.model_copy(update={"context": context, "asset_files": {"concept": 
 Geminiへ `scene` block内に空の `<figure data-figure-id="scene-image"></figure>` を置く指示を渡す。
 SVGも同様に `visuals.import_svg` のAsset/bytesとFigureを用意する。
 グラフはruntimeの定義モデルを使い、`managed_renderer()` のasset ID/versionをFigureに指定する。
+グラフにも同じ空figure slotが必要。執筆・更新ではCSP metaやcompile済みの図の内部を手で作り直さず、
+compilerへ任せる。helperはこの指示を初版・更新の両方へ渡す。
 helperは準備されたグラフがある場合、現行managed rendererのmetadataと実bytesを追加する。
 初版用に自分で用意したrenderer/JSへ差し替える入口はない。
 

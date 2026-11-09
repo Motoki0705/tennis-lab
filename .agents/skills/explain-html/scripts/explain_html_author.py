@@ -52,7 +52,19 @@ from lib.opsproc import CommandError, ProcessCancelled, run_process_group  # noq
 WRITING_HINT = (
     "The runtime's conservative CSS validator rejects declaration names ending "
     "in behavior, including scroll-behavior. Omit those declarations entirely; "
-    "use normal instant scrolling. Use prefers-reduced-motion without that property."
+    "use normal instant scrolling. Use prefers-reduced-motion without that property. "
+    "There is no TeX renderer: write readable formulas with ordinary Unicode text "
+    "and native HTML sub/sup, without dollar delimiters or TeX commands. "
+    "Keep numerical product specifications and performance claims out unless "
+    "supported by the supplied evidence; mark your own computed examples hypothetical. "
+    "Compiled managed graphs insert their own source-data table inside the figure. "
+    "Contain wide tables with figure max-width:100%, min-width:0 and overflow-x:auto; "
+    "do not apply uncontained global table min-width rules. "
+    "For EVERY declared Figure, including graphs, put an EMPTY figure element "
+    "with its data-figure-id inside the declared data-content-id block. "
+    "Do not omit graph slots or substitute a plain div. Do not copy compiled "
+    "figure contents: the trusted compiler fills every slot. Omit Content-Security-Policy "
+    "http-equiv meta elements; the compiler adds the exact required policy before review."
 )
 
 
@@ -160,6 +172,10 @@ def create(brief_path: Path, root: Path, agy: Path) -> dict[str, object]:
         for asset in candidate.document.assets
     }
     rendering = validate_bundle(candidate, staged_assets, cancel=Event())
+    if rendering.status != "passed" or rendering.issues:
+        logging.getLogger(__name__).warning(
+            "Rendering check: %s", rendering.model_dump_json()
+        )
     try:
         revision = store.commit(
             staged, result.validation.model_copy(update={"rendering": rendering})
