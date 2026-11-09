@@ -339,6 +339,19 @@ directive/policy重複、追加directive、参照先変更、弱いpolicyは拒�
 writer promptとvisual許可リストの要素を揃え、annotation-xml・mglyph・link・異種要素・event属性は拒否する。
 TeXのcommand/区切りを拒否し、未描画の数式を公開しない。平易な説明を添え、静的snapshotにも同じbytesを保存する。
 
+TeXの文字列検査はfigure captionを含む本文が対象。`$...$`・`$$...$$`・`\(...\)`・`\[...\]`と、
+バックスラッシュ直後にASCII英字が続く命令全般を拒否する。text run内ではinline要素・comment・
+展開済み文字参照をまたいで文字列を連結し、命令や区切りの分割も検出する。
+block要素とliteral領域でrunを区切り、別の段落同士は連結しない。
+code/pre/kbd/samp/mathの子孫、属性値、headのmetadataはこの本文検査から除外する。
+ソース記法やpathはliteral要素に置く。除外範囲でもMathML・HTML/CSS/script/属性の安全性検査は維持し、
+余分なmarkupを許可しない。対応のない単一ドルはliteralとして扱う。
+隣接する2つのドル記号がどちらも数値価格を始める`$5 and $10.50`などは通貨と判定する。
+金額は符号・小数/桁区切りを許し、数値の直後が空白・句読点・run末尾であることを要求する
+（次の価格直前のハイフンも区切り）。`$5$`・`$x$2`・価格の後の数値数式は拒否する。
+曖昧なliteral記法はliteral要素へ置く。違反はcompile・stage後のvisual検査で`invalid_document`とし、
+本文を書き換えたり旧判定を使い回したりしない。TeX専用の自動retryは追加しない。
+
 描画属性（`data-managed-*`・`data-definition`・`data-plot`・`data-values`・`data-slider-value`・
 `data-render-*`）は正規graph figure内へ予約し、`data-graph-targets`はmanaged scriptだけが持つ。
 v2はscript内のfigure/definition一覧を読み、宣言したfigure slotの直下要素だけを対象に設定を照合する。

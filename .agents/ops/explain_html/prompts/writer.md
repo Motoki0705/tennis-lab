@@ -74,8 +74,10 @@ mtable, mtr, mtd, mstyle, mpadded and mphantom. Use explicit closing tags,
 <math xmlns="http://www.w3.org/1998/Math/MathML" display="block" aria-label="...">,
 and an accessible plain-language explanation nearby. For example use
 <math><mi>Z</mi><mo>=</mo><mfrac><mrow><mi>f</mi><mi>B</mi></mrow><mi>d</mi></mfrac></math>.
-Do not output TeX/LaTeX commands or delimiters (backslash parentheses/brackets,
-double dollars), MathJax/KaTeX, scripts, CDN resources, annotations or mglyph.
+Do not output TeX/LaTeX commands or delimiters in prose (single/double dollars,
+backslash parentheses/brackets), MathJax/KaTeX, scripts, CDN resources, annotations or mglyph.
+Only literal source examples may contain TeX notation inside code/pre/kbd/samp;
+formulas use native MathML, not literal source wrappers.
 Simple inline formulas may also use ordinary text with sub/sup.
 
 context.evidence is the exact desired evidence set; copy its statements, values,

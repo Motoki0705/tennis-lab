@@ -14,6 +14,7 @@ import math
 import re
 import xml.etree.ElementTree as ET
 from html import escape
+from itertools import pairwise
 from pathlib import Path
 
 from .document import inspect_document
@@ -167,6 +168,35 @@ _HTML_TAGS = set(
     ]
 )
 _VOID = {"meta", "br", "hr", "img", "link", "input", "col"}
+_LITERAL_TEXT = {"code", "pre", "kbd", "samp", "math", "style", "script"}
+_PROSE_INLINE = set(
+    [
+        "a",
+        "span",
+        "strong",
+        "em",
+        "b",
+        "i",
+        "u",
+        "s",
+        "small",
+        "sub",
+        "sup",
+        "abbr",
+        "time",
+        "mark",
+        "var",
+        "label",
+        "output",
+        "button",
+        "br",
+        "tspan",
+    ]
+)
+_TEX_SYNTAX = re.compile(r"\\(?:[A-Za-z]+|[()[\]])|\$\$")
+_CURRENCY_AMOUNT = re.compile(
+    r"[+-]?(?:\d+(?:[.,]\d+)*|\.\d+)(?=$|[\s,.;:!?)/\]\"'、。]|-(?=\$))"
+)
 _MATH_NS = "http://www.w3.org/1998/Math/MathML"
 _MATH_TAGS = set(
     [
@@ -559,15 +589,35 @@ class _Markup(StrictHTMLParser):
         self.head_end: int | None = None
         self.has_body = False
         self.has_html = False
+        self.prose: list[str] = []
         self.lines = [0, *[m.end() for m in re.finditer("\n", document.html)]]
         self.feed(document.html)
         self.close()
+        self._check_prose()
+
+    def _check_prose(self) -> None:
+        """Check a body text run, including inline fragments, without rewriting it."""
+        text = "".join(self.prose)
+        self.prose.clear()
+        if _TEX_SYNTAX.search(text):
+            raise ContractError("invalid_document")
+        dollars = [match.start() for match in re.finditer(r"\$", text)]
+        for left, right in pairwise(dollars):
+            # Consider overlapping pairs: skipping '$5 ... $10' must not hide
+            # a later numeric formula such as '$10+x$'. A single '$' is literal.
+            if not (
+                _CURRENCY_AMOUNT.match(text, left + 1)
+                and _CURRENCY_AMOUNT.match(text, right + 1)
+            ):
+                raise ContractError("invalid_document")
 
     def source_offset(self) -> int:
         line, column = self.getpos()
         return self.lines[line - 1] + column
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag not in _PROSE_INLINE:
+            self._check_prose()
         attributes = dict(attrs)
         parent = self.stack[-1][0] if self.stack else None
         in_head = any(item[0] == "head" for item in self.stack)
@@ -677,6 +727,8 @@ class _Markup(StrictHTMLParser):
             self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str) -> None:
+        if tag not in _PROSE_INLINE:
+            self._check_prose()
         if tag in _VOID:
             return
         if not self.stack or self.stack[-1][0] != tag:
@@ -722,12 +774,10 @@ class _Markup(StrictHTMLParser):
             raise ContractError("invalid_document")
         if self.stack and self.stack[-1][0] == "style":
             _css(data)
-        elif (
-            self.stack
-            and self.stack[-1][0] != "script"
-            and re.search(r"\\[()[\]]|\$\$|\\(?:frac|sqrt|sum|begin)\b", data)
+        elif any(tag == "body" for tag, *_ in self.stack) and not any(
+            tag in _LITERAL_TEXT for tag, *_ in self.stack
         ):
-            raise ContractError("invalid_document")
+            self.prose.append(data)
 
 
 def render_document(document: Document) -> Document:

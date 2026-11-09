@@ -359,17 +359,61 @@ def test_native_mathml_is_allowed_but_active_math_and_unrendered_tex_are_refused
         "<mi>Z</mi>",
         r"\(Z=\frac{fB}{d}\)",
         r"$$Z=20$$",
+        r"<p>$\alpha+\beta$</p>",
+        "<p>$x+y$</p>",
+        "<p>$5$</p>",
+        "<p>$x$2</p>",
+        "<p>Price $5; formula $10+x$.</p>",
+        r"<p>\alpha + \beta</p>",
+        r"<p>\Gamma</p>",
+        r"<p>\operatorname{depth}</p>",
+        r"<p>\text{depth}</p>",
+        r"<p>\[Z=fB/d\]</p>",
+        "<p>$x<span>+y</span>$</p>",
+        r"<p>\al<span>ph</span>a</p>",
+        r"<p>\al<!-- split -->pha</p>",
+        "<p>&#36;x+y&#36;</p>",
+        "<p>&#92;sin x</p>",
     ]:
+        bad = document.model_copy(
+            update={"html": document.html.replace("</section>", markup + "</section>")}
+        )
         with pytest.raises(schema.ContractError):
-            visuals.render_document(
-                document.model_copy(
-                    update={
-                        "html": document.html.replace(
-                            "</section>", markup + "</section>"
-                        )
-                    }
-                )
+            visuals.render_document(bad)
+        with pytest.raises(schema.ContractError):
+            visuals.validate_visuals(bad, payloads)
+    literal = r"$x+y$ \(x\) \[x\] $$x$$ \alpha \frac{1}{2}"
+    for markup in [
+        *(
+            f"<{tag}><span>{literal}</span></{tag}>"
+            for tag in ["code", "pre", "kbd", "samp"]
+        ),
+        f'<math xmlns="http://www.w3.org/1998/Math/MathML"><mtext>{literal}</mtext></math>',
+        f'<p title="{literal}" aria-label="{literal}">Plain explanation.</p>',
+        "<p>Cost <span>$5</span>, <strong>$10.50</strong> or $1,000. Negative: $-5 and $-10. Cents: $.50 and $.75. Range: $5-$10.</p>",
+        "<p>One literal $.</p><p>Another literal $.</p>",
+        "<p>A slash <span>\\</span><code>literal</code><span>alpha</span>.</p>",
+    ]:
+        compiled = visuals.render_document(
+            document.model_copy(
+                update={
+                    "html": document.html.replace("</section>", markup + "</section>")
+                }
             )
+        )
+        assert markup in compiled.html  # Exempt text is preserved, never repaired.
+        visuals.validate_visuals(compiled, payloads)
+    head = visuals.render_document(
+        document.model_copy(
+            update={
+                "html": document.html.replace(
+                    "<title>Depth</title>", f"<title>{literal}</title>"
+                )
+            }
+        )
+    )
+    assert f"<title>{literal}</title>" in head.html
+    visuals.validate_visuals(head, payloads)
 
 
 def test_managed_style_inside_figure_does_not_overlap_the_figure_replacement() -> None:

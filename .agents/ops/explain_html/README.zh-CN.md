@@ -316,6 +316,16 @@ writer在编辑时也明确省略这些内容，无须复制代码或hash。同�
 拒绝annotation-xml、mglyph、链接、外来元素和事件属性。拒绝TeX命令/分隔符，避免发布未渲染公式。
 公式附近附有易懂说明，静态snapshot保留相同bytes。
 
+TeX文本检查覆盖包含figure caption的正文，拒绝`$...$`、`$$...$$`、`\(...\)`、`\[...\]`及
+反斜杠后接ASCII字母的所有命令。每个text run内连接inline元素、comment与展开后的字符引用，
+防止拆分命令或分隔符绕过检查；block元素和literal区域结束run，不连接不同段落。
+code/pre/kbd/samp/math的后代、属性值和head metadata不参与这项正文检查；源码记法与path放在literal元素中。
+这些区域仍须通过MathML、HTML/CSS/script和属性的安全检查，不增加任何markup权限。
+未配对的单个美元符号视为literal。若相邻的两个美元符号都引入数值价格，如`$5 and $10.50`，则视为货币。
+金额允许符号、小数和分组分隔符，数字之后须为空白、标点或run末尾（下一个价格前的连字符也可分隔）。
+仍拒绝`$5$`、`$x$2`和价格之后的数值公式；含糊的literal记法应使用literal元素。
+编译和stage后的visual检查以`invalid_document`拒绝违规正文，不改写文本、不复用旧判定，也不新增TeX专用自动重试。
+
 绘图属性（`data-managed-*`、`data-definition`、`data-plot`、`data-values`、`data-slider-value`、
 `data-render-*`）仅保留给规范 graph figure；`data-graph-targets` 仅用于受管 script。
 v2 读取 script 中的 figure/definition 清单，仅处理声明 figure slot 的直接子元素，并核对配置。

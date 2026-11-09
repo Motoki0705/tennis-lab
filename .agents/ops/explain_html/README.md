@@ -446,6 +446,25 @@ annotation-xml, mglyph, links, foreign content and event attributes are refused.
 TeX commands/delimiters are rejected instead of publishing unrendered formulas.
 Accessible explanations accompany MathML; static snapshots retain the same bytes.
 
+The TeX text check covers body prose, including figure captions. It rejects
+`$...$`, `$$...$$`, `\(...\)`, `\[...\]` and every backslash followed by ASCII
+letters (not just known command names). Text is joined across inline elements,
+comments and expanded character references within each text run, so splitting a
+command or dollar pair does not evade the check. Block elements and literal
+regions end the run; separate paragraphs are not joined.
+The descendants of `code`, `pre`, `kbd`, `samp` and `math`, plus attribute values
+and head metadata, are excluded from this prose check. Use literal elements for
+source notation and paths. Native MathML and HTML/CSS/script/attribute safety
+checks still apply in those regions; this exception grants no extra markup rights.
+A lone single dollar is literal. Adjacent dollar signs that both introduce numeric
+prices, such as `$5 and $10.50`, are currency, not a math pair: amounts may have a
+sign and decimal/grouping separators and must end at whitespace, punctuation or
+the end of the run (a hyphen before another price also separates amounts).
+`$5$`, `$x$2` and a numeric formula after a price are still rejected. Ambiguous
+literal notation should use a literal element. Invalid prose raises
+`invalid_document` in compilation and staged visual validation without changing
+text or reusing a previous verdict; there is no TeX-specific automatic retry.
+
 Drawing attributes (`data-managed-*`, `data-definition`, `data-plot`, `data-values`,
 `data-slider-value`, `data-render-*`) are reserved for canonical graph figures;
 `data-graph-targets` belongs only to the managed script. Version 2 reads that
