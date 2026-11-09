@@ -54,7 +54,26 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
         text=True,
         timeout=240,
     )
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 0, (
+        result.stdout + result.stderr + _attempt_evidence(tmp_path / "annotation")
+    )
+
+
+def _attempt_evidence(root: Path) -> str:
+    """Keep the native cause when the workflow reports a policy-level failure."""
+    evidence = []
+    directories = sorted(root.glob("campaigns/*/workers/*/attempt-*")) + sorted(
+        root.glob("campaigns/*/jobs/*")
+    )
+    for directory in directories:
+        for name in ("exit.json", "stderr.log", "supervisor.log", "events.jsonl"):
+            path = directory / name
+            if path.is_file():
+                evidence.append(
+                    f"\n{path.relative_to(root)}:\n"
+                    + path.read_text(errors="replace")[-16384:]
+                )
+    return "".join(evidence)
 
 
 def _exercise_three_camera_workflow(tmp_path: Path) -> None:
