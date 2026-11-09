@@ -241,6 +241,45 @@ undoも失敗を確定する前に公開状態を照合し、request ID・parent
 公開状態を読めない場合は成功扱いせず処理を止める。exportのrename/fsyncエラーも、
 manifestと全公開bytesが照合できた場合だけ成功として返す。
 
+## ブラウザでの閲覧と編集
+
+`start` / `serve` に `--ui explain_html.web:files` を付けると固定の閲覧・編集UIを使える。
+fragmentを含む起動URLを開く。UIはfragmentを直ちに除去し、tokenをメモリだけに保持して
+認証が必要なJSON APIにだけ付ける。ページ全体の再読込には起動URLが再度必要になる。
+進行中のrequest ID・操作種別・base・開始時刻だけを同じタブのsessionStorageへ残し、tokenや
+指示本文は保存しない。切断復旧は保存IDで照合し、編集・undoを自動再送しない。
+
+対象メニューで全体または内容blockを指定する。本文の見出し・図のクリック、Enter/Space、
+同じblock内の文章選択でも対象を選べる。選択quoteとUTF-16位置は表示版に照合して送信する。
+固定UIに指示・cancel・経過時間・公開エラー・版履歴・過去版の閲覧・復元を置き、回答は本文へ
+反映する。再試行は明示操作で新request IDと表示中の現在版baseを使う。古いrevisionの競合では
+本文を保持し、明示操作で現在版へ更新できる。
+
+`GET /api/documents/{document_id}/revisions/{revision_id}/content/reader.html` は公開済み版の
+閲覧専用view。opaque iframeから固定UIへDOMを公開できず、srcdocは固定UIのCSPを継承するため、
+serviceへこの局所拡張が必要になる。最小の閲覧支援styleと固定の `web/reader.js` を加え、その正確なbytesのscript
+hashを既存rendererのhashと一緒に許可する。この一時responseだけはCSP metaをHTTP CSPで置き換え、
+sandbox・connect-src none・resource制限・renderer hashを維持する。保存HTML・validator・compiler・
+`content/index.html`・exportのbytesは変更しない。
+
+iframeは `sandbox="allow-scripts"` のopaque originで、same-origin・forms・popups・top-navigationの
+権限を持たず、token/cookieも渡さない。生成scriptは引き続き拒否する。固定UIが受け取るmessageは
+同じframe window・origin `null`・表示document/revision・viewごとのnonceに一致する `ready`・
+`selection`・閲覧 `state` だけ。内容ID/quote/位置とstateの形を表示版に照合し、指示送信には使わない。
+親からiframeへのmessageはopaque originのためtarget origin `*` を使い、接続・状態復元/印・移動の
+データだけを含む。bridgeは親windowとHTTP originを確認し、tokenの読取りやservice通信を行わない。
+
+処理中も旧frameを読める。成功した公開版は別frameで準備し、bridgeの初期化後に切り替える。
+HTML・図定義・参照asset metadataが同じblockではdetailsとグラフ入力値を保持する。読み位置は
+内容IDと相対位置で復元し、外側のページをfocus/scrollしない。変更は控えめな内側の印で示し、
+変更箇所への移動は明示ボタンだけで行う。読んでいた節が消えた場合は通知し、元のscroll高さを
+新文書の範囲に収める。対象が削除・変更された場合は、送信前に選び直してもらう。
+
+過去版のpreviewは、現在版へ戻るか新revisionとして復元するまで編集不可。ZIP exportにはserviceの
+正確なsnapshot一式を入れる。操作UI・bridge・認証・要求記録を含まず、展開後のindex.htmlから静的な
+説明・画像・対応グラフをofflineで読める。AI画像の生成は初版だけで、閲覧中はSVG・グラフ・既存画像を
+使える。新規画像の要求はimage_generation_unavailableとして理由付き未完了を表示する。
+
 ## 保存・復旧・export
 
 ソース内使用例の `outputs/` のように、Git対象外の専用runtime directoryを使う。root全体は

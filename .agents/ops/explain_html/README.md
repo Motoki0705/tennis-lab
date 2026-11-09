@@ -313,6 +313,56 @@ journals even when an older runtime recorded an error. An unreadable publication
 stops further work without declaring success. Export similarly reports success
 after a rename/fsync error only if its manifest and every public byte verify.
 
+## Browser reader and editor
+
+Add `--ui explain_html.web:files` to `start` or `serve` to use the fixed reader/editor.
+Open the launch URL including its fragment. The UI immediately removes the fragment,
+keeps the token only in memory and sends it only on authenticated JSON APIs. A full
+page reload needs the launch URL again; pending request IDs (operation, base and start
+time, without the token or instruction) remain in this tab's sessionStorage for
+reconciliation. Reconnection polls saved IDs and never resubmits an edit or undo.
+
+Use the target menu for the whole page or a content block. Click a heading/figure,
+press Enter or Space on it, or select text inside one block to choose a precise target.
+Selection quotes and UTF-16 positions are checked against the displayed revision before
+submission. The fixed UI contains the instruction, cancel, elapsed time, public errors,
+revision history, old-version preview and restore controls. Answers appear in the document.
+Retry is an explicit action with a new request ID and the displayed current base. A stale
+revision keeps the displayed page and offers an explicit current-version refresh.
+
+`GET /api/documents/{document_id}/revisions/{revision_id}/content/reader.html` is a
+presentation-only view of an already published revision. This small service extension is
+necessary because an opaque iframe cannot expose its DOM to the control UI, and srcdoc
+inherits the control CSP. The view adds minimal accessibility styles and the fixed `web/reader.js` bridge, and authorizes
+its exact bytes with a script hash, alongside revision-pinned renderers. Its HTTP CSP
+replaces CSP meta elements in this temporary response; the sandbox, connect-src none,
+resource restrictions and renderer hashes are retained. Stored HTML, validators, compiler,
+`content/index.html` and export bytes do not change.
+
+The iframe has `sandbox="allow-scripts"`, an opaque origin, no same-origin, forms,
+popups or top-navigation permission, and no token or cookies. Generated scripts remain
+blocked. The control UI accepts only `ready`, `selection` and reading `state` messages from
+the exact frame window, origin `null`, current document/revision and per-view nonce;
+selection IDs/quotes/positions and state shape are checked against that revision. None
+can send instructions. Parent-to-frame messages use target origin `*` because the receiver
+is opaque and contain only connection, restore/highlight or navigation data. The bridge
+checks parent window and its HTTP origin; it cannot read a token or call the service.
+
+During a job the old frame remains readable. A successful published revision loads in a
+second frame and replaces it only after bridge initialization. Unchanged blocks preserve
+details and graph input values when their HTML, figures and referenced asset metadata
+match. The reading anchor and relative offset are restored without focusing or scrolling
+the outer page. Changes receive a quiet inset mark; navigation happens only through an
+explicit button. A removed anchor is reported and the old scroll height is clamped to the
+new document. A removed/changed target asks the reader to choose again before sending.
+
+History previews are read-only until returning to current or restoring an old document
+as a new revision. ZIP export downloads the service's exact snapshot files. It excludes
+the operation UI, bridge, session credentials and request records; extract it and open
+index.html to read the static explanation, images and supported graphs offline. AI image
+generation is available only during initial creation; reading-time requests can use SVG,
+graphs and existing images, with image_generation_unavailable reported as incomplete.
+
 ## Storage, recovery and export
 
 Use a dedicated Git-ignored runtime directory, such as the `outputs/` location
