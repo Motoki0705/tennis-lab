@@ -7,6 +7,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pytest
 import torch
@@ -27,6 +28,10 @@ from src.tennis_scene.visualization.player_view import (
     export_player_view_bundle,
 )
 from src.tennis_scene.visualization.player_view.__main__ import main
+from src.tennis_scene.visualization.player_view.blender import (
+    PlayerViewRenderConfig,
+    prepare_blender_shot,
+)
 from src.tennis_scene.visualization.player_view.camera_bundle import (
     CAMERA_SCHEMA,
     export_head_cameras,
@@ -36,6 +41,10 @@ from src.tennis_scene.visualization.player_view.head_camera import HeadCameraCon
 from src.tennis_scene.visualization.player_view.stabilization import (
     StabilizationConfig,
     export_stabilized_cameras,
+)
+from src.tennis_scene.visualization.player_view.video import (
+    publish_player_views,
+    validate_render,
 )
 from src.utils.checksum import dual_sha256
 
@@ -187,6 +196,250 @@ def _export(
         config=PlayerViewBundleConfig(frames=(1, 6)) if config is None else config,
     )
     return manifest_path
+
+
+def test_blender_input_binds_saved_ids_timeline_masks_and_poses(
+    inputs: Inputs, tmp_path: Path
+) -> None:
+    bundle, cameras, shot = (tmp_path / name for name in ("bundle", "cameras", "shot"))
+    _export(inputs, bundle)
+    export_head_cameras(
+        bundle_dir=bundle, output_dir=cameras, config=HeadCameraConfig()
+    )
+    before = _snapshot(bundle), _snapshot(cameras)
+    prepare_blender_shot(
+        bundle_dir=bundle,
+        cameras_dir=cameras,
+        output_dir=shot,
+        config=PlayerViewRenderConfig(),
+    )
+    manifest = json.loads((shot / "manifest.json").read_text())
+    assert manifest["frames"] == {"start": 1, "stop": 6, "source_num_frames": 7}
+    assert manifest["fps"] == 59.94
+    assert [p["player_id"] for p in manifest["players"]] == [7, 42]
+    np.testing.assert_array_equal(np.load(shot / "source_frames.npy"), [1, 2, 3, 4, 5])
+    np.testing.assert_array_equal(
+        np.load(shot / "player_smpl_valid.npy"),
+        [[True, True, False, True, True], [False, True, True, True, False]],
+    )
+    for index, identity in enumerate((7, 42)):
+        saved = load_head_cameras(cameras, player_id=identity)
+        with np.load(shot / f"camera_{index}.npz") as arrays:
+            np.testing.assert_array_equal(arrays["valid"], saved.series.camera_valid)
+            np.testing.assert_allclose(
+                arrays["location"], saved.series.camera_to_court[:, :3, 3]
+            )
+            # Camera-to-world axes: saved CV right/down/forward -> Blender right/up/back.
+            np.testing.assert_allclose(
+                arrays["rotation"],
+                saved.series.camera_to_court[:, :3, :3] * np.array([1, -1, -1]),
+            )
+    assert before == (_snapshot(bundle), _snapshot(cameras))
+    assert manifest["policy"]["human_acceptance"] == "pending"
+    with pytest.raises(FileExistsError):
+        prepare_blender_shot(
+            bundle_dir=bundle,
+            cameras_dir=cameras,
+            output_dir=shot,
+            config=PlayerViewRenderConfig(),
+        )
+
+
+@pytest.mark.parametrize("mismatch", ["scene", "timeline", "id", "pc2"])
+def test_blender_input_rejects_mismatched_saved_inputs(
+    inputs: Inputs, tmp_path: Path, mismatch: str
+) -> None:
+    bundle, cameras, shot = (tmp_path / name for name in ("bundle", "cameras", "shot"))
+    _export(inputs, bundle)
+    export_head_cameras(
+        bundle_dir=bundle, output_dir=cameras, config=HeadCameraConfig()
+    )
+    camera_manifest_path = cameras / "manifest.json"
+    if mismatch == "scene":
+        values = np.load(bundle / "ball_positions.npy")
+        values[0, 0] += 1
+        np.save(bundle / "ball_positions.npy", values)
+        # Ball is not used to estimate cameras, so shot preparation validates it directly.
+        values = np.load(bundle / "player_smpl_valid.npy")
+        values[0, 0] = False
+        np.save(bundle / "player_smpl_valid.npy", values)
+    elif mismatch == "timeline":
+        manifest = json.loads(camera_manifest_path.read_text())
+        manifest["fps"] = 30
+        camera_manifest_path.write_text(json.dumps(manifest))
+    elif mismatch == "id":
+        manifest = json.loads(camera_manifest_path.read_text())
+        manifest["players"][0]["player_id"] = 42
+        camera_manifest_path.write_text(json.dumps(manifest))
+    else:
+        with (bundle / "player_1.pc2").open("ab") as handle:
+            handle.write(b"x")
+    with pytest.raises(ValueError, match="digest|timeline|IDs"):
+        prepare_blender_shot(
+            bundle_dir=bundle,
+            cameras_dir=cameras,
+            output_dir=shot,
+            config=PlayerViewRenderConfig(),
+        )
+    assert not shot.exists()
+    assert not list(tmp_path.glob(".shot-*"))
+
+
+@pytest.fixture
+def shot_reports(inputs: Inputs, tmp_path: Path) -> tuple[Path, Path]:
+    """Synthetic render audit/PNGs exercise publication, not Blender rendering."""
+    bundle, cameras, shot, renders = (
+        tmp_path / name for name in ("bundle", "cameras", "shot", "renders")
+    )
+    _export(inputs, bundle)
+    export_head_cameras(
+        bundle_dir=bundle,
+        output_dir=cameras,
+        config=HeadCameraConfig(width=128, height=72),
+    )
+    prepare_blender_shot(
+        bundle_dir=bundle,
+        cameras_dir=cameras,
+        output_dir=shot,
+        config=PlayerViewRenderConfig(),
+    )
+    valid = np.load(shot / "player_smpl_valid.npy")
+    for p, identity in enumerate((7, 42)):
+        directory = renders / f"player_{identity}"
+        (directory / "frames").mkdir(parents=True)
+        saved = load_head_cameras(cameras, player_id=identity)
+        rows = []
+        for index, source_frame in enumerate(range(1, 6)):
+            ok = bool(saved.series.camera_valid[index])
+            transform = saved.series.camera_to_court[index].copy()
+            transform[:3, :3] *= np.array([1, -1, -1])
+            rows.append(
+                {
+                    "output_index": index,
+                    "source_frame": source_frame,
+                    "cache_index": index,
+                    "camera_valid": ok,
+                    "camera_reason": int(saved.series.camera_rejection_code[index]),
+                    "camera_matrix_world": transform.tolist() if ok else None,
+                    "player_hidden": [
+                        not (ok and valid[q, index] and p != q) for q in (0, 1)
+                    ],
+                    "ball_hidden": not (ok and source_frame in (1, 3, 4)),
+                    "ball_position": [source_frame, 2 * source_frame, 1]
+                    if source_frame in (1, 3, 4)
+                    else None,
+                    "pc2_max_error_m": [0, 0],
+                }
+            )
+            frame: np.ndarray = np.full(
+                (72, 128, 3), 25 + index * 20 if ok else 0, np.uint8
+            )
+            if not ok:
+                frame[0, 0, 0] = 3  # Observed Blender 5.2 quantization dither.
+            assert cv2.imwrite(str(directory / "frames" / f"{index:05d}.png"), frame)
+        report = {
+            "schema": "tennis_scene_player_view_render_v1",
+            "complete": True,
+            "package_sha256": dual_sha256(shot / "manifest.json"),
+            "player_id": identity,
+            "engine": "CYCLES",
+            "gpu_devices": [{"name": "synthetic audit fixture"}],
+            "motion_blur": False,
+            "material": {
+                name: {"alpha": 1, "emission_strength": 0}
+                for name in ("OpaqueGrayPlayer", "OpaqueGreenBall")
+            },
+            "frames": rows,
+        }
+        (directory / "render.json").write_text(json.dumps(report))
+    return shot, renders
+
+
+def test_video_publication_preserves_all_source_frames_and_missing_camera_slots(
+    shot_reports: tuple[Path, Path], tmp_path: Path
+) -> None:
+    shot, renders = shot_reports
+    output = tmp_path / "videos"
+    result = publish_player_views(package=shot, renders=renders, output=output)
+    manifest = json.loads(result.read_text())
+    assert manifest["player_ids"] == [7, 42]
+    assert manifest["source_frames"] == [1, 2, 3, 4, 5]
+    assert manifest["camera_missing_frames"] == {"7": [3], "42": [1, 5]}
+    assert manifest["human_acceptance"] == "pending"
+    for value in manifest["verification"].values():
+        assert value["decoded_frames"] == 5
+        assert value["fps"] == pytest.approx(59.94, abs=1e-6)
+    assert manifest["verification"]["comparison.mp4"]["width"] == 256
+    capture = cv2.VideoCapture(str(output / "comparison.mp4"))
+    ok, first = capture.read()
+    capture.release()
+    assert ok
+    # Source frame 1: ID7 is valid/gray, ID42 has a blank missing-camera slot.
+    # Independent pixel evidence also catches swapped panels or skipped slots.
+    assert float(first[60:70, 50:80].mean()) == pytest.approx(25, abs=3)
+    assert float(first[60:70, 178:208].mean()) < 3
+    with pytest.raises(FileExistsError):
+        publish_player_views(package=shot, renders=renders, output=output)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    ["frame", "mask", "camera", "ball", "opacity", "incomplete", "missing-material"],
+)
+def test_publication_rejects_incorrect_blender_audit(
+    shot_reports: tuple[Path, Path], fault: str
+) -> None:
+    shot, renders = shot_reports
+    path = renders / "player_7" / "render.json"
+    report = json.loads(path.read_text())
+    if fault == "frame":
+        report["frames"][0]["source_frame"] += 1
+    elif fault == "mask":
+        report["frames"][0]["player_hidden"][0] = False
+    elif fault == "camera":
+        report["frames"][0]["camera_matrix_world"][0][3] += 1
+    elif fault == "ball":
+        report["frames"][0]["ball_position"][0] += 1
+    elif fault == "opacity":
+        report["material"]["OpaqueGrayPlayer"]["alpha"] = 0.5
+    elif fault == "incomplete":
+        report["complete"] = False
+    else:
+        report["material"].pop("OpaqueGreenBall")
+    path.write_text(json.dumps(report))
+    with pytest.raises(ValueError):
+        validate_render(shot, renders / "player_7", 7)
+
+
+@pytest.mark.parametrize(
+    "fault", ["truncated", "missing-png", "bad-png", "nonblank-camera"]
+)
+def test_video_publication_refuses_missing_frames_and_cleans_failed_encoding(
+    shot_reports: tuple[Path, Path], tmp_path: Path, fault: str
+) -> None:
+    shot, renders = shot_reports
+    output = tmp_path / "videos"
+    if fault == "truncated":
+        for identity in (7, 42):
+            path = renders / f"player_{identity}" / "render.json"
+            report = json.loads(path.read_text())
+            report["frames"].pop()
+            path.write_text(json.dumps(report))
+            (path.parent / "frames" / "00004.png").unlink()
+    elif fault == "missing-png":
+        (renders / "player_7" / "frames" / "00001.png").unlink()
+    elif fault == "bad-png":
+        (renders / "player_7" / "frames" / "00001.png").write_bytes(b"broken PNG")
+    else:
+        path = renders / "player_7" / "frames" / "00002.png"
+        frame = cv2.imread(str(path))
+        assert frame is not None
+        frame[60, 20] = 255
+        assert cv2.imwrite(str(path), frame)
+    with pytest.raises(ValueError, match="entire input timeline|PNG|blank frame"):
+        publish_player_views(package=shot, renders=renders, output=output)
+    assert not output.exists()
+    assert not list(tmp_path.glob(".videos-*"))
 
 
 def _snapshot(root: Path) -> dict[str, str]:

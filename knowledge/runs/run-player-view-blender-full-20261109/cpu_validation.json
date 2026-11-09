@@ -1,0 +1,45 @@
+{
+  "cpu_tests": {
+    "integration": {
+      "passed": 33,
+      "wall_seconds": 10.94,
+      "previous_dither_run_seconds": 14.15,
+      "max_call_seconds_observed": 2.09,
+      "max_setup_seconds_observed": 0.24,
+      "collected": 33,
+      "added_cases": 17,
+      "max_expanded_cases_per_function": 7
+    },
+    "regression": {
+      "passed": 59,
+      "wall_seconds": 123.41,
+      "max_call_seconds": 0.13
+    },
+    "pts_after_change": {
+      "passed": 11,
+      "wall_seconds": 13.78
+    },
+    "ci_contract_repair": {
+      "passed": 3,
+      "wall_seconds": 112.32,
+      "note": "source/catalog collection dominates wall time"
+    }
+  },
+  "pytest_workers": 2,
+  "pre_commit": [
+    "ruff passed",
+    "mypy passed"
+  ],
+  "cli_help": [
+    "prepare_player_view_blender",
+    "publish_player_views"
+  ],
+  "blender_shot_compile": "passed; not a rendering test",
+  "human_acceptance": "pending",
+  "knowledge_checks": {
+    "graph_errors": 0,
+    "graph_warnings": 0,
+    "reproduction_missing_references": 0,
+    "preexisting_unverifiable_history_references": 20
+  }
+}

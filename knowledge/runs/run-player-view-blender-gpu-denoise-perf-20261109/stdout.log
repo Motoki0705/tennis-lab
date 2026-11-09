@@ -1,0 +1,81 @@
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=3 failed=0 cancelled=1
+executing=0 waiting=0
+completed (latest 10):
+  0-8205836933706972882_2026-11-08T18-37-46-293027117Z_120715_i1727-c3-batched-perf.job resource=all slot=all pid=120798 pgid=120798 state=done wait=none
+  0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all pid=100535 pgid=100535 state=done wait=none
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+cancelled (latest 10):
+  0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+queued: 0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.job
+[worker] 2026-11-08T18:54:54+00:00 running: 0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.job resource=all slot=all (log: /content/tennis-lab/.training_queue/logs/0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.log)
+[worker] 2026-11-08T18:55:04+00:00 done: 0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.job resource=all slot=all
+[worker] queue empty for 1s; exiting.
+[worker] 2026-11-08T18:55:06+00:00 worker exited.
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=4 failed=0 cancelled=1
+executing=0 waiting=0
+completed (latest 10):
+  0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.job resource=all slot=all pid=129427 pgid=129427 state=done wait=none
+  0-8205836933706972882_2026-11-08T18-37-46-293027117Z_120715_i1727-c3-batched-perf.job resource=all slot=all pid=120798 pgid=120798 state=done wait=none
+  0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all pid=100535 pgid=100535 state=done wait=none
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+cancelled (latest 10):
+  0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.job resource=all slot=all pid=129427 pgid=129427 state=done wait=none
+0-8205836933706972882_2026-11-08T18-37-46-293027117Z_120715_i1727-c3-batched-perf.job resource=all slot=all pid=120798 pgid=120798 state=done wait=none
+0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all pid=100535 pgid=100535 state=done wait=none
+0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+00:03.994  cycles           | Adaptive sampling: automatic min samples = 64
+00:03.997  cycles           | Rendered 1 samples in 0.00248407 seconds (0.00248407 seconds per sample), occupancy: 0.323276
+00:03.997  cycles           | Adaptive sampling: automatic min samples = 64
+00:04.017  cycles           | Rendered 15 samples in 0.0206581 seconds (0.00137721 seconds per sample), occupancy: 0.484914
+00:04.103  cycles           | Adaptive sampling: automatic min samples = 64
+00:04.103  cycles           | Rendering in main loop is done in 0.108848 seconds.
+00:04.103  cycles           | Full path tracing report:
+                            | 
+                            | Path tracing on: NVIDIA L4 (OptiX) [CUDA_NVIDIA L4_0000:00:03_OptiX]
+                            |                      Hardware Ray-Tracing: Off
+                            | 
+                            | Denoising on: NVIDIA L4 (OptiX) [CUDA_NVIDIA L4_0000:00:03_OptiX]
+                            |                   Hardware Ray-Tracing: Off
+                            | 
+                            | Render Scheduler Summary
+                            | 
+                            | Mode: Headless
+                            | Resolution: 1280x720
+                            | 
+                            | Adaptive sampling:
+                            |   Use: True
+                            |   Step: 16
+                            |   Min Samples: 64
+                            |   Threshold: 0.050000
+                            | 
+                            | Denoiser:
+                            |   Use: True
+                            |   Type: OpenImageDenoise
+                            |   Start Sample: 0
+                            |   Passes: Color, Albedo, Normal
+                            | 
+                            | Time (in seconds):
+                            |                                        Wall              Average
+                            |           Path Tracing             0.023192             0.001449
+                            |        Adaptive Filter             0.000000             0.000000
+                            |               Denoiser             0.044917             0.044917
+                            |         Display Update             0.000002             0.000002
+                            | 
+                            |   Total: 0.068111
+                            | 
+                            | Rendered 16 samples in 0.108821 seconds
+                            | 
+00:04.103  cycles           | Total render time: 0.115602
+00:04.103  cycles           | Render time (without synchronization): 0.108952
+00:04.147  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/perf-gpu-denoise/player_1/frames/00004.png'
+PLAYER_VIEW_COMPLETE ID1: 5 frames
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 02:12:34)
+
+Blender quit
+C3_GPU_DENOISE_PERF_COMPLETE {"git_ref": "993c7e2310a76ebc7145ca33b9698be5b4996ddc", "package_sha256": "708affe5b630ba50014bf9f3f7a5ff4a730440906c1b1a4f99e920bfe5247280", "source_frames": [16, 17, 19, 731, 735], "players": [{"player_id": 0, "intervals_seconds": [0.2210242748260498, 0.20402264595031738, 0.17001867294311523, 0.2500276565551758], "mean_interval_seconds": 0.21127331256866455, "max_interval_seconds": 0.2500276565551758, "worst_valid_frame_seconds": 0.2500276565551758, "valid_mtime_seconds": [0.2210242748260498, 0.20402264595031738, 0.2500276565551758], "valid_render_seconds": [0.21693146399957186, 0.20048796800074342, 0.24675308500081883], "initial_render_seconds": 0.7889094300007855, "denoising": {"enabled": true, "denoiser": "OPENIMAGEDENOISE", "use_gpu": true}, "persistent_data": true, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "image_reference_match": true, "images": [{"source_frame": 16, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, false], "reference_mean_abs_difference": 0.27432798032407407, "pixel_span": 182}, {"source_frame": 17, "camera_valid": true, "ball_hidden": true, "player_hidden": [true, false], "reference_mean_abs_difference": 0.2764261429398148, "pixel_span": 173}, {"source_frame": 19, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, false], "reference_mean_abs_difference": 0.27807400173611113, "pixel_span": 182}, {"source_frame": 731, "camera_valid": false, "ball_hidden": true, "player_hidden": [true, true], "reference_mean_abs_difference": 0.45645073784722223, "pixel_span": 2}, {"source_frame": 735, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, true], "reference_mean_abs_difference": 0.27945167824074074, "pixel_span": 176}]}, {"player_id": 1, "intervals_seconds": [0.2670295238494873, 0.23502588272094727, 0.20202231407165527, 0.1640181541442871], "mean_interval_seconds": 0.21702396869659424, "max_interval_seconds": 0.2670295238494873, "worst_valid_frame_seconds": 0.2670295238494873, "valid_mtime_seconds": [0.2670295238494873, 0.23502588272094727, 0.20202231407165527], "valid_render_seconds": [0.262787263998689, 0.23167105100037588, 0.1987340529994981], "initial_render_seconds": 0.8020605120000255, "denoising": {"enabled": true, "denoiser": "OPENIMAGEDENOISE", "use_gpu": true}, "persistent_data": true, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "image_reference_match": true, "images": [{"source_frame": 16, "camera_valid": true, "ball_hidden": false, "player_hidden": [false, true], "reference_mean_abs_difference": 0.2813718894675926, "pixel_span": 182}, {"source_frame": 17, "camera_valid": true, "ball_hidden": true, "player_hidden": [false, true], "reference_mean_abs_difference": 0.280931712962963, "pixel_span": 178}, {"source_frame": 19, "camera_valid": true, "ball_hidden": false, "player_hidden": [false, true], "reference_mean_abs_difference": 0.28090422453703706, "pixel_span": 184}, {"source_frame": 731, "camera_valid": true, "ball_hidden": false, "player_hidden": [true, true], "reference_mean_abs_difference": 0.27731155960648146, "pixel_span": 176}, {"source_frame": 735, "camera_valid": false, "ball_hidden": true, "player_hidden": [true, true], "reference_mean_abs_difference": 0.45645073784722223, "pixel_span": 2}]}], "prefix_counts": [388, 0], "metadata_and_crc_passed": true, "image_reference_match": true}

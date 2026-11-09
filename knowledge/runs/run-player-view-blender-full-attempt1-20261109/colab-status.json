@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "job_id": "c3-full-2791",
+  "status": "failed",
+  "updated_at": "2026-11-08T18:00:49.642620+00:00",
+  "returncode": 1,
+  "worker_pid": 23810,
+  "worker_token": "396857",
+  "launch_guarded": true,
+  "pid": 25058,
+  "process_token": "425628",
+  "started_at": "2026-11-08T17:27:51.468391+00:00",
+  "completion_target": "failed",
+  "drive_saved_at": "2026-11-08T18:02:51.933470+00:00",
+  "finished_at": "2026-11-08T18:02:51.933487+00:00"
+}

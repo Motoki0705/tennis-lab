@@ -219,6 +219,36 @@ and show a missing-camera frame. Blender uses camera rotation
 `T[:3,:3] @ diag(1,-1,-1)` and location `T[:3,3]`, with the saved resolution,
 intrinsics and clipping. Neither backend should recompute head kinematics.
 
+## Blender player-view videos
+
+Prepare a portable shot package from matching saved scene/camera bundles. Preparation checks camera input digests, IDs, frames, FPS and masks, then copies the necessary numerical assets. The Blender script uses only Blender Python and NumPy; it never estimates cameras or imports the repository.
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.prepare_player_view_blender \
+  --bundle outputs/tennis_scene/visualize/player_view/example/bundle \
+  --cameras outputs/tennis_scene/visualize/player_view/example/cameras \
+  --output outputs/tennis_scene/visualize/player_view/example/shot
+
+blender --background --factory-startup --python-exit-code 1 --threads 4 \
+  --python src/tennis_scene/visualization/blender/shots/player_view.py -- \
+  --package outputs/tennis_scene/visualize/player_view/example/shot \
+  --output outputs/tennis_scene/visualize/player_view/example/renders/player_7 \
+  --player-id 7 --gpu-backend OPTIX
+
+.venv/bin/python -m src.tennis_scene.scripts.publish_player_views \
+  --package outputs/tennis_scene/visualize/player_view/example/shot \
+  --renders outputs/tennis_scene/visualize/player_view/example/renders \
+  --output outputs/tennis_scene/visualize/player_view/example/videos
+```
+
+Run the Blender command once for each original player ID, naming its directory `renders/player_<ID>`. Use the saved camera resolution, intrinsics, clipping and original FPS. Prototype appearance is recorded in the shot manifest: hide the viewer's entire mesh, gray opponents, green ball of radius 0.05m, alpha 1, emission 0, simple court/net and 16 Cycles samples. OpenImageDenoise explicitly requests GPU denoising; render reports retain this setting and each frame's render duration. An explicit OPTIX/CUDA GPU is required; the script refuses CPU fallback. Follow the project resource workflow for execution.
+
+Blender frame/cache index `i` corresponds exactly to `source_frames[i]`. PC2 uses explicit sample indices and no interpolation. Camera/ball transforms are assigned per frame with no animation curves or motion blur. Missing objects are hidden. A missing camera produces a blank frame of the same duration, labeled during publication. `render.json` records evaluated PC2 error, camera pose, object visibility, ball position, GPU and material settings for every completed PNG.
+
+For the initial smoke check, append `--source-frames <at most 12 explicit source frame numbers>` to the Blender command and use `--preview` for publication. The final publication rejects truncated timelines. It validates the render audits, labels every view with player ID/source frame/camera validity, encodes individual MP4s plus a synchronized side-by-side comparison, and decodes every encoded frame to check size, count, FPS and duration. Its manifest retains input/settings correspondence and camera missing frames. Keep render reports and shot inputs with the videos. Outputs already present are refused.
+
+Successful rendering, validation or CI leaves `human_acceptance: pending`. Human qualitative acceptance must be recorded separately before phase 2 integration.
+
 ## Optional camera stabilization
 
 Keep the raw C2 export and derive a separate camera bundle before rendering:

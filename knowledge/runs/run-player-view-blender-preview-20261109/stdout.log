@@ -1,0 +1,43 @@
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=0 failed=0 cancelled=0
+executing=0 waiting=0
+queued: 0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job
+[worker] 2026-11-08T17:00:44+00:00 running: 0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all (log: /content/tennis-lab/.training_queue/logs/0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.log)
+[worker] 2026-11-08T17:02:59+00:00 done: 0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all
+[worker] queue empty for 1s; exiting.
+[worker] 2026-11-08T17:03:01+00:00 worker exited.
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=1 failed=0 cancelled=0
+executing=0 waiting=0
+completed (latest 10):
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+Blender quit
+00:01.217  cycles           | WARNING HIPEW initialization failed: Error opening HIP dynamic library
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:23: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  value.use_nodes = True
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:163: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  net_mat.use_nodes = True
+/content/tennis-lab/src/tennis_scene/visualization/blender/shots/player_view.py:186: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 02:12:34)
+00:07.867  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00000.png'
+00:13.071  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00001.png'
+00:18.205  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00002.png'
+00:23.333  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00003.png'
+00:28.476  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00004.png'
+00:33.586  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00005.png'
+00:38.693  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00006.png'
+00:43.777  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00007.png'
+00:48.888  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00008.png'
+00:54.013  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00009.png'
+00:59.034  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00010.png'
+01:04.144  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/frames/00011.png'
+PLAYER_VIEW_COMPLETE ID1: 12 frames
+
+Blender quit
+{"player_id": 0, "png_count": 12, "blender_version": "5.2.1 LTS", "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "render_json": "outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_0/render.json"}
+{"player_id": 1, "png_count": 12, "blender_version": "5.2.1 LTS", "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "render_json": "outputs/tennis_scene/visualize/player_view/blender-acceptance/preview-renders/player_1/render.json"}
+C3_PREVIEW_VERIFIED_24_PNG

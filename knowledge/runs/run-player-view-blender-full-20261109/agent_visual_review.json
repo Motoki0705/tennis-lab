@@ -1,0 +1,37 @@
+{
+  "reviewer": "codex implementation worker",
+  "review_targets": [
+    "videos/player_0.mp4",
+    "videos/player_1.mp4"
+  ],
+  "sample_source_frames": [
+    0,
+    16,
+    17,
+    19,
+    193,
+    389,
+    500,
+    731,
+    732,
+    735,
+    736,
+    1009
+  ],
+  "sample_frames_reviewed": 24,
+  "method": "contact sheets decoded sequentially from the full videos",
+  "basic_visual_checks": {
+    "viewer_mesh_does_not_block_view": true,
+    "gray_opponent_opaque_material": true,
+    "green_ball_normal_material": true,
+    "simple_court_and_net": true,
+    "missing_camera_labeled_dark_frame": true,
+    "ball_missing_frame17": true
+  },
+  "observations": [
+    "Saved head roll/pitch can point outside the court.",
+    "Opponent and ball may be small or outside the frame; no targeting or stabilization is added."
+  ],
+  "scope": "agent checks rendering integrity and basic appearance, not human qualitative acceptance",
+  "human_acceptance": "pending"
+}

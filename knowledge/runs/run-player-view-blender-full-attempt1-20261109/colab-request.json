@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "job_id": "c3-full-2791",
+  "argv": [
+    "bash",
+    "outputs/tennis_scene/visualize/player_view/blender-acceptance/run_full_queue.sh"
+  ],
+  "cwd": "/content/tennis-lab",
+  "persist": [
+    "outputs/tennis_scene/visualize/player_view/blender-acceptance/full/checkpoints",
+    "outputs/tennis_scene/visualize/player_view/blender-acceptance/full/artifacts"
+  ],
+  "runner_outputs": [],
+  "execution_backend": "notebook_kernel",
+  "created_at": "2026-11-08T17:23:02.709152+00:00",
+  "source_commit": "2791ae2fc3fe660c01b79d337ef46b0752aa0fa3",
+  "helpers": {
+    "core": {
+      "path": "/content/.tennis-colab/player-view-c3-20261109/colab_core.py",
+      "bytes": 11490,
+      "sha256": "7224c78af601b8648768c6ca7d640140433a42760d87287421a8719ddd2d7f4d"
+    },
+    "worker": {
+      "path": "/content/.tennis-colab/player-view-c3-20261109/remote.py",
+      "bytes": 28570,
+      "sha256": "75c4ef0817b51cfeb6771d26719bfa0bebcc612f409e9754167bd97c5868eb47"
+    }
+  }
+}

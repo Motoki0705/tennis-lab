@@ -1,0 +1,18 @@
+{
+  "players": 2.0,
+  "source_frames_per_view": 1010.0,
+  "newly_rendered_frames": 2020.0,
+  "reused_prefix_frames": 0.0,
+  "decoded_video_frames": 3270.0,
+  "presentation_timestamps_checked": 3270.0,
+  "fps": 59.94006,
+  "width": 1280.0,
+  "height": 720.0,
+  "main_duration_seconds": 16.850167,
+  "short_duration_seconds": 4.004,
+  "camera_missing_frames_id0": 3.0,
+  "camera_missing_frames_id1": 17.0,
+  "max_rendered_pc2_vertex_error_m": 0.0,
+  "max_camera_matrix_entry_error": 0.0,
+  "max_ball_center_error_m": 0.0
+}

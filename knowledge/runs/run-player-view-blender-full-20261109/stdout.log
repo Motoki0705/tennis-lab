@@ -1,0 +1,69 @@
+C3_GPU_DENOISE_BUDGET {"at": "2026-11-08T19:07:29.530926+00:00", "gpu_deadline": "2026-11-08T20:19:37.670427+00:00", "gpu_remaining_seconds": 4328, "timeout_seconds": 3368, "reserve_seconds": 960, "command": "timeout --foreground --signal=TERM --kill-after=30s 3368 .venv/bin/python outputs/tennis_scene/visualize/player_view/blender-acceptance/gpu_denoise.py full"}
+queued: 0-8205835150292970140_2026-11-08T19-07-29-707029859Z_133520_i1727-c3-full-gpu-denoise.job
+[worker] 2026-11-08T19:07:29+00:00 running: 0-8205835150292970140_2026-11-08T19-07-29-707029859Z_133520_i1727-c3-full-gpu-denoise.job resource=all slot=all (log: /content/tennis-lab/.training_queue/logs/0-8205835150292970140_2026-11-08T19-07-29-707029859Z_133520_i1727-c3-full-gpu-denoise.log)
+[worker] 2026-11-08T19:17:36+00:00 done: 0-8205835150292970140_2026-11-08T19-07-29-707029859Z_133520_i1727-c3-full-gpu-denoise.job resource=all slot=all
+[worker] queue empty for 1s; exiting.
+[worker] 2026-11-08T19:17:37+00:00 worker exited.
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=5 failed=0 cancelled=1
+executing=0 waiting=0
+completed (latest 10):
+  0-8205835150292970140_2026-11-08T19-07-29-707029859Z_133520_i1727-c3-full-gpu-denoise.job resource=all slot=all pid=133603 pgid=133603 state=done wait=none
+  0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.job resource=all slot=all pid=129427 pgid=129427 state=done wait=none
+  0-8205836933706972882_2026-11-08T18-37-46-293027117Z_120715_i1727-c3-batched-perf.job resource=all slot=all pid=120798 pgid=120798 state=done wait=none
+  0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all pid=100535 pgid=100535 state=done wait=none
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+cancelled (latest 10):
+  0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+0-8205835150292970140_2026-11-08T19-07-29-707029859Z_133520_i1727-c3-full-gpu-denoise.job resource=all slot=all pid=133603 pgid=133603 state=done wait=none
+0-8205835905740137873_2026-11-08T18-54-54-259862126Z_129344_i1727-c3-gpu-denoise-perf.job resource=all slot=all pid=129427 pgid=129427 state=done wait=none
+0-8205836933706972882_2026-11-08T18-37-46-293027117Z_120715_i1727-c3-batched-perf.job resource=all slot=all pid=120798 pgid=120798 state=done wait=none
+0-8205838366185555816_2026-11-08T18-13-53-814444183Z_100448_i1727-c3-persistent-perf.job resource=all slot=all pid=100535 pgid=100535 state=done wait=none
+0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+03:55.333  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01002.png'
+03:55.633  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01003.png'
+03:55.933  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01004.png'
+03:56.238  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01005.png'
+03:56.542  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01006.png'
+03:56.846  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01007.png'
+03:57.149  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01008.png'
+03:57.452  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/segments/player_1/source_00000_01010/frames/01009.png'
+PLAYER_VIEW_COMPLETE ID1: 1010 frames
+Blender 5.2.1 LTS (hash 9e2066aef7ef built 2026-08-25 02:12:34)
+
+Blender quit
+C3_GPU_DENOISE_CHECKPOINT_READY {"player_id": 1, "path": "player_1_source_00896_01009.tar", "segment_output_indices": [896, 1010], "source_frames": [896, 897, 898, 899, 900, 901, 902, 903, 904, 905, 906, 907, 908, 909, 910, 911, 912, 913, 914, 915, 916, 917, 918, 919, 920, 921, 922, 923, 924, 925, 926, 927, 928, 929, 930, 931, 932, 933, 934, 935, 936, 937, 938, 939, 940, 941, 942, 943, 944, 945, 946, 947, 948, 949, 950, 951, 952, 953, 954, 955, 956, 957, 958, 959, 960, 961, 962, 963, 964, 965, 966, 967, 968, 969, 970, 971, 972, 973, 974, 975, 976, 977, 978, 979, 980, 981, 982, 983, 984, 985, 986, 987, 988, 989, 990, 991, 992, 993, 994, 995, 996, 997, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009]}
+/content/tennis-lab/src/utils/configuration/output_layout.py:47: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_output", task_output_path)
+/content/tennis-lab/src/utils/configuration/output_layout.py:48: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_dataset", dataset_output_path)
+/content/tennis-lab/src/utils/configuration/output_layout.py:49: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_run_id", new_run_id, use_cache=True)
+/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full-gpu-denoise/work/videos/manifest.json
+/content/tennis-lab/src/utils/configuration/output_layout.py:47: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_output", task_output_path)
+/content/tennis-lab/src/utils/configuration/output_layout.py:48: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_dataset", dataset_output_path)
+/content/tennis-lab/src/utils/configuration/output_layout.py:49: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_run_id", new_run_id, use_cache=True)
+C3_GPU_DENOISE_FULL_DELIVERY_COMPLETE
