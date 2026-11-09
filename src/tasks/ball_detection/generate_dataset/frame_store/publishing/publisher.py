@@ -14,6 +14,10 @@ from typing import Any, cast
 
 import numpy as np
 
+from src.tasks.ball_detection.data.active_ball import (
+    ACTIVE_BALL_SCHEMA,
+    POSITION_WEIGHTS,
+)
 from src.tasks.ball_detection.data.store import BallFrameStore, Split, shard_name
 from src.tasks.ball_detection.data.teacher_masks import EXPLICIT_MASK_SCHEMA, LEGACY
 from src.tasks.ball_detection.data.video_frames import (
@@ -46,16 +50,25 @@ from src.tasks.base.annotation.contracts import (
 )
 from src.tasks.base.annotation.jpeg_media import JpegArchive
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import ProductPlan, load_plan
+from src.tasks.base.annotation.plan import LocalAnnotationPlan, ProductPlan, load_plan
 from src.tasks.base.annotation.registry import Registry
 from src.tasks.base.annotation.storage.catalog import StorageCatalog
 from src.tasks.base.annotation.storage.references import protection
 from src.utils.video.jpeg_source import jpeg_video_runtime
 
-from .adopted import AdoptedClip, load_adopted
-from .contracts import BallPublicationPolicy, BallSnapshot, PublishRequest, SnapshotClip
+from .adopted import PublicationClip, load_adopted
+from .contracts import (
+    BallPublicationPolicy,
+    BallSnapshot,
+    PublishRequest,
+    SnapshotClip,
+    VideoPublishRequest,
+)
 from .partition import publication_splits
 from .snapshot import load_snapshot, validate_snapshot
+from .videos import load_video_annotations
+
+PublicationRequest = PublishRequest | VideoPublishRequest
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS ball_publications (
@@ -73,7 +86,7 @@ class Inputs:
     policy: BallPublicationPolicy
     base: BallSnapshot | None
     store: BallFrameStore | None
-    additions: tuple[AdoptedClip, ...]
+    additions: tuple[PublicationClip, ...]
     splits: dict[str, Split]
 
 
@@ -125,7 +138,7 @@ def _link_verified(
         raise ValueError("base RGB shard changed while linking")
 
 
-def _clip_record(added: AdoptedClip, index: int, split: Split) -> dict[str, Any]:
+def _clip_record(added: PublicationClip, index: int, split: Split) -> dict[str, Any]:
     spec = added.spec
     return dict(
         index=index,
@@ -159,18 +172,22 @@ class BallPublisher:
         self.registry.initialize("ball-publications-v1", _SCHEMA)
         self.catalog = StorageCatalog(layout)
 
-    def _inputs(self, request: PublishRequest) -> Inputs:
-        plan = load_plan(verify_reference(self.layout, request.plan))
+    def _inputs(self, request: PublicationRequest) -> Inputs:
+        plan = (
+            read_document(self.layout, request.plan, LocalAnnotationPlan)
+            if isinstance(request, VideoPublishRequest)
+            else load_plan(verify_reference(self.layout, request.plan))
+        )
         if plan.annotation_root != str(self.layout.root) or plan.phase != "production":
             raise ValueError(
                 "ball publication requires a production plan at the fixed root"
             )
-        task = next((t for t in plan.tasks if t.task == "ball"), None)
-        product = (
-            next((p for p in task.products if p.product == request.product), None)
-            if task
-            else None
-        )
+        if isinstance(request, VideoPublishRequest):
+            product = request.output
+        else:
+            assert not isinstance(plan, LocalAnnotationPlan)
+            task = next((t for t in plan.tasks if t.task == "ball"), None)
+            product = next((p for p in task.products if p.product == request.product), None) if task else None
         if product is None or (product.dataset_task, product.component) != (
             "ball_detection",
             "frames",
@@ -181,20 +198,25 @@ class BallPublisher:
         policy = read_document(
             self.layout, product.generation_policy, BallPublicationPolicy
         )
+        if policy.target_semantics != ("active_ball" if isinstance(request, VideoPublishRequest) else "legacy_ball"):
+            raise ValueError("publication input and policy target_semantics mismatch")
         base, store = (
             load_snapshot(self.layout, product.base_snapshot)
             if product.base_snapshot
             else (None, None)
         )
-        additions = tuple(
-            sorted(
-                (
-                    load_adopted(self.layout, ref, request.plan)
-                    for ref in request.adoptions
-                ),
-                key=lambda a: a.spec.clip_id,
+        if store is not None:
+            store.require_target_semantics(policy.target_semantics)
+        if isinstance(request, VideoPublishRequest):
+            assert isinstance(plan, LocalAnnotationPlan)
+            additions = load_video_annotations(self.layout, request, plan)
+        else:
+            additions = tuple(
+                sorted(
+                    (load_adopted(self.layout, ref, request.plan) for ref in request.adoptions),
+                    key=lambda a: a.spec.clip_id,
+                )
             )
-        )
         existing_ids = {c.clip_id for c in base.clips} if base else set()
         existing_names = {c.store_clip_id for c in base.clips} if base else set()
         canonical_ids = {c.canonical_clip_id for c in base.clips} if base else set()
@@ -203,11 +225,27 @@ class BallPublisher:
             set(added_ids) & (existing_ids | existing_names | canonical_ids)
         ):
             raise ValueError("publication cannot duplicate or change an existing clip")
+        if isinstance(request, VideoPublishRequest):
+            originals = list(store.video_annotations.values()) if store else []
+            for added in additions:
+                assert added.annotation is not None
+                annotation = added.annotation
+                for previous in originals:
+                    if ((annotation.source.media_sha256, annotation.source.camera_id)
+                            == (previous.source.media_sha256, previous.source.camera_id)
+                            and annotation.frame_range.start < previous.frame_range.stop
+                            and previous.frame_range.start < annotation.frame_range.stop):
+                        raise ValueError("publication cannot duplicate or revise an existing original frame range")
+                originals.append(annotation)
+        existing_splits = {c.source_id: c.split for c in base.clips} if base else {}
+        added_sources = {a.source_id for a in additions}
+        expected_new_sources = (len(added_sources - existing_splits.keys())
+                                if isinstance(plan, LocalAnnotationPlan) else plan.counts.videos)
         splits = publication_splits(
             policy,
-            {c.source_id: c.split for c in base.clips} if base else {},
-            {a.source_id for a in additions},
-            expected_new_sources=plan.counts.videos,
+            existing_splits,
+            added_sources,
+            expected_new_sources=expected_new_sources,
         )
         return Inputs(product, policy, base, store, additions, splits)
 
@@ -232,6 +270,8 @@ class BallPublisher:
             if base
             else {}
         )
+        annotations = ({key: value.model_dump(mode="json") for key, value in base.video_annotations.items()}
+                       if base else {})
         if base is not None:
             assert inputs.base is not None
             clips = cast(list[dict[str, Any]], base.metadata["clips"]).copy()
@@ -313,6 +353,8 @@ class BallPublisher:
             clips.append(_clip_record(added, index, inputs.splits[added.source_id]))
             heatmaps.append(added.heatmap)
             coordinates.append(added.coordinate)
+            if added.annotation is not None:
+                annotations[spec.clip_id] = added.annotation.model_dump(mode="json")
         columns = merge_tables(tables)
         columns["teacher_heatmap"] = np.concatenate(heatmaps)
         columns["teacher_coordinate"] = np.concatenate(coordinates)
@@ -339,7 +381,9 @@ class BallPublisher:
         _durable_document(
             directory / "metadata.json",
             dict(
-                schema_version=VIDEO_FRAME_SCHEMA if videos else EXPLICIT_MASK_SCHEMA,
+                schema_version=ACTIVE_BALL_SCHEMA if annotations else VIDEO_FRAME_SCHEMA if videos else EXPLICIT_MASK_SCHEMA,
+                **(dict(target_semantics="active_ball", position_weights=POSITION_WEIGHTS,
+                        video_annotations=annotations) if annotations else {}),
                 **({"video_frames": videos} if videos else {}),
                 version=inputs.product.dataset_version,
                 component="frames",
@@ -421,6 +465,8 @@ class BallPublisher:
         old_count = len(base.clips) if base else 0
         if base is not None:
             assert inputs.base is not None
+            if any(store.video_annotations.get(key) != value for key, value in base.video_annotations.items()):
+                raise ValueError("publication changed existing original v3 annotations")
             if any(
                 store.video_frames.get(key) != value
                 for key, value in base.video_frames.items()
@@ -458,6 +504,8 @@ class BallPublisher:
                     raise ValueError("publication changed existing snapshot identities")
         for offset, added in enumerate(inputs.additions, old_count):
             clip, spec = store.clips[offset], added.spec
+            if store.video_annotations.get(clip.clip_id) != added.annotation:
+                raise ValueError("published annotation differs from its saved v3 revision")
             if (clip.clip_id in store.video_frames) != (
                 inputs.policy.image_storage == "video_q90"
             ):
@@ -492,7 +540,8 @@ class BallPublisher:
             ):
                 raise ValueError("published teachers differ from the adoption mask")
 
-    def publish(self, request: PublishRequest) -> ArtifactRef:
+    def publish(self, request: PublicationRequest) -> ArtifactRef:
+        request = type(request).model_validate_json(request.canonical_bytes())
         inputs = self._inputs(request)
         relative = f"ball_detection/{inputs.product.dataset_version}/frames"
         destination = self.layout.artifact_path(
@@ -613,6 +662,7 @@ class BallPublisher:
                 reused_clips=tuple(c.clip_id for c in inputs.base.clips)
                 if inputs.base
                 else (),
+                annotations=tuple(a.annotation for a in request.annotations) if isinstance(request, VideoPublishRequest) else (),
             )
             reference = write_document(
                 self.layout,

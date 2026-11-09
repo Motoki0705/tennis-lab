@@ -9,7 +9,11 @@ from typing import Any
 
 from src.tasks.ball_detection.annotation.review.worker import BallReviewWorker
 from src.tasks.ball_detection.training.annotation.adapter import BallLearningAdapter
-from src.tasks.base.annotation.artifacts import read_document, write_document
+from src.tasks.base.annotation.artifacts import (
+    annotation_reference,
+    read_document,
+    write_document,
+)
 from src.tasks.base.annotation.contracts import (
     ProductOutcome,
     PublicationReceipt,
@@ -22,7 +26,7 @@ from src.tasks.base.annotation.learning.contracts import (
     TaskProducts,
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan
+from src.tasks.base.annotation.plan import CampaignPlan, LocalAnnotationPlan
 from src.tasks.base.annotation.registry import Registry
 from src.tasks.base.annotation.resources import CapacityUnavailable, ResourceManager
 from src.tasks.base.annotation.workers.contracts import WorkRequest
@@ -30,7 +34,9 @@ from src.tasks.base.annotation.workers.ledger import WorkerBusy, WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
 
 from .contracts import (
+    AnnotationContinuationPolicy,
     CompletionEvidence,
+    LocalAnnotationRuntime,
     OperationInput,
     OperationReceipt,
     PublishOperation,
@@ -44,6 +50,197 @@ from .reviews import (
     require_supported,
     validate_closed,
 )
+
+
+class LocalAnnotationWorkflow:
+    """Direct camera annotation, ending at saved v3 completion (no publication)."""
+
+    def __init__(
+        self,
+        layout: AnnotationLayout,
+        runtime: LocalAnnotationRuntime,
+        plan: LocalAnnotationPlan,
+        resources: ResourceManager,
+        services: Callable[[WorkRequest, dict[str, Any], WorkerPool], None],
+        *,
+        test_command: tuple[str, ...] | None = None,
+        test_clock: bool = False,
+    ) -> None:
+        from src.tasks.ball_detection.annotation.video.agent.worker import (
+            BallVideoWorker,
+        )
+        from src.tasks.base.annotation.collection.local import LocalInputLedger
+
+        from .local_videos import LocalVideoConfigurationReceipt
+
+        cost = runtime.cost("review")
+        runtime_ref = annotation_reference(
+            layout,
+            layout.path("campaigns", plan.campaign_id, "configuration", "runtime.json"),
+        )
+        if read_document(layout, runtime_ref, LocalAnnotationRuntime) != runtime:
+            raise ValueError("direct annotation requires its saved runtime")
+        registration = read_document(
+            layout,
+            annotation_reference(
+                layout,
+                layout.path(
+                    "campaigns", plan.campaign_id, "configuration", "result.json"
+                ),
+            ),
+            LocalVideoConfigurationReceipt,
+        )
+        if (registration.plan, registration.runtime, registration.scope) != (
+            runtime.plan,
+            runtime_ref,
+            runtime.scope,
+        ):
+            raise ValueError(
+                "direct annotation runtime differs from its registration receipt"
+            )
+        policy = AnnotationContinuationPolicy(
+            plan=runtime.plan, runtime=runtime_ref, scope=runtime.scope
+        )
+        if cost.timeout_seconds != policy.timeout_seconds:
+            raise ValueError(
+                "direct annotation requires 5400 seconds per camera attempt"
+            )
+        self.layout, self.runtime, self.plan, self.services = (
+            layout,
+            runtime,
+            plan,
+            services,
+        )
+        self.policy = write_document(
+            layout,
+            layout.path(
+                "campaigns", plan.campaign_id, "workflow", "continuation-policy.json"
+            ),
+            policy,
+        )
+        entries = LocalInputLedger(layout).entries(plan)
+        if set(entries) != set(registration.registrations):
+            raise ValueError(
+                "registered camera inputs differ from the completed configuration"
+            )
+        self.requests = tuple(entry.request for entry in entries)
+        if not self.requests:
+            raise ValueError(
+                "direct annotation requires registered local camera inputs"
+            )
+        self.pool = WorkerPool(
+            layout,
+            plan,
+            (BallVideoWorker(),),
+            codex_binary=runtime.codex_binary,
+            codex_home=Path(runtime.codex_home),
+            timeout_seconds=policy.timeout_seconds,
+            resources=resources,
+            worker_pss_bytes=cost.pss_bytes,
+            worker_storage_bytes=cost.storage_bytes,
+            code_revision=runtime.code_revision,
+            test_command=test_command,
+            test_clock=test_clock,
+        )
+
+    @staticmethod
+    def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
+        failures = [
+            r
+            for r in rows
+            if r["state"] in DECISION_STATES | {"invalid_saved_progress"}
+        ]
+        live = any(
+            r["state"] in {"running", "exited"}
+            or r.get("worker_state") in {"running", "exited"}
+            for r in rows
+        )
+        return {
+            "state": "complete"
+            if all(r["state"] == "complete" for r in rows)
+            else "blocked"
+            if failures
+            else "reviewing",
+            "live": live,
+            "reviews": rows,
+            "failures": failures,
+            "reason": "saved camera annotations are complete"
+            if all(r["state"] == "complete" for r in rows)
+            else "resolve stopped camera reasons after live work settles"
+            if failures
+            else "annotating or continuing unprocessed camera frames",
+        }
+
+    def status(self) -> dict[str, Any]:
+        from .recovery import inspect_annotation
+
+        rows = []
+        for ref in self.requests:
+            request = read_document(self.layout, ref, WorkRequest)
+            try:
+                self.pool.reconcile(request)
+                rows.append(inspect_annotation(self.layout, self.pool, ref))
+            except (ValueError, OSError) as error:
+                rows.append(
+                    {
+                        "request": ref.model_dump(mode="json"),
+                        "state": "invalid_saved_progress",
+                        "worker_state": self.pool.ledger.task(request.work_id)["state"],
+                        "reason": str(error),
+                    }
+                )
+        return self.summarize(rows)
+
+    def cycle(self) -> dict[str, Any]:
+        from .recovery import recover_annotation
+
+        rows = []
+        for ref in self.requests:
+            rows.append(recover_annotation(self.layout, self.policy, self.pool, ref))
+        hold = any(
+            r["state"] in DECISION_STATES | {"invalid_saved_progress"} for r in rows
+        )
+        for ref, row in zip(self.requests, rows, strict=True):
+            request = read_document(self.layout, ref, WorkRequest)
+            if row["state"] == "invalid_saved_progress" and row["worker_state"] in {
+                "running",
+                "exited",
+            }:
+                try:
+                    stopped = self.pool.stop(request, reason=row["reason"])
+                    row["worker_state"] = stopped["state"]
+                except WorkerBusy:
+                    pass  # Ownership is not published yet; the next tick retries stopping.
+                continue
+            if row["state"] == "ready":
+                # Authorization is its own durable tick. Normal admission, with
+                # the same request/plan/scope, launches on a subsequent tick.
+                if row["worker_state"] == "timed_out":
+                    continue
+                if hold and row["current_attempt"] is None:
+                    row.update(
+                        state="held",
+                        reason="new cameras wait for resolution of stopped cameras",
+                    )
+                    continue
+                try:
+                    self.pool.start(request)
+                    state = self.pool.reconcile(request)
+                    row.update(
+                        state=state["state"],
+                        current_attempt=state["current_attempt"],
+                        reason=state["reason"],
+                    )
+                except (WorkerBusy, CapacityUnavailable, WorkerStopped) as error:
+                    row.update(state="waiting", reason=str(error))
+            try:
+                self.services(request, row, self.pool)
+            except (ValueError, OSError) as error:
+                stopped = self.pool.stop(
+                    request, reason=f"invalid camera service request: {error}"
+                )
+                row.update(state=stopped["state"], reason=stopped["reason"])
+        return self.summarize(rows)
 
 
 class ProductionWorkflow:

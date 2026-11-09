@@ -187,7 +187,7 @@ class _Resources:
         )
 
 
-def _usage(
+def summarize_usage(
     layout: AnnotationLayout, attempts: tuple[AttemptSnapshot, ...]
 ) -> UsageSummary:
     totals: Counter[str] = Counter({name: 0 for name in Usage.model_fields})
@@ -412,7 +412,7 @@ def _condition_report(
         execution=execution,
         task_states=states,
         resources=resources,
-        usage=_usage(layout, tuple(attempts.values())),
+        usage=summarize_usage(layout, tuple(attempts.values())),
     )
 
 

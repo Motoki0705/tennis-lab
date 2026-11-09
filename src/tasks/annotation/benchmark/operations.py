@@ -13,7 +13,11 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.paths import AnnotationLayout
-from src.tasks.base.annotation.plan import CampaignPlan, references
+from src.tasks.base.annotation.plan import (
+    LocalAnnotationPlan,
+    load_execution_plan,
+    references,
+)
 from src.tasks.base.annotation.workers.review.service import (
     execute_service,
     service_input,
@@ -32,10 +36,14 @@ def execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
 
 def _execute(layout: AnnotationLayout, reference: ArtifactRef) -> ArtifactRef:
     data = read_document(layout, reference, OperationInput)
-    plan = read_document(layout, data.plan, CampaignPlan)
+    plan = load_execution_plan(verify_reference(layout, data.plan))
     if plan.phase != "benchmark" or not isinstance(data.operation, ReviewOperation):
         raise ValueError("benchmark stage permits review services only")
     local = layout.for_benchmark(plan.campaign_id)
+    if isinstance(plan, LocalAnnotationPlan):
+        from ..video_services import execute_video_operation
+
+        return execute_video_operation(local, reference, plan)
     directory = local.artifact_path(reference).parent
     expected = local.path("campaigns", plan.campaign_id, "jobs")
     if (

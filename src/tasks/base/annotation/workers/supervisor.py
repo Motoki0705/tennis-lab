@@ -18,11 +18,12 @@ from ..artifacts import (
     write_document,
 )
 from ..paths import AnnotationLayout
-from ..plan import load_plan, references
+from ..plan import load_execution_plan, references
 from ..reproducibility import require_frozen_code
 from ..resources import ResourceManager
 from .command import codex_command, worker_environment
 from .contracts import ChildIdentity, ChildReceipt, ExitReceipt, Launch
+from .isolation import restrict_attempt
 from .processes import capture_supervisor, owned_members, process_snapshot, signal_owned
 
 
@@ -69,6 +70,27 @@ def event_summary(path: Path) -> tuple[str | None, bool, str | None, bool]:
     return thread, completed, failure, quota
 
 
+def exit_status(
+    status: str,
+    reason: str | None,
+    code: int,
+    summary: tuple[str | None, bool, str | None, bool],
+) -> tuple[str, str | None]:
+    """Preserve explicit cancellation and failures observed before the deadline."""
+    thread, completed, failure, quota = summary
+    if status == "cancelled":
+        return status, reason
+    if quota:
+        return "quota", failure
+    if failure is not None:
+        return "failed", failure
+    if status == "timed_out":
+        return status, reason
+    if code == 0 and completed and thread is not None:
+        return "succeeded", None
+    return "failed", reason or "worker did not finish a successful, identified turn"
+
+
 def supervise(
     path: Path,
     expected_digest: str,
@@ -76,6 +98,7 @@ def supervise(
     *,
     test_root: Path | None = None,
     resource_fd: int | None = None,
+    test_control_fd: int | None = None,
 ) -> int:
     layout = (
         AnnotationLayout.testing(test_root)
@@ -98,10 +121,12 @@ def supervise(
     ):
         raise ValueError("supervisor did not inherit its exact work lock")
     if layout.mode != "test" and (
-        launch.test_command is not None or launch.test_root is not None
+        launch.test_command is not None
+        or launch.test_root is not None
+        or test_control_fd is not None
     ):
         raise ValueError("test command/root is forbidden in production")
-    plan = load_plan(verify_reference(layout, launch.plan))
+    plan = load_execution_plan(verify_reference(layout, launch.plan))
     if layout.mode == "production":
         require_frozen_code(
             Path(launch.code_root),
@@ -161,6 +186,9 @@ def supervise(
                     stderr=errors,
                     cwd=directory / "work",
                     env=worker_environment(launch, plan),
+                    preexec_fn=(lambda: restrict_attempt(directory, Path(command[0])))
+                    if launch.prepared.isolate_inputs
+                    else None,
                 )
                 snapshot = process_snapshot(child.pid)
                 write_document(
@@ -177,8 +205,23 @@ def supervise(
                         else None,
                     ),
                 )
-                deadline = time.monotonic() + launch.timeout_seconds
-                while True:
+                if test_control_fd is not None:
+                    from ._test_clock import wait_for_child
+
+                    code = wait_for_child(
+                        child,
+                        test_control_fd,
+                        launch.timeout_seconds,
+                        (lambda: None) if resources is None else resources.watch,
+                    )
+                deadline = started + launch.timeout_seconds
+                while test_control_fd is None:
+                    # Reap a completed worker before deciding that its deadline
+                    # expired. Never turn a settled successful result into timeout.
+                    finished = child.poll()
+                    if finished is not None:
+                        code = finished
+                        break
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         raise subprocess.TimeoutExpired(command, launch.timeout_seconds)
@@ -198,7 +241,7 @@ def supervise(
                 )
             except InterruptedError as error:
                 status, reason, code = "cancelled", str(error), 130
-            except OSError as error:
+            except (OSError, subprocess.SubprocessError) as error:
                 status, reason, code = "failed", f"{type(error).__name__}: {error}", 127
             except (ValueError, RuntimeError, KeyError) as error:
                 status, reason, code = (
@@ -227,19 +270,9 @@ def supervise(
     finally:
         # Closing the inherited descriptor is deliberately left to process exit.
         pass
-    thread, completed, failure, quota = event_summary(directory / "events.jsonl")
-    if status not in {"timed_out", "cancelled"}:
-        if quota:
-            status, reason = "quota", failure
-        elif code == 0 and completed and thread is not None and failure is None:
-            status, reason = "succeeded", None
-        else:
-            status, reason = (
-                "failed",
-                reason
-                or failure
-                or "worker did not finish a successful, identified turn",
-            )
+    summary = event_summary(directory / "events.jsonl")
+    thread = summary[0]
+    status, reason = exit_status(status, reason, code, summary)
     write_document(
         layout,
         directory / "exit.json",

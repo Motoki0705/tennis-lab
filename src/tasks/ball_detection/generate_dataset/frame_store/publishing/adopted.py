@@ -13,6 +13,7 @@ from src.tasks.ball_detection.annotation.review.contracts import (
     BallLabels,
     BallTeacherMask,
 )
+from src.tasks.ball_detection.annotation.video import VideoBallAnnotation
 from src.tasks.ball_detection.generate_dataset.frame_store.clip import (
     BallInstance,
     ClipLabels,
@@ -32,17 +33,20 @@ from src.tasks.base.annotation.paths import AnnotationLayout
 
 
 @dataclass(frozen=True)
-class AdoptedClip:
-    receipt: ArtifactRef
+class PublicationClip:
+    """Compiled native clip from a sealed review or a completed original v3."""
+
+    evidence: ArtifactRef
     source_id: str
     spec: ClipSpec
     heatmap: NDArray[np.uint8]
     coordinate: NDArray[np.uint8]
+    annotation: VideoBallAnnotation | None = None
 
 
 def load_adopted(
     layout: AnnotationLayout, reference: ArtifactRef, plan: ArtifactRef
-) -> AdoptedClip:
+) -> PublicationClip:
     receipt = read_document(layout, reference, AdoptionReceipt)
     if receipt.task != "ball":
         raise ValueError("ball publication requires ball adoptions")
@@ -129,7 +133,7 @@ def load_adopted(
             "source_id": manifest.source.canonical_id,
         },
     )
-    return AdoptedClip(
+    return PublicationClip(
         reference,
         manifest.source.canonical_id,
         spec,

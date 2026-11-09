@@ -332,14 +332,28 @@ class PublicationReceipt(Document):
     adoptions: tuple[ArtifactRef, ...]
     added_clips: tuple[Digest, ...]
     reused_clips: tuple[Digest, ...]
+    # Direct, completed task annotations need no prediction/review adoption.
+    annotations: tuple[ArtifactRef, ...] = ()
+
+    @manifest_serializer
+    def serialize_receipt(self, handler: SerializerFunctionWrapHandler) -> dict[str, object]:
+        result: dict[str, object] = handler(self)
+        if not self.annotations:
+            # Replaying an existing adoption publication retains its exact receipt.
+            result.pop("annotations", None)
+        return result
 
     @after_validator
     def unique_clips(self) -> Self:
         combined = self.added_clips + self.reused_clips
         if len(combined) != len(set(combined)):
             raise ValueError("published clip identities must be unique")
-        if self.added_clips and not self.adoptions:
-            raise ValueError("new teachers require adoption receipts")
+        if self.added_clips and not (self.adoptions or self.annotations):
+            raise ValueError("new teachers require adoption receipts or saved annotations")
+        if self.adoptions and self.annotations:
+            raise ValueError("publication must name one explicit teacher input mode")
+        if len(set(self.annotations)) != len(self.annotations):
+            raise ValueError("published annotation revisions must be unique")
         return self
 
 

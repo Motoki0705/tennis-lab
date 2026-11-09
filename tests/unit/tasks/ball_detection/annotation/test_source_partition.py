@@ -16,13 +16,20 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.contracts 
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.partition import (
     publication_splits,
 )
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher import (
+    BallPublisher,
+)
 from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot import (
     load_snapshot,
+)
+from src.tasks.ball_detection.generate_dataset.frame_store.publishing.videos import (
+    recording_source_id,
 )
 from src.tasks.base.annotation.artifacts import read_document, write_document
 from src.tasks.base.annotation.contracts import PublicationReceipt, content_digest
 from src.tasks.base.annotation.plan import CollectionCounts
 from tests.support.tasks.ball_detection.annotation_learning import publish
+from tests.support.tasks.ball_detection.video_publication import incremental_case
 
 
 def policy() -> BallPublicationPolicy:
@@ -38,8 +45,8 @@ def policy() -> BallPublicationPolicy:
     )
 
 
-def test_complete_source_partition_is_exact_stable_and_preserves_old_holdouts() -> None:
-    sources = {content_digest(["youtube", str(i)]) for i in range(100)}
+def test_complete_source_partition_is_exact_stable_and_preserves_old_holdouts(tmp_path: Path) -> None:
+    sources = {recording_source_id("recording-" + str(i)) for i in range(100)}
     existing: dict[str, Split] = {
         content_digest("old-train"): "train",
         content_digest("old-val"): "val",
@@ -62,6 +69,22 @@ def test_complete_source_partition_is_exact_stable_and_preserves_old_holdouts() 
     second = publication_splits(policy(), existing, replaced, expected_new_sources=100)
     assert Counter(second[s] for s in replaced) == {"train": 80, "val": 10, "test": 10}
     assert min(sources) not in second
+    # Exercise the real publisher's group identity, including an existing
+    # holdout, another camera, and a related range of the original cam0 video.
+    env, request, _ = incremental_case(tmp_path, include_related=True)
+    receipt = read_document(env.layout, BallPublisher(env.layout).publish(request), PublicationReceipt)
+    snapshot, store = load_snapshot(env.layout, receipt.snapshot)
+    assert len(store.clips) == 3
+    assert {c.camera_id for c in store.clips} == {"cam0", "cam2"}
+    assert {c.source_id for c in snapshot.clips} == {recording_source_id("recording-a")}
+    assert [c.split for c in store.clips] == ["val", "val", "val"]
+    incompatible = write_document(
+        env.layout, env.layout.path("campaigns", "all-ball-policy.json"),
+        BallPublicationPolicy(jpeg_quality=90, source_splits=()),
+    )
+    mismatched = request.model_copy(update={"output": request.output.model_copy(update={"generation_policy": incompatible})})
+    with pytest.raises(ValueError, match="target_semantics"):
+        BallPublisher(env.layout).publish(mismatched)
 
 
 def test_partition_rejects_partial_sources_and_ambiguous_or_inexact_policy() -> None:

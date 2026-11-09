@@ -114,6 +114,7 @@ class BallStoreDataset(BallDetectionDataset):
         config: DictConfig,
         augmentation: BallDetectionAugmentation | None = None,
     ) -> None:
+        store.require_target_semantics("legacy_ball")
         super().__init__(config=config, augmentation=augmentation)
         self.store = store
         self.supervision = supervision

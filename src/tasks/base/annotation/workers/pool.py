@@ -6,6 +6,7 @@ import json
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import time
 from contextlib import ExitStack, suppress
@@ -26,7 +27,8 @@ from ..contracts import ArtifactRef
 from ..paths import AnnotationLayout
 from ..plan import (
     CampaignPlan,
-    load_plan,
+    LocalAnnotationPlan,
+    load_execution_plan,
     references,
     require_execution_layout,
     save_plan,
@@ -60,21 +62,22 @@ class WorkerPool:
     def __init__(
         self,
         layout: AnnotationLayout,
-        plan: CampaignPlan,
-        adapters: tuple[TaskAdapter, ...],
+        plan: CampaignPlan | LocalAnnotationPlan,
+        adapters: tuple[TaskAdapter[Any], ...],
         *,
         codex_binary: str = "codex",
         codex_home: Path | None = None,
         timeout_seconds: float = 3600,
         test_command: tuple[str, ...] | None = None,
+        test_clock: bool = False,
         resources: ResourceManager | None = None,
         worker_pss_bytes: int | None = None,
         worker_storage_bytes: int | None = None,
         code_revision: ArtifactRef | None = None,
     ) -> None:
         require_execution_layout(layout, plan)
-        if test_command is not None and layout.mode != "test":
-            raise ValueError("test commands are forbidden in production")
+        if (test_command is not None or test_clock) and layout.mode != "test":
+            raise ValueError("test commands/clocks are forbidden in production")
         if layout.mode == "production" and resources is None:
             raise ValueError("production workers require a persistent resource budget")
         if resources is not None:
@@ -100,6 +103,8 @@ class WorkerPool:
             test_command,
         )
         self.children: dict[str, subprocess.Popen[bytes]] = {}
+        self.test_clock = test_clock
+        self.test_controls: dict[str, socket.socket] = {}
 
     def _task(self, work_id: str) -> dict[str, Any]:
         result: dict[str, Any] = self.ledger.task(work_id)
@@ -141,7 +146,7 @@ class WorkerPool:
         elif read_document(self.layout, final.launch, Launch).test_command is None:
             raise ValueError("a real Codex result requires rollout telemetry")
 
-    def _adapter(self, request: WorkRequest) -> TaskAdapter:
+    def _adapter(self, request: WorkRequest) -> TaskAdapter[Any]:
         adapter = self.adapters.get(request.adapter)
         if adapter is None or adapter.version != request.adapter_version:
             raise ValueError("exact requested adapter/version is not registered")
@@ -333,7 +338,8 @@ class WorkerPool:
         if (
             (launch.work_id, launch.attempt, launch.request, launch.resource_scope)
             != (request.work_id, attempt, request, self.resources.reference)
-            or load_plan(verify_reference(self.layout, launch.plan)) != self.plan
+            or load_execution_plan(verify_reference(self.layout, launch.plan))
+            != self.plan
             or launch.resource_request is None
         ):
             raise ValueError("unregistered launch differs from the worker request")
@@ -399,6 +405,10 @@ class WorkerPool:
             )
 
     def start(self, request: WorkRequest, *, retry: bool = False) -> str | None:
+        if self.layout.mode != "test" and (
+            self.test_clock or self.test_command is not None
+        ):
+            raise ValueError("test commands/clocks are forbidden in production")
         self.register(request)
         # Registration is idempotent; successful results and pending finalization never rerun a model.
         state = self.reconcile(request)
@@ -467,7 +477,9 @@ class WorkerPool:
                 stage_count = 0
                 for item in active:
                     _ref, launch = self._launch(item)
-                    active_plan = load_plan(verify_reference(self.layout, launch.plan))
+                    active_plan = load_execution_plan(
+                        verify_reference(self.layout, launch.plan)
+                    )
                     limits.append(active_plan.resources.codex_workers)
                     if launch.request.stage == request.stage:
                         stage_count += 1
@@ -539,6 +551,13 @@ class WorkerPool:
                         storage_bytes=self.worker_storage_bytes,
                         gpu_seconds=0.0,
                     )
+                from .isolation import private_home
+
+                codex_home = (
+                    private_home(directory, self.codex_home)
+                    if prepared.isolate_inputs
+                    else self.codex_home
+                )
                 launch = Launch(
                     code_revision=self.code_revision,
                     work_id=request.work_id,
@@ -553,7 +572,7 @@ class WorkerPool:
                     directory=str(directory),
                     code_root=str(code_root),
                     codex_binary=binary or self.binary,
-                    codex_home=str(self.codex_home),
+                    codex_home=str(codex_home),
                     timeout_seconds=self.timeout,
                     test_command=self.test_command,
                     test_root=str(self.layout.root)
@@ -595,6 +614,18 @@ class WorkerPool:
                     command.extend(("--resource-fd", str(resource_descriptor)))
                 if self.layout.mode == "test":
                     command.extend(("--test-root", str(self.layout.root)))
+                descriptors = [descriptor]
+                if resource_descriptor is not None:
+                    descriptors.append(resource_descriptor)
+                control = None
+                if self.test_clock:
+                    client, control = socket.socketpair(
+                        socket.AF_UNIX, socket.SOCK_SEQPACKET
+                    )
+                    resource_stack.callback(control.close)
+                    resource_stack.callback(client.close)
+                    command.extend(("--test-control-fd", str(control.fileno())))
+                    descriptors.append(control.fileno())
                 environment = os.environ.copy()
                 environment["PYTHONPATH"] = str(code_root)
                 try:
@@ -607,11 +638,12 @@ class WorkerPool:
                             stdout=log,
                             stderr=log,
                             start_new_session=True,
-                            pass_fds=(descriptor,)
-                            if resource_descriptor is None
-                            else (descriptor, resource_descriptor),
+                            pass_fds=tuple(descriptors),
                         )
                     self.children[attempt] = process
+                    if control is not None:
+                        # Keep only the client endpoint after successful launch.
+                        self.test_controls[attempt] = client.dup()
                 except OSError as error:
                     self._mark(
                         request.work_id,
@@ -748,13 +780,8 @@ class WorkerPool:
                     execution,
                     telemetry,
                 )
-                outcome = WorkOutcome.model_validate_json(
-                    outcome.canonical_bytes()
-                )
-                if (
-                    outcome.adoption is not None
-                    and not self.plan.allows_adoption
-                ):
+                outcome = WorkOutcome.model_validate_json(outcome.canonical_bytes())
+                if outcome.adoption is not None and not self.plan.allows_adoption:
                     raise ValueError("preview campaigns cannot adopt teachers")
                 for reference in references(outcome):
                     verify_reference(self.layout, reference)
@@ -784,16 +811,27 @@ class WorkerPool:
         return self._task(request.work_id)
 
     def authorize_retry(
-        self, request: WorkRequest, *, after_attempt: str, reason: str
+        self,
+        request: WorkRequest,
+        *,
+        after_attempt: str,
+        reason: str,
+        accepted_states: frozenset[str] = RETRYABLE_STATES,
     ) -> dict[str, Any]:
         """Return a stopped work to ``ready`` so normal admission starts its next attempt.
 
         This records an explicit decision only: it starts no process and reserves
         no capacity, so shared limits and backpressure still decide when the next
         attempt runs. The stopped attempt and its receipts stay in the history.
+        ``accepted_states`` can restrict the transition source for an automatic
+        policy. It is checked under the same locks as the conditional update.
         """
         if not reason.strip():
             raise ValueError("retry authorization requires a reason")
+        if not accepted_states or not accepted_states <= RETRYABLE_STATES:
+            raise ValueError(
+                "accepted retry states must be a nonempty subset of stopped states"
+            )
         self._registered_task(request)
         try:
             with (
@@ -802,9 +840,13 @@ class WorkerPool:
             ):
                 row = self._reconcile_locked(request)
                 if row["current_attempt"] != after_attempt:
-                    raise ValueError("worker attempt changed; inspect its current state")
-                if row["state"] not in RETRYABLE_STATES:
-                    raise ValueError("only a stopped or failed worker can be retried")
+                    raise ValueError(
+                        "worker attempt changed; inspect its current state"
+                    )
+                if row["state"] not in accepted_states:
+                    raise ValueError(
+                        "only a stopped or failed worker in accepted states can be retried"
+                    )
                 with self.ledger.registry.transaction() as database:
                     updated = database.execute(
                         "UPDATE worker_tasks SET state='ready',reason=?,result=NULL "

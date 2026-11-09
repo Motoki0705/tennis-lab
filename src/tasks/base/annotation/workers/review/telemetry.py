@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from typing import Any
 
@@ -15,30 +14,15 @@ from ...plan import references
 from ...registry import Registry
 from ...storage.references import distinct
 from ...telemetry.contracts import ToolEvidence
+from ...telemetry.tools import output_envelopes
 from ..contracts import Launch
 
 
 def _envelopes(text: str, depth: int = 0) -> Iterator[dict[str, Any]]:
     """Accept CLI JSON lines, including an exec tool's structured stdout wrapper."""
-    for line in text.splitlines():
-        if not line.lstrip().startswith("{"):
-            continue
-        try:
-            value = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if not isinstance(value, dict):
-            continue
-        if (
-            value.get("operation") in {"review_edit", "review_handoff"}
-            and "receipt" in value
-            and "result" in value
-        ):
+    for value in output_envelopes(text, ("operation", "receipt", "result"), depth):
+        if value.get("operation") in {"review_edit", "review_handoff"}:
             yield value
-        elif depth < 2:
-            for key in ("output", "stdout"):
-                if isinstance(value.get(key), str):
-                    yield from _envelopes(value[key], depth + 1)
 
 
 def review_tool_evidence(

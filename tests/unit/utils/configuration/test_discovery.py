@@ -116,11 +116,18 @@ def test_catalog_keeps_task_local_generation_boundaries_distinct() -> None:
     } <= boundary_ids
 
 
+@pytest.mark.parametrize("runtime", ["blender_shots", "private_worker"])
 def test_external_runtime_registration_preserves_neighbor_boundary_checks(
     tmp_path: Path,
+    runtime: str,
 ) -> None:
     source_root = tmp_path / "src"
-    shots = source_root / "tennis_scene/visualization/blender/shots"
+    relative = (
+        "tennis_scene/visualization/blender/shots"
+        if runtime == "blender_shots"
+        else "tasks/ball_detection/annotation/video/agent/scripts"
+    )
+    shots = source_root / relative
     shots.mkdir(parents=True)
     source = (
         "import bpy\n"
@@ -128,7 +135,12 @@ def test_external_runtime_registration_preserves_neighbor_boundary_checks(
         "def main():\n"
         "    return argparse.ArgumentParser().parse_args()\n"
     )
-    for name in ("reveal", "validate_reveal", "unregistered_shot"):
+    names = (
+        ("reveal", "validate_reveal", "unregistered_shot")
+        if runtime == "blender_shots"
+        else ("client", "unregistered_client")
+    )
+    for name in names:
         (shots / f"{name}.py").write_text(source, encoding="utf-8")
     exporter = source_root / "tennis_scene/scripts/export_blender.py"
     exporter.parent.mkdir(parents=True)
@@ -136,10 +148,12 @@ def test_external_runtime_registration_preserves_neighbor_boundary_checks(
 
     report = audit.inspect_source(source_root, inventory=AuditInventory())
 
-    expected = {
-        "src.tennis_scene.visualization.blender.shots.unregistered_shot:main",
-        "src.tennis_scene.scripts.export_blender:main",
-    }
+    neighbor = (
+        "src.tennis_scene.visualization.blender.shots.unregistered_shot:main"
+        if runtime == "blender_shots"
+        else "src.tasks.ball_detection.annotation.video.agent.scripts.unregistered_client:main"
+    )
+    expected = {neighbor, "src.tennis_scene.scripts.export_blender:main"}
     assert {
         f"{boundary.module}:{boundary.callable_name}"
         for boundary in report.discovered_boundaries

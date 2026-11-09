@@ -5,6 +5,8 @@
 [`usage.py`](usage.py) に置く。scene・datasetはこのAPIから読み、schemaや状態表を複製しない。
 Pydanticの `VideoBallAnnotation.model_json_schema()` で機械可読schemaを取得できる。
 
+単一cameraのGPT白紙注釈・途中保存・完成receipt・探索方針比較は [agent](agent/README.md) を参照。
+
 対象はカメラが向くコートでプレーしている**生きた1球**。
 `target.target_semantics="active_ball"` を必須とし、全ボール検出とは区別する。
 手持ち球・予備球・隣接コートの球が見えても、プレー中の球がなければ `no_active_ball`。

@@ -1,5 +1,10 @@
 # 凍結学習窓・共通区間と全フレーム教師
 
+元動画v3から公開したactive_ball snapshotの窓は[`active_ball.py`](active_ball.py)の
+`ActiveBallWindowDataset`で読む。教師対象・mask・重みとAPIは
+[data README](../README.md#active_ballの学習reader)を参照。
+以下の既存observed-only manifestとは教師契約を分け、対象意味が異なるstoreを黙って読み替えない。
+
 ## 全フレーム教師の可変長窓
 
 `all_frames.py`は、clip内のreference-only frameと大きいPTS gapを境界として、

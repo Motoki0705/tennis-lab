@@ -69,7 +69,9 @@ from src.tasks.base.annotation.workers.contracts import WorkRequest
 # expected_input: sceneが固定した既存のVideoAnnotationInput。cameraごとに作る。
 configuration = LocalVideoConfiguration(
     campaign=campaign_settings,
-    videos=(LocalVideoInput(path=str(video_path.resolve()), annotation=expected_input),),
+    videos=(
+        LocalVideoInput(path=str(video_path.resolve()), annotation=expected_input),
+    ),
     publish_dataset=publish_dataset,
     budget=budget_selection,
     runtime=worker_settings,
@@ -108,11 +110,84 @@ task入力の`frame_index`は元動画番号、画像manifestの`frame_index`は
 中断しても、再送で保存済み入力を検証して登録を補完する。異なるplan・元動画版・
 camera/frame/PTS・公開選択で既存登録を上書きしない。登録結果にはcamera単位の入力だけを
 `WorkRequest.inputs`として列挙し、全cameraを列挙するplan manifestは親サービスの照合用とする。
-workerの実効的な画像隔離・編集・継続は後続の白紙worker/controller接続が所有する。
+workerの実効的な画像隔離・編集・途中保存・完成は [白紙worker](../ball_detection/annotation/video/agent/README.md) が所有する。
+[自動継続controller](#白紙注釈の自動継続)が時間切れを処理する。scene CLIの配線は別工程である。
 
 検証は`tests/unit/tasks/annotation/test_configuration.py`、`test_local_videos.py`と
 `tests/integration/tasks/annotation/test_local_videos.py`。integrationは2cameraの短いVFR動画で、
 元画像を独立に復号してJPEG画像とのframe対応、元動画保持、groupと公開選択を確認する。
+
+## 白紙注釈の自動継続
+
+`LocalAnnotationController(layout, saved_runtime)` は上記APIで登録した全cameraを実行し、
+保存したv3注釈の完成までを管理する。`LocalAnnotationRuntime` と登録完了receiptを照合し、
+cameraの欠落や異なるruntimeでの起動を拒否する。通常の予測レビューにはこのpolicyを適用しない。
+
+```python
+from src.tasks.annotation.contracts import LocalAnnotationRuntime
+from src.tasks.annotation.local_controller import LocalAnnotationController
+from src.tasks.ball_detection.annotation.video.agent.contracts import VideoCompletion
+from src.tasks.base.annotation.contracts import ArtifactRef
+
+runtime = read_document(layout, receipt.runtime, LocalAnnotationRuntime)
+controller = LocalAnnotationController(layout, runtime)
+progress = controller.cycle()  # 呼出元のschedulerが、終了までcycleを進める
+for camera in progress["reviews"]:
+    if camera["state"] == "complete":
+        completion = read_document(
+            layout, ArtifactRef.model_validate(camera["completion"]), VideoCompletion
+        )
+        # completion.annotation がscene/datasetへ渡す保存済みv3注釈
+```
+
+各cameraの新規・継続attemptは **5400秒**。本番登録とcontrollerは異なるreview timeoutを
+拒否する。`workflow/continuation-policy.json` にplan・runtime・資源scopeと事前許可を固定し、
+監督プロセスが期限を判定して実worker・子孫を停止した後、終了receiptを回収してから判断する。
+期限判定の時点ですでに終了したworkerは、正常終了の検証を先に行う。
+
+時間切れで未処理が残り、当該attemptの開始revisionから新しい処理済みframeが増えた場合は、
+`workflow/continuations/<work-id>/<attempt>.json` に理由・開始/終了件数・残数・head revisionを
+保存して `authorize_retry` で `ready` に戻す。そのtickでは次workerを起動しない。
+次tickの通常の資源受付で同じplan/scope/WorkRequestを起動し、開始revisionに保存済みheadを渡す。
+許可保存前後や起動後のcontroller再起動、二重tickでも同じattemptを二重起動しない。
+自動許可の確定は同じattemptの現在状態が `timed_out` の場合だけに限定し、共通lock内の
+条件付き更新で照合する。保存した判断と許可の間に取消が確定した場合や、その判断を再読込した
+場合も、`cancelled` と取消理由を保持する。保存済み判断は変更せず、明示retryまで起動しない。
+継続ごとに未処理数の減少を要求するため、通常の継続回数も入力frame数で有限になる。
+処理済みframeを未処理へ戻した保存は異常として扱う。
+
+全frameが処理済みなら、最終unknownが残っていても完成である。timeout直前に全frameを保存し、
+最終応答だけを失った場合も、taskの正式storeで完成receiptを回収し、追加workerを起動しない。
+元のworker終了履歴は `timed_out` のまま保持し、cameraの `state=complete` と
+`completion` で完成を表す。`worker_state` と完成判断を混同しない。
+dataset公開はこのcontrollerの完了条件に含めず、planの `publish_dataset` を後続へ渡す。
+
+| 状態・原因 | 保存する判断と次の対応 |
+|---|---|
+| 正常な時間切れ・有効な増分・未処理あり | 自動継続。手動のcontinue操作は不要 |
+| 時間切れ・増分なし | `timed_out` で保留。workerと原因を確認し、明示的にretry |
+| 保存欠損・hash/入力不一致・壊れたrevision | `invalid_saved_progress`。既存成果物を保持し、復元・修正後に明示的に復旧。別revisionへの自動fallbackやunknownへの置換はしない |
+| quota・rate limit | `quota`。campaign全体の新規受付を停止し、未起動予約を取消。利用枠を回復して `ResumeWorkers` と `RetryWorker` を明示 |
+| 外部サービス・workerの失敗 | `failed`。exit/eventsを確認して原因解消後に明示的にretry。期限前のerrorを通常timeoutで隠さない |
+| 取消 | `cancelled`。保存済み編集を保持し、明示的なretryまで起動しない |
+| 結果検証失敗・worker保留 | `validation_failed` / `deferred`。理由を確認して明示的に復旧 |
+| 資源の一時的な枠不足 | `waiting`。同じpending要求を通常受付で再確認し、attempt・予約を重複作成しない |
+
+明示復旧は `recover(controller, RecoveryInput(...))` に理由を渡す既存APIを使う。
+`RetryWorker(request, after_attempt)` は現在のattemptを照合する。完成済みcameraのretryは拒否する。
+`blocked` でも `live=true` の間は他camera・サービス工程の処理と終了回収を続ける。
+完成時も、稼働中の資源stageが終了するまでcampaign全体を完了と報告しない。
+
+代表のCPU integrationは `test_automatic_continuation.py`。controllerを独立したCPU processで動かし、
+他テストが読み込んだモデル等の常駐メモリをfixtureの資源予算へ混在させない。
+3camera×12frameの合成動画と正式な
+画像/編集サービス、実controller・資源stage・store・supervisorを使い、cam0のframe 0〜3保存通知後に
+監督側のtest clockを5399.999→5400秒へ進め、停止・回収・controller再起動・frame 4〜11完了を確認する。
+cam1/cam2の完成結果とcam0の既存編集・最終unknownを保持する。
+`test_clock` のsocketはtest layoutだけで許し、workerへ継承しない。本番poolとsupervisorは拒否する。
+待機はファイル通知・pidfd/socketで行い、実時間90分や長いsleepは使わない。
+短い実時間で実process/子孫を止める既存の `test_timeout_and_owned_stop_terminate_descendants` も実行する。
+異常分類・保存途中・許可保存前後の中断と終了競合はunitに置く。実GPTの認識品質はこの検証に含めない。
 
 ## 固定入力と起動
 

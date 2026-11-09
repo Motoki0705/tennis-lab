@@ -112,7 +112,7 @@ class PageView(Document):
 class RenderRequest(PageView):
     manifest: ArtifactRef
     annotation: ArtifactRef
-    annotation_kind: Literal["prediction", "revision"]
+    annotation_kind: Literal["prediction", "revision", "video_revision"]
     drawing: Literal["plain", "prediction", "revision"]
     tiles: tuple[Tile, ...] = Field(min_length=1, max_length=16)
 

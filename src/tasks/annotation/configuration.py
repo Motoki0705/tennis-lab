@@ -26,6 +26,7 @@ from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import (
     CampaignPlan,
     ExecutionPlan,
+    LocalAnnotationPlan,
     load_plan,
     references,
     save_plan,
@@ -102,6 +103,12 @@ def validate_runtime(
     roots: tuple[str, ...],
 ) -> None:
     """Read-only validation shared by configuration and controller startup."""
+    if (
+        isinstance(plan, LocalAnnotationPlan)
+        and layout.mode == "production"
+        and settings.cost("review").timeout_seconds != 5400
+    ):
+        raise ValueError("direct annotation requires 5400 seconds per camera attempt")
     if len({cost.stage for cost in settings.costs}) != len(settings.costs):
         raise ValueError("stage costs must be unique")
     declared = {stage.stage: stage for stage in plan.resources.stages}

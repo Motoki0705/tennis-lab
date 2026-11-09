@@ -77,6 +77,13 @@ def publish_reply(
         result: ArtifactRef = write_document(
             layout, directory / "services" / request.sha256 / "reply.json", reply
         )
+        launch = read_document(
+            layout, annotation_reference(layout, directory / "launch.json"), Launch
+        )
+        if launch.prepared.isolate_inputs:
+            write_document(
+                layout, directory / "exchange" / request.sha256 / "reply.json", reply
+            )
         return result
 
 

@@ -53,7 +53,10 @@ state = pool.reconcile(request)
   `authorize_retry(request, after_attempt=..., reason=...)` は停止したworkを理由付きで `ready` へ
   戻す明示の判断だけを記録する。processを起動せず枠も確保しないため、次のattemptは通常の受付・
   待機・資源管理で始まる。現在のattemptと停止状態をwork lock内で照合する。
+  `accepted_states` で受理する停止状態を限定できる。状態の照合と `ready` への条件付き更新は
+  同じwork/service lock内で行う。省略時は従来の手動retry対象の停止状態をすべて受理する。
   quotaイベントはcampaign全体の新規投入を止め、明示的な `resume_campaign` を要求する。
+  期限前に記録されたquota/失敗イベントは通常timeoutで隠さず、取消は取消として保持する。
   admission時にも終了receiptを検証し、quota状態とcampaign停止を同じtransactionで保存する。
   回収はwork lock取得後に現在のattemptを読み、状態更新は検証したattemptと遷移元状態に限定する。
   停止の最終状態更新も同じwork lock内でattemptと保存済みreceiptを再確認する。
@@ -116,3 +119,30 @@ attemptの保護を同じtransactionで解放する。`exited` は結果検証�
 並列枠、quota、timeout、結果改変、preview採用拒否、receipt後の中断を確認する。
 `test_command` は明示的なtest layoutでのみ使え、productionでの別コマンドへの
 置換は拒否する。実Codex・ball/player adapter接続はそれぞれの受入試験で扱う。
+
+`test_clock=True` はtest layoutだけでsupervisorへの制御socketを作る。
+socketの時計更新と実childのpidfdを同じselectorで待ち、期限到達後は通常の停止・子孫回収を通る。
+制御fdはworkerへ継承しない。production poolとsupervisorはこの境界を拒否する。
+直接注釈だけの事前許可された自動継続は[task側controller](../../../annotation/README.md#白紙注釈の自動継続)が所有する。
+
+## Private input workers
+
+`PreparedWorker.isolate_inputs=True` はCLI自体と全子孫へLinux Landlockの読取/書込境界を適用する。
+Linux x86_64/aarch64・Landlock ABI 3以上が必要で、利用できなければ起動を失敗させる。
+workerはattemptの `input` / `exchange` を読め、`work` だけを書ける。サービスは親側で動き、
+受理した結果だけをexchangeへ不変保存する。元のartifact rootやcode rootをworkerへ開放しない。
+
+OSの実行ファイル・library・TLS/DNS設定と、Codex本体および同梱のcode-mode-host/exec-serverだけを
+実行用に許す。元入力やrepositoryが許可したsystem runtime配下にある場合は拒否する。
+専用Codex homeへ共有するのはauth.jsonのみで、他threadのsession・cache・config・rulesは渡さない。
+環境変数も限定し、project探索を専用のmarkerへ固定する。
+
+Codex内側のworkspace-writeはhost mount情報の読取を必要とするため、このmodeだけは
+`-s danger-full-access` とし、**外側の必須Landlock**がファイル権限を所有する。
+Codex引数によってこのOS境界を解除することはできない。これはファイル入力の境界であり、
+CLIのAPI通信は残る。通常workerのworkspace-write設定は変えない。
+kernelの契約は [Landlock documentation](https://docs.kernel.org/userspace-api/landlock.html)、
+project探索設定は [Codex configuration](https://developers.openai.com/codex/config-reference/) を参照。
+
+白紙ball workerはこのmodeを必須にし、実行中に追加したrevision・画像・サービス由来も保持する。
+状態・進捗・完成・探索方針の契約は [task側](../../../ball_detection/annotation/video/agent/README.md) が所有する。
