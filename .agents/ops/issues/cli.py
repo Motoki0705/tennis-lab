@@ -7,6 +7,7 @@ import json
 import re
 import subprocess
 import sys
+import time
 from collections import deque
 from dataclasses import asdict
 from pathlib import Path
@@ -26,6 +27,9 @@ from .format import (
     render_child_body,
     render_parent_body,
 )
+
+_HTTP_STATUS = re.compile(r"HTTP/\S+ ([0-9]{3})(?:\s|$)")
+_GET_RETRY_DELAYS = (1.0, 2.0)
 
 
 def _object(value: object, field: str) -> dict[str, object]:
@@ -159,9 +163,30 @@ def _repo_name(value: str) -> str:
 class GitHubHTTPError(ValueError):
     """A failed gh api response with its actual HTTP status preserved."""
 
-    def __init__(self, endpoint: str, status: int, detail: str) -> None:
+    def __init__(
+        self, endpoint: str, status: int, detail: str, *, attempts: int = 1
+    ) -> None:
         self.status = status
-        super().__init__(f"gh api {endpoint}: HTTP {status} ({detail})")
+        self.attempts = attempts
+        super().__init__(
+            f"gh api GET {endpoint}: HTTP {status}; attempts={attempts}; "
+            f"last_error_kind=http_{status} ({detail})"
+        )
+
+
+class GitHubTransportError(ValueError):
+    """A GET exhausted its bounded retries without an HTTP response status."""
+
+    def __init__(
+        self, endpoint: str, attempts: int, error_kind: str, detail: str
+    ) -> None:
+        self.endpoint = endpoint
+        self.attempts = attempts
+        self.error_kind = error_kind
+        super().__init__(
+            f"gh api GET {endpoint}: attempts={attempts}; "
+            f"last_error_kind={error_kind} ({detail})"
+        )
 
 
 class GitHub:
@@ -182,33 +207,77 @@ class GitHub:
             ["gh", *args], text=True, capture_output=True, timeout=60, check=False
         )
 
+    def _get_response(
+        self, endpoint: str
+    ) -> tuple[subprocess.CompletedProcess[str], int]:
+        # Only REST GET reaches this loop. An HTTP response ends transport
+        # retries even for auth/rate-limit/server errors or malformed bodies.
+        for attempt, delay in enumerate((0.0, *_GET_RETRY_DELAYS), start=1):
+            if delay:
+                time.sleep(delay)
+            try:
+                result = self._run(
+                    "api",
+                    "--include",
+                    "--method",
+                    "GET",
+                    "--header",
+                    "Accept: application/vnd.github+json",
+                    "--header",
+                    "X-GitHub-Api-Version: 2022-11-28",
+                    endpoint,
+                )
+            except subprocess.TimeoutExpired as exc:
+                partial: str | bytes = exc.stdout or b""
+                if isinstance(partial, bytes):
+                    partial = partial.decode("utf-8", errors="replace")
+                status = _HTTP_STATUS.match(partial)
+                if status:
+                    raise GitHubHTTPError(
+                        endpoint,
+                        int(status[1]),
+                        f"timeout after {exc.timeout}s after HTTP response status",
+                        attempts=attempt,
+                    ) from exc
+                error_kind = "timeout_without_http_response"
+                detail = f"timeout after {exc.timeout}s without HTTP response status"
+            else:
+                if _HTTP_STATUS.match(result.stdout):
+                    return result, attempt
+                error_kind = "missing_http_response_status"
+                detail = f"missing HTTP response status ({result.stderr.strip()})"
+        raise GitHubTransportError(endpoint, attempt, error_kind, detail)
+
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
-        result = self._run(
-            "api",
-            "--include",
-            "--method",
-            "GET",
-            "--header",
-            "Accept: application/vnd.github+json",
-            "--header",
-            "X-GitHub-Api-Version: 2022-11-28",
-            endpoint,
-        )
+        result, attempts = self._get_response(endpoint)
         headers, separator, body = result.stdout.replace("\r\n", "\n").partition("\n\n")
-        status = re.match(r"HTTP/\S+ ([0-9]{3})(?:\s|$)", headers)
-        if not separator or not status:
-            raise ValueError(
-                f"gh api {endpoint}: missing HTTP response status ({result.stderr.strip()})"
-            )
-        payload: object = json.loads(body)
+        status = _HTTP_STATUS.match(headers)
+        assert status is not None  # _get_response requires an HTTP status.
         if status[1] == "404" and result.returncode != 0 and missing_parent:
-            error = _object(payload, "parent 404")
-            if error.get("message") == "No parent issue found":
+            try:
+                error = json.loads(body)
+            except json.JSONDecodeError:
+                error = None
+            if (
+                isinstance(error, dict)
+                and error.get("message") == "No parent issue found"
+            ):
                 return None
         if result.returncode or status[1] != "200":
-            raise GitHubHTTPError(endpoint, int(status[1]), result.stderr.strip())
+            raise GitHubHTTPError(
+                endpoint, int(status[1]), result.stderr.strip(), attempts=attempts
+            )
+        context = f"gh api GET {endpoint}: attempts={attempts};"
+        if not separator:
+            raise ValueError(f"{context} last_error_kind=missing_http_body_separator")
+        try:
+            payload: object = json.loads(body)
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                f"{context} last_error_kind=invalid_json_response ({exc})"
+            ) from exc
         if payload is None:
-            raise ValueError(f"gh api {endpoint}: unexpected null response")
+            raise ValueError(f"{context} last_error_kind=unexpected_null_response")
         return payload
 
     def identity(self, value: object) -> int:

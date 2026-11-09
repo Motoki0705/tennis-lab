@@ -317,6 +317,24 @@ closed/取消を含む一式のラベル、prefix、本文参照、必須項目�
 closedの理由が不明な子を完了と推測しない。編集中に跨った取得は不整合になり得るため、編集を終えて再検査する。
 自然言語のスコープの矛盾・合意の正当性・進捗概要と通知コメントの内容は担当親が確認する。
 
+### GitHub GETの接続断と再試行
+
+`issues.cli.GitHub.get()` は、HTTP応答statusが得られないGETだけを合計3回まで試行し、
+2回目の前に1秒、3回目の前に2秒待つ。各試行のsubprocess timeoutは60秒。
+`error connecting` 等を伴うstatus欠落と、HTTP statusを受信する前のtimeoutが対象。
+通信原因をDNS・TLS・回線などのいずれかと断定するものではない。
+
+HTTP statusを受信したら再試行しない。認証・権限の401/403、404、rate limitの403/429、5xxは
+`GitHubHTTPError` の実statusを保持して失敗させる。rate limitの解除待ちや自動再送は行わない。
+HTTP statusがある応答の本文不正・欠落も即失敗する。上記の文書化された「親なし」404だけは従来どおり扱う。
+実行ファイルの欠落等のローカルエラー、`gh repo view`、POST/PATCH/PUT/DELETE、GraphQLのPOSTは再試行しない。
+
+上限に達したら `GitHubTransportError` にGET endpoint、`attempts`、`last_error_kind` と最後の詳細を保持する。
+エラー種別は `missing_http_response_status` または `timeout_without_http_response`。
+再試行後にHTTPエラーへ変わった場合も、HTTPエラーに累積試行回数と最終statusを残す。
+空配列や成功には置き換えない。親・dispatcher等の共有reader利用先にも同じGET契約が適用される。
+`parent.github.GitHub.rows()` の最大3回の取り直しはページ重複の整合対策であり、接続断の再試行とは別である。
+
 ## 新規起票と既存issueの段階移行
 
 **新規は起票時、既存は着手・再開・親付替えなど今後作業対象になる時**に、起票者と担当親が適用する。
