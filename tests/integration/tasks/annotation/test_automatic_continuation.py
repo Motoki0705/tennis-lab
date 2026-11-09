@@ -55,24 +55,66 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
         timeout=240,
     )
     assert result.returncode == 0, (
-        result.stdout + result.stderr + _attempt_evidence(tmp_path / "annotation")
+        _workflow_output(result) + _attempt_evidence(tmp_path / "annotation")
+    )
+
+
+def _workflow_output(result: subprocess.CompletedProcess[str]) -> str:
+    limit = 16384
+    return "".join(
+        f"\n{name}:\n"
+        + (
+            data[: limit // 2]
+            + f"\n[truncated {len(data) - limit} characters from middle]\n"
+            + data[-limit // 2 :]
+            if len(data) > limit
+            else data
+        )
+        for name, data in (("stdout", result.stdout), ("stderr", result.stderr))
     )
 
 
 def _attempt_evidence(root: Path) -> str:
     """Keep the native cause when the workflow reports a policy-level failure."""
-    evidence = []
+    file_limit, total_limit = 16384, 262144
+    evidence = [
+        f"\nattempt evidence (last {file_limit} bytes/file; "
+        f"at most {total_limit} characters including headers):\n"
+    ]
     directories = sorted(root.glob("campaigns/*/workers/*/attempt-*")) + sorted(
         root.glob("campaigns/*/jobs/*")
     )
-    for directory in directories:
-        for name in ("exit.json", "stderr.log", "supervisor.log", "events.jsonl"):
-            path = directory / name
-            if path.is_file():
-                evidence.append(
-                    f"\n{path.relative_to(root)}:\n"
-                    + path.read_text(errors="replace")[-16384:]
+    paths = [
+        directory / name
+        for directory in directories
+        for name in ("exit.json", "stderr.log", "supervisor.log", "events.jsonl")
+        if (directory / name).is_file()
+    ]
+    remaining = total_limit - len(evidence[0])
+    for index, path in enumerate(paths):
+        section = f"\n{path.relative_to(root)}:\n"
+        try:
+            with path.open("rb") as stream:
+                size = stream.seek(0, os.SEEK_END)
+                stream.seek(max(0, size - file_limit))
+                data = stream.read(file_limit)
+            if size > file_limit:
+                section += (
+                    f"[truncated {size - file_limit} bytes; "
+                    f"showing last {file_limit} bytes]\n"
                 )
+            section += data.decode("utf-8", errors="replace")
+        except OSError as error:
+            section += f"[could not read: {type(error).__name__}: {error}]\n"
+        omitted = (
+            f"\n[truncated diagnostic collection at {total_limit} characters; "
+            f"{len(paths) - index} files omitted]\n"
+        )
+        if len(section) + len(omitted) > remaining:
+            evidence.append(omitted)
+            break
+        evidence.append(section)
+        remaining -= len(section)
     return "".join(evidence)
 
 
