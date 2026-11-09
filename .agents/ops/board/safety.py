@@ -9,8 +9,32 @@ from typing import Any
 
 from .errors import BoardError
 
+# Include the NFKC forms of fullwidth symbols: worker-log checks normalize text.
+# A slash between Japanese words/symbols is prose. An ASCII path component such
+# as /home still starts a path even immediately after Japanese text.
+_FULLWIDTH_SYMBOLS = "".join(
+    unicodedata.normalize("NFKC", chr(c))
+    for c in range(0xFF01, 0xFF61)
+    if not chr(c).isalnum() and c != 0xFF0F
+)
+_JAPANESE_LETTERS = (
+    r"\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff\uf900-\ufaff"
+    r"\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9f"
+    r"\U0001b000-\U0001b16f\U00020000-\U0003ffff"
+)
+_JAPANESE_SEPARATOR = (
+    "["
+    + _JAPANESE_LETTERS
+    + r"\u3000-\u303f\uff01-\uffef○×◎△"
+    + re.escape(_FULLWIDTH_SYMBOLS)
+    + "]"
+)
 ABSOLUTE_PATH = re.compile(
-    r"(?<![a-zA-Z0-9_./])(?:(?<!https:)(?<!http:)/(?=\S)|~[/\\]|[a-zA-Z]:[/\\]|\\\\)",
+    r"(?<![a-zA-Z0-9_./])(?:"
+    r"(?<!https:)(?<!http:)"
+    rf"(?!(?<={_JAPANESE_SEPARATOR})/(?:[{_JAPANESE_LETTERS}]|"
+    rf"(?![.~\\．～＼]){_JAPANESE_SEPARATOR}(?![a-zA-Z0-9_.~/\\])))/(?=\S)"
+    r"|~[/\\]|[a-zA-Z]:[/\\]|\\\\)",
     re.IGNORECASE,
 )
 SESSION_TOKEN = re.compile(

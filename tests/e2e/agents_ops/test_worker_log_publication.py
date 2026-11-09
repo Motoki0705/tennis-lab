@@ -165,6 +165,47 @@ def test_concurrent_retry_reuses_same_pr(logs: LogEnv) -> None:
     assert logs.github.calls == ["create", "merge"]
 
 
+@pytest.mark.parametrize("previously_blocked", [False, True])
+def test_local_path_masks_are_published_and_visible_to_parent(
+    logs: LogEnv, previously_blocked: bool
+) -> None:
+    instruction = "観測/補間。保存先は/mnt/unknown/report.txt。\n"
+    final = r"確認は~/.ssh/config と C:\Users\unknown\report.txt"
+    path, proof = logs.turn(instruction=instruction)
+    directory = Path(journal.read(path)["source"]["run_directory"])
+    (directory / "final.md").write_text(final)
+    ready = sources.receive(path, proof)
+    expected = {
+        "version": 2,
+        "instruction": 1,
+        "final": 2,
+        "additional": 0,
+        "local_paths": {"posix": 1, "home": 1, "windows": 1},
+    }
+    assert ready["state"] == "ready" and ready["sanitization"] == expected
+    row = journal.read(path)
+    # Original inputs stay private and pinned, including on an old blocked turn's retry.
+    assert row["source"]["instruction"] == instruction
+    assert row["receipt"]["final"] == final
+    if previously_blocked:
+        del row["files"]
+        journal.fail(path, row, "absolute_path")
+    publisher = logs.publisher(path)
+    result = publisher.publish(retry=previously_blocked)
+    assert result["saved_to_main"] is True and result["sanitization"] == expected
+    row = journal.read(path)
+    published = {
+        name: git(logs.upstream, "show", f"main:{row['directory']}/{name}")
+        for name in schema.FILENAMES
+    }
+    assert published["instruction.md"] == "観測/補間。保存先は[local path]。"
+    assert published["final.md"] == "確認は[local path] と [local path]"
+    assert json.loads(published["meta.json"])["sanitization"] == expected
+    assert journal.view(row)["sanitization"] == expected
+    assert publisher.publish()["sanitization"] == expected
+    assert logs.github.calls == ["create", "merge"]
+
+
 @pytest.mark.parametrize("change", ["remote_head", "full_diff"])
 def test_publication_gate_rechecks_git_and_remote(logs: LogEnv, change: str) -> None:
     path = logs.ready()

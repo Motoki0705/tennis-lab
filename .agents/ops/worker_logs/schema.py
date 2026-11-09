@@ -58,6 +58,35 @@ def digest(value: Any, length: int = 64) -> bool:
     )
 
 
+def sanitization(value: Any) -> dict[str, Any]:
+    require(isinstance(value, dict), "record_sanitization")
+    version = value.get("version")
+    require(type(version) is int and version in {1, 2}, "record_sanitization")
+    expected = {"version", "instruction", "final", "additional"}
+    if version == 2:
+        expected.add("local_paths")
+    require(set(value) == expected, "record_sanitization")
+    require(
+        all(
+            type(value[k]) is int and value[k] >= 0
+            for k in ("instruction", "final", "additional")
+        ),
+        "record_sanitization",
+    )
+    if version == 2:
+        counts = value["local_paths"]
+        require(
+            isinstance(counts, dict)
+            and bool(counts)
+            and set(counts) <= {"posix", "home", "windows", "unc"}
+            and all(type(n) is int and n > 0 for n in counts.values())
+            and sum(counts.values())
+            <= sum(value[k] for k in ("instruction", "final", "additional")),
+            "record_sanitization",
+        )
+    return dict(value)
+
+
 def path(meta: dict[str, Any]) -> str:
     require(integer(meta.get("parent")) and integer(meta.get("issue")), "record_issue")
     require(
@@ -182,15 +211,7 @@ def validate(files: dict[str, bytes], guard: Guard | None = None) -> dict[str, A
         and all(digest(s, 40) for s in meta["artifacts"]["commits"]),
         "record_artifact",
     )
-    fields(meta["sanitization"], {"version", "instruction", "final", "additional"})
-    require(
-        meta["sanitization"]["version"] == 1
-        and all(
-            type(meta["sanitization"][k]) is int and meta["sanitization"][k] >= 0
-            for k in ("instruction", "final", "additional")
-        ),
-        "record_sanitization",
-    )
+    sanitization(meta["sanitization"])
     for key in ("started_at", "finished_at", "captured_at"):
         value = datetime.fromisoformat(meta[key])
         require(value.tzinfo is not None, "record_time")
