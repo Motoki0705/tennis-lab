@@ -23,8 +23,10 @@ import httpx2 as httpx
 import pytest
 import uvicorn
 
+from tests.support.agents_ops.explain_editor import candidate
 from tests.support.agents_ops.explain_editor import editor_env as editor_env
 from tests.support.agents_ops.explain_html import PAYLOADS, schema
+from tests.support.agents_ops.explain_html_visuals import visuals
 from tests.support.agents_ops.explain_jobs import Gate, JobWorld, service
 from tests.support.agents_ops.explain_jobs import job_world as job_world
 
@@ -295,6 +297,25 @@ def test_unexpected_editor_and_storage_errors_have_only_public_messages(
 
 def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> None:
     env = editor_env
+    raw_document = env.proposed.document.model_copy(
+        update={
+            "html": env.proposed.document.html.replace(
+                "<html><body>", "<html><head><title>Geometry</title></head><body>"
+            )
+        }
+    )
+    raw = candidate(raw_document, current=env.current, request=env.request)
+    final = candidate(
+        visuals.render_document(raw_document), current=env.current, request=env.request
+    )
+    env.outputs(
+        raw,
+        {
+            "candidate_digest": schema.candidate_digest(final),
+            "check": {"status": "passed"},
+            "reviewed_evidence_ids": ["baseline", "cameras"],
+        },
+    )
     process_env = {
         **os.environ,
         "PYTHONPATH": os.pathsep.join([str(REPO / ".agents/ops"), str(REPO)]),
@@ -331,8 +352,6 @@ def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> No
             str(env.root / "agy"),
             "--validator",
             "tests.support.agents_ops.explain_jobs:fake_rendering",
-            "--compiler",
-            "tests.support.agents_ops.explain_jobs:identity_compiler",
         )
 
     first = start()
@@ -371,7 +390,7 @@ def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> No
     exported = cli("export", "--document", "geometry")
     assert (
         Path(exported["directory"]) / "index.html"
-    ).read_text() == env.proposed.document.html
+    ).read_text() == final.document.html
     assert token not in (Path(exported["directory"]) / "index.html").read_text()
     second = start()
     try:

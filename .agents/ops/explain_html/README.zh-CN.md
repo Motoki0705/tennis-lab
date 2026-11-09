@@ -32,6 +32,7 @@
 | [gemini.py](gemini.py) | 固定 model、禁用工具的 agy 执行、私有证据与取消 |
 | [no_tools.py](no_tools.py) | 只允许 schema 检查后的完成操作的可信 PreToolUse hook |
 | [jobs.py](jobs.py) | 持久化去重、文档队列、发布前检查与恢复 |
+| [managed.py](managed.py) | 实 figure compile、图像不可用 adapter 和 staged visual 检查的 service 连接 |
 | [service.py](service.py) | 共用契约的 HTTP route、token/Origin/Host 检查和公开文件 |
 | [__main__.py](__main__.py) | 本地 start/serve/status/stop 和离线 export CLI |
 
@@ -166,22 +167,28 @@ controller 将结果绑定到 editor 的同一候选 digest，所有检查 passe
 没有内置渲染验证器或默认 passed 判定。仅做 visual 安全检查/figure compile 不能证明浏览器渲染。
 应在独立语义检查前 compile figure；之后修改 HTML 会使该检查的 digest 失效。
 
-`EditorFactory(prepared)` 为每个请求创建 editor。CLI 必需的 `--compiler module:factory` 接收该请求的
-可变 `prepared.assets` map，并返回 adapter 必需的 DocumentCompiler。
-compiler 将生成的 SVG/renderer bytes 写入该 map 后返回最终 Document；同一 bytes 进入 stage/验证。
-每个请求独立持有 compiler 和 map，避免并行文档混合资源。没有 figure 时也不隐式选择 identity compiler。
+`EditorFactory(prepared)` 为每个请求创建 editor。CLI 默认连接
+[ManagedResources](managed.py)，在独立语义检查前执行真实 `visuals.render_document`，
+展开图占位、插入 CSP 和版本固定的 managed script，没有恒等变换 fallback。
+可选的 `--compiler module:factory` 是 managed compile **前** 的受信变换，不替换 visual/图像策略。
+它接收请求独立的可变 `prepared.assets` map，并返回 DocumentCompiler；把生成的 SVG/renderer bytes
+写入该 map，同一 bytes 进入 stage/验证，请求之间不共享变换或 bytes。
 
-可选的受信 `AssetPreparer` 返回包含 WritingContext 和新 asset bytes 的 PreparedEdit。
-默认 `preserve_resources` 保留当前依据/assets 和完整变更摘要。在这里注入 figure/图像能力规划，
-服务不自行实现图像生成。阅读期间需要新 AI 图像时，规划必须抛出 `image_generation_unavailable`，
-使整个请求未完成并保留当前版。原始 EditRequest 指令没有类型化图像意图字段，语义能力规划需由集成方提供。
-默认处理不声称能识别任意自然语言的图像意图。
+默认 `ManagedResources.prepare` 保留当前依据/assets 和完整变更摘要，把真实
+`UnavailableImageGenerator.capability()` 的原因传给撰写和语义检查。
+新的 AI 图像需求通过现有 Figure 类型表示：kind=image、generated_concept provenance、空 asset_ids
+和空 figure 占位。compiler 通过 `generate_image` 将未满足图像意图传给不可用 adapter，在语义检查/commit 前
+返回 `image_generation_unavailable`。移动现有图像或改说明时保留 asset ID。
+自然语言解释由 Gemini 负责，service 不按特定语言的关键词匹配。自定义 `--prepare` 也必须保留此类型化约定。
 
-使用仓库 Python，把示例 module 名称替换成实现 BundleValidator 和 compiler factory 的运营者受控 module：
+CLI 先对全部 staged bytes 执行真实 `validate_visuals`，再调用指定的 BundleValidator。
+后者必须执行实际渲染检查，不能把安全检查当作 rendering passed。
+
+使用仓库 Python，把示例 validator 替换成实现 BundleValidator 的运营者受控 module：
 
 ```bash
 export PYTHONPATH=.agents/ops
-.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --compiler my_rendering:compiler_for --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
 .venv/bin/python -m explain_html status --root outputs/explain-html
 .venv/bin/python -m explain_html stop --root outputs/explain-html
 .venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
@@ -347,7 +354,7 @@ editor 在 `test_editor.py` 添加 11 个 integration case，在
 以及 pipe/Event 同步的进程回收。其中一例将真实的 `render_document` 和 stage 后的
 `validate_visuals` 接入 editor 的语义检查与 store commit。editor 验证无需浏览器或固定的实时间 sleep。
 
-runtime 在 `test_jobs.py` 添加 12 个真实 store integration case，在
+runtime 在 `test_jobs.py` 添加 13 个真实 store integration case，在
 `tests/e2e/agents_ops/explain_html/test_service.py` 添加 6 个 HTTP/CLI case。
 使用假 editor/渲染判定、Event gate、OS 分配端口和私有临时 root，验证生成/commit 去重、请求独立的 compile bytes、过期 base、
 cancel/undo/shutdown 后的延迟结果、活动 journal 恢复、pointer 切换后的 disk 错误、跨 session token、

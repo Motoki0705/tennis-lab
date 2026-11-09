@@ -32,6 +32,7 @@ commitできない未検証の判定例を含む。JSONには厳密な `parse()`
 | [gemini.py](gemini.py) | model固定・tool禁止のagy実行、private証拠、中断 |
 | [no_tools.py](no_tools.py) | schema検証済みの完了処理だけを許可するPreToolUse hook |
 | [jobs.py](jobs.py) | 永続的な重複排除、文書別queue、公開前の再確認、復旧 |
+| [managed.py](managed.py) | 実figure compile・画像利用不可adapter・staged visual検査のservice接続 |
 | [service.py](service.py) | 共通契約からのHTTP route、token/Origin/Host検査、公開ファイル |
 | [__main__.py](__main__.py) | ローカルstart/serve/status/stopとoffline export CLI |
 
@@ -176,24 +177,29 @@ controllerがeditorの候補digestへ結び付け、全検査がpassedの場合�
 browser描画の証拠にならない。figureは独立した意味検査より前にcompileする。
 意味検査後のHTML変更はそのdigestを無効にする。
 
-`EditorFactory(prepared)` は要求ごとにeditorを構築する。CLI必須の `--compiler module:factory` は
-要求単位の可変 `prepared.assets` mapを受け、adapterが要求するDocumentCompilerを返す。
-compilerは生成したSVG/renderer bytesをそのmapへ入れてから最終Documentを返す。
-同じbytesをstage/検証へ渡し、compilerとmapを要求単位に分けて文書間の混在を防ぐ。
-figureがない文書でも暗黙のidentity compilerは選ばない。
+`EditorFactory(prepared)` は要求ごとにeditorを構築する。CLIは既定で
+[ManagedResources](managed.py) を接続し、独立した意味検査より前に実 `visuals.render_document` で
+図slotを展開し、CSPと版に固定したmanaged scriptを入れる。恒等変換へのfallbackはない。
+任意の `--compiler module:factory` はmanaged compile **前** の信頼する追加変換で、visual/画像方針を
+置き換えない。要求単位の可変 `prepared.assets` mapを受けてDocumentCompilerを返し、生成した
+SVG/renderer bytesをそのmapへ入れる。同じbytesをstage/検証へ渡し、要求間の混在を防ぐ。
 
-任意の信頼する `AssetPreparer` はWritingContextと新しいasset bytesをPreparedEditとして返す。
-既定の `preserve_resources` は現在の根拠・assetsと全変更要約を保持する。ここへfigure/画像能力の
-準備を注入できるが、service独自の画像生成はない。計画で閲覧中の新規AI画像が必要と判定したら
-`image_generation_unavailable` を送出し、要求全体を未完了にして現在版を保持する。
-生のEditRequest指示には型付き画像意図fieldがないので、意味に基づく能力判定は統合側が用意する。
-既定処理は任意の自然文から画像意図を認識できるとは主張しない。
+既定の `ManagedResources.prepare` は現在の根拠・assets・全変更要約を保持し、実
+`UnavailableImageGenerator.capability()` の理由を執筆/意味検査へ渡す。
+新規AI画像の要求は既存Figure型で、kind=image、generated_conceptのprovenance、空asset_ids、
+空figure slotとして示す。compilerはこの未充足の画像意図を `generate_image` 経由で利用不可adapterへ
+渡し、意味検査/commit前に `image_generation_unavailable` とする。既存画像の移動や説明変更は
+asset IDを保持する。自然文の解釈はGeminiが担い、serviceは言語別の単語一致では判定しない。
+独自の `--prepare` もこの型付き未充足要求の規約を保持する。
 
-repoのPythonで実行する。例のmodule名は、BundleValidatorとcompiler factoryを実装する運用者管理のものへ置き換える。
+CLIは全staged bytesへ実 `validate_visuals` を実行した後、指定したBundleValidatorを呼ぶ。
+後者には実描画の検査が必要で、安全検査だけをrendering passedにはしない。
+
+repoのPythonで実行する。例のvalidator名はBundleValidatorを実装する運用者管理のmoduleへ置き換える。
 
 ```bash
 export PYTHONPATH=.agents/ops
-.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --compiler my_rendering:compiler_for --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
 .venv/bin/python -m explain_html status --root outputs/explain-html
 .venv/bin/python -m explain_html stop --root outputs/explain-html
 .venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
@@ -368,7 +374,7 @@ editorは `test_editor.py` にintegration 11件、
 stage後の `validate_visuals` をeditorの意味検査・store commitへ接続する。
 editorの検証にはbrowser・固定の実時間sleepは不要。
 
-runtimeは `test_jobs.py` の実store integration 12件と、
+runtimeは `test_jobs.py` の実store integration 13件と、
 `tests/e2e/agents_ops/explain_html/test_service.py` のHTTP/CLI 6件を追加する。
 偽editor/描画判定、Event gate、OS割当port、privateな一時rootを使い、生成/commitの重複・要求単位のcompile bytes・古いbase・
 cancel/undo/shutdown後の遅延結果・進行中journalの復旧・現在版切替後のdiskエラー・session間のtoken分離・

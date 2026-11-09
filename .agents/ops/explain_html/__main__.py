@@ -72,9 +72,9 @@ def _serve(arguments: argparse.Namespace) -> None:
 
     import uvicorn
 
-    from .editor import GeminiEditor
     from .gemini import DEFAULT_AGY, Gemini
-    from .jobs import JobController, PreparedEdit, preserve_resources
+    from .jobs import JobController
+    from .managed import ManagedResources, with_visual_validation
     from .service import create_app
 
     controller: JobController | None = None
@@ -83,19 +83,18 @@ def _serve(arguments: argparse.Namespace) -> None:
         store = RevisionStore(arguments.root)
         if arguments.document:
             store.current(arguments.document)
-        validator = _load(arguments.validator)
-        compiler_factory = _load(arguments.compiler)
-        prepare = _load(arguments.prepare) if arguments.prepare else preserve_resources
+        resources = ManagedResources()
+        validator = with_visual_validation(_load(arguments.validator))
+        compiler_factory = _load(arguments.compiler) if arguments.compiler else None
+        prepare = _load(arguments.prepare) if arguments.prepare else resources.prepare
         ui = _load(arguments.ui)() if arguments.ui else None
         gemini = Gemini(
             arguments.root / "private/gemini", agy=arguments.agy or DEFAULT_AGY
         )
 
-        def editor_factory(prepared: PreparedEdit) -> GeminiEditor:
-            return GeminiEditor(
-                gemini, compile_document=compiler_factory(prepared.assets)
-            )
-
+        editor_factory = resources.editor_factory(
+            gemini, compiler_factory=compiler_factory
+        )
         controller = JobController(store, editor_factory, validator, prepare=prepare)
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -181,12 +180,10 @@ def _start(arguments: argparse.Namespace) -> None:
                 str(arguments.port),
                 "--validator",
                 arguments.validator,
-                "--compiler",
-                arguments.compiler,
                 "--ready-fd",
                 str(write_fd),
             ]
-            for name in ("agy", "prepare", "ui", "document"):
+            for name in ("agy", "prepare", "ui", "document", "compiler"):
                 value = getattr(arguments, name)
                 if value:
                     command.extend([f"--{name}", str(value)])
@@ -254,8 +251,7 @@ def main() -> int:
             command.add_argument("--port", type=int, default=0)
             command.add_argument(
                 "--compiler",
-                required=True,
-                help="trusted module:factory receiving request-scoped asset bytes and returning DocumentCompiler",
+                help="trusted compiler factory override; default uses managed visual compilation",
             )
             command.add_argument(
                 "--validator",

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 from threading import Event
@@ -94,16 +94,6 @@ def fake_rendering(
     assert not assets
     assert not cancel.is_set()
     return schema.CheckResult(status="passed")
-
-
-def identity_compiler(assets: dict[str, bytes]) -> Callable[[Any], Any]:
-    """Explicit compiler for this test's figure-free CLI fixture."""
-
-    def compile_document(document: Any) -> Any:
-        assert not document.assets and not document.figures and not assets
-        return document
-
-    return compile_document
 
 
 class JobWorld:

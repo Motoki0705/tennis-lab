@@ -1,6 +1,6 @@
 """Durable deduplication, publication fencing and recovery with real bundles.
 
-Design: 12 cases, each <5s/setup <1s, Event synchronization only. Contract/store
+Design: 13 cases, each <5s/setup <1s, Event synchronization only. Contract/store
 input combinations already covered by test_document/test_revisions are reused,
 not multiplied here. All writers and visual verdicts are explicit test doubles.
 """
@@ -8,6 +8,7 @@ not multiplied here. All writers and visual verdicts are explicit test doubles.
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
@@ -15,16 +16,166 @@ from typing import Any
 
 import pytest
 
+from tests.support.agents_ops.explain_editor import candidate
+from tests.support.agents_ops.explain_editor import editor_env as editor_env
 from tests.support.agents_ops.explain_html import (
     PAYLOADS,
     candidate_for,
     schema,
     validation_for,
 )
+from tests.support.agents_ops.explain_html_visuals import COMPARISON, visuals
 from tests.support.agents_ops.explain_jobs import Gate, jobs
 from tests.support.agents_ops.explain_jobs import job_world as job_world
 
+managed: Any = importlib.import_module("explain_html.managed")
+
 pytestmark = pytest.mark.integration
+
+
+def test_managed_service_commits_compiled_graph_and_rejects_new_ai_image(
+    editor_env: Any,
+) -> None:
+    env = editor_env
+    renderer = visuals.managed_renderer()
+    graph = schema.Figure(
+        figure_id="comparison",
+        content_id="limits",
+        kind="graph",
+        asset_ids=[renderer.asset.asset_id],
+        caption="Compare two hypothetical tracks.",
+        alt="Two asymmetric illustrative position series.",
+        provenance=schema.Provenance(kind="hypothetical", source="Synthetic inputs."),
+        renderer=schema.Renderer(asset_id=renderer.asset.asset_id, version="2"),
+        definition=COMPARISON,
+    )
+    request = env.request.model_copy(
+        update={
+            "instruction": "Add a hypothetical comparison graph; retain facts and citations."
+        }
+    )
+    html = env.current.document.html.replace(
+        "<html><body>", "<html><head><title>Tracks</title></head><body>"
+    ).replace("</aside>", '<figure data-figure-id="comparison"></figure></aside>')
+    raw = candidate(
+        env.current.document.model_copy(
+            update={"html": html, "assets": [renderer.asset], "figures": [graph]}
+        ),
+        current=env.current,
+        request=request,
+    )
+    final = candidate(
+        visuals.render_document(raw.document), current=env.current, request=request
+    )
+    env.outputs(
+        raw,
+        {
+            "candidate_digest": schema.candidate_digest(final),
+            "check": {"status": "passed"},
+            "reviewed_evidence_ids": ["baseline", "cameras"],
+        },
+    )
+    resources = managed.ManagedResources()
+    seen: list[Any] = []
+
+    def prepare(request: Any, current: Any, history: Any, *, cancel: Any) -> Any:
+        prepared = resources.prepare(request, current, history, cancel=cancel)
+        if request.request_id == env.request.request_id:
+            return jobs.PreparedEdit(
+                prepared.context.model_copy(
+                    update={"assets": [renderer.asset], "figures": [graph]}
+                ),
+                {renderer.asset.asset_id: renderer.content},
+            )
+        return prepared
+
+    def rendering(candidate: Any, assets: Any, *, cancel: Any) -> Any:
+        # Only browser/meaning verdicts are fakes; service runs real visual safety
+        # on these exact staged bytes before this test rendering boundary.
+        seen.append((candidate, dict(assets)))
+        return schema.CheckResult(status="passed")
+
+    with jobs.JobController(
+        env.store,
+        resources.editor_factory(env.adapter.gemini),
+        managed.with_visual_validation(rendering),
+        prepare=prepare,
+    ) as controller:
+        controller.submit(request)
+        done = controller.wait("geometry", request.request_id, timeout=5)
+        assert done.state == "succeeded"
+        revision = env.store.current("geometry")
+        assert revision.document == final.document
+        assert seen[0][0] == final and seen[0][1] == {
+            renderer.asset.asset_id: renderer.content
+        }
+        assert (
+            "<script " in revision.document.html
+            and 'data-values="1"' in revision.document.html
+        )
+        assert '<meta data-visual-policy="1"' in revision.document.html
+        verified = json.loads(
+            [call for call in env.calls() if call["prompt"] is not None][-1][
+                "prompt"
+            ].split("\nINPUT_JSON\n")[1]
+        )
+        assert verified["candidate_digest"] == schema.candidate_digest(final)
+        assert (
+            resources.images.capability().reason in verified["context"]["preferences"]
+        )
+        assert (
+            env.store.asset_bytes(
+                "geometry", revision.revision_id, renderer.asset.asset_id
+            )
+            == renderer.content
+        )
+        image_request = request.model_copy(
+            update={
+                "request_id": "new-image",
+                "base_revision": revision.revision_id,
+                "instruction": "Add a new AI-generated conceptual image of two cameras.",
+            }
+        )
+        image = schema.Figure(
+            figure_id="new-concept",
+            content_id="limits",
+            kind="image",
+            asset_ids=[],
+            caption="Conceptual illustration of two camera rays.",
+            alt="Two cameras looking at one point.",
+            provenance=schema.Provenance(
+                kind="generated_concept",
+                source="Requested; unavailable during reading.",
+            ),
+        )
+        image_raw = candidate(
+            revision.document.model_copy(
+                update={
+                    "html": revision.document.html.replace(
+                        "</aside>",
+                        '<figure data-figure-id="new-concept"></figure></aside>',
+                    ),
+                    "figures": [*revision.document.figures, image],
+                }
+            ),
+            current=revision,
+            request=image_request,
+        )
+        env.outputs(image_raw)
+        controller.submit(image_request)
+        rejected = controller.wait("geometry", "new-image", timeout=5)
+        assert (
+            rejected.state == "failed"
+            and rejected.error.code == "image_generation_unavailable"
+        )
+        assert (
+            env.store.current("geometry") == revision
+            and len(env.store.history("geometry")) == 2
+        )
+        assert len(seen) == 1
+        assert len([call for call in env.calls() if call["prompt"] is not None]) == 3
+        assert not resources.images.capability().available
+        assert "initial" in resources.images.capability().reason
 
 
 def test_retries_and_status_cannot_duplicate_generation_or_publication(

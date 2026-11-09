@@ -36,6 +36,7 @@ Use `parse()` for strict JSON parsing: unknown fields and type coercions fail.
 | [gemini.py](gemini.py) | Pinned, tool-free agy execution, private evidence and cancellation |
 | [no_tools.py](no_tools.py) | Trusted PreToolUse hook admitting only schema-checked completion |
 | [jobs.py](jobs.py) | Durable deduplication, document queues, publication fencing and recovery |
+| [managed.py](managed.py) | Service wiring for real figure compilation, image unavailability and staged visual checks |
 | [service.py](service.py) | Contract-driven HTTP routes, token/origin/host checks and public files |
 | [__main__.py](__main__.py) | Local start/serve/status/stop and offline export CLI |
 
@@ -230,29 +231,37 @@ verdict. A visual safety/figure compiler alone does not prove browser rendering.
 Compile figures before independent semantic review; later HTML changes invalidate
 that review's digest.
 
-`EditorFactory(prepared)` creates an editor for each request. The CLI's required
-`--compiler module:factory` receives the request's mutable `prepared.assets` map
-and returns the adapter's required DocumentCompiler. The compiler places newly
-generated SVG/renderer bytes in that map before returning the final Document.
-Those same bytes go to staging and validation. Each request owns its compiler and
-map, so concurrent documents cannot mix resources. No implicit identity compiler
-is selected, including for figure-free documents.
+`EditorFactory(prepared)` creates an editor for each request. The CLI wires
+[ManagedResources](managed.py) by default: the editor compiles through the real
+`visuals.render_document` before independent semantic review. It fills figure
+slots, inserts CSP and the pinned managed script; there is no identity fallback.
+Optional `--compiler module:factory` is an additional trusted transform **before**
+managed compilation, not a replacement for the visual/image policy. It receives
+the request's mutable `prepared.assets` map and returns DocumentCompiler. Put new
+SVG/renderer bytes in that map; staging and validation use those same bytes.
+Each request owns its transform and map, so documents cannot mix resources.
 
-The optional trusted `AssetPreparer` returns PreparedEdit with WritingContext and
-new asset bytes. The default `preserve_resources` retains current evidence/assets
-and all change summaries. Inject figure/image capability planning here; the
-service implements no image generator. If planning identifies a new AI-image
-requirement during reading, raise `image_generation_unavailable` and retain the
-whole current revision. Raw EditRequest instructions have no typed image-intent
-field, so semantic capability planning must be supplied by the integration. The
-default does not claim to recognize image intent in arbitrary text.
+The default `ManagedResources.prepare` preserves current evidence/assets and all
+change summaries, and passes the real `UnavailableImageGenerator.capability()`
+reason to writing and review. A new AI-image requirement is represented through
+the existing Figure contract: kind=image, generated_concept provenance, empty
+asset_ids and an empty figure slot. The compiler passes this unmet image intent
+to the unavailable image adapter through `generate_image`, producing
+`image_generation_unavailable` before review/commit. Existing image moves and
+caption changes retain asset IDs. Instruction interpretation remains Gemini's
+responsibility; service code does not match language-specific keywords. Custom
+`--prepare` integrations must retain this typed unmet-intent convention.
+
+The CLI also runs real `validate_visuals` on every staged byte before invoking
+the supplied BundleValidator. The latter must provide the actual rendering check;
+visual safety alone is never marked rendering passed.
 
 Run with the repository Python. Replace the example validator with an
-operator-controlled module implementing BundleValidator and the compiler factory:
+operator-controlled module implementing BundleValidator:
 
 ```bash
 export PYTHONPATH=.agents/ops
-.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --compiler my_rendering:compiler_for --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
 .venv/bin/python -m explain_html status --root outputs/explain-html
 .venv/bin/python -m explain_html stop --root outputs/explain-html
 .venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
@@ -485,7 +494,7 @@ cleanup. One case connects the real `render_document` and staged `validate_visua
 to editor verification and store commit. These editor tests require no browser or
 fixed real-time sleep.
 
-Runtime coverage adds 12 real-store integration cases in `test_jobs.py` and 6
+Runtime coverage adds 13 real-store integration cases in `test_jobs.py` and 6
 HTTP/CLI cases in `tests/e2e/agents_ops/explain_html/test_service.py`. Explicit fake
 editor/rendering boundaries, Event gates, OS-assigned ports and private temporary
 roots cover duplicate calls/commits, request-scoped compiled bytes, stale bases, cancel/undo/shutdown late
