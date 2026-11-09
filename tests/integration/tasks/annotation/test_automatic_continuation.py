@@ -41,22 +41,30 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
     # baseline. Keep the same fixed 1 GiB budget in a clean CPU process, with all
     # resource accounting, service stages and supervisors still real.
     environment = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "tests.integration.tasks.annotation.test_automatic_continuation",
-            str(tmp_path),
-        ],
-        cwd=PROJECT_ROOT,
-        env=environment,
-        capture_output=True,
-        text=True,
-        timeout=240,
-    )
-    assert result.returncode == 0, (
-        result.stdout + result.stderr + _attempt_evidence(tmp_path / "annotation")
-    )
+    # Temporary draft investigation: retain the first native failure from the
+    # same CI host instead of depending on one successful scheduling sample.
+    for number in range(10):
+        root = tmp_path / f"run-{number:02d}"
+        root.mkdir()
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "tests.integration.tasks.annotation.test_automatic_continuation",
+                str(root),
+            ],
+            cwd=PROJECT_ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        assert result.returncode == 0, (
+            f"repetition {number + 1}:\n"
+            + result.stdout
+            + result.stderr
+            + _attempt_evidence(root / "annotation")
+        )
 
 
 def _attempt_evidence(root: Path) -> str:
