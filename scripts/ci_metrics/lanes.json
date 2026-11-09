@@ -742,7 +742,8 @@
         "tests/**/*.mjs",
         "tests/**/*.cjs",
         "scripts/ci_metrics/package*.json",
-        ".agents/ops/board/*"
+        ".agents/ops/board/*",
+        ".agents/ops/explain_html/**"
       ],
       "reason": "Existing Node regressions and the self-contained Chromium refresh race require Node/Playwright; run on UI changes and full main requests.",
       "owner": "Motoki0705"

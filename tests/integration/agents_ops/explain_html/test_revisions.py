@@ -23,16 +23,32 @@ from tests.support.agents_ops.explain_html import (
     store_api,
     validation_for,
 )
+from tests.support.agents_ops.explain_html_visuals import (
+    images,
+    make_visual_bundle,
+    png,
+    visuals,
+)
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
 def initial(tmp_path: Path) -> Any:
+    return initial_store(tmp_path, make_document(), PAYLOADS)
+
+
+@pytest.fixture
+def visual_initial(tmp_path: Path) -> Any:
+    document, payloads = make_visual_bundle()
+    return initial_store(tmp_path, document, payloads)
+
+
+def initial_store(tmp_path: Path, document: Any, payloads: dict[str, bytes]) -> Any:
     root = tmp_path / "store"
     store = store_api.RevisionStore(root)
-    candidate = candidate_for(make_document())
-    revision = store.import_initial(candidate, PAYLOADS, validation_for(candidate))
+    candidate = candidate_for(document)
+    revision = store.import_initial(candidate, payloads, validation_for(candidate))
     return root, store, revision
 
 
@@ -47,20 +63,32 @@ def edit_for(revision: Any, request_id: str = "add-example") -> Any:
 
 
 def test_partial_restructure_restore_keep_complete_bundles_and_invalidate_old_bases(
-    initial: Any,
+    visual_initial: Any,
 ) -> None:
-    root, store, first = initial
+    root, store, first = visual_initial
+    with pytest.raises(schema.ContractError, match="image_generation_unavailable"):
+        images.generate_image(
+            "New image requested while reading.",
+            asset_id="new_image",
+            caption="New image.",
+            alt="New concept.",
+        )
+    assert store.current("ray-geometry").revision_id == first.revision_id
+    assert len(store.history("ray-geometry")) == 1
     candidate = edit_for(first)
     data = candidate.document.model_dump(mode="json")
-    revised_svg = (
-        b'<svg xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="1" r="1"/></svg>'
-    )
+    revised_svg = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 7 3"><circle cx="2" cy="1" r="1"/></svg>'
     data["assets"][0]["sha256"] = hashlib.sha256(revised_svg).hexdigest()
     data["evidence"][0]["conditions"].append("Rays must not be parallel.")
-    document = schema.parse(schema.Document, json.dumps(data))
+    data["figures"][3]["caption"] = "Read this image alongside the depth graph."
+    document = visuals.render_document(schema.parse(schema.Document, json.dumps(data)))
     candidate = candidate.model_copy(
         update={
             "document": document,
+            "changes": [
+                schema.ContentChange(content_id="geometry", kind="updated"),
+                schema.ContentChange(content_id="limits", kind="updated"),
+            ],
             "evidence_changes": [
                 schema.EvidenceChange(
                     evidence_id="baseline",
@@ -71,6 +99,15 @@ def test_partial_restructure_restore_keep_complete_bundles_and_invalidate_old_ba
         }
     )
     staged = store.stage(candidate, {"court": revised_svg})
+    visuals.validate_visuals(
+        store.staged_candidate("ray-geometry", staged.stage_id).document,
+        {
+            asset.asset_id: store.staged_asset_bytes(
+                "ray-geometry", staged.stage_id, asset.asset_id
+            )
+            for asset in document.assets
+        },
+    )
     assert store.current("ray-geometry").revision_id == first.revision_id
     second = store.commit(staged, validation_for(candidate))
     # Save another result now; it must become stale after a later undo.
@@ -84,13 +121,15 @@ def test_partial_restructure_restore_keep_complete_bundles_and_invalidate_old_ba
     late_stage = store.stage(delayed)
     index = document_api.inspect_document(second.document)
     rearranged_html = (
-        "<html><body><div class='comparison'>"
+        "<html><head><title>Rearranged geometry</title></head><body><div class='comparison'>"
         + index.block_html("limits")
         + index.block_html("overview")
         + index.block_html("geometry")
         + "</div></body></html>"
     )
-    rearranged = second.document.model_copy(update={"html": rearranged_html})
+    rearranged = visuals.render_document(
+        second.document.model_copy(update={"html": rearranged_html})
+    )
     full = candidate_for(
         rearranged,
         before=second,
@@ -125,9 +164,24 @@ def test_partial_restructure_restore_keep_complete_bundles_and_invalidate_old_ba
         current.parent_revision == third.revision_id
         and current.restored_from == first.revision_id
     )
-    assert current.document.html == HTML
+    assert current.document.html == first.document.html
     assert current.document.evidence[0].conditions == ["Synchronized views."]
-    assert current.document.figures[1].definition["data"] == [[0, 7], [1, 9], [3, 18]]
+    assert current.document.figures[1].definition["data"] == {
+        "focal_px": 600,
+        "baseline_m": 0.8,
+        "disparity_px": 30,
+        "sample_errors_px": [-10, 0, 10],
+    }
+    assert current.document.figures[3].caption == "Raster import fixture."
+    assert (
+        second.document.figures[3].caption
+        == "Read this image alongside the depth graph."
+    )
+    assert reopened.asset_bytes("ray-geometry", current.revision_id, "concept") == png()
+    assert (
+        reopened.asset_bytes("ray-geometry", current.revision_id, "visuals_v1")
+        == visuals.managed_renderer().content
+    )
     assert (
         reopened.asset_bytes("ray-geometry", current.revision_id, "court")
         == PAYLOADS["court"]
@@ -252,9 +306,9 @@ def test_save_interruption_reopens_original_complete_revision(
 
 
 def test_snapshot_is_pinned_and_exports_only_declared_public_files(
-    initial: Any,
+    visual_initial: Any,
 ) -> None:
-    root, store, first = initial
+    root, store, first = visual_initial
     private = root / "private/documents/ray-geometry"
     (private / "raw-prompt.txt").write_text(
         "NEVER EXPORT THIS INSTRUCTION", encoding="utf-8"
@@ -272,9 +326,10 @@ def test_snapshot_is_pinned_and_exports_only_declared_public_files(
         str(path.relative_to(export)) for path in export.rglob("*") if path.is_file()
     )
     expected = [
+        "assets/concept.png",
         "assets/court.svg",
-        "assets/plot_renderer.mjs",
         "assets/theme.css",
+        "assets/visuals_v1.js",
         "evidence.json",
         "figures.json",
         "index.html",
@@ -283,19 +338,35 @@ def test_snapshot_is_pinned_and_exports_only_declared_public_files(
     assert actual == expected == snapshot.files
     assert store.content_file(
         "ray-geometry", first.revision_id, "index.html"
-    ) == HTML.encode("utf-8")
+    ) == first.document.html.encode("utf-8")
     assert (
         store.staged_asset_bytes("ray-geometry", staged.stage_id, "court")
         == PAYLOADS["court"]
     )
-    assert (export / "index.html").read_text(encoding="utf-8") == HTML
+    assert (export / "index.html").read_text(encoding="utf-8") == first.document.html
     assert (export / "assets/court.svg").read_bytes() == PAYLOADS["court"]
     assert json.loads((export / "evidence.json").read_text())[0]["values"] == {
         "baseline_m": 7
     }
     assert json.loads((export / "figures.json").read_text())[1]["definition"][
         "data"
-    ] == [[0, 7], [1, 9], [3, 18]]
+    ] == {
+        "focal_px": 600,
+        "baseline_m": 0.8,
+        "disparity_px": 30,
+        "sample_errors_px": [-10, 0, 10],
+    }
+    assert (export / "assets/concept.png").read_bytes() == png()
+    assert (
+        export / "assets/visuals_v1.js"
+    ).read_bytes() == visuals.managed_renderer().content
+    visuals.validate_visuals(
+        first.document,
+        {
+            asset.asset_id: (export / asset.path).read_bytes()
+            for asset in first.document.assets
+        },
+    )
     assert not any(
         b"NEVER EXPORT" in path.read_bytes()
         for path in export.rglob("*")
