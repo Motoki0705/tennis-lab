@@ -40,41 +40,23 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
     # unrelated model/test assets resident; it must not become this controller's
     # baseline. Keep the same fixed 1 GiB budget in a clean CPU process, with all
     # resource accounting, service stages and supervisors still real.
-    # Temporary draft investigation: compare the exact failing merge source,
-    # before later policy-registration I/O can change its scheduling.
-    source = tmp_path / "original-source"
-    source.mkdir()
-    archive = tmp_path / "original.tar"
-    subprocess.run(
-        ["git", "archive", "--format=tar", "--output", str(archive), "cc5890a76"],
+    environment = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "tests.integration.tasks.annotation.test_automatic_continuation",
+            str(tmp_path),
+        ],
         cwd=PROJECT_ROOT,
-        check=True,
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=240,
     )
-    subprocess.run(["tar", "-xf", str(archive), "-C", str(source)], check=True)
-    (source / ".venv").symlink_to(PROJECT_ROOT / ".venv", target_is_directory=True)
-    environment = {**os.environ, "PYTHONPATH": str(source)}
-    for number in range(10):
-        root = tmp_path / f"run-{number:02d}"
-        root.mkdir()
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "tests.integration.tasks.annotation.test_automatic_continuation",
-                str(root),
-            ],
-            cwd=source,
-            env=environment,
-            capture_output=True,
-            text=True,
-            timeout=240,
-        )
-        assert result.returncode == 0, (
-            f"repetition {number + 1}:\n"
-            + result.stdout
-            + result.stderr
-            + _attempt_evidence(root / "annotation")
-        )
+    assert result.returncode == 0, (
+        result.stdout + result.stderr + _attempt_evidence(tmp_path / "annotation")
+    )
 
 
 def _attempt_evidence(root: Path) -> str:
@@ -137,6 +119,8 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
         ).source.camera_id
         requests[camera] = request
     controllers: list[LocalAnnotationController] = []
+    # Retain exit codes after reconciliation removes finished pool children.
+    supervisors: list[subprocess.Popen[bytes]] = []
 
     def restarted() -> LocalAnnotationController:
         result = LocalAnnotationController(
@@ -186,6 +170,7 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
     try:
         controller.cycle()
         first_pool = controller.production.pool
+        supervisors.extend(first_pool.children.values())
         for control in first_pool.test_controls.values():
             control.settimeout(10)
             assert json.loads(control.recv(4096)) == {
@@ -269,6 +254,7 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
         controller = restarted()
         controller.cycle()
         second_pool = controller.production.pool
+        supervisors.extend(second_pool.children.values())
         second_attempt = second_pool.ledger.task(requests["cam0"].work_id)[
             "current_attempt"
         ]
@@ -346,6 +332,20 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
         assert handoff["summary"]["final_unknown"] == 1
         assert store.annotation(saved) == before
     finally:
+        if sys.exc_info()[0] is not None:
+            for c in controllers:
+                supervisors.extend(c.production.pool.children.values())
+            print(
+                "supervisor process snapshot before cleanup: "
+                + json.dumps(
+                    [
+                        {"pid": child.pid, "returncode": child.poll(), "args": child.args}
+                        for child in {c.pid: c for c in supervisors}.values()
+                    ]
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
         for request in requests.values():
             pool = controller.production.pool
             if pool.ledger.task(request.work_id)["state"] in {"running", "exited"}:
