@@ -18,6 +18,18 @@ from tests.support.agents_ops.explain_html_visuals import make_visual_bundle, vi
 
 def main(root: Path) -> None:
     document, payloads = make_visual_bundle()
+    later = document.figures[1].model_copy(update={"figure_id": "later-error"})
+    document = visuals.render_document(
+        document.model_copy(
+            update={
+                "figures": [*document.figures, later],
+                "html": document.html.replace(
+                    "</aside>", '<figure data-figure-id="later-error"></figure></aside>'
+                ),
+            }
+        )
+    )
+    visuals.validate_visuals(document, payloads)
     store = store_api.RevisionStore(root / "store")
     candidate = candidate_for(document)
     first = store.import_initial(candidate, payloads, validation_for(candidate))

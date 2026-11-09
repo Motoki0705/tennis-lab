@@ -131,7 +131,8 @@ rectify 的 pinhole stereo 和正确对应关系，用 px 单位的 focal/dispar
 或让图本身作为该 block。需要 head/body 及显式结束标签。在**计算候选变更清单之前**调用
 `render_document(document)`，填入图、CSP meta 和确切的受管 script。图中包含初始 SVG、源数据表、
 假设、单位、输入范围与无障碍控件，禁用 JS 时仍能理解初始内容。同一 script bytes 既作为 Asset 保存，
-也嵌入 HTML，由 CSP hash 授权，避免 file:// 下外部 script 的 SRI/CORS 失败。snapshot 后不依赖 CDN、
+也嵌入 HTML，由 CSP hash 授权。script 属于首个 graph 的 content block，在 DOM 解析完成后初始化
+所有 graph，保留引用所有权。此方式避免 file:// 下外部 script 的 SRI/CORS 失败。snapshot 后不依赖 CDN、
 fetch、module import 或 server。version 1 保持不变；将来的 renderer 使用新 file/ID/version。
 旧版 HTML/assets 从该 revision 读取，不注入当前代码。
 

@@ -70,8 +70,8 @@ def make_visual_bundle() -> tuple[Any, dict[str, bytes]]:
         '<figure data-figure-id="error-plot"></figure><figure data-figure-id="comparison"></figure><figure data-figure-id="concept-image"></figure>',
     )
     html = html.replace(
-        '<link rel="stylesheet"',
-        '<meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet"',
+        "</head>",
+        '<meta name="viewport" content="width=device-width, initial-scale=1"></head>',
     )
     figures = [
         base.figures[0],

@@ -484,12 +484,32 @@ def render_document(document: Document) -> Document:
     inspect_document(document)
     markup = _Markup(document)
     assets = {asset.asset_id: asset for asset in document.assets}
-    changes = [(start, end, "") for start, end in markup.scripts + markup.policies]
+    # Scripts already inside a figure disappear with that figure's replacement;
+    # do not apply overlapping source edits. Every runtime reference belongs to
+    # the first graph's existing content block under the shared ownership policy.
+    scripts_outside_figures = [
+        (start, end)
+        for start, end in markup.scripts
+        if not any(
+            inner_start <= start and end <= inner_end
+            for inner_start, inner_end in markup.slots.values()
+        )
+    ]
+    changes = [
+        (start, end, "") for start, end in scripts_outside_figures + markup.policies
+    ]
+    first_graph = next(
+        (figure.figure_id for figure in document.figures if figure.kind == "graph"),
+        None,
+    )
     for figure in document.figures:
         if figure.figure_id not in markup.slots:
             raise ContractError("broken_reference")
         start, end = markup.slots[figure.figure_id]
-        changes.append((start, end, _figure_html(figure, assets)))
+        content = _figure_html(figure, assets)
+        if figure.figure_id == first_graph:
+            content += _renderer_script(document)
+        changes.append((start, end, content))
     html = document.html
     for start, end, value in sorted(changes, reverse=True):
         html = html[:start] + value + html[end:]
@@ -499,9 +519,6 @@ def render_document(document: Document) -> Document:
     body_end = re.search(r"</body\s*>", html, re.I)
     if head is None or body_end is None:
         raise ContractError("invalid_document")
-    html = (
-        html[: body_end.start()] + _renderer_script(document) + html[body_end.start() :]
-    )
     html = html[: head.end()] + _policy_meta(document) + html[head.end() :]
     result = document.model_copy(update={"html": html})
     inspect_document(result)

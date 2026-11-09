@@ -180,7 +180,9 @@ slots and adds a CSP meta and the exact managed script; run it **before** comput
 candidate changes. Graphs include initial SVG, source tables, assumptions, units,
 input ranges and accessible controls, so the initial explanation survives with
 JS disabled. The same script bytes are stored as an Asset and embedded in HTML,
-authorized by their CSP hash. This avoids external-script SRI/CORS failures under
+authorized by their CSP hash. The script belongs to the first graph's content
+block and mounts all graphs after DOM parsing, preserving reference ownership.
+This avoids external-script SRI/CORS failures under
 file://. No CDN, fetch, module import or server is needed after snapshot export.
 Keep version 1 immutable; introduce a new file/ID/version for a future renderer.
 Serve old revision HTML and assets from that revision, never inject today's code.

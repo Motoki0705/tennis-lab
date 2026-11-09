@@ -136,7 +136,8 @@ rectification済みの校正されたpinhole stereoと正しい対応を仮定�
 またはblock自体にする。head/bodyと明示的な閉じタグが必要。`render_document(document)`が図・CSP meta・
 正確なmanaged scriptを埋め込むので、**候補の変更一覧を計算する前**に実行する。graphには初期SVG・
 元data表・仮定・単位・入力範囲・accessibleな操作を含め、JS無効でも初期説明を読める。同じscript bytesを
-Assetへ保存しHTMLにも埋め、CSP hashで許可する。file://における外部scriptのSRI/CORS失敗を回避し、
+Assetへ保存しHTMLにも埋め、CSP hashで許可する。scriptは最初のgraphのcontent blockに置き、DOMの
+解析完了後に全graphを初期化して参照の所有関係を保つ。file://における外部scriptのSRI/CORS失敗を回避し、
 snapshot後にCDN・fetch・module import・serverを必要としない。version 1は変更せず、将来のrendererは
 新file/ID/versionにする。旧版のHTML/assetsはそのrevisionから提供し、現在のcodeを注入しない。
 

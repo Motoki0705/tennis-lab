@@ -34,6 +34,11 @@ const output = process.env.EXPLAIN_VISUAL_OUTPUT || fs.mkdtempSync(path.join(os.
     assert.equal(await graph.locator('[data-slider-value]').textContent(), '10 px; Depth = 12 m');
     assert.equal(await graph.locator('circle[data-x="10"]').getAttribute('data-y'), '12');
     assert.deepEqual(await graph.locator('[data-values] tr').allTextContents(), ['Depth-1024', 'Depth016', 'Depth1012']);
+    const laterGraph = page.locator('[data-figure-id="later-error"]');
+    await laterGraph.locator('input[type="range"]').focus();
+    await laterGraph.locator('input[type="range"]').press('Home');
+    assert.equal(await laterGraph.locator('[data-slider-value]').textContent(), '-10 px; Depth = 24 m');
+    assert.equal(await graph.locator('[data-slider-value]').textContent(), '10 px; Depth = 12 m');
     const comparison = page.locator('[data-figure-id="comparison"]');
     assert.equal(await comparison.locator('circle[data-x="7"]').getAttribute('data-y'), '11');
     assert.match(await comparison.textContent(), /Frame \(frame\)/);

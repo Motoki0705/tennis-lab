@@ -95,5 +95,8 @@
   const api = Object.freeze({version: "1", series, mount});
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.ExplainVisualsV1 = api;
-  if (typeof document !== "undefined") mount(document);
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => mount(document), {once: true});
+    else mount(document);
+  }
 })(typeof globalThis === "undefined" ? this : globalThis);
