@@ -125,6 +125,8 @@ Even without figures, explicitly choose identity with
 error. The callback receives a deep copy and its return value is revalidated and
 detached from mutable callback state. Keep generated asset bytes privately in the
 calling controller for staging; the compiler must not publish or commit files.
+For managed visuals, pass `compile_document=render_document` from
+`explain_html.visuals` directly; its public signature already matches DocumentCompiler.
 `write_initial(request, context, *, timeout=600, cancel=None)` and
 `edit(request, current, context, *, timeout=600, cancel=None)` return an
 `EditorialResult`. Use the shared EditRequest/Revision types; initial requests
@@ -388,9 +390,11 @@ The harness prints setup/scenario times and its temporary screenshot directory.
 No real image generation or external API is run in normal tests/CI.
 The existing JavaScript pytest entrypoint and CI lane run both visual suites.
 
-Editor coverage adds 10 integration cases
+Editor coverage adds 11 integration cases
 in `test_editor.py` and 3 public-entry cases in
 `tests/e2e/agents_ops/test_explain_html_editor.py`: executable fake agy, a real
 revision store, complete long inputs, permitted/prohibited fact changes, rejected
 or malformed verdicts, actual hook denial, and pipe/Event-synchronized process
-cleanup. Tests require no external API, GPU, browser or fixed real-time sleep.
+cleanup. One case connects the real `render_document` and staged `validate_visuals`
+to editor verification and store commit. These editor tests require no browser or
+fixed real-time sleep.

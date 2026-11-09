@@ -98,6 +98,8 @@ renderer/CSPの挿入を済ませた最終Documentを返すか、ContractError�
 `GeminiEditor(gemini, compile_document=lambda document: document)` と恒等変換を明示し、
 省略はエラーにする。callbackにはdeep copyを渡し、戻り値も再検証して可変状態を分離する。
 生成assetのbytesは呼出側controllerがprivateに保持してstageへ渡す。compilerから公開・commitしない。
+managed visualには `explain_html.visuals` の `compile_document=render_document` を直接渡せる。
+この公開関数の型はDocumentCompilerと一致する。
 `write_initial(request, context, *, timeout=600, cancel=None)` と
 `edit(request, current, context, *, timeout=600, cancel=None)` は `EditorialResult` を返す。
 要求・現在版には共通のEditRequest/Revisionを使い、初回はnull base・文書全体対象にする。
@@ -290,7 +292,9 @@ harnessはsetup/各経路の時間と、一時screenshot directoryを出力す�
 通常テスト/CIで実画像生成や外部APIを呼ばない。
 既存のJavaScript pytest入口・CIレーンからもvisualの両suiteを実行する。
 
-editorは `test_editor.py` にintegration 10件、
+editorは `test_editor.py` にintegration 11件、
 `tests/e2e/agents_ops/test_explain_html_editor.py` に公開入口3件を追加する。
 偽agy実行ファイル・実store・長文の完全な入力・許可/禁止した根拠変更・拒否/不正verdict・
-実hookの拒否・pipe/Event同期によるprocess回収を検査する。外部API・GPU・browser・固定の実時間sleepは不要。
+実hookの拒否・pipe/Event同期によるprocess回収を検査する。1件は実際の `render_document` と
+stage後の `validate_visuals` をeditorの意味検査・store commitへ接続する。
+editorの検証にはbrowser・固定の実時間sleepは不要。

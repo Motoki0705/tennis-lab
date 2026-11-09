@@ -94,6 +94,8 @@ renderer/CSP 并返回最终 Document，或抛出 ContractError 拒绝；此 pac
 即使没有图，也必须用 `GeminiEditor(gemini, compile_document=lambda document: document)`
 明确选择恒等变换，省略会报错。callback 收到 deep copy，返回值会重新验证并与可变状态分离。
 生成 asset 的 bytes 由调用方 controller 私下保留并传给 stage；compiler 不得发布或 commit 文件。
+受管 visual 可直接传入 `explain_html.visuals` 的 `compile_document=render_document`，
+该公开函数的类型已经符合 DocumentCompiler。
 `write_initial(request, context, *, timeout=600, cancel=None)` 和
 `edit(request, current, context, *, timeout=600, cancel=None)` 返回 `EditorialResult`。
 请求和当前版使用共享 EditRequest/Revision；初次请求使用 null base 和文档目标。
@@ -276,7 +278,8 @@ harness 输出 setup/各场景时间和临时 screenshot 目录。
 普通测试/CI 不调用真实图像生成或外部 API。
 现有 JavaScript pytest 入口和 CI 通道也会运行这两个 visual suite。
 
-editor 在 `test_editor.py` 添加 10 个 integration case，在
+editor 在 `test_editor.py` 添加 11 个 integration case，在
 `tests/e2e/agents_ops/test_explain_html_editor.py` 添加 3 个公开入口 case。
 使用可执行的假 agy、真实 store、完整长输入、允许/禁止的依据修改、拒绝/无效 verdict、真实 hook 拒绝
-以及 pipe/Event 同步的进程回收。无需外部 API、GPU、浏览器或固定的实时间 sleep。
+以及 pipe/Event 同步的进程回收。其中一例将真实的 `render_document` 和 stage 后的
+`validate_visuals` 接入 editor 的语义检查与 store commit。editor 验证无需浏览器或固定的实时间 sleep。

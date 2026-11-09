@@ -22,6 +22,7 @@ from tests.support.agents_ops.explain_editor import (
 from tests.support.agents_ops.explain_editor import (
     editor_env as editor_env,
 )
+from tests.support.agents_ops.explain_html_visuals import COMPARISON, visuals
 
 pytestmark = pytest.mark.integration
 
@@ -207,6 +208,98 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
     for path in (env.root / "private").rglob("*"):
         assert path.stat().st_mode & 0o077 == 0
     assert all(not Path(call["cwd"]).exists() for call in turns)
+
+
+def test_visual_compiler_binds_verification_and_commit_to_the_final_document(
+    editor_env: Any,
+) -> None:
+    env = editor_env
+    renderer = visuals.managed_renderer()
+    figure = schema.Figure(
+        figure_id="comparison",
+        content_id="limits",
+        kind="graph",
+        asset_ids=[renderer.asset.asset_id],
+        caption="Compare two hypothetical camera tracks.",
+        alt="Two asymmetric illustrative position series.",
+        provenance=schema.Provenance(kind="hypothetical", source="Synthetic inputs."),
+        renderer=schema.Renderer(asset_id=renderer.asset.asset_id, version="2"),
+        definition=COMPARISON,
+    )
+    request = env.request.model_copy(
+        update={
+            "target": schema.ContentTarget(content_id="limits"),
+            "instruction": "Add a hypothetical comparison graph; keep facts and citations.",
+        }
+    )
+    html = env.current.document.html.replace(
+        "<html><body>",
+        "<!doctype html><html><!-- harmless literal <head> -->"
+        "<head><title>Camera tracks</title></head><body>",
+    ).replace("</aside>", '<figure data-figure-id="comparison"></figure></aside>')
+    raw = candidate(
+        env.current.document.model_copy(
+            update={"html": html, "assets": [renderer.asset], "figures": [figure]}
+        ),
+        current=env.current,
+        request=request,
+    )
+    payloads = {renderer.asset.asset_id: renderer.content}
+    # A structurally valid empty slot cannot pass the real visual validator.
+    with pytest.raises(schema.ContractError, match="invalid_document"):
+        visuals.validate_visuals(raw.document, payloads)
+    final = candidate(
+        visuals.render_document(raw.document), current=env.current, request=request
+    )
+    env.outputs(
+        raw,
+        {
+            "candidate_digest": schema.candidate_digest(final),
+            "check": {"status": "passed", "issues": []},
+            "reviewed_evidence_ids": ["baseline", "cameras"],
+        },
+    )
+    adapter = editor.GeminiEditor(
+        env.adapter.gemini, compile_document=visuals.render_document
+    )
+    context = env.context.model_copy(
+        update={"assets": [renderer.asset], "figures": [figure]}
+    )
+    result = adapter.edit(request, env.current, context)
+    assert result.candidate == final
+    assert schema.candidate_digest(raw) != result.validation.candidate_digest
+    assert result.validation.candidate_digest == schema.candidate_digest(final)
+    assert 'http-equiv="Content-Security-Policy"' in result.candidate.document.html
+    assert "<script " in result.candidate.document.html
+    assert (
+        f'data-asset-id="{renderer.asset.asset_id}"' in result.candidate.document.html
+    )
+    assert 'data-values="1"' in result.candidate.document.html
+    turns = [call for call in env.calls() if call["prompt"] is not None]
+    assert len(turns) == 2
+    verified = json.loads(turns[-1]["prompt"].split("\nINPUT_JSON\n")[1])
+    assert verified["candidate"] == final.model_dump(mode="json")
+    assert verified["candidate_digest"] == result.validation.candidate_digest
+    assert env.store.current("geometry") == env.current
+    staged = env.store.stage(result.candidate, payloads)
+    assert staged.candidate_digest == result.validation.candidate_digest
+    staged_document = env.store.staged_candidate("geometry", staged.stage_id).document
+    staged_payloads = {
+        asset.asset_id: env.store.staged_asset_bytes(
+            "geometry", staged.stage_id, asset.asset_id
+        )
+        for asset in staged_document.assets
+    }
+    visuals.validate_visuals(staged_document, staged_payloads)
+    assert staged_payloads == payloads
+    # Meaning and browser rendering verdicts are test fakes. The real visual
+    # validator above checks the compiled staged bundle without forging a verdict.
+    checked = result.validation.model_copy(
+        update={"rendering": schema.CheckResult(status="passed")}
+    )
+    revision = env.store.commit(staged, checked)
+    assert revision.document == final.document
+    assert env.store.current("geometry") == revision
 
 
 @pytest.mark.parametrize("mismatch", ["model", "effort"])
