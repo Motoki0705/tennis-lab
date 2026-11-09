@@ -319,7 +319,7 @@ closedの理由が不明な子を完了と推測しない。編集中に跨っ�
 
 ### GitHub GETの接続断と再試行
 
-`issues.cli.GitHub.get()` は、HTTP応答statusが得られないGETだけを合計3回まで試行し、
+`issues.cli.GitHub.get()` は、ghが失敗終了しHTTP応答statusが得られないGETだけを合計3回まで試行し、
 2回目の前に1秒、3回目の前に2秒待つ。各試行のsubprocess timeoutは60秒。
 `error connecting` 等を伴うstatus欠落と、HTTP statusを受信する前のtimeoutが対象。
 通信原因をDNS・TLS・回線などのいずれかと断定するものではない。
@@ -327,6 +327,7 @@ closedの理由が不明な子を完了と推測しない。編集中に跨っ�
 HTTP statusを受信したら再試行しない。認証・権限の401/403、404、rate limitの403/429、5xxは
 `GitHubHTTPError` の実statusを保持して失敗させる。rate limitの解除待ちや自動再送は行わない。
 HTTP statusがある応答の本文不正・欠落も即失敗する。上記の文書化された「親なし」404だけは従来どおり扱う。
+ghが正常終了したのにHTTP statusがない応答は、接続断とみなさず不正応答として即失敗する。
 実行ファイルの欠落等のローカルエラー、`gh repo view`、POST/PATCH/PUT/DELETE、GraphQLのPOSTは再試行しない。
 
 上限に達したら `GitHubTransportError` にGET endpoint、`attempts`、`last_error_kind` と最後の詳細を保持する。

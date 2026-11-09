@@ -244,6 +244,12 @@ class GitHub:
             else:
                 if _HTTP_STATUS.match(result.stdout):
                     return result, attempt
+                if result.returncode == 0:
+                    raise ValueError(
+                        f"gh api GET {endpoint}: attempts={attempt}; "
+                        "last_error_kind=invalid_http_response "
+                        "(gh exited successfully without HTTP response status)"
+                    )
                 error_kind = "missing_http_response_status"
                 detail = f"missing HTTP response status ({result.stderr.strip()})"
         raise GitHubTransportError(endpoint, attempt, error_kind, detail)

@@ -155,6 +155,17 @@ def test_timeout_without_http_response_can_recover(
     assert len(calls) == 2 and sleeps == [1.0]
 
 
+def test_successful_exit_without_http_status_is_not_a_connection_retry(
+    api: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls, sleeps = scripted_get(
+        monkeypatch, api, [subprocess.CompletedProcess([], 0, "[]", "")]
+    )
+    with pytest.raises(ValueError, match="last_error_kind=invalid_http_response"):
+        api.GitHub("o/r").get(ENDPOINT)
+    assert len(calls) == 1 and sleeps == []
+
+
 def test_timeout_with_http_response_is_not_retried(
     api: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:

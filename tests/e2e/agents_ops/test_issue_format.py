@@ -598,7 +598,10 @@ def test_cli_migration_checks_only_the_selected_family(
         ),
         ("10/parent", {"body": None}),
         ("10/parent", {"raw": "not-json"}),
-        ("10/parent", {"omit_headers": True, "body": {"message": "No parent issue found"}}),
+        (
+            "10/parent",
+            {"omit_headers": True, "body": {"message": "No parent issue found"}},
+        ),
         # GitHub answers a missing parent with "No parent issue found"; a bare
         # "Not Found" means the issue itself is gone and must not read as no parent.
         ("10/parent", {"status": 404, "body": {"message": "Not Found"}}),
@@ -628,6 +631,13 @@ def test_cli_api_failures_never_become_a_successful_partial_check(
     assert result.returncode == 2
     assert result.stdout == ""
     assert "issue-format:" in result.stderr
+    if response.get("omit_headers"):
+        assert (
+            sum(
+                call[-1] == f"repos/o/r/issues/{endpoint}" for call in issue_cli.calls()
+            )
+            == 1
+        )
 
 
 def test_cli_follows_all_subissue_pages(fmt: ModuleType, issue_cli: CliEnv) -> None:
@@ -683,7 +693,12 @@ def test_render_is_deterministic_and_always_a_local_dry_run(
     output = json.loads(first.stdout)
     assert output["dry_run"] is True
     assert output["title"] == "[開発ループ #10] 共通書式を実装する"
-    assert set(output["labels"]) == {fmt.CHILD_LABEL, "enhancement", "ci", "module: base"}
+    assert set(output["labels"]) == {
+        fmt.CHILD_LABEL,
+        "enhancement",
+        "ci",
+        "module: base",
+    }
     assert fmt.parse_proposal_source(output["body"]).proposal_id == "R-20261018-01"
     assert issue_cli.calls() == []
     assert (
