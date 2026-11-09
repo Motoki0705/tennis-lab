@@ -446,8 +446,8 @@ class Campaign:
                 continue
             progress(
                 phase={
-                    "train": "training",
-                    "probe": "training",
+                    "train": "restoring",
+                    "probe": "restoring",
                     "evaluate": "evaluating",
                 }.get(stage.kind, "validating_inputs")
             )

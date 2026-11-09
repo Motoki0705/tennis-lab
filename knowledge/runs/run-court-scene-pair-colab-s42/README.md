@@ -50,6 +50,9 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
 `last_progress_at` は件数・bytes・学習step・工程が前進した最終時刻で、
 単なる状態再記録の `updated_at` と区別する。`phase_started_at / elapsed_seconds` は現在の工程の経過時間。
 件数は下位工程開始で0へ戻り、未判明の総数はnull。学習開始前を学習0stepの停止と推定しない。
+trainer起動時のDataModule再検証も `validating_inputs / trainer_data_module` と表示する。
+`training / first_batch` はtrainerの開始callback後で、最初のforward（有効ならcompile）を待つ状態。
+最初のbatchが完了してから `operation: training` と実stepを更新する。
 
 `actual_training_update` はbatch callbackが観測した実更新、`latest_saved_update` はDriveまで照合済みの更新。
 checkpoint保存・検証中は前回の保存済みstepを保持する。ローカルの記録は同一工程内で最大1秒に1回、

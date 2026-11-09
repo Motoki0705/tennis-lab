@@ -486,11 +486,11 @@ class ColabBackend:
             c.write(path, restart)
             self.publish(path)
             progress(
-                phase="training",
+                phase="validating_inputs",
                 operation="starting_trainer",
-                actual_training_update=step,
-                completed_items=step,
-                total_items=maximum,
+                actual_training_update=None,
+                completed_items=0,
+                total_items=1,
                 saved_step=step,
                 resume_update=step,
                 restart_record=path.relative_to(c.REPO).as_posix(),
@@ -783,6 +783,17 @@ def train(condition: str, probe: bool, resume: str | None) -> None:
             )
 
     class Recorder(pl.Callback):
+        def on_train_start(self, trainer: Any, module: Any) -> None:
+            progress.progress(
+                stage,
+                phase="training",
+                operation="first_batch",
+                actual_training_update=trainer.global_step,
+                completed_items=trainer.global_step,
+                total_items=3 if probe else c.FINAL_STEP,
+                force=True,
+            )
+
         def on_before_optimizer_step(
             self, trainer: Any, module: Any, optimizer: Any
         ) -> None:
@@ -815,6 +826,18 @@ def train(condition: str, probe: bool, resume: str | None) -> None:
                     raise ValueError("Probe loss, batch shape or supervision changed")
 
     class Runner(CourtDetectionTrainingRunner):
+        def build_datamodule(self, config: Any) -> Any:
+            progress.progress(
+                stage,
+                phase="validating_inputs",
+                operation="trainer_data_module",
+                completed_items=0,
+                total_items=1,
+            )
+            datamodule = super().build_datamodule(config)
+            progress.progress(stage, operation="trainer_setup", completed_items=1)
+            return datamodule
+
         def build_trainer(
             self,
             config: Any,

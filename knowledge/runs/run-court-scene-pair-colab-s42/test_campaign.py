@@ -477,6 +477,8 @@ def test_any_failed_gate_stops_before_the_next_stage(
         "publish": "evaluate-scene-1",
     }[failure]
     assert not (backend.state / "done" / f"{marker}.json").exists()
+    if failure == "train":
+        assert c.read(backend.state / "progress.json")["phase"] == "restoring"
 
 
 def test_corrupted_completion_is_rejected_instead_of_skipped(tmp_path: Path) -> None:
@@ -631,6 +633,64 @@ def test_training_subprocess_progress_survives_return_to_parent(
         campaign.run()
     assert observed[0]["latest_saved_update"] == 3316
     assert observed[0]["actual_training_update"] == 3320
+
+
+def test_training_input_setup_and_first_batch_have_distinct_progress(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
+
+    monkeypatch.setattr(c, "REPO", tmp_path)
+    backend = object.__new__(runtime.ColabBackend)
+    backend.state = tmp_path / c.STATE
+    c.write(
+        backend.state / "progress.json",
+        {"started_at": c.datetime.now(c.UTC).isoformat()},
+    )
+    published: list[dict[str, Any]] = []
+    monkeypatch.setattr(runtime, "ColabBackend", lambda: backend)
+    monkeypatch.setattr(backend, "require_l4", lambda: None)
+    monkeypatch.setattr(backend, "publish", lambda path: published.append(c.read(path)))
+    observed: list[dict[str, Any]] = []
+    callbacks: list[Any] = []
+
+    def datamodule(self: Any, config: Any) -> object:
+        # Observe the real adapter wrapper while replacing all heavy input I/O.
+        observed.append(c.read(backend.state / "progress.json"))
+        return object()
+
+    def trainer(
+        self: Any, config: Any, supplied: list[Any], logger: Any, **kwargs: Any
+    ) -> Any:
+        callbacks.extend(supplied)
+        return SimpleNamespace(strategy=SimpleNamespace(), global_step=0)
+
+    def run(self: Any, config: Any) -> None:
+        self.build_datamodule(config)
+        observed.append(c.read(backend.state / "progress.json"))
+        training = self.build_trainer(config, [], None, artifact_store=object())
+        recorder = callbacks[0]
+        recorder.on_train_start(training, None)
+        observed.append(c.read(backend.state / "progress.json"))
+        publications_before_batch = len(published)
+        training.global_step = 1
+        recorder.on_train_batch_end(training, None, None, None, 0)
+        observed.append(c.read(backend.state / "progress.json"))
+        assert len(published) == publications_before_batch
+
+    monkeypatch.setattr(CourtDetectionTrainingRunner, "build_datamodule", datamodule)
+    monkeypatch.setattr(CourtDetectionTrainingRunner, "build_trainer", trainer)
+    monkeypatch.setattr(CourtDetectionTrainingRunner, "run", run)
+    runtime.train("P02", False, None)
+    assert [(value["phase"], value["operation"]) for value in observed] == [
+        ("validating_inputs", "trainer_data_module"),
+        ("validating_inputs", "trainer_setup"),
+        ("training", "first_batch"),
+        ("training", "training"),
+    ]
+    assert observed[-1]["actual_training_update"] == 1
+    assert observed[-1]["latest_saved_update"] == 0
 
 
 @pytest.mark.parametrize("fault", ["valid", "adapter", "data", "source", "config"])
