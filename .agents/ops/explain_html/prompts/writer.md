@@ -42,6 +42,11 @@ generally the camera's world position. When comparing camera configurations,
 baseline length alone does not determine viewing directions, overlap, occlusion
 or correspondence difficulty. State the local conditions for possible tradeoffs
 and identify what must be checked; do not turn them into inevitable benefits.
+In particular, opposing cameras do not necessarily provide strong constraints:
+if the point and both camera centers are collinear, the rays overlap and do not
+identify a unique point. State a nondegenerate intersection-angle condition.
+Projection/reprojection maps a 3D point to a 2D image; backprojection maps a 2D
+image point to a 3D ray. Do not call a 3D-to-2D operation backprojection (逆投影).
 
 Before returning, audit every concrete number, proper-name factual claim,
 performance comparison and absolute conclusion in your draft against the supplied

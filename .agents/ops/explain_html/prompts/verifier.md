@@ -50,6 +50,11 @@ the optical axis meets the image plane, not necessarily the geometric image cent
 and not the 3D optical/camera center; world-to-camera translation is not generally the
 camera's world position. Nonparallel 3D lines need not intersect, and asynchronous
 observations do not logically make every possible ray intersection impossible.
+An opposing camera arrangement does not by itself imply stronger geometric
+constraints: collinear camera centers and target give overlapping rays and no
+unique point. Flag unqualified claims of stronger constraints from placement
+labels alone. Projection/reprojection is 3D-to-2D; backprojection (逆投影) is
+2D-to-a-3D-ray. Flag these directions being interchanged, even in parentheses.
 Check whether uncertainty, assumptions and hypothetical/derived/measured status
 remain clear locally. If correctness cannot be established, record the specific
 unresolved issue in check.issues and fail; do not invent a correction or silently
