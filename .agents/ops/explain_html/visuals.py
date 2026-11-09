@@ -14,6 +14,7 @@ import math
 import re
 import xml.etree.ElementTree as ET
 from html import escape
+from itertools import pairwise
 from pathlib import Path
 
 from .document import inspect_document
@@ -167,6 +168,131 @@ _HTML_TAGS = set(
     ]
 )
 _VOID = {"meta", "br", "hr", "img", "link", "input", "col"}
+_LITERAL_TEXT = {"code", "pre", "kbd", "samp", "math", "style", "script"}
+_PROSE_INLINE = set(
+    [
+        "a",
+        "span",
+        "strong",
+        "em",
+        "b",
+        "i",
+        "u",
+        "s",
+        "small",
+        "sub",
+        "sup",
+        "abbr",
+        "time",
+        "mark",
+        "var",
+        "label",
+        "output",
+        "button",
+        "br",
+        "tspan",
+    ]
+)
+_TEX_SYNTAX = re.compile(r"\\(?:[A-Za-z]+|[()[\]])|\$\$")
+_CURRENCY_AMOUNT = re.compile(
+    r"[+-]?(?:\d+(?:[.,]\d+)*|\.\d+)(?=$|[\s,.;:!?)/\]\"'、。]|-(?=\$))"
+)
+_MATH_NS = "http://www.w3.org/1998/Math/MathML"
+_MATH_TAGS = set(
+    [
+        "math",
+        "mrow",
+        "mi",
+        "mn",
+        "mo",
+        "mtext",
+        "mspace",
+        "ms",
+        "mfrac",
+        "msqrt",
+        "mroot",
+        "msub",
+        "msup",
+        "msubsup",
+        "munder",
+        "mover",
+        "munderover",
+        "mtable",
+        "mtr",
+        "mtd",
+        "mstyle",
+        "mpadded",
+        "mphantom",
+    ]
+)
+_MATH_ATTRIBUTES = set(
+    [
+        "id",
+        "class",
+        "style",
+        "role",
+        "aria-label",
+        "aria-labelledby",
+        "aria-describedby",
+        "display",
+        "mathvariant",
+        "mathsize",
+        "mathcolor",
+        "mathbackground",
+        "displaystyle",
+        "scriptlevel",
+        "stretchy",
+        "symmetric",
+        "largeop",
+        "movablelimits",
+        "accent",
+        "accentunder",
+        "fence",
+        "separator",
+        "lspace",
+        "rspace",
+        "minsize",
+        "maxsize",
+        "linethickness",
+        "columnalign",
+        "rowalign",
+        "columnspacing",
+        "rowspacing",
+        "columnspan",
+        "rowspan",
+        "width",
+        "height",
+        "depth",
+        "voffset",
+    ]
+)
+# Compiler-owned containment, independent of global writer rules such as
+# table{min-width:750px}. Wide source tables scroll inside their figure.
+_FIGURE_CSS = (
+    "figure[data-figure-id]{box-sizing:border-box!important;min-width:0!important;max-width:100%!important;overflow-x:auto!important;overflow-wrap:anywhere}"
+    "figure[data-figure-id] [data-managed-graph]{min-width:0!important;max-width:100%!important;overflow-x:auto!important}"
+    "figure[data-figure-id] svg,figure[data-figure-id] img{max-width:100%!important;height:auto!important}"
+)
+
+
+def _figure_style() -> str:
+    return '<style data-visual-style="1">' + _FIGURE_CSS + "</style>"
+
+
+def _policy_directives(policy: str) -> dict[str, frozenset[str]]:
+    result = {}
+    for directive in policy.split(";"):
+        tokens = directive.split()
+        if not tokens:
+            continue
+        name, *values = tokens
+        name = name.lower()
+        if name in result or len(values) != len(set(values)):
+            raise ContractError("invalid_document")
+        result[name] = frozenset(values)
+    return result
+
+
 _KINDS = {
     "measured": "Measured",
     "hypothetical": "Hypothetical example",
@@ -443,7 +569,7 @@ def _figure_html(figure: Figure, assets: dict[str, Asset]) -> str:
 def _css(text: str) -> None:
     reject_css_resources(text, code="invalid_document")
     if re.search(
-        r"url\s*\(|expression\s*\(|@(?!media\b|supports\b|layer\b|container\b)|\\|/\*|behavior\s*:|-moz-binding|<",
+        r"url\s*\(|expression\s*\(|@(?!media\b|supports\b|layer\b|container\b)|\\|/\*|(?<![\w-])(?:behavior|-moz-binding)\s*:|<",
         text,
         re.I,
     ):
@@ -459,18 +585,39 @@ class _Markup(StrictHTMLParser):
         self.scripts: list[tuple[int, int]] = []
         self.script_attributes: dict[int, dict[str, str | None]] = {}
         self.policies: list[tuple[int, int]] = []
+        self.styles: list[tuple[int, int]] = []
         self.head_end: int | None = None
         self.has_body = False
         self.has_html = False
+        self.prose: list[str] = []
         self.lines = [0, *[m.end() for m in re.finditer("\n", document.html)]]
         self.feed(document.html)
         self.close()
+        self._check_prose()
+
+    def _check_prose(self) -> None:
+        """Check a body text run, including inline fragments, without rewriting it."""
+        text = "".join(self.prose)
+        self.prose.clear()
+        if _TEX_SYNTAX.search(text):
+            raise ContractError("invalid_document")
+        dollars = [match.start() for match in re.finditer(r"\$", text)]
+        for left, right in pairwise(dollars):
+            # Consider overlapping pairs: skipping '$5 ... $10' must not hide
+            # a later numeric formula such as '$10+x$'. A single '$' is literal.
+            if not (
+                _CURRENCY_AMOUNT.match(text, left + 1)
+                and _CURRENCY_AMOUNT.match(text, right + 1)
+            ):
+                raise ContractError("invalid_document")
 
     def source_offset(self) -> int:
         line, column = self.getpos()
         return self.lines[line - 1] + column
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag not in _PROSE_INLINE:
+            self._check_prose()
         attributes = dict(attrs)
         parent = self.stack[-1][0] if self.stack else None
         in_head = any(item[0] == "head" for item in self.stack)
@@ -494,7 +641,23 @@ class _Markup(StrictHTMLParser):
         in_graph = any(
             f.figure_id == active and f.kind == "graph" for f in self.document.figures
         )
-        if tag not in _HTML_TAGS | {"script"} and not (in_graph and tag in _SVG_TAGS):
+        in_math = any(item[0] == "math" for item in self.stack)
+        if tag in _MATH_TAGS:
+            if (tag != "math" and not in_math) or (tag == "math" and in_math):
+                raise ContractError("invalid_document")
+            if (
+                set(attributes)
+                - _MATH_ATTRIBUTES
+                - ({"xmlns"} if tag == "math" else set())
+            ):
+                raise ContractError("invalid_document")
+            if "xmlns" in attributes and attributes["xmlns"] != _MATH_NS:
+                raise ContractError("invalid_document")
+        elif (
+            in_math
+            or tag not in _HTML_TAGS | {"script"}
+            and not (in_graph and tag in _SVG_TAGS)
+        ):
             raise ContractError("invalid_document")
         if any(
             key.startswith("on")
@@ -516,6 +679,10 @@ class _Markup(StrictHTMLParser):
             raise ContractError("invalid_document")
         if "data-graph-targets" in attributes and tag != "script":
             raise ContractError("invalid_document")
+        if "data-visual-style" in attributes and (
+            tag != "style" or attributes != {"data-visual-style": "1"}
+        ):
+            raise ContractError("invalid_document")
         if "style" in attributes:
             _css(attributes["style"] or "")
         if tag == "input" and not in_graph:
@@ -535,7 +702,15 @@ class _Markup(StrictHTMLParser):
         if tag == "script":
             self.script_attributes[start] = attributes
         if tag == "meta" and "http-equiv" in attributes:
-            if self.document.html[start:end] != _policy_meta(self.document):
+            if (
+                not in_head
+                or (attributes.get("http-equiv") or "").lower()
+                != "content-security-policy"
+                or set(attributes) - {"http-equiv", "content", "data-visual-policy"}
+                or _policy_directives(attributes.get("content") or "")
+                != _policy_directives(content_security_policy(self.document))
+                or self.policies
+            ):
                 raise ContractError("invalid_document")
             self.policies.append((start, end))
         figure = attributes.get("data-figure-id")
@@ -552,6 +727,8 @@ class _Markup(StrictHTMLParser):
             self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str) -> None:
+        if tag not in _PROSE_INLINE:
+            self._check_prose()
         if tag in _VOID:
             return
         if not self.stack or self.stack[-1][0] != tag:
@@ -559,6 +736,14 @@ class _Markup(StrictHTMLParser):
         _, figure, start, inner_start = self.stack.pop()
         if figure:
             self.slots[figure] = (inner_start, self.source_offset())
+        if (
+            tag == "style"
+            and "data-visual-style" in self.document.html[start:inner_start]
+        ):
+            end = self.document.html.find(">", self.source_offset()) + 1
+            if self.document.html[start:end] != _figure_style() or self.styles:
+                raise ContractError("invalid_document")
+            self.styles.append((start, end))
         if tag == "script":
             end = self.document.html.find(">", self.source_offset()) + 1
             renderer = _document_renderer(self.document)
@@ -589,6 +774,10 @@ class _Markup(StrictHTMLParser):
             raise ContractError("invalid_document")
         if self.stack and self.stack[-1][0] == "style":
             _css(data)
+        elif any(tag == "body" for tag, *_ in self.stack) and not any(
+            tag in _LITERAL_TEXT for tag, *_ in self.stack
+        ):
+            self.prose.append(data)
 
 
 def render_document(document: Document) -> Document:
@@ -596,20 +785,18 @@ def render_document(document: Document) -> Document:
     inspect_document(document)
     markup = _Markup(document)
     assets = {asset.asset_id: asset for asset in document.assets}
-    # Scripts already inside a figure disappear with that figure's replacement;
+    # Managed components inside a figure disappear with its replacement;
     # do not apply overlapping source edits. Every runtime reference belongs to
     # the first graph's existing content block under the shared ownership policy.
-    scripts_outside_figures = [
+    components_outside_figures = [
         (start, end)
-        for start, end in markup.scripts
+        for start, end in markup.scripts + markup.policies + markup.styles
         if not any(
             inner_start <= start and end <= inner_end
             for inner_start, inner_end in markup.slots.values()
         )
     ]
-    changes = [
-        (start, end, "") for start, end in scripts_outside_figures + markup.policies
-    ]
+    changes = [(start, end, "") for start, end in components_outside_figures]
     first_graph = next(
         (figure.figure_id for figure in document.figures if figure.kind == "graph"),
         None,
@@ -629,7 +816,13 @@ def render_document(document: Document) -> Document:
     # with file:// exports, without fetch(), ES module CORS or a CDN.
     if markup.head_end is None or not markup.has_body:
         raise ContractError("invalid_document")
-    html = html[: markup.head_end] + _policy_meta(document) + html[markup.head_end :]
+    style = _figure_style() if document.figures else ""
+    html = (
+        html[: markup.head_end]
+        + _policy_meta(document)
+        + style
+        + html[markup.head_end :]
+    )
     result = document.model_copy(update={"html": html})
     inspect_document(result)
     return result

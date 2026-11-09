@@ -525,7 +525,7 @@ class JobController:
             )
             with self._condition:
                 self._check_active(key)
-            # Do not override the adapter's shared writer/verifier timeout.
+            # Use the adapter's independent writer/verifier stage budgets.
             editor = self.editor_factory(prepared)
             result = editor.edit(request, current, prepared.context, cancel=cancel)
             candidate = parse(Candidate, canonical_bytes(result.candidate))

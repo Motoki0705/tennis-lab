@@ -104,11 +104,20 @@ renderer/CSPの挿入を済ませた最終Documentを返すか、ContractError�
 生成assetのbytesは呼出側controllerがprivateに保持してstageへ渡す。compilerから公開・commitしない。
 managed visualには `explain_html.visuals` の `compile_document=render_document` を直接渡せる。
 この公開関数の型はDocumentCompilerと一致する。
-`write_initial(request, context, *, timeout=600, cancel=None)` と
-`edit(request, current, context, *, timeout=600, cancel=None)` は `EditorialResult` を返す。
+`write_initial(request, context, *, writer_timeout=900, verifier_timeout=240, cancel=None)` と
+`edit(request, current, context, *, writer_timeout=900, verifier_timeout=240, cancel=None)` は `EditorialResult` を返す。
 要求・現在版には共通のEditRequest/Revisionを使い、初回はnull base・文書全体対象にする。
-timeoutはwriter/verifier・compile・effort/版照合を合わせた上限。呼出ごとにworkspaceと会話を作り直し、
-自動retry・resume・別modelへの代替・自由文からの補修はしない。
+各段階の上限はeffort/版照合を含み、writerはverifierの時間枠を消費しない。
+2026-11-09の実機確認で初版writerは270〜360秒、全体再構成writerは約633秒、
+通常verifierは60〜110秒だったため、既定をwriter 900秒・verifier 240秒とした。
+Figureとslotの対応漏れだけは独立したwriter修復を最大1回・600秒で行う。
+完全な文脈と不採用候補、figure ID、期待するcontent ID、slot/metadataの欠落・所有block違いを渡す。
+修復後とcompile後も通常の全検査を行い、独立意味検査はcompile後のdigestへ結び付け、
+stage後の描画検査も必須とする。再失敗は停止し、意味・安全性など他の失敗はretryしない。
+promptに固定の回数・時間上限を残し、`EditorialResult.repairs` に修復のmodel/effort/時間/usageを別記する。
+model段階の最大合計は修復あり29分・なし19分で、別途ローカルcompile/描画が必要。
+UIは中止可能な経過時間表示で完了期限を約束せず、旧600秒の共有期限を設けない。
+呼出ごとにworkspaceと会話を作り直し、resume・別modelへの代替はしない。
 
 `WritingContext` は信頼するcontrollerの入力で、目的・読み手・更新後の正確な根拠集合、
 許可済みassets・準備済み図・文章の好み・過去の変更要約すべてを渡す。
@@ -117,6 +126,10 @@ writerの案を承認の根拠にしたり、browser JSONを未検査で承認�
 独立verifierは変更理由と指示の整合性も調べる。両呼出へ完全な文脈・現在版・対象と指示・履歴を渡し、
 verifierには候補とdigestも渡す。prompt/schemaはprivate fileとstdinで渡し、argv上限による省略をしない。
 Candidate schemaは共通モデルから直接生成する。
+writerには`candidate_template`も渡す。正確なrequestと信頼するmetadataを出力と同じ構造に入れ、
+HTML・変更一覧はwriterが埋める。根拠をID文字列へ省略したりrequest fieldを捏造するnative finishの
+誤りを減らすためで、本文・見た目・厳密な出力schemaは変えない。独立verifierへはこの補助を渡さず、
+compile済み候補を渡す。
 
 writerは完全なCandidateを返す。機械検査は元要求の一致、共通の構造・変更検査、目的・読み手・
 根拠metadata（数値・条件・出典を含む）・許可済みassetsの厳密な一致を確認する。
@@ -354,6 +367,34 @@ Assetへ保存しHTMLにも埋め、CSP hashで許可する。scriptは最初の
 snapshot後にCDN・fetch・module import・serverを必要としない。CSPの挿入位置はbodyより前にある
 一意のheadを解析して得る。comment中のheadという文字列には影響されず、head内の最初のscript・style・
 resource参照より前へ配置する。不正なhead/bodyの入れ子と、head前の非ASCII空白（実体参照のNBSPを含む）は拒否する。
+
+CSP・renderer script・`data-visual-style`の図用CSSはcompilerが所有する。
+writerには編集時も省略するよう明示し、コードやhashの複写を要求しない。
+同等のCSP metaはdirective名とtoken集合が必須policyと一致する場合だけ受け付け、正本へ置換する。
+属性順・引用符・http-equivの大文字小文字・directive順・空白の違いを許容する一方、
+directive/policy重複、追加directive、参照先変更、弱いpolicyは拒否する。
+既存の完全一致するmanaged scriptは置換し、コード改変・追加属性・任意scriptは拒否する。
+既存の管理CSSも正本との一致を要求する。これは意味検査より前に行う明示的なcompile契約で、
+静かな補修ではない。stage後は正本との完全一致を引き続き要求する。
+管理CSSは`table{min-width:750px}`のようなwriterのglobal指定があっても、390px幅で
+元data表と図をfigure内に収め、横scrollさせる。
+
+数式はChromium標準のpresentation MathMLで表現し、CDN・依存追加は不要。
+writer promptとvisual許可リストの要素を揃え、annotation-xml・mglyph・link・異種要素・event属性は拒否する。
+TeXのcommand/区切りを拒否し、未描画の数式を公開しない。平易な説明を添え、静的snapshotにも同じbytesを保存する。
+
+TeXの文字列検査はfigure captionを含む本文が対象。`$...$`・`$$...$$`・`\(...\)`・`\[...\]`と、
+バックスラッシュ直後にASCII英字が続く命令全般を拒否する。text run内ではinline要素・comment・
+展開済み文字参照をまたいで文字列を連結し、命令や区切りの分割も検出する。
+block要素とliteral領域でrunを区切り、別の段落同士は連結しない。
+code/pre/kbd/samp/mathの子孫、属性値、headのmetadataはこの本文検査から除外する。
+ソース記法やpathはliteral要素に置く。除外範囲でもMathML・HTML/CSS/script/属性の安全性検査は維持し、
+余分なmarkupを許可しない。対応のない単一ドルはliteralとして扱う。
+隣接する2つのドル記号がどちらも数値価格を始める`$5 and $10.50`などは通貨と判定する。
+金額は符号・小数/桁区切りを許し、数値の直後が空白・句読点・run末尾であることを要求する
+（次の価格直前のハイフンも区切り）。`$5$`・`$x$2`・価格の後の数値数式は拒否する。
+曖昧なliteral記法はliteral要素へ置く。違反はcompile・stage後のvisual検査で`invalid_document`とし、
+本文を書き換えたり旧判定を使い回したりしない。TeX専用の自動retryは追加しない。
 
 描画属性（`data-managed-*`・`data-definition`・`data-plot`・`data-values`・`data-slider-value`・
 `data-render-*`）は正規graph figure内へ予約し、`data-graph-targets`はmanaged scriptだけが持つ。

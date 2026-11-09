@@ -133,7 +133,12 @@ if case == "tool":
         ),
         flush=True,
     )
-output = json.loads((root / (role + ".json")).read_text())
+output_file = (
+    "repair.json"
+    if role == "writer" and '"figure_repair"' in (prompt or "")
+    else role + ".json"
+)
+output = json.loads((root / output_file).read_text())
 hooks = json.loads((Path.cwd() / ".agents/hooks.json").read_text())
 command = hooks["explain-html-no-tools"]["PreToolUse"][0]["hooks"][0]["command"]
 if role == "writer":

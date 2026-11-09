@@ -81,6 +81,20 @@ def test_initial_and_explicit_numeric_update_keep_unknowns_and_require_rendering
     turns = [call for call in calls if call["prompt"] is not None]
     assert len(turns) == 4
     assert len({call["cwd"] for call in turns}) == 4
+    initial_template = json.loads(turns[0]["prompt"].split("\nINPUT_JSON\n")[1])[
+        "candidate_template"
+    ]
+    assert initial_template["request"] == initial.request.model_dump(mode="json")
+    assert {
+        (item["evidence_id"], item["kind"])
+        for item in initial_template["evidence_changes"]
+    } == {("baseline", "added"), ("cameras", "added")}
+    edit_template = json.loads(turns[2]["prompt"].split("\nINPUT_JSON\n")[1])[
+        "candidate_template"
+    ]
+    assert edit_template["evidence_changes"] == [
+        change.model_dump(mode="json") for change in context.authorized_evidence_changes
+    ]
     for call in calls:
         args = call["args"]
         if args != ["--version"]:
@@ -186,6 +200,16 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
         assert "-p" not in call["args"]
     assert "candidate" not in json.loads(turns[0]["prompt"].split("\nINPUT_JSON\n")[1])
     verified = json.loads(turns[-1]["prompt"].split("\nINPUT_JSON\n")[1])
+    template = json.loads(turns[0]["prompt"].split("\nINPUT_JSON\n")[1])[
+        "candidate_template"
+    ]
+    assert template["request"] == env.request.model_dump(mode="json")
+    assert (
+        template["document"]["evidence"] == context.model_dump(mode="json")["evidence"]
+    )
+    assert template["document"]["assets"] == context.model_dump(mode="json")["assets"]
+    assert template["evidence_changes"] == []
+    assert "candidate_template" not in verified
     assert verified["candidate"] == final.model_dump(mode="json")
     assert verified["candidate_digest"] == schema.candidate_digest(final)
     assert env.store.current("geometry") == env.current
@@ -397,3 +421,182 @@ def test_malformed_or_unbound_verdict_is_rejected(
     with pytest.raises(schema.ContractError, match=code):
         env.adapter.edit(env.request, env.current, env.context)
     assert env.store.current("geometry") == env.current
+
+
+def _slot_repair_inputs(env: Any) -> tuple[Any, Any, Any]:
+    renderer = visuals.managed_renderer()
+    figure = schema.Figure(
+        figure_id="comparison",
+        content_id="limits",
+        kind="graph",
+        asset_ids=[renderer.asset.asset_id],
+        caption="Hypothetical tracks.",
+        alt="Two different position series.",
+        provenance=schema.Provenance(kind="hypothetical", source="Synthetic inputs."),
+        renderer=schema.Renderer(asset_id=renderer.asset.asset_id, version="2"),
+        definition=COMPARISON,
+    )
+    raw_document = env.proposed.document.model_copy(
+        update={
+            "html": env.proposed.document.html.replace(
+                "<html><body>", "<html><head></head><body>"
+            ),
+            "assets": [renderer.asset],
+            "figures": [figure],
+        }
+    )
+    fixed_document = raw_document.model_copy(
+        update={
+            "html": raw_document.html.replace(
+                "</aside>", '<figure data-figure-id="comparison"></figure></aside>'
+            )
+        }
+    )
+    fixed = candidate(fixed_document, current=env.current, request=env.request)
+    # A literal malformed output cannot be created through candidate(), whose
+    # change calculator itself checks the broken figure reference.
+    broken = fixed.model_dump(mode="json")
+    broken["document"]["html"] = raw_document.html
+    context = env.context.model_copy(
+        update={"assets": [renderer.asset], "figures": [figure]}
+    )
+    return broken, fixed, context
+
+
+@pytest.mark.parametrize(
+    "problem", ["missing_slot", "missing_metadata", "wrong_content_block"]
+)
+def test_figure_correspondence_gets_one_diagnostic_repair_and_final_verification(
+    editor_env: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    problem: str,
+) -> None:
+    env = editor_env
+    broken, fixed, context = _slot_repair_inputs(env)
+    if problem != "missing_slot":
+        broken = fixed.model_dump(mode="json")
+        if problem == "missing_metadata":
+            broken["document"]["figures"] = []
+        else:
+            slot = '<figure data-figure-id="comparison"></figure>'
+            broken["document"]["html"] = (
+                broken["document"]["html"]
+                .replace(slot, "")
+                .replace("</section>", slot + "</section>")
+            )
+    timeouts = []
+    turn = env.adapter.gemini.turn
+
+    def recorded_turn(*args: Any, **kwargs: Any) -> Any:
+        timeouts.append(kwargs["timeout"])
+        return turn(*args, **kwargs)
+
+    monkeypatch.setattr(env.adapter.gemini, "turn", recorded_turn)
+    final = candidate(
+        visuals.render_document(fixed.document),
+        current=env.current,
+        request=env.request,
+    )
+    env.outputs(
+        broken,
+        {
+            "candidate_digest": schema.candidate_digest(final),
+            "check": {"status": "passed", "issues": []},
+            "reviewed_evidence_ids": ["baseline", "cameras"],
+        },
+    )
+    (env.root / "repair.json").write_text(fixed.model_dump_json())
+    adapter = editor.GeminiEditor(
+        env.adapter.gemini, compile_document=visuals.render_document
+    )
+    result = adapter.edit(env.request, env.current, context)
+    assert result.candidate == final
+    assert len(result.repairs) == 1
+    assert timeouts == [900, 600, 240]
+    turns = [call for call in env.calls() if call["prompt"] is not None]
+    assert len(turns) == 3
+    repair = json.loads(turns[1]["prompt"].split("\nINPUT_JSON\n")[1])
+    expected = {"figure_id": "comparison", "problem": problem}
+    if problem != "missing_metadata":
+        expected["content_id"] = "limits"
+    assert repair["figure_repair"]["issues"] == [expected]
+    assert repair["figure_repair"]["attempt"] == 1
+    verified = json.loads(turns[2]["prompt"].split("\nINPUT_JSON\n")[1])
+    assert verified["candidate"] == final.model_dump(mode="json")
+    assert "figure_repair" not in verified
+    visuals.validate_visuals(
+        final.document, {"visuals_v2": visuals.managed_renderer().content}
+    )
+    assert env.store.current("geometry") == env.current
+
+
+@pytest.mark.parametrize(
+    "damage,code",
+    [
+        ("missing", "invalid_model_output"),
+        ("evidence", "validation_failed"),
+        ("script", "invalid_document"),
+        ("cancelled", "cancelled"),
+    ],
+)
+def test_slot_repair_cannot_retry_again_or_bypass_checks(
+    editor_env: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    damage: str,
+    code: str,
+) -> None:
+    from threading import Event
+
+    env = editor_env
+    broken, fixed, context = _slot_repair_inputs(env)
+    repaired = fixed.model_dump(mode="json")
+    if damage == "missing":
+        repaired = broken
+    elif damage == "evidence":
+        repaired["document"]["purpose"] = "Changed protected purpose."
+    elif damage == "script":
+        repaired["document"]["html"] = repaired["document"]["html"].replace(
+            "</body>", "<script>evil()</script></body>"
+        )
+    env.outputs(broken, {})
+    (env.root / "repair.json").write_text(json.dumps(repaired))
+    cancel = Event()
+    turn = env.adapter.gemini.turn
+
+    def checked_turn(*args: Any, **kwargs: Any) -> Any:
+        if '"figure_repair"' in args[0] and damage == "cancelled":
+            cancel.set()
+        return turn(*args, **kwargs)
+
+    monkeypatch.setattr(env.adapter.gemini, "turn", checked_turn)
+    adapter = editor.GeminiEditor(
+        env.adapter.gemini, compile_document=visuals.render_document
+    )
+    with pytest.raises(schema.ContractError, match=code):
+        adapter.edit(env.request, env.current, context, cancel=cancel)
+    turns = [call for call in env.calls() if call["prompt"] is not None]
+    assert len(turns) == (1 if damage == "cancelled" else 2)
+    assert env.store.current("geometry") == env.current
+
+
+def test_writer_and_verifier_have_independent_time_budgets(
+    editor_env: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = editor_env
+    elapsed = [0.0]
+    timeouts = []
+    turn = env.adapter.gemini.turn
+
+    def timed_turn(*args: Any, **kwargs: Any) -> Any:
+        timeouts.append(kwargs["timeout"])
+        result = turn(*args, **kwargs)
+        elapsed[0] += 850 if len(timeouts) == 1 else 200
+        return result
+
+    import time
+
+    monkeypatch.setattr(time, "monotonic", lambda: elapsed[0])
+    monkeypatch.setattr(env.adapter.gemini, "turn", timed_turn)
+    result = env.adapter.edit(env.request, env.current, env.context)
+    assert result.candidate == env.proposed
+    assert timeouts == [900, 240]

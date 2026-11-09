@@ -23,6 +23,15 @@ from tests.support.agents_ops.explain_html_visuals import (
 
 def main(root: Path) -> None:
     document, payloads = make_visual_bundle()
+    math = '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block" aria-label="Depth equals focal length times baseline over disparity"><mi>Z</mi><mo>=</mo><mfrac><mrow><mi>f</mi><mi>B</mi></mrow><mi>d</mi></mfrac></math>'
+    document = document.model_copy(
+        update={
+            "html": document.html.replace(
+                "</head>",
+                "<style>table{min-width:750px}html{scroll-behavior:smooth}</style></head>",
+            ).replace("</section>", math + "</section>", 1)
+        }
+    )
     later = document.figures[1].model_copy(update={"figure_id": "later-error"})
     document = visuals.render_document(
         document.model_copy(
@@ -38,6 +47,13 @@ def main(root: Path) -> None:
     store = store_api.RevisionStore(root / "store")
     candidate = candidate_for(document)
     first = store.import_initial(candidate, payloads, validation_for(candidate))
+    initial_index = root / "initial/index.html"
+    initial_index.parent.mkdir()
+    initial_index.write_text(document.html)
+    for asset in document.assets:
+        target = initial_index.parent / asset.path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(payloads[asset.asset_id])
     # The SVG is a valid asset reference and digest. The visual policy must still
     # reject its content before publication, retaining the complete current view.
     attack = b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 7 3"><script>window.PWNED=1</script></svg>'
@@ -103,6 +119,7 @@ def main(root: Path) -> None:
             )
     _, _, _, legacy = make_renderer_history(root / "legacy")
     result = {
+        "initial_index": str(initial_index),
         "index": str(root / "store/exports" / snapshot.snapshot_id / "index.html"),
         "rejected": rejected,
         "revision": first.revision_id,

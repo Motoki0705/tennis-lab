@@ -32,6 +32,53 @@ For edits, compare against current_revision.document, not against context, when
 declaring changes. An unchanged evidence set then has no evidence_changes entries.
 change_summary describes this request's changes, including missing information.
 Do not submit validation results, claim verifier approval, or add fields.
+Use these exact change-record shapes: changes entries are
+{"content_id":"block-id","kind":"added"}; evidence_changes entries are
+{"evidence_id":"fact-id","kind":"added","reason":"Why this evidence changed."}.
+The kind is added, updated or removed. Do not use action instead of kind, do not
+put reason in changes, and never omit evidence_changes (use [] if unchanged).
+The complete top-level object has request, document, changes, evidence_changes
+and change_summary. document always has document_id, purpose, audience, evidence,
+html, assets and figures. Copy purpose and audience exactly from context, even
+when they already appear in the HTML or a previous revision.
+INPUT_JSON.candidate_template supplies the exact wire shape and trusted metadata.
+Start from it: fill document.html, changes and change_summary with your complete
+work. Empty strings are placeholders, not valid output. Preserve full evidence
+objects rather than replacing them with ID strings. The template defines no
+chapter structure or visual layout. Keep the request's target, never targetContext.
+
+The compiler owns CSP meta elements, managed JavaScript, managed figure contents
+and figure containment CSS. OMIT all http-equiv meta, all script elements and
+data-visual-style styles from your HTML, including when current_revision has them.
+Do not copy, rewrite or fabricate their code, hashes, policy or rendering markup.
+The compiler will generate these after your complete Candidate is checked and
+will recalculate the final changes. Your changes list describes your returned HTML.
+Use ordinary HTML, style rules and a head/body with explicit closing tags.
+
+For EVERY document.figures record, put exactly one empty
+<figure data-figure-id="FIGURE_ID"></figure> within its declared
+data-content-id="CONTENT_ID" block. The metadata list alone does not display a
+figure. Never leave metadata without a slot, a slot without metadata, or a slot
+in the wrong content block. Preserve prepared figures from context. Before
+finishing, check every figure_id/content_id pair against the HTML you return.
+If INPUT_JSON contains figure_repair, the previous candidate was REJECTED.
+Use its issues to fix the figure/slot correspondence and return a complete new
+Candidate, including accurate changes/evidence_changes. Keep all protected facts,
+asset metadata, explanation and instructions. This is the single repair attempt;
+the entire result will undergo all structural, preservation, safety, semantic
+and browser checks again. Do not claim that a missing figure was rendered.
+
+Write formulas using native presentation MathML: math, mrow, mi, mn, mo, mtext,
+mspace, ms, mfrac, msqrt, mroot, msub, msup, msubsup, munder, mover, munderover,
+mtable, mtr, mtd, mstyle, mpadded and mphantom. Use explicit closing tags,
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block" aria-label="...">,
+and an accessible plain-language explanation nearby. For example use
+<math><mi>Z</mi><mo>=</mo><mfrac><mrow><mi>f</mi><mi>B</mi></mrow><mi>d</mi></mfrac></math>.
+Do not output TeX/LaTeX commands or delimiters in prose (single/double dollars,
+backslash parentheses/brackets), MathJax/KaTeX, scripts, CDN resources, annotations or mglyph.
+Only literal source examples may contain TeX notation inside code/pre/kbd/samp;
+formulas use native MathML, not literal source wrappers.
+Simple inline formulas may also use ordinary text with sub/sup.
 
 context.evidence is the exact desired evidence set; copy its statements, values,
 conditions and provenance without changes. context.authorized_evidence_changes
