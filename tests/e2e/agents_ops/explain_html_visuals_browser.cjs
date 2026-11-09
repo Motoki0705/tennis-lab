@@ -19,12 +19,25 @@ const output = process.env.EXPLAIN_VISUAL_OUTPUT || fs.mkdtempSync(path.join(os.
   try {
     const errors = [], network = [];
     const page = await browser.newPage({viewport: {width: 1100, height: 900}, reducedMotion: 'reduce'});
+    await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+      for (const version of ['1', '2']) {
+        const rogue = document.createElement('div');
+        rogue.setAttribute('data-managed-graph', version);
+        rogue.setAttribute('data-definition', '{}');
+        document.body.prepend(rogue);
+      }
+    }, {once: true}));
     page.on('pageerror', e => errors.push(e.message));
     page.on('request', r => { if (/^https?:/.test(r.url())) network.push(r.url()); });
     let started = performance.now();
     await page.goto(pathToFileURL(fixture.index).href);
     const graph = page.locator('[data-figure-id="error-plot"]');
-    await page.waitForFunction(() => window.ExplainVisualsV1?.version === '1');
+    await page.waitForFunction(() => window.ExplainVisualsV2?.version === '2');
+    assert.equal(await page.locator('head').evaluate(head => head.firstElementChild?.getAttribute('data-visual-policy')), '1');
+    assert.ok(await page.locator('head').evaluate(head => {
+      const nodes = [...head.querySelectorAll('meta,script,style,link')];
+      return nodes[0].getAttribute('data-visual-policy') === '1';
+    }));
     assert.equal(await graph.locator('[data-slider-value]').textContent(), '0 px; Depth = 16 m');
     const slider = graph.locator('input[type="range"]');
     await slider.focus();
@@ -52,6 +65,18 @@ const output = process.env.EXPLAIN_VISUAL_OUTPUT || fs.mkdtempSync(path.join(os.
     const interactiveMs = performance.now() - started;
 
     started = performance.now();
+    for (const candidate of fixture.rejected_cases) {
+      if (candidate.exported) {
+        const unsafe = await browser.newPage();
+        await unsafe.goto(pathToFileURL(candidate.index).href);
+        assert.equal(await unsafe.evaluate(() => window.PWNED), undefined, candidate.name);
+        await unsafe.close();
+      }
+      assert.equal(candidate.exported, false, `${candidate.name} must never reach export`);
+      assert.equal(candidate.error, 'invalid_document', candidate.name);
+    }
+    assert.equal(fs.existsSync(path.join(output, 'unexpected')), false);
+    assert.ok(!fs.readFileSync(fixture.index, 'utf8').includes('globalThis.PWNED'));
     assert.equal(fixture.rejected, 'invalid_document');
     assert.equal(fixture.current, fixture.revision);
     await page.reload();
@@ -64,6 +89,23 @@ const output = process.env.EXPLAIN_VISUAL_OUTPUT || fs.mkdtempSync(path.join(os.
     assert.match(await staticPage.locator('body').textContent(), /Hypothetical example/);
     assert.equal(await staticPage.locator('[data-asset-id="concept"]').getAttribute('alt'), 'A small blue rectangle.');
     await staticPage.close();
+    const corrupted = await browser.newPage();
+    await corrupted.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+      document.querySelector('[data-figure-id="error-plot"] [data-definition]').setAttribute('data-definition', '{}');
+    }, {once: true}));
+    await corrupted.goto(pathToFileURL(fixture.index).href);
+    assert.equal(await corrupted.locator('[data-figure-id="error-plot"] [data-render-error]').getAttribute('data-render-error'), 'invalid_graph');
+    await corrupted.locator('[data-figure-id="later-error"] input').focus();
+    await corrupted.locator('[data-figure-id="later-error"] input').press('Home');
+    assert.equal(await corrupted.locator('[data-figure-id="later-error"] [data-slider-value]').textContent(), '-10 px; Depth = 24 m');
+    await corrupted.close();
+    const legacy = await browser.newPage();
+    await legacy.goto(pathToFileURL(fixture.legacy_index).href);
+    assert.equal(await legacy.evaluate(() => window.ExplainVisualsV1?.version), '1');
+    await legacy.locator('input').focus();
+    await legacy.locator('input').press('Home');
+    assert.equal(await legacy.locator('[data-slider-value]').textContent(), '-10 px; Depth = 24 m');
+    await legacy.close();
     const rejectedMs = performance.now() - started;
     assert.deepEqual(errors, []);
     assert.deepEqual(network, []);

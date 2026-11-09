@@ -14,17 +14,30 @@ import math
 import re
 import xml.etree.ElementTree as ET
 from html import escape
-from html.parser import HTMLParser
 from pathlib import Path
 
 from .document import inspect_document
 from .images import MAX_ASSET_BYTES, ImportedAsset, raster_type
+from .parsing import StrictHTMLParser, reject_css_resources
 from .schema import Asset, ContractError, Document, Figure, Provenance, parse
 from .visual_definitions import Graph, ObservationError, graph_series, parse_graph
 
-RENDERER_ID = "visuals_v1"
-RENDERER_VERSION = "1"
-_RENDERER_FILE = Path(__file__).parent / "renderers/visuals-v1.js"
+RENDERER_ID = "visuals_v2"
+RENDERER_VERSION = "2"
+_RENDERERS = {
+    version: Path(__file__).parent / f"renderers/visuals-v{version}.js"
+    for version in ("1", "2")
+}
+_RENDER_ATTRIBUTES = {
+    "data-managed-graph",
+    "data-definition",
+    "data-managed-slider",
+    "data-slider-value",
+    "data-plot",
+    "data-values",
+    "data-graph-targets",
+    "data-render-error",
+}
 _SVG_NS = "http://www.w3.org/2000/svg"
 _SVG_TAGS = {
     "svg",
@@ -234,43 +247,83 @@ def import_svg(
     )
 
 
-def managed_renderer() -> ImportedAsset:
-    """Version 1 is immutable. Future implementations get a new ID and file."""
-    content = _RENDERER_FILE.read_bytes()
+def managed_renderer(version: str = RENDERER_VERSION) -> ImportedAsset:
+    """Versions are immutable; v1 remains available for stored revisions."""
+    if version not in _RENDERERS:
+        raise ContractError("invalid_document")
+    asset_id = f"visuals_v{version}"
+    content = _RENDERERS[version].read_bytes()
     return ImportedAsset(
         asset=Asset(
-            asset_id=RENDERER_ID,
-            path=f"assets/{RENDERER_ID}.js",
+            asset_id=asset_id,
+            path=f"assets/{asset_id}.js",
             media_type="text/javascript",
             sha256=hashlib.sha256(content).hexdigest(),
             kind="renderer",
-            caption="Managed observation-error and comparison renderer, version 1.",
+            caption=f"Managed observation-error and comparison renderer, version {version}.",
             alt="Interactive graphs with visible source tables.",
             provenance=Provenance(
                 kind="reference",
-                source="explain_html/renderers/visuals-v1.js, version 1.",
+                source=f"explain_html/renderers/visuals-v{version}.js, version {version}.",
             ),
         ),
         content=content,
     )
 
 
+def _document_renderer(document: Document) -> ImportedAsset | None:
+    graphs = [figure for figure in document.figures if figure.kind == "graph"]
+    if not graphs:
+        return None
+    versions = {
+        figure.renderer.version if figure.renderer else None for figure in graphs
+    }
+    if len(versions) != 1 or None in versions:
+        raise ContractError("invalid_document")
+    renderer = graphs[0].renderer
+    assert renderer is not None
+    return managed_renderer(renderer.version)
+
+
+def _definition(graph: Graph) -> str:
+    return json.dumps(
+        graph.model_dump(mode="json"), ensure_ascii=False, separators=(",", ":")
+    )
+
+
 def _renderer_script(document: Document) -> str:
-    if not any(figure.kind == "graph" for figure in document.figures):
+    renderer = _document_renderer(document)
+    if renderer is None:
         return ""
-    renderer = managed_renderer()
+    targets = ""
+    if renderer.asset.asset_id == "visuals_v2":
+        manifest = [
+            {
+                "figure_id": figure.figure_id,
+                "definition": _definition(parse_graph(figure.definition)),
+            }
+            for figure in document.figures
+            if figure.kind == "graph"
+        ]
+        targets = (
+            ' data-graph-targets="'
+            + escape(
+                json.dumps(manifest, ensure_ascii=False, separators=(",", ":")),
+                quote=True,
+            )
+            + '"'
+        )
     # file:// cannot perform SRI on an external script without CORS. Embed only
     # these exact managed bytes and authorize their digest in CSP. The same
     # bytes remain a declared revision asset for inspection and restoration.
-    return f'<script data-asset-id="{renderer.asset.asset_id}">{renderer.content.decode("utf-8")}</script>'
+    return f'<script data-asset-id="{renderer.asset.asset_id}"{targets}>{renderer.content.decode("utf-8")}</script>'
 
 
 def content_security_policy(document: Document) -> str:
     script = "'none'"
-    if any(figure.kind == "graph" for figure in document.figures):
-        digest = base64.b64encode(
-            bytes.fromhex(managed_renderer().asset.sha256)
-        ).decode("ascii")
+    renderer = _document_renderer(document)
+    if renderer is not None:
+        digest = base64.b64encode(bytes.fromhex(renderer.asset.sha256)).decode("ascii")
         script = f"'sha256-{digest}'"
     return f"default-src 'none'; script-src {script}; img-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
 
@@ -330,14 +383,9 @@ def _plot(graph: Graph) -> str:
     return "".join(parts)
 
 
-def _graph_html(graph: Graph, alt: str) -> str:
-    definition = escape(
-        json.dumps(
-            graph.model_dump(mode="json"), ensure_ascii=False, separators=(",", ":")
-        ),
-        quote=True,
-    )
-    result = f'<div data-managed-graph="1" role="group" aria-label="{escape(alt, quote=True)}" data-definition="{definition}">'
+def _graph_html(graph: Graph, alt: str, version: str) -> str:
+    definition = escape(_definition(graph), quote=True)
+    result = f'<div data-managed-graph="{version}" role="group" aria-label="{escape(alt, quote=True)}" data-definition="{definition}">'
     if isinstance(graph, ObservationError):
         slider = graph.slider
         initial = graph_series(graph)[0]
@@ -355,13 +403,13 @@ def _graph_html(graph: Graph, alt: str) -> str:
 
 def _figure_html(figure: Figure, assets: dict[str, Asset]) -> str:
     if figure.kind == "graph":
-        expected = managed_renderer().asset
+        if figure.renderer is None:
+            raise ContractError("invalid_document")
+        expected = managed_renderer(figure.renderer.version).asset
         if (
-            figure.renderer is None
-            or figure.renderer.version != RENDERER_VERSION
-            or figure.renderer.asset_id != RENDERER_ID
-            or figure.asset_ids != [RENDERER_ID]
-            or assets.get(RENDERER_ID) != expected
+            figure.renderer.asset_id != expected.asset_id
+            or figure.asset_ids != [expected.asset_id]
+            or assets.get(expected.asset_id) != expected
         ):
             raise ContractError("invalid_document")
         graph = parse_graph(figure.definition)
@@ -370,7 +418,7 @@ def _figure_html(figure: Figure, assets: dict[str, Asset]) -> str:
             and figure.provenance.kind != "hypothetical"
         ):
             raise ContractError("invalid_document")
-        result = _graph_html(graph, figure.alt)
+        result = _graph_html(graph, figure.alt, figure.renderer.version)
     else:
         if (
             len(figure.asset_ids) != 1
@@ -393,6 +441,7 @@ def _figure_html(figure: Figure, assets: dict[str, Asset]) -> str:
 
 
 def _css(text: str) -> None:
+    reject_css_resources(text, code="invalid_document")
     if re.search(
         r"url\s*\(|expression\s*\(|@(?!media\b|supports\b|layer\b|container\b)|\\|/\*|behavior\s*:|-moz-binding|<",
         text,
@@ -401,14 +450,18 @@ def _css(text: str) -> None:
         raise ContractError("invalid_document")
 
 
-class _Markup(HTMLParser):
+class _Markup(StrictHTMLParser):
     def __init__(self, document: Document):
         super().__init__(convert_charrefs=True)
         self.document = document
         self.stack: list[tuple[str, str | None, int, int]] = []
         self.slots: dict[str, tuple[int, int]] = {}
         self.scripts: list[tuple[int, int]] = []
+        self.script_attributes: dict[int, dict[str, str | None]] = {}
         self.policies: list[tuple[int, int]] = []
+        self.head_end: int | None = None
+        self.has_body = False
+        self.has_html = False
         self.lines = [0, *[m.end() for m in re.finditer("\n", document.html)]]
         self.feed(document.html)
         self.close()
@@ -419,6 +472,24 @@ class _Markup(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
+        parent = self.stack[-1][0] if self.stack else None
+        in_head = any(item[0] == "head" for item in self.stack)
+        in_body = any(item[0] == "body" for item in self.stack)
+        if tag == "html":
+            if self.has_html or self.stack:
+                raise ContractError("invalid_document")
+            self.has_html = True
+        elif tag == "head":
+            if parent != "html" or self.head_end is not None or self.has_body:
+                raise ContractError("invalid_document")
+        elif tag == "body":
+            if parent != "html" or self.head_end is None or self.has_body:
+                raise ContractError("invalid_document")
+            self.has_body = True
+        elif not (in_head or in_body) or (
+            in_head and tag not in {"meta", "title", "style", "link", "script"}
+        ):
+            raise ContractError("invalid_document")
         active = next((item[1] for item in reversed(self.stack) if item[1]), None)
         in_graph = any(
             f.figure_id == active and f.kind == "graph" for f in self.document.figures
@@ -430,6 +501,20 @@ class _Markup(HTMLParser):
             or key in {"srcdoc", "ping", "is", "formaction", "autofocus"}
             for key in attributes
         ):
+            raise ContractError("invalid_document")
+        reserved = {
+            name
+            for name in attributes
+            if name in _RENDER_ATTRIBUTES
+            or name.startswith(("data-managed-", "data-render-"))
+        }
+        if (
+            reserved
+            and not in_graph
+            and not (tag == "script" and reserved == {"data-graph-targets"})
+        ):
+            raise ContractError("invalid_document")
+        if "data-graph-targets" in attributes and tag != "script":
             raise ContractError("invalid_document")
         if "style" in attributes:
             _css(attributes["style"] or "")
@@ -445,6 +530,10 @@ class _Markup(HTMLParser):
             raise ContractError("invalid_document")
         start = self.source_offset()
         end = start + len(self.get_starttag_text() or "")
+        if tag == "head":
+            self.head_end = end
+        if tag == "script":
+            self.script_attributes[start] = attributes
         if tag == "meta" and "http-equiv" in attributes:
             if self.document.html[start:end] != _policy_meta(self.document):
                 raise ContractError("invalid_document")
@@ -456,6 +545,8 @@ class _Markup(HTMLParser):
             self.stack.append((tag, figure, start, end))
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"html", "head", "body"}:
+            raise ContractError("invalid_document")
         self.handle_starttag(tag, attrs)
         if tag not in _VOID:
             self.handle_endtag(tag)
@@ -470,11 +561,30 @@ class _Markup(HTMLParser):
             self.slots[figure] = (inner_start, self.source_offset())
         if tag == "script":
             end = self.document.html.find(">", self.source_offset()) + 1
-            if self.document.html[start:end] != _renderer_script(self.document):
+            renderer = _document_renderer(self.document)
+            attributes = self.script_attributes[start].copy()
+            if renderer is None:
+                raise ContractError("invalid_document")
+            if (
+                renderer.asset.asset_id == "visuals_v2"
+                and attributes.pop("data-graph-targets", None) is None
+            ):
+                raise ContractError("invalid_document")
+            # The compiler replaces the target manifest from Figure records.
+            # Existing managed code may carry the previous definition manifest
+            # while a legitimate edit is being compiled; validate_visuals still
+            # requires the complete final markup to equal canonical output.
+            if attributes != {
+                "data-asset-id": renderer.asset.asset_id
+            } or self.document.html[
+                inner_start : self.source_offset()
+            ] != renderer.content.decode("utf-8"):
                 raise ContractError("invalid_document")
             self.scripts.append((start, end))
 
     def handle_data(self, data: str) -> None:
+        if data.strip() and (not self.stack or self.stack[-1][0] in {"html", "head"}):
+            raise ContractError("invalid_document")
         if self.stack and self.stack[-1][0] == "style":
             _css(data)
 
@@ -515,11 +625,9 @@ def render_document(document: Document) -> Document:
         html = html[:start] + value + html[end:]
     # A CSP meta precedes all resources. The hash-authorized classic script works
     # with file:// exports, without fetch(), ES module CORS or a CDN.
-    head = re.search(r"<head(?:\s[^>]*)?>", html, re.I)
-    body_end = re.search(r"</body\s*>", html, re.I)
-    if head is None or body_end is None:
+    if markup.head_end is None or not markup.has_body:
         raise ContractError("invalid_document")
-    html = html[: head.end()] + _policy_meta(document) + html[head.end() :]
+    html = html[: markup.head_end] + _policy_meta(document) + html[markup.head_end :]
     result = document.model_copy(update={"html": html})
     inspect_document(result)
     return result
@@ -551,9 +659,15 @@ def validate_visuals(document: Document, payloads: dict[str, bytes]) -> None:
             if asset.media_type != "image/svg+xml" or not asset.path.endswith(".svg"):
                 raise ContractError("invalid_document")
         elif asset.kind == "renderer":
+            matching = [
+                managed_renderer(version)
+                for version in _RENDERERS
+                if asset.asset_id == f"visuals_v{version}"
+            ]
             if (
-                asset != managed_renderer().asset
-                or content != managed_renderer().content
+                not matching
+                or asset != matching[0].asset
+                or content != matching[0].content
             ):
                 raise ContractError("invalid_document")
         elif asset.kind == "stylesheet":

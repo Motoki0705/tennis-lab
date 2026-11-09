@@ -340,6 +340,25 @@ def test_managed_reference_outside_content_is_rejected_even_if_also_owned(
     unowned = document.model_copy(update={"html": html, "figures": [], "evidence": []})
     with pytest.raises(schema.ContractError, match="broken_reference"):
         document_api.inspect_document(unowned)
+    # CSS image strings must never bypass ownership/change accounting.
+    for function in ["image-set", "-webkit-image-set", "image", "src"]:
+        for source in ["assets/court.svg", "assets/undeclared.svg"]:
+            css = f'background-image:{function}("{source}" 1x)'
+            for markup in [
+                f"<section data-content-id=\"diagram\" style='{css}'>Owned</section>",
+                f'<section data-content-id="diagram"><style>p{{{css}}}</style></section>',
+            ]:
+                bad = document.model_copy(
+                    update={
+                        "html": f"<html><body>{markup}</body></html>",
+                        "figures": [],
+                        "evidence": [],
+                    }
+                )
+                with pytest.raises(schema.ContractError, match="broken_reference"):
+                    document_api.inspect_document(bad)
+                with pytest.raises(schema.ContractError, match="broken_reference"):
+                    document_api.content_changes(bad, bad)
 
 
 def test_srcset_never_silently_drops_an_invalid_or_unknown_candidate(

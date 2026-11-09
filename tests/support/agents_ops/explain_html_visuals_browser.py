@@ -13,7 +13,12 @@ from tests.support.agents_ops.explain_html import (
     store_api,
     validation_for,
 )
-from tests.support.agents_ops.explain_html_visuals import make_visual_bundle, visuals
+from tests.support.agents_ops.explain_html_visuals import (
+    make_renderer_history,
+    make_visual_bundle,
+    rejected_html,
+    visuals,
+)
 
 
 def main(root: Path) -> None:
@@ -62,11 +67,50 @@ def main(root: Path) -> None:
         raise AssertionError("Unsafe SVG passed visual validation")
     assert store.current("ray-geometry").revision_id == first.revision_id
     snapshot = store.snapshot("ray-geometry", first.revision_id)
+    rejected_cases = []
+    for name, html in rejected_html(document).items():
+        bad_document = document.model_copy(update={"html": html})
+        try:
+            visuals.validate_visuals(bad_document, payloads)
+        except schema.ContractError as exc:
+            rejected_cases.append(
+                {"name": name, "error": exc.error.code, "exported": False}
+            )
+        else:
+            # On the unfixed code this creates a real unsafe local export. The
+            # Chromium regression then fails on execution, not just string tests.
+            unsafe_store = store_api.RevisionStore(root / "unexpected" / name)
+            unsafe_candidate = candidate_for(bad_document)
+            unsafe_revision = unsafe_store.import_initial(
+                unsafe_candidate, payloads, validation_for(unsafe_candidate)
+            )
+            unsafe_snapshot = unsafe_store.snapshot(
+                "ray-geometry", unsafe_revision.revision_id
+            )
+            rejected_cases.append(
+                {
+                    "name": name,
+                    "exported": True,
+                    "index": str(
+                        root
+                        / "unexpected"
+                        / name
+                        / "exports"
+                        / unsafe_snapshot.snapshot_id
+                        / "index.html"
+                    ),
+                }
+            )
+    _, _, _, legacy = make_renderer_history(root / "legacy")
     result = {
         "index": str(root / "store/exports" / snapshot.snapshot_id / "index.html"),
         "rejected": rejected,
         "revision": first.revision_id,
         "current": store.current("ray-geometry").revision_id,
+        "rejected_cases": rejected_cases,
+        "legacy_index": str(
+            root / "legacy/exports" / legacy.snapshot_id / "index.html"
+        ),
     }
     print(json.dumps(result))
 

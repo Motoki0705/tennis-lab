@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import renderer from '../../../../.agents/ops/explain_html/renderers/visuals-v1.js';
+import renderer from '../../../../.agents/ops/explain_html/renderers/visuals-v2.js';
 const {series} = renderer;
 
 const stereo = {
@@ -36,4 +36,35 @@ test('unknown executable graph type, nonfinite values and out-of-range input fai
   assert.throws(() => series(stereo, Infinity));
   assert.throws(() => series(stereo, -11));
   assert.throws(() => series(stereo, '0'));
+  class Element {
+    constructor(tag, attributes = {}) { this.tagName = tag; this.attributes = attributes; this.children = []; this.listeners = {}; }
+    getAttribute(name) { return this.attributes[name] ?? null; }
+    setAttribute(name, value) { this.attributes[name] = String(value); }
+    append(...nodes) { for (const node of nodes) { node.parentElement = this; this.children.push(node); } }
+    replaceChildren(...nodes) { this.children = []; this.append(...nodes); }
+    querySelector(selector) { return this.parts?.[selector] ?? null; }
+    addEventListener(name, handler) { this.listeners[name] = handler; }
+  }
+  const make = (id, definition) => {
+    const figure = new Element('FIGURE', {'data-figure-id': id});
+    const container = new Element('DIV', {'data-managed-graph': '2', 'data-definition': definition});
+    container.parts = Object.fromEntries(['[data-plot]', '[data-values]', '[data-slider-value]', '[data-managed-slider]'].map(name => [name, new Element('DIV')]));
+    figure.append(container);
+    return {figure, container};
+  };
+  const goodDefinition = JSON.stringify(stereo);
+  const bad = make('bad', '{}'), good = make('good', goodDefinition);
+  const rogue = new Element('DIV', {'data-managed-graph': '1', 'data-definition': '{}'});
+  const scope = {querySelectorAll(selector) { return selector.startsWith('figure') ? [bad.figure, good.figure] : [rogue, bad.container, good.container]; }};
+  const previous = globalThis.document;
+  globalThis.document = {createElement: tag => new Element(tag), createElementNS: (_, tag) => new Element(tag)};
+  try {
+    let errors;
+    assert.doesNotThrow(() => { errors = renderer.mount(scope, [{figure_id: 'bad', definition: '{}'}, {figure_id: 'good', definition: goodDefinition}]); });
+    assert.deepEqual(errors, ['bad']);
+    assert.equal(bad.container.getAttribute('data-render-error'), 'invalid_graph');
+    assert.equal(good.container.parts['[data-slider-value]'].textContent, '0 px; Depth = 16 m');
+    assert.equal(typeof good.container.parts['[data-managed-slider]'].listeners.input, 'function');
+    assert.equal(rogue.getAttribute('data-render-error'), null);
+  } finally { if (previous === undefined) delete globalThis.document; else globalThis.document = previous; }
 });

@@ -21,10 +21,12 @@
 | [document.py](document.py) | ID、HTML 引用、选择范围检查和完整变更清单 |
 | [store.py](store.py) | 初始 import、stage、commit、当前版/历史、恢复和导出 snapshot |
 | [paths.py](paths.py) | 不跟随 symlink 的 POSIX 目录描述符操作 |
+| [parsing.py](parsing.py) | 共用的歧义 HTML 语法和 CSS resource 记法拒绝边界 |
 | [images.py](images.py) | 本地图像 import、能力报告与失败时停止的图像 adapter |
 | [visual_definitions.py](visual_definitions.py) | 观测误差/比较图的严格声明式配置与数值模型 |
 | [visuals.py](visuals.py) | SVG/HTML/CSS 安全检查、图 markup 和离线 renderer policy |
-| [renderers/visuals-v1.js](renderers/visuals-v1.js) | 实现固定的受管 renderer version 1 |
+| [renderers/visuals-v2.js](renderers/visuals-v2.js) | 按声明 figure 绘图并隔离单图错误的当前 renderer |
+| [renderers/visuals-v1.js](renderers/visuals-v1.js) | 为旧 revision 保留原始 bytes 的 renderer |
 
 ## ID、目标与候选
 
@@ -32,6 +34,13 @@
 不固定标题、布局、配色、块标签或顺序。HTML 必须使用配对且显式的闭合标签，拒绝重复的
 HTML/内容/成果物 ID。HTML 原生 `id` 与 `data-content-id` 属于不同命名空间。
 图和依据通过 `data-figure-id`、`data-evidence-id` 引用，资源可以使用 `data-asset-id`。
+
+共用 parser 拒绝有歧义或未完成的 comment、processing instruction，以及简单 HTML5 doctype 之外的声明。
+comment 必须使用 `<!-- ... -->`，内部不允许连续 hyphen 或结尾 hyphen。`<!-->`、`<!--->`、`--!>`
+结束、未闭合 comment 和无效 `<!...>` 声明均返回 `invalid_document`；document/visual 检查均不修复输入。
+style 属性和 style 元素中的 CSS resource 记法也统一拒绝，包括 `url()`、
+`image-set()`/`-webkit-image-set()` 字符串 URL、`image()` 和 `src()`。不支持的 CSS 被拒绝，
+不会从引用归属和变更清单中静默省略。
 
 每个请求用 `base_revision` 固定目标。内容目标必须存在。选区还包含 exact 引文、prefix/suffix，
 以及整个块 DOM `textContent` 的 **UTF-16 code unit** start/end。按照
@@ -118,7 +127,7 @@ Document 中包括依据和来源的所有信息均用于公开，不要放入�
 受限几何/文字 SVG。拒绝 script、foreignObject、animation、style、entity 和资源引用，不静默删除。
 SVG 作为 img 嵌入，不使用 object 或 active inline markup。
 
-使用 `managed_renderer()` 的 Asset/bytes 和 Renderer version `1`，graph Figure.asset_ids
+使用 `managed_renderer()` 的 Asset/bytes 和 Renderer version `2`，graph Figure.asset_ids
 只包含此 renderer。`parse_graph()` 解析 Figure.definition；模型及其 `model_json_schema()` 是现有
 wire 契约中图表配置的正本。拒绝未知字段、数值类型转换、非有限值及超出轴范围的数据。
 仅支持 `observation_error` 和 `comparison`，没有公式/JS editor。前者明确为假想例，假定已经校正并
@@ -133,8 +142,17 @@ rectify 的 pinhole stereo 和正确对应关系，用 px 单位的 focal/dispar
 假设、单位、输入范围与无障碍控件，禁用 JS 时仍能理解初始内容。同一 script bytes 既作为 Asset 保存，
 也嵌入 HTML，由 CSP hash 授权。script 属于首个 graph 的 content block，在 DOM 解析完成后初始化
 所有 graph，保留引用所有权。此方式避免 file:// 下外部 script 的 SRI/CORS 失败。snapshot 后不依赖 CDN、
-fetch、module import 或 server。version 1 保持不变；将来的 renderer 使用新 file/ID/version。
-旧版 HTML/assets 从该 revision 读取，不注入当前代码。
+fetch、module import 或 server。CSP 插入位置来自对 body 之前唯一 head 的实际解析，comment 中的 head
+文字不能改变位置；policy 位于 head 中首个 script、style 和 resource 引用之前。不规范的 head/body 嵌套被拒绝。
+
+绘图属性（`data-managed-*`、`data-definition`、`data-plot`、`data-values`、`data-slider-value`、
+`data-render-*`）仅保留给规范 graph figure；`data-graph-targets` 仅用于受管 script。
+v2 读取 script 中的 figure/definition 清单，仅处理声明 figure slot 的直接子元素，并核对配置。
+额外的匹配节点不会被当作 graph 输入。损坏的目标产生明确的图表错误，其他图继续初始化。
+
+v1 bytes 保持不变，`managed_renderer("1")` 支持旧 Asset/Figure 的 snapshot/恢复，当前默认版本为 v2。
+每个文档只能使用一个 renderer 版本，混合版本明确失败。未来实现使用新的 file/ID/version。
+旧版 HTML/assets 从该 revision 读取，不注入当前代码。运行时检查只是额外防御，不能替代发布前检查和 iframe 隔离。
 
 stage 后，从 store API 取得不变文档和**所有 staged asset bytes**，调用
 `validate_visuals(document, all_asset_bytes_by_id)`。检查引用闭包、digest、MIME、asset 内部、受管
@@ -178,9 +196,10 @@ UI/renderer 负责 sandbox、选择事件、变更导航和静态导出中的编
 文件、非对称块、多个 assets、声明式图表数据、异常注入和同步竞争 writer。
 无需外部 API、GPU、浏览器或实时间 sleep。visual 新增 9 个 Python unit 和 3 个 Node case；Node 运行
 `node --test tests/unit/agents_ops/explain_html/visuals.test.mjs`。
-现有的恢复/snapshot 两个 integration case 使用真实 raster/SVG 和受管图表。
-浏览器验证共享一次 Chromium setup，包含两个场景：离线 slider/比较图；拒绝恶意 SVG、保留当前版，
-并在禁用 JS 时显示初始图表。
+现有的恢复/snapshot 两个 integration case 使用真实 raster/SVG 和受管图表；另加一个 integration
+验证 v2 发布后的 v1 snapshot/恢复，并固定原始 v1 bytes。浏览器验证共享一次 Chromium setup，两个场景为：
+离线 slider/比较图/CSP 位置；拒绝无效语法/SVG/保留属性进入 export、保持当前版、隔离单图错误、
+禁用 JS 时显示初始图表，以及旧 v1 的重放。
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \

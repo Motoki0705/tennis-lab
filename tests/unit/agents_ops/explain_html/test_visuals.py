@@ -11,8 +11,12 @@ from typing import Any
 
 import pytest
 
-from tests.support.agents_ops.explain_html import schema
-from tests.support.agents_ops.explain_html_visuals import COMPARISON, ERROR_GRAPH, png
+from tests.support.agents_ops.explain_html import document_api, schema
+from tests.support.agents_ops.explain_html_visuals import (
+    COMPARISON,
+    ERROR_GRAPH,
+    png,
+)
 
 visuals: Any = importlib.import_module("explain_html.visuals")
 images: Any = importlib.import_module("explain_html.images")
@@ -33,7 +37,9 @@ def bundle(definition: dict[str, Any] | None = None) -> tuple[Any, dict[str, byt
         caption="Observe the depth change.",
         alt="Depth against observation error.",
         provenance=PROVENANCE,
-        renderer=schema.Renderer(asset_id=renderer.asset.asset_id, version="1"),
+        renderer=schema.Renderer(
+            asset_id=renderer.asset.asset_id, version=visuals.RENDERER_VERSION
+        ),
         definition=definition or ERROR_GRAPH,
     )
     document = schema.Document(
@@ -174,6 +180,66 @@ def test_rendered_figures_expose_data_units_provenance_and_pinned_renderer() -> 
 
 def test_generated_html_cannot_introduce_scripts_events_or_false_graph_labels() -> None:
     document, payloads = bundle()
+    for markup in [
+        "<!--><script>globalThis.PWNED=1</script>-->",
+        "<!--->",
+        "<!-- x --!>",
+        "<!-- unclosed",
+        "<!bogus>",
+        "<![CDATA[x]]>",
+        "<!",
+    ]:
+        bad = document.model_copy(update={"html": document.html + markup})
+        with pytest.raises(schema.ContractError, match="invalid_document"):
+            document_api.inspect_document(bad)
+        with pytest.raises(schema.ContractError):
+            visuals.validate_visuals(bad, payloads)
+    # The header-less unit fixture still exercises every reserved attribute.
+    for attribute in [
+        "data-managed-graph",
+        "data-definition",
+        "data-plot",
+        "data-values",
+        "data-managed-slider",
+        "data-slider-value",
+        "data-graph-targets",
+        "data-render-error",
+        "data-managed-extra",
+    ]:
+        bad = document.model_copy(
+            update={
+                "html": document.html.replace(
+                    "</body>", f'<div {attribute}="1"></div></body>'
+                )
+            }
+        )
+        with pytest.raises(schema.ContractError):
+            visuals.validate_visuals(bad, payloads)
+    for function in ["image-set", "-webkit-image-set", "image", "src"]:
+        css = f'background-image:{function}("assets/undeclared.png" 1x)'
+        for html in [
+            document.html.replace("<section ", f"<section style='{css}' "),
+            document.html.replace("</head>", f"<style>p{{{css}}}</style></head>"),
+        ]:
+            with pytest.raises(schema.ContractError):
+                visuals.validate_visuals(
+                    document.model_copy(update={"html": html}), payloads
+                )
+        content = f"p{{{css}}}".encode()
+        asset = document.assets[0].model_copy(
+            update={
+                "asset_id": "untrusted_css",
+                "path": "assets/untrusted_css.css",
+                "kind": "stylesheet",
+                "media_type": "text/css",
+                "sha256": hashlib.sha256(content).hexdigest(),
+            }
+        )
+        with pytest.raises(schema.ContractError, match="invalid_document"):
+            visuals.validate_visuals(
+                document.model_copy(update={"assets": [*document.assets, asset]}),
+                {**payloads, "untrusted_css": content},
+            )
     for attack in [
         document.html.replace("</body>", "<script>alert(1)</script></body>"),
         document.html.replace("<section ", '<section onclick="alert(1)" '),

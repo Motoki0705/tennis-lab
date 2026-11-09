@@ -21,10 +21,12 @@ commitできない未検証の判定例を含む。JSONには厳密な `parse()`
 | [document.py](document.py) | ID、HTML参照、選択対象、変更一覧の完全性 |
 | [store.py](store.py) | 初版import、stage、commit、現在版・履歴、復元、export snapshot |
 | [paths.py](paths.py) | symlinkを辿らないPOSIXのdirectory descriptor操作 |
+| [parsing.py](parsing.py) | 曖昧なHTML構文とCSS resource記法の共通拒否 |
 | [images.py](images.py) | ローカル画像import、能力の報告、失敗時に停止する画像adapter |
 | [visual_definitions.py](visual_definitions.py) | 観測誤差例・比較グラフの厳密な宣言的設定と数値モデル |
 | [visuals.py](visuals.py) | SVG/HTML/CSSの安全検査、図のmarkup、offline renderer policy |
-| [renderers/visuals-v1.js](renderers/visuals-v1.js) | 実装を固定したmanaged renderer version 1 |
+| [renderers/visuals-v2.js](renderers/visuals-v2.js) | 宣言したfigureだけを描画し、図別に失敗を隔離する現行renderer |
+| [renderers/visuals-v1.js](renderers/visuals-v1.js) | 旧revision用にbytesを固定して保持するrenderer |
 
 ## ID・対象・候補
 
@@ -33,6 +35,13 @@ commitできない未検証の判定例を含む。JSONには厳密な `parse()`
 HTMLは明示的で対応の取れた閉じタグを使う。HTML ID・内容ID・成果物IDの重複は失敗する。
 HTML本来の `id` と `data-content-id` は別の名前空間。図・根拠は `data-figure-id`・
 `data-evidence-id` で参照し、リソースには `data-asset-id` を使える。
+
+共通parserは曖昧・未完了のcomment、processing instruction、単純なHTML5 doctype以外の宣言を拒否する。
+commentは`<!-- ... -->`を使い、内部の連続hyphenや末尾hyphenを許可しない。`<!-->`・`<!--->`・
+`--!>`閉じ・閉じないcomment・不正な`<!...>`宣言は`invalid_document`にし、document/visualの両検査で
+補正しない。style属性・style要素内のCSS resource記法も共通に拒否する。`url()`のほか、
+`image-set()`/`-webkit-image-set()`の文字列URL、`image()`・`src()`を含み、参照所有/変更申告から
+静かに除外する代わりに未対応CSSとして拒否する。
 
 すべての要求は `base_revision` へ対象を固定する。内容対象は存在必須。選択対象は、
 完全一致の引用とprefix/suffix、ブロックのDOM `textContent` 全体における **UTF-16 code unit**
@@ -123,7 +132,7 @@ viewBoxを持つ、サイズ制限付きの幾何・文字を受け付ける。s
 entity・resource参照を拒否し、黙って削除しない。SVGはimgとして埋め込み、objectやactive inline
 markupにはしない。
 
-`managed_renderer()`のAsset/bytesとRenderer version `1`を使い、graphのFigure.asset_idsはこの
+`managed_renderer()`のAsset/bytesとRenderer version `2`を使い、graphのFigure.asset_idsはこの
 rendererだけにする。Figure.definitionは`parse_graph()`で検査する。既存wire契約内のgraph設定の
 正本はmodelとその`model_json_schema()`。未知field・数値の型変換・非有限値・軸範囲外dataは拒否する。
 対応typeは`observation_error`と`comparison`だけで、式・JSのeditorはない。前者は明示的な仮想例で、
@@ -138,8 +147,19 @@ rectification済みの校正されたpinhole stereoと正しい対応を仮定�
 元data表・仮定・単位・入力範囲・accessibleな操作を含め、JS無効でも初期説明を読める。同じscript bytesを
 Assetへ保存しHTMLにも埋め、CSP hashで許可する。scriptは最初のgraphのcontent blockに置き、DOMの
 解析完了後に全graphを初期化して参照の所有関係を保つ。file://における外部scriptのSRI/CORS失敗を回避し、
-snapshot後にCDN・fetch・module import・serverを必要としない。version 1は変更せず、将来のrendererは
-新file/ID/versionにする。旧版のHTML/assetsはそのrevisionから提供し、現在のcodeを注入しない。
+snapshot後にCDN・fetch・module import・serverを必要としない。CSPの挿入位置はbodyより前にある
+一意のheadを解析して得る。comment中のheadという文字列には影響されず、head内の最初のscript・style・
+resource参照より前へ配置する。不正なhead/bodyの入れ子は拒否する。
+
+描画属性（`data-managed-*`・`data-definition`・`data-plot`・`data-values`・`data-slider-value`・
+`data-render-*`）は正規graph figure内へ予約し、`data-graph-targets`はmanaged scriptだけが持つ。
+v2はscript内のfigure/definition一覧を読み、宣言したfigure slotの直下要素だけを対象に設定を照合する。
+余分な一致要素をgraph入力として探索しない。壊れた対象は明示的な図のエラーにし、ほかの図の初期化は続ける。
+
+v1のbytesは変更しない。`managed_renderer("1")`で旧Asset/Figureをsnapshot/復元でき、既定はv2とする。
+1文書ではrendererを1版に揃え、混在は明示的に拒否する。将来の実装は新file/ID/versionを使い、旧版の
+HTML/assetsはそのrevisionから提供して現在のcodeを注入しない。runtime検査は追加防御であり、公開前検査と
+iframe隔離を置き換えない。
 
 stage後、store APIから得た不変の文書と**全staged asset bytes**を使い、
 `validate_visuals(document, all_asset_bytes_by_id)`を呼ぶ。参照の閉包・digest・MIME・asset内部・
@@ -184,8 +204,10 @@ repoの `.venv/bin/python -m pytest` で `tests/unit/agents_ops/explain_html` �
 非対称ブロック、複数assets、宣言的グラフデータ、例外注入、同期した競合writerを使う。
 外部API・GPU・browser・実時間sleepは不要。visual追加分はPython unit 9件・Node 3件で、Nodeは
 `node --test tests/unit/agents_ops/explain_html/visuals.test.mjs`で実行する。
-既存の復元/snapshot integration 2件は実画像/SVGとmanaged graphを使う。ブラウザ検証はChromiumの
-setupを共有する2経路（offline slider/比較図と、不正SVGの拒否・現行版保持・JS無効時の初期表示）:
+既存の復元/snapshot integration 2件は実画像/SVGとmanaged graphを使い、追加のintegration 1件で
+v2公開後のv1 snapshot/復元と元のv1 bytesを検証する。ブラウザ検証はChromiumのsetupを共有する2経路:
+offline slider/比較図/CSP配置と、不正構文/SVG/予約属性のexport拒否・現行版保持・対象別の失敗隔離・
+JS無効時の初期表示・旧v1の再表示。
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \

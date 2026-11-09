@@ -24,10 +24,12 @@ Use `parse()` for strict JSON parsing: unknown fields and type coercions fail.
 | [document.py](document.py) | Identity, HTML references, selection checks and complete change accounting |
 | [store.py](store.py) | Initial import, stage, commit, current/history, restoration and export snapshot |
 | [paths.py](paths.py) | POSIX directory-descriptor access without following symlinks |
+| [parsing.py](parsing.py) | Shared rejection of ambiguous HTML syntax and CSS resource notation |
 | [images.py](images.py) | Local raster import, capability reporting and fail-closed image adapter |
 | [visual_definitions.py](visual_definitions.py) | Strict observation-error/comparison graph definitions and numerical model |
 | [visuals.py](visuals.py) | SVG/HTML/CSS safety, figure markup and offline renderer policy |
-| [renderers/visuals-v1.js](renderers/visuals-v1.js) | Immutable managed renderer version 1 |
+| [renderers/visuals-v2.js](renderers/visuals-v2.js) | Current renderer with declared figure targets and isolated graph failures |
+| [renderers/visuals-v1.js](renderers/visuals-v1.js) | Immutable renderer retained for old revisions |
 
 ## Identity, targets and candidates
 
@@ -37,6 +39,16 @@ layout, colors, block tag names or order are prescribed. HTML must have balanced
 explicit closing tags; duplicate HTML/content/artifact IDs fail. Native HTML `id`
 and `data-content-id` have separate namespaces. Figure and evidence references
 use `data-figure-id` and `data-evidence-id`; resources may use `data-asset-id`.
+
+The shared parser rejects ambiguous/incomplete comments, processing instructions
+and every declaration except the simple HTML5 doctype. Accepted comments use
+`<!-- ... -->`, without embedded double hyphens or a trailing hyphen. Inputs such
+as `<!-->`, `<!--->`, `--!>` closes, open comments or bogus `<!...>` declarations
+fail with `invalid_document`; neither the document nor visual validator repairs
+them. Both validators also reject CSS resource notation, including `url()`,
+`image-set()`/`-webkit-image-set()` string URLs, `image()` and `src()`, in style
+attributes and style elements. Unsupported CSS is refused rather than omitted
+from reference ownership/change accounting.
 
 Every request binds its target to `base_revision`. A content target must exist.
 A selection additionally supplies exact text, prefix/suffix and start/end offsets
@@ -160,7 +172,7 @@ Scripts, foreignObject, animation, styles, entities and resource references are
 rejected; nothing is silently stripped. SVG is embedded as an img, never object
 or inline active markup.
 
-Use `managed_renderer()` for its Asset/bytes and Renderer version `1`. Graph
+Use `managed_renderer()` for its Asset/bytes and Renderer version `2`. Graph
 Figure.asset_ids must contain this renderer alone. Figure.definition is parsed
 by `parse_graph()`; the models and their `model_json_schema()` are the source for
 graph-specific settings within the existing wire contract. Unknown fields,
@@ -184,8 +196,24 @@ authorized by their CSP hash. The script belongs to the first graph's content
 block and mounts all graphs after DOM parsing, preserving reference ownership.
 This avoids external-script SRI/CORS failures under
 file://. No CDN, fetch, module import or server is needed after snapshot export.
-Keep version 1 immutable; introduce a new file/ID/version for a future renderer.
-Serve old revision HTML and assets from that revision, never inject today's code.
+The CSP insertion offset comes from parsing the unique head before body; literal
+head text in comments cannot redirect it. The policy precedes the head's first
+script, style and resource reference. Noncanonical head/body nesting is rejected.
+
+Drawing attributes (`data-managed-*`, `data-definition`, `data-plot`, `data-values`,
+`data-slider-value`, `data-render-*`) are reserved for canonical graph figures;
+`data-graph-targets` belongs only to the managed script. Version 2 reads that
+script's figure/definition manifest, processes only direct children of declared
+figure slots and compares their configuration to the manifest. Extra matching
+nodes are never discovered as graph inputs. A damaged target produces an explicit
+graph error while other declared graphs continue to initialize.
+
+Version 1 bytes remain unchanged. `managed_renderer("1")` supports the old
+Asset/Figure records for snapshot and restore; the current default is version 2.
+Use one renderer version per document; mixed versions fail explicitly. Future
+implementations need a new file/ID/version. Serve old revision HTML and assets
+from that revision, never inject today's code. Runtime checks are defense in
+depth; they do not replace publication validation or iframe isolation.
 
 After stage, call `validate_visuals(document, all_asset_bytes_by_id)` on the
 immutable staged document and **all** staged bytes, obtained through the store
@@ -248,9 +276,11 @@ They require no external API, GPU, browser or real-time sleep. The visual additi
 has 9 Python unit and 3 Node cases; run Node with
 `node --test tests/unit/agents_ops/explain_html/visuals.test.mjs`.
 The two existing restore/snapshot integration cases also use real raster/SVG and
-managed graphs. Browser verification uses one shared Chromium setup and two
-scenarios (offline slider/comparison and rejected SVG/current preservation with
-JS-disabled initial rendering):
+managed graphs; an additional integration verifies v1 snapshot/restore after v2
+publication and pins the original v1 bytes. Browser verification uses one shared Chromium setup and two
+scenarios (offline slider/comparison/CSP placement and rejected syntax/SVG/
+reserved-attribute export with current preservation, damaged-target isolation,
+JS-disabled initial rendering and old-v1 replay):
 
 ```sh
 PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \

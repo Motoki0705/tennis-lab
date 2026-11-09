@@ -25,6 +25,7 @@ from tests.support.agents_ops.explain_html import (
 )
 from tests.support.agents_ops.explain_html_visuals import (
     images,
+    make_renderer_history,
     make_visual_bundle,
     png,
     visuals,
@@ -179,7 +180,7 @@ def test_partial_restructure_restore_keep_complete_bundles_and_invalidate_old_ba
     )
     assert reopened.asset_bytes("ray-geometry", current.revision_id, "concept") == png()
     assert (
-        reopened.asset_bytes("ray-geometry", current.revision_id, "visuals_v1")
+        reopened.asset_bytes("ray-geometry", current.revision_id, "visuals_v2")
         == visuals.managed_renderer().content
     )
     assert (
@@ -329,7 +330,7 @@ def test_snapshot_is_pinned_and_exports_only_declared_public_files(
         "assets/concept.png",
         "assets/court.svg",
         "assets/theme.css",
-        "assets/visuals_v1.js",
+        "assets/visuals_v2.js",
         "evidence.json",
         "figures.json",
         "index.html",
@@ -358,7 +359,7 @@ def test_snapshot_is_pinned_and_exports_only_declared_public_files(
     }
     assert (export / "assets/concept.png").read_bytes() == png()
     assert (
-        export / "assets/visuals_v1.js"
+        export / "assets/visuals_v2.js"
     ).read_bytes() == visuals.managed_renderer().content
     visuals.validate_visuals(
         first.document,
@@ -374,6 +375,53 @@ def test_snapshot_is_pinned_and_exports_only_declared_public_files(
     )
     with pytest.raises(schema.ContractError, match="snapshot_not_found"):
         store.snapshot_file(snapshot.snapshot_id, "raw-prompt.txt")
+
+
+def test_v1_renderer_snapshot_and_restore_survive_v2_publication(
+    tmp_path: Path,
+) -> None:
+    store, first, second, snapshot = make_renderer_history(tmp_path / "versions")
+    old_bytes = store.asset_bytes("ray-geometry", first.revision_id, "visuals_v1")
+    assert (
+        hashlib.sha256(old_bytes).hexdigest()
+        == "9dbb09d4501df75d8580ea9bbc3189631ce7ab5af927126338d781b987f16591"
+    )
+    assert first.document.figures[1].renderer.version == "1"
+    assert second.document.figures[1].renderer.version == "2"
+    assert (
+        "ExplainVisualsV1" in first.document.html
+        and "ExplainVisualsV2" not in first.document.html
+    )
+    assert "ExplainVisualsV2" in second.document.html
+    assert (
+        store.snapshot_file(snapshot.snapshot_id, "assets/visuals_v1.js") == old_bytes
+    )
+    assert (
+        store.snapshot_file(snapshot.snapshot_id, "index.html")
+        == first.document.html.encode()
+    )
+    restored = store.restore(
+        schema.RestoreRequest(
+            document_id="ray-geometry",
+            base_revision=second.revision_id,
+            request_id="restore-v1",
+            revision_id=first.revision_id,
+        )
+    )
+    assert restored.document == first.document
+    assert (
+        store.asset_bytes("ray-geometry", restored.revision_id, "visuals_v1")
+        == old_bytes
+    )
+    visuals.validate_visuals(
+        restored.document,
+        {
+            asset.asset_id: store.asset_bytes(
+                "ray-geometry", restored.revision_id, asset.asset_id
+            )
+            for asset in restored.document.assets
+        },
+    )
 
 
 def test_competing_commits_are_serialized_and_successful_commit_is_idempotent(
