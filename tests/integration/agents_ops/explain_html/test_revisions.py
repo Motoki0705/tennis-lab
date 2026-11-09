@@ -1,0 +1,370 @@
+"""Real revision/filesystem boundaries; injected validation and save faults only."""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from threading import Barrier
+from typing import Any
+
+import pytest
+
+from tests.support.agents_ops.explain_html import (
+    HTML,
+    PAYLOADS,
+    candidate_for,
+    changed_document,
+    document_api,
+    make_document,
+    paths_api,
+    schema,
+    store_api,
+    validation_for,
+)
+
+pytestmark = pytest.mark.integration
+
+
+@pytest.fixture
+def initial(tmp_path: Path) -> Any:
+    root = tmp_path / "store"
+    store = store_api.RevisionStore(root)
+    candidate = candidate_for(make_document())
+    revision = store.import_initial(candidate, PAYLOADS, validation_for(candidate))
+    return root, store, revision
+
+
+def edit_for(revision: Any, request_id: str = "add-example") -> Any:
+    return candidate_for(
+        changed_document(revision.document),
+        before=revision,
+        request_id=request_id,
+        changes=[{"content_id": "geometry", "kind": "updated"}],
+        evidence_changes=[],
+    )
+
+
+def test_partial_restructure_restore_keep_complete_bundles_and_invalidate_old_bases(
+    initial: Any,
+) -> None:
+    root, store, first = initial
+    candidate = edit_for(first)
+    data = candidate.document.model_dump(mode="json")
+    revised_svg = (
+        b'<svg xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="1" r="1"/></svg>'
+    )
+    data["assets"][0]["sha256"] = hashlib.sha256(revised_svg).hexdigest()
+    data["evidence"][0]["conditions"].append("Rays must not be parallel.")
+    document = schema.parse(schema.Document, json.dumps(data))
+    candidate = candidate.model_copy(
+        update={
+            "document": document,
+            "evidence_changes": [
+                schema.EvidenceChange(
+                    evidence_id="baseline",
+                    kind="updated",
+                    reason="State the degeneracy condition.",
+                )
+            ],
+        }
+    )
+    staged = store.stage(candidate, {"court": revised_svg})
+    assert store.current("ray-geometry").revision_id == first.revision_id
+    second = store.commit(staged, validation_for(candidate))
+    # Save another result now; it must become stale after a later undo.
+    delayed = candidate_for(
+        second.document,
+        before=second,
+        request_id="delayed",
+        changes=[],
+        evidence_changes=[],
+    )
+    late_stage = store.stage(delayed)
+    index = document_api.inspect_document(second.document)
+    rearranged_html = (
+        "<html><body><div class='comparison'>"
+        + index.block_html("limits")
+        + index.block_html("overview")
+        + index.block_html("geometry")
+        + "</div></body></html>"
+    )
+    rearranged = second.document.model_copy(update={"html": rearranged_html})
+    full = candidate_for(
+        rearranged,
+        before=second,
+        request_id="restructure",
+        changes=[],
+        evidence_changes=[],
+    )
+    third = store.commit(store.stage(full), validation_for(full))
+    restore_request = schema.RestoreRequest(
+        document_id="ray-geometry",
+        base_revision=third.revision_id,
+        request_id="undo",
+        revision_id=first.revision_id,
+    )
+    restored = store.restore(restore_request)
+    reopened = store_api.RevisionStore(root)
+    current = reopened.current("ray-geometry")
+    assert reopened.restore(restore_request).revision_id == restored.revision_id
+    assert current.revision_id == restored.revision_id
+    assert (
+        len(
+            {
+                first.revision_id,
+                second.revision_id,
+                third.revision_id,
+                restored.revision_id,
+            }
+        )
+        == 4
+    )
+    assert (
+        current.parent_revision == third.revision_id
+        and current.restored_from == first.revision_id
+    )
+    assert current.document.html == HTML
+    assert current.document.evidence[0].conditions == ["Synchronized views."]
+    assert current.document.figures[1].definition["data"] == [[0, 7], [1, 9], [3, 18]]
+    assert (
+        reopened.asset_bytes("ray-geometry", current.revision_id, "court")
+        == PAYLOADS["court"]
+    )
+    assert (
+        reopened.asset_bytes("ray-geometry", second.revision_id, "court") == revised_svg
+    )
+    assert [item.revision_id for item in reopened.history("ray-geometry")] == [
+        restored.revision_id,
+        third.revision_id,
+        second.revision_id,
+        first.revision_id,
+    ]
+    with pytest.raises(schema.ContractError, match="stale_revision"):
+        reopened.commit(late_stage, validation_for(delayed))
+    with pytest.raises(schema.ContractError, match="stale_revision"):
+        reopened.stage(edit_for(first, "stale-after-undo"))
+    new = edit_for(current, "after-undo")
+    final = reopened.commit(reopened.stage(new), validation_for(new))
+    assert final.parent_revision == restored.revision_id
+
+
+def test_failed_incomplete_or_mismatched_validation_cannot_publish(
+    initial: Any,
+) -> None:
+    root, store, first = initial
+    candidate = edit_for(first)
+    staged = store.stage(candidate)
+    for validation, code in [
+        (
+            validation_for(
+                candidate,
+                semantic={
+                    "status": "failed",
+                    "issues": [
+                        {"rule": "changed_fact", "message": "A number changed."}
+                    ],
+                },
+            ),
+            "validation_failed",
+        ),
+        (
+            validation_for(candidate, rendering={"status": "not_run"}),
+            "validation_failed",
+        ),
+        (
+            validation_for(
+                candidate,
+                structural={
+                    "status": "passed",
+                    "issues": [
+                        {"rule": "contradiction", "message": "Unresolved issue."}
+                    ],
+                },
+            ),
+            "validation_failed",
+        ),
+        (validation_for(candidate, candidate_digest="0" * 64), "validation_mismatch"),
+    ]:
+        with pytest.raises(schema.ContractError, match=code):
+            store.commit(staged, validation)
+        reopened = store_api.RevisionStore(root)
+        assert reopened.current("ray-geometry").revision_id == first.revision_id
+        assert reopened.current("ray-geometry").document.html == HTML
+        assert (
+            reopened.asset_bytes("ray-geometry", first.revision_id, "court")
+            == PAYLOADS["court"]
+        )
+    assert len(store.history("ray-geometry")) == 1
+
+
+@pytest.mark.parametrize(
+    "phase", ["public_files_written", "revision_installed", "head_replace"]
+)
+def test_save_interruption_reopens_original_complete_revision(
+    initial: Any, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
+    root, store, first = initial
+    candidate = edit_for(first)
+    staged = store.stage(candidate)
+
+    def fault(checkpoint: str) -> None:
+        if checkpoint == phase:
+            raise OSError("injected persistence fault")
+
+    store.fault = fault
+    if phase == "head_replace":
+        original = paths_api.os.replace
+
+        def fail_replace(source: str, destination: str, **kwargs: Any) -> None:
+            if destination == "current.json":
+                raise OSError("injected atomic pointer failure")
+            original(source, destination, **kwargs)
+
+        monkeypatch.setattr(paths_api.os, "replace", fail_replace)
+    with pytest.raises(schema.ContractError, match="storage_error"):
+        store.commit(staged, validation_for(candidate))
+    reopened = store_api.RevisionStore(root)
+    current = reopened.current("ray-geometry")
+    assert current.revision_id == first.revision_id
+    assert current.document.html == HTML
+    assert current.document.evidence[0].values == {"baseline_m": 7}
+    assert current.document.figures[1].renderer.version == "1"
+    assert (
+        reopened.asset_bytes("ray-geometry", current.revision_id, "court")
+        == PAYLOADS["court"]
+    )
+    assert (
+        reopened.asset_bytes("ray-geometry", current.revision_id, "theme")
+        == PAYLOADS["theme"]
+    )
+    assert len(reopened.history("ray-geometry")) == 1
+    # An installed orphan is not a readable published revision.
+    if phase in {"revision_installed", "head_replace"}:
+        orphan = next(
+            path.name
+            for path in (root / "private/documents/ray-geometry/revisions").iterdir()
+            if not path.name.startswith(".") and path.name != first.revision_id
+        )
+        with pytest.raises(schema.ContractError, match="revision_not_found"):
+            reopened.revision("ray-geometry", orphan)
+
+
+def test_snapshot_is_pinned_and_exports_only_declared_public_files(
+    initial: Any,
+) -> None:
+    root, store, first = initial
+    private = root / "private/documents/ray-geometry"
+    (private / "raw-prompt.txt").write_text(
+        "NEVER EXPORT THIS INSTRUCTION", encoding="utf-8"
+    )
+    (private / "credentials.txt").write_text(
+        "NEVER EXPORT THIS TOKEN", encoding="utf-8"
+    )
+    candidate = edit_for(first)
+    staged = store.stage(candidate)
+    snapshot = store.snapshot("ray-geometry", first.revision_id)
+    second = store.commit(staged, validation_for(candidate))
+    assert second.revision_id != snapshot.revision_id
+    export = root / "exports" / snapshot.snapshot_id
+    actual = sorted(
+        str(path.relative_to(export)) for path in export.rglob("*") if path.is_file()
+    )
+    expected = [
+        "assets/court.svg",
+        "assets/plot_renderer.mjs",
+        "assets/theme.css",
+        "evidence.json",
+        "figures.json",
+        "index.html",
+        "manifest.json",
+    ]
+    assert actual == expected == snapshot.files
+    assert store.content_file(
+        "ray-geometry", first.revision_id, "index.html"
+    ) == HTML.encode("utf-8")
+    assert (
+        store.staged_asset_bytes("ray-geometry", staged.stage_id, "court")
+        == PAYLOADS["court"]
+    )
+    assert (export / "index.html").read_text(encoding="utf-8") == HTML
+    assert (export / "assets/court.svg").read_bytes() == PAYLOADS["court"]
+    assert json.loads((export / "evidence.json").read_text())[0]["values"] == {
+        "baseline_m": 7
+    }
+    assert json.loads((export / "figures.json").read_text())[1]["definition"][
+        "data"
+    ] == [[0, 7], [1, 9], [3, 18]]
+    assert not any(
+        b"NEVER EXPORT" in path.read_bytes()
+        for path in export.rglob("*")
+        if path.is_file()
+    )
+    with pytest.raises(schema.ContractError, match="snapshot_not_found"):
+        store.snapshot_file(snapshot.snapshot_id, "raw-prompt.txt")
+
+
+def test_competing_commits_are_serialized_and_successful_commit_is_idempotent(
+    initial: Any,
+) -> None:
+    root, store, first = initial
+    one, two = edit_for(first, "first-writer"), edit_for(first, "second-writer")
+    stage_one, stage_two = store.stage(one), store.stage(two)
+    barrier = Barrier(2)
+
+    def commit(staged: Any, candidate: Any) -> Any:
+        barrier.wait(timeout=5)
+        try:
+            return store_api.RevisionStore(root).commit(
+                staged, validation_for(candidate)
+            )
+        except schema.ContractError as exc:
+            return exc.error.code
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        future_one = executor.submit(commit, stage_one, one)
+        future_two = executor.submit(commit, stage_two, two)
+        results = [future_one.result(timeout=5), future_two.result(timeout=5)]
+    assert sum(result == "stale_revision" for result in results) == 1
+    winner = next(result for result in results if result != "stale_revision")
+    winning_stage, winning_candidate = (
+        (stage_one, one) if winner.request_id == "first-writer" else (stage_two, two)
+    )
+    assert (
+        store.commit(winning_stage, validation_for(winning_candidate)).revision_id
+        == winner.revision_id
+    )
+    assert len(store.history("ray-geometry")) == 2
+    conflict = edit_for(winner, winner.request_id)
+    conflict_stage = store.stage(conflict)
+    with pytest.raises(schema.ContractError, match="request_conflict"):
+        store.commit(conflict_stage, validation_for(conflict))
+
+
+def test_tampered_stage_and_symlink_revision_never_become_current(
+    initial: Any, tmp_path: Path
+) -> None:
+    root, store, first = initial
+    candidate = edit_for(first)
+    staged = store.stage(candidate)
+    public = root / "private/documents/ray-geometry/stages" / staged.stage_id / "public"
+    (public / "assets/court.svg").write_bytes(b"corrupt image")
+    with pytest.raises(schema.ContractError, match="corrupt_store"):
+        store.commit(staged, validation_for(candidate))
+    assert store.current("ray-geometry").revision_id == first.revision_id
+    outside = tmp_path / "outside-assets"
+    outside.mkdir()
+    (outside / "court.svg").write_bytes(PAYLOADS["court"])
+    # A symlink remains forbidden even when the outside bytes match the digest.
+    (public / "assets/court.svg").unlink()
+    (public / "assets/court.svg").symlink_to(outside / "court.svg")
+    with pytest.raises(schema.ContractError, match="unsafe_path"):
+        store.commit(staged, validation_for(candidate))
+    reopened = store_api.RevisionStore(root)
+    assert reopened.current("ray-geometry").document.html == HTML
+    assert (
+        reopened.asset_bytes("ray-geometry", first.revision_id, "court")
+        == PAYLOADS["court"]
+    )
+    assert (outside / "court.svg").read_bytes() == PAYLOADS["court"]
