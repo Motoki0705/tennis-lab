@@ -319,6 +319,7 @@ async function recovery() {
   const answersBeforeUndo = await (await frame(page)).locator('.answer').count();
   let undoPosts = 0,
     undoReply,
+    recheckBeforeLoss,
     acknowledgeUndo;
   const undoAccepted = new Promise((resolve) => {
     acknowledgeUndo = resolve;
@@ -332,15 +333,18 @@ async function recovery() {
     // Keep the original promise for the success path's explicit await below.
     undoReply.catch(() => {});
     await control({ action: 'wait_entered', request_id: request.request_id });
+    recheckBeforeLoss = await page.locator('#reconnect').isVisible();
     await route.abort('failed');
     acknowledgeUndo(request);
   });
   const firstHistory = page.waitForResponse(
     (response) => response.url().endsWith('/revisions') && response.status() === 200,
   );
+  firstHistory.catch(() => {}); // The early visibility assertion can close the page.
   await page.locator('#history-panel summary').click();
   await page.locator('#undo').click();
   const undo = await undoAccepted;
+  assert.equal(recheckBeforeLoss, false, 'status recheck is offered for an uncertain undo');
   const unpublished = (await (await firstHistory).json()).revisions;
   assert.ok(!unpublished.some((row) => row.request_id === undo.request_id));
   await page.waitForFunction(() =>

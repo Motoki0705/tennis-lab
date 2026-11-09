@@ -70,7 +70,9 @@
   }
   function controls() {
     const preview = displayed && current && displayed.revision_id !== current.revision_id;
-    $('reconnect').hidden = networkOkay && pending?.kind !== 'undo';
+    $('reconnect').hidden =
+      networkOkay &&
+      !(pending?.kind === 'undo' && $('status').dataset.state === 'reconciling');
     $('send').disabled =
       !displayed ||
       Boolean(staging || preview || pending || $('refresh').dataset.conflict) ||
@@ -477,6 +479,7 @@
             '復元の結果はまだ確定できません。要求IDを保持して公開履歴を照合しています。自動再送は行いません。状態を再確認できます。',
           );
           showStatus('復元の確定を照合中です。表示版はこのまま読めます。', 'reconciling');
+          controls();
         }
       }
       pollingDelay = 1000;
