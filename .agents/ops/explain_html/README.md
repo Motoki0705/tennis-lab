@@ -1,13 +1,14 @@
-# Explain HTML document contract and Gemini editor
+# Explain HTML contract, Gemini editor and local service
 
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 This package provides the shared document/edit contract and durable revision store
 for [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710), plus visual import,
 managed rendering, an explicit image-generation availability boundary, Gemini
-candidate generation and independent semantic checks. It contains no HTTP server,
-browser UI, image-provider implementation or browser quality evaluator. It uses
-existing Pydantic/Pillow/jsonschema dependencies and Python's standard library.
+candidate generation and independent semantic checks, and a loopback HTTP/job runtime.
+The browser UI, image-provider implementation and browser quality evaluator are
+injected separately. It uses existing Pydantic/Pillow/jsonschema/FastAPI/uvicorn
+dependencies and Python's standard library.
 
 ## Contract source and entry points
 
@@ -34,6 +35,10 @@ Use `parse()` for strict JSON parsing: unknown fields and type coercions fail.
 | [editor.py](editor.py) | Initial writing, editing, fact preservation and independent semantic review |
 | [gemini.py](gemini.py) | Pinned, tool-free agy execution, private evidence and cancellation |
 | [no_tools.py](no_tools.py) | Trusted PreToolUse hook admitting only schema-checked completion |
+| [jobs.py](jobs.py) | Durable deduplication, document queues, publication fencing and recovery |
+| [managed.py](managed.py) | Service wiring for real figure compilation, image unavailability and staged visual checks |
+| [service.py](service.py) | Contract-driven HTTP routes, token/origin/host checks and public files |
+| [__main__.py](__main__.py) | Local start/serve/status/stop and offline export CLI |
 
 ## Identity, targets and candidates
 
@@ -206,6 +211,108 @@ cancelled. A pre-set event prevents launch. Timeout, cancellation, model mismatc
 invalid model output and semantic failure use the existing public error codes.
 The controller must still synchronize cancellation with its later commit.
 
+## Local service and trusted integrations
+
+With `PYTHONPATH=.agents/ops`, construct
+`JobController(store, editor_factory, validator, prepare=...)` and
+`create_app(controller, port=actual_bound_port, ui_files=...)`. The CLI always binds
+**127.0.0.1**, defaults to an OS-assigned port, and has no wildcard/LAN bind option.
+One controller holds a nonblocking filesystem lock on the runtime root until all
+workers return. Different documents can generate concurrently; one document's
+requests run serially. A queued request with a stale base fails before generation.
+Status reads never start work.
+
+`BundleValidator` is required. It receives the immutable staged Candidate, **all**
+staged asset bytes keyed by asset ID and the cancel Event; it must check HTML/SVG
+safety, renderer policy and actual rendering, then return a CheckResult. The
+controller binds this result to the editor's exact digest and commits only when
+all checks passed. There is no built-in rendering validator or default passed
+verdict. A visual safety/figure compiler alone does not prove browser rendering.
+Compile figures before independent semantic review; later HTML changes invalidate
+that review's digest.
+
+`EditorFactory(prepared)` creates an editor for each request. The CLI wires
+[ManagedResources](managed.py) by default: the editor compiles through the real
+`visuals.render_document` before independent semantic review. It fills figure
+slots, inserts CSP and the pinned managed script; there is no identity fallback.
+Optional `--compiler module:factory` is an additional trusted transform **before**
+managed compilation, not a replacement for the visual/image policy. It receives
+the request's mutable `prepared.assets` map and returns DocumentCompiler. Put new
+SVG/renderer bytes in that map; staging and validation use those same bytes.
+Each request owns its transform and map, so documents cannot mix resources.
+
+The default `ManagedResources.prepare` preserves current evidence/assets and all
+change summaries, and passes the real `UnavailableImageGenerator.capability()`
+reason to writing and review. A new AI-image requirement is represented through
+the existing Figure contract: kind=image, generated_concept provenance, empty
+asset_ids and an empty figure slot. The compiler passes this unmet image intent
+to the unavailable image adapter through `generate_image`, producing
+`image_generation_unavailable` before review/commit. Existing image moves and
+caption changes retain asset IDs. Instruction interpretation remains Gemini's
+responsibility; service code does not match language-specific keywords. Custom
+`--prepare` integrations must retain this typed unmet-intent convention.
+
+The CLI also runs real `validate_visuals` on every staged byte before invoking
+the supplied BundleValidator. The latter must provide the actual rendering check;
+visual safety alone is never marked rendering passed.
+
+Run with the repository Python. Replace the example validator with an
+operator-controlled module implementing BundleValidator:
+
+```bash
+export PYTHONPATH=.agents/ops
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html status --root outputs/explain-html
+.venv/bin/python -m explain_html stop --root outputs/explain-html
+.venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
+```
+
+`serve` runs in the foreground with the same options as `start`. `--agy` selects
+the adapter's pinned executable without changing its timeout/model/effort rules.
+`--prepare module:callable` and `--ui module:callable` load trusted local code; the
+latter returns a closed map of fixed UI filenames to bytes. No browser request
+chooses these modules. Without `--ui`, the root shows a service-ready placeholder.
+`--document` validates an existing document and includes its ID in the launch fragment.
+`start` waits for HTTP startup and prints a localhost URL. `status` checks
+PID/boot/start identity. `stop` signals that identity through a Linux pidfd and
+waits for shutdown and process recovery. `export` needs no service and prints the
+snapshot directory; `--revision` selects an old published revision.
+
+The launch URL gives the **session token in a fragment to the fixed UI only**.
+Consume/remove it and keep it in control-UI memory; attach the contract's
+`X-Explain-Token` header to JSON APIs. Never put it in generated HTML, iframe URLs,
+query strings, cookies or exports. Every process gets a fresh token. Host is
+limited to localhost/127.0.0.1 with the actual port. Supplied Origin must match;
+opaque `null` cannot call JSON APIs. CLI clients may omit Origin but still need
+the token. Public document/export files allow opaque-origin resource requests
+without credentials. CSP enforces a sandbox without `allow-same-origin`, blocks
+connections and admits only revision-pinned renderer hashes. Fixed UI uses a
+separate CSP.
+
+Routes, success statuses and public errors come directly from `contract_schema()`.
+Submit returns 202 immediately; poll the returned request ID for JobResponse.
+There is no SSE/WebSocket channel. An identical request ID/content returns saved
+state/results, including terminal failures; different content conflicts. Explicit
+retry needs a new ID and the displayed current base. Job failures live in
+JobResponse.error; admission rejection uses ErrorResponse. Undo creates a new
+revision and fences active jobs with stale_revision. Cancel cannot undo a
+committed success.
+
+Cancel, undo, validation entry and commit share a controller lock. Shutdown sets
+the same Event passed to preparation/editor/validator, marks active work
+interrupted and joins workers before releasing ownership. Integrations must honor
+cancellation and bound their rendering work. Restart marks queued/running/
+validating records interrupted without resend. A commit before acknowledgement
+is reconciled against the exact saved stage and published revision as succeeded.
+Uncertain journal I/O stops editing with an explicit error until restart; it
+cannot relabel a committed revision as failed/interrupted.
+
+Undo also reconciles publication before recording a failure: request ID, parent,
+restored_from and the complete target document must match. Startup checks restore
+journals even when an older runtime recorded an error. An unreadable publication
+stops further work without declaring success. Export similarly reports success
+after a rename/fsync error only if its manifest and every public byte verify.
+
 ## Storage, recovery and export
 
 Use a dedicated Git-ignored runtime directory, such as the `outputs/` location
@@ -219,6 +326,8 @@ the allowlisted APIs. Storage layout:
   stages/<stage_id>/{stage.json,public/...}
   revisions/<revision_id>/{record.json,public/...}
 <root>/exports/<snapshot_id>/...
+<root>/private/requests/<document_id>/<request_id>.json
+<root>/private/{service.lock,service.log,session.json,gemini/...}
 ```
 
 Each revision contains its complete HTML, evidence, figure definitions and asset
@@ -348,20 +457,12 @@ local-service generation capability; the investigation evidence is in the PR.
 
 ## Downstream responsibilities
 
-HTTP JSON endpoints use the session-token header named in `contract_schema()`;
-isolated document/export content has no editing credential. Route and body IDs
-must agree. Resolve content files and asset names against the selected revision's
-allowlist, never concatenate arbitrary HTTP paths into the private tree. Capture
-a revision ID before serving HTML/assets so a current-version switch cannot mix
-two revisions. Expose only schema-defined public errors, never raw exceptions.
-
-The job controller owns durable request deduplication before generator execution,
-cancel/commit synchronization, job transitions and interrupted-job recovery. It
-must check cancellation and revision again at commit, keep the old view while a
-job runs, and never regenerate on status reads or reconnect. The store's lock and
-base comparison prevent conflicting publications but do not manage subprocesses
-or cancel state. The UI/renderer owns sandboxing, selection reporting, change
-navigation and the static-export editing-unavailable indicator.
+Use the runtime's HTTP/publication boundaries above instead of writing public
+files directly. The store's lock/base comparison also protects against trusted
+external writers. The UI owns sandboxed presentation, strict selection-message
+validation, change navigation and the static-export editing-unavailable indicator.
+Bind the displayed page and all asset URLs to one revision; refresh only after a
+succeeded job identifies a new revision.
 
 ## Verification
 
@@ -398,3 +499,14 @@ or malformed verdicts, actual hook denial, and pipe/Event-synchronized process
 cleanup. One case connects the real `render_document` and staged `validate_visuals`
 to editor verification and store commit. These editor tests require no browser or
 fixed real-time sleep.
+
+Runtime coverage adds 17 real-store integration cases in `test_jobs.py` and 6
+HTTP/CLI cases in `tests/e2e/agents_ops/explain_html/test_service.py`. Explicit fake
+editor/rendering boundaries, Event gates, OS-assigned ports and private temporary
+roots cover duplicate calls/commits, request-scoped compiled bytes, stale bases, cancel/undo/shutdown late
+results, active-journal recovery, disk failure after pointer replacement,
+cross-session tokens, Host/Origin/path rejection, closed exports and public CLI
+startup/shutdown/restart/offline export.
+Restore coverage includes faults before/after pointer replacement, unreadable
+publication and old error journals. Three store cases also cover export rename
+faults and failed readback. These faults intercept actual directory fsync calls.

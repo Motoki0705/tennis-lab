@@ -1,12 +1,12 @@
-# 説明HTMLの文書契約とGemini編集
+# 説明HTMLの契約・Gemini編集・ローカルservice
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710) の文書・編集の共通契約と、
 永続的な版store、visual import・managed renderer・画像生成の可否を明示する境界、
-Geminiによる候補生成と独立した意味検査を提供する。
-HTTPサーバ、ブラウザUI、画像provider実装、ブラウザ品質評価は含まない。
-既存依存のPydantic・Pillow・jsonschemaとPython標準ライブラリを使う。
+Geminiによる候補生成と独立した意味検査、loopback HTTP/job runtimeを提供する。
+ブラウザUI、画像provider実装、ブラウザ品質評価は別途注入する。
+既存依存のPydantic・Pillow・jsonschema・FastAPI・uvicornとPython標準ライブラリを使う。
 
 ## 契約の正本と入口
 
@@ -31,6 +31,10 @@ commitできない未検証の判定例を含む。JSONには厳密な `parse()`
 | [editor.py](editor.py) | 初回執筆・編集、根拠保持、独立した意味検査 |
 | [gemini.py](gemini.py) | model固定・tool禁止のagy実行、private証拠、中断 |
 | [no_tools.py](no_tools.py) | schema検証済みの完了処理だけを許可するPreToolUse hook |
+| [jobs.py](jobs.py) | 永続的な重複排除、文書別queue、公開前の再確認、復旧 |
+| [managed.py](managed.py) | 実figure compile・画像利用不可adapter・staged visual検査のservice接続 |
+| [service.py](service.py) | 共通契約からのHTTP route、token/Origin/Host検査、公開ファイル |
+| [__main__.py](__main__.py) | ローカルstart/serve/status/stopとoffline export CLI |
 
 ## ID・対象・候補
 
@@ -157,6 +161,86 @@ process groupの停止・回収を終えてからcancelledを返す。起動前�
 timeout・cancel・model不一致・不正出力・意味検査失敗は共通の公開エラーを使う。
 後段commitとcancelの同期は引き続きcontrollerが担当する。
 
+## ローカルserviceと信頼する統合部品
+
+`PYTHONPATH=.agents/ops` で `JobController(store, editor_factory, validator, prepare=...)` と
+`create_app(controller, port=actual_bound_port, ui_files=...)` を構築する。
+CLIのbindは常に **127.0.0.1**、portの既定はOS割当で、wildcard/LANへのbind指定はない。
+runtime rootは非待機のfilesystem lockで単一controllerが所有し、全workerの終了まで保持する。
+異なる文書は生成を並行実行し、同じ文書の要求は直列実行する。queue中にbaseが古くなった要求は
+生成前に失敗する。状態取得は処理を起動しない。
+
+`BundleValidator` は必須。immutableなstaged Candidate、asset IDで引ける **全staged bytes**、
+cancel Eventを受け取り、HTML/SVGの無害化、renderer方針、実際の描画を検査してCheckResultを返す。
+controllerがeditorの候補digestへ結び付け、全検査がpassedの場合だけcommitする。
+組込みの描画validatorや既定のpassed判定はない。visualの安全検査・figure compileだけでは
+browser描画の証拠にならない。figureは独立した意味検査より前にcompileする。
+意味検査後のHTML変更はそのdigestを無効にする。
+
+`EditorFactory(prepared)` は要求ごとにeditorを構築する。CLIは既定で
+[ManagedResources](managed.py) を接続し、独立した意味検査より前に実 `visuals.render_document` で
+図slotを展開し、CSPと版に固定したmanaged scriptを入れる。恒等変換へのfallbackはない。
+任意の `--compiler module:factory` はmanaged compile **前** の信頼する追加変換で、visual/画像方針を
+置き換えない。要求単位の可変 `prepared.assets` mapを受けてDocumentCompilerを返し、生成した
+SVG/renderer bytesをそのmapへ入れる。同じbytesをstage/検証へ渡し、要求間の混在を防ぐ。
+
+既定の `ManagedResources.prepare` は現在の根拠・assets・全変更要約を保持し、実
+`UnavailableImageGenerator.capability()` の理由を執筆/意味検査へ渡す。
+新規AI画像の要求は既存Figure型で、kind=image、generated_conceptのprovenance、空asset_ids、
+空figure slotとして示す。compilerはこの未充足の画像意図を `generate_image` 経由で利用不可adapterへ
+渡し、意味検査/commit前に `image_generation_unavailable` とする。既存画像の移動や説明変更は
+asset IDを保持する。自然文の解釈はGeminiが担い、serviceは言語別の単語一致では判定しない。
+独自の `--prepare` もこの型付き未充足要求の規約を保持する。
+
+CLIは全staged bytesへ実 `validate_visuals` を実行した後、指定したBundleValidatorを呼ぶ。
+後者には実描画の検査が必要で、安全検査だけをrendering passedにはしない。
+
+repoのPythonで実行する。例のvalidator名はBundleValidatorを実装する運用者管理のmoduleへ置き換える。
+
+```bash
+export PYTHONPATH=.agents/ops
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html status --root outputs/explain-html
+.venv/bin/python -m explain_html stop --root outputs/explain-html
+.venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
+```
+
+`serve` はstartと同じoptionでforeground実行する。`--agy` はadapterのpinされた実行ファイルを
+指定し、timeout/model/effortの規則は変えない。`--prepare module:callable` と
+`--ui module:callable` は信頼するローカルコードを読み込む。UI callableは固定UIのfilenameから
+bytesへの閉じたmapを返す。ブラウザ要求からmoduleを選べない。`--ui` なしではrootに起動済みの
+placeholderを表示する。`--document` は既存文書を検査し、起動fragmentへそのIDを入れる。
+startはHTTP起動後にlocalhost URLを出力し、statusはPID/boot/start identityで
+生存確認する。stopはLinux pidfdでそのidentityだけへsignalを送り、shutdownと子process回収を待つ。
+exportはservice停止中にも使え、完成したsnapshot directoryを出力する。`--revision` で過去の公開版を選べる。
+
+起動URLは **session tokenをfragmentで固定UIだけへ** 渡す。UIはfragmentを読み取ってURLから除き、
+tokenを操作UIのメモリだけで保持し、JSON APIへ契約の `X-Explain-Token` headerを付ける。
+生成HTML・iframe URL・query・cookie・exportへ渡さない。processごとにtokenを作り直す。
+Hostは実port付きlocalhost/127.0.0.1に限定し、Originがあれば一致を要求する。
+opaque originの `null` はJSON APIを呼べない。CLIはOriginを省略できるがtokenは必要。
+公開本文/exportにはcredential不要で、opaque originのresource取得を許可する。
+CSPは `allow-same-origin` のないsandboxで接続を禁止し、版に固定したrenderer hashだけを許可する。
+固定UIは別のCSPを使う。
+
+HTTPパス・成功status・公開エラーは `contract_schema()` から直接登録する。送信は即座に202を返し、
+返されたrequest IDでJobResponseをpollする方式。SSE/WebSocketはない。
+同じrequest ID・同じ内容なら失敗を含め保存済み状態/結果を返し、異内容は競合する。
+明示的なretryは新IDと表示中の現在baseを使う。終端エラーはJobResponse.error、受付拒否はErrorResponseに入る。
+undoは新revisionを返して進行中jobをstale_revisionにし、cancelはcommit済みの成功を巻き戻さない。
+
+cancel・undo・検証開始・commitはcontroller lockで同期する。shutdownは準備/editor/validatorへ渡す
+同じEventを設定し、進行中をinterruptedにしてworker終了後に所有権を解放する。
+統合部品はcancelへ応答し、描画処理自身に上限を設ける。再起動はqueued/running/validatingを
+自動再送せずinterruptedへ回収する。現在版切替後・job応答保存前の中断は、保存済みstageと公開版を
+厳密に照合してsucceededへ回復する。journal I/Oが不確実になったら再起動まで明示エラーで編集を止め、
+既にcommitした版をfailed/interruptedと誤表示しない。
+
+undoも失敗を確定する前に公開状態を照合し、request ID・parent・restored_from・復元先文書全体の
+一致を要求する。旧runtimeがerrorを記録したrestore journalも起動時に再照合する。
+公開状態を読めない場合は成功扱いせず処理を止める。exportのrename/fsyncエラーも、
+manifestと全公開bytesが照合できた場合だけ成功として返す。
+
 ## 保存・復旧・export
 
 ソース内使用例の `outputs/` のように、Git対象外の専用runtime directoryを使う。root全体は
@@ -169,6 +253,8 @@ timeout・cancel・model不一致・不正出力・意味検査失敗は共通�
   stages/<stage_id>/{stage.json,public/...}
   revisions/<revision_id>/{record.json,public/...}
 <root>/exports/<snapshot_id>/...
+<root>/private/requests/<document_id>/<request_id>.json
+<root>/private/{service.lock,service.log,session.json,gemini/...}
 ```
 
 各revisionはHTML・根拠・図定義・asset bytesの完全な組を持つ。全ファイルとdirectoryをflushしてから
@@ -259,16 +345,10 @@ local serviceの生成能力とは扱わず、能力調査の根拠はPRへ残�
 
 ## 下流の責務
 
-HTTPのJSON入口は `contract_schema()` に定めたsession-token headerを使う。
-隔離する本文/exportへ編集credentialを渡さない。routeとbodyのIDを一致させ、内容ファイルとasset名を
-選択したrevisionの許可リストへ照合する。任意のHTTP pathをprivate treeへ連結しない。
-HTML/assetsの取得前にrevision IDを固定して版の混在を防ぐ。公開エラーはschemaの形式だけとし、
-生の例外を返さない。
-
-job controllerは生成実行前の永続的なrequest重複排除、cancelとcommitの同期、job遷移、
-interrupted復旧を担当する。commit時のcancel/revision再確認、実行中の旧版保持、状態取得や再接続での
-再生成禁止が必要。storeのlock/base照合は競合公開を防ぐがprocessやcancel状態は管理しない。
-UI/rendererがsandbox、選択通知、変更箇所移動、静的exportの編集不可表示を担当する。
+公開ファイルを直接書き換えず上記runtimeのHTTP/公開境界を使う。storeのlock/base照合は
+信頼する外部writerとの競合も防ぐ。UIはsandbox表示・選択messageの厳格な検査・変更箇所移動・
+静的exportの編集不可表示を担当する。本文と全asset URLを同じrevisionへ固定し、jobがsucceededとして
+新revisionを返した後に更新する。
 
 ## 検証
 
@@ -298,3 +378,11 @@ editorは `test_editor.py` にintegration 11件、
 実hookの拒否・pipe/Event同期によるprocess回収を検査する。1件は実際の `render_document` と
 stage後の `validate_visuals` をeditorの意味検査・store commitへ接続する。
 editorの検証にはbrowser・固定の実時間sleepは不要。
+
+runtimeは `test_jobs.py` の実store integration 17件と、
+`tests/e2e/agents_ops/explain_html/test_service.py` のHTTP/CLI 6件を追加する。
+偽editor/描画判定、Event gate、OS割当port、privateな一時rootを使い、生成/commitの重複・要求単位のcompile bytes・古いbase・
+cancel/undo/shutdown後の遅延結果・進行中journalの復旧・現在版切替後のdiskエラー・session間のtoken分離・
+Host/Origin/path拒否・公開export範囲・CLIの起動/終了/再起動/offline exportを検査する。
+restoreはpointer置換前/後の障害・公開状態を読めない場合・旧error journalを検証する。
+storeの追加3件はexportのrename障害とreadback失敗を扱い、実directory fsync呼出しへ障害を注入する。
