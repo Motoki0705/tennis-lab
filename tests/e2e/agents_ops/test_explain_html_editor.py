@@ -44,7 +44,7 @@ def test_cancel_and_timeout_reap_the_group_and_keep_current(
             env.request,
             env.current,
             env.context,
-            timeout=3600,
+            writer_timeout=3600,
             cancel=cancel,
         )
         with (env.root / "ready").open() as ready:

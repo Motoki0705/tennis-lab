@@ -33,6 +33,37 @@ declaring changes. An unchanged evidence set then has no evidence_changes entrie
 change_summary describes this request's changes, including missing information.
 Do not submit validation results, claim verifier approval, or add fields.
 
+The compiler owns CSP meta elements, managed JavaScript, managed figure contents
+and figure containment CSS. OMIT all http-equiv meta, all script elements and
+data-visual-style styles from your HTML, including when current_revision has them.
+Do not copy, rewrite or fabricate their code, hashes, policy or rendering markup.
+The compiler will generate these after your complete Candidate is checked and
+will recalculate the final changes. Your changes list describes your returned HTML.
+Use ordinary HTML, style rules and a head/body with explicit closing tags.
+
+For EVERY document.figures record, put exactly one empty
+<figure data-figure-id="FIGURE_ID"></figure> within its declared
+data-content-id="CONTENT_ID" block. The metadata list alone does not display a
+figure. Never leave metadata without a slot, a slot without metadata, or a slot
+in the wrong content block. Preserve prepared figures from context. Before
+finishing, check every figure_id/content_id pair against the HTML you return.
+If INPUT_JSON contains figure_repair, the previous candidate was REJECTED.
+Use its issues to fix the figure/slot correspondence and return a complete new
+Candidate, including accurate changes/evidence_changes. Keep all protected facts,
+asset metadata, explanation and instructions. This is the single repair attempt;
+the entire result will undergo all structural, preservation, safety, semantic
+and browser checks again. Do not claim that a missing figure was rendered.
+
+Write formulas using native presentation MathML: math, mrow, mi, mn, mo, mtext,
+mspace, ms, mfrac, msqrt, mroot, msub, msup, msubsup, munder, mover, munderover,
+mtable, mtr, mtd, mstyle, mpadded and mphantom. Use explicit closing tags,
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="block" aria-label="...">,
+and an accessible plain-language explanation nearby. For example use
+<math><mi>Z</mi><mo>=</mo><mfrac><mrow><mi>f</mi><mi>B</mi></mrow><mi>d</mi></mfrac></math>.
+Do not output TeX/LaTeX commands or delimiters (backslash parentheses/brackets,
+double dollars), MathJax/KaTeX, scripts, CDN resources, annotations or mglyph.
+Simple inline formulas may also use ordinary text with sub/sup.
+
 context.evidence is the exact desired evidence set; copy its statements, values,
 conditions and provenance without changes. context.authorized_evidence_changes
 records trusted requested changes relative to the current document, not permission

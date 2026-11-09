@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import math
 import re
-import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from decimal import Decimal
@@ -49,6 +48,9 @@ from .schema import (
 )
 
 DocumentCompiler = Callable[[Document], Document]
+WRITER_TIMEOUT = 900
+VERIFIER_TIMEOUT = 240
+FIGURE_REPAIR_TIMEOUT = 600
 
 
 class WritingContext(Model):
@@ -81,6 +83,33 @@ class EditorialResult:
     validation: ValidationResult
     writer: TurnEvidence
     verifier: TurnEvidence
+    repairs: tuple[TurnEvidence, ...] = ()
+
+
+def _figure_issues(document: Document) -> list[dict[str, str]]:
+    """Diagnose only the writer's figure/slot correspondence, never repair HTML."""
+    index = HTMLIndex(document.html)
+    figures = {figure.figure_id: figure for figure in document.figures}
+    issues = []
+    for figure in document.figures:
+        problem = (
+            "missing_slot"
+            if figure.figure_id not in index.figures
+            else "wrong_content_block"
+            if figure.content_id not in index.figure_blocks[figure.figure_id]
+            else None
+        )
+        if problem:
+            issues.append(
+                {
+                    "figure_id": figure.figure_id,
+                    "content_id": figure.content_id,
+                    "problem": problem,
+                }
+            )
+    for figure_id in sorted(index.figures - figures.keys()):
+        issues.append({"figure_id": figure_id, "problem": "missing_metadata"})
+    return issues
 
 
 class _EvidenceIndex(HTMLIndex):
@@ -214,11 +243,19 @@ class GeminiEditor:
         request: EditRequest,
         context: WritingContext,
         *,
-        timeout: float = 600,
+        writer_timeout: float = WRITER_TIMEOUT,
+        verifier_timeout: float = VERIFIER_TIMEOUT,
         cancel: Event | None = None,
     ) -> EditorialResult:
         """Generate an initial Candidate using the null-base document request."""
-        return self._generate(request, context, None, timeout=timeout, cancel=cancel)
+        return self._generate(
+            request,
+            context,
+            None,
+            writer_timeout=writer_timeout,
+            verifier_timeout=verifier_timeout,
+            cancel=cancel,
+        )
 
     def edit(
         self,
@@ -226,11 +263,19 @@ class GeminiEditor:
         current: Revision,
         context: WritingContext,
         *,
-        timeout: float = 600,
+        writer_timeout: float = WRITER_TIMEOUT,
+        verifier_timeout: float = VERIFIER_TIMEOUT,
         cancel: Event | None = None,
     ) -> EditorialResult:
         """Generate a complete candidate against the supplied immutable revision."""
-        return self._generate(request, context, current, timeout=timeout, cancel=cancel)
+        return self._generate(
+            request,
+            context,
+            current,
+            writer_timeout=writer_timeout,
+            verifier_timeout=verifier_timeout,
+            cancel=cancel,
+        )
 
     def _generate(
         self,
@@ -238,23 +283,18 @@ class GeminiEditor:
         context: WritingContext,
         current: Revision | None,
         *,
-        timeout: float,
+        writer_timeout: float,
+        verifier_timeout: float,
         cancel: Event | None,
     ) -> EditorialResult:
-        if not math.isfinite(timeout) or timeout <= 0:
+        if any(
+            not math.isfinite(value) or value <= 0
+            for value in (writer_timeout, verifier_timeout)
+        ):
             raise ContractError("invalid_request")
         check_cancel(cancel)
         validate_request(request, current)
         _check_context(context, current)
-        started = time.monotonic()
-
-        def remaining() -> float:
-            check_cancel(cancel)
-            seconds = timeout - (time.monotonic() - started)
-            if seconds <= 0:
-                raise ContractError("timeout")
-            return seconds
-
         # There is no previous session or implicit memory. Every turn receives
         # the complete context, current document, request and change history.
         inputs: dict[str, Any] = {
@@ -269,12 +309,48 @@ class GeminiEditor:
             + "\nINPUT_JSON\n"
             + json.dumps(inputs, ensure_ascii=False),
             Candidate.model_json_schema(),
-            timeout=remaining(),
+            timeout=writer_timeout,
             cancel=cancel,
         )
+        repairs: tuple[TurnEvidence, ...] = ()
         try:
             candidate = parse(Candidate, json.dumps(writer.output, ensure_ascii=False))
             if candidate.request != request:
+                raise ContractError("invalid_candidate")
+            issues = _figure_issues(candidate.document)
+        except ContractError as exc:
+            raise ContractError("invalid_model_output") from exc
+        if issues:
+            check_cancel(cancel)
+            repaired = self.gemini.turn(
+                (prompts / "writer.md").read_text()
+                + "\nINPUT_JSON\n"
+                + json.dumps(
+                    {
+                        **inputs,
+                        "figure_repair": {
+                            "attempt": 1,
+                            "max_attempts": 1,
+                            "timeout_seconds": FIGURE_REPAIR_TIMEOUT,
+                            "issues": issues,
+                            "rejected_candidate": candidate.model_dump(mode="json"),
+                        },
+                    },
+                    ensure_ascii=False,
+                ),
+                Candidate.model_json_schema(),
+                timeout=FIGURE_REPAIR_TIMEOUT,
+                cancel=cancel,
+            )
+            repairs = (repaired.evidence,)
+            try:
+                candidate = parse(
+                    Candidate, json.dumps(repaired.output, ensure_ascii=False)
+                )
+            except ContractError as exc:
+                raise ContractError("invalid_model_output") from exc
+        try:
+            if candidate.request != request or _figure_issues(candidate.document):
                 raise ContractError("invalid_candidate")
             validate_candidate(candidate, current)
         except ContractError as exc:
@@ -284,7 +360,7 @@ class GeminiEditor:
         if candidate.document.assets != context.assets:
             raise ContractError("validation_failed")
         _check_preservation(candidate, context, current)
-        remaining()
+        check_cancel(cancel)
         compiled = self.compile_document(candidate.document.model_copy(deep=True))
         if not isinstance(compiled, Document):
             raise ContractError("invalid_document")
@@ -309,7 +385,7 @@ class GeminiEditor:
             + "\nINPUT_JSON\n"
             + json.dumps(inputs, ensure_ascii=False),
             SemanticVerdict.model_json_schema(),
-            timeout=remaining(),
+            timeout=verifier_timeout,
             cancel=cancel,
         )
         try:
@@ -339,4 +415,5 @@ class GeminiEditor:
             ),
             writer.evidence,
             verifier.evidence,
+            repairs,
         )

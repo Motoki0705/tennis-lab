@@ -263,6 +263,115 @@ def test_generated_html_cannot_introduce_scripts_events_or_false_graph_labels() 
             )
 
 
+def test_css_properties_distinguish_scroll_behavior_from_executable_properties() -> (
+    None
+):
+    document, payloads = bundle()
+    for css in [
+        "html{scroll-behavior:smooth}",
+        "@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}",
+    ]:
+        compiled = visuals.render_document(
+            document.model_copy(
+                update={
+                    "html": document.html.replace(
+                        "</head>", f"<style>{css}</style></head>"
+                    )
+                }
+            )
+        )
+        visuals.validate_visuals(compiled, payloads)
+    for css in [
+        "p{behavior:evil}",
+        "p{BEHAVIOR : evil}",
+        "p{-moz-binding:evil}",
+        "p{width:expression(alert(1))}",
+        '@import "evil";',
+        "p{background:url(evil)}",
+        "p{beha/**/vior:evil}",
+    ]:
+        with pytest.raises(schema.ContractError):
+            visuals.render_document(
+                document.model_copy(
+                    update={
+                        "html": document.html.replace(
+                            "</head>", f"<style>{css}</style></head>"
+                        )
+                    }
+                )
+            )
+
+
+def test_compiler_replaces_equivalent_policy_and_rejects_policy_or_code_changes() -> (
+    None
+):
+    document, payloads = bundle()
+    policy = visuals.content_security_policy(document)
+    equivalent = " ;  ".join(reversed(policy.split("; "))) + ";"
+    from html import escape
+
+    raw = re.sub(
+        r'<meta data-visual-policy="1"[^>]+>',
+        "<meta content='"
+        + escape(equivalent, quote=True)
+        + "' HTTP-EQUIV='content-security-policy' />",
+        document.html,
+    )
+    assert raw != document.html
+    compiled = visuals.render_document(document.model_copy(update={"html": raw}))
+    assert compiled == document
+    visuals.validate_visuals(compiled, payloads)
+    for html in [
+        raw.replace("default-src", "unsafe-default-src"),
+        raw.replace("connect-src &#x27;none&#x27;", "connect-src https:"),
+        raw.replace("script-src", "script-src &#x27;unsafe-inline&#x27;"),
+        document.html.replace("<script ", '<script src="assets/visuals_v2.js" '),
+        document.html.replace("</script>", "alert(1)</script>"),
+    ]:
+        with pytest.raises(schema.ContractError, match="invalid_document"):
+            visuals.render_document(document.model_copy(update={"html": html}))
+    # Omitting all system components is the writer contract. Recompilation must
+    # also work when there is no previous CSP/script/style to copy.
+    raw = re.sub(r'<meta data-visual-policy="1"[^>]+>', "", document.html)
+    raw = re.sub(r"<script\b.*?</script>", "", raw, flags=re.S)
+    raw = re.sub(r'<style data-visual-style="1">.*?</style>', "", raw, flags=re.S)
+    assert (
+        visuals.render_document(document.model_copy(update={"html": raw})) == document
+    )
+
+
+def test_native_mathml_is_allowed_but_active_math_and_unrendered_tex_are_refused() -> (
+    None
+):
+    document, payloads = bundle()
+    math = '<math xmlns="http://www.w3.org/1998/Math/MathML" display="block" aria-label="Depth equals focal length times baseline over disparity"><mi>Z</mi><mo>=</mo><mfrac><mrow><mi>f</mi><mi>B</mi></mrow><mi>d</mi></mfrac></math>'
+    compiled = visuals.render_document(
+        document.model_copy(
+            update={"html": document.html.replace("</section>", math + "</section>")}
+        )
+    )
+    visuals.validate_visuals(compiled, payloads)
+    for markup in [
+        math.replace("<mi>Z", '<mi onclick="evil()">Z'),
+        math.replace("<mi>Z", '<mi href="https://example.com">Z'),
+        '<math><annotation-xml encoding="text/html"><script>evil()</script></annotation-xml></math>',
+        '<math><mglyph src="evil"></mglyph></math>',
+        "<mi>Z</mi>",
+        r"\(Z=\frac{fB}{d}\)",
+        r"$$Z=20$$",
+    ]:
+        with pytest.raises(schema.ContractError):
+            visuals.render_document(
+                document.model_copy(
+                    update={
+                        "html": document.html.replace(
+                            "</section>", markup + "</section>"
+                        )
+                    }
+                )
+            )
+
+
 @pytest.mark.parametrize("mode", ["success", "unavailable", "failure"])
 def test_image_adapter_reports_real_outcome_without_inventing_an_asset(
     mode: str,

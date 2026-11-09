@@ -19,6 +19,21 @@ const output = process.env.EXPLAIN_VISUAL_OUTPUT || fs.mkdtempSync(path.join(os.
   try {
     const errors = [], network = [];
     const page = await browser.newPage({viewport: {width: 1100, height: 900}, reducedMotion: 'reduce'});
+    // One existing browser scenario covers native formula layout in both the
+    // initial published bytes and the real store's static snapshot.
+    for (const index of [fixture.initial_index, fixture.index]) {
+      await page.goto(pathToFileURL(index).href);
+      const metrics = await page.locator('math').evaluate(math => {
+        const frac = math.querySelector('mfrac');
+        const numerator = frac.children[0].getBoundingClientRect();
+        const denominator = frac.children[1].getBoundingClientRect();
+        return {namespace: math.namespaceURI, height: frac.getBoundingClientRect().height,
+          numeratorBottom: numerator.bottom, denominatorTop: denominator.top};
+      });
+      assert.equal(metrics.namespace, 'http://www.w3.org/1998/Math/MathML');
+      assert.ok(metrics.height > 20);
+      assert.ok(metrics.numeratorBottom < metrics.denominatorTop, 'native fraction must stack numerator above denominator');
+    }
     await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
       for (const version of ['1', '2']) {
         const rogue = document.createElement('div');
@@ -61,6 +76,14 @@ const output = process.env.EXPLAIN_VISUAL_OUTPUT || fs.mkdtempSync(path.join(os.
     await page.setViewportSize({width: 390, height: 844});
     assert.ok(await graph.locator('svg').evaluate(el => el.getBoundingClientRect().width <= 390));
     assert.ok(await page.locator('body').evaluate(el => el.scrollWidth <= window.innerWidth));
+    assert.ok(await graph.locator('table').evaluate(el => el.getBoundingClientRect().width >= 750));
+    assert.ok(await graph.evaluate(el => el.getBoundingClientRect().right <= window.innerWidth));
+    const scrollable = graph.locator('[data-managed-graph]');
+    assert.ok(await scrollable.evaluate(el => {
+      const before = el.scrollLeft;
+      el.scrollLeft = 100;
+      return el.scrollWidth > el.clientWidth && el.scrollLeft > before;
+    }), 'source data must scroll inside its figure');
     await page.screenshot({path: path.join(output, 'mobile.png'), fullPage: true});
     const interactiveMs = performance.now() - started;
 

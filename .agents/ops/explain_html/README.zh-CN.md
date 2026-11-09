@@ -101,11 +101,19 @@ renderer/CSP 并返回最终 Document，或抛出 ContractError 拒绝；此 pac
 生成 asset 的 bytes 由调用方 controller 私下保留并传给 stage；compiler 不得发布或 commit 文件。
 受管 visual 可直接传入 `explain_html.visuals` 的 `compile_document=render_document`，
 该公开函数的类型已经符合 DocumentCompiler。
-`write_initial(request, context, *, timeout=600, cancel=None)` 和
-`edit(request, current, context, *, timeout=600, cancel=None)` 返回 `EditorialResult`。
+`write_initial(request, context, *, writer_timeout=900, verifier_timeout=240, cancel=None)` 和
+`edit(request, current, context, *, writer_timeout=900, verifier_timeout=240, cancel=None)` 返回 `EditorialResult`。
 请求和当前版使用共享 EditRequest/Revision；初次请求使用 null base 和文档目标。
-timeout 包含 writer、verifier、compile 及 effort/版本检查。每次调用创建新 workspace 和会话，
-不自动重试、resume、替换模型或从自然语言修补输出。
+每个阶段的独立上限包含 effort/版本检查，writer 不消耗 verifier 的时间。
+2026-11-09 实测初版 writer 为270–360秒、整体重构 writer 约633秒、普通 verifier 为60–110秒，
+因此默认 writer 900秒、verifier 240秒。仅 Figure/slot 对应错误允许独立 writer 修复一次，上限600秒。
+修复输入包括完整上下文、被拒候选、figure ID、预期 content ID、缺少slot/metadata或所属block错误。
+修复后和compile后均重新执行正常检查；独立语义检查绑定最终digest，stage后仍须实际渲染检查。
+修复再次失败即停止，语义、安全等其他失败不重试。prompt记录固定次数/时间，
+`EditorialResult.repairs` 分别记录修复的model/effort/耗时/usage。
+模型阶段合计最多29分钟（无修复19分钟），另加本地compile/渲染。
+UI显示可取消的已用时间，不承诺完成期限，不应使用旧的共享600秒限制。
+每次调用创建新workspace和会话，不resume或替换模型。
 
 `WritingContext` 是可信 controller 输入：目的、读者、精确的目标依据集合、已批准 assets、
 准备好的图、写作偏好和全部历史变更摘要。编辑时，当前与目标依据的每处差异都必须在
@@ -292,6 +300,18 @@ rectify 的 pinhole stereo 和正确对应关系，用 px 单位的 focal/dispar
 fetch、module import 或 server。CSP 插入位置来自对 body 之前唯一 head 的实际解析，comment 中的 head
 文字不能改变位置；policy 位于 head 中首个 script、style 和 resource 引用之前。不规范的 head/body 嵌套及
 head 之前的非 ASCII 空白（包括实体形式的 NBSP）均被拒绝。
+
+CSP、renderer script 和 `data-visual-style` 图表CSS属于compiler。
+writer在编辑时也明确省略这些内容，无须复制代码或hash。同等CSP仅在解析后的directive名和token集合
+完全符合所需policy时接受，再替换为正本。允许属性顺序、引号、http-equiv大小写、directive顺序和空白变化；
+拒绝重复directive/policy、新增directive、来源变化及弱化policy。已有完全一致的managed script会被替换，
+拒绝代码改动、额外属性和任意script。已有管理CSS也必须是正本。这是语义检查前明确声明的compile契约，
+并非静默修补；stage后仍须与正本完全一致。即使writer设置`table{min-width:750px}`，管理CSS也会
+在390px宽度把源数据表和图限制在figure内横向滚动。
+
+公式使用Chromium原生presentation MathML，无需CDN或新增依赖。writer prompt与visual允许列表保持一致；
+拒绝annotation-xml、mglyph、链接、外来元素和事件属性。拒绝TeX命令/分隔符，避免发布未渲染公式。
+公式附近附有易懂说明，静态snapshot保留相同bytes。
 
 绘图属性（`data-managed-*`、`data-definition`、`data-plot`、`data-values`、`data-slider-value`、
 `data-render-*`）仅保留给规范 graph figure；`data-graph-targets` 仅用于受管 script。

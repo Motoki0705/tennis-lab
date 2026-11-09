@@ -132,13 +132,26 @@ detached from mutable callback state. Keep generated asset bytes privately in th
 calling controller for staging; the compiler must not publish or commit files.
 For managed visuals, pass `compile_document=render_document` from
 `explain_html.visuals` directly; its public signature already matches DocumentCompiler.
-`write_initial(request, context, *, timeout=600, cancel=None)` and
-`edit(request, current, context, *, timeout=600, cancel=None)` return an
+`write_initial(request, context, *, writer_timeout=900, verifier_timeout=240, cancel=None)` and
+`edit(request, current, context, *, writer_timeout=900, verifier_timeout=240, cancel=None)` return an
 `EditorialResult`. Use the shared EditRequest/Revision types; initial requests
-have a null base and a document target. The timeout covers both writer and
-verifier and compilation, including effort/version checks. Each turn uses a new
-workspace and conversation. There is no automatic retry, resume, substitute model
-or prose repair.
+have a null base and a document target. Each stage has its own budget including
+effort/version checks; the writer never consumes the verifier's allowance.
+The 2026-11-09 qualification measured initial writers at 270–360 seconds, a
+restructure writer at about 633 seconds and ordinary verifiers at 60–110 seconds.
+The defaults therefore allow 900 seconds for writing and 240 for verification.
+Figure/slot correspondence errors alone receive one independent writer repair
+turn, capped at 600 seconds. Its complete context includes the rejected candidate,
+figure IDs, expected content IDs and missing-slot/metadata/wrong-owner diagnostics.
+Both the repaired result and the compiled result undergo all normal checks;
+verification binds to the compiled digest and staged rendering is still mandatory.
+An unsuccessful repair stops; semantic, safety and other errors do not trigger
+retries. Prompts record the fixed attempt/time limit and `EditorialResult.repairs`
+records repair model/effort/time/usage separately from writer/verifier evidence.
+The maximum model-stage allowance is 29 minutes with repair (19 without), plus
+local compilation/rendering. The UI's cancellable elapsed-time display promises no
+completion deadline and must not impose the old shared 600-second limit.
+Each turn uses a fresh workspace/conversation. There is no resume or model fallback.
 
 `WritingContext` is trusted controller input: purpose, audience, exact desired
 evidence, approved assets, prepared figures, writing preferences and all prior
@@ -407,6 +420,26 @@ The CSP insertion offset comes from parsing the unique head before body; literal
 head text in comments cannot redirect it. The policy precedes the head's first
 script, style and resource reference. Noncanonical head/body nesting and
 non-ASCII whitespace before head (including encoded NBSP) are rejected.
+
+The compiler owns CSP, renderer script and `data-visual-style` containment CSS.
+The writer is explicitly instructed to omit these, even on edits; copying code
+or hashes is unnecessary. An equivalent CSP meta is accepted only if parsed
+directive names and token sets equal the required policy, then replaced by the
+canonical policy. Attribute order/quotes/case of http-equiv, directive order and
+whitespace may differ. Duplicate directives/policies, extra directives, changed
+sources and weakened policies are rejected. Existing exact managed script bytes
+are replaced; changed code, extra attributes and arbitrary scripts are rejected.
+Existing containment CSS must be canonical, otherwise it is rejected. These are
+declared compiler transformations before semantic review, not silent repairs.
+Canonical staged output remains mandatory. Managed CSS confines wide source
+tables and plots to horizontally scrollable figures at 390px, even with global
+writer rules such as `table{min-width:750px}`.
+
+Formulas use Chromium's native presentation MathML, without CDN or dependencies.
+The writer prompt and visual allowlist share the supported MathML elements;
+annotation-xml, mglyph, links, foreign content and event attributes are refused.
+TeX commands/delimiters are rejected instead of publishing unrendered formulas.
+Accessible explanations accompany MathML; static snapshots retain the same bytes.
 
 Drawing attributes (`data-managed-*`, `data-definition`, `data-plot`, `data-values`,
 `data-slider-value`, `data-render-*`) are reserved for canonical graph figures;
