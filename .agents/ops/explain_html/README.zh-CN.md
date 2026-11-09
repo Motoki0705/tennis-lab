@@ -1,11 +1,12 @@
-# 解释 HTML 文档契约与 Gemini 编辑
+# 解释 HTML 契约、Gemini 编辑与本地服务
 
 [English](README.md) · [日本語](README.ja.md)
 
 本包为 [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710) 提供共用文档/编辑契约和
 持久化版本存储、visual import、受管 renderer、明确图像生成可用性的边界，
-以及 Gemini 候选生成和独立语义检查。不包含 HTTP 服务、浏览器 UI、图像 provider 实现或浏览器质量评估。
-使用现有的 Pydantic/Pillow/jsonschema 依赖和 Python 标准库。
+以及 Gemini 候选生成、独立语义检查和 loopback HTTP/job runtime。
+浏览器 UI、图像 provider 实现和浏览器质量评估由外部注入。
+使用现有的 Pydantic/Pillow/jsonschema/FastAPI/uvicorn 依赖和 Python 标准库。
 
 ## 契约正本与入口
 
@@ -30,6 +31,9 @@
 | [editor.py](editor.py) | 初次撰写、编辑、依据保持与独立语义检查 |
 | [gemini.py](gemini.py) | 固定 model、禁用工具的 agy 执行、私有证据与取消 |
 | [no_tools.py](no_tools.py) | 只允许 schema 检查后的完成操作的可信 PreToolUse hook |
+| [jobs.py](jobs.py) | 持久化去重、文档队列、发布前检查与恢复 |
+| [service.py](service.py) | 共用契约的 HTTP route、token/Origin/Host 检查和公开文件 |
+| [__main__.py](__main__.py) | 本地 start/serve/status/stop 和离线 export CLI |
 
 ## ID、目标与候选
 
@@ -148,6 +152,64 @@ cancel 接收 `threading.Event`。service 在取消请求或停止时 set 同一
 process group 后返回 cancelled。预先 set 的 Event 阻止启动。timeout、取消、model 不符、无效输出和
 语义失败使用既有公开错误码。controller 仍需同步后续 commit 和取消。
 
+## 本地服务与受信集成
+
+设置 `PYTHONPATH=.agents/ops` 后构造 `JobController(store, editor, validator, prepare=...)` 和
+`create_app(controller, port=actual_bound_port, ui_files=...)`。CLI 始终绑定 **127.0.0.1**，默认使用
+OS 分配端口，不提供 wildcard/LAN bind 选项。runtime root 由一个 controller 持有非阻塞 filesystem lock，
+直到所有 worker 返回。不同文档可同时生成，同一文档串行执行。排队期间 base 过期的请求在生成前失败。
+状态读取不会启动生成。
+
+必须提供 `BundleValidator`。它接收 immutable staged Candidate、按 asset ID 索引的 **全部 staged bytes**
+和 cancel Event，检查 HTML/SVG 安全、renderer 策略与实际渲染，返回 CheckResult。
+controller 将结果绑定到 editor 的同一候选 digest，所有检查 passed 后才 commit。
+没有内置渲染验证器或默认 passed 判定。仅做 visual 安全检查/figure compile 不能证明浏览器渲染。
+应在独立语义检查前 compile figure；之后修改 HTML 会使该检查的 digest 失效。
+
+可选的受信 `AssetPreparer` 返回包含 WritingContext 和新 asset bytes 的 PreparedEdit。
+默认 `preserve_resources` 保留当前依据/assets 和完整变更摘要。在这里注入 figure/图像能力规划，
+服务不自行实现图像生成。阅读期间需要新 AI 图像时，规划必须抛出 `image_generation_unavailable`，
+使整个请求未完成并保留当前版。原始 EditRequest 指令没有类型化图像意图字段，语义能力规划需由集成方提供。
+默认处理不声称能识别任意自然语言的图像意图。
+
+使用仓库 Python，把示例 validator 名称替换成实现 BundleValidator 的运营者受控 module：
+
+```bash
+export PYTHONPATH=.agents/ops
+.venv/bin/python -m explain_html start --root outputs/explain-html --document triangulation --validator my_rendering:validate_bundle
+.venv/bin/python -m explain_html status --root outputs/explain-html
+.venv/bin/python -m explain_html stop --root outputs/explain-html
+.venv/bin/python -m explain_html export --root outputs/explain-html --document triangulation
+```
+
+`serve` 用同样选项在前台运行。`--agy` 指定 adapter 的固定版本可执行文件，不更改 timeout/model/effort。
+`--prepare module:callable` 和 `--ui module:callable` 加载受信本地代码，UI callable 返回固定 UI 文件名到
+bytes 的闭合 map。浏览器请求不能选择 module。未指定 `--ui` 时 root 显示服务已启动的 placeholder。
+start 等待 HTTP 启动后输出 localhost URL；status 通过 PID/boot/start identity 检查存活状态。
+`--document` 验证现有文档，并将其 ID 放进启动 fragment。
+stop 使用 Linux pidfd，仅向同一 identity 发 signal 并等待 shutdown/子进程回收。
+export 可在服务停止后运行，输出 snapshot 目录；`--revision` 可指定旧的已发布版本。
+
+启动 URL 在 **fragment 中将 session token 仅传给固定 UI**。UI 读取后移除 fragment，
+将 token 仅保留在控制 UI 内存中，为 JSON API 添加契约的 `X-Explain-Token` header。
+不得放入生成 HTML、iframe URL、query、cookie 或导出文件。每个进程创建新 token。
+Host 只允许实际端口的 localhost/127.0.0.1；存在 Origin 时必须匹配；opaque origin `null` 不可调用
+JSON API。CLI 可省略 Origin，但仍需 token。公开文档/export 无凭据，允许 opaque origin 资源请求。
+CSP 强制不含 `allow-same-origin` 的 sandbox、禁止连接，仅允许版本固定的 renderer hash。
+固定 UI 使用单独 CSP。
+
+HTTP 路径、成功状态和公开错误直接从 `contract_schema()` 注册。提交立即返回 202，客户端按返回的
+request ID 轮询 JobResponse；没有 SSE/WebSocket。同 request ID 和相同内容返回已保存的状态/结果，
+包括终端失败；不同内容冲突。显式重试需新 ID 和正在显示的当前 base。
+终端错误位于 JobResponse.error，接收拒绝使用 ErrorResponse。undo 创建新 revision，并将活动 job
+标为 stale_revision。cancel 不回滚已 commit 的成功。
+
+cancel、undo、进入验证和 commit 由 controller lock 同步。shutdown 设置传给 preparation/editor/validator 的
+同一 Event，将活动请求标为 interrupted，等待 worker 返回后释放所有权。集成必须响应 cancel，并限制自身
+渲染执行时间。重启将 queued/running/validating 恢复为 interrupted，不自动重发。
+若 current pointer 已切换但 job 应答未保存，则严格匹配保存的 stage 和已发布 revision，恢复 succeeded。
+journal I/O 不确定时，以明确错误停止编辑直到重启，不把已 commit 的版本误标 failed/interrupted。
+
 ## 存储、恢复与导出
 
 使用 Git 忽略的专用 runtime 目录，例如源码用例中的 `outputs/` 路径。整个 root 保持私有，
@@ -160,6 +222,8 @@ process group 后返回 cancelled。预先 set 的 Event 阻止启动。timeout�
   stages/<stage_id>/{stage.json,public/...}
   revisions/<revision_id>/{record.json,public/...}
 <root>/exports/<snapshot_id>/...
+<root>/private/requests/<document_id>/<request_id>.json
+<root>/private/{service.lock,service.log,session.json,gemini/...}
 ```
 
 每个 revision 保存完整的 HTML、依据、图定义和 asset bytes。刷新文件与目录后，原子替换
@@ -246,15 +310,9 @@ provider/无效成果物失败抛出 `asset_generation_failed`，不公开 provi
 
 ## 下游职责
 
-HTTP JSON 入口使用 `contract_schema()` 指定的 session-token header，不向隔离的文档/export 内容提供
-编辑凭据。route 与 body ID 必须一致。内容文件与 asset 名必须匹配选定 revision 的允许清单，不得将
-任意 HTTP path 拼接到私有目录。提供 HTML/assets 前先固定 revision ID，避免混合版本。
-只返回 schema 定义的公开错误，不返回原始异常。
-
-job controller 负责生成前持久化 request 去重、cancel/commit 同步、job 转移和 interrupted 恢复。
-commit 时再次检查 cancel/revision，运行中保留旧视图，状态读取或重连不得重新生成。
-store 的 lock/base 比较防止冲突发布，但不管理 subprocess 或 cancel 状态。
-UI/renderer 负责 sandbox、选择事件、变更导航和静态导出中的编辑不可用提示。
+使用上述 runtime HTTP/发布边界，不要直接改公开文件。store 的 lock/base 比较也防止与受信外部 writer 冲突。
+UI 负责 sandbox 展示、严格验证选区 message、变更导航和静态导出中的编辑不可用提示。
+文档和所有 asset URL 必须绑定同一 revision，只有 succeeded job 返回新 revision 后才刷新。
 
 ## 验证
 
@@ -283,3 +341,9 @@ editor 在 `test_editor.py` 添加 11 个 integration case，在
 使用可执行的假 agy、真实 store、完整长输入、允许/禁止的依据修改、拒绝/无效 verdict、真实 hook 拒绝
 以及 pipe/Event 同步的进程回收。其中一例将真实的 `render_document` 和 stage 后的
 `validate_visuals` 接入 editor 的语义检查与 store commit。editor 验证无需浏览器或固定的实时间 sleep。
+
+runtime 在 `test_jobs.py` 添加 12 个真实 store integration case，在
+`tests/e2e/agents_ops/explain_html/test_service.py` 添加 6 个 HTTP/CLI case。
+使用假 editor/渲染判定、Event gate、OS 分配端口和私有临时 root，验证生成/commit 去重、过期 base、
+cancel/undo/shutdown 后的延迟结果、活动 journal 恢复、pointer 切换后的 disk 错误、跨 session token、
+Host/Origin/path 拒绝、公开 export 清单和 CLI 启停/重启/离线 export。
