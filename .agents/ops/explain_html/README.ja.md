@@ -266,6 +266,9 @@ iframeは `sandbox="allow-scripts"` のopaque originで、same-origin・forms・
 権限を持たず、token/cookieも渡さない。生成scriptは引き続き拒否する。固定UIが受け取るmessageは
 同じframe window・origin `null`・表示document/revision・viewごとのnonceに一致する `ready`・
 `selection`・閲覧 `state` だけ。内容ID/quote/位置とstateの形を表示版に照合し、指示送信には使わない。
+閲覧viewの解析には共通のStrictHTMLParserを使う。対象索引はinertなtemplateで作り、解析したnodeを
+固定UIのDOMへ入れない。この解析時にはapp.jsからinline style属性のCSP拒否が報告され得る。
+固定UIのpolicyは緩めず、本文styleはiframe内だけへ適用する。
 親からiframeへのmessageはopaque originのためtarget origin `*` を使い、接続・状態復元/印・移動の
 データだけを含む。bridgeは親windowとHTTP originを確認し、tokenの読取りやservice通信を行わない。
 

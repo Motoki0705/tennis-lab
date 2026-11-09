@@ -344,7 +344,11 @@ popups or top-navigation permission, and no token or cookies. Generated scripts 
 blocked. The control UI accepts only `ready`, `selection` and reading `state` messages from
 the exact frame window, origin `null`, current document/revision and per-view nonce;
 selection IDs/quotes/positions and state shape are checked against that revision. None
-can send instructions. Parent-to-frame messages use target origin `*` because the receiver
+can send instructions. The reader projection uses the shared StrictHTMLParser.
+Target indexing uses an inert template; no parsed nodes enter the control DOM. The
+control CSP may report rejected inline style attributes from app.js during this
+parse. Keep that policy strict; document styles apply only inside the content iframe.
+Parent-to-frame messages use target origin `*` because the receiver
 is opaque and contain only connection, restore/highlight or navigation data. The bridge
 checks parent window and its HTTP origin; it cannot read a token or call the service.
 

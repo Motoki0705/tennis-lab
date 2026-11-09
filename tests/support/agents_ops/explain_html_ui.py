@@ -1,4 +1,8 @@
-"""Real HTTP/store/controller; only the editor and rendering verdict are fakes."""
+"""Real HTTP/store/controller; explicit fake editor/rendering verdict boundaries.
+
+Four UI scenarios use a small renderer fake. The managed scenario uses actual
+v1/v2 compiler, renderer bytes, visual safety and image-unavailability policy.
+"""
 
 from __future__ import annotations
 
@@ -27,9 +31,11 @@ from tests.support.agents_ops.explain_html import (
     store_api,
     validation_for,
 )
+from tests.support.agents_ops.explain_html_visuals import make_visual_bundle, visuals
 from tests.support.agents_ops.explain_jobs import jobs, service
 
 web: Any = importlib.import_module("explain_html.web")
+managed: Any = importlib.import_module("explain_html.managed")
 RENDERER = b"""(() => {
 const input = document.querySelector('[data-figure-id="error-plot"] input');
 if (input) input.addEventListener('input', () => {
@@ -79,8 +85,36 @@ class BrowserWorld:
         self.gates: dict[str, tuple[Event, Event]] = {}
         self.condition = Condition()
         self.finishing = False
+        self.resources = managed.ManagedResources()
         for name in ("reading", "recovery", "security", "removed"):
             document, payloads = initial_document(name)
+            candidate = candidate_for(document)
+            candidate = candidate.model_copy(
+                update={
+                    "request": candidate.request.model_copy(
+                        update={"document_id": name}
+                    )
+                }
+            )
+            self.initial[name] = self.store.import_initial(
+                candidate, payloads, validation_for(candidate)
+            )
+        for version in ("1", "2"):
+            name = f"managed-v{version}"
+            document, payloads = make_visual_bundle(version)
+            # Generated CSS must remain confined to the content iframe. If the
+            # UI accidentally inserts parsed nodes, this hides its edit form.
+            document = document.model_copy(
+                update={
+                    "document_id": name,
+                    "html": document.html.replace(
+                        "p{line-height:1.4}",
+                        "p{line-height:1.4}#edit-form{display:none!important}",
+                        1,
+                    ),
+                }
+            )
+            visuals.validate_visuals(document, payloads)
             candidate = candidate_for(document)
             candidate = candidate.model_copy(
                 update={
@@ -95,8 +129,17 @@ class BrowserWorld:
         self.controller = jobs.JobController(
             self.store,
             lambda prepared: self,
-            lambda candidate, assets, cancel: schema.CheckResult(status="passed"),
+            self.validate_bundle,
+            prepare=self.resources.prepare,
         )
+
+    @staticmethod
+    def validate_bundle(candidate: Any, assets: Any, *, cancel: Event) -> Any:
+        if candidate.document.document_id.startswith("managed-"):
+            visuals.validate_visuals(candidate.document, dict(assets))
+        # Publication's browser verdict is a test fake; the Node browser then
+        # exercises the real renderer and CSP in the published reader view.
+        return schema.CheckResult(status="passed")
 
     def edit(self, request: Any, current: Any, context: Any, *, cancel: Event) -> Any:
         entered, release = Event(), Event()
@@ -112,6 +155,32 @@ class BrowserWorld:
         if "fail" in request.instruction:
             raise schema.ContractError("generation_failed")
         if "image" in request.instruction:
+            if request.document_id.startswith("managed-"):
+                image = schema.Figure(
+                    figure_id="requested-image",
+                    content_id="geometry",
+                    kind="image",
+                    asset_ids=[],
+                    caption="A new generated illustration of the camera rays.",
+                    alt="Conceptual camera rays meeting at a ball.",
+                    provenance=schema.Provenance(
+                        kind="generated_concept", source="Requested during reading."
+                    ),
+                )
+                intent = current.document.model_copy(
+                    update={
+                        "figures": [*current.document.figures, image],
+                        "html": current.document.html.replace(
+                            "</section>",
+                            '<figure data-figure-id="requested-image"></figure></section>',
+                            1,
+                        ),
+                    }
+                )
+                self.resources.compiler({})(intent)
+                raise AssertionError(
+                    "Managed browsing image policy admitted new generation."
+                )
             raise schema.ContractError("image_generation_unavailable")
         if "interrupt" in request.instruction:
             raise schema.ContractError("interrupted")
@@ -131,11 +200,16 @@ class BrowserWorld:
                 "ball position. Each camera supplies one direction; their intersection "
                 "gives the shared position in space.</p>"
             )
-            data["html"] = data["html"].replace(
-                '<p data-evidence-id="baseline">',
-                answer + '<p data-evidence-id="baseline">',
+            marker = (
+                "<p>😀 Intersect"
+                if request.document_id.startswith("managed-")
+                else '<p data-evidence-id="baseline">'
             )
+            assert marker in data["html"]
+            data["html"] = data["html"].replace(marker, answer + marker, 1)
         document = schema.parse(schema.Document, json.dumps(data))
+        if request.document_id.startswith("managed-"):
+            document = self.resources.compiler({})(document)
         candidate = schema.Candidate(
             request=request,
             document=document,

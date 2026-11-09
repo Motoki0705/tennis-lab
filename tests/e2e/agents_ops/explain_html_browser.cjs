@@ -1,4 +1,4 @@
-// Pytest owns the real HTTP server and store. One Chromium, four scenarios.
+// Pytest owns the real HTTP server and store. One Chromium, five scenarios.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -11,6 +11,7 @@ const output = config.output;
 fs.mkdirSync(output, { recursive: true });
 const errors = [],
   consoleErrors = [],
+  consoleEntries = [],
   requests = [],
   externalFinished = [],
   failures = [];
@@ -45,8 +46,14 @@ async function open(documentId, options = {}) {
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
-    if (message.type() === 'error')
+    if (message.type() === 'error') {
       consoleErrors.push(message.text().replaceAll(config.token, '[token]'));
+      consoleEntries.push({
+        text: message.text().replaceAll(config.token, '[token]'),
+        location: message.location(),
+        url: page.url().split('#')[0],
+      });
+    }
   });
   page.on('request', (request) =>
     requests.push({
@@ -479,6 +486,93 @@ async function removed() {
   assert.equal(await page.locator('#send').isDisabled(), false);
   await context.close();
 }
+async function managedRenderer() {
+  for (const version of ['2', '1']) {
+    const { page, context } = await open(`managed-v${version}`);
+    const first = await revision(page);
+    let body = await frame(page);
+    const graph = body.locator('[data-figure-id="error-plot"]');
+    assert.equal(await page.locator('#edit-form').isVisible(), true);
+    assert.equal(await page.locator('[data-asset-id]').count(), 0);
+    assert.equal(await page.locator('#document').getAttribute('sandbox'), 'allow-scripts');
+    assert.equal(await body.evaluate(() => self.origin), 'null');
+    assert.equal(
+      await body.evaluate((version) => window[`ExplainVisualsV${version}`]?.version, version),
+      version,
+    );
+    const slider = graph.locator('input[type="range"]');
+    await slider.focus();
+    await slider.press(version === '2' ? 'End' : 'Home');
+    const expected = version === '2' ? '10' : '-10';
+    const depth = version === '2' ? '12' : '24';
+    assert.equal(await slider.inputValue(), expected);
+    assert.match(
+      await graph.locator('[data-slider-value]').textContent(),
+      new RegExp(`${expected} px; Depth = ${depth} m`),
+    );
+    assert.equal(await graph.locator(`circle[data-x="${expected}"]`).getAttribute('data-y'), depth);
+    await page.waitForFunction(
+      (expected) =>
+        window.readerEvents.some(
+          (event) =>
+            event.type === 'state' &&
+            event.state.blocks.some(
+              (block) => block.content_id === 'limits' && block.inputs[0]?.value === expected,
+            ),
+        ),
+      expected,
+    );
+    await page.locator('#target').selectOption('content:geometry');
+    const edit = await submit(page, `hold add explanation beside the real v${version} graph`);
+    await state(page, 'running');
+    assert.equal(await revision(page), first);
+    await release(edit);
+    await completed(page, first);
+    body = await frame(page);
+    const updatedGraph = body.locator('[data-figure-id="error-plot"]');
+    assert.equal(await updatedGraph.locator('input').inputValue(), expected);
+    assert.match(
+      await updatedGraph.locator('[data-slider-value]').textContent(),
+      new RegExp(`${expected} px; Depth = ${depth} m`),
+    );
+    assert.equal(
+      await body.evaluate((version) => window[`ExplainVisualsV${version}`]?.version, version),
+      version,
+    );
+    // The real managed hash and fixed bridge may execute. Arbitrary new bytes
+    // must still be rejected in the opaque iframe after the reader transformation.
+    await body.evaluate(() => {
+      const script = document.createElement('script');
+      script.textContent = 'window.MANAGED_ESCAPE=true';
+      document.body.append(script);
+    });
+    assert.equal(await body.evaluate(() => window.MANAGED_ESCAPE), undefined);
+    assert.equal(
+      await body.evaluate(() => {
+        try {
+          return parent.document.title;
+        } catch {
+          return 'denied';
+        }
+      }),
+      'denied',
+    );
+    await page.screenshot({ path: path.join(output, `managed-v${version}.png`) });
+    if (version === '2') {
+      const current = await revision(page);
+      await submit(page, 'image: add a new generated illustration');
+      await state(page, 'failed');
+      assert.equal(await revision(page), current);
+      assert.match(await page.locator('#notice').textContent(), /image_generation_unavailable/);
+      const help = page.locator('details').filter({ hasText: 'AI画像の新規生成' });
+      await help.locator('summary').click();
+      assert.match(await help.innerText(), /初版/);
+      assert.match(await help.innerText(), /SVG・グラフ/);
+      assert.equal(await page.locator('#send').isEnabled(), true);
+    }
+    await context.close();
+  }
+}
 (async () => {
   const start = performance.now();
   browser = config.cdp
@@ -492,13 +586,28 @@ async function removed() {
   const setupMs = performance.now() - start,
     scenarios = [];
   try {
-    for (const operation of config.demo ? [reading] : [reading, recovery, security, removed]) {
+    for (const operation of config.demo
+      ? [reading]
+      : [reading, recovery, security, removed, managedRenderer]) {
       const started = performance.now();
       await operation();
       scenarios.push({ name: operation.name, ms: performance.now() - started });
     }
     assert.deepEqual(errors, []);
     assert.deepEqual(externalFinished, []);
+    // The control CSP also rejects inline attributes during inert indexing. It
+    // remains strict; styles in the actual content iframe must still work.
+    const inertStyleWarnings = consoleEntries.filter(
+      (entry) =>
+        /Applying inline style/.test(entry.text) && entry.location.url.endsWith('/ui/app.js'),
+    );
+    assert.deepEqual(
+      consoleEntries.filter(
+        (entry) =>
+          /Applying inline style/.test(entry.text) && !entry.location.url.endsWith('/ui/app.js'),
+      ),
+      [],
+    );
     assert.deepEqual(
       consoleErrors.filter(
         (error) =>
@@ -519,7 +628,17 @@ async function removed() {
     fs.writeFileSync(
       path.join(output, 'browser-log.json'),
       JSON.stringify(
-        { setupMs, scenarios, errors, consoleErrors, failures, externalFinished, requests },
+        {
+          setupMs,
+          scenarios,
+          errors,
+          consoleErrors,
+          consoleEntries,
+          inertStyleWarnings,
+          failures,
+          externalFinished,
+          requests,
+        },
         null,
         2,
       ),

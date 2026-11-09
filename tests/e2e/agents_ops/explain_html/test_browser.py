@@ -1,4 +1,4 @@
-"""One browser launch, four reader/editor scenarios, no external API or GPU."""
+"""One browser launch, five reader/editor scenarios, no external API or GPU."""
 
 import json
 import os

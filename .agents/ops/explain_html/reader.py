@@ -12,13 +12,13 @@ import base64
 import hashlib
 import re
 from html import escape
-from html.parser import HTMLParser
 from pathlib import Path
 
+from .parsing import StrictHTMLParser
 from .schema import ContractError, Revision
 
 
-class _Markup(HTMLParser):
+class _Markup(StrictHTMLParser):
     def __init__(self, html: str):
         super().__init__(convert_charrefs=False)
         self.offsets = [0, *(match.end() for match in re.finditer("\n", html))]

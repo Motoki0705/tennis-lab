@@ -247,7 +247,9 @@ view加入最少的阅读辅助style和固定 `web/reader.js`，以其精确byte
 iframe使用 `sandbox="allow-scripts"` 和opaque origin，不授予same-origin、forms、popups或top-navigation，
 也不传入token/cookie。生成script仍被阻止。固定UI仅接收来自确切frame window、origin `null`、当前
 文档/revision及每个view nonce匹配的 `ready`、`selection` 与阅读 `state` message；内容ID/quote/位置及
-state结构均与显示版本核对，无法通过message发送指令。由于目标为opaque origin，父页面以target origin
+state结构均与显示版本核对，无法通过message发送指令。阅读view使用共通StrictHTMLParser。目标索引在inert template中解析，不把节点插入固定UI的DOM。
+此时app.js可能报告inline style属性被控制页CSP拒绝；保持该policy严格，正文style仅作用于iframe。
+由于目标为opaque origin，父页面以target origin
 `*` 发送连接、恢复状态/标记及导航数据。bridge核对父window及HTTP origin，不读取token也不访问service。
 
 处理期间旧frame保持可读。成功发布的新版在第二个frame中初始化bridge后再切换。对于HTML、图表定义和
