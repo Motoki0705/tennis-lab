@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "result": "allocation_refused",
+  "allocation_attempt_returncode": 1,
+  "session_requested": "player-view-stabilization-20261109",
+  "agent_session": "01a1be2e-ac58-7473-9cde-76c8e2ad0fb2",
+  "model": "gpt-6.1-sol",
+  "reasoning_effort": "max",
+  "source_ref_requested": "d133993421c206af28340f4ffe082c65b70fe7a7",
+  "local_source_ref": "d133993421c206af28340f4ffe082c65b70fe7a7",
+  "remote_source_ref": null,
+  "allocation_request_utc": "2026-11-09T02:51:54.965665+00:00",
+  "allocation_utc": null,
+  "gpu_deadline_utc": null,
+  "gpu_requested": "L4",
+  "gpu_observed": null,
+  "versions": {
+    "colab_cli": "0.7.4",
+    "gpu": null,
+    "blender": null,
+    "ffmpeg": null,
+    "python_remote": null
+  },
+  "start_receipt": {
+    "schema_version": 1,
+    "ok": false,
+    "error": "Command failed (1): [colab] Allocation refused (precondition failed). This can mean too many active sessions, or a temporary usage or capacity limit for the requested runtime. Run `colab stop` to free up a session, wait and retry, or try a different accelerator.\n"
+  },
+  "status_receipt": {
+    "schema_version": 1,
+    "ok": false,
+    "error": "Colab registry is absent; refusing an implicit allocation"
+  },
+  "owned_registry_present": false,
+  "colab_job_ids": [],
+  "queue_job_id": null,
+  "queue_command_registered": false,
+  "preview_result": "not_started",
+  "images_generated": 0,
+  "contact_paths": [],
+  "drive_input_path": "gdrive:tennis_lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/inputs",
+  "input_upload_verified": true,
+  "input_upload_receipt": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/input-upload-verified.json",
+  "drive_preview_path": null,
+  "drive_output_save_receipt": null,
+  "other_assignments_touched": false,
+  "tracked_status_unchanged_during_worker": true,
+  "further_action_constraint": "Existing two assignments are owned by other workers; accelerator/version changes and duplicate sessions are forbidden. No runtime exists to repair or release."
+}
