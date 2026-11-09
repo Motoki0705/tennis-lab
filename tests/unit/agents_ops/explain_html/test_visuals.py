@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import importlib
+import re
 from pathlib import Path
 from typing import Any
 
@@ -156,6 +158,18 @@ def test_rendered_figures_expose_data_units_provenance_and_pinned_renderer() -> 
     missing = document.model_copy(update={"assets": []})
     with pytest.raises(schema.ContractError):
         visuals.validate_visuals(missing, {})
+    # Rounded display labels must not round the actual slider input boundaries.
+    precise = copy.deepcopy(ERROR_GRAPH)
+    bound = 0.123456789123
+    precise["x"]["domain"] = [-bound, bound]
+    precise["data"]["sample_errors_px"] = [-bound, 0, bound]
+    precise["slider"].update(min=-bound, max=bound, step=bound)
+    exact, _ = bundle(precise)
+    attributes = re.search(
+        r'<input[^>]+min="([^"]+)" max="([^"]+)" step="([^"]+)"', exact.html
+    )
+    assert attributes is not None
+    assert [float(value) for value in attributes.groups()] == [-bound, bound, bound]
 
 
 def test_generated_html_cannot_introduce_scripts_events_or_false_graph_labels() -> None:

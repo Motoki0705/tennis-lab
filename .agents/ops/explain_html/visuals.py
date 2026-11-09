@@ -342,7 +342,7 @@ def _graph_html(graph: Graph, alt: str) -> str:
         slider = graph.slider
         initial = graph_series(graph)[0]
         current = next(p.y for p in initial.points if p.x == slider.initial)
-        result += f'<label>{escape(slider.label)} ({escape(slider.unit)}) <input data-managed-slider="1" type="range" min="{_number(slider.min)}" max="{_number(slider.max)}" step="{_number(slider.step)}" value="{_number(slider.initial)}"></label>'
+        result += f'<label>{escape(slider.label)} ({escape(slider.unit)}) <input data-managed-slider="1" type="range" min="{slider.min!r}" max="{slider.max!r}" step="{slider.step!r}" value="{slider.initial!r}"></label>'
         result += f'<output data-slider-value="1" aria-live="polite">{_number(slider.initial)} px; {escape(graph.y.label)} = {_number(current)} m</output>'
         result += f"<p>Rectified pinhole stereo: Z = f B / (d + error). f = {_number(graph.data.focal_px)} px; B = {_number(graph.data.baseline_m)} m; d = {_number(graph.data.disparity_px)} px. Error range: [{_number(slider.min)}, {_number(slider.max)}] px. Calibration, rectification and correct correspondence are assumed. This is a signed disparity-error example.</p>"
     result += '<div data-plot="1">' + _plot(graph) + "</div>"
