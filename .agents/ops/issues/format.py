@@ -226,30 +226,57 @@ def render_child_tasks(tasks: Sequence[ChildTask]) -> str:
     )
 
 
+def _child_checklist_error(
+    line: str, reason: str = "invalid child checklist row"
+) -> ValueError:
+    return ValueError(
+        f"{reason}: {line!r}; 修正: 子issue未作成なら先頭行を「{NO_CHILDREN}」"
+        "にしてください（句点「。」・同じ行の説明・続く分割候補の段落は可、チェック行は不可）。"
+        "作成済みなら未分割表記と説明文を外し、実番号とタスク名を使って各行を「- [ ] #123 タスク名」"
+        "（完了時は「- [x] #123 タスク名」）の形式に直してください。"
+    )
+
+
 def parse_child_tasks(text: str) -> tuple[ChildTask, ...]:
-    if text.strip() == NO_CHILDREN:
+    lines = [line for line in visible_lines(text) if line.strip()]
+    if lines and lines[0].strip().startswith(NO_CHILDREN):
+        for index, line in enumerate(lines):
+            row = (
+                line.strip().removeprefix(NO_CHILDREN).removeprefix("。")
+                if index == 0
+                else line
+            )
+            # Reject even malformed task-list rows rather than treating them as notes.
+            if re.match(
+                r"\s*(?:[-*+]|\d+[.)])\s*\[(?:[ xX]\](?!\()|[^\]]?\]\s*#)", row
+            ):
+                raise _child_checklist_error(
+                    line, "cannot mix unsplit marker and child checklist rows"
+                )
         return ()
     tasks: list[ChildTask] = []
-    for line in visible_lines(text):
-        if not line.strip():
-            continue
+    seen: set[int] = set()
+    for line in lines:
         match = re.fullmatch(r"- \[([ xX])\] #([1-9][0-9]*) (\S.*)", line)
         if not match:
-            raise ValueError(f"invalid child checklist row: {line}")
+            raise _child_checklist_error(line)
         checked, number, title = match.groups()
         cancelled = title.endswith("（取消）")
         if cancelled and checked != " ":
-            raise ValueError("cancelled child must remain unchecked")
+            raise _child_checklist_error(line, "cancelled child must remain unchecked")
         status: TaskStatus = (
             "cancelled" if cancelled else "completed" if checked != " " else "open"
         )
-        tasks.append(ChildTask(int(number), title.removesuffix("（取消）"), status))
+        try:
+            task = ChildTask(int(number), title.removesuffix("（取消）"), status)
+        except ValueError as exc:
+            raise _child_checklist_error(line, str(exc)) from exc
+        if task.number in seen:
+            raise _child_checklist_error(line, "duplicate child in checklist")
+        seen.add(task.number)
+        tasks.append(task)
     if not tasks:
-        raise ValueError(
-            f"empty child checklist; use '{NO_CHILDREN}' before subdivision"
-        )
-    if len({task.number for task in tasks}) != len(tasks):
-        raise ValueError("duplicate child in checklist")
+        raise _child_checklist_error("", "empty child checklist")
     return tuple(tasks)
 
 
