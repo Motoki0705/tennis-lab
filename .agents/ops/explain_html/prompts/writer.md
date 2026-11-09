@@ -32,6 +32,15 @@ For edits, compare against current_revision.document, not against context, when
 declaring changes. An unchanged evidence set then has no evidence_changes entries.
 change_summary describes this request's changes, including missing information.
 Do not submit validation results, claim verifier approval, or add fields.
+Use these exact change-record shapes: changes entries are
+{"content_id":"block-id","kind":"added"}; evidence_changes entries are
+{"evidence_id":"fact-id","kind":"added","reason":"Why this evidence changed."}.
+The kind is added, updated or removed. Do not use action instead of kind, do not
+put reason in changes, and never omit evidence_changes (use [] if unchanged).
+The complete top-level object has request, document, changes, evidence_changes
+and change_summary. document always has document_id, purpose, audience, evidence,
+html, assets and figures. Copy purpose and audience exactly from context, even
+when they already appear in the HTML or a previous revision.
 
 The compiler owns CSP meta elements, managed JavaScript, managed figure contents
 and figure containment CSS. OMIT all http-equiv meta, all script elements and
