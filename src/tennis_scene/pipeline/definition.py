@@ -10,6 +10,9 @@ from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.player_association.appearance.encoders import build_encoder
 from src.tasks.player_association.appearance.sampling import CropSamplingConfig
 from src.tennis_scene.pipeline.artifacts import json_value
+from src.tennis_scene.pipeline.components.ball_annotations import (
+    ImportedBallAnnotationModule,
+)
 from src.tennis_scene.pipeline.components.ball_detection import BallDetectionModule
 from src.tennis_scene.pipeline.components.ball_points import BallPointsModule
 from src.tennis_scene.pipeline.components.body_placement import BodyPlacementModule
@@ -107,6 +110,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         if name in overrides:
             component = overrides[name]
             resolved = {"override": f"{type(component).__module__}.{type(component).__qualname__}"}
+        elif cfg.direct_annotation is not None and stage in {"court_detection", "ball_detection"}:
+            resolved = {"input": "fixed_geometry" if stage == "court_detection" else "saved_video_ball_annotation_v3"}
         else:
             resolved = settings()
         mode = "load" if cfg.cache_source == "load" else cfg.component_sources[stage]
@@ -140,11 +145,15 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             raise ValueError("court_side decides sides from the ball alone; it requires ball_detection.enabled or execution.court_side=load")
         if any(cfg.component_sources[key] != "load" for key in ("ball_detection", "ball_points")):
             raise ValueError("Disabled ball detection requires explicit load for the detector/point chain")
+    ball_config = cfg.ball_detection
     for camera in ids:
-        add(f"ball_detection/{camera}", BallDetectionModule(cfg.ball_detection),
+        if ball_config is None and cfg.ball_method != "gpt_annotation":
+            raise ValueError("Model ball detection requires its model configuration")
+        detector = ImportedBallAnnotationModule() if ball_config is None else BallDetectionModule(ball_config)
+        add(f"ball_detection/{camera}", detector,
             BallDetectionInputAssembler(), {},
             lambda: {"config": cfg.processing_settings["ball_detection"],
-                     "checkpoint": file_identity(cfg.ball_detection.checkpoint)}, camera=camera)
+                     "checkpoint": file_identity(ball_config.checkpoint) if ball_config is not None else None}, camera=camera)
         add(f"ball_points/{camera}", BallPointsModule(cfg.ball_smoothing), BallPointsInputAssembler(),
             {"detections": f"ball_detection/{camera}"},
             lambda: {"point": "motion_consensus_loess_observed_only", "smoothing": cfg.ball_smoothing}, camera=camera)
@@ -217,8 +226,8 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     """Every model asset the standard recipe reads for the enabled features."""
     people, body = cfg.enabled["person_observations"], cfg.enabled["gvhmr"]
     return {
-        "court": cfg.court_kp.checkpoint,
-        "ball": cfg.ball_detection.checkpoint,
+        **({"court": cfg.court_kp.checkpoint} if cfg.direct_annotation is None else {}),
+        **({"ball": cfg.ball_detection.checkpoint} if cfg.ball_detection is not None else {}),
         **({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **({"tracking_encoder": cfg.tracking_encoder_weights, "aflink": cfg.aflink_checkpoint} if people else {}),

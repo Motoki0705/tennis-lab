@@ -13,9 +13,12 @@
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
 | `orchestrator.py` | source動画の束縛、標準recipeのcomposition、scene export、実行receipt |
+| `direct_annotation/` | 白紙注釈request・固定幾何参照と、scene完了・公開だけの再開 |
 | `feature_flags.py` | 無効化できる出力機能（`OPTIONAL_FEATURES`）とその依存関係 |
 
 component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.yaml`の`execution`はその全てを1回ずつ持つ。
+`ball_detection.method=model`が既定。`gpt_annotation`の設定・分離したreceipt・復旧・後続受入は
+[一連実行のREADME](direct_annotation/README.ja.md)を正本とする。
 
 ## 処理単位
 

@@ -284,8 +284,9 @@ def make_store(
     *,
     detector_origin: str = "component",
     court_diagnostics_override=None,
+    source: ClipSource | None = None,
 ) -> ClipStore:
-    source = ClipSource(
+    source = source or ClipSource(
         "historical_fixture_id",
         tuple(
             SourceVideo(

@@ -31,7 +31,6 @@ from src.tasks.base.annotation.workers.contracts import (
 
 from ..contracts import VideoBallFrame
 from .contracts import (
-    DEFAULT_POLICY,
     AgentDecision,
     AgentTask,
     AgentView,
@@ -47,8 +46,12 @@ class BallVideoWorker:
     name = "ball_video_annotation"
     version = "3"
 
-    def __init__(self, policy: AnnotationPolicy = DEFAULT_POLICY) -> None:
-        self.policy = AnnotationPolicy.model_validate_json(policy.canonical_bytes())
+    def __init__(self, policy: AnnotationPolicy | None = None) -> None:
+        self.policy = (
+            None
+            if policy is None
+            else AnnotationPolicy.model_validate_json(policy.canonical_bytes())
+        )
 
     def input_references(
         self, layout: AnnotationLayout, plan: LocalAnnotationPlan, request: WorkRequest
@@ -88,6 +91,9 @@ class BallVideoWorker:
         *,
         timeout_seconds: float,
     ) -> PreparedWorker:
+        from src.tasks.annotation.annotation_policy import (
+            read_registered_annotation_policy,
+        )
         from src.tasks.annotation.contracts import LocalAnnotationRuntime
 
         self.input_references(layout, plan, request)
@@ -97,19 +103,11 @@ class BallVideoWorker:
             layout.path("campaigns", plan.campaign_id, "configuration", "runtime.json"),
         )
         runtime = read_document(layout, runtime_ref, LocalAnnotationRuntime)
-        if plan.phase == "benchmark":
-            policy_path = layout.path(
-                "campaigns", plan.campaign_id, "benchmark", "policy.json"
+        policy = read_registered_annotation_policy(layout, runtime)
+        if self.policy is not None and self.policy != policy:
+            raise ValueError(
+                "worker policy differs from its registered annotation policy"
             )
-            if (
-                read_document(
-                    layout, annotation_reference(layout, policy_path), AnnotationPolicy
-                )
-                != self.policy
-            ):
-                raise ValueError(
-                    "worker policy differs from its frozen benchmark condition"
-                )
         if (
             runtime.plan != context.plan
             or runtime.cost("review").timeout_seconds != timeout_seconds
@@ -119,7 +117,7 @@ class BallVideoWorker:
             context=request.payload,
             plan=context.plan,
             runtime=runtime_ref,
-            policy=self.policy,
+            policy=policy,
             timeout_seconds=timeout_seconds,
         )
         run_ref = write_document(
@@ -145,7 +143,7 @@ class BallVideoWorker:
                     "input": store.expected.model_dump(mode="json"),
                     "initial_revision": revision.model_dump(mode="json"),
                     "summary": progress_summary(store.annotation(revision)),
-                    "policy": self.policy.model_dump(mode="json"),
+                    "policy": policy.model_dump(mode="json"),
                 }
             )
             + b"\n",

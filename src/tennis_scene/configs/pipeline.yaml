@@ -11,6 +11,15 @@ camera_ids:
 - cam0
 - cam1
 - cam2
+clip_id: null
+direct_annotation:
+  request: null
+  request_sha256: null
+  bundle: null
+  bundle_sha256: null
+  court_detection: stored_artifact
+  publish_dataset: false
+  resume: workflow
 output_directory: ${tennis_output:tennis_scene,generate,pipeline,${tennis_run_id:}}
 output_name: tennis_clip
 device: cuda
@@ -114,6 +123,7 @@ person_observations:
   # Cap linked player groups AFTER court dwell selection; never cap raw person tracks.
   max_tracks_per_camera: 6
 ball_detection:
+  method: model
   checkpoint: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
   enabled: true
   batch_size: 4

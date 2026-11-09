@@ -44,7 +44,7 @@ class BallAnnotationImporter:
     annotations: Mapping[str, Path]
     expected_inputs: Mapping[str, VideoAnnotationInput]
 
-    def _validate_source(self, source: ClipSource) -> None:
+    def validate_source(self, source: ClipSource) -> None:
         if set(self.annotations) != set(source.camera_ids) or set(self.expected_inputs) != set(source.camera_ids):
             raise ValueError("Annotation paths and pinned inputs must match every source camera")
         if len({i.source.recording_id for i in self.expected_inputs.values()}) != 1:
@@ -68,7 +68,7 @@ class BallAnnotationImporter:
         """
         by_name = {n.name: n for n in nodes}
         source = by_name["ball_triangulation"].context.source
-        self._validate_source(source)
+        self.validate_source(source)
         for name in ("court_side", "camera_alignment"):
             if name not in by_name or by_name[name].bindings or by_name[name].source != "load":
                 raise ValueError("v3 annotations require explicitly bound fixed geometry inputs")
@@ -102,7 +102,7 @@ class BallAnnotationImporter:
         return tuple(replacements.get(n.name, n) for n in nodes)
 
     def publish(self, nodes: Sequence[ComponentNode], store: ClipStore, source: ClipSource) -> dict[str, ArtifactRef]:
-        self._validate_source(source)
+        self.validate_source(source)
         if store.source != json_value(source):
             raise ValueError("Annotation import store differs from the declared source")
         prepared = []

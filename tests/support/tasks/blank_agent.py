@@ -371,6 +371,7 @@ def fake_worker(
     refresh_after_edit: bool = False,
     save_limit: int = 1,
     pause_camera: str | None = None,
+    decisions: dict[str, list[dict[str, Any]]] | None = None,
 ) -> tuple[str, ...]:
     """Only the model is replaced; service inboxes, kernel sandbox and saves are real."""
     source = r"""
@@ -432,12 +433,16 @@ if REFRESH:
     before = dict(envelopes)
 remaining = handoff['remaining'][:SAVE_LIMIT] if pause else handoff['remaining']
 updates = []
+decisions = DECISIONS
 for row in rows:
     if row['frame_index'] not in remaining:
         continue
     # Final unknown is intentional; subsequent attempts must not repeat it.
     state = 'unknown' if row['frame_index'] == rows[0]['frame_index'] else 'in_frame'
     updates.append(dict(row, state=state, occlusion='unknown' if state=='unknown' else 'not_occluded', position=None if state=='unknown' else {'x':12.0,'y':9.0,'provenance':{'kind':'estimated','support_frames':[selected]}}))
+    if decisions is not None:
+        decision = decisions[camera][row['frame_index']]
+        updates[-1] = dict(row, **{k:v for k,v in decision.items() if k not in ('frame_index','pts')})
 if updates:
     handoff = service('video_edit', {'camera_id':camera,'expected_revision':handoff['revision'],'rows':updates,'reason':'inference from same-camera anchor'})
 if REFRESH:
@@ -475,5 +480,6 @@ print(json.dumps({'type':'turn.completed'}), flush=True)
         .replace("PAUSE", repr(pause_after_save))
         .replace("SAVE_LIMIT", repr(save_limit))
         .replace("REFRESH", repr(refresh_after_edit))
+        .replace("DECISIONS", repr(decisions))
     )
     return ("/usr/bin/python3", "-I", "-S", "-c", source)

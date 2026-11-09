@@ -13,7 +13,9 @@ GVHMRの身体復元を組み合わせてSceneResultを作ります。根拠不�
 6. GVHMRの関節姿勢を保ち、三角測量COCO17へ位置・yawを時系列で配置。
 7. 元動画の時間軸でSceneResult、品質mask、診断を保存。
 
-Court・人物・球の手動入力は要求しません。
+既定の通常モデル経路はCourt・人物・球の手動入力を要求しません。
+`ball_detection.method=gpt_annotation`では白紙注釈・自動継続・保存済みv3の再読込・固定幾何の
+三角測量・任意dataset公開を一連で実行できます。[利用と復旧](pipeline/direct_annotation/README.ja.md)を参照してください。
 
 対応範囲は同期・同FPS・同解像度の3〜5 view、各camera選別後`person_observations.max_tracks_per_camera` group、
 シングルスまたはダブルス（`player_association.players_per_side`）、球は各camera/frame高々1検出です。
@@ -58,7 +60,9 @@ Court・ball検出器のpixel格子正規化（W-1/H-1）は`src.utils.geometry.
 CourtKP14のcamera-local順は変えず、半回転は推論後の幾何だけへ適用します。
 
 補間boxは実検出と区別し、observed_maskとjoint confidenceをvisibilityへ反映します。
-無観測の人物にIDは割り当てません。ボールには人物のようなID推論はなく、検出器の実観測から外れ値を除いたmaskで三角測量します。診断用の補間点は観測に数えず、2view未満の時刻は3Dでも欠損です。
+無観測の人物にIDは割り当てません。通常モデルの球は、検出器の実観測から外れ値を除いたmaskで三角測量します。
+診断用の補間点は観測に数えません。GPT方式の観測・推定の利用は[注釈import契約](pipeline/imports/README.ja.md)に従います。
+両方式とも2view未満の時刻は3Dでも欠損です。
 
 sideはball観測だけで決め、最低evidence、referenceとの接続性、絶対的な幾何品質、次点とのmarginを要求します。
 決まらないclipは理由付きで停止します。`camera_alignment`は人物観測も加えて絶対的な幾何品質を再検証します。校正はframe 0で採用されたHomographyの投影点に対する
@@ -82,7 +86,7 @@ v2でmaskや理由コードが欠けた・矛盾したarchiveは保存・読込�
 | ball_3d_valid | T | 球の三角測量 | ball_rejection_code |
 
 無効な座標は0で保存し、座標値0から有効性を推定しません。理由コード0は有効を意味します。
-heading・meshは有効なrootを、3Dの人物は実2D観測を、球の3Dは2 view以上の観測を必要とします。
+heading・meshは有効なrootを、3Dの人物は実2D観測を、球の3Dは方式の方針で利用可能な2 view以上の2D位置を必要とします。
 有効な3Dを持つsceneは `metadata.court_reference` を必須とします。検証の正本は
 `schema.validate_scene_result_arrays` です。v2では `gvhmr_aligned_*` を使いません。
 rendererはmaskに従い、mesh不足frameでは有効COCO17を描画し、軌跡・速度・bounceは欠測を跨ぎません。
