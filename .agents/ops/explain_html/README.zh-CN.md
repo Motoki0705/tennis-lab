@@ -29,7 +29,10 @@ HTML/内容/成果物 ID。HTML 原生 `id` 与 `data-content-id` 属于不同�
 图和依据通过 `data-figure-id`、`data-evidence-id` 引用，资源可以使用 `data-asset-id`。
 
 每个请求用 `base_revision` 固定目标。内容目标必须存在。选区还包含 exact 引文、prefix/suffix，
-以及整个块 DOM `textContent` 的 **UTF-16 code unit** start/end。解码 HTML 实体，不归一化空白。
+以及整个块 DOM `textContent` 的 **UTF-16 code unit** start/end。按照
+[HTML parser 规则](https://html.spec.whatwg.org/multipage/parsing.html#preprocessing-the-input-stream)，
+先将输入 CRLF/CR 转为 LF，再展开实体引用，并移除 `pre`/`textarea`/`listing` 紧接着的一个 LF。
+在此结果中计数，保留其他空白，非 BMP 字符占两个 code unit。存储和 markup 比较仍使用未改变的原始 HTML。
 不是 text node 的局部 offset，也不是 `innerText`。位置、引文、上下文和 surrogate 边界必须全部匹配。
 不会自动迁移引文或 rebase。
 
@@ -38,6 +41,9 @@ Candidate 包含完整的结果 Document、原始 EditRequest、内容变更、�
 初始 import 使用文档目标和 null base，后续更新必须引用当前版本。
 
 `content_changes()` 列出块 markup 的新增/删除/修改，以及图定义、renderer 或所引用 asset 变更的块。
+不依赖 ID 注释或 Figure，普通 `src`、`href`、`data` 及 `srcset`/`imagesrcset` 各候选也从 manifest
+解析。每处引用必须属于某个 content ID，head 中的公共 resource 也一样；没有所属 ID 时返回
+`broken_reference`。asset 变更通知所有包含该引用的 content ID。
 仅移动未改变的块或更改外层布局时，允许空变更清单。`evidence_changes()` 列出依据新增/删除/修改。
 stage 拒绝漏报、虚构或重复声明；依据变更的原因由独立语义验证判断，存储不会自行推测。
 
@@ -55,7 +61,9 @@ Candidate 和 HTTP 均不允许 writer 提交自己的通过判定。只有可�
 判定记录不是 validator 执行或语义真实性的密码学证明。
 
 controller 负责 HTML/SVG 清理、renderer policy、独立语义验证和渲染检查。结构检查解析 HTML 本地
-引用和 fragment，允许外部引用链接，拒绝远程资源 URL、带 URL 的 inline CSS 和 srcset。
+引用和 fragment，允许外部引用链接，拒绝远程资源 URL 和带 URL 的 inline CSS。
+srcset 接受 canonical managed URL 和可选的一致 `w` 或 `x` descriptor；无效、重复、混合 descriptor
+或无法解析的候选都会使整个 source set 失败。
 它不解释 asset 内部内容或执行 JavaScript。CSS/SVG/script 内容和图表专属定义由 visual validator
 负责；仅通过结构检查不足以发布。
 
@@ -107,6 +115,6 @@ UI/renderer 负责 sandbox、选择事件、变更导航和静态导出中的编
 
 用仓库 `.venv/bin/python -m pytest` 执行 `tests/unit/agents_ops/explain_html` 和
 `tests/integration/agents_ops/explain_html`。通过 `--collect-only` 统计数量，
-`--durations=0 --durations-min=0` 测量时间。共 18 个 unit、8 个 integration case，使用真实的小临时
+`--durations=0 --durations-min=0` 测量时间。使用真实的小临时
 文件、非对称块、多个 assets、声明式图表数据、异常注入和同步竞争 writer。
 无需外部 API、GPU、浏览器或实时间 sleep。

@@ -31,7 +31,10 @@ HTML本来の `id` と `data-content-id` は別の名前空間。図・根拠は
 
 すべての要求は `base_revision` へ対象を固定する。内容対象は存在必須。選択対象は、
 完全一致の引用とprefix/suffix、ブロックのDOM `textContent` 全体における **UTF-16 code unit**
-のstart/endを渡す。実体参照はdecodeし、空白は正規化しない。text node内のoffsetや `innerText`
+のstart/endを渡す。[HTML parser規則](https://html.spec.whatwg.org/multipage/parsing.html#preprocessing-the-input-stream)
+に従い、入力CRLF/CR→LF、実体参照の展開、`pre`/`textarea`/`listing` 直後のLF1個の除去を経た
+文字列で数える。その他の空白は保持し、非BMP文字は2 code unitとする。保存・markup比較用の
+生HTMLは変更しない。text node内のoffsetや `innerText`
 ではない。位置・引用・前後文脈のすべてとsurrogate境界を検査し、自動的な引用移動やrebaseはしない。
 
 Candidateは更新後の完全なDocument、元のEditRequest、内容変更、理由付きの根拠変更、変更要約を持つ。
@@ -39,7 +42,10 @@ Candidateは更新後の完全なDocument、元のEditRequest、内容変更、�
 初版は文書全体対象とnullのbaseを使い、以後の更新は現在版IDが必須。
 
 `content_changes()` はブロックmarkupの追加・削除・変更と、図定義・renderer・参照assetが
-変わるブロックを列挙する。ブロックの移動や外側だけの配置変更では空の変更一覧も許す。
+変わるブロックを列挙する。ID注釈やFigureがない通常の `src`・`href`・`data` と、
+`srcset`/`imagesrcset` の各候補もmanifestから解決する。すべての参照箇所がcontent IDの
+配下にあることが必須で、head内の共通resourceも含め、所属がない参照は `broken_reference` にする。
+asset変更は所属するすべてのcontent IDへ通知する。ブロックの移動や外側だけの配置変更では空の変更一覧も許す。
 `evidence_changes()` は根拠の追加・削除・変更を列挙する。stageは未申告・架空・重複の変更を拒否する。
 根拠変更の理由が妥当かは独立した意味検証が判定し、storeが推測しない。
 
@@ -58,7 +64,9 @@ CandidateやHTTPからwriter自身の合格判定を渡す入口はない。comm
 
 controller側はHTML/SVGの無害化、renderer policy、独立した意味検証、表示検査を提供する。
 構造検査はHTMLのローカル参照・fragmentを解決し、外部の出典リンクを許可するが、リモート
-resource URL、URLを含むinline CSS、srcsetは拒否する。asset内部を解釈せず、JavaScriptを実行しない。
+resource URL、URLを含むinline CSSは拒否する。srcsetはcanonicalなmanaged URLと、任意の
+統一された `w` / `x` descriptorを受け付け、不正・重複・混在descriptorや未解決候補があれば
+source set全体を拒否する。asset内部を解釈せず、JavaScriptを実行しない。
 CSS/SVG/scriptの内容とグラフ固有設定はvisual validatorの責務。構造検査だけでは公開できない。
 
 ## 保存・復旧・export
@@ -112,6 +120,6 @@ UI/rendererがsandbox、選択通知、変更箇所移動、静的exportの編�
 
 repoの `.venv/bin/python -m pytest` で `tests/unit/agents_ops/explain_html` と
 `tests/integration/agents_ops/explain_html` を実行する。件数は `--collect-only`、時間は
-`--durations=0 --durations-min=0` で測る。unit 18件・integration 8件で、小さい実ファイル、
+`--durations=0 --durations-min=0` で測る。小さい実ファイル、
 非対称ブロック、複数assets、宣言的グラフデータ、例外注入、同期した競合writerを使う。
 外部API・GPU・browser・実時間sleepは不要。

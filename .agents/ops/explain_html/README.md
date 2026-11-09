@@ -35,8 +35,12 @@ use `data-figure-id` and `data-evidence-id`; resources may use `data-asset-id`.
 
 Every request binds its target to `base_revision`. A content target must exist.
 A selection additionally supplies exact text, prefix/suffix and start/end offsets
-in **UTF-16 code units of the block's DOM `textContent`**. Entities are decoded;
-whitespace is preserved. Use whole-block offsets, not a text-node offset or
+in **UTF-16 code units of the block's DOM `textContent`**. Count after HTML input
+CRLF/CR-to-LF preprocessing, entity expansion, and removal of one immediately
+following LF for `pre`/`textarea`/`listing`, as specified by the
+[HTML parser](https://html.spec.whatwg.org/multipage/parsing.html#preprocessing-the-input-stream).
+Other whitespace is preserved. Non-BMP characters occupy two code units. Raw HTML
+remains unchanged for storage and markup comparisons. Use whole-block offsets, not a text-node offset or
 `innerText`. Both position and quote/context must match, including surrogate
 boundaries. There is no quote relocation or automatic rebase.
 
@@ -47,7 +51,12 @@ adapters assemble patches into a complete candidate before staging. Initial impo
 uses a document target and a null base; all later updates require the current ID.
 
 `content_changes()` accounts for added/removed/changed block markup and blocks
-whose figure definition, renderer or referenced asset changed. Moving unchanged
+whose figure definition, renderer or referenced asset changed. All managed URL
+references are resolved against the asset manifest, including ordinary `src`,
+`href`, `data` and each `srcset`/`imagesrcset` candidate without ID annotations or
+Figure records. Every occurrence must belong to a content block; unowned
+references, including global/head resources without an enclosing content ID, fail
+with `broken_reference`. Changes notify every containing content ID. Moving unchanged
 blocks or changing only their outer layout can have an empty change list.
 `evidence_changes()` accounts for evidence additions/removals/updates. Staging
 rejects missing, invented or duplicate declarations; the reason for an evidence
@@ -74,7 +83,10 @@ of validator execution or of semantic truth.
 The controller must provide HTML/SVG sanitization, renderer policy, independent
 semantic verification and rendering checks. The structural checker resolves
 local HTML references and fragments, permits external citation links, and refuses
-remote resource URLs and URL-bearing inline CSS/srcset. It does not interpret
+remote resource URLs and URL-bearing inline CSS. Source sets accept canonical
+managed URLs with optional consistent `w` or `x` descriptors; malformed, duplicate
+or mixed descriptors and unresolved candidates fail the entire source set.
+It does not interpret
 asset internals or execute JavaScript. The visual validator owns CSS/SVG/script
 contents and graph-specific definitions. A passed structural check alone is
 insufficient for publication.
@@ -146,7 +158,7 @@ navigation and the static-export editing-unavailable indicator.
 Run the repository `.venv/bin/python -m pytest` on
 `tests/unit/agents_ops/explain_html` and
 `tests/integration/agents_ops/explain_html`, with `--collect-only` to count cases
-and `--durations=0 --durations-min=0` to measure them. Tests use 18 unit and 8
-integration cases, real temporary files, asymmetric blocks, multiple assets,
+and `--durations=0 --durations-min=0` to measure them. Tests use
+real temporary files, asymmetric blocks, multiple assets,
 declarative graph data, exception injection and synchronized competing writers.
 They require no external API, GPU, browser or real-time sleep.

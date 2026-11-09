@@ -15,9 +15,8 @@ document_api: Any = importlib.import_module("explain_html.document")
 store_api: Any = importlib.import_module("explain_html.store")
 paths_api: Any = importlib.import_module("explain_html.paths")
 
-HTML = """<!doctype html><html><head><title>Ray geometry</title>
-<link rel="stylesheet" href="assets/theme.css"></head><body>
-<header id="overview" data-content-id="overview">Two views locate a ball.</header>
+HTML = """<!doctype html><html><head><title>Ray geometry</title></head><body>
+<header id="overview" data-content-id="overview"><link rel="stylesheet" href="assets/theme.css">Two views locate a ball.</header>
 <main class="grid"><section id="geometry" data-content-id="geometry"><h2>Geometry</h2>
 <p>😀 Intersect two rays. Then measure 7 m.</p>
 <figure data-figure-id="court-diagram"><img data-asset-id="court" src="assets/court.svg" alt="Two rays meet"><figcaption>Ray intersection.</figcaption></figure></section>

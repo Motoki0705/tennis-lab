@@ -111,8 +111,11 @@ class ContentTarget(Model):
 class SelectionTarget(Model):
     """Offsets are UTF-16 code units in the block's DOM textContent.
 
-    No whitespace normalization. exact, prefix and suffix are decoded Unicode
-    strings. Positions and quotes must both match; a quote is never relocated.
+    Count after HTML input CRLF/CR-to-LF preprocessing, character-reference
+    expansion and the initial-LF rule for pre/textarea/listing. Other whitespace
+    is preserved. exact, prefix and suffix are decoded Unicode strings. Positions
+    and quotes must both match; a quote is never relocated. Non-BMP characters
+    occupy two code units, matching browser JavaScript string/Range offsets.
     """
 
     kind: Literal["selection"] = "selection"

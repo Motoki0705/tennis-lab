@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,7 @@ import pytest
 
 from tests.support.agents_ops.explain_html import (
     HTML,
+    PAYLOADS,
     candidate_for,
     changed_document,
     document_api,
@@ -148,6 +150,215 @@ def test_selection_uses_dom_text_utf16_units_and_rejects_surrogate_splitting(
     )
     with pytest.raises(schema.ContractError, match="invalid_target"):
         document_api.validate_request(split, revision_for(changed))
+
+
+@pytest.mark.parametrize(
+    ("markup", "dom_text", "prefix", "suffix", "start", "end"),
+    [
+        (
+            '<pre data-content-id="code">\r\n\nA &amp; &#x1F600;\r\nB&#13;C</pre>',
+            "\nA & 😀\nB\rC",
+            "\nA & ",
+            "\nB\rC",
+            5,
+            7,
+        ),
+        (
+            '<textarea data-content-id="code">\r\n<b>&amp;lt; A &amp; &#x1F600;</b>\rZ</textarea>',
+            "<b>&lt; A & 😀</b>\nZ",
+            "<b>&lt; A & ",
+            "</b>\nZ",
+            12,
+            14,
+        ),
+        (
+            '<listing data-content-id="code">\rA &amp; 😀\r\nB</listing>',
+            "A & 😀\nB",
+            "A & ",
+            "\nB",
+            4,
+            6,
+        ),
+        (
+            '<div data-content-id="code">A\r\n&amp; 😀\rB</div>',
+            "A\n& 😀\nB",
+            "A\n& ",
+            "\nB",
+            4,
+            6,
+        ),
+        (
+            '<pre data-content-id="code"><!--keep LF-->\nA &amp; 😀</pre>',
+            "\nA & 😀",
+            "\nA & ",
+            "",
+            5,
+            7,
+        ),
+        (
+            '<pre data-content-id="code">&#10;A &amp; &#x1F600;</pre>',
+            "A & 😀",
+            "A & ",
+            "",
+            4,
+            6,
+        ),
+    ],
+    ids=[
+        "pre-two-lf",
+        "textarea-rcdata",
+        "listing",
+        "input-newlines",
+        "pre-comment",
+        "pre-character-reference",
+    ],
+)
+def test_dom_text_preprocessing_preserves_browser_utf16_selection_and_raw_html(
+    document: Any,
+    markup: str,
+    dom_text: str,
+    prefix: str,
+    suffix: str,
+    start: int,
+    end: int,
+) -> None:
+    # All expected DOM strings and UTF-16 offsets above are handwritten. In
+    # particular, &#13; is expanded after input newline preprocessing and stays CR.
+    empty = '<br data-content-id="empty"\r\n class="newline">'
+    html = f'<html>\r\n<body><article data-content-id="parent">{markup}{empty}</article></body></html>'
+    current_document = document.model_copy(
+        update={"html": html, "assets": [], "figures": [], "evidence": []}
+    )
+    index = document_api.inspect_document(current_document)
+    assert "".join(index.blocks["code"].text) == dom_text
+    assert "".join(index.blocks["parent"].text) == dom_text
+    assert index.block_html("code") == markup
+    assert index.block_html("empty") == empty
+    request = schema.EditRequest(
+        document_id="ray-geometry",
+        base_revision="1" * 32,
+        request_id="dom-selection",
+        instruction="Explain the emoji.",
+        target=schema.SelectionTarget(
+            content_id="code",
+            exact="😀",
+            prefix=prefix,
+            suffix=suffix,
+            start=start,
+            end=end,
+        ),
+    )
+    document_api.validate_request(request, revision_for(current_document))
+
+
+@pytest.mark.parametrize(
+    ("markup", "asset_id"),
+    [
+        ('<img src="assets/court.svg" alt="Court">', "court"),
+        ('<video><source src="assets/court.svg"></video>', "court"),
+        (
+            '<picture><source srcset="assets/court.svg 1x, assets/other.svg 2x"><img src="assets/other.svg" alt="Court"></picture>',
+            "court",
+        ),
+        ('<a href="assets/court.svg#view">Inspect SVG</a>', "court"),
+        ('<object data="assets/court.svg"></object>', "court"),
+        ('<link rel="stylesheet" href="assets/theme.css">', "theme"),
+    ],
+    ids=[
+        "img-src",
+        "source-src",
+        "source-srcset",
+        "a-href",
+        "object-data",
+        "link-href",
+    ],
+)
+def test_unannotated_asset_only_changes_require_every_owning_content(
+    document: Any,
+    markup: str,
+    asset_id: str,
+) -> None:
+    html = f'<html><body><section data-content-id="outer"><div data-content-id="diagram">{markup}</div></section><aside data-content-id="untouched">Stable</aside></body></html>'
+    other = document.assets[0].model_copy(
+        update={"asset_id": "other", "path": "assets/other.svg"}
+    )
+    original = document.model_copy(
+        update={
+            "html": html,
+            "figures": [],
+            "evidence": [],
+            "assets": [*document.assets, other],
+        }
+    )
+    # HTML and Figure definitions stay byte-for-byte identical. Only actual
+    # replacement asset bytes (represented by their manifest digest) change.
+    annotation = (
+        b"\n/* new asset bytes */"
+        if asset_id == "theme"
+        else b"\n<!-- new asset bytes -->"
+    )
+    payload = PAYLOADS[asset_id] + annotation
+    changed = original.model_copy(
+        update={
+            "assets": [
+                asset.model_copy(update={"sha256": hashlib.sha256(payload).hexdigest()})
+                if asset.asset_id == asset_id
+                else asset
+                for asset in original.assets
+            ]
+        }
+    )
+    assert changed.html == original.html and changed.figures == []
+    assert [
+        (item.content_id, item.kind)
+        for item in document_api.content_changes(original, changed)
+    ] == [
+        ("diagram", "updated"),
+        ("outer", "updated"),
+    ]
+    candidate = candidate_for(
+        changed,
+        before=revision_for(original),
+        request_id="asset-only",
+        changes=[
+            {"content_id": "diagram", "kind": "updated"},
+            {"content_id": "outer", "kind": "updated"},
+        ],
+        evidence_changes=[],
+    )
+    document_api.validate_candidate(candidate, revision_for(original))
+    with pytest.raises(schema.ContractError, match="invalid_candidate"):
+        document_api.validate_candidate(
+            candidate.model_copy(update={"changes": []}), revision_for(original)
+        )
+
+
+def test_managed_reference_outside_content_is_rejected_even_if_also_owned(
+    document: Any,
+) -> None:
+    html = '<html><body><img src="assets/court.svg" alt="Outside"><section data-content-id="diagram"><img src="assets/court.svg" alt="Inside"></section></body></html>'
+    unowned = document.model_copy(update={"html": html, "figures": [], "evidence": []})
+    with pytest.raises(schema.ContractError, match="broken_reference"):
+        document_api.inspect_document(unowned)
+
+
+def test_srcset_never_silently_drops_an_invalid_or_unknown_candidate(
+    document: Any,
+) -> None:
+    width_set = '<html><body><section data-content-id="diagram"><img srcset="assets/court.svg 320w, assets/court.svg 640w" alt="Court"></section></body></html>'
+    document_api.inspect_document(
+        document.model_copy(update={"html": width_set, "figures": [], "evidence": []})
+    )
+    for value in (
+        "assets/court.svg 1x, missing.svg 2x",
+        "assets/court.svg 1x, assets/court.svg nonsense",
+    ):
+        html = f'<html><body><section data-content-id="diagram"><img srcset="{value}" alt="Court"></section></body></html>'
+        invalid = document.model_copy(
+            update={"html": html, "figures": [], "evidence": []}
+        )
+        with pytest.raises(schema.ContractError, match="broken_reference"):
+            document_api.inspect_document(invalid)
 
 
 @pytest.mark.parametrize("failure", ["missing", "quote", "position", "context"])

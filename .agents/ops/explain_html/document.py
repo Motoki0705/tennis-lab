@@ -6,8 +6,11 @@ verification and browser rendering checks belong to the downstream validators.
 
 from __future__ import annotations
 
+import math
 import re
+from bisect import bisect_right
 from dataclasses import dataclass, field
+from html import unescape
 from html.parser import HTMLParser
 from urllib.parse import unquote, urlsplit
 
@@ -48,6 +51,46 @@ _ID = re.compile(IDENTIFIER_PATTERN)
 _REF_ATTRIBUTES = frozenset(
     {"src", "href", "poster", "data", "action", "formaction", "xlink:href"}
 )
+_ASCII_SPACE = " \t\n\f\r"
+_DENSITY = re.compile(r"(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?x")
+
+
+def _srcset_urls(value: str) -> list[str]:
+    """Strict author syntax for canonical managed URLs and optional w/x descriptors.
+
+    Managed filenames cannot contain commas, so commas unambiguously separate
+    candidates. Reject malformed candidates rather than letting a browser drop
+    them and silently choose a different resource.
+    """
+    urls = []
+    seen: set[tuple[str, int | float]] = set()
+    mode: str | None = None
+    for candidate in value.split(","):
+        fields = re.split(r"[ \t\n\f\r]+", candidate.strip(_ASCII_SPACE))
+        if len(fields) not in {1, 2} or not fields[0]:
+            raise ContractError("broken_reference")
+        descriptor = fields[1] if len(fields) == 2 else "1x"
+        number: int | float
+        try:
+            if re.fullmatch(r"[0-9]+w", descriptor):
+                number = int(descriptor[:-1])
+                if number <= 0:
+                    raise ContractError("broken_reference")
+            elif _DENSITY.fullmatch(descriptor):
+                number = float(descriptor[:-1])
+                if not math.isfinite(number):
+                    raise ContractError("broken_reference")
+            else:
+                raise ContractError("broken_reference")
+        except ValueError as exc:
+            raise ContractError("broken_reference") from exc
+        unit = descriptor[-1]
+        if (mode is not None and unit != mode) or (unit, number) in seen:
+            raise ContractError("broken_reference")
+        mode = unit
+        seen.add((unit, number))
+        urls.append(fields[0])
+    return urls
 
 
 @dataclass
@@ -58,12 +101,20 @@ class Block:
 
 
 class HTMLIndex(HTMLParser):
+    # Force consistent RCDATA handling on all supported Python 3.11+ patch
+    # versions, including versions whose HTMLParser only knows script/style.
+    # Raw text is decoded once in handle_data; markup inside textarea stays text.
+    # Typeshed marks the base constant Final; this subclass intentionally extends it.
+    CDATA_CONTENT_ELEMENTS = (*HTMLParser.CDATA_CONTENT_ELEMENTS, "textarea", "title")  # type: ignore[misc]
+
     def __init__(self, html: str):
         super().__init__(convert_charrefs=True)
         self.html = html
         self.blocks: dict[str, Block] = {}
         self.ids: set[str] = set()
         self.references: list[tuple[str, bool]] = []
+        self.reference_blocks: dict[str, set[str]] = {}
+        self.unowned_references: set[str] = set()
         self.assets: set[str] = set()
         self.asset_blocks: dict[str, set[str]] = {}
         self.asset_sources: list[tuple[str, str]] = []
@@ -71,22 +122,39 @@ class HTMLIndex(HTMLParser):
         self.figure_blocks: dict[str, set[str]] = {}
         self.evidence: set[str] = set()
         self.stack: list[tuple[str, str | None]] = []
+        self._ignore_initial_lf = False
+        # HTML stream preprocessing precedes character-reference expansion.
+        # Retain a sparse offset map so block_html still returns original bytes
+        # even when CRLF in text or tag attributes shrinks to one LF for parsing.
+        self._crlf_ends = [
+            match.start() - removed + 1
+            for removed, match in enumerate(re.finditer("\r\n", html))
+        ]
+        normalized = html.replace("\r\n", "\n").replace("\r", "\n")
         self.line_offsets = [0]
-        for match in re.finditer("\n", html):
+        for match in re.finditer("\n", normalized):
             self.line_offsets.append(match.end())
         try:
-            self.feed(html)
+            self.feed(normalized)
             self.close()
         except (ValueError, AssertionError) as exc:
             raise ContractError("invalid_document") from exc
         if self.stack or not self.blocks:
             raise ContractError("invalid_document")
 
-    def _source_offset(self) -> int:
+    def _source_offset(self, additional: int = 0) -> int:
         line, column = self.getpos()
-        return self.line_offsets[line - 1] + column
+        offset = self.line_offsets[line - 1] + column + additional
+        return offset + bisect_right(self._crlf_ends, offset)
+
+    def _add_reference(self, value: str, external_link: bool, blocks: set[str]) -> None:
+        self.references.append((value, external_link))
+        self.reference_blocks.setdefault(value, set()).update(blocks)
+        if not blocks:
+            self.unowned_references.add(value)
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self._ignore_initial_lf = False
         names = [key for key, _ in attrs]
         if len(names) != len(set(names)) or tag == "base":
             raise ContractError("invalid_document")
@@ -112,42 +180,42 @@ class HTMLIndex(HTMLParser):
             if content_id in self.blocks:
                 raise ContractError("duplicate_id")
             self.blocks[content_id] = Block(self._source_offset())
+        blocks = {item for _, item in self.stack if item}
+        if content_id:
+            blocks.add(content_id)
         asset_id = attributes.get("data-asset-id")
         if asset_id:
-            blocks = {item for _, item in self.stack if item}
-            if content_id:
-                blocks.add(content_id)
             self.asset_blocks.setdefault(asset_id, set()).update(blocks)
             source = attributes.get("src") or attributes.get("href")
             if source:
                 self.asset_sources.append((asset_id, source))
         figure_id = attributes.get("data-figure-id")
         if figure_id:
-            blocks = {item for _, item in self.stack if item}
-            if content_id:
-                blocks.add(content_id)
             self.figure_blocks[figure_id] = blocks
         for key, value in attrs:
             if key in _REF_ATTRIBUTES and value is not None:
-                self.references.append((value, tag == "a" and key == "href"))
-            # srcset/CSS are validated by the visual validator. Disallow inline
-            # URL-bearing forms here so they cannot bypass reference accounting.
-            if key == "srcset" or (
-                key == "style" and re.search(r"url\s*\(|@import|\\", value or "", re.I)
-            ):
+                self._add_reference(value, tag == "a" and key == "href", blocks)
+            if key in {"srcset", "imagesrcset"}:
+                if value is None:
+                    raise ContractError("broken_reference")
+                for source in _srcset_urls(value):
+                    self._add_reference(source, False, blocks)
+            # Inline CSS URLs remain outside the structural contract.
+            if key == "style" and re.search(r"url\s*\(|@import|\\", value or "", re.I):
                 raise ContractError("broken_reference")
         if tag in _VOID:
             if content_id:
-                self.blocks[content_id].end = self._source_offset() + len(
-                    self._start_tag()
+                self.blocks[content_id].end = self._source_offset(
+                    len(self._start_tag())
                 )
         else:
             self.stack.append((tag, content_id))
+            self._ignore_initial_lf = tag in {"pre", "textarea", "listing"}
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         self.handle_starttag(tag, attrs)
         if tag not in _VOID:
-            self._end(tag, self._source_offset() + len(self._start_tag()))
+            self._end(tag, self._source_offset(len(self._start_tag())))
 
     def _start_tag(self) -> str:
         result = self.get_starttag_text()
@@ -156,6 +224,7 @@ class HTMLIndex(HTMLParser):
         return result
 
     def _end(self, tag: str, end: int) -> None:
+        self._ignore_initial_lf = False
         if not self.stack or self.stack[-1][0] != tag:
             raise ContractError("invalid_document")
         _, content_id = self.stack.pop()
@@ -171,6 +240,12 @@ class HTMLIndex(HTMLParser):
         self._end(tag, end + 1)
 
     def handle_data(self, data: str) -> None:
+        if self.stack and self.stack[-1][0] in {"textarea", "title"}:
+            data = unescape(data)
+        if self._ignore_initial_lf:
+            if data.startswith("\n"):
+                data = data[1:]
+            self._ignore_initial_lf = False
         if (
             self.stack
             and self.stack[-1][0] == "style"
@@ -180,6 +255,15 @@ class HTMLIndex(HTMLParser):
         for _, content_id in self.stack:
             if content_id:
                 self.blocks[content_id].text.append(data)
+
+    def handle_comment(self, data: str) -> None:
+        self._ignore_initial_lf = False
+
+    def handle_decl(self, decl: str) -> None:
+        self._ignore_initial_lf = False
+
+    def handle_pi(self, data: str) -> None:
+        self._ignore_initial_lf = False
 
     def block_html(self, content_id: str) -> str:
         block = self.blocks[content_id]
@@ -198,7 +282,10 @@ def inspect_document(document: Document) -> HTMLIndex:
     _unique([figure.figure_id for figure in document.figures])
     _unique([item.evidence_id for item in document.evidence])
     assets = {asset.asset_id: asset for asset in document.assets}
-    paths = {asset_path(asset.asset_id, asset.path) for asset in document.assets}
+    paths = {
+        asset_path(asset.asset_id, asset.path): asset.asset_id
+        for asset in document.assets
+    }
     figures = {figure.figure_id for figure in document.figures}
     evidence = {item.evidence_id for item in document.evidence}
     if (
@@ -206,6 +293,8 @@ def inspect_document(document: Document) -> HTMLIndex:
         or not index.figures <= figures
         or not index.evidence <= evidence
     ):
+        raise ContractError("broken_reference")
+    if any(not blocks for blocks in index.asset_blocks.values()):
         raise ContractError("broken_reference")
     for asset_id, source in index.asset_sources:
         if source.split("#", 1)[0] != assets[asset_id].path:
@@ -240,12 +329,18 @@ def inspect_document(document: Document) -> HTMLIndex:
             raise ContractError("unsafe_path")
         if parsed.path:
             relative_path(parsed.path)
-            if parsed.path not in paths | {
+            if parsed.path not in paths.keys() | {
                 "index.html",
                 "evidence.json",
                 "figures.json",
             }:
                 raise ContractError("broken_reference")
+            if parsed.path in paths:
+                if reference in index.unowned_references:
+                    raise ContractError("broken_reference")
+                index.asset_blocks.setdefault(paths[parsed.path], set()).update(
+                    index.reference_blocks[reference]
+                )
         if (
             parsed.fragment
             and (not parsed.path or parsed.path == "index.html")
