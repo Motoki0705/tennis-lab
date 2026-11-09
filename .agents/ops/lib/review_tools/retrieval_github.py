@@ -23,8 +23,11 @@ from .retrieval import (
     strict_json,
     text_page,
 )
+from .terminal_text import sanitize_terminal_text
 
 COMMENT_KINDS = ("discussion", "review_comment", "review")
+MIN_GH_VERSION = (2, 97, 0)
+MIN_GH_VERSION_TEXT = ".".join(map(str, MIN_GH_VERSION))
 
 
 def object_value(value: Any) -> dict[str, Any]:
@@ -243,7 +246,34 @@ class ApiResponse:
     source: dict[str, Any]
 
     def json(self) -> Any:
+        # Keep source values intact for identity and schema checks.
         return strict_json(self.body)
+
+    def text(self, value: str) -> str:
+        text, sequences, controls = sanitize_terminal_text(value)
+        mark = self.source["text_sanitization"]
+        mark["ansi_sequences_removed"] += sequences
+        mark["control_characters_escaped"] += controls
+        mark["changed"] = bool(
+            mark["ansi_sequences_removed"] or mark["control_characters_escaped"]
+        )
+        return text
+
+    def display(self, value: Any) -> Any:
+        """Sanitize selected output fields, never the parsed source object."""
+        if isinstance(value, str):
+            return self.text(value)
+        if isinstance(value, list):
+            return [self.display(item) for item in value]
+        if isinstance(value, dict):
+            return {key: self.display(item) for key, item in value.items()}
+        return value
+
+    def summary(
+        self, row: dict[str, Any], *, runner_labels: bool = False
+    ) -> dict[str, Any]:
+        result: dict[str, Any] = self.display(summary(row, runner_labels=runner_labels))
+        return result
 
 
 class GitHubReader:
@@ -363,15 +393,24 @@ class GitHubReader:
             "kind": "github",
             "method": "GET",
             "url": "https://api.github.com/" + endpoint,
+            "text_sanitization": {
+                "policy": "terminal-controls-v1",
+                "input": "gh_output",
+                "changed": False,
+                "ansi_sequences_removed": 0,
+                "control_characters_escaped": 0,
+            },
         }
         self.r.acquisitions.append(source)
         try:
+            self.check_gh_version(source)
             raw = self.r.command.run(
                 [
                     "gh",
                     "api",
                     "--hostname",
                     "github.com",
+                    "--allow-escape-sequences",
                     "--method",
                     "GET",
                     "--include",
@@ -408,8 +447,34 @@ class GitHubReader:
                 )
             return ApiResponse(raw, headers, source)
         except RetrievalError as exc:
+            error_response = ApiResponse(b"", {}, source)
+            exc.args = (error_response.text(str(exc)),)
+            exc.details = error_response.display(exc.details)
             exc.sources = [source, *exc.sources]
             raise
+
+    def check_gh_version(self, source: dict[str, Any]) -> None:
+        raw = self.r.command.run(["gh", "--version"])
+        first_line = raw.decode("utf-8").partition("\n")[0].removesuffix("\r")
+        match = re.fullmatch(
+            r"gh version (([0-9]+)\.([0-9]+)\.([0-9]+))"
+            r"(?:\+[A-Za-z0-9.-]+)?(?: [^\r\n]*)?",
+            first_line,
+        )
+        if match is None:
+            raise RetrievalError(
+                "UNSUPPORTED_GH_VERSION",
+                f"gh >= {MIN_GH_VERSION_TEXT} is required; version is unknown or prerelease",
+                minimum_version=MIN_GH_VERSION_TEXT,
+            )
+        source["gh_version"] = match[1]
+        if tuple(map(int, match.groups()[1:])) < MIN_GH_VERSION:
+            raise RetrievalError(
+                "UNSUPPORTED_GH_VERSION",
+                f"gh >= {MIN_GH_VERSION_TEXT} is required for --allow-escape-sequences; upgrade gh",
+                minimum_version=MIN_GH_VERSION_TEXT,
+                installed_version=match[1],
+            )
 
     def page(
         self,
@@ -509,7 +574,7 @@ class GitHubReader:
             )
         rows = rows_value(payload["items"])
         return Retrieved(
-            [summary(row) for row in rows],
+            [response.summary(row) for row in rows],
             [response.source],
             self.page(response, rows, page, per_page, total),
         )
@@ -531,8 +596,8 @@ class GitHubReader:
                 pr_head_sha=sha_value(row["head"]["sha"]),
                 pr_base_sha=sha_value(row["base"]["sha"]),
             )
-        data, paging = text_page(body_value(row["body"]), **ranges)
-        data["metadata"] = summary(row)
+        data, paging = text_page(response.text(body_value(row["body"])), **ranges)
+        data["metadata"] = response.summary(row)
         return Retrieved(data, [source], paging)
 
     def comment_endpoint(
@@ -557,7 +622,7 @@ class GitHubReader:
         )
         rows = rows_value(response.json())
         return Retrieved(
-            [summary(row) for row in rows],
+            [response.summary(row) for row in rows],
             [response.source],
             self.page(response, rows, page, per_page),
         )
@@ -577,8 +642,8 @@ class GitHubReader:
                 "comment belongs to a different issue/PR",
                 sources=[response.source],
             )
-        data, paging = text_page(body_value(row["body"]), **ranges)
-        data["metadata"] = summary(row)
+        data, paging = text_page(response.text(body_value(row["body"])), **ranges)
+        data["metadata"] = response.summary(row)
         return Retrieved(data, [response.source], paging)
 
     def pr_diff(self, number: int, head_sha: str, **ranges: Any) -> Retrieved:
@@ -622,7 +687,7 @@ class GitHubReader:
                 sources=sources,
             )
         check_diff(text, **counts)
-        data, paging = text_page(text, **ranges)
+        data, paging = text_page(response.text(text), **ranges)
         return Retrieved(data, sources, paging)
 
     def runs(
@@ -664,7 +729,7 @@ class GitHubReader:
         for row in rows:
             sha_value(row["head_sha"])
         return Retrieved(
-            [summary(row) for row in rows],
+            [response.summary(row) for row in rows],
             [response.source],
             self.page(response, rows, page, per_page, total),
         )
@@ -696,7 +761,7 @@ class GitHubReader:
         for source in (run_response.source, response.source):
             source.update(head_sha=head, run_id=run_id, run_attempt=attempt)
         return Retrieved(
-            [summary(row, runner_labels=True) for row in rows],
+            [response.summary(row, runner_labels=True) for row in rows],
             [run_response.source, response.source],
             self.page(
                 response, rows, page, per_page, total_value(payload["total_count"])
@@ -711,6 +776,12 @@ class GitHubReader:
                 "SOURCE_MISMATCH", "job identity mismatch", sources=[metadata.source]
             )
         head = sha_value(row["head_sha"])
+        if type(row["run_id"]) is not int or row["run_id"] < 1:
+            raise RetrievalError(
+                "INVALID_SOURCE",
+                "GitHub job run ID is missing or invalid",
+                sources=[metadata.source],
+            )
         response = self.api(f"{self.root}/actions/jobs/{job_id}/logs")
         if not response.body:
             raise RetrievalError(
@@ -720,6 +791,6 @@ class GitHubReader:
             )
         for source in (metadata.source, response.source):
             source.update(head_sha=head, job_id=job_id, run_id=row["run_id"])
-        data, paging = text_page(response.body.decode("utf-8"), **ranges)
-        data["metadata"] = summary(row, runner_labels=True)
+        data, paging = text_page(response.text(response.body.decode("utf-8")), **ranges)
+        data["metadata"] = metadata.summary(row, runner_labels=True)
         return Retrieved(data, [metadata.source, response.source], paging)

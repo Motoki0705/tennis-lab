@@ -76,3 +76,22 @@ def test_cpu_allowlist_cannot_name_unpinned_revision(scenario: Scenario) -> None
                 "cpu_tests": {s.later: ["tests/test_x.py"]},
             }
         )
+
+
+def test_formal_review_ci_log_uses_shared_sanitization(scenario: Scenario) -> None:
+    scenario.fail("controlled_log", log="\x1b[31mfailed\x1b[0m\r\n")
+    client = server.ReviewRetrieval(
+        {
+            "repo": str(scenario.repo),
+            "commits": [scenario.base],
+            "repository": "o/r",
+            "run_id": "review-controls",
+            "journal_dir": str(scenario.journal / "formal"),
+        }
+    )
+    response = client.call("ci_log", {"job_id": 9})
+    assert response["ok"], response
+    assert response["data"]["text"] == "failed\\u000d\n"
+    assert response["sources"][1]["text_sanitization"]["ansi_sequences_removed"] == 2
+    record = json.loads(client.journal.path.read_text().splitlines()[-1])
+    assert record["response"] == response
