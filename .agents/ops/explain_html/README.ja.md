@@ -149,7 +149,7 @@ Assetへ保存しHTMLにも埋め、CSP hashで許可する。scriptは最初の
 解析完了後に全graphを初期化して参照の所有関係を保つ。file://における外部scriptのSRI/CORS失敗を回避し、
 snapshot後にCDN・fetch・module import・serverを必要としない。CSPの挿入位置はbodyより前にある
 一意のheadを解析して得る。comment中のheadという文字列には影響されず、head内の最初のscript・style・
-resource参照より前へ配置する。不正なhead/bodyの入れ子は拒否する。
+resource参照より前へ配置する。不正なhead/bodyの入れ子と、head前の非ASCII空白（実体参照のNBSPを含む）は拒否する。
 
 描画属性（`data-managed-*`・`data-definition`・`data-plot`・`data-values`・`data-slider-value`・
 `data-render-*`）は正規graph figure内へ予約し、`data-graph-targets`はmanaged scriptだけが持つ。

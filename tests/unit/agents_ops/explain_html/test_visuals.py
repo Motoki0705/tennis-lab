@@ -180,6 +180,14 @@ def test_rendered_figures_expose_data_units_provenance_and_pinned_renderer() -> 
 
 def test_generated_html_cannot_introduce_scripts_events_or_false_graph_labels() -> None:
     document, payloads = bundle()
+    # HTML only recognizes ASCII whitespace here. NBSP creates an implicit body
+    # in Chromium, so an apparent subsequent head must never receive our CSP.
+    for prefix in ["\u00a0", "&#160;"]:
+        bad = document.model_copy(
+            update={"html": document.html.replace("<head>", prefix + "<head>", 1)}
+        )
+        with pytest.raises(schema.ContractError, match="invalid_document"):
+            visuals.validate_visuals(bad, payloads)
     for markup in [
         "<!--><script>globalThis.PWNED=1</script>-->",
         "<!--->",

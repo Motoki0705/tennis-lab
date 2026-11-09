@@ -143,7 +143,8 @@ rectify 的 pinhole stereo 和正确对应关系，用 px 单位的 focal/dispar
 也嵌入 HTML，由 CSP hash 授权。script 属于首个 graph 的 content block，在 DOM 解析完成后初始化
 所有 graph，保留引用所有权。此方式避免 file:// 下外部 script 的 SRI/CORS 失败。snapshot 后不依赖 CDN、
 fetch、module import 或 server。CSP 插入位置来自对 body 之前唯一 head 的实际解析，comment 中的 head
-文字不能改变位置；policy 位于 head 中首个 script、style 和 resource 引用之前。不规范的 head/body 嵌套被拒绝。
+文字不能改变位置；policy 位于 head 中首个 script、style 和 resource 引用之前。不规范的 head/body 嵌套及
+head 之前的非 ASCII 空白（包括实体形式的 NBSP）均被拒绝。
 
 绘图属性（`data-managed-*`、`data-definition`、`data-plot`、`data-values`、`data-slider-value`、
 `data-render-*`）仅保留给规范 graph figure；`data-graph-targets` 仅用于受管 script。

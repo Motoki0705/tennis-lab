@@ -34,6 +34,7 @@ def rejected_html(document: Any) -> dict[str, str]:
         "bogus-declaration": "<!bogus>",
         "cdata-declaration": "<![CDATA[not HTML]]>",
         "invalid-doctype": "<!DOCTYPE html [bad]>",
+        "non-ascii-before-head": "&#160;",
     }
     result = {
         name: document.html.replace("<head><meta", text + "<head><meta", 1)

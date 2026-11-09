@@ -583,7 +583,9 @@ class _Markup(StrictHTMLParser):
             self.scripts.append((start, end))
 
     def handle_data(self, data: str) -> None:
-        if data.strip() and (not self.stack or self.stack[-1][0] in {"html", "head"}):
+        if data.strip(" \t\r\n\f") and (
+            not self.stack or self.stack[-1][0] in {"html", "head"}
+        ):
             raise ContractError("invalid_document")
         if self.stack and self.stack[-1][0] == "style":
             _css(data)

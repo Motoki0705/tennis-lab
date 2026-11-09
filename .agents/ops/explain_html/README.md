@@ -198,7 +198,8 @@ This avoids external-script SRI/CORS failures under
 file://. No CDN, fetch, module import or server is needed after snapshot export.
 The CSP insertion offset comes from parsing the unique head before body; literal
 head text in comments cannot redirect it. The policy precedes the head's first
-script, style and resource reference. Noncanonical head/body nesting is rejected.
+script, style and resource reference. Noncanonical head/body nesting and
+non-ASCII whitespace before head (including encoded NBSP) are rejected.
 
 Drawing attributes (`data-managed-*`, `data-definition`, `data-plot`, `data-values`,
 `data-slider-value`, `data-render-*`) are reserved for canonical graph figures;
