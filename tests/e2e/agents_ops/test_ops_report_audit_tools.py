@@ -287,7 +287,10 @@ def test_pr_head_changes_preserve_old_receipt_and_require_a_new_acquisition(
     body = "first version\n" * 200
 
     def github(argv: list[str], **_kw: Any) -> bytes:
+        if argv == ["gh", "--version"]:
+            return b"gh version 2.97.0 (fixture)\n"
         assert argv[:2] == ["gh", "api"] and "GET" in argv
+        assert "--allow-escape-sequences" in argv
         return (
             b"HTTP/1.1 200 OK\n\n"
             + json.dumps(
