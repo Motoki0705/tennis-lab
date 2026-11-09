@@ -372,6 +372,19 @@ def test_native_mathml_is_allowed_but_active_math_and_unrendered_tex_are_refused
             )
 
 
+def test_managed_style_inside_figure_does_not_overlap_the_figure_replacement() -> None:
+    document, payloads = bundle()
+    style = re.search(r'<style data-visual-style="1">.*?</style>', document.html)
+    assert style is not None
+    raw = document.html.replace(style[0], "").replace(
+        '<figure data-figure-id="depth">',
+        '<figure data-figure-id="depth">' + style[0],
+    )
+    compiled = visuals.render_document(document.model_copy(update={"html": raw}))
+    assert compiled == document
+    visuals.validate_visuals(compiled, payloads)
+
+
 @pytest.mark.parametrize("mode", ["success", "unavailable", "failure"])
 def test_image_adapter_reports_real_outcome_without_inventing_an_asset(
     mode: str,

@@ -735,21 +735,18 @@ def render_document(document: Document) -> Document:
     inspect_document(document)
     markup = _Markup(document)
     assets = {asset.asset_id: asset for asset in document.assets}
-    # Scripts already inside a figure disappear with that figure's replacement;
+    # Managed components inside a figure disappear with its replacement;
     # do not apply overlapping source edits. Every runtime reference belongs to
     # the first graph's existing content block under the shared ownership policy.
-    scripts_outside_figures = [
+    components_outside_figures = [
         (start, end)
-        for start, end in markup.scripts
+        for start, end in markup.scripts + markup.policies + markup.styles
         if not any(
             inner_start <= start and end <= inner_end
             for inner_start, inner_end in markup.slots.values()
         )
     ]
-    changes = [
-        (start, end, "")
-        for start, end in scripts_outside_figures + markup.policies + markup.styles
-    ]
+    changes = [(start, end, "") for start, end in components_outside_figures]
     first_graph = next(
         (figure.figure_id for figure in document.figures if figure.kind == "graph"),
         None,
