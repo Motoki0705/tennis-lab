@@ -5,8 +5,10 @@ import os
 import subprocess
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 from src.tasks.annotation.__main__ import run_finished
 from src.tasks.annotation.configuration import configure_local_videos
@@ -118,7 +120,43 @@ def _attempt_evidence(root: Path) -> str:
     return "".join(evidence)
 
 
+@contextmanager
+def _record_reaped_exit_codes() -> Iterator[dict[int, int]]:
+    """Observe real wait results when a restarted pool reaps an older Popen."""
+    reaped: dict[int, int] = {}
+    waitpid = os.waitpid
+
+    def remember(pid: int, options: int) -> tuple[int, int]:
+        result = waitpid(pid, options)
+        waited, status = result
+        if waited > 0 and (os.WIFEXITED(status) or os.WIFSIGNALED(status)):
+            reaped[waited] = os.waitstatus_to_exitcode(status)
+        return result
+
+    with patch("os.waitpid", remember):
+        yield reaped
+
+
+def _supervisor_returncode(
+    child: subprocess.Popen[bytes], reaped: dict[int, int]
+) -> int | None:
+    return reaped.get(child.pid, child.poll())
+
+
+def test_supervisor_exit_code_survives_another_controller_reaping_it() -> None:
+    with _record_reaped_exit_codes() as reaped, subprocess.Popen(
+        [sys.executable, "-I", "-S", "-c", "raise SystemExit(23)"]
+    ) as child:
+        os.waitpid(child.pid, 0)
+        assert _supervisor_returncode(child, reaped) == 23
+
+
 def _exercise_three_camera_workflow(tmp_path: Path) -> None:
+    with _record_reaped_exit_codes() as reaped:
+        _run_three_camera_workflow(tmp_path, reaped)
+
+
+def _run_three_camera_workflow(tmp_path: Path, reaped: dict[int, int]) -> None:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     configuration = local_configuration(layout, review_timeout=5400, three_cameras=True)
     budget = configuration.campaign.resources.model_copy(
@@ -381,7 +419,11 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
                 "supervisor process snapshot before cleanup: "
                 + json.dumps(
                     [
-                        {"pid": child.pid, "returncode": child.poll(), "args": child.args}
+                        {
+                            "pid": child.pid,
+                            "returncode": _supervisor_returncode(child, reaped),
+                            "args": child.args,
+                        }
                         for child in {c.pid: c for c in supervisors}.values()
                     ]
                 ),
