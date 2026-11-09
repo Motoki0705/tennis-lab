@@ -8,10 +8,6 @@ import math
 import time
 from pathlib import Path
 
-from src.tasks.ball_detection.annotation.video.agent.contracts import (
-    DEFAULT_POLICY,
-    AnnotationPolicy,
-)
 from src.tasks.base.annotation.artifacts import annotation_reference, read_document
 from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.paths import AnnotationLayout
@@ -32,20 +28,6 @@ def execute_local(
     plan = read_document(layout, runtime.plan, LocalAnnotationPlan)
     if plan.phase == "benchmark":
         layout = layout.for_benchmark(plan.campaign_id)
-        policy_path = layout.path(
-            "campaigns", plan.campaign_id, "benchmark", "policy.json"
-        )
-    else:
-        policy_path = layout.path(
-            "campaigns", plan.campaign_id, "workflow", "annotation-policy.json"
-        )
-    policy = (
-        read_document(
-            layout, annotation_reference(layout, policy_path), AnnotationPolicy
-        )
-        if policy_path.exists()
-        else DEFAULT_POLICY
-    )
     if args.command not in {
         "tick",
         "run",
@@ -61,7 +43,7 @@ def execute_local(
         not math.isfinite(args.max_seconds) or args.max_seconds <= 0
     ):
         raise ValueError("controller run duration must be positive")
-    controller = LocalAnnotationController(layout, runtime, annotation_policy=policy)
+    controller = LocalAnnotationController(layout, runtime)
     if args.command == "recover":
         from .recovery import recover
 

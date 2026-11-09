@@ -44,6 +44,9 @@ reference = write_document(layout,
 
 requestはcampaign内で不変。登録時に元動画identity・時間軸・scope・公開選択の変更を拒否する。
 探索方針はworker受付前に固定し、attempt間で変更しない。
+controller初期化前に登録receiptへ方針参照を固定する。復旧ではその参照を読み、scene requestや
+benchmark conditionと照合し、欠損・破損・不一致は明示エラーとする。controllerのmirrorが
+未作成でも既定値を選ばない。方針未指定の初回登録だけが既定方針を選び、その値を保存する。
 
 ## 一連実行
 

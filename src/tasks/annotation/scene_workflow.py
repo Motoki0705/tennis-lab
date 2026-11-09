@@ -35,6 +35,7 @@ from src.tasks.base.annotation.contracts import ArtifactRef, Document
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import ProductPlan
 
+from .annotation_policy import read_registered_annotation_policy
 from .configuration import LocalVideoConfiguration, configure_local_videos
 from .contracts import LocalAnnotationRuntime
 from .local_controller import LocalAnnotationController
@@ -87,6 +88,14 @@ class SceneAnnotationWorkflow:
         receipt = read_document(
             self.layout, completed.registration, LocalVideoConfigurationReceipt
         )
+        runtime = read_document(self.layout, receipt.runtime, LocalAnnotationRuntime)
+        if (
+            read_registered_annotation_policy(self.layout, runtime)
+            != self.request.policy
+        ):
+            raise ValueError(
+                "Saved annotations differ from the registered annotation policy"
+            )
         if len(completed.completions) != len(self.request.configuration.videos):
             raise ValueError("Completed annotation camera set is incomplete")
         by_input = {v.annotation: v for v in self.request.configuration.videos}
@@ -140,7 +149,11 @@ class SceneAnnotationWorkflow:
     ) -> CompletedSceneAnnotations:
         if (self.directory / "annotations.json").exists():
             return self.saved()
-        registration = configure_local_videos(self.layout, self.request.configuration)
+        registration = configure_local_videos(
+            self.layout,
+            self.request.configuration,
+            annotation_policy=self.request.policy,
+        )
         receipt = read_document(
             self.layout, registration, LocalVideoConfigurationReceipt
         )

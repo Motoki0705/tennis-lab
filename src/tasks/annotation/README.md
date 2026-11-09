@@ -70,6 +70,7 @@ from src.tasks.base.annotation.workers.contracts import WorkRequest
 # worker_settings: WorkerRuntimeSettings（Codex保存先・review/renderのcost）
 # budget_selection: ExistingBudget または明示した NewBudget
 # expected_input: sceneが固定した既存のVideoAnnotationInput。cameraごとに作る。
+# exploration_policy: ID・版・探索指示を持つAnnotationPolicy。
 configuration = LocalVideoConfiguration(
     campaign=campaign_settings,
     videos=(
@@ -79,7 +80,7 @@ configuration = LocalVideoConfiguration(
     budget=budget_selection,
     runtime=worker_settings,
 )
-reference = configure_local_videos(layout, configuration)
+reference = configure_local_videos(layout, configuration, annotation_policy=exploration_policy)
 receipt = read_document(layout, reference, LocalVideoConfigurationReceipt)
 for entry in receipt.registrations:
     request = read_document(layout, entry.request, WorkRequest)
@@ -108,6 +109,11 @@ task入力の`frame_index`は元動画番号、画像manifestの`frame_index`は
 新規worker条件とcode版は通常planと同じ検証を行う。`review`はCodex、`render`はCPUの
 明示した枠・costが必要で、予算scopeのbaseline・累計・停止状態を再送で初期化しない。
 `publish_dataset`は常に明示してplanへ固定する。後続の公開処理はこの選択とrecording_idを受け取る。
+`annotation_policy`を省略した登録だけが既定方針を選び、指定時も省略時も登録receiptの
+`annotation_policy`参照へ不変保存する。再送では同じ方針を渡す。
+controller・worker・CLIの`status`/`tick`/`run`を含む復旧は、この固定参照からだけ方針を読み、
+scene request、benchmark condition、派生mirrorと照合する。記録の欠損・破損・不一致を
+既定値で置き換えず停止する。controller初期化前の中断でmirrorがなくても登録値を再利用する。
 
 同じconfigurationの再送は同じ参照と台帳行を返す。画像・要求の公開後や台帳commit後に
 中断しても、再送で保存済み入力を検証して登録を補完する。異なるplan・元動画版・

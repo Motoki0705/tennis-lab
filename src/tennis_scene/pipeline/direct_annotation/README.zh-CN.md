@@ -42,6 +42,9 @@ reference = write_document(layout,
 
 请求在campaign内不可变。注册拒绝视频identity、时间轴、资源scope和发布选择的变化。
 探索策略在worker准入前固定，并在多个attempt之间保持一致。
+策略引用在controller初始化之前写入注册收据。恢复只读取固定引用，并与scene request或
+benchmark condition核对；缺失、损坏或冲突会显式停止。controller的mirror尚不存在时也不选择默认策略。
+只有未指定策略的首次注册会选择默认值，并将其固定保存。
 
 ## 运行完整工作流
 

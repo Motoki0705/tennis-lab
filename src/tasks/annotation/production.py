@@ -9,7 +9,6 @@ from typing import Any
 
 from src.tasks.ball_detection.annotation.review.worker import BallReviewWorker
 from src.tasks.ball_detection.annotation.video.agent.contracts import (
-    DEFAULT_POLICY,
     AnnotationPolicy,
 )
 from src.tasks.ball_detection.training.annotation.adapter import BallLearningAdapter
@@ -39,6 +38,7 @@ from src.tasks.base.annotation.workers.contracts import WorkRequest
 from src.tasks.base.annotation.workers.ledger import WorkerBusy, WorkerStopped
 from src.tasks.base.annotation.workers.pool import WorkerPool
 
+from .annotation_policy import read_registered_annotation_policy
 from .contracts import (
     AnnotationContinuationPolicy,
     CompletionEvidence,
@@ -71,12 +71,15 @@ class LocalAnnotationWorkflow:
         *,
         test_command: tuple[str, ...] | None = None,
         test_clock: bool = False,
-        annotation_policy: AnnotationPolicy = DEFAULT_POLICY,
+        annotation_policy: AnnotationPolicy,
     ) -> None:
         from src.tasks.ball_detection.annotation.video.agent.worker import (
             BallVideoWorker,
         )
         from src.tasks.base.annotation.collection.local import LocalInputLedger
+
+        if read_registered_annotation_policy(layout, runtime) != annotation_policy:
+            raise ValueError("annotation policy differs from its registration")
 
         runtime_ref = annotation_reference(
             layout,

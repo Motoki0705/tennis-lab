@@ -47,7 +47,8 @@ class DirectWorkflowFixture:
 
     @property
     def store(self) -> Path:
-        return self.config.cache_directory
+        root: Path = self.config.cache_directory
+        return root
 
     @property
     def decisions(self) -> dict[str, list[dict]]:
@@ -231,7 +232,9 @@ def complete_annotations(fixture: DirectWorkflowFixture):
 
     layout = fixture.layout
     workflow = SceneAnnotationWorkflow(layout, fixture.request)
-    registration = configure_local_videos(layout, fixture.request.configuration)
+    registration = configure_local_videos(
+        layout, fixture.request.configuration, annotation_policy=fixture.request.policy
+    )
     registered = read_document(layout, registration, LocalVideoConfigurationReceipt)
     completions = []
     by_camera = {

@@ -6,7 +6,6 @@ import os
 from typing import Any
 
 from src.tasks.ball_detection.annotation.video.agent.contracts import (
-    DEFAULT_POLICY,
     AnnotationPolicy,
 )
 from src.tasks.base.annotation.artifacts import (
@@ -20,6 +19,7 @@ from src.tasks.base.annotation.resources import BudgetStopped, ResourceManager
 from src.tasks.base.annotation.workers.contracts import WorkRequest
 from src.tasks.base.annotation.workers.pool import WorkerPool
 
+from .annotation_policy import read_registered_annotation_policy
 from .configuration import validate_runtime
 from .contracts import LocalAnnotationRuntime, OperationInput, OperationReceipt
 from .jobs import Operations
@@ -35,7 +35,7 @@ class LocalAnnotationController:
         *,
         test_command: tuple[str, ...] | None = None,
         test_clock: bool = False,
-        annotation_policy: AnnotationPolicy = DEFAULT_POLICY,
+        annotation_policy: AnnotationPolicy | None = None,
     ) -> None:
         self.layout, self.runtime = layout, runtime
         self.plan = read_document(layout, runtime.plan, LocalAnnotationPlan)
@@ -50,6 +50,9 @@ class LocalAnnotationController:
             raise ValueError(
                 "local controller requires production inputs or an isolated registered blank condition"
             )
+        registered_policy = read_registered_annotation_policy(layout, runtime)
+        if annotation_policy is not None and annotation_policy != registered_policy:
+            raise ValueError("requested annotation policy differs from its registration")
         self.resources = ResourceManager(layout, runtime.scope)
         self.resources.bind(self.plan)
         self.resources.observe(os.getpid())
@@ -76,7 +79,7 @@ class LocalAnnotationController:
             self._services,
             test_command=test_command,
             test_clock=test_clock,
-            annotation_policy=annotation_policy,
+            annotation_policy=registered_policy,
         )
         self.pool = self.production.pool
 

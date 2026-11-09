@@ -136,11 +136,17 @@ def _exercise_direct_scene(tmp_path: Path) -> None:
 
     import numpy as np
 
+    from src.tasks.annotation.__main__ import main as annotation_main
     from src.tasks.annotation.benchmark.blank import BlankRunMeasurements
     from src.tasks.annotation.local_controller import LocalAnnotationController
-    from src.tasks.annotation.scene_workflow import CompletedSceneAnnotations
+    from src.tasks.annotation.local_videos import LocalVideoConfigurationReceipt
+    from src.tasks.annotation.scene_workflow import (
+        CompletedSceneAnnotations,
+        SceneAnnotationWorkflow,
+    )
     from src.tasks.ball_detection.annotation.video.agent.contracts import (
         AgentTask,
+        AnnotationPolicy,
         AnnotationRun,
     )
     from src.tasks.ball_detection.data.windows.active_ball import (
@@ -164,6 +170,20 @@ def _exercise_direct_scene(tmp_path: Path) -> None:
 
     fixture = direct_fixture(tmp_path)
     layout = fixture.layout
+    workflow = SceneAnnotationWorkflow(layout, fixture.request)
+    def interrupted(*_args, **_kwargs):
+        raise InterruptedError("registration complete; controller has not started")
+    with pytest.raises(InterruptedError, match="controller has not started"):
+        workflow.annotate(controller_factory=interrupted)
+    registration = read_document(layout, annotation_reference(layout,
+        layout.path("campaigns", fixture.request.configuration.campaign.campaign_id, "configuration", "result.json")), LocalVideoConfigurationReceipt)
+    mirror = layout.path("campaigns", fixture.request.configuration.campaign.campaign_id, "workflow", "annotation-policy.json")
+    assert not mirror.exists()
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(sys, "argv", ["annotation", "status", "--runtime", str(layout.artifact_path(registration.runtime)),
+            "--sha256", registration.runtime.digest, "--test-root", str(layout.root)])
+        annotation_main()
+    assert read_document(layout, annotation_reference(layout, mirror), AnnotationPolicy) == fixture.request.policy
     controllers = []
     events = AnnotationEvents(layout.path("campaigns"))
     clocks, timed_out = set(), set()
@@ -228,6 +248,12 @@ def _exercise_direct_scene(tmp_path: Path) -> None:
         measurements = read_document(layout, completed.measurements, BlankRunMeasurements)
         assert {r.worker_kind for r in measurements.results} == {"synthetic"}
         assert measurements.acceptance == "unverified"
+        for ref in completed.completions:
+            from src.tasks.ball_detection.annotation.video.agent.contracts import (
+                VideoCompletion,
+            )
+            completion = read_document(layout, ref, VideoCompletion)
+            assert read_document(layout, completion.run, AnnotationRun).policy == fixture.request.policy
     finally:
         for controller in controllers:
             for ref in controller.production.requests:

@@ -50,6 +50,11 @@ reference = write_document(layout,
 The request is immutable for the campaign. Registration rejects changed video
 identity, time axes, resource scope or publication selection. The policy is
 pinned before worker admission and stays the same across attempts.
+Registration receipts pin the policy before controller initialization. Recovery
+reads that reference and checks the scene request or benchmark condition; missing,
+corrupt or conflicting records stop explicitly. A missing controller mirror never
+selects a default policy. Only an initial registration with no specified policy
+chooses and saves the registration default.
 
 ## Run one workflow
 
