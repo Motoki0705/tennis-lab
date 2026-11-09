@@ -72,6 +72,17 @@ def initial_document(document_id: str) -> tuple[Any, dict[str, bytes]]:
     data["html"] = HTML.replace("HASH", f"'sha256-{digest}'").replace(
         "RENDERER", RENDERER.decode()
     )
+    if document_id == "reading":
+        data["html"] = (
+            data["html"]
+            .replace("<body>", '<body><article data-content-id="explanation">', 1)
+            .replace("</body>", "</article></body>", 1)
+            .replace(
+                "<details>",
+                '<details id="assumptions" data-content-id="assumptions">',
+                1,
+            )
+        )
     for asset in data["assets"]:
         asset["sha256"] = hashlib.sha256(payloads[asset["asset_id"]]).hexdigest()
     return schema.parse(schema.Document, json.dumps(data)), payloads
@@ -85,7 +96,26 @@ class BrowserWorld:
         self.gates: dict[str, tuple[Event, Event]] = {}
         self.condition = Condition()
         self.finishing = False
+        self.hold_undo = False
+        self.restore_calls: list[Any] = []
         self.resources = managed.ManagedResources()
+        restore = self.store.restore
+
+        def controlled_restore(request: Any) -> Any:
+            self.restore_calls.append(request)
+            if self.hold_undo:
+                self.hold_undo = False
+                entered, release = Event(), Event()
+                with self.condition:
+                    self.gates[request.request_id] = entered, release
+                    if self.finishing:
+                        release.set()
+                    self.condition.notify_all()
+                entered.set()
+                assert release.wait(30), "Browser did not release the undo publication."
+            return restore(request)
+
+        self.store.restore = controlled_restore
         for name in ("reading", "recovery", "security", "removed"):
             document, payloads = initial_document(name)
             candidate = candidate_for(document)
@@ -93,7 +123,8 @@ class BrowserWorld:
                 update={
                     "request": candidate.request.model_copy(
                         update={"document_id": name}
-                    )
+                    ),
+                    "changes": document_api.content_changes(None, document),
                 }
             )
             self.initial[name] = self.store.import_initial(
@@ -236,6 +267,12 @@ class BrowserWorld:
             assert self.condition.wait_for(lambda: request_id in self.gates, timeout=5)
             self.gates[request_id][1].set()
 
+    def wait_entered(self, request_id: str) -> None:
+        with self.condition:
+            assert self.condition.wait_for(lambda: request_id in self.gates, timeout=5)
+            entered = self.gates[request_id][0]
+        assert entered.wait(5)
+
 
 @contextmanager
 def live_browser_server(root: Path) -> Iterator[Any]:
@@ -254,9 +291,16 @@ def live_browser_server(root: Path) -> Iterator[Any]:
             body = await request.json()
             if body.get("action") == "release":
                 await run_in_threadpool(world.release, body["request_id"])
+            elif body.get("action") == "hold_undo":
+                world.hold_undo = True
+            elif body.get("action") == "wait_entered":
+                await run_in_threadpool(world.wait_entered, body["request_id"])
             return JSONResponse(
                 {
                     "calls": [call.model_dump(mode="json") for call in world.calls],
+                    "restores": [
+                        call.model_dump(mode="json") for call in world.restore_calls
+                    ],
                     "revisions": {
                         name: world.store.current(name).revision_id
                         for name in world.initial

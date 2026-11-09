@@ -321,6 +321,9 @@ keeps the token only in memory and sends it only on authenticated JSON APIs. A f
 page reload needs the launch URL again; pending request IDs (operation, base and start
 time, without the token or instruction) remain in this tab's sessionStorage for
 reconciliation. Reconnection polls saved IDs and never resubmits an edit or undo.
+If an undo response is lost, a missing history row is inconclusive. Keep its request
+ID pending, continue checking published history and offer the existing status recheck
+action while the displayed revision remains readable.
 
 Use the target menu for the whole page or a content block. Click a heading/figure,
 press Enter or Space on it, or select text inside one block to choose a precise target.
@@ -355,7 +358,8 @@ checks parent window and its HTTP origin; it cannot read a token or call the ser
 During a job the old frame remains readable. A successful published revision loads in a
 second frame and replaces it only after bridge initialization. Unchanged blocks preserve
 details and graph input values when their HTML, figures and referenced asset metadata
-match. The reading anchor and relative offset are restored without focusing or scrolling
+match, including a details element that is itself a content block. The reading anchor
+is the innermost visible content block containing the viewport top; its relative offset is restored without focusing or scrolling
 the outer page. Changes receive a quiet inset mark; navigation happens only through an
 explicit button. A removed anchor is reported and the old scroll height is clamped to the
 new document. A removed/changed target asks the reader to choose again before sending.

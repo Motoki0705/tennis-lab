@@ -232,6 +232,8 @@ export 的 rename/fsync 错误也仅在 manifest 与全部公开 bytes 核对通
 打开包含fragment的启动URL。UI立即移除fragment，仅在内存中保留token，并仅将其发送到需要
 认证的JSON API。完整刷新页面后需再次打开启动URL。同一标签页的sessionStorage只保存待处理
 request ID、操作类型、base和开始时间，不保存token或指令。重新连接按ID核对状态，绝不自动重发编辑或undo。
+undo响应丢失时，历史尚未列出请求并不代表终态。保留request ID并继续核对发布历史，
+保持当前版本可读，同时提供现有的重新检查状态操作。
 
 通过目标菜单选择整页或内容block，也可点击标题/图表、按Enter/Space，或在同一block内选择文字。
 选中文字与UTF-16位置会针对显示的revision核对。固定UI提供指令、cancel、耗时、公开错误、版本历史、
@@ -253,7 +255,8 @@ state结构均与显示版本核对，无法通过message发送指令。阅读vi
 `*` 发送连接、恢复状态/标记及导航数据。bridge核对父window及HTTP origin，不读取token也不访问service。
 
 处理期间旧frame保持可读。成功发布的新版在第二个frame中初始化bridge后再切换。对于HTML、图表定义和
-引用asset metadata相同的block，保留details与图表输入。按内容ID和相对偏移恢复阅读位置，不focus/scroll
+引用asset metadata相同的block，保留details与图表输入，包括block自身就是details的情况。
+选择包含视口顶部的最内层可见block，按其内容ID和相对偏移恢复阅读位置，不focus/scroll
 外部页面。变更以轻微内侧标记显示，只有明确按钮才导航。阅读锚点被删除时提示，并把原scroll高度限制在
 新文档范围内；目标删除或改变后需重新选择才能发送。
 

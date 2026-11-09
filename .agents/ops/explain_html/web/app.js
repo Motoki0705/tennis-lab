@@ -41,7 +41,6 @@
     if (yes && connectionNotice) notice('');
     const label = yes ? '接続済み' : '接続を確認できません';
     if ($('connection').textContent !== label) $('connection').textContent = label;
-    $('reconnect').hidden = yes;
     controls();
   };
   class ApiError extends Error {
@@ -71,6 +70,7 @@
   }
   function controls() {
     const preview = displayed && current && displayed.revision_id !== current.revision_id;
+    $('reconnect').hidden = networkOkay && pending?.kind !== 'undo';
     $('send').disabled =
       !displayed ||
       Boolean(staging || preview || pending || $('refresh').dataset.conflict) ||
@@ -467,15 +467,16 @@
         await loadHistory();
         const published = historyRows.find((row) => row.request_id === pending.request_id);
         if (published) {
+          notice('');
           current = (await api()).revision;
           await showRevision(current);
           savePending(null);
           showStatus('復元済みの版を確認しました。', 'succeeded');
         } else {
           notice(
-            '復元の完了を履歴で確認できません。自動再送は行いません。現在版を確認してから復元を選び直してください。',
+            '復元の結果はまだ確定できません。要求IDを保持して公開履歴を照合しています。自動再送は行いません。状態を再確認できます。',
           );
-          savePending(null);
+          showStatus('復元の確定を照合中です。表示版はこのまま読めます。', 'reconciling');
         }
       }
       pollingDelay = 1000;

@@ -248,6 +248,8 @@ fragmentを含む起動URLを開く。UIはfragmentを直ちに除去し、token
 認証が必要なJSON APIにだけ付ける。ページ全体の再読込には起動URLが再度必要になる。
 進行中のrequest ID・操作種別・base・開始時刻だけを同じタブのsessionStorageへ残し、tokenや
 指示本文は保存しない。切断復旧は保存IDで照合し、編集・undoを自動再送しない。
+undoの応答が失われても、履歴への未掲載は未確定として扱う。要求IDを保持して公開履歴の照合を
+続け、表示版を読めるまま既存の「状態を再確認」操作も提供する。
 
 対象メニューで全体または内容blockを指定する。本文の見出し・図のクリック、Enter/Space、
 同じblock内の文章選択でも対象を選べる。選択quoteとUTF-16位置は表示版に照合して送信する。
@@ -273,8 +275,8 @@ iframeは `sandbox="allow-scripts"` のopaque originで、same-origin・forms・
 データだけを含む。bridgeは親windowとHTTP originを確認し、tokenの読取りやservice通信を行わない。
 
 処理中も旧frameを読める。成功した公開版は別frameで準備し、bridgeの初期化後に切り替える。
-HTML・図定義・参照asset metadataが同じblockではdetailsとグラフ入力値を保持する。読み位置は
-内容IDと相対位置で復元し、外側のページをfocus/scrollしない。変更は控えめな内側の印で示し、
+HTML・図定義・参照asset metadataが同じblockでは、block自身がdetailsの場合も展開状態とグラフ入力値を保持する。
+読み位置は画面上端を含む最も内側の可視blockの内容IDと相対位置で復元し、外側のページをfocus/scrollしない。変更は控えめな内側の印で示し、
 変更箇所への移動は明示ボタンだけで行う。読んでいた節が消えた場合は通知し、元のscroll高さを
 新文書の範囲に収める。対象が削除・変更された場合は、送信前に選び直してもらう。
 

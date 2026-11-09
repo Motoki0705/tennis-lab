@@ -134,7 +134,7 @@ async function reading() {
         event.state.y > 1000 &&
         event.state.blocks.some(
           (block) =>
-            block.content_id === 'limits' && block.inputs[0]?.value === '7' && block.details[0],
+            block.content_id === 'limits' && block.inputs[0]?.value === '7',
         ),
     ),
   );
@@ -153,14 +153,18 @@ async function reading() {
   await completed(page, first);
   body = await frame(page);
   assert.equal(await body.locator('.answer').count(), 1);
-  assert.equal(await body.locator('details').getAttribute('open'), '');
+  assert.equal(
+    await body.locator('details[data-content-id="assumptions"]').getAttribute('open'),
+    '',
+    'an unchanged details content block must retain its own open state',
+  );
   assert.equal(await body.locator('input').inputValue(), '7');
   assert.equal(await body.locator('output').textContent(), '7');
   assert.ok(
     Math.abs(
       (await body.locator('#limits').evaluate((el) => el.getBoundingClientRect().top)) - before,
     ) < 4,
-    'unchanged reading anchor must stay in place',
+    'the unchanged inner section must stay in place inside a changed article',
   );
   assert.ok(
     (await body.evaluate(() => scrollY)) > beforeScroll,
@@ -308,6 +312,77 @@ async function recovery() {
     (await control({})).calls.filter((call) => call.request_id === held.request_id).length,
     1,
   );
+  // Lose the response before the real restore can publish. The first history
+  // lookup must return without this request, then a late commit must still be
+  // applied without another POST, including after reconnecting the same tab.
+  old = await revision(page);
+  const answersBeforeUndo = await (await frame(page)).locator('.answer').count();
+  let undoPosts = 0,
+    undoReply,
+    acknowledgeUndo;
+  const undoAccepted = new Promise((resolve) => {
+    acknowledgeUndo = resolve;
+  });
+  await control({ action: 'hold_undo' });
+  await page.route('**/api/documents/recovery/undo', async (route) => {
+    undoPosts++;
+    const request = route.request().postDataJSON();
+    undoReply = route.fetch();
+    // Assertion cleanup can close this context before the held fetch settles.
+    // Keep the original promise for the success path's explicit await below.
+    undoReply.catch(() => {});
+    await control({ action: 'wait_entered', request_id: request.request_id });
+    await route.abort('failed');
+    acknowledgeUndo(request);
+  });
+  const firstHistory = page.waitForResponse(
+    (response) => response.url().endsWith('/revisions') && response.status() === 200,
+  );
+  await page.locator('#history-panel summary').click();
+  await page.locator('#undo').click();
+  const undo = await undoAccepted;
+  const unpublished = (await (await firstHistory).json()).revisions;
+  assert.ok(!unpublished.some((row) => row.request_id === undo.request_id));
+  await page.waitForFunction(() =>
+    document.getElementById('notice').textContent.startsWith('復元'),
+  );
+  assert.equal(
+    JSON.parse(
+      await page.evaluate(() => sessionStorage.getItem('explain-html:recovery:pending')),
+    )?.request_id,
+    undo.request_id,
+    'an unpublished undo remains pending after a successful history lookup',
+  );
+  assert.equal(await revision(page), old);
+  assert.equal(await page.locator('#send').isDisabled(), true);
+  assert.equal(await page.locator('#undo').isDisabled(), true);
+  assert.equal(await page.locator('#reconnect').isVisible(), true);
+  await page.locator('#reconnect').click();
+  assert.equal(await revision(page), old);
+  await page.goto(`${config.url}/#document_id=recovery&token=${config.token}`);
+  await state(page, 'reconciling');
+  await release(undo);
+  assert.equal((await undoReply).status(), 200);
+  await completed(page, old);
+  assert.equal(await (await frame(page)).locator('.answer').count(), answersBeforeUndo - 1);
+  assert.equal(await page.locator('#notice').textContent(), '');
+  const history = await apiRequest.get(`${config.url}/api/documents/recovery/revisions`, {
+    headers: { 'X-Explain-Token': config.token },
+  });
+  const published = (await history.json()).revisions.find(
+    (row) => row.request_id === undo.request_id,
+  );
+  assert.equal(published.revision_id, await revision(page));
+  assert.equal(undoPosts, 1);
+  assert.equal(
+    (await control({})).restores.filter((call) => call.request_id === undo.request_id).length,
+    1,
+  );
+  assert.equal(
+    await page.evaluate(() => sessionStorage.getItem('explain-html:recovery:pending')),
+    null,
+  );
+  await page.unroute('**/api/documents/recovery/undo');
   old = await revision(page);
   const cancelled = await submit(page, 'hold cancellation');
   await state(page, 'running');

@@ -22,19 +22,24 @@
       '[data-content-id]',
     );
   const owned = (block, selector) =>
-    [...block.querySelectorAll(selector)].filter((el) => owner(el) === block);
+    [...(block.matches(selector) ? [block] : []), ...block.querySelectorAll(selector)].filter(
+      (el) => owner(el) === block,
+    );
   const detailsFor = (block) => owned(block, 'details');
   const inputsFor = (block) => owned(block, 'input,select,textarea');
   const save = (restored = false, missingAnchor = false) => {
     if (!view) return;
-    let anchor = null;
+    let anchor = null,
+      enclosing = null;
     for (const [id, el] of blocks) {
       const rect = el.getBoundingClientRect();
+      if (rect.bottom <= rect.top) continue;
       if (rect.top <= 8 && rect.bottom > 8) {
-        anchor = { content_id: id, offset: rect.top };
-        break;
-      }
-      if (!anchor && rect.top >= 0) anchor = { content_id: id, offset: rect.top };
+        if (!enclosing || enclosing.contains(el)) {
+          anchor = { content_id: id, offset: rect.top };
+          enclosing = el;
+        }
+      } else if (!anchor && rect.top >= 0) anchor = { content_id: id, offset: rect.top };
     }
     const states = [];
     for (const [content_id, el] of blocks) {
