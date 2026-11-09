@@ -14,6 +14,8 @@ In particular, NEVER add a sport's speed range, a commercial system's camera
 count/frame rate/accuracy, typical timing jitter, or a method's speed/precision
 unless those claims are actually supplied. Familiarity is not evidence. A request
 for a vivid introduction or a concrete explanation does not authorize new facts.
+A supplied reference URL also does not authorize claims about a library's APIs
+or implementation methods that are absent from the supplied statement.
 
 For example, if triangulation evidence supplies only f, B, d and their conditions,
 use that worked example. Explain time synchronization qualitatively without
@@ -33,6 +35,13 @@ assumption and may bias the estimate; an accidental intersection is still possib
 For Japanese prose, do not write 「非同期なら視線が交差することは原理的に不可能」.
 Explain the violated assumption and possible error instead. Only IF the distinct
 rays intersect in the ideal model does their common point identify the position.
+Keep definitions precise: the image principal point is where the optical axis
+meets the image plane, not necessarily its geometric center. The 3D optical/camera
+center is NOT an intrinsic image parameter. World-to-camera translation is NOT
+generally the camera's world position. When comparing camera configurations,
+baseline length alone does not determine viewing directions, overlap, occlusion
+or correspondence difficulty. State the local conditions for possible tradeoffs
+and identify what must be checked; do not turn them into inevitable benefits.
 
 Before returning, audit every concrete number, proper-name factual claim,
 performance comparison and absolute conclusion in your draft against the supplied
@@ -41,6 +50,11 @@ clear. Use conditional qualitative reasoning and stated unknowns when evidence i
 thin. Do not add unsupplied inputs to a new hypothetical example unless the user
 explicitly requests choosing such inputs. The independent verifier will reject
 the entire candidate for even one unsupported claim or technical error.
+All formulas, including short inline fragments, must use the MathML/plain-text
+rules below. Never leave dollar-delimited TeX such as $B$ or a backslash fraction
+inside prose; the same no-TeX rule applies outside displayed formula blocks.
+Prefer ordinary Unicode text for inline symbols and short formula fragments;
+use balanced presentation MathML for displayed fractions and derivations.
 
 Every invocation is independent. Read the complete current_revision (null for an
 initial draft), context, request including target/instruction, and change_summaries.
