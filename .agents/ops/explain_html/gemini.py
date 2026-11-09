@@ -144,6 +144,8 @@ class Gemini:
                         "-B",
                         str(Path(__file__).with_name("no_tools.py")),
                         str(run / "hooks.jsonl"),
+                        str(run / "schema.json"),
+                        output_schema.sha256,
                     ]
                 )
                 (work / ".agents").mkdir(mode=0o700)
@@ -284,9 +286,21 @@ class Gemini:
                             )
                         except OSError:
                             integrity[path.name] = False
-                    integrity["no_tool_attempts"] = not (
-                        run / "hooks.jsonl"
-                    ).read_text()
+                    hooks: list[dict[str, Any]] = []
+                    try:
+                        hooks = [
+                            parse_json(line)
+                            for line in (run / "hooks.jsonl").read_text().splitlines()
+                        ]
+                        integrity["completion_only"] = all(
+                            record.get("decision") == "allow"
+                            and parse_json(record["input"])["toolCall"]["name"]
+                            == "finish"
+                            for record in hooks
+                        )
+                    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+                        # A group stop can interrupt a hook's journal write.
+                        integrity["completion_only"] = False
                     private_write(run / "integrity.json", json.dumps(integrity))
                     # Preserve cancellation/timeout classification after group
                     # cleanup; retain denial/integrity evidence on those failures.
@@ -311,7 +325,7 @@ class Gemini:
                     raise ContractError("model_mismatch")
                 if (
                     capture["init"].get("permission_mode") != "strict"
-                    or capture["tool_counts"]
+                    or set(capture["tool_counts"]) - {"finish"}
                     or capture["subagent_steps"]
                 ):
                     raise ContractError("invalid_model_output")
@@ -325,6 +339,24 @@ class Gemini:
                     raise ContractError("invalid_model_output")
                 output = payload.get("structured_output")
                 output_schema.validate(output)
+                if len(hooks) != 1:
+                    raise ContractError("invalid_model_output")
+                completion = parse_json(hooks[0]["input"])
+                if completion["toolCall"]["args"] != output:
+                    raise ContractError("invalid_model_output")
+                completed_steps = {
+                    event["step_update"]["step_index"]
+                    for event in events
+                    if event.get("event") == "step_update"
+                    and (
+                        event["step_update"].get("step_type") == "finish"
+                        or event["step_update"].get("tool_info", {}).get("name")
+                        == "finish"
+                    )
+                    and event["step_update"].get("state") == "DONE"
+                }
+                if completed_steps != {completion.get("stepIdx")}:
+                    raise ContractError("invalid_model_output")
                 usage = payload.get("usage")
                 if usage is not None and (
                     not isinstance(usage, dict)

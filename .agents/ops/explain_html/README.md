@@ -33,7 +33,7 @@ Use `parse()` for strict JSON parsing: unknown fields and type coercions fail.
 | [renderers/visuals-v1.js](renderers/visuals-v1.js) | Immutable renderer retained for old revisions |
 | [editor.py](editor.py) | Initial writing, editing, fact preservation and independent semantic review |
 | [gemini.py](gemini.py) | Pinned, tool-free agy execution, private evidence and cancellation |
-| [no_tools.py](no_tools.py) | Trusted PreToolUse hook denying every tool |
+| [no_tools.py](no_tools.py) | Trusted PreToolUse hook admitting only schema-checked completion |
 
 ## Identity, targets and candidates
 
@@ -169,9 +169,12 @@ Use a dedicated private_root outside served/exported directories. Its directory
 must be private (0700); files are 0600. Prompts, stdout, settings, schemas, hooks,
 errors and raw CLI logs remain there. Only the returned numeric usage/timing and
 validated configuration may be summarized publicly; exception causes and raw logs
-are private. Session strict permissions and an all-tools denial hook prevent
-filesystem edits, research and tool delegation; any tool attempt also disqualifies
-the result. Hook/settings/schema integrity is checked on success and failure.
+are private. Session strict permissions and the hook admit only agy's native
+`finish` tool after validating its arguments against the pinned output schema.
+This control operation returns structured data; filesystem edits, shell commands,
+research and delegation remain denied. The admitted completion must match both the
+final structured output and its completed stream step. Any operational tool attempt
+disqualifies the result. Hook/settings/schema integrity is checked on success and failure.
 This policy is not an OS sandbox, and does not qualify arbitrary global plugins
 or hooks. Use an operator-controlled CLI profile. The adapter does not copy
 credentials or rewrite user settings; agy retains its own normal profile behavior.

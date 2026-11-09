@@ -30,7 +30,7 @@ commitできない未検証の判定例を含む。JSONには厳密な `parse()`
 | [renderers/visuals-v1.js](renderers/visuals-v1.js) | 旧revision用にbytesを固定して保持するrenderer |
 | [editor.py](editor.py) | 初回執筆・編集、根拠保持、独立した意味検査 |
 | [gemini.py](gemini.py) | model固定・tool禁止のagy実行、private証拠、中断 |
-| [no_tools.py](no_tools.py) | 全toolを拒否する信頼するPreToolUse hook |
+| [no_tools.py](no_tools.py) | schema検証済みの完了処理だけを許可するPreToolUse hook |
 
 ## ID・対象・候補
 
@@ -132,8 +132,10 @@ agyの版は既存agents.confのAGY_VERSION pinを使い、issue補足用runtime
 private_rootは配信・export対象外の専用領域にする。directoryは0700、fileは0600。
 prompt・stdout・settings・schema・hook記録・error・CLI生ログをそこへ残す。
 公開できる集計は返された数値の使用量・時間と検証済み設定に限定し、例外のcauseや生ログはprivate扱いにする。
-sessionのstrict権限と全tool拒否hookでファイル編集・外部調査・tool委任を止め、試行がある結果も失敗にする。
-hook/settings/schemaの完全性は成功・失敗とも照合する。これはOS sandboxではなく、
+sessionのstrict権限とhookで、agyの内部 `finish` toolだけを引数の固定schema検証後に許可する。
+これは構造化データを返す完了処理であり、ファイル編集・シェル・外部調査・委任は引き続き拒否する。
+許可した引数は最終structured outputと完了済みstream stepにも一致する必要がある。
+操作toolの試行がある結果は失敗にする。hook/settings/schemaの完全性は成功・失敗とも照合する。OS sandboxではなく、
 任意のglobal plugin/hookを安全と認定するものでもない。運用者が管理するCLI profileを使う。
 adapter自身は認証をコピーせずuser設定を書き換えないが、agy本来のprofile動作は残る。
 

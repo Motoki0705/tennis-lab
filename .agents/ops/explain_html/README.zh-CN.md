@@ -29,7 +29,7 @@
 | [renderers/visuals-v1.js](renderers/visuals-v1.js) | 为旧 revision 保留原始 bytes 的 renderer |
 | [editor.py](editor.py) | 初次撰写、编辑、依据保持与独立语义检查 |
 | [gemini.py](gemini.py) | 固定 model、禁用工具的 agy 执行、私有证据与取消 |
-| [no_tools.py](no_tools.py) | 拒绝所有工具的可信 PreToolUse hook |
+| [no_tools.py](no_tools.py) | 只允许 schema 检查后的完成操作的可信 PreToolUse hook |
 
 ## ID、目标与候选
 
@@ -124,7 +124,9 @@ stream 的 model 和全部 backend model override 日志。
 private_root 必须是配信/export 范围外的专用私有区域，目录 0700、文件 0600。
 prompt、stdout、settings、schema、hook 记录、error 和 CLI 原始日志均保存在其中。
 公开摘要仅限返回的数值用量、时间和已验证配置；异常 cause 和原始日志保持私有。
-session strict 权限与拒绝所有工具的 hook 阻止文件编辑、外部调查和工具委派，任何工具尝试也使结果失败。
+session strict 权限与 hook 只在按固定 schema 验证参数后，允许 agy 内部的 `finish` 工具。
+该控制操作返回结构化数据；文件编辑、shell、外部调查和委派仍被拒绝。允许的完成参数必须同时
+匹配最终 structured output 和已完成的 stream step。操作工具的任何尝试均使结果失败。
 成功或失败都会核对 hook/settings/schema 完整性。这不是 OS sandbox，也不代表任意 global
 plugin/hook 已被认定安全；请使用操作方管理的 CLI profile。adapter 不复制凭据或改写 user 设置，
 agy 自身正常的 profile 行为仍然存在。

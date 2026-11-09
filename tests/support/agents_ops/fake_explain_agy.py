@@ -61,6 +61,9 @@ if case == "hang" and role == "writer":
         check=True,
     )
     assert json.loads(denial.stdout)["decision"] == "deny"
+    # Model a hook interrupted while journaling: it must not mask cancellation.
+    with Path(shlex.split(command)[-3]).open("a") as journal:
+        journal.write('{"input":')
     read_fd, write_fd = os.pipe()
     child = subprocess.Popen(
         [
@@ -131,13 +134,59 @@ if case == "tool":
         flush=True,
     )
 output = json.loads((root / (role + ".json")).read_text())
+hooks = json.loads((Path.cwd() / ".agents/hooks.json").read_text())
+command = hooks["explain-html-no-tools"]["PreToolUse"][0]["hooks"][0]["command"]
+if role == "writer":
+    # The real CLI can reject malformed finish arguments before invoking hooks.
+    print(
+        json.dumps(
+            {
+                "event": "step_update",
+                "step_update": {
+                    "conversation_id": role,
+                    "step_index": 2,
+                    "step_type": "tool",
+                    "state": "ERROR",
+                    "tool_info": {
+                        "name": "finish",
+                        "parameters": {},
+                        "error": "invalid arguments",
+                    },
+                },
+            }
+        ),
+        flush=True,
+    )
+completion = {"stepIdx": 4, "toolCall": {"name": "finish", "args": output}}
+decision = subprocess.run(
+    shlex.split(command),
+    input=json.dumps(completion),
+    text=True,
+    capture_output=True,
+    check=True,
+)
+allowed = json.loads(decision.stdout)["decision"] == "allow"
+print(
+    json.dumps(
+        {
+            "event": "step_update",
+            "step_update": {
+                "conversation_id": role,
+                "step_index": 4,
+                "step_type": "finish",
+                "state": "DONE" if allowed else "ERROR",
+            },
+        }
+    ),
+    flush=True,
+)
 print(
     json.dumps(
         {
             "event": "result",
             "result": {
                 "status": "SUCCESS",
-                "structured_output": output,
+                "structured_output": output if allowed else None,
                 "usage": {
                     "input_tokens": 101,
                     "output_tokens": 37,

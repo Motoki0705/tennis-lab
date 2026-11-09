@@ -82,4 +82,6 @@ def test_actual_no_tools_hook_denies_public_writes(
     assert env.store.current("geometry") == env.current
     records = list((env.root / "private").glob("*/hooks.jsonl"))
     assert len(records) == 1
-    assert json.loads(records[0].read_text())["decision"] == "deny"
+    entries = [json.loads(line) for line in records[0].read_text().splitlines()]
+    assert entries[0]["decision"] == "deny"
+    assert entries[1]["decision"] == "allow"
