@@ -19,7 +19,7 @@ from types import SimpleNamespace
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-import httpx
+import httpx2 as httpx
 import pytest
 import uvicorn
 
