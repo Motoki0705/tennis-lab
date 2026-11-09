@@ -394,8 +394,167 @@ def test_verifier_rejection_is_not_a_committable_result(editor_env: Any) -> None
             "reviewed_evidence_ids": ["baseline", "cameras"],
         },
     )
-    with pytest.raises(schema.ContractError, match="validation_failed"):
+    with pytest.raises(
+        editor.SemanticValidationError, match="validation_failed"
+    ) as rejected:
         env.adapter.edit(env.request, env.current, env.context)
+    validation = rejected.value.validation
+    assert validation.candidate_digest == schema.candidate_digest(env.proposed)
+    assert validation.semantic.status == "failed"
+    assert validation.semantic.issues[0].rule == "unsupported_claim"
+    assert not validation.passed
+    staged = env.store.stage(env.proposed)
+    # Even a rendering approval cannot clear the rejected semantic check.
+    with pytest.raises(schema.ContractError, match="validation_failed"):
+        env.store.commit(
+            staged,
+            validation.model_copy(
+                update={"rendering": schema.CheckResult(status="passed")}
+            ),
+        )
+    assert env.store.current("geometry") == env.current
+
+
+@pytest.mark.parametrize("category", ["unsupported_claims", "technical_errors"])
+def test_claim_findings_override_approval_and_survive_validation(
+    editor_env: Any, category: str
+) -> None:
+    env = editor_env
+    quote, reason = (
+        ("300 fps以上", "No supplied product specification supports this rate.")
+        if category == "unsupported_claims"
+        else (
+            "光学中心 (c_x, c_y)",
+            "These image coordinates denote the principal point.",
+        )
+    )
+    after = env.proposed.document.model_copy(
+        update={
+            "html": env.proposed.document.html.replace(
+                "</section>", f"<p>{quote}</p></section>"
+            )
+        }
+    )
+    proposed = candidate(after, current=env.current, request=env.request)
+    env.outputs(
+        proposed,
+        {
+            "candidate_digest": schema.candidate_digest(proposed),
+            "check": {"status": "passed", "issues": []},
+            "reviewed_evidence_ids": ["baseline", "cameras"],
+            category: [{"quote": quote, "reason": reason, "content_id": "geometry"}],
+        },
+    )
+    with pytest.raises(
+        editor.SemanticValidationError, match="validation_failed"
+    ) as rejected:
+        env.adapter.edit(env.request, env.current, env.context)
+    validation = schema.parse(
+        schema.ValidationResult, rejected.value.validation.model_dump_json()
+    )
+    assert validation.candidate_digest == schema.candidate_digest(proposed)
+    assert validation.semantic.status == "failed"
+    assert validation.rendering.status == "not_run"
+    assert [
+        (issue.rule, issue.content_id, issue.evidence_id)
+        for issue in validation.semantic.issues
+    ] == [
+        (
+            "unsupported_claim"
+            if category == "unsupported_claims"
+            else "technical_error",
+            "geometry",
+            None,
+        )
+    ]
+    assert quote in validation.semantic.issues[0].message
+    assert reason in validation.semantic.issues[0].message
+    assert len([call for call in env.calls() if call["prompt"] is not None]) == 2
+    staged = env.store.stage(proposed)
+    with pytest.raises(schema.ContractError, match="validation_failed"):
+        env.store.commit(
+            staged,
+            validation.model_copy(
+                update={"rendering": schema.CheckResult(status="passed")}
+            ),
+        )
+    assert env.store.current("geometry") == env.current
+    assert len(env.store.history("geometry")) == 1
+
+
+@pytest.mark.parametrize("missing", ["unsupported_claims", "technical_errors"])
+def test_verdict_must_explicitly_report_both_claim_audits(
+    editor_env: Any, missing: str
+) -> None:
+    env = editor_env
+    path = env.root / "verifier.json"
+    verdict = json.loads(path.read_text())
+    del verdict[missing]
+    path.write_text(json.dumps(verdict))
+    with pytest.raises(schema.ContractError, match="invalid_model_output"):
+        env.adapter.edit(env.request, env.current, env.context)
+    assert env.store.current("geometry") == env.current
+
+
+def test_observed_triangulation_findings_are_retained_with_the_original_candidate(
+    editor_env: Any,
+) -> None:
+    env = editor_env
+    fixture = (
+        Path(__file__).resolve().parents[3]
+        / "support/agents_ops/fixtures/explain_html/triangulation-initial.json"
+    )
+    inputs = json.loads(fixture.read_text())["input"]
+    proposed = schema.parse(schema.Candidate, json.dumps(inputs["candidate"]))
+    context = editor.WritingContext.model_validate(inputs["context"])
+    env.outputs(
+        proposed,
+        {
+            "candidate_digest": schema.candidate_digest(proposed),
+            "check": {"status": "failed", "issues": []},
+            "reviewed_evidence_ids": ["projection", "trial"],
+            "unsupported_claims": [
+                {
+                    "quote": "8〜12台以上の同期高速カメラ（300 fps以上）",
+                    "reason": "No supplied product specifications.",
+                    "content_id": "real-world-optimization",
+                },
+                {
+                    "quote": "時速150〜200 km",
+                    "reason": "No supplied speed measurements.",
+                    "content_id": "calibration-sync",
+                },
+            ],
+            "technical_errors": [
+                {
+                    "quote": "光学中心 $(c_x, c_y)$",
+                    "reason": "Principal point is not the 3D camera centre.",
+                    "content_id": "calibration-sync",
+                    "evidence_id": "projection",
+                },
+                {
+                    "quote": "視線が交差することは原理的にあり得ません",
+                    "reason": "Asynchrony alone does not imply impossibility.",
+                    "content_id": "calibration-sync",
+                },
+            ],
+        },
+    )
+    with pytest.raises(editor.SemanticValidationError) as rejected:
+        env.adapter.write_initial(proposed.request, context)
+    validation = rejected.value.validation
+    assert validation.candidate_digest == schema.candidate_digest(proposed)
+    assert [issue.rule for issue in validation.semantic.issues] == [
+        "unsupported_claim",
+        "unsupported_claim",
+        "technical_error",
+        "technical_error",
+    ]
+    assert validation.semantic.issues[2].evidence_id == "projection"
+    assert all(
+        issue.content_id and issue.message for issue in validation.semantic.issues
+    )
+    assert not validation.passed
     assert env.store.current("geometry") == env.current
 
 

@@ -42,6 +42,7 @@ from .schema import (
     Model,
     Revision,
     Text,
+    ValidationIssue,
     ValidationResult,
     candidate_digest,
     parse,
@@ -71,10 +72,54 @@ class WritingContext(Model):
     preferences: str = ""
 
 
+class SemanticFinding(Model):
+    """A quoted claim and its problem, scoped to the inspected candidate."""
+
+    quote: Text
+    reason: Text
+    content_id: Identifier | None = None
+    evidence_id: Identifier | None = None
+
+
 class SemanticVerdict(Model):
     candidate_digest: Digest
     check: CheckResult
     reviewed_evidence_ids: list[Identifier]
+    # Required even when empty: an old evidence-only review is not sufficient.
+    unsupported_claims: list[SemanticFinding]
+    technical_errors: list[SemanticFinding]
+
+    def semantic_check(self) -> CheckResult:
+        """Every finding vetoes approval, even if the model reports passed."""
+        issues = list(self.check.issues)
+        for rule, findings in (
+            ("unsupported_claim", self.unsupported_claims),
+            ("technical_error", self.technical_errors),
+        ):
+            issues.extend(
+                ValidationIssue(
+                    rule=rule,
+                    message=f"{json.dumps(finding.quote, ensure_ascii=False)}: "
+                    + finding.reason,
+                    content_id=finding.content_id,
+                    evidence_id=finding.evidence_id,
+                )
+                for finding in findings
+            )
+        return CheckResult(
+            status="passed"
+            if self.check.status == "passed" and not issues
+            else "failed",
+            issues=issues,
+        )
+
+
+class SemanticValidationError(ContractError):
+    """Reject publication while retaining the digest-bound private diagnostics."""
+
+    def __init__(self, validation: ValidationResult):
+        self.validation = validation
+        super().__init__("validation_failed")
 
 
 @dataclass(frozen=True)
@@ -440,17 +485,19 @@ class GeminiEditor:
             expected_ids.update(item.evidence_id for item in current.document.evidence)
         if set(reviewed) != expected_ids or len(reviewed) != len(expected_ids):
             raise ContractError("invalid_model_output")
-        if verdict.check.status != "passed" or verdict.check.issues:
-            raise ContractError("validation_failed")
+        semantic = verdict.semantic_check()
+        validation = ValidationResult(
+            candidate_digest=digest,
+            structural=CheckResult(status="passed"),
+            semantic=semantic,
+            rendering=CheckResult(status="not_run"),
+        )
+        if semantic.status != "passed":
+            raise SemanticValidationError(validation)
         check_cancel(cancel)
         return EditorialResult(
             candidate,
-            ValidationResult(
-                candidate_digest=digest,
-                structural=CheckResult(status="passed"),
-                semantic=verdict.check,
-                rendering=CheckResult(status="not_run"),
-            ),
+            validation,
             writer.evidence,
             verifier.evidence,
             repairs,

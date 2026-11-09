@@ -134,6 +134,21 @@ editor 对照当前版重新计算 content changes，并再次检查结构和依
 可以生成诚实说明信息不足的候选。检查必须覆盖新旧全部依据 ID，绑定候选 digest，且无问题地 passed。
 拒绝或无效输出会抛出 ContractError，不返回候选。模型语义检查提供额外证据，不保证真理或完整正确性。
 
+writer 区分已提供的依据、用户明确给出的事实和一般定义/推导。主题请求或来源 URL 本身不能支持
+产品规格、运动速度或实际精度。禁止添加未提供的数值输入、产品名及性能主张；基于已提供输入的计算
+应在对应位置保留假设和假想/推导的性质。缺少信息时在正文说明，不猜测。
+
+[editor.py](editor.py) 中 `SemanticVerdict` 必须包含 `unsupported_claims` 和 `technical_errors` 数组，
+即使为空。每项含 `quote`、`reason` 和可选 `content_id`/`evidence_id`。verifier 检查整个文档，
+包括依据标签外的正文、caption 和图表定义，列出无依据的具体主张、术语/坐标系混淆及无条件断言。
+每项映射为 rule 为 `unsupported_claim` 或 `technical_error` 的 `ValidationIssue`，保存在
+`ValidationResult.semantic.issues`。即使总判定为 passed，**任何一项都会导致失败**。
+语义拒绝抛出 `SemanticValidationError`（仍是公开 code 为 `validation_failed` 的 `ContractError`）；
+可信调用方可保存其绑定 digest 的 `.validation` 供私有诊断。不会返回候选，诊断正文不进入 HTTP 错误。
+`schema.py`、保存的 ValidationResult 形状和既有 revision 不变。缺少两数组的旧模型判定无效，
+应使用新 prompt/schema 重新检查，不填充空数组或复用旧批准。语义失败不自动修复/重试，重复拒绝也不放宽检查；
+保持当前版，要求修正输入后显式重试。上述有次数限制的 figure 修复不变。此检查不保证完全正确，也不执行外部事实核查。
+
 `EditorialResult` 包含 candidate、validation 和 writer/verifier 执行证据。validation 的
 structural/semantic 为 passed，rendering 为 **not_run**，不能直接 commit。service 必须 stage
 同一已编译候选和生成 asset bytes，对同一 bundle 执行独立 visual、renderer policy 和渲染检查，

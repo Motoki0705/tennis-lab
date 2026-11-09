@@ -109,6 +109,7 @@ class EditorEnvironment:
                 "check": {"status": "passed", "issues": []},
                 "reviewed_evidence_ids": ["baseline", "cameras"],
             }
+        verdict = {"unsupported_claims": [], "technical_errors": [], **verdict}
         (self.root / "verifier.json").write_text(json.dumps(verdict))
 
     def calls(self) -> list[dict[str, Any]]:
