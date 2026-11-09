@@ -5,15 +5,63 @@ from __future__ import annotations
 import hashlib
 import importlib
 import json
+import os
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops"))
 schema: Any = importlib.import_module("explain_html.schema")
 document_api: Any = importlib.import_module("explain_html.document")
 store_api: Any = importlib.import_module("explain_html.store")
 paths_api: Any = importlib.import_module("explain_html.paths")
+
+
+@contextmanager
+def publication_fault(
+    monkeypatch: pytest.MonkeyPatch, *, operation: str, destination: str, after: bool
+) -> Iterator[SimpleNamespace]:
+    """Fail one real publication rename, or its actual directory fsync afterward."""
+    result = SimpleNamespace(fired=False, replaced=False)
+    rename = getattr(os, operation)
+    fsync = os.fsync
+    directory: tuple[int, int] | None = None
+
+    def publish(source: Any, target: Any, **kwargs: Any) -> None:
+        nonlocal directory
+        matches = (
+            str(target) == destination
+            and not result.fired
+            and kwargs.get("dst_dir_fd") is not None
+        )
+        if matches and not after:
+            result.fired = True
+            raise OSError("Injected failure before publication.")
+        rename(source, target, **kwargs)
+        if matches:
+            result.replaced = True
+            info = os.fstat(kwargs["dst_dir_fd"])
+            directory = info.st_dev, info.st_ino
+
+    def sync(descriptor: int) -> None:
+        nonlocal directory
+        info = os.fstat(descriptor)
+        if directory == (info.st_dev, info.st_ino):
+            directory = None
+            result.fired = True
+            raise OSError("Injected directory fsync failure after publication.")
+        fsync(descriptor)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(os, operation, publish)
+        patch.setattr(os, "fsync", sync)
+        yield result
+
 
 HTML = """<!doctype html><html><head><title>Ray geometry</title></head><body>
 <header id="overview" data-content-id="overview"><link rel="stylesheet" href="assets/theme.css">Two views locate a ball.</header>

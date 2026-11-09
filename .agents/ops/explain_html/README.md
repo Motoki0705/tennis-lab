@@ -307,6 +307,12 @@ is reconciled against the exact saved stage and published revision as succeeded.
 Uncertain journal I/O stops editing with an explicit error until restart; it
 cannot relabel a committed revision as failed/interrupted.
 
+Undo also reconciles publication before recording a failure: request ID, parent,
+restored_from and the complete target document must match. Startup checks restore
+journals even when an older runtime recorded an error. An unreadable publication
+stops further work without declaring success. Export similarly reports success
+after a rename/fsync error only if its manifest and every public byte verify.
+
 ## Storage, recovery and export
 
 Use a dedicated Git-ignored runtime directory, such as the `outputs/` location
@@ -494,10 +500,13 @@ cleanup. One case connects the real `render_document` and staged `validate_visua
 to editor verification and store commit. These editor tests require no browser or
 fixed real-time sleep.
 
-Runtime coverage adds 13 real-store integration cases in `test_jobs.py` and 6
+Runtime coverage adds 17 real-store integration cases in `test_jobs.py` and 6
 HTTP/CLI cases in `tests/e2e/agents_ops/explain_html/test_service.py`. Explicit fake
 editor/rendering boundaries, Event gates, OS-assigned ports and private temporary
 roots cover duplicate calls/commits, request-scoped compiled bytes, stale bases, cancel/undo/shutdown late
 results, active-journal recovery, disk failure after pointer replacement,
 cross-session tokens, Host/Origin/path rejection, closed exports and public CLI
 startup/shutdown/restart/offline export.
+Restore coverage includes faults before/after pointer replacement, unreadable
+publication and old error journals. Three store cases also cover export rename
+faults and failed readback. These faults intercept actual directory fsync calls.

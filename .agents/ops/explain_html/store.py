@@ -618,21 +618,35 @@ class RevisionStore:
             revision_id=revision_id,
             files=files,
         )
-        with SafeDirectory(self.root) as filesystem:
-            pending = f"exports/.pending-{snapshot_id}"
-            source = (
-                f"{self._document_path(document_id)}/revisions/{revision_id}/public"
-            )
-            for name in files:
-                data = (
-                    canonical_bytes(response)
-                    if name == "manifest.json"
-                    else filesystem.read(f"{source}/{name}")
+        published = f"exports/{snapshot_id}"
+        try:
+            with SafeDirectory(self.root) as filesystem:
+                pending = f"exports/.pending-{snapshot_id}"
+                source = (
+                    f"{self._document_path(document_id)}/revisions/{revision_id}/public"
                 )
-                filesystem.write(f"{pending}/{name}", data)
-            self._check_bundle(filesystem, pending, revision.document)
-            # Snapshot visibility also switches only after the whole bundle exists.
-            filesystem.rename(pending, f"exports/{snapshot_id}")
+                for name in files:
+                    data = (
+                        canonical_bytes(response)
+                        if name == "manifest.json"
+                        else filesystem.read(f"{source}/{name}")
+                    )
+                    filesystem.write(f"{pending}/{name}", data)
+                self._check_bundle(filesystem, pending, revision.document)
+                # Visibility switches only after the whole bundle exists.
+                filesystem.rename(pending, published)
+        except OSError as exc:
+            # rename() can succeed before directory fsync fails. A complete,
+            # exact public snapshot is a successful result, not a lost export.
+            with SafeDirectory(self.root) as filesystem:
+                if not filesystem.exists(published):
+                    raise
+                manifest = self._read_model(
+                    filesystem, f"{published}/manifest.json", SnapshotResponse
+                )
+                if manifest != response:
+                    raise ContractError("corrupt_store") from exc
+                self._check_bundle(filesystem, published, revision.document)
         return response
 
     @_storage_boundary

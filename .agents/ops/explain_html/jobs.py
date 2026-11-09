@@ -208,6 +208,10 @@ class JobController:
                 if (
                     revision.restored_from != request.revision_id
                     or revision.parent_revision != request.base_revision
+                    or revision.document
+                    != self.store.revision(
+                        request.document_id, request.revision_id
+                    ).document
                 ):
                     raise ContractError("corrupt_store")
             else:
@@ -232,7 +236,7 @@ class JobController:
         request = record.request
         if isinstance(request, RestoreRequest):
             restored: _Record = record.model_copy(
-                update={"restored_revision": revision.revision_id}
+                update={"restored_revision": revision.revision_id, "error": None}
             )
             return restored
         assert revision.parent_revision is not None
@@ -291,17 +295,23 @@ class JobController:
                         elif job is not None:
                             raise ContractError("corrupt_store")
                         self._records[(document_id, request_id)] = record
-                        if (job and job.state in ACTIVE) or (
-                            job is None
-                            and record.restored_revision is None
-                            and record.error is None
-                        ):
+                        if (job and job.state in ACTIVE) or job is None:
                             published = self._published(record)
                             if published:
-                                self._save(self._success(record, published))
+                                if (
+                                    record.restored_revision is not None
+                                    and record.restored_revision
+                                    != published.revision_id
+                                ):
+                                    raise ContractError("corrupt_store")
+                                recovered = self._success(record, published)
+                                if recovered != record:
+                                    self._save(recovered)
                             elif job:
                                 self._transition(record, "interrupted")
-                            else:
+                            elif record.restored_revision is not None:
+                                raise ContractError("corrupt_store")
+                            elif record.error is None:
                                 self._save(
                                     record.model_copy(
                                         update={
@@ -431,8 +441,24 @@ class JobController:
             try:
                 revision = self.store.restore(request)
             except ContractError as exc:
-                self._save(record.model_copy(update={"error": exc.error}))
-                raise
+                try:
+                    published = self._published(record)
+                except (OSError, ContractError) as failure:
+                    # The pointer may already have changed. Preserve the pending
+                    # journal and fence work until publication can be verified.
+                    error = (
+                        failure
+                        if isinstance(failure, ContractError)
+                        else ContractError("storage_error")
+                    )
+                    self._fail_runtime(error)
+                    if isinstance(failure, ContractError):
+                        raise
+                    raise error from failure
+                if published is None:
+                    self._save(record.model_copy(update={"error": exc.error}))
+                    raise
+                revision = published
             self._save(self._success(record, revision))
             for key, active in list(self._records.items()):
                 if (

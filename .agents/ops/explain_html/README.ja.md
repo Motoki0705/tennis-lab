@@ -236,6 +236,11 @@ cancel・undo・検証開始・commitはcontroller lockで同期する。shutdow
 厳密に照合してsucceededへ回復する。journal I/Oが不確実になったら再起動まで明示エラーで編集を止め、
 既にcommitした版をfailed/interruptedと誤表示しない。
 
+undoも失敗を確定する前に公開状態を照合し、request ID・parent・restored_from・復元先文書全体の
+一致を要求する。旧runtimeがerrorを記録したrestore journalも起動時に再照合する。
+公開状態を読めない場合は成功扱いせず処理を止める。exportのrename/fsyncエラーも、
+manifestと全公開bytesが照合できた場合だけ成功として返す。
+
 ## 保存・復旧・export
 
 ソース内使用例の `outputs/` のように、Git対象外の専用runtime directoryを使う。root全体は
@@ -374,8 +379,10 @@ editorは `test_editor.py` にintegration 11件、
 stage後の `validate_visuals` をeditorの意味検査・store commitへ接続する。
 editorの検証にはbrowser・固定の実時間sleepは不要。
 
-runtimeは `test_jobs.py` の実store integration 13件と、
+runtimeは `test_jobs.py` の実store integration 17件と、
 `tests/e2e/agents_ops/explain_html/test_service.py` のHTTP/CLI 6件を追加する。
 偽editor/描画判定、Event gate、OS割当port、privateな一時rootを使い、生成/commitの重複・要求単位のcompile bytes・古いbase・
 cancel/undo/shutdown後の遅延結果・進行中journalの復旧・現在版切替後のdiskエラー・session間のtoken分離・
 Host/Origin/path拒否・公開export範囲・CLIの起動/終了/再起動/offline exportを検査する。
+restoreはpointer置換前/後の障害・公開状態を読めない場合・旧error journalを検証する。
+storeの追加3件はexportのrename障害とreadback失敗を扱い、実directory fsync呼出しへ障害を注入する。

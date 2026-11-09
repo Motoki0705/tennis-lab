@@ -222,6 +222,10 @@ cancel、undo、进入验证和 commit 由 controller lock 同步。shutdown 设
 若 current pointer 已切换但 job 应答未保存，则严格匹配保存的 stage 和已发布 revision，恢复 succeeded。
 journal I/O 不确定时，以明确错误停止编辑直到重启，不把已 commit 的版本误标 failed/interrupted。
 
+undo 也在记录失败前核对发布状态：request ID、parent、restored_from 和完整目标文档必须匹配。
+启动时也检查旧 runtime 记录了 error 的 restore journal。无法读取发布结果时停止工作，不判定成功。
+export 的 rename/fsync 错误也仅在 manifest 与全部公开 bytes 核对通过时返回成功。
+
 ## 存储、恢复与导出
 
 使用 Git 忽略的专用 runtime 目录，例如源码用例中的 `outputs/` 路径。整个 root 保持私有，
@@ -354,8 +358,10 @@ editor 在 `test_editor.py` 添加 11 个 integration case，在
 以及 pipe/Event 同步的进程回收。其中一例将真实的 `render_document` 和 stage 后的
 `validate_visuals` 接入 editor 的语义检查与 store commit。editor 验证无需浏览器或固定的实时间 sleep。
 
-runtime 在 `test_jobs.py` 添加 13 个真实 store integration case，在
+runtime 在 `test_jobs.py` 添加 17 个真实 store integration case，在
 `tests/e2e/agents_ops/explain_html/test_service.py` 添加 6 个 HTTP/CLI case。
 使用假 editor/渲染判定、Event gate、OS 分配端口和私有临时 root，验证生成/commit 去重、请求独立的 compile bytes、过期 base、
 cancel/undo/shutdown 后的延迟结果、活动 journal 恢复、pointer 切换后的 disk 错误、跨 session token、
 Host/Origin/path 拒绝、公开 export 清单和 CLI 启停/重启/离线 export。
+restore 覆盖 pointer 置换前后故障、无法读取发布结果和旧 error journal。
+另有 3 个 store case 覆盖 export rename 故障和 readback 失败，在实际 directory fsync 调用处注入故障。

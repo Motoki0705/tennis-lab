@@ -1,6 +1,6 @@
 """Durable deduplication, publication fencing and recovery with real bundles.
 
-Design: 13 cases, each <5s/setup <1s, Event synchronization only. Contract/store
+Design: 17 cases, each <5s/setup <1s, Event synchronization only. Contract/store
 input combinations already covered by test_document/test_revisions are reused,
 not multiplied here. All writers and visual verdicts are explicit test doubles.
 """
@@ -19,8 +19,10 @@ import pytest
 from tests.support.agents_ops.explain_editor import candidate
 from tests.support.agents_ops.explain_editor import editor_env as editor_env
 from tests.support.agents_ops.explain_html import (
+    HTML,
     PAYLOADS,
     candidate_for,
+    publication_fault,
     schema,
     validation_for,
 )
@@ -326,6 +328,104 @@ def test_undo_at_validation_invalidates_late_result_and_allows_new_edit(
     with pytest.raises(schema.ContractError, match="request_conflict"):
         controller.submit(world.request("undo", base_revision=done.revision_id))
     assert len(world.commits) == 2
+
+
+@pytest.mark.parametrize("phase", ["before", "after", "unreadable"])
+def test_undo_publication_fault_reconciles_retries_and_restart(
+    job_world: Any, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
+    world = job_world
+    controller = world.controller()
+    controller.submit(world.request())
+    assert controller.wait("ray-geometry", "edit", timeout=5).state == "succeeded"
+    second = world.store.current("ray-geometry")
+    assert second.document != world.first.document
+    undo = schema.RestoreRequest(
+        document_id="ray-geometry",
+        request_id="undo-fault",
+        base_revision=second.revision_id,
+        revision_id=world.first.revision_id,
+    )
+    history = world.store.history
+    with publication_fault(
+        monkeypatch,
+        operation="replace",
+        destination="current.json",
+        after=phase != "before",
+    ) as fault:
+
+        def read_history(document_id: str) -> Any:
+            if phase == "unreadable" and fault.fired:
+                raise schema.ContractError("storage_error")
+            return history(document_id)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(world.store, "history", read_history)
+            if phase == "after":
+                restored = controller.restore(undo)
+                assert controller.restore(undo) == restored
+            else:
+                with pytest.raises(schema.ContractError, match="storage_error"):
+                    controller.restore(undo)
+                with pytest.raises(schema.ContractError, match="storage_error"):
+                    controller.restore(undo)
+        assert fault.fired and fault.replaced == (phase != "before")
+    controller.close()
+    reopened = world.controller()
+    current = world.store.current("ray-geometry")
+    if phase == "before":
+        assert current == second
+        with pytest.raises(schema.ContractError, match="storage_error"):
+            reopened.restore(undo)
+        assert len(history("ray-geometry")) == 2
+    else:
+        restored = reopened.restore(undo)
+        assert current == restored
+        assert restored.document == world.first.document
+        assert restored.document.html == HTML
+        assert restored.parent_revision == second.revision_id
+        assert restored.restored_from == world.first.revision_id
+        assert len(history("ray-geometry")) == 3
+        assert (
+            world.store.asset_bytes("ray-geometry", current.revision_id, "court")
+            == PAYLOADS["court"]
+        )
+        assert reopened.restore(undo) == restored
+
+
+def test_recovery_reconciles_legacy_error_restore_journal(job_world: Any) -> None:
+    world = job_world
+    controller = world.controller()
+    controller.submit(world.request())
+    assert controller.wait("ray-geometry", "edit", timeout=5).state == "succeeded"
+    second = world.store.current("ray-geometry")
+    undo = schema.RestoreRequest(
+        document_id="ray-geometry",
+        request_id="legacy-undo",
+        base_revision=second.revision_id,
+        revision_id=world.first.revision_id,
+    )
+    restored = controller.restore(undo)
+    controller.close()
+    path = world.root / "private/requests/ray-geometry/legacy-undo.json"
+    record = json.loads(path.read_bytes())
+    # This is the old worker's persisted result after a successful os.replace
+    # followed by an fsync failure: public undo exists, journal claims an error.
+    record["restored_revision"] = None
+    record["error"] = schema.ContractError("storage_error").error.model_dump(
+        mode="json"
+    )
+    path.write_text(json.dumps(record))
+    reopened = world.controller()
+    assert reopened.restore(undo) == restored
+    assert world.store.current("ray-geometry").document == world.first.document
+    assert world.store.current("ray-geometry").document.html == HTML
+    assert len(world.store.history("ray-geometry")) == 3
+    repaired = json.loads(path.read_bytes())
+    assert (
+        repaired["restored_revision"] == restored.revision_id
+        and repaired["error"] is None
+    )
 
 
 def test_shutdown_fences_late_editor_result_and_does_not_resend_on_restart(

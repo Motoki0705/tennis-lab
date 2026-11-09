@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 from typing import Any
+from uuid import UUID
 
 import pytest
 
@@ -19,6 +20,7 @@ from tests.support.agents_ops.explain_html import (
     document_api,
     make_document,
     paths_api,
+    publication_fault,
     schema,
     store_api,
     validation_for,
@@ -61,6 +63,53 @@ def edit_for(revision: Any, request_id: str = "add-example") -> Any:
         changes=[{"content_id": "geometry", "kind": "updated"}],
         evidence_changes=[],
     )
+
+
+@pytest.mark.parametrize("phase", ["before", "after", "unreadable"])
+def test_snapshot_publication_fault_reports_only_verified_exports(
+    initial: Any, monkeypatch: pytest.MonkeyPatch, phase: str
+) -> None:
+    root, store, first = initial
+    after = phase != "before"
+    snapshot_id = "e" * 32
+    monkeypatch.setattr(store_api, "uuid4", lambda: UUID(hex=snapshot_id))
+    read_model = store._read_model
+
+    def read_manifest(filesystem: Any, path: str, model: Any) -> Any:
+        if phase == "unreadable" and path == f"exports/{snapshot_id}/manifest.json":
+            raise OSError("Cannot verify the installed snapshot manifest.")
+        return read_model(filesystem, path, model)
+
+    with publication_fault(
+        monkeypatch, operation="rename", destination=snapshot_id, after=after
+    ) as fault:
+        with monkeypatch.context() as patch:
+            patch.setattr(store, "_read_model", read_manifest)
+            if phase == "after":
+                snapshot = store.snapshot("ray-geometry", first.revision_id)
+                assert snapshot.snapshot_id == snapshot_id
+                assert (
+                    schema.parse(
+                        schema.SnapshotResponse,
+                        store.snapshot_file(snapshot_id, "manifest.json"),
+                    )
+                    == snapshot
+                )
+            else:
+                with pytest.raises(schema.ContractError, match="storage_error"):
+                    store.snapshot("ray-geometry", first.revision_id)
+        if phase == "before":
+            with pytest.raises(schema.ContractError, match="snapshot_not_found"):
+                store.snapshot_file(snapshot_id, "manifest.json")
+        assert fault.fired and fault.replaced == after
+    assert store.current("ray-geometry") == first
+    if after:
+        assert store.snapshot_file(snapshot_id, "index.html") == HTML.encode()
+        for asset_id, content in PAYLOADS.items():
+            asset = next(
+                item for item in first.document.assets if item.asset_id == asset_id
+            )
+            assert store.snapshot_file(snapshot_id, asset.path) == content
 
 
 def test_partial_restructure_restore_keep_complete_bundles_and_invalidate_old_bases(
