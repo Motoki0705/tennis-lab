@@ -259,7 +259,7 @@ fragmentを含む起動URLを開く。UIはfragmentを直ちに除去し、token
 閲覧専用view。opaque iframeから固定UIへDOMを公開できず、srcdocは固定UIのCSPを継承するため、
 serviceへこの局所拡張が必要になる。最小の閲覧支援styleと固定の `web/reader.js` を加え、その正確なbytesのscript
 hashを既存rendererのhashと一緒に許可する。この一時responseだけはCSP metaをHTTP CSPで置き換え、
-sandbox・connect-src none・resource制限・renderer hashを維持する。保存HTML・validator・compiler・
+sandbox・connect-src none・resource制限・renderer hashを維持する。共通のcontent file_name列挙にもreader.htmlを追加するが、JSONモデルとexportのファイル一覧は維持する。保存HTML・validator・compiler・
 `content/index.html`・exportのbytesは変更しない。
 
 iframeは `sandbox="allow-scripts"` のopaque originで、same-origin・forms・popups・top-navigationの

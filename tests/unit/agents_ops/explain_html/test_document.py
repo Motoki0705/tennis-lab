@@ -489,6 +489,21 @@ def test_schema_examples_errors_and_job_states_are_shared_wire_contract() -> Non
     assert contract["paths"]["/api/documents/{document_id}/requests"]["post"][
         "responses"
     ]["202"]
+    content_route = contract["paths"][
+        "/api/documents/{document_id}/revisions/{revision_id}/content/{file_name}"
+    ]["get"]
+    file_schema = next(
+        parameter["schema"]
+        for parameter in content_route["parameters"]
+        if parameter["name"] == "file_name"
+    )
+    file_validator = jsonschema.Draft202012Validator(file_schema)
+    # A schema-driven client must be able to request the isolated reader view;
+    # private/unlisted filenames remain outside the public content contract.
+    file_validator.validate("reader.html")
+    file_validator.validate("index.html")
+    with pytest.raises(jsonschema.ValidationError):
+        file_validator.validate("private.json")
     assert "succeeded" not in schema.JOB_TRANSITIONS["queued"]
     assert schema.JOB_TRANSITIONS["validating"] >= {
         "succeeded",

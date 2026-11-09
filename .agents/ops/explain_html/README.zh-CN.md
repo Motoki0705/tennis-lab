@@ -242,7 +242,7 @@ request ID、操作类型、base和开始时间，不保存token或指令。重�
 opaque iframe不能向固定UI暴露DOM，srcdoc又继承固定UI的CSP，因此需要这一局部service扩展。
 view加入最少的阅读辅助style和固定 `web/reader.js`，以其精确bytes的script hash连同版本固定的renderer hash授权执行。
 临时response用HTTP CSP替换CSP meta，保留sandbox、connect-src none、resource限制和renderer hash。
-存储HTML、validator、compiler、`content/index.html`与export bytes均不修改。
+共通content file_name枚举也声明reader.html，但JSON模型和export文件列表保持不变。存储HTML、validator、compiler、`content/index.html`与export bytes均不修改。
 
 iframe使用 `sandbox="allow-scripts"` 和opaque origin，不授予same-origin、forms、popups或top-navigation，
 也不传入token/cookie。生成script仍被阻止。固定UI仅接收来自确切frame window、origin `null`、当前

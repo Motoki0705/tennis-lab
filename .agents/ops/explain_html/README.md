@@ -336,7 +336,7 @@ necessary because an opaque iframe cannot expose its DOM to the control UI, and 
 inherits the control CSP. The view adds minimal accessibility styles and the fixed `web/reader.js` bridge, and authorizes
 its exact bytes with a script hash, alongside revision-pinned renderers. Its HTTP CSP
 replaces CSP meta elements in this temporary response; the sandbox, connect-src none,
-resource restrictions and renderer hashes are retained. Stored HTML, validators, compiler,
+resource restrictions and renderer hashes are retained. The common content filename enum advertises reader.html; JSON wire models and the export file list stay unchanged. Stored HTML, validators, compiler,
 `content/index.html` and export bytes do not change.
 
 The iframe has `sandbox="allow-scripts"`, an opaque origin, no same-origin, forms,

@@ -487,7 +487,7 @@ def examples() -> dict[str, Any]:
 
 def contract_schema() -> dict[str, Any]:
     """OpenAPI 3.1, including editor/store models not exposed as HTTP endpoints."""
-    models = [
+    models: list[type[Model]] = [
         Document,
         Candidate,
         ValidationResult,
@@ -601,6 +601,7 @@ def contract_schema() -> dict[str, Any]:
             if parameter["name"] == "file_name":
                 parameter["schema"]["enum"] = [
                     "index.html",
+                    "reader.html",
                     "evidence.json",
                     "figures.json",
                 ]
