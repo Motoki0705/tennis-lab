@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
+from contextlib import redirect_stdout
 from dataclasses import replace
+from io import StringIO
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -15,6 +20,7 @@ from src.tasks.base.annotation.artifacts import read_document
 from src.tasks.base.annotation.contracts import ArtifactRef, PublicationReceipt
 from src.tennis_scene.pipeline import TennisSceneOrchestrator
 from src.utils.configuration import PathRole
+from src.utils.paths import PROJECT_ROOT
 from tests.support.tennis_scene.direct_workflow import (
     complete_annotations,
     direct_fixture,
@@ -109,9 +115,51 @@ def test_optional_publication_and_receipt_interruption_resume_only_publication(
 
 
 def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publication(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, request: pytest.FixtureRequest
 ) -> None:
-    import sys
+    # ResourceManager observes its controller PID. Full-suite xdist workers
+    # retain unrelated model/rendering memory, which is not this campaign's
+    # baseline. Match the clean CPU process in test_automatic_continuation,
+    # retaining the real scheduler and the fixed 1536 MiB budget.
+    parent_pss = _process_pss()
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "tests.integration.tasks.annotation.test_scene_workflow",
+            str(tmp_path),
+        ],
+        cwd=PROJECT_ROOT,
+        env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
+        capture_output=True,
+        text=True,
+        timeout=180,
+        start_new_session=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    report = json.loads(result.stdout)
+    request.node.user_properties.append(
+        (
+            "resource_controller",
+            json.dumps(
+                {"pytest_pid": os.getpid(), "pytest_pss_bytes": parent_pss, **report}
+            ),
+        )
+    )
+    assert report["controller_pid"] != os.getpid()
+    assert os.getpid() not in report["measured_pids"]
+    assert report["controller_pss_bytes"] < report["pss_limit_bytes"]
+
+
+def _process_pss() -> int:
+    return next(
+        int(line.split()[1]) * 1024
+        for line in Path("/proc/self/smaps_rollup").read_text().splitlines()
+        if line.startswith("Pss:")
+    )
+
+
+def _exercise_blank_cli(tmp_path: Path) -> dict[str, object]:
     import time
 
     from src.tasks.annotation.__main__ import main
@@ -152,26 +200,32 @@ def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publi
         layout, configure_local_videos(layout, cfg), LocalVideoConfigurationReceipt
     )
 
+    def cli(arguments: list[str]) -> str:
+        output = StringIO()
+        with (
+            patch.object(sys, "argv", ["annotation", *arguments]),
+            redirect_stdout(output),
+        ):
+            main()
+        return output.getvalue()
+
     def call(command, document, name):
         ref = write_document(
             layout, layout.path("campaigns", "cli-inputs", name + ".json"), document
         )
-        monkeypatch.setattr(
-            sys,
-            "argv",
-            [
-                "annotation",
-                command,
-                "--operation",
-                str(layout.artifact_path(ref)),
-                "--sha256",
-                ref.digest,
-                "--test-root",
-                str(layout.root),
-            ],
+        return ArtifactRef.model_validate_json(
+            cli(
+                [
+                    command,
+                    "--operation",
+                    str(layout.artifact_path(ref)),
+                    "--sha256",
+                    ref.digest,
+                    "--test-root",
+                    str(layout.root),
+                ]
+            ).strip()
         )
-        main()
-        return ArtifactRef.model_validate_json(capsys.readouterr().out.strip())
 
     conditions = tuple(
         call(
@@ -195,6 +249,8 @@ def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publi
     controller = LocalAnnotationController(
         local, runtime, annotation_policy=condition.policy, test_command=fake_worker()
     )
+    baseline = controller.resources.sample()
+    proc_pss = _process_pss()
     events = AnnotationEvents(layout.path("campaigns"))
     deadline = time.monotonic() + 90
     try:
@@ -218,11 +274,8 @@ def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publi
         assert comparison.results[0][0].worker_kind == "synthetic"
         assert comparison.results[1][0].worker_kind == "not_started"
         assert comparison.acceptance == "unverified"
-        monkeypatch.setattr(
-            sys,
-            "argv",
+        status_output = cli(
             [
-                "annotation",
                 "status",
                 "--runtime",
                 str(layout.artifact_path(condition.runtime)),
@@ -232,8 +285,7 @@ def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publi
                 str(layout.root),
             ],
         )
-        main()
-        assert json.loads(capsys.readouterr().out)["state"] == "complete"
+        assert json.loads(status_output)["state"] == "complete"
         assert not (layout.repository / "data/ball_detection").exists()
         with pytest.raises(ValueError, match="comparison runs"):
             scene_workflow.SceneAnnotationWorkflow(local, Mock())
@@ -253,3 +305,14 @@ def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publi
         ):
             child.wait(timeout=15)
         events.close()
+    return {
+        "controller_pid": os.getpid(),
+        "controller_pss_bytes": baseline.pss_bytes,
+        "controller_proc_pss_bytes": proc_pss,
+        "measured_pids": [process.pid for process in baseline.processes],
+        "pss_limit_bytes": cfg.campaign.resources.total_pss_bytes,
+    }
+
+
+if __name__ == "__main__":
+    print(json.dumps(_exercise_blank_cli(Path(sys.argv[1]))))
