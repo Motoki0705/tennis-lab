@@ -40,9 +40,19 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
     # unrelated model/test assets resident; it must not become this controller's
     # baseline. Keep the same fixed 1 GiB budget in a clean CPU process, with all
     # resource accounting, service stages and supervisors still real.
-    environment = {**os.environ, "PYTHONPATH": str(PROJECT_ROOT)}
-    # Temporary draft investigation: retain the first native failure from the
-    # same CI host instead of depending on one successful scheduling sample.
+    # Temporary draft investigation: compare the exact failing merge source,
+    # before later policy-registration I/O can change its scheduling.
+    source = tmp_path / "original-source"
+    source.mkdir()
+    archive = tmp_path / "original.tar"
+    subprocess.run(
+        ["git", "archive", "--format=tar", "--output", str(archive), "cc5890a76"],
+        cwd=PROJECT_ROOT,
+        check=True,
+    )
+    subprocess.run(["tar", "-xf", str(archive), "-C", str(source)], check=True)
+    (source / ".venv").symlink_to(PROJECT_ROOT / ".venv", target_is_directory=True)
+    environment = {**os.environ, "PYTHONPATH": str(source)}
     for number in range(10):
         root = tmp_path / f"run-{number:02d}"
         root.mkdir()
@@ -53,7 +63,7 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
                 "tests.integration.tasks.annotation.test_automatic_continuation",
                 str(root),
             ],
-            cwd=PROJECT_ROOT,
+            cwd=source,
             env=environment,
             capture_output=True,
             text=True,
