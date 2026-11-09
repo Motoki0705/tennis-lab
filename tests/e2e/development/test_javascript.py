@@ -23,3 +23,12 @@ def test_detection_refresh_race_in_chromium() -> None:
         check=True,
         timeout=120,
     )
+
+
+def test_explain_html_visuals_in_chromium() -> None:
+    subprocess.run(
+        ["node", "tests/e2e/agents_ops/explain_html_visuals_browser.cjs"],
+        cwd=ROOT,
+        check=True,
+        timeout=120,
+    )
