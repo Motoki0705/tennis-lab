@@ -3,9 +3,10 @@
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 This package provides the shared document/edit contract and durable revision store
-for [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710). It contains no
-Gemini invocation, HTTP server, browser UI, image generation or quality evaluator.
-It uses the existing Pydantic dependency and Python's standard library.
+for [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710), plus visual import,
+managed rendering and an explicit image-generation availability boundary. It contains no Gemini
+invocation, HTTP server, browser UI, image-provider implementation or quality
+evaluator. It uses existing Pydantic/Pillow dependencies and the standard library.
 
 ## Contract source and entry points
 
@@ -23,6 +24,12 @@ Use `parse()` for strict JSON parsing: unknown fields and type coercions fail.
 | [document.py](document.py) | Identity, HTML references, selection checks and complete change accounting |
 | [store.py](store.py) | Initial import, stage, commit, current/history, restoration and export snapshot |
 | [paths.py](paths.py) | POSIX directory-descriptor access without following symlinks |
+| [parsing.py](parsing.py) | Shared rejection of ambiguous HTML syntax and CSS resource notation |
+| [images.py](images.py) | Local raster import, capability reporting and fail-closed image adapter |
+| [visual_definitions.py](visual_definitions.py) | Strict observation-error/comparison graph definitions and numerical model |
+| [visuals.py](visuals.py) | SVG/HTML/CSS safety, figure markup and offline renderer policy |
+| [renderers/visuals-v2.js](renderers/visuals-v2.js) | Current renderer with declared figure targets and isolated graph failures |
+| [renderers/visuals-v1.js](renderers/visuals-v1.js) | Immutable renderer retained for old revisions |
 
 ## Identity, targets and candidates
 
@@ -32,6 +39,16 @@ layout, colors, block tag names or order are prescribed. HTML must have balanced
 explicit closing tags; duplicate HTML/content/artifact IDs fail. Native HTML `id`
 and `data-content-id` have separate namespaces. Figure and evidence references
 use `data-figure-id` and `data-evidence-id`; resources may use `data-asset-id`.
+
+The shared parser rejects ambiguous/incomplete comments, processing instructions
+and every declaration except the simple HTML5 doctype. Accepted comments use
+`<!-- ... -->`, without embedded double hyphens or a trailing hyphen. Inputs such
+as `<!-->`, `<!--->`, `--!>` closes, open comments or bogus `<!...>` declarations
+fail with `invalid_document`; neither the document nor visual validator repairs
+them. Both validators also reject CSS resource notation, including `url()`,
+`image-set()`/`-webkit-image-set()` string URLs, `image()` and `src()`, in style
+attributes and style elements. Unsupported CSS is refused rather than omitted
+from reference ownership/change accounting.
 
 Every request binds its target to `base_revision`. A content target must exist.
 A selection additionally supplies exact text, prefix/suffix and start/end offsets
@@ -136,6 +153,101 @@ paths. The implementation targets local POSIX filesystems, including WSL;
 Windows Python, network filesystem atomicity and real power-loss durability are
 not qualified here.
 
+## Visuals and image generation
+
+Use generated raster images for qualitative scenes/metaphors, SVG for exact
+structures, and managed graphs for numerical comparisons or parameter changes.
+Every Asset/Figure carries its ID, caption, alt and public provenance. Managed
+markup displays the figure caption, provenance kind and source together; image
+alt and graph accessible labels come from the Figure. Contextual figure captions
+may differ from the reusable asset caption; image/SVG provenance must match.
+
+`images.import_image(path, asset_id=..., caption=..., alt=..., provenance=...)`
+returns an `ImportedAsset` with `.asset` and unchanged `.content`. It accepts
+decoded, single-frame PNG/JPEG/WebP, limited to 16 MiB and 16 megapixels. An image
+saved by an interactive Codex imagegen session uses the same import entry point
+and `generated_concept` provenance. `visuals.import_svg(content, ...)` accepts
+bounded SVG geometry/text with an SVG namespace and finite positive viewBox.
+Scripts, foreignObject, animation, styles, entities and resource references are
+rejected; nothing is silently stripped. SVG is embedded as an img, never object
+or inline active markup.
+
+Use `managed_renderer()` for its Asset/bytes and Renderer version `2`. Graph
+Figure.asset_ids must contain this renderer alone. Figure.definition is parsed
+by `parse_graph()`; the models and their `model_json_schema()` are the source for
+graph-specific settings within the existing wire contract. Unknown fields,
+numeric coercion, nonfinite values and out-of-domain data fail. The two supported
+types are `observation_error` and `comparison`; there is no formula/JS editor.
+The former is explicitly hypothetical, assumes rectified calibrated pinhole
+stereo and correct correspondence, and computes `Z = f B / (d + error)` in m
+from focal/disparity in px and baseline in m. Its signed error slider, sample
+inputs, axis units/domains and displayed data must agree. Comparison preserves
+up to eight named series with increasing x values and explicit units/domains.
+See the [worked fixtures](../../../tests/support/agents_ops/explain_html_visuals.py).
+
+Put empty `<figure data-figure-id="..."></figure>` slots in any page layout,
+inside their declared content block (or on the block itself). A head and body
+with explicit closing tags are required. `render_document(document)` fills these
+slots and adds a CSP meta and the exact managed script; run it **before** computing
+candidate changes. Graphs include initial SVG, source tables, assumptions, units,
+input ranges and accessible controls, so the initial explanation survives with
+JS disabled. The same script bytes are stored as an Asset and embedded in HTML,
+authorized by their CSP hash. The script belongs to the first graph's content
+block and mounts all graphs after DOM parsing, preserving reference ownership.
+This avoids external-script SRI/CORS failures under
+file://. No CDN, fetch, module import or server is needed after snapshot export.
+The CSP insertion offset comes from parsing the unique head before body; literal
+head text in comments cannot redirect it. The policy precedes the head's first
+script, style and resource reference. Noncanonical head/body nesting and
+non-ASCII whitespace before head (including encoded NBSP) are rejected.
+
+Drawing attributes (`data-managed-*`, `data-definition`, `data-plot`, `data-values`,
+`data-slider-value`, `data-render-*`) are reserved for canonical graph figures;
+`data-graph-targets` belongs only to the managed script. Version 2 reads that
+script's figure/definition manifest, processes only direct children of declared
+figure slots and compares their configuration to the manifest. Extra matching
+nodes are never discovered as graph inputs. A damaged target produces an explicit
+graph error while other declared graphs continue to initialize.
+
+Version 1 bytes remain unchanged. `managed_renderer("1")` supports the old
+Asset/Figure records for snapshot and restore; the current default is version 2.
+Use one renderer version per document; mixed versions fail explicitly. Future
+implementations need a new file/ID/version. Serve old revision HTML and assets
+from that revision, never inject today's code. Runtime checks are defense in
+depth; they do not replace publication validation or iframe isolation.
+
+After stage, call `validate_visuals(document, all_asset_bytes_by_id)` on the
+immutable staged document and **all** staged bytes, obtained through the store
+APIs. It checks reference closure, digests, MIME, asset internals, managed script
+identity and canonical figure/data markup. Inline event handlers, arbitrary
+scripts, embedded browsing contexts and URL-bearing CSS are refused. Ordinary
+CSS and media/supports/layer/container rules are allowed; imports, escapes and
+CSS comments are outside this conservative subset. This deterministic check
+does not produce a semantic/rendering verdict. The trusted controller must still
+run independent meaning/browser checks before commit and provide iframe sandbox
+isolation without editor credentials. The CSP may also be sent as an HTTP header
+using `content_security_policy(document)`.
+
+AI-generated images are created **only while authoring the initial document**,
+using interactive Codex imagegen and local import. During reading, the controller
+uses `UnavailableImageGenerator`: `capability()` reports unavailable with the
+initial-only policy as its reason, and a new AI-image request raises the shared
+`image_generation_unavailable` error. The controller must leave the **whole image
+request incomplete**, abort publication and retain current. Do not publish a
+partial text/SVG substitute as successful image generation. Existing-image import,
+relocation/caption changes, SVG and graph updates remain independently supported.
+This is the [confirmed human decision](https://github.com/Motoki0705/tennis-lab/issues/1710#issuecomment-6732169335);
+there is no pending service-adapter choice in this scope.
+
+`generate_image(..., adapter=...)` retains the tested `ImageGenerator` boundary
+(capability and generation returning real bytes with a public source). Injected
+adapters exercise success/unavailable/failure contracts; the browsing service does
+not select a generation provider. Provider/invalid-artifact failures raise
+`asset_generation_failed`, without provider details in public errors, and must
+also leave the whole request incomplete with current preserved. No credentials
+or provider are auto-discovered. Interactive imagegen availability does not imply
+local-service generation capability; the investigation evidence is in the PR.
+
 ## Downstream responsibilities
 
 HTTP JSON endpoints use the session-token header named in `contract_schema()`;
@@ -161,4 +273,21 @@ Run the repository `.venv/bin/python -m pytest` on
 and `--durations=0 --durations-min=0` to measure them. Tests use
 real temporary files, asymmetric blocks, multiple assets,
 declarative graph data, exception injection and synchronized competing writers.
-They require no external API, GPU, browser or real-time sleep.
+They require no external API, GPU, browser or real-time sleep. The visual addition
+has 9 Python unit and 3 Node cases; run Node with
+`node --test tests/unit/agents_ops/explain_html/visuals.test.mjs`.
+The two existing restore/snapshot integration cases also use real raster/SVG and
+managed graphs; an additional integration verifies v1 snapshot/restore after v2
+publication and pins the original v1 bytes. Browser verification uses one shared Chromium setup and two
+scenarios (offline slider/comparison/CSP placement and rejected syntax/SVG/
+reserved-attribute export with current preservation, damaged-target isolation,
+JS-disabled initial rendering and old-v1 replay):
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \
+  node tests/e2e/agents_ops/explain_html_visuals_browser.cjs
+```
+
+The harness prints setup/scenario times and its temporary screenshot directory.
+No real image generation or external API is run in normal tests/CI.
+The existing JavaScript pytest entrypoint and CI lane run both visual suites.

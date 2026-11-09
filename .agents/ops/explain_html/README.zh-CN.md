@@ -3,8 +3,9 @@
 [English](README.md) · [日本語](README.ja.md)
 
 本包为 [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710) 提供共用文档/编辑契约和
-持久化版本存储。不包含 Gemini 调用、HTTP 服务、浏览器 UI、图像生成或质量评估。
-使用现有的 Pydantic 依赖和 Python 标准库。
+持久化版本存储，以及 visual import、受管 renderer 和明确图像生成可用性的边界。
+不包含 Gemini 调用、HTTP 服务、浏览器 UI、图像 provider 实现或质量评估。
+使用现有的 Pydantic/Pillow 依赖和 Python 标准库。
 
 ## 契约正本与入口
 
@@ -20,6 +21,12 @@
 | [document.py](document.py) | ID、HTML 引用、选择范围检查和完整变更清单 |
 | [store.py](store.py) | 初始 import、stage、commit、当前版/历史、恢复和导出 snapshot |
 | [paths.py](paths.py) | 不跟随 symlink 的 POSIX 目录描述符操作 |
+| [parsing.py](parsing.py) | 共用的歧义 HTML 语法和 CSS resource 记法拒绝边界 |
+| [images.py](images.py) | 本地图像 import、能力报告与失败时停止的图像 adapter |
+| [visual_definitions.py](visual_definitions.py) | 观测误差/比较图的严格声明式配置与数值模型 |
+| [visuals.py](visuals.py) | SVG/HTML/CSS 安全检查、图 markup 和离线 renderer policy |
+| [renderers/visuals-v2.js](renderers/visuals-v2.js) | 按声明 figure 绘图并隔离单图错误的当前 renderer |
+| [renderers/visuals-v1.js](renderers/visuals-v1.js) | 为旧 revision 保留原始 bytes 的 renderer |
 
 ## ID、目标与候选
 
@@ -27,6 +34,13 @@
 不固定标题、布局、配色、块标签或顺序。HTML 必须使用配对且显式的闭合标签，拒绝重复的
 HTML/内容/成果物 ID。HTML 原生 `id` 与 `data-content-id` 属于不同命名空间。
 图和依据通过 `data-figure-id`、`data-evidence-id` 引用，资源可以使用 `data-asset-id`。
+
+共用 parser 拒绝有歧义或未完成的 comment、processing instruction，以及简单 HTML5 doctype 之外的声明。
+comment 必须使用 `<!-- ... -->`，内部不允许连续 hyphen 或结尾 hyphen。`<!-->`、`<!--->`、`--!>`
+结束、未闭合 comment 和无效 `<!...>` 声明均返回 `invalid_document`；document/visual 检查均不修复输入。
+style 属性和 style 元素中的 CSS resource 记法也统一拒绝，包括 `url()`、
+`image-set()`/`-webkit-image-set()` 字符串 URL、`image()` 和 `src()`。不支持的 CSS 被拒绝，
+不会从引用归属和变更清单中静默省略。
 
 每个请求用 `base_revision` 固定目标。内容目标必须存在。选区还包含 exact 引文、prefix/suffix，
 以及整个块 DOM `textContent` 的 **UTF-16 code unit** start/end。按照
@@ -99,6 +113,70 @@ Document 中包括依据和来源的所有信息均用于公开，不要放入�
 和 hard link。asset 路径统一为 `assets/<asset_id>.<ext>`。本实现面向包括 WSL 的本地 POSIX filesystem；
 本子任务未验证 Windows Python、网络 filesystem 原子性或真实断电持久性。
 
+## 图表与图像生成
+
+定性场景/比喻使用生成图像，精确结构使用 SVG，数值比较或参数交互使用受管图表。
+每个 Asset/Figure 都有 ID、caption、alt 和公开来源。受管 markup 将 caption、来源类别与出处一起显示；
+图像 alt 和图表无障碍标签取自 Figure。上下文相关的图 caption 可以与复用 asset 的 caption 不同，
+但图像/SVG 的来源必须一致。
+
+`images.import_image(path, asset_id=..., caption=..., alt=..., provenance=...)` 返回带
+`.asset` 和原始 `.content` 的 `ImportedAsset`。只接受可解码的单帧 PNG/JPEG/WebP，
+上限为 16 MiB、16 megapixel。交互式 Codex imagegen 保存的图像也使用此入口，并标记为
+`generated_concept`。`visuals.import_svg(content, ...)` 接受有 SVG namespace 和有限正 viewBox 的
+受限几何/文字 SVG。拒绝 script、foreignObject、animation、style、entity 和资源引用，不静默删除。
+SVG 作为 img 嵌入，不使用 object 或 active inline markup。
+
+使用 `managed_renderer()` 的 Asset/bytes 和 Renderer version `2`，graph Figure.asset_ids
+只包含此 renderer。`parse_graph()` 解析 Figure.definition；模型及其 `model_json_schema()` 是现有
+wire 契约中图表配置的正本。拒绝未知字段、数值类型转换、非有限值及超出轴范围的数据。
+仅支持 `observation_error` 和 `comparison`，没有公式/JS editor。前者明确为假想例，假定已经校正并
+rectify 的 pinhole stereo 和正确对应关系，用 px 单位的 focal/disparity、m 单位的 baseline，
+按 `Z = f B / (d + error)` 计算 m 单位的深度。带符号误差 slider、sample 输入、轴单位/范围与显示数据
+必须一致。比较图保留最多八个命名系列，x 值严格递增且有明确单位/范围。
+参见[具体 fixture](../../../tests/support/agents_ops/explain_html_visuals.py)。
+
+在任意布局内放置空 `<figure data-figure-id="..."></figure>` slot，位于声明的 content block 内，
+或让图本身作为该 block。需要 head/body 及显式结束标签。在**计算候选变更清单之前**调用
+`render_document(document)`，填入图、CSP meta 和确切的受管 script。图中包含初始 SVG、源数据表、
+假设、单位、输入范围与无障碍控件，禁用 JS 时仍能理解初始内容。同一 script bytes 既作为 Asset 保存，
+也嵌入 HTML，由 CSP hash 授权。script 属于首个 graph 的 content block，在 DOM 解析完成后初始化
+所有 graph，保留引用所有权。此方式避免 file:// 下外部 script 的 SRI/CORS 失败。snapshot 后不依赖 CDN、
+fetch、module import 或 server。CSP 插入位置来自对 body 之前唯一 head 的实际解析，comment 中的 head
+文字不能改变位置；policy 位于 head 中首个 script、style 和 resource 引用之前。不规范的 head/body 嵌套及
+head 之前的非 ASCII 空白（包括实体形式的 NBSP）均被拒绝。
+
+绘图属性（`data-managed-*`、`data-definition`、`data-plot`、`data-values`、`data-slider-value`、
+`data-render-*`）仅保留给规范 graph figure；`data-graph-targets` 仅用于受管 script。
+v2 读取 script 中的 figure/definition 清单，仅处理声明 figure slot 的直接子元素，并核对配置。
+额外的匹配节点不会被当作 graph 输入。损坏的目标产生明确的图表错误，其他图继续初始化。
+
+v1 bytes 保持不变，`managed_renderer("1")` 支持旧 Asset/Figure 的 snapshot/恢复，当前默认版本为 v2。
+每个文档只能使用一个 renderer 版本，混合版本明确失败。未来实现使用新的 file/ID/version。
+旧版 HTML/assets 从该 revision 读取，不注入当前代码。运行时检查只是额外防御，不能替代发布前检查和 iframe 隔离。
+
+stage 后，从 store API 取得不变文档和**所有 staged asset bytes**，调用
+`validate_visuals(document, all_asset_bytes_by_id)`。检查引用闭包、digest、MIME、asset 内部、受管
+script 身份与规范图/data markup。拒绝 inline event handler、任意 script、嵌入浏览 context 和包含
+URL 的 CSS。允许普通 CSS 及 media/supports/layer/container 规则；import、escape 和 CSS comment
+不属于此保守子集。此确定性检查不生成语义/渲染通过判定。可信 controller 仍须在 commit 前运行独立的
+语义/浏览器检查，并提供不带编辑凭据的 iframe sandbox。
+也可通过 `content_security_policy(document)` 设置 HTTP header。
+
+AI 生成图像**仅在创建初版时**通过交互式 Codex imagegen 生成，再从本地 import。
+阅读期间 controller 使用 `UnavailableImageGenerator`；`capability()` 返回不可用，并说明仅限初版的
+策略。阅读期间新增 AI 图像请求抛出共用错误 `image_generation_unavailable`，controller 必须将
+**整个图像请求标为未完成**，中止发布并保留当前版。不能将局部文字/SVG 替代物作为图像生成成功发布。
+现有图像 import、重新布局/caption 修改、SVG/graph 更新作为独立请求继续受支持。
+这是[已确定的人类决策](https://github.com/Motoki0705/tennis-lab/issues/1710#issuecomment-6732169335)，
+本范围内不再有待定的 service adapter 选择。
+
+`generate_image(..., adapter=...)` 保留经过测试的 `ImageGenerator` 边界：能力检查与返回真实 bytes/公开
+source 的生成。注入 adapter 用于成功/不可用/失败契约测试，阅读 service 不选择生成 provider。
+provider/无效成果物失败抛出 `asset_generation_failed`，不公开 provider 内部细节，同样保持整个请求
+未完成及当前版不变。不自动发现凭据或 provider。交互式 imagegen 的存在不等于本地 service 的生成
+能力；调查证据保留在 PR 中。
+
 ## 下游职责
 
 HTTP JSON 入口使用 `contract_schema()` 指定的 session-token header，不向隔离的文档/export 内容提供
@@ -117,4 +195,18 @@ UI/renderer 负责 sandbox、选择事件、变更导航和静态导出中的编
 `tests/integration/agents_ops/explain_html`。通过 `--collect-only` 统计数量，
 `--durations=0 --durations-min=0` 测量时间。使用真实的小临时
 文件、非对称块、多个 assets、声明式图表数据、异常注入和同步竞争 writer。
-无需外部 API、GPU、浏览器或实时间 sleep。
+无需外部 API、GPU、浏览器或实时间 sleep。visual 新增 9 个 Python unit 和 3 个 Node case；Node 运行
+`node --test tests/unit/agents_ops/explain_html/visuals.test.mjs`。
+现有的恢复/snapshot 两个 integration case 使用真实 raster/SVG 和受管图表；另加一个 integration
+验证 v2 发布后的 v1 snapshot/恢复，并固定原始 v1 bytes。浏览器验证共享一次 Chromium setup，两个场景为：
+离线 slider/比较图/CSP 位置；拒绝无效语法/SVG/保留属性进入 export、保持当前版、隔离单图错误、
+禁用 JS 时显示初始图表，以及旧 v1 的重放。
+
+```sh
+PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \
+  node tests/e2e/agents_ops/explain_html_visuals_browser.cjs
+```
+
+harness 输出 setup/各场景时间和临时 screenshot 目录。
+普通测试/CI 不调用真实图像生成或外部 API。
+现有 JavaScript pytest 入口和 CI 通道也会运行这两个 visual suite。

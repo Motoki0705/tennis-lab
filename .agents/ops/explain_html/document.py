@@ -11,9 +11,9 @@ import re
 from bisect import bisect_right
 from dataclasses import dataclass, field
 from html import unescape
-from html.parser import HTMLParser
 from urllib.parse import unquote, urlsplit
 
+from .parsing import StrictHTMLParser, reject_css_resources
 from .paths import asset_path, relative_path
 from .schema import (
     IDENTIFIER_PATTERN,
@@ -100,13 +100,7 @@ class Block:
     text: list[str] = field(default_factory=list)
 
 
-class HTMLIndex(HTMLParser):
-    # Force consistent RCDATA handling on all supported Python 3.11+ patch
-    # versions, including versions whose HTMLParser only knows script/style.
-    # Raw text is decoded once in handle_data; markup inside textarea stays text.
-    # Typeshed marks the base constant Final; this subclass intentionally extends it.
-    CDATA_CONTENT_ELEMENTS = (*HTMLParser.CDATA_CONTENT_ELEMENTS, "textarea", "title")  # type: ignore[misc]
-
+class HTMLIndex(StrictHTMLParser):
     def __init__(self, html: str):
         super().__init__(convert_charrefs=True)
         self.html = html
@@ -201,8 +195,8 @@ class HTMLIndex(HTMLParser):
                 for source in _srcset_urls(value):
                     self._add_reference(source, False, blocks)
             # Inline CSS URLs remain outside the structural contract.
-            if key == "style" and re.search(r"url\s*\(|@import|\\", value or "", re.I):
-                raise ContractError("broken_reference")
+            if key == "style":
+                reject_css_resources(value or "")
         if tag in _VOID:
             if content_id:
                 self.blocks[content_id].end = self._source_offset(
@@ -246,12 +240,8 @@ class HTMLIndex(HTMLParser):
             if data.startswith("\n"):
                 data = data[1:]
             self._ignore_initial_lf = False
-        if (
-            self.stack
-            and self.stack[-1][0] == "style"
-            and re.search(r"url\s*\(|@import|\\", data, re.I)
-        ):
-            raise ContractError("broken_reference")
+        if self.stack and self.stack[-1][0] == "style":
+            reject_css_resources(data)
         for _, content_id in self.stack:
             if content_id:
                 self.blocks[content_id].text.append(data)
