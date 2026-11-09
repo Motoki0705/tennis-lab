@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explain HTML"
+  short_description: "Create explanation pages and refine them while reading"
+  default_prompt: "Use $explain-html to explain this topic in Japanese and open a page I can refine with questions."
