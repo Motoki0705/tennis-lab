@@ -6,4 +6,4 @@
 
 起動は共通runnerの有限Codex子が担当し、親がNotebook kernel配下に置いた外部queue serviceへresource allで一つだけ登録した。Colab workerはrunner-outputを宣言し、学習中のcampaign treeはartifact storeが保存する。
 
-現在は再開後最初の500更新境界のDrive receipt・marker・全payload照合を待つ。全8段52k更新、残る容量条件の比較と最終集計は継続中。checkpointと予測配列はDriveに保持する。
+[6,000更新のDrive保存](checkpoint6000-drive-verification.json)はreceipt・marker・全9 payloadと再開状態の独立復元検証を完了した。全8段52k更新、残る容量条件の比較と最終集計は継続中。checkpointと予測配列はDriveに保持する。

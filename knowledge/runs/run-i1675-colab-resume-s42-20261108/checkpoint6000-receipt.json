@@ -1,0 +1,12 @@
+{
+  "files": 9,
+  "generation": "checkpoint-00006000-a38ffe43",
+  "manifest_md5": "0da7de3a62e00d30533ceb02e038c1e0",
+  "manifest_sha256": "9d651f7a1bef14f4684c48a94180b4fbb6d987c911ebb28df7d8d66f8200ca5e",
+  "marker_id": "1MGMuj5ggx2vxul76qUQd5iBPznPZ1a5f",
+  "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/checkpoint-00006000-a38ffe43",
+  "schema": "verified_artifact_snapshot.v1",
+  "seconds": 75.12391141300031,
+  "size_bytes": 418003805,
+  "status": "verified"
+}
