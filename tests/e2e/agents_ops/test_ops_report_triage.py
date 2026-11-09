@@ -188,8 +188,10 @@ def _events(ops: Any, kind: str) -> list[dict[str, Any]]:
 
 def test_adoption_receipt_and_agreement_are_three_distinct_states(ops_env: Any) -> None:
     ops = ops_env
+    assert not any(key.startswith("HERDR_") for key in ops.env)
     _setup(ops)
-    _parent(ops, "register")
+    registered = json.loads(_parent(ops, "register").stdout)
+    assert registered["display_sync"]["status"] == "not_configured"
     assert ops.run("triage").returncode == 0
     assert _events(ops, "proposal_pending") == []
     _receive(ops, ok=False)

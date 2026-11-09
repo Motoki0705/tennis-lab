@@ -21,6 +21,15 @@ ROOT = Path(__file__).resolve().parents[3]
 OPS_REPORT = ROOT / ".agents/ops/ops-report/ops_report.py"
 NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
+
+@pytest.fixture(autouse=True)
+def _isolate_herdr_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Only explicit fake Herdr environments may reach an ops subprocess."""
+    for key in tuple(os.environ):
+        if key.startswith("HERDR_"):
+            monkeypatch.delenv(key)
+
+
 FAKE_GH = r"""
 import json, os, re, subprocess, sys, time
 
