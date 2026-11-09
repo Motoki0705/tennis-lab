@@ -1,0 +1,43 @@
+{
+  "schema": "player_view_stabilization_comparison_inputs_v1",
+  "git_ref": "d133993421c206af28340f4ffe082c65b70fe7a7",
+  "source_camera_manifest_sha256": "9653992bfcfe76a60e4416a6ecf52bf1e935ff394c535efbf8d4c6e282fd9860",
+  "source_scene_manifest_sha256": "1a9e3cae4a960177d5c1f897c64cb508d927816f46ae29d692b4ec54e69d1724",
+  "source_frame_interval": [
+    0,
+    240
+  ],
+  "stabilization_context": "full C2 sequence before shot selection",
+  "preview_source_frames": [
+    0,
+    26,
+    162
+  ],
+  "preview_total_images_per_player": 12,
+  "player_ids": [
+    0,
+    1
+  ],
+  "packages": [
+    {
+      "name": "sigma_000",
+      "sigma_seconds": 0.0,
+      "manifest_sha256": "9077d3ba1e2745a2ae8e93d17e5bc6e74c104f5cdb0935ab8e24fdf2acc754e9"
+    },
+    {
+      "name": "sigma_060",
+      "sigma_seconds": 0.06,
+      "manifest_sha256": "aa7584815f145990d17d70ec19b2d5f77914a665e8fd14b28a09407c8427d4a7"
+    },
+    {
+      "name": "sigma_080",
+      "sigma_seconds": 0.08,
+      "manifest_sha256": "e9b32e2a70180f36dd2be2cd5a381b1b50be2d602b0dac50cd17e9139eb50628"
+    },
+    {
+      "name": "sigma_120",
+      "sigma_seconds": 0.12,
+      "manifest_sha256": "efa01842ef060ae06f0c4a6eccfafe451fc56e679841ef1b5307365a766870f4"
+    }
+  ]
+}

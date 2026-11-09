@@ -1,0 +1,22 @@
+{
+  "ok": true,
+  "session": "player-view-stabilization-20261109-a2",
+  "jobs": [
+    {
+      "schema_version": 1,
+      "job_id": "full-a2",
+      "status": "save_failed",
+      "updated_at": "2026-11-09T13:14:48.744294+00:00",
+      "returncode": -15,
+      "worker_pid": 28872,
+      "worker_token": "542878",
+      "launch_guarded": true,
+      "pid": 29986,
+      "process_token": "568192",
+      "started_at": "2026-11-09T12:46:48.460334+00:00",
+      "error": "rclone command could not complete: copy",
+      "failure_stage": "periodic_save"
+    }
+  ],
+  "repo_root": "/content/tennis-lab"
+}

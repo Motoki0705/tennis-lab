@@ -1,0 +1,6 @@
+これは当時のコマンド・wrapper・環境・receiptを固定した履歴bundleです。`colab-original-repro.sh` は自動生成の原文です。GPU実行にはtennis-colab/training-queue/tennis-drive skillに従う新しいsessionと、新しい4時間期限が必要です。保存したgpu-operation.jsonの期限・session名を再利用して起動しないでください。入力は元runのDrive inputs、rendererは固定ref d133993421c206af28340f4ffe082c65b70fe7a7です。ignored wrapperを必要な元OPS pathへ配置し、設定・入力hashを検証してから実行します。監査だけのrunは先行previewとqueue receiptが必要で、新規に描画しません。
+
+`gpu-operation.json` は同じattemptの割当・期限と後続handoffを含む回収時点の記録で、各job提出時のsnapshotではありません。当時のrequest/statusは `colab-request.json` / `colab-status.json` を正本とします。元wrapperのバイトとupload digestを保持するため、styleだけの修正を加えていません。個別ruffはI001/UP017を除いて成功し、validation scriptは既存画像を変更しない実行で確認済みです。
+
+`repro.sh` はbundle内の固定scriptを参照する入口に修正し、ignored outputs内だけにあったscript依存を解消しました。元のtimeoutを含むコマンド原文は `colab-original-repro.sh` に不変で残しています。入口はVM・新しい期限・入力・queueの準備を明示した環境変数を要求し、自動割当は行いません。既存の異なるwrapperの上書きは拒否します。
+入口は指定refのcheckoutを事前準備する契約で、呼出元のbranchを自動checkoutしません。bundleは新しいknowledge checkout側に保持したまま、TENNIS_REPOで別の固定ref checkoutを指定できます。

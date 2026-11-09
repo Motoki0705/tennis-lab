@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "validated_at": "2026-11-09T12:21:46.365772Z",
+  "queue_job": "0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.job",
+  "queue_states": [
+    "done"
+  ],
+  "completion": {
+    "finished_at_ns": 1794225194685049482,
+    "job": "0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.job",
+    "retention_started_at_ns": 1794225194685049482,
+    "state": "done",
+    "time_source": "recorded",
+    "version": 1
+  },
+  "renderer_completion": {
+    "phase": "preview",
+    "elapsed_seconds": 66.51776217800034
+  },
+  "source_ref": "d133993421c206af28340f4ffe082c65b70fe7a7",
+  "repair": "The queue log has no exit_code line. Use exact done state, completion receipt, serve returncode and renderer completion marker.",
+  "images_before_after_sha256": {
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_0/frames/00000.png": "57155495bd8a5fac8cc3f6500af7371e4787eee9982c6d557c560832f0ba4674",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_0/frames/00001.png": "f714da26117d8f2f11d5bfae01fc347d8a9031d7568059362f0182fa29228cad",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_0/frames/00002.png": "d3c9d4cb9897ce1e8c863b83d0648b9e0241beb70a250939878bf6cf1f2407e3",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_1/frames/00000.png": "3c2584a819c50518419f7565643d8453190ca3d813db3e43c994ddfb3890c6e4",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_1/frames/00001.png": "a61f941bcfb9ff046ff7326074e7800fb69e086b244b121edc08d7b87e9a438c",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_1/frames/00002.png": "288606d6790380c0ecf3137e3abbf719f7ade6fed69b2db4269344a1321e2b25",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_0/frames/00000.png": "32952856717bbe3c3072e14ce66314206a209552461397f2cd966ead624defba",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_0/frames/00001.png": "34babe8d8ef789f3b21ecea3c371c80dc18290f61ee5f74ae7f009deab952419",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_0/frames/00002.png": "e6ed85edd8dfb1303e6f07ec0f297bd1e6243bbc3a09f211f2045f7a20dcd3ac",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_1/frames/00000.png": "62cc5c0bb7846f5bac4f4ffa989cea1d51166d8639641bf83d0e5e27b5d8361b",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_1/frames/00001.png": "58a75c795458dc80d00b7d81b54237b98ba2a08c847c8fb638b097fc2b8ea924",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_1/frames/00002.png": "d88fab0410d6170940f8dc154b8a7c21214b0b0c407ed1747ef6cf1e8f01c763",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_0/frames/00000.png": "d3449e96670abb3a59bba247508adb48440c80ac75892c09a8ae24de604fe829",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_0/frames/00001.png": "8db9bfb7b09493d497aa3dc770c60b79d6581b421479ed3b3c461e1523a26a67",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_0/frames/00002.png": "297855b333cd33058aeb279af7aa8d2d5713c9fef1dce8c2ee7f38f514bd63e0",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_1/frames/00000.png": "ac0e6d6e6a9560cf46161863f6ae1dc6bfa1a5fe40e266233f91fd62de89d96d",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_1/frames/00001.png": "864bf2865d532b27ca069c6ee4623ae19c3efd8ccce4e9b2af158f9fdcea9430",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_1/frames/00002.png": "9d1af8ff3b09ccb11d8d5046190df851a0cdc3bc4084757cf6631523f628cba2",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_0/frames/00000.png": "3bcfd4ef1e5f60f7271cf1a722f80d85e54af7d5c9c1736ced646ff794e7f4ae",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_0/frames/00001.png": "6853c0464fd1c7e71106246edcc6149411946aa09f7c43ecf227c049e438bac6",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_0/frames/00002.png": "9274ea2461bc526704aab34601839cdea25154bb85dd3a6458a88858be6fb0da",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_1/frames/00000.png": "ff54506ad3451dc7b9e7429b65646eb01f7b72b77f8279b88d80639c5c327bd6",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_1/frames/00001.png": "2dbea7c7e148ec3e1360109b532a9b9f1208fcbb7da79adc829e5b41ec2727c6",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_1/frames/00002.png": "e2cae50ac406db2d3831de09d1460aa69c8be0f356fad6dcce7a87a1c6d6734a",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_1_contact.png": "54311dd7e2e9531c878a39f4e7388b42f9c3c41b175111362d190b6159e01c6a",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_0_contact.png": "6bade300d0fa4dc01e5e0b1b410c24d7b01f1b2d96c2cee21036a0d142a6b4f9"
+  },
+  "renderer_rerun": false,
+  "additional_source_frames_rendered": 0,
+  "audit": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/validation.json"
+}

@@ -211,3 +211,55 @@ Blender/cache帧`i`严格对应`source_frames[i]`。PC2使用明确的采样索�
 首次少帧检查在Blender命令后添加`--source-frames <最多12个原始帧编号>`，视频发布使用`--preview`。最终发布拒绝截短输入时间轴。它核对渲染记录，在每个画面标注人物ID、原始帧号和camera有效性，生成单人MP4以及同步左右对比。逐帧解码验证分辨率、帧数、FPS和时长，并在manifest保留输入/配置对应关系与camera缺失帧。请将shot输入和渲染记录与视频一起保存。拒绝覆盖已有输出。
 
 渲染、验证或CI成功后，`human_acceptance`仍为`pending`。第二阶段集成前须单独记录人工定性验收。
+
+## 可选的相机稳定处理
+
+保留C2原始输出，在渲染前生成独立的派生相机序列：
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.stabilize_player_view_cameras \
+  --cameras outputs/tennis_scene/visualize/player_view/example/cameras \
+  --output outputs/tennis_scene/visualize/player_view/example/cameras-smoothed \
+  --sigma-seconds 0.06
+```
+
+必须指定强度。`--sigma-seconds 0`明确复制原始姿态。旋转采用Gaussian时间权重的
+Markley四元数均值；两侧窗口半径为`ceil(truncate_sigma * sigma_seconds * fps)`，
+`--truncate-sigma`默认为3。离线处理使用未来帧，可能削弱快速转头的幅度或提前开始转向，
+因此应通过实际对比视频选择强度。这是显示相机的处理，不会修正原始身体姿态。
+
+只改变旋转。相机中心、原始面部偏移、head位置、内参、ID、时间、mask和拒绝码保持原义，
+不锁定水平线。无效姿态仍为NaN。各连续有效区间独立处理；边界只使用同一区间内
+存在的样本并重新归一化权重，单样本区间保留该方向。不填补缺失、不padding，
+不回退到其他姿态。四元数均值不唯一时导出失败；已稳定的输入也被拒绝。
+
+几何schema仍为`tennis_scene_player_view_head_cameras_v1`。manifest记录算法版本、
+完整设置、原始相机digest、C1来源、数值实现、有效区间和角度偏差。NPZ中的
+`stabilization_support_frames`为int64 F×2的左右支持样本数（缺失或强度0时均为0）。
+reader验证处理metadata和支持数量；渲染端使用相同reader读取派生目录。
+发布保持原子性，并拒绝已有输出。
+
+## 广角显示镜头与短片段
+
+`prepare_player_view_blender --frames START STOP`在验证完整相机序列后选择非空的
+原始帧区间，PC2、mask与shot数组均同步选择。先稳定完整相机序列，再截取短片段，
+可与之后全片渲染保持相同的未来帧上下文。
+
+`--lens-profile mission1-wide-approx --lens-size 640 360 --lens-render-scale 4`
+选择**参考GoPro的近似模型**：等距投影`r=f*theta`、设计对角视场159度、16:9。
+水平中心138.5805度和垂直中心77.9515度是计算值，不是GoPro公布的模式参数。
+官方native159度没有明确轴类别，且未确认模式校准系数，因此不称为实机标定复现。
+记录固定镜头[MISSION 1官方规格](https://gopro.com/en/us/shop/buy-cameras/mission-1-series)
+的参考F2.8并禁用DOF；保持现有面部偏移。
+
+中间图像为2560×1440、水平视场155.98994度的PINHOLE，中心主点、方形像素。
+4倍分辨率保证显示图像中心的采样密度。shot manifest记录中间投影、显示镜头、
+稳定设置和选帧。Blender仍渲染针孔图像；raw PNG须经过显示镜头变换后展示。
+
+C5也以**同一中间针孔**渲染前景和NHT，按已采用的
+[C4契约](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation)
+在共同深度/coverage样本上合成，再通过`lenses.remap_linear_rgb`变换linear RGB，最后编码显示。
+固定的输出2×2 subpixel以bilinear插值并在线性空间平均，与C5源图的SSAA2分开。
+不先分别warp深度/alpha再合成。共享光线几何不代表离散插值精确；周边强缩小时，
+细小物体仍可能aliasing。此设计不构成实际C5超广角GPU性能或背景alpha支持的验证。
+共同路径不使用直接Cycles鱼眼。

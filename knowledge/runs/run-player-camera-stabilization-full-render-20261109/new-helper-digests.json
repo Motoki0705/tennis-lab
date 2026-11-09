@@ -1,0 +1,17 @@
+{
+  "new_ignored_helpers": {
+    "recover_full_after_save_failure.py": "c573f4de69b29127518313de53928181b4f908f2df76b9581f1772e2e23f0bc1",
+    "precopy_static_full.logged.py": "2c225f6382be628d2e323d33feb6309d91d1d5385aaba53b28427b145009e31a",
+    "precopy_static_full.initial.py": "f738996905f72c2a8ee85cba8a33493c7b42f3a3719326286ddbfcfce071a712",
+    "validate_existing_full.py": "eca95e937d07c0103abdf387a909daaa7c016505f7a4758bf9d88b997f4e62af",
+    "precopy_static_full.py": "0f61c71480b3232c0163f7bbb5fade79d70492a103a3ee0bdc83be5659778bf6"
+  },
+  "original_helpers_unchanged": {
+    "archive_render_frames.py": "9fa41f23de33ab3638a8e53768401b6e64847b2d7de9f8ce7d71272724dd4c41",
+    "render_full_comparison.py": "40fe11cc7227db7b565bc08a769279edc339cae409aa71f235593b3d54ad3c6f",
+    "run_full_queue.py": "cfdd8efe0599bdb369593e3b778827fb8be80fcab4830560eed0128149a63445"
+  },
+  "original_request_sha256": "f33d58d52e9ee69854c7d15d56596facf2b7766ef77cbee66ea1cc5241cc3fa2",
+  "validation_record_sha256": "baad2012f90e1dfdceab79617eb08cb88bdd676b10fe3851ca5a94030e1f560f",
+  "full_manifest_sha256": "ef50532afe221ea1742e8b8d07b45c4446a785cd70e60c30612d01d8785781ba"
+}

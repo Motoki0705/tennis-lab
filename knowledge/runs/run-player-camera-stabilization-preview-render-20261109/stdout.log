@@ -1,0 +1,12 @@
+PREVIEW_QUEUED 0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.job
+[worker] 2026-11-09T11:51:50+00:00 running: 0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.job resource=all slot=all (log: /content/tennis-lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/training-queue/logs/0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.log)
+[worker] 2026-11-09T11:53:14+00:00 done: 0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.job resource=all slot=all
+[worker] queue empty for 1s; exiting.
+[worker] 2026-11-09T11:53:15+00:00 worker exited.
+Traceback (most recent call last):
+  File "/content/tennis-lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/worker_runtime.py", line 287, in <module>
+    {"launch": launch, "setup": setup, "preview": preview, "audit": audit}[sys.argv[1]]()
+  File "/content/tennis-lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/worker_runtime.py", line 279, in preview
+    assert re.search(r"^exit_code=0$", log.read_text(), flags=re.MULTILINE)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError

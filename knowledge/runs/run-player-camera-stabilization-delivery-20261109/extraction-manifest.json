@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "records": [
+    {
+      "player_id": 0,
+      "video": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full/videos/comparison_player_0.mp4",
+      "video_sha256": "e29d0da89f2f57abef3049302c403536464f971bf917b64e8069b6bdad677fdc",
+      "source_frames": [
+        0,
+        2,
+        26,
+        60,
+        162,
+        239
+      ],
+      "decoded": 240,
+      "contact": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/review/player_0_delivery_contact.png",
+      "contact_sha256": "7b38e523a3226503946a4f73ef9ff3216ef4bb6c829b6682dd0491a01e6fa968",
+      "full_size_samples": [
+        {
+          "source_frame": 26,
+          "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/review/player_0_source_026.png",
+          "sha256": "1857892b2c4d49e7c8878baa4ef662a5ae915566b896e72a02b31884eca1b9dc"
+        },
+        {
+          "source_frame": 162,
+          "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/review/player_0_source_162.png",
+          "sha256": "bdf488dd50a2c852afe3fb977de5a9516d65e6f836d72150dded188efc05896e"
+        }
+      ]
+    },
+    {
+      "player_id": 1,
+      "video": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full/videos/comparison_player_1.mp4",
+      "video_sha256": "da304b373e9b78de3270194637ac7be5cf0a1b761dc2589cfcdd65dc916e0091",
+      "source_frames": [
+        0,
+        2,
+        26,
+        60,
+        162,
+        239
+      ],
+      "decoded": 240,
+      "contact": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/review/player_1_delivery_contact.png",
+      "contact_sha256": "7babeb8af5768f1e2a2425e8996e6342d9b1171203cee7b0569847cca19d6010",
+      "full_size_samples": [
+        {
+          "source_frame": 26,
+          "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/review/player_1_source_026.png",
+          "sha256": "62d0fda842663d7529d5caad2a8ea0f874b918531b36d38d61af8fbeab3ecf11"
+        },
+        {
+          "source_frame": 162,
+          "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/review/player_1_source_162.png",
+          "sha256": "bc771bbade20ff2ba9d4b86773e5575b9b13bcea7fe22f7b621809f848f555f7"
+        }
+      ]
+    }
+  ],
+  "human_acceptance": "pending"
+}

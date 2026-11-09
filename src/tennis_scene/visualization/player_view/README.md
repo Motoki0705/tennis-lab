@@ -248,3 +248,72 @@ Blender frame/cache index `i` corresponds exactly to `source_frames[i]`. PC2 use
 For the initial smoke check, append `--source-frames <at most 12 explicit source frame numbers>` to the Blender command and use `--preview` for publication. The final publication rejects truncated timelines. It validates the render audits, labels every view with player ID/source frame/camera validity, encodes individual MP4s plus a synchronized side-by-side comparison, and decodes every encoded frame to check size, count, FPS and duration. Its manifest retains input/settings correspondence and camera missing frames. Keep render reports and shot inputs with the videos. Outputs already present are refused.
 
 Successful rendering, validation or CI leaves `human_acceptance: pending`. Human qualitative acceptance must be recorded separately before phase 2 integration.
+
+## Optional camera stabilization
+
+Keep the raw C2 export and derive a separate camera bundle before rendering:
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.stabilize_player_view_cameras \
+  --cameras outputs/tennis_scene/visualize/player_view/example/cameras \
+  --output outputs/tennis_scene/visualize/player_view/example/cameras-smoothed \
+  --sigma-seconds 0.06
+```
+
+The strength is required; `--sigma-seconds 0` explicitly copies the raw poses.
+The rotational filter is a Gaussian-weighted Markley quaternion mean, with
+`ceil(truncate_sigma * sigma_seconds * fps)` samples on either side
+(`--truncate-sigma 3` by default). It uses future frames offline. Faster turns
+can be attenuated or begin earlier, so compare the actual videos before choosing
+a strength. This is a display camera, not a correction to the source body pose.
+
+Only rotation changes. Camera centers, raw face offsets, head positions, roll
+without horizon locking, intrinsics, IDs, times, masks and rejection codes keep
+their input meanings. Missing poses stay NaN. Each contiguous valid run is
+filtered separately. At its edges, only existing samples in that run contribute,
+with normalized weights; a singleton retains its orientation. There is no gap
+filling, padding or alternative-pose fallback. A nonunique quaternion mean fails
+the export. An already stabilized input is rejected.
+
+The geometric schema remains `tennis_scene_player_view_head_cameras_v1`. The
+manifest records the versioned algorithm, complete settings, source-camera
+digests and original scene provenance, numerical implementation, run intervals
+and correction angles. `stabilization_support_frames` in each NPZ is int64 F×2
+(left/right support counts; both zero when missing or strength zero). The reader
+checks processing metadata and support. Consumers use this derived directory
+with the same camera reader. Output publication is atomic and existing outputs
+are refused.
+
+## Wide display lens and short clips
+
+`prepare_player_view_blender --frames START STOP` selects a nonempty source-frame
+interval after validating the complete saved camera sequence. PC2, masks and all
+shot arrays use that interval. Stabilize the full camera sequence first so the
+short clip uses the same future context as a later full render.
+
+`--lens-profile mission1-wide-approx --lens-size 640 360 --lens-render-scale 4`
+selects a **GoPro-inspired approximation**, with equidistant `r=f*theta`, a design
+diagonal FOV of 159 degrees and 16:9 output. The computed central horizontal and
+vertical FOVs are 138.5805 and 77.9515 degrees. GoPro's published native159-degree
+FOV does not identify its axis, and mode calibration coefficients are unavailable;
+these values do not reproduce a calibrated MISSION 1 lens. The current fixed-lens
+[MISSION 1 specifications](https://gopro.com/en/us/shop/buy-cameras/mission-1-series)
+provide F2.8; the reference aperture is recorded and depth of field is disabled.
+The existing head offset is retained.
+
+The shared intermediate is a 2560x1440 PINHOLE with horizontal FOV155.98994
+degrees, centered principal point and square pixels. Its 4x scale preserves
+central output sampling density. The shot manifest stores the source projection,
+output lens, stabilization and frame selection. The Blender camera remains a
+pinhole; raw PNGs require the display-lens conversion before presentation.
+
+For C5, render foreground and NHT with the **same intermediate pinhole**, compose
+their common depth/coverage samples using the adopted
+[C4 contract](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation),
+then apply `lenses.remap_linear_rgb` to the composed linear RGB and encode it for
+display. The fixed 2x2 output subpixel grid uses bilinear interpolation and linear
+averaging; its density is separate from C5's source SSAA2. Do not separately warp
+depth/alpha and then compose. The mapping preserves the shared ray geometry but
+resampling is approximate; extreme peripheral minification can still alias thin
+objects. This does not qualify the actual wide-angle C5 GPU performance or
+background-alpha support. Direct Cycles fisheye is not used for this shared path.

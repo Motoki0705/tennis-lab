@@ -18,6 +18,9 @@ from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SCENE_MASK_FIELDS, SCENE_REASON_FIELDS, SceneResult
 from src.tennis_scene.scripts.export_player_view_cameras import main as camera_main
+from src.tennis_scene.scripts.stabilize_player_view_cameras import (
+    main as stabilization_main,
+)
 from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
 from src.tennis_scene.visualization.player_view import (
     BUNDLE_SCHEMA,
@@ -35,6 +38,11 @@ from src.tennis_scene.visualization.player_view.camera_bundle import (
     load_head_cameras,
 )
 from src.tennis_scene.visualization.player_view.head_camera import HeadCameraConfig
+from src.tennis_scene.visualization.player_view.lenses import EquidistantLensConfig
+from src.tennis_scene.visualization.player_view.stabilization import (
+    StabilizationConfig,
+    export_stabilized_cameras,
+)
 from src.tennis_scene.visualization.player_view.video import (
     publish_player_views,
     validate_render,
@@ -810,3 +818,300 @@ def test_camera_export_refuses_existing_output_and_cleans_failed_staging(
         )
     assert not output.exists() and not list(tmp_path.glob(".cameras-*"))
     assert _snapshot(bundle) == before
+
+
+@pytest.mark.parametrize("sigma", [0, 0.06])
+def test_stabilized_camera_cli_preserves_centers_timeline_masks_and_provenance(
+    inputs: Inputs,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sigma: float,
+) -> None:
+    bundle, cameras, derived = (
+        tmp_path / "scene",
+        tmp_path / "raw",
+        tmp_path / "derived" / "cameras",
+    )
+    _export(
+        inputs, bundle, config=PlayerViewBundleConfig(frames=(1, 6), player_ids=(42, 7))
+    )
+    export_head_cameras(
+        bundle_dir=bundle, output_dir=cameras, config=HeadCameraConfig()
+    )
+    before = _snapshot(cameras)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "stabilize-cameras",
+            "--cameras",
+            str(cameras),
+            "--output",
+            str(derived),
+            "--sigma-seconds",
+            str(sigma),
+        ],
+    )
+    stabilization_main()
+    assert _snapshot(cameras) == before
+    manifest = json.loads((derived / "manifest.json").read_text())
+    original = json.loads((cameras / "manifest.json").read_text())
+    assert manifest["source_bundle"]["path"] == "../../scene"
+    assert manifest["source_bundle"]["files"] == original["source_bundle"]["files"]
+    assert manifest["source_cameras"] == {"path": "../../raw", "files": before}
+    assert manifest["stabilization"]["config"]["sigma_seconds"] == sigma
+    assert manifest["stabilization"]["horizon_lock"] is False
+    assert manifest["head"]["smoothing"] == "gaussian_markley_quaternion_v1"
+    for index, identity in enumerate([42, 7]):
+        a, b = (
+            load_head_cameras(cameras, player_id=identity),
+            load_head_cameras(derived, player_id=identity),
+        )
+        np.testing.assert_array_equal(a.series.K, b.series.K)
+        np.testing.assert_array_equal(
+            a.series.camera_to_court[:, :3, 3], b.series.camera_to_court[:, :3, 3]
+        )
+        np.testing.assert_array_equal(a.series.head_position, b.series.head_position)
+        np.testing.assert_array_equal(a.series.camera_valid, b.series.camera_valid)
+        np.testing.assert_array_equal(
+            a.series.camera_rejection_code, b.series.camera_rejection_code
+        )
+        np.testing.assert_array_equal(a.source_frames, b.source_frames)
+        np.testing.assert_array_equal(a.source_time_seconds, b.source_time_seconds)
+        np.testing.assert_array_equal(
+            a.source_player_rejection_code, b.source_player_rejection_code
+        )
+        if sigma == 0:
+            np.testing.assert_array_equal(
+                a.series.camera_to_court, b.series.camera_to_court
+            )
+        else:
+            assert (
+                np.nanmax(abs(a.series.camera_to_court - b.series.camera_to_court))
+                > 1e-6
+            )
+        with np.load(derived / f"player_{index}.npz") as values:
+            support = values["stabilization_support_frames"]
+        expected = (
+            [[0, 0], [0, 2], [1, 1], [2, 0], [0, 0]]
+            if index == 0
+            else [[0, 1], [1, 0], [0, 0], [0, 1], [1, 0]]
+        )
+        np.testing.assert_array_equal(support, expected if sigma else np.zeros((5, 2)))
+
+
+def test_stabilization_rejects_reprocessing_and_keeps_atomic_output(
+    inputs: Inputs,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundle, cameras, derived = (
+        tmp_path / "scene",
+        tmp_path / "raw",
+        tmp_path / "derived",
+    )
+    _export(inputs, bundle)
+    export_head_cameras(
+        bundle_dir=bundle, output_dir=cameras, config=HeadCameraConfig()
+    )
+    config = StabilizationConfig(0.06)
+    with pytest.raises(ValueError, match="outside the read-only"):
+        export_stabilized_cameras(
+            cameras_dir=cameras, output_dir=cameras / "nested", config=config
+        )
+    export_stabilized_cameras(cameras_dir=cameras, output_dir=derived, config=config)
+    before = _snapshot(derived)
+    with pytest.raises(FileExistsError):
+        export_stabilized_cameras(
+            cameras_dir=cameras, output_dir=derived, config=config
+        )
+    assert _snapshot(derived) == before
+    with pytest.raises(ValueError, match="already filtered"):
+        export_stabilized_cameras(
+            cameras_dir=derived, output_dir=tmp_path / "twice", config=config
+        )
+
+    def fail(*args: object, **kwargs: object) -> None:
+        raise ValueError("nonunique injected mean")
+
+    monkeypatch.setattr(
+        "src.tennis_scene.visualization.player_view.stabilization.smooth_camera_rotations",
+        fail,
+    )
+    with pytest.raises(ValueError, match="nonunique"):
+        export_stabilized_cameras(
+            cameras_dir=cameras, output_dir=tmp_path / "failure", config=config
+        )
+    assert not (tmp_path / "failure").exists()
+    assert not list(tmp_path.glob(".failure-*"))
+
+
+@pytest.mark.parametrize("corruption", ["config", "support", "provenance"])
+def test_stabilized_camera_reader_rejects_inconsistent_processing_metadata(
+    inputs: Inputs,
+    tmp_path: Path,
+    corruption: str,
+) -> None:
+    scene, raw, derived = tmp_path / "scene", tmp_path / "raw", tmp_path / "derived"
+    _export(inputs, scene)
+    export_head_cameras(bundle_dir=scene, output_dir=raw, config=HeadCameraConfig())
+    export_stabilized_cameras(
+        cameras_dir=raw, output_dir=derived, config=StabilizationConfig(0.06)
+    )
+    path = derived / "manifest.json"
+    manifest = json.loads(path.read_text())
+    if corruption == "config":
+        manifest["stabilization"]["config"]["sigma_seconds"] = -1
+    elif corruption == "provenance":
+        del manifest["source_cameras"]
+    else:
+        archive = derived / "player_0.npz"
+        with np.load(archive) as data:
+            values = {key: data[key] for key in data.files}
+        values["stabilization_support_frames"][2] = [5, 5]
+        np.savez(archive, **values)
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="sigma|support|provenance"):
+        load_head_cameras(derived, player_id=7)
+
+
+@pytest.mark.parametrize("wide", [False, True])
+def test_blender_frame_selection_keeps_full_camera_filter_context(
+    inputs: Inputs,
+    tmp_path: Path,
+    wide: bool,
+) -> None:
+    scene, raw, smoothed, shot = [
+        tmp_path / name for name in ["scene", "raw", "smoothed", "shot"]
+    ]
+    _export(inputs, scene, config=PlayerViewBundleConfig())
+    export_head_cameras(bundle_dir=scene, output_dir=raw, config=HeadCameraConfig())
+    export_stabilized_cameras(
+        cameras_dir=raw, output_dir=smoothed, config=StabilizationConfig(0.06)
+    )
+    before = _snapshot(smoothed)
+    lens = EquidistantLensConfig(width=9, height=7) if wide else None
+    prepare_blender_shot(
+        bundle_dir=scene,
+        cameras_dir=smoothed,
+        output_dir=shot,
+        config=PlayerViewRenderConfig(),
+        frame_range=(2, 6),
+        lens=lens,
+    )
+    manifest = json.loads((shot / "manifest.json").read_text())
+    assert manifest["num_frames"] == 4
+    assert (
+        manifest["camera_processing"]["algorithm"] == "gaussian_markley_quaternion_v1"
+    )
+    if wide:
+        assert manifest["camera_config"]["width"] == 36
+        assert manifest["camera_config"]["height"] == 28
+        assert manifest["lens"]["config"]["diagonal_fov_degrees"] == 159
+        assert manifest["lens"]["depth_of_field"] is False
+        assert all(4 < p["lens_mm"] < 5 for p in manifest["players"])
+    assert manifest["frames"] == {"start": 2, "stop": 6, "source_num_frames": 7}
+    np.testing.assert_array_equal(np.load(shot / "source_frames.npy"), [2, 3, 4, 5])
+    np.testing.assert_array_equal(
+        np.load(shot / "source_time_seconds.npy"), np.arange(2, 6) / 59.94
+    )
+    np.testing.assert_array_equal(
+        np.load(shot / "ball_positions.npy"), np.load(scene / "ball_positions.npy")[2:6]
+    )
+    np.testing.assert_array_equal(
+        np.load(shot / "player_smpl_valid.npy"),
+        np.load(scene / "player_smpl_valid.npy")[:, 2:6],
+    )
+    for index, identity in enumerate([7, 42]):
+        body, start, rate = read_pc2(shot / f"player_{index}.pc2")
+        original, _, _ = read_pc2(scene / f"player_{index}.pc2")
+        np.testing.assert_array_equal(body, original[2:6])
+        assert start == 0 and rate == 1
+        camera = load_head_cameras(smoothed, player_id=identity)
+        with np.load(shot / f"camera_{index}.npz") as values:
+            np.testing.assert_array_equal(
+                values["location"], camera.series.camera_to_court[2:6, :3, 3]
+            )
+            np.testing.assert_allclose(
+                values["rotation"],
+                camera.series.camera_to_court[2:6, :3, :3] @ np.diag([1, -1, -1]),
+                atol=1e-6,
+            )
+            np.testing.assert_array_equal(
+                values["valid"], camera.series.camera_valid[2:6]
+            )
+    assert _snapshot(smoothed) == before
+
+
+@pytest.mark.parametrize("frames", [(0, 8), (3, 3), (-1, 5)])
+def test_blender_frame_selection_rejects_silent_truncation(
+    inputs: Inputs, tmp_path: Path, frames: tuple[int, int]
+) -> None:
+    scene, raw, shot = tmp_path / "scene", tmp_path / "raw", tmp_path / "shot"
+    _export(inputs, scene)
+    export_head_cameras(bundle_dir=scene, output_dir=raw, config=HeadCameraConfig())
+    with pytest.raises(ValueError, match="nonempty subset"):
+        prepare_blender_shot(
+            bundle_dir=scene,
+            cameras_dir=raw,
+            output_dir=shot,
+            config=PlayerViewRenderConfig(),
+            frame_range=frames,
+        )
+    assert not shot.exists()
+
+
+@pytest.mark.parametrize("fault", [None, "dof", "projection"])
+def test_wide_lens_render_requires_actual_pinhole_and_color_audit(
+    shot_reports: tuple[Path, Path], fault: str | None
+) -> None:
+    from dataclasses import asdict
+
+    shot, renders = shot_reports
+    manifest_path = shot / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    lens = EquidistantLensConfig(width=32, height=18)
+    source = lens.pinhole_config(HeadCameraConfig(width=128, height=72))
+    manifest["lens"] = lens.metadata(source)
+    manifest["camera_config"] = asdict(source)
+    for player in manifest["players"]:
+        player["lens_mm"] = float(source.intrinsic_matrix()[0, 0] * 36 / source.width)
+    manifest_path.write_text(json.dumps(manifest))
+    path = renders / "player_7" / "render.json"
+    report = json.loads(path.read_text())
+    report["package_sha256"] = dual_sha256(manifest_path)
+    report["camera"] = {
+        "projection": "PERSP",
+        "depth_of_field": False,
+        "lens_mm": manifest["players"][0]["lens_mm"],
+        "resolution": [128, 72],
+    }
+    report["color_management"] = {
+        "display_device": "sRGB",
+        "view_transform": "Standard",
+        "look": "None",
+        "exposure": 0,
+        "gamma": 1,
+    }
+    if fault == "dof":
+        report["camera"]["depth_of_field"] = True
+    if fault == "projection":
+        report["camera"]["projection"] = "PANO"
+    path.write_text(json.dumps(report))
+    if fault is None:
+        assert validate_render(shot, renders / "player_7", 7)["complete"] is True
+        other_path = renders / "player_42" / "render.json"
+        other = json.loads(other_path.read_text())
+        for key in ["package_sha256", "camera", "color_management"]:
+            other[key] = report[key]
+        other_path.write_text(json.dumps(other))
+        output = shot.parent / "wide-videos"
+        publish_player_views(package=shot, renders=renders, output=output)
+        published = json.loads((output / "manifest.json").read_text())
+        assert published["verification"]["player_7.mp4"]["decoded_frames"] == 5
+        assert published["verification"]["player_7.mp4"]["width"] == 32
+        assert published["verification"]["player_7.mp4"]["height"] == 18
+        assert published["display_lens"]["config"]["diagonal_fov_degrees"] == 159
+    else:
+        with pytest.raises(ValueError, match="Wide-lens"):
+            validate_render(shot, renders / "player_7", 7)

@@ -1,0 +1,11 @@
+{
+  "completed_at": "2026-11-09T11:53:15.841532Z",
+  "job": "0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.job",
+  "states": [
+    "done"
+  ],
+  "serve_returncode": 0,
+  "log": "/content/tennis-lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/training-queue/logs/0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview.log",
+  "repro": "/content/tennis-lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/training-queue/repro/0-8205774889798009636_2026-11-09T11-51-50-201990363Z_11983_issue1776_preview",
+  "source_ref": "d133993421c206af28340f4ffe082c65b70fe7a7"
+}

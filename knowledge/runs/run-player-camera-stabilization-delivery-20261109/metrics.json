@@ -1,0 +1,12 @@
+{
+  "decoded_video_frames": 3360,
+  "videos": 14,
+  "render_audit_rows_checked": 1920,
+  "camera_missing_rows": 16,
+  "verification_command_seconds": 20.86982533799892,
+  "rendered_images_in_delivery_run": 0,
+  "gpu_allocation_seconds": 10538.681694,
+  "recovered_files": 39,
+  "source_pngs_retained_on_drive": 1920,
+  "raw_pngs_or_zips_recovered": 0
+}

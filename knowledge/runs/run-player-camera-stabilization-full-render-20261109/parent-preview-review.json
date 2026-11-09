@@ -1,0 +1,25 @@
+{
+  "schema": "player_view_parent_preview_review_v1",
+  "reviewed_at": "2026-11-09T12:39:16.178117+00:00",
+  "reviewer": "issue1776 implementation worker",
+  "technical_pass": true,
+  "human_acceptance": "pending",
+  "contacts": {
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_0_contact.png": "6bade300d0fa4dc01e5e0b1b410c24d7b01f1b2d96c2cee21036a0d142a6b4f9",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_1_contact.png": "54311dd7e2e9531c878a39f4e7388b42f9c3c41b175111362d190b6159e01c6a"
+  },
+  "source_frames": [
+    0,
+    26,
+    162
+  ],
+  "images_per_person": 12,
+  "observations": [
+    "Strong radial curvature of court edges is visible as expected for the equidistant projection.",
+    "Small jagged/soft edges appear on thin court/net lines; these static samples do not establish temporal alias quality.",
+    "ID1 source162 is dominated by the gray background with court low-left; the preserved head turn points off court.",
+    "Opponent and ball are small in the wide view.",
+    "All source0 panels visibly show CAMERA MISSING and correct ID/sigma/lens/source labels."
+  ],
+  "decision": "Proceed with fixed full240 comparison; keep the selected lens, rotation-only smoothing, original centers and no horizon lock."
+}

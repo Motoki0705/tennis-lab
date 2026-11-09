@@ -1,0 +1,97 @@
+[
+  {
+    "path": "allocation-release-proof.json",
+    "bytes": 504,
+    "sha256": "20d9fe03ba0c48461d85ab86c86633a6940216ad446d56c7810ad2bd1d99f25c"
+  },
+  {
+    "path": "delivery-command.json",
+    "bytes": 789,
+    "sha256": "9318e32c7641b6ef8ab611e6d3a27b2da66836ca8d83555ef2a46f22b294328e"
+  },
+  {
+    "path": "delivery-review.json",
+    "bytes": 1291,
+    "sha256": "066ac5acffa20bbd6b4645e60fdce3de7268fdb6981c33b0a156ade1963b2e51"
+  },
+  {
+    "path": "delivery-verification.json",
+    "bytes": 4752,
+    "sha256": "ce0627edcaca7d6f584a0db5b917f17709e5283ff5fc85aa6fccdfce011d6126"
+  },
+  {
+    "path": "extraction-manifest.json",
+    "bytes": 2438,
+    "sha256": "b3b2652015d1e61732f85387e4c4578be379f05771e1c19bdc51e775ab7a8ca7"
+  },
+  {
+    "path": "full-recovery-result.json",
+    "bytes": 15047,
+    "sha256": "9e9b4ba9b5a6f3b0390e14db32d8b5c76a3e0a37b77dcf5115e2b0375029ed39"
+  },
+  {
+    "path": "human-video-links.json",
+    "bytes": 738,
+    "sha256": "1ffee45327ebe4879a2778d22a2bfe4831cd8766b691a36f6ea922beb621765d"
+  },
+  {
+    "path": "metrics.json",
+    "bytes": 353,
+    "sha256": "708e54ab27b47666f165365c7969f693818bcc73828ddd77fd9fda0513b147e6"
+  },
+  {
+    "path": "player_0_delivery_contact.png",
+    "bytes": 455850,
+    "sha256": "7b38e523a3226503946a4f73ef9ff3216ef4bb6c829b6682dd0491a01e6fa968"
+  },
+  {
+    "path": "player_0_source_026.png",
+    "bytes": 202189,
+    "sha256": "1857892b2c4d49e7c8878baa4ef662a5ae915566b896e72a02b31884eca1b9dc"
+  },
+  {
+    "path": "player_1_delivery_contact.png",
+    "bytes": 379933,
+    "sha256": "7babeb8af5768f1e2a2425e8996e6342d9b1171203cee7b0569847cca19d6010"
+  },
+  {
+    "path": "player_1_source_162.png",
+    "bytes": 176643,
+    "sha256": "bc771bbade20ff2ba9d4b86773e5575b9b13bcea7fe22f7b621809f848f555f7"
+  },
+  {
+    "path": "recover_from_verified_copy.py",
+    "bytes": 5032,
+    "sha256": "b7b7f4ace33a2fa094f0751008e28c164fea92743a3c8a1fd8c30f169869625c"
+  },
+  {
+    "path": "redundant-inventory-failure.json",
+    "bytes": 1351,
+    "sha256": "e1a7cdde6653f2f92a564c3e20c4f0e6d3d5c204b6f5131bb28522333227d4c6"
+  },
+  {
+    "path": "render-manifest.json",
+    "bytes": 42884,
+    "sha256": "ef50532afe221ea1742e8b8d07b45c4446a785cd70e60c30612d01d8785781ba"
+  },
+  {
+    "path": "repro.sh",
+    "bytes": 757,
+    "sha256": "e96367f37f656ae0e46753d060034f8cf45a55cfc299fb5a4a06491bc39c0316"
+  },
+  {
+    "path": "review.md",
+    "bytes": 1388,
+    "sha256": "3974b29d02e9d4e15454a7f29839322fab04d69301ad5fe59c8e42fd968aa84a"
+  },
+  {
+    "path": "review_delivery_frames.py",
+    "bytes": 3581,
+    "sha256": "3f6a00bc1234901c3424810cbc2b21bca6a317cd67deba908816647153deb2af"
+  },
+  {
+    "path": "short-camera-metrics.json",
+    "bytes": 2998,
+    "sha256": "1b2f49d1bd5c150c648ef62a6b654c92adf4d2c3a1c3b57a877bf17dd1a29732"
+  }
+]
