@@ -163,6 +163,11 @@ context, current revision, request/target/instruction and history go to both cal
 the verifier additionally receives the candidate and its digest. Prompts and schemas
 travel through private files/stdin without an argv size limit or silent truncation.
 Candidate schemas are generated directly from the shared models.
+Writer inputs also include `candidate_template`: the complete request and trusted
+metadata in the actual output shape, with HTML/change placeholders. This reduces
+native finish errors such as ID-only evidence or invented request fields, without
+constraining prose/layout or changing the strict output schema. The independent
+verifier receives the compiled candidate, not this writing aid.
 
 The writer returns a complete Candidate. Mechanical checks bind its request, run
 the contract's structural/change checks, and require exact purpose, audience,

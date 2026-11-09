@@ -81,6 +81,20 @@ def test_initial_and_explicit_numeric_update_keep_unknowns_and_require_rendering
     turns = [call for call in calls if call["prompt"] is not None]
     assert len(turns) == 4
     assert len({call["cwd"] for call in turns}) == 4
+    initial_template = json.loads(turns[0]["prompt"].split("\nINPUT_JSON\n")[1])[
+        "candidate_template"
+    ]
+    assert initial_template["request"] == initial.request.model_dump(mode="json")
+    assert {
+        (item["evidence_id"], item["kind"])
+        for item in initial_template["evidence_changes"]
+    } == {("baseline", "added"), ("cameras", "added")}
+    edit_template = json.loads(turns[2]["prompt"].split("\nINPUT_JSON\n")[1])[
+        "candidate_template"
+    ]
+    assert edit_template["evidence_changes"] == [
+        change.model_dump(mode="json") for change in context.authorized_evidence_changes
+    ]
     for call in calls:
         args = call["args"]
         if args != ["--version"]:
@@ -186,6 +200,16 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
         assert "-p" not in call["args"]
     assert "candidate" not in json.loads(turns[0]["prompt"].split("\nINPUT_JSON\n")[1])
     verified = json.loads(turns[-1]["prompt"].split("\nINPUT_JSON\n")[1])
+    template = json.loads(turns[0]["prompt"].split("\nINPUT_JSON\n")[1])[
+        "candidate_template"
+    ]
+    assert template["request"] == env.request.model_dump(mode="json")
+    assert (
+        template["document"]["evidence"] == context.model_dump(mode="json")["evidence"]
+    )
+    assert template["document"]["assets"] == context.model_dump(mode="json")["assets"]
+    assert template["evidence_changes"] == []
+    assert "candidate_template" not in verified
     assert verified["candidate"] == final.model_dump(mode="json")
     assert verified["candidate_digest"] == schema.candidate_digest(final)
     assert env.store.current("geometry") == env.current

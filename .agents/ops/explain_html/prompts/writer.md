@@ -41,6 +41,11 @@ The complete top-level object has request, document, changes, evidence_changes
 and change_summary. document always has document_id, purpose, audience, evidence,
 html, assets and figures. Copy purpose and audience exactly from context, even
 when they already appear in the HTML or a previous revision.
+INPUT_JSON.candidate_template supplies the exact wire shape and trusted metadata.
+Start from it: fill document.html, changes and change_summary with your complete
+work. Empty strings are placeholders, not valid output. Preserve full evidence
+objects rather than replacing them with ID strings. The template defines no
+chapter structure or visual layout. Keep the request's target, never targetContext.
 
 The compiler owns CSP meta elements, managed JavaScript, managed figure contents
 and figure containment CSS. OMIT all http-equiv meta, all script elements and

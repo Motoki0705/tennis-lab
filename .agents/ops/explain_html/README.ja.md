@@ -126,6 +126,10 @@ writerの案を承認の根拠にしたり、browser JSONを未検査で承認�
 独立verifierは変更理由と指示の整合性も調べる。両呼出へ完全な文脈・現在版・対象と指示・履歴を渡し、
 verifierには候補とdigestも渡す。prompt/schemaはprivate fileとstdinで渡し、argv上限による省略をしない。
 Candidate schemaは共通モデルから直接生成する。
+writerには`candidate_template`も渡す。正確なrequestと信頼するmetadataを出力と同じ構造に入れ、
+HTML・変更一覧はwriterが埋める。根拠をID文字列へ省略したりrequest fieldを捏造するnative finishの
+誤りを減らすためで、本文・見た目・厳密な出力schemaは変えない。独立verifierへはこの補助を渡さず、
+compile済み候補を渡す。
 
 writerは完全なCandidateを返す。機械検査は元要求の一致、共通の構造・変更検査、目的・読み手・
 根拠metadata（数値・条件・出典を含む）・許可済みassetsの厳密な一致を確認する。

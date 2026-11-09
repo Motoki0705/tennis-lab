@@ -303,11 +303,49 @@ class GeminiEditor:
             "current_revision": current.model_dump(mode="json") if current else None,
             "request": request.model_dump(mode="json"),
         }
+        # A concrete wire-shape example prevents ID-only evidence lists and
+        # invented request fields observed in native finish attempts. It carries
+        # no prose/layout; the writer must fill HTML and change accounting.
+        writer_inputs = {
+            **inputs,
+            "candidate_template": {
+                "request": inputs["request"],
+                "document": {
+                    "document_id": request.document_id,
+                    **{
+                        key: inputs["context"][key]
+                        for key in (
+                            "purpose",
+                            "audience",
+                            "evidence",
+                            "assets",
+                            "figures",
+                        )
+                    },
+                    "html": "",
+                },
+                "changes": [],
+                "evidence_changes": [
+                    {
+                        "evidence_id": item.evidence_id,
+                        "kind": "added",
+                        "reason": "Supplied initial evidence.",
+                    }
+                    for item in context.evidence
+                ]
+                if current is None
+                else [
+                    item.model_dump(mode="json")
+                    for item in context.authorized_evidence_changes
+                ],
+                "change_summary": "",
+            },
+        }
         prompts = Path(__file__).with_name("prompts")
         writer = self.gemini.turn(
             (prompts / "writer.md").read_text()
             + "\nINPUT_JSON\n"
-            + json.dumps(inputs, ensure_ascii=False),
+            + json.dumps(writer_inputs, ensure_ascii=False),
             Candidate.model_json_schema(),
             timeout=writer_timeout,
             cancel=cancel,
@@ -327,7 +365,7 @@ class GeminiEditor:
                 + "\nINPUT_JSON\n"
                 + json.dumps(
                     {
-                        **inputs,
+                        **writer_inputs,
                         "figure_repair": {
                             "attempt": 1,
                             "max_attempts": 1,

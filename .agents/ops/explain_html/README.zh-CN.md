@@ -121,6 +121,9 @@ UI显示可取消的已用时间，不承诺完成期限，不应使用旧的共
 browser JSON 中的授权。独立 verifier 还会对照指令检查变更理由。两次调用都收到完整上下文、
 当前版、请求/目标/指令和历史；verifier 另外收到候选及 digest。prompt/schema 通过私有文件和
 stdin 传递，不因 argv 长度限制而截断。Candidate schema 直接从共享模型生成。
+writer还收到`candidate_template`：按真实输出结构提供完整request和可信metadata，HTML/变更内容由writer填写。
+这减少仅用ID代替依据对象或虚构request字段等native finish错误，不限定正文/布局，也不改变严格输出schema。
+独立verifier只收到compile后的候选，不接收此写作辅助。
 
 writer 返回完整 Candidate。机械检查绑定原始请求，执行共享结构/变更检查，严格核对目的、读者、
 依据 metadata（包括数值、条件、来源）和已批准 assets。保留存续依据的正文引用和 HTTP(S) 来源链接。
