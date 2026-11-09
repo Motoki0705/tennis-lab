@@ -145,7 +145,9 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
             }
         )
 
-    env.adapter.compile_document = compile_document
+    env.adapter = editor.GeminiEditor(
+        env.adapter.gemini, compile_document=compile_document
+    )
     context = env.context.model_copy(
         update={"preferences": preferences, "figures": [figure]}
     )
