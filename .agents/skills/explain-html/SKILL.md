@@ -47,18 +47,33 @@ runtimeであり、このskillでschemaやpinを複製しない。CLIとbriefの
 - **グラフ**: 数値比較や操作はruntimeが対応する宣言的なグラフを用いる。元データ、軸、単位、範囲、
   前提を揃える。未対応のグラフは任意JSを埋めず、静的な図か対応追加が必要なことを説明する。
 
-数式はそのまま読める文字・HTMLのsub/supで表す。TeX rendererはなく、TeXの命令や区切りを残さない。
-managed graphはcompile時に元データ表をfigure内へ追加する。自作の表だけでなく、その表も狭幅で
-figure内に収めるか横スクロールできるCSSにする。元の根拠にない製品仕様や精度を説明へ足さない。
+数式・管理図の表現とcompilerの所有範囲はruntime READMEに従う。skill側でHTML subsetや
+管理部品を再定義しない。元の根拠にない製品仕様や精度を説明へ足さない。
 
 briefには説明目的・読者・instruction、根拠、準備したassets/figures、文章とレイアウトの意図を渡す。
 構文の制約はruntime READMEを参照する。Geminiの本文をCodexの代筆へ切り替えない。
-helperはadapterの指定設定で執筆と独立した意味検査を実行し、同じ最終候補をstageする。
-さらにvisual検査とChromiumでの描画検査を行い、全検査を通った初版だけをimportする。
+helperはadapterの指定設定で執筆・独立意味検査と実描画検査を行い、候補を非公開stageに保存する。
+
+## 初版import前にCodexが根拠と照合する
+
+`create` の `awaiting_codex_review` は初版の公開ではない。skillを実行するCodex自身が
+[根拠照合](references/claim-review.md) に従い、実際の候補全体を元の根拠・式・条件と照合する。
+独立Geminiのpassedだけで技術的・因果的な正しさを確定しない。少なくとも次の見逃しを調べる。
+
+- 非同期なら推定点が必ず全撮影時刻の真位置から外れる、などの過度な断定。
+- 感度の比較で固定する量を取り違えていないか。視差固定と対象距離固定を分ける。
+- 基線・配置名だけで視野、遮蔽、配線、交差角の効果を一般化していないか。必要な条件を該当箇所で示す。
+
+引用・判断理由・Evidence ID、必要なら独立した計算や反例を確認記録へ残し、同じcandidate digestへ
+結び付ける。誤りを見つけた候補は不合格として記録し、writerへの明示的な修正指示をbriefへ加えて
+再生成し、モデル・構造・意味・描画・Codex照合の全検査をやり直す。本文を直接修復したり、
+旧判定を使い回したりしない。合格した候補だけを `publish` で初版としてimportする。
+これはCodexの作業であり、利用者の追加承認待ちにはしない。人間の読後評価とは別に記録する。
 
 ## 開いて更新する
 
-`scripts/explain_html_author.py create` で初版を作り、`open` でserviceと固定reader UIを開く。
+`scripts/explain_html_author.py create` → Codex照合 → `publish` で初版を作り、
+`open` でserviceと固定reader UIを開く。
 CLIのURLを利用者へ渡す。本文の見出し・図・選択範囲、またはページ全体を対象に質問や変更を送れる。
 処理中も現行版を読み続け、更新後の変更案内から必要な場所へ移動する。履歴で旧版を読み、undoで
 旧版を新しい版として復元できる。起動URLのtokenをHTML・画像・exportや共有資料へ転記しない。
@@ -78,6 +93,6 @@ reduced-motionを確認する。自動描画検査は表示の一部の不具合
 必要な範囲で試す。静的版が閲覧専用であることを本文の小さな案内で分かるようにし、書き出した一式を
 service停止後に開く。失敗時の再試行は [初版と運用](references/authoring.md) に従い、現行版を保持する。
 
-実機確認では生成と意味検査の両方の呼出数、時間、取得できるusage、実効model/effortの証拠と
+実機確認では生成・figure修復・意味検査・失敗を含む呼出数、時間、取得できるusage、実効model/effortの証拠と
 成果物のパスを残す。改善の予算・終了条件を決め、無制限に再生成しない。人間の読後評価は人間に記入して
 もらい、代理で評価済みにしない。認知負荷を客観測定したという主張に置き換えない。

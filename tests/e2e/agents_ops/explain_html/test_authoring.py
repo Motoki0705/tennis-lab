@@ -28,6 +28,52 @@ sys.path.insert(0, str(SCRIPTS))
 author: Any = importlib.import_module("explain_html_author")
 
 
+def cli(root: Path, command: str, *options: str, success: bool = True) -> Any:
+    completed = subprocess.run(
+        [
+            str(REPO / ".venv/bin/python"),
+            str(SCRIPTS / "explain_html_author.py"),
+            command,
+            "--root",
+            str(root),
+            *options,
+        ],
+        cwd=REPO,
+        env=os.environ,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert (completed.returncode == 0) == success, completed.stdout + completed.stderr
+    return json.loads(completed.stdout)
+
+
+def review_for(created: Any) -> Any:
+    """Explicit test double for the operator's review, not a prose evaluator."""
+    candidate = schema.parse(
+        schema.Candidate,
+        (Path(created["review_directory"]) / "candidate.json").read_bytes(),
+    )
+    evidence = [item.evidence_id for item in candidate.document.evidence]
+    reasoning = author.ReasoningReview(
+        claim="Fixture only: no autonomous reasoning is simulated.",
+        evidence_ids=evidence,
+        assessment="The real Codex operator supplies this assessment in production.",
+    )
+    return author.CodexReview(
+        reviewer="codex",
+        candidate_digest=created["candidate_digest"],
+        check=schema.CheckResult(status="passed"),
+        evidence_checks=[
+            author.EvidenceReview(evidence_id=identifier, assessment="Test fixture.")
+            for identifier in evidence
+        ],
+        asynchronous_observations=reasoning,
+        sensitivity_fixed_quantities=reasoning,
+        conditional_generalizations=reasoning,
+    )
+
+
 @pytest.mark.e2e
 def test_brief_create_open_update_reopen_stop_and_export(
     editor_env: Any, monkeypatch: pytest.MonkeyPatch
@@ -81,44 +127,75 @@ def test_brief_create_open_update_reopen_stop_and_export(
     brief_path.write_text(brief.model_dump_json(), encoding="utf-8")
     env.outputs(candidate(document))
 
-    def cli(command: str, *options: str, success: bool = True) -> Any:
-        completed = subprocess.run(
-            [
-                str(REPO / ".venv/bin/python"),
-                str(SCRIPTS / "explain_html_author.py"),
-                command,
-                "--root",
-                str(root),
-                *options,
-            ],
-            cwd=REPO,
-            env=os.environ,
-            capture_output=True,
-            text=True,
-            timeout=60,
-        )
-        assert (completed.returncode == 0) == success, (
-            completed.stdout + completed.stderr
-        )
-        return json.loads(completed.stdout)
+    def run(command: str, *options: str, success: bool = True) -> Any:
+        return cli(root, command, *options, success=success)
 
-    created = cli("create", "--brief", str(brief_path), "--agy", str(env.root / "agy"))
+    created = run("create", "--brief", str(brief_path), "--agy", str(env.root / "agy"))
     assert created["document_id"] == "geometry"
+    assert created["state"] == "awaiting_codex_review"
     store = author.RevisionStore(root)
+    with pytest.raises(schema.ContractError, match="document_not_found"):
+        store.current("geometry")
+    assert (
+        run("open", "--document", "geometry", success=False)["error"]["code"]
+        == "document_not_found"
+    )
+    review_path = env.root / "codex-review.json"
+    review = review_for(created)
+    review_path.write_text(
+        review.model_copy(update={"candidate_digest": "0" * 64}).model_dump_json()
+    )
+    assert (
+        run(
+            "publish",
+            "--stage",
+            created["stage_id"],
+            "--review-file",
+            str(review_path),
+            success=False,
+        )["error"]["code"]
+        == "validation_mismatch"
+    )
+    review_path.write_text(
+        review.model_copy(
+            update={"evidence_checks": review.evidence_checks[:-1]}
+        ).model_dump_json()
+    )
+    assert (
+        run(
+            "publish",
+            "--stage",
+            created["stage_id"],
+            "--review-file",
+            str(review_path),
+            success=False,
+        )["error"]["code"]
+        == "invalid_request"
+    )
+    review_path.write_text(review.model_dump_json())
+    published = run(
+        "publish", "--stage", created["stage_id"], "--review-file", str(review_path)
+    )
+    assert (
+        run(
+            "publish", "--stage", created["stage_id"], "--review-file", str(review_path)
+        )
+        == published
+    )
     first = store.current("geometry")
-    assert first.revision_id == created["revision_id"]
+    assert first.revision_id == published["revision_id"]
     assert "間隔は7 m" in first.document.html
     assert store.asset_bytes("geometry", first.revision_id, "scene") == image.content
     calls = len(env.calls())
     assert (
-        cli("create", "--brief", str(brief_path), success=False)["error"]["code"]
+        run("create", "--brief", str(brief_path), success=False)["error"]["code"]
         == "document_exists"
     )
     assert len(env.calls()) == calls  # no duplicate generation on create or open
 
-    launched = cli("open", "--document", "geometry", "--agy", str(env.root / "agy"))
+    launched = run("open", "--document", "geometry", "--agy", str(env.root / "agy"))
     try:
-        assert cli("open", "--document", "geometry")["url"] == launched["url"]
+        assert run("open", "--document", "geometry")["url"] == launched["url"]
         assert len(env.calls()) == calls
         parsed = urlsplit(launched["url"])
         token = parse_qs(parsed.fragment)["token"][0]
@@ -191,9 +268,9 @@ def test_brief_create_open_update_reopen_stop_and_export(
             assert restored.status_code == 200
             assert store.current("geometry").document.html == first.document.html
     finally:
-        cli("stop")
-    assert not cli("status")["running"]
-    exported = cli("export", "--document", "geometry")
+        run("stop")
+    assert not run("status")["running"]
+    exported = run("export", "--document", "geometry")
     html = (Path(exported["directory"]) / "index.html").read_text()
     assert html == first.document.html and token not in html
     assert (
@@ -207,9 +284,110 @@ def test_brief_create_open_update_reopen_stop_and_export(
         == "passed"
     )
 
-    restarted = cli("open", "--document", "geometry", "--agy", str(env.root / "agy"))
+    restarted = run("open", "--document", "geometry", "--agy", str(env.root / "agy"))
     try:
         assert restarted["url"] != launched["url"]
         assert len(store.history("geometry")) == 3
     finally:
-        cli("stop")
+        run("stop")
+
+
+@pytest.mark.e2e
+def test_failed_codex_review_requires_new_writer_and_all_checks(
+    editor_env: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = editor_env
+    monkeypatch.setenv("FAKE_EXPLAIN_BIND_REQUEST", "1")
+    root = env.root / "review-runtime"
+    document = env.current.document.model_copy(
+        update={
+            "html": env.current.document.html.replace(
+                "<html><body>", "<html><head><title>Review</title></head><body>"
+            )
+        }
+    )
+    brief = author.Brief(
+        document_id="geometry", instruction="初版を書く。", context=env.context
+    )
+    brief_path = env.root / "brief.json"
+    brief_path.write_text(brief.model_dump_json())
+    env.outputs(candidate(document))
+    first = cli(
+        root, "create", "--brief", str(brief_path), "--agy", str(env.root / "agy")
+    )
+    review = review_for(first)
+    failed = review.model_copy(
+        update={
+            "check": schema.CheckResult(
+                status="failed",
+                issues=[
+                    schema.ValidationIssue(
+                        rule="causal_claim",
+                        message="The test reviewer found an unsupported generalization.",
+                    )
+                ],
+            )
+        }
+    )
+    review_path = env.root / "review.json"
+    review_path.write_text(failed.model_dump_json())
+    assert (
+        cli(
+            root,
+            "publish",
+            "--stage",
+            first["stage_id"],
+            "--review-file",
+            str(review_path),
+            success=False,
+        )["error"]["code"]
+        == "validation_failed"
+    )
+    review_path.write_text(review.model_dump_json())
+    assert (
+        cli(
+            root,
+            "publish",
+            "--stage",
+            first["stage_id"],
+            "--review-file",
+            str(review_path),
+            success=False,
+        )["error"]["code"]
+        == "request_conflict"
+    )
+    with pytest.raises(schema.ContractError, match="document_not_found"):
+        author.RevisionStore(root).current("geometry")
+
+    corrected = document.model_copy(
+        update={
+            "html": document.html.replace(
+                "間隔は", "同時刻・校正済みという条件を確認します。間隔は"
+            )
+        }
+    )
+    brief = brief.model_copy(
+        update={
+            "instruction": "指摘した一般化を条件付きの説明へ修正し、初版を作り直す。"
+        }
+    )
+    brief_path.write_text(brief.model_dump_json())
+    env.outputs(candidate(corrected))
+    second = cli(
+        root, "create", "--brief", str(brief_path), "--agy", str(env.root / "agy")
+    )
+    assert second["stage_id"] != first["stage_id"]
+    review_path.write_text(review_for(second).model_dump_json())
+    cli(
+        root,
+        "publish",
+        "--stage",
+        second["stage_id"],
+        "--review-file",
+        str(review_path),
+    )
+    assert (
+        "同時刻・校正済み"
+        in author.RevisionStore(root).current("geometry").document.html
+    )
+    assert len([call for call in env.calls() if call["prompt"] is not None]) == 4

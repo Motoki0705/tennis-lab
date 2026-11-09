@@ -42,6 +42,7 @@ DOCS = [
     ROOT / ".agents/skills/parent-session/SKILL.md",
     ROOT / ".agents/skills/explain-html/SKILL.md",
     ROOT / ".agents/skills/explain-html/references/authoring.md",
+    ROOT / ".agents/skills/explain-html/references/claim-review.md",
     MEMORY_SUMMARY,
     *(MEMORY_DIR / layer / LAYER_INDEX for layer in LAYERS),
     MEMORY_DIR / DEDICATED / "SUMMARY.md",

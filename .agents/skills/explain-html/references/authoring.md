@@ -10,8 +10,6 @@ repo rootで `.venv/bin/python` を使う。Chromiumによる実描画検査に�
 `scripts/ci_metrics/node_modules/.bin/playwright install chromium --only-shell` を実行する。
 必要に応じて `PLAYWRIGHT_MODULE` と `CHROMIUM_PATH` で導入済みの実体を明示できる。
 helperは利用不可のブラウザ検査をpassedにしない。
-執筆には現行visual policyに合わせ、`scroll-behavior` 宣言を使わない指示を初版・更新とも渡す。
-reduced-motionへの配慮はこの宣言なしで行う。
 
 adapterの既定agyをこの環境で実行できなければ、既存 `agents.conf` のpinと照合した実体を
 `create` と `open` の `--agy /absolute/path/to/agy` へ渡す。pinやモデルを変更して回避しない。
@@ -83,8 +81,7 @@ brief = brief.model_copy(update={"context": context, "asset_files": {"concept": 
 Geminiへ `scene` block内に空の `<figure data-figure-id="scene-image"></figure>` を置く指示を渡す。
 SVGも同様に `visuals.import_svg` のAsset/bytesとFigureを用意する。
 グラフはruntimeの定義モデルを使い、`managed_renderer()` のasset ID/versionをFigureに指定する。
-グラフにも同じ空figure slotが必要。執筆・更新ではCSP metaやcompile済みの図の内部を手で作り直さず、
-compilerへ任せる。helperはこの指示を初版・更新の両方へ渡す。
+管理部品・figure修復・数式・狭幅の描画はruntimeのwriter/compile契約に従う。
 helperは準備されたグラフがある場合、現行managed rendererのmetadataと実bytesを追加する。
 初版用に自分で用意したrenderer/JSへ差し替える入口はない。
 
@@ -92,14 +89,29 @@ helperは準備されたグラフがある場合、現行managed rendererのmeta
 
 ```sh
 .venv/bin/python .agents/skills/explain-html/scripts/explain_html_author.py create --root outputs/explain-html/example/runtime --brief outputs/explain-html/example/brief.json
+.venv/bin/python .agents/skills/explain-html/scripts/explain_html_author.py publish --root outputs/explain-html/example/runtime --stage STAGE_ID --review-file outputs/explain-html/example/codex-review.json
 .venv/bin/python .agents/skills/explain-html/scripts/explain_html_author.py open --root outputs/explain-html/example/runtime --document example --browser
 .venv/bin/python .agents/skills/explain-html/scripts/explain_html_author.py status --root outputs/explain-html/example/runtime
 .venv/bin/python .agents/skills/explain-html/scripts/explain_html_author.py stop --root outputs/explain-html/example/runtime
 .venv/bin/python .agents/skills/explain-html/scripts/explain_html_author.py export --root outputs/explain-html/example/runtime --document example
 ```
 
-`create` は既存documentを上書きしない。Geminiの執筆/独立意味検査→最終候補のstage→実bytesのvisual/ブラウザ
-検査→commitを行い、文書IDと版IDを返す。`open` は既存文書だけを開き、生成を再実行しない。
+`create` は既存documentを上書きしない。Geminiの執筆/独立意味検査→非公開stage→実bytesのvisual/ブラウザ
+検査を行い、`state=awaiting_codex_review` とstage ID・candidate digest・review directoryを返す。
+この時点で公開初版はなく、`open` はできない。directory内の `candidate.json` と
+`content/index.html`・assetsを読み、[Codexの根拠照合](claim-review.md) を実行する。
+`turns.json` は成功したwriter/既存figure修復/verifierの設定・時間・usageの記録で、rawログはruntimeのprivateに残る。
+
+実際の照合を終えてから、helperの `CodexReview` 型で確認記録をJSONへ保存する。型の正本はhelperにあり、
+`reviewer="codex"`、candidate digest、全Evidence IDそれぞれの確認理由、非同期・固定量/感度・条件付きの
+一般化の確認記録、総合CheckResultを持つ。題材にない観点も、その理由を記す。
+確認記録は例えば上の `outputs/explain-html/example/codex-review.json` へ置き、helperが保存する
+review directory内の `codex-review.json` を編集しない。schemaは同じ型の `model_json_schema()` で参照できる。
+
+`publish` は確認記録のdigest・Evidence IDを同じstageへ照合し、合格かつissueなしの場合だけ初版をcommitする。
+不合格の記録はprivateに保持し、同じ候補の判定を書き換えて公開することはできない。
+Codexの考察を機械的に証明するものではなく、信頼するローカル実行者による確認の記録である。
+`open` は公開済み文書だけを開き、生成を再実行しない。
 serviceが動作中ならそのsessionを再利用し、停止中なら固定UI・同じ描画validatorを指定して起動する。
 `--browser` は既定ブラウザで開こうとし、結果を `browser_opened` で返す。WSLなどで開けなければ返されたURLを
 Windows Edge等へ渡す。通常のリロードではtokenを失うため、再度 `open` のURLを使う。
@@ -114,6 +126,8 @@ URLはsessionの操作権限を含むので、証拠のスクリーンショッ�
 検査不合格の候補は公開しない。公開直後の応答障害ではstoreの現行版と要求を照合して結果を確定する。
 失敗時はrootの `private/author.log` と `private/gemini/` をローカルで調べ、
 briefや入力素材に原因があれば修正して同じrootで明示的に `create` を再実行する。モデルやeffortは変えない。
+Codexが誤りを見つけた場合は不合格の確認記録を `publish` へ渡して保存し、誤った引用と修正理由を
+writerへのinstructionへ追加する。新しい候補を作り直して全検査を行い、新しい確認記録で公開する。
 既に初版があれば `document_exists` になるので `open` を使う。未完了stageを公開用にコピーしない。
 
 閲覧中の失敗では現行版を読み続け、エラーに応じて入力や対象を直してUIの再試行を使う。
@@ -121,3 +135,9 @@ briefや入力素材に原因があれば修正して同じrootで明示的に `
 `image_generation_unavailable` は初版限定画像生成の方針による未完了であり、再送で生成可能にはならない。
 利用者が別の要求として望む場合に、既存画像の解説やSVG/グラフの更新を行う。
 停止・再起動後のinterruptedも成功と扱わず、必要なら明示的に再試行する。
+
+agyがnative SUCCESSや候補を出力した後も終了せず、writerの900秒上限でtimeoutになる既知の現象がある
+（先行の約30回の実機呼出で2回）。候補の出力だけを正常終了と読み替えず、未採用streamからimportしない。
+version-afterを含むadapterの照合・独立意味検査・描画検査が完了していなければ初版を公開しない。
+privateログ、終了/未終了と最終出力の時刻、request IDを保存し、残る呼出予算を確認して明示的に再実行する。
+上限や検査を緩めず、閲覧中の失敗では現行版を保持する。

@@ -16,8 +16,10 @@ import sys
 import tempfile
 import webbrowser
 from collections.abc import Mapping
+from dataclasses import asdict
 from pathlib import Path
 from threading import Event
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import Field
@@ -28,44 +30,27 @@ sys.path.insert(0, str(REPO / ".agents/ops"))
 
 from explain_html.editor import GeminiEditor, WritingContext  # noqa: E402
 from explain_html.gemini import DEFAULT_AGY, Gemini  # noqa: E402
-from explain_html.jobs import PreparedEdit  # noqa: E402
 from explain_html.managed import ManagedResources  # noqa: E402
 from explain_html.paths import SafeDirectory  # noqa: E402
 from explain_html.schema import (  # noqa: E402
     Candidate,
     CheckResult,
     ContractError,
+    Digest,
     DocumentTarget,
     EditRequest,
     ErrorResponse,
     Identifier,
     Model,
-    Revision,
-    RevisionInfo,
+    StagedCandidate,
     Text,
+    ValidationResult,
+    canonical_bytes,
     parse,
 )
 from explain_html.store import RevisionStore  # noqa: E402
 from explain_html.visuals import managed_renderer, validate_visuals  # noqa: E402
 from lib.opsproc import CommandError, ProcessCancelled, run_process_group  # noqa: E402
-
-WRITING_HINT = (
-    "The runtime's conservative CSS validator rejects declaration names ending "
-    "in behavior, including scroll-behavior. Omit those declarations entirely; "
-    "use normal instant scrolling. Use prefers-reduced-motion without that property. "
-    "There is no TeX renderer: write readable formulas with ordinary Unicode text "
-    "and native HTML sub/sup, without dollar delimiters or TeX commands. "
-    "Keep numerical product specifications and performance claims out unless "
-    "supported by the supplied evidence; mark your own computed examples hypothetical. "
-    "Compiled managed graphs insert their own source-data table inside the figure. "
-    "Contain wide tables with figure max-width:100%, min-width:0 and overflow-x:auto; "
-    "do not apply uncontained global table min-width rules. "
-    "For EVERY declared Figure, including graphs, put an EMPTY figure element "
-    "with its data-figure-id inside the declared data-content-id block. "
-    "Do not omit graph slots or substitute a plain div. Do not copy compiled "
-    "figure contents: the trusted compiler fills every slot. Omit Content-Security-Policy "
-    "http-equiv meta elements; the compiler adds the exact required policy before review."
-)
 
 
 class Brief(Model):
@@ -75,20 +60,32 @@ class Brief(Model):
     asset_files: dict[Identifier, Text] = Field(default_factory=dict)
 
 
-def prepare_edit(
-    request: EditRequest,
-    current: Revision,
-    history: list[RevisionInfo],
-    *,
-    cancel: Event,
-) -> PreparedEdit:
-    prepared = ManagedResources().prepare(request, current, history, cancel=cancel)
-    return PreparedEdit(
-        prepared.context.model_copy(
-            update={"preferences": prepared.context.preferences + "\n" + WRITING_HINT}
-        ),
-        prepared.assets,
-    )
+class EvidenceReview(Model):
+    evidence_id: Identifier
+    assessment: Text
+
+
+class ReasoningReview(Model):
+    claim: Text
+    evidence_ids: list[Identifier]
+    assessment: Text
+
+
+class CodexReview(Model):
+    """Trusted local review record, not a model verdict or proof of thought."""
+
+    reviewer: Literal["codex"]
+    candidate_digest: Digest
+    check: CheckResult
+    evidence_checks: list[EvidenceReview]
+    asynchronous_observations: ReasoningReview
+    sensitivity_fixed_quantities: ReasoningReview
+    conditional_generalizations: ReasoningReview
+
+
+class _PendingInitial(Model):
+    staged: StagedCandidate
+    validation: ValidationResult
 
 
 def validate_bundle(
@@ -134,9 +131,7 @@ def create(brief_path: Path, root: Path, agy: Path) -> dict[str, object]:
         name: (brief_path.parent / path).read_bytes()
         for name, path in brief.asset_files.items()
     }
-    context = brief.context.model_copy(
-        update={"preferences": brief.context.preferences + "\n" + WRITING_HINT}
-    )
+    context = brief.context
     if any(figure.kind == "graph" for figure in context.figures):
         imported = managed_renderer()
         renderer, content = imported.asset, imported.content
@@ -176,28 +171,103 @@ def create(brief_path: Path, root: Path, agy: Path) -> dict[str, object]:
         logging.getLogger(__name__).warning(
             "Rendering check: %s", rendering.model_dump_json()
         )
-    try:
-        revision = store.commit(
-            staged, result.validation.model_copy(update={"rendering": rendering})
+        raise ContractError("validation_failed")
+    validation = result.validation.model_copy(update={"rendering": rendering})
+    pending = _PendingInitial(staged=staged, validation=validation)
+    review_path = f"private/codex-reviews/{staged.stage_id}"
+    with SafeDirectory(root) as filesystem:
+        filesystem.write(f"{review_path}/candidate.json", canonical_bytes(candidate))
+        filesystem.write(f"{review_path}/context.json", canonical_bytes(context))
+        filesystem.write(f"{review_path}/request.json", canonical_bytes(request))
+        filesystem.write(
+            f"{review_path}/turns.json",
+            json.dumps(
+                {
+                    "writer": asdict(result.writer),
+                    "repairs": [asdict(turn) for turn in result.repairs],
+                    "verifier": asdict(result.verifier),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode("utf-8"),
         )
+        filesystem.write(
+            f"{review_path}/content/index.html", candidate.document.html.encode("utf-8")
+        )
+        for asset in candidate.document.assets:
+            filesystem.write(
+                f"{review_path}/content/{asset.path}", staged_assets[asset.asset_id]
+            )
+        filesystem.write(f"{review_path}/pending.json", canonical_bytes(pending))
+    return {
+        "state": "awaiting_codex_review",
+        "document_id": brief.document_id,
+        "stage_id": staged.stage_id,
+        "candidate_digest": staged.candidate_digest,
+        "review_directory": str(root / review_path),
+    }
+
+
+def publish(root: Path, stage_id: str, review_file: Path) -> dict[str, object]:
+    review_path = f"private/codex-reviews/{stage_id}"
+    with SafeDirectory(root) as filesystem:
+        try:
+            pending = parse(
+                _PendingInitial, filesystem.read(f"{review_path}/pending.json")
+            )
+        except FileNotFoundError as exc:
+            raise ContractError("candidate_not_found") from exc
+    staged = pending.staged
+    if staged.stage_id != stage_id or not pending.validation.passed:
+        raise ContractError("validation_mismatch")
+    store = RevisionStore(root)
+    candidate = store.staged_candidate(staged.document_id, staged.stage_id)
+    review = parse(CodexReview, review_file.read_bytes())
+    if review.candidate_digest != staged.candidate_digest:
+        raise ContractError("validation_mismatch")
+    evidence_ids = {item.evidence_id for item in candidate.document.evidence}
+    reviewed = [item.evidence_id for item in review.evidence_checks]
+    if set(reviewed) != evidence_ids or len(reviewed) != len(evidence_ids):
+        raise ContractError("invalid_request")
+    for item in (
+        review.asynchronous_observations,
+        review.sensitivity_fixed_quantities,
+        review.conditional_generalizations,
+    ):
+        if not set(item.evidence_ids) <= evidence_ids:
+            raise ContractError("invalid_request")
+    # A negative review is durable. Correct the writer input and create a new
+    # candidate; do not turn the same rejected candidate into an approval.
+    with SafeDirectory(root) as filesystem:
+        record = f"{review_path}/codex-review.json"
+        encoded = canonical_bytes(review)
+        if filesystem.exists(record):
+            if filesystem.read(record) != encoded:
+                raise ContractError("request_conflict")
+        else:
+            filesystem.write(record, encoded)
+    if review.check.status != "passed" or review.check.issues:
+        raise ContractError("validation_failed")
+    try:
+        revision = store.commit(staged, pending.validation)
     except ContractError as error:
         # An acknowledgement can fail after the atomic current replacement.
         # Report success only if the public store verifies this exact request.
         try:
-            revision = store.current(brief.document_id)
+            revision = store.current(staged.document_id)
         except ContractError as lookup:
             if lookup.error.code == "document_not_found":
                 raise error from lookup
             raise
         if (
-            revision.request_id != request.request_id
+            revision.request_id != candidate.request.request_id
             or revision.parent_revision is not None
             or revision.document != candidate.document
             or revision.changes != candidate.changes
             or revision.evidence_changes != candidate.evidence_changes
         ):
             raise error
-    return {"document_id": brief.document_id, "revision_id": revision.revision_id}
+    return {"document_id": staged.document_id, "revision_id": revision.revision_id}
 
 
 def runtime(command: str, root: Path, *options: str) -> dict[str, object]:
@@ -241,8 +311,6 @@ def open_document(root: Path, document_id: str, agy: Path) -> dict[str, object]:
         str(agy),
         "--ui",
         "explain_html.web:files",
-        "--prepare",
-        "explain_html_author:prepare_edit",
         "--validator",
         "explain_html_author:validate_bundle",
     )
@@ -252,11 +320,14 @@ def main() -> int:
     logging.getLogger().addHandler(logging.NullHandler())
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("create", "open", "status", "stop", "export"):
+    for name in ("create", "publish", "open", "status", "stop", "export"):
         command = commands.add_parser(name)
         command.add_argument("--root", type=Path, required=True)
         if name == "create":
             command.add_argument("--brief", type=Path, required=True)
+        if name == "publish":
+            command.add_argument("--stage", required=True)
+            command.add_argument("--review-file", type=Path, required=True)
         if name in {"create", "open"}:
             command.add_argument("--agy", type=Path, default=DEFAULT_AGY)
         if name in {"open", "export"}:
@@ -278,6 +349,8 @@ def main() -> int:
                 )
         if arguments.command == "create":
             result = create(arguments.brief.absolute(), root, arguments.agy)
+        elif arguments.command == "publish":
+            result = publish(root, arguments.stage, arguments.review_file)
         elif arguments.command == "open":
             result = open_document(root, arguments.document, arguments.agy)
             if arguments.browser:
