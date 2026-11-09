@@ -226,6 +226,44 @@ undo 也在记录失败前核对发布状态：request ID、parent、restored_fr
 启动时也检查旧 runtime 记录了 error 的 restore journal。无法读取发布结果时停止工作，不判定成功。
 export 的 rename/fsync 错误也仅在 manifest 与全部公开 bytes 核对通过时返回成功。
 
+## 浏览器阅读与编辑
+
+为 `start` / `serve` 添加 `--ui explain_html.web:files`，即可使用固定的阅读与编辑UI。
+打开包含fragment的启动URL。UI立即移除fragment，仅在内存中保留token，并仅将其发送到需要
+认证的JSON API。完整刷新页面后需再次打开启动URL。同一标签页的sessionStorage只保存待处理
+request ID、操作类型、base和开始时间，不保存token或指令。重新连接按ID核对状态，绝不自动重发编辑或undo。
+undo响应丢失时，历史尚未列出请求并不代表终态。保留request ID并继续核对发布历史，
+保持当前版本可读，同时提供现有的重新检查状态操作。
+
+通过目标菜单选择整页或内容block，也可点击标题/图表、按Enter/Space，或在同一block内选择文字。
+选中文字与UTF-16位置会针对显示的revision核对。固定UI提供指令、cancel、耗时、公开错误、版本历史、
+旧版预览与恢复；答案写入正文。明确重试使用新request ID和显示的当前版base。旧revision发生冲突时
+保留正文，通过明确操作刷新当前版。
+
+`GET /api/documents/{document_id}/revisions/{revision_id}/content/reader.html` 是已发布版本的临时阅读view。
+opaque iframe不能向固定UI暴露DOM，srcdoc又继承固定UI的CSP，因此需要这一局部service扩展。
+view加入最少的阅读辅助style和固定 `web/reader.js`，以其精确bytes的script hash连同版本固定的renderer hash授权执行。
+临时response用HTTP CSP替换CSP meta，保留sandbox、connect-src none、resource限制和renderer hash。
+共通content file_name枚举也声明reader.html，但JSON模型和export文件列表保持不变。存储HTML、validator、compiler、`content/index.html`与export bytes均不修改。
+
+iframe使用 `sandbox="allow-scripts"` 和opaque origin，不授予same-origin、forms、popups或top-navigation，
+也不传入token/cookie。生成script仍被阻止。固定UI仅接收来自确切frame window、origin `null`、当前
+文档/revision及每个view nonce匹配的 `ready`、`selection` 与阅读 `state` message；内容ID/quote/位置及
+state结构均与显示版本核对，无法通过message发送指令。阅读view使用共通StrictHTMLParser。目标索引在inert template中解析，不把节点插入固定UI的DOM。
+此时app.js可能报告inline style属性被控制页CSP拒绝；保持该policy严格，正文style仅作用于iframe。
+由于目标为opaque origin，父页面以target origin
+`*` 发送连接、恢复状态/标记及导航数据。bridge核对父window及HTTP origin，不读取token也不访问service。
+
+处理期间旧frame保持可读。成功发布的新版在第二个frame中初始化bridge后再切换。对于HTML、图表定义和
+引用asset metadata相同的block，保留details与图表输入，包括block自身就是details的情况。
+选择包含视口顶部的最内层可见block，按其内容ID和相对偏移恢复阅读位置，不focus/scroll
+外部页面。变更以轻微内侧标记显示，只有明确按钮才导航。阅读锚点被删除时提示，并把原scroll高度限制在
+新文档范围内；目标删除或改变后需重新选择才能发送。
+
+预览旧版本时不可编辑，直到返回当前版或将旧版恢复成新revision。ZIP export下载service的精确snapshot文件，
+不包含操作UI、bridge、认证信息或请求记录。解压后打开index.html即可offline阅读静态说明、图片和支持的图表。
+AI图片只在初版生成；阅读期间可使用SVG、图表及已有图片，新图片请求以image_generation_unavailable说明未完成。
+
 ## 存储、恢复与导出
 
 使用 Git 忽略的专用 runtime 目录，例如源码用例中的 `outputs/` 路径。整个 root 保持私有，

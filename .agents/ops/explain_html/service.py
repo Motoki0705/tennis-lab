@@ -17,6 +17,7 @@ from starlette.exceptions import HTTPException
 
 from .jobs import JobController
 from .paths import relative_path
+from .reader import reader_view
 from .schema import (
     CancelRequest,
     ContractError,
@@ -276,6 +277,15 @@ def create_app(
                 media_type = asset.media_type
             else:
                 name = parameters["file_name"]
+                if name == "reader.html":
+                    data, policy = reader_view(
+                        revision, content_policy(revision.document)
+                    )
+                    return Response(
+                        data,
+                        media_type="text/html",
+                        headers={"Content-Security-Policy": policy},
+                    )
                 data = await run_in_threadpool(
                     controller.store.content_file, document_id, revision_id, name
                 )
