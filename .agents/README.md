@@ -57,7 +57,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/issue_supplement/](ops/issue_supplement/README.md) | 作成直後の親issueにGeminiで背景を補足するworkflow。不変条件・独立した意味検査・照合付きの書き込みを行う |
-| [ops/explain_html/](ops/explain_html/README.md) | 説明HTMLの文書・編集・HTTP共通契約と、候補検証に結び付く版保存・復元・公開snapshot |
+| [ops/explain_html/](ops/explain_html/README.md) | 説明HTMLの共通契約、版保存・復元・公開snapshot、指定Geminiによる候補生成と独立した意味検査 |
 | [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](ops/parent/development_workflow.md) がCodex workerの起動・継続・停止・結果照合と既存レビュー/mergeを接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
 | [ops/worker_status/](ops/worker_status/README.md) | 親registry・共通ランナー記録から子の実行状況・根拠・鮮度・秘匿済み要約を返す読み取り専用Python API/JSON CLI。GitHub取得は明示指定時のみ |
 | [ops/worker_logs/](ops/worker_logs/README.md) | workerの具体指示・最終報告・来歴を無害化し、ターン別のログ専用PRへ追記する。公開検査・追加専用merge・CI除外の限定例外と復旧の正本 |

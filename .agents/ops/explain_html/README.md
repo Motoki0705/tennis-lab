@@ -1,12 +1,13 @@
-# Explain HTML document contract
+# Explain HTML document contract and Gemini editor
 
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
 This package provides the shared document/edit contract and durable revision store
 for [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710), plus visual import,
-managed rendering and an explicit image-generation availability boundary. It contains no Gemini
-invocation, HTTP server, browser UI, image-provider implementation or quality
-evaluator. It uses existing Pydantic/Pillow dependencies and the standard library.
+managed rendering, an explicit image-generation availability boundary, Gemini
+candidate generation and independent semantic checks. It contains no HTTP server,
+browser UI, image-provider implementation or browser quality evaluator. It uses
+existing Pydantic/Pillow/jsonschema dependencies and Python's standard library.
 
 ## Contract source and entry points
 
@@ -30,6 +31,9 @@ Use `parse()` for strict JSON parsing: unknown fields and type coercions fail.
 | [visuals.py](visuals.py) | SVG/HTML/CSS safety, figure markup and offline renderer policy |
 | [renderers/visuals-v2.js](renderers/visuals-v2.js) | Current renderer with declared figure targets and isolated graph failures |
 | [renderers/visuals-v1.js](renderers/visuals-v1.js) | Immutable renderer retained for old revisions |
+| [editor.py](editor.py) | Initial writing, editing, fact preservation and independent semantic review |
+| [gemini.py](gemini.py) | Pinned, tool-free agy execution, private evidence and cancellation |
+| [no_tools.py](no_tools.py) | Trusted PreToolUse hook denying every tool |
 
 ## Identity, targets and candidates
 
@@ -107,6 +111,76 @@ It does not interpret
 asset internals or execute JavaScript. The visual validator owns CSS/SVG/script
 contents and graph-specific definitions. A passed structural check alone is
 insufficient for publication.
+
+## Gemini writing and editing
+
+With `PYTHONPATH=.agents/ops`, construct `Gemini(private_root, agy=...)` from
+`explain_html.gemini`, then `GeminiEditor(gemini)` from `explain_html.editor`.
+`write_initial(request, context, *, timeout=600, cancel=None)` and
+`edit(request, current, context, *, timeout=600, cancel=None)` return an
+`EditorialResult`. Use the shared EditRequest/Revision types; initial requests
+have a null base and a document target. The timeout covers both writer and
+verifier, including effort/version checks. Each turn uses a new workspace and
+conversation. There is no automatic retry, resume, substitute model or prose repair.
+
+`WritingContext` is trusted controller input: purpose, audience, exact desired
+evidence, approved assets, prepared figures, writing preferences and all prior
+change summaries. For edits, every difference between current and desired evidence
+also requires an `authorized_evidence_changes` declaration. Do not derive this
+authorization from the writer or accept it unchecked from browser JSON. The
+independent verifier checks its justification against the instruction. The complete
+context, current revision, request/target/instruction and history go to both calls;
+the verifier additionally receives the candidate and its digest. Prompts and schemas
+travel through private files/stdin without an argv size limit or silent truncation.
+Candidate schemas are generated directly from the shared models.
+
+The writer returns a complete Candidate. Mechanical checks bind its request, run
+the contract's structural/change checks, and require exact purpose, audience,
+evidence metadata (including numbers, conditions and provenance) and approved assets.
+Surviving rendered evidence references and HTTP(S) source hyperlinks must remain.
+Numeric values in unchanged evidence that appeared in that evidence's rendered text
+must still appear in its scope; this lexical decimal check does not prove units,
+visual visibility, paraphrases or meaning. A separate Gemini call reviews those
+points, logical claims, authorized changes and missing inputs. Honest explanations
+of insufficient information are supported. The review must cover every old/new
+evidence ID, match the candidate digest and pass without issues. Rejection or invalid
+output raises ContractError without returning a candidate. This model review adds
+evidence; it does not guarantee truth or complete semantic correctness.
+
+`EditorialResult` contains candidate, validation, writer and verifier evidence.
+The validation has structural/semantic passed and rendering **not_run**; it cannot
+authorize commit by itself. The service must stage exactly that candidate, apply
+its independent sanitization/renderer/rendering checks to the same bytes and merge
+the actual rendering verdict into the digest-bound ValidationResult. Never simply
+mark rendering passed. This editor never opens the store or public files.
+
+The model/effort are explicitly `gemini-3.8-flash-high` / `high`. Constructor
+overrides that differ fail. The agy version comes from the existing AGY_VERSION
+pin in agents.conf; the issue-supplement runtime and its pins/permissions are
+unchanged. Every turn records selected settings, runs the read-only headless
+`/effort` check (requiring `command.data.current=high`), then verifies the generation
+stream's model and all backend model-override log labels. The
+[official effort contract](https://antigravity.google/docs/cli/commands/effort/)
+defines effort as a model-variant selection; the matching High backend variant
+and explicit effort response are the evidence, not a model's self-report or token
+count. A missing/conflicting observation fails with model_mismatch.
+
+Use a dedicated private_root outside served/exported directories. Its directory
+must be private (0700); files are 0600. Prompts, stdout, settings, schemas, hooks,
+errors and raw CLI logs remain there. Only the returned numeric usage/timing and
+validated configuration may be summarized publicly; exception causes and raw logs
+are private. Session strict permissions and an all-tools denial hook prevent
+filesystem edits, research and tool delegation; any tool attempt also disqualifies
+the result. Hook/settings/schema integrity is checked on success and failure.
+This policy is not an OS sandbox, and does not qualify arbitrary global plugins
+or hooks. Use an operator-controlled CLI profile. The adapter does not copy
+credentials or rewrite user settings; agy retains its own normal profile behavior.
+
+Pass a `threading.Event` as cancel. The service sets the same event on request
+cancellation or shutdown; `opsproc` stops/reaps the process group before returning
+cancelled. A pre-set event prevents launch. Timeout, cancellation, model mismatch,
+invalid model output and semantic failure use the existing public error codes.
+The controller must still synchronize cancellation with its later commit.
 
 ## Storage, recovery and export
 
@@ -270,7 +344,7 @@ navigation and the static-export editing-unavailable indicator.
 Run the repository `.venv/bin/python -m pytest` on
 `tests/unit/agents_ops/explain_html` and
 `tests/integration/agents_ops/explain_html`, with `--collect-only` to count cases
-and `--durations=0 --durations-min=0` to measure them. Tests use
+and `--durations=0 --durations-min=0` to measure them. Contract/store tests use
 real temporary files, asymmetric blocks, multiple assets,
 declarative graph data, exception injection and synchronized competing writers.
 They require no external API, GPU, browser or real-time sleep. The visual addition
@@ -291,3 +365,10 @@ PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \
 The harness prints setup/scenario times and its temporary screenshot directory.
 No real image generation or external API is run in normal tests/CI.
 The existing JavaScript pytest entrypoint and CI lane run both visual suites.
+
+Editor coverage adds 10 integration cases
+in `test_editor.py` and 3 public-entry cases in
+`tests/e2e/agents_ops/test_explain_html_editor.py`: executable fake agy, a real
+revision store, complete long inputs, permitted/prohibited fact changes, rejected
+or malformed verdicts, actual hook denial, and pipe/Event-synchronized process
+cleanup. Tests require no external API, GPU, browser or fixed real-time sleep.

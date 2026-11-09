@@ -21,6 +21,11 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
 
+`opsproc.run_process_group()` の任意引数 `cancel` は `threading.Event`。
+set済みなら起動せず、実行中のsetはprocess groupを停止・回収して `ProcessCancelled(CommandError)`
+を送出する。timeout・通常終了の回収と、cancelを指定しない既存呼出の動作は保持する。
+呼出元はrequest取消・service停止のEventを接続し、後段commitとの同期を別途行う。
+
 ## agyの共通呼び出し部品
 
 `agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加の writer/verifier 用の同期Python API。

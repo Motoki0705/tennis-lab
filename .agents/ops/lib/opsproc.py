@@ -20,6 +20,7 @@ import subprocess
 import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from threading import Event
 from typing import TextIO
 
 LOG = logging.getLogger("opsproc")
@@ -28,6 +29,10 @@ DEFAULT_TERM_GRACE_SECONDS = 5.0
 
 class CommandError(RuntimeError):
     """An external command (gh, git, agent) failed or returned unusable output."""
+
+
+class ProcessCancelled(CommandError):
+    """The caller cancelled a process group; cleanup has completed on return."""
 
 
 def process_identity(pid: int) -> dict[str, str | int] | None:
@@ -199,6 +204,7 @@ def run_process_group(
     term_grace: float = DEFAULT_TERM_GRACE_SECONDS,
     stdout_file: TextIO | None = None,
     stdin_file: TextIO | None = None,
+    cancel: Event | None = None,
 ) -> str:
     """Run ``cmd`` in its own process group and return stdout.
 
@@ -209,7 +215,10 @@ def run_process_group(
     If ``stdout_file`` is supplied, stream directly to that caller-owned file
     and return an empty string; partial output survives errors and timeouts.
     ``stdin_file`` provides caller-owned input without a large argv or pipe write.
+    A supplied ``cancel`` event also interrupts communication and reaps the group.
     """
+    if cancel is not None and cancel.is_set():
+        raise ProcessCancelled("process cancelled before launch")
     try:
         proc = subprocess.Popen(
             list(cmd),
@@ -224,8 +233,25 @@ def run_process_group(
     except FileNotFoundError as exc:
         raise CommandError(f"{cmd[0]}: command not found") from exc
     pgid = proc.pid  # session leader: its pid is the process group id
+    deadline = None if timeout is None else time.monotonic() + timeout
     try:
-        stdout, stderr = proc.communicate(timeout=timeout)
+        if cancel is None:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        else:
+            while True:
+                if cancel.is_set():
+                    raise ProcessCancelled("process cancelled")
+                remaining = None if deadline is None else deadline - time.monotonic()
+                if remaining is not None and remaining <= 0:
+                    assert timeout is not None
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+                try:
+                    stdout, stderr = proc.communicate(
+                        timeout=0.1 if remaining is None else min(0.1, remaining)
+                    )
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
     except subprocess.TimeoutExpired as exc:
         killed = _terminate_group(proc, pgid, term_grace)
         proc.communicate()

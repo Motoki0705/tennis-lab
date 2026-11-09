@@ -1,11 +1,12 @@
-# 説明HTMLの文書契約
+# 説明HTMLの文書契約とGemini編集
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710) の文書・編集の共通契約と、
-永続的な版store、visual import・managed renderer・画像生成の可否を明示する境界を提供する。
-Gemini呼出、HTTPサーバ、ブラウザUI、画像provider実装、品質評価は含まない。
-既存依存のPydantic/PillowとPython標準ライブラリを使う。
+永続的な版store、visual import・managed renderer・画像生成の可否を明示する境界、
+Geminiによる候補生成と独立した意味検査を提供する。
+HTTPサーバ、ブラウザUI、画像provider実装、ブラウザ品質評価は含まない。
+既存依存のPydantic・Pillow・jsonschemaとPython標準ライブラリを使う。
 
 ## 契約の正本と入口
 
@@ -27,6 +28,9 @@ commitできない未検証の判定例を含む。JSONには厳密な `parse()`
 | [visuals.py](visuals.py) | SVG/HTML/CSSの安全検査、図のmarkup、offline renderer policy |
 | [renderers/visuals-v2.js](renderers/visuals-v2.js) | 宣言したfigureだけを描画し、図別に失敗を隔離する現行renderer |
 | [renderers/visuals-v1.js](renderers/visuals-v1.js) | 旧revision用にbytesを固定して保持するrenderer |
+| [editor.py](editor.py) | 初回執筆・編集、根拠保持、独立した意味検査 |
+| [gemini.py](gemini.py) | model固定・tool禁止のagy実行、private証拠、中断 |
+| [no_tools.py](no_tools.py) | 全toolを拒否する信頼するPreToolUse hook |
 
 ## ID・対象・候補
 
@@ -82,6 +86,61 @@ resource URL、URLを含むinline CSSは拒否する。srcsetはcanonicalなmana
 統一された `w` / `x` descriptorを受け付け、不正・重複・混在descriptorや未解決候補があれば
 source set全体を拒否する。asset内部を解釈せず、JavaScriptを実行しない。
 CSS/SVG/scriptの内容とグラフ固有設定はvisual validatorの責務。構造検査だけでは公開できない。
+
+## Geminiの執筆と編集
+
+`PYTHONPATH=.agents/ops` で `explain_html.gemini` の
+`Gemini(private_root, agy=...)` を作り、`explain_html.editor` の
+`GeminiEditor(gemini)` へ渡す。
+`write_initial(request, context, *, timeout=600, cancel=None)` と
+`edit(request, current, context, *, timeout=600, cancel=None)` は `EditorialResult` を返す。
+要求・現在版には共通のEditRequest/Revisionを使い、初回はnull base・文書全体対象にする。
+timeoutはwriter/verifierとeffort/版照合を合わせた上限。呼出ごとにworkspaceと会話を作り直し、
+自動retry・resume・別modelへの代替・自由文からの補修はしない。
+
+`WritingContext` は信頼するcontrollerの入力で、目的・読み手・更新後の正確な根拠集合、
+許可済みassets・準備済み図・文章の好み・過去の変更要約すべてを渡す。
+編集では現在版と根拠集合が異なる箇所を `authorized_evidence_changes` にも明示する。
+writerの案を承認の根拠にしたり、browser JSONを未検査で承認として扱ったりしない。
+独立verifierは変更理由と指示の整合性も調べる。両呼出へ完全な文脈・現在版・対象と指示・履歴を渡し、
+verifierには候補とdigestも渡す。prompt/schemaはprivate fileとstdinで渡し、argv上限による省略をしない。
+Candidate schemaは共通モデルから直接生成する。
+
+writerは完全なCandidateを返す。機械検査は元要求の一致、共通の構造・変更検査、目的・読み手・
+根拠metadata（数値・条件・出典を含む）・許可済みassetsの厳密な一致を確認する。
+存続する根拠の本文参照とHTTP(S)出典リンクを保持する。変更しない根拠の数値が従来の本文に
+現れていれば、その根拠の範囲に残っていることも調べる。この十進数の字句検査だけでは単位・
+表示上の可視性・言い換え・意味は証明できない。別のGemini呼出がこれら、論理的主張・
+許可された変更・不足する情報を意味検査する。情報不足を正直に説明する候補も生成できる。
+検査は旧/新根拠の全IDを対象にし、候補digestが一致し、未解決issueなしでpassedを返す必要がある。
+拒否・不正出力は候補を返さずContractErrorにする。意味検査は追加の証拠であり、真実性や完全な正しさの保証ではない。
+
+`EditorialResult` はcandidate・validation・writer/verifierの実行証拠を持つ。
+validationはstructural/semanticがpassed、renderingは **not_run** のため、そのままcommitできない。
+serviceは同じ候補をstageし、同じbytesへ独立した無害化・renderer policy・描画検査を実施して、
+実際の描画判定をdigestに結び付いたValidationResultへ加える。描画結果を確認せずpassedにしない。
+editor自身はstoreや公開ファイルを開かない。
+
+model/effortは `gemini-3.8-flash-high` / `high` を明示し、異なるconstructor指定は拒否する。
+agyの版は既存agents.confのAGY_VERSION pinを使い、issue補足用runtime・pin・権限は変更しない。
+毎回選択値を記録し、読み取り専用のheadless `/effort` が `command.data.current=high` を返すことと、
+生成streamのmodel・バックエンドへの全model override logが指定どおりであることを照合する。
+[公式effort契約](https://antigravity.google/docs/cli/commands/effort/) はeffortをmodel variantの選択と定義する。
+同じHigh variantのbackend logと明示的なeffort応答を証拠とし、モデルの自己申告やtoken数で補わない。
+観測欠落・不一致はmodel_mismatchとする。
+
+private_rootは配信・export対象外の専用領域にする。directoryは0700、fileは0600。
+prompt・stdout・settings・schema・hook記録・error・CLI生ログをそこへ残す。
+公開できる集計は返された数値の使用量・時間と検証済み設定に限定し、例外のcauseや生ログはprivate扱いにする。
+sessionのstrict権限と全tool拒否hookでファイル編集・外部調査・tool委任を止め、試行がある結果も失敗にする。
+hook/settings/schemaの完全性は成功・失敗とも照合する。これはOS sandboxではなく、
+任意のglobal plugin/hookを安全と認定するものでもない。運用者が管理するCLI profileを使う。
+adapter自身は認証をコピーせずuser設定を書き換えないが、agy本来のprofile動作は残る。
+
+cancelには `threading.Event` を渡す。serviceは取消や停止時に同じEventをsetし、opsprocが
+process groupの停止・回収を終えてからcancelledを返す。起動前にset済みなら起動しない。
+timeout・cancel・model不一致・不正出力・意味検査失敗は共通の公開エラーを使う。
+後段commitとcancelの同期は引き続きcontrollerが担当する。
 
 ## 保存・復旧・export
 
@@ -217,3 +276,8 @@ PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \
 harnessはsetup/各経路の時間と、一時screenshot directoryを出力する。
 通常テスト/CIで実画像生成や外部APIを呼ばない。
 既存のJavaScript pytest入口・CIレーンからもvisualの両suiteを実行する。
+
+editorは `test_editor.py` にintegration 10件、
+`tests/e2e/agents_ops/test_explain_html_editor.py` に公開入口3件を追加する。
+偽agy実行ファイル・実store・長文の完全な入力・許可/禁止した根拠変更・拒否/不正verdict・
+実hookの拒否・pipe/Event同期によるprocess回収を検査する。外部API・GPU・browser・固定の実時間sleepは不要。

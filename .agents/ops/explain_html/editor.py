@@ -1,0 +1,305 @@
+"""Initial writing and editing return candidates with independent semantic checks.
+
+Only trusted orchestration supplies WritingContext, including evidence changes.
+No store or public filesystem is opened by this module. Rendering remains a
+separate check; a returned ValidationResult cannot yet authorize store.commit().
+"""
+
+from __future__ import annotations
+
+import json
+import math
+import re
+import time
+from dataclasses import dataclass
+from decimal import Decimal
+from pathlib import Path
+from threading import Event
+from typing import Any
+
+from pydantic import Field
+
+from .document import HTMLIndex, evidence_changes, validate_candidate, validate_request
+from .gemini import Gemini, TurnEvidence, check_cancel
+from .schema import (
+    Asset,
+    Candidate,
+    CheckResult,
+    ContractError,
+    Digest,
+    Document,
+    EditRequest,
+    Evidence,
+    EvidenceChange,
+    Figure,
+    Identifier,
+    Model,
+    Revision,
+    Text,
+    ValidationResult,
+    candidate_digest,
+    parse,
+)
+
+
+class WritingContext(Model):
+    """Trusted inputs, never taken from the writer's proposed changes.
+
+    evidence is the exact desired evidence set. For edits, any difference from
+    current evidence also needs an explicit authorized_evidence_changes entry.
+    The verifier still checks that those changes follow the user's instruction.
+    """
+
+    purpose: Text
+    audience: Text
+    evidence: list[Evidence]
+    authorized_evidence_changes: list[EvidenceChange] = Field(default_factory=list)
+    assets: list[Asset] = Field(default_factory=list)
+    figures: list[Figure] = Field(default_factory=list)
+    change_summaries: list[Text] = Field(default_factory=list)
+    preferences: str = ""
+
+
+class SemanticVerdict(Model):
+    candidate_digest: Digest
+    check: CheckResult
+    reviewed_evidence_ids: list[Identifier]
+
+
+@dataclass(frozen=True)
+class EditorialResult:
+    candidate: Candidate
+    validation: ValidationResult
+    writer: TurnEvidence
+    verifier: TurnEvidence
+
+
+class _EvidenceIndex(HTMLIndex):
+    """Collect text scoped by evidence references using the contract's HTML parser."""
+
+    def __init__(self, html: str):
+        self.evidence_text: dict[str, list[str]] = {}
+        self.evidence_stack: list[str | None] = []
+        super().__init__(html)
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        depth = len(self.stack)
+        super().handle_starttag(tag, attrs)
+        evidence_id = dict(attrs).get("data-evidence-id")
+        if evidence_id:
+            self.evidence_text.setdefault(evidence_id, [])
+        if len(self.stack) > depth:
+            self.evidence_stack.append(evidence_id)
+
+    def _end(self, tag: str, end: int) -> None:
+        super()._end(tag, end)
+        self.evidence_stack.pop()
+
+    def handle_data(self, data: str) -> None:
+        super().handle_data(data)
+        for evidence_id in set(self.evidence_stack) - {None}:
+            if evidence_id is not None:
+                self.evidence_text[evidence_id].append(data)
+
+
+def _numbers(text: str) -> set[Decimal]:
+    return {
+        Decimal(value)
+        for value in re.findall(
+            r"(?<![A-Za-z0-9_.])[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", text
+        )
+    }
+
+
+def _values(value: Any) -> set[Decimal]:
+    if type(value) in (int, float):
+        return {Decimal(str(value))}
+    if isinstance(value, dict):
+        return set().union(*(_values(item) for item in value.values()))
+    if isinstance(value, list):
+        return set().union(*(_values(item) for item in value))
+    return set()
+
+
+def _evidence_map(evidence: list[Evidence]) -> dict[str, Evidence]:
+    result = {item.evidence_id: item for item in evidence}
+    if len(result) != len(evidence):
+        raise ContractError("invalid_request")
+    return result
+
+
+def _check_context(context: WritingContext, current: Revision | None) -> None:
+    _evidence_map(context.evidence)
+    # Compare declarations through the shared contract helper, not a second
+    # implementation of evidence change accounting.
+    desired = Document(
+        document_id=current.document.document_id if current else "initial",
+        purpose=context.purpose,
+        audience=context.audience,
+        evidence=context.evidence,
+        html="<p data-content-id='context'>Context</p>",
+    )
+    expected = evidence_changes(
+        current.document if current else None, desired, reason="context"
+    )
+    authorized = context.authorized_evidence_changes
+    if current is None:
+        if authorized:
+            raise ContractError("invalid_request")
+    elif {(item.evidence_id, item.kind) for item in expected} != {
+        (item.evidence_id, item.kind) for item in authorized
+    } or len(expected) != len(authorized):
+        raise ContractError("invalid_request")
+
+
+def _check_preservation(
+    candidate: Candidate, context: WritingContext, current: Revision | None
+) -> None:
+    document = candidate.document
+    if (
+        document.purpose != context.purpose
+        or document.audience != context.audience
+        or _evidence_map(document.evidence) != _evidence_map(context.evidence)
+        or document.assets != context.assets
+    ):
+        raise ContractError("validation_failed")
+    new = _EvidenceIndex(document.html)
+    old = _EvidenceIndex(current.document.html) if current else None
+    previous = _evidence_map(current.document.evidence) if current else {}
+    for fact in document.evidence:
+        was = previous.get(fact.evidence_id)
+        if (
+            old
+            and fact.evidence_id in old.evidence
+            and fact.evidence_id not in new.evidence
+        ):
+            raise ContractError("validation_failed")
+        # Keep an existing rendered critical numeric value in its evidence scope.
+        # Extra numbers, paraphrases and new examples still need semantic review.
+        if old and was == fact:
+            before = _numbers("".join(old.evidence_text.get(fact.evidence_id, [])))
+            after = _numbers("".join(new.evidence_text.get(fact.evidence_id, [])))
+            if not (_values(fact.values) & before) <= after:
+                raise ContractError("validation_failed")
+        source = fact.provenance.source
+        if source.startswith(("https://", "http://")):
+            links = {url for url, citation in new.references if citation}
+            if source not in links:
+                raise ContractError("validation_failed")
+
+
+class GeminiEditor:
+    def __init__(self, gemini: Gemini):
+        self.gemini = gemini
+
+    def write_initial(
+        self,
+        request: EditRequest,
+        context: WritingContext,
+        *,
+        timeout: float = 600,
+        cancel: Event | None = None,
+    ) -> EditorialResult:
+        """Generate an initial Candidate using the null-base document request."""
+        return self._generate(request, context, None, timeout=timeout, cancel=cancel)
+
+    def edit(
+        self,
+        request: EditRequest,
+        current: Revision,
+        context: WritingContext,
+        *,
+        timeout: float = 600,
+        cancel: Event | None = None,
+    ) -> EditorialResult:
+        """Generate a complete candidate against the supplied immutable revision."""
+        return self._generate(request, context, current, timeout=timeout, cancel=cancel)
+
+    def _generate(
+        self,
+        request: EditRequest,
+        context: WritingContext,
+        current: Revision | None,
+        *,
+        timeout: float,
+        cancel: Event | None,
+    ) -> EditorialResult:
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ContractError("invalid_request")
+        check_cancel(cancel)
+        validate_request(request, current)
+        _check_context(context, current)
+        started = time.monotonic()
+
+        def remaining() -> float:
+            check_cancel(cancel)
+            seconds = timeout - (time.monotonic() - started)
+            if seconds <= 0:
+                raise ContractError("timeout")
+            return seconds
+
+        # There is no previous session or implicit memory. Every turn receives
+        # the complete context, current document, request and change history.
+        inputs: dict[str, Any] = {
+            "mode": "initial" if current is None else "edit",
+            "context": context.model_dump(mode="json"),
+            "current_revision": current.model_dump(mode="json") if current else None,
+            "request": request.model_dump(mode="json"),
+        }
+        prompts = Path(__file__).with_name("prompts")
+        writer = self.gemini.turn(
+            (prompts / "writer.md").read_text()
+            + "\nINPUT_JSON\n"
+            + json.dumps(inputs, ensure_ascii=False),
+            Candidate.model_json_schema(),
+            timeout=remaining(),
+            cancel=cancel,
+        )
+        try:
+            candidate = parse(Candidate, json.dumps(writer.output, ensure_ascii=False))
+            if candidate.request != request:
+                raise ContractError("invalid_candidate")
+            validate_candidate(candidate, current)
+        except ContractError as exc:
+            raise ContractError("invalid_model_output") from exc
+        _check_preservation(candidate, context, current)
+        digest = candidate_digest(candidate)
+        inputs.update(
+            candidate=candidate.model_dump(mode="json"), candidate_digest=digest
+        )
+        verifier = self.gemini.turn(
+            (prompts / "verifier.md").read_text()
+            + "\nINPUT_JSON\n"
+            + json.dumps(inputs, ensure_ascii=False),
+            SemanticVerdict.model_json_schema(),
+            timeout=remaining(),
+            cancel=cancel,
+        )
+        try:
+            verdict = parse(
+                SemanticVerdict, json.dumps(verifier.output, ensure_ascii=False)
+            )
+        except ContractError as exc:
+            raise ContractError("invalid_model_output") from exc
+        if verdict.candidate_digest != digest:
+            raise ContractError("validation_mismatch")
+        reviewed = verdict.reviewed_evidence_ids
+        expected_ids = {item.evidence_id for item in context.evidence}
+        if current:
+            expected_ids.update(item.evidence_id for item in current.document.evidence)
+        if set(reviewed) != expected_ids or len(reviewed) != len(expected_ids):
+            raise ContractError("invalid_model_output")
+        if verdict.check.status != "passed" or verdict.check.issues:
+            raise ContractError("validation_failed")
+        check_cancel(cancel)
+        return EditorialResult(
+            candidate,
+            ValidationResult(
+                candidate_digest=digest,
+                structural=CheckResult(status="passed"),
+                semantic=verdict.check,
+                rendering=CheckResult(status="not_run"),
+            ),
+            writer.evidence,
+            verifier.evidence,
+        )
