@@ -157,6 +157,48 @@ def test_download_overwrite_preserves_unrelated_local_files(
     ]
 
 
+def test_tree_download_checks_complete_manifest_with_real_rclone(
+    drive_cli: tuple[Callable[..., dict[str, Any]], Path], tmp_path: Path
+) -> None:
+    import hashlib
+
+    call, remote = drive_cli
+    source = remote / "closed-evaluation"
+    (source / "empty").mkdir(parents=True)
+    (source / "run:01").mkdir()
+    (source / "run:01/result.json").write_bytes(b"results")
+    expected = tmp_path / "manifest.json"
+    expected.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "files": {"run:01/result.json": hashlib.sha256(b"results").hexdigest()},
+            }
+        )
+    )
+    recovered = tmp_path / "recovered"
+    progress = tmp_path / "progress.json"
+    args = [
+        "download-tree",
+        "closed-evaluation",
+        str(recovered),
+        "--expected-manifest",
+        str(expected),
+        "--progress-file",
+        str(progress),
+    ]
+    assert call(*args)["verified"] is True
+    assert (recovered / "empty").is_dir()
+    assert (recovered / "run:01/result.json").read_bytes() == b"results"
+    assert call(*args)["reused"] is True
+    assert json.loads(progress.read_text())["completed_bytes"] == 7
+    (recovered / "extra").touch()
+    assert "file set differs" in call(*args, expected=1)["error"]
+    (recovered / "extra").unlink()
+    (source / "run:01/result.json").write_bytes(b"changed")
+    assert "hash changed" in call(*args, expected=1)["error"]
+
+
 def test_mkdir_planning_creation_existing_directory_and_file_conflict(
     drive_cli: tuple[Callable[..., dict[str, Any]], Path],
 ) -> None:

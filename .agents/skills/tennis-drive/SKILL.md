@@ -27,6 +27,7 @@ Python標準ライブラリと認証済みのrcloneを使う。Colabでは利用
 - 発見: `list` / `search` で相対pathとDrive IDを確認。`inspect` はファイル情報やディレクトリの総容量を返す。
 - 準備: `mkdir` で保存先ディレクトリを作る。例は [操作例](references/commands.md#操作例)。
 - 転送: `upload` / `download` に正確なコピー先を指定し、通常は `--verify` を付ける。
+- 閉じたdirectoryの一括回収・再照合: `download-tree`。期待ファイル集合とSHA-256は `--expected-manifest`、ローカルの進捗は `--progress-file` で指定する。[一括取得・照合](references/commands.md#閉じたdirectoryの一括取得照合)を読む。
 - 回収: ユーザーの依頼に応じて対象を選び、`download --verify`。全量ローカル回収を既定にしない。
 - 整理: `inventory --output ...` で変更前の記録を残す。`copy` / `move` は検証付きで、既存先へ上書き・結合しない。改名も `move`。
 - 削除: 明示的に依頼された対象だけ `trash`。ディレクトリには対象subtreeを示す `--recursive` が必要。ゴミ箱の全削除・期限による自動削除は行わない。

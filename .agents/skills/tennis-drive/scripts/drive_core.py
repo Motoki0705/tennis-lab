@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
@@ -175,11 +175,14 @@ class RcloneBackend:
         *,
         capture_output: bool = True,
         allow_not_found: bool = False,
+        progress: Callable[[dict[str, Any]], None] | None = None,
     ) -> subprocess.CompletedProcess[str] | None:
         """Run rclone, mapping its directory-not-found exit code when requested."""
         try:
             command = self.command(arguments)
-            if capture_output:
+            if progress is not None:
+                result = self._stream_progress(arguments, progress)
+            elif capture_output:
                 result = subprocess.run(
                     command,
                     text=True,
@@ -214,6 +217,60 @@ class RcloneBackend:
             or f"exit code {result.returncode}; see stderr logs"
         ).strip()
         raise DriveToolError(f"rclone {' '.join(arguments[:2])} failed: {message}")
+
+    def _stream_progress(
+        self, arguments: Sequence[str], progress: Callable[[dict[str, Any]], None]
+    ) -> subprocess.CompletedProcess[str]:
+        """Consume the transfer process's own JSON stats, with the usual timeout."""
+        command = self.command(
+            [
+                *arguments,
+                "--use-json-log",
+                "--stats",
+                "1s",
+                "--stats-log-level",
+                "NOTICE",
+            ]
+        )
+        timed_out = threading.Event()
+        errors = ""
+        with subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+            text=True,
+        ) as process:
+
+            def stop() -> None:
+                timed_out.set()
+                process.kill()
+
+            timer = threading.Timer(self.timeout, stop)
+            timer.start()
+            try:
+                assert process.stderr is not None
+                for line in process.stderr:
+                    try:
+                        value = json.loads(line)
+                    except ValueError:
+                        value = {}
+                    stats = value.get("stats") if isinstance(value, dict) else None
+                    if isinstance(stats, dict):
+                        progress(stats)
+                    else:
+                        errors = (errors + line)[-4000:]
+                        sys.stderr.write(line)
+                returncode = process.wait()
+            except BaseException:
+                process.kill()
+                process.wait()
+                raise
+            finally:
+                timer.cancel()
+        if timed_out.is_set():
+            raise subprocess.TimeoutExpired(command, self.timeout)
+        return subprocess.CompletedProcess(command, returncode, "", errors)
 
     def json(self, arguments: Sequence[str]) -> Any:
         """Run rclone and decode its JSON response."""

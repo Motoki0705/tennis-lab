@@ -51,6 +51,61 @@ copy/moveにはoverwriteを提供しない。
 `--verify` は型・サイズ・rcloneが公開する内容hashで比較する。共通hashがない場合は成功としない。
 明示的な `verify --download` ならremote bytesをストリームしてSHA-256を計算するが、全量転送が発生する。
 
+## 閉じたdirectoryの一括取得・照合
+
+`download-tree` は、書込みが終わったraw-file directoryを有限の1操作で取得する。
+既存の `download` / `verify`（単一ファイルを含む）の挙動は変えない。
+
+```bash
+.venv/bin/python .agents/skills/tennis-drive/scripts/drive.py download-tree \
+  outputs/task/evaluate/example/run-id ./recovered/run-id \
+  --expected-manifest ./expected-files.json --progress-file ./download-progress.json
+```
+
+期待manifestは `schema_version: 1` と `files` objectを持つJSON。
+`files` はdirectory内の相対ファイルpathから、信頼する元の記録のSHA-256文字列への対応とする。
+期待値を取得後のbytesから作り直さない。`--expected-manifest` を省略した場合もDriveとの全内容照合は必須だが、
+過去の期待集合・SHA-256との一致を証明したことにはならない。来歴の意味検証は呼出し側が引き続き行う。
+
+祖先の各階層を1回ずつ解決し、subtreeを再帰listingしてpath・ID・size・hashを集め、
+directoryの `copy` を1processで実行する。全ローカルbytesをPythonでhashし、再度の階層解決と再帰listingで
+転送中の変更を拒否する。rclone process数は新規取得で `2 × root込みの階層数 + 3`、
+既存directoryの再照合ではcopyがなく1回少ない。ファイル数に比例する別process起動やstatはない。
+これはHTTPリクエスト数や転送量を一定にする保証ではない。
+
+祖先・subtreeの重複名、期待ファイルの不足・余分、型・size・hash・IDの変化を拒否する。
+対応する内容hashがないファイルも成功にしない。`--expected-id` はdirectoryの既知IDを追加照合し、
+同名候補を選ぶ引数にはしない。これは並行writerとのlockではないため、書込み中のtreeには使わない。
+
+新規directoryは同じ親の一時directoryへ取得し、照合が全部通ってから正式名にrenameする。
+既存destinationは全byteと完全な集合を再検証し、上書き・結合・静かな修復をしない。
+失敗時は正式な新規destinationを作らない。強制終了後に残る `.fetching-*` は成功印ではない。
+再実行前に部分成果を確認する。`--overwrite` は提供しない。
+
+`--progress-file` はdestinationの外へ置くローカルJSONで、Driveへは公開しない。
+`operation` は `listing / downloading / verifying / readback / completed / failed`。
+`completed_files / total_files / completed_bytes / total_bytes` は現在の下位工程の件数・byte数で、
+download中は同じrclone processのJSON stats、verify中は読んだローカルbytesから更新する。
+verifyの開始時は件数を0へ戻す。`updated_at / last_progress_at / elapsed_seconds` も記録する。
+同じ下位工程では最大1秒に1回、工程遷移と終了は即時にローカルへ保存する。
+タイムアウト・失敗は非0で、存在や転送件数だけをverifiedとして扱わない。
+
+Pythonの呼出し側は `scripts/drive_tree.py` の `download_tree` を使い、同じ検証を通せる。
+`expected_files` に相対path→SHA-256、`progress` にkeyword callbackを渡す。
+callbackはローカル処理であり、各ファイルでDrive通信を追加しない。
+
+### 検証するテスト
+
+局所的な拒否条件・RecordingBackendによる呼出し数・streaming statsは
+`tests/unit/skills/test_tennis_drive.py`、実rcloneとlocal aliasのCLI接続は
+`tests/integration/skills/test_tennis_drive_cli.py` に置く。配置・予算は
+[tests README](../../../../tests/README.md#テスト作成方針)に従う。
+
+```bash
+CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 .venv/bin/python -m pytest -n 0 \
+  tests/unit/skills/test_tennis_drive.py tests/integration/skills/test_tennis_drive_cli.py
+```
+
 ## 容量の範囲
 
 quotaはアカウント全体、inspectは対象subtreeのサイズである。

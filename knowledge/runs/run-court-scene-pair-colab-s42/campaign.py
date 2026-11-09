@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import re
+import time
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -31,6 +32,13 @@ LEGACY = tuple(f"scene-{n}" for n in range(1, 5))
 FINAL_STEP = 33160
 INTERVAL = 3316
 SCHEMA = "court_scene_pair_stage_v1"
+# The original operational adapter is the only historical version accepted.
+# Scientific source objects, configuration, inputs and checkpoint checks stay exact.
+ORIGINAL_ADAPTERS = {
+    "campaign.py": "4ad82acddba97bf88d6a16e80d8d4ac6f5f88983295c63c6e75a48744b4ff615",
+    "runtime.py": "abdf0a9dd2ed0860e8c5994398b5abba211837137b8fb2cc246503524f1e2b9e",
+}
+Progress = Callable[..., None]
 
 
 def read(path: Path) -> dict[str, Any]:
@@ -51,6 +59,20 @@ def digest(value: Any) -> str:
 def sha(path: Path) -> str:
     with path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
+
+
+def compatible_inputs(value: dict[str, Any]) -> dict[str, Any]:
+    """Canonical identity for the reviewed adapter-only upgrade, not a cache."""
+    if value.get("schema") != "court_scene_pair_inputs_v1":
+        return value
+    current = {name: sha(BUNDLE / name) for name in ORIGINAL_ADAPTERS}
+    if value.get("bundle_sha256") not in (ORIGINAL_ADAPTERS, current):
+        raise ValueError("Unknown campaign operational adapter version")
+    return {**value, "bundle_sha256": ORIGINAL_ADAPTERS}
+
+
+def inputs_identity(value: dict[str, Any]) -> str:
+    return digest(compatible_inputs(value))
 
 
 def write(path: Path, value: Any) -> None:
@@ -209,12 +231,14 @@ STAGES = (
 
 
 class Backend(Protocol):
-    def prepare(self) -> dict[str, Any]: ...
-    def restore_state(self) -> None: ...
+    def prepare(self, progress: Progress) -> dict[str, Any]: ...
+    def restore_state(self, progress: Progress) -> None: ...
     def execute(
         self, stage: Stage, progress: Callable[..., None]
     ) -> dict[str, Any]: ...
-    def verify(self, stage: Stage, result: dict[str, Any]) -> None: ...
+    def verify(
+        self, stage: Stage, result: dict[str, Any], progress: Progress
+    ) -> None: ...
     def publish(self, path: Path) -> None: ...
 
 
@@ -224,35 +248,138 @@ class Campaign:
         state: Path,
         backend: Backend,
         clock: Callable[[], str] = lambda: datetime.now(UTC).isoformat(),
+        monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
         self.state, self.backend, self.clock = state, backend, clock
         self.started_at = self.clock()
+        self.monotonic = monotonic
+        self._phase_started = self.monotonic()
+        self._last_local = self._last_publish = float("-inf")
+        path = self.state / "progress.json"
+        self._value = read(path) if path.is_file() else {}
 
     def progress(
-        self, stage: Stage, status: str = "running", saved_step: int = 0, **extra: Any
+        self,
+        stage: Stage,
+        status: str = "running",
+        saved_step: int | None = None,
+        *,
+        phase: str | None = None,
+        publish: bool = True,
+        force: bool = False,
+        **extra: Any,
     ) -> None:
-        path = self.state / "progress.json"
-        write(
-            path,
-            {
-                "schema": "court_scene_pair_progress_v1",
-                "stage": stage.key,
-                "condition": stage.condition,
-                "status": status,
-                "latest_saved_update": saved_step,
-                "started_at": self.started_at,
-                "updated_at": self.clock(),
-                **extra,
-            },
+        now, stamp = self.monotonic(), self.clock()
+        same_stage = self._value.get("stage") == stage.key
+        default_phase = {
+            "inputs": "validating_inputs",
+            "train": "training",
+            "probe": "training",
+            "evaluate": "evaluating",
+        }.get(stage.kind, stage.kind)
+        phase = (
+            phase or (self._value.get("phase") if same_stage else None) or default_phase
         )
-        self.backend.publish(path)
+        transition = not same_stage or self._value.get("phase") != phase
+        remote_transition = transition or self._value.get("status") != status
+        operation_changed = extra.get(
+            "operation", self._value.get("operation")
+        ) != self._value.get("operation")
+        previous = self._value
+        if transition:
+            self._phase_started = now
+        value = {
+            **(previous if not transition else {}),
+            "schema": "court_scene_pair_progress_v1",
+            "stage": stage.key,
+            "condition": stage.condition,
+            "phase": phase,
+            "status": status,
+            "latest_saved_update": saved_step
+            if saved_step is not None
+            else previous.get("latest_saved_update", 0)
+            if same_stage
+            else 0,
+            "actual_training_update": previous.get("actual_training_update")
+            if same_stage
+            else None,
+            "completed_files": 0,
+            "total_files": None,
+            "completed_bytes": 0,
+            "total_bytes": None,
+            "completed_items": 0,
+            "total_items": None,
+        }
+        if not transition:
+            for key in (
+                "completed_files",
+                "total_files",
+                "completed_bytes",
+                "total_bytes",
+                "completed_items",
+                "total_items",
+            ):
+                value[key] = previous.get(key, value[key])
+        value.update(extra)
+        advances = (
+            transition
+            or (status == "completed" and previous.get("status") != status)
+            or any(
+                previous.get(key) != value.get(key)
+                for key in (
+                    "operation",
+                    "completed_files",
+                    "completed_bytes",
+                    "completed_items",
+                    "latest_saved_update",
+                    "actual_training_update",
+                )
+            )
+        )
+        value.update(
+            started_at=self.started_at,
+            updated_at=stamp,
+            phase_started_at=stamp
+            if transition
+            else previous.get("phase_started_at", stamp),
+            elapsed_seconds=now - self._phase_started,
+            last_progress_at=stamp
+            if advances
+            else previous.get("last_progress_at", stamp),
+        )
+        self._value = value
+        force = (
+            force
+            or extra.get("operation") == "completed"
+            or (
+                saved_step is not None
+                and saved_step != previous.get("latest_saved_update")
+            )
+        )
+        should_publish = publish and (
+            remote_transition or force or now - self._last_publish >= 60
+        )
+        if not (
+            transition
+            or operation_changed
+            or force
+            or should_publish
+            or now - self._last_local >= 1
+        ):
+            return
+        path = self.state / "progress.json"
+        write(path, value)
+        self._last_local = now
+        if should_publish:
+            self.backend.publish(path)
+            self._last_publish = self.monotonic()
 
     def run(self) -> None:
         try:
             self._run()
         except BaseException as error:
             path = self.state / "progress.json"
-            prior = read(path) if path.is_file() else {}
+            prior = self._latest_progress()
             write(
                 path,
                 {
@@ -271,15 +398,37 @@ class Campaign:
                 ) from error
             raise
 
+    def _latest_progress(self) -> dict[str, Any]:
+        # The training subprocess owns progress while the parent waits. Its last
+        # saved/actual step must survive both normal return and an exception.
+        path = self.state / "progress.json"
+        disk = read(path) if path.is_file() else {}
+        return (
+            disk
+            if disk.get("updated_at", "") > self._value.get("updated_at", "")
+            else self._value
+        )
+
     def _run(self) -> None:
-        self.backend.restore_state()
+        restoring = partial(
+            self.progress, Stage("restore"), phase="restoring", publish=False
+        )
+        restoring(operation="state", force=True)
+        self.backend.restore_state(restoring)
         # A new VM must fetch and validate real inputs even if inputs.done exists.
-        self.progress(Stage("inputs"))
-        inputs = self.backend.prepare()
-        identity = digest(inputs)
+        preparing = partial(self.progress, Stage("inputs"))
+        preparing(phase="restoring", operation="inputs")
+        inputs = self.backend.prepare(preparing)
+        identity = inputs_identity(inputs)
         for stage in STAGES:
+            progress = partial(self.progress, stage)
             marker = self.state / "done" / f"{stage.key}.json"
             if marker.exists():
+                progress(
+                    phase="verifying_existing",
+                    operation="completion_marker",
+                    force=True,
+                )
                 receipt = read(marker)
                 if (
                     receipt.get("schema") != SCHEMA
@@ -287,15 +436,29 @@ class Campaign:
                     or receipt.get("inputs_identity") != identity
                 ):
                     raise ValueError(f"Completed stage identity changed: {stage.key}")
-                self.backend.verify(stage, receipt["result"])
+                self.backend.verify(stage, receipt["result"], progress)
+                progress(
+                    phase="verifying_existing",
+                    status="completed",
+                    saved_step=receipt["result"].get("global_step", 0),
+                    force=True,
+                )
                 continue
-            self.progress(stage)
+            progress(
+                phase={
+                    "train": "training",
+                    "probe": "training",
+                    "evaluate": "evaluating",
+                }.get(stage.kind, "validating_inputs")
+            )
             result = (
                 inputs
                 if stage.kind == "inputs"
-                else self.backend.execute(stage, partial(self.progress, stage))
+                else self.backend.execute(stage, progress)
             )
-            self.backend.verify(stage, result)
+            self._value = self._latest_progress()
+            progress(phase="verifying_drive", operation="stage_result", force=True)
+            self.backend.verify(stage, result, progress)
             write(
                 marker,
                 {
