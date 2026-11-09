@@ -4,7 +4,7 @@
 
 This package provides the shared document/edit contract and durable revision store
 for [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710), plus visual import,
-managed rendering and a qualified image-adapter boundary. It contains no Gemini
+managed rendering and an explicit image-generation availability boundary. It contains no Gemini
 invocation, HTTP server, browser UI, image-provider implementation or quality
 evaluator. It uses existing Pydantic/Pillow dependencies and the standard library.
 
@@ -199,20 +199,25 @@ run independent meaning/browser checks before commit and provide iframe sandbox
 isolation without editor credentials. The CSP may also be sent as an HTTP header
 using `content_security_policy(document)`.
 
-`generate_image(..., adapter=...)` only returns a real validated image. The default
-`UnavailableImageGenerator.capability()` gives a reason and reports unavailable;
-no credentials or provider are auto-discovered. A trusted, separately qualified
-adapter implements `ImageGenerator` (capability and generation returning bytes
-with a public source). Unavailable generation raises the shared
-`image_generation_unavailable` error; provider/invalid-artifact failures raise
-`asset_generation_failed`, without provider details in public errors. The
-controller must leave the **whole image request incomplete**, abort publication
-and retain current on either outcome. Do not publish a partial text/SVG substitute
-as successful image generation. Existing-image import, relocation/caption changes,
-SVG and graph updates remain independently supported requests. The interactive
-imagegen tool's availability is not proof of a local-service adapter. Qualified
-service access, authentication and artifact retrieval require a separate probe;
-the capability evidence and unresolved human choices belong in the issue/PR.
+AI-generated images are created **only while authoring the initial document**,
+using interactive Codex imagegen and local import. During reading, the controller
+uses `UnavailableImageGenerator`: `capability()` reports unavailable with the
+initial-only policy as its reason, and a new AI-image request raises the shared
+`image_generation_unavailable` error. The controller must leave the **whole image
+request incomplete**, abort publication and retain current. Do not publish a
+partial text/SVG substitute as successful image generation. Existing-image import,
+relocation/caption changes, SVG and graph updates remain independently supported.
+This is the [confirmed human decision](https://github.com/Motoki0705/tennis-lab/issues/1710#issuecomment-6732169335);
+there is no pending service-adapter choice in this scope.
+
+`generate_image(..., adapter=...)` retains the tested `ImageGenerator` boundary
+(capability and generation returning real bytes with a public source). Injected
+adapters exercise success/unavailable/failure contracts; the browsing service does
+not select a generation provider. Provider/invalid-artifact failures raise
+`asset_generation_failed`, without provider details in public errors, and must
+also leave the whole request incomplete with current preserved. No credentials
+or provider are auto-discovered. Interactive imagegen availability does not imply
+local-service generation capability; the investigation evidence is in the PR.
 
 ## Downstream responsibilities
 

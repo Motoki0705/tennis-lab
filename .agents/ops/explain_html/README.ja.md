@@ -3,7 +3,7 @@
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710) の文書・編集の共通契約と、
-永続的な版store、visual import・managed renderer・検証済み画像adapterの境界を提供する。
+永続的な版store、visual import・managed renderer・画像生成の可否を明示する境界を提供する。
 Gemini呼出、HTTPサーバ、ブラウザUI、画像provider実装、品質評価は含まない。
 既存依存のPydantic/PillowとPython標準ライブラリを使う。
 
@@ -149,15 +149,19 @@ import・escape・CSS commentはこの保守的なsubsetの対象外。これは
 信頼するcontrollerはcommit前に独立した意味/ブラウザ検査を行い、編集credentialのないiframe sandboxで
 表示する必要がある。`content_security_policy(document)`をHTTP headerへも設定できる。
 
-`generate_image(..., adapter=...)`は実際に得た検証済み画像だけを返す。既定の
-`UnavailableImageGenerator.capability()`は理由付きの利用不可を返し、認証やproviderを自動探索しない。
-信頼する別途検証済みadapterは`ImageGenerator`（能力照会と、bytes/公開sourceを返す生成）を実装する。
-利用不可は共通エラー`image_generation_unavailable`、provider/不正成果物の失敗は
-`asset_generation_failed`にし、providerの内部情報を公開しない。controllerはどちらでも**画像要求全体を
-未完了**として公開を中止し、現在版を保持する。部分的な文章/SVGへの代替を画像生成成功として公開しない。
-既存画像のimport・再配置/caption変更・SVG/graph更新は独立した要求として利用できる。対話imagegenの
-存在はlocal service adapterの証拠にはならず、serviceからの実行・認証・成果物回収を別途probeする。
-能力調査の根拠と人間判断の未決事項はissue/PRへ残す。
+AI生成画像は**初版の作成時だけ**対話Codex imagegenで生成してローカルimportする。閲覧中のcontrollerは
+`UnavailableImageGenerator`を使い、`capability()`は初版限定という理由付きの利用不可を返す。
+閲覧中の新規AI画像要求は共通エラー`image_generation_unavailable`にし、**画像要求全体を未完了**として
+公開を中止し、現在版を保持する。部分的な文章/SVGへの代替を画像生成成功として公開しない。
+既存画像のimport・再配置/caption変更・SVG/graph更新は独立した要求として利用できる。
+これは[確定した人間の判断](https://github.com/Motoki0705/tennis-lab/issues/1710#issuecomment-6732169335)で、
+本範囲にservice adapter選択の未決事項はない。
+
+`generate_image(..., adapter=...)`は検証済みの`ImageGenerator`境界（能力照会と実bytes/公開sourceを返す生成）を
+保持する。注入adapterは成功/不可/失敗の契約検証に使い、閲覧serviceは生成providerを選択しない。
+provider/不正成果物の失敗は`asset_generation_failed`とし、providerの内部情報を公開せず、同様に
+要求全体を未完了として現在版を保持する。認証やproviderを自動探索しない。対話imagegenの存在を
+local serviceの生成能力とは扱わず、能力調査の根拠はPRへ残す。
 
 ## 下流の責務
 

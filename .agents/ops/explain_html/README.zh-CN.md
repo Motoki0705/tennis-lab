@@ -3,7 +3,7 @@
 [English](README.md) · [日本語](README.ja.md)
 
 本包为 [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710) 提供共用文档/编辑契约和
-持久化版本存储，以及 visual import、受管 renderer 和已验证图像 adapter 的边界。
+持久化版本存储，以及 visual import、受管 renderer 和明确图像生成可用性的边界。
 不包含 Gemini 调用、HTTP 服务、浏览器 UI、图像 provider 实现或质量评估。
 使用现有的 Pydantic/Pillow 依赖和 Python 标准库。
 
@@ -144,15 +144,19 @@ URL 的 CSS。允许普通 CSS 及 media/supports/layer/container 规则；impor
 语义/浏览器检查，并提供不带编辑凭据的 iframe sandbox。
 也可通过 `content_security_policy(document)` 设置 HTTP header。
 
-`generate_image(..., adapter=...)` 只返回真实的、已验证图像。默认
-`UnavailableImageGenerator.capability()` 返回不可用及原因，不自动发现凭据或 provider。
-可信且另行验证的 adapter 实现 `ImageGenerator`：能力检查与返回 bytes/公开 source 的生成。
-不可用时抛出共用错误 `image_generation_unavailable`；provider/无效成果物失败抛出
-`asset_generation_failed`，公开错误不包含 provider 内部细节。controller 在两种情况下都须将**整个图像
-请求标为未完成**，中止发布并保留当前版。不能将局部文字/SVG 替代物作为图像生成成功发布。
+AI 生成图像**仅在创建初版时**通过交互式 Codex imagegen 生成，再从本地 import。
+阅读期间 controller 使用 `UnavailableImageGenerator`；`capability()` 返回不可用，并说明仅限初版的
+策略。阅读期间新增 AI 图像请求抛出共用错误 `image_generation_unavailable`，controller 必须将
+**整个图像请求标为未完成**，中止发布并保留当前版。不能将局部文字/SVG 替代物作为图像生成成功发布。
 现有图像 import、重新布局/caption 修改、SVG/graph 更新作为独立请求继续受支持。
-交互式 imagegen 的存在不能证明本地 service adapter 可用；service 执行、认证及成果物回收必须另行
-probe。能力证据与待定的人类决策记入 issue/PR。
+这是[已确定的人类决策](https://github.com/Motoki0705/tennis-lab/issues/1710#issuecomment-6732169335)，
+本范围内不再有待定的 service adapter 选择。
+
+`generate_image(..., adapter=...)` 保留经过测试的 `ImageGenerator` 边界：能力检查与返回真实 bytes/公开
+source 的生成。注入 adapter 用于成功/不可用/失败契约测试，阅读 service 不选择生成 provider。
+provider/无效成果物失败抛出 `asset_generation_failed`，不公开 provider 内部细节，同样保持整个请求
+未完成及当前版不变。不自动发现凭据或 provider。交互式 imagegen 的存在不等于本地 service 的生成
+能力；调查证据保留在 PR 中。
 
 ## 下游职责
 

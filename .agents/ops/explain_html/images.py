@@ -121,7 +121,7 @@ class UnavailableImageGenerator:
     def capability(self) -> ImageCapability:
         return ImageCapability(
             available=False,
-            reason="No qualified local image-generation adapter is configured. Generate an image in an interactive Codex session and import its local file, or explicitly qualify a service adapter.",
+            reason="AI-generated images are supported only during initial document creation through interactive Codex imagegen and local import. New AI-image requests while reading are unavailable; keep the current revision.",
         )
 
     def generate(self, prompt: str) -> GeneratedImage:
