@@ -29,8 +29,9 @@ empty. Each entry has quote (the actual problematic candidate wording), reason
 overall warning or the first problem. Each finding must identify the claim and
 its problem sufficiently for a reviewer to locate and assess it.
 
-unsupported_claims must enumerate unsupplied numbers, named products and product
-specifications, empirical speed/accuracy/timing claims, comparative performance,
+unsupported_claims must enumerate unsupplied numbers, proper-name factual claims
+(including named products, organizations or deployed systems) and specifications,
+empirical speed/accuracy/timing claims, comparative performance,
 and unjustified causal or universal conclusions. Check whether the input really
 supports both the claim and its stated scope. Plausibility and model knowledge
 do not support an empirical claim. Do not exempt claims merely because they occur
@@ -44,8 +45,9 @@ hypothetical label. Missing support is an issue even if the claim might be true.
 technical_errors must separately enumerate terminology confusion, wrong units,
 coordinate frames, signs or formulas, invalid derivations, and overstatements
 whose conditions do not follow. Check definitions rather than accepting technical
-vocabulary as evidence of correctness: an image principal point (c_x, c_y) is not
-the 3D optical/camera center; world-to-camera translation is not generally the
+vocabulary as evidence of correctness: an image principal point (c_x, c_y) is where
+the optical axis meets the image plane, not necessarily the geometric image center
+and not the 3D optical/camera center; world-to-camera translation is not generally the
 camera's world position. Nonparallel 3D lines need not intersect, and asynchronous
 observations do not logically make every possible ray intersection impossible.
 Check whether uncertainty, assumptions and hypothetical/derived/measured status
