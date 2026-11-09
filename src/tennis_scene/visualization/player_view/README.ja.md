@@ -182,3 +182,32 @@ readerは保存済み変換・maskを検証し、入力bundleを必要としま�
 `pinhole()`は無効sampleを拒否するため、描画側は時間枠を保持して欠測表示frameにします。
 Blenderのcamera回転は`T[:3,:3] @ diag(1,-1,-1)`、位置は`T[:3,3]`です。
 保存した解像度・内部行列・clip値を使い、両backendで頭部運動を再計算しません。
+
+## 任意のカメラ安定化
+
+C2の生の出力を保持し、描画前に別の派生カメラ列を作ります。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.stabilize_player_view_cameras \
+  --cameras outputs/tennis_scene/visualize/player_view/example/cameras \
+  --output outputs/tennis_scene/visualize/player_view/example/cameras-smoothed \
+  --sigma-seconds 0.06
+```
+
+強度は必須です。`--sigma-seconds 0`は生の姿勢の明示的なコピーです。
+回転にはGaussian重みのMarkley quaternion平均を使います。左右の窓半径は
+`ceil(truncate_sigma * sigma_seconds * fps)` sample、`--truncate-sigma`の既定は3です。
+オフラインで未来frameも使うため、速い首振りの振幅が減る・向きが早く変わり始める
+場合があります。強度は実際の比較動画で選びます。元の身体姿勢への補正ではなく表示用カメラです。
+
+変わるのは回転だけです。カメラ中心・生の顔offset・head位置・内部行列・人物ID・
+時刻・mask・無効理由は保持し、rollの水平固定はしません。欠測姿勢はNaNのままです。
+連続した有効runごとに独立に処理し、端では同じrun内に存在するsampleの重みだけを
+正規化します。1sampleのrunもその姿勢を返します。欠測補間・padding・別姿勢への
+fallbackはありません。quaternion平均が一意でなければexportを拒否します。補正済み入力の再処理も拒否します。
+
+幾何schemaは`tennis_scene_player_view_head_cameras_v1`を維持します。manifestに
+algorithmの版・全設定・元cameraのdigest・C1への来歴・数値実装・有効runと角度偏差を保存します。
+各NPZの`stabilization_support_frames`はint64 F×2の左右support数です
+（欠測と強度0では両方0）。readerは処理metadataとsupportを検査します。
+描画側は同じreaderでこの派生directoryを読みます。公開はatomic、既存出力は拒否します。

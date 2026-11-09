@@ -218,3 +218,38 @@ The reader validates the saved transforms and masks and needs no source bundle.
 and show a missing-camera frame. Blender uses camera rotation
 `T[:3,:3] @ diag(1,-1,-1)` and location `T[:3,3]`, with the saved resolution,
 intrinsics and clipping. Neither backend should recompute head kinematics.
+
+## Optional camera stabilization
+
+Keep the raw C2 export and derive a separate camera bundle before rendering:
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.stabilize_player_view_cameras \
+  --cameras outputs/tennis_scene/visualize/player_view/example/cameras \
+  --output outputs/tennis_scene/visualize/player_view/example/cameras-smoothed \
+  --sigma-seconds 0.06
+```
+
+The strength is required; `--sigma-seconds 0` explicitly copies the raw poses.
+The rotational filter is a Gaussian-weighted Markley quaternion mean, with
+`ceil(truncate_sigma * sigma_seconds * fps)` samples on either side
+(`--truncate-sigma 3` by default). It uses future frames offline. Faster turns
+can be attenuated or begin earlier, so compare the actual videos before choosing
+a strength. This is a display camera, not a correction to the source body pose.
+
+Only rotation changes. Camera centers, raw face offsets, head positions, roll
+without horizon locking, intrinsics, IDs, times, masks and rejection codes keep
+their input meanings. Missing poses stay NaN. Each contiguous valid run is
+filtered separately. At its edges, only existing samples in that run contribute,
+with normalized weights; a singleton retains its orientation. There is no gap
+filling, padding or alternative-pose fallback. A nonunique quaternion mean fails
+the export. An already stabilized input is rejected.
+
+The geometric schema remains `tennis_scene_player_view_head_cameras_v1`. The
+manifest records the versioned algorithm, complete settings, source-camera
+digests and original scene provenance, numerical implementation, run intervals
+and correction angles. `stabilization_support_frames` in each NPZ is int64 F×2
+(left/right support counts; both zero when missing or strength zero). The reader
+checks processing metadata and support. Consumers use this derived directory
+with the same camera reader. Output publication is atomic and existing outputs
+are refused.

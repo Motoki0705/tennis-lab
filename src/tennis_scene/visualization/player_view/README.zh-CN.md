@@ -181,3 +181,30 @@ reader 验证保存的变换和 mask，无需输入 bundle。
 `pinhole()` 拒绝无效 sample；渲染器应保留其时间槽并显示相机缺失帧。
 Blender 相机旋转为 `T[:3,:3] @ diag(1,-1,-1)`，位置为 `T[:3,3]`。
 使用已保存的分辨率、内参和裁剪值，两个 backend 均不重新计算头部运动。
+
+## 可选的相机稳定处理
+
+保留C2原始输出，在渲染前生成独立的派生相机序列：
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.stabilize_player_view_cameras \
+  --cameras outputs/tennis_scene/visualize/player_view/example/cameras \
+  --output outputs/tennis_scene/visualize/player_view/example/cameras-smoothed \
+  --sigma-seconds 0.06
+```
+
+必须指定强度。`--sigma-seconds 0`明确复制原始姿态。旋转采用Gaussian时间权重的
+Markley四元数均值；两侧窗口半径为`ceil(truncate_sigma * sigma_seconds * fps)`，
+`--truncate-sigma`默认为3。离线处理使用未来帧，可能削弱快速转头的幅度或提前开始转向，
+因此应通过实际对比视频选择强度。这是显示相机的处理，不会修正原始身体姿态。
+
+只改变旋转。相机中心、原始面部偏移、head位置、内参、ID、时间、mask和拒绝码保持原义，
+不锁定水平线。无效姿态仍为NaN。各连续有效区间独立处理；边界只使用同一区间内
+存在的样本并重新归一化权重，单样本区间保留该方向。不填补缺失、不padding，
+不回退到其他姿态。四元数均值不唯一时导出失败；已稳定的输入也被拒绝。
+
+几何schema仍为`tennis_scene_player_view_head_cameras_v1`。manifest记录算法版本、
+完整设置、原始相机digest、C1来源、数值实现、有效区间和角度偏差。NPZ中的
+`stabilization_support_frames`为int64 F×2的左右支持样本数（缺失或强度0时均为0）。
+reader验证处理metadata和支持数量；渲染端使用相同reader读取派生目录。
+发布保持原子性，并拒绝已有输出。
