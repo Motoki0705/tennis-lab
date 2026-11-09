@@ -283,3 +283,37 @@ and correction angles. `stabilization_support_frames` in each NPZ is int64 F×2
 checks processing metadata and support. Consumers use this derived directory
 with the same camera reader. Output publication is atomic and existing outputs
 are refused.
+
+## Wide display lens and short clips
+
+`prepare_player_view_blender --frames START STOP` selects a nonempty source-frame
+interval after validating the complete saved camera sequence. PC2, masks and all
+shot arrays use that interval. Stabilize the full camera sequence first so the
+short clip uses the same future context as a later full render.
+
+`--lens-profile mission1-wide-approx --lens-size 640 360 --lens-render-scale 4`
+selects a **GoPro-inspired approximation**, with equidistant `r=f*theta`, a design
+diagonal FOV of 159 degrees and 16:9 output. The computed central horizontal and
+vertical FOVs are 138.5805 and 77.9515 degrees. GoPro's published native159-degree
+FOV does not identify its axis, and mode calibration coefficients are unavailable;
+these values do not reproduce a calibrated MISSION 1 lens. The current fixed-lens
+[MISSION 1 specifications](https://gopro.com/en/us/shop/buy-cameras/mission-1-series)
+provide F2.8; the reference aperture is recorded and depth of field is disabled.
+The existing head offset is retained.
+
+The shared intermediate is a 2560x1440 PINHOLE with horizontal FOV155.98994
+degrees, centered principal point and square pixels. Its 4x scale preserves
+central output sampling density. The shot manifest stores the source projection,
+output lens, stabilization and frame selection. The Blender camera remains a
+pinhole; raw PNGs require the display-lens conversion before presentation.
+
+For C5, render foreground and NHT with the **same intermediate pinhole**, compose
+their common depth/coverage samples using the adopted
+[C4 contract](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation),
+then apply `lenses.remap_linear_rgb` to the composed linear RGB and encode it for
+display. The fixed 2x2 output subpixel grid uses bilinear interpolation and linear
+averaging; its density is separate from C5's source SSAA2. Do not separately warp
+depth/alpha and then compose. The mapping preserves the shared ray geometry but
+resampling is approximate; extreme peripheral minification can still alias thin
+objects. This does not qualify the actual wide-angle C5 GPU performance or
+background-alpha support. Direct Cycles fisheye is not used for this shared path.

@@ -10,6 +10,7 @@ from src.tennis_scene.visualization.player_view.blender import (
     PlayerViewRenderConfig,
     prepare_blender_shot,
 )
+from src.tennis_scene.visualization.player_view.lenses import EquidistantLensConfig
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -56,7 +57,25 @@ def main() -> None:
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--ball-radius-m", type=float, default=0.05)
     parser.add_argument("--samples", type=int, default=16)
+    parser.add_argument("--frames", type=int, nargs=2, metavar=("START", "STOP"))
+    parser.add_argument("--lens-profile", choices=["mission1-wide-approx"])
+    parser.add_argument("--lens-size", type=int, nargs=2, metavar=("WIDTH", "HEIGHT"))
+    parser.add_argument("--lens-render-scale", type=int)
     args = parser.parse_args()
+    if args.lens_profile is None and (
+        args.lens_size is not None or args.lens_render_scale is not None
+    ):
+        parser.error("Lens size and render scale require --lens-profile")
+    lens = None
+    if args.lens_profile is not None:
+        width, height = (640, 360) if args.lens_size is None else args.lens_size
+        lens = EquidistantLensConfig(
+            width=width,
+            height=height,
+            render_scale=4
+            if args.lens_render_scale is None
+            else args.lens_render_scale,
+        )
     source, cameras, output = (
         p.expanduser().resolve() for p in (args.bundle, args.cameras, args.output)
     )
@@ -82,6 +101,8 @@ def main() -> None:
             config=PlayerViewRenderConfig(
                 ball_radius_m=args.ball_radius_m, samples=args.samples
             ),
+            frame_range=tuple(args.frames) if args.frames is not None else None,
+            lens=lens,
         )
     )
 

@@ -6,16 +6,18 @@ import json
 import os
 import shutil
 import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
 import numpy as np
 
 from src.tennis_scene.visualization.blender.export.camera import to_blender_camera
-from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
+from src.tennis_scene.visualization.blender.export.pointcache import read_pc2, write_pc2
 from src.utils.checksum import dual_sha256
 
 from .camera_bundle import _file, _InputBundle, load_head_cameras
+from .head_camera import HeadCameraConfig
+from .lenses import EquidistantLensConfig
 
 SHOT_SCHEMA = "tennis_scene_player_view_blender_v1"
 
@@ -47,6 +49,8 @@ def prepare_blender_shot(
     cameras_dir: Path,
     output_dir: Path,
     config: PlayerViewRenderConfig,
+    frame_range: tuple[int, int] | None = None,
+    lens: EquidistantLensConfig | None = None,
 ) -> Path:
     """Check C2 provenance against C1 and publish copied inputs atomically."""
     if os.path.lexists(output_dir):
@@ -59,6 +63,12 @@ def prepare_blender_shot(
     source = _InputBundle(bundle_dir)
     manifest = source.manifest
     camera_manifest = json.loads((cameras_dir / "manifest.json").read_text())
+    original_camera_config = HeadCameraConfig(**camera_manifest["config"])
+    render_camera_config = (
+        original_camera_config
+        if lens is None
+        else lens.pinhole_config(original_camera_config)
+    )
     for name, digest in camera_manifest["source_bundle"]["files"].items():
         if dual_sha256(_file(bundle_dir, name)) != digest:
             raise ValueError(f"Saved camera input digest differs: {name}")
@@ -77,6 +87,19 @@ def prepare_blender_shot(
     ball = source.array("ball_positions", (frames, 3), "float32")
     faces_record = manifest["arrays"]["smpl_faces"]
     faces = source.array("smpl_faces", tuple(faces_record["shape"]), "int32")
+    if frame_range is None:
+        first, last = int(source_frames[0]), int(source_frames[-1]) + 1
+    else:
+        if len(frame_range) != 2 or any(type(v) is not int for v in frame_range):
+            raise ValueError("Frame range requires integer [start, stop)")
+        first, last = frame_range
+        if not int(source_frames[0]) <= first < last <= int(source_frames[-1]) + 1:
+            raise ValueError(
+                "Frame range must be a nonempty subset of the source timeline"
+            )
+    selection = slice(first - int(source_frames[0]), last - int(source_frames[0]))
+    selected_indices = np.arange(frames)[selection]
+    selected_count = last - first
     if not np.isfinite(ball[ball_valid]).all() or (ball[~ball_valid] != 0).any():
         raise ValueError("Ball values disagree with validity")
     if manifest["pc2"]["start_frame"] != 0 or manifest["pc2"]["sample_rate"] != 1:
@@ -88,6 +111,7 @@ def prepare_blender_shot(
     try:
         players = []
         camera_files = {"manifest.json"}
+        written_files = set()
         for index, player in enumerate(source.players):
             saved = load_head_cameras(cameras_dir, player_id=player["player_id"])
             if (
@@ -110,59 +134,88 @@ def prepare_blender_shot(
                 or (faces >= world.shape[1]).any()
             ):
                 raise ValueError("PC2 geometry/timing disagrees with scene")
+            if frame_range is not None:
+                write_pc2(
+                    staging / player["pc2"],
+                    world[selection],
+                    start_frame=0,
+                    sample_rate=1,
+                )
+                written_files.add(player["pc2"])
             del world
-            locations = np.full((frames, 3), np.nan)
-            rotations = np.full((frames, 3, 3), np.nan)
-            lens = saved.series.K[0, 0] * 36.0 / saved.series.config.width
-            for frame in np.flatnonzero(saved.series.camera_valid):
+            locations = np.full((selected_count, 3), np.nan)
+            rotations = np.full((selected_count, 3, 3), np.nan)
+            render_series = replace(
+                saved.series,
+                config=render_camera_config,
+                K=render_camera_config.intrinsic_matrix(),
+            )
+            focal_mm = render_series.K[0, 0] * 36.0 / render_camera_config.width
+            for output_index, frame in enumerate(selected_indices):
+                if not saved.series.camera_valid[frame]:
+                    continue
                 pose = to_blender_camera(
-                    saved.series.pinhole(int(frame)), sensor_width_mm=36.0
+                    render_series.pinhole(int(frame)), sensor_width_mm=36.0
                 )
                 # Preserve the saved centre exactly; R.T @ R is only approximately
                 # identity for rotations originating from float32 scene placement.
-                locations[frame] = saved.series.camera_to_court[frame, :3, 3]
-                rotations[frame] = pose.rotation_matrix
+                locations[output_index] = saved.series.camera_to_court[frame, :3, 3]
+                rotations[output_index] = pose.rotation_matrix
             filename = f"camera_{index}.npz"
             np.savez(
                 staging / filename,
                 location=locations,
                 rotation=rotations,
-                valid=saved.series.camera_valid,
-                reason=saved.series.camera_rejection_code,
+                valid=saved.series.camera_valid[selection],
+                reason=saved.series.camera_rejection_code[selection],
             )
             camera_files.add(camera_manifest["players"][index]["path"])
             source.files.add(player["pc2"])
             players.append(
                 {
                     **player,
+                    "valid_frames": int(mesh_valid[index, selection].sum()),
                     "camera": filename,
-                    "lens_mm": float(lens),
-                    "camera_valid_frames": int(saved.series.camera_valid.sum()),
+                    "lens_mm": float(focal_mm),
+                    "camera_valid_frames": int(
+                        saved.series.camera_valid[selection].sum()
+                    ),
                 }
             )
-        for name in source.files - {"manifest.json"}:
+        selected_arrays = {
+            "source_frames": source_frames[selection],
+            "source_time_seconds": times[selection],
+            "player_smpl_valid": mesh_valid[:, selection],
+            "ball_positions": ball[selection],
+            "ball_3d_valid": ball_valid[selection],
+        }
+        array_records = {
+            key: dict(manifest["arrays"][key])
+            for key in (*selected_arrays, "smpl_faces")
+        }
+        for key, value in selected_arrays.items():
+            record = array_records[key]
+            np.save(staging / record["path"], value)
+            record["shape"] = list(value.shape)
+            written_files.add(record["path"])
+        for name in source.files - {"manifest.json"} - written_files:
             destination = staging / name
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(_file(bundle_dir, name), destination)
         result = {
             "schema": SHOT_SCHEMA,
-            "num_frames": frames,
+            "num_frames": selected_count,
             "fps": manifest["fps"],
-            "frames": manifest["frames"],
+            "frames": {**manifest["frames"], "start": first, "stop": last},
+            "selection": {
+                "source_frame_interval": [first, last],
+                "camera_context": "saved input camera sequence; filtering precedes frame selection",
+            },
             "players": players,
             "court": manifest["court"],
-            "arrays": {
-                k: manifest["arrays"][k]
-                for k in (
-                    "source_frames",
-                    "source_time_seconds",
-                    "player_smpl_valid",
-                    "ball_positions",
-                    "ball_3d_valid",
-                    "smpl_faces",
-                )
-            },
-            "camera_config": camera_manifest["config"],
+            "arrays": array_records,
+            "camera_config": asdict(render_camera_config),
+            "camera_processing": camera_manifest.get("stabilization"),
             "config": asdict(config),
             "policy": {
                 "prototype_settings": True,
@@ -188,6 +241,8 @@ def prepare_blender_shot(
                 },
             },
         }
+        if lens is not None:
+            result["lens"] = lens.metadata(original_camera_config)
         result["files"] = {
             str(p.relative_to(staging)): dual_sha256(p)
             for p in sorted(staging.rglob("*"))

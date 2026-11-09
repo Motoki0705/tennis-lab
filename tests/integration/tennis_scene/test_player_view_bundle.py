@@ -38,6 +38,7 @@ from src.tennis_scene.visualization.player_view.camera_bundle import (
     load_head_cameras,
 )
 from src.tennis_scene.visualization.player_view.head_camera import HeadCameraConfig
+from src.tennis_scene.visualization.player_view.lenses import EquidistantLensConfig
 from src.tennis_scene.visualization.player_view.stabilization import (
     StabilizationConfig,
     export_stabilized_cameras,
@@ -972,3 +973,145 @@ def test_stabilized_camera_reader_rejects_inconsistent_processing_metadata(
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match="sigma|support|provenance"):
         load_head_cameras(derived, player_id=7)
+
+
+@pytest.mark.parametrize("wide", [False, True])
+def test_blender_frame_selection_keeps_full_camera_filter_context(
+    inputs: Inputs,
+    tmp_path: Path,
+    wide: bool,
+) -> None:
+    scene, raw, smoothed, shot = [
+        tmp_path / name for name in ["scene", "raw", "smoothed", "shot"]
+    ]
+    _export(inputs, scene, config=PlayerViewBundleConfig())
+    export_head_cameras(bundle_dir=scene, output_dir=raw, config=HeadCameraConfig())
+    export_stabilized_cameras(
+        cameras_dir=raw, output_dir=smoothed, config=StabilizationConfig(0.06)
+    )
+    before = _snapshot(smoothed)
+    lens = EquidistantLensConfig(width=9, height=7) if wide else None
+    prepare_blender_shot(
+        bundle_dir=scene,
+        cameras_dir=smoothed,
+        output_dir=shot,
+        config=PlayerViewRenderConfig(),
+        frame_range=(2, 6),
+        lens=lens,
+    )
+    manifest = json.loads((shot / "manifest.json").read_text())
+    assert manifest["num_frames"] == 4
+    assert (
+        manifest["camera_processing"]["algorithm"] == "gaussian_markley_quaternion_v1"
+    )
+    if wide:
+        assert manifest["camera_config"]["width"] == 36
+        assert manifest["camera_config"]["height"] == 28
+        assert manifest["lens"]["config"]["diagonal_fov_degrees"] == 159
+        assert manifest["lens"]["depth_of_field"] is False
+        assert all(4 < p["lens_mm"] < 5 for p in manifest["players"])
+    assert manifest["frames"] == {"start": 2, "stop": 6, "source_num_frames": 7}
+    np.testing.assert_array_equal(np.load(shot / "source_frames.npy"), [2, 3, 4, 5])
+    np.testing.assert_array_equal(
+        np.load(shot / "source_time_seconds.npy"), np.arange(2, 6) / 59.94
+    )
+    np.testing.assert_array_equal(
+        np.load(shot / "ball_positions.npy"), np.load(scene / "ball_positions.npy")[2:6]
+    )
+    np.testing.assert_array_equal(
+        np.load(shot / "player_smpl_valid.npy"),
+        np.load(scene / "player_smpl_valid.npy")[:, 2:6],
+    )
+    for index, identity in enumerate([7, 42]):
+        body, start, rate = read_pc2(shot / f"player_{index}.pc2")
+        original, _, _ = read_pc2(scene / f"player_{index}.pc2")
+        np.testing.assert_array_equal(body, original[2:6])
+        assert start == 0 and rate == 1
+        camera = load_head_cameras(smoothed, player_id=identity)
+        with np.load(shot / f"camera_{index}.npz") as values:
+            np.testing.assert_array_equal(
+                values["location"], camera.series.camera_to_court[2:6, :3, 3]
+            )
+            np.testing.assert_allclose(
+                values["rotation"],
+                camera.series.camera_to_court[2:6, :3, :3] @ np.diag([1, -1, -1]),
+                atol=1e-6,
+            )
+            np.testing.assert_array_equal(
+                values["valid"], camera.series.camera_valid[2:6]
+            )
+    assert _snapshot(smoothed) == before
+
+
+@pytest.mark.parametrize("frames", [(0, 8), (3, 3), (-1, 5)])
+def test_blender_frame_selection_rejects_silent_truncation(
+    inputs: Inputs, tmp_path: Path, frames: tuple[int, int]
+) -> None:
+    scene, raw, shot = tmp_path / "scene", tmp_path / "raw", tmp_path / "shot"
+    _export(inputs, scene)
+    export_head_cameras(bundle_dir=scene, output_dir=raw, config=HeadCameraConfig())
+    with pytest.raises(ValueError, match="nonempty subset"):
+        prepare_blender_shot(
+            bundle_dir=scene,
+            cameras_dir=raw,
+            output_dir=shot,
+            config=PlayerViewRenderConfig(),
+            frame_range=frames,
+        )
+    assert not shot.exists()
+
+
+@pytest.mark.parametrize("fault", [None, "dof", "projection"])
+def test_wide_lens_render_requires_actual_pinhole_and_color_audit(
+    shot_reports: tuple[Path, Path], fault: str | None
+) -> None:
+    from dataclasses import asdict
+
+    shot, renders = shot_reports
+    manifest_path = shot / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    lens = EquidistantLensConfig(width=32, height=18)
+    source = lens.pinhole_config(HeadCameraConfig(width=128, height=72))
+    manifest["lens"] = lens.metadata(source)
+    manifest["camera_config"] = asdict(source)
+    for player in manifest["players"]:
+        player["lens_mm"] = float(source.intrinsic_matrix()[0, 0] * 36 / source.width)
+    manifest_path.write_text(json.dumps(manifest))
+    path = renders / "player_7" / "render.json"
+    report = json.loads(path.read_text())
+    report["package_sha256"] = dual_sha256(manifest_path)
+    report["camera"] = {
+        "projection": "PERSP",
+        "depth_of_field": False,
+        "lens_mm": manifest["players"][0]["lens_mm"],
+        "resolution": [128, 72],
+    }
+    report["color_management"] = {
+        "display_device": "sRGB",
+        "view_transform": "Standard",
+        "look": "None",
+        "exposure": 0,
+        "gamma": 1,
+    }
+    if fault == "dof":
+        report["camera"]["depth_of_field"] = True
+    if fault == "projection":
+        report["camera"]["projection"] = "PANO"
+    path.write_text(json.dumps(report))
+    if fault is None:
+        assert validate_render(shot, renders / "player_7", 7)["complete"] is True
+        other_path = renders / "player_42" / "render.json"
+        other = json.loads(other_path.read_text())
+        for key in ["package_sha256", "camera", "color_management"]:
+            other[key] = report[key]
+        other_path.write_text(json.dumps(other))
+        output = shot.parent / "wide-videos"
+        publish_player_views(package=shot, renders=renders, output=output)
+        published = json.loads((output / "manifest.json").read_text())
+        assert published["verification"]["player_7.mp4"]["decoded_frames"] == 5
+        assert published["verification"]["player_7.mp4"]["width"] == 32
+        assert published["verification"]["player_7.mp4"]["height"] == 18
+        assert published["display_lens"]["config"]["diagonal_fov_degrees"] == 159
+    else:
+        with pytest.raises(ValueError, match="Wide-lens"):
+            validate_render(shot, renders / "player_7", 7)

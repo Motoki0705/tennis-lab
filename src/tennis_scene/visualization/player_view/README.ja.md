@@ -241,3 +241,30 @@ algorithmの版・全設定・元cameraのdigest・C1への来歴・数値実装
 各NPZの`stabilization_support_frames`はint64 F×2の左右support数です
 （欠測と強度0では両方0）。readerは処理metadataとsupportを検査します。
 描画側は同じreaderでこの派生directoryを読みます。公開はatomic、既存出力は拒否します。
+
+## 広角表示レンズと短い区間
+
+`prepare_player_view_blender --frames START STOP`は保存カメラ列全体を検証してから
+空でない元frame区間を選びます。PC2・mask・shotの配列を同じ区間に揃えます。
+先に全カメラ列を補正すれば、後の全区間描画と同じ未来frameの文脈で短い動画を比較できます。
+
+`--lens-profile mission1-wide-approx --lens-size 640 360 --lens-render-scale 4`は
+**GoProを参考にした近似**を選びます。等距離`r=f*theta`、設計上の対角画角159度、
+16:9です。計算上の水平中央画角138.5805度・垂直中央画角77.9515度はGoPro公称値ではありません。
+公表native159度は軸の種別が明記されず、モード別校正係数も未確認のため、実機の校正再現とは
+呼びません。固定レンズ[MISSION 1の公式仕様](https://gopro.com/en/us/shop/buy-cameras/mission-1-series)
+のF2.8を参照値として記録し、DOFは無効にします。既存の顔offsetは保持します。
+
+中間画像は2560×1440・水平画角155.98994度のPINHOLE、主点中央・正方画素です。
+4倍の解像度で表示画像の中心密度を確保します。shot manifestへ中間投影・表示レンズ・
+安定化と区間選択を記録します。Blender自体はピンホールのままで、raw PNGは表示レンズ変換を
+適用してから提示します。
+
+C5も**同じ中間ピンホール**で前景とNHTを描き、採用済み
+[C4契約](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation)
+の共通深度・coverage sample上で合成した後、`lenses.remap_linear_rgb`でlinear RGBを変換し、
+最後に表示用に符号化します。出力側の固定2×2 subpixelをbilinear補間してlinearで平均します。
+これはC5入力側SSAA2とは別の密度です。depth/alphaを別々にwarpしてから合成しません。
+共通rayの幾何は共有できますが、離散補間は近似で、周辺の強い縮小では細い物体にaliasingが
+残り得ます。実C5の超広角GPU性能・背景alphaサポートを検証済みとするものではありません。
+この共通経路では直接Cycles魚眼を使いません。

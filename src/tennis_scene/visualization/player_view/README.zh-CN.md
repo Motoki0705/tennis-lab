@@ -238,3 +238,28 @@ Markley四元数均值；两侧窗口半径为`ceil(truncate_sigma * sigma_secon
 `stabilization_support_frames`为int64 F×2的左右支持样本数（缺失或强度0时均为0）。
 reader验证处理metadata和支持数量；渲染端使用相同reader读取派生目录。
 发布保持原子性，并拒绝已有输出。
+
+## 广角显示镜头与短片段
+
+`prepare_player_view_blender --frames START STOP`在验证完整相机序列后选择非空的
+原始帧区间，PC2、mask与shot数组均同步选择。先稳定完整相机序列，再截取短片段，
+可与之后全片渲染保持相同的未来帧上下文。
+
+`--lens-profile mission1-wide-approx --lens-size 640 360 --lens-render-scale 4`
+选择**参考GoPro的近似模型**：等距投影`r=f*theta`、设计对角视场159度、16:9。
+水平中心138.5805度和垂直中心77.9515度是计算值，不是GoPro公布的模式参数。
+官方native159度没有明确轴类别，且未确认模式校准系数，因此不称为实机标定复现。
+记录固定镜头[MISSION 1官方规格](https://gopro.com/en/us/shop/buy-cameras/mission-1-series)
+的参考F2.8并禁用DOF；保持现有面部偏移。
+
+中间图像为2560×1440、水平视场155.98994度的PINHOLE，中心主点、方形像素。
+4倍分辨率保证显示图像中心的采样密度。shot manifest记录中间投影、显示镜头、
+稳定设置和选帧。Blender仍渲染针孔图像；raw PNG须经过显示镜头变换后展示。
+
+C5也以**同一中间针孔**渲染前景和NHT，按已采用的
+[C4契约](../../../../knowledge/runs/run-player-depth-compositing-20261108/contract.md#c5-approximation)
+在共同深度/coverage样本上合成，再通过`lenses.remap_linear_rgb`变换linear RGB，最后编码显示。
+固定的输出2×2 subpixel以bilinear插值并在线性空间平均，与C5源图的SSAA2分开。
+不先分别warp深度/alpha再合成。共享光线几何不代表离散插值精确；周边强缩小时，
+细小物体仍可能aliasing。此设计不构成实际C5超广角GPU性能或背景alpha支持的验证。
+共同路径不使用直接Cycles鱼眼。
