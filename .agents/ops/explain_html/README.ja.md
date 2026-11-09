@@ -91,11 +91,17 @@ CSS/SVG/scriptの内容とグラフ固有設定はvisual validatorの責務。�
 
 `PYTHONPATH=.agents/ops` で `explain_html.gemini` の
 `Gemini(private_root, agy=...)` を作り、`explain_html.editor` の
-`GeminiEditor(gemini)` へ渡す。
+`GeminiEditor(gemini, compile_document=compiler)` へ渡す。必須のkeyword引数は
+`DocumentCompiler = Callable[[Document], Document]` 型。信頼するcompilerが図slotの展開、
+renderer/CSPの挿入を済ませた最終Documentを返すか、ContractErrorで拒否する。
+このpackageがvisual実装を暗黙に選ぶことはない。図がなくても
+`GeminiEditor(gemini, compile_document=lambda document: document)` と恒等変換を明示し、
+省略はエラーにする。callbackにはdeep copyを渡し、戻り値も再検証して可変状態を分離する。
+生成assetのbytesは呼出側controllerがprivateに保持してstageへ渡す。compilerから公開・commitしない。
 `write_initial(request, context, *, timeout=600, cancel=None)` と
 `edit(request, current, context, *, timeout=600, cancel=None)` は `EditorialResult` を返す。
 要求・現在版には共通のEditRequest/Revisionを使い、初回はnull base・文書全体対象にする。
-timeoutはwriter/verifierとeffort/版照合を合わせた上限。呼出ごとにworkspaceと会話を作り直し、
+timeoutはwriter/verifier・compile・effort/版照合を合わせた上限。呼出ごとにworkspaceと会話を作り直し、
 自動retry・resume・別modelへの代替・自由文からの補修はしない。
 
 `WritingContext` は信頼するcontrollerの入力で、目的・読み手・更新後の正確な根拠集合、
@@ -110,16 +116,21 @@ writerは完全なCandidateを返す。機械検査は元要求の一致、共�
 根拠metadata（数値・条件・出典を含む）・許可済みassetsの厳密な一致を確認する。
 存続する根拠の本文参照とHTTP(S)出典リンクを保持する。変更しない根拠の数値が従来の本文に
 現れていれば、その根拠の範囲に残っていることも調べる。この十進数の字句検査だけでは単位・
-表示上の可視性・言い換え・意味は証明できない。別のGemini呼出がこれら、論理的主張・
+表示上の可視性・言い換え・意味は証明できない。このwriter検査の後で必須compilerがHTMLを展開し、
+生成assetのmetadataを追加できる。editorは現在版との差分からcontent changesを計算し直し、
+構造と根拠保持を再検査する。元要求・根拠変更理由・要約は保持する。
+この最終候補だけをdigest化し、別のGemini呼出へ渡し、これらや論理的主張・
 許可された変更・不足する情報を意味検査する。情報不足を正直に説明する候補も生成できる。
 検査は旧/新根拠の全IDを対象にし、候補digestが一致し、未解決issueなしでpassedを返す必要がある。
 拒否・不正出力は候補を返さずContractErrorにする。意味検査は追加の証拠であり、真実性や完全な正しさの保証ではない。
 
 `EditorialResult` はcandidate・validation・writer/verifierの実行証拠を持つ。
 validationはstructural/semanticがpassed、renderingは **not_run** のため、そのままcommitできない。
-serviceは同じ候補をstageし、同じbytesへ独立した無害化・renderer policy・描画検査を実施して、
-実際の描画判定をdigestに結び付いたValidationResultへ加える。描画結果を確認せずpassedにしない。
-editor自身はstoreや公開ファイルを開かない。
+serviceはcompile済みの同じ候補と生成asset bytesをstageし、同じbundleへ独立したvisual・
+renderer policy・描画検査を実施して、実際の描画判定をdigestに結び付いたValidationResultへ加える。
+描画結果を確認せずpassedにしない。HTML・assets・metadataを変える展開や無害化は意味検査前の
+compileで行う。返却後の候補変更には再検証が必要で、digestだけを書き換えて旧判定を流用しない。
+compile拒否ではEditorialResultを返さず、公開はcontrollerに任せる。editor自身はstoreや公開ファイルを開かない。
 
 model/effortは `gemini-3.8-flash-high` / `high` を明示し、異なるconstructor指定は拒否する。
 agyの版は既存agents.confのAGY_VERSION pinを使い、issue補足用runtime・pin・権限は変更しない。

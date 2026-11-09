@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ from tests.support.agents_ops.explain_editor import (
     SOURCE,
     candidate,
     document,
+    editor,
     gemini,
     schema,
     stores,
@@ -91,11 +93,87 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
 ) -> None:
     env = editor_env
     preferences = "Keep detailed explanations. 日本語。" * 6000
-    context = env.context.model_copy(update={"preferences": preferences})
+    slot = '<figure data-figure-id="rays"></figure>'
+    figure = schema.Figure(
+        figure_id="rays",
+        content_id="geometry",
+        kind="svg",
+        asset_ids=[],
+        caption="Two calibrated rays.",
+        alt="Two rays intersect at a point.",
+        provenance=schema.Provenance(kind="derived", source="Supplied calibration."),
+    )
+    raw = candidate(
+        env.proposed.document.model_copy(
+            update={
+                "html": env.proposed.document.html.replace(
+                    "</section>", slot + "</section>"
+                ),
+                "figures": [figure],
+            }
+        ),
+        current=env.current,
+        request=env.request,
+    )
+    payload = b'<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L1 1"/></svg>'
+    asset = schema.Asset(
+        asset_id="rays-svg",
+        path="assets/rays-svg.svg",
+        media_type="image/svg+xml",
+        sha256=sha256(payload).hexdigest(),
+        kind="svg",
+        caption=figure.caption,
+        alt=figure.alt,
+        provenance=figure.provenance,
+    )
+    reject = True
+
+    def compile_document(value: Any) -> Any:
+        assert value == raw.document
+        if reject:
+            raise schema.ContractError("invalid_document")
+        return value.model_copy(
+            update={
+                "html": value.html.replace(
+                    slot,
+                    '<figure data-figure-id="rays"><div data-content-id="compiled-view">'
+                    '<img data-asset-id="rays-svg" src="assets/rays-svg.svg" '
+                    f'alt="{figure.alt}"></div></figure>',
+                ),
+                "assets": [asset],
+                "figures": [figure.model_copy(update={"asset_ids": [asset.asset_id]})],
+            }
+        )
+
+    env.adapter.compile_document = compile_document
+    context = env.context.model_copy(
+        update={"preferences": preferences, "figures": [figure]}
+    )
+    env.outputs(raw)
+    with pytest.raises(schema.ContractError, match="invalid_document"):
+        env.adapter.edit(env.request, env.current, context)
+    assert len([call for call in env.calls() if call["prompt"] is not None]) == 1
+    assert env.store.current("geometry") == env.current
+    assert len(env.store.history("geometry")) == 1
+
+    # Explicit retry with a working compiler; there is no adapter retry/fallback.
+    reject = False
+    final = candidate(
+        compile_document(raw.document), current=env.current, request=env.request
+    )
+    verdict = json.loads((env.root / "verifier.json").read_text())
+    verdict["candidate_digest"] = schema.candidate_digest(final)
+    env.outputs(raw, verdict)
     result = env.adapter.edit(env.request, env.current, context)
-    assert result.candidate == env.proposed
+    assert result.candidate == final
+    assert result.candidate.changes != raw.changes
+    assert {change.content_id for change in result.candidate.changes} == {
+        "geometry",
+        "compiled-view",
+    }
+    assert schema.candidate_digest(raw) != result.validation.candidate_digest
     turns = [call for call in env.calls() if call["prompt"] is not None]
-    assert len(turns) == 2
+    assert len(turns) == 3
     for call in turns:
         inputs = json.loads(call["prompt"].split("\nINPUT_JSON\n", 1)[1])
         assert inputs["context"]["preferences"] == preferences
@@ -104,7 +182,26 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
         assert inputs["context"]["change_summaries"] == ["Initial evidence."]
         assert "-p" not in call["args"]
     assert "candidate" not in json.loads(turns[0]["prompt"].split("\nINPUT_JSON\n")[1])
-    assert "candidate" in json.loads(turns[1]["prompt"].split("\nINPUT_JSON\n")[1])
+    verified = json.loads(turns[-1]["prompt"].split("\nINPUT_JSON\n")[1])
+    assert verified["candidate"] == final.model_dump(mode="json")
+    assert verified["candidate_digest"] == schema.candidate_digest(final)
+    assert env.store.current("geometry") == env.current
+    staged = env.store.stage(result.candidate, {asset.asset_id: payload})
+    assert staged.candidate_digest == result.validation.candidate_digest
+    assert (
+        env.store.staged_asset_bytes("geometry", staged.stage_id, asset.asset_id)
+        == payload
+    )
+    # The fake compile/render fixture supplies its rendering verdict; production
+    # must independently validate visuals and render the exact staged bytes.
+    checked = result.validation.model_copy(
+        update={"rendering": schema.CheckResult(status="passed")}
+    )
+    revision = env.store.commit(staged, checked)
+    assert revision.document == final.document
+    assert env.store.current("geometry") == revision
+    with pytest.raises(TypeError, match="compile_document"):
+        editor.GeminiEditor(env.adapter.gemini)
     for path in (env.root / "private").rglob("*"):
         assert path.stat().st_mode & 0o077 == 0
     assert all(not Path(call["cwd"]).exists() for call in turns)

@@ -87,11 +87,17 @@ srcset 接受 canonical managed URL 和可选的一致 `w` 或 `x` descriptor；
 ## Gemini 撰写与编辑
 
 设置 `PYTHONPATH=.agents/ops`，使用 `explain_html.gemini` 的
-`Gemini(private_root, agy=...)` 创建 `explain_html.editor` 的 `GeminiEditor(gemini)`。
+`Gemini(private_root, agy=...)` 创建 `explain_html.editor` 的
+`GeminiEditor(gemini, compile_document=compiler)`。必需的关键字参数类型为
+`DocumentCompiler = Callable[[Document], Document]`。可信 compiler 展开图占位、插入
+renderer/CSP 并返回最终 Document，或抛出 ContractError 拒绝；此 package 不隐式选择 visual 实现。
+即使没有图，也必须用 `GeminiEditor(gemini, compile_document=lambda document: document)`
+明确选择恒等变换，省略会报错。callback 收到 deep copy，返回值会重新验证并与可变状态分离。
+生成 asset 的 bytes 由调用方 controller 私下保留并传给 stage；compiler 不得发布或 commit 文件。
 `write_initial(request, context, *, timeout=600, cancel=None)` 和
 `edit(request, current, context, *, timeout=600, cancel=None)` 返回 `EditorialResult`。
 请求和当前版使用共享 EditRequest/Revision；初次请求使用 null base 和文档目标。
-timeout 包含 writer、verifier 及 effort/版本检查。每次调用创建新 workspace 和会话，
+timeout 包含 writer、verifier、compile 及 effort/版本检查。每次调用创建新 workspace 和会话，
 不自动重试、resume、替换模型或从自然语言修补输出。
 
 `WritingContext` 是可信 controller 输入：目的、读者、精确的目标依据集合、已批准 assets、
@@ -104,14 +110,19 @@ stdin 传递，不因 argv 长度限制而截断。Candidate schema 直接从共
 writer 返回完整 Candidate。机械检查绑定原始请求，执行共享结构/变更检查，严格核对目的、读者、
 依据 metadata（包括数值、条件、来源）和已批准 assets。保留存续依据的正文引用和 HTTP(S) 来源链接。
 未变更依据中已经出现在正文的数值，必须继续出现在该依据的范围内；此十进数字面检查不证明单位、
-可见性、改写或语义。独立 Gemini 调用检查这些方面，以及逻辑主张、已授权修改与缺少的输入。
+可见性、改写或语义。writer 检查后，必需的 compiler 可以展开 HTML 并添加生成 asset metadata。
+editor 对照当前版重新计算 content changes，并再次检查结构和依据保持；保留原请求、依据变更理由
+与摘要。只有最终候选会计算 digest 并传给独立 Gemini，检查这些方面及逻辑主张、已授权修改与缺少的输入。
 可以生成诚实说明信息不足的候选。检查必须覆盖新旧全部依据 ID，绑定候选 digest，且无问题地 passed。
 拒绝或无效输出会抛出 ContractError，不返回候选。模型语义检查提供额外证据，不保证真理或完整正确性。
 
 `EditorialResult` 包含 candidate、validation 和 writer/verifier 执行证据。validation 的
 structural/semantic 为 passed，rendering 为 **not_run**，不能直接 commit。service 必须 stage
-同一候选，对相同 bytes 执行独立清理、renderer policy 和渲染检查，再将真实渲染判定加入绑定
-digest 的 ValidationResult。不得直接把未检查的 rendering 标为 passed。editor 不打开 store 或公开文件。
+同一已编译候选和生成 asset bytes，对同一 bundle 执行独立 visual、renderer policy 和渲染检查，
+再将真实渲染判定加入绑定 digest 的 ValidationResult。不得直接把未检查的 rendering 标为 passed。
+会改变 HTML、assets 或 metadata 的展开与清理必须在语义检查前的 compile 中完成。
+返回后修改候选需要重新验证，不能仅改 digest 来复用旧判定。compiler 拒绝时不返回 EditorialResult，
+发布仍由 controller 负责。editor 不打开 store 或公开文件。
 
 model/effort 明确固定为 `gemini-3.8-flash-high` / `high`，不同的 constructor 参数会被拒绝。
 agy 版本来自既有 agents.conf 的 AGY_VERSION pin，不修改 issue 补充 runtime、pin 或权限。

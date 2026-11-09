@@ -143,7 +143,10 @@ def editor_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> EditorEnviron
     changed = schema.parse(schema.Document, json.dumps(data))
     env = EditorEnvironment(
         tmp_path,
-        editor.GeminiEditor(gemini.Gemini(tmp_path / "private", agy=executable)),
+        editor.GeminiEditor(
+            gemini.Gemini(tmp_path / "private", agy=executable),
+            compile_document=lambda value: value,
+        ),
         store,
         current,
         request,

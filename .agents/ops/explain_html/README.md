@@ -115,13 +115,23 @@ insufficient for publication.
 ## Gemini writing and editing
 
 With `PYTHONPATH=.agents/ops`, construct `Gemini(private_root, agy=...)` from
-`explain_html.gemini`, then `GeminiEditor(gemini)` from `explain_html.editor`.
+`explain_html.gemini`, then `GeminiEditor(gemini, compile_document=compiler)` from
+`explain_html.editor`. The required keyword argument has type
+`DocumentCompiler = Callable[[Document], Document]`. Supply a trusted compiler that
+expands figure slots, inserts the renderer/CSP and returns the final Document,
+or raises ContractError. This package does not choose a visual implementation.
+Even without figures, explicitly choose identity with
+`GeminiEditor(gemini, compile_document=lambda document: document)`; omission is an
+error. The callback receives a deep copy and its return value is revalidated and
+detached from mutable callback state. Keep generated asset bytes privately in the
+calling controller for staging; the compiler must not publish or commit files.
 `write_initial(request, context, *, timeout=600, cancel=None)` and
 `edit(request, current, context, *, timeout=600, cancel=None)` return an
 `EditorialResult`. Use the shared EditRequest/Revision types; initial requests
 have a null base and a document target. The timeout covers both writer and
-verifier, including effort/version checks. Each turn uses a new workspace and
-conversation. There is no automatic retry, resume, substitute model or prose repair.
+verifier and compilation, including effort/version checks. Each turn uses a new
+workspace and conversation. There is no automatic retry, resume, substitute model
+or prose repair.
 
 `WritingContext` is trusted controller input: purpose, audience, exact desired
 evidence, approved assets, prepared figures, writing preferences and all prior
@@ -140,19 +150,28 @@ evidence metadata (including numbers, conditions and provenance) and approved as
 Surviving rendered evidence references and HTTP(S) source hyperlinks must remain.
 Numeric values in unchanged evidence that appeared in that evidence's rendered text
 must still appear in its scope; this lexical decimal check does not prove units,
-visual visibility, paraphrases or meaning. A separate Gemini call reviews those
-points, logical claims, authorized changes and missing inputs. Honest explanations
-of insufficient information are supported. The review must cover every old/new
+visual visibility, paraphrases or meaning. After these writer checks, the required
+compiler may add generated asset metadata and expand the HTML. The editor recomputes
+content changes against the current revision and repeats structure and fact checks.
+The originating request, evidence change reasons and summary are retained.
+Only this final candidate is digested and sent to a separate Gemini call, which
+reviews those points, logical claims, authorized changes and missing inputs.
+Honest explanations of insufficient information are supported. The review must cover every old/new
 evidence ID, match the candidate digest and pass without issues. Rejection or invalid
 output raises ContractError without returning a candidate. This model review adds
 evidence; it does not guarantee truth or complete semantic correctness.
 
 `EditorialResult` contains candidate, validation, writer and verifier evidence.
 The validation has structural/semantic passed and rendering **not_run**; it cannot
-authorize commit by itself. The service must stage exactly that candidate, apply
-its independent sanitization/renderer/rendering checks to the same bytes and merge
-the actual rendering verdict into the digest-bound ValidationResult. Never simply
-mark rendering passed. This editor never opens the store or public files.
+authorize commit by itself. The service must stage exactly that compiled candidate
+with its generated asset bytes, apply independent visual/renderer/rendering checks
+to that same bundle and merge the actual rendering verdict into the digest-bound
+ValidationResult. Never simply mark rendering passed. Any transformation or
+sanitization that changes HTML,
+assets or metadata belongs in compilation, before semantic review. Changing the
+returned candidate requires new verification; never replace a digest to reuse an
+old verdict. Compiler rejection returns no EditorialResult and leaves publication
+to the controller. This editor never opens the store or public files.
 
 The model/effort are explicitly `gemini-3.8-flash-high` / `high`. Constructor
 overrides that differ fail. The agy version comes from the existing AGY_VERSION
