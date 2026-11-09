@@ -1,0 +1,5 @@
+FULL_QUEUED 0-8205771591263090791_2026-11-09T12-46-48-736909208Z_29990_issue1776_full_a2.job
+[worker] 2026-11-09T12:46:48+00:00 running: 0-8205771591263090791_2026-11-09T12-46-48-736909208Z_29990_issue1776_full_a2.job resource=all slot=all (log: /content/tennis-lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/training-queue/logs/0-8205771591263090791_2026-11-09T12-46-48-736909208Z_29990_issue1776_full_a2.log)
+Terminated
+[worker] termination requested; stopping supervised jobs.
+[worker] 2026-11-09T13:14:48+00:00 FAILED (signal): 0-8205771591263090791_2026-11-09T12-46-48-736909208Z_29990_issue1776_full_a2.job resource=all slot=all

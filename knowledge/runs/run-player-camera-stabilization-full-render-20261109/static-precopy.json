@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "action": "upload",
+  "rclone_config": "/content/.tennis-colab/player-view-stabilization-20261109-a2/secrets/rclone.conf",
+  "source": "/content/tennis-lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full",
+  "destination": "gdrive:tennis_lab/outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full",
+  "status": "completed",
+  "dry_run": false,
+  "verified": true
+}

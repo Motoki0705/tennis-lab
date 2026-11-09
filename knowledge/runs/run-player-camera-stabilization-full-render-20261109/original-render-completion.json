@@ -1,0 +1,11 @@
+{
+  "observed_at": "2026-11-09T13:32:02.856521+00:00",
+  "waited_for_original_pid": true,
+  "live_original_pgid_members": [],
+  "archives": 8,
+  "audits": 8,
+  "mp4s": 14,
+  "source_frames": 240,
+  "source_pngs": 1920,
+  "elapsed_seconds": 2706.457731757
+}

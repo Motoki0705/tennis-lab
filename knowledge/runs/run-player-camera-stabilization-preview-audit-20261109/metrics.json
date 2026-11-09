@@ -1,0 +1,9 @@
+{
+  "validated_source_pngs": 24.0,
+  "new_pngs_rendered_by_validation_job": 0.0,
+  "render_audits_checked": 8.0,
+  "images_per_player": 12.0,
+  "reference_renderer_pipeline_elapsed_seconds": 66.517762,
+  "reference_total_render_seconds": 28.482959,
+  "missing_camera_rows": 8.0
+}

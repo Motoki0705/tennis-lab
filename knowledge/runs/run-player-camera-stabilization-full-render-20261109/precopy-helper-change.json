@@ -1,0 +1,5 @@
+{
+  "before_sha256": "f738996905f72c2a8ee85cba8a33493c7b42f3a3719326286ddbfcfce071a712",
+  "after_sha256": "2c225f6382be628d2e323d33feb6309d91d1d5385aaba53b28427b145009e31a",
+  "reason": "Preserve bounded listing stdout/stderr instead of losing details in CalledProcessError; no transfer or overwrite occurred before the listing failure. No render/storage policy change."
+}

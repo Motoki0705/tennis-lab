@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "reviewed_at": "2026-11-09T14:23:19.428654+00:00",
+  "reviewer": "issue1776 implementation worker",
+  "human_acceptance": "pending",
+  "technical_delivery_checks": "passed",
+  "contact_sources": [
+    0,
+    2,
+    26,
+    60,
+    162,
+    239
+  ],
+  "reviewed_full_size_samples": [
+    "player_0_source_026.png",
+    "player_1_source_162.png"
+  ],
+  "observations": [
+    "魚眼の強いコート線湾曲が見える。",
+    "細いコート線・ネットに小さな段差と軟らかさがある。静止画だけで時間方向のaliasは判定しない。",
+    "ID1 source162は大きな首振りを保持し、コートが左下へ寄り灰色背景が大半を占める。",
+    "広角のため相手とボールは小さく見える。",
+    "source0は4案ともCAMERA MISSING、ID・σ・lens・source表示が正しい。source1の欠測保持は全decodeとauditで確認した。",
+    "2x2は左上0、右上0.06、左下0.08、右下0.12秒で、抽出した同一sourceの表示が揃う。"
+  ],
+  "limits": "人間のブレ感・酔い・臨場感の評価と強度選択は未実施。全1010frame未描画。",
+  "extraction_manifest": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/review/manifest.json"
+}

@@ -1,0 +1,19 @@
+{
+  "argv": [
+    ".venv/bin/python",
+    "knowledge/runs/run-player-camera-stabilization-20261109/verify_delivery.py",
+    "--inputs",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/inputs",
+    "--run",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/full",
+    "--output",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/operations/attempt2/delivery-verification.json"
+  ],
+  "started_at": "2026-11-09T14:18:49.005317+00:00",
+  "completed_at": "2026-11-09T14:19:10.722832+00:00",
+  "elapsed_seconds": 20.86982533799892,
+  "returncode": 0,
+  "stdout": "{\"videos\": 14, \"decoded_frames\": 3360, \"audit_rows\": 1920}\n",
+  "stderr": "",
+  "checkout_head": "1231c2698369f0853368fe90faa3a4439eaa7925"
+}

@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "job_id": "full-a2",
+  "status": "failed",
+  "updated_at": "2026-11-09T13:54:53.823698+00:00",
+  "returncode": -15,
+  "worker_pid": 28872,
+  "worker_token": "542878",
+  "launch_guarded": true,
+  "pid": 29986,
+  "process_token": "568192",
+  "started_at": "2026-11-09T12:46:48.460334+00:00",
+  "error": "rclone command could not complete: copy",
+  "failure_stage": "periodic_save",
+  "completion_target": "failed",
+  "save_pid": 101651,
+  "save_token": "976715",
+  "drive_saved_at": "2026-11-09T14:02:44.079477+00:00",
+  "finished_at": "2026-11-09T14:02:44.079497+00:00"
+}

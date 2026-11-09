@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "recovered_at": "2026-11-09T12:36:03.355868+00:00",
+  "session": "player-view-stabilization-20261109-a2",
+  "colab_job_id": "preview-a2-validate",
+  "original_colab_job_id": "preview-a2",
+  "renderer_queue_result": "done",
+  "status": "completed",
+  "returncode": 0,
+  "drive_saved_at": "2026-11-09T12:29:46.461498+00:00",
+  "drive_path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview",
+  "source_png_count_preserved_on_drive": 24,
+  "source_pngs_recovered": 0,
+  "recovery_manifest_receipt": {
+    "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/recovery-manifest.json",
+    "bytes": 5174,
+    "sha256": "cf3c71f25f112cc8831a515dd07aca29897097cdab9477179e3861471b737b59"
+  },
+  "files": [
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/manifest.json",
+      "bytes": 6658,
+      "sha256": "7cbd484151865c447af7144bbfd9f81e0ecf16826116ccd98c4e3eece4db56e1",
+      "md5": "57be3afc32d583ad9dbd313a9cce13e6",
+      "drive_id": "1qyhxZutiJV4yJTQnKw8xJk4AtHLogQUt"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/checkpoint.json",
+      "bytes": 6618,
+      "sha256": "e0163caeeaefaac035f7890e0a3d2d4302274041565bafe1721507b5d48a6f1e",
+      "md5": "719d55fcbb33222daa5c97bea3e9b013",
+      "drive_id": "1VVtiVTwJh1Y6myHI9_wghKWiE7Iz6yIw"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/videos/sigma_000/manifest.json",
+      "bytes": 5714,
+      "sha256": "2e58f5478d6bf8d2dc4bf77552a60bbe85a3e048107089ab569c6711b9664f2f",
+      "md5": "6f94ae1182ada4a6afd35d3c57f17f41",
+      "drive_id": "1vobYD0WTLFzgoP4ExOlHFWoe3c-xXZFI"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_0/render.json",
+      "bytes": 3469,
+      "sha256": "e87cdf4587e4b12f73783a2c8af9a0c204366beb10f496e9ea369c384dbc0a61",
+      "md5": "ad1d543a1d8fbe7137b8e2abbfb08a7c",
+      "drive_id": "1wBkkV4R9sXwKr7YyhTY6Vf8hn9SkGKcz"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_000/player_1/render.json",
+      "bytes": 3458,
+      "sha256": "2d0cd15cf717126dfc38fab0a16e0c9e68883b0038a6841b07dc5fa03b305b27",
+      "md5": "e6595a4256def9cb100f4dd8f6cd63a0",
+      "drive_id": "1oLXakISrWCzgv1tdNd3EM78n4tcmLXdA"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/videos/sigma_060/manifest.json",
+      "bytes": 5716,
+      "sha256": "5d550939f31cf06760bac31911e8ab6cc496ab15a00fd31f00138e4ebe5c546e",
+      "md5": "1b1967db1500fdedd46e601a11f83f01",
+      "drive_id": "1Y0nI2NZbED-OvQI8S9FkNJuDnm9bGReu"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_0/render.json",
+      "bytes": 3467,
+      "sha256": "121f72a6cd3a4fab39090e3ef46a3edbb71a1f7ba01d50b8dd9c924b6a2f05ff",
+      "md5": "273cc50b4559ef381f47945a269f6cea",
+      "drive_id": "1QrSK2BGb0TyomRV-Gga8yo5qwB2rFT7I"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_060/player_1/render.json",
+      "bytes": 3467,
+      "sha256": "01d87fb20ea11e6020f3cdfa268527d8aa16e5dcc3e27eba0424ad8d06795c7c",
+      "md5": "88de9772a51bb7e91c48ada3835c5fb9",
+      "drive_id": "1-56ENi3Y1UM9Q1EHcwo2no-eS4o6TsKn"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/videos/sigma_080/manifest.json",
+      "bytes": 5716,
+      "sha256": "6d9ad039239ff1d4b96a409aceadbc641a906e9b25a91b12854326f6f92464f2",
+      "md5": "988283d832fa9f7870f7fe69c9a59c79",
+      "drive_id": "1aIp0cl3zes-2H9x5KhAeBUDzBHHeZTma"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_0/render.json",
+      "bytes": 3470,
+      "sha256": "e8224f24bdb4a795dff990dd5cc5fcbb86efd8accf0c5c8c4efa19e8cc10ca60",
+      "md5": "da777b0aa6bb257faad0fa325dde429d",
+      "drive_id": "1_hSQ-j8YT72VoyqpHxZwuNeKVVsIyeFE"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_080/player_1/render.json",
+      "bytes": 3466,
+      "sha256": "6b081328cdb619144107effde57fa9a3bf8986b005f4a23ccf22a2a623e5ffae",
+      "md5": "7f0f666da8d98131ce642cb7c8886341",
+      "drive_id": "10t4iC3PPaWWS1xWGzCQ1_mLudU2djq_d"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/videos/sigma_120/manifest.json",
+      "bytes": 5716,
+      "sha256": "0d23571a8378934cf2a109caa9f4ad5be681b5abb5b06ef2cd9d618c9f2c530b",
+      "md5": "52eea39cf62ab5952947e256cd0769e7",
+      "drive_id": "1S2AHFC65-BSjKauMnoHid2d73vZ3QkrC"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_0/render.json",
+      "bytes": 3471,
+      "sha256": "efaa8b1e1864d14e3f5ea08bdc1e7e893c54ae02ff4b5d9600be35e0306c44c6",
+      "md5": "53d352dfa1320933ef901d8f256f9d16",
+      "drive_id": "1y2XHh-UpAI3iLUn4GNWpMZVBVPmc8mAW"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/renders/sigma_120/player_1/render.json",
+      "bytes": 3465,
+      "sha256": "acee9ae106a80cde0965c1eaddf0f2d2393559804180c3e8a53060da2a0c95b7",
+      "md5": "fa2328986bfa59b23ac49fd4a5675d36",
+      "drive_id": "1c9S-he4KKZayzHw3phP8ByacKrZZrbq5"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_0_contact.png",
+      "bytes": 564836,
+      "sha256": "6bade300d0fa4dc01e5e0b1b410c24d7b01f1b2d96c2cee21036a0d142a6b4f9",
+      "md5": "09d15fe2c10e97520fffd71892d2330a",
+      "drive_id": "1Spax-Ib81OC62oJP5eY6I6rfQF7xX9cM"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_1_contact.png",
+      "bytes": 513257,
+      "sha256": "54311dd7e2e9531c878a39f4e7388b42f9c3c41b175111362d190b6159e01c6a",
+      "md5": "02ea5d62d4e2cf86c08a8983bfbfef01",
+      "drive_id": "1Nl6F1-ejDRmHyFubwXxal5Lhy5ZV9hnh"
+    },
+    {
+      "path": "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/validation.json",
+      "bytes": 3079,
+      "sha256": "0af4b7fb75d71c42df81e7f3d64a84dc794b0f192a0d0e5f8ffae3c56441b37c",
+      "md5": "4a1c91575f960e78a8fbbef77cf36c8c",
+      "drive_id": "1_iGxKxNlMPHmMD-lk8TfDIbQswqceUIg"
+    }
+  ],
+  "contacts": [
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_0_contact.png",
+    "outputs/tennis_scene/visualize/player_view/stabilization-comparison/attempt2/preview/player_1_contact.png"
+  ],
+  "hash_verification": "Local SHA-256 and MD5 agree with renderer manifest; MD5 and sizes agree with Drive inventory",
+  "human_acceptance": "pending"
+}

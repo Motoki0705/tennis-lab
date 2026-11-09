@@ -1,5 +1,8 @@
-回転補正・レンズ写像の実装とCPU検証は成功しましたが、**ColabのL4割当拒否により比較動画の生成は未着手**です。このrunのfailedは描画試行の失敗を示します。draft PRは [#1785](https://github.com/Motoki0705/tennis-lab/pull/1785)、方式と強度候補の判断は [#1776の合意記録](https://github.com/Motoki0705/tennis-lab/issues/1776#issuecomment-6730136323)を参照してください。
+初回のL4割当拒否はこのrunのfailed履歴として保持しています。再開attempt2では4秒比較を生成・Drive保存・回収・配信監査・L4停止まで完了しました。現在の結果と人間用動画は[delivery run](../run-player-camera-stabilization-delivery-20261109/review.md)、元管理jobの保存失敗と復旧は[full-render run](../../nodes/tennis_scene/000051-run-player-camera-stabilization-full-render-20261109.md)を参照してください。強度選択・人間受入・全1010frame再描画は未了です。
 
+以下は初回run時点の実装・検証と再開手順の記録です。
+
+回転補正・レンズ写像の実装とCPU検証は成功しましたが、**ColabのL4割当拒否により比較動画の生成は未着手**です。このrunのfailedは描画試行の失敗を示します。draft PRは [#1785](https://github.com/Motoki0705/tennis-lab/pull/1785)、方式と強度候補の判断は [#1776の合意記録](https://github.com/Motoki0705/tennis-lab/issues/1776#issuecomment-6730136323)を参照してください。
 回転はGaussian重みのMarkley平均、σ=0/0.06/0.08/0.12秒、±ceil(3σfps)の有限窓です。欠測runを跨がず、端は窓を切って再正規化します。位置とrollを保持し、補正後の回転で顔offsetを再計算しません。σ=0は明示的な元transformのコピーです。実装と数値library版・入力digest・有効run・各frameの左右supportを派生カメラに保存します。
 
 最新GoProの固定レンズMISSION1系を参考に、対角159度を設計値とした等距離魚眼を選びました。メーカーの非公開較正を再現したものではありません。公開仕様と欠けている情報、直接Cycles魚眼との比較は [lens-survey.md](lens-survey.md) が正本です。survey内の1280×720の例に対し、今回の短い比較はパネル640×360、共通ピンホール2560×1440で固定しています。画角と光線は同じで、2×2比較の完成解像度は1280×720です。F2.8は参考値を記録しDOFは無効、既存の顔offsetは維持します。

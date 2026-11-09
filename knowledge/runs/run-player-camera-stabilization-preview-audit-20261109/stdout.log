@@ -1,0 +1,17 @@
+/content/tennis-lab/src/utils/configuration/output_layout.py:47: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_output", task_output_path)
+/content/tennis-lab/src/utils/configuration/output_layout.py:48: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_dataset", dataset_output_path)
+/content/tennis-lab/src/utils/configuration/output_layout.py:49: UserWarning: register_new_resolver() is deprecated and will be removed in a future release.
+Use register_resolver() instead.
+See https://github.com/hydra-ecosystem/omegaconf/issues/426 for migration instructions.
+
+  OmegaConf.register_new_resolver("tennis_run_id", new_run_id, use_cache=True)
+PREVIEW_VALIDATED {"schema_version": 1, "validated_at": "2026-11-09T12:21:46.325162Z", "source_ref": "d133993421c206af28340f4ffe082c65b70fe7a7", "phase": "preview", "source_frames": [0, 26, 162], "images_per_person": {"0": 12, "1": 12}, "total_source_pngs": 24, "elapsed_seconds": 66.51776217800034, "renders": [{"variant": "sigma_000", "player_id": 0, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 5.134032077999564}, {"variant": "sigma_000", "player_id": 1, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 3.3127802499998324}, {"variant": "sigma_060", "player_id": 0, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 3.398482638999667}, {"variant": "sigma_060", "player_id": 1, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 3.2913435579998804}, {"variant": "sigma_080", "player_id": 0, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 3.3520857600001364}, {"variant": "sigma_080", "player_id": 1, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 3.2445197580004788}, {"variant": "sigma_120", "player_id": 0, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 3.386798877000274}, {"variant": "sigma_120", "player_id": 1, "gpu_devices": [{"name": "NVIDIA L4", "type": "OPTIX"}], "source_frames": [0, 26, 162], "missing_camera_frames": [0], "render_seconds": 3.36291631199947}], "human_acceptance": "pending"}
+EXISTING_PREVIEW_VALIDATION_COMPLETE renderer_rerun=false
