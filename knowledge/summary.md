@@ -34,6 +34,8 @@
 - **長系列モデル**（親#1367）: 教師は入力Tの全frame、文脈はclip内・上限128と[決めました](nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)。配布storeの可搬化と、Colabでの逐次保存・新VMからの再開も確認済みです。[共通DPTからの逐次T64学習](nodes/ball_detection/000068-run-ball-sequential-length-20261025.md)では、query T64の平均/P95誤差（28.20/116.89 px）がDPT T64（36.56/183.20 px）より小さい一方、20 px以内の率は低くなりました（76.29%対86.58%）。追加の更新数と方式の差が交絡しており、seed42・validationだけの結果です。
 - **事前学習＋事後学習**: [ConvNeXt V2＋DPTとquery事後学習](nodes/ball_detection/000060-run-i1049-convnext-query-posttrain-s42.md)は通常評価で親より改善しましたが、camera stress（特に1/4 FPSで41.11 px）で大きく悪化しました。頑健性の要件は満たしていません。
 - **次の実験**: 更新数をそろえたT比較、query T32の残差とoverlayの確認、#1476・PR #1489を前提とした独立testでの評価。
+- **容量スケーリング**（#1675）: X3D/CSN型CNN＋4 query mHCの共通DPT T32 10kから独立query T64 7条件を各6k学習し、[全52k更新の最終比較](nodes/ball_detection/000078-group-i1675-capacity-scaling-s42-52k.md)とDrive保存を完了しました。同じ入力列・拡張・固定validationで、query条件の主指標最良はd512・6層のmean 39.47pxです。参考の共通DPT T32・10kは34.43pxで、query追加の精度改善は確認できません。幅を大きくするほど主指標が改善する単調な関係は得られなかった。理論MAC・総parameter数・L4実学習時間と精度を比較しました。seed42の各1回・6k予算で、追加seedと独立testは未評価です。sceneの採用モデル・checkpointは維持します。
+
 
 ## 3D Ball Refiner（ball_refiner_3d）
 
