@@ -1,11 +1,11 @@
-# 解释 HTML 文档契约
+# 解释 HTML 文档契约与 Gemini 编辑
 
 [English](README.md) · [日本語](README.ja.md)
 
 本包为 [#1710](https://github.com/Motoki0705/tennis-lab/issues/1710) 提供共用文档/编辑契约和
-持久化版本存储，以及 visual import、受管 renderer 和明确图像生成可用性的边界。
-不包含 Gemini 调用、HTTP 服务、浏览器 UI、图像 provider 实现或质量评估。
-使用现有的 Pydantic/Pillow 依赖和 Python 标准库。
+持久化版本存储、visual import、受管 renderer、明确图像生成可用性的边界，
+以及 Gemini 候选生成和独立语义检查。不包含 HTTP 服务、浏览器 UI、图像 provider 实现或浏览器质量评估。
+使用现有的 Pydantic/Pillow/jsonschema 依赖和 Python 标准库。
 
 ## 契约正本与入口
 
@@ -27,6 +27,9 @@
 | [visuals.py](visuals.py) | SVG/HTML/CSS 安全检查、图 markup 和离线 renderer policy |
 | [renderers/visuals-v2.js](renderers/visuals-v2.js) | 按声明 figure 绘图并隔离单图错误的当前 renderer |
 | [renderers/visuals-v1.js](renderers/visuals-v1.js) | 为旧 revision 保留原始 bytes 的 renderer |
+| [editor.py](editor.py) | 初次撰写、编辑、依据保持与独立语义检查 |
+| [gemini.py](gemini.py) | 固定 model、禁用工具的 agy 执行、私有证据与取消 |
+| [no_tools.py](no_tools.py) | 只允许 schema 检查后的完成操作的可信 PreToolUse hook |
 
 ## ID、目标与候选
 
@@ -80,6 +83,70 @@ srcset 接受 canonical managed URL 和可选的一致 `w` 或 `x` descriptor；
 或无法解析的候选都会使整个 source set 失败。
 它不解释 asset 内部内容或执行 JavaScript。CSS/SVG/script 内容和图表专属定义由 visual validator
 负责；仅通过结构检查不足以发布。
+
+## Gemini 撰写与编辑
+
+设置 `PYTHONPATH=.agents/ops`，使用 `explain_html.gemini` 的
+`Gemini(private_root, agy=...)` 创建 `explain_html.editor` 的
+`GeminiEditor(gemini, compile_document=compiler)`。必需的关键字参数类型为
+`DocumentCompiler = Callable[[Document], Document]`。可信 compiler 展开图占位、插入
+renderer/CSP 并返回最终 Document，或抛出 ContractError 拒绝；此 package 不隐式选择 visual 实现。
+即使没有图，也必须用 `GeminiEditor(gemini, compile_document=lambda document: document)`
+明确选择恒等变换，省略会报错。callback 收到 deep copy，返回值会重新验证并与可变状态分离。
+生成 asset 的 bytes 由调用方 controller 私下保留并传给 stage；compiler 不得发布或 commit 文件。
+受管 visual 可直接传入 `explain_html.visuals` 的 `compile_document=render_document`，
+该公开函数的类型已经符合 DocumentCompiler。
+`write_initial(request, context, *, timeout=600, cancel=None)` 和
+`edit(request, current, context, *, timeout=600, cancel=None)` 返回 `EditorialResult`。
+请求和当前版使用共享 EditRequest/Revision；初次请求使用 null base 和文档目标。
+timeout 包含 writer、verifier、compile 及 effort/版本检查。每次调用创建新 workspace 和会话，
+不自动重试、resume、替换模型或从自然语言修补输出。
+
+`WritingContext` 是可信 controller 输入：目的、读者、精确的目标依据集合、已批准 assets、
+准备好的图、写作偏好和全部历史变更摘要。编辑时，当前与目标依据的每处差异都必须在
+`authorized_evidence_changes` 明确声明。不要把 writer 的提案作为授权，也不要未经检查就接受
+browser JSON 中的授权。独立 verifier 还会对照指令检查变更理由。两次调用都收到完整上下文、
+当前版、请求/目标/指令和历史；verifier 另外收到候选及 digest。prompt/schema 通过私有文件和
+stdin 传递，不因 argv 长度限制而截断。Candidate schema 直接从共享模型生成。
+
+writer 返回完整 Candidate。机械检查绑定原始请求，执行共享结构/变更检查，严格核对目的、读者、
+依据 metadata（包括数值、条件、来源）和已批准 assets。保留存续依据的正文引用和 HTTP(S) 来源链接。
+未变更依据中已经出现在正文的数值，必须继续出现在该依据的范围内；此十进数字面检查不证明单位、
+可见性、改写或语义。writer 检查后，必需的 compiler 可以展开 HTML 并添加生成 asset metadata。
+editor 对照当前版重新计算 content changes，并再次检查结构和依据保持；保留原请求、依据变更理由
+与摘要。只有最终候选会计算 digest 并传给独立 Gemini，检查这些方面及逻辑主张、已授权修改与缺少的输入。
+可以生成诚实说明信息不足的候选。检查必须覆盖新旧全部依据 ID，绑定候选 digest，且无问题地 passed。
+拒绝或无效输出会抛出 ContractError，不返回候选。模型语义检查提供额外证据，不保证真理或完整正确性。
+
+`EditorialResult` 包含 candidate、validation 和 writer/verifier 执行证据。validation 的
+structural/semantic 为 passed，rendering 为 **not_run**，不能直接 commit。service 必须 stage
+同一已编译候选和生成 asset bytes，对同一 bundle 执行独立 visual、renderer policy 和渲染检查，
+再将真实渲染判定加入绑定 digest 的 ValidationResult。不得直接把未检查的 rendering 标为 passed。
+会改变 HTML、assets 或 metadata 的展开与清理必须在语义检查前的 compile 中完成。
+返回后修改候选需要重新验证，不能仅改 digest 来复用旧判定。compiler 拒绝时不返回 EditorialResult，
+发布仍由 controller 负责。editor 不打开 store 或公开文件。
+
+model/effort 明确固定为 `gemini-3.8-flash-high` / `high`，不同的 constructor 参数会被拒绝。
+agy 版本来自既有 agents.conf 的 AGY_VERSION pin，不修改 issue 补充 runtime、pin 或权限。
+每次记录选择值，要求只读 headless `/effort` 返回 `command.data.current=high`，并核对生成
+stream 的 model 和全部 backend model override 日志。
+[官方 effort 契约](https://antigravity.google/docs/cli/commands/effort/) 将 effort 定义为 model variant
+选择；使用同一 High backend variant 和明确 effort 响应作为证据，不依赖模型自述或 token 数。
+观测缺失或不符会返回 model_mismatch。
+
+private_root 必须是配信/export 范围外的专用私有区域，目录 0700、文件 0600。
+prompt、stdout、settings、schema、hook 记录、error 和 CLI 原始日志均保存在其中。
+公开摘要仅限返回的数值用量、时间和已验证配置；异常 cause 和原始日志保持私有。
+session strict 权限与 hook 只在按固定 schema 验证参数后，允许 agy 内部的 `finish` 工具。
+该控制操作返回结构化数据；文件编辑、shell、外部调查和委派仍被拒绝。允许的完成参数必须同时
+匹配最终 structured output 和已完成的 stream step。操作工具的任何尝试均使结果失败。
+成功或失败都会核对 hook/settings/schema 完整性。这不是 OS sandbox，也不代表任意 global
+plugin/hook 已被认定安全；请使用操作方管理的 CLI profile。adapter 不复制凭据或改写 user 设置，
+agy 自身正常的 profile 行为仍然存在。
+
+cancel 接收 `threading.Event`。service 在取消请求或停止时 set 同一个 Event；opsproc 在停止并回收
+process group 后返回 cancelled。预先 set 的 Event 阻止启动。timeout、取消、model 不符、无效输出和
+语义失败使用既有公开错误码。controller 仍需同步后续 commit 和取消。
 
 ## 存储、恢复与导出
 
@@ -210,3 +277,9 @@ PLAYWRIGHT_MODULE=/path/to/playwright CHROMIUM_PATH=/path/to/chromium \
 harness 输出 setup/各场景时间和临时 screenshot 目录。
 普通测试/CI 不调用真实图像生成或外部 API。
 现有 JavaScript pytest 入口和 CI 通道也会运行这两个 visual suite。
+
+editor 在 `test_editor.py` 添加 11 个 integration case，在
+`tests/e2e/agents_ops/test_explain_html_editor.py` 添加 3 个公开入口 case。
+使用可执行的假 agy、真实 store、完整长输入、允许/禁止的依据修改、拒绝/无效 verdict、真实 hook 拒绝
+以及 pipe/Event 同步的进程回收。其中一例将真实的 `render_document` 和 stage 后的
+`validate_visuals` 接入 editor 的语义检查与 store commit。editor 验证无需浏览器或固定的实时间 sleep。
