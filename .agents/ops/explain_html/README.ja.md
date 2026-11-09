@@ -143,6 +143,22 @@ writerは完全なCandidateを返す。機械検査は元要求の一致、共�
 検査は旧/新根拠の全IDを対象にし、候補digestが一致し、未解決issueなしでpassedを返す必要がある。
 拒否・不正出力は候補を返さずContractErrorにする。意味検査は追加の証拠であり、真実性や完全な正しさの保証ではない。
 
+writerは提供根拠・ユーザーが明示した事実・一般的な定義/導出を区別する。題材の説明依頼や出典URLだけでは
+製品仕様・スポーツの速度・実環境の精度の根拠にはならない。未提供の数値入力・製品名・性能を加えず、
+提供入力からの計算は前提と試算/導出の区別を該当箇所に保持する。不足情報は推測せず本文で説明する。
+
+[editor.py](editor.py) の `SemanticVerdict` は空でも `unsupported_claims` と `technical_errors` 配列が必須。
+各findingは `quote`・`reason` と任意の `content_id`/`evidence_id` を持つ。verifierは根拠タグ外の本文・
+caption・グラフ定義を含む文書全体で、根拠外の具体的主張、用語・座標系の取り違え、正当化されない断定を調べる。
+列挙した各項目を `unsupported_claim` / `technical_error` というruleの `ValidationIssue` として
+`ValidationResult.semantic.issues` に残す。全体判定がpassedでも **1件あれば不合格**。
+意味不合格は `SemanticValidationError`（公開codeは従来どおり `validation_failed` の `ContractError`）で、
+信頼する呼出元は `.validation` のdigestに結び付いた結果をprivate診断用に保存できる。候補は返さず、診断本文は
+HTTPエラーに含めない。`schema.py`、保存するValidationResultの形、既存revisionは変えない。
+2配列がない旧model判定は無効とし、空配列を補ったり旧承認を流用せず新prompt/schemaで再検査する。
+意味不合格の自動修復・再試行や繰り返し失敗後の検査緩和は行わず、現行版を保持して修正入力による明示再試行を求める。
+前述の上限付きfigure修復は変更しない。この検査は完全な正しさを保証せず、外部調査による事実確認も行わない。
+
 `EditorialResult` はcandidate・validation・writer/verifierの実行証拠を持つ。
 validationはstructural/semanticがpassed、renderingは **not_run** のため、そのままcommitできない。
 serviceはcompile済みの同じ候補と生成asset bytesをstageし、同じbundleへ独立したvisual・

@@ -186,6 +186,32 @@ evidence ID, match the candidate digest and pass without issues. Rejection or in
 output raises ContractError without returning a candidate. This model review adds
 evidence; it does not guarantee truth or complete semantic correctness.
 
+The writer distinguishes supplied evidence, explicit user-supplied facts and
+general definitions/derivations. A topic request or a citation URL alone supplies
+no product specifications, sport speeds or empirical accuracy. Unsupplied numeric
+inputs, product names and performance claims are prohibited; calculations from
+supplied inputs retain their assumptions and hypothetical/derived status locally.
+Missing inputs are explained in the page rather than guessed.
+
+`SemanticVerdict` in [editor.py](editor.py) requires `unsupported_claims` and
+`technical_errors` arrays, including when empty. Each finding contains `quote`,
+`reason`, and optional `content_id`/`evidence_id`. The verifier inspects the whole
+document, including untagged prose, captions and graph definitions, for unsupported
+concrete claims, confused terminology, coordinate frames and unjustified absolute
+conclusions. Each finding becomes a `ValidationIssue` with rule `unsupported_claim`
+or `technical_error` in `ValidationResult.semantic.issues`; **any** finding vetoes
+approval even if the model's overall check says passed. Semantic rejection raises
+`SemanticValidationError` (a `ContractError` with the same public `validation_failed`
+code); trusted orchestration can retain its digest-bound `.validation` for private
+diagnostics. No candidate is returned, and diagnostic text is not an HTTP error.
+`schema.py`, stored ValidationResult shape and existing revisions are unchanged.
+Old model verdicts missing these arrays are invalid: rerun verification with the
+new prompt/schema instead of supplying empty defaults or reusing old approval.
+There is no semantic repair/retry loop or relaxed check after repeated rejection;
+retain current and require an explicit retry with corrected inputs. The bounded
+figure repair described above is unchanged. This review cannot guarantee complete
+correctness and performs no external fact-checking.
+
 `EditorialResult` contains candidate, validation, writer and verifier evidence.
 The validation has structural/semantic passed and rendering **not_run**; it cannot
 authorize commit by itself. The service must stage exactly that compiled candidate
