@@ -205,19 +205,28 @@ def test_main_push_requests_each_registered_suite_without_changes(
     assert partition_nodeids(nodes, plan) == (nodes, {})
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        "knowledge/nodes/court_detection/000067-group-court-scene-pair-s42.md",
+        "tests/integration/tasks/person_tracking/test_recalibration_resume.py",
+    ],
+)
 def test_browser_workflow_is_deferred_when_its_runtime_is_not_prepared(
     repository_lanes: tuple[dict[str, Any], list[str]],
+    path: str,
 ) -> None:
-    plan = _plan(
-        repository_lanes,
-        path="tests/integration/tasks/person_tracking/test_recalibration_resume.py",
-    )
-    node = (
+    plan = _plan(repository_lanes, path=path)
+    nodes = [
         "tests/e2e/agents_ops/explain_html/test_browser.py"
-        "::test_browser_reader_editor_workflow"
-    )
+        "::test_browser_reader_editor_workflow",
+        "tests/e2e/agents_ops/explain_html/test_authoring.py"
+        "::test_brief_create_open_update_reopen_stop_and_export",
+        "tests/e2e/agents_ops/explain_html/test_authoring.py"
+        "::test_failed_codex_review_requires_new_writer_and_all_checks",
+    ]
     assert not {"javascript", "ops-scenarios"}.intersection(plan["requested_suites"])
-    assert partition_nodeids([node], plan) == ([], {node: "ops-scenarios"})
+    assert partition_nodeids(nodes, plan) == ([], dict.fromkeys(nodes, "ops-scenarios"))
 
 
 def test_registry_keeps_merge_queue_and_unregistered_tests_always_requested(
