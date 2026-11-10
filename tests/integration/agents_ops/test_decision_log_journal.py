@@ -122,7 +122,55 @@ def test_full_history_reopens_with_all_snapshots_and_fixed_ids(tmp_path: Path) -
     changed["data"]["summary"] = "Must not replace the received report"
     with pytest.raises(PublicationError, match="source_changed"):
         reopened.capture("source-2", changed)
+    invalid_replay = copy.deepcopy(rows[2])
+    invalid_replay["schema_version"] = True
+    with pytest.raises(PublicationError, match="record_version"):
+        reopened.capture("source-2", invalid_replay)
     assert reopened.path.read_bytes() == original
+
+
+def test_private_projection_reopens_across_hash_seeds(tmp_path: Path) -> None:
+    root = Path(__file__).resolve().parents[3]
+    raw = result()
+    raw["data"]["summary"] = "private-abc"
+    snapshot = tmp_path / "input.json"
+    snapshot.write_bytes(schema.json_bytes(raw))
+    script = """
+import json, sys
+from pathlib import Path
+from decision_logs.journal import Journal
+store = Journal(Path(sys.argv[1]), "o/r", 1)
+if sys.argv[3] == "write":
+    raw = json.loads(Path(sys.argv[2]).read_text())
+    record = store.capture("delivery", raw, private={
+        "sessions": ["private-ab", "rivate-abc"], "runs": [],
+        "identifiers": [], "roots": [], "checkout_commit": None,
+    })
+    store.prepare(record["id"], key="prepare", at="2026-11-10T08:00:00+00:00")
+print(store.public_records()[0]["data"]["summary"])
+"""
+    outputs = []
+    for seed, mode in (("1", "write"), ("2", "read")):
+        outputs.append(
+            subprocess.check_output(
+                [
+                    str(root / ".venv/bin/python"),
+                    "-c",
+                    script,
+                    str(tmp_path / "state"),
+                    str(snapshot),
+                    mode,
+                ],
+                env={
+                    **os.environ,
+                    "PYTHONPATH": str(root / ".agents/ops"),
+                    "PYTHONHASHSEED": seed,
+                },
+                text=True,
+                timeout=10,
+            ).strip()
+        )
+    assert outputs == ["[private identifier]c", "[private identifier]c"]
 
 
 WRITER = """

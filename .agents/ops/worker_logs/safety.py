@@ -251,7 +251,7 @@ class Guard:
             count += n
             text, n = re.subn(re.escape(root) + r"(?=/|[\s\"'`\)\]]|$)", ".", text)
             count += n
-        for private in sorted(self.private, key=len, reverse=True):
+        for private in sorted(self.private, key=lambda value: (-len(value), value)):
             if private in self.roots:
                 continue
             n = text.count(private)

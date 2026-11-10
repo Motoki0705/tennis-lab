@@ -298,6 +298,7 @@ class Journal:
             if previous is not None:
                 require(previous["event"] == "capture", "record_already_exists")
                 candidate.setdefault("id", previous["record"]["id"])
+                candidate = validate_record(candidate)
                 require(
                     candidate == previous["record"] and context == previous["private"],
                     "source_changed",
