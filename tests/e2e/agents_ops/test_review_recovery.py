@@ -484,6 +484,17 @@ def test_legacy_run_without_stages_or_evidence_waits_can_be_recovered(
         schema_path.read_bytes()
     ).hexdigest()
     runtime_path.write_text(json.dumps(runtime))
+    # Legacy stages cannot establish exit for cross-run exclusion. Confirm only
+    # cleanup; the original failed result and recovery contract remain unchanged.
+    original_result = (r.run_dir / "result.json").read_bytes()
+    r.cli(
+        "close-interrupted",
+        "--run",
+        r.request["review_run_id"],
+        "--reason-file",
+        r.p.note("旧形式runのruntime cleanupとworkspace撤去を確認した。"),
+    )
+    assert (r.run_dir / "result.json").read_bytes() == original_result
     g = gate_for(r, monkeypatch)
     adopted = recovery_request(r)
     result = json.loads(recover(r, adopted).stdout)["result"]

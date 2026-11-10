@@ -135,10 +135,7 @@ def test_unconfirmed_dead_owner_does_not_release_another_run(
         )
     )
     reviews = [{"request": a}, {"request": b}]
-    if state in {"running", "unknown"}:
-        with pytest.raises(ValueError):
-            locks.require_finished_overlaps(tmp_path, reviews, b)
-    else:
+    with pytest.raises(ValueError):
         locks.require_finished_overlaps(tmp_path, reviews, b)
     # A separate PR must not wait for this owner, even if it is interrupted.
     locks.require_finished_overlaps(tmp_path, reviews, manifest("c", 101))

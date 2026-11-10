@@ -33,7 +33,7 @@ from parent_review_policy import (
     validate_result,
 )
 from review_evidence import followups, python_check_runs
-from review_interruption import CLOSED, interruption_record
+from review_interruption import CLOSED, exit_confirmation_record, interruption_record
 from review_observations import baseline, compare_observation, discussion
 from review_workspace import changed_paths, full_diff, verify_rebased_snapshot
 
@@ -209,11 +209,20 @@ def inspect_run(
     )
     if execution is not None:
         stages = attempt(errors, "stages", lambda: execution_stages(execution))
-        closure = attempt(errors, "interruption", interruption_record, execution, request)
+        closure = attempt(
+            errors, "interruption", interruption_record, execution, request
+        )
         entry["execution"] = {
             "status": execution.get("status"),
             "agent_invocations": execution.get("agent_invocations"),
             "interruption": closure,
+            "exit_confirmation": attempt(
+                errors,
+                "exit_confirmation",
+                exit_confirmation_record,
+                execution,
+                request,
+            ),
             "stages": {
                 name: {
                     k: value

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import fcntl
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -35,13 +36,14 @@ def interrupted(r: ReviewEnv, *, cleanup: bool = True) -> None:
     json_edit(r.run_dir / "agent-runtime/result.json", cleanup_complete=cleanup)
 
 
-def close(r: ReviewEnv, *, ok: bool = True) -> Any:
+def close(r: ReviewEnv, *, ok: bool = True, confirmation: Path | None = None) -> Any:
     return r.cli(
         "close-interrupted",
         "--run",
         r.request["review_run_id"],
         "--reason-file",
         r.p.note("本体終了と全子孫のcleanup、workspace撤去を確認して中断を終結。"),
+        *(["--cleanup-confirmation", str(confirmation)] if confirmation else []),
         ok=ok,
     )
 
@@ -214,11 +216,24 @@ def test_close_interrupted_rejects_a_held_pr_lease(
 
 def test_close_cannot_revoke_published_review_or_use_empty_reason(
     single_review_env: ReviewEnv,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     r = single_review_env
     r.run()
-    original = (r.run_dir / "execution.json").read_bytes()
-    assert "running" in close(r, ok=False).stderr
+    g = gate_for(r, monkeypatch)
+    g.confirm()
+    original = json.loads((r.run_dir / "execution.json").read_text())
+    result_before, public_before = (r.run_dir / "result.json").read_bytes(), r.p.state()
+    before = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]
+    assert before["decision"] == "merge"
+    assert json.loads(close(r).stdout)["status"] == "published"
+    after = json.loads((r.run_dir / "execution.json").read_text())
+    assert after.pop("exit_confirmation")["workspace_cleanup_complete"] is True
+    assert after == original
+    assert (r.run_dir / "result.json").read_bytes() == result_before
+    assert r.p.state() == public_before
+    gate_after = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]
+    assert (gate_after["decision"], gate_after["reasons"]) == (before["decision"], before["reasons"])
     interrupted(r)
     response = r.cli(
         "close-interrupted",
@@ -229,7 +244,7 @@ def test_close_cannot_revoke_published_review_or_use_empty_reason(
         ok=False,
     )
     assert "reason" in response.stderr
-    assert json.loads(original)["status"] == "published"
+    assert original["status"] == "published"
     assert json.loads((r.run_dir / "execution.json").read_text())["status"] == "running"
 
 
@@ -276,3 +291,156 @@ def test_close_pre_agent_interruption_needs_no_runtime(
     closure = json.loads((r.run_dir / "execution.json").read_text())["interruption"]
     assert closure["agent_started"] is False and closure["runtime_sha256"] is None
     assert not (r.run_dir / "result.json").exists() and len(r.calls()) == 0
+
+
+@pytest.mark.parametrize("status", ["published", "publication_failed"])
+@pytest.mark.parametrize("cause", ["unconfirmed", "workspace"])
+def test_publication_does_not_prove_exit_before_another_run(
+    single_review_env: ReviewEnv,
+    status: str,
+    cause: str,
+) -> None:
+    r = single_review_env
+    extra = {
+        "REVIEW_UNCONFIRMED_CLEANUP"
+        if cause == "unconfirmed"
+        else "REVIEW_LEAVE_WORKSPACE": "1"
+    }
+    if status == "publication_failed":
+        extra["PARENT_FAIL_PATH"] = "repos/o/r/issues/100/comments"
+    r.run(ok=False, extra=extra)
+    execution_path = r.run_dir / "execution.json"
+    execution = json.loads(execution_path.read_text())
+    assert execution["status"] == status
+    assert execution["stages"]["agent"]["status"] == (
+        "unconfirmed" if cause == "unconfirmed" else "finished"
+    )
+    next_run = subset_request(r, 100)
+    blocked = next_run.run(ok=False)
+    assert blocked.returncode == 2 and "cleanup" in blocked.stderr
+    assert len(r.calls()) == 1 and not (next_run.run_dir / "execution.json").exists()
+    original_result, original_public = (
+        (r.run_dir / "result.json").read_bytes(),
+        r.p.state(),
+    )
+    if cause == "workspace":
+        assert "workspace" in close(r, ok=False).stderr
+        runtime = json.loads((r.run_dir / "agent-runtime/result.json").read_text())
+        shutil.rmtree(Path(runtime["contract"]["cwd"]))
+    else:
+        assert "cleanup" in close(r, ok=False).stderr
+        json_edit(r.run_dir / "agent-runtime/result.json", cleanup_complete=True)
+    confirmed = json.loads(close(r).stdout)
+    assert confirmed["status"] == status and confirmed["publication"] == "unchanged"
+    saved = json.loads(execution_path.read_text())
+    assert saved.pop("exit_confirmation")["runtime_sha256"]
+    assert saved == execution
+    assert (r.run_dir / "result.json").read_bytes() == original_result
+    assert r.p.state() == original_public
+    next_run.run()
+    assert len(r.calls()) == 2
+
+
+def launch_gap(r: ReviewEnv, monkeypatch: pytest.MonkeyPatch) -> None:
+    execution = {
+        "status": "running",
+        "request_sha256": review_policy_module(monkeypatch).digest(
+            json.loads((r.run_dir / "request.json").read_text())
+        ),
+        "agent_invocations": 1,
+        "stage_version": 1,
+        "stages": {
+            name: {"status": "running" if name == "agent" else "not_started"}
+            for name in ("agent", "output", "postcheck", "publication")
+        },
+    }
+    (r.run_dir / "execution.json").write_text(json.dumps(execution))
+
+
+def supervisor_confirmation(r: ReviewEnv, **updates: Any) -> Path:
+    path = r.p.root / "cleanup-confirmation.json"
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "run_id": r.request["review_run_id"],
+                "runner": None,
+                "process": None,
+                "cleanup_complete": True,
+                "evidence": "supervisorの隔離scopeでwrapperと全子孫を回収し、当該review requestと照合した。native identityは初回保存前で未取得。",
+                **updates,
+            }
+        )
+    )
+    return path
+
+
+def test_missing_runtime_requires_explicit_supervisor_proof_and_then_allows_new_run(
+    single_review_env: ReviewEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    r = single_review_env
+    launch_gap(r, monkeypatch)
+    assert "cleanup" in close(r, ok=False).stderr
+    assert not (r.run_dir / "agent-runtime/result.json").exists()
+    before = r.p.state()
+    confirmation = supervisor_confirmation(r)
+    value = json.loads(close(r, confirmation=confirmation).stdout)
+    assert value["status"] == "interrupted_closed"
+    assert (
+        value["interruption"]["cleanup_confirmation"]["run_id"]
+        == r.request["review_run_id"]
+    )
+    assert value["interruption"]["runtime_sha256"] is None
+    assert r.p.state() == before and len(r.calls()) == 0
+    assert json.loads(close(r, confirmation=confirmation).stdout) == value
+    assert (
+        "confirmation"
+        in close(
+            r, ok=False, confirmation=supervisor_confirmation(r, cleanup_complete=False)
+        ).stderr
+    )
+    assert not (r.run_dir / "agent-runtime/result.json").exists()
+    next_run = subset_request(r, 100)
+    next_run.run()
+    assert len(r.calls()) == 1
+
+
+@pytest.mark.parametrize(
+    "bad", ["other_run", "unclean", "empty_evidence", "unknown_identity"]
+)
+def test_missing_runtime_rejects_unbound_or_incomplete_supervisor_proof(
+    single_review_env: ReviewEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    bad: str,
+) -> None:
+    r = single_review_env
+    launch_gap(r, monkeypatch)
+    cases: dict[str, dict[str, Any]] = {
+        "other_run": {"run_id": "parent-1-" + "f" * 32},
+        "unclean": {"cleanup_complete": False},
+        "empty_evidence": {"evidence": " "},
+        "unknown_identity": {"runner": {"pid": 1}},
+    }
+    changes = cases[bad]
+    path = supervisor_confirmation(r, **changes)
+    before = (r.run_dir / "execution.json").read_bytes()
+    response = close(r, ok=False, confirmation=path)
+    assert "confirmation" in response.stderr
+    assert (r.run_dir / "execution.json").read_bytes() == before
+    assert len(r.calls()) == 0
+
+
+def test_missing_runtime_confirmation_cannot_override_a_held_runner_lock(
+    single_review_env: ReviewEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    r = single_review_env
+    launch_gap(r, monkeypatch)
+    runtime = r.run_dir / "agent-runtime"
+    runtime.mkdir()
+    with (runtime / "session.lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        response = close(r, ok=False, confirmation=supervisor_confirmation(r))
+        assert "active" in response.stderr
+    assert json.loads((r.run_dir / "execution.json").read_text())["status"] == "running"

@@ -59,8 +59,11 @@ from review_interruption import (  # noqa: E402
     CLOSED,
     agent_started,
     cleanup_evidence,
+    exit_confirmation_record,
     interruption_record,
     require_not_closed,
+    runtime_lock,
+    supervisor_confirmation,
 )
 from review_locks import require_finished_overlaps, target_locks  # noqa: E402
 from review_observations import observe  # noqa: E402
@@ -730,6 +733,15 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 execution["agent_invocations"] = 0
         except (Exception, KeyboardInterrupt) as exc:
             error = error or exc
+    if execution["agent_invocations"] == 0 and not agent_started(execution):
+        agent = execution["stages"]["agent"]
+        agent["cleanup_complete"] = True
+        try:
+            cleanup_evidence(run_dir, request, execution)
+            agent["workspace_cleanup_complete"] = True
+        except (Exception, KeyboardInterrupt) as exc:
+            agent["workspace_cleanup_complete"] = False
+            error = error or exc
     result = (
         candidate
         if candidate is not None and error is None
@@ -876,6 +888,7 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                             "agent": {
                                 "status": "not_invoked",
                                 "cleanup_complete": True,
+                                "workspace_cleanup_complete": True,
                             },
                             "output": {
                                 "status": "validated",
@@ -894,7 +907,7 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
-    """Release a dead review explicitly, without publishing or granting coverage."""
+    """Confirm exit explicitly; close only running runs, preserve formal results."""
     if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
         raise ValueError("invalid run ID")
     reason = args.reason_file.read_text(encoding="utf-8").strip()
@@ -913,7 +926,7 @@ def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ValueError("review run is active; cannot close interruption") from exc
-        with store.locked():
+        with runtime_lock(run_dir), store.locked():
             session = ParentSession(
                 GitHub(request["repo"]),
                 store,
@@ -925,44 +938,71 @@ def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
                 raise ValueError("local interrupted request changed")
             path = run_dir / "execution.json"
             execution = read_json(path)
+            terminal = execution.get("status") in {"running", CLOSED}
+            key = "interruption" if terminal else "exit_confirmation"
             record = interruption_record(execution, request)
+            if not terminal:
+                record = exit_confirmation_record(execution, request)
             if record is not None:
                 if record["reason"] != reason:
-                    raise ValueError("interrupted closure already has a different reason")
+                    raise ValueError(
+                        "interrupted closure already has a different reason"
+                    )
+                if args.cleanup_confirmation is not None and supervisor_confirmation(
+                    read_json(args.cleanup_confirmation), request
+                ) != record.get("cleanup_confirmation"):
+                    raise ValueError(
+                        "cleanup confirmation differs from the saved evidence"
+                    )
             else:
                 if (
-                    execution.get("status") != "running"
+                    execution.get("status")
+                    not in {
+                        "running",
+                        "published",
+                        "publication_failed",
+                        "preparation_failed",
+                    }
                     or execution.get("request_sha256") != digest(request)
                     or type(execution.get("agent_invocations")) is not int
                     or execution["agent_invocations"] not in {0, 1}
                 ):
-                    raise ValueError("only an unchanged running execution can be closed")
-                runtime_sha256 = cleanup_evidence(run_dir, request, execution)
+                    raise ValueError(
+                        "only an unchanged recorded execution can be confirmed"
+                    )
+                runtime_sha256, supervisor = cleanup_evidence(
+                    run_dir, request, execution, args.cleanup_confirmation
+                )
                 record = {
                     "schema_version": 1,
                     "request_sha256": digest(request),
-                    "closed_at": now(),
+                    "closed_at" if terminal else "confirmed_at": now(),
                     "reason": reason,
                     "operator_authorization": auth,
                     "session": session.session,
                     "agent_started": agent_started(execution),
                     "runtime_sha256": runtime_sha256,
+                    "cleanup_confirmation": supervisor,
                     "workspace_cleanup_complete": True,
-                    "publication": "not_published",
+                    "publication": "not_published" if terminal else "unchanged",
                 }
-                execution.update(
-                    status=CLOSED,
-                    finished_at=record["closed_at"],
-                    interruption=record,
-                )
-                interruption_record(execution, request)
+                if terminal:
+                    execution.update(
+                        status=CLOSED,
+                        finished_at=record["closed_at"],
+                        interruption=record,
+                    )
+                    interruption_record(execution, request)
+                else:
+                    execution["exit_confirmation"] = record
+                    exit_confirmation_record(execution, request)
                 Store.write_json(path, execution)
     return {
         "review_run_id": args.run,
-        "status": CLOSED,
-        "publication": "not_published",
+        "status": execution["status"],
+        "publication": record["publication"],
         "agent_invocations": 0,
-        "interruption": record,
+        key: record,
     }
 
 
@@ -1262,6 +1302,7 @@ def parser() -> argparse.ArgumentParser:
     close = commands.add_parser("close-interrupted")
     close.add_argument("--run", required=True)
     close.add_argument("--reason-file", type=Path, required=True)
+    close.add_argument("--cleanup-confirmation", type=Path)
     complete = commands.add_parser("complete-evidence")
     complete.add_argument("--run", required=True)
     complete.add_argument("--pr", type=int, required=True)

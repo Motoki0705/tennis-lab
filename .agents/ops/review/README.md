@@ -80,8 +80,12 @@ run・recover・resume-publication・close-interruptedは、同じprivate state�
 `review-targets/` のflockを、PR番号順で非待機取得する。その後にrun lock、registry lockを取得する。
 PRのleaseは収集前からruntime終了・workspace cleanup・事後照合・公開の終了まで保持し、
 重なるPRを含む別runは起動前に拒否する。別PRは同じ親でも並行実行できる。
-lock fileはunlinkしない。例外・プロセス終了でflockは解放されるが、別runの保存executionが
-`running`なら実行中または中断・終了未確認として新規起動を拒否する。経過時間やPIDだけで解放しない。
+lock fileはunlinkしない。例外・プロセス終了でflockが解放されても、保存executionが`running`なら新規起動を拒否する。
+`published` / `publication_failed` も終了の証明ではない。agent工程の`finished`・`cleanup_complete=true`・
+`workspace_cleanup_complete=true` が揃わなければ、下記の明示確認まで同PRの別runを拒否する。
+起動0回で`not_started`、またはadoptionの`not_invoked`の場合もcleanupとworkspace撤去の記録を照合する。
+新しい準備失敗・adoptionはこの確認を保存する。工程がない旧形式は終了を推定せず、明示確認を要求する。
+経過時間・PID・公開成功だけで解放しない。
 元runの終了とcleanupを確認し、既存の公開再開条件を満たす場合は同じrunを再開する。
 条件を満たせない中断は、下記の明示終結で終了を確認するまで保留する。別runへの自動切替は行わない。
 
@@ -145,27 +149,59 @@ run lockを取得でき、runtime終了・cleanup・保存結果・事後照合�
 
 ### 復旧しない中断runの明示終結
 
-`close-interrupted --run ID --reason-file F` は、担当親の権限・登録済みrequest・非空の理由を検査し、
-`running` のexecutionだけをローカルの `interrupted_closed` に終結する。AIもGitHub書込みも行わない。
-最初に全対象PRのlease、次に対象runの `run.lock` を非待機で取得する。
-どちらかを本体プロセス等が保持していれば拒否し、経過時間・PID・boot情報から終了を推測しない。
+`close-interrupted --run ID --reason-file F` は、担当親の権限・登録済みrequest・非空の理由を検査する。
+AIもGitHub書込みも行わず、確認後の記録は元の状態によって分ける。
 
-agent起動回数が1、またはagent工程が `not_started` 以外（工程の記録欠落も含む）なら、
+| 元のexecution | 保存する確認 |
+|---|---|
+| `running` | ローカルの`interrupted_closed`と`interruption`。未公開の終結で、承認・coverageには使わない |
+| `published` / `publication_failed` / `preparation_failed` | `exit_confirmation`だけを追記。status・工程・終了時刻・正式結果・公開状態を維持する |
+
+`exit_confirmation`はleaseの解放確認にだけ使い、gate・coverage・resolve・採用元の検証には使わない。
+未確認工程を`finished`へ書き換えず、failed結果や指摘・coverageを昇格させない。
+全requestはそのまま残すため、`superseding_reviews`の判定も変えない。
+最初に全対象PRのlease、次に対象runの `run.lock` を非待機で取得する。
+共通ランナーのdirectoryがあれば`agent-runtime/session.lock`も非待機取得し、確認記録の保存まで保持する。
+いずれかを保持中のプロセスがあれば拒否し、経過時間・PID・boot情報から終了を推測しない。
+
+agent起動回数が1、または起動0と`not_started`（adoptionは`not_invoked`）の両方を確認できなければ、
 同じrunの `agent-runtime/result.json` が終了状態で `cleanup_complete=true` であることを要求する。
 runtimeのrun・出力・finalパスとworkspaceも照合するが、finalファイルの存在・成功・形式検証は要求しない。
-runtimeが無い・未完了の場合は、[共通ランナーの停止・cleanup確認](../lib/README.md#状態確認停止中断からの復旧)
+runtimeが存在して未完了の場合は、[共通ランナーの停止・cleanup確認](../lib/README.md#状態確認停止中断からの復旧)
 が必要な手順としてエラーに出る。runnerが失われた場合はsupervisorの全子孫照合を経て
 `agent_exec.sh stop --cleanup-confirmation` で記録し、cleanup確認を手編集で代替しない。
-agent未開始を工程と起動回数の両方で確認できる場合だけruntimeを要求しない。
+agent未開始を工程と起動回数の両方で確認できる場合はruntimeを要求しない。
+
+runtimeの`result.json`が初回保存前で存在しない場合、共通ランナーのstopもそのファイルを必須読取するため使えない。
+親がwrapperと全子孫を含むsupervisorの隔離scopeを照合して回収した後、次の6キーだけのJSONを
+`close-interrupted --cleanup-confirmation F`へ渡す。ファイル欠落・既知PIDの消滅だけでは受理しない。
+
+```json
+{
+  "schema_version": 1,
+  "run_id": "parent-1216-対象reviewの32桁hex",
+  "runner": null,
+  "process": null,
+  "cleanup_complete": true,
+  "evidence": "親が確認した隔離scope、wrapperと全子孫の回収根拠、対象requestとの対応"
+}
+```
+
+共通ランナーのcleanup確認validatorを再利用する。native UUIDが未保存なので`run_id`は既知のreview run IDに結び付ける。
+`runner`・`process`のnullはidentityが未観測という意味で、プロセス不在の証明ではない。
+`evidence`は親による全scope回収の非空の申告であり、CLIがその内容を意味判断することはない。
+記録が存在する場合はこの経路で上書き・迂回せず、native IDに一致する共通stopの確認を使う。
+確認JSONは終結または終了確認の記録に保存し、runtimeのresultを合成しない。
 
 保存済みrepo設定・現在のrepo・共有git worktree登録で対象workspaceを検査する。
 残存ディレクトリ・symlink・worktree登録があれば拒否する。cleanup確認後、対象workspace内の各PR checkoutを
 `git worktree remove --force` で撤去し、残ったworkspace metadataを確認して除去する。終結コマンドは削除しない。
 
 終結はexecutionだけを原子的に更新し、`interruption` に理由・実行権限・session・時刻・request digest・
-agent開始有無・runtime記録のdigest・workspace撤去確認を保存する。元の起動回数・工程・request・
+agent開始の可能性・runtime記録のdigestまたは上記の確認JSON・workspace撤去確認を保存する。元の起動回数・工程・request・
 final・候補・結果・公開コメントは保持し、正式なfailed結果や採用記録も新設しない。
-同じ理由での再送は同じ終結記録を返す。理由の変更と同runの再実行・recover・公開再開は拒否する。
+同じ理由での再送は同じ記録を返し、異なる理由・確認JSONは拒否する。
+`interrupted_closed`になった同runの再実行・recover・公開再開は拒否する。
 保存finalを採用または公開再開したい場合は、終結する前に既存のrecover・resume-publicationを選ぶ。
 
 終結済みrunは同PRの新runを塞がないが、registryのrequestは残る。gateは
@@ -242,6 +278,7 @@ PRの `python_ci` は現在HEADのcheck-runと共通CI検査の理由。`coverag
 
 中断は保存された `execution.status=running` とruntimeの終了・cleanupを別々に表示し、生存は推測しない。
 明示終結は `execution.status=interrupted_closed` と `execution.interruption` に表示する。
+正式結果を維持した終了確認は`execution.exit_confirmation`に表示し、元の工程・coverage照合も保持する。
 終結前の結果が残る場合は `result.retained_only=true` とし、指摘などの履歴を保持する。
 終結runの `coverage_check` は `null` とし、保存済みapproveを正式証拠として計算しない。
 
