@@ -16,6 +16,18 @@ def aggregate(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     validate_graph(records)
     groups: list[dict[str, Any]] = []
+    # A later decision/verification/correction may refer to an intermediate
+    # observation. Keep that observation visible even if the reference appears
+    # after the whole polling sequence, rather than between adjacent samples.
+    protected: set[str | None] = set()
+    for record in records:
+        data = record["data"]
+        if record["kind"] == "decision":
+            protected.update(data["inputs"])
+        elif record["kind"] == "result":
+            protected.update(data["verifies"])
+        elif record["kind"] == "correction":
+            protected.update((data["target_id"], data["replacement_id"]))
 
     def compatible(before: dict[str, Any], after: dict[str, Any]) -> bool:
         if before["kind"] != "result" or after["kind"] != "result":
@@ -23,6 +35,7 @@ def aggregate(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         left, right = before["data"], after["data"]
         return (
             left["repeat"] is not None
+            and before["id"] not in protected
             and left["repeat"] == right["repeat"]
             and before["scope"] == after["scope"]
             and left["observer"] == right["observer"] == "machine"

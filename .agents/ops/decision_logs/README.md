@@ -131,7 +131,9 @@ links form a chain and every change is explicitly unchanged. Capture must reuse 
 random condition key only for identical conditions. Unconfirmed/changed conditions,
 AI starts/continuations, decisions, action snapshots and corrections are boundaries.
 Fetch attempts within one retrieval action can form a group; separate actions stay
-visible. Each group preserves all record IDs, count, first/last recording times and
+visible. Intermediate observations referenced by later decisions, verification or
+corrections remain visible even when that reference follows the entire sequence.
+Each group preserves all record IDs, count, first/last recording times and
 the last record ID. Consumers look up that record for the final result. Raw captures
 and intermediate failures remain available; durations and usage are not invented.
 

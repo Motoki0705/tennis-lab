@@ -472,6 +472,7 @@ def test_unchanged_checks_group_without_erasing_last_failure(kind: str) -> None:
         "target",
         "condition_key",
         "decision",
+        "later_branch",
         "new_ai",
         "selected_model",
     ],
@@ -492,6 +493,8 @@ def test_grouping_preserves_condition_changes_and_decision_ai_boundaries(
         rows[2]["data"]["repeat"]["condition_key"] = schema.new_id()
     elif boundary == "decision":
         rows.insert(2, decision([rows[1]]))
+    elif boundary == "later_branch":
+        rows.extend([decision([rows[1]]), decision([rows[1]])])
     elif boundary == "new_ai":
         judgement = decision([rows[1]], operation="continue_ai")
         request = action(judgement)
