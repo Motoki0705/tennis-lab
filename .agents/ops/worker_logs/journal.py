@@ -269,7 +269,7 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
         },
         "journal_stage",
     )
-    return {
+    result = {
         "delegation_key": "d-" + key,
         "sequence": source["sequence"],
         "state": row["state"],
@@ -278,3 +278,10 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
         "pr": number,
         "saved_to_main": row["state"] == "merged",
     }
+    if "files" in row:
+        from .schema import sanitization
+
+        result["sanitization"] = sanitization(
+            decode(row["files"]["meta.json"])["sanitization"]
+        )
+    return result

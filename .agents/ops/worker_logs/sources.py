@@ -8,6 +8,7 @@ import os
 import re
 import subprocess
 import uuid
+from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -339,8 +340,8 @@ def render(source: dict[str, Any], receipt: dict[str, Any]) -> dict[str, bytes]:
     )
     record = receipt["record"]
     guard = guard_for(source, record)
-    instruction, ni = guard.sanitize(source["instruction"])
-    final, nf = guard_for(source, record, receipt.get("head_at_finish")).sanitize(
+    instruction = guard.sanitize(source["instruction"])
+    final = guard_for(source, record, receipt.get("head_at_finish")).sanitize(
         receipt["final"]
     )
     additional = [guard.sanitize(s) for s in source["additional"]]
@@ -371,23 +372,36 @@ def render(source: dict[str, Any], receipt: dict[str, Any]) -> dict[str, bytes]:
         {
             int(n)
             for n in re.findall(
-                re.escape(f"https://github.com/{repo}/pull/") + r"([1-9]\d*)\b", final
+                re.escape(f"https://github.com/{repo}/pull/") + r"([1-9]\d*)\b",
+                final.text,
             )
         }
     )
     commits = {
         s
         for s in re.findall(
-            re.escape(f"https://github.com/{repo}/commit/") + r"([a-f0-9]{40})\b", final
+            re.escape(f"https://github.com/{repo}/commit/") + r"([a-f0-9]{40})\b",
+            final.text,
         )
     }
     commits.add(source["head_at_start"])
     if receipt.get("head_at_finish"):
         commits.add(receipt["head_at_finish"])
     files = {
-        "instruction.md": instruction.encode("utf-8"),
-        "final.md": final.encode("utf-8"),
+        "instruction.md": instruction.text.encode("utf-8"),
+        "final.md": final.text.encode("utf-8"),
     }
+    sanitization: dict[str, Any] = {
+        "version": 1,
+        "instruction": instruction.replacements,
+        "final": final.replacements,
+        "additional": sum(s.replacements for s in additional),
+    }
+    local_paths: Counter[str] = Counter()
+    for result in (instruction, final, *additional):
+        local_paths.update(result.local_paths)
+    if local_paths:
+        sanitization.update(version=2, local_paths=dict(sorted(local_paths.items())))
     meta = {
         "schema_version": 1,
         "repo": repo,
@@ -410,18 +424,13 @@ def render(source: dict[str, Any], receipt: dict[str, Any]) -> dict[str, bytes]:
         },
         "instruction": {
             "kind": source["instruction_kind"],
-            "additional_instructions": [s for s, _ in additional],
+            "additional_instructions": [s.text for s in additional],
         },
         "worker": {"agent": "codex", "selected": selected, "effective": effective},
         "runtime": {"result": "completed", "turn_end_reason": "completed"},
         "artifacts": {"prs": prs, "commits": sorted(commits)},
         "files": {k: schema.sha(v) for k, v in files.items()},
-        "sanitization": {
-            "version": 1,
-            "instruction": ni,
-            "final": nf,
-            "additional": sum(n for _, n in additional),
-        },
+        "sanitization": sanitization,
         "started_at": timestamp(record.get("started_at")),
         "finished_at": timestamp(record.get("finished_at")),
         "captured_at": source["captured_at"],

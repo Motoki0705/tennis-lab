@@ -55,7 +55,7 @@ raw・stderr・README等のファイルは追跡対象にしない。
 | `worker` | agent、model/max effortの選択値、観測値または明示的な未取得 |
 | `runtime` | completedというターン終了の事実。タスク成功の認定ではない |
 | `artifacts` | 固定した開始commit、報告に明記された同repoのPR/commit参照 |
-| `files / sanitization` | 公開本文のdigest、無害化の版と置換件数 |
+| `files / sanitization` | 公開本文のdigest、無害化の版・本文別の総置換件数・ローカルパスの種類別マスク件数 |
 | `started_at / finished_at / captured_at` | timezone付き時刻。mtimeや現在時刻で終了時刻を補わない |
 
 担当issueのdigestは送信版を識別するもので、現在のissue URLが過去本文を表示する保証ではない。
@@ -64,10 +64,25 @@ raw・stderr・README等のファイルは追跡対象にしない。
 
 ## 公開検査
 
-既知のcheckout絶対パスをrepo相対参照へ、Markdownのファイルリンクを固定commitのGitHub参照へ、観測済みの私的IDを明示的な伏字へ置換し、全文を再検査する。
+既知のcheckout絶対パスをrepo相対参照へ、Markdownのファイルリンクを固定commitのGitHub参照へ、観測済みの私的IDを明示的な伏字へ置換する。
+その後に残るローカルパス（POSIX・home・Windows・UNC、引数に直結するパスを含む）を `[local path]` へ置換し、全文を再検査する。
+percent encodingと全角表記も検査用に復号・正規化する。マスクは原文中の該当範囲へ適用し、周囲の原文は維持する。
+`あり/なし`・`観測/補間`・`カメラ/ボール` のように、日本語文字の直後の語間区切りはそのまま公開できる。
+引用符・括弧・半角/全角コロン・代入記号などの直後はパスの開始位置として扱う。日本語名のパス（Markdownリンク内の `/資料/x`、`保存先：/資料/x` など）もマスクする。
+日本語に隣接する実パス（`パスは/home/user/x`、`設定は~/.ssh` など）はマスク対象のままにする。
 instruction/finalだけでなく追加指示、metadataのキーと値、リンク、公開パス、branch、PR本文も対象。
-既知の秘密値、UUID/session表記、資格情報の表記、未変換の絶対パス、危険なURL、制御文字を拒否する。
-URLのpercent encodingも検査する。全文をhiddenにしたり、先頭だけを切り取ったりして公開成功へ変換しない。
+既知の秘密値、UUID/session表記、資格情報の表記、危険なURL、制御文字を拒否する。
+パスマスク前にもこの検査を行い、パスに埋まった資格情報等をマスクで隠して受理しない。
+URLのuserinfo、ローカルhost、query/fragmentに含まれるローカルパスは従来どおり拒否し、URLの部分修正はしない。
+URLは原文と復号後の両方から取り出し、query/fragmentも復号して検査する。encodedの引用符・括弧でパスをURLの外へ見せかけても受理しない。
+マスク後に未変換パスや秘密が残っていれば拒否する。全文をhiddenにしたり、先頭だけを切り取ったりして公開成功へ変換しない。
+
+マスクは黙って適用しない。公開 `meta.json` の `sanitization` にinstruction/final/追加指示の総置換件数と、
+`local_paths` の種類別件数（`posix`・`home`・`windows`・`unc`、出現した種類だけ）を記録する。
+パスマスクがあるときは `sanitization.version=2`、ないときは従来のversion 1を維持する。
+元のinstruction/finalと公開3ファイルをprivate journalへ保持し、公開status・親への完了応答にも
+同じ検証済み `sanitization` を返す。元パスや秘密値を件数の記録へ入れない。
+掲示板は入力拒否の契約を維持し、共通の誤検出修正だけを適用する（[board](../board/README.md)）。
 
 未知の秘密情報を完全に分類する機構ではない。意味・出典を保って無害化できないものは `blocked` とし、
 原文はprivateに保持する。通常出力は固定error codeだけ。Git/HTTPの診断原文もprivate journalにだけ保存する。

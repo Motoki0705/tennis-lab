@@ -6,11 +6,23 @@ import re
 import unicodedata
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import unquote
 
 from .errors import BoardError
 
+# Only letters can precede a Japanese word separator. Punctuation, including
+# fullwidth punctuation, must still introduce Japanese-named absolute paths.
+_JAPANESE_LETTERS = (
+    r"\u3005-\u3007\u303b\u3041-\u3096\u3099-\u309a\u309d-\u309f"
+    r"\u30a1-\u30fa\u30fc-\u30ff\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
+    r"\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9f"
+    r"\U0001b000-\U0001b16f\U00020000-\U0003ffff"
+)
 ABSOLUTE_PATH = re.compile(
-    r"(?<![a-zA-Z0-9_./])(?:(?<!https:)(?<!http:)/(?=\S)|~[/\\]|[a-zA-Z]:[/\\]|\\\\)",
+    r"(?<![a-zA-Z0-9_./])(?:"
+    r"(?<!https:)(?<!http:)"
+    rf"(?!(?<=[{_JAPANESE_LETTERS}])/[{_JAPANESE_LETTERS}])/(?=\S)"
+    r"|~[/\\]|[a-zA-Z]:[/\\]|\\\\)",
     re.IGNORECASE,
 )
 SESSION_TOKEN = re.compile(
@@ -18,6 +30,18 @@ SESSION_TOKEN = re.compile(
     r"|\b(?:session|thread)[_-]?id\s*[:=]",
     re.IGNORECASE,
 )
+
+
+def decoded_text(value: str) -> str:
+    """Bound percent decoding consistently across board and worker-log checks."""
+    for _ in range(4):
+        new = unquote(value)
+        if new == value:
+            return value
+        value = new
+    if unquote(value) != value:
+        raise ValueError("ambiguous_encoding")
+    return value
 
 
 def public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> None:
@@ -33,7 +57,14 @@ def public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> No
                 secret and secret in item for secret in secrets
             ) or SESSION_TOKEN.search(item):
                 raise BoardError("board text contains private session information")
-            if ABSOLUTE_PATH.search(item) or item.strip().strip("\"'`") == "/":
+            try:
+                path_text = unicodedata.normalize("NFKC", decoded_text(item))
+            except ValueError:
+                raise BoardError("board text contains ambiguous encoding") from None
+            if any(
+                ABSOLUTE_PATH.search(view) or view.strip().strip("\"'`") == "/"
+                for view in (item, path_text)
+            ):
                 raise BoardError("board text contains a private path")
             if any(
                 unicodedata.category(c).startswith("C") and c not in "\n\t"
