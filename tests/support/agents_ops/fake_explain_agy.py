@@ -139,6 +139,15 @@ output_file = (
     else role + ".json"
 )
 output = json.loads((root / output_file).read_text())
+if os.environ.get("FAKE_EXPLAIN_BIND_REQUEST") == "1":
+    # Initial-authoring CLI allocates a fresh request ID. Bind the configured
+    # fake output to that real input, without simulating model reasoning.
+    assert prompt is not None
+    inputs = json.loads(prompt.split("\nINPUT_JSON\n", 1)[1])
+    if role == "writer":
+        output["request"] = inputs["request"]
+    else:
+        output["candidate_digest"] = inputs["candidate_digest"]
 hooks = json.loads((Path.cwd() / ".agents/hooks.json").read_text())
 command = hooks["explain-html-no-tools"]["PreToolUse"][0]["hooks"][0]["command"]
 if role == "writer":
