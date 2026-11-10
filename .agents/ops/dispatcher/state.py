@@ -46,3 +46,6 @@ class DispatchStore(Store):
     def save(self) -> None:
         self._require_registry()
         super().save()
+        from decision_logs.observations import saved_jobs
+
+        saved_jobs(self.parents)

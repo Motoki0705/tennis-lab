@@ -12,6 +12,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from decision_logs.capture import runtime_environment
 from dispatcher.runtime import Runtime, load
 from lib.agent_settings import implementation_model
 from worker_logs import service as worker_logs
@@ -459,14 +460,24 @@ def run_worker(
             .get("log", {})
             .get("journal")
         )
+        from decision_logs.observations import bind_worker_task
+
+        bind_worker_task(session.row["tasks"][str(child)])
     # A foreground runner must not hold a registry or parent operation lock.
     # Bytes in both directions: the runner reads UTF-8 and the locale may not be.
     try:
+        directory = Path(command[command.index("--run-dir") + 1])
         proc = subprocess.run(
             command,
             input=instruction.encode("utf-8"),
             capture_output=True,
             check=False,
+            env=runtime_environment(
+                directory,
+                actual_operation="continue_ai"
+                if command[1] == "resume"
+                else "start_ai",
+            ),
         )
     except OSError as exc:
         proc = subprocess.CompletedProcess(command, 127, b"", str(exc).encode("utf-8"))

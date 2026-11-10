@@ -23,6 +23,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "lib"))
 
+from decision_logs import review_capture as decision_capture  # noqa: E402
+from decision_logs.capture import CURRENT  # noqa: E402
 from opsproc import CommandError, run_process_group  # noqa: E402
 from parent.execution import (  # noqa: E402
     require_requirement_targets,
@@ -332,6 +334,13 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
         execution = read_json(run_dir / "execution.json")
         execution.setdefault("stages", {}).setdefault("publication", {}).update(updates)
         Store.write_json(run_dir / "execution.json", execution)
+        decision_capture.result(
+            {
+                "publication": execution["stages"]["publication"]["status"],
+                "stage": execution["stages"]["publication"],
+            },
+            artifact="execution.json publication stage",
+        )
 
     stage(status="pending", result_sha256=digest(result))
     parents = matching(session.parent, {"pending", "result", "adoption"})
@@ -388,6 +397,7 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
         )
     (run_dir / "parent-comment.md").write_text(body, encoding="utf-8")
     stage(status="published")
+    decision_capture.published(url, body)
     return url
 
 
@@ -395,6 +405,7 @@ def publish_result(
     session: ParentSession, run_dir: Path, result: dict[str, Any]
 ) -> str:
     """Only publication state changes on failure; the immutable result survives."""
+    decision_capture.result({"publication": "pending"}, artifact="publication")
     try:
         url = publish(session, run_dir, result)
         execution = read_json(run_dir / "execution.json")
@@ -408,11 +419,32 @@ def publish_result(
         )
     execution["finished_at"] = now()
     Store.write_json(run_dir / "execution.json", execution)
+    decision_capture.result(
+        {"publication": execution["status"]}, artifact="publication"
+    )
     return str(execution["status"])
 
 
 def run_review(args: argparse.Namespace) -> dict[str, Any]:
     request = request_manifest(read_json(args.request))
+    capture = decision_capture.initialize(
+        args, request, "review.run", lambda: decision_capture.begin(args, request)
+    )
+    token = CURRENT.set(capture)
+    try:
+        value = _locked_review(args, request)
+        decision_capture.complete(value)
+        return value
+    except BaseException as exc:
+        from decision_logs.parent_commands import failed
+
+        failed(exc)
+        raise
+    finally:
+        CURRENT.reset(token)
+
+
+def _locked_review(args: argparse.Namespace, request: dict[str, Any]) -> dict[str, Any]:
     directory = args.state_dir / "reviews" / request["review_run_id"]
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     with (directory / "run.lock").open("a") as lock:
@@ -562,7 +594,10 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                         "--config",
                         str(run_dir / "retrieval-config.json"),
                     ],
-                    "env": {"PYTHONPATH": str(HERE.parent)},
+                    "env": {
+                        "PYTHONPATH": str(HERE.parent),
+                        **decision_capture.retrieval_env(),
+                    },
                     "tool_timeout_sec": 960,
                 }
             },
@@ -602,6 +637,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 ],
                 cwd=root,
                 timeout=args.agent_timeout,
+                env=decision_capture.runtime_env(run_dir / "agent-runtime"),
             )
     except (Exception, KeyboardInterrupt) as exc:
         (run_dir / "error.log").write_text(str(exc), encoding="utf-8")
@@ -653,6 +689,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
             )
             validate_result(candidate)
             Store.write_json(run_dir / "output.json", candidate)
+            decision_capture.result(candidate, artifact="output.json")
             execution["stages"]["output"] = {
                 "status": "validated",
                 "final_file": str(final.relative_to(run_dir)),
@@ -715,6 +752,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
     validate_result(result)
     Store.write_json(run_dir / "result.json", result)
     Store.write_json(execution_file, execution)
+    decision_capture.result(result, artifact="result.json")
     if execution["agent_invocations"] == 0:
         execution.update(status="preparation_failed", finished_at=now())
         Store.write_json(execution_file, execution)
@@ -985,6 +1023,41 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def resolve(args: argparse.Namespace) -> dict[str, Any]:
+    if not args.run or not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
+        raise ValueError("invalid run ID")
+    raw = validate_result(
+        read_json(args.state_dir / "reviews" / args.run / "result.json")
+    )
+    request = request_manifest(raw["request"], instructed=False)
+    capture = decision_capture.initialize(
+        args,
+        request,
+        "review.resolve",
+        lambda: decision_capture.begin_verification(args, request),
+    )
+    token = CURRENT.set(capture)
+    try:
+        value = _resolve(args)
+        if capture is not None:
+            from decision_logs.capture import observe
+
+            observe(
+                value,
+                observer="parent_verification",
+                verifies=capture.row["verification_targets"],
+                summary=f"review.resolve: explicit verification recorded for PR {args.pr}, finding {args.finding}; coverage={value['coverage']}",
+            )
+        return value
+    except BaseException as exc:
+        from decision_logs.parent_commands import failed
+
+        failed(exc)
+        raise
+    finally:
+        CURRENT.reset(token)
+
+
+def _resolve(args: argparse.Namespace) -> dict[str, Any]:
     store = Store(args.state_dir)
     if not args.run or not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
         raise ValueError("invalid run ID")
@@ -1119,12 +1192,20 @@ def parser() -> argparse.ArgumentParser:
         "--agent-exec", type=Path, default=HERE.parent / "lib/agent_exec.sh"
     )
     run.add_argument("--agent-timeout", type=float, default=1800)
+    run.add_argument("--decision-id")
+    run.add_argument("--plan-id")
+    run.add_argument("--retry-of")
+    run.add_argument("--changes-file", type=Path)
     fix = commands.add_parser("resolve")
     fix.add_argument("--run", required=True)
     fix.add_argument("--pr", type=int, required=True)
     fix.add_argument("--finding", required=True)
     fix.add_argument("--fixed-head", required=True)
     fix.add_argument("--evidence", type=Path, required=True)
+    fix.add_argument("--decision-id")
+    fix.add_argument("--plan-id")
+    fix.add_argument("--retry-of")
+    fix.add_argument("--changes-file", type=Path)
     recovery = commands.add_parser("recover")
     recovery.add_argument("--request", type=Path, required=True)
     recovery.add_argument("--source-run", required=True)
@@ -1136,6 +1217,11 @@ def parser() -> argparse.ArgumentParser:
     complete.add_argument("--pr", type=int, required=True)
     complete.add_argument("--wait", type=int, required=True)
     complete.add_argument("--evidence", type=Path, required=True)
+    for control in (recovery, resume, complete):
+        control.add_argument("--decision-id")
+        control.add_argument("--plan-id")
+        control.add_argument("--retry-of")
+        control.add_argument("--changes-file", type=Path)
     return root
 
 
@@ -1146,13 +1232,25 @@ def main(argv: list[str] | None = None) -> int:
             args.agent_timeout <= 0 or not math.isfinite(args.agent_timeout)
         ):
             raise ValueError("agent-timeout must be positive and finite")
-        value = {
+        operation = {
             "run": run_review,
             "resolve": resolve,
             "recover": recover,
             "resume-publication": resume_publication,
             "complete-evidence": complete_evidence,
-        }[args.command](args)
+        }[args.command]
+        if args.command in {"recover", "resume-publication", "complete-evidence"}:
+            if args.command == "recover":
+                request = request_manifest(read_json(args.request))
+            else:
+                if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
+                    raise ValueError("invalid run ID")
+                request = validate_result(
+                    read_json(args.state_dir / "reviews" / args.run / "result.json")
+                )["request"]
+            value = decision_capture.control(args, request, operation)
+        else:
+            value = operation(args)
         print(json.dumps(value, ensure_ascii=False, indent=2))
         if args.command in {"run", "recover", "resume-publication"}:
             return (

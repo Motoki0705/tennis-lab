@@ -523,4 +523,7 @@ class Retrieval:
             response.update(
                 ok=False, error={"code": "RECORDING_FAILED", "message": str(exc)}
             )
+        from decision_logs.observations import retrieval
+
+        retrieval(name, arguments, response)
         return response
