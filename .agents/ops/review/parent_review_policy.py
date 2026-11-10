@@ -285,6 +285,36 @@ def execution_stages(execution: Mapping[str, Any]) -> dict[str, Any] | None:
     return stages
 
 
+def superseding_reviews(
+    reviews: Sequence[Mapping[str, Any]], source_run: str, request: Mapping[str, Any]
+) -> dict[int, list[str]]:
+    """A recovery may not select older evidence past any related request.
+
+    Registry order is the same ordering used by the merge gate. No state, failed
+    preparation, cancellation, successful result, or adoption erases a request.
+    The adoption's own request is the sole exclusion, including on resubmission.
+    """
+    requests = [request_manifest(row["request"], instructed=False) for row in reviews]
+    ids = [row["review_run_id"] for row in requests]
+    target = request["review_run_id"]
+    if len(set(ids)) != len(ids) or source_run not in ids or target not in ids:
+        raise ValueError("adoption requires unique registered source and target runs")
+    if (
+        ids.index(source_run) >= ids.index(target)
+        or requests[ids.index(target)] != request
+    ):
+        raise ValueError("adoption source must precede its unchanged request")
+    numbers = {p["number"] for p in request["prs"]}
+    blocked: dict[int, list[str]] = {}
+    for later in requests[ids.index(source_run) + 1 :]:
+        if later["review_run_id"] == target:
+            continue
+        for pr in later["prs"]:
+            if pr["number"] in numbers:
+                blocked.setdefault(pr["number"], []).append(later["review_run_id"])
+    return blocked
+
+
 def validate_result(value: Any) -> dict[str, Any]:
     adoption = object_value(value).get("kind") == "adoption"
     data = exact(
@@ -414,7 +444,8 @@ def validate_result(value: Any) -> dict[str, Any]:
                 "final_sha256",
                 "output_sha256",
                 "current_prs",
-            },
+            }
+            | ({"events_sha256"} if "events_sha256" in data["validation"] else set()),
         )
         for key in validation.keys() - {"current_prs"}:
             hex_value(validation[key], 64)

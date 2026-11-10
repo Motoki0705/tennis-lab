@@ -15,6 +15,7 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE.parent / "lib"))
 
 from issues import Issue  # noqa: E402
 from merge_gate_policy import (  # noqa: E402
@@ -47,6 +48,7 @@ from parent_review_policy import (  # noqa: E402
     load_json,
     records,
     request_manifest,
+    superseding_reviews,
     validate_result,
 )
 from parent_review_policy import snapshots as validate_snapshots  # noqa: E402
@@ -302,6 +304,11 @@ def load_evidence(
         ):
             raise ValueError("adoption source request differs from registry")
         verify_adoption(session.store.directory, result)
+        for n in superseding_reviews(
+            session.row["reviews"], result["source_run"], request
+        ):
+            if n in view.errors:
+                view.errors[n].append("adoption_source_superseded")
     parent_comments = session.gh.comments(session.parent)
     pr_comments = {n: session.gh.comments(n) for n in view.candidates}
     errors = list(

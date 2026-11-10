@@ -8,15 +8,18 @@ import re
 from pathlib import Path
 from typing import Any
 
+from agent_events import Events, identifier, parse_cli_event, parse_json
+from agent_output import OutputSchema
 from parent.policy import digest, object_value
 from parent_review_policy import (
     execution_stages,
     load_json,
-    output_object,
     parse_output,
     request_manifest,
     validate_result,
 )
+
+RECOVERABLE_RUNTIME_REASONS = frozenset({"completed", "runtime_error", "cli_error"})
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -24,7 +27,8 @@ def read_json(path: Path) -> dict[str, Any]:
 
 
 def file_digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    with path.open("rb") as stream:
+        return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
 def saved_final(run_dir: Path) -> Path:
@@ -70,25 +74,123 @@ def runtime_evidence(run_dir: Path) -> dict[str, Any]:
         != file_digest(run_dir / "agent-runtime/output-schema.json")
     ):
         raise ValueError("runtime belongs to another run/prompt/schema")
+    reason = runtime.get("turn_end_reason")
+    if not isinstance(reason, str) or reason not in RECOVERABLE_RUNTIME_REASONS:
+        raise ValueError("runtime end reason is not recoverable")
+    if runtime.get("evidence_error") or runtime.get("recovery_error"):
+        raise ValueError("runtime metadata evidence is incomplete or inconsistent")
+    events = completion_evidence(run_dir, runtime)
+    if reason == "completed":
+        valid = (
+            runtime["result"] == "completed"
+            and runtime["exit_code"] == 0
+            and runtime["cli_exit_code"] == 0
+            and not events.failed
+        )
+    else:
+        valid = (
+            runtime["result"] == "failed"
+            and runtime["exit_code"] != 0
+            and (
+                events.failed
+                if reason == "runtime_error"
+                else runtime["cli_exit_code"] != 0 and not events.failed
+            )
+        )
+    if not valid:
+        raise ValueError("runtime reason contradicts its exit/event evidence")
     return runtime
+
+
+def completion_evidence(run_dir: Path, runtime: dict[str, Any]) -> Events:
+    """Replay the runner's original event boundary, including failed turns.
+
+    A transport error after completion is allowed; a different final message,
+    missing completion, another session/turn, or metadata mismatch is not.
+    """
+    contract = object_value(runtime.get("contract"))
+    settings = object_value(contract.get("settings"))
+    selected = object_value(settings.get("selected"))
+    if (
+        settings.get("agent") != "codex"
+        or settings.get("profile") != "review"
+        or contract.get("mode") != "read-only"
+    ):
+        raise ValueError("runtime is not a read-only Codex review")
+    info = object_value(runtime.get("runtime"))
+    session = identifier(info.get("session_id"))
+    turn = identifier(info.get("turn_id"))
+    effective = object_value(info.get("effective"))
+    for key in ("model", "effort", "service_tier"):
+        if not isinstance(selected.get(key), str) or not selected[key].strip():
+            raise ValueError("runtime selected settings are missing")
+        observed = object_value(effective.get(key))
+        if observed.get("status") == "observed":
+            if (
+                observed.get("value") != selected[key]
+                or not isinstance(observed.get("source"), str)
+                or not observed["source"]
+            ):
+                raise ValueError("runtime effective setting disagrees with selection")
+        elif (
+            key != "service_tier"
+            or observed.get("status") != "unavailable"
+            or observed.get("value") is not None
+            or not observed.get("reason")
+        ):
+            raise ValueError("runtime effective setting is not confirmed")
+    events = Events("codex", selected, info.get("requested_session_id"))
+    completed_final = None
+    with (run_dir / "agent-runtime/events.jsonl").open("rb") as stream:
+        for line in stream:
+            if not line.strip():
+                continue
+            was_completed = events.completed
+            raw = object_value(parse_cli_event(line, "codex"))
+            if was_completed and (
+                raw.get("type") in {"thread.started", "turn.started", "turn.completed"}
+                or raw.get("type") == "item.completed"
+                and object_value(raw.get("item")).get("type") == "agent_message"
+            ):
+                raise ValueError("runtime events changed the completed review")
+            events.feed(line)
+            if was_completed and (
+                events.final != completed_final
+                or events.turn != turn
+                and events.turn is not None
+            ):
+                raise ValueError("runtime events changed the completed review")
+            if events.completed and not was_completed:
+                completed_final = events.final
+    if (
+        not events.started
+        or not events.completed
+        or not isinstance(completed_final, str)
+        or not completed_final.strip()
+    ):
+        raise ValueError("runtime events have no completed final review")
+    if (
+        events.session != session
+        or events.turn is not None
+        and events.turn != turn
+        or events.errors != info.get("runtime_errors")
+    ):
+        raise ValueError("runtime event/session/turn evidence disagrees")
+    final = saved_final(run_dir)
+    if final.read_text(encoding="utf-8").strip() != completed_final.strip():
+        raise ValueError("saved final and completed agent message disagree")
+    OutputSchema(run_dir / "agent-runtime/output-schema.json", agent="codex").validate(
+        parse_json(completed_final)
+    )
+    return events
 
 
 def parse_final(run_dir: Path, request: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
     """Validate the exact saved schema as well as the semantic review contract."""
-    from jsonschema import Draft202012Validator
-    from jsonschema.exceptions import SchemaError, ValidationError
-
+    completion_evidence(run_dir, read_json(run_dir / "agent-runtime/result.json"))
     final = saved_final(run_dir)
     text = final.read_text(encoding="utf-8")
     parsed = parse_output(text, [p["number"] for p in request["prs"]])
-    schema = read_json(run_dir / "agent-runtime/output-schema.json")
-    try:
-        Draft202012Validator.check_schema(schema)
-        Draft202012Validator(schema).validate(output_object(text))
-    except (SchemaError, ValidationError) as exc:
-        raise ValueError(
-            f"saved final violates its output schema: {exc.message}"
-        ) from exc
     return final, parsed
 
 
@@ -115,10 +217,14 @@ def source_evidence(state_dir: Path, run: str) -> tuple[dict[str, Any], dict[str
         raise ValueError("source run execution/result/request mismatch")
     runtime = runtime_evidence(directory)
     cwd = runtime.get("contract", {}).get("cwd")
+    retrieval = read_json(directory / "retrieval-config.json")
+    expected_cwd = Path(retrieval["repo"]) / ".claude/worktrees" / ("review-" + run)
     if (
         not isinstance(cwd, str)
         or Path(cwd).name != "review-" + run
         or Path(cwd).exists()
+        or retrieval.get("run_id") != run
+        or Path(cwd).resolve() != expected_cwd.resolve()
     ):
         raise ValueError("review workspace cleanup is not confirmed")
     context = read_json(directory / "context.json")
@@ -182,6 +288,7 @@ def source_evidence(state_dir: Path, run: str) -> tuple[dict[str, Any], dict[str
         "source_execution_sha256": digest(execution),
         "source_result_sha256": digest(result),
         "runtime_sha256": digest(runtime),
+        "events_sha256": file_digest(directory / "agent-runtime/events.jsonl"),
         "final_sha256": file_digest(final),
         "output_sha256": digest(candidate),
         "current_prs": request["prs"],

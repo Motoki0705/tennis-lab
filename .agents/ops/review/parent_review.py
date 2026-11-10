@@ -50,6 +50,7 @@ from parent_review_policy import (  # noqa: E402
     pr_findings,
     records,
     request_manifest,
+    superseding_reviews,
     validate_evidence_completion,
     validate_resolution,
     validate_result,
@@ -769,6 +770,10 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
             candidate, validation = source_evidence(store.directory, args.source_run)
             source = candidate["request"]
             authorized(session, source)
+            if superseding_reviews(session.row["reviews"], args.source_run, request):
+                raise ValueError(
+                    "source review is superseded; use the latest relevant execution"
+                )
             if any(request[k] != source[k] for k in ("repo", "parent_issue", "prs")):
                 raise ValueError("recover requires unchanged source targets")
             with session.gh.fresh_reads():
@@ -892,6 +897,12 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
                 raise ValueError("run is not ready for publication resume")
             if result["kind"] == "adoption":
                 verify_adoption(store.directory, result)
+                if superseding_reviews(
+                    session.row["reviews"], result["source_run"], request
+                ):
+                    raise ValueError(
+                        "source review is superseded; cannot resume adoption publication"
+                    )
             with session.gh.fresh_reads():
                 current_context, _ = collect(session, request)
             if any(p["coverage"] == "reviewed" for p in result["prs"]) and any(

@@ -201,8 +201,11 @@ def test_recovery_rejects_unverified_final_without_writes_or_agent(
     )
     if case == "runtime_json":
         execution = json.loads((r.run_dir / "execution.json").read_text())
-        assert execution["stages"]["output"]["status"] == "validated"
+        assert execution["stages"]["output"]["status"] == "invalid"
         assert execution["stages"]["agent"]["status"] == "unconfirmed"
+        assert (
+            r.run_dir / "agent-runtime/final.md"
+        ).read_text() == r.output.read_text()
     adopted = recovery_request(r)
     if case == "digest":
         json_edit(r.run_dir / "execution.json", request_sha256="0" * 64)
@@ -463,6 +466,12 @@ def test_legacy_run_without_stages_or_evidence_waits_can_be_recovered(
     del output["prs"][0]["evidence_waits"]
     for final in ("agent_output.md", "agent-runtime/final.md"):
         (r.run_dir / final).write_text(json.dumps(output))
+    events_path = r.run_dir / "agent-runtime/events.jsonl"
+    events = [json.loads(line) for line in events_path.read_text().splitlines()]
+    next(event for event in events if event["type"] == "item.completed")["item"][
+        "text"
+    ] = json.dumps(output)
+    events_path.write_text("".join(json.dumps(event) + "\n" for event in events))
     schema_path = r.run_dir / "agent-runtime/output-schema.json"
     schema = json.loads(schema_path.read_text())
     pr_schema = schema["properties"]["prs"]["items"]
@@ -483,3 +492,173 @@ def test_legacy_run_without_stages_or_evidence_waits_can_be_recovered(
     g.confirm()
     assert g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["decision"] == "merge"
     assert len(r.calls()) == 1
+
+
+def newer_findings(r: ReviewEnv) -> ReviewEnv:
+    newer = recovery_request(r)
+    output = json.loads(newer.output.read_text())
+    output["verdict"] = "request_changes"
+    output["prs"][0]["findings"] = [
+        {
+            "severity": "major",
+            "path": "change.txt",
+            "line": 1,
+            "rule": "後続レビュー",
+            "detail": "Aが見落とした未解決の問題",
+        }
+    ]
+    newer.output.write_text(json.dumps(output))
+    newer.run()
+    return newer
+
+
+def resolve_finding(r: ReviewEnv) -> None:
+    proof = r.p.root / "later-finding-proof.json"
+    proof.write_text(
+        json.dumps(
+            {
+                "ci": "固定HEAD Python成功",
+                "regression_tests": "親が回帰結果を確認",
+                "resolution": "後続runの指摘を確認して解消",
+                "reviewed_paths": [],
+            }
+        )
+    )
+    r.cli(
+        "resolve",
+        "--run",
+        r.request["review_run_id"],
+        "--pr",
+        "100",
+        "--finding",
+        "pr-100-1",
+        "--fixed-head",
+        r.request["prs"][0]["head_sha"],
+        "--evidence",
+        str(proof),
+    )
+
+
+def test_recover_cannot_skip_later_findings(
+    single_review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    a = single_review_env
+    a.run(ok=False, extra={"REVIEW_AGENT_FINAL_EXIT": "3"})
+    b = newer_findings(a)
+    c = recovery_request(b)
+    rejected = recover(a, c, ok=False)
+    assert rejected.returncode == 2 and "superseded" in rejected.stderr
+    assert not (c.run_dir / "result.json").exists()
+    # The latest source retains B's major, including through an adoption.
+    result = json.loads(recover(b, c).stdout)["result"]
+    assert result["verdict"] == "request_changes"
+    g = gate_for(c, monkeypatch)
+    g.confirm()
+    assert (
+        "unresolved_findings"
+        in g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["reasons"]
+    )
+    resolve_finding(c)
+    assert g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["decision"] == "merge"
+    assert len(a.calls()) == 2
+
+
+def test_gate_and_resume_reject_legacy_laundered_adoption(
+    single_review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    a = single_review_env
+    a.run(ok=False, extra={"REVIEW_AGENT_FINAL_EXIT": "3"})
+    b = newer_findings(a)
+    c = recovery_request(b)
+    registry_path = a.run_dir.parents[1] / "registry.json"
+    original = registry_path.read_bytes()
+    registry = json.loads(original)
+    # Reproduce an already-published C from before the history guard: its creation
+    # did not see B. Restore the complete durable history before invoking gate.
+    registry["parents"]["o/r#1"]["reviews"] = [
+        row
+        for row in registry["parents"]["o/r#1"]["reviews"]
+        if row["request"]["review_run_id"] != b.request["review_run_id"]
+    ]
+    registry_path.write_text(json.dumps(registry))
+    try:
+        recover(a, c)
+    finally:
+        registry_path.write_bytes(original)
+    g = gate_for(c, monkeypatch)
+    g.confirm()
+    assert (
+        "adoption_source_superseded"
+        in g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["reasons"]
+    )
+    comments = copy.deepcopy(a.p.state()["comments"])
+    resume = c.cli("resume-publication", "--run", c.request["review_run_id"], ok=False)
+    assert resume.returncode == 2 and "superseded" in resume.stderr
+    assert a.p.state()["comments"] == comments
+    resolve_finding(b)
+    # Resolving B does not turn C's older approve into the latest review evidence.
+    assert (
+        "adoption_source_superseded"
+        in g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["reasons"]
+    )
+    assert not g.merge_calls() and len(a.calls()) == 2
+
+
+@pytest.mark.parametrize(
+    "failure", ["event_mismatch", "invalid_output", "metadata_error"]
+)
+def test_recover_refuses_inconsistent_runner_evidence(
+    single_review_env: ReviewEnv, failure: str
+) -> None:
+    r = single_review_env
+    extra = {"REVIEW_AGENT_FINAL_EXIT": "3", "REVIEW_FINAL_ONLY": "1"}
+    if failure == "event_mismatch":
+        event_output = json.loads(r.output.read_text())
+        event_output["verdict"] = "request_changes"
+        event_output["prs"][0]["findings"] = [
+            {
+                "severity": "major",
+                "path": "change.txt",
+                "line": 1,
+                "rule": "正しさ",
+                "detail": "完了eventはmajorを報告している",
+            }
+        ]
+        path = r.p.root / "event-output.json"
+        path.write_text(json.dumps(event_output))
+        extra["REVIEW_EVENT_OUTPUT"] = str(path)
+    else:
+        extra["REVIEW_RUNTIME_REASON"] = failure
+    response = json.loads(r.run(ok=False, extra=extra).stdout)
+    assert response["result"]["status"] == "failed"
+    original_final = (r.run_dir / "agent-runtime/final.md").read_bytes()
+    c = recovery_request(r)
+    before = copy.deepcopy(r.p.state()["comments"])
+    assert recover(r, c, ok=False).returncode == 2
+    assert not (c.run_dir / "result.json").exists()
+    assert r.p.state()["comments"] == before
+    assert (r.run_dir / "agent-runtime/final.md").read_bytes() == original_final
+    assert len(r.calls()) == 1
+
+
+def test_gate_rechecks_event_final_correspondence(
+    single_review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    a = single_review_env
+    a.run(ok=False, extra={"REVIEW_AGENT_FINAL_EXIT": "3"})
+    c = recovery_request(a)
+    recover(a, c)
+    g = gate_for(c, monkeypatch)
+    g.confirm()
+    events_path = a.run_dir / "agent-runtime/events.jsonl"
+    events = [json.loads(line) for line in events_path.read_text().splitlines()]
+    next(e for e in events if e["type"] == "item.completed")["item"]["text"] = (
+        '{"verdict":"request_changes"}'
+    )
+    events_path.write_text("".join(json.dumps(e) + "\n" for e in events))
+    response = g.cli("merge", AGENT_AUTO_MERGE="0")
+    assert (
+        response.returncode == 2
+        and "completed agent message disagree" in response.stderr
+    )
+    assert not g.merge_calls() and len(a.calls()) == 1

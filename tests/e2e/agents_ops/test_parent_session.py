@@ -1989,12 +1989,31 @@ runtime.mkdir()
 schema = pathlib.Path(opt("--json-schema")).read_bytes()
 (runtime / "output-schema.json").write_bytes(schema)
 exit_code = int(os.environ.get("REVIEW_AGENT_FINAL_EXIT", "0"))
+reason = os.environ.get("REVIEW_RUNTIME_REASON", "runtime_error" if exit_code else "completed")
+session_id, turn_id = "review-session", "review-turn"
+event_text = pathlib.Path(os.environ.get("REVIEW_EVENT_OUTPUT", opt("--out"))).read_text()
+events = [
+    {"type":"thread.started", "thread_id":session_id},
+    {"type":"turn.started", "turn_id":turn_id},
+    {"type":"item.completed", "item":{"type":"agent_message", "text":event_text}},
+    {"type":"turn.completed", "usage":{"input_tokens":1,"output_tokens":1}},
+]
+errors = []
+if exit_code and reason != "cli_error":
+    errors = [{"type":"error", "message":"transport failed after completed review"}]
+    events.extend(errors)
+(runtime / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+selected = {"model":"review-fixture", "effort":"max", "service_tier":"priority"}
 (runtime / "result.json").write_text(json.dumps({
     "result": "failed" if exit_code else "completed", "exit_code": exit_code, "cli_exit_code": exit_code,
+    "turn_end_reason": reason,
     "agent_spawned": True, "cleanup_complete": True, "finished_at": 1,
     "prompt_sha256": hashlib.sha256(pathlib.Path(opt("--prompt-file")).read_bytes()).hexdigest(),
     "run_dir": str(runtime), "output_path": opt("--out"), "final_path": str(runtime / "final.md"),
-    "contract": {"json_schema_sha256": hashlib.sha256(schema).hexdigest(), "cwd": str(cwd)}
+    "contract": {"json_schema_sha256": hashlib.sha256(schema).hexdigest(), "cwd": str(cwd),
+                 "mode":"read-only", "settings":{"agent":"codex", "profile":"review", "selected":selected}},
+    "runtime": {"session_id":session_id, "turn_id":turn_id, "requested_session_id":None,
+                "runtime_errors":errors, "effective":{k:{"status":"observed", "value":v, "source":"fixture"} for k,v in selected.items()}}
 }))
 if os.environ.get("REVIEW_POSTCHECK_FAIL"):
     path = pathlib.Path(os.environ["PARENT_GH_STATE"])

@@ -653,3 +653,80 @@ def test_unknown_execution_stage_versions_are_not_legacy(
     assert (
         policy.execution_stages({"status": "published", "agent_invocations": 1}) is None
     )
+
+
+@pytest.mark.parametrize(
+    "state",
+    [
+        "targets_fixed",
+        "instructed",
+        "result_received",
+        "fixing",
+        "fixes_verified",
+        "complete",
+    ],
+)
+def test_later_review_request_supersedes_only_its_pr(policy: Any, state: str) -> None:
+    a = request()
+    b = {
+        **copy.deepcopy(a),
+        "review_run_id": "parent-1-" + "b" * 32,
+        "prs": [copy.deepcopy(a["prs"][1])],
+    }
+    c = {**copy.deepcopy(a), "review_run_id": "parent-1-" + "c" * 32}
+    later_other = {
+        **copy.deepcopy(a),
+        "review_run_id": "parent-1-" + "d" * 32,
+        "prs": [{**a["prs"][0], "number": 999}],
+    }
+    reviews = [
+        {"request": a},
+        {"request": b, "state": state},
+        {"request": c},
+        {"request": later_other},
+    ]
+    assert policy.superseding_reviews(reviews, a["review_run_id"], c) == {
+        101: [b["review_run_id"]]
+    }
+    assert (
+        policy.superseding_reviews(
+            [reviews[0], reviews[2], reviews[3]], a["review_run_id"], c
+        )
+        == {}
+    )
+
+
+@pytest.mark.parametrize("event_digest", [False, True])
+def test_adoption_reader_preserves_legacy_event_proof(
+    policy: Any, event_digest: bool
+) -> None:
+    source = result(policy)
+    manifest = {**source["request"], "review_run_id": "parent-1-" + "b" * 32}
+    validation = {
+        key: "a" * 64
+        for key in (
+            "source_request_sha256",
+            "source_execution_sha256",
+            "source_result_sha256",
+            "runtime_sha256",
+            "final_sha256",
+            "output_sha256",
+        )
+    }
+    if event_digest:
+        validation["events_sha256"] = "b" * 64
+    adoption = {
+        **source,
+        "kind": "adoption",
+        "mode": "recover",
+        "source_run": source["review_run_id"],
+        "review_run_id": manifest["review_run_id"],
+        "request": manifest,
+        "request_sha256": policy.digest(manifest),
+        "reason": "保存済みfinalを検証して採用する",
+        "agent_invocations": 0,
+        "validation": {**validation, "current_prs": manifest["prs"]},
+    }
+    # Reading an old record must not invent event proof or upgrade its digest.
+    assert policy.validate_result(adoption) == adoption
+    assert ("events_sha256" in adoption["validation"]) is event_digest

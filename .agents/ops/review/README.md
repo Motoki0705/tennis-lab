@@ -107,7 +107,7 @@ executionのstatusは `preparation_failed` / `running` / `published` / `publicat
 | `postcheck` | 対象と担当権限の再取得・照合結果 |
 | `publication` | pending → projections（完了したPR）→ result → published、親コメントID、失敗理由 |
 
-有効なfinalはruntime非ゼロ終了後も解析し、`output.json` に結果候補を保存する。
+完了イベントと対応しschemaを満たすfinalはruntime非ゼロ終了後も解析し、`output.json` に結果候補を保存する。
 通常runの `result.json` はruntime・出力・事後照合を通過した結果、または失敗結果であり、候補とは区別する。
 事後照合や公開が失敗してもfinal・解析済み候補を初期化しない。公開失敗でも `result.json` の内容は変えない。
 起動回数0の準備失敗は公開せず、明示再試行時に旧資料を `preparation-attempts/` へ保存する。
@@ -123,10 +123,23 @@ run lockを取得でき、runtime終了・cleanup・保存結果・事後照合�
 
 `recover` は既存parent CLIで新しくprepare/requestした別runを使用し、元runと同じrepo・親・全PR snapshotを要求する。
 `--reason-file` には親の採用理由を書く。元runのrequest・execution・result・final・公開コメントは変更しない。
-元runの起動1回、終了したruntimeとcleanup、prompt/schema/runパスの対応、固定diffのdigest、保存当時の出力schema、
-判定/coverage/指摘の整合、現在の対象の再取得を検証する。異なるfinalのコピー、形式矛盾、cleanup不明、対象変更は拒否する。
-`agent-runtime/final.md` だけが残った場合も検証対象にできる。旧runも必要なruntime・schema・finalが揃う場合だけ採用できる。
+元runの起動1回、終了したruntimeとcleanup、prompt/schema/runパス・実行先の対応、固定diffのdigest、保存当時の出力schema、
+判定/coverage/指摘の整合、現在の対象の再取得を検証する。共通ランナーと同じイベントparserとschema validatorで
+`events.jsonl` を再読し、session/turn・実効設定・エラーの記録と、完了イベントの最終メッセージとfinalの内容を照合する。
+異なるfinalのコピーや完了後の別メッセージ、形式矛盾、cleanup不明、対象変更は拒否する。
+許可するruntime終了理由は `completed`、`runtime_error`、`cli_error` のみ。後二者も完了イベントとfinalが一致し、
+終了コードと記録済みエラーが理由に整合するときだけ対象にする。`invalid_output`、`metadata_error`、実効設定・実行先の不一致、
+証拠不足、timeout・停止などはschema上有効なfinalがあっても採用しない。
+`agent_output.md` が無く `agent-runtime/final.md` だけが残った場合も、上記のイベント照合は必須。
+旧runも必要なruntime・schema・final・イベントが揃う場合だけ採用できる。
 runningのまま終了確認が不足したrunは採用せず、AIを起動する経路へ自動で切り替えない。
+
+採用元は各対象PRの最新requestである必要がある。registry順で元runより後の全requestを照合し、採用先自身を除く
+同じPRのrequestがあればrecoverを拒否する。後続requestの準備中・失敗・incomplete・取消・採用・成功やresolve済みも除外しない。
+たとえばAの承認後にBがmajorを指摘した場合、CからAを採用してBの指摘を隠すことはできない。
+Bの有効なfinalを採用して指摘を引き継ぎ、採用runでresolveする。Bのresolve後も古いAの採用は再び有効にならない。
+公開再開にも同じ制約を適用する。gateは既に公開された採用も再照合し、後続requestがあるPRを
+`adoption_source_superseded` で停止する。別PRだけの後続requestはそのPRの採用を妨げない。
 
 採用は `kind=adoption` の新しい正式結果として公開する。指摘は採用runのIDでresolveできる。
 gateは元runのregistry/request/実行証拠と採用時のdigestを再照合し、採用runの起動0回と元runの起動1回を区別する。
@@ -199,8 +212,11 @@ gateは成功resultと全PRのprojection/digest、
 
 `kind=adoption` はresultと同じ結果キーに `mode,source_run,reason,agent_invocations,validation` を加える。
 現在のmodeは `recover` のみで、`agent_invocations=0`。
-`validation` は `{source_request_sha256,source_execution_sha256,source_result_sha256,runtime_sha256,final_sha256,output_sha256,current_prs}`。
+`validation` は `{source_request_sha256,source_execution_sha256,source_result_sha256,runtime_sha256,events_sha256,final_sha256,output_sha256,current_prs}`。
 各digestは元runの実ファイルと再解析した候補を拘束し、`current_prs` は再取得して一致した採用対象。
+`events_sha256` の無い旧採用記録の読取は維持するが、gateは現行の検証証拠との完全一致を要求するため受理しない。
+証拠を満たさない旧採用は正式結果へ読み替えない。採用元が後続requestで置き換わっている場合は、
+新しい明示requestによるレビューで最新の実行証拠を作る必要がある。
 同じ共通の結果・projection・resolve・gate経路に接続する。将来のreuseはmode固有の検証を追加する。
 
 `kind=evidence` は `{schema_version,kind,review_run_id,result_sha256,parent_issue,pr,wait,snapshot,evidence}`。
