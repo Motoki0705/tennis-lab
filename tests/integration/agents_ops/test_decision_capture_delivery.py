@@ -267,10 +267,12 @@ def test_explicit_decision_retains_spec_and_ids_across_journal_failure(
     base = C.Operation.begin(tmp_path, "o/r", 1, "parent.inspect-worker", "fetch")
     with base.transaction():
         base.finish({"observed": True})
+    credential = "private-opaque-decision-credential"
+    monkeypatch.setenv("DECISION_TEST_API_KEY", credential)
     spec = {
         "inputs": [base.records("result")[-1]["id"]],
         "evaluation": "investigate",
-        "reason": "Inspect the remaining boundary",
+        "reason": f"Inspect the remaining boundary {credential}",
         "recheck_scope": ["unverified boundary"],
     }
     path = tmp_path / "decision.json"
@@ -302,6 +304,9 @@ def test_explicit_decision_retains_spec_and_ids_across_journal_failure(
     replayed = PARENT.decide(session, path)
     assert replayed["decision_id"] == frozen[0]["record"]["id"]
     assert len([r for r in records(base) if r["kind"] == "decision"]) == 1
+    view = C.status(tmp_path, "o/r", 1)
+    assert credential not in json.dumps(view)
+    assert "[private identifier]" in json.dumps(view)
 
 
 def test_known_environment_credentials_are_private_in_capture_views(

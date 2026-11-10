@@ -592,15 +592,9 @@ def decide(session: Any, path: Path) -> dict[str, Any]:
                 scope=scope,
             )
             with pending.transaction():
-                pending.row["private"] = {
-                    "sessions": list(
-                        dict.fromkeys([session_id, session_id.partition(":")[2]])
-                    ),
-                    "runs": [],
-                    "identifiers": [],
-                    "roots": [],
-                    "checkout_commit": None,
-                }
+                pending.row["private"]["sessions"] = list(
+                    dict.fromkeys([session_id, session_id.partition(":")[2]])
+                )
                 pending.emit(
                     row, key, payload={"spec": spec, "reason_evidence": references}
                 )
