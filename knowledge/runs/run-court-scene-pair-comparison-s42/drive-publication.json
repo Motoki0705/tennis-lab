@@ -1,0 +1,14 @@
+{
+  "schema": "court_scene_pair_verified_documentation_publication_v1",
+  "recorded_at": "2026-11-10T05:33:38.004311+00:00",
+  "drive_path": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/documentation/final-comparison-20261110",
+  "source_commit": "edf48b05221298771c35087680004dfaeeb79761",
+  "documentation_files": 92,
+  "documentation_bytes": 910457,
+  "verified": true,
+  "dry_run": false,
+  "command": "drive.py upload <incremental-documentation-bundle> outputs/court_detection/campaign/scene-pair-5500-s384-colab/documentation/final-comparison-20261110 --verify",
+  "publication_manifest_sha256": "13a0373aa95e17f3ea2e0337ad79d663c9613533b11746f6c2d4360a0c144c36",
+  "raw_upload_receipt_sha256": "4789c0d6892c6b77bea37d4a8b50a0222453dddb00db52ef8ceb107cf71dc3a1",
+  "note": "92-file incremental source/summary/evidence snapshot at source_commit. This receipt is a later documentation addition. No existing code, raw outputs, checkpoint, events or input assets were overwritten or deleted."
+}
