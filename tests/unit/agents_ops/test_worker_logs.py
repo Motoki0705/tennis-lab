@@ -443,6 +443,8 @@ def test_publication_safety_preserves_or_blocks(case: str) -> None:
         "repository",
         "base",
         "head",
+        "head.ref",
+        "body",
     ],
 )
 def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
@@ -452,7 +454,7 @@ def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
         for p in sorted(expected)
     )
     schema.additions(raw, expected)
-    if case in {"repository", "base", "head"}:
+    if case in {"repository", "base", "head", "head.ref", "body"}:
         if case == "repository":
             normalize = importlib.import_module(
                 "worker_logs.publication"
@@ -493,10 +495,20 @@ def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
             bad["head"]["repo"]["full_name"] = "other/r"
         elif case == "base":
             bad["base"]["ref"] = "release"
-        else:
+        elif case == "head":
             bad["head"]["sha"] = "b" * 40
-        with pytest.raises(journal.PublicationError, match="pr_identity_changed"):
+        elif case == "head.ref":
+            bad["head"]["ref"] = "other-branch"
+        else:
+            bad["body"] = "other marker"
+        with pytest.raises(
+            journal.PublicationError, match="pr_identity_changed"
+        ) as exc:
             schema.identity(bad, row, "o/r")
+        field = {"repository": "head.repo", "base": "base.ref", "head": "head.sha"}.get(
+            case, case
+        )
+        assert field in exc.value.detail
         return
     changes = {
         "outside": (b"logs/final.md", b"code.py"),
@@ -510,3 +522,69 @@ def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
     before, after = changes[case]
     with pytest.raises(journal.PublicationError, match="unsafe_diff"):
         schema.additions(raw.replace(before, after, 1), expected)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "none",
+        "outside",
+        "modified",
+        "removed",
+        "renamed",
+        "extra",
+        "missing",
+        "duplicate",
+    ],
+)
+def test_github_changed_files_must_be_exactly_the_three_additions(change: str) -> None:
+    expected = {"logs/instruction.md", "logs/final.md", "logs/meta.json"}
+    changes = [{"filename": name, "status": "added"} for name in sorted(expected)]
+    if change == "none":
+        schema.pr_additions(changes, expected)
+        return
+    if change == "outside":
+        changes[0]["filename"] = "outside.txt"
+    elif change in {"modified", "removed", "renamed"}:
+        changes[0]["status"] = change
+        if change == "renamed":
+            changes[0]["previous_filename"] = "existing.txt"
+    elif change == "extra":
+        changes.append({"filename": "extra.txt", "status": "added"})
+    elif change == "missing":
+        changes.pop()
+    else:
+        changes[0] = changes[1]
+    with pytest.raises(journal.PublicationError, match="unsafe_diff"):
+        schema.pr_additions(changes, expected)
+
+
+@pytest.mark.parametrize("response", ["three_files", "full_page", "object"])
+def test_github_file_endpoint_cannot_hide_a_larger_diff(
+    monkeypatch: pytest.MonkeyPatch, response: str
+) -> None:
+    github = importlib.import_module("worker_logs.publication").GitHub("o/r")
+    expected = {"logs/instruction.md", "logs/final.md", "logs/meta.json"}
+    changes: Any = [{"filename": name, "status": "added"} for name in sorted(expected)]
+    if response == "full_page":
+        changes += [
+            {"filename": f"extra-{i}.txt", "status": "added"} for i in range(97)
+        ]
+    elif response == "object":
+        changes = {"message": "invalid response"}
+    requests = []
+
+    def request(endpoint: str) -> Any:
+        requests.append(endpoint)
+        return changes
+
+    monkeypatch.setattr(github, "request", request)
+    if response == "three_files":
+        schema.pr_additions(github.files(7), expected)
+    else:
+        with pytest.raises(
+            journal.PublicationError,
+            match="github_invalid_response" if response == "object" else "unsafe_diff",
+        ):
+            schema.pr_additions(github.files(7), expected)
+    assert requests == ["repos/o/r/pulls/7/files?per_page=100"]
