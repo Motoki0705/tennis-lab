@@ -19,6 +19,7 @@ from parent.policy import (
 from parent_review_policy import (
     BaseAdvance,
     evaluate_coverage,
+    execution_stages,
     pr_findings,
     records,
     validate_result,
@@ -102,6 +103,7 @@ def auto_merge(value: str | None) -> bool:
 
 
 def projection(result: Mapping[str, Any], n: int, url: str) -> dict[str, Any]:
+    entry = next(p for p in result["prs"] if p["number"] == n)
     return {
         "schema_version": 1,
         "kind": "pr",
@@ -114,6 +116,11 @@ def projection(result: Mapping[str, Any], n: int, url: str) -> dict[str, Any]:
         "coverage": next(p for p in result["prs"] if p["number"] == n)["coverage"],
         "findings": pr_findings(result, n),
         "parent_run_url": url,
+        **(
+            {"evidence_waits": entry["evidence_waits"]}
+            if "evidence_waits" in entry
+            else {}
+        ),
     }
 
 
@@ -127,20 +134,46 @@ def publication_errors(
 ) -> tuple[str, ...]:
     """Require the local committed result and every public projection to agree."""
     validate_result(dict(result))
+    stages = execution_stages(execution)
     errors = []
     if (
         execution.get("status") != "published"
         or execution.get("request_sha256") != result["request_sha256"]
         or execution.get("authorization") != authorization
         or type(execution.get("agent_invocations")) is not int
-        or execution["agent_invocations"] != 1
+        or execution["agent_invocations"] != (0 if result["kind"] == "adoption" else 1)
     ):
         errors.append("review_not_published_or_authorized")
+    if result["kind"] == "adoption" and (
+        execution.get("kind") != "adoption"
+        or execution.get("source_run") != result["source_run"]
+    ):
+        errors.append("adoption_execution_mismatch")
+    if (
+        result["kind"] == "result"
+        and stages is not None
+        and (
+            any(
+                stages[name].get("status") != status
+                for name, status in (
+                    ("agent", "finished"),
+                    ("output", "validated"),
+                    ("postcheck", "passed"),
+                )
+            )
+            or stages["agent"].get("cleanup_complete") is not True
+            or stages["agent"].get("workspace_cleanup_complete") is not True
+            or stages["agent"].get("exit_code") != 0
+        )
+    ):
+        errors.append("review_stage_incomplete")
+    if stages is not None and stages["publication"].get("status") != "published":
+        errors.append("review_publication_stage_incomplete")
     run = result["review_run_id"]
     parent_records = [
         r for r in records(parent_comments, login) if r.get("review_run_id") == run
     ]
-    outcomes = [r for r in parent_records if r["kind"] == "result"]
+    outcomes = [r for r in parent_records if r["kind"] in {"result", "adoption"}]
     if (
         not outcomes
         or any(r != result for r in outcomes)

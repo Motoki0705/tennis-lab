@@ -600,3 +600,56 @@ def test_output_schema_uses_supported_strict_api_keywords_and_parser_checks_uniq
     ]
     with pytest.raises(ValueError, match="unique covered"):
         policy.parse_output(json.dumps(data), [100, 101, 102])
+
+
+def test_evidence_waits_remain_per_pr_and_do_not_resolve_findings(policy: Any) -> None:
+    run = result(policy)
+    run["prs"][1]["evidence_waits"] = [
+        {"question": "境界条件の結果", "required_evidence": "固定HEADでのCPUテスト結果"}
+    ]
+    current = run["request"]["prs"]
+    pending = policy.evaluate_coverage(run, current, [], {}, fix_diff_digests={})
+    assert pending.reasons == ("pr_101_evidence_1_pending",)
+    assert pending.unresolved == ((100, "pr-100-1"),)
+    independent = policy.evaluate_coverage(
+        run, [current[0]], [], {}, fix_diff_digests={}
+    )
+    assert independent.covered and independent.unresolved == ((100, "pr-100-1"),)
+    complete = {
+        "schema_version": 1,
+        "kind": "evidence",
+        "review_run_id": run["review_run_id"],
+        "result_sha256": policy.digest(run),
+        "parent_issue": 1,
+        "pr": 101,
+        "wait": 1,
+        "snapshot": current[1],
+        "evidence": {
+            "ci": "同HEAD成功",
+            "regression_tests": "境界テスト成功",
+            "resolution": "必要な証拠を確認",
+            "reviewed_paths": ["a.py"],
+        },
+    }
+    done = policy.evaluate_coverage(run, current, [complete], {}, fix_diff_digests={})
+    assert done.covered and done.unresolved == pending.unresolved
+    stale = copy.deepcopy(complete)
+    stale["snapshot"]["head_sha"] = "e" * 40
+    assert (
+        policy.evaluate_coverage(run, current, [stale], {}, fix_diff_digests={}).reasons
+        == pending.reasons
+    )
+    del complete["evidence"]["reviewed_paths"]
+    with pytest.raises(ValueError):
+        policy.validate_evidence_completion(complete)
+
+
+@pytest.mark.parametrize("version", [True, 0, 2, "1"])
+def test_unknown_execution_stage_versions_are_not_legacy(
+    policy: Any, version: Any
+) -> None:
+    with pytest.raises(ValueError, match="stage version"):
+        policy.execution_stages({"stage_version": version, "stages": {}})
+    assert (
+        policy.execution_stages({"status": "published", "agent_invocations": 1}) is None
+    )

@@ -10,6 +10,7 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 |---|---|
 | `parent_review.py` | 明示runの受理、収集、Codex実行、記録公開、親による修正確認 |
 | `parent_review_policy.py` | 要求・出力・公開記録の検証とcoverageの純粋関数 |
+| `review_recovery.py` | 保存final・runtime・元runの検証と採用来歴の照合（AI起動なし） |
 | `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト、先行mergeによるbase前進の実git検証 |
 | `merge_gate_policy.py` | 公開証拠の照合、親の確認状態・PRごとのcoverage・依存順・merge判定の純粋関数 |
 | `merge_gate.py` | 親の明示コマンドによる最新情報の取得、dry-run、順次merge |
@@ -28,6 +29,18 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 .venv/bin/python .agents/ops/review/parent_review.py resolve \
   --run parent-1216-32桁hex --pr 1250 --finding pr-1250-1 \
   --fixed-head 40桁SHA --evidence tmp/fix-evidence.json
+
+# 公開途中の失敗・応答喪失から同じrunの公開だけを再開する
+.venv/bin/python .agents/ops/review/parent_review.py resume-publication --run parent-1216-32桁hex
+
+# 新しい理由でparent review-prepare → review-requestしたJSONを使う（AIは起動しない）
+.venv/bin/python .agents/ops/review/parent_review.py recover \
+  --request tmp/recovery-request.json --source-run parent-1216-元runの32桁hex \
+  --reason-file tmp/recovery-reason.txt
+
+# PRの証拠待ちを、親が同じ4キーの証拠で完了する
+.venv/bin/python .agents/ops/review/parent_review.py complete-evidence \
+  --run parent-1216-32桁hex --pr 1250 --wait 1 --evidence tmp/evidence.json
 ```
 
 `fix-evidence.json` は `ci` / `regression_tests` / `resolution` / `reviewed_paths` の4キーだけを持つJSON object。
@@ -48,6 +61,7 @@ rebaseやbaseの取込みは下記のファイル単位検証で継承する。�
 runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の有限秒数（既定1800）。
 終了コードは0=完全な結果公開または修正確認記録、1=run失敗/未完了/公開失敗、2=入力・担当・整合エラー。
 `request_changes` はレビュー完了なので0だが、指摘解消まではmerge可を意味しない。
+証拠待ちを含む結果も公開の成功は0であり、論点の完了まではgateが停止する。
 
 ## 受理・実行・再送
 
@@ -82,15 +96,54 @@ runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の
    判定矛盾・パース失敗は失敗。部分収集・途中更新も成功扱いにしない。
 
 run dirはparentの `reviews/<run ID>/` を共有し、固定済みrequest/diffに加えて
-`execution.json`、`context.json`、`prompt.md`、`agent_output.md`、`result.json`、コメント原文・agentログを残す。
+`execution.json`、`context.json`、`prompt.md`、`agent_output.md`、`output.json`、`result.json`、コメント原文・agentログを残す。
 executionのstatusは `preparation_failed` / `running` / `published` / `publication_failed`。
+新しいexecutionは `stage_version=1` と `stages` を持つ。旧形式は読み取りを維持する。
+
+| 工程 | 記録 |
+|---|---|
+| `agent` | 起動前/実行中/終了、runtimeのdigest・終了コード、runtimeとworkspaceのcleanup完了 |
+| `output` | 保存finalの形式・schema・対象・判定整合の検証結果、finalと解析結果のdigest |
+| `postcheck` | 対象と担当権限の再取得・照合結果 |
+| `publication` | pending → projections（完了したPR）→ result → published、親コメントID、失敗理由 |
+
+有効なfinalはruntime非ゼロ終了後も解析し、`output.json` に結果候補を保存する。
+通常runの `result.json` はruntime・出力・事後照合を通過した結果、または失敗結果であり、候補とは区別する。
+事後照合や公開が失敗してもfinal・解析済み候補を初期化しない。公開失敗でも `result.json` の内容は変えない。
 起動回数0の準備失敗は公開せず、明示再試行時に旧資料を `preparation-attempts/` へ保存する。
 強制終了後にrunningが残ったら「実行中または中断・未完了」であり、再送で再実行しない。
+run lockを取得でき、runtime終了・cleanup・保存結果・事後照合が確認できる公開中断だけは `resume-publication` で再開できる。
 起動後の失敗結果も保存・可能なら公開する。GitHub障害なら未公開/部分公開をローカルへ記録して非ゼロ終了する。
-復旧時は親が旧プロセス・workspace・ローカル/公開記録を確認し、必要なら新しい理由とrun IDで指示する。
+復旧は上記の `recover` または `resume-publication` を親が明示実行する。自動再実行は行わない。
 
 追加AIレビューは `parent review-prepare --reason-file` → `review-request` の新しい明示指示だけで受理する。
 後続runは結果の `exception` と人間向けコメントに、通常1回の予算を超える例外として理由・先行runを表示する。
+
+### 保存finalの検証付き採用
+
+`recover` は既存parent CLIで新しくprepare/requestした別runを使用し、元runと同じrepo・親・全PR snapshotを要求する。
+`--reason-file` には親の採用理由を書く。元runのrequest・execution・result・final・公開コメントは変更しない。
+元runの起動1回、終了したruntimeとcleanup、prompt/schema/runパスの対応、固定diffのdigest、保存当時の出力schema、
+判定/coverage/指摘の整合、現在の対象の再取得を検証する。異なるfinalのコピー、形式矛盾、cleanup不明、対象変更は拒否する。
+`agent-runtime/final.md` だけが残った場合も検証対象にできる。旧runも必要なruntime・schema・finalが揃う場合だけ採用できる。
+runningのまま終了確認が不足したrunは採用せず、AIを起動する経路へ自動で切り替えない。
+
+採用は `kind=adoption` の新しい正式結果として公開する。指摘は採用runのIDでresolveできる。
+gateは元runのregistry/request/実行証拠と採用時のdigestを再照合し、採用runの起動0回と元runの起動1回を区別する。
+採用後も親の `review-state --state fixes_verified`、未解決指摘、最新HEADのPython CI、依存関係の検査が必要。
+採用元の失敗は来歴として残る。同じ採用runの失敗・未公開・不整合を成功へ読み替えない。
+
+### 証拠待ちの完了
+
+新しいagent出力はPRごとに `evidence_waits: [{question, required_evidence}, ...]` を必須とする。不要なら空配列。
+コードの確認は `coverage=reviewed` のまま、判断に必須の証拠が残った論点を記す。未確認コードは従来どおり `not_reviewed`。
+総合verdictはコードcoverageと指摘で決まり、証拠待ちは独立したgateの停止条件になる。
+CI結論はgateが照合する。CIログ本文の取得失敗や隔離CPUテストの利用不可だけでコード確認全体を未確認にしない。
+
+`complete-evidence --wait <1からの論点番号>` は親が確認した4キー証拠を、現在のPR snapshotと結果digestへ結び付ける。
+この場合の `reviewed_paths` は現在のPR全差分（merge-base→head、renameの旧/新パスを含む）と完全一致させる。
+指摘のresolveや未確認のコード変更の確認とは独立し、指摘解消やcoverageを代替しない。
+公開済みのPR側・親側の記録とローカルのpublishedが揃ってからgateが受理する。同一証拠の再送は重複投稿しない。
 
 ## 公開記録（schema version 1、#1219の接続契約）
 
@@ -117,12 +170,13 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 | `summary`, `error` | 総合要約、成功ならnull・失敗なら理由 |
 | `exception` | 初回null、後続は `{"previous_runs":[run ID...],"reason":"明示理由"}` |
 | `cross_findings` | findingに `id=cross-連番`、`prs=[影響するPR番号...]` を追加 |
-| `prs` | 全対象の `{number, child_issues, coverage, summary, findings}`。個別findingのidは `pr-番号-連番` |
+| `prs` | 全対象の `{number, child_issues, coverage, summary, findings, evidence_waits}`。旧形式のevidence_waits省略も読取可。個別findingのidは `pr-番号-連番` |
 
 findingはidに加えて `{severity,path,line,rule,detail}`。pathはrepo相対POSIXパスまたはnull、lineは正整数またはnull。
 PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各担当へ振り分ける。
 `validate_result` は対象digest・全PR集合・判定/coverage・指摘IDを厳密に検査する。
 外側のresult/projection/resolutionと `parent-review:v1` マーカーはversion=1を維持する。
+既存の意味・digestを変えず、追加kindと省略可能な証拠待ち欄として拡張するため、外側の版は上げない。
 version=2のauthorizationとrequirementsは、作成時の担当・根拠・本文の観測記録である。
 意味のある要件変更と証拠への影響は親が判断し、必要な再検証や確認を記録する。
 PRとclosing対象・対象コードの同一性は機械的に照合し、過去のrequest/result/executionを書き換えない。
@@ -131,13 +185,27 @@ PRとclosing対象・対象コードの同一性は機械的に照合し、過�
 各PRの `kind=pr` は `{schema_version,kind,review_run_id,parent_issue,pr,request_sha256,
 result_sha256,snapshot,coverage,findings,parent_run_url}`。
 `result_sha256` は親result全体のdigest、snapshotはprepareの当該PR、findingsは個別＋当該PRに関係する横断指摘。
+結果に `evidence_waits` があるPRはprojectionにも同じ配列を含む。旧projectionは省略したまま照合する。
 親コメントへのpermalinkからrun全体を読める。
 
 公開は「親に `kind=pending`（schema_version/run ID/request digestだけ）を作る →
 全PRへprojectionを投稿 → 親コメントをresultへ更新」の順。pendingやPRコメント単独は成功の証拠ではない。
-途中失敗では親へfailed resultを追記する。gateは成功resultと全PRのprojection/digest、
+途中失敗では工程の失敗をローカルへ保存する。`resume-publication` は認証loginの先頭行recordを再取得し、
+一致するpending/projection/resultを再利用して欠けた書込みだけを行う。投稿の応答喪失も同じ照合で復旧し、
+同runの別内容・重複・先行failed記録があれば停止する。公開済みコメントは上書きせず、pendingだけを正式結果へ更新する。
+gateは成功resultと全PRのprojection/digest、
 ローカルexecutionのpublishedを照合し、同runの失敗記録・公開不整合があれば停止する。
 投稿応答喪失も自動再レビューの理由にしない。
+
+`kind=adoption` はresultと同じ結果キーに `mode,source_run,reason,agent_invocations,validation` を加える。
+現在のmodeは `recover` のみで、`agent_invocations=0`。
+`validation` は `{source_request_sha256,source_execution_sha256,source_result_sha256,runtime_sha256,final_sha256,output_sha256,current_prs}`。
+各digestは元runの実ファイルと再解析した候補を拘束し、`current_prs` は再取得して一致した採用対象。
+同じ共通の結果・projection・resolve・gate経路に接続する。将来のreuseはmode固有の検証を追加する。
+
+`kind=evidence` は `{schema_version,kind,review_run_id,result_sha256,parent_issue,pr,wait,snapshot,evidence}`。
+`wait` は当該PRの論点番号、`evidence` は上記4キー。`evidence-<digest>.json` にrecordとpublishedを保存する。
+gateは同じrun/result・PR・論点・現在snapshot（または実gitで確認したrebase継承）に一致する完了だけを受理する。
 
 `kind=resolution` は `{schema_version,kind,review_run_id,result_sha256,parent_issue,pr,finding,
 reviewed_head,fixed_snapshot,fix_diff_sha256,changed_paths,evidence}`。
