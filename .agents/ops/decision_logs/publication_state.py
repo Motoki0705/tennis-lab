@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-from worker_logs.journal import PUBLIC_ERRORS, decode, require
+from worker_logs.journal import PUBLIC_ERRORS, PublicationError, decode, locked, require
 from worker_logs.schema import digest, fields, integer
 
 from .projection import validate_public
@@ -17,14 +19,28 @@ def branch(parent: int, key: str, repairs: int = 0) -> str:
     return f"decision-log/parent-{parent}/{key}{suffix}"
 
 
+@contextmanager
+def publication_lock(path: Path) -> Iterator[None]:
+    """Do not expose a private storage path when lock or persistence fails."""
+    try:
+        with locked(path):
+            yield
+    except OSError:
+        raise PublicationError("journal_unavailable") from None
+
+
 def read(path: Path, repo: str, parent: int) -> dict[str, Any]:
     require(
         not any(p.is_symlink() for p in (path, *path.parents)),
         "private_storage_symlink",
     )
-    if not path.exists():
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
         return {"version": 1, "repo": repo, "parent": parent, "batches": []}
-    row = decode(path.read_bytes())
+    except OSError:
+        raise PublicationError("journal_unavailable") from None
+    row = decode(raw)
     fields(row, {"version", "repo", "parent", "batches"})
     require(
         type(row["version"]) is int

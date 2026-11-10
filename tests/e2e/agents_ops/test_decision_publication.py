@@ -11,7 +11,12 @@ from typing import Any
 
 import pytest
 
-from tests.support.agents_ops.decision_logs import history, result, schema
+from tests.support.agents_ops.decision_logs import (
+    PublicationError,
+    history,
+    result,
+    schema,
+)
 from tests.support.agents_ops.decision_publication import (
     DecisionEnv,
     navigation,
@@ -436,3 +441,63 @@ def test_private_publication_state_is_never_reset_on_corruption(
         publisher.path.read_bytes() == corrupted and log.path.read_bytes() == original
     )
     assert env.github.calls == [] and not env.upstream_files()
+
+
+@pytest.mark.parametrize("point", ["read", "lock", "persist"])
+def test_storage_failure_reports_only_a_fixed_error_and_preserves_capture(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch, point: str
+) -> None:
+    log = env.capture()
+    original = [e for e in log.read()["entries"] if e["event"] == "capture"]
+    publisher = env.decision_publisher(log)
+    if point == "read":
+        real_read = Path.read_bytes
+
+        def unreadable(path: Path) -> bytes:
+            if path == publisher.path:
+                raise PermissionError("private publication storage detail")
+            return real_read(path)
+
+        monkeypatch.setattr(Path, "read_bytes", unreadable)
+    elif point == "lock":
+        real_lock = publication.storage.locked
+
+        def failed_lock(path: Path) -> Any:
+            if path == publisher.path:
+                raise PermissionError("private publication lock detail")
+            return real_lock(path)
+
+        monkeypatch.setattr(publication.storage, "locked", failed_lock)
+    else:
+
+        def failed_persistence(*args: Any, **kwargs: Any) -> None:
+            raise PermissionError("private publication persistence detail")
+
+        monkeypatch.setattr(publication, "atomic", failed_persistence)
+    with pytest.raises(PublicationError, match="^journal_unavailable$"):
+        publisher.publish()
+    assert [e for e in log.read()["entries"] if e["event"] == "capture"] == original
+    assert not publisher.path.exists() and env.github.calls == []
+
+
+def test_reused_publisher_failure_cannot_overwrite_another_publishers_history(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log = env.capture()
+    stale = env.decision_publisher(log)
+    env.github.mergeable = None
+    assert stale.publish()["stage"] == "mergeability_pending"
+    for pr in env.github.rows.values():
+        pr["mergeable"] = True
+    assert env.decision_publisher(log).publish()["saved_to_main"]
+    completed = stale.path.read_bytes()
+
+    def unavailable_payloads() -> Any:
+        raise PublicationError("credential")
+
+    monkeypatch.setattr(log, "public_payloads", unavailable_payloads)
+    failed = stale.publish(retry=True)
+    assert failed["error"] == "credential" and not failed["saved_to_main"]
+    assert stale.path.read_bytes() == completed
+    assert all(r["publication_status"] == "published" for r in log.status())
+    assert env.github.calls == ["create", "merge"]

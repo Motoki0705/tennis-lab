@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-from worker_logs.journal import PublicationError, atomic, locked, require
+from worker_logs.journal import PublicationError, atomic, require
 from worker_logs.publication import GitHub as WorkerGitHub
 from worker_logs.publication import Publisher as GitTransport
 from worker_logs.publication import canonical_remote
@@ -130,7 +130,7 @@ class Publisher:
             parent=batch["parent"],
             expected=self.expected(batch),
         )
-        return diff
+        return dict(diff)
 
     def worktree(self, batch: dict[str, Any], revision: int | None = None) -> Path:
         common = Path(
@@ -362,6 +362,7 @@ class Publisher:
             "stage": batch["stage"] if batch else "idle",
             "saved_to_main": bool(status)
             and (batch is None or batch["state"] == "merged")
+            and not extra.get("error")
             and all(r["publication_status"] == "published" for r in status),
             "unpublished": sum(r["publication_status"] != "published" for r in status),
             "blocked": sum(r["publication_status"] == "blocked" for r in status),
@@ -393,7 +394,6 @@ class Publisher:
                     retry=retry,
                 )
         payloads = self.journal.public_payloads()
-        self.document = storage.read(self.path, self.journal.repo, self.journal.parent)
         active = next(
             (b for b in self.document["batches"] if b["state"] != "merged"), None
         )
@@ -580,7 +580,13 @@ class Publisher:
                 generated_readmes=len(generate(files)),
                 prepared_records=len(payloads),
             )
-        with locked(self.path):
+        with storage.publication_lock(self.path):
+            # Reload under the lock before any fallible preparation. An old
+            # Publisher instance must never persist its cached batch history
+            # over another publisher's completed work in an error handler.
+            self.document = storage.read(
+                self.path, self.journal.repo, self.journal.parent
+            )
             try:
                 return self._publish(retry=retry)
             except (
