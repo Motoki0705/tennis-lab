@@ -38,7 +38,7 @@ The three views of the public sample `video_000/clip_000` (left) and its 3D reco
 The ball trajectory uses motion outlier rejection and robust quadratic LOESS before triangulation.
 This demo replays saved detector observations with the original cameras and player reconstruction fixed;
 interpolated 2D points do not count as observations, and 3D still requires two real views.
-See the [CPU replay and demo validation](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md) for the comparison and limitations.
+For source-store access requirements, comparisons and limitations, see the [CPU replay and demo validation record](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md#replay-source-access).
 
 Synchronize the videos beforehand and use matching FPS, resolution and frame counts. See the [pipeline README](src/tennis_scene/README.md) for input constraints and the output format, including missing observations and quality information.
 

@@ -38,7 +38,7 @@
 ボールは三角測量の前に動きの外れ値を除去し、頑健な2次LOESSで平滑化しています。
 このデモは保存済み検出観測から球だけを再処理し、元のカメラ・人物復元を固定しています。
 補間した2D点は観測に数えず、3Dには実観測2視点以上を要求します。
-比較と制約は[CPU再処理・デモ検証記録](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
+元ストアへのアクセス条件・比較・制約は[CPU再処理・デモ検証記録](knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md#replay-source-access)を参照してください。
 
 入力動画は事前に同期し、FPS・解像度・フレーム数を揃えます。入力の制約と、欠測・品質情報を含む出力形式は [パイプラインのREADME](src/tennis_scene/README.md) を参照してください。
 
