@@ -18,6 +18,7 @@ from parent_review_policy import (
     request_manifest,
     validate_result,
 )
+from review_interruption import require_not_closed
 
 RECOVERABLE_RUNTIME_REASONS = frozenset({"completed", "runtime_error", "cli_error"})
 
@@ -200,6 +201,7 @@ def source_evidence(state_dir: Path, run: str) -> tuple[dict[str, Any], dict[str
     directory = state_dir / "reviews" / run
     request = request_manifest(read_json(directory / "request.json"), instructed=False)
     execution = read_json(directory / "execution.json")
+    require_not_closed(execution, request)
     result = validate_result(read_json(directory / "result.json"))
     if (
         request["review_run_id"] != run
