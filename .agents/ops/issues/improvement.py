@@ -76,6 +76,15 @@ def key(value: Any) -> str:
     return value
 
 
+def candidate_key(value: str, parent: int) -> str:
+    prefix = f"I-{parent}-"
+    if value.startswith("I-"):
+        if not value.startswith(prefix):
+            raise ValueError("candidate belongs to a different source parent")
+        value = value[len(prefix) :]
+    return key(value)
+
+
 def _sha(value: Any, *, nullable: bool = False) -> None:
     if nullable and value is None:
         return
