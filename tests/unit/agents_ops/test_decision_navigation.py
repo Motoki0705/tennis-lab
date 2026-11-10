@@ -119,6 +119,33 @@ def test_existing_turn_links_match_worker_metadata_without_copying_its_text() ->
     assert "初回要求・合意" in turn
 
 
+def test_late_initial_worker_log_preserves_the_turns_existing_navigation() -> None:
+    row = result()
+    row["scope"]["delegation"]["turn"] = 2
+    inputs = files([row])
+    before = navigation.generate(inputs)
+    logical = (
+        ".agents/logs/parents/parent-1/child-10/d-" + "a" * 32 + "/turn-0002/README.md"
+    )
+    assert logical in before
+    assert not any("0002-resume" in name for name in before)
+    source, receipt = record_source()
+    source.update(sequence=2, kind="initial")
+    raw = sources.render(source, receipt)
+    directory = worker_schema.path(worker_schema.validate(raw))
+    after_inputs = {
+        **inputs,
+        **before,
+        **{directory + "/" + n: value for n, value in raw.items()},
+    }
+    after = navigation.generate(after_inputs)
+    assert set(before) <= set(after)
+    assert logical in after and directory.endswith("0002-initial")
+    assert "](../0002-initial/instruction.md)" in after[logical].decode()
+    assert "](../turn-0002/README.md)" in after[directory + "/README.md"].decode()
+    assert navigation.generate({**after_inputs, **after}) == after
+
+
 @pytest.mark.parametrize(
     "fault",
     [

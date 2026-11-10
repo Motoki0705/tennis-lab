@@ -250,6 +250,8 @@ issue关闭后的历史发布也检查同一身份，不授予新的实现权限
       README.md
       d-<existing-public-key>/
         README.md
+        turn-<sequence>/
+          README.md
         <sequence>-<initial|resume>/
           README.md
           # 现有instruction.md、final.md和meta.json不变。
@@ -262,6 +264,9 @@ README仅从该HEAD的公开记录和现有worker文件生成，不读取私有�
 结果、判断、行动快照和更正各自保留链接与反向引用。正文转义后作为文字显示，不能注入Markdown链接或HTML。
 每页含上下层链接、活动入口、精确的记录成员和记录时间范围，明确显示未判断、已决定未执行和记录不足。
 辅助时间、设置和用量放在折叠区，保留缺失和累计值，不相加。
+稳定的 `turn-<sequence>/README.md` 不会根据序号猜测initial/resume。
+worker文件稍后到达时，与原文件夹README双向链接；启动前拒绝后的initial重试也保留
+先前公开的轮次地址。只链接指示和最终报告，不复制正文。
 
 只为已有新记录的父issue生成历史轮次导航，链接现有指示和最终报告；没有对应记录时显示
 **導入前・判断未記録**。只有旧worker日志的其他父issue仍链接原目录，不批量转换所有历史。

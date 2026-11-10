@@ -255,6 +255,8 @@ issueのclose後の履歴公開も同じ本人確認を行う。新しい実装�
       README.md
       d-<existing-public-key>/
         README.md
+        turn-<sequence>/
+          README.md
         <sequence>-<initial|resume>/
           README.md
           # 既存instruction.md・final.md・meta.jsonは変更しない。
@@ -268,6 +270,9 @@ eventの正本は共通の `{record, sanitization}` envelopeそのもの。READM
 MarkdownリンクやHTMLとして挿入しない。各階層に上下・活動へのリンク、反映した全記録への導線、
 記録時刻の範囲を置く。未判断、判断済み未実行、最終報告などの記録不足を明示する。
 補助情報は折りたたみに置き、時刻・設定・使用量の欠測と累積値を保持して加算しない。
+`turn-<sequence>/README.md` は安定した閲覧先で、連番からinitial/resumeを推測しない。
+workerファイルが後着したら既存フォルダーのREADMEと相互にリンクし、起動前拒否後の
+initial再試行でも先に公開したターンのアドレスを保つ。指示・最終報告の本文は複製しない。
 
 新しい記録を持つ親について、既存ターンに指示・最終報告への導線を生成し、対応記録がなければ
 **導入前・判断未記録** を表示する。新形式の記録がない親は既存ディレクトリへのリンクを維持し、

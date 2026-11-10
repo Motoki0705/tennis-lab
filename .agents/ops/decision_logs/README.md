@@ -300,6 +300,8 @@ The public tree keeps the existing worker files in place:
       README.md
       d-<existing-public-key>/
         README.md
+        turn-<sequence>/
+          README.md
         <sequence>-<initial|resume>/
           README.md
           # Existing instruction.md, final.md and meta.json stay unchanged.
@@ -316,6 +318,10 @@ reverse references. Text is escaped; captured prose cannot inject links or HTML.
 Every page has hierarchy links, exact record membership and recording-time range.
 Unknown final reports, undecided results and unexecuted plans remain explicit.
 Auxiliary times/settings/usage are available in a disclosure without adding counters.
+The stable `turn-<sequence>/README.md` never guesses initial/resume from sequence.
+When worker files arrive later, it links both ways with their existing folder's
+README; the earlier turn address remains valid, including an initial retry after
+a pre-start refusal. Worker instruction/final contents are linked, not duplicated.
 
 Legacy turn navigation is generated for parents with new records, with links to
 their existing instruction/final and **導入前・判断未記録** where no new decision

@@ -156,7 +156,13 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
     views: dict[str, list[dict[str, Any]]] = {f"{ROOT}/README.md": rows}
     titles = {f"{ROOT}/README.md": "親の結果・判断記録"}
     turns: dict[tuple[int, int, str, int], str] = {}
+    scoped_turns: dict[tuple[int, int, str, int], list[dict[str, Any]]] = defaultdict(
+        list
+    )
     record_turns: dict[str, str] = {}
+    artifact_directories: dict[str, str] = {}
+    related_turns: dict[str, tuple[str, str]] = {}
+    logical_turns: set[str] = set()
     legacy: dict[str, list[str]] = defaultdict(list)
     worker_parents = set()
     for name in sorted(files):
@@ -182,22 +188,6 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         if row is not None:
             views[path + "/README.md"].append(row)
 
-    def hierarchy(
-        parent: int,
-        child: int,
-        key: str,
-        directory: str,
-        row: dict[str, Any] | None = None,
-    ) -> None:
-        base = f"{ROOT}/parent-{parent}"
-        add(f"{base}/child-{child}", f"担当issue #{child}", row)
-        add(f"{base}/child-{child}/{key}", f"担当issue #{child} の委任", row)
-        add(
-            directory,
-            f"担当issue #{child} のターン {int(directory.rsplit('/', 1)[1].split('-')[0])}",
-            row,
-        )
-
     for row in rows:
         scope = row["scope"]
         parent = scope["parent"]
@@ -209,11 +199,12 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         if scope["delegation"] is not None:
             d = scope["delegation"]
             key = (parent, scope["issue"], d["key"], d["turn"])
-            directory = turns.get(key) or (
-                f"{base}/child-{scope['issue']}/{d['key']}/{d['turn']:04d}-"
-                + ("initial" if d["turn"] == 1 else "resume")
-            )
+            # Sequence does not determine initial/resume. A pre-start refusal
+            # can be followed by a new initial attempt in the same lineage.
+            directory = f"{base}/child-{scope['issue']}/{d['key']}/turn-{d['turn']:04d}"
+            scoped_turns[key].append(row)
             record_turns[row["id"]] = directory + "/README.md"
+            logical_turns.add(directory + "/README.md")
             # Child row was already added above.
             add(
                 f"{base}/child-{scope['issue']}/{d['key']}",
@@ -221,10 +212,24 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 row,
             )
             add(directory, f"担当issue #{scope['issue']} のターン {d['turn']}", row)
-    for (parent, child, delegation_key, _), directory in turns.items():
-        hierarchy(parent, child, delegation_key, directory)
-        if not views[directory + "/README.md"]:
-            legacy[directory + "/README.md"].append(directory)
+    for key, directory in turns.items():
+        parent, child, delegation_key, sequence = key
+        base = f"{ROOT}/parent-{parent}/child-{child}"
+        add(base, f"担当issue #{child}")
+        add(f"{base}/{delegation_key}", f"担当issue #{child} の委任")
+        logical = f"{base}/{delegation_key}/turn-{sequence:04d}"
+        add(logical, f"担当issue #{child} のターン {sequence}")
+        logical_page, physical_page = logical + "/README.md", directory + "/README.md"
+        logical_turns.add(logical_page)
+        add(directory, f"担当issue #{child} のworkerログ（ターン {sequence}）")
+        views[physical_page] = list(scoped_turns[key])
+        related_turns[physical_page] = (logical_page, "ターンの判断記録")
+        related_turns[logical_page] = (physical_page, "既存workerログのフォルダー")
+        artifact_directories[logical_page] = directory
+        artifact_directories[physical_page] = directory
+        if not scoped_turns[key]:
+            legacy[physical_page].append(directory)
+            legacy[logical_page].append(directory)
     for directories in list(legacy.values()):
         for directory in directories:
             ancestor = PurePosixPath(directory).parent
@@ -401,6 +406,14 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 + " · ".join(link(path, p, titles[p]) for p in sorted(children)),
                 "",
             ]
+        if path in related_turns:
+            other, label = related_turns[path]
+            lines += [link(path, other, label), ""]
+        elif path in logical_turns:
+            lines += [
+                "workerログ3ファイルはこのHEADに未収録。公開待ち・記録不足・ターン種別は未確認。",
+                "",
+            ]
         # Every non-activity level has direct links to the canonical activity.
         activity_paths = sorted(
             {event_path(r).rsplit("/", 1)[0] + "/README.md" for r in selected}
@@ -493,7 +506,7 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                     + "（導入前・判断未記録）",
                     "",
                 ]
-        directory = path.rsplit("/", 1)[0]
+        directory = artifact_directories.get(path, path.rsplit("/", 1)[0])
         for name in ("instruction.md", "final.md", "meta.json"):
             if f"{directory}/{name}" in files:
                 lines += [link(path, f"{directory}/{name}", name), ""]
