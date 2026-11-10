@@ -20,6 +20,7 @@ import pytest
 
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.hook_process import hook_command
 
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
@@ -140,7 +141,7 @@ class Labels:
         self, event: str, identity: str = "test-owner", **fields: str
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             input=json.dumps(
                 {"hook_event_name": event, "session_id": identity, **fields}
             ),
@@ -876,7 +877,7 @@ def test_duplicate_claude_session_cannot_turn_helper_into_parent(
         assert "another live pane" in result.stderr
     else:
         result = subprocess.run(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             input=json.dumps(
                 {"hook_event_name": "SessionStart", "session_id": "test-owner"}
             ),
@@ -1002,7 +1003,7 @@ def test_claude_start_replaces_stale_predecessor_in_current_pane(
         labels.set_registry({})
     before = labels.registry.read_bytes()
     result = subprocess.run(
-        [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+        hook_command(OPS / "herdr_labels/claude_hook.py"),
         input=json.dumps(
             {"hook_event_name": "SessionStart", "session_id": "test-owner"}
         ),
@@ -1029,7 +1030,7 @@ def test_claude_hooks_use_real_payload_and_never_release_registry(
     env["CLAUDE_ENV_FILE"] = str(export)
     for event in ("SessionStart", "SessionEnd"):
         result = subprocess.run(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             input=json.dumps({"hook_event_name": event, "session_id": "test-owner"}),
             text=True,
             capture_output=True,
@@ -1198,10 +1199,7 @@ def test_lifecycle_hook_cannot_claim_an_unrelated_agent_process(labels: Labels) 
             result = labels.hook("SessionStart")
             assert result.returncode == 1
             assert result.stdout == ""
-            # A real Claude ancestor may reject this as a nested agent first.
-            assert (
-                "not a descendant" in result.stderr or "nested agent" in result.stderr
-            )
+            assert "not a descendant" in result.stderr
             assert not labels.mutations()
         finally:
             sibling.terminate()
@@ -1216,11 +1214,16 @@ def test_headless_claude_child_cannot_clear_its_parent_pane(labels: Labels) -> N
     script = """
 import ctypes,json,subprocess,sys
 ctypes.CDLL(None).prctl(15,b'claude',0,0,0)
-r=subprocess.run([sys.executable,sys.argv[1]],input=json.dumps({'hook_event_name':'SessionStart','session_id':'headless-child'}),text=True)
+r=subprocess.run(sys.argv[1:],input=json.dumps({'hook_event_name':'SessionStart','session_id':'headless-child'}),text=True)
 raise SystemExit(r.returncode)
 """
     result = subprocess.run(
-        [sys.executable, "-c", script, str(OPS / "herdr_labels/claude_hook.py")],
+        [
+            sys.executable,
+            "-c",
+            script,
+            *hook_command(OPS / "herdr_labels/claude_hook.py"),
+        ],
         env=labels.env,
         text=True,
         capture_output=True,
@@ -1272,7 +1275,7 @@ def test_session_start_is_serialized_after_inflight_old_sync(labels: Labels) -> 
     try:
         wait_file(entered)
         new = subprocess.Popen(
-            [sys.executable, str(OPS / "herdr_labels/claude_hook.py")],
+            hook_command(OPS / "herdr_labels/claude_hook.py"),
             env={**labels.env, "LABEL_WAITING_MARKER": str(waiting)},
             text=True,
             stdin=subprocess.PIPE,

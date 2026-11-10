@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import copy
 import importlib
 import json
 import shlex
@@ -360,11 +361,18 @@ class FakeBackend:
         self.calls: list[str] = []
         self.resumes: list[int] = []
 
-    def restore_state(self) -> None:
+    def restore_state(self, progress: Any) -> None:
         if (self.remote / "state").exists():
-            shutil.copytree(self.remote / "state", self.state, dirs_exist_ok=True)
+            shutil.copytree(
+                self.remote / "state",
+                self.state,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("progress.json"),
+            )
+        progress(operation="completed")
 
-    def prepare(self) -> dict[str, Any]:
+    def prepare(self, progress: Any) -> dict[str, Any]:
+        progress(phase="validating_inputs", completed_items=1, total_items=1)
         self.calls.append("prepare")
         if self.fail == "inputs":
             raise RuntimeError("injected input verification failure")
@@ -402,7 +410,7 @@ class FakeBackend:
         c.write(artifact, result)
         return {**result, "artifact_sha256": c.sha(artifact)}
 
-    def verify(self, stage: c.Stage, result: dict[str, Any]) -> None:
+    def verify(self, stage: c.Stage, result: dict[str, Any], progress: Any) -> None:
         if stage.kind == "inputs":
             assert result["pool"] == "fixture-pool"
             return
@@ -469,6 +477,8 @@ def test_any_failed_gate_stops_before_the_next_stage(
         "publish": "evaluate-scene-1",
     }[failure]
     assert not (backend.state / "done" / f"{marker}.json").exists()
+    if failure == "train":
+        assert c.read(backend.state / "progress.json")["phase"] == "restoring"
 
 
 def test_corrupted_completion_is_rejected_instead_of_skipped(tmp_path: Path) -> None:
@@ -479,6 +489,272 @@ def test_corrupted_completion_is_rejected_instead_of_skipped(tmp_path: Path) -> 
     with pytest.raises(ValueError, match="artifact changed"):
         c.Campaign(again.state, again).run()
     assert again.calls == ["prepare"]
+
+
+def test_resume_verification_updates_live_phase_counts_and_last_progress(
+    tmp_path: Path,
+) -> None:
+    first = FakeBackend(tmp_path / "one", tmp_path / "drive")
+    c.Campaign(first.state, first).run()
+    ticks = [0.0]
+    observed: list[dict[str, Any]] = []
+
+    class ObservedBackend(FakeBackend):
+        def restore_state(self, progress: Any) -> None:
+            observed.append(c.read(self.state / "progress.json"))
+            super().restore_state(progress)
+
+        def verify(self, stage: c.Stage, result: dict[str, Any], progress: Any) -> None:
+            super().verify(stage, result, progress)
+            assert c.read(self.state / "progress.json")["phase"] == "verifying_existing"
+            for count in (0, 1, 2):
+                ticks[0] += 2
+                progress(
+                    operation="verifying",
+                    completed_files=count,
+                    total_files=2,
+                    completed_bytes=count * 7,
+                    total_bytes=14,
+                )
+                observed.append(c.read(self.state / "progress.json"))
+
+    second = ObservedBackend(tmp_path / "two", first.remote)
+
+    def clock() -> str:
+        return c.datetime.fromtimestamp(ticks[0], c.UTC).isoformat()
+
+    c.Campaign(second.state, second, clock=clock, monotonic=lambda: ticks[0]).run()
+    assert second.calls == ["prepare"]
+    assert observed[0]["phase"] == "restoring"
+    checks = [value for value in observed if value["stage"] == "evaluate-scene-1"]
+    assert [value["completed_files"] for value in checks] == [0, 1, 2]
+    assert [value["completed_bytes"] for value in checks] == [0, 7, 14]
+    assert all(
+        value["total_files"] == 2 and value["phase"] == "verifying_existing"
+        for value in checks
+    )
+    assert (
+        checks[0]["last_progress_at"]
+        < checks[1]["last_progress_at"]
+        < checks[2]["last_progress_at"]
+    )
+
+
+def test_progress_limits_drive_publication_and_exposes_stalled_work(
+    tmp_path: Path, monkeypatch: Any
+) -> None:
+    backend = FakeBackend(tmp_path / "local", tmp_path / "drive")
+    publications: list[dict[str, Any]] = []
+    monkeypatch.setattr(
+        backend, "publish", lambda path: publications.append(c.read(path))
+    )
+    ticks = [0.0]
+    campaign = c.Campaign(
+        backend.state,
+        backend,
+        clock=lambda: c.datetime.fromtimestamp(ticks[0], c.UTC).isoformat(),
+        monotonic=lambda: ticks[0],
+    )
+    stage = c.Stage("train", "P23")
+    campaign.progress(
+        stage, phase="training", saved_step=3316, actual_training_update=3320
+    )
+    for step in range(3321, 3331):
+        ticks[0] += 0.1
+        campaign.progress(stage, actual_training_update=step)
+    assert len(publications) == 1  # Each batch must not issue a Drive operation.
+    ticks[0] = 2
+    campaign.progress(stage, actual_training_update=3330)
+    forward = c.read(backend.state / "progress.json")
+    ticks[0] = 4
+    campaign.progress(stage, actual_training_update=3330)
+    stalled = c.read(backend.state / "progress.json")
+    assert stalled["updated_at"] > forward["updated_at"]
+    assert stalled["last_progress_at"] == forward["last_progress_at"]
+    assert stalled["elapsed_seconds"] == 4
+    assert stalled["latest_saved_update"] == 3316
+    ticks[0] = 61
+    campaign.progress(stage, actual_training_update=3331)
+    assert len(publications) == 2
+    campaign.progress(
+        stage,
+        phase="verifying_drive",
+        operation="checkpoint_save",
+        actual_training_update=6632,
+    )
+    checking = c.read(backend.state / "progress.json")
+    assert checking["phase"] == "verifying_drive"
+    assert checking["latest_saved_update"] == 3316
+    assert checking["actual_training_update"] == 6632
+    campaign.progress(stage, phase="training", saved_step=6632)
+    assert c.read(backend.state / "progress.json")["latest_saved_update"] == 6632
+
+
+@pytest.mark.parametrize("failure", [False, True])
+def test_training_subprocess_progress_survives_return_to_parent(
+    tmp_path: Path,
+    failure: bool,
+) -> None:
+    ticks = [0]
+    observed: list[dict[str, Any]] = []
+
+    def clock() -> str:
+        ticks[0] += 1
+        return c.datetime.fromtimestamp(ticks[0], c.UTC).isoformat()
+
+    class ChildWriterBackend(FakeBackend):
+        def execute(self, stage: c.Stage, progress: Any) -> dict[str, Any]:
+            if stage == c.Stage("train", "P02"):
+                child_writer = c.Campaign(self.state, self, clock=clock)
+                child_writer.progress(
+                    stage,
+                    phase="training",
+                    saved_step=3316,
+                    actual_training_update=3320,
+                )
+                if failure:
+                    raise RuntimeError("training subprocess failed")
+            return super().execute(stage, progress)
+
+        def verify(self, stage: c.Stage, result: dict[str, Any], progress: Any) -> None:
+            if stage == c.Stage("train", "P02"):
+                observed.append(c.read(self.state / "progress.json"))
+            super().verify(stage, result, progress)
+
+    backend = ChildWriterBackend(tmp_path / "local", tmp_path / "drive")
+    campaign = c.Campaign(backend.state, backend, clock=clock)
+    if failure:
+        with pytest.raises(RuntimeError, match="training subprocess failed"):
+            campaign.run()
+        observed.append(c.read(backend.state / "progress.json"))
+        assert observed[-1]["status"] == "failed"
+        assert "evaluate-P02" not in backend.calls
+    else:
+        campaign.run()
+    assert observed[0]["latest_saved_update"] == 3316
+    assert observed[0]["actual_training_update"] == 3320
+
+
+def test_training_input_setup_and_first_batch_have_distinct_progress(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    from src.tasks.court_detection.training.runner import CourtDetectionTrainingRunner
+
+    monkeypatch.setattr(c, "REPO", tmp_path)
+    backend = object.__new__(runtime.ColabBackend)
+    backend.state = tmp_path / c.STATE
+    c.write(
+        backend.state / "progress.json",
+        {"started_at": c.datetime.now(c.UTC).isoformat()},
+    )
+    published: list[dict[str, Any]] = []
+    monkeypatch.setattr(runtime, "ColabBackend", lambda: backend)
+    monkeypatch.setattr(backend, "require_l4", lambda: None)
+    monkeypatch.setattr(backend, "publish", lambda path: published.append(c.read(path)))
+    observed: list[dict[str, Any]] = []
+    callbacks: list[Any] = []
+
+    def datamodule(self: Any, config: Any) -> object:
+        # Observe the real adapter wrapper while replacing all heavy input I/O.
+        observed.append(c.read(backend.state / "progress.json"))
+        return object()
+
+    def trainer(
+        self: Any, config: Any, supplied: list[Any], logger: Any, **kwargs: Any
+    ) -> Any:
+        callbacks.extend(supplied)
+        return SimpleNamespace(strategy=SimpleNamespace(), global_step=0)
+
+    def run(self: Any, config: Any) -> None:
+        self.build_datamodule(config)
+        observed.append(c.read(backend.state / "progress.json"))
+        training = self.build_trainer(config, [], None, artifact_store=object())
+        recorder = callbacks[0]
+        recorder.on_train_start(training, None)
+        observed.append(c.read(backend.state / "progress.json"))
+        publications_before_batch = len(published)
+        training.global_step = 1
+        recorder.on_train_batch_end(training, None, None, None, 0)
+        observed.append(c.read(backend.state / "progress.json"))
+        assert len(published) == publications_before_batch
+
+    monkeypatch.setattr(CourtDetectionTrainingRunner, "build_datamodule", datamodule)
+    monkeypatch.setattr(CourtDetectionTrainingRunner, "build_trainer", trainer)
+    monkeypatch.setattr(CourtDetectionTrainingRunner, "run", run)
+    runtime.train("P02", False, None)
+    assert [(value["phase"], value["operation"]) for value in observed] == [
+        ("validating_inputs", "trainer_data_module"),
+        ("validating_inputs", "trainer_setup"),
+        ("training", "first_batch"),
+        ("training", "training"),
+    ]
+    assert observed[-1]["actual_training_update"] == 1
+    assert observed[-1]["latest_saved_update"] == 0
+
+
+@pytest.mark.parametrize("fault", ["valid", "adapter", "data", "source", "config"])
+def test_reviewed_adapter_upgrade_preserves_only_unchanged_scientific_identity(
+    tmp_path: Path, monkeypatch: Any, fault: str
+) -> None:
+    old: dict[str, Any] = {
+        "schema": "court_scene_pair_inputs_v1",
+        "bundle_sha256": c.ORIGINAL_ADAPTERS,
+        "source_objects": {"src": "pinned-science"},
+        "conditions": {"P02": {"config_sha256": "pinned-config"}},
+        "real_ids": ["b", "a"],
+    }
+    current = {
+        **copy.deepcopy(old),
+        "bundle_sha256": {name: c.sha(c.BUNDLE / name) for name in c.ORIGINAL_ADAPTERS},
+    }
+    if fault == "adapter":
+        current["bundle_sha256"]["runtime.py"] = "unreviewed"
+        with pytest.raises(ValueError, match="Unknown campaign operational adapter"):
+            c.inputs_identity(current)
+        return
+    if fault == "data":
+        current["real_ids"].reverse()
+    elif fault == "source":
+        current["source_objects"]["src"] = "changed-science"
+    elif fault == "config":
+        current["conditions"]["P02"]["config_sha256"] = "changed-config"
+    # Original receipts used digest(old) directly: no Drive done-marker rewrite.
+    assert (c.inputs_identity(current) == c.digest(old)) is (fault == "valid")
+    backend = object.__new__(runtime.ColabBackend)
+    monkeypatch.setattr(backend, "ready", lambda: current)
+    if fault == "valid":
+        backend.verify(c.Stage("inputs"), old)
+    else:
+        with pytest.raises(ValueError, match="Input completion disagrees"):
+            backend.verify(c.Stage("inputs"), old)
+
+
+def test_original_done_markers_resume_without_rewriting_their_identity(
+    tmp_path: Path,
+) -> None:
+    class CompatibleBackend(FakeBackend):
+        def prepare(self, progress: Any) -> dict[str, Any]:
+            result = super().prepare(progress)
+            return {
+                **result,
+                "schema": "court_scene_pair_inputs_v1",
+                "bundle_sha256": c.ORIGINAL_ADAPTERS
+                if self.state.name == "old"
+                else {name: c.sha(c.BUNDLE / name) for name in c.ORIGINAL_ADAPTERS},
+            }
+
+    first = CompatibleBackend(tmp_path / "old", tmp_path / "drive")
+    c.Campaign(first.state, first).run()
+    old_markers = {
+        path.name: path.read_bytes() for path in (first.remote / "state/done").iterdir()
+    }
+    second = CompatibleBackend(tmp_path / "new", first.remote)
+    c.Campaign(second.state, second).run()
+    assert second.calls == ["prepare"]
+    assert {
+        path.name: path.read_bytes() for path in (first.remote / "state/done").iterdir()
+    } == old_markers
 
 
 @pytest.mark.parametrize(
@@ -524,7 +800,8 @@ def test_checkpoint_adapter_rejects_newest_invalid_without_fallback(
     monkeypatch.setattr(backend, "inventory", lambda root: [relative.as_posix()])
     monkeypatch.setattr(backend, "fetch", lambda relative: tmp_path / relative)
     if fault == "valid":
-        assert backend.latest("P02")["global_step"] == 6632
+        latest = backend.latest("P02")
+        assert latest is not None and latest["global_step"] == 6632
         return
     with pytest.raises(
         (ValueError, RuntimeError),
@@ -583,10 +860,8 @@ c.main()
     assert not (tmp_path / "drive/artifacts/train-P02.json").exists()
 
 
-@pytest.mark.parametrize("fault", ["order", "macro"])
-def test_evaluation_adapter_checks_pinned_order_and_unweighted_mean(
-    monkeypatch: Any, fault: str
-) -> None:
+@pytest.fixture
+def evaluation_fixture(monkeypatch: Any) -> tuple[Any, dict[str, Any], dict[str, Any]]:
     backend = object.__new__(runtime.ColabBackend)
     ids = ["B00:a", "B00:b", "B01:c", "B02:d", "B03:e"]
     ready: dict[str, Any] = {
@@ -632,7 +907,22 @@ def test_evaluation_adapter_checks_pinned_order_and_unweighted_mean(
             "tennis_court_detector-val": split(ready["real_ids"], False),
         },
     }
-    checked = {"checkpoint_sha256": "checkpoint", "data_condition": {"pair": "P02"}}
+    checked = {
+        "checkpoint_sha256": "checkpoint",
+        "data_condition": {"pair": "P02"},
+        "checkpoint": (
+            c.train_root("P02") / "logs/version_0/checkpoints/update-00033160.ckpt"
+        ).as_posix(),
+        "global_step": c.FINAL_STEP,
+    }
+    return backend, report, checked
+
+
+@pytest.mark.parametrize("fault", ["order", "macro"])
+def test_evaluation_adapter_checks_pinned_order_and_unweighted_mean(
+    evaluation_fixture: tuple[Any, dict[str, Any], dict[str, Any]], fault: str
+) -> None:
+    backend, report, checked = evaluation_fixture
     backend.check_evaluation(report, checked)
     if fault == "order":
         report["splits"]["tennis_court_detector-val"]["sample_ids"] = [
@@ -640,6 +930,98 @@ def test_evaluation_adapter_checks_pinned_order_and_unweighted_mean(
             "real-b",
         ]
     else:
-        synthetic["scene_macro_mean"]["seg_miou"] = 4.4  # image-weighted (2*2+4+6+8)/5
+        report["splits"]["synthetic_court-val"]["scene_macro_mean"]["seg_miou"] = (
+            4.4  # image-weighted (2*2+4+6+8)/5
+        )
     with pytest.raises(ValueError, match="order|simple four-scene mean"):
         backend.check_evaluation(report, checked)
+
+
+def test_completed_evaluation_batches_download_and_checks_checkpoint_provenance(
+    evaluation_fixture: tuple[Any, dict[str, Any], dict[str, Any]],
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    if shutil.which("rclone") is None:
+        pytest.skip("rclone executable required for isolated alias integration")
+    backend, report, checked = evaluation_fixture
+    monkeypatch.setattr(c, "REPO", tmp_path / "local")
+    remote = tmp_path / "remote"
+    source = remote / "tennis_lab" / c.eval_root("P02")
+    source.mkdir(parents=True)
+    config = tmp_path / "rclone.conf"
+    config.write_text(f"[test]\ntype = alias\nremote = {remote}\n")
+    backend.drive = runtime.RcloneBackend(
+        remote_root="test:tennis_lab", executable="rclone", config_path=config
+    )
+    report_path = source / "evaluation.json"
+    c.write(report_path, report)
+    (source / "qualitative.png").write_bytes(b"pixels")
+    fetched: list[Path] = []
+    monkeypatch.setattr(backend, "fetch", lambda relative: fetched.append(relative))
+    monkeypatch.setattr(backend, "checkpoint", lambda *args, **kwargs: checked)
+    original = runtime.download_tree
+    batches: list[dict[str, str]] = []
+
+    def download(*args: Any, **kwargs: Any) -> Any:
+        batches.append(kwargs["expected_files"])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(runtime, "download_tree", download)
+
+    def receipt() -> dict[str, Any]:
+        return {
+            **checked,
+            "evaluation": (c.eval_root("P02") / "evaluation.json").as_posix(),
+            "evaluation_sha256": c.sha(report_path),
+            "evaluation_files": {
+                (c.eval_root("P02") / path.name).as_posix(): c.sha(path)
+                for path in source.iterdir()
+            },
+        }
+
+    events: list[dict[str, Any]] = []
+    backend.verify(
+        c.Stage("evaluate", "P02"), receipt(), lambda **event: events.append(event)
+    )
+    assert fetched == [Path(checked["checkpoint"])]
+    assert len(batches) == 1 and set(batches[0]) == {
+        "evaluation.json",
+        "qualitative.png",
+    }
+    assert events[-1]["operation"] == "completed" and events[-1]["completed_files"] == 2
+    # Even a self-consistent file manifest cannot replace checkpoint provenance.
+    report["checkpoint_sha256"] = "different-checkpoint"
+    c.write(report_path, report)
+    shutil.rmtree(c.REPO / c.eval_root("P02"))
+    with pytest.raises(ValueError, match="Evaluation identity changed"):
+        backend.verify(c.Stage("evaluate", "P02"), receipt())
+
+
+def test_restoring_state_keeps_current_vm_progress_visible(
+    tmp_path: Path,
+    monkeypatch: Any,
+) -> None:
+    if shutil.which("rclone") is None:
+        pytest.skip("rclone executable required for isolated alias integration")
+    remote = tmp_path / "remote"
+    source = remote / "tennis_lab" / c.STATE
+    c.write(source / "progress.json", {"phase": "stale_previous_vm"})
+    c.write(source / "done/inputs.json", {"receipt": "previous-inputs"})
+    config = tmp_path / "rclone.conf"
+    config.write_text(f"[test]\ntype = alias\nremote = {remote}\n")
+    monkeypatch.setattr(c, "REPO", tmp_path / "local")
+    backend = object.__new__(runtime.ColabBackend)
+    backend.state = c.REPO / c.STATE
+    backend.drive = runtime.RcloneBackend(
+        remote_root="test:tennis_lab", executable="rclone", config_path=config
+    )
+    c.write(backend.state / "progress.json", {"phase": "restoring", "stage": "restore"})
+    observed: list[str] = []
+
+    def progress(**fields: Any) -> None:
+        observed.append(c.read(backend.state / "progress.json")["phase"])
+
+    backend.restore_state(progress)
+    assert observed and set(observed) == {"restoring"}
+    assert c.read(backend.state / "done/inputs.json") == {"receipt": "previous-inputs"}

@@ -71,7 +71,9 @@ def candidate(after: Any, *, current: Any = None, request: Any = None) -> Any:
         evidence_changes=documents.evidence_changes(
             current.document if current else None,
             after,
-            reason="Requested evidence change.",
+            reason="Requested evidence change."
+            if current
+            else "Supplied initial evidence.",
         ),
         change_summary="Explain the supplied evidence and remaining unknowns.",
     )
@@ -87,6 +89,13 @@ def validation(value: Any) -> Any:
     )
 
 
+def writer_output(value: Any) -> dict[str, Any]:
+    """Build an explicit writer response from a test's complete public candidate."""
+    return dict(
+        value.model_dump(mode="json", include={"request", "document", "change_summary"})
+    )
+
+
 @dataclass
 class EditorEnvironment:
     root: Path
@@ -99,7 +108,7 @@ class EditorEnvironment:
 
     def outputs(self, value: Any, verdict: dict[str, Any] | None = None) -> None:
         (self.root / "writer.json").write_text(
-            json.dumps(value.model_dump(mode="json"))
+            json.dumps(writer_output(value))
             if not isinstance(value, dict)
             else json.dumps(value)
         )
@@ -109,6 +118,7 @@ class EditorEnvironment:
                 "check": {"status": "passed", "issues": []},
                 "reviewed_evidence_ids": ["baseline", "cameras"],
             }
+        verdict = {"unsupported_claims": [], "technical_errors": [], **verdict}
         (self.root / "verifier.json").write_text(json.dumps(verdict))
 
     def calls(self) -> list[dict[str, Any]]:

@@ -10,6 +10,7 @@ import os
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, cast
 from urllib.parse import parse_qs
 
@@ -1278,6 +1279,87 @@ def test_collection_failure_after_judgement_is_fatal_and_not_a_deferral(
     assert result["deferred"] == []
     assert "injected API failure" in result["diagnostics"][0]
     assert h.gh.writes == []
+
+
+@pytest.mark.parametrize("outage", ["transient", "preflight", "after_publication"])
+def test_get_transport_retry_after_judgement_preserves_safe_run_results(
+    h: Harness, monkeypatch: pytest.MonkeyPatch, outage: str
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.response(decision(1), decision(2))
+    endpoint = "repos/o/r/issues/2/sub_issues?per_page=100&page=1"
+    original_get = h.gh.get
+    reader = importlib.import_module("issues.cli").GitHub("o/r")
+    responses: list[int] = []
+    sleeps: list[float] = []
+    disconnected = True
+
+    def run(*args: str) -> subprocess.CompletedProcess[str]:
+        assert args[-1] == endpoint and args[args.index("--method") + 1] == "GET"
+        fails = disconnected and (outage != "transient" or len(responses) < 2)
+        responses.append(int(fails))
+        if fails:
+            return subprocess.CompletedProcess(
+                args, 1, "", "error connecting to api.github.com"
+            )
+        return subprocess.CompletedProcess(
+            args, 0, "HTTP/2.0 200\r\n\r\n" + json.dumps(original_get(endpoint)), ""
+        )
+
+    def get(path: str, *, missing_parent: bool = False) -> object:
+        if (
+            path == endpoint
+            and h.calls.exists()
+            and (outage != "after_publication" or h.gh.writes)
+        ):
+            return reader.get(path, missing_parent=missing_parent)
+        return original_get(path, missing_parent=missing_parent)
+
+    monkeypatch.setattr(reader, "_run", run)
+    monkeypatch.setattr(h.gh, "get", get)
+    monkeypatch.setattr(
+        importlib.import_module("issues.cli"),
+        "time",
+        SimpleNamespace(sleep=sleeps.append),
+    )
+    result = h.run(runner=h.fake_runner)
+    assert sleeps == [1.0, 2.0]
+    assert (h.run_dir / "agent-output.json").is_file()
+    assert json.loads((h.run_dir / "result.json").read_text()) == result
+    if outage == "transient":
+        assert result["result"] == "recorded", result
+        assert [c["parent"] for c in result["candidates"]] == [1, 2]
+        assert responses[:3] == [1, 1, 0] and sum(responses) == 2
+        return
+
+    assert responses == [1, 1, 1]
+    assert result["result"] == "failed" and result["candidates"] == []
+    assert result["deferred"] == []
+    diagnostic = result["diagnostics"][-1]
+    assert "GitHubTransportError" in diagnostic and endpoint in diagnostic
+    assert (
+        "attempts=3" in diagnostic
+        and "last_error_kind=missing_http_response_status" in diagnostic
+    )
+    assert "error connecting to api.github.com" in diagnostic
+    if outage == "preflight":
+        assert result["publications"] == [] and h.gh.writes == []
+    else:
+        assert result["publications"] == [{"issue": 1, "action": "created"}]
+        # Partial public records survive; candidates are still empty.
+        assert h.gh.writes
+
+    issue_one_writes = [
+        w for w in h.gh.writes if w["endpoint"] == "repos/o/r/issues/1/comments"
+    ]
+    disconnected = False
+    resumed = h.run(runner=h.fake_runner)
+    assert resumed["result"] == "recorded", resumed
+    assert [c["parent"] for c in resumed["candidates"]] == [1, 2]
+    if outage == "after_publication":
+        assert [
+            w for w in h.gh.writes if w["endpoint"] == "repos/o/r/issues/1/comments"
+        ] == issue_one_writes
 
 
 def test_parent_record_error_without_input_changes_is_fatal(

@@ -125,23 +125,54 @@ UIは中止可能な経過時間表示で完了期限を約束せず、旧600秒
 writerの案を承認の根拠にしたり、browser JSONを未検査で承認として扱ったりしない。
 独立verifierは変更理由と指示の整合性も調べる。両呼出へ完全な文脈・現在版・対象と指示・履歴を渡し、
 verifierには候補とdigestも渡す。prompt/schemaはprivate fileとstdinで渡し、argv上限による省略をしない。
-Candidate schemaは共通モデルから直接生成する。
+writer/verifier schemaは `editor.py` の型付きモデルから直接生成する。
 writerには`candidate_template`も渡す。正確なrequestと信頼するmetadataを出力と同じ構造に入れ、
-HTML・変更一覧はwriterが埋める。根拠をID文字列へ省略したりrequest fieldを捏造するnative finishの
+HTML・要約はwriterが埋める。根拠をID文字列へ省略したりrequest fieldを捏造するnative finishの
 誤りを減らすためで、本文・見た目・厳密な出力schemaは変えない。独立verifierへはこの補助を渡さず、
 compile済み候補を渡す。
 
-writerは完全なCandidateを返す。機械検査は元要求の一致、共通の構造・変更検査、目的・読み手・
+writerは `request`・完全な `document`・`change_summary` だけを持つ `WriterOutput` を返す。
+content/evidenceの変更一覧は申告しない。機械検査は元要求の一致、構造・参照検査、目的・読み手・
 根拠metadata（数値・条件・出典を含む）・許可済みassetsの厳密な一致を確認する。
 存続する根拠の本文参照とHTTP(S)出典リンクを保持する。変更しない根拠の数値が従来の本文に
 現れていれば、その根拠の範囲に残っていることも調べる。この十進数の字句検査だけでは単位・
 表示上の可視性・言い換え・意味は証明できない。このwriter検査の後で必須compilerがHTMLを展開し、
-生成assetのmetadataを追加できる。editorは現在版との差分からcontent changesを計算し直し、
-構造と根拠保持を再検査する。元要求・根拠変更理由・要約は保持する。
+生成assetのmetadataを追加できる。editorはcompile後に `content_changes(current, compiled_document)`
+から公開Candidateを組み立てる。rawの変更一覧は作らず、slot展開後に置換もしない。
+編集の `evidence_changes` は検証済みの信頼側 `authorized_evidence_changes` を理由ごと使う。
+初版はruntimeが `added` と固定理由 `Supplied initial evidence.` を生成する。ID・kind・人間向け理由は
+contextから決まるためwriterには申告させず、独立verifierが理由と指示の整合を引き続き確認する。
+最終Candidateの構造・変更整合・根拠保持を再検査し、stage/commitも従来どおり独立に差分を照合する。
+元要求と要約は保持する。
 この最終候補だけをdigest化し、別のGemini呼出へ渡し、これらや論理的主張・
 許可された変更・不足する情報を意味検査する。情報不足を正直に説明する候補も生成できる。
 検査は旧/新根拠の全IDを対象にし、候補digestが一致し、未解決issueなしでpassedを返す必要がある。
 拒否・不正出力は候補を返さずContractErrorにする。意味検査は追加の証拠であり、真実性や完全な正しさの保証ではない。
+
+`schema.py` と公開Candidate/Revision・HTTP・UI・保存履歴の契約は変えない。変更一覧はcompile済み文書の
+差分を表す。既存revisionの移行は不要。`changes` / `evidence_changes` を含む旧writer応答は新しい厳密schemaで
+拒否し、WriterOutputとして流用せず新schema/promptで再生成する。
+
+局所編集の境界も従来どおり。`validate_request()` は現行のcontent/selection対象の存在と一致を検査するが、
+変更した全blockが対象内にあるかは検査しない。指定外の全変更を決定的に禁止する保証はない。
+writerへ対象近傍の編集を指示し、独立verifierへ要求と最終計算差分を渡して、対象への回答と無関係な重要内容の
+保持を確認する。意味不合格では現行版を保持するが、局所範囲を厳密に保証する機械検査ではない。
+
+writerは提供根拠・ユーザーが明示した事実・一般的な定義/導出を区別する。題材の説明依頼や出典URLだけでは
+製品仕様・スポーツの速度・実環境の精度の根拠にはならない。未提供の数値入力・製品名・性能を加えず、
+提供入力からの計算は前提と試算/導出の区別を該当箇所に保持する。不足情報は推測せず本文で説明する。
+
+[editor.py](editor.py) の `SemanticVerdict` は空でも `unsupported_claims` と `technical_errors` 配列が必須。
+各findingは `quote`・`reason` と任意の `content_id`/`evidence_id` を持つ。verifierは根拠タグ外の本文・
+caption・グラフ定義を含む文書全体で、根拠外の具体的主張、用語・座標系の取り違え、正当化されない断定を調べる。
+列挙した各項目を `unsupported_claim` / `technical_error` というruleの `ValidationIssue` として
+`ValidationResult.semantic.issues` に残す。全体判定がpassedでも **1件あれば不合格**。
+意味不合格は `SemanticValidationError`（公開codeは従来どおり `validation_failed` の `ContractError`）で、
+信頼する呼出元は `.validation` のdigestに結び付いた結果をprivate診断用に保存できる。候補は返さず、診断本文は
+HTTPエラーに含めない。`schema.py`、保存するValidationResultの形、既存revisionは変えない。
+2配列がない旧model判定は無効とし、空配列を補ったり旧承認を流用せず新prompt/schemaで再検査する。
+意味不合格の自動修復・再試行や繰り返し失敗後の検査緩和は行わず、現行版を保持して修正入力による明示再試行を求める。
+前述の上限付きfigure修復は変更しない。この検査は完全な正しさを保証せず、外部調査による事実確認も行わない。
 
 `EditorialResult` はcandidate・validation・writer/verifierの実行証拠を持つ。
 validationはstructural/semanticがpassed、renderingは **not_run** のため、そのままcommitできない。

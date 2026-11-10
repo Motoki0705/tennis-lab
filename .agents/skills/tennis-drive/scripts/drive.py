@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import os
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal
@@ -24,6 +24,7 @@ from drive_core import (
     _verify_paths,
 )
 from drive_management import add_management_commands, management_handlers
+from drive_tree import add_tree_command, run_tree_command
 
 
 def _run_list(args: argparse.Namespace, backend: RcloneBackend) -> int:
@@ -378,6 +379,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_format(verify_parser)
     add_management_commands(subparsers)
+    add_tree_command(subparsers)
     return parser
 
 
@@ -394,13 +396,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             config_path=args.rclone_config,
             timeout=args.timeout_seconds,
         )
-        handlers = {
+        handlers: dict[str, Callable[[argparse.Namespace, RcloneBackend], int]] = {
             "list": _run_list,
             "search": _run_search,
             "upload": _run_upload,
             "download": _run_download,
             "inspect": _run_inspect,
             "verify": _run_verify,
+            "download-tree": run_tree_command,
             **management_handlers(),
         }
         return handlers[args.command](args, backend)

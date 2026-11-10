@@ -93,6 +93,14 @@ Ballの専用loop adapterは`integration/tasks/ball_detection/lifecycle_contract
 
 文書・prompt・翻訳の任意の言い回し、段落全体の完全一致、数字やキーワードの出現回数は固定しない。エラーの種類や必要な識別子など、契約に必要な部分だけを確認する。3言語の版がある文書は、同じ構造・コマンド・参照先を保ち、翻訳表現の字面には依存しない。
 
+### agents_ops の環境隔離
+
+`e2e/agents_ops/conftest.py` のautouse fixtureは、実行元の `HERDR_*` を各テストのsetup前に除去する。
+表示同期の検証だけがfake Herdrの環境・実行ファイルを明示的に渡す。
+祖先processを検証するhookは `support/agents_ops/hook_process.py` の `hook_command` で起動する。
+このテスト専用launcherは、呼出元pytest processが実際の祖先であることを確認し、その `/proc/<pid>/stat` の親PIDだけを1として読む。
+pytestより上の対話エージェントを探索から外し、テスト内のprocess名・PID・開始時刻と親子関係は実物で検証する。本番hookの検出処理は変更しない。
+
 ### 削除・統合・配置変更
 
 旧ケースの node → 守っていた契約 → 存続・拡張する node の対応表を PR に残す。契約を廃止する場合も、廃止理由と影響先を書く。削除数や時間短縮だけで完了としない。

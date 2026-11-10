@@ -205,6 +205,21 @@ def test_main_push_requests_each_registered_suite_without_changes(
     assert partition_nodeids(nodes, plan) == (nodes, {})
 
 
+def test_browser_workflow_is_deferred_when_its_runtime_is_not_prepared(
+    repository_lanes: tuple[dict[str, Any], list[str]],
+) -> None:
+    plan = _plan(
+        repository_lanes,
+        path="tests/integration/tasks/person_tracking/test_recalibration_resume.py",
+    )
+    node = (
+        "tests/e2e/agents_ops/explain_html/test_browser.py"
+        "::test_browser_reader_editor_workflow"
+    )
+    assert not {"javascript", "ops-scenarios"}.intersection(plan["requested_suites"])
+    assert partition_nodeids([node], plan) == ([], {node: "ops-scenarios"})
+
+
 def test_registry_keeps_merge_queue_and_unregistered_tests_always_requested(
     repository_lanes: tuple[dict[str, Any], list[str]],
 ) -> None:

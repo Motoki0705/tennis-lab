@@ -29,12 +29,24 @@ from pathlib import Path
 args = sys.argv[1:]
 calls = Path(os.environ["RETRIEVAL_GH_CALLS"])
 with calls.open("a") as f: f.write(json.dumps(args)+"\n")
+state = json.loads(Path(os.environ["RETRIEVAL_GH_STATE"]).read_text())
+if args == ["--version"]:
+    print(state.get("gh_version_output", "gh version 2.103.3 (fixture)"))
+    sys.exit(0)
 assert args[:2] == ["api", "--hostname"]
+if "--allow-escape-sequences" not in args:
+    print("the response contains terminal escape sequences; pass --allow-escape-sequences to output it anyway", file=sys.stderr)
+    sys.exit(1)
 assert args[args.index("--method")+1] == "GET"
 assert args[args.index("--hostname")+1] == "github.com"
 assert "--paginate" not in args and "--input" not in args
-state = json.loads(Path(os.environ["RETRIEVAL_GH_STATE"]).read_text())
 failure = state.get("failure")
+if failure == "old_gh":
+    print("unknown flag: --allow-escape-sequences", file=sys.stderr)
+    sys.exit(2)
+if failure == "controlled_error":
+    print("gh: \x1b[31mfailed\x1b[0m\r\a", file=sys.stderr)
+    sys.exit(1)
 if failure == "timeout": time.sleep(2)
 if failure in ("403", "500", "404"):
     print("HTTP/2.0 "+failure+" Error\n\n{}")
@@ -54,6 +66,18 @@ path, query = parsed.path, parse_qs(parsed.query)
 page = int(query.get("page", [1])[0]); size = int(query.get("per_page", [50])[0])
 head = "a"*40
 def emit(value, total=None, text=False):
+    def with_controls(value):
+        if isinstance(value, list): return [with_controls(v) for v in value]
+        if isinstance(value, dict):
+            result = {}
+            for k, v in value.items():
+                if k in ("body", "title", "name", "login") and isinstance(v, str):
+                    if k == "body": v = state.get("body_text", v)
+                    result[k] = v + state.get("text_suffix", "")
+                else: result[k] = with_controls(v)
+            return result
+        return value
+    if not text: value = with_controls(value)
     print("HTTP/2.0 200 OK")
     if total is not None and page*size < total:
         print('Link: <https://api.github.com/next?page='+str(page+1)+'>; rel="next"')
@@ -69,7 +93,7 @@ def issue(i):
             "state":"open","user":{"login":"researcher"},"labels":[{"name":"audit"}],
             "html_url":"https://github.com/o/r/issues/"+str(i),"updated_at":"2026-10-24T00:00:00Z"}
 def job(i):
-    return {"id":i,"run_id":70,"head_sha":head,"name":"unit "+str(i),"status":"completed","conclusion":"failure",
+    return {"id":i,"run_id":state.get("job_run_id",70),"head_sha":state.get("job_head", head),"name":"unit "+str(i),"status":"completed","conclusion":"failure",
             "labels":state.get("runner_labels", ["ubuntu-latest"])}
 if path == "search/issues":
     total = state.get("total", 421)
@@ -114,7 +138,7 @@ elif path == "repos/o/r/actions/jobs/9":
 elif path == "repos/o/r/actions/jobs/9/logs":
     assert "Accept: application/vnd.github+json" in args
     if failure == "empty_log": emit("",text=True)
-    else: emit("".join("line "+str(i)+" テスト\n" for i in range(1,50001)),text=True)
+    else: emit(state.get("log", "".join("line "+str(i)+" テスト\n" for i in range(1,50001))),text=True)
 else:
     print("unexpected endpoint "+path,file=sys.stderr);sys.exit(91)
 """
@@ -142,7 +166,11 @@ class Scenario:
 
     def calls(self) -> list[list[str]]:
         return (
-            [json.loads(line) for line in self.calls_path.read_text().splitlines()]
+            [
+                args
+                for line in self.calls_path.read_text().splitlines()
+                if (args := json.loads(line))[0] == "api"
+            ]
             if self.calls_path.exists()
             else []
         )
@@ -661,6 +689,176 @@ def test_ci_runs_jobs_and_large_log_ranges_keep_code_identity(
         for source in log["sources"]
     )
     assert len(retrieval.encode(log)) < retrieval.MAX_RESPONSE_BYTES
+
+
+def test_ci_log_controls_are_sanitized_before_paging_and_recorded(
+    scenario: Scenario,
+) -> None:
+    scenario.fail(
+        "controlled_log",
+        log="\x1b[31mred\x1b[0m\r\n"
+        "\x1b]8;;https://example.invalid\x1b\\link\x1b]8;;\x1b\\\t\b\0\x85\n"
+        "last\x1b[31",
+    )
+    first = ok(scenario, "ci_log", job_id=9, line_count=1, max_chars=4)
+    expected = "red\\u000d\nlink\t\\u0008\\u0000\\u0085\nlast\\u001b[31"
+    text = first["data"]["text"]
+    response = first
+    while response["pagination"]["has_more"]:
+        response = ok(scenario, "ci_log", **response["pagination"]["next"])
+        text += response["data"]["text"]
+    assert text == expected
+    assert response["pagination"]["total_lines"] == 3
+    assert (
+        response["pagination"]["content_sha256"]
+        == retrieval.hashlib.sha256(expected.encode()).hexdigest()
+    )
+    for source in response["sources"]:
+        assert source["job_id"] == 9 and source["run_id"] == 70
+        assert source["head_sha"] == "a" * 40
+    assert response["sources"][1]["text_sanitization"] == {
+        "policy": "terminal-controls-v1",
+        "input": "gh_output",
+        "changed": True,
+        "ansi_sequences_removed": 4,
+        "control_characters_escaped": 5,
+    }
+    assert scenario.records()[-1]["response"] == response
+    assert all("--allow-escape-sequences" in args for args in scenario.calls())
+    scenario.fail("changed_log", log="changed\x1b[0m\n")
+    error(scenario, "ci_log", "SOURCE_CHANGED", **first["pagination"]["next"])
+
+
+@pytest.mark.parametrize(
+    "name,arguments",
+    [
+        ("github_item", {"kind": "issue", "number": 17}),
+        ("github_item", {"kind": "pr", "number": 17}),
+        ("github_comment", {"number": 17, "comment_id": 9}),
+    ],
+)
+def test_github_json_bodies_and_metadata_use_the_same_control_policy(
+    scenario: Scenario, name: str, arguments: dict[str, Any]
+) -> None:
+    scenario.fail(
+        "controlled_json",
+        body_text="body line 1\nbody line 2\n",
+        text_suffix="\x1b[31mRED\x1b[0m\r\n",
+    )
+    response = ok(scenario, name, **arguments, start_line=3)
+    assert response["data"]["text"].endswith("RED\\u000d\n")
+    assert "\x1b" not in json.dumps(response, ensure_ascii=False)
+    if name == "github_item":
+        metadata = response["data"]["metadata"]
+        assert metadata["title"] == "issue 17RED\\u000d\n"
+        assert metadata["user"]["login"] == "researcherRED\\u000d\n"
+    mark = response["sources"][0]["text_sanitization"]
+    assert mark["changed"] and mark["ansi_sequences_removed"] >= 2
+    assert mark["control_characters_escaped"] >= 1
+    assert scenario.records()[-1]["response"] == response
+
+
+@pytest.mark.parametrize(
+    "name,arguments,key,expected",
+    [
+        ("github_items", {"kind": "issue"}, "title", "issue 1"),
+        ("github_comments", {"number": 17}, "user", {"login": "reviewer"}),
+        ("ci_jobs", {"run_id": 70}, "name", "unit 1"),
+    ],
+)
+def test_github_list_metadata_controls_are_counted(
+    scenario: Scenario, name: str, arguments: dict[str, Any], key: str, expected: Any
+) -> None:
+    scenario.fail("controlled_json", text_suffix="\a")
+    response = ok(scenario, name, **arguments, per_page=1)
+    expected = (
+        {"login": "reviewer\\u0007"}
+        if isinstance(expected, dict)
+        else expected + "\\u0007"
+    )
+    assert response["data"][0][key] == expected
+    assert (
+        response["sources"][-1]["text_sanitization"]["control_characters_escaped"] >= 1
+    )
+
+
+def test_pr_diff_controls_are_sanitized_after_original_integrity_check(
+    scenario: Scenario,
+) -> None:
+    raw = "diff --git a/model.py b/model.py\n--- a/model.py\n+++ b/model.py\n"
+    raw += "@@ -0,0 +1 @@\n+\x1b[31mvalue\x1b[0m\0\n"
+    scenario.fail(
+        "controlled_diff",
+        diff=raw,
+        pr_stats={"changed_files": 1, "additions": 1, "deletions": 0},
+    )
+    response = ok(scenario, "pr_diff", number=17, head_sha="a" * 40)
+    assert response["data"]["text"].endswith("+value\\u0000\n")
+    assert response["sources"][1]["text_sanitization"]["ansi_sequences_removed"] == 2
+    # Removing this OSC would hide an extra, unverifiable line from the checker.
+    scenario.fail(
+        "invalid_controlled_diff",
+        diff=raw + "\x1b]0;extra\nline\a",
+        pr_stats={"changed_files": 1, "additions": 1, "deletions": 0},
+    )
+    error(scenario, "pr_diff", "INCOMPLETE_DIFF", number=17, head_sha="a" * 40)
+
+
+@pytest.mark.parametrize(
+    "identity", [{"job_head": "a" * 40 + "\x1b[0m"}, {"job_run_id": "70\x1b[0m"}]
+)
+def test_ci_identity_validation_does_not_repair_controls(
+    scenario: Scenario, identity: dict[str, Any]
+) -> None:
+    scenario.fail("invalid_identity", **identity)
+    error(scenario, "ci_log", "INVALID_SOURCE", job_id=9)
+    assert len(scenario.calls()) == 1
+
+
+def test_github_error_details_have_counted_visible_controls(scenario: Scenario) -> None:
+    scenario.fail("controlled_error")
+    response = error(scenario, "ci_log", "UPSTREAM_ERROR", job_id=9)
+    assert response["error"]["details"]["stderr"] == "gh: failed\\u000d\\u0007\n"
+    mark = response["sources"][0]["text_sanitization"]
+    assert mark["changed"] is True
+    assert mark["ansi_sequences_removed"] == 2
+    assert mark["control_characters_escaped"] == 2
+    assert scenario.records()[-1]["response"] == response
+
+
+@pytest.mark.parametrize(
+    "version",
+    [
+        "gh version 2.96.9 (fixture)",
+        "gh version 2.9.0 (fixture)",
+        "gh version 2.97.0-rc1 (fixture)",
+        "gh version devel",
+        "",
+    ],
+)
+def test_unsupported_gh_versions_stop_before_api_with_explicit_error(
+    scenario: Scenario, version: str
+) -> None:
+    scenario.fail("old_gh", gh_version_output=version)
+    response = error(scenario, "ci_log", "UNSUPPORTED_GH_VERSION", job_id=9)
+    assert response["error"]["details"]["minimum_version"] == "2.97.0"
+    assert "2.97.0" in response["error"]["message"]
+    assert scenario.calls() == []
+    assert scenario.records()[-1]["response"] == response
+
+
+@pytest.mark.parametrize("version", ["2.97.0", "2.103.3", "3.0.0+vendor"])
+def test_supported_gh_versions_keep_plain_log_and_zero_counts(
+    scenario: Scenario, version: str
+) -> None:
+    scenario.fail("supported_gh", gh_version_output="gh version " + version)
+    response = ok(scenario, "ci_log", job_id=9, line_count=1)
+    assert response["data"]["text"] == "line 1 テスト\n"
+    for source in response["sources"]:
+        mark = source["text_sanitization"]
+        assert mark["changed"] is False
+        assert mark["ansi_sequences_removed"] == 0
+        assert mark["control_characters_escaped"] == 0
 
 
 @pytest.mark.parametrize("status", ["403", "500", "404"])

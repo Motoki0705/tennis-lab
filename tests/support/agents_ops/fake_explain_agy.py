@@ -49,7 +49,7 @@ if "-p" in args:
     raise SystemExit(0)
 
 schema = json.loads(Path(args[args.index("--json-schema") + 1]).read_text())
-role = "writer" if schema["title"] == "Candidate" else "verifier"
+role = "writer" if schema["title"] == "WriterOutput" else "verifier"
 if case == "hang" and role == "writer":
     hooks = json.loads((Path.cwd() / ".agents/hooks.json").read_text())
     command = hooks["explain-html-no-tools"]["PreToolUse"][0]["hooks"][0]["command"]

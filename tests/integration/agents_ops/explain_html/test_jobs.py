@@ -153,7 +153,9 @@ def test_managed_service_commits_compiled_graph_and_rejects_new_ai_image(
         image_raw = candidate(
             revision.document.model_copy(
                 update={
-                    "html": revision.document.html.replace(
+                    # Match the observed writer: existing compiled graphs return
+                    # to empty slots while the new image remains unfulfilled.
+                    "html": html.replace(
                         "</aside>",
                         '<figure data-figure-id="new-concept"></figure></aside>',
                     ),
@@ -170,6 +172,7 @@ def test_managed_service_commits_compiled_graph_and_rejects_new_ai_image(
             rejected.state == "failed"
             and rejected.error.code == "image_generation_unavailable"
         )
+        assert rejected.error.message
         assert (
             env.store.current("geometry") == revision
             and len(env.store.history("geometry")) == 2

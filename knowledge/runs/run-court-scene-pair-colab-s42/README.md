@@ -42,6 +42,24 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
 さらに管理jobの`returncode: 0`と`drive_saved_at`を確認する。
 `status: failed`、非0、VM消失は成功扱いしない。記録が古い場合も次のrunがDrive上の世代を再照合する。
 
+`phase` は `restoring`（状態・入力・checkpoint復元）、`validating_inputs`（入力検証）、
+`verifying_existing`（完了済み成果再照合）、`training`、`verifying_drive`（保存・Drive内容確認）を区別する。
+評価実行には `evaluating` を使う。`operation / current_path` はその下位工程・対象。
+ファイル処理は `completed_files / total_files / completed_bytes / total_bytes`、
+入力の条件検証などは `completed_items / total_items` を見る。
+`last_progress_at` は件数・bytes・学習step・工程が前進した最終時刻で、
+単なる状態再記録の `updated_at` と区別する。`phase_started_at / elapsed_seconds` は現在の工程の経過時間。
+件数は下位工程開始で0へ戻り、未判明の総数はnull。学習開始前を学習0stepの停止と推定しない。
+trainer起動時のDataModule再検証も `validating_inputs / trainer_data_module` と表示する。
+`training / first_batch` はtrainerの開始callback後で、最初のforward（有効ならcompile）を待つ状態。
+最初のbatchが完了してから `operation: training` と実stepを更新する。
+
+`actual_training_update` はbatch callbackが観測した実更新、`latest_saved_update` はDriveまで照合済みの更新。
+checkpoint保存・検証中は前回の保存済みstepを保持する。ローカルの記録は同一工程内で最大1秒に1回、
+Drive公開は工程遷移・完了と最大1分に1回へ制限する。batchごとの更新はローカルだけへ記録し、
+Drive上の実stepは直近の公開時点の値である。生きたVMの最新状態にはVM内の `progress.json` を読む。
+状態復元中もローカルの新しい進捗を保ち、前VMから取得した古い `progress.json` で上書きしない。
+
 ## 新しいVMから同じ管理コマンドを再実行する
 
 以下はローカルの、このbundleを含むcommitをcheckoutした専用worktreeから実行する。
@@ -51,6 +69,26 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python \
 `campaign.py`・`runtime.py`の内容も含む。無関係なsrc変更でもidentityは変わるため、
 再開commitと既存の入力完了印の扱いは親が確認する。不一致を無視して続行しない。
 認証済みrclone設定の内容は表示しない。
+
+### 一括再照合adapterを次回の再開へ適用する場合
+
+#1801のadapter更新は、実行中のVM・jobへ適用しない。前のwriterの終了を確認してから、
+#1581の担当親が次の `PAIR_REF` を選ぶ。科学的なソース・lock・DINOv3 treeは前回と同一に保つ。
+新しいmain全体へ更新せず、元の固定refにこのPRのadapter差分だけを取り込んだrefを用意し、
+両refの `src / uv.lock / third_party/dinov3` に差分がないことを確認する。
+`campaign.py configs` とこのbundleのCPUテストを通したrefを指定して、以下と同じ管理入口から再開する。
+Drive上の `done / saved / checkpoint` を編集・削除する移行作業は不要。
+
+旧adapterの正確な内容は `campaign.ORIGINAL_ADAPTERS` で固定する。現在版かこの既知の旧版の組だけを
+互換として扱い、科学コード・全入力・条件設定の一致を検証した上で、従来と同じinputs identityを計算する。
+未知の版、混ざった版、科学コード・入力・順序・設定の変更は拒否する。旧 `done` のidentityと結果は書き換えない。
+新しい `inputs.json` は実行したadapterの内容を記録し、`adapters/*.json` に互換identityの根拠と実行版を残す。
+初回に新adapterで始めたrunも同じidentity方式を使う。科学条件の変更をこの互換性へ含めない。
+
+完了済み評価は[Drive一括入口](../../../.agents/skills/tennis-drive/references/commands.md#閉じたdirectoryの一括取得照合)へ
+`evaluation_files` の全期待path・SHA-256を渡してdirectoryごと再照合する。
+ファイル集合の過不足と全byteのhashを検証し、その後もcheckpoint・設定・評価ID・順序・指標の意味検証を通す。
+既存ローカルdirectoryの不一致を自動修復しない。原因を確認してから再取得する。
 
 ```bash
 export RCLONE_CONFIG="$HOME/.config/tennis-lab/rclone-drive.dedicated.conf"
@@ -84,7 +122,7 @@ L4の確保を確認し、次の**1つのexec**を提出する。`bootstrap.sh`�
 ```
 
 入力は各VMの`/content/tennis-lab`以下に1回だけ取得し、同じVMでの再実行は既存bytesを照合する。
-途中の入力転送は`.fetching`へ置き、内容検証後に正式名へrenameする。
+入力directoryは一括入口の一時directory、単一ファイルは`.fetching`へ置き、内容検証後に正式名へrenameする。
 datasetの再取得を条件ごとに行わない。元の実画像val registryは
 `outputs/court_detection/campaign/scene-diversity-6000-v1/evaluation/registry.json`。
 pool・実画像store・重みはDriveの対応する`data/`・`ckpt/`から取得する。

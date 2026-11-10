@@ -120,19 +120,49 @@ UI显示可取消的已用时间，不承诺完成期限，不应使用旧的共
 `authorized_evidence_changes` 明确声明。不要把 writer 的提案作为授权，也不要未经检查就接受
 browser JSON 中的授权。独立 verifier 还会对照指令检查变更理由。两次调用都收到完整上下文、
 当前版、请求/目标/指令和历史；verifier 另外收到候选及 digest。prompt/schema 通过私有文件和
-stdin 传递，不因 argv 长度限制而截断。Candidate schema 直接从共享模型生成。
-writer还收到`candidate_template`：按真实输出结构提供完整request和可信metadata，HTML/变更内容由writer填写。
+stdin 传递，不因 argv 长度限制而截断。writer/verifier schema 直接从 `editor.py` 的类型模型生成。
+writer还收到`candidate_template`：按真实输出结构提供完整request和可信metadata，HTML/摘要由writer填写。
 这减少仅用ID代替依据对象或虚构request字段等native finish错误，不限定正文/布局，也不改变严格输出schema。
 独立verifier只收到compile后的候选，不接收此写作辅助。
 
-writer 返回完整 Candidate。机械检查绑定原始请求，执行共享结构/变更检查，严格核对目的、读者、
+writer 返回仅含 `request`、完整 `document` 和 `change_summary` 的 `WriterOutput`，
+不申报 content/evidence 变更。机械检查绑定原始请求，执行结构/引用检查，严格核对目的、读者、
 依据 metadata（包括数值、条件、来源）和已批准 assets。保留存续依据的正文引用和 HTTP(S) 来源链接。
 未变更依据中已经出现在正文的数值，必须继续出现在该依据的范围内；此十进数字面检查不证明单位、
 可见性、改写或语义。writer 检查后，必需的 compiler 可以展开 HTML 并添加生成 asset metadata。
-editor 对照当前版重新计算 content changes，并再次检查结构和依据保持；保留原请求、依据变更理由
-与摘要。只有最终候选会计算 digest 并传给独立 Gemini，检查这些方面及逻辑主张、已授权修改与缺少的输入。
+editor 在 compile 后用 `content_changes(current, compiled_document)` 构建公开 Candidate，
+不生成 raw 变更列表，也不在 slot 展开后替换列表。编辑的 `evidence_changes` 来自已验证的可信
+`authorized_evidence_changes`，保留其理由；初版由 runtime 生成 `added` 和固定理由
+`Supplied initial evidence.`。ID、kind 和面向人的理由已由 context 决定，writer 无需申报；
+独立 verifier 仍对照指令核查理由。再次检查最终 Candidate 的结构、变更完整性与依据保持，
+stage/commit 仍独立重算并核对差异。保留原请求和摘要。只有最终候选会计算 digest 并传给独立 Gemini，
+检查这些方面及逻辑主张、已授权修改与缺少的输入。
 可以生成诚实说明信息不足的候选。检查必须覆盖新旧全部依据 ID，绑定候选 digest，且无问题地 passed。
 拒绝或无效输出会抛出 ContractError，不返回候选。模型语义检查提供额外证据，不保证真理或完整正确性。
+
+`schema.py` 及公开 Candidate/Revision、HTTP、UI 和历史存储契约不变，变更列表描述最终编译文档。
+既有 revision 无需迁移。含 `changes` / `evidence_changes` 的旧 writer 响应会被新严格 schema 拒绝；
+应使用新 schema/prompt 重新生成，不将旧响应作为 WriterOutput 重放。
+
+局部编辑保持原有边界：`validate_request()` 检查当前 content/selection 目标存在且匹配，
+不检查所有变更 block 都在目标内。没有确定性禁止全部目标外修改的机械保证。
+writer 被要求在目标附近编辑；独立 verifier 收到请求和最终计算差异，检查回答及无关重要内容的保持。
+语义拒绝保留当前版，但不构成严格的局部范围机械保证。
+
+writer 区分已提供的依据、用户明确给出的事实和一般定义/推导。主题请求或来源 URL 本身不能支持
+产品规格、运动速度或实际精度。禁止添加未提供的数值输入、产品名及性能主张；基于已提供输入的计算
+应在对应位置保留假设和假想/推导的性质。缺少信息时在正文说明，不猜测。
+
+[editor.py](editor.py) 中 `SemanticVerdict` 必须包含 `unsupported_claims` 和 `technical_errors` 数组，
+即使为空。每项含 `quote`、`reason` 和可选 `content_id`/`evidence_id`。verifier 检查整个文档，
+包括依据标签外的正文、caption 和图表定义，列出无依据的具体主张、术语/坐标系混淆及无条件断言。
+每项映射为 rule 为 `unsupported_claim` 或 `technical_error` 的 `ValidationIssue`，保存在
+`ValidationResult.semantic.issues`。即使总判定为 passed，**任何一项都会导致失败**。
+语义拒绝抛出 `SemanticValidationError`（仍是公开 code 为 `validation_failed` 的 `ContractError`）；
+可信调用方可保存其绑定 digest 的 `.validation` 供私有诊断。不会返回候选，诊断正文不进入 HTTP 错误。
+`schema.py`、保存的 ValidationResult 形状和既有 revision 不变。缺少两数组的旧模型判定无效，
+应使用新 prompt/schema 重新检查，不填充空数组或复用旧批准。语义失败不自动修复/重试，重复拒绝也不放宽检查；
+保持当前版，要求修正输入后显式重试。上述有次数限制的 figure 修复不变。此检查不保证完全正确，也不执行外部事实核查。
 
 `EditorialResult` 包含 candidate、validation 和 writer/verifier 执行证据。validation 的
 structural/semantic 为 passed，rendering 为 **not_run**，不能直接 commit。service 必须 stage

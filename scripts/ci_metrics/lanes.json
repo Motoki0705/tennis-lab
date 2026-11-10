@@ -4,6 +4,7 @@
     {
       "id": "ops-scenarios",
       "files": [
+        "tests/e2e/agents_ops/explain_html/test_browser.py",
         "tests/e2e/agents_ops/test_adopted_proposal_issues.py",
         "tests/e2e/agents_ops/test_board.py",
         "tests/e2e/agents_ops/test_board_doorbell.py",
@@ -15,6 +16,7 @@
         "tests/e2e/agents_ops/test_codex_terminal_clear.py",
         "tests/e2e/agents_ops/test_dispatcher_judgement.py",
         "tests/e2e/agents_ops/test_dispatcher_supervisor.py",
+        "tests/e2e/agents_ops/test_environment_isolation.py",
         "tests/e2e/agents_ops/test_execution_basis.py",
         "tests/e2e/agents_ops/test_herdr_labels.py",
         "tests/e2e/agents_ops/test_human_agreement.py",
@@ -51,6 +53,7 @@
         "tests/e2e/agents_ops/test_codex_terminal_clear.py",
         "tests/e2e/agents_ops/test_dispatcher_judgement.py",
         "tests/e2e/agents_ops/test_dispatcher_supervisor.py",
+        "tests/e2e/agents_ops/test_environment_isolation.py",
         "tests/e2e/agents_ops/test_execution_basis.py",
         "tests/e2e/agents_ops/test_herdr_labels.py",
         "tests/e2e/agents_ops/test_human_agreement.py",

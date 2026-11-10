@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import hashlib
+import html
 import importlib
 import inspect
 import json
@@ -21,6 +22,10 @@ import pytest
 import yaml
 
 from tests.support.agents_ops.directory_seed import DirectorySeed
+from tests.support.agents_ops.unsplit_checklists import (
+    WITH_CANDIDATES,
+    WITH_DESCRIPTION,
+)
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / ".agents/ops"), str(ROOT / ".agents/ops/lib")]
@@ -146,6 +151,13 @@ class SupplementEnv:
 
     def save(self, state: dict[str, Any]) -> None:
         (self.root / "github.json").write_text(json.dumps(state))
+
+    def set_checklist(self, text: str) -> None:
+        self.original = self.original.replace(issue_format.NO_CHILDREN, text)
+        self.supplemented = self.supplemented.replace(issue_format.NO_CHILDREN, text)
+        state = self.state()
+        state["issue"]["body"] = self.original
+        self.save(state)
 
     def fail_history(
         self,
@@ -438,10 +450,20 @@ def test_uncommitted_prompt_is_rejected_before_calling_the_model(
     assert not env.calls("agy") and not env.mutations()
 
 
+@pytest.mark.parametrize(
+    "checklist",
+    [
+        pytest.param("未分割（子issue未作成）", id="canonical"),
+        pytest.param(WITH_DESCRIPTION, id="issue-1796"),
+        pytest.param(WITH_CANDIDATES, id="issue-1797"),
+    ],
+)
 def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     supplement_env: SupplementEnv,
+    checklist: str,
 ) -> None:
     env = supplement_env
+    env.set_checklist(checklist)
     assert env.run("supplement") == 0
     assert env.state()["issue"]["body"] == env.original and env.mutations() == []
     assert env.run("apply") == 0
@@ -469,6 +491,38 @@ def test_success_applies_only_verified_body_and_publishes_allowlisted_data(
     assert "/comments?" in calls[patch - 1]["endpoint"]
     assert len(env.state()["edits"]) == 2  # creation version plus our first edit
     assert not any("actions/variables" in call["endpoint"] for call in env.calls("gh"))
+
+
+@pytest.mark.parametrize(
+    "checklist",
+    [
+        pytest.param("- [ ] #<番号> 未作成", id="invalid-row"),
+        pytest.param(WITH_DESCRIPTION + "\n\n- [ ] #11 タスク", id="mixed"),
+    ],
+)
+def test_invalid_child_checklist_reports_fix_without_agent_or_body_write(
+    supplement_env: SupplementEnv, checklist: str
+) -> None:
+    env = supplement_env
+    env.set_checklist(checklist)
+    assert env.run("supplement") == 1
+    bundle = env.bundle()
+    assert bundle["status"] == "failed" and bundle["body"] is None
+    assert bundle["report"]["turns"] == []
+    reasons = bundle["report"]["reasons"]
+    assert len(reasons) == 1 and reasons[0]["rule"] == "invalid_source"
+    diagnostic = reasons[0]["detail"]
+    assert checklist.splitlines()[-1] in diagnostic
+    assert issue_format.NO_CHILDREN in diagnostic
+    assert "- [ ] #123 タスク名" in diagnostic
+    assert "修正:" in diagnostic
+    assert diagnostic in html.unescape((env.root / "summary.md").read_text())
+    assert env.calls("agy") == [] and env.mutations() == []
+    assert env.run("fail") == 0
+    assert labels(env) == {"issue:parent", "enhancement", "supplement:failed"}
+    assert env.state()["issue"]["body"] == env.original
+    assert env.state()["edits"] == []
+    assert not any(call["method"] == "PATCH" for call in env.mutations())
 
 
 @pytest.mark.parametrize("ending", ["success", "error", "timeout"])

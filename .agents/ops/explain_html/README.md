@@ -162,29 +162,78 @@ independent verifier checks its justification against the instruction. The compl
 context, current revision, request/target/instruction and history go to both calls;
 the verifier additionally receives the candidate and its digest. Prompts and schemas
 travel through private files/stdin without an argv size limit or silent truncation.
-Candidate schemas are generated directly from the shared models.
+Writer/verifier schemas are generated directly from their typed models in `editor.py`.
 Writer inputs also include `candidate_template`: the complete request and trusted
-metadata in the actual output shape, with HTML/change placeholders. This reduces
+metadata in the actual output shape, with HTML/summary placeholders. This reduces
 native finish errors such as ID-only evidence or invented request fields, without
 constraining prose/layout or changing the strict output schema. The independent
 verifier receives the compiled candidate, not this writing aid.
 
-The writer returns a complete Candidate. Mechanical checks bind its request, run
-the contract's structural/change checks, and require exact purpose, audience,
+The writer returns `WriterOutput`: only `request`, the complete `document`, and
+`change_summary`. It reports neither content nor evidence changes. Mechanical
+checks bind its request, run structural/reference checks, and require exact purpose, audience,
 evidence metadata (including numbers, conditions and provenance) and approved assets.
 Surviving rendered evidence references and HTTP(S) source hyperlinks must remain.
 Numeric values in unchanged evidence that appeared in that evidence's rendered text
 must still appear in its scope; this lexical decimal check does not prove units,
 visual visibility, paraphrases or meaning. After these writer checks, the required
-compiler may add generated asset metadata and expand the HTML. The editor recomputes
-content changes against the current revision and repeats structure and fact checks.
-The originating request, evidence change reasons and summary are retained.
+compiler may add generated asset metadata and expand the HTML. The editor then
+builds the public `Candidate` using `content_changes(current, compiled_document)`;
+there is no raw change list to compare or replace after slot expansion.
+For edits, `evidence_changes` comes from the checked trusted
+`authorized_evidence_changes`, including its human-readable reasons. Initial
+evidence receives runtime-generated `added` records with reason
+`Supplied initial evidence.`. The context already determines identities, kinds
+and reasons, so the writer supplies none of this accounting. The independent
+verifier still checks reasons against the instruction. Structure, change integrity
+and fact preservation are checked again on the final Candidate; stage/commit
+independently recompute differences as before. The originating request and summary are retained.
 Only this final candidate is digested and sent to a separate Gemini call, which
 reviews those points, logical claims, authorized changes and missing inputs.
 Honest explanations of insufficient information are supported. The review must cover every old/new
 evidence ID, match the candidate digest and pass without issues. Rejection or invalid
 output raises ContractError without returning a candidate. This model review adds
 evidence; it does not guarantee truth or complete semantic correctness.
+
+`schema.py` and the public Candidate/Revision, HTTP, UI and stored history contracts
+are unchanged. Their change lists describe the final compiled document. Existing
+revisions require no migration. Old writer responses containing `changes` or
+`evidence_changes` fail the new strict schema; regenerate with the new writer
+schema/prompt rather than replaying a legacy response as `WriterOutput`.
+
+Local scope retains its existing boundary: `validate_request()` checks that the
+current content/selection target exists and matches, not that every changed block
+is inside it. There is no deterministic prohibition on all edits outside a target.
+The writer is instructed to edit near it; the independent verifier receives the
+request and final computed differences and checks the answer and preservation of
+unrelated important content. A semantic rejection preserves current. This does
+not provide a strict mechanical guarantee of local scope.
+
+The writer distinguishes supplied evidence, explicit user-supplied facts and
+general definitions/derivations. A topic request or a citation URL alone supplies
+no product specifications, sport speeds or empirical accuracy. Unsupplied numeric
+inputs, product names and performance claims are prohibited; calculations from
+supplied inputs retain their assumptions and hypothetical/derived status locally.
+Missing inputs are explained in the page rather than guessed.
+
+`SemanticVerdict` in [editor.py](editor.py) requires `unsupported_claims` and
+`technical_errors` arrays, including when empty. Each finding contains `quote`,
+`reason`, and optional `content_id`/`evidence_id`. The verifier inspects the whole
+document, including untagged prose, captions and graph definitions, for unsupported
+concrete claims, confused terminology, coordinate frames and unjustified absolute
+conclusions. Each finding becomes a `ValidationIssue` with rule `unsupported_claim`
+or `technical_error` in `ValidationResult.semantic.issues`; **any** finding vetoes
+approval even if the model's overall check says passed. Semantic rejection raises
+`SemanticValidationError` (a `ContractError` with the same public `validation_failed`
+code); trusted orchestration can retain its digest-bound `.validation` for private
+diagnostics. No candidate is returned, and diagnostic text is not an HTTP error.
+`schema.py`, stored ValidationResult shape and existing revisions are unchanged.
+Old model verdicts missing these arrays are invalid: rerun verification with the
+new prompt/schema instead of supplying empty defaults or reusing old approval.
+There is no semantic repair/retry loop or relaxed check after repeated rejection;
+retain current and require an explicit retry with corrected inputs. The bounded
+figure repair described above is unchanged. This review cannot guarantee complete
+correctness and performs no external fact-checking.
 
 `EditorialResult` contains candidate, validation, writer and verifier evidence.
 The validation has structural/semantic passed and rendering **not_run**; it cannot
