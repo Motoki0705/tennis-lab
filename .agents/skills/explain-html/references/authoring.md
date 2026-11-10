@@ -22,6 +22,9 @@ asset IDからローカルファイルへの対応 `asset_files`（省略時は�
 `asset_files` の相対パスはbriefファイルの親から解決する。public Asset.pathとは別の入力パスである。
 型は `scripts/explain_html_author.py` とruntimeからimportしてJSONを作る。schemaの手書きコピーは不要。
 
+過去のbriefや編集要求を再利用するときは、古いruntimeの出力契約に向けた回避策を除く。
+writerの応答形式とcompilerの所有範囲はruntimeの正本に任せ、briefで重ねて指示しない。
+
 以下は図なしの最小入口。実際には根拠・条件と、題材に応じた説明設計を入れる。
 
 ```python
