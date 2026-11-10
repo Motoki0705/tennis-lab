@@ -51,6 +51,12 @@ exit 0や`task_success:null`をタスク成功に読み替えない。失敗時�
 入力変更と障害の区別、延期の内訳はprivateなresultを読む。部分公開後の障害も `result=failed, candidates=[]`。
 途中までのコメントや根拠を消さず、次の予定回または明示実行で照合する。
 
+GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#github-getの接続断と再試行)を使う。
+上限に達した場合、取得endpoint・試行回数・最後のエラー種別/詳細が `result.json` の `diagnostics` に残る。
+予定回ではscheduleのrun journalにも同じ診断を保存する。取得できなかった正式関係・依存の閉包から
+候補の独立性を保証できないため、部分公開後を含めrun全体を失敗させ、全候補を無効にする。
+保存済みagent出力だけで途中から再開せず、次の新規判定で再収集・鮮度照合・既存公開記録の照合を行う。
+
 ## 入力契約とdigest
 
 完全な`input.json`はdigest・鮮度照合用に維持し、agentには`agent-input/index.json`から必要な資料を読むよう指示する。
