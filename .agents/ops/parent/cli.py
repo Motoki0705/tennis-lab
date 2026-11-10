@@ -224,6 +224,8 @@ def parser() -> argparse.ArgumentParser:
     review = commands.add_parser("review-prepare")
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
+    inspection = commands.add_parser("review-inspect")
+    inspection.add_argument("--prs", type=int, nargs="+", required=True)
     request = commands.add_parser("review-request")
     selection = request.add_mutually_exclusive_group(required=True)
     selection.add_argument("--run-id")
@@ -272,6 +274,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "basis-check",
                 "wait-supplement",
                 "worker-log-status",
+                "review-inspect",
                 "decision-log-status",
             }
             else session_identity(dict(os.environ))
@@ -286,7 +289,10 @@ def _main(argv: list[str] | None = None) -> int:
         else:
             store = Store(args.state_dir)
         gh = GitHub(
-            args.repo, store=None if args.command == "wait-supplement" else store
+            args.repo,
+            store=None
+            if args.command in {"wait-supplement", "review-inspect"}
+            else store,
         )
         parent = issue_number(args.parent, gh.repo)
         if args.command == "publish-decision-log":
@@ -307,6 +313,23 @@ def _main(argv: list[str] | None = None) -> int:
             ).publish(dry_run=args.dry_run, retry=args.retry)
             print(json.dumps(value, ensure_ascii=False, sort_keys=True))
             return 2 if value["error"] or value["blocked"] else 0
+        if args.command == "review-inspect":
+            import importlib
+
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "review"))
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+            inspection_module = importlib.import_module("review_inspection")
+            inspection = inspection_module.inspect_reviews(gh, store, parent, args.prs)
+            print(json.dumps(inspection, ensure_ascii=False, indent=2, sort_keys=True))
+            return (
+                2
+                if inspection["errors"]
+                or any(
+                    pr["errors"] or any(run["errors"] for run in pr["history"])
+                    for pr in inspection["prs"]
+                )
+                else 0
+            )
         if args.command in {"decision-log-status", "retry-decision-capture"}:
             from decision_logs.capture import status as capture_status
 

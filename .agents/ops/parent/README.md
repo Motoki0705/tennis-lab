@@ -647,6 +647,18 @@ acceptは通常、解除/終了/引継ぎ待ちだけを受け取り、同時担
 recoverも既存の委任予約を保持し、照合結果から自動再起動しない。stateを消して空き担当と扱わない。
 引継ぎノートには完了/未完了の子・PR、停止条件、次の作業、レビューrunを記載し、ローカルIDを書かない。
 
+## レビュー証拠の照合表示
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-inspect --prs 1250 1251
+```
+
+prepare前に、既存の証拠・不足・現在との差をPRごとにJSONで読む。
+requestやstate・GitHubを書き換えず、agentを起動しない。担当セッションIDなしでも使える。
+出力・不明範囲・公開とcoverageの検査・終了値の正本は
+[reviewの照合表示契約](../review/README.md#既存証拠の照合表示) を参照する。
+意味の判断と次の行動は親が記録し、追加レビューが必要なPRだけを以下の入口へ渡す。
+
 ## レビュー要求契約（schema version 2、version 1読取互換）
 
 ```bash

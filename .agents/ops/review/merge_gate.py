@@ -19,7 +19,6 @@ sys.path.insert(0, str(HERE.parent / "lib"))
 
 from issues import Issue  # noqa: E402
 from merge_gate_policy import (  # noqa: E402
-    REQUIRED_CHECK,
     MergeInput,
     MergeResult,
     auto_merge,
@@ -46,12 +45,13 @@ from parent.state import Store, session_identity, state_directory  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
     load_json,
-    records,
     request_manifest,
     superseding_reviews,
     validate_result,
 )
 from parent_review_policy import snapshots as validate_snapshots  # noqa: E402
+from review_evidence import followups, python_check_runs  # noqa: E402
+from review_interruption import interruption_record  # noqa: E402
 from review_policy import GateDecision  # noqa: E402
 from review_recovery import verify_adoption  # noqa: E402
 from review_workspace import (  # noqa: E402
@@ -103,45 +103,6 @@ def check_adoptions(
     check_task_adoptions(session.gh, parent.body)
     for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
         check_task_adoptions(session.gh, children[n].body)
-
-
-def python_check_runs(session: ParentSession, head: str) -> list[dict[str, Any]]:
-    """Fetch the complete latest check-run evidence for the pinned commit."""
-    runs: list[dict[str, Any]] = []
-    ids: set[int] = set()
-    total = None
-    page = 1
-    while True:
-        data = object_value(
-            session.gh.get(
-                f"repos/{session.gh.repo}/commits/{head}/check-runs"
-                f"?check_name={REQUIRED_CHECK}&filter=latest&per_page=100&page={page}"
-            )
-        )
-        count, rows = data.get("total_count"), data.get("check_runs")
-        if (
-            type(count) is not int
-            or count < 0
-            or not isinstance(rows, list)
-            or len(rows) > 100
-            or (total is not None and count != total)
-        ):
-            raise ValueError("incomplete or inconsistent Python check-runs response")
-        total = count
-        for row in rows:
-            run = object_value(row)
-            identity = run.get("id")
-            if type(identity) is not int or identity < 1 or identity in ids:
-                raise ValueError("invalid or duplicate Python check-run identity")
-            ids.add(identity)
-            runs.append(run)
-        if len(runs) > total:
-            raise ValueError("Python check-runs count exceeds total_count")
-        if len(rows) < 100:
-            if len(runs) != total:
-                raise ValueError("Python check-runs page is missing entries")
-            return runs
-        page += 1
 
 
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
@@ -272,6 +233,12 @@ def load_evidence(
     if request is None:
         return None, [], None, ("parent_review_missing",)
     run_dir = session.store.directory / "reviews" / request["review_run_id"]
+    if (run_dir / "execution.json").exists():
+        execution = read_json(run_dir / "execution.json")
+        if interruption_record(execution, request) is not None:
+            if read_json(run_dir / "request.json") != request:
+                raise ValueError("local closed review/request mismatch")
+            return None, [], None, ("parent_review_interrupted_closed",)
     if (
         not (run_dir / "result.json").exists()
         or not (run_dir / "execution.json").exists()
@@ -323,56 +290,19 @@ def load_evidence(
     )
     state = confirmed_state(session.history(), request, auth)
     resolutions = []
-    for record in records(parent_comments, session.login):
-        if (
-            record["kind"] == "evidence"
-            and record["review_run_id"] == request["review_run_id"]
-        ):
-            path = run_dir / f"evidence-{digest(record)}.json"
-            if not path.exists():
-                continue
-            saved = read_json(path)
-            if (
-                saved.get("published") is True
-                and saved.get("record") == record
-                and record in records(pr_comments.get(record["pr"], []), session.login)
-                and record["evidence"]["reviewed_paths"]
-                == changed_paths(
-                    record["snapshot"]["merge_base_sha"], record["snapshot"]["head_sha"]
-                )
-            ):
-                resolutions.append(record)
-            continue
-        if (
-            record["kind"] != "resolution"
-            or record["review_run_id"] != request["review_run_id"]
-        ):
-            continue
-        key = digest(record)
-        saved_path = run_dir / f"resolution-{key}.json"
-        diff_path = run_dir / f"resolution-{key}.diff"
-        # A half-published resolution is never sufficient to release a finding.
-        if not saved_path.exists() or not diff_path.exists():
-            continue
-        saved = read_json(saved_path)
-        n = record["pr"]
-        if (
-            saved.get("published") is not True
-            or saved.get("record") != record
-            or record not in records(pr_comments.get(n, []), session.login)
-            or hashlib.sha256(diff_path.read_bytes()).hexdigest()
-            != record["fix_diff_sha256"]
-        ):
-            continue
-        current = next((p for p in view.snapshots if p["number"] == n), None)
-        if (
-            current
-            and record["fixed_snapshot"]["head_sha"] == current["head_sha"]
-            and record["fix_diff_sha256"] != view.fix_hashes.get(n)
-        ):
-            view.errors[n].append("resolution_fix_diff_mismatch")
-            continue
-        resolutions.append(record)
+    for proof in followups(
+        run_dir,
+        result,
+        parent_comments,
+        pr_comments,
+        session.login,
+        {p["number"]: p for p in view.snapshots},
+        view.fix_hashes,
+    ):
+        if proof["errors"] == ["resolution_fix_diff_mismatch"]:
+            view.errors[proof["record"]["pr"]].append("resolution_fix_diff_mismatch")
+        if not proof["errors"]:
+            resolutions.append(proof["record"])
     return result, resolutions, state, tuple(errors)
 
 
