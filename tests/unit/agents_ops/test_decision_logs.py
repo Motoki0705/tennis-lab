@@ -242,6 +242,35 @@ def test_action_histories_reject_false_execution_links(fault: str) -> None:
         graph.validate_graph(rows)
 
 
+@pytest.mark.parametrize(
+    ("started", "recovery", "valid"),
+    [
+        (True, "requested", False),
+        (True, "rejected_before_start", False),
+        (True, "running", True),
+        (True, "ended", True),
+        (False, "requested", True),
+        (False, "rejected_before_start", True),
+    ],
+)
+def test_unknown_history_keeps_confirmed_execution_facts(
+    started: bool, recovery: str, valid: bool
+) -> None:
+    judgement = decision(operation="start_ai")
+    requested = action(judgement)
+    rows = [judgement, requested]
+    if started:
+        rows.append(action(judgement, previous=rows[-1], state="running"))
+    for _ in range(2):
+        rows.append(action(judgement, previous=rows[-1], state="unknown"))
+    rows.append(action(judgement, previous=rows[-1], state=recovery))
+    if valid:
+        assert graph.validate_graph(rows)[rows[-1]["id"]]["data"]["state"] == recovery
+    else:
+        with pytest.raises(PublicationError, match="invalid_log_reference"):
+            graph.validate_graph(rows)
+
+
 def test_corrections_append_references_without_replacing_history() -> None:
     original = result()
     old_bytes = schema.json_bytes(original)
@@ -457,6 +486,43 @@ def test_unchanged_checks_group_without_erasing_last_failure(kind: str) -> None:
         "last_record_id": rows[2]["id"],
     }
     assert rows == original and rows[2]["data"]["status"] == "failure"
+
+
+@pytest.mark.parametrize(
+    "reference", ["action_intermediate", "comparison_branch", "action_last"]
+)
+def test_repetition_keeps_results_referenced_outside_the_comparison_chain(
+    reference: str,
+) -> None:
+    judgement = decision(operation="retry_fetch")
+    requested = action(judgement)
+    seed, first, last = repetitions("fetch_retry")
+    for record in (seed, first, last):
+        record["data"]["action_id"] = requested["id"]
+    first["data"]["summary"] = "First retrieval failed without a response"
+    last["data"]["summary"] = "Final retrieval failed with a server response"
+    rows = [judgement, requested, seed, first, last]
+    if reference == "comparison_branch":
+        branch = result(previous=first)
+        branch["scope"]["activity_key"] = schema.new_id()
+        rows.append(branch)
+    else:
+        rows.append(
+            action(
+                judgement,
+                previous=requested,
+                state="ended",
+                results=[last if reference == "action_last" else first],
+            )
+        )
+    groups = aggregation.aggregate(rows)
+    if reference == "action_last":
+        assert next(g for g in groups if first["id"] in g["record_ids"])[
+            "record_ids"
+        ] == [first["id"], last["id"]]
+    else:
+        displayed = {g["last_record_id"] for g in groups}
+        assert first["id"] in displayed and last["id"] in displayed
 
 
 @pytest.mark.parametrize(

@@ -64,6 +64,9 @@ their scope, decision, plan and operation. An earlier requested/running action
 snapshot is the source of a result; a later terminal snapshot links that result
 in `result_ids`. Pointing both sides at the same snapshot would create a cycle.
 Results from actions marked only `decided_not_executed` are rejected.
+Action histories retain confirmed execution across `unknown` snapshots. After
+execution was observed, the same action cannot return to requested or pre-start
+rejection states.
 
 Corrections append a target reference and reason, optionally referencing a separate
 replacement record of the same kind and scope. Original records remain present;
@@ -105,7 +108,9 @@ the file. This is a local filesystem contract, not distributed ownership.
 - `prepare(record_id, key=..., at=...)` freezes the safe envelope or appends
   `blocked`, preserving the original. Prepare dependencies first. Retrying a blocked
   projection requires `retry=True` and a fresh delivery key, without rerunning work.
-  A ready projection cannot be replaced.
+  Preparation also fixes its private transformation conditions and an integrity
+  check. Journal reads validate this stored snapshot without rendering it again
+  with newer private IDs. A ready projection cannot be replaced.
 - `publication(record_id, key=..., status=..., at=..., evidence=..., error=...)`
   appends pending, blocked or published facts independently of capture. Published
   requires fixed public evidence and is terminal. Callers verify Git/HTTP facts;
@@ -114,6 +119,12 @@ the file. This is a local filesystem contract, not distributed ownership.
   including sanitization counts. Publishers use these units and revalidate them.
   `public_records()` is the record-only view for graph/grouping consumers. `status()`
   reports capture/publication and missing-state facts without private mappings.
+
+Exports and pending/published publication facts check the fixed envelope against
+currently known private IDs. A newly discovered private value may block export;
+its capture remains saved. The caller records the publication failure with
+`publication(..., status="blocked", error=...)`, preserving the original envelope.
+The shared worker-log guard's historical substitution order remains unchanged.
 
 The shared worker-log guard sanitizes prose, then rechecks all public fields and
 sanitization metadata. It masks known private IDs and local paths with counted
@@ -131,8 +142,10 @@ links form a chain and every change is explicitly unchanged. Capture must reuse 
 random condition key only for identical conditions. Unconfirmed/changed conditions,
 AI starts/continuations, decisions, action snapshots and corrections are boundaries.
 Fetch attempts within one retrieval action can form a group; separate actions stay
-visible. Intermediate observations referenced by later decisions, verification or
-corrections remain visible even when that reference follows the entire sequence.
+visible. Intermediate observations referenced by later decisions, verification,
+corrections, action results or comparison branches remain visible even when that
+reference follows the entire sequence. Only the next sample's simple comparison
+link may be collapsed.
 Each group preserves all record IDs, count, first/last recording times and
 the last record ID. Consumers look up that record for the final result. Raw captures
 and intermediate failures remain available; durations and usage are not invented.

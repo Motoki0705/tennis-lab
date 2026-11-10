@@ -22,7 +22,7 @@ from worker_logs.journal import (
     require,
 )
 from worker_logs.safety import Guard
-from worker_logs.schema import digest, fields, sha
+from worker_logs.schema import digest, fields, json_bytes, sha
 
 from .graph import references, states, validate_graph
 from .projection import render, validate_public
@@ -42,6 +42,36 @@ def private_context(value: Any) -> None:
     require(
         value["checkout_commit"] is None or digest(value["checkout_commit"], 40),
         "journal_source",
+    )
+
+
+def transform_guard(value: Any, repo: str) -> Guard:
+    """Validate the private conditions frozen when a projection was prepared."""
+    fields(value, {"version", "private", "roots", "repo", "commit"})
+    require(type(value["version"]) is int and value["version"] == 1, "journal_version")
+    require(value["repo"] == repo, "journal_identity_changed")
+    private_context(
+        {
+            "sessions": [],
+            "runs": [],
+            "identifiers": value["private"],
+            "roots": value["roots"],
+            "checkout_commit": value["commit"],
+        }
+    )
+    return Guard(value["private"], value["roots"], repo=repo, commit=value["commit"])
+
+
+def preparation_sha(entry: dict[str, Any]) -> str:
+    """Integrity of the fixed envelope and conditions, without re-rendering."""
+    return sha(
+        json_bytes(
+            {
+                key: value
+                for key, value in entry.items()
+                if key not in {"sequence", "snapshot_sha256"}
+            }
+        )
     )
 
 
@@ -128,6 +158,8 @@ class Journal:
         require(isinstance(row["entries"], list), "journal_invalid")
         keys: set[str] = set()
         captured: dict[str, dict[str, Any]] = {}
+        contexts: dict[str, dict[str, Any]] = {}
+        known_private: set[str] = set()
         prepared: dict[str, dict[str, Any]] = {}
         published: set[str] = set()
         # Collect no values from an entry until that entry has passed validation.
@@ -139,7 +171,17 @@ class Journal:
                 fields(entry, common | {"record", "private"})
             elif event == "prepare":
                 fields(
-                    entry, common | {"record_id", "status", "payload", "error", "at"}
+                    entry,
+                    common
+                    | {
+                        "record_id",
+                        "status",
+                        "payload",
+                        "error",
+                        "at",
+                        "transform",
+                        "snapshot_sha256",
+                    },
                 )
             elif event == "publication":
                 fields(
@@ -171,6 +213,12 @@ class Journal:
                     "invalid_log_reference",
                 )
                 captured[record["id"]] = record
+                contexts[record["id"]] = entry["private"]
+                known_private.update(
+                    v
+                    for name in ("sessions", "runs", "identifiers")
+                    for v in entry["private"][name]
+                )
                 continue
             record_id = entry["record_id"]
             require(
@@ -184,6 +232,20 @@ class Journal:
                 "invalid_error_code",
             )
             if event == "prepare":
+                checker = transform_guard(entry["transform"], self.repo)
+                context = contexts[record_id]
+                require(
+                    set(entry["transform"]["private"]) == known_private
+                    and set(entry["transform"]["roots"])
+                    == {p.rstrip("/") for p in context["roots"] if p}
+                    and entry["transform"]["commit"] == context["checkout_commit"],
+                    "journal_source",
+                )
+                require(
+                    digest(entry["snapshot_sha256"])
+                    and entry["snapshot_sha256"] == preparation_sha(entry),
+                    "prepared_content_changed",
+                )
                 require(
                     record_id not in prepared
                     or prepared[record_id]["status"] == "blocked",
@@ -191,7 +253,7 @@ class Journal:
                 )
                 require(status in ("ready", "blocked"), "journal_state")
                 if status == "ready":
-                    payload = validate_public(entry["payload"])
+                    payload = validate_public(entry["payload"], checker)
                     require(
                         error is None and payload["record"]["id"] == record_id,
                         "journal_source",
@@ -236,19 +298,6 @@ class Journal:
                     )
                     published.add(record_id)
         validate_graph(list(captured.values()))
-        guard = self._guard(row)
-        capture_entries = self._captures(row)
-        for entry in row["entries"]:
-            if entry["event"] == "prepare" and entry["status"] == "ready":
-                validate_public(entry["payload"], guard)
-                capture = capture_entries[entry["record_id"]]
-                require(
-                    entry["payload"]
-                    == render(capture["record"], self._guard(row, capture["private"])),
-                    "prepared_content_changed",
-                )
-            elif entry["event"] == "publication":
-                guard.check(entry["evidence"])
         return dict(row)
 
     def read(self) -> dict[str, Any]:
@@ -353,6 +402,7 @@ class Journal:
             previous = self._preparations(row).get(record_id)
             if previous is not None and (previous["status"] == "ready" or not retry):
                 return copy.deepcopy(previous)
+            checker = self._guard(row, capture["private"])
             entry: dict[str, Any] = {
                 "event": "prepare",
                 "key": key,
@@ -361,11 +411,16 @@ class Journal:
                 "payload": None,
                 "error": None,
                 "at": at,
+                "transform": {
+                    "version": 1,
+                    "private": sorted(checker.private, key=len, reverse=True),
+                    "roots": list(checker.roots),
+                    "repo": checker.repo,
+                    "commit": checker.commit,
+                },
             }
             try:
-                entry["payload"] = render(
-                    capture["record"], self._guard(row, capture["private"])
-                )
+                entry["payload"] = render(capture["record"], checker)
                 ready_records = [
                     e["payload"]["record"]
                     for e in self._preparations(row).values()
@@ -374,6 +429,7 @@ class Journal:
                 validate_graph([*ready_records, entry["payload"]["record"]])
             except PublicationError as error:
                 entry.update(status="blocked", payload=None, error=str(error))
+            entry["snapshot_sha256"] = preparation_sha(entry)
             self._append(row, entry)
             return copy.deepcopy(row["entries"][-1])
 
@@ -407,14 +463,25 @@ class Journal:
                     "source_changed",
                 )
                 return copy.deepcopy(existing)
+            checker = self._guard(row)
+            checker.check(entry["evidence"])
+            if status in ("pending", "published"):
+                prepared = self._preparations(row).get(record_id)
+                require(
+                    prepared is not None and prepared["status"] == "ready",
+                    "final_not_ready",
+                )
+                if prepared is not None:
+                    validate_public(prepared["payload"], checker)
             self._append(row, entry)
             return copy.deepcopy(row["entries"][-1])
 
     def public_payloads(self) -> list[dict[str, Any]]:
         """Publication units in dependency order, including sanitization counts."""
         row = self.read()
+        checker = self._guard(row)
         payloads = {
-            e["record_id"]: e["payload"]
+            e["record_id"]: validate_public(e["payload"], checker)
             for e in self._preparations(row).values()
             if e["status"] == "ready"
         }

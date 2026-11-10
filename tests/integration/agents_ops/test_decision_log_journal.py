@@ -18,6 +18,7 @@ from tests.support.agents_ops.decision_logs import (
     evidence,
     history,
     journal,
+    private_runs,
     result,
     schema,
 )
@@ -129,6 +130,71 @@ def test_full_history_reopens_with_all_snapshots_and_fixed_ids(tmp_path: Path) -
     assert reopened.path.read_bytes() == original
 
 
+def test_new_capture_keeps_frozen_preparation_and_unsafe_raw_input(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = journal.Journal(tmp_path, "o/r", 1)
+    first = result()
+    first["data"]["summary"] = "run-a-retry"
+    store.capture("first", first, private=private_runs("run-a"))
+    prepared = store.prepare(first["id"], key="first-ready", at=AT)
+    assert (
+        prepared["payload"]["record"]["data"]["summary"] == "[private identifier]-retry"
+    )
+    prefix = store.read()["entries"]
+    second = result()
+    second["data"]["summary"] = "ghp_" + "x" * 30
+    with monkeypatch.context() as patch:
+
+        def no_render(*args: object, **kwargs: object) -> None:
+            pytest.fail("Capture and reads must use the frozen projection")
+
+        patch.setattr(journal, "render", no_render)
+        store.capture("second", second, private=private_runs("run-a-retry"))
+        assert store.public_payloads() == [prepared["payload"]]
+    assert prepared["transform"]["private"] == ["run-a"]
+    blocked = store.prepare(second["id"], key="second-blocked", at=AT)
+    assert blocked["status"] == "blocked" and blocked["error"] == "credential"
+    reopened = journal.Journal(tmp_path, "o/r", 1)
+    entries = reopened.read()["entries"]
+    assert entries[: len(prefix)] == prefix
+    assert entries[-2]["record"] == second and entries[-1]["status"] == "blocked"
+    assert reopened.public_payloads() == [prepared["payload"]]
+
+
+def test_new_private_identity_blocks_export_without_blocking_capture(
+    tmp_path: Path,
+) -> None:
+    store = journal.Journal(tmp_path, "o/r", 1)
+    first = result()
+    first["data"]["summary"] = "newly-known-private-run"
+    store.capture("first", first)
+    prepared = store.prepare(first["id"], key="first-ready", at=AT)
+    second = store.capture(
+        "second", result(), private=private_runs("newly-known-private-run")
+    )
+    assert len([e for e in store.read()["entries"] if e["event"] == "capture"]) == 2
+    with pytest.raises(PublicationError, match="private_value"):
+        store.public_payloads()
+    with pytest.raises(PublicationError, match="private_value"):
+        store.publication(
+            first["id"], key="unsafe-pending", status="pending", at=AT, evidence=[]
+        )
+    assert store.status()[0]["publication_status"] == "ready"
+    store.publication(
+        first["id"],
+        key="export-blocked",
+        status="blocked",
+        at=AT,
+        evidence=[],
+        error="private_value",
+    )
+    entries = store.read()["entries"]
+    assert entries[1] == prepared and entries[2]["record"] == second
+    assert store.status()[0]["publication_status"] == "blocked"
+
+
 def test_private_projection_reopens_across_hash_seeds(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[3]
     raw = result()
@@ -147,7 +213,7 @@ if sys.argv[3] == "write":
         "identifiers": [], "roots": [], "checkout_commit": None,
     })
     store.prepare(record["id"], key="prepare", at="2026-11-10T08:00:00+00:00")
-print(store.public_records()[0]["data"]["summary"])
+print(json.dumps(store.public_payloads()[0], sort_keys=True))
 """
     outputs = []
     for seed, mode in (("1", "write"), ("2", "read")):
@@ -170,7 +236,11 @@ print(store.public_records()[0]["data"]["summary"])
                 timeout=10,
             ).strip()
         )
-    assert outputs == ["[private identifier]c", "[private identifier]c"]
+    assert outputs[0] == outputs[1]
+    assert json.loads(outputs[0])["record"]["data"]["summary"] in {
+        "p[private identifier]",
+        "[private identifier]c",
+    }
 
 
 WRITER = """
@@ -288,6 +358,8 @@ def test_fsync_failure_keeps_history_and_replay_recovers(
         "unknown_private",
         "projection_tamper",
         "sequence",
+        "transform_version",
+        "transform_private",
     ],
 )
 def test_corruption_is_never_replaced_with_empty_state(
@@ -311,6 +383,10 @@ def test_corruption_is_never_replaced_with_empty_state(
         )
     elif fault == "sequence":
         row["entries"][1]["sequence"] = 1
+    elif fault == "transform_version":
+        row["entries"][1]["transform"]["version"] = 2
+    elif fault == "transform_private":
+        row["entries"][1]["transform"]["private"].append("unobserved-private-run")
     raw = schema.json_bytes(row)
     if fault == "truncated":
         raw = raw[:-8]

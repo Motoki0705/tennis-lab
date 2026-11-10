@@ -9,7 +9,7 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -36,7 +36,7 @@ def advance_main(logs: LogEnv, files: dict[str, str]) -> str:
     git(logs.root, "add", "--", *files)
     git(logs.root, "commit", "-qm", "independent main change")
     git(logs.root, "push", "origin", "main")
-    return git(logs.root, "rev-parse", "HEAD")
+    return cast(str, git(logs.root, "rev-parse", "HEAD"))
 
 
 def test_gitignore_tracks_only_public_worker_log_files(tmp_path: Path) -> None:
@@ -177,6 +177,53 @@ def test_two_parents_append_and_merge_without_shared_index(logs: LogEnv) -> None
     assert logs.github.calls == ["create", "create", "merge", "merge"]
 
 
+@pytest.mark.parametrize("state", ["ready", "pending"])
+def test_legacy_prepared_mask_order_resumes_without_rewriting_files(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, state: str
+) -> None:
+    guard = importlib.import_module("worker_logs.safety").Guard
+    original_init = guard.__init__
+
+    class LegacyPrivateOrder(set[str]):
+        def __iter__(self) -> Any:
+            # One order the historical set iteration can produce, independent
+            # of this pytest process's random hash seed.
+            return iter(sorted(super().__iter__(), key=lambda v: v != "rivate-abc"))
+
+    def legacy_order(self: Any, *args: Any, **kwargs: Any) -> None:
+        original_init(self, *args, **kwargs)
+        self.private = LegacyPrivateOrder(self.private)
+
+    monkeypatch.setattr(guard, "__init__", legacy_order)
+    path, proof = logs.turn(instruction="private-abc")
+    captured = journal.read(path)
+    captured["source"]["private"].extend(["private-ab", "rivate-abc"])
+    journal.atomic(path, captured)
+    assert sources.receive(path, proof)["state"] == "ready"
+    row = journal.read(path)
+    # The historical ready/pending bytes from the review reproduction.
+    row["files"]["instruction.md"] = "p[private identifier]"
+    meta = json.loads(row["files"]["meta.json"])
+    meta["files"]["instruction.md"] = schema.sha(
+        row["files"]["instruction.md"].encode()
+    )
+    row["files"]["meta.json"] = schema.json_bytes(meta).decode()
+    row["state"] = state
+    journal.atomic(path, row)
+    fixed = dict(row["files"])
+    published = logs.publisher(path).publish()
+    assert published["state"] == "merged", published
+    after = journal.read(path)
+    assert after["files"] == fixed
+    for name, value in fixed.items():
+        assert (
+            subprocess.check_output(
+                ["git", "show", f"main:{after['directory']}/{name}"], cwd=logs.upstream
+            )
+            == value.encode()
+        )
+
+
 @pytest.mark.parametrize("previous_state", ["pending", "blocked"])
 def test_stale_pr_base_merges_without_changing_pinned_record(
     logs: LogEnv, previous_state: str
@@ -296,7 +343,7 @@ def test_mergeability_becoming_unknown_remains_explicitly_pending(
         value = get(number)
         if logs.github.gets == 2:
             value["mergeable"] = None
-        return value
+        return cast(dict[str, Any], value)
 
     monkeypatch.setattr(logs.github, "get", become_unknown)
     result = logs.publisher(path).publish()

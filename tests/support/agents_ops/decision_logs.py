@@ -30,6 +30,16 @@ def observed(value: Any) -> dict[str, Any]:
     return {"status": "observed", "value": value}
 
 
+def private_runs(*runs: str) -> dict[str, Any]:
+    return {
+        "sessions": [],
+        "runs": list(runs),
+        "identifiers": [],
+        "roots": [],
+        "checkout_commit": None,
+    }
+
+
 def evidence() -> dict[str, Any]:
     return {
         "kind": "public",

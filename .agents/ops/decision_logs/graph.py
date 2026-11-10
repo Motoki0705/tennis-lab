@@ -95,6 +95,7 @@ def validate_graph(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     roots: dict[tuple[str, str], str] = {}
     successors: set[str] = set()
     ancestors: dict[str, set[str]] = {}
+    execution_started: dict[str, bool] = {}
     for key in ordered:
         row = by_id[key]
         data = row["data"]
@@ -122,6 +123,7 @@ def validate_graph(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
                 )
             prior = data["previous_action_id"]
             ancestors[key] = set()
+            execution_started[key] = data["state"] in ("running", "ended")
             if prior is None and data["decision_id"] is not None:
                 identity = (data["decision_id"], data["plan_id"])
                 require(identity not in roots, "invalid_log_reference")
@@ -135,12 +137,17 @@ def validate_graph(records: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
                         for f in ("decision_id", "plan_id", "operation")
                     )
                     and data["state"] in TRANSITIONS[before["data"]["state"]]
+                    and (
+                        not execution_started[prior]
+                        or data["state"] in ("running", "ended", "unknown")
+                    )
                     and set(before["data"]["result_ids"]) <= set(data["result_ids"])
                     and prior not in successors,
                     "invalid_log_reference",
                 )
                 successors.add(prior)
                 ancestors[key] = ancestors[prior] | {prior}
+                execution_started[key] |= execution_started[prior]
             for result_id in data["result_ids"]:
                 require(
                     by_id[result_id]["data"]["action_id"] in ancestors[key],
