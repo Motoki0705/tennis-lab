@@ -55,6 +55,13 @@ from parent_review_policy import (  # noqa: E402
     validate_resolution,
     validate_result,
 )
+from review_interruption import (  # noqa: E402
+    CLOSED,
+    agent_started,
+    cleanup_evidence,
+    interruption_record,
+    require_not_closed,
+)
 from review_locks import require_finished_overlaps, target_locks  # noqa: E402
 from review_observations import observe  # noqa: E402
 from review_policy import neutralize_markers, normalize_rollup  # noqa: E402
@@ -459,6 +466,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         execution_file = run_dir / "execution.json"
         if execution_file.exists():
             execution = read_json(execution_file)
+            require_not_closed(execution, request)
             execution_stages(execution)
             if not isinstance(execution.get("status"), str) or execution[
                 "status"
@@ -798,6 +806,8 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
             )
             if read_json(run_dir / "request.json") != request:
                 raise ValueError("local recovery request mismatch")
+            if (run_dir / "execution.json").exists():
+                require_not_closed(read_json(run_dir / "execution.json"), request)
             candidate, validation = source_evidence(store.directory, args.source_run)
             source = candidate["request"]
             authorized(session, source)
@@ -883,6 +893,79 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
     return {"result": result, "publication": publication, "agent_invocations": 0}
 
 
+def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
+    """Release a dead review explicitly, without publishing or granting coverage."""
+    if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
+        raise ValueError("invalid run ID")
+    reason = args.reason_file.read_text(encoding="utf-8").strip()
+    if not reason:
+        raise ValueError("interrupted closure requires the parent's reason")
+    store = Store(args.state_dir)
+    run_dir = store.directory / "reviews" / args.run
+    request = request_manifest(read_json(run_dir / "request.json"), instructed=False)
+    if request["review_run_id"] != args.run:
+        raise ValueError("interrupted run/request mismatch")
+    with (
+        target_locks(store.directory, request),
+        (run_dir / "run.lock").open("a") as lock,
+    ):
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("review run is active; cannot close interruption") from exc
+        with store.locked():
+            session = ParentSession(
+                GitHub(request["repo"]),
+                store,
+                request["parent_issue"],
+                session_identity(dict(os.environ)),
+            )
+            auth = authorized(session, request)
+            if read_json(run_dir / "request.json") != request:
+                raise ValueError("local interrupted request changed")
+            path = run_dir / "execution.json"
+            execution = read_json(path)
+            record = interruption_record(execution, request)
+            if record is not None:
+                if record["reason"] != reason:
+                    raise ValueError("interrupted closure already has a different reason")
+            else:
+                if (
+                    execution.get("status") != "running"
+                    or execution.get("request_sha256") != digest(request)
+                    or type(execution.get("agent_invocations")) is not int
+                    or execution["agent_invocations"] not in {0, 1}
+                ):
+                    raise ValueError("only an unchanged running execution can be closed")
+                runtime_sha256 = cleanup_evidence(run_dir, request, execution)
+                record = {
+                    "schema_version": 1,
+                    "request_sha256": digest(request),
+                    "closed_at": now(),
+                    "reason": reason,
+                    "operator_authorization": auth,
+                    "session": session.session,
+                    "agent_started": agent_started(execution),
+                    "runtime_sha256": runtime_sha256,
+                    "workspace_cleanup_complete": True,
+                    "publication": "not_published",
+                }
+                execution.update(
+                    status=CLOSED,
+                    finished_at=record["closed_at"],
+                    interruption=record,
+                )
+                interruption_record(execution, request)
+                Store.write_json(path, execution)
+    return {
+        "review_run_id": args.run,
+        "status": CLOSED,
+        "publication": "not_published",
+        "agent_invocations": 0,
+        "interruption": record,
+    }
+
+
 def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
     if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
         raise ValueError("invalid run ID")
@@ -897,6 +980,7 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ValueError("review run is active; cannot resume publication") from exc
+        require_not_closed(read_json(run_dir / "execution.json"), request)
         result = validate_result(read_json(run_dir / "result.json"))
         request = result["request"]
         with store.locked():
@@ -1175,6 +1259,9 @@ def parser() -> argparse.ArgumentParser:
     recovery.add_argument("--reason-file", type=Path, required=True)
     resume = commands.add_parser("resume-publication")
     resume.add_argument("--run", required=True)
+    close = commands.add_parser("close-interrupted")
+    close.add_argument("--run", required=True)
+    close.add_argument("--reason-file", type=Path, required=True)
     complete = commands.add_parser("complete-evidence")
     complete.add_argument("--run", required=True)
     complete.add_argument("--pr", type=int, required=True)
@@ -1195,6 +1282,7 @@ def main(argv: list[str] | None = None) -> int:
             "resolve": resolve,
             "recover": recover,
             "resume-publication": resume_publication,
+            "close-interrupted": close_interrupted,
             "complete-evidence": complete_evidence,
         }[args.command](args)
         print(json.dumps(value, ensure_ascii=False, indent=2))

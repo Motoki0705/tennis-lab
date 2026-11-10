@@ -33,6 +33,7 @@ from parent_review_policy import (
     validate_result,
 )
 from review_evidence import followups, python_check_runs
+from review_interruption import CLOSED, interruption_record
 from review_observations import baseline, compare_observation, discussion
 from review_workspace import changed_paths, full_diff, verify_rebased_snapshot
 
@@ -208,9 +209,11 @@ def inspect_run(
     )
     if execution is not None:
         stages = attempt(errors, "stages", lambda: execution_stages(execution))
+        closure = attempt(errors, "interruption", interruption_record, execution, request)
         entry["execution"] = {
             "status": execution.get("status"),
             "agent_invocations": execution.get("agent_invocations"),
+            "interruption": closure,
             "stages": {
                 name: {
                     k: value
@@ -272,6 +275,7 @@ def inspect_run(
         return entry
     reviewed = next(p for p in result["prs"] if p["number"] == n)
     entry["result"] = {
+        "retained_only": (execution or {}).get("status") == CLOSED,
         "kind": result["kind"],
         "mode": result.get("mode"),
         "source_run": result.get("source_run"),
@@ -368,7 +372,12 @@ def inspect_run(
         }
         for p in own_proofs
     ]
-    if current and comparison and proofs is not None:
+    if (
+        current
+        and comparison
+        and proofs is not None
+        and (execution or {}).get("status") != CLOSED
+    ):
         inherited = set()
         for old in [
             original,

@@ -15,6 +15,7 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 | `review_observations.py` | 新runの本文・コメント観測と、意味を判断しない文字列差分 |
 | `review_evidence.py` | gateと照合表示が共用する公開済み解消・証拠完了の検査とPython CI取得 |
 | `review_locks.py` | runをまたぐPR単位の排他と、未完了executionの照合 |
+| `review_interruption.py` | 中断runのcleanup・workspace照合と、承認に使わない終結記録の検証 |
 | `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト、先行mergeによるbase前進の実git検証 |
 | `merge_gate_policy.py` | 公開証拠の照合、親の確認状態・PRごとのcoverage・依存順・merge判定の純粋関数 |
 | `merge_gate.py` | 親の明示コマンドによる最新情報の取得、dry-run、順次merge |
@@ -36,6 +37,10 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 
 # 公開途中の失敗・応答喪失から同じrunの公開だけを再開する
 .venv/bin/python .agents/ops/review/parent_review.py resume-publication --run parent-1216-32桁hex
+
+# 復旧しない中断を、runtime cleanupとworkspace撤去の確認後に明示終結する
+.venv/bin/python .agents/ops/review/parent_review.py close-interrupted \
+  --run parent-1216-32桁hex --reason-file tmp/interruption-reason.txt
 
 # 新しい理由でparent review-prepare → review-requestしたJSONを使う（AIは起動しない）
 .venv/bin/python .agents/ops/review/parent_review.py recover \
@@ -71,14 +76,14 @@ runの `--agent-exec` はテスト用wrapper指定、`--agent-timeout` は正の
 
 ### runをまたぐPRの排他
 
-run・recover・resume-publicationは、同じprivate state内のrepoとPR番号をキーにした
+run・recover・resume-publication・close-interruptedは、同じprivate state内のrepoとPR番号をキーにした
 `review-targets/` のflockを、PR番号順で非待機取得する。その後にrun lock、registry lockを取得する。
 PRのleaseは収集前からruntime終了・workspace cleanup・事後照合・公開の終了まで保持し、
 重なるPRを含む別runは起動前に拒否する。別PRは同じ親でも並行実行できる。
 lock fileはunlinkしない。例外・プロセス終了でflockは解放されるが、別runの保存executionが
 `running`なら実行中または中断・終了未確認として新規起動を拒否する。経過時間やPIDだけで解放しない。
 元runの終了とcleanupを確認し、既存の公開再開条件を満たす場合は同じrunを再開する。
-条件を満たせない中断は保留し、別runへの自動切替を行わない。
+条件を満たせない中断は、下記の明示終結で終了を確認するまで保留する。別runへの自動切替は行わない。
 
 ### 明示要求の検査
 
@@ -119,7 +124,7 @@ lock fileはunlinkしない。例外・プロセス終了でflockは解放され
 
 run dirはparentの `reviews/<run ID>/` を共有し、固定済みrequest/diffに加えて
 `execution.json`、`context.json`、`prompt.md`、`agent_output.md`、`output.json`、`result.json`、コメント原文・agentログを残す。
-executionのstatusは `preparation_failed` / `running` / `published` / `publication_failed`。
+executionのstatusは `preparation_failed` / `running` / `published` / `publication_failed` / `interrupted_closed`。
 新しいexecutionは `stage_version=1` と `stages` を持つ。旧形式は読み取りを維持する。
 
 | 工程 | 記録 |
@@ -137,6 +142,36 @@ executionのstatusは `preparation_failed` / `running` / `published` / `publicat
 run lockを取得でき、runtime終了・cleanup・保存結果・事後照合が確認できる公開中断だけは `resume-publication` で再開できる。
 起動後の失敗結果も保存・可能なら公開する。GitHub障害なら未公開/部分公開をローカルへ記録して非ゼロ終了する。
 復旧は上記の `recover` または `resume-publication` を親が明示実行する。自動再実行は行わない。
+
+### 復旧しない中断runの明示終結
+
+`close-interrupted --run ID --reason-file F` は、担当親の権限・登録済みrequest・非空の理由を検査し、
+`running` のexecutionだけをローカルの `interrupted_closed` に終結する。AIもGitHub書込みも行わない。
+最初に全対象PRのlease、次に対象runの `run.lock` を非待機で取得する。
+どちらかを本体プロセス等が保持していれば拒否し、経過時間・PID・boot情報から終了を推測しない。
+
+agent起動回数が1、またはagent工程が `not_started` 以外（工程の記録欠落も含む）なら、
+同じrunの `agent-runtime/result.json` が終了状態で `cleanup_complete=true` であることを要求する。
+runtimeのrun・出力・finalパスとworkspaceも照合するが、finalファイルの存在・成功・形式検証は要求しない。
+runtimeが無い・未完了の場合は、[共通ランナーの停止・cleanup確認](../lib/README.md#状態確認停止中断からの復旧)
+が必要な手順としてエラーに出る。runnerが失われた場合はsupervisorの全子孫照合を経て
+`agent_exec.sh stop --cleanup-confirmation` で記録し、cleanup確認を手編集で代替しない。
+agent未開始を工程と起動回数の両方で確認できる場合だけruntimeを要求しない。
+
+保存済みrepo設定・現在のrepo・共有git worktree登録で対象workspaceを検査する。
+残存ディレクトリ・symlink・worktree登録があれば拒否する。cleanup確認後、対象workspace内の各PR checkoutを
+`git worktree remove --force` で撤去し、残ったworkspace metadataを確認して除去する。終結コマンドは削除しない。
+
+終結はexecutionだけを原子的に更新し、`interruption` に理由・実行権限・session・時刻・request digest・
+agent開始有無・runtime記録のdigest・workspace撤去確認を保存する。元の起動回数・工程・request・
+final・候補・結果・公開コメントは保持し、正式なfailed結果や採用記録も新設しない。
+同じ理由での再送は同じ終結記録を返す。理由の変更と同runの再実行・recover・公開再開は拒否する。
+保存finalを採用または公開再開したい場合は、終結する前に既存のrecover・resume-publicationを選ぶ。
+
+終結済みrunは同PRの新runを塞がないが、registryのrequestは残る。gateは
+`parent_review_interrupted_closed` で停止し、過去のapproveへ戻らない。
+`superseding_reviews` でも通常の後続requestとして残り、より古い証拠の採用を許可しない。
+終結runを採用元やcoverageに使わず、他runの未解決指摘・証拠待ち・解消記録も変更しない。
 
 追加AIレビューは `parent review-prepare --reason-file` → `review-request` の新しい明示指示だけで受理する。
 後続runは結果の `exception` と人間向けコメントに、通常1回の予算を超える例外として理由・先行runを表示する。
@@ -204,6 +239,11 @@ PRの `python_ci` は現在HEADのcheck-runと共通CI検査の理由。`coverag
 機械的な照合であり、公開・CI・現在の権限・要件の意味を含むmerge判定ではない。
 親が再利用・復旧・証拠完了・resolve・追加レビュー・保留の範囲を判断する。
 `recommended_action` や意味上の「再利用可」は返さない。
+
+中断は保存された `execution.status=running` とruntimeの終了・cleanupを別々に表示し、生存は推測しない。
+明示終結は `execution.status=interrupted_closed` と `execution.interruption` に表示する。
+終結前の結果が残る場合は `result.retained_only=true` とし、指摘などの履歴を保持する。
+終結runの `coverage_check` は `null` とし、保存済みapproveを正式証拠として計算しない。
 
 旧contextに本文だけある場合は本文差だけを比較し、記録されていない子・PRコメントは
 `baseline_unavailable`にする。比較元がないことを「変更なし」に置換しない。

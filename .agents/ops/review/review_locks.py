@@ -10,6 +10,7 @@ from typing import Any
 
 from parent.policy import digest, object_value
 from parent_review_policy import execution_stages, load_json, request_manifest
+from review_interruption import CLOSED, interruption_record
 
 
 @contextmanager
@@ -42,7 +43,7 @@ def require_finished_overlaps(
     """Called under the registry lock, after acquiring all target leases.
 
     SIGKILL releases flock, but may leave a reviewer alive. A durable running
-    execution remains a blocker until its existing recovery path confirms exit.
+    execution remains a blocker until recovery or explicit closure confirms exit.
     Do not infer liveness from wall time or a reusable PID.
     """
     numbers = {p["number"] for p in request["prs"]}
@@ -65,6 +66,7 @@ def require_finished_overlaps(
                     "published",
                     "publication_failed",
                     "preparation_failed",
+                    CLOSED,
                 }
                 or type(execution.get("agent_invocations")) is not int
                 or execution["agent_invocations"] not in {0, 1}
@@ -72,8 +74,9 @@ def require_finished_overlaps(
                 raise ValueError("unknown overlapping review execution state")
             if execution.get("request_sha256") != digest(other):
                 raise ValueError("overlapping review execution/request mismatch")
+            interruption_record(execution, other)
             if execution.get("status") == "running":
                 raise ValueError(
                     "PR review is active or interrupted in another run; "
-                    "confirm its exit and resume its existing publication first"
+                    "confirm its exit and resume-publication or close-interrupted first"
                 )

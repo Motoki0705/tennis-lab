@@ -51,6 +51,7 @@ from parent_review_policy import (  # noqa: E402
 )
 from parent_review_policy import snapshots as validate_snapshots  # noqa: E402
 from review_evidence import followups, python_check_runs  # noqa: E402
+from review_interruption import interruption_record  # noqa: E402
 from review_policy import GateDecision  # noqa: E402
 from review_recovery import verify_adoption  # noqa: E402
 from review_workspace import (  # noqa: E402
@@ -232,6 +233,12 @@ def load_evidence(
     if request is None:
         return None, [], None, ("parent_review_missing",)
     run_dir = session.store.directory / "reviews" / request["review_run_id"]
+    if (run_dir / "execution.json").exists():
+        execution = read_json(run_dir / "execution.json")
+        if interruption_record(execution, request) is not None:
+            if read_json(run_dir / "request.json") != request:
+                raise ValueError("local closed review/request mismatch")
+            return None, [], None, ("parent_review_interrupted_closed",)
     if (
         not (run_dir / "result.json").exists()
         or not (run_dir / "execution.json").exists()
