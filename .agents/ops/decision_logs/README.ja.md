@@ -3,8 +3,8 @@
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 結果・親の判断・行動・訂正を表す共通契約version 1、非公開snapshotの保存、
-公開用への変換を提供する。入口からの捕捉は #1815、Git公開と階層README生成は
-#1816 の範囲。本パッケージはagent起動・Git/HTTP操作・定期実行・成果受入を行わない。
+公開用への変換と既存parent・runner・review操作の捕捉を提供する。
+Git公開と階層README生成は #1816 の範囲。記録は実行権限や成果受入の判断を与えない。
 
 ## 契約と責務
 
@@ -19,6 +19,9 @@
 | [journal.py](journal.py) | `Journal`。原文の固定と準備・公開の追記履歴 |
 | [projection.py](projection.py) | `render()`・`validate_public()`。公開単位 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`。すべての原記録を参照する表示用の集約 |
+| [capture.py](capture.py) | 非公開outbox、行動snapshot、状態表示、捕捉だけの再送 |
+| [parent_commands.py](parent_commands.py)、[parent_sources.py](parent_sources.py) | 判断入口、CLI結果、正本コメントと明示検証 |
+| [observations.py](observations.py)、[review_capture.py](review_capture.py) | runner・dispatcher・workerログ・取得・review・mergeの既存の事実 |
 
 各記録は独立したUUID4 hexのID、種類、所属、区別した3つの時刻、型付きdataを持つ。
 所属にはrepo・親・nullableな担当issue・活動の公開キー・既存workerの公開委任キー/turn・
@@ -75,6 +78,96 @@ planにも独立した公開IDを付け、分岐ごとに別のplan・行動を�
 最終報告欠測は `missing_final` などの理由を残す。未判断、親の確認未記録、
 判断済み未実行、起動前拒否、公開待ちは別のフィールド/状態として保持し、
 runtimeの終了値から推定しない。
+
+## 捕捉元と未対応入口
+
+結果のevidenceに `capture_source`・artifact・観測snapshotのfingerprintを残す。
+非公開根拠は公開不可と明示し、fingerprintだけで全文を保存したとは扱わない。
+親コメント、公開済みreview・workerログは取得できた固定の公開根拠も参照する。
+outboxは非公開の配送入力であり、公開単位ではない。
+親の応答の要約は公開可能な項目だけに絞り、assignmentや任意の入れ子の状態を丸ごとコピーしない。
+私的な来歴IDは捕捉前に登録する。完全な応答とエラー詳細は非公開根拠に残す。
+
+| 入口 | 取得元と境界 |
+|---|---|
+| `run-worker` | parent CLIの要求・拒否・応答、結び付けたrunnerの `result.json`、選択/実効設定・取得できた使用量・終了理由・finalの有無 |
+| `start-worker` / `continue-worker` | CLIの要求・拒否・予約、dispatcherのjob対応・永続化した取消/runner終了、runnerの保存。予約を起動と推定しない |
+| dispatcherからの直接の子起動 | bootstrapの子を含む同じjob対応・runner callback。親の判断を捏造しない |
+| `record-worker-run` / `record-worker-ended` | 既存runner根拠の明示登録 / 親による終了確認 |
+| `record-result` | 保存された検証とPR・証拠。明示検証が捕捉済み結果を参照する。`review-request --prs` 内も同じメソッドを使う |
+| `note` / `decide-worker-plan` | 正本コメントへの参照 / 保存済み計画回答の結果。共通判断を自動で作らず、`decide` から理由の正本を参照できる |
+| `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI結果と正本コメント。dispatcherの取消とrunnerの停止/復旧は別の事実 |
+| `review-prepare` / `review-request` / `review-state` | 固定要求、明示指示・状態の結果。親の受領/検証は明示操作でだけ記録する |
+| review `run` | 既存execution・output・result・公開状態。runtime失敗時の有効な出力、exceptionと先行reviewの公開キーも保持。公開で元resultを変えず、消費済みrunの取得は新しいAIレビューにしない |
+| review `recover` / `resume-publication` / `complete-evidence` / `resolve` | 既存の保存済み根拠の復旧、公開だけの再試行、親の明示検証。前回結果を保持し、新しいAI起動にしない |
+| reviewの取得tool | CI取得失敗を含む既存の取得receipt。同じreview対応・tool・引数の再試行を `retry_fetch` にする。変更なしと分かるのは取得指示であり、通信条件等を補完しない |
+| merge gate `merge` | PR別の判定、保存済みmerge試行/結果、全体結果。dry-runの合格と実mergeを分ける |
+| workerログの受信/公開、`worker-log-status` / `publish-worker-log` | 既存journalの状態、final/公開失敗、main保存確認。公開だけの再試行は `retry_publication` とし、前回結果を参照する |
+
+対応する要求には `--decision-id` と任意の `--plan-id` を渡せる。一致planが1件なら選び、
+あいまいな指定・操作種類違い・要求済みplanは拒否する。判断なしでは両IDをnullにし、
+理由未記録を明示する。`--retry-of` は前回の結果ID、`--changes-file` は契約の比較5項目を受け取る。
+同じ行動のsnapshotは `previous_action_id`、別試行の比較は `previous_result_id` で結ぶ。
+同じAIの継続は正確な前回runtime対応を参照する。継続要求が初回起動へ解決された場合は、
+要求と別の `start_ai` を残す。既定モデルをrunner引数へ展開する呼出元でも、設定由来と明示選択を区別する。
+保存済みpreflightから要件・送信指示のsnapshotを比較し、開始revisionの変化も検出する。
+commitが同じだけで作業中コードも同じとは認定せず、未観測の条件・確認済み範囲は未確認のまま残す。
+
+未対応は、任意のshell/HTTP/gh操作、このCLI文脈外のParentSession直接呼出し、
+親対応のないrunner、親namespaceが定まる前の引数parse・identity・repo解決失敗。
+過去の会話や任意の過去runは復元しない。reviewの修正確認・復旧・モデル選択方針を変えず、
+捕捉のための定期poll・AI再起動・Git公開は追加しない。
+
+## 親の判断を明示記録する
+
+同じparent stateを使い、担当sessionから実行する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decide --spec tmp/decision.json
+```
+
+specは `inputs`（複数可の結果ID）・`evaluation`・`reason` と、任意の
+`next_actions`・`reuse_scope`・`recheck_scope`・`unresolved`・`resume_conditions`・
+`basis`・`source_kind` を使う。planはschemaのoperation/summary/actor/target/instruction/
+conditions/expected_resultを指定し、IDはCLIが割り当てる。初回判断は `basis` に固定した公開の要求/合意根拠が必要。
+同じsessionで同じspec・根拠snapshotを再送すると、同じ判断/plan IDを返す。
+要求されていないplanは、判断しただけで未実行のまま残る。
+
+`reason` の代わりに `reason_ref` を1つ指定できる。
+
+| kind | 既存の正本への参照 |
+|---|---|
+| `note` | noteコマンドが返した `body_sha256` |
+| `worker_plan` | `child` と計画回答コマンドの `decision_id` |
+| `model_reason` | `child`。現在保存されているモデル選択理由 |
+| `review_reason` | `run_id`。固定review要求の理由 |
+
+理由本文を公開記録へ再コピーせず、参照/fingerprintを保持する。
+親のactorキーは私的sessionに対応するランダムな公開キーで、引継ぎで過去の判断者を変えない。
+次の対応CLI（review/mergeも含む）へ返された判断IDを渡すと、後続結果が行動を介してつながる。
+
+## 捕捉失敗と復旧
+
+journal配送より先に、親journal横の非公開 `captures/` outboxへID・時刻・取得snapshot・
+配送入力を固定する。flockで並行更新を守り、呼出元とrunnerは最新outboxを読み直す。
+障害はstderrへ警告し、配送待ちを保持する。別の非公開診断パスで、outbox書込み失敗や
+結果を構築する前の変換失敗も検出する。state filesystem全体が壊れた場合はstderrでのみ通知でき、
+壊れた媒体への永続記録は保証できない。
+捕捉の初期化では明示入力の不正とjournal/outbox障害を区別する。媒体障害では判断IDが
+指定されていても元の操作を維持し、永続的な未捕捉診断を残す。結果を構築する前に
+失った事実は、配送だけの再送では欠測を解消したことにしない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N retry-decision-capture
+```
+
+statusは取得元・行動/結果ID・配送待ち/未終了receipt・未捕捉診断・公開状態と、無害化した読み取り表示を返す。
+表示のblockedは公開成功ではない。再送は固定記録を依存順に配送するだけで、worker・review・取得・mergeを再実行しない。
+読めないreceiptや失った取得snapshotを空のjournalへ置換せず、未完了として残す。
+変換/取得元の欠測は、修復後に既存の正本根拠を再登録する必要がある場合がある。
+観測の失敗で元の操作の終了値・状態を変えない。`decide` と捕捉復旧コマンド自身の記録/復旧が失敗した場合は非0を返す。
 
 ## 非公開journalと公開境界
 
@@ -133,8 +226,13 @@ entry配列は追加だけ。flock・ファイル/ディレクトリfsync・atom
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_logs.py \
   tests/integration/agents_ops/test_decision_log_journal.py \
   tests/unit/agents_ops/test_worker_logs.py -n 1 --durations=10
+.venv/bin/python -m pytest tests/unit/agents_ops/test_decision_capture_observations.py \
+  tests/integration/agents_ops/test_decision_capture_delivery.py \
+  tests/e2e/agents_ops/test_decision_capture.py \
+  tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
 ```
 
 分岐/合流、明示した欠測、負例、無害化、集約、実際の2process追記、fsync中断、
-破損journalを使い捨てstateで検証する。GPU・agent・networkは不要。
-実運用の捕捉/公開とmerge後の受入確認は後続タスクに残る。
+破損journalを検証する。捕捉はfake GitHub・使い捨てgit/state・offline runnerを使い、
+journal障害と捕捉だけの復旧も検証する。GPU・実agent・networkは不要。
+Git公開とmerge後の実運用受入は後続タスクに残る。

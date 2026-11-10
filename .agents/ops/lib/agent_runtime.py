@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from agent_events import (
     Events,
     EvidenceError,
@@ -28,6 +29,8 @@ from agent_events import (
 )
 from agent_output import OutputSchema
 from agent_settings import command, execution_contract, resolve
+from decision_logs.capture import RETRIEVAL_ENV, RUNTIME_ENV  # noqa: E402
+from decision_logs.observations import runtime_record  # noqa: E402
 from opsproc import (
     _live_group_members,
     _terminate_group,
@@ -60,6 +63,8 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
         os.fsync(fd)
     finally:
         os.close(fd)
+    if path.name == "result.json":
+        runtime_record(path, value)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -491,7 +496,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             assert mcp_bytes is not None
             mcp_path.write_bytes(mcp_bytes)
         save()
-        env = {k: v for k, v in os.environ.items() if k not in IDENTITY_ENV}
+        env = {
+            k: v
+            for k, v in os.environ.items()
+            if k not in IDENTITY_ENV | {RUNTIME_ENV, RETRIEVAL_ENV}
+        }
         env.update(
             AGENT_RUNTIME_RUN_DIR=str(run_dir),
             AGENT_RUNTIME_TASK_ID=contract["task_id"],
@@ -519,7 +528,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     "contract": contract,
                     "argv": cmd,
                     "removed_environment_keys": sorted(
-                        IDENTITY_ENV & os.environ.keys()
+                        (IDENTITY_ENV | {RUNTIME_ENV, RETRIEVAL_ENV})
+                        & os.environ.keys()
                     ),
                 },
             )

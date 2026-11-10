@@ -160,7 +160,10 @@ class ParentSession:
         self.public(body)
         if any(item["body"] == body for item in self.history()):
             return
-        self.gh.write("POST", self.endpoint + "/comments", {"body": body})
+        response = self.gh.write("POST", self.endpoint + "/comments", {"body": body})
+        from decision_logs.parent_sources import comment
+
+        comment(self, data, body, response)
 
     def note(self, body: str) -> dict[str, Any]:
         row = self.owner()
@@ -1213,6 +1216,9 @@ class ParentSession:
                 turns[-1]["snapshot"]["turn_id"] if turns else None
             )
         self.store.save()
+        from decision_logs.parent_sources import verification
+
+        verification(self, child)
         return {
             "child": child,
             "prs": [p["number"] for p in prs],

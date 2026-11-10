@@ -586,6 +586,9 @@ class Supervisor:
                 )
                 job["log_journal"] = log_path
         Store.write_json(directory / "start-input.json", snapshot)
+        from decision_logs.observations import bind_job
+
+        bind_job(self.store, key, row, job)
         if child is None:
             inputs = {
                 "schema_version": 1,

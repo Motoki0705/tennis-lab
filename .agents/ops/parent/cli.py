@@ -12,6 +12,8 @@ from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
+from decision_logs import parent_commands as decision_capture
+from decision_logs.capture import CURRENT
 from lib.agent_settings import implementation_models
 from lib.identity import session_identity
 from worker_logs.sources import read_original
@@ -236,11 +238,13 @@ def parser() -> argparse.ArgumentParser:
         required=True,
     )
     state.add_argument("--evidence-file", required=True)
+    decision_capture.add_parsers(commands)
     return root
 
 
 def _main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    capture_token = None
     try:
         if args.command == "state-migrate":
             with Store(args.state_dir or state_directory()).locked() as migration_store:
@@ -268,6 +272,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "wait-supplement",
                 "worker-log-status",
                 "review-inspect",
+                "decision-log-status",
             }
             else session_identity(dict(os.environ))
         )
@@ -293,17 +298,41 @@ def _main(argv: list[str] | None = None) -> int:
             sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "review"))
             sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
             inspection_module = importlib.import_module("review_inspection")
-            result = inspection_module.inspect_reviews(gh, store, parent, args.prs)
-            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            inspection = inspection_module.inspect_reviews(gh, store, parent, args.prs)
+            print(json.dumps(inspection, ensure_ascii=False, indent=2, sort_keys=True))
             return (
                 2
-                if result["errors"]
+                if inspection["errors"]
                 or any(
                     pr["errors"] or any(run["errors"] for run in pr["history"])
-                    for pr in result["prs"]
+                    for pr in inspection["prs"]
                 )
                 else 0
             )
+        if args.command in {"decision-log-status", "retry-decision-capture"}:
+            from decision_logs.capture import status as capture_status
+
+            if args.command == "retry-decision-capture":
+                row = (
+                    store.read_data()
+                    .get("parents", {})
+                    .get(f"{gh.repo.casefold()}#{parent}", {})
+                )
+                if row.get("session") != identity:
+                    raise ValueError(
+                        "decision capture recovery requires the assigned parent"
+                    )
+            value = capture_status(
+                store.directory,
+                gh.repo,
+                parent,
+                retry=args.command == "retry-decision-capture",
+            )
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+            return 0 if value["status"] == "captured" else 2
+        capture_token = CURRENT.set(
+            decision_capture.begin(args, store, gh.repo, parent)
+        )
         if args.command in {"worker-log-status", "publish-worker-log"}:
             from worker_logs.service import command as log_command
 
@@ -319,13 +348,15 @@ def _main(argv: list[str] | None = None) -> int:
                 dry_run=getattr(args, "dry_run", False),
                 retry=getattr(args, "retry", False),
             )
-            print(json.dumps(log_result, ensure_ascii=False, sort_keys=True))
-            return (
+            code = (
                 2
                 if log_result["unavailable_logs"]
                 or any(r.get("error") for r in log_result["logs"])
                 else 0
             )
+            log_result = decision_capture.complete(args, log_result, exit_code=code)
+            print(json.dumps(log_result, ensure_ascii=False, sort_keys=True))
+            return code
         if args.command == "wait-supplement":
             from .supplement import wait_supplement
 
@@ -359,6 +390,9 @@ def _main(argv: list[str] | None = None) -> int:
                 if args.restart_evidence_file
                 else None,
             )
+            worker_result = decision_capture.complete(
+                args, worker_result, exit_code=code
+            )
             print(
                 json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
             )
@@ -382,6 +416,7 @@ def _main(argv: list[str] | None = None) -> int:
                 worker_result = worker_command(
                     args, gh, parent, nonempty(identity, "parent identity"), store
                 )
+                worker_result = decision_capture.complete(args, worker_result)
                 print(
                     json.dumps(
                         worker_result, ensure_ascii=False, indent=2, sort_keys=True
@@ -403,6 +438,8 @@ def _main(argv: list[str] | None = None) -> int:
                     args.event if command == "project-sync" else None,
                     read_object(args.spec) if command == "project-sync" else None,
                 )
+            elif command == "decide":
+                result = decision_capture.decide(session, args.spec)
             elif command == "basis-input":
                 ignored = (
                     json.loads(read_text(args.ignored_comments))
@@ -647,12 +684,19 @@ def _main(argv: list[str] | None = None) -> int:
                 if delivery["status"] == "error":
                     integration_failed = True
                 result = {**result, "board_delivery": delivery}
+        result = decision_capture.complete(
+            args, result, exit_code=1 if integration_failed else 0
+        )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 1 if integration_failed else 0
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
+        decision_capture.failed(exc)
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)
         return 2
+    finally:
+        if capture_token is not None:
+            CURRENT.reset(capture_token)
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import importlib
 import json
 from dataclasses import replace
 from pathlib import Path
@@ -28,6 +29,15 @@ def json_edit(path: Path, **changes: Any) -> None:
     value = json.loads(path.read_text())
     value.update(changes)
     path.write_text(json.dumps(value))
+
+
+def capture_records(r: ReviewEnv) -> list[dict[str, Any]]:
+    capture = importlib.import_module("decision_logs.capture")
+    directory = Path(r.p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    value = capture.status(directory, "o/r", 1)
+    assert value["status"] == "captured", value
+    assert all(e["view_status"] == "ready" for e in value["records"]), value
+    return [e["record"] for e in value["records"]]
 
 
 def recovery_request(r: ReviewEnv) -> ReviewEnv:
@@ -128,6 +138,21 @@ def test_recover_preserves_failed_source_and_publishes_without_agent(
     assert r.comments(1)[: len(source_comments)] == source_comments
     adopted_execution = json.loads((adopted.run_dir / "execution.json").read_text())
     assert adopted_execution["agent_invocations"] == 0
+    captured = capture_records(r)
+    actions = {e["id"]: e for e in captured if e["kind"] == "action"}
+    recovered = [
+        e
+        for e in captured
+        if e["kind"] == "result"
+        and "review.recover: agent_invocations=0" in e["data"]["summary"]
+    ]
+    assert (
+        recovered
+        and actions[recovered[-1]["data"]["action_id"]]["data"]["operation"]
+        == "retry_fetch"
+    )
+    assert recovered[-1]["data"]["previous_result_id"] is not None
+    assert recovered[-1]["data"]["auxiliary"]["usage"]["status"] == "unavailable"
     g = replace(g, review=adopted)
     g.confirm()
     blocked = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]
@@ -162,6 +187,17 @@ def test_recover_preserves_failed_source_and_publishes_without_agent(
         str(evidence),
     )
     assert g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["decision"] == "merge"
+    captured = capture_records(r)
+    verified = [
+        e
+        for e in captured
+        if e["kind"] == "result"
+        and "review.resolve: explicit verification recorded" in e["data"]["summary"]
+    ]
+    assert (
+        verified[-1]["data"]["observer"] == "parent_verification"
+        and verified[-1]["data"]["verifies"]
+    )
     # An accidental run after the fix never launches a second agent either.
     adopted.run(ok=False)
     assert len(r.calls()) == 1
@@ -226,6 +262,23 @@ def test_recovery_rejects_unverified_final_without_writes_or_agent(
     assert response.returncode == 2
     assert not (adopted.run_dir / "result.json").exists()
     assert r.p.state()["comments"] == before and len(r.calls()) == 1
+    captured = capture_records(r)
+    actions = {e["id"]: e for e in captured if e["kind"] == "action"}
+    rejected = [
+        e
+        for e in captured
+        if e["kind"] == "result"
+        and "review.recover: post-start failure" in e["data"]["summary"]
+    ]
+    assert (
+        rejected
+        and actions[rejected[-1]["data"]["action_id"]]["data"]["operation"]
+        == "retry_fetch"
+    )
+    assert rejected[-1]["data"]["previous_result_id"] is not None
+    assert rejected[-1]["data"]["status"] == "failure"
+    assert rejected[-1]["data"]["observer"] == "machine"
+    assert not rejected[-1]["data"]["verifies"]
 
 
 def inject_lost_response(r: ReviewEnv, *, target: str, method: str) -> None:
@@ -301,6 +354,20 @@ def test_publication_resume_reconciles_each_write_without_duplicates(
     before = copy.deepcopy(r.p.state()["comments"])
     r.cli("resume-publication", "--run", r.request["review_run_id"])
     assert r.p.state()["comments"] == before and len(r.calls()) == 1
+    captured = capture_records(r)
+    actions = {e["id"]: e for e in captured if e["kind"] == "action"}
+    resumed_results = [
+        e
+        for e in captured
+        if e["kind"] == "result"
+        and "review.resume-publication: agent_invocations=0" in e["data"]["summary"]
+    ]
+    assert (
+        resumed_results
+        and actions[resumed_results[-1]["data"]["action_id"]]["data"]["operation"]
+        == "retry_publication"
+    )
+    assert resumed_results[-1]["data"]["previous_result_id"] is not None
 
 
 def test_evidence_wait_requires_current_four_key_public_completion(
@@ -358,6 +425,17 @@ def test_evidence_wait_requires_current_four_key_public_completion(
     )
     evidence.write_text(json.dumps(proof))
     r.cli(*args)
+    captured = capture_records(r)
+    verified = [
+        e
+        for e in captured
+        if e["kind"] == "result"
+        and "review.complete-evidence: agent_invocations=0" in e["data"]["summary"]
+    ]
+    assert (
+        verified[-1]["data"]["observer"] == "parent_verification"
+        and verified[-1]["data"]["verifies"]
+    )
     before = copy.deepcopy(r.p.state()["comments"])
     r.cli(*args)
     assert r.p.state()["comments"] == before and len(r.calls()) == 1

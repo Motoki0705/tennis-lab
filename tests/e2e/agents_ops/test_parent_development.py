@@ -164,6 +164,20 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
                     },
                 )
         assert d.row()["status"] == "active"
+        capture = importlib.import_module("decision_logs.capture")
+        observed = capture.status(d.h.store.directory, "o/r", 1)
+        assert observed["status"] == "captured", observed
+        captured = [entry["record"] for entry in observed["records"]]
+        assert any(
+            r["kind"] == "result"
+            and "turn_end_reason=completed" in r["data"]["summary"]
+            for r in captured
+        )
+        assert all(
+            r["data"]["observer"] != "parent_verification"
+            for r in captured
+            if r["kind"] == "result"
+        )
     finally:
         d.control.reconcile(stop=True)
 
@@ -397,6 +411,16 @@ def test_standalone_stop_resume_preserves_authorized_work(
     assert jobs[first["job_id"]]["cancelled_before_start"]
     assert next_turn["job_id"] != first["job_id"]
     assert not (d.h.root / "runtime-calls.jsonl").exists()
+    capture = importlib.import_module("decision_logs.capture")
+    observed = capture.status(d.h.store.directory, "o/r", 1)
+    assert observed["status"] == "captured", observed
+    records = [entry["record"] for entry in observed["records"]]
+    assert any(
+        r["kind"] == "action"
+        and r["data"]["operation"] == "start_ai"
+        and r["data"]["state"] == "rejected_before_start"
+        for r in records
+    )
     d.control.reconcile(stop=True)
 
 
