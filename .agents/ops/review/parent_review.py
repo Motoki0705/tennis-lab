@@ -55,6 +55,8 @@ from parent_review_policy import (  # noqa: E402
     validate_resolution,
     validate_result,
 )
+from review_locks import require_finished_overlaps, target_locks  # noqa: E402
+from review_observations import observe  # noqa: E402
 from review_policy import neutralize_markers, normalize_rollup  # noqa: E402
 from review_recovery import (  # noqa: E402
     file_digest,
@@ -177,6 +179,17 @@ def collect(
         raise ValueError(
             "head/base/merge-base/diff changed since the instructed snapshot; 対象の縮約／親判断待ち"
         )
+    selected_issues = set().union(*fixed_assignments.values())
+    observations = observe(
+        session,
+        [{"number": parent.number, "title": parent.title, "body": parent.body}]
+        + [
+            {"number": c.number, "title": c.title, "body": c.body}
+            for c in children.values()
+            if c.number in selected_issues
+        ],
+        prs,
+    )
     # Recollect after all GitHub/git I/O. Never review a partially collected PR set.
     with session.gh.fresh_reads():
         fresh = select_prs(
@@ -197,6 +210,7 @@ def collect(
             for c in children.values()
         ],
         "prs": details,
+        "review_observations": observations,
     }, diffs
 
 
@@ -415,7 +429,10 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
     request = request_manifest(read_json(args.request))
     directory = args.state_dir / "reviews" / request["review_run_id"]
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with (directory / "run.lock").open("a") as lock:
+    with (
+        target_locks(args.state_dir, request),
+        (directory / "run.lock").open("a") as lock,
+    ):
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
@@ -432,6 +449,11 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
     with store.locked():
         session = ParentSession(gh, store, request["parent_issue"], identity)
         auth = authorized(session, request)
+        require_finished_overlaps(
+            store.directory,
+            [r for parent_row in store.parents.values() for r in parent_row["reviews"]],
+            request,
+        )
         if read_json(run_dir / "request.json") != request:
             raise ValueError("local request snapshot does not match")
         execution_file = run_dir / "execution.json"
@@ -747,7 +769,7 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("recovery requires the parent's reason")
     store = Store(args.state_dir)
     run_dir = store.directory / "reviews" / request["review_run_id"]
-    with ExitStack() as stack:
+    with target_locks(store.directory, request), ExitStack() as stack:
         # Fixed ordering prevents concurrent recoveries from deadlocking.
         for run in sorted((request["review_run_id"], args.source_run)):
             lock = stack.enter_context(
@@ -765,6 +787,15 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                 session_identity(dict(os.environ)),
             )
             auth = authorized(session, request)
+            require_finished_overlaps(
+                store.directory,
+                [
+                    r
+                    for parent_row in store.parents.values()
+                    for r in parent_row["reviews"]
+                ],
+                request,
+            )
             if read_json(run_dir / "request.json") != request:
                 raise ValueError("local recovery request mismatch")
             candidate, validation = source_evidence(store.directory, args.source_run)
@@ -857,7 +888,11 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("invalid run ID")
     store = Store(args.state_dir)
     run_dir = store.directory / "reviews" / args.run
-    with (run_dir / "run.lock").open("a") as lock:
+    request = request_manifest(read_json(run_dir / "request.json"), instructed=False)
+    with (
+        target_locks(store.directory, request),
+        (run_dir / "run.lock").open("a") as lock,
+    ):
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
@@ -872,6 +907,15 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
                 session_identity(dict(os.environ)),
             )
             authorized(session, request)
+            require_finished_overlaps(
+                store.directory,
+                [
+                    r
+                    for parent_row in store.parents.values()
+                    for r in parent_row["reviews"]
+                ],
+                request,
+            )
             execution = read_json(run_dir / "execution.json")
             if execution["status"] == "running":
                 stages = execution_stages(execution)

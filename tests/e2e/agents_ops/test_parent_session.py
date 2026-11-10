@@ -142,6 +142,10 @@ if checks:
             if c.get("__typename") == "CheckRun" and c.get("name") == "Python"
         ]
     response({"total_count": len(runs), "check_runs": paged(runs)})
+pull_comments = re.fullmatch(r"repos/o/r/pulls/(\d+)/(comments|reviews)", path)
+if pull_comments:
+    assert method == "GET"
+    response(paged(state.get("pull_" + pull_comments[2], {}).get(pull_comments[1], [])))
 pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
 if pull:
     if os.environ.get("PARENT_READ_HEAD_RACE") and int(pull[1]) == 100:

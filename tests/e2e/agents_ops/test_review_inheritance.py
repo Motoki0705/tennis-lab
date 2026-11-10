@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import importlib
 import subprocess
 import sys
@@ -13,6 +14,7 @@ import pytest
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 sys.path[:0] = [str(OPS), str(OPS / "review")]
 workspace: Any = importlib.import_module("review_workspace")
+inspection: Any = importlib.import_module("review_inspection")
 
 
 def git(root: Path, *args: str) -> str:
@@ -55,6 +57,7 @@ def test_inheritance_uses_file_deltas_and_the_base_period(
         "base_sha": start,
         "merge_base_sha": start,
         "head_sha": head,
+        "diff_sha256": hashlib.sha256(workspace.full_diff(start, head)).hexdigest(),
     }
     git(root, "checkout", "-q", "main")
     (root / ("a.py" if kind == "conflict" else "base.py")).write_text("base change\n")
@@ -87,7 +90,20 @@ def test_inheritance_uses_file_deltas_and_the_base_period(
         "head_sha": git(root, "rev-parse", "HEAD"),
         "merge_base_sha": base,
     }
+    current["diff_sha256"] = hashlib.sha256(
+        workspace.full_diff(base, current["head_sha"])
+    ).hexdigest()
     assert workspace.verify_rebased_snapshot(old, current) == (
         kind not in {"extra", "rename", "mode"}
     )
     assert not workspace.verify_rebased_snapshot(old, {**current, "branch": "other"})
+    compared = inspection.compare_snapshot(old, current)
+    assert compared["rebase_inheritance_verified"] is (
+        kind not in {"extra", "rename", "mode"}
+    )
+    assert compared["fields"]["base_sha"] == {
+        "before": start,
+        "after": base,
+        "equal": False,
+    }
+    assert compared["fields"]["head_sha"]["equal"] is False

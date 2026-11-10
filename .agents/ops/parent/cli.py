@@ -219,6 +219,8 @@ def parser() -> argparse.ArgumentParser:
     review = commands.add_parser("review-prepare")
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
+    inspection = commands.add_parser("review-inspect")
+    inspection.add_argument("--prs", type=int, nargs="+", required=True)
     request = commands.add_parser("review-request")
     selection = request.add_mutually_exclusive_group(required=True)
     selection.add_argument("--run-id")
@@ -265,6 +267,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "basis-check",
                 "wait-supplement",
                 "worker-log-status",
+                "review-inspect",
             }
             else session_identity(dict(os.environ))
         )
@@ -277,8 +280,30 @@ def _main(argv: list[str] | None = None) -> int:
             store = workflow_store(args.state_dir, args.dispatcher_state_dir)
         else:
             store = Store(args.state_dir)
-        gh = GitHub(args.repo, store=None if args.command == "wait-supplement" else store)
+        gh = GitHub(
+            args.repo,
+            store=None
+            if args.command in {"wait-supplement", "review-inspect"}
+            else store,
+        )
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "review-inspect":
+            import importlib
+
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "review"))
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+            inspection_module = importlib.import_module("review_inspection")
+            result = inspection_module.inspect_reviews(gh, store, parent, args.prs)
+            print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
+            return (
+                2
+                if result["errors"]
+                or any(
+                    pr["errors"] or any(run["errors"] for run in pr["history"])
+                    for pr in result["prs"]
+                )
+                else 0
+            )
         if args.command in {"worker-log-status", "publish-worker-log"}:
             from worker_logs.service import command as log_command
 
@@ -306,7 +331,9 @@ def _main(argv: list[str] | None = None) -> int:
 
             # Waiting does not need ownership, a registry transaction or an operation lock.
             print(
-                json.dumps(wait_supplement(gh, parent), ensure_ascii=False, sort_keys=True)
+                json.dumps(
+                    wait_supplement(gh, parent), ensure_ascii=False, sort_keys=True
+                )
             )
             return 0
         if args.command == "run-worker":
