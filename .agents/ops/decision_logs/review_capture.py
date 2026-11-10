@@ -4,23 +4,44 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeVar
 
 from worker_logs.journal import decode
 from worker_logs.schema import sha
 
 from .capture import (
     RETRIEVAL_ENV,
+    CaptureInputError,
     Operation,
     checked_link,
     comparison,
     current,
+    initialization_failed,
     observe,
     runtime_environment,
-    warn,
 )
 from .journal import Journal
 from .schema import new_id
+
+T = TypeVar("T")
+
+
+def initialize(
+    args: Any,
+    request: dict[str, Any],
+    entrypoint: str,
+    call: Callable[[], T],
+) -> T | None:
+    """Reject explicit bad input; isolate media failures from the review itself."""
+    try:
+        return call()
+    except CaptureInputError:
+        raise
+    except Exception:
+        initialization_failed(
+            args.state_dir, request["repo"], request["parent_issue"], entrypoint
+        )
+        return None
 
 
 def previous_run(
@@ -216,25 +237,16 @@ def control(
     from .capture import CURRENT
     from .parent_commands import failed
 
-    try:
-        op, source_op = begin_control(args, request)
-    except Exception:
-        if args.decision_id or args.plan_id or args.retry_of or args.changes_file:
-            raise
-        diagnostic = Operation.begin(
-            args.state_dir,
-            request["repo"],
-            request["parent_issue"],
-            "review." + args.command,
-            "record",
-        )
-        diagnostic.mark_failed(lost_source="review.control")
-        warn()
-        return call(args)
-    operation = op.row["operation"]
+    initialized = initialize(
+        args, request, "review." + args.command, lambda: begin_control(args, request)
+    )
+    op, source_op = initialized if initialized is not None else (None, None)
     token = CURRENT.set(op)
     try:
         value = call(args)
+        if op is None:
+            return value
+        operation = op.row["operation"]
         if value.get("result"):
             result(value["result"], artifact="control result.json")
         observe(

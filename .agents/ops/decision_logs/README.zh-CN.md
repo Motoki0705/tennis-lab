@@ -84,6 +84,8 @@
 私有证据仍明确标记为不可公开；fingerprint不等于全文档案。
 已公开的父级评论、review和worker日志还保留可用的固定公开证据。
 outbox只保存私有投递输入，不是发布单元。
+父级响应摘要只投影可公开字段，不整份复制assignment或任意嵌套状态。
+私有来源ID在捕获前注册；完整响应与错误详情保留为私有证据。
 
 | 入口 | 来源与边界 |
 |---|---|
@@ -151,6 +153,8 @@ flock串行化并发更新；调用方和runner重新读取当前outbox。
 失败会向stderr报告并保留待投递记录。另一条私有诊断路径检测outbox写入失败，
 以及尚未构造结果时的适配器失败。整个state filesystem损坏时只能通过stderr报告，
 无法保证把诊断持久化到已损坏的介质。
+捕获初始化区分显式输入错误与journal/outbox故障。即使指定了判断ID，介质故障也不阻止
+原操作，并留下持久的缺失诊断。仅重放投递不能把构造结果前已丢失的事实标记为恢复。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status

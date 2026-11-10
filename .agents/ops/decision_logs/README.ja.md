@@ -85,6 +85,8 @@ runtimeの終了値から推定しない。
 非公開根拠は公開不可と明示し、fingerprintだけで全文を保存したとは扱わない。
 親コメント、公開済みreview・workerログは取得できた固定の公開根拠も参照する。
 outboxは非公開の配送入力であり、公開単位ではない。
+親の応答の要約は公開可能な項目だけに絞り、assignmentや任意の入れ子の状態を丸ごとコピーしない。
+私的な来歴IDは捕捉前に登録する。完全な応答とエラー詳細は非公開根拠に残す。
 
 | 入口 | 取得元と境界 |
 |---|---|
@@ -152,6 +154,9 @@ journal配送より先に、親journal横の非公開 `captures/` outboxへID・
 障害はstderrへ警告し、配送待ちを保持する。別の非公開診断パスで、outbox書込み失敗や
 結果を構築する前の変換失敗も検出する。state filesystem全体が壊れた場合はstderrでのみ通知でき、
 壊れた媒体への永続記録は保証できない。
+捕捉の初期化では明示入力の不正とjournal/outbox障害を区別する。媒体障害では判断IDが
+指定されていても元の操作を維持し、永続的な未捕捉診断を残す。結果を構築する前に
+失った事実は、配送だけの再送では欠測を解消したことにしない。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status

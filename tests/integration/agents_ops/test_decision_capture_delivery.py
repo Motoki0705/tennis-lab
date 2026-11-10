@@ -81,6 +81,40 @@ def test_outbox_failure_has_an_independent_missing_capture_diagnostic(
     ]
 
 
+def test_parent_response_projects_public_fields_and_keeps_private_original(
+    tmp_path: Path,
+) -> None:
+    private_id, opaque_detail = "a" * 32, "opaque-unregistered-internal-detail"
+    value = {
+        "child": 10,
+        "result": {"internal": opaque_detail},
+        "assignment": {
+            "delegation_id": private_id,
+            "branch": "codex/worker",
+            "extension": opaque_detail,
+        },
+        "prs": [{"number": 100, "internal": opaque_detail}],
+        "progress": {"10": "completed", "internal": {"detail": opaque_detail}},
+    }
+    op = C.Operation.begin(tmp_path, "o/r", 1, "parent.inspect-worker", "fetch")
+    token = C.CURRENT.set(op)
+    try:
+        assert (
+            PARENT.complete(SimpleNamespace(command="inspect-worker"), value) is value
+        )
+    finally:
+        C.CURRENT.reset(token)
+    entry = C.Operation.load(op.path).row["entries"][-2]
+    assert entry["observation"] == value
+    assert private_id in entry["private"]["identifiers"]
+    summary = entry["record"]["data"]["summary"]
+    assert private_id not in summary and opaque_detail not in summary
+    assert "codex/worker" in summary and "100" in summary
+    view = C.status(tmp_path, "o/r", 1)
+    assert view["status"] == "captured"
+    assert private_id not in json.dumps(view) and opaque_detail not in json.dumps(view)
+
+
 def test_runner_start_end_and_missing_final_are_not_parent_confirmation(
     tmp_path: Path,
 ) -> None:

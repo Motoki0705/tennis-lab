@@ -24,7 +24,7 @@ sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "lib"))
 
 from decision_logs import review_capture as decision_capture  # noqa: E402
-from decision_logs.capture import CURRENT, warn  # noqa: E402
+from decision_logs.capture import CURRENT  # noqa: E402
 from opsproc import CommandError, run_process_group  # noqa: E402
 from parent.execution import (  # noqa: E402
     require_requirement_targets,
@@ -427,13 +427,9 @@ def publish_result(
 
 def run_review(args: argparse.Namespace) -> dict[str, Any]:
     request = request_manifest(read_json(args.request))
-    capture = None
-    try:
-        capture = decision_capture.begin(args, request)
-    except Exception:
-        if getattr(args, "decision_id", None) or getattr(args, "plan_id", None):
-            raise
-        warn()
+    capture = decision_capture.initialize(
+        args, request, "review.run", lambda: decision_capture.begin(args, request)
+    )
     token = CURRENT.set(capture)
     try:
         value = _locked_review(args, request)
@@ -1033,13 +1029,12 @@ def resolve(args: argparse.Namespace) -> dict[str, Any]:
         read_json(args.state_dir / "reviews" / args.run / "result.json")
     )
     request = request_manifest(raw["request"], instructed=False)
-    capture = None
-    try:
-        capture = decision_capture.begin_verification(args, request)
-    except Exception:
-        if getattr(args, "decision_id", None) or getattr(args, "plan_id", None):
-            raise
-        warn()
+    capture = decision_capture.initialize(
+        args,
+        request,
+        "review.resolve",
+        lambda: decision_capture.begin_verification(args, request),
+    )
     token = CURRENT.set(capture)
     try:
         value = _resolve(args)

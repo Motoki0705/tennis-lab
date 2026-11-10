@@ -100,6 +100,9 @@ of the observed snapshot. Private evidence stays explicitly unavailable publicly
 a fingerprint alone is not a content archive. Canonical parent comments and
 published review/worker-log artifacts also retain fixed public evidence where
 available. Outboxes keep private delivery inputs; they are never publication units.
+Parent response summaries project public fields instead of copying assignments
+or arbitrary nested state. Private provenance IDs are registered before capture;
+the complete response and error details remain private evidence.
 
 | Surface | Observed source and boundaries |
 |---|---|
@@ -179,6 +182,10 @@ Capture errors emit stderr diagnostics and retain pending deliveries. A separate
 private diagnostic path detects missing outbox writes or adapter failures before
 a result could be constructed. Loss of the entire state filesystem can only be
 reported on stderr; it cannot be durably recorded on that failed filesystem.
+Capture initialization rejects invalid explicit capture inputs separately from
+journal/outbox failures. Storage failures preserve the original operation even
+when a decision ID was supplied, and leave a persistent missing-source diagnostic.
+Delivery replay cannot clear facts lost before a result could be captured.
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status

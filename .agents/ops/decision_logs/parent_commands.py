@@ -10,10 +10,12 @@ from worker_logs.journal import decode, locked, require
 from worker_logs.schema import json_bytes, sha
 
 from .capture import (
+    CaptureInputError,
     Operation,
     checked_link,
     comparison,
     current,
+    initialization_failed,
     observe,
     record,
     source,
@@ -89,6 +91,18 @@ def capture_for_runtime(
 
 
 def begin(
+    args: argparse.Namespace, store: Any, repo: str, parent: int
+) -> Operation | None:
+    try:
+        return _begin(args, store, repo, parent)
+    except CaptureInputError:
+        raise
+    except Exception:
+        initialization_failed(store.directory, repo, parent, "parent." + args.command)
+        return None
+
+
+def _begin(
     args: argparse.Namespace, store: Any, repo: str, parent: int
 ) -> Operation | None:
     if args.command not in COMMANDS:
@@ -207,22 +221,28 @@ def begin(
         scope = None
     try:
         plan = checked_link(journal, args.decision_id, args.plan_id, operation)
-    except ValueError:
-        rejected = Operation.begin(
-            store.directory,
-            repo,
-            parent,
-            "parent." + args.command,
-            operation,
-            issue=getattr(args, "child", None),
-        )
-        with rejected.transaction():
-            rejected.finish(
-                {"decision_id": args.decision_id, "plan_id": args.plan_id},
-                status="rejected",
-                state="rejected_before_start",
-                summary="Explicit decision/plan link rejected before execution",
+    except CaptureInputError:
+        try:
+            rejected = Operation.begin(
+                store.directory,
+                repo,
+                parent,
+                "parent." + args.command,
+                operation,
+                issue=getattr(args, "child", None),
             )
+            with rejected.transaction():
+                rejected.finish(
+                    {"decision_id": args.decision_id, "plan_id": args.plan_id},
+                    status="rejected",
+                    state="rejected_before_start",
+                    summary="Explicit decision/plan link rejected before execution",
+                )
+        except Exception:
+            initialization_failed(
+                store.directory, repo, parent, "parent." + args.command
+            )
+        # Failure to record a rejection must not turn invalid input into work.
         raise
     op = Operation.begin(
         store.directory,
@@ -265,6 +285,14 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
     op = current()
     if op is None:
         return value
+    try:
+        with op.transaction():
+            op.row["private"]["identifiers"] = sorted(
+                set(op.row["private"]["identifiers"]) | response_identifiers(value)
+            )
+            op._save()
+    except Exception:
+        op.mark_failed(lost_source="parent.response-context")
     if isinstance(value, dict) and value.get("review_run_id"):
         try:
             with op.transaction():
@@ -324,13 +352,12 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
             k: value[k]
             for k in (
                 "action",
+                "child",
+                "parent",
                 "result",
                 "review_state",
-                "prs",
-                "progress",
                 "launch_state",
                 "exit_code",
-                "assignment",
                 "phase",
                 "parent_action_applied",
                 "runtime_result",
@@ -338,8 +365,31 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
                 "termination_confirmed",
                 "cancelled_before_start",
             )
-            if k in value
+            if k in value and type(value[k]) in {str, int, bool}
         }
+        assignment = value.get("assignment")
+        if isinstance(assignment, dict):
+            selected.update(
+                {
+                    k: assignment[k]
+                    for k in ("agent", "branch", "delegated")
+                    if k in assignment and type(assignment[k]) in {str, bool}
+                }
+            )
+        if isinstance(value.get("prs"), list):
+            selected["prs"] = [
+                p["number"] if isinstance(p, dict) else p
+                for p in value["prs"]
+                if type(p) is int
+                or isinstance(p, dict)
+                and type(p.get("number")) is int
+            ]
+        if isinstance(value.get("progress"), dict):
+            selected["progress"] = {
+                str(k): v
+                for k, v in value["progress"].items()
+                if str(k).isdigit() and isinstance(v, str)
+            }
         if selected:
             summary += "; " + json_bytes(selected).decode("utf-8").strip()
     observe(
@@ -357,6 +407,32 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
     # Review manifests and runner responses are strict downstream contracts.
     # Discover record IDs through decision-log-status, without changing them.
     return value
+
+
+def response_identifiers(value: Any) -> set[str]:
+    """Register private provenance before a response becomes a captured result."""
+    if isinstance(value, list):
+        return set().union(*(response_identifiers(v) for v in value))
+    if not isinstance(value, dict):
+        return set()
+    found = {
+        v
+        for k, v in value.items()
+        if k
+        in {
+            "delegation_id",
+            "lineage_id",
+            "turn_id",
+            "decision_id",  # worker planning response, not parent decide
+            "session_id",
+            "job_id",
+            "run_id",
+            "review_run_id",
+        }
+        and isinstance(v, str)
+        and v.strip()
+    }
+    return found.union(*(response_identifiers(v) for v in value.values()))
 
 
 def failed(exc: BaseException) -> None:
@@ -383,7 +459,7 @@ def failed(exc: BaseException) -> None:
             else "ended"
             if started
             else "rejected_before_start",
-            summary=f"{op.row['entrypoint']}: {'execution status unknown' if launch_unknown else 'post-start failure' if started else 'rejected before execution'}; {type(exc).__name__}: {str(exc)[:1000]}",
+            summary=f"{op.row['entrypoint']}: {'execution status unknown' if launch_unknown else 'post-start failure' if started else 'rejected before execution'}; {type(exc).__name__}; details in private evidence",
         )
     except Exception:
         warn()

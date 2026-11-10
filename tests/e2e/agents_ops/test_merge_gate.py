@@ -433,6 +433,60 @@ def test_unreviewed_standalone_pr_is_collected_and_blocked(gate_env: GateEnv) ->
     )
 
 
+def test_capture_lookup_failure_preserves_explicit_merge_gate(
+    gate_env: GateEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    capture = importlib.import_module("decision_logs.capture")
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    before = capture.status(directory, "o/r", 1)
+    source = next(r["id"] for r in before["records"] if r["kind"] == "result")
+    decision = json.loads(
+        p.cli(
+            "decide",
+            "--spec",
+            p.spec(
+                {
+                    "inputs": [source],
+                    "evaluation": "investigate",
+                    "reason": "Check the explicit merge gate",
+                    "next_actions": [
+                        {
+                            "operation": "merge",
+                            "summary": "Evaluate the current merge gate",
+                            "actor": "external",
+                            "target": "PR 100",
+                            "instruction": "Keep the canonical gate checks",
+                            "conditions": "Fixed review and current CI",
+                            "expected_result": "Gate response",
+                        }
+                    ],
+                }
+            ),
+        ).stdout
+    )
+    script = p.root / "gate-with-capture-fault.py"
+    script.write_text(
+        "import runpy, sys\n"
+        f"sys.path.insert(0, {str(SCRIPT.parent)!r})\n"
+        "from decision_logs.capture import Journal\n"
+        "from worker_logs.journal import PublicationError\n"
+        "def broken_read(self):\n"
+        "    raise PublicationError('journal_unavailable')\n"
+        "Journal.read = broken_read\n"
+        f"runpy.run_path({str(SCRIPT)!r}, run_name='__main__')\n"
+    )
+    monkeypatch.setattr(sys.modules[__name__], "SCRIPT", script)
+    response = g.cli(
+        "merge", "--decision-id", decision["decision_id"], AGENT_AUTO_MERGE="0"
+    )
+    assert response.returncode == 0, response.stderr
+    assert g.results(response)[100]["action"] == "dry_run"
+    assert not g.merge_calls()
+    view = json.loads(p.cli("decision-log-status", ok=False).stdout)
+    assert view["status"] == "incomplete" and view["failures"]
+
+
 @pytest.mark.parametrize(
     "change", ["same_agreement", "changed_agreement", "checking", "generation"]
 )
@@ -1356,8 +1410,7 @@ def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> 
     attempts = [
         e
         for e in entries
-        if e["kind"] == "result"
-        and "merge_gate.merge_attempt:" in e["data"]["summary"]
+        if e["kind"] == "result" and "merge_gate.merge_attempt:" in e["data"]["summary"]
     ]
     assert len(attempts) == 2
     assert all(e["data"]["status"] == "unknown" for e in attempts)

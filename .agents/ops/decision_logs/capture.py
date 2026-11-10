@@ -31,6 +31,15 @@ RUNTIME_ENV = "DECISION_LOG_CAPTURE"
 RETRIEVAL_ENV = "DECISION_LOG_RETRIEVAL"
 
 
+class CaptureInputError(ValueError):
+    """An invalid explicit capture argument, distinct from storage failures."""
+
+
+def _input(condition: bool, code: str) -> None:
+    if not condition:
+        raise CaptureInputError(code)
+
+
 def now() -> str:
     return datetime.now(UTC).isoformat()
 
@@ -68,12 +77,21 @@ def empty_auxiliary() -> dict[str, Any]:
 def comparison(path: Path | None) -> dict[str, str] | None:
     if path is None:
         return None
-    value = decode(path.read_bytes())
-    require(
-        set(value) == CHANGE_FIELDS
-        and all(v in {"changed", "unchanged", "unconfirmed"} for v in value.values()),
-        "record_schema",
-    )
+    try:
+        raw = path.read_bytes()
+    except FileNotFoundError:
+        raise CaptureInputError("capture comparison file not found") from None
+    try:
+        value = decode(raw)
+        _input(
+            set(value) == CHANGE_FIELDS
+            and all(
+                v in {"changed", "unchanged", "unconfirmed"} for v in value.values()
+            ),
+            "record_schema",
+        )
+    except (ValueError, TypeError) as exc:
+        raise CaptureInputError(str(exc)) from None
     return dict(value)
 
 
@@ -137,7 +155,7 @@ class Operation:
     ) -> Operation:
         directory = Path(directory).absolute()
         journal = Journal(directory, repo, parent)
-        require(
+        _input(
             previous_result_id is not None
             or not changes
             or all(v == "unconfirmed" for v in changes.values()),
@@ -478,6 +496,17 @@ class Operation:
         }
 
 
+def initialization_failed(
+    directory: Path, repo: str, parent: int, entrypoint: str
+) -> None:
+    """Keep pre-result loss detectable outside the failed outbox/journal."""
+    try:
+        diagnostic = Operation.begin(directory, repo, parent, entrypoint, "record")
+        diagnostic.mark_failed(lost_source=entrypoint + ".initialization")
+    except Exception:
+        warn()  # A wholly unavailable state filesystem can only warn.
+
+
 def current() -> Operation | None:
     return CURRENT.get()
 
@@ -718,9 +747,15 @@ def checked_link(
 ) -> str | None:
     """Reject an explicit bad link before invoking work, never invent a plan."""
     if decision_id is None:
-        require(plan_id is None, "invalid_log_reference")
+        _input(plan_id is None, "invalid_log_reference")
         return None
-    public_id(decision_id)
+    try:
+        public_id(decision_id)
+        if plan_id is not None:
+            public_id(plan_id)
+    except ValueError as exc:
+        raise CaptureInputError(str(exc)) from None
+    # Storage failures (including corrupt journals) are never input errors.
     rows = journal.read()["entries"]
     decision = next(
         (
@@ -730,7 +765,7 @@ def checked_link(
         ),
         None,
     )
-    require(
+    _input(
         decision is not None and decision["kind"] == "decision", "invalid_log_reference"
     )
     assert decision is not None
@@ -739,8 +774,8 @@ def checked_link(
         for p in decision["data"]["next_actions"]
         if p["operation"] == operation and (plan_id is None or p["id"] == plan_id)
     ]
-    require(len(plans) == 1, "invalid_log_reference")
-    require(
+    _input(len(plans) == 1, "invalid_log_reference")
+    _input(
         not any(
             e["event"] == "capture"
             and e["record"]["kind"] == "action"

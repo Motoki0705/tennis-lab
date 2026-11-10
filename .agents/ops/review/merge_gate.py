@@ -664,9 +664,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     from decision_logs.capture import (
         CURRENT,
+        CaptureInputError,
         Operation,
         checked_link,
         comparison,
+        initialization_failed,
         observe,
     )
     from decision_logs.journal import Journal
@@ -679,23 +681,29 @@ def main(argv: list[str] | None = None) -> int:
         store = Store(args.state_dir)
         gh = GitHub(args.repo, store=store)
         parent = issue_number(args.parent, gh.repo)
-        plan = checked_link(
-            Journal(store.directory, gh.repo, parent),
-            args.decision_id,
-            args.plan_id,
-            "merge",
-        )
-        capture = Operation.begin(
-            store.directory,
-            gh.repo,
-            parent,
-            "merge_gate.merge",
-            "merge",
-            decision_id=args.decision_id,
-            plan_id=plan,
-            previous_result_id=args.retry_of,
-            changes=comparison(args.changes_file),
-        )
+        try:
+            plan = checked_link(
+                Journal(store.directory, gh.repo, parent),
+                args.decision_id,
+                args.plan_id,
+                "merge",
+            )
+            capture = Operation.begin(
+                store.directory,
+                gh.repo,
+                parent,
+                "merge_gate.merge",
+                "merge",
+                decision_id=args.decision_id,
+                plan_id=plan,
+                previous_result_id=args.retry_of,
+                changes=comparison(args.changes_file),
+            )
+        except CaptureInputError:
+            raise
+        except Exception:
+            initialization_failed(store.directory, gh.repo, parent, "merge_gate.merge")
+            capture = None
         token = CURRENT.set(capture)
         with store.locked(), gh.fresh_reads():
             session = ParentSession(

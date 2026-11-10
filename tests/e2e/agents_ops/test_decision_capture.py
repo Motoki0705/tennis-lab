@@ -48,6 +48,39 @@ def sourced(rows: list[dict[str, Any]], name: str) -> list[dict[str, Any]]:
     ]
 
 
+def test_delegate_private_identity_is_guarded_before_worker_launch(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    worker_tests = importlib.import_module(
+        "tests.e2e.agents_ops.test_manual_worker_runs"
+    )
+    task = worker_tests.task(p)
+    private_id = task["delegation_id"]
+    assert not task["worker_runs"]
+    view = json.loads(p.cli("decision-log-status").stdout)
+    assert view["status"] == "captured"
+    assert private_id not in json.dumps(view)
+    journal = C.Journal(state_dir(p), "o/r", 1)
+    entries = [e for e in journal.read()["entries"] if e["event"] == "capture"]
+    delegated = [
+        e
+        for e in entries
+        if e["record"]["kind"] == "result"
+        and e["record"]["data"]["summary"].startswith("parent.delegate:")
+    ]
+    assert delegated and all(
+        private_id in e["private"]["identifiers"] for e in delegated
+    )
+    assert all("assignment" not in e["record"]["data"]["summary"] for e in delegated)
+    for entry in entries:
+        journal.prepare(
+            entry["record"]["id"], key="public:" + entry["record"]["id"], at=C.now()
+        )
+    payloads = journal.public_payloads()
+    assert payloads and private_id not in json.dumps(payloads)
+
+
 def test_worker_planning_judgement_continuation_and_explicit_verification(
     reserved: ParentEnv,
 ) -> None:
@@ -387,6 +420,91 @@ capture_module.locked = broken_outbox_lock
     if failure_mode == "journal":
         assert captured(state_dir(p))
     assert worker_tests.task(p)["worker_runs"] and worker_tests.task(p)["worker_ended"]
+
+
+def test_worker_decision_lookup_io_failure_is_not_invalid_input(
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    p = reserved
+    worker_tests = importlib.import_module(
+        "tests.e2e.agents_ops.test_manual_worker_runs"
+    )
+    source = sourced(captured(state_dir(p)), "parent.delegate")[-1]
+    selected = json.loads(
+        p.cli(
+            "decide",
+            "--spec",
+            p.spec(
+                {
+                    "inputs": [source["id"]],
+                    "evaluation": "investigate",
+                    "reason": "Start the assigned worker",
+                    "next_actions": [
+                        {
+                            "operation": "start_ai",
+                            "summary": "Run the assigned work",
+                            "actor": "worker",
+                            "target": "child 10",
+                            "instruction": "Use the saved assignment",
+                            "conditions": "Saved execution basis",
+                            "expected_result": "Worker result",
+                        }
+                    ],
+                }
+            ),
+        ).stdout
+    )
+    injection = """
+from decision_logs.capture import Journal
+from worker_logs.journal import PublicationError
+def broken_journal_read(self):
+    raise PublicationError('journal_unavailable')
+Journal.read = broken_journal_read
+"""
+    monkeypatch.setattr(
+        worker_tests,
+        "ENTRY",
+        worker_tests.ENTRY.replace(
+            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+        ),
+    )
+    response = run(p, "--decision-id", selected["decision_id"])
+    assert response.returncode == 0
+    assert worker_tests.task(p)["worker_runs"] and worker_tests.task(p)["worker_ended"]
+    view = json.loads(p.cli("decision-log-status", ok=False).stdout)
+    assert view["status"] == "incomplete" and view["failures"]
+
+
+def test_invalid_worker_input_stays_rejected_when_rejection_capture_fails(
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    worker_tests = importlib.import_module(
+        "tests.e2e.agents_ops.test_manual_worker_runs"
+    )
+    injection = """
+from contextlib import contextmanager
+from decision_logs import capture as capture_module
+saved_lock = capture_module.locked
+@contextmanager
+def broken_lock(path):
+    if path.parent.name == 'captures':
+        raise OSError('injected rejection capture lock failure')
+    with saved_lock(path):
+        yield
+capture_module.locked = broken_lock
+"""
+    monkeypatch.setattr(
+        worker_tests,
+        "ENTRY",
+        worker_tests.ENTRY.replace(
+            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+        ),
+    )
+    response = run(reserved, "--decision-id", "invalid", ok=False)
+    assert response.returncode == 2 and "invalid_public_key" in response.stderr
+    assert not (reserved.root / "runner-calls.jsonl").exists()
+    view = json.loads(reserved.cli("decision-log-status", ok=False).stdout)
+    assert view["status"] == "incomplete" and view["failures"]
 
 
 def test_review_publication_failure_keeps_observed_result_and_new_run_predecessor(
