@@ -209,6 +209,54 @@ def test_claimed_dispatch_job_rechecks_new_proposal_before_popen(
     assert d.row()["status"] == "released"
 
 
+def test_unapproved_managed_parent_can_handoff_without_granting_execution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tests.e2e.agents_ops.test_dispatcher_supervisor import (
+        DispatchHarness,
+        fixture_runtime,
+    )
+
+    d = DispatchHarness(tmp_path, monkeypatch)
+    fixture_runtime(d, monkeypatch)
+    d.prepare()
+    d.control.assign()
+    d.accepted()
+    before = d.row()
+    api = importlib.import_module("issues.improvement")
+    source = api.ImprovementSource(2, "next")
+    candidate = api.event(
+        source,
+        "candidate",
+        1,
+        None,
+        {"source_issue": 2, "spec": candidate_spec(), "legacy": False},
+    )
+    d.h.gh.issues[1]["body"] = source.marker() + "\n\n" + d.h.gh.issues[1]["body"]
+    d.h.gh.comment_rows[2] = [
+        {"id": 9000, "user": {"login": "operator"}, "body": api.render_event(candidate)}
+    ]
+    parent = importlib.import_module("parent.session")
+    execution = importlib.import_module("parent.execution")
+    with d.h.store.locked():
+        old = parent.ParentSession(d.h.gh, d.h.store, 1, before["session"])
+        old.lifecycle("handoff_pending", "未承認の改善について議論する担当を移す。")
+        current = parent.ParentSession(
+            d.h.gh, d.h.store, 1, "codex:new-discussion-owner"
+        )
+        current.accept("保存済みworkerを引き継ぎ、実装は承認まで再開しない。")
+        assert current.row["status"] == "active"
+        assert current.row["generation"] == before["generation"] + 1
+        assert (
+            current.row["dispatch"]["context_rebindings"][-1]["authorization"] is None
+        )
+        assert current.row["dispatch"]["controller_mode"] == "handoff"
+        with pytest.raises(execution.ExecutionBasisStale, match="pending"):
+            execution.authorization(current)
+        assert set(current.row["dispatch"]["jobs"]) == set(before["dispatch"]["jobs"])
+
+
 def test_completed_first_generation_does_not_authorize_the_next(
     parent_env: ParentEnv,
     monkeypatch: pytest.MonkeyPatch,

@@ -512,6 +512,8 @@ def observe(gh: Any, parent: int, publisher: str) -> dict[str, Any] | None:
 def require(
     session: ParentSession, target: int | None = None, *, fresh: bool = False
 ) -> dict[str, Any] | None:
+    from .execution import ExecutionBasisStale
+
     n = target or session.parent
     if not fresh:
         raw = session.gh.issue(n)
@@ -519,7 +521,9 @@ def require(
             if n == session.parent and any(
                 e.get("improvement_approval") for e in session.history()
             ):
-                raise ValueError("improvement approval source marker is missing")
+                raise ExecutionBasisStale(
+                    "improvement approval source marker is missing"
+                )
             return None
     with session.gh.fresh_reads():
         observed = observe(session.gh, n, session.login)
@@ -529,9 +533,13 @@ def require(
             if n == session.parent and any(
                 e.get("improvement_approval") for e in session.history()
             ):
-                raise ValueError("improvement approval source marker is missing")
+                raise ExecutionBasisStale(
+                    "improvement approval source marker is missing"
+                )
             if not fresh:
-                raise ValueError("improvement source disappeared during authorization")
+                raise ExecutionBasisStale(
+                    "improvement source disappeared during authorization"
+                )
             return None
         source, candidate, raw = (
             observed["source"],
@@ -540,7 +548,7 @@ def require(
         )
         try:
             decision = approved(candidate, source, n, raw.get("body") or "")
-        except ValueError:
+        except ValueError as exc:
             from decision_logs.capture import current
 
             capture = current()
@@ -558,10 +566,12 @@ def require(
                         )
                 except Exception:
                     capture.mark_failed(lost_source="parent.improvement-gate")
-            raise
+            # Ownership handoff already handles stale authority by transferring
+            # discussion/control without importing permission or starting a job.
+            raise ExecutionBasisStale(str(exc)) from exc
         owner = session.store.parents.get(f"{session.gh.repo.casefold()}#{n}", {})
         if owner.get("improvement_stop", {}).get("state") == "stopping":
-            raise ValueError(
+            raise ExecutionBasisStale(
                 f"{source.candidate_id}: previous runtime stop/cleanup is still pending; retry improvement-decide"
             )
         return {
