@@ -142,6 +142,10 @@ if checks:
             if c.get("__typename") == "CheckRun" and c.get("name") == "Python"
         ]
     response({"total_count": len(runs), "check_runs": paged(runs)})
+pull_comments = re.fullmatch(r"repos/o/r/pulls/(\d+)/(comments|reviews)", path)
+if pull_comments:
+    assert method == "GET"
+    response(paged(state.get("pull_" + pull_comments[2], {}).get(pull_comments[1], [])))
 pull = re.fullmatch(r"repos/o/r/pulls/(\d+)", path)
 if pull:
     if os.environ.get("PARENT_READ_HEAD_RACE") and int(pull[1]) == 100:
@@ -2022,7 +2026,7 @@ selected = {"model":"review-fixture", "effort":"max", "service_tier":"priority"}
 (runtime / "result.json").write_text(json.dumps({
     "result": "failed" if exit_code else "completed", "exit_code": exit_code, "cli_exit_code": exit_code,
     "turn_end_reason": reason,
-    "agent_spawned": True, "cleanup_complete": True, "finished_at": 1,
+    "agent_spawned": True, "cleanup_complete": not bool(os.environ.get("REVIEW_UNCONFIRMED_CLEANUP")), "finished_at": 1,
     "prompt_sha256": hashlib.sha256(pathlib.Path(opt("--prompt-file")).read_bytes()).hexdigest(),
     "run_dir": str(runtime), "output_path": opt("--out"), "final_path": str(runtime / "final.md"),
     "contract": {"json_schema_sha256": hashlib.sha256(schema).hexdigest(), "cwd": str(cwd),
@@ -2039,6 +2043,8 @@ if os.environ.get("REVIEW_FINAL_ONLY"):
     pathlib.Path(opt("--out")).unlink()
 if os.environ.get("REVIEW_BROKEN_RUNTIME"):
     (runtime / "result.json").write_text("{invalid runtime")
+if os.environ.get("REVIEW_LEAVE_WORKSPACE"):
+    (cwd / "cleanup-leftover").mkdir()
 sys.exit(exit_code)
 """
 

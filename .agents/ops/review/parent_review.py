@@ -57,6 +57,18 @@ from parent_review_policy import (  # noqa: E402
     validate_resolution,
     validate_result,
 )
+from review_interruption import (  # noqa: E402
+    CLOSED,
+    agent_started,
+    cleanup_evidence,
+    exit_confirmation_record,
+    interruption_record,
+    require_not_closed,
+    runtime_lock,
+    supervisor_confirmation,
+)
+from review_locks import require_finished_overlaps, target_locks  # noqa: E402
+from review_observations import observe  # noqa: E402
 from review_policy import neutralize_markers, normalize_rollup  # noqa: E402
 from review_recovery import (  # noqa: E402
     file_digest,
@@ -179,6 +191,17 @@ def collect(
         raise ValueError(
             "head/base/merge-base/diff changed since the instructed snapshot; 対象の縮約／親判断待ち"
         )
+    selected_issues = set().union(*fixed_assignments.values())
+    observations = observe(
+        session,
+        [{"number": parent.number, "title": parent.title, "body": parent.body}]
+        + [
+            {"number": c.number, "title": c.title, "body": c.body}
+            for c in children.values()
+            if c.number in selected_issues
+        ],
+        prs,
+    )
     # Recollect after all GitHub/git I/O. Never review a partially collected PR set.
     with session.gh.fresh_reads():
         fresh = select_prs(
@@ -199,6 +222,7 @@ def collect(
             for c in children.values()
         ],
         "prs": details,
+        "review_observations": observations,
     }, diffs
 
 
@@ -447,7 +471,10 @@ def run_review(args: argparse.Namespace) -> dict[str, Any]:
 def _locked_review(args: argparse.Namespace, request: dict[str, Any]) -> dict[str, Any]:
     directory = args.state_dir / "reviews" / request["review_run_id"]
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with (directory / "run.lock").open("a") as lock:
+    with (
+        target_locks(args.state_dir, request),
+        (directory / "run.lock").open("a") as lock,
+    ):
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
@@ -464,11 +491,17 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
     with store.locked():
         session = ParentSession(gh, store, request["parent_issue"], identity)
         auth = authorized(session, request)
+        require_finished_overlaps(
+            store.directory,
+            [r for parent_row in store.parents.values() for r in parent_row["reviews"]],
+            request,
+        )
         if read_json(run_dir / "request.json") != request:
             raise ValueError("local request snapshot does not match")
         execution_file = run_dir / "execution.json"
         if execution_file.exists():
             execution = read_json(execution_file)
+            require_not_closed(execution, request)
             execution_stages(execution)
             if not isinstance(execution.get("status"), str) or execution[
                 "status"
@@ -737,6 +770,15 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 execution["agent_invocations"] = 0
         except (Exception, KeyboardInterrupt) as exc:
             error = error or exc
+    if execution["agent_invocations"] == 0 and not agent_started(execution):
+        agent = execution["stages"]["agent"]
+        agent["cleanup_complete"] = True
+        try:
+            cleanup_evidence(run_dir, request, execution)
+            agent["workspace_cleanup_complete"] = True
+        except (Exception, KeyboardInterrupt) as exc:
+            agent["workspace_cleanup_complete"] = False
+            error = error or exc
     result = (
         candidate
         if candidate is not None and error is None
@@ -785,7 +827,7 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("recovery requires the parent's reason")
     store = Store(args.state_dir)
     run_dir = store.directory / "reviews" / request["review_run_id"]
-    with ExitStack() as stack:
+    with target_locks(store.directory, request), ExitStack() as stack:
         # Fixed ordering prevents concurrent recoveries from deadlocking.
         for run in sorted((request["review_run_id"], args.source_run)):
             lock = stack.enter_context(
@@ -803,8 +845,19 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                 session_identity(dict(os.environ)),
             )
             auth = authorized(session, request)
+            require_finished_overlaps(
+                store.directory,
+                [
+                    r
+                    for parent_row in store.parents.values()
+                    for r in parent_row["reviews"]
+                ],
+                request,
+            )
             if read_json(run_dir / "request.json") != request:
                 raise ValueError("local recovery request mismatch")
+            if (run_dir / "execution.json").exists():
+                require_not_closed(read_json(run_dir / "execution.json"), request)
             candidate, validation = source_evidence(store.directory, args.source_run)
             source = candidate["request"]
             authorized(session, source)
@@ -873,6 +926,7 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                             "agent": {
                                 "status": "not_invoked",
                                 "cleanup_complete": True,
+                                "workspace_cleanup_complete": True,
                             },
                             "output": {
                                 "status": "validated",
@@ -890,16 +944,121 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
     return {"result": result, "publication": publication, "agent_invocations": 0}
 
 
+def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
+    """Confirm exit explicitly; close only running runs, preserve formal results."""
+    if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
+        raise ValueError("invalid run ID")
+    reason = args.reason_file.read_text(encoding="utf-8").strip()
+    if not reason:
+        raise ValueError("interrupted closure requires the parent's reason")
+    store = Store(args.state_dir)
+    run_dir = store.directory / "reviews" / args.run
+    request = request_manifest(read_json(run_dir / "request.json"), instructed=False)
+    if request["review_run_id"] != args.run:
+        raise ValueError("interrupted run/request mismatch")
+    with (
+        target_locks(store.directory, request),
+        (run_dir / "run.lock").open("a") as lock,
+    ):
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("review run is active; cannot close interruption") from exc
+        with runtime_lock(run_dir), store.locked():
+            session = ParentSession(
+                GitHub(request["repo"]),
+                store,
+                request["parent_issue"],
+                session_identity(dict(os.environ)),
+            )
+            auth = authorized(session, request)
+            if read_json(run_dir / "request.json") != request:
+                raise ValueError("local interrupted request changed")
+            path = run_dir / "execution.json"
+            execution = read_json(path)
+            terminal = execution.get("status") in {"running", CLOSED}
+            key = "interruption" if terminal else "exit_confirmation"
+            record = interruption_record(execution, request)
+            if not terminal:
+                record = exit_confirmation_record(execution, request)
+            if record is not None:
+                if record["reason"] != reason:
+                    raise ValueError(
+                        "interrupted closure already has a different reason"
+                    )
+                if args.cleanup_confirmation is not None and supervisor_confirmation(
+                    read_json(args.cleanup_confirmation), request
+                ) != record.get("cleanup_confirmation"):
+                    raise ValueError(
+                        "cleanup confirmation differs from the saved evidence"
+                    )
+            else:
+                if (
+                    execution.get("status")
+                    not in {
+                        "running",
+                        "published",
+                        "publication_failed",
+                        "preparation_failed",
+                    }
+                    or execution.get("request_sha256") != digest(request)
+                    or type(execution.get("agent_invocations")) is not int
+                    or execution["agent_invocations"] not in {0, 1}
+                ):
+                    raise ValueError(
+                        "only an unchanged recorded execution can be confirmed"
+                    )
+                runtime_sha256, supervisor = cleanup_evidence(
+                    run_dir, request, execution, args.cleanup_confirmation
+                )
+                record = {
+                    "schema_version": 1,
+                    "request_sha256": digest(request),
+                    "closed_at" if terminal else "confirmed_at": now(),
+                    "reason": reason,
+                    "operator_authorization": auth,
+                    "session": session.session,
+                    "agent_started": agent_started(execution),
+                    "runtime_sha256": runtime_sha256,
+                    "cleanup_confirmation": supervisor,
+                    "workspace_cleanup_complete": True,
+                    "publication": "not_published" if terminal else "unchanged",
+                }
+                if terminal:
+                    execution.update(
+                        status=CLOSED,
+                        finished_at=record["closed_at"],
+                        interruption=record,
+                    )
+                    interruption_record(execution, request)
+                else:
+                    execution["exit_confirmation"] = record
+                    exit_confirmation_record(execution, request)
+                Store.write_json(path, execution)
+    return {
+        "review_run_id": args.run,
+        "status": execution["status"],
+        "publication": record["publication"],
+        "agent_invocations": 0,
+        key: record,
+    }
+
+
 def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
     if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
         raise ValueError("invalid run ID")
     store = Store(args.state_dir)
     run_dir = store.directory / "reviews" / args.run
-    with (run_dir / "run.lock").open("a") as lock:
+    request = request_manifest(read_json(run_dir / "request.json"), instructed=False)
+    with (
+        target_locks(store.directory, request),
+        (run_dir / "run.lock").open("a") as lock,
+    ):
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ValueError("review run is active; cannot resume publication") from exc
+        require_not_closed(read_json(run_dir / "execution.json"), request)
         result = validate_result(read_json(run_dir / "result.json"))
         request = result["request"]
         with store.locked():
@@ -910,6 +1069,15 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
                 session_identity(dict(os.environ)),
             )
             authorized(session, request)
+            require_finished_overlaps(
+                store.directory,
+                [
+                    r
+                    for parent_row in store.parents.values()
+                    for r in parent_row["reviews"]
+                ],
+                request,
+            )
             execution = read_json(run_dir / "execution.json")
             if execution["status"] == "running":
                 stages = execution_stages(execution)
@@ -1212,6 +1380,10 @@ def parser() -> argparse.ArgumentParser:
     recovery.add_argument("--reason-file", type=Path, required=True)
     resume = commands.add_parser("resume-publication")
     resume.add_argument("--run", required=True)
+    close = commands.add_parser("close-interrupted")
+    close.add_argument("--run", required=True)
+    close.add_argument("--reason-file", type=Path, required=True)
+    close.add_argument("--cleanup-confirmation", type=Path)
     complete = commands.add_parser("complete-evidence")
     complete.add_argument("--run", required=True)
     complete.add_argument("--pr", type=int, required=True)
@@ -1237,6 +1409,7 @@ def main(argv: list[str] | None = None) -> int:
             "resolve": resolve,
             "recover": recover,
             "resume-publication": resume_publication,
+            "close-interrupted": close_interrupted,
             "complete-evidence": complete_evidence,
         }[args.command]
         if args.command in {"recover", "resume-publication", "complete-evidence"}:
@@ -1245,6 +1418,15 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
                     raise ValueError("invalid run ID")
+                run_dir = args.state_dir / "reviews" / args.run
+                if (run_dir / "execution.json").exists():
+                    # A closed run never has a formal result; say so before reading one.
+                    require_not_closed(
+                        read_json(run_dir / "execution.json"),
+                        request_manifest(
+                            read_json(run_dir / "request.json"), instructed=False
+                        ),
+                    )
                 request = validate_result(
                     read_json(args.state_dir / "reviews" / args.run / "result.json")
                 )["request"]
