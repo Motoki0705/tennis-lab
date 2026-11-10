@@ -169,6 +169,27 @@ def test_resume_request_that_actually_starts_an_ai_retains_both_facts(
     assert graph.validate_graph(rows)
 
 
+def test_retrieval_adapter_failure_keeps_response_and_marks_missing_source(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    owner = C.Operation.begin(tmp_path, "o/r", 1, "review.run", "review")
+    monkeypatch.setenv(C.RETRIEVAL_ENV, str(owner.path))
+
+    def broken_fingerprint(value: bytes) -> str:
+        raise ValueError("injected retrieval adapter failure")
+
+    monkeypatch.setattr(OBS, "sha", broken_fingerprint)
+    response = {"ok": True, "value": {"conclusion": "success"}}
+    OBS.retrieval("get_ci", {"pr": 42}, response)
+    assert response == {"ok": True, "value": {"conclusion": "success"}}
+    view = C.status(tmp_path, "o/r", 1)
+    assert view["status"] == "incomplete"
+    assert view["failures"] == [
+        {"source": "review.run", "error": "capture_delivery_missing"}
+    ]
+    assert not [r for r in records(owner) if r["kind"] == "result"]
+
+
 @pytest.mark.parametrize(
     "corruption", ["journal_missing", "outbox_private", "source_changed"]
 )

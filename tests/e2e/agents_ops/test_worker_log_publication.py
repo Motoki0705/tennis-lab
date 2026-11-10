@@ -39,6 +39,34 @@ def advance_main(logs: LogEnv, files: dict[str, str]) -> str:
     return cast(str, git(logs.root, "rev-parse", "HEAD"))
 
 
+def test_capture_adapter_failure_preserves_successful_log_publication(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    capture: Any = importlib.import_module("decision_logs.capture")
+    observations: Any = importlib.import_module("decision_logs.observations")
+    service: Any = importlib.import_module("worker_logs.service")
+    path = logs.ready()
+    monkeypatch.setattr(
+        service, "Publisher", lambda root, target: logs.publisher(target)
+    )
+
+    def invalid_capture_metadata(raw: bytes) -> Any:
+        raise ValueError("injected capture metadata conversion failure")
+
+    monkeypatch.setattr(observations, "decode", invalid_capture_metadata)
+    value = service.publish(path)
+    assert value["saved_to_main"] is True and value["state"] == "merged"
+    assert logs.github.calls == ["create", "merge"]
+    view = capture.status(logs.state, "o/r", 1)
+    assert view["status"] == "incomplete"
+    assert view["failures"] == [
+        {"source": "worker_logs.publish", "error": "capture_delivery_missing"}
+    ]
+    # Delivery retry cannot fabricate the missing conversion or rerun publication.
+    assert capture.status(logs.state, "o/r", 1, retry=True)["status"] == "incomplete"
+    assert logs.github.calls == ["create", "merge"]
+
+
 def test_gitignore_tracks_only_public_worker_log_files(tmp_path: Path) -> None:
     git(tmp_path, "init", "-q")
     (tmp_path / ".gitignore").write_bytes(

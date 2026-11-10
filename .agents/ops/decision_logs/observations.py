@@ -229,8 +229,8 @@ def runtime_record(
 def bind_job(store: Any, key: str, row: dict[str, Any], job: dict[str, Any]) -> None:
     if job.get("child") is None:
         return
+    op = current()
     try:
-        op = current()
         if op is None:
             phase = row["tasks"][str(job["child"])].get("preflight", {})
             scope = {
@@ -283,7 +283,19 @@ def bind_job(store: Any, key: str, row: dict[str, Any], job: dict[str, Any]) -> 
                 bound._save()
             bind_worker_task(row["tasks"][str(job["child"])], operation=bound)
     except Exception:
-        warn()
+        if op is None:
+            try:
+                op = Operation.begin(
+                    store.directory,
+                    key.rpartition("#")[0],
+                    int(key.rpartition("#")[2]),
+                    "dispatcher.start-child",
+                    "record",
+                )
+            except Exception:
+                warn()
+        if op is not None:
+            op.mark_failed(lost_source="dispatcher.binding")
 
 
 def bind_worker_task(
@@ -388,6 +400,7 @@ def saved_jobs(parents: dict[str, Any]) -> None:
             reference = job.get("decision_capture")
             if not reference:
                 continue
+            op = None
             try:
                 op = Operation.load(Path(reference))
                 runtime_path = Path(job["directory"]) / "runtime/result.json"
@@ -417,7 +430,10 @@ def saved_jobs(parents: dict[str, Any]) -> None:
                                 artifact="saved dispatcher job",
                             )
             except Exception:
-                warn()
+                if op is not None:
+                    op.mark_failed(lost_source="dispatcher.job")
+                else:
+                    warn()
 
 
 def worker_log(
@@ -428,6 +444,8 @@ def worker_log(
     entrypoint: str = "worker_logs.publish",
 ) -> None:
     """Record publication separately, including automatic dispatcher publication."""
+    op = current()
+    namespace = None
     try:
         from worker_logs.journal import read
 
@@ -437,6 +455,7 @@ def worker_log(
         directory = path.parents[6]
         parent = original["parent"]
         repo = original["repo"]
+        namespace = (directory, repo, parent)
         before = []
         prior_publication = False
         for candidate_path in (
@@ -454,7 +473,6 @@ def worker_log(
             if before
             else None
         )
-        op = current()
         owned = op is None or op.row["operation"] not in {
             "publish",
             "retry_publication",
@@ -530,7 +548,15 @@ def worker_log(
         finally:
             CURRENT.reset(token)
     except Exception:
-        warn()
+        if op is None and namespace is not None:
+            try:
+                op = Operation.begin(*namespace, entrypoint, "record")
+            except Exception:
+                warn()
+        if op is not None:
+            op.mark_failed(lost_source="worker_logs.observation")
+        else:
+            warn()
 
 
 def retrieval(name: str, arguments: Any, response: dict[str, Any]) -> None:
@@ -538,6 +564,8 @@ def retrieval(name: str, arguments: Any, response: dict[str, Any]) -> None:
     reference = os.environ.get(RETRIEVAL_ENV)
     if not reference:
         return
+    owner = None
+    op = None
     try:
         owner = Operation.load(Path(reference))
         fingerprint = sha(json_bytes({"tool": name, "arguments": arguments}))
@@ -582,7 +610,11 @@ def retrieval(name: str, arguments: Any, response: dict[str, Any]) -> None:
                 artifact="retrieval received receipt",
             )
     except Exception:
-        warn()
+        diagnostic = op or owner
+        if diagnostic is not None:
+            diagnostic.mark_failed(lost_source="review.retrieval")
+        else:
+            warn()
 
 
 def copy_scope(scope: dict[str, Any]) -> dict[str, Any]:
