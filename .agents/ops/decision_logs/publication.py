@@ -271,6 +271,35 @@ class Publisher:
         policy.identity(pr, batch, batch["revisions"][-1]["head"], len(diff))
         return dict(pr)
 
+    def reconcile_pr(self, batch: dict[str, Any]) -> dict[str, Any]:
+        pr = self.github.get(batch["pr_number"])
+        observed = (pr.get("head") or {}).get("sha")
+        known = next(
+            (r for r in batch["revisions"] if r["head"] and r["head"] == observed),
+            None,
+        )
+        if known is None:
+            raise PublicationError("pr_identity_changed")
+        policy.identity(pr, batch, observed)
+        if pr.get("merged") is True:
+            # Confirmation still requires the latest revision. Never rewrite a
+            # closed PR or forget a revision that was not applied to it.
+            return dict(pr)
+        require(pr.get("state") == "open", "closed_unmerged")
+        latest = batch["revisions"][-1]
+        if known is not latest:
+            require(not batch["merge_attempted"], "merge_response_uncertain")
+            self.verify(batch, known)
+            # Recover before planning another main revision: a commit may exist
+            # locally even though its journal HEAD and remote push were lost.
+            if latest["head"] is None:
+                self.commit(batch, latest)
+            diff = self.verify(batch, latest)
+            self.push(batch)
+            return self.pull_request(batch, diff)
+        policy.identity(pr, batch, latest["head"])
+        return dict(pr)
+
     def note(
         self,
         batch: dict[str, Any],
@@ -497,8 +526,7 @@ class Publisher:
         self.note(active, "pending")
         for _ in range(3):
             if active["pr_number"] is not None:
-                pr = self.github.get(active["pr_number"])
-                policy.identity(pr, active, active["revisions"][-1]["head"])
+                pr = self.reconcile_pr(active)
                 if pr.get("merged") is True:
                     return self.confirm(active, pr)
                 require(pr.get("state") == "open", "closed_unmerged")

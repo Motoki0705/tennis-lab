@@ -230,6 +230,49 @@ def make_gate_env(
             for pr in state["prs"]:
                 pr["base"]["ref"] = "trunk"
             run_git(p.repo, "branch", "-m", "main", "trunk")
+        elif variant == "publication_paths":
+            prefix = ".agents/logs/parents/parent-1/"
+            event = prefix + "activity-public/event-existing.json"
+            readme = prefix + "README.md"
+            for name, text in {
+                event: '{"fixture": "original"}\n',
+                readme: "# Generated navigation\n",
+            }.items():
+                target = p.repo / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(text)
+            run_git(p.repo, "add", "--force", "--", event, readme)
+            run_git(p.repo, "commit", "-m", "existing public log fixtures")
+            base = run_git(p.repo, "rev-parse", "HEAD")
+            worker = prefix + "child-10/d-abc/0001-initial/"
+            # Freeze the actual log-only diffs before review, so CI absence is
+            # the sole rejection reason, rather than an obsolete review HEAD.
+            changes = [
+                {event: '{"fixture": "edited"}\n'},
+                {readme: "# Generated navigation\nHand-written addition\n"},
+                {
+                    prefix + "activity-public/event-new.json": "{}\n",
+                    prefix + "activity-public/README.md": "# Navigation\n",
+                    worker + "instruction.md": "Instruction\n",
+                    worker + "final.md": "Final\n",
+                    worker + "meta.json": "{}\n",
+                },
+            ]
+            for index, (pr, files) in enumerate(
+                zip(state["prs"], changes, strict=True)
+            ):
+                tree = p.repo / f".claude/worktrees/pr-{index}"
+                run_git(tree, "reset", "--hard", base)
+                for name, text in files.items():
+                    target = tree / name
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_text(text)
+                run_git(tree, "add", "--force", "--", *files)
+                run_git(tree, "commit", "-m", f"ordinary log PR {index}")
+                pr["base"]["sha"] = base
+                pr["head"].update(
+                    sha=run_git(tree, "rev-parse", "HEAD"), ref=f"codex/pr-{index}"
+                )
         p.save(state)
         if variant == "preflight_dependency":
             # Reserve before publishing the PRs, then provide terminal offline
@@ -264,7 +307,13 @@ def make_gate_env(
     review_env = make_review_env(
         parent_env,
         independent=variant
-        in {"independent", "dependency", "research_dependency", "preflight_dependency"},
+        in {
+            "independent",
+            "dependency",
+            "research_dependency",
+            "preflight_dependency",
+            "publication_paths",
+        },
         standalone=variant == "standalone",
         pr_count=3
         if variant
@@ -274,6 +323,7 @@ def make_gate_env(
             "dependency",
             "research_dependency",
             "preflight_dependency",
+            "publication_paths",
         }
         else 1,
         shared=variant == "shared",
@@ -687,6 +737,50 @@ def test_python_ci_is_required_for_dependency_ordered_merges(
             "--match-head-commit",
             rows[int(call[2])]["snapshot"]["head_sha"],
         ]
+    assert len(g.review.calls()) == 1
+
+
+@pytest.mark.parametrize("gate_env", ["publication_paths"], indirect=True)
+def test_path_filtered_log_prs_still_require_python_on_normal_merge_gate(
+    gate_env: GateEnv,
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    state = p.state()
+    prefix = ".agents/logs/parents/parent-1/"
+    worker = prefix + "child-10/d-abc/0001-initial/"
+    expected = [
+        {"M\t" + prefix + "activity-public/event-existing.json"},
+        {"M\t" + prefix + "README.md"},
+        {
+            "A\t" + prefix + "activity-public/event-new.json",
+            "A\t" + prefix + "activity-public/README.md",
+            *(
+                "A\t" + worker + name
+                for name in ("instruction.md", "final.md", "meta.json")
+            ),
+        },
+    ]
+    for pr, diff in zip(state["prs"], expected, strict=True):
+        assert (
+            set(
+                run_git(
+                    p.repo, "diff", "--name-status", "main..." + pr["head"]["sha"]
+                ).splitlines()
+            )
+            == diff
+        )
+        pr.update(statusCheckRollup=[], ci_check_runs=[])
+    p.save(state)
+    response = g.cli("merge")
+    assert response.returncode == 1, response.stderr
+    rows = g.results(response)
+    assert set(rows) == {100, 101, 102}
+    for row in rows.values():
+        assert row["decision"] == "blocked"
+        assert row["reasons"] == ["ci_python_missing"]
+        assert row["ci_checks"] == []
+        assert row["ci_head_sha"] == row["snapshot"]["head_sha"]
+    assert not g.merge_calls()
     assert len(g.review.calls()) == 1
 
 

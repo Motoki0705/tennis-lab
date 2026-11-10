@@ -289,7 +289,7 @@ worker文件稍后到达时，与原文件夹README双向链接；启动前拒�
 - 检查schema、graph、metadata、公开正文、路径和链接。所需README必须全部存在，
   与该PR HEAD记录集合的再生成结果逐字节一致；拒绝任意追加正文、缺页或非生成README变更。
 - 检查origin/repo、branch、固定marker、准确HEAD、main base ref、文件数以及GitHub所有分页的
-  PR文件名/状态，并在merge前重新取得PR。常规merge gate不变，普通/混合PR仍要求review和其HEAD的 `Python` 成功。
+  PR文件名/状态，并在merge前重新取得PR。
 
 merge前fetch最新main，并从完整记录并集重新生成。main前进时创建新的已验证revision，
 通过准确lease更新同一个PR branch，保留其他父/子issue的记录和链接。
@@ -306,7 +306,10 @@ GitHub旧 `base.sha` 是快照，不能据此丢弃main更新。
 采用flock、fsync和原子写入。`Journal.publication()` 只追加每条记录的pending/blocked/published事实。
 发布命令本身不进入捕获适配器，因此不会生成下一轮发布记录。
 commit后中断会复用完全核对的commit；push、PR创建和merge响应丢失时核对相同branch/marker/HEAD，
-不盲目重发结果不明的POST/merge。已确认merge但逐记录journal追加中断时，先恢复该批再选择新批次。
+不盲目重发结果不明的POST/merge。open PR仍指向已知旧revision时，即使main再次前进，
+也先恢复最新revision的本地commit和带lease的push，再要求最新HEAD一致。
+所有revision均保留在私有历史中，包括从未应用于PR的revision。
+已确认merge但逐记录journal追加中断时，先恢复该批再选择新批次。
 不自动reset dirty worktree或损坏journal；只检查和修复受影响的发布。
 确认后移除clean发布worktree，保留dirty或身份未确认的worktree，并返回 `retained_worktrees` 数量。
 
@@ -317,7 +320,11 @@ exit 0的pending不表示发布成功；有error或blocked返回exit 2。
 
 准确workflow排除模式以 `ci.yml` 和 `pull-request-labeler.yml` 为准，跟踪允许规则以 `.gitignore` 为准。
 范围是原三个文件、新event和各层README，不排除发布实现或任意raw日志。
-GitHub原生路径过滤限制仍然存在，但缺少CI不能绕过常规gate。
+`paths-ignore` 仅检查路径，不检查变更类型或内容。仅修改旧event、向README手写追加正文、
+或混合新格式与worker三个文件的普通PR，也可能跳过CI和labeler，但不会因此取得有限发布例外。
+专用发布命令检查完整内容与README再生成的逐字节一致性；常规 `merge_gate.py` 仍要求review及
+该PR HEAD的 `Python` 成功，缺少check就拒绝merge。边界由这两项检查保证，跳过workflow本身不保证内容。
+GitHub原生路径过滤限制仍然存在。
 实际workflow省略及GitHub渲染在实现merge后的 #1817 中验证。
 
 ## 验证

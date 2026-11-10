@@ -38,7 +38,17 @@ def _ci_job() -> dict[str, Any]:
 
 @pytest.mark.parametrize("event", ["pull_request", "push", "pull_request_target"])
 @pytest.mark.parametrize(
-    "changes", ["logs", "decision_logs", "readmes", "code", "mixed"]
+    "changes",
+    [
+        "logs",
+        "decision_logs",
+        "readmes",
+        "existing_event_edit",
+        "handwritten_readme",
+        "mixed_log_formats",
+        "code",
+        "mixed",
+    ],
 )
 def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
     event: str, changes: str
@@ -93,6 +103,11 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         "logs": worker_logs,
         "decision_logs": decision_logs,
         "readmes": readmes,
+        # Path filters see neither status nor contents. These invalid publication
+        # diffs also skip CI; the ordinary merge gate must reject missing Python.
+        "existing_event_edit": decision_logs,
+        "handwritten_readme": [readmes[1]],
+        "mixed_log_formats": [*worker_logs, *decision_logs, *readmes],
         "code": code,
         "mixed": [*worker_logs, *decision_logs, *readmes, *code],
     }[changes]

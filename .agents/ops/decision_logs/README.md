@@ -353,8 +353,6 @@ without Codex review, `Python` or `AGENT_AUTO_MERGE` only after checking:
   arbitrary text, missing pages and orphan README changes fail closed.
 - Origin/repository, branch, fixed marker, exact HEAD, main base ref, changed-file
   count and every paginated GitHub PR file/status, followed by a fresh PR check.
-  The normal merge gate is unchanged: normal or mixed PRs still require review and
-  successful `Python` at their own HEAD.
 
 Before merging, fetch current main and regenerate from its full union of records.
 If main advances, create a fresh verified revision and update the same PR branch
@@ -379,8 +377,12 @@ writes. `Journal.publication()` appends per-record pending/blocked/published fac
 no publication command is sent through capture, so it cannot produce another
 publication record. Commit loss reuses an exactly verified commit. Push, PR creation
 and merge loss reconcile the same branch/marker/HEAD; ambiguous POST/merge is never
-blindly repeated. An observed merge whose per-record journal append was interrupted
-is reconciled before choosing another batch. Dirty worktrees and corrupt journals
+blindly repeated. When an open PR still shows an older known revision, recover the
+latest local commit and lease-protected push before requiring its latest HEAD,
+even if main has advanced again. Every revision remains in private history,
+including revisions never applied to the PR. An observed merge whose per-record
+journal append was interrupted is reconciled before choosing another batch.
+Dirty worktrees and corrupt journals
 are not automatically reset; inspect and repair only the affected publication.
 Clean publication worktrees are removed after confirmation; dirty or unrecognized
 worktrees are retained and reported as `retained_worktrees`.
@@ -395,9 +397,15 @@ errors or blocked captures return exit 2.
 The exact workflow patterns live in `ci.yml` and `pull-request-labeler.yml`; ignore
 rules live in `.gitignore`. They cover the existing three files and the new event
 and hierarchy README paths, never the publisher implementation or arbitrary raw
-logs. Native GitHub path-filter limits still apply; missing CI cannot bypass the
-normal gate. Live workflow suppression and GitHub rendering must be checked after
-the implementation merges, as part of #1817.
+logs. `paths-ignore` checks paths only, not change status or contents: an ordinary
+PR editing an existing event, adding hand-written README text, or mixing the new
+format with the worker three files can also skip CI and labeler. This grants no
+publication exception. The dedicated publication command checks the complete
+contents and exact regenerated README bytes; the normal `merge_gate.py` still
+requires review and successful `Python` at that PR's HEAD, and rejects a missing
+check. These two checks enforce the boundary, not workflow suppression. Native
+GitHub path-filter limits still apply. Live workflow suppression and GitHub
+rendering must be checked after the implementation merges, as part of #1817.
 
 ## Validation
 

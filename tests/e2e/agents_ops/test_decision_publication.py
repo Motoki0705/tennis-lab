@@ -151,6 +151,100 @@ def test_main_advance_regenerates_other_parents_and_reuses_open_pr(
     assert len(document["batches"][0]["revisions"]) == 2
 
 
+@pytest.mark.parametrize(
+    "point",
+    [
+        "before_commit",
+        "after_commit",
+        "before_push",
+        "after_push",
+        "after_commit_main_advanced_again",
+    ],
+)
+def test_open_pr_recovers_interrupted_regeneration_without_losing_revisions(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch, point: str
+) -> None:
+    log = env.capture()
+    publisher = env.decision_publisher(log)
+    env.github.mergeable = None
+    first = publisher.publish()
+    assert first["stage"] == "mergeability_pending", first
+    original = json.loads(publisher.path.read_text())["batches"][0]
+    records = copy.deepcopy(log.public_payloads())
+    base = env.advance({"upstream-note.txt": b"Independent main advance\n"})
+    real_git = publisher.git
+    fired = False
+
+    def interrupted(*args: str, **kwargs: Any) -> bytes:
+        nonlocal fired
+        if not fired and (
+            point == "before_commit"
+            and args[:2] == ("worktree", "add")
+            or point == "before_push"
+            and args[0] == "push"
+        ):
+            fired = True
+            raise Crash()
+        raw: bytes = real_git(*args, **kwargs)
+        if not fired and (
+            point.startswith("after_commit")
+            and args[0] == "commit"
+            or point == "after_push"
+            and args[0] == "push"
+        ):
+            fired = True
+            raise Crash()
+        return raw
+
+    monkeypatch.setattr(publisher, "git", interrupted)
+    with pytest.raises(Crash):
+        publisher.publish()
+    monkeypatch.setattr(publisher, "git", real_git)
+    pending = json.loads(publisher.path.read_text())["batches"][0]
+    assert len(pending["revisions"]) == 2
+    assert pending["revisions"][0] == original["revisions"][0]
+    assert pending["revisions"][1]["base"] == base
+    committed = (
+        None
+        if point == "before_commit"
+        else git(publisher.worktree(pending), "rev-parse", "HEAD")
+    )
+    assert pending["revisions"][1]["head"] == (
+        committed if point in {"before_push", "after_push"} else None
+    )
+    assert env.github.get(original["pr_number"])["head"]["sha"] == (
+        committed if point == "after_push" else first["head"]
+    )
+    if point == "after_commit_main_advanced_again":
+        env.advance({"upstream-note.txt": b"Another independent main advance\n"})
+    env.github.rows[original["pr_number"]]["mergeable"] = True
+    recovered = env.decision_publisher(log).publish(retry=True)
+    assert recovered["saved_to_main"] and recovered["state"] == "merged", json.dumps(
+        recovered
+    )
+    assert recovered["pr"] == first["pr"]
+    assert env.github.calls == ["create", "merge"]
+    final = json.loads(publisher.path.read_text())["batches"][0]
+    assert final["revisions"][0] == original["revisions"][0]
+    assert len(final["revisions"]) == (
+        3 if point == "after_commit_main_advanced_again" else 2
+    )
+    assert final["revisions"][1]["base"] == base
+    if committed is not None:
+        assert final["revisions"][1]["head"] == committed
+    assert log.public_payloads() == records
+    saved = env.upstream_files()
+    assert len(navigation.records(saved)) == 6
+    assert all(saved[n] == raw for n, raw in navigation.generate(saved).items())
+    assert git(env.upstream, "show", "main:upstream-note.txt") == (
+        "Another independent main advance"
+        if point == "after_commit_main_advanced_again"
+        else "Independent main advance"
+    )
+    assert env.decision_publisher(log).publish()["saved_to_main"]
+    assert env.github.calls == ["create", "merge"]
+
+
 def test_same_parent_parallel_replay_creates_one_batch(env: DecisionEnv) -> None:
     log = env.capture()
     with ThreadPoolExecutor(max_workers=2) as pool:

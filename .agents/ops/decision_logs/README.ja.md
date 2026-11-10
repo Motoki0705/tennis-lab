@@ -299,7 +299,6 @@ READMEを再更新しない。
   正本から生成されないREADMEの変更を拒否する。
 - origin/repo、branch、固定marker、HEAD、mainというbase ref、件数と、全ページの
   GitHub PRファイル名/変更種別を確認し、merge直前にPRを再取得する。
-  通常merge gateは変更せず、通常/混在PRは引き続きレビューと対象HEADの `Python` 成功が必要。
 
 merge前に最新mainをfetchし、全記録の和集合から再生成する。mainが進んだら新しい検査済み
 revisionを作り、正確なleaseで同じPR branchを更新する。他の親・子の記録とリンクを保持する。
@@ -319,7 +318,10 @@ flock・fsync・atomic writeを使う。`Journal.publication()` は記録ごと�
 pending/blocked/publishedの事実だけを追記する。公開コマンド自体を捕捉へ送らず、
 公開が次の公開記録を生むループを避ける。commit直後の中断は完全照合したcommitを再利用する。
 push・PR作成・mergeの応答喪失は同じbranch/marker/HEADを照合し、不明なPOST/mergeを
-盲目的に再送しない。merge確認後の記録別journal追記が中断しても、次のbatchを選ぶ前に照合する。
+盲目的に再送しない。open PRが既知の古いrevisionを示す場合は、mainがさらに進んでいても
+最新revisionのローカルcommitとlease付きpushを復旧してから最新HEADを照合する。
+PRへ未反映のrevisionも含め、すべてのrevisionを非公開履歴に保持する。
+merge確認後の記録別journal追記が中断しても、次のbatchを選ぶ前に照合する。
 dirty worktreeや破損journalを自動resetせず、影響する公開だけを確認・修復する。
 確認後はcleanな公開worktreeを削除し、dirtyまたは同一性未確認のものは保持して
 `retained_worktrees` の件数で返す。
@@ -332,8 +334,13 @@ errorかblockedがあればexit 2。
 
 workflowの正確な除外パターンは `ci.yml`・`pull-request-labeler.yml`、追跡許可は
 `.gitignore` を正本とする。既存3ファイル、新event、各階層READMEだけを扱い、
-公開実装や任意のrawログを除外しない。GitHub native path filterの制約は残るが、
-CI欠落で通常gateを迂回できない。実workflowの省略とGitHub表示は実装merge後の #1817 で確認する。
+公開実装や任意のrawログを除外しない。`paths-ignore` はパスだけを見て、変更種別や内容は
+検査しない。既存eventの編集、READMEへの手書き追加、新形式とworker 3ファイルの混在だけの
+通常PRでもCIとlabelerは省略され得るが、限定公開例外を得るわけではない。
+専用公開コマンドが全内容とREADME再生成のバイト単位一致を検査し、通常の `merge_gate.py` は
+レビューと対象HEADの `Python` 成功を要求して、check欠落を拒否する。
+この2つの検査が境界を保証する。workflowの省略自体は内容の保証ではない。
+GitHub native path filterの制約は残る。実workflowの省略とGitHub表示は実装merge後の #1817 で確認する。
 
 ## 検証
 
