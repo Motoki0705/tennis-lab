@@ -109,9 +109,25 @@ class FakeGitHub:
             pr = self.rows[number]
             if self.change_head_on_second_get and self.gets == 2:
                 pr["head"]["sha"] = "f" * 40
-            value = copy.deepcopy(pr)
-            value["base"]["sha"] = self.main()
-            return value
+            return copy.deepcopy(pr)
+
+    def files(self, number: int) -> list[dict[str, Any]]:
+        head = self.rows[number]["head"]["sha"]
+        fields = git(
+            self.upstream,
+            "diff",
+            "--name-status",
+            "--no-renames",
+            "-z",
+            f"main...{head}",
+        ).split("\0")
+        return [
+            {
+                "filename": fields[i + 1],
+                "status": {"A": "added", "M": "modified", "D": "removed"}[fields[i]],
+            }
+            for i in range(0, len(fields) - 1, 2)
+        ]
 
     def find(self, branch: str) -> list[dict[str, Any]]:
         return [
@@ -154,9 +170,7 @@ class FakeGitHub:
             return self.get_without_count(n)
 
     def get_without_count(self, number: int) -> dict[str, Any]:
-        value = copy.deepcopy(self.rows[number])
-        value["base"]["sha"] = self.main()
-        return value
+        return copy.deepcopy(self.rows[number])
 
     def merge(self, number: int, head: str) -> None:
         with self.lock:
