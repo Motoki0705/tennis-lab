@@ -34,7 +34,7 @@ def publish(
 ) -> dict[str, Any]:
     try:
         row = journal.read(path)
-        return Publisher(Path(row["source"]["repository_root"]), path).publish(
+        result = Publisher(Path(row["source"]["repository_root"]), path).publish(
             dry_run=dry_run, retry=retry
         )
     except (
@@ -45,11 +45,15 @@ def publish(
         AttributeError,
         subprocess.SubprocessError,
     ):
-        return {
+        result = {
             "state": "blocked",
             "error": "journal_unavailable",
             "saved_to_main": False,
         }
+    from decision_logs.observations import worker_log
+
+    worker_log(path, result, retry=retry)
+    return result
 
 
 def finish(
@@ -57,6 +61,9 @@ def finish(
 ) -> dict[str, Any]:
     try:
         result = sources.receive(path, proof)
+        from decision_logs.observations import worker_log
+
+        worker_log(path, result, entrypoint="worker_logs.receive")
         if publish_now and result["state"] in {"ready", "pending", "merged"}:
             return publish(path)
         return result
@@ -84,7 +91,11 @@ def reject_unstarted(path: str | None) -> dict[str, Any]:
                 row = journal.read(target)
                 row["stage"] = "not_started"
                 journal.fail(target, row, "runner_not_started", state="worker_failed")
-                return journal.view(row)
+                result = journal.view(row)
+            from decision_logs.observations import worker_log
+
+            worker_log(target, result, entrypoint="worker_logs.reject-unstarted")
+            return result
         except (ValueError, OSError, KeyError, TypeError):
             pass
     return {"state": "blocked", "error": "journal_unavailable", "saved_to_main": False}
@@ -212,7 +223,11 @@ def _command(
                         continue
             results.append(publish(path, dry_run=dry_run, retry=retry))
         else:
-            results.append(journal.view(row))
+            result = journal.view(row)
+            from decision_logs.observations import worker_log
+
+            worker_log(path, result, entrypoint="worker_logs.status")
+            results.append(result)
     phase = owner.get("tasks", {}).get(str(child), {}).get("preflight", {})
     legacy = [
         i + 1

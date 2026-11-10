@@ -518,6 +518,8 @@ def _merge_request(
     request: dict[str, Any] | None,
     selected: set[int] | None,
 ) -> dict[str, Any]:
+    from decision_logs.review_capture import gate_result
+
     results: dict[int, dict[str, Any]] = {}
     evaluations = []
     handled: set[int] = set()
@@ -556,6 +558,7 @@ def _merge_request(
                 continue
             results[n] = entry
             evaluations.append(entry)
+            gate_result(entry, "evaluation")
             if decisions[n].decision != GateDecision.MERGE or not enabled:
                 continue
             # Re-read all coverage, base/head/diff, CI, parent state and dependencies
@@ -589,6 +592,7 @@ def _merge_request(
                 "status": "attempting",
             }
             Store.write_json(journal_path, attempt)
+            gate_result(attempt, "merge_attempt")
             with session.store.unlocked_read():
                 command = subprocess.run(
                     [
@@ -618,6 +622,7 @@ def _merge_request(
                 errors = (*errors, "merge_command_failed")
             attempt["status"] = "unconfirmed" if errors else "merged"
             Store.write_json(journal_path, attempt)
+            gate_result(attempt, "merge_result")
             entry.update(
                 action="merge_unconfirmed" if errors else "merged",
                 decision="blocked" if errors else "merge",
@@ -647,22 +652,64 @@ def parser() -> argparse.ArgumentParser:
     root.add_argument("--parent", required=True)
     root.add_argument("--state-dir", type=Path, default=state_directory())
     commands = root.add_subparsers(dest="command", required=True)
-    commands.add_parser("merge")
+    merge_parser = commands.add_parser("merge")
+    merge_parser.add_argument("--decision-id")
+    merge_parser.add_argument("--plan-id")
+    merge_parser.add_argument("--retry-of")
+    merge_parser.add_argument("--changes-file", type=Path)
     return root
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
+    from decision_logs.capture import (
+        CURRENT,
+        Operation,
+        checked_link,
+        comparison,
+        observe,
+    )
+    from decision_logs.journal import Journal
+    from decision_logs.parent_commands import failed
+
+    token = None
     try:
         enabled = auto_merge(os.environ.get("AGENT_AUTO_MERGE"))
         identity = session_identity(dict(os.environ))
         store = Store(args.state_dir)
         gh = GitHub(args.repo, store=store)
+        parent = issue_number(args.parent, gh.repo)
+        plan = checked_link(
+            Journal(store.directory, gh.repo, parent),
+            args.decision_id,
+            args.plan_id,
+            "merge",
+        )
+        capture = Operation.begin(
+            store.directory,
+            gh.repo,
+            parent,
+            "merge_gate.merge",
+            "merge",
+            decision_id=args.decision_id,
+            plan_id=plan,
+            previous_result_id=args.retry_of,
+            changes=comparison(args.changes_file),
+        )
+        token = CURRENT.set(capture)
         with store.locked(), gh.fresh_reads():
             session = ParentSession(
                 gh, store, issue_number(args.parent, gh.repo), identity
             )
             value = merge(session, enabled)
+        observe(
+            value,
+            status="success"
+            if value["results"]
+            and all(r["decision"] == "merge" for r in value["results"])
+            else "rejected",
+            summary=f"merge_gate.merge: auto_merge={enabled}; results={len(value['results'])}",
+        )
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return (
             0
@@ -681,6 +728,7 @@ def main(argv: list[str] | None = None) -> int:
         StopIteration,
         subprocess.SubprocessError,
     ) as exc:
+        failed(exc)
         # Do not emit arbitrary GitHub payloads or private registry content.
         print(
             json.dumps(
@@ -694,6 +742,9 @@ def main(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    finally:
+        if token is not None:
+            CURRENT.reset(token)
 
 
 if __name__ == "__main__":

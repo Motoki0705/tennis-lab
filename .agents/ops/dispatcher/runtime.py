@@ -153,10 +153,18 @@ class Runtime:
             cmd += ["--branch", job["branch"]]
         if job.get("model"):
             cmd += ["--model", job["model"]]
+        from decision_logs.observations import job_environment
+
         with (
             (directory / "runner.stdout").open("wb") as out,
             (directory / "runner.stderr").open("wb") as err,
-            subprocess.Popen(cmd, stdout=out, stderr=err, pass_fds=(gate_fd,)) as proc,
+            subprocess.Popen(
+                cmd,
+                stdout=out,
+                stderr=err,
+                pass_fds=(gate_fd,),
+                env=job_environment(job),
+            ) as proc,
         ):
             self.launcher = proc
             # A TERM received during Popen must also stop the newly created

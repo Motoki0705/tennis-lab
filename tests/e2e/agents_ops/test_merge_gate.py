@@ -422,6 +422,16 @@ def test_unreviewed_standalone_pr_is_collected_and_blocked(gate_env: GateEnv) ->
     assert "parent_review_missing" in rows[0]["reasons"]
     assert g.merge_calls() == []
 
+    capture = importlib.import_module("decision_logs.capture")
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    observed = capture.status(directory, "o/r", 1)
+    assert observed["status"] == "captured", observed
+    entries = [e["record"] for e in observed["records"]]
+    assert any(
+        e["kind"] == "result" and "merge_gate.evaluation:" in e["data"]["summary"]
+        for e in entries
+    )
+
 
 @pytest.mark.parametrize(
     "change", ["same_agreement", "changed_agreement", "checking", "generation"]
@@ -1329,6 +1339,20 @@ def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> 
     assert repeated[100]["action"] == repeated[101]["action"] == "already_merged"
     assert all(repeated[n]["snapshot"] == rows[n]["snapshot"] for n in (100, 101))
     assert len(g.merge_calls()) == 2
+
+    capture = importlib.import_module("decision_logs.capture")
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    observed = capture.status(directory, "o/r", 1)
+    assert observed["status"] == "captured", observed
+    entries = [e["record"] for e in observed["records"]]
+    merged = [
+        e
+        for e in entries
+        if e["kind"] == "result"
+        and "merge_gate.merge_result:" in e["data"]["summary"]
+        and "status=merged" in e["data"]["summary"]
+    ]
+    assert len(merged) == 2
 
 
 @pytest.mark.parametrize("gate_env", ["independent"], indirect=True)

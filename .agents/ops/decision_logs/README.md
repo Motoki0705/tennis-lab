@@ -4,9 +4,9 @@
 
 This package defines the shared version 1 contract for captured results, parent
 decisions, actions and corrections. It stores private snapshots and prepares safe
-publication units. Entry-point capture is implemented in #1815; Git publication
-and generated navigation READMEs belong to #1816. This package performs no agent
-launches, Git/HTTP operations, scheduling or acceptance decisions.
+publication units. Capture adapters observe existing parent, runner and review
+operations. Git publication and generated navigation READMEs belong to #1816.
+Recording grants no execution authority and does not decide task acceptance.
 
 ## Contract and ownership
 
@@ -22,6 +22,9 @@ atomic writer are reused directly.
 | [journal.py](journal.py) | `Journal`; immutable captures and append-only preparation/publication history |
 | [projection.py](projection.py) | `render()`, `validate_public()`; the publication envelope `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`; display groups referencing all original records |
+| [capture.py](capture.py) | Private outboxes, causal action snapshots, status and capture-only replay |
+| [parent_commands.py](parent_commands.py), [parent_sources.py](parent_sources.py) | Parent CLI decisions, command outcomes, canonical comments and explicit verification |
+| [observations.py](observations.py), [review_capture.py](review_capture.py) | Existing runner, dispatcher, worker-log, retrieval, review and merge facts |
 
 Each record has a random UUID4 hex ID, kind, scope, three distinct times and typed
 data. Scope carries the repository, parent, nullable child issue, public activity
@@ -90,6 +93,108 @@ unrecorded parent verification, decided-but-unexecuted action, pre-start rejecti
 and pending publication are distinct fields/states. Their meaning is not inferred
 from runtime exit status.
 
+## Capture surfaces and limits
+
+Each result's evidence identifies `capture_source`, artifact and the fingerprint
+of the observed snapshot. Private evidence stays explicitly unavailable publicly;
+a fingerprint alone is not a content archive. Canonical parent comments and
+published review/worker-log artifacts also retain fixed public evidence where
+available. Outboxes keep private delivery inputs; they are never publication units.
+
+| Surface | Observed source and boundaries |
+|---|---|
+| `run-worker` | Parent CLI request/refusal/response; the exact bound runner's `result.json`, selected/effective settings, reported counters, end reason and final availability |
+| `start-worker` / `continue-worker` | Parent CLI request/refusal/reservation; dispatcher job binding, durable cancellation/runner return, bound runner writes. Reservation is not observed startup |
+| Dispatcher direct child starts | The same saved job binding and runner callbacks, including bootstrap children; no fabricated parent decision |
+| `record-worker-run` / `record-worker-ended` | Explicit registration of existing runner evidence / the parent's explicit termination confirmation |
+| `record-result` | Saved verification and its PR/evidence fields; explicit verification references captured results. Combined `review-request --prs` uses this same method |
+| `note` / `decide-worker-plan` | Canonical comment reference / saved planning-answer outcome. They do not invent a common decision; `decide` can reference the original reason |
+| `delegate`, `stop` / `resume` / `stop-worker`, `handoff` / `release` | Parent command outcomes and canonical comments; dispatcher cancellation and runner stop/recovery writes are separate facts |
+| `review-prepare` / `review-request` / `review-state` | Fixed request and explicit instruction/state outcomes. Only explicit receipt/verification operations set parent verification |
+| Review `run` | Existing execution/output/result/publication states, including valid output from a failed runtime, exception and public predecessor review keys. Publication preserves the original result. Reusing a consumed run is a fetch, not another AI review |
+| Review `recover` / `resume-publication` / `complete-evidence` / `resolve` | Existing saved-source recovery, publication-only retry, and explicit parent verification. They retain predecessor results and never become another AI invocation |
+| Review retrieval tools | Existing received acquisition receipts, including failed CI requests. Repeating the same tool/arguments under the same review binding is `retry_fetch`; only the query instruction is known unchanged |
+| Merge gate `merge` | Per-PR evaluations, saved merge attempts/results and aggregate outcome. Dry-run eligibility remains distinct from an actual merge |
+| Worker-log receive/publish, `worker-log-status` / `publish-worker-log` | Existing journal views, final/publication failures and confirmed main publication; publication retries use `retry_publication` and reference the preceding captured result |
+
+Supported requests accept `--decision-id` and optional `--plan-id`. A single
+matching plan is selected; ambiguous, wrong-operation and already requested plans
+are rejected. Without a decision both links stay null with an explicit missing
+reason. `--retry-of` references a captured result, and `--changes-file` accepts
+the contract's five comparison fields. Action histories use
+`previous_action_id`; separate attempts compare through `previous_result_id`.
+Same-session continuations use the exact previous runtime binding. A continuation
+request resolved to an initial launch retains the request and a separate
+`start_ai` action. Model origin distinguishes the caller's fixed defaults from
+an explicit choice even when the caller materializes a default as a runner flag.
+Saved worker preflight data also compares requirement and sent-prompt snapshots
+and detects changed start revisions. An unchanged commit alone does not prove
+unchanged working code; unobserved conditions and verification scope stay unknown.
+
+Uncaptured surfaces: arbitrary shell/HTTP/gh operations, direct in-process
+ParentSession calls outside these CLI contexts, runner invocations without a
+parent binding, and parser/identity/repository failures before a parent namespace
+is resolved. No historical conversation or arbitrary past run is reconstructed.
+Review fix-resolution policy and automatic recovery/model selection are unchanged.
+No polling, agent restart or Git publication is added by capture.
+
+## Explicit parent decisions
+
+Run from the same configured parent state and assigned session:
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decide --spec tmp/decision.json
+```
+
+The spec supplies `inputs` (one or more captured result IDs), `evaluation`,
+`reason`, and optional `next_actions`, `reuse_scope`, `recheck_scope`,
+`unresolved`, `resume_conditions`, `basis` and `source_kind`. Each next-action
+plan uses the schema's operation/summary/actor/target/instruction/conditions/
+expected_result fields; the CLI allocates its ID. An initial decision instead
+needs fixed public request/agreement evidence in `basis`. Repeating the same
+spec and source snapshot in the same session returns the same decision/plan IDs.
+Unused plans remain decisions about work that has not been requested.
+
+Instead of `reason`, use exactly one `reason_ref`:
+
+| Kind | Reference to the existing source |
+|---|---|
+| `note` | `body_sha256` returned by the existing note command |
+| `worker_plan` | `child` and the planning command's `decision_id` |
+| `model_reason` | `child`; the currently saved model-selection reason |
+| `review_reason` | `run_id`; the fixed review request's reason |
+
+The decision retains a reference/fingerprint, not another copy of the public
+reason. Parent actor keys are random private-session mappings; handoff does not
+relabel earlier decisions. Pass the returned decision ID on the next supported
+command (or review/merge command); its later results reference the linked action.
+
+## Capture failure and recovery
+
+An operation saves frozen IDs, times, source snapshots and delivery records in a
+private `captures/` outbox beside the parent journal before journal delivery.
+Flock serializes concurrent updates; caller and runner reload the current outbox.
+Capture errors emit stderr diagnostics and retain pending deliveries. A separate
+private diagnostic path detects missing outbox writes or adapter failures before
+a result could be constructed. Loss of the entire state filesystem can only be
+reported on stderr; it cannot be durably recorded on that failed filesystem.
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N retry-decision-capture
+```
+
+Status lists the source, action/result IDs, pending/open receipts, missing capture
+diagnostics, publication state and a sanitized read-only record view. A blocked
+view is not publication. Replay delivers frozen records in dependency order and
+does not rerun workers, reviews, fetches or merges. Unreadable receipts and missing
+source snapshots remain incomplete; no empty journal reset occurs. Adapter/source
+loss may require reimporting the existing canonical evidence after repair.
+These observation failures never change the original operation's exit/state.
+The explicit `decide` and capture-recovery commands do fail if their own recording
+or recovery cannot complete.
+
 ## Private journal and publication boundary
 
 Construct `Journal(parent_store.directory, repo, parent)` using the existing
@@ -156,9 +261,14 @@ and intermediate failures remain available; durations and usage are not invented
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_logs.py \
   tests/integration/agents_ops/test_decision_log_journal.py \
   tests/unit/agents_ops/test_worker_logs.py -n 1 --durations=10
+.venv/bin/python -m pytest tests/unit/agents_ops/test_decision_capture_observations.py \
+  tests/integration/agents_ops/test_decision_capture_delivery.py \
+  tests/e2e/agents_ops/test_decision_capture.py \
+  tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
 ```
 
 Tests exercise branching/joining, explicit missing states, rejection cases,
 sanitization, grouping, two real writer processes, interrupted fsync and corrupt
-journals. They use temporary state and require no GPU, agents or network. Live
-capture/publication and post-merge operational acceptance remain downstream work.
+journals. Capture tests use fake GitHub, disposable git/state and offline runner
+fixtures, with journal faults and capture-only recovery. No GPU, live agents or
+network are needed. Git publication and live post-merge acceptance remain downstream work.

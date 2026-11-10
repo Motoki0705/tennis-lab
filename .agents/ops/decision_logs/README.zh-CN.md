@@ -3,8 +3,8 @@
 [English](README.md) · [日本語](README.ja.md)
 
 本包提供结果、父级判断、行动和更正的共享版本1契约，保存私有快照并生成安全的公开单元。
-入口捕获属于 #1815，Git发布和分层README生成属于 #1816。
-本包不启动代理、不执行Git/HTTP操作、不调度任务，也不判断成果是否通过验收。
+捕获适配器观察现有parent、runner和review操作。Git发布和分层README生成属于 #1816。
+记录本身不授予执行权限，也不判断成果是否通过验收。
 
 ## 契约与职责
 
@@ -19,6 +19,9 @@
 | [journal.py](journal.py) | `Journal`；固定原始捕获和仅追加的准备/发布历史 |
 | [projection.py](projection.py) | `render()`、`validate_public()`；公开单元 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`；保留所有原始记录引用的显示分组 |
+| [capture.py](capture.py) | 私有outbox、行动快照、状态和仅捕获重放 |
+| [parent_commands.py](parent_commands.py)、[parent_sources.py](parent_sources.py) | 父级判断入口、CLI结果、原始评论和显式验证 |
+| [observations.py](observations.py)、[review_capture.py](review_capture.py) | 现有runner、dispatcher、worker日志、获取、review和merge事实 |
 
 每条记录包含独立随机UUID4 hex ID、类型、归属、三个不同的时间和带类型的数据。
 归属包含仓库、父issue、可空的子issue、公开活动键、现有worker公开委任键/轮次、
@@ -75,6 +78,91 @@
 未判断、未记录父级验证、已判断未执行、启动前拒绝、待发布由不同字段/状态表示，
 不得从运行退出状态推断。
 
+## 捕获入口与边界
+
+结果的evidence注明 `capture_source`、artifact和观察快照的fingerprint。
+私有证据仍明确标记为不可公开；fingerprint不等于全文档案。
+已公开的父级评论、review和worker日志还保留可用的固定公开证据。
+outbox只保存私有投递输入，不是发布单元。
+
+| 入口 | 来源与边界 |
+|---|---|
+| `run-worker` | 父CLI请求、拒绝和响应；精确绑定runner的 `result.json`、选择/实际设置、取得的计数、结束原因和final可用性 |
+| `start-worker` / `continue-worker` | CLI请求、拒绝和预留；dispatcher job绑定、持久化取消/runner返回及runner写入。预留不代表观察到启动 |
+| dispatcher直接启动子任务 | 包括bootstrap子任务，使用相同job绑定和runner callback；不虚构父级判断 |
+| `record-worker-run` / `record-worker-ended` | 显式登记已有runner证据 / 父级显式确认终止 |
+| `record-result` | 已保存的验证与PR/证据字段；显式验证引用已捕获结果。组合命令 `review-request --prs` 使用相同方法 |
+| `note` / `decide-worker-plan` | 原始评论引用 / 保存的计划回答结果。不会自动虚构通用判断，`decide` 可引用原始理由 |
+| `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI结果和原始评论；dispatcher取消、runner停止/恢复是独立事实 |
+| `review-prepare` / `review-request` / `review-state` | 固定请求及显式指示/状态结果；只有显式接收/验证才记录父级确认 |
+| review `run` | 既有execution、output、result和发布状态，包括runtime失败时的有效输出、exception及先前review公开键。发布不改变原result；读取已消费run不是新AI评审 |
+| review `recover` / `resume-publication` / `complete-evidence` / `resolve` | 既有保存证据恢复、仅发布重试和父级显式验证。保留前一结果，不算新AI启动 |
+| review获取tool | 包括CI获取失败的既有receipt。同一review绑定、tool和参数的重试为 `retry_fetch`；只确认查询指示不变，不猜测网络等条件 |
+| merge gate `merge` | 各PR判定、保存的merge尝试/结果及整体结果。区分dry-run合格和实际合并 |
+| worker日志接收/发布、`worker-log-status` / `publish-worker-log` | 既有journal状态、final/发布失败和main保存确认。仅发布重试为 `retry_publication`，引用前一结果 |
+
+支持的请求接受 `--decision-id` 和可选 `--plan-id`。只有一个匹配plan时自动选择；
+拒绝歧义、操作类型不符或已请求的plan。缺少判断时两个ID为null，并明确保留缺失原因。
+`--retry-of` 引用前一结果ID，`--changes-file` 接受契约的五个比较字段。
+同一行动快照用 `previous_action_id`，独立尝试通过 `previous_result_id` 比较。
+同一AI继续引用精确的前一runtime绑定。继续请求被解析为首次启动时，保留请求和独立的
+`start_ai` 行动。即使调用方把默认模型展开为runner参数，也区分配置来源和显式选择。
+保存的preflight还比较要求和发送指示快照，并检测启动revision变化。
+相同commit不能证明工作代码未变；未观察的条件和验证范围保持未知。
+
+未捕获：任意shell/HTTP/gh操作、这些CLI上下文之外的ParentSession直接调用、
+没有父级绑定的runner，以及父级namespace确定前的参数解析、identity和仓库解析失败。
+不重建过去对话或任意历史run。不更改review修复确认、恢复和模型选择策略；
+捕获不会添加定期轮询、AI重启或Git发布。
+
+## 显式记录父级判断
+
+使用同一parent state和当前负责session：
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decide --spec tmp/decision.json
+```
+
+spec使用 `inputs`（一个或多个结果ID）、`evaluation`、`reason`，以及可选
+`next_actions`、`reuse_scope`、`recheck_scope`、`unresolved`、`resume_conditions`、
+`basis` 和 `source_kind`。plan指定schema的operation/summary/actor/target/instruction/
+conditions/expected_result字段；CLI分配ID。初始判断须在 `basis` 提供固定公开请求/合意证据。
+同一session重送相同spec和来源快照会返回相同判断/plan ID。
+尚未请求的plan仍表示只作出判断、未实际执行。
+
+可用一个 `reason_ref` 代替 `reason`：
+
+| kind | 对原始来源的引用 |
+|---|---|
+| `note` | note命令返回的 `body_sha256` |
+| `worker_plan` | `child` 和计划回答命令的 `decision_id` |
+| `model_reason` | `child`；当前保存的模型选择理由 |
+| `review_reason` | `run_id`；固定review请求的理由 |
+
+判断保留引用/fingerprint，不再次复制公开理由正文。
+父级actor键是私有session对应的随机公开键；交接不会改变旧判断的作者。
+把返回的判断ID传给下一条支持的CLI（包括review/merge），后续结果通过行动与之连接。
+
+## 捕获失败与恢复
+
+向journal投递前，先在父级journal旁的私有 `captures/` outbox固定ID、时间、来源快照和投递输入。
+flock串行化并发更新；调用方和runner重新读取当前outbox。
+失败会向stderr报告并保留待投递记录。另一条私有诊断路径检测outbox写入失败，
+以及尚未构造结果时的适配器失败。整个state filesystem损坏时只能通过stderr报告，
+无法保证把诊断持久化到已损坏的介质。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N decision-log-status
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N retry-decision-capture
+```
+
+status列出来源、行动/结果ID、待投递/未结束receipt、缺失诊断、发布状态和无害化只读视图。
+视图blocked不等于发布成功。重放只按依赖顺序投递固定记录，不重跑worker、review、获取或merge。
+不可读receipt及丢失的来源快照保持未完成，不重置为空journal。
+修复后可能需要重新登记已有的原始证据。观察失败不会更改原操作的退出值或状态。
+显式 `decide` 或捕获恢复命令自身的记录/恢复失败时返回非零。
+
 ## 私有journal与发布边界
 
 使用现有[parent state](../parent/README.md)创建
@@ -130,8 +218,13 @@
 .venv/bin/python -m pytest tests/unit/agents_ops/test_decision_logs.py \
   tests/integration/agents_ops/test_decision_log_journal.py \
   tests/unit/agents_ops/test_worker_logs.py -n 1 --durations=10
+.venv/bin/python -m pytest tests/unit/agents_ops/test_decision_capture_observations.py \
+  tests/integration/agents_ops/test_decision_capture_delivery.py \
+  tests/e2e/agents_ops/test_decision_capture.py \
+  tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
 ```
 
 测试使用临时state覆盖分支/合流、显式缺失状态、拒绝案例、无害化、分组、
-两个真实写入进程、fsync中断及损坏journal，不需要GPU、代理或网络。
-实际捕获/发布和合并后的运行验收属于后续任务。
+两个真实写入进程、fsync中断及损坏journal。捕获使用fake GitHub、临时git/state和offline runner，
+并验证journal故障与仅捕获恢复；不需要GPU、真实代理或网络。
+Git发布和合并后的实际运行验收属于后续任务。

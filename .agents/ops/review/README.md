@@ -21,6 +21,10 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 
 ## 実行
 
+review・取得・公開・復旧・明示確認とmerge gateの観測は
+[判断記録](../decision_logs/README.ja.md#捕捉元と未対応入口)へ保存する。
+捕捉は、このREADMEの実行・再利用・復旧・merge判定を変更しない。
+
 ```bash
 # 担当親がparent CLIでprepare / request済みのJSONだけを渡す
 .venv/bin/python .agents/ops/review/parent_review.py run --request tmp/review-request.json
