@@ -88,6 +88,13 @@ class GitHub:
         require(isinstance(result, dict), "github_invalid_response")
         return dict(result)
 
+    def files(self, number: int) -> list[Any]:
+        # We accept exactly three files. A full page (or any extra file) fails
+        # closed, so pagination cannot hide an acceptable larger diff.
+        result = self.request(f"repos/{self.repo}/pulls/{number}/files?per_page=100")
+        require(isinstance(result, list), "github_invalid_response")
+        return list(result)
+
     def create(self, branch: str, title: str, body: str) -> dict[str, Any]:
         result = self.request(
             f"repos/{self.repo}/pulls",
@@ -262,10 +269,44 @@ class Publisher:
         value = self.github.get(row["pr_number"])
         schema.identity(value, row, self.github.repo)
         require(
-            value["number"] == row["pr_number"] and value.get("changed_files") == 3,
+            value["number"] == row["pr_number"],
             "pr_identity_changed",
+            "PR identity mismatch: number",
+        )
+        require(
+            type(value.get("changed_files")) is int and value["changed_files"] == 3,
+            "pr_identity_changed",
+            "PR identity mismatch: changed_files",
         )
         return value
+
+    def verify_main(self, row: dict[str, Any], main: str) -> None:
+        result = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", row["base"], main],
+            cwd=self.root,
+            capture_output=True,
+            check=False,
+            timeout=60,
+        )
+        require(
+            result.returncode in {0, 1},
+            "git_failed",
+            result.stderr.decode("utf-8", errors="replace")[:65536],
+        )
+        require(
+            result.returncode == 0,
+            "base_not_ancestor",
+            f"Pinned base {row['base']} is not an ancestor of main {main}",
+        )
+        require(
+            not self.git("ls-tree", main, "--", row["directory"]).strip(),
+            "record_already_exists",
+        )
+
+    def mergeability_pending(self, row: dict[str, Any]) -> dict[str, Any]:
+        row.update(state="pending", stage="mergeability_pending", error=None)
+        journal.atomic(self.path, row)
+        return journal.view(row)
 
     def confirm_main(
         self, row: dict[str, Any], files: dict[str, bytes], pr: dict[str, Any]
@@ -434,23 +475,44 @@ class Publisher:
                 require(pr.get("state") == "open", "closed_unmerged")
                 require(not row.get("merge_attempted"), "merge_response_uncertain")
                 # Another parent's independent additions may have advanced main.
-                self.git("merge-base", "--is-ancestor", row["base"], main)
-                require(
-                    not self.git("ls-tree", main, "--", row["directory"]).strip(),
-                    "record_already_exists",
-                )
+                main = self.main()
+                self.verify_main(row, main)
                 if pr.get("mergeable") is None:
-                    return journal.view(row)
+                    return self.mergeability_pending(row)
                 require(pr.get("mergeable") is True, "merge_conflict")
+                self.verify(row, files)
+                schema.pr_additions(
+                    self.github.files(row["pr_number"]),
+                    {row["directory"] + "/" + name for name in files},
+                )
                 fresh = self.pr(row)
                 require(
-                    fresh.get("state") == "open"
-                    and fresh.get("mergeable") is True
-                    and fresh["base"]["sha"] == main,
+                    fresh.get("state") == "open",
                     "pr_identity_changed",
+                    "PR identity mismatch: state",
                 )
-                self.verify(row, files)
-                row.update(merge_attempted=True, stage="merge_attempted")
+                if fresh.get("mergeable") is None:
+                    return self.mergeability_pending(row)
+                require(fresh.get("mergeable") is True, "merge_conflict")
+                # base.sha is GitHub's PR snapshot, not the current main ref.
+                # Revalidate old blocked records through every guard above;
+                # neither --retry nor a stale base SHA bypasses identity checks.
+                if fresh["base"].get("sha") != main:
+                    row["diagnostic"] = json.dumps(
+                        {
+                            "reason": "stale_pr_base_sha",
+                            "pr_base": fresh["base"].get("sha"),
+                            "base": row["base"],
+                            "main": main,
+                        },
+                        sort_keys=True,
+                    )
+                row.update(
+                    state="pending",
+                    error=None,
+                    merge_attempted=True,
+                    stage="merge_attempted",
+                )
                 journal.atomic(self.path, row)
                 self.github.merge(row["pr_number"], row["head"])
                 self.confirm_main(row, files, self.pr(row))

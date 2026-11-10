@@ -16,6 +16,7 @@ PUBLIC_ERRORS = frozenset(
     [
         "absolute_path",
         "ambiguous_encoding",
+        "base_not_ancestor",
         "closed_unmerged",
         "committed_content_changed",
         "control_character",
@@ -122,9 +123,9 @@ class PublicationError(ValueError):
         self.detail = detail if code in PUBLIC_ERRORS else detail or code
 
 
-def require(condition: bool, code: str) -> None:
+def require(condition: bool, code: str, detail: str | None = None) -> None:
     if not condition:
-        raise PublicationError(code)
+        raise PublicationError(code, detail)
 
 
 def unique(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -264,6 +265,7 @@ def view(row: dict[str, Any]) -> dict[str, Any]:
             "pushed",
             "pr_create",
             "pr_open",
+            "mergeability_pending",
             "merge_attempted",
             "merged",
         },

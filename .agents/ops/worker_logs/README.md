@@ -97,11 +97,16 @@ URLは原文と復号後の両方から取り出し、query/fragmentも復号し
 この入口だけは、人間との合意に基づくログ保存限定の例外として、Codexレビュー・Python check・
 `AGENT_AUTO_MERGE` を要求せずにmergeする。次をすべて機械検査する。
 
-- 期待したmainを唯一の親とする1 commit。全差分は当該turnの3ファイルの追加だけ。
+- 固定したbaseを唯一の親とする1 commit。全差分は当該turnの3ファイルの追加だけ。
+  baseが現在のorigin/mainの祖先であることと、当該turnのディレクトリがmainにまだ無いことを照合する。
 - `--no-renames` の全変更種別と旧/新mode、Git treeのmode 100644/blob、期待する全バイト列。
   既存記録の改変・削除・rename元、対象外追加、symlink、gitlink、実行可能ファイルを許可しない。
-- schema・本文digest・公開検査、同一repoのorigin、PRのrepo/branch/main base/固定HEAD/marker、3ファイルという件数。
-- merge直前にPRを再取得し、HEAD指定でmergeする。mainが独立した変更で進んでも記録を上書きしない。
+- schema・本文digest・公開検査、同一repoのorigin、PRのrepo・branch・固定HEAD・marker、base refがmain、変更件数が3件であること。
+- ローカルの固定baseとHEADの差分だけでなく、GitHubが返すPRの変更ファイル一覧も照合する。
+  ファイル名が当該turnの3ファイルと完全一致し、全件が追加でrename元も無いことを要求する。
+  100件を取得する最初のページで3件以外なら拒否するため、ページの先にある余計な差分も受理しない。
+- merge直前にPRを再取得し、HEAD指定でmergeする。PRの `base.sha` は作成時のsnapshotとして扱い、
+  現在のmainとの一致は要求しない。mainが独立した変更で進んでも、固定base・HEAD・公開内容を書き換えずに照合する。
 - PRがmergedであること、HEADとmerge commitがorigin/mainに含まれること、main上の保存内容を照合する。
   ここまで確認して初めて `merged / saved_to_main=true` とする。
 
@@ -143,9 +148,12 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 | `captured / awaiting_final` | 送信入力の固定だけ。元runの終了・cleanupを確認して公開CLIを再実行 |
 | `ready` | finalと公開3ファイルを固定。Git保存は未完了 |
 | `pending` | commit/push/PR/mergeの途中。PR作成だけでは保存成功ではない |
+| `pending / stage=mergeability_pending` | GitHubの `mergeable` が未確定（null）。待機や定期pollは追加せず、親が後で同じ公開CLIを再実行 |
 | `merged` | PRとorigin/mainの保存を確認済み |
 | `worker_failed / missing_final` | 正常な最終報告の受信を確認できない。元runを確認し、未保存を成功へ変更しない |
 | `blocked` | 公開検査、全差分、HEAD/base、dirty worktree等が不合格。固定原文を変えず原因を確認 |
+| `blocked / base_not_ancestor` | 固定baseが現在のmainの祖先ではない。自動rebaseやbaseの書換えは行わず親へ返す |
+| `blocked / pr_identity_changed` | PRのrepo/base ref/branch/HEAD/marker/件数等が不一致。private journalの `diagnostic` で不一致項目を確認。旧実装の `base.sha` とmainの不一致だけなら、`--retry` で全条件を再検査して同じPRを再利用 |
 | `pr_creation_uncertain` | POSTを試みたが結果不明。固定branchの全状態PRを再照合し、未確認なら再POSTしない |
 | `merge_response_uncertain` | mergeを試みたが未確認。PRとmainを再照合し、盲目的に再mergeしない |
 | `closed_unmerged` | 未merge close。別PRを作り直さず親へ返す |
@@ -157,6 +165,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 commit直後のjournal中断は期待した親・内容からcommitを再利用する。PR作成直後・merge直後の応答喪失も
 同じbranch・marker・HEADを照合して再利用する。dirtyな専用worktreeや破損journalを自動reset・初期化しない。
 親が対象worktreeだけを明示修復してから再検査する。非公開原文、固定payload、HEADを書き換えて復旧を装わない。
+旧blocked記録に診断が無くても `--retry` は現在のPR・main・全差分を再検査する。
+古いPRのbase SHAを許容してmergeへ進む場合は、private `diagnostic` に `stale_pr_base_sha` と
+PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致はその項目を診断に残して拒否する。
+診断原文は通常出力には含めない。
 
 自動hookのworker終了値は従来どおりrunnerの終了値で、手動応答の `log_publication` とこのCLIの状態が保存結果。
 公開CLIはエラーがあれば終了値2。保留の0も保存成功を意味せず、`saved_to_main` を確認する。

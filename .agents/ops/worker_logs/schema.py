@@ -241,20 +241,47 @@ def additions(raw: bytes, expected: set[str]) -> None:
     require(len(found) == len(set(found)) and set(found) == expected, "unsafe_diff")
 
 
+def pr_additions(changes: list[Any], expected: set[str]) -> None:
+    """Check GitHub's actual PR diff as well as the pinned local commit diff."""
+    require(len(changes) == len(expected), "unsafe_diff", "PR file count changed")
+    found = []
+    for change in changes:
+        require(
+            isinstance(change, dict)
+            and isinstance(change.get("filename"), str)
+            and change.get("status") == "added"
+            and "previous_filename" not in change,
+            "unsafe_diff",
+            "PR files must be additions without rename sources",
+        )
+        found.append(change["filename"])
+    require(
+        len(found) == len(set(found)) and set(found) == expected,
+        "unsafe_diff",
+        "PR files differ from the pinned turn's three files",
+    )
+
+
 def identity(pr: dict[str, Any], row: dict[str, Any], repo: str) -> None:
     source = row["source"]
+    checks = {
+        "base.ref": pr.get("base", {}).get("ref") == "main",
+        "base.repo": pr.get("base", {}).get("repo", {}).get("full_name", "").casefold()
+        == repo.casefold(),
+        "head.repo": pr.get("head", {}).get("repo", {}).get("full_name", "").casefold()
+        == repo.casefold(),
+        "head.ref": pr.get("head", {}).get("ref") == row["branch"],
+        "head.sha": pr.get("head", {}).get("sha") == row["head"],
+        "draft": pr.get("draft") is False,
+        "body": pr.get("body") == row["pr_body"],
+        "html_url": pr.get("html_url")
+        == f"https://github.com/{repo}/pull/{pr.get('number')}",
+        "number": integer(pr.get("number")),
+        "source.repo": source["repo"].casefold() == repo.casefold(),
+    }
+    mismatches = [key for key, valid in checks.items() if not valid]
     require(
-        pr.get("base", {}).get("ref") == "main"
-        and pr.get("base", {}).get("repo", {}).get("full_name", "").casefold()
-        == repo.casefold()
-        and pr.get("head", {}).get("repo", {}).get("full_name", "").casefold()
-        == repo.casefold()
-        and pr.get("head", {}).get("ref") == row["branch"]
-        and pr.get("head", {}).get("sha") == row["head"]
-        and pr.get("draft") is False
-        and pr.get("body") == row["pr_body"]
-        and pr.get("html_url") == f"https://github.com/{repo}/pull/{pr.get('number')}"
-        and integer(pr.get("number"))
-        and source["repo"].casefold() == repo.casefold(),
+        not mismatches,
         "pr_identity_changed",
+        "PR identity mismatch: " + ", ".join(mismatches),
     )
