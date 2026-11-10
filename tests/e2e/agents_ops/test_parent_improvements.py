@@ -490,7 +490,15 @@ def test_publication_recovers_only_missing_links_after_source_close(
     source_finished(p)
     # Recovery must not require the old owner or revive its assignment.
     p.env["CLAUDE_CODE_SESSION_ID"] = "different-recording-session"
-    result = json.loads(publish(p).stdout)
+    result = json.loads(
+        p.cli(
+            "--repo",
+            "O/R",
+            "improvement-publish",
+            "--candidate",
+            "I-1-result-access",
+        ).stdout
+    )
     assert result["issue"] == 10 and post_count(p) == 1
     source = json.loads(p.cli("status").stdout)
     assert source["assignment"] == "ended"

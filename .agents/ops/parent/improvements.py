@@ -188,7 +188,9 @@ def draft(
         raise ValueError(
             "unfinished original acceptance must remain with the original task"
         )
-    ref = f"https://github.com/{session.gh.repo}/issues/{source.parent}#issuecomment-{row['comments'][row['candidate']['id']]}"
+    # Repository spelling may change across callers; it must not change the
+    # frozen POST when restoring the same candidate after a lost response.
+    ref = f"https://github.com/{session.gh.repo.casefold()}/issues/{source.parent}#issuecomment-{row['comments'][row['candidate']['id']]}"
     rendered = render_spec(
         {
             "role": "parent",
