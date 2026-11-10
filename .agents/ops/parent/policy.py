@@ -10,6 +10,8 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from issues import Issue, parse_sections, task_status
+from issues.format import raw_section as raw_section
+from issues.format import section_span as section_span
 from issues.format import visible_lines
 
 PREFIX = "<!-- parent-session:v1 "
@@ -348,35 +350,6 @@ def select_prs(
         if pr["head"]["repo"]["full_name"].casefold() != repo.casefold():
             raise ValueError(f"PR #{n}: fork is not supported")
     return [by_number[n] for n in sorted(selected)]
-
-
-def section_span(body: str, heading: str) -> tuple[int, int] | None:
-    """Use the shared Markdown parser as authority; refuse ambiguous raw editing."""
-    sections = parse_sections(body)
-    if heading not in sections:
-        return None
-    headings: list[tuple[str, re.Match[str]]] = []
-    for match in re.finditer(r"(?m)^## (\S.*?)[ \t]*$", body):
-        try:
-            prefix = parse_sections(body[: match.end()])
-        except ValueError as exc:
-            if str(exc) in {"unclosed code fence", "unclosed HTML comment"}:
-                continue  # Examples/comments do not define an editable section.
-            raise
-        name = next(reversed(prefix), None)
-        if name and (not headings or headings[-1][0] != name):
-            headings.append((name, match))
-    if [name for name, _ in headings] != list(sections):
-        raise ValueError("ambiguous raw Markdown section boundaries")
-    index = list(sections).index(heading)
-    return headings[index][1].end(), headings[index + 1][1].start() if index + 1 < len(
-        headings
-    ) else len(body)
-
-
-def raw_section(body: str, heading: str) -> str:
-    span = section_span(body, heading)
-    return body[span[0] : span[1]].strip() if span else ""
 
 
 def replace_section(body: str, heading: str, content: str) -> str:

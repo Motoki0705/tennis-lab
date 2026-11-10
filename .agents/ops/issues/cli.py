@@ -27,6 +27,7 @@ from .format import (
     render_child_body,
     render_parent_body,
 )
+from .improvement import ImprovementSource
 
 _HTTP_STATUS = re.compile(r"HTTP/\S+ ([0-9]{3})(?:\s|$)")
 _GET_RETRY_DELAYS = (1.0, 2.0)
@@ -69,6 +70,7 @@ def render_spec(value: object) -> dict[str, object]:
             "children",
             "source",
             "labels",
+            "improvement_source",
         },
     )
     role = data.get("role")
@@ -144,6 +146,17 @@ def render_spec(value: object) -> dict[str, object]:
         title = child_title(parent, summary)
         body = render_child_body(parent.number, sections, source=source)
         role_labels = [CHILD_LABEL]
+    if data.get("improvement_source") is not None:
+        if role != "parent" or parent is not None or source is not None:
+            raise ValueError("an improvement proposal must be an independent parent")
+        raw = _object(data["improvement_source"], "improvement_source")
+        if set(raw) != {"parent", "key"}:
+            raise ValueError("improvement_source requires parent/key")
+        origin = ImprovementSource(
+            _positive(raw["parent"], "improvement source parent"),
+            _string(raw["key"], "improvement source key"),
+        )
+        body = origin.marker() + "\n\n" + body
     return {
         "dry_run": True,
         "title": title,
