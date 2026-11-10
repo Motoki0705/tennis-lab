@@ -54,8 +54,11 @@ def parser() -> argparse.ArgumentParser:
         help="issue number or https://github.com/owner/repo/issues/N",
     )
     commands = root.add_subparsers(dest="command", required=True)
+    commands.add_parser("register").add_argument(
+        "--summary", help="sidebar summary (<= 24 display columns)"
+    )
+    commands.add_parser("summary").add_argument("--text", required=True)
     for command in (
-        "register",
         "status",
         "checking",
         "wait-supplement",
@@ -446,7 +449,9 @@ def _main(argv: list[str] | None = None) -> int:
             elif command == "basis-check":
                 result = validate_candidate(session, args.basis_sha256, args.generation)
             elif command == "register":
-                result = session.register()
+                result = session.register(args.summary)
+            elif command == "summary":
+                result = session.set_summary(args.text)
             elif command == "status":
                 # Status works outside a live session; disclose no raw session identifiers.
                 with suppress(ValueError):
@@ -592,7 +597,14 @@ def _main(argv: list[str] | None = None) -> int:
                     session, args.run_id, args.state, read_text(args.evidence_file)
                 )
         integration_failed = False
-        if command in {"register", "reconcile", "sync", "release", "handoff"}:
+        if command in {
+            "register",
+            "summary",
+            "reconcile",
+            "sync",
+            "release",
+            "handoff",
+        }:
             # The mutation is durable and its registry lock is released. Sync
             # the caller and unnamed active peers before projecting the name.
             result = {**result, "parent_action_applied": True}

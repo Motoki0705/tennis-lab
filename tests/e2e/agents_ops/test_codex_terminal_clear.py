@@ -80,7 +80,7 @@ def test_native_clear_fences_old_session_and_binds_new_daemon_tools(
     labels.set_registry({"o/r#42": labels.owner(identity=f"codex:{new}")})
     synced = labels.run("sync", "--parent", "42", env=daemon_env)
     assert synced.returncode == 0, synced.stderr
-    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "#42 · 親"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"] == "表示の要約"
     assert labels.read()["panes"]["w1:p2"] == other
 
 
@@ -129,7 +129,7 @@ def test_native_clear_removes_board_name_and_badge_together(
     )
     assert labels.run("sync", env=env).returncode == 0
     state = labels.read()
-    assert state["panes"]["w1:p1"]["display_agent"] == "Alice · #42 · 親"
+    assert state["panes"]["w1:p1"]["display_agent"] == "Alice · 表示の要約"
     state["panes"]["w1:p1"]["tokens"].update(tl_inbox="1", tl_inbox_label="未読:1")
     labels.write(state)
     registry = labels.registry.read_bytes()

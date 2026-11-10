@@ -9,9 +9,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from issues import parse_title
 from lib.identity import session_identity
-from parent.github import GitHub
+from parent.policy import digest
 from parent.state import Store
 
 from .client import Herdr
@@ -57,24 +56,56 @@ def clear_inbox(client: Herdr, pane: dict[str, Any], guard: Guard) -> dict[str, 
     return pane
 
 
-def short_topic(text: str, columns: int = 20) -> str:
+SUMMARY_COLUMNS = 24
+
+
+def display_columns(text: str) -> int:
+    return sum(
+        0
+        if unicodedata.combining(char)
+        else (2 if unicodedata.east_asian_width(char) in "WF" else 1)
+        for char in text
+    )
+
+
+def validate_summary(text: str) -> str:
+    """The parent writes the sidebar summary; never truncate or rewrite it."""
     if (
-        not text
+        not isinstance(text, str)
+        or not text
         or text != text.strip()
         or any(unicodedata.category(c).startswith("C") for c in text)
     ):
-        raise ValueError("topic must be nonempty text without control characters")
-    used = 0
-    for index, char in enumerate(text):
-        width = (
-            0
-            if unicodedata.combining(char)
-            else (2 if unicodedata.east_asian_width(char) in "WF" else 1)
+        raise ValueError("summary must be nonempty text without control characters")
+    columns = display_columns(text)
+    if columns > SUMMARY_COLUMNS:
+        raise ValueError(
+            f"summary is {columns} display columns; shorten it to {SUMMARY_COLUMNS} "
+            "or fewer (full-width characters count as 2)"
         )
-        if used + width > columns:
-            return short_topic(text[:index], columns - 1) + "…"
-        used += width
     return text
+
+
+def parent_summary(env: Mapping[str, str], key: str, owner: Mapping[str, Any]) -> str:
+    """Read the summary saved with the parent record matching the ownership index."""
+    if "tasks" in owner:  # version 1 keeps the full record in the index
+        record: Mapping[str, Any] = owner
+    else:
+        path = state_root(env) / "parent-sessions/parents" / (digest(key) + ".json")
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(record, dict) or any(
+            record.get(field) != owner.get(field)
+            for field in ("session", "status", "generation")
+        ):
+            raise ValueError("parent record disagrees with its index; retry sync")
+    value = record.get("display_summary")
+    if value is None:
+        number = key.rpartition("#")[2]
+        raise ValueError(
+            f"parent #{number} has no sidebar summary; register one with "
+            f"`python -m parent --parent {number} summary --text <summary>`"
+        )
+    return validate_summary(value)
 
 
 def registry(env: Mapping[str, str]) -> dict[str, Any]:
@@ -172,7 +203,6 @@ def target(
 def sync(
     env: Mapping[str, str],
     *,
-    topic: str | None = None,
     expected_parent: int | None = None,
     clear: bool = False,
     session_start: bool = False,
@@ -203,7 +233,6 @@ def sync(
                 client,
                 guard.pane,
                 guard,
-                topic=topic,
                 expected_parent=expected_parent,
                 clear=clear,
                 session_start=session_start,
@@ -262,7 +291,6 @@ def _sync(
     pane: dict[str, Any],
     guard: Guard,
     *,
-    topic: str | None,
     expected_parent: int | None,
     clear: bool,
     session_start: bool,
@@ -328,24 +356,9 @@ def _sync(
         allow_create=confirm_parent,
         allow_move=session_start and identity.startswith("claude:"),
     )
-    if topic is None:
-        if existing.get("tl_owner") == token and existing.get("tl_parent") == key:
-            topic = existing.get("tl_topic")
-        if not topic:
-            issue = GitHub(repo).issue(int(number))
-            if issue["state"] != "open":
-                raise ValueError(
-                    "registered parent is closed; release ownership before relabelling"
-                )
-            parsed = parse_title(issue["title"])
-            if not parsed.identifier:
-                raise ValueError(
-                    "parent title has no short identifier; pass --topic explicitly"
-                )
-            topic = parsed.identifier
-    label = short_topic(topic)
+    summary = parent_summary(env, key, row)
     name = board_name(env, repo, int(number))
-    # Do not project an assignment that changed while fetching its issue title.
+    # Do not project an assignment that changed while reading its record.
     if registry(env) != snapshot:
         raise ValueError("parent registry changed during label preparation; retry sync")
     if session_start and previous_owner != token:
@@ -353,11 +366,11 @@ def _sync(
     result = client.publish(
         pane,
         agent=identity.split(":", 1)[0],
-        display=f"{name} · #{number} · 親" if name else f"#{number} · 親",
+        display=f"{name} · {summary}" if name else summary,
         tokens={
             "tl_name": name or "",
             "tl_parent": key,
-            "tl_topic": label,
+            "tl_topic": summary,
             "tl_engine": identity.split(":", 1)[0],
             "tl_owner": token,
         },
@@ -366,7 +379,7 @@ def _sync(
     return {
         **result,
         "parent": int(number),
-        "topic": label,
+        "summary": summary,
         "name": name,
         "name_status": "assigned" if name else "unassigned",
     }

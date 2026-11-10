@@ -126,6 +126,7 @@ def _publish_name(
             tokens.get("tl_owner") != owner_token(identity)
             or tokens.get("tl_parent") != f"{repo}#{parent}"
             or tokens.get("tl_engine") != pane["agent"]
+            or not tokens.get("tl_topic")
         ):
             raise BoardError(
                 "confirmed parent label changed; synchronize parent display"
@@ -133,10 +134,13 @@ def _publish_name(
         result = client.publish(
             pane,
             agent=pane["agent"],
-            display=f"{name} · #{parent} · 親",
+            display=f"{name} · {tokens['tl_topic']}",
             tokens={
                 "tl_name": name,
-                **{key: tokens[key] for key in ("tl_owner", "tl_parent", "tl_engine")},
+                **{
+                    key: tokens[key]
+                    for key in ("tl_owner", "tl_parent", "tl_topic", "tl_engine")
+                },
             },
             validate=guard.check,
         )

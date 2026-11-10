@@ -10,6 +10,8 @@
 
 Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
 担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
+表示する要約（`display_summary`）は親ごとの記録に保存し、`register --summary`と`summary --text`で設定する。
+幅・検証・要約がない場合の扱いはherdr_labelsの[要約](../herdr_labels/README.md#要約)が正本。
 同じ位置で[board](../board/README.md)の名前も同期し、結果を`board_sync`へ返す。
 
 ## 判断と機械的な検査
@@ -111,7 +113,8 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 workerの起動・継続では `--dispatcher-state-dir` も同じscheduleへ向ける。
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register --summary 親担当の要約表示
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 summary --text 要約表示の実機確認
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent https://github.com/Motoki0705/tennis-lab/issues/1216 status
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 checking
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp/agreement.json

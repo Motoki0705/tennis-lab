@@ -175,9 +175,13 @@ class ParentSession:
         )
         return {"parent": self.parent, "body_sha256": sha}
 
-    def register(self) -> dict[str, Any]:
+    def register(self, summary: str | None = None) -> dict[str, Any]:
         if self.session is None:
             raise ValueError("session identity missing")
+        if summary is not None:
+            from herdr_labels.service import validate_summary
+
+            validate_summary(summary)
         registration(self.store.parents, self.key, self.session)
         if self.gh.issue(self.parent)["state"] != "open":
             raise ValueError("cannot assign a closed parent issue")
@@ -192,11 +196,23 @@ class ParentSession:
                 "reviews": previous.get("reviews", []),
             }
             self.store.save()
+        if summary is not None and self.row.get("display_summary") != summary:
+            self.row["display_summary"] = summary
+            self.store.save()
         self.post(
             {"event": "assigned", "generation": self.row["generation"]},
             "担当開始。担当指定と要件合意は別段階です。要件を確認してから分割・委任します。",
         )
         return self.status()
+
+    def set_summary(self, text: str) -> dict[str, Any]:
+        """Save the parent's own sidebar summary; display sync projects it."""
+        from herdr_labels.service import validate_summary
+
+        row = self.owner()
+        row["display_summary"] = validate_summary(text)
+        self.store.save()
+        return {"parent": self.parent, "display_summary": row["display_summary"]}
 
     def status(self) -> dict[str, Any]:
         row = self.row
@@ -206,6 +222,7 @@ class ParentSession:
             "repo": self.gh.repo,
             "parent": self.parent,
             "assignment": row.get("status", "unassigned"),
+            "display_summary": row.get("display_summary"),
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
             "tasks": {
