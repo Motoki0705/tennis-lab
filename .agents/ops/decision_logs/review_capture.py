@@ -377,7 +377,9 @@ def gate_result(value: dict[str, Any], artifact: str) -> None:
             op.result(
                 value,
                 artifact=artifact,
-                status="success"
+                status="unknown"
+                if value.get("status") in {"attempting", "unconfirmed"}
+                else "success"
                 if value.get("decision") == "merge" or value.get("status") == "merged"
                 else "rejected",
                 summary=f"merge_gate.{artifact}: pr={value.get('pr')}; decision={value.get('decision')}; action={value.get('action')}; status={value.get('status')}; reasons={value.get('reasons', [])}",

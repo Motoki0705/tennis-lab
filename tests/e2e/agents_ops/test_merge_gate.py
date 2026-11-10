@@ -1353,6 +1353,15 @@ def test_dependency_order_merges_a_before_b_while_c_waits(gate_env: GateEnv) -> 
         and "status=merged" in e["data"]["summary"]
     ]
     assert len(merged) == 2
+    attempts = [
+        e
+        for e in entries
+        if e["kind"] == "result"
+        and "merge_gate.merge_attempt:" in e["data"]["summary"]
+    ]
+    assert len(attempts) == 2
+    assert all(e["data"]["status"] == "unknown" for e in attempts)
+    assert all(e["data"]["status"] == "success" for e in merged)
 
 
 @pytest.mark.parametrize("gate_env", ["independent"], indirect=True)
@@ -1500,6 +1509,20 @@ def test_failed_or_lost_merge_is_never_repeated(
     rows = g.results(result)
     assert rows[100]["action"] == (
         "merged" if failure == "response" else "merge_unconfirmed"
+    )
+    capture = importlib.import_module("decision_logs.capture")
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    observed = capture.status(directory, "o/r", 1)
+    assert observed["status"] == "captured", observed
+    outcomes = [
+        e["record"]
+        for e in observed["records"]
+        if e["record"]["kind"] == "result"
+        and "merge_gate.merge_result:" in e["record"]["data"]["summary"]
+    ]
+    assert len(outcomes) == 1
+    assert outcomes[0]["data"]["status"] == (
+        "success" if failure == "response" else "unknown"
     )
     retry = g.cli("merge")
     assert retry.returncode in {1, 2}
