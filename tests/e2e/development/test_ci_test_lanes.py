@@ -727,6 +727,7 @@ def test_ci_measurements_are_retained_when_preparation_or_tests_fail() -> None:
         ("update_failure", 42),
         ("install_failure", 43),
         ("timeout", 124),
+        ("install_timeout", 124),
         ("missing_after", 127),
         ("version_failure", 44),
     ],
@@ -760,8 +761,9 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
     executable(
         "timeout",
         common
-        + "assert sys.argv[1] == '180s'\n"
+        + "assert sys.argv[1] == ('360s' if 'install' in sys.argv else '180s')\n"
         + "if scenario == 'timeout': raise SystemExit(124)\n"
+        + "if scenario == 'install_timeout' and 'install' in sys.argv: raise SystemExit(124)\n"
         + "os.execvp(sys.argv[2], sys.argv[2:])\n",
     )
     installed_script = f"#!{sys.executable}\nprint(chr(82))\n"
@@ -769,6 +771,7 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
         "sudo",
         common
         + "assert sys.argv[1] == 'apt-get'\n"
+        + "assert sys.argv[2:8] == ['-o', 'Acquire::Retries=2', '-o', 'Acquire::http::Timeout=30', '-o', 'Acquire::https::Timeout=30']\n"
         + "if 'update' in sys.argv and scenario == 'update_failure': raise SystemExit(42)\n"
         + "if 'install' in sys.argv:\n"
         + "    assert sys.argv[-1] == 'rclone' and 'ffmpeg' not in sys.argv\n"
@@ -781,7 +784,7 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
     step = next(
         s for s in _ci_job()["steps"] if s["name"] == "Install system dependencies"
     )
-    assert step["timeout-minutes"] == 8
+    assert 180 + 360 < step["timeout-minutes"] * 60 <= 600
     completed = subprocess.run(
         ["/bin/bash", *shlex.split(step["run"])[1:]],
         cwd=REPO_ROOT,
@@ -801,6 +804,8 @@ def test_system_dependencies_are_verified_and_failures_are_not_hidden(
         assert "ffmpeg version fixture" in completed.stdout
     if scenario == "update_failure":
         assert not any("install" in row for row in calls)
+    if scenario == "install_timeout":
+        assert not (binary / "rclone").exists()
 
 
 def test_cpu_dependency_group_preserves_default_gpu_environment() -> None:
