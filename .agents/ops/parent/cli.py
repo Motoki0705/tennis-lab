@@ -26,7 +26,7 @@ from .policy import issue_number, nonempty, number, object_value
 from .proposals import receive
 from .session import ParentSession
 from .snapshot import prepare, transition
-from .state import Store, state_directory
+from .state import Store, state_directory, unique_object
 
 
 def read_text(path: str) -> str:
@@ -34,7 +34,7 @@ def read_text(path: str) -> str:
 
 
 def read_object(path: str) -> dict[str, Any]:
-    return object_value(json.loads(read_text(path)))
+    return object_value(json.loads(read_text(path), object_pairs_hook=unique_object))
 
 
 def parser() -> argparse.ArgumentParser:
@@ -136,7 +136,11 @@ def parser() -> argparse.ArgumentParser:
     )
     release = commands.add_parser("release")
     release.add_argument("--ended", action="store_true")
-    release.add_argument("--note-file", required=True)
+    release_input = release.add_mutually_exclusive_group(required=True)
+    release_input.add_argument("--note-file")
+    release_input.add_argument(
+        "--spec", help="structured acceptance and next improvements; requires --ended"
+    )
     handoff = commands.add_parser("handoff")
     handoff.add_argument("--accept", action="store_true")
     handoff.add_argument(
@@ -146,7 +150,9 @@ def parser() -> argparse.ArgumentParser:
     )
     handoff.add_argument("--note-file", required=True)
     agree = commands.add_parser("agree")
-    agree.add_argument("--spec", required=True)
+    agree_input = agree.add_mutually_exclusive_group(required=True)
+    agree_input.add_argument("--spec")
+    agree_input.add_argument("--improvement-approval")
     agree.add_argument("--report", type=int)
     agree.add_argument("--proposal")
     commands.add_parser("create-child").add_argument("--spec", required=True)
@@ -214,10 +220,23 @@ def parser() -> argparse.ArgumentParser:
     )
     refresh.add_argument("--child", type=int, required=True)
     refresh.add_argument("--evidence-file", required=True)
-    for command in ("stop", "resume", "improvement"):
+    for command in ("stop", "resume"):
         sub = commands.add_parser(command)
         sub.add_argument("--child", type=int, required=True)
         sub.add_argument("--spec", required=True)
+    improvement = commands.add_parser("improvement")
+    improvement.add_argument("--child", type=int)
+    improvement.add_argument("--key")
+    improvement.add_argument("--spec", required=True)
+    publish = commands.add_parser("improvement-publish")
+    publish.add_argument("--candidate", required=True)
+    publish.add_argument("--existing", type=int)
+    decide = commands.add_parser("improvement-decide")
+    decide.add_argument("--candidate", required=True)
+    decide.add_argument(
+        "--action", choices=("approve", "hold", "decline", "revoke"), required=True
+    )
+    decide.add_argument("--spec", required=True)
     review = commands.add_parser("review-prepare")
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
@@ -307,8 +326,20 @@ def _main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps(value, ensure_ascii=False, sort_keys=True))
             return 0 if value["status"] == "captured" else 2
+        capture_source = True
+        if args.command in {"improvement", "improvement-publish"}:
+            owner = (
+                store.read_data()
+                .get("parents", {})
+                .get(f"{gh.repo.casefold()}#{parent}", {})
+            )
+            capture_source = (
+                owner.get("status") == "active" and owner.get("session") == identity
+            )
         capture_token = CURRENT.set(
             decision_capture.begin(args, store, gh.repo, parent)
+            if capture_source
+            else None
         )
         if args.command in {"worker-log-status", "publish-worker-log"}:
             from worker_logs.service import command as log_command
@@ -386,7 +417,15 @@ def _main(argv: list[str] | None = None) -> int:
             else nullcontext()
         )
         transaction = nullcontext() if args.command in workers else store.locked()
-        with operation, project_operation, transaction:
+        from .improvements import lock_key
+
+        improvement_operation = (
+            store.operation(lock_key(gh.repo))
+            if args.command
+            in {"improvement", "improvement-publish", "improvement-decide"}
+            else nullcontext()
+        )
+        with improvement_operation, operation, project_operation, transaction:
             if args.command in workers:
                 from .development import worker_command
 
@@ -468,12 +507,22 @@ def _main(argv: list[str] | None = None) -> int:
                 )
             elif command == "agree":
                 result = session.agree(
-                    read_object(args.spec), args.report, args.proposal
+                    read_object(args.spec) if args.spec else None,
+                    args.report,
+                    args.proposal,
+                    args.improvement_approval,
                 )
             elif command == "release":
-                result = session.lifecycle(
-                    "ended" if args.ended else "released", read_text(args.note_file)
-                )
+                if args.spec:
+                    if not args.ended:
+                        raise ValueError("structured finish requires release --ended")
+                    from .completion import release
+
+                    result = release(session, read_object(args.spec))
+                else:
+                    result = session.lifecycle(
+                        "ended" if args.ended else "released", read_text(args.note_file)
+                    )
             elif command == "handoff":
                 note = read_text(args.note_file)
                 result = (
@@ -532,7 +581,21 @@ def _main(argv: list[str] | None = None) -> int:
                     number(args.child), read_object(args.spec), command == "resume"
                 )
             elif command == "improvement":
-                result = session.improvement(number(args.child), read_object(args.spec))
+                result = session.improvement(
+                    number(args.child) if args.child is not None else None,
+                    read_object(args.spec),
+                    args.key,
+                )
+            elif command == "improvement-publish":
+                from .improvements import publish
+
+                result = publish(session, args.candidate, args.existing)
+            elif command == "improvement-decide":
+                from .improvements import decide
+
+                result = decide(
+                    session, args.candidate, args.action, read_object(args.spec)
+                )
             elif command in {
                 "decide-worker-plan",
                 "refresh-worker-plan",
@@ -592,6 +655,20 @@ def _main(argv: list[str] | None = None) -> int:
                     session, args.run_id, args.state, read_text(args.evidence_file)
                 )
         integration_failed = False
+        if command == "improvement-decide":
+            from .improvement_runtime import reconcile_stop
+
+            # The decision is durable before stopping; do not hold the source
+            # operation or registry lock while a runner terminates.
+            result["stop"] = reconcile_stop(
+                GitHub(gh.repo),
+                store,
+                parent,
+                nonempty(identity, "recorder identity"),
+                args.candidate,
+                args.dispatcher_state_dir,
+            )
+            integration_failed = result["stop"]["state"] == "stopping"
         if command in {"register", "reconcile", "sync", "release", "handoff"}:
             # The mutation is durable and its registry lock is released. Sync
             # the caller and unnamed active peers before projecting the name.

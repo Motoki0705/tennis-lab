@@ -7,6 +7,8 @@ import hashlib
 import os
 import signal
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -410,6 +412,52 @@ class Supervisor:
             event(dispatch, "runtime_starting", job_id=job_id)
             self.store.save()
             return job
+
+    @contextmanager
+    def launch_admission(self, key: str, job_id: str) -> Iterator[None]:
+        """Recheck a claimed job immediately around Popen, not around its wait."""
+        from parent.improvements import lock_key, require
+
+        with self.store.operation(lock_key(self.gh.repo)), self.store.locked():
+            row = self.store.parents[key]
+            dispatch = row["dispatch"]
+            job = dispatch["jobs"][job_id]
+            try:
+                if (
+                    dispatch["phase"] in {"stopped", "recovery_required"}
+                    or job["phase"] != "starting"
+                ):
+                    raise ValueError("claimed runtime stopped before launch")
+                session = self._session(key, row)
+                binding = require(session, fresh=True)
+                current_auth = authorization(session)
+                if binding is not None and current_auth != job["authorization"]:
+                    raise ValueError("human improvement approval changed after claim")
+                if job["child"] is not None:
+                    require(session, job["child"], fresh=True)
+                    task = row["tasks"][str(job["child"])]
+                    if (
+                        task.get("stopped")
+                        or task.get("delegation_id") != job["delegation_id"]
+                    ):
+                        raise ValueError("claimed implementation stopped before launch")
+            except ValueError as exc:
+                # This worker owns its lifetime lock and has not reached Popen.
+                # Do not use this path to clear evidence of an actual runner.
+                if (Path(job["directory"]) / "runtime").exists():
+                    raise
+                job["worker"] = None
+                self.cancel_reservation(row, job, str(exc))
+                if job["phase"] == "ended" and job["role"] == "parent":
+                    dispatch.update(phase="failed", reason=str(exc))
+                    if (
+                        row["session"]
+                        == f"dispatcher-reservation:{job['assignment_id']}"
+                    ):
+                        row["status"] = "released"
+                self.store.save()
+                raise
+            yield
 
     def resume_source(
         self, row: dict[str, Any], previous: dict[str, Any]
@@ -1048,6 +1096,13 @@ class Supervisor:
                 raise ValueError("invalid parent event schema")
             nonempty(response["reason"], "parent event reason")
             nonempty(response["resume_condition"], "parent resume condition")
+            if response["state"] == "completed":
+                from parent.completion import require_report_receipt
+
+                self._authorized(key, row)
+                require_report_receipt(
+                    row, job, response, authorization(self._session(key, row))
+                )
             dispatch.update(
                 phase=response["state"],
                 reason=response["reason"],

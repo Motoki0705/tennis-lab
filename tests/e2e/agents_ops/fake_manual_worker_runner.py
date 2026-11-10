@@ -33,13 +33,18 @@ def main() -> int:
         )
         return 0
 
+    # The parent's final spawn lock is released before it delivers the prompt.
+    # This is the work boundary, rather than Python interpreter startup.
+    source = opt("--prompt-file")
+    raw = sys.stdin.buffer.read() if source == "-" else Path(source).read_bytes()
+    prompt = raw.decode("utf-8")
     state_dir = Path(os.environ["MANUAL_STATE_DIR"])
     for path in [state_dir / "registry.lock", *state_dir.glob("operation-*.lock")]:
         with path.open("a") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     store = importlib.import_module("parent.state").Store(state_dir)
-    row = store.read_data()["parents"]["o/r#1"]
-    task = row["tasks"]["10"]
+    row = store.read_data()["parents"][os.environ.get("MANUAL_PARENT_KEY", "o/r#1")]
+    task = row["tasks"][os.environ.get("MANUAL_CHILD", "10")]
     saved = task["worker_runs"][-1]
     assert saved["delegation_id"] == opt("--task-id") == task["delegation_id"]
     assert state_dir / saved["run_dir"] == directory
@@ -61,9 +66,6 @@ def main() -> int:
     with Path(os.environ["MANUAL_RUNNER_CALLS"]).open("a") as stream:
         stream.write(json.dumps(args) + "\n")
     # Read the instruction as the real runner does (UTF-8 file or stdin).
-    source = opt("--prompt-file")
-    raw = sys.stdin.buffer.read() if source == "-" else Path(source).read_bytes()
-    prompt = raw.decode("utf-8")
     if os.environ.get("MANUAL_RUNNER_PROMPTS"):  # Only the producer tests inspect it.
         with Path(os.environ["MANUAL_RUNNER_PROMPTS"]).open("a") as stream:
             stream.write(json.dumps({"prompt_file": source, "prompt": prompt}) + "\n")

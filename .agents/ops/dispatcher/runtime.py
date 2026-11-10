@@ -6,8 +6,8 @@ import fcntl
 import signal
 import subprocess
 import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import Callable, Iterator
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
@@ -46,6 +46,7 @@ class Runtime:
         self.runner = runner.resolve()
         self.stopping = False
         self.launcher: subprocess.Popen[bytes] | None = None
+        self.launch_context: Callable[[], AbstractContextManager[Any]] = nullcontext
 
     def request_stop(self) -> None:
         self.stopping = True
@@ -155,20 +156,23 @@ class Runtime:
             cmd += ["--model", job["model"]]
         from decision_logs.observations import job_environment
 
-        with (
-            (directory / "runner.stdout").open("wb") as out,
-            (directory / "runner.stderr").open("wb") as err,
-            subprocess.Popen(
-                cmd,
-                stdout=out,
-                stderr=err,
-                pass_fds=(gate_fd,),
-                env=job_environment(job),
-            ) as proc,
-        ):
-            self.launcher = proc
-            # A TERM received during Popen must also stop the newly created
-            # launcher, before result.json necessarily exists.
+        with self.launch_context():
             if self.stop_requested():
-                self.request_stop()
+                return 143
+            with (
+                (directory / "runner.stdout").open("wb") as out,
+                (directory / "runner.stderr").open("wb") as err,
+            ):
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=out,
+                    stderr=err,
+                    pass_fds=(gate_fd,),
+                    env=job_environment(job),
+                )
+                self.launcher = proc
+                if self.stop_requested():
+                    self.request_stop()
+        # Admission locks cover Popen/identity binding, never the running job.
+        with proc:
             return proc.wait()

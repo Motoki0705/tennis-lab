@@ -70,7 +70,12 @@ def main() -> None:
                 + "\n"
             )
         emit({"type": "turn.started"})
-    if os.environ.get("FAKE_DISPATCH_HOLD"):
+    if os.environ.get("FAKE_DISPATCH_BLOCK_FIFO"):
+        with Path(os.environ["FAKE_DISPATCH_READY_FIFO"]).open("w") as ready:
+            ready.write(str(directory) + "\n")
+        with Path(os.environ["FAKE_DISPATCH_BLOCK_FIFO"]).open("r") as block:
+            block.read()
+    elif os.environ.get("FAKE_DISPATCH_HOLD"):
         while not (directory.parent / "release").exists():
             time.sleep(0.02)
     if agent == "claude":

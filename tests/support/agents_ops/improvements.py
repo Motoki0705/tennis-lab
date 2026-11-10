@@ -1,5 +1,6 @@
 """Small author-supplied contracts, shared by improvement unit and CLI tests."""
 
+import json
 from typing import Any
 
 
@@ -21,4 +22,34 @@ def candidate_spec() -> dict[str, Any]:
         "unknowns": "運用上の削減時間は未測定。",
         "expected_effect": "重複した管理操作を減らす。",
         "unmet_acceptance": [],
+    }
+
+
+def finish_for(
+    p: Any,
+    *,
+    parent: int = 1,
+    state_dir: Any = None,
+    candidates: list[str] | None = None,
+) -> dict[str, Any]:
+    args = ["--state-dir", str(state_dir)] if state_dir is not None else []
+    required = json.loads(p.cli(*args, "status", parent=str(parent)).stdout)[
+        "completion"
+    ]["requirements"]
+    assert required["available"], required
+    return {
+        "schema_version": 1,
+        "state": "completed",
+        "basis_ref": required["basis_ref"],
+        "acceptance": [
+            {
+                "id": criterion["id"],
+                "state": "met",
+                "evidence": "親がこの条件を差分・回帰試験・保存済みの受入根拠で確認した。",
+            }
+            for criterion in required["criteria"]
+        ],
+        "remaining_required": [],
+        "improvements": {"reviewed": True, "candidates": candidates or []},
+        "summary": "全体受入を照合した。",
     }

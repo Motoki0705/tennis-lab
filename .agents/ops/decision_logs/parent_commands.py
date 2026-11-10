@@ -26,6 +26,12 @@ from .journal import Journal
 from .schema import new_id, validate_record
 
 COMMANDS = {
+    "improvement": "record",
+    "improvement-publish": "publish",
+    "workflow-report": "verify",
+    "agree": "record",
+    "create-child": "record",
+    "basis-record": "record",
     "run-worker": "start_ai",
     "start-worker": "start_ai",
     "continue-worker": "continue_ai",
@@ -287,8 +293,12 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
         return value
     try:
         with op.transaction():
+            identifiers = response_identifiers(value)
+            if args.command == "improvement" and isinstance(value, dict):
+                # This is a public decision journal ID, not a private worker-plan ID.
+                identifiers.discard(value.get("decision_id"))
             op.row["private"]["identifiers"] = sorted(
-                set(op.row["private"]["identifiers"]) | response_identifiers(value)
+                set(op.row["private"]["identifiers"]) | identifiers
             )
             op._save()
     except Exception:
@@ -341,11 +351,20 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
         state, status = None, "unknown"
     elif op.records("action")[-1]["data"]["state"] == "rejected_before_start":
         state, status = "rejected_before_start", "rejected"
-    verification = args.command in {
-        "record-result",
-        "record-worker-ended",
-        "review-state",
-    }
+    verification = (
+        args.command
+        in {
+            "record-result",
+            "record-worker-ended",
+            "review-state",
+        }
+        or (args.command == "release" and bool(getattr(args, "spec", None)))
+        or (
+            args.command == "workflow-report"
+            and isinstance(value, dict)
+            and value.get("state") == "completed"
+        )
+    )
     summary = f"parent.{args.command}: {status}"
     if isinstance(value, dict):
         selected = {
@@ -364,6 +383,11 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
                 "turn_end_reason",
                 "termination_confirmed",
                 "cancelled_before_start",
+                "candidate_id",
+                "revision",
+                "issue",
+                "publication",
+                "state",
             )
             if k in value and type(value[k]) in {str, int, bool}
         }
@@ -390,6 +414,8 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
                 for k, v in value["progress"].items()
                 if str(k).isdigit() and isinstance(v, str)
             }
+        if isinstance(value.get("completion"), dict):
+            selected["acceptance"] = value["completion"].get("acceptance", "unverified")
         if selected:
             summary += "; " + json_bytes(selected).decode("utf-8").strip()
     observe(
@@ -478,12 +504,26 @@ def reason_reference(
         "worker_plan": {"kind", "child", "decision_id"},
         "model_reason": {"kind", "child"},
         "review_reason": {"kind", "run_id"},
+        "improvement": {"kind", "key", "event_id"},
     }
     require(
         kind in reference_fields and set(reference) == reference_fields[kind],
         "record_decision",
     )
-    if kind == "note":
+    if kind == "improvement":
+        from issues.improvement import render_event
+        from parent.improvements import get
+
+        _, candidate = get(session, reference["key"])
+        original = candidate["candidate"]
+        require(original["id"] == reference["event_id"], "reference_unavailable")
+        evidence = {
+            "kind": "public",
+            "url": f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{candidate['comments'][original['id']]}",
+            "revision": None,
+            "content_sha256": sha(render_event(original).encode()),
+        }
+    elif kind == "note":
         notes = {
             e["body"]
             for e in session.history()
@@ -532,8 +572,12 @@ def reason_reference(
 
 
 def decide(session: Any, path: Path) -> dict[str, Any]:
+    return decide_value(session, decode(path.read_bytes()))
+
+
+def decide_value(session: Any, spec: dict[str, Any]) -> dict[str, Any]:
+    """One input path for explicit decisions and canonical domain reason references."""
     session.owner()
-    spec = decode(path.read_bytes())
     require(
         set(spec)
         <= {

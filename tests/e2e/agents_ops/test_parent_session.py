@@ -223,6 +223,8 @@ if tail == "comments":
     comment = {"id": 1 + max((c["id"] for rows in state["comments"].values() for c in rows), default=0), "user": {"login": "operator"}, "body": payload["body"]}
     state["comments"].setdefault(n, []).append(comment)
     save()
+    if os.environ.get("PARENT_FAIL_AFTER_COMMENT_CONTAINING") and os.environ["PARENT_FAIL_AFTER_COMMENT_CONTAINING"] in payload["body"]:
+        fail()
     response(comment, 201)
 if method == "PATCH":
     for k, v in payload.items():
@@ -529,7 +531,8 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
 
 
 @pytest.mark.parametrize(
-    "final", [None, "supplement:done", "supplement:failed", "supplement:skipped", "old_parent"]
+    "final",
+    [None, "supplement:done", "supplement:failed", "supplement:skipped", "old_parent"],
 )
 def test_supplement_gates_checking_and_agree_before_writes(
     parent_env: ParentEnv, final: str | None
@@ -564,7 +567,8 @@ def test_supplement_gates_checking_and_agree_before_writes(
         for result in (checked, agreed):
             assert "pending" in result.stderr
             assert (
-                "wait-supplement" in result.stderr and "supplement:skipped" in result.stderr
+                "wait-supplement" in result.stderr
+                and "supplement:skipped" in result.stderr
             )
         assert not any(
             "--method" in call and call[call.index("--method") + 1] != "GET"
@@ -575,7 +579,9 @@ def test_supplement_gates_checking_and_agree_before_writes(
         assert json.loads(agreed.stdout)["phase"] == "要件合意済み"
 
 
-@pytest.mark.parametrize("final", ["supplement:done", "supplement:failed", "supplement:skipped"])
+@pytest.mark.parametrize(
+    "final", ["supplement:done", "supplement:failed", "supplement:skipped"]
+)
 def test_wait_supplement_watches_latest_exact_title_and_refreshes_labels(
     parent_env: ParentEnv, final: str
 ) -> None:
@@ -1544,7 +1550,16 @@ def review_setup(
         state["issues"]["1"].update(
             title="人間が作成した単独タスク",
             labels=[{"name": "bug"}],
-            body="## 目的\n単独タスクを実装する。\n\n## 完了条件\n回帰テストが通る。\n",
+            body="## 目的\n単独タスクを実装する。\n\n## Acceptance checklist\n- [ ] 回帰テストが通る。\n",
+        )
+        p.save(state)
+    else:
+        policy = importlib.import_module("parent.policy")
+        state = p.state()
+        state["issues"]["1"]["body"] = policy.replace_section(
+            state["issues"]["1"]["body"],
+            "全体の完了条件",
+            "- [ ] 各成果の受入と統合結果を確認する。",
         )
         p.save(state)
     p.agreed()
