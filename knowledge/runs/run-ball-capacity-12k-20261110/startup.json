@@ -1,0 +1,109 @@
+{
+  "schema": "ball_capacity_12k_startup_record.v1",
+  "issue": 1675,
+  "recorded_at": "2026-11-10T05:31:45.191720+00:00",
+  "status": "startup_accepted_campaign_running",
+  "requirements": "https://github.com/Motoki0705/tennis-lab/issues/1675#issuecomment-6758820955",
+  "model_jobs": 9,
+  "training_stages": 11,
+  "additional_optimizer_updates": 66000,
+  "model_order": [
+    "d256-l4",
+    "d384-l4",
+    "d512-l4",
+    "d768-l4",
+    "d1024-l4",
+    "d512-l6",
+    "d512-l8",
+    "d512-l12",
+    "d512-l24"
+  ],
+  "dataset": {
+    "files": 2925,
+    "bytes": 157028755547,
+    "download_seconds": 2000.467750787735,
+    "dual_sha256_verified": true,
+    "membership_verified": true
+  },
+  "input_full_checkpoints_verified": 8,
+  "source_files_matching_original": 162,
+  "torch": "2.14.1+cu130",
+  "torchvision": "0.29.1+cu130",
+  "full_source_bundle_commit": "fdebcf2869866c7474b57dad6955e0112a5f884a",
+  "first_model": {
+    "model": "d256-l4",
+    "observed_updates": 601,
+    "query_cumulative_updates": 6601,
+    "global_updates": 16601,
+    "loss_range": [
+      0.001091117105845894,
+      0.16954389669828945
+    ],
+    "gradient_range": [
+      0.07711141556501389,
+      2.8438944816589355
+    ],
+    "head_lr_first": 3.729690081136307e-05,
+    "head_lr_after601": 3.161766032223689e-05,
+    "encoder_lr_after601": 3.161766032223689e-06,
+    "freeze600": true,
+    "unfrozen601": true,
+    "finite": true,
+    "exceptions_nan_oom": false
+  },
+  "checkpoint500": {
+    "sha256": "63322b8402f8b8637f7d4ec21f5fd87028da6644493a9e3cd3fec9423a7c57d7",
+    "receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00000500-334dbd35",
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/checkpoint-00000500-334dbd35",
+      "manifest_sha256": "8db8fdce5a86b8b4f7bfbfb0c9c0d73e8875fdddbe016ca9bc991999e7c24fe8",
+      "manifest_md5": "19254931520772be3cef8f1a201c637a",
+      "files": 8,
+      "size_bytes": 139296103,
+      "marker_id": null,
+      "seconds": 16.737560560999555,
+      "status": "verified"
+    },
+    "readback": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00000500-334dbd35",
+      "status": "verified",
+      "files": 8,
+      "manifest_sha256": "8db8fdce5a86b8b4f7bfbfb0c9c0d73e8875fdddbe016ca9bc991999e7c24fe8",
+      "seconds": 9.314861654000197
+    },
+    "payload_files": 8,
+    "encoder_adamw_states_unchanged": 133,
+    "head_adamw_states_advanced500": 149,
+    "rng_continuous": true
+  },
+  "queue_ids": [
+    "0-8205712591670876900_2026-11-10T05-10-08-329123099Z_43082_i1675-12k-d256-l4-a1",
+    "0-8205712591460644585_2026-11-10T05-10-08-539355414Z_43119_i1675-12k-d384-l4-a1",
+    "0-8205712591258160032_2026-11-10T05-10-08-741839967Z_43153_i1675-12k-d512-l4-a1",
+    "0-8205712591058568346_2026-11-10T05-10-08-941431653Z_43185_i1675-12k-d768-l4-a1",
+    "0-8205712590851506724_2026-11-10T05-10-09-148493275Z_43217_i1675-12k-d1024-l4-a1",
+    "0-8205712590647256019_2026-11-10T05-10-09-352743980Z_43253_i1675-12k-d512-l6-a1",
+    "0-8205712590445014723_2026-11-10T05-10-09-554985276Z_43285_i1675-12k-d512-l8-a1",
+    "0-8205712590244279584_2026-11-10T05-10-09-755720415Z_43318_i1675-12k-d512-l12-a1",
+    "0-8205712590042852146_2026-11-10T05-10-09-957147853Z_43350_i1675-12k-d512-l24-a1"
+  ],
+  "remaining_queued": 8,
+  "service_pid": 37950,
+  "worker_pid": 43382,
+  "training_pid": 43586,
+  "service_under_pid1": true,
+  "outputs": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k",
+  "documentation_registered": "documentation/registered-20261110-v1",
+  "cpu_tests_passed": 27,
+  "knowledge_validation_errors": 0,
+  "repro_missing_paths": 0,
+  "repro_legacy_unverifiable": 20,
+  "limits": [
+    "Remaining eight models have not started; especially 12/24-layer feasibility is unverified.",
+    "All-nine completion and final comparison remain a separate follow-up task."
+  ],
+  "issue_closed": false,
+  "deployment_changed": false
+}

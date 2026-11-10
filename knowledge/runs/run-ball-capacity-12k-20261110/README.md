@@ -103,3 +103,8 @@ Driveの全checkpoint世代を保持する。元campaignと8入力を変更・�
 
 モデル・逐次学習の既存CPU回帰テスト22件と、実queueの冪等9件登録／失敗停止・named AdamW照合とlocal cache保護の5件を通過。
 具体的な実測、有限workerの進捗、最終受入、bundle、documentationのreceiptは新run出力を正本とする。
+
+起動受入は2026-11-10 05:31 UTCに完了した。第一モデルの601更新（query累積6601、DPTを含むglobal16601）を確認した。
+500更新の8 payloadをDriveから独立復元し、checkpoint・ログ・全状態継承・600/601の凍結解除を検証した。
+具体的な実測値、9 queue ID、receipt、プロセス、残る範囲は[startup.json](startup.json)に記録した。
+GPU学習は外部service配下で継続し、後続8件の完走・評価や12/24層の実行可能性はこの起動受入に含めない。
