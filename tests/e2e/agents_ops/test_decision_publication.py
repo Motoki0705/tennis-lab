@@ -501,3 +501,27 @@ def test_reused_publisher_failure_cannot_overwrite_another_publishers_history(
     assert stale.path.read_bytes() == completed
     assert all(r["publication_status"] == "published" for r in log.status())
     assert env.github.calls == ["create", "merge"]
+
+
+def test_late_worker_files_refresh_navigation_without_new_capture_records(
+    env: DecisionEnv,
+) -> None:
+    worker = worker_journal.read(env.ready())
+    raw = {n: value.encode() for n, value in worker["files"].items()}
+    directory = worker_schema.path(worker_schema.validate(raw))
+    log = env.capture()
+    assert env.decision_publisher(log).publish()["saved_to_main"]
+    journal_before = log.path.read_bytes()
+    env.advance({directory + "/" + n: value for n, value in raw.items()})
+    stale = env.decision_publisher(log).publish()
+    assert stale["stage"] == "readme_refresh_required" and not stale["saved_to_main"]
+    refreshed = env.decision_publisher(log).publish(retry=True)
+    assert refreshed["saved_to_main"], refreshed
+    saved = env.upstream_files()
+    assert directory + "/README.md" in saved
+    assert all(saved[n] == value for n, value in navigation.generate(saved).items())
+    assert (
+        len(navigation.records(saved)) == 6 and log.path.read_bytes() == journal_before
+    )
+    assert env.decision_publisher(log).publish()["saved_to_main"]
+    assert env.github.calls == ["create", "merge", "create", "merge"]

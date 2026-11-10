@@ -327,12 +327,10 @@ class Publisher:
             all(saved.get(n) == raw for n, raw in self.expected(batch).items()),
             "main_content_changed",
         )
-        # Check the actual merge tree too, including concurrent additions. Later
-        # legitimate main updates may of course regenerate these READMEs again.
-        merged = self.snapshot(commit)
-        canonical = all(merged.get(n) == raw for n, raw in generate(merged).items())
-        if not canonical:
-            canonical = all(saved.get(n) == raw for n, raw in generate(saved).items())
+        # The current main may include worker files that arrived after the
+        # decision batch merged. Their derived navigation must be current too;
+        # the old merge tree being canonical is not proof about today's view.
+        canonical = all(saved.get(n) == raw for n, raw in generate(saved).items())
         if not canonical:
             batch.update(
                 state="blocked",

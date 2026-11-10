@@ -300,6 +300,7 @@ GitHub旧 `base.sha` 是快照，不能据此丢弃main更新。
 `readme_refresh_required`，不宣称成功。显式 `--retry` 保留已merge PR的私有批次历史，
 使用相同固定envelope建立 `-repair-<number>` branch。记录已在main时，修复PR只能改变
 逐字节符合再生成结果的README，不会为了修复而添加/修改event。导航保存后再次运行不会创建更多PR。
+批次merge后才到达的worker文件也使用同一显式修复，即使没有待发布的新捕获记录；不会补造捕获事实。
 
 捕获journal旁的私有 `publication.json` 保存所有批次、revision、已尝试的变更和诊断，
 采用flock、fsync和原子写入。`Journal.publication()` 只追加每条记录的pending/blocked/published事实。

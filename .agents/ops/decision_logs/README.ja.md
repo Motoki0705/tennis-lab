@@ -311,6 +311,8 @@ HEAD指定でmergeし、実際のmerge treeの生成内容、mainの祖先関係
 非公開batch履歴に残し、同じ固定envelopeの `-repair-<number>` branchを作る。
 記録がmainに既存なら、この修復PRは正本から再生成したREADMEだけを変更できる。
 修復を装うeventの追加・改変は行わない。生成内容が保存済みなら後の呼出しでPRは増えない。
+batchのmerge後にworkerファイルが届いた場合も、未公開captureがなくても同じ明示修復で
+閲覧内容を更新できる。修復のための捕捉記録は作らない。
 
 捕捉journalの隣の非公開 `publication.json` にbatch、revision、送信試行、診断を残し、
 flock・fsync・atomic writeを使う。`Journal.publication()` は記録ごとの

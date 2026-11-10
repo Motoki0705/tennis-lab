@@ -370,6 +370,8 @@ batch history and creates a `-repair-<number>` branch with the same frozen envel
 Its PR can change only byte-exact regenerated READMEs when those records are already
 on main. It cannot add or modify an event to manufacture a repair. Once canonical
 navigation is saved, repeated publication creates no further PR.
+The same explicit refresh handles worker files arriving after the batch merged,
+even if no new capture record is pending; it does not manufacture capture facts.
 
 The private `publication.json` beside the capture journal keeps all batches,
 revisions, attempted mutations and diagnostics under flock and durable atomic
