@@ -15,6 +15,7 @@ import numpy as np
 import torch
 
 from src.tasks.ball_detection.model_io.mdd_temporal import (
+    QUERY_CONFIG_TYPES,
     TemporalConfig,
     TemporalModel,
     build_temporal_model,
@@ -22,7 +23,7 @@ from src.tasks.ball_detection.model_io.mdd_temporal import (
 )
 from src.tasks.ball_detection.models.mdd import (
     MDDHeatmapConfig,
-    MDDTemporalQueryConfig,
+    MDDMHCQueryConfig,
 )
 from src.utils.checksum import dual_sha256
 
@@ -138,10 +139,18 @@ def initialize_finetuning(
         old.pop(key)
         new.pop(key)
     encoder_only = (
-        type(config) is MDDTemporalQueryConfig
+        type(config) in QUERY_CONFIG_TYPES
         and type(previous.config) is MDDHeatmapConfig
     )
-    if encoder_only and (
+    mhc_encoder_only = encoder_only and type(config) is MDDMHCQueryConfig
+    if mhc_encoder_only:
+        if previous.config.frames != 32 or config.frames != 64 or training["phase"] != "pretrain":
+            raise ValueError("DPT-to-mHC initialization requires common T32 pretraining and a fresh T64 query")
+        encoder_fields = ("input_channels", "encoder_variant", "temporal_mixing",
+                          "stem_channels", "mixed_channels", "residual_blocks")
+        if any(old[key] != new[key] for key in encoder_fields):
+            raise ValueError("DPT-to-mHC initialization requires identical encoder topology")
+    elif encoder_only and (
         previous.config.frames != 32
         or config.frames != 32
         or training["phase"] != "pretrain"
@@ -149,7 +158,7 @@ def initialize_finetuning(
         raise ValueError(
             "DPT-to-query initialization requires common T32 pretraining and a fresh T32 query"
         )
-    if old != new or not encoder_only and type(previous.config) is not type(config):
+    if not mhc_encoder_only and (old != new or not encoder_only and type(previous.config) is not type(config)):
         raise ValueError(
             "Fine-tuning must preserve architecture and every parameter topology"
         )

@@ -1,4 +1,4 @@
-"""Explicit teacher eligibility, without changing original annotation facts.
+"""Explicit adopted teacher eligibility, without changing visual-review facts.
 
 255 marks a legacy clip whose original point-kind/training-policy interpretation is
 preserved. It is a declared storage mode, not a fallback for missing mask columns.
@@ -27,8 +27,7 @@ LEGACY: Final = 255
 @dataclass(frozen=True)
 class FrameTeacherMasks:
     heatmap: NDArray[np.uint8]
-    # Coordinate: 0 = excluded, 1 = eligible single position, 255 = legacy.
-    # v2/v3 select observations; active_ball v4 also selects usable estimates.
+    # Coordinate: 0 = excluded, 1 = single observed ball, 255 = legacy.
     coordinate: NDArray[np.uint8]
 
     @classmethod
@@ -61,11 +60,6 @@ class FrameTeacherMasks:
         return result
 
     def validate(self, store: BallFrameStore) -> None:
-        if store.target_semantics == "active_ball":
-            from .active_ball import validate_active_masks
-
-            validate_active_masks(store, self)
-            return
         from .store import POINT_KIND_CODES
 
         explicit = self.explicit

@@ -33,9 +33,6 @@ def clip_semantic_digest(store: BallFrameStore, clip: ClipRecord) -> str:
     if clip.clip_id in store.video_frames:
         digest.update(b"video_jpeg_bytes.v1")
         digest.update(store.video_frames[clip.clip_id].model_dump_json().encode())
-    if clip.clip_id in store.video_annotations:
-        digest.update(b"active_ball_original_v3_uniform_weights.v1")
-        digest.update(store.video_annotations[clip.clip_id].canonical_bytes())
     rows = store.clip_rows(clip)
     for name in ("frame_index", "pts", "annotated", "is_target", "segment_break", "event", "inst_count"):
         digest.update(name.encode())

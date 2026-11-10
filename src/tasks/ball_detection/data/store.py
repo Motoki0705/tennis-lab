@@ -41,10 +41,6 @@ Label semantics (sources map onto these; the builder never invents labels):
 The v2 teacher mask columns are defined in ``teacher_masks.py``. They restrict
 the training policy without erasing labels or changing copied legacy clips.
 Readers must reject missing/invalid masks rather than infer eligibility.
-
-v4 explicitly targets active_ball. It embeds original video_ball_annotation.v3
-judgments and uses their shared usage decisions, including usable estimates,
-to validate teachers. Legacy training policies must not reinterpret this store.
 """
 
 from __future__ import annotations
@@ -64,10 +60,6 @@ from src.utils.checksum import dual_sha256
 from src.utils.data.verification import FileVersion, file_version
 from src.utils.video.jpeg_source import read_video_jpegs
 
-from .active_ball import (
-    ACTIVE_BALL_SCHEMA,
-    validate_active_annotations,
-)
 from .teacher_masks import EXPLICIT_MASK_SCHEMA, MASK_FIELDS, FrameTeacherMasks
 from .video_frames import VIDEO_FRAME_SCHEMA, VideoFrameStorage, video_name
 
@@ -78,16 +70,15 @@ SHARDS_DIR: Final = "shards"
 
 SOURCES: Final = ("tracknet", "meiji", "chat_annotation")
 Source = Literal["tracknet", "meiji", "chat_annotation"]
-LEGACY_POINT_KIND_CODES: Final[Mapping[str, int]] = {
+POINT_KIND_CODES: Final[Mapping[str, int]] = {
     "observed": 0,
     "interpolated": 1,
     "occlusion_estimated": 2,
     "unresolved": 3,
     "out_of_frame": 4,
 }
-POINT_KIND_CODES: Final[Mapping[str, int]] = {**LEGACY_POINT_KIND_CODES, "estimated": 5}
 POINT_KIND_NAMES: Final[Mapping[int, str]] = {code: name for name, code in POINT_KIND_CODES.items()}
-LOCATED_POINT_KINDS: Final = frozenset({"observed", "interpolated", "occlusion_estimated", "estimated"})
+LOCATED_POINT_KINDS: Final = frozenset({"observed", "interpolated", "occlusion_estimated"})
 EVENT_CODES: Final[Mapping[str, int]] = {"none": 0, "hit": 1, "bounce": 2, "unlabeled": 3}
 EVENT_NAMES: Final[Mapping[int, str]] = {code: name for name, code in EVENT_CODES.items()}
 SPLIT_CODES: Final[Mapping[str, int]] = {"train": 0, "val": 1, "test": 2}
@@ -227,16 +218,12 @@ class BallFrameStore:
             raise ValueError(f"Ball store directory must be absolute: {directory}")
         self.directory = directory
         metadata = json.loads((directory / METADATA_FILE).read_text(encoding="utf-8"))
-        if metadata["schema_version"] not in (SCHEMA_VERSION, EXPLICIT_MASK_SCHEMA, VIDEO_FRAME_SCHEMA, ACTIVE_BALL_SCHEMA):
+        if metadata["schema_version"] not in (SCHEMA_VERSION, EXPLICIT_MASK_SCHEMA, VIDEO_FRAME_SCHEMA):
             raise ValueError(
                 f"Unsupported ball store schema {metadata['schema_version']!r}; "
-                f"expected a supported frame store schema"
+                f"expected {SCHEMA_VERSION!r}, {EXPLICIT_MASK_SCHEMA!r} or {VIDEO_FRAME_SCHEMA!r}"
             )
         self.metadata: dict[str, object] = metadata
-        active = metadata["schema_version"] == ACTIVE_BALL_SCHEMA
-        self.target_semantics = "active_ball" if active else "legacy_ball"
-        if not active and ({"target_semantics", "video_annotations", "position_weights"} & metadata.keys()):
-            raise ValueError("active_ball teacher contracts require the explicit v4 store schema")
         self.clips: tuple[ClipRecord, ...] = tuple(_clip_record(clip) for clip in metadata["clips"])
         # A distribution can be checked against immutable source payloads before
         # upload, without copying or hardlinking them. This is an explicit view;
@@ -268,9 +255,8 @@ class BallFrameStore:
         self.frames = {name: columns[name] for name in FRAME_FIELDS}
         self.instances = {name: columns[name] for name in (*INSTANCE_FIELDS, INSTANCE_XY)}
         self.clip_start: NDArray[np.int64] = self._validate(columns)
-        self.video_annotations = validate_active_annotations(self, metadata.get("video_annotations")) if active else {}
         self.teacher_masks: FrameTeacherMasks | None = None
-        if metadata["schema_version"] in (EXPLICIT_MASK_SCHEMA, VIDEO_FRAME_SCHEMA, ACTIVE_BALL_SCHEMA):
+        if metadata["schema_version"] in (EXPLICIT_MASK_SCHEMA, VIDEO_FRAME_SCHEMA):
             self.teacher_masks = FrameTeacherMasks.from_columns(columns, len(self))
             self.teacher_masks.validate(self)
         elif any(name in columns for name in MASK_FIELDS):
@@ -300,7 +286,7 @@ class BallFrameStore:
             if Fraction(clip.time_base) <= 0 or Fraction(clip.fps) <= 0:
                 raise ValueError(f"Clip {clip.clip_id} needs a positive time base and fps")
         # Every frame of every clip is stored contiguously, in clip order.
-        lengths: NDArray[np.int64] = np.asarray([clip.frame_count for clip in self.clips], dtype=np.int64)
+        lengths = np.asarray([clip.frame_count for clip in self.clips], dtype=np.int64)
         if int(lengths.sum()) != frame_count or (lengths <= 0).any():
             raise ValueError("Ball store frame table does not cover every clip frame")
         clip_start = np.concatenate([[0], np.cumsum(lengths)[:-1]]).astype(np.int64)
@@ -326,14 +312,12 @@ class BallFrameStore:
         kinds = self.instances["point_kind"]
         if not np.isin(kinds, list(POINT_KIND_NAMES)).all():
             raise ValueError("Ball store contains an unknown point_kind")
-        if self.target_semantics != "active_ball" and (kinds == POINT_KIND_CODES["estimated"]).any():
-            raise ValueError("General v3 estimates require the explicit active_ball store contract")
         xy = self.instances[INSTANCE_XY]
         located = np.isin(kinds, located_codes())
         if not np.isnan(xy[~located]).all() or not np.isfinite(xy[located]).all():
             raise ValueError("Exactly the unresolved/out_of_frame balls must have NaN positions")
         instance_clips: NDArray[np.int32] = np.repeat(self.frames["clip"], counts)
-        sizes: NDArray[np.float32] = np.asarray([[clip.width, clip.height] for clip in self.clips], dtype=np.float32)
+        sizes = np.asarray([[clip.width, clip.height] for clip in self.clips], dtype=np.float32)
         limits = sizes[instance_clips]
         if ((xy[located] < 0) | (xy[located] >= limits[located])).any():
             raise ValueError("Ball store contains a located ball outside its stored image")
@@ -368,10 +352,6 @@ class BallFrameStore:
 
     def __len__(self) -> int:
         return int(self.frames["clip"].shape[0])
-
-    def require_target_semantics(self, expected: str) -> None:
-        if self.target_semantics != expected:
-            raise ValueError(f"target_semantics mismatch: reader/base expects {expected}, store declares {self.target_semantics}")
 
     def clip_of(self, row: int) -> ClipRecord:
         return self.clips[int(self.frames["clip"][row])]
