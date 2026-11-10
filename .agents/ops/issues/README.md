@@ -260,6 +260,20 @@ parent_body = render_parent_body(
    同じキーの複数issue、不正・重複メタデータはエラー。`parse_proposal_source(body)` で現在の選択肢まで
    比較し、一致しない既存issueを再利用しない。タイトル改名・親付替えで重複起票しないことをテスト済み。
 
+## 終了時改善の独立親
+
+`issues.improvement.ImprovementSource(parent, key)` は `I-<元親>-<key>` の候補を表す。
+`render` specの `improvement_source: {parent: N, key: KEY}` はrole=parent・正式親なしのときだけ使え、
+本文1行目に `<!-- parent-improvement-source:v1 parent=N key=KEY -->` を置く。
+`parse_source` / `index_sources` は全open/closedの本文から出典を照合し、重複・不正な出典を拒否する。
+これは `ProposalSource` / `index_proposals`・`ai-proposed`・`parent-task:v1` とは独立した出典である。
+
+`issues.creation.create_issue_once` は固定draft・送信前receipt・出典に一致する候補の照合を共有する。
+呼出側は一致条件と永続化・排他を提供する。応答不明で一致先も未観測なら再POSTせず、明示的な再送時に照合する。
+終了時改善のcallerは最初のPOSTに `issue:parent` / `needs-human` を含め、元親の子・依存に追加しない。
+候補の正本・人間判断・既存issueへの集約・導入順は [parentの終了時改善](../parent/improvements.md)を参照する。
+候補の受入と元親の全体受入を混ぜず、子テンプレートの改善欄は元親の正本コメントへの参照に使う。
+
 ## triageによる出典と復旧契約
 
 `render_standalone_body(sections)` は子の具体的な必須節・Acceptanceを持ち、親参照・親子ラベルを持たない

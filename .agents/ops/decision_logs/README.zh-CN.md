@@ -95,6 +95,8 @@ outbox只保存私有投递输入，不是发布单元。
 | `record-worker-run` / `record-worker-ended` | 显式登记已有runner证据 / 父级显式确认终止 |
 | `record-result` | 已保存的验证与PR/证据字段；显式验证引用已捕获结果。组合命令 `review-request --prs` 使用相同方法 |
 | `note` / `decide-worker-plan` | 原始评论引用 / 保存的计划回答结果。不会自动虚构通用判断，`decide` 可引用原始理由 |
+| `improvement` / `improvement-publish` | 候选观察和明确的拆分判断引用原始评论，再连接起票请求/结果。仅捕获原父级仍负责期间的操作 |
+| `agree` / `basis-record` / `create-child` / `workflow-report` | 现有依据、创建和验收结果。后继父级的agree通过来源评论记录观察到的人类批准，不将批准视为已执行 |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI结果和原始评论；dispatcher取消、runner停止/恢复是独立事实 |
 | `review-prepare` / `review-request` / `review-state` | 固定请求及显式指示/状态结果；只有显式接收/验证才记录父级确认 |
 | review `run` | 既有execution、output、result和发布状态，包括runtime失败时的有效输出、exception及先前review公开键。发布不改变原result；读取已消费run不是新AI评审 |
@@ -141,10 +143,15 @@ conditions/expected_result字段；CLI分配ID。初始判断须在 `basis` 提�
 | `worker_plan` | `child` 和计划回答命令的 `decision_id` |
 | `model_reason` | `child`；当前保存的模型选择理由 |
 | `review_reason` | `run_id`；固定review请求的理由 |
+| `improvement` | `key` 和候选 `event_id`；原父级正本评论中的拆分判断 |
 
 判断保留引用/fingerprint，不再次复制公开理由正文。
 父级actor键是私有session对应的随机公开键；交接不会改变旧判断的作者。
 把返回的判断ID传给下一条支持的CLI（包括review/merge），后续结果通过行动与之连接。
+
+`improvement-decide` 在候选正本中记录人类判断，不扩大已结束原父级journal的发布权限。
+后继父级通过agree导入批准时捕获观察结果。跨父级引用使用来源评论URL，不直接连接其他graph的记录ID。
+操作与人类确认的信任边界见 [结束时改进](../parent/improvements.md)。
 
 ## 捕获失败与恢复
 

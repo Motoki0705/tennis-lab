@@ -25,7 +25,9 @@
    親がPR群を固定して既存の親単位レビューを明示要求し、指摘修正・通常検証とmerge gateを通す。
    自動再レビュー・別session・無制限の修正で停止を回避しない。
    最後に `workflow-report --spec <JSONファイル>` で理由・再開条件・検証証拠をnoteへ残し、その出力を最終文にする。
-   completedは実merge/close・gateの試行記録・現在の根拠/要件・親の確認と子の終了を再検査した場合だけ返る。
+   completedの入力はversion 2と構造化finishを使う。合意時の全受入項目と次回改善を分け、候補なしも明示する。
+   実merge/close・gateの試行記録・現在の根拠/要件・親の確認と子の終了を再検査した場合だけ返る。
+   schemaはparent/development_workflow.mdとparent/improvements.mdを参照する。手書きのcompleted最終JSONで代替しない。
    CI待ち・情報不足・権限不足はwaiting、実行失敗はfailedにして、証拠と再開条件をissueへ残す。
    担当終了は最終イベントを確認したsupervisorが行うため、生存中の親から `release --ended` しない。
    自由文の進捗・連絡は `note --body-file` を使い、合意後のコメント検査を素のコメントで止めない。

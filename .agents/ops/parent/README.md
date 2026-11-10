@@ -608,7 +608,7 @@ worker数の指定と失敗終了値の保持を検査する。
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 stop --child 1217 --spec tmp/stop.json
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 resume --child 1217 --spec tmp/resume.json
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement --child 1217 --spec tmp/improvement.json
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement --child 1217 --key result-access --spec tmp/improvement.json
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 sync
 ```
 
@@ -625,8 +625,11 @@ Project表示は明示的な `project-setup` / `project-sync` を使う。既存
 `closed/completed` だけを完了チェックにし、取消は未チェックで残す。
 親全体の完了はチェック数から推測せず、全体の受入条件を親agentが確認する。
 
-改善specは `purpose` / `evidence` / `scope` の3つの非空文章。
-子の改善候補欄だけを更新し、Acceptance・実装範囲・担当状態は変えない。
+改善候補の正本は元親の構造化コメント。`--child` は発見元で、省略時は親自身を表す。
+子の欄には候補への参照を残す。既存の `purpose` / `evidence` / `scope` だけのspecは未整理の発見記録として受け付ける。
+新親の起票には同じkeyで境界を補い、`improvement-publish` を明示する。人間の判断は `improvement-decide` で記録する。
+候補・起票・判断・実行は `status.improvements`、今回の受入は `status.completion` に分けて表示する。
+schema・冪等な再送・承認の保証範囲・導入順は [終了時改善と全体受入](improvements.md) を正本とする。
 
 ## 担当の終了・引継ぎ
 
@@ -634,10 +637,12 @@ Project表示は明示的な `project-setup` / `project-sync` を使う。既存
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 handoff --note-file tmp/handoff.md
 # 指定された次の親セッション自身が実行する
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 handoff --accept --note-file tmp/takeover.md
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 release --ended --note-file tmp/completion.md
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 release --ended --spec tmp/finish.json
 ```
 
 `handoff` で引継ぎ待ち、`release` で解除、`release --ended` で終了済み。
+構造化finishは[合意の受入snapshot](improvements.md#今回の受入と候補整理)を照合する。
+従来の `release --ended --note-file` も使えるが、全体受入を検証する操作ではなく「受入未確認の担当終了」となる。
 引継ぎ待ちは旧担当も分割・委任できず、新担当のacceptまで代替起動しない。
 acceptは通常、解除/終了/引継ぎ待ちだけを受け取り、同時担当数を再検査してissue/PRを照合する。
 中断した同一セッションは `reconcile`、別セッションは明示acceptから始める。

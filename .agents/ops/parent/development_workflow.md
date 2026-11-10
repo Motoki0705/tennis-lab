@@ -131,18 +131,38 @@ worker終了イベントでのログ保存と公開失敗の照合・再開は [
 自由文は `note --body-file`、親進捗は `sync` を使う。素の進捗コメントを人間の指示と自動分類しない。
 合意後の未分類コメントは [既存の分類手順](README.md#稼働中の親への移行) で確認する。
 最終イベントは同じstateで `workflow-report --spec tmp/report.json` を呼んで得る。
-specは追加キーなしの次のJSON（evidenceも非空）。CLIの最終JSONはdispatcherの4キー契約を維持する。
+waiting/failedのspecは追加キーなしの次のversion 1 JSON（evidenceも非空）。CLIの最終JSONはdispatcherの4キー契約を維持する。
 
 ```json
 {"schema_version":1,"state":"waiting","reason":"CI待ち","resume_condition":"CI完了を確認しdispatcher resumeを明示する","evidence":"対象PRと確認済みHEAD・不足check・次の対応への参照"}
 ```
 
-completedのevidenceには全体の受入条件ごとの親の確認・実merge/close・残した改善候補を書く。
+completedは入力version 2とし、同じ5キーに `finish` を加える。
+finishは [全体受入のschema](improvements.md#今回の受入と候補整理)で、合意時の全項目への結果・根拠、残る必須作業、候補整理済みの明示を持つ。
+候補なしも `reviewed: true, candidates: []` で記録する。未達条件を次の改善へ移したcompletedは拒否する。
+evidenceには実merge/closeと親の全体受入の確認根拠を記載する。たとえば次のようにfinishを組み込む。
+
+```python
+import json
+from pathlib import Path
+
+report = {
+    "schema_version": 2,
+    "state": "completed",
+    "reason": "全体受入と実merge/closeを確認した",
+    "resume_condition": "完了。追加要件は別issueで判断する",
+    "evidence": "確認したPR/HEAD・レビュー・各受入の記録への参照",
+    "finish": json.loads(Path("tmp/finish.json").read_text()),
+}
+Path("tmp/report.json").write_text(json.dumps(report, ensure_ascii=False))
+```
+
 CLIは現在の根拠/要件・記録済み検証・全対象issueのclosed/completed・open PRの不在・
 実mergeのHEAD/branch/repo・gateの試行journal・公開/ローカルの親レビュー・子の終了を照合する。
 dry-run結果、子の成功JSON、PR作成やチェック数だけではcompletedを返さない。
 親に子がある場合はsyncで進捗を照合するが、未closeの親テーマを勝手にcloseしない。
-自律親は生存中にreleaseせず、最終イベント受領後にsupervisorが担当をendedへ移す。
+自律親は生存中にreleaseせず、最終イベント受領後にsupervisorが当該job/権限のfinish receiptも照合して担当をendedへ移す。
+手書きのcompleted最終JSONだけではこの確認を通らない。
 waiting/failedは担当を保持し、子終了イベントまたは理由付きの明示dispatcher resumeで同じ親sessionへ戻す。
 単独issue自身がmergeでclosed/completedになり、最終イベントを返す前に親が中断した場合も、同じstateで
 `dispatcher resume --parent N --reason-file tmp/resume.md` を明示する。supervisorは通常の実行枠・入力鮮度に加え、
@@ -152,7 +172,9 @@ waiting/failedは担当を保持し、子終了イベントまたは理由付き
 再開後もbootstrapのacceptを通し、残るProject更新・全体受入の確認とworkflow-reportを終えて最終JSONを返す。
 新しい実装・子の作成・workerの起動/継続は行わず、issueを再openしたり別sessionへ振り替えたりしない。
 取消close・merge未確認・根拠や委任の変更・保存証拠不足は理由付きで起動を拒否し、担当を保持する。
-手動親は全体受入を確認後、従来の `release --ended` を使う。
+手動親は全体受入を確認後 `release --ended --spec tmp/finish.json` を使う。noteだけの終了は受入未確認として保持する。
+終了時改善の記録・起票・人間判断・旧opsからの導入順は [終了時改善](improvements.md)を参照する。
+子なし `issue:parent` の自律実行対象解決は #1804 の範囲で、このworkflowに代替resolverを追加しない。
 worker操作とworkflow-reportはdispatcherと同じregistry欠落検査を使う。
 scheduleやworker履歴が残っているのにregistryだけが欠落・空になった場合は保存・起動を止め、
 [復旧手順](../dispatcher/README.md#registry欠落からの復旧)へ戻す。空stateの作成やinitで迂回しない。
