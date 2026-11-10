@@ -136,6 +136,8 @@ PR差分はhunk境界で切れた場合も独立した追加/削除行数で検�
 完全一致rename/copy、mode変更、空ファイルの作成/削除を区別し、本文の完全性を照合できなければ `INCOMPLETE_DIFF` にする。
 応答上限には小さいページ/範囲で対応し、backend上限やGitHub上限で取得できない範囲は未確認として残す。
 任意のコマンド・HTTP endpoint・書込みmethodはtool引数に存在せず、GitHubには `gh api --method GET` だけを使う。
+ghの最小版と、GitHub本文・メタデータ・ログの制御文字処理は
+[共通取得ツールの契約](../lib/review_tools/README.md#github取得ツール) を参照する。
 
 外部記録先は0700のディレクトリとし、`retrieval.jsonl` は0600・flock・追記・fsyncで親子のサーバー間で共有する。
 要求と応答をreceiptで結び、応答全文と内容のSHA-256を保存する。記録失敗時は取得前に止めるか、未記録の本文を返さずエラーにする。
