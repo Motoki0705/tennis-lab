@@ -5,8 +5,10 @@ import os
 import subprocess
 import sys
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
+from unittest.mock import patch
 
 from src.tasks.annotation.__main__ import run_finished
 from src.tasks.annotation.configuration import configure_local_videos
@@ -54,10 +56,107 @@ def test_three_camera_workflow_continues_saved_timeout_without_restarting_comple
         text=True,
         timeout=240,
     )
-    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.returncode == 0, (
+        _workflow_output(result) + _attempt_evidence(tmp_path / "annotation")
+    )
+
+
+def _workflow_output(result: subprocess.CompletedProcess[str]) -> str:
+    limit = 16384
+    return "".join(
+        f"\n{name}:\n"
+        + (
+            data[: limit // 2]
+            + f"\n[truncated {len(data) - limit} characters from middle]\n"
+            + data[-limit // 2 :]
+            if len(data) > limit
+            else data
+        )
+        for name, data in (("stdout", result.stdout), ("stderr", result.stderr))
+    )
+
+
+def _attempt_evidence(root: Path) -> str:
+    """Keep the native cause when the workflow reports a policy-level failure."""
+    file_limit, total_limit = 16384, 262144
+    evidence = [
+        f"\nattempt evidence (last {file_limit} bytes/file; "
+        f"at most {total_limit} characters including headers):\n"
+    ]
+    directories = sorted(root.glob("campaigns/*/workers/*/attempt-*")) + sorted(
+        root.glob("campaigns/*/jobs/*")
+    )
+    paths = [
+        directory / name
+        for directory in directories
+        for name in ("exit.json", "stderr.log", "supervisor.log", "events.jsonl")
+        if (directory / name).is_file()
+    ]
+    remaining = total_limit - len(evidence[0])
+    for index, path in enumerate(paths):
+        section = f"\n{path.relative_to(root)}:\n"
+        try:
+            with path.open("rb") as stream:
+                size = stream.seek(0, os.SEEK_END)
+                stream.seek(max(0, size - file_limit))
+                data = stream.read(file_limit)
+            if size > file_limit:
+                section += (
+                    f"[truncated {size - file_limit} bytes; "
+                    f"showing last {file_limit} bytes]\n"
+                )
+            section += data.decode("utf-8", errors="replace")
+        except OSError as error:
+            section += f"[could not read: {type(error).__name__}: {error}]\n"
+        omitted = (
+            f"\n[truncated diagnostic collection at {total_limit} characters; "
+            f"{len(paths) - index} files omitted]\n"
+        )
+        if len(section) + len(omitted) > remaining:
+            evidence.append(omitted)
+            break
+        evidence.append(section)
+        remaining -= len(section)
+    return "".join(evidence)
+
+
+@contextmanager
+def _record_reaped_exit_codes() -> Iterator[dict[int, int]]:
+    """Observe real wait results when a restarted pool reaps an older Popen."""
+    reaped: dict[int, int] = {}
+    waitpid = os.waitpid
+
+    def remember(pid: int, options: int) -> tuple[int, int]:
+        result = waitpid(pid, options)
+        waited, status = result
+        if waited > 0 and (os.WIFEXITED(status) or os.WIFSIGNALED(status)):
+            reaped[waited] = os.waitstatus_to_exitcode(status)
+        return result
+
+    with patch("os.waitpid", remember):
+        yield reaped
+
+
+def _supervisor_returncode(
+    child: subprocess.Popen[bytes], reaped: dict[int, int]
+) -> int | None:
+    return reaped.get(child.pid, child.poll())
+
+
+def test_supervisor_exit_code_survives_another_controller_reaping_it() -> None:
+    with _record_reaped_exit_codes() as reaped, subprocess.Popen(
+        [sys.executable, "-I", "-S", "-c", "raise SystemExit(23)"]
+    ) as child:
+        os.waitpid(child.pid, 0)
+        assert _supervisor_returncode(child, reaped) == 23
 
 
 def _exercise_three_camera_workflow(tmp_path: Path) -> None:
+    with _record_reaped_exit_codes() as reaped:
+        _run_three_camera_workflow(tmp_path, reaped)
+
+
+def _run_three_camera_workflow(tmp_path: Path, reaped: dict[int, int]) -> None:
     layout = AnnotationLayout.testing(tmp_path / "annotation")
     configuration = local_configuration(layout, review_timeout=5400, three_cameras=True)
     budget = configuration.campaign.resources.model_copy(
@@ -100,6 +199,8 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
         ).source.camera_id
         requests[camera] = request
     controllers: list[LocalAnnotationController] = []
+    # Retain exit codes after reconciliation removes finished pool children.
+    supervisors: list[subprocess.Popen[bytes]] = []
 
     def restarted() -> LocalAnnotationController:
         result = LocalAnnotationController(
@@ -149,6 +250,7 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
     try:
         controller.cycle()
         first_pool = controller.production.pool
+        supervisors.extend(first_pool.children.values())
         for control in first_pool.test_controls.values():
             control.settimeout(10)
             assert json.loads(control.recv(4096)) == {
@@ -232,6 +334,7 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
         controller = restarted()
         controller.cycle()
         second_pool = controller.production.pool
+        supervisors.extend(second_pool.children.values())
         second_attempt = second_pool.ledger.task(requests["cam0"].work_id)[
             "current_attempt"
         ]
@@ -309,6 +412,24 @@ def _exercise_three_camera_workflow(tmp_path: Path) -> None:
         assert handoff["summary"]["final_unknown"] == 1
         assert store.annotation(saved) == before
     finally:
+        if sys.exc_info()[0] is not None:
+            for c in controllers:
+                supervisors.extend(c.production.pool.children.values())
+            print(
+                "supervisor process snapshot before cleanup: "
+                + json.dumps(
+                    [
+                        {
+                            "pid": child.pid,
+                            "returncode": _supervisor_returncode(child, reaped),
+                            "args": child.args,
+                        }
+                        for child in {c.pid: c for c in supervisors}.values()
+                    ]
+                ),
+                file=sys.stderr,
+                flush=True,
+            )
         for request in requests.values():
             pool = controller.production.pool
             if pool.ledger.task(request.work_id)["state"] in {"running", "exited"}:
