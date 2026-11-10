@@ -18,6 +18,8 @@ from tests.support.agents_ops.explain_editor import (
     gemini,
     schema,
     stores,
+    validation,
+    writer_output,
 )
 from tests.support.agents_ops.explain_editor import (
     editor_env as editor_env,
@@ -72,11 +74,15 @@ def test_initial_and_explicit_numeric_update_keep_unknowns_and_require_rendering
             ],
         }
     )
+    proposed = proposed.model_copy(
+        update={"evidence_changes": context.authorized_evidence_changes}
+    )
     env.outputs(proposed)
     result = env.adapter.edit(request, env.current, context)
     assert result.candidate.document.evidence[0].values == {"baseline_m": 11}
     assert result.candidate.document.evidence[1] == env.current.document.evidence[1]
     assert "cannot be determined" in result.candidate.document.html
+    assert result.candidate.evidence_changes == context.authorized_evidence_changes
     calls = env.calls()
     turns = [call for call in calls if call["prompt"] is not None]
     assert len(turns) == 4
@@ -85,16 +91,20 @@ def test_initial_and_explicit_numeric_update_keep_unknowns_and_require_rendering
         "candidate_template"
     ]
     assert initial_template["request"] == initial.request.model_dump(mode="json")
-    assert {
-        (item["evidence_id"], item["kind"])
-        for item in initial_template["evidence_changes"]
-    } == {("baseline", "added"), ("cameras", "added")}
+    assert set(initial_template) == {"request", "document", "change_summary"}
+    writer_args = turns[0]["args"]
+    writer_schema = json.loads(
+        Path(writer_args[writer_args.index("--json-schema") + 1]).read_text()
+    )
+    assert set(writer_schema["properties"]) == {
+        "request",
+        "document",
+        "change_summary",
+    }
     edit_template = json.loads(turns[2]["prompt"].split("\nINPUT_JSON\n")[1])[
         "candidate_template"
     ]
-    assert edit_template["evidence_changes"] == [
-        change.model_dump(mode="json") for change in context.authorized_evidence_changes
-    ]
+    assert set(edit_template) == {"request", "document", "change_summary"}
     for call in calls:
         args = call["args"]
         if args != ["--version"]:
@@ -208,7 +218,7 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
         template["document"]["evidence"] == context.model_dump(mode="json")["evidence"]
     )
     assert template["document"]["assets"] == context.model_dump(mode="json")["assets"]
-    assert template["evidence_changes"] == []
+    assert set(template) == {"request", "document", "change_summary"}
     assert "candidate_template" not in verified
     assert verified["candidate"] == final.model_dump(mode="json")
     assert verified["candidate_digest"] == schema.candidate_digest(final)
@@ -226,6 +236,8 @@ def test_long_local_edit_delivers_complete_context_to_both_calls(
     )
     revision = env.store.commit(staged, checked)
     assert revision.document == final.document
+    assert revision.changes == final.changes
+    assert env.store.history("geometry")[0].changes == final.changes
     assert env.store.current("geometry") == revision
     with pytest.raises(TypeError, match="compile_document"):
         editor.GeminiEditor(env.adapter.gemini)
@@ -366,14 +378,189 @@ def test_protected_number_and_source_changes_stop_before_verifier(
     assert env.store.current("geometry") == env.current
 
 
-def test_incomplete_candidate_change_accounting_is_rejected(editor_env: Any) -> None:
+@pytest.mark.parametrize("field", ["changes", "evidence_changes"])
+def test_writer_change_declarations_are_rejected(editor_env: Any, field: str) -> None:
     env = editor_env
-    damaged = env.proposed.model_dump(mode="json")
-    damaged["changes"] = []
+    damaged = writer_output(env.proposed)
+    damaged[field] = []
     env.outputs(damaged, {})
     with pytest.raises(schema.ContractError, match="invalid_model_output"):
         env.adapter.edit(env.request, env.current, env.context)
     assert env.store.current("geometry") == env.current
+
+
+@pytest.mark.parametrize("operation", ["question", "restructure"])
+def test_compiled_changes_ignore_slot_normalization_and_unchanged_block_moves(
+    editor_env: Any, operation: str
+) -> None:
+    env = editor_env
+    renderer = visuals.managed_renderer()
+    graph = schema.Figure(
+        figure_id="comparison",
+        content_id="limits",
+        kind="graph",
+        asset_ids=[renderer.asset.asset_id],
+        caption="Hypothetical tracks.",
+        alt="Two asymmetric position series.",
+        provenance=schema.Provenance(kind="hypothetical", source="Synthetic inputs."),
+        renderer=schema.Renderer(asset_id=renderer.asset.asset_id, version="2"),
+        definition=COMPARISON,
+    )
+    slot_html = env.current.document.html.replace(
+        "<html><body>", "<html><head></head><body>"
+    ).replace("</aside>", '<figure data-figure-id="comparison"></figure></aside>')
+    slotted = env.current.document.model_copy(
+        update={"html": slot_html, "assets": [renderer.asset], "figures": [graph]}
+    )
+    initial = candidate(visuals.render_document(slotted))
+    store = stores.RevisionStore(env.root / "compiled-store")
+    current = store.import_initial(
+        initial, {renderer.asset.asset_id: renderer.content}, validation(initial)
+    )
+    request = env.request.model_copy(
+        update={
+            "base_revision": current.revision_id,
+            "target": schema.DocumentTarget()
+            if operation == "restructure"
+            else env.request.target,
+            "instruction": "Move the comparison before the geometry."
+            if operation == "restructure"
+            else "Explain the rays near geometry; keep other content.",
+        }
+    )
+    if operation == "question":
+        raw_html = slot_html.replace(
+            "</section>", "<p>Each calibrated image point defines a ray.</p></section>"
+        )
+        expected = [{"content_id": "geometry", "kind": "updated"}]
+    else:
+        geometry, limits = (
+            slot_html.split("<body>")[1].split("</body>")[0].split("<aside", 1)
+        )
+        raw_html = (
+            "<html><head></head><body><aside" + limits + geometry + "</body></html>"
+        )
+        expected = []
+    raw = candidate(
+        slotted.model_copy(update={"html": raw_html}), current=current, request=request
+    )
+    final = candidate(
+        visuals.render_document(raw.document), current=current, request=request
+    )
+    env.outputs(
+        raw,
+        {
+            "candidate_digest": schema.candidate_digest(final),
+            "check": {"status": "passed"},
+            "reviewed_evidence_ids": ["baseline", "cameras"],
+        },
+    )
+    context = env.context.model_copy(
+        update={"assets": slotted.assets, "figures": [graph]}
+    )
+    result = editor.GeminiEditor(
+        env.adapter.gemini, compile_document=visuals.render_document
+    ).edit(request, current, context)
+    assert [
+        item.model_dump(mode="json") for item in result.candidate.changes
+    ] == expected
+    assert {item.content_id for item in raw.changes} >= {"limits"}
+    assert set(json.loads((env.root / "writer.json").read_text())) == {
+        "request",
+        "document",
+        "change_summary",
+    }
+    verified = json.loads(
+        [call for call in env.calls() if call["prompt"] is not None][-1][
+            "prompt"
+        ].split("\nINPUT_JSON\n")[1]
+    )
+    assert verified["candidate"]["changes"] == expected
+    staged = store.stage(result.candidate)
+    revision = store.commit(
+        staged,
+        result.validation.model_copy(
+            update={"rendering": schema.CheckResult(status="passed")}
+        ),
+    )
+    assert [item.model_dump(mode="json") for item in revision.changes] == expected
+    assert store.history("geometry")[0].changes == revision.changes
+
+
+@pytest.mark.parametrize("origin", ["writer", "context"])
+def test_evidence_updates_need_trusted_authorization(
+    editor_env: Any, origin: str
+) -> None:
+    env = editor_env
+    fact = env.proposed.document.evidence[0].model_copy(
+        update={"conditions": ["An unauthorized calibration condition."]}
+    )
+    evidence = [fact, env.proposed.document.evidence[1]]
+    draft = writer_output(env.proposed)
+    draft["document"]["evidence"] = [item.model_dump(mode="json") for item in evidence]
+    env.outputs(draft, {})
+    context = (
+        env.context.model_copy(update={"evidence": evidence})
+        if origin == "context"
+        else env.context
+    )
+    with pytest.raises(
+        schema.ContractError,
+        match="invalid_request" if origin == "context" else "validation_failed",
+    ):
+        env.adapter.edit(env.request, env.current, context)
+    turns = env.calls() if (env.root / "calls.jsonl").exists() else []
+    assert len([call for call in turns if call["prompt"] is not None]) == (
+        0 if origin == "context" else 1
+    )
+    assert env.store.current("geometry") == env.current
+
+
+def test_local_scope_semantic_rejection_uses_computed_changes(editor_env: Any) -> None:
+    env = editor_env
+    proposed = candidate(
+        env.proposed.document.model_copy(
+            update={
+                "html": env.proposed.document.html.replace(
+                    "calibration is required.",
+                    "calibration is required. Unrelated rewrite.",
+                )
+            }
+        ),
+        current=env.current,
+        request=env.request,
+    )
+    env.outputs(
+        proposed,
+        {
+            "candidate_digest": schema.candidate_digest(proposed),
+            "check": {
+                "status": "failed",
+                "issues": [
+                    {
+                        "rule": "edit_scope",
+                        "message": "Unrelated limits rewrite.",
+                        "content_id": "limits",
+                    }
+                ],
+            },
+            "reviewed_evidence_ids": ["baseline", "cameras"],
+        },
+    )
+    with pytest.raises(editor.SemanticValidationError) as rejected:
+        env.adapter.edit(env.request, env.current, env.context)
+    verified = json.loads(
+        [call for call in env.calls() if call["prompt"] is not None][-1][
+            "prompt"
+        ].split("\nINPUT_JSON\n")[1]
+    )
+    assert verified["candidate"]["changes"] == [
+        {"content_id": "geometry", "kind": "updated"},
+        {"content_id": "limits", "kind": "updated"},
+    ]
+    assert rejected.value.validation.semantic.issues[0].rule == "edit_scope"
+    assert env.store.current("geometry") == env.current
+    assert len(env.store.history("geometry")) == 1
 
 
 def test_verifier_rejection_is_not_a_committable_result(editor_env: Any) -> None:
@@ -506,6 +693,16 @@ def test_observed_triangulation_findings_are_retained_with_the_original_candidat
     )
     inputs = json.loads(fixture.read_text())["input"]
     proposed = schema.parse(schema.Candidate, json.dumps(inputs["candidate"]))
+    # Preserve the observed document; only initial change reasons now belong
+    # to runtime rather than the historical writer response.
+    proposed = proposed.model_copy(
+        update={
+            "evidence_changes": [
+                item.model_copy(update={"reason": "Supplied initial evidence."})
+                for item in proposed.evidence_changes
+            ]
+        }
+    )
     context = editor.WritingContext.model_validate(inputs["context"])
     env.outputs(
         proposed,
@@ -614,7 +811,7 @@ def _slot_repair_inputs(env: Any) -> tuple[Any, Any, Any]:
     fixed = candidate(fixed_document, current=env.current, request=env.request)
     # A literal malformed output cannot be created through candidate(), whose
     # change calculator itself checks the broken figure reference.
-    broken = fixed.model_dump(mode="json")
+    broken = writer_output(fixed)
     broken["document"]["html"] = raw_document.html
     context = env.context.model_copy(
         update={"assets": [renderer.asset], "figures": [figure]}
@@ -633,7 +830,7 @@ def test_figure_correspondence_gets_one_diagnostic_repair_and_final_verification
     env = editor_env
     broken, fixed, context = _slot_repair_inputs(env)
     if problem != "missing_slot":
-        broken = fixed.model_dump(mode="json")
+        broken = writer_output(fixed)
         if problem == "missing_metadata":
             broken["document"]["figures"] = []
         else:
@@ -664,7 +861,7 @@ def test_figure_correspondence_gets_one_diagnostic_repair_and_final_verification
             "reviewed_evidence_ids": ["baseline", "cameras"],
         },
     )
-    (env.root / "repair.json").write_text(fixed.model_dump_json())
+    (env.root / "repair.json").write_text(json.dumps(writer_output(fixed)))
     adapter = editor.GeminiEditor(
         env.adapter.gemini, compile_document=visuals.render_document
     )
@@ -708,7 +905,7 @@ def test_slot_repair_cannot_retry_again_or_bypass_checks(
 
     env = editor_env
     broken, fixed, context = _slot_repair_inputs(env)
-    repaired = fixed.model_dump(mode="json")
+    repaired = writer_output(fixed)
     if damage == "missing":
         repaired = broken
     elif damage == "evidence":
