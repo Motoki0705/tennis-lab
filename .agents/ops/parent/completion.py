@@ -65,10 +65,18 @@ def requirements(session: ParentSession) -> dict[str, Any]:
                 "legacy acceptance snapshot is unavailable; do not infer the original criteria"
             )
         accepted = snapshot(body)
-    if not isinstance(accepted, dict) or set(accepted) - {
-        "全体の完了条件",
-        "Acceptance checklist",
-    }:
+    if (
+        not isinstance(accepted, dict)
+        or set(accepted)
+        - {
+            "全体の完了条件",
+            "Acceptance checklist",
+        }
+        or any(
+            not isinstance(value, str) or not value.strip()
+            for value in accepted.values()
+        )
+    ):
         raise ValueError("invalid acceptance snapshot")
     heading = (
         "全体の完了条件" if "全体の完了条件" in accepted else "Acceptance checklist"
@@ -139,7 +147,7 @@ def validate_finish(
     if (
         type(spec["schema_version"]) is not int
         or spec["schema_version"] != 1
-        or spec["state"] not in {"completed", "incomplete"}
+        or spec["state"] not in ("completed", "incomplete")
     ):
         raise ValueError("invalid finish schema/version/state")
     text(spec["summary"])
@@ -152,7 +160,7 @@ def validate_finish(
         fields(result, {"id", "state", "evidence"})
         ids.append(text(result["id"]))
         text(result["evidence"])
-        if result["state"] not in {"met", "unmet", "unverified"}:
+        if result["state"] not in ("met", "unmet", "unverified"):
             raise ValueError("invalid acceptance result state")
     if sorted(ids) != sorted(item["id"] for item in required["criteria"]):
         raise ValueError(

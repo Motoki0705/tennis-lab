@@ -44,6 +44,9 @@ def finish() -> dict[str, Any]:
         "wrong_basis",
         "not_reviewed",
         "unknown_candidate",
+        "candidate_type",
+        "state_type",
+        "result_type",
         "exported",
     ],
 )
@@ -66,6 +69,12 @@ def test_completion_refuses_each_missing_obligation(api: Any, fault: str) -> Non
         spec["improvements"]["reviewed"] = False
     elif fault == "unknown_candidate":
         spec["improvements"]["candidates"] = ["I-1-unknown"]
+    elif fault == "candidate_type":
+        spec["improvements"]["candidates"] = [1]
+    elif fault == "state_type":
+        spec["state"] = []
+    elif fault == "result_type":
+        spec["acceptance"][0]["state"] = {}
     else:
         spec["improvements"]["candidates"] = ["I-1-later"]
         candidates["later"] = {

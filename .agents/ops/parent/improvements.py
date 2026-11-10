@@ -422,9 +422,9 @@ def decide(
             raise ValueError(
                 "a reference does not extend an existing issue's execution authority; use its existing agreement"
             )
-        if (
-            latest
-            and latest["data"]["human_confirmation"] == value["human_confirmation"]
+        if any(
+            d["data"]["human_confirmation"] == value["human_confirmation"]
+            for d in row["decisions"]
         ):
             raise ValueError(
                 "a new approval after a decision/revision needs a new human instruction, not replayed consent"

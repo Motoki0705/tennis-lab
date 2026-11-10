@@ -615,6 +615,12 @@ def test_explicit_approval_is_imported_once_and_old_replay_cannot_revoke_a_stop(
         replay["state"] == "revoked"
         and replay["decision_id"] == approved["decision_id"]
     )
+    reused_consent = decision_spec(
+        previous=revoked["decision_id"], request="replayed-old-consent"
+    )
+    assert (
+        "new human instruction" in decide(p, "approve", reused_consent, ok=False).stderr
+    )
     assert (
         "revoked"
         in p.cli(

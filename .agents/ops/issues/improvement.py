@@ -77,6 +77,7 @@ def key(value: Any) -> str:
 
 
 def candidate_key(value: str, parent: int) -> str:
+    text(value)
     prefix = f"I-{parent}-"
     if value.startswith("I-"):
         if not value.startswith(prefix):
@@ -257,7 +258,7 @@ def validate_event(value: Any) -> dict[str, Any]:
     elif row["event"] == "published":
         data = fields(row["data"], {"issue", "mode", "draft_sha256"})
         positive(data["issue"])
-        if data["mode"] not in {"created", "reference"}:
+        if data["mode"] not in ("created", "reference"):
             raise ValueError("invalid improvement publication mode")
         _sha(data["draft_sha256"])
     elif row["event"] == "decision":
@@ -277,7 +278,7 @@ def validate_event(value: Any) -> dict[str, Any]:
         key(data["request_key"])
         _sha(data["request_sha256"])
         positive(data["issue"])
-        if data["action"] not in {"approve", "hold", "decline", "revoke"}:
+        if data["action"] not in ("approve", "hold", "decline", "revoke"):
             raise ValueError("invalid human improvement decision")
         confirmation(data["human_confirmation"])
         text(data["reason"])

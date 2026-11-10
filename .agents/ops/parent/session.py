@@ -476,6 +476,12 @@ class ParentSession:
         else:
             if phase(history) == "agreed" and last_phase.get("agreement_sha256") == sha:
                 self.agreed()  # Retrying agree must not silently accept new comments.
+                if binding is not None:
+                    from decision_logs.parent_sources import (
+                        improvement_approval as capture_approval,
+                    )
+
+                    capture_approval(self, binding)
                 return self.status()
             from .agreement_comments import snapshot as comment_inputs
 

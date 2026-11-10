@@ -48,6 +48,62 @@ def test_decision_response_loss_and_parallel_retry_preserve_one_event(
     assert post_count(p) == 1
 
 
+@pytest.mark.parametrize("interruption", ["before_result", "post_response"])
+def test_publication_with_decision_link_recovers_after_response_loss_and_concurrent_retry(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    interruption: str,
+) -> None:
+    p = parent_env
+    p.agreed()
+    candidate = record(p)
+    args = (
+        "improvement-publish",
+        "--candidate",
+        candidate["candidate_id"],
+        "--decision-id",
+        candidate["decision_id"],
+    )
+    if interruption == "post_response":
+        p.env["PARENT_FAIL_AFTER_CREATE"] = "1"
+        p.cli(*args, ok=False)
+        del p.env["PARENT_FAIL_AFTER_CREATE"]
+    else:
+        for key, value in p.env.items():
+            monkeypatch.setenv(key, value)
+        from tests.e2e.agents_ops.test_manual_worker_runs import state_dir
+
+        store = importlib.import_module("parent.state").Store(state_dir(p))
+        parsed = (
+            importlib.import_module("parent.cli")
+            .parser()
+            .parse_args(["--repo", "o/r", "--parent", "1", *args])
+        )
+        previous = importlib.import_module("decision_logs.parent_commands").begin(
+            parsed, store, "o/r", 1
+        )
+        assert previous is not None and previous.records("result") == []
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(lambda _: json.loads(p.cli(*args).stdout), range(2)))
+    assert {r["issue"] for r in results} == {10} and post_count(p) == 1
+    logs = json.loads(p.cli("decision-log-status").stdout)
+    assert logs["status"] == "captured"
+    rows = [entry["record"] for entry in logs["records"]]
+    api = importlib.import_module("decision_logs.graph")
+    api.validate_graph(rows)
+    actions = {row["id"]: row for row in rows if row["kind"] == "action"}
+    retry = [
+        r
+        for r in rows
+        if r["kind"] == "result"
+        and actions[r["data"]["action_id"]]["data"]["operation"] == "retry_publication"
+    ]
+    assert retry and all(r["data"]["previous_result_id"] for r in retry)
+    assert any(
+        a["data"]["decision_id"] == candidate["decision_id"] for a in actions.values()
+    )
+
+
 @pytest.mark.parametrize("lost_event", ["completion", "ended"])
 def test_finish_response_loss_repairs_only_missing_record(
     parent_env: ParentEnv, lost_event: str

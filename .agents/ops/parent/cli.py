@@ -661,7 +661,7 @@ def _main(argv: list[str] | None = None) -> int:
             # The decision is durable before stopping; do not hold the source
             # operation or registry lock while a runner terminates.
             result["stop"] = reconcile_stop(
-                GitHub(gh.repo),
+                GitHub(gh.repo, store=store),
                 store,
                 parent,
                 nonempty(identity, "recorder identity"),

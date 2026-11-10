@@ -100,12 +100,56 @@ def begin(
     args: argparse.Namespace, store: Any, repo: str, parent: int
 ) -> Operation | None:
     try:
+        if args.command == "improvement-publish":
+            from parent.improvements import lock_key
+
+            # Serialize receipt selection as well as the business POST. Concurrent
+            # retries must not both claim the same explicit publication plan.
+            with store.operation(lock_key(repo)):
+                return _begin(args, store, repo, parent)
         return _begin(args, store, repo, parent)
     except CaptureInputError:
         raise
     except Exception:
         initialization_failed(store.directory, repo, parent, "parent." + args.command)
         return None
+
+
+def publication_retry(journal: Journal, request: dict[str, Any]) -> str | None:
+    """Link an exact business resend to the previous result, without reusing a plan."""
+    matches = []
+    for path in (journal.path.parent / "captures").glob("*.json"):
+        op = Operation.load(path)
+        if (
+            op.row["entrypoint"] == "parent.improvement-publish"
+            and op.row.get("request_context") == request
+        ):
+            matches.append(op)
+    if not matches:
+        return None
+    # Follow explicit retry links, never infer causality from nearby timestamps.
+    referenced = {op.row["previous_result_id"] for op in matches}
+    leaves = [
+        op
+        for op in matches
+        if not referenced.intersection(r["id"] for r in op.records("result"))
+    ]
+    if len(leaves) != 1:
+        raise ValueError(
+            "conflicting publication request histories; inspect capture status"
+        )
+    previous = leaves[0]
+    with previous.transaction():
+        results = previous.records("result")
+        if not results:
+            previous.finish(
+                request,
+                status="unknown",
+                state="unknown",
+                summary="Publication resend observed before the previous result; outcome unconfirmed",
+                artifact="publication outcome not yet observed",
+            )
+        return str(previous.records("result")[-1]["id"])
 
 
 def _begin(
@@ -127,6 +171,27 @@ def _begin(
     # input error; storage failures without supplied links remain best effort.
     journal = Journal(store.directory, repo, parent)
     previous = args.retry_of
+    request_context = None
+    decision_id = args.decision_id
+    plan_id = args.plan_id
+    if (
+        args.command == "improvement-publish"
+        and decision_id is not None
+        and previous is None
+    ):
+        from issues.improvement import candidate_key
+
+        request_context = {
+            "candidate": candidate_key(args.candidate, parent),
+            "existing": args.existing,
+            "decision_id": decision_id,
+            "plan_id": args.plan_id,
+        }
+        previous = publication_retry(journal, request_context)
+        if previous is not None:
+            operation = "retry_publication"
+            decision_id = None
+            plan_id = None
     changes = comparison(args.changes_file)
     verifies = list(getattr(args, "verifies", None) or [])
     task: dict[str, Any] = {}
@@ -226,7 +291,7 @@ def _begin(
         # retain the actual delegation/sequence instead of claiming the last turn.
         scope = None
     try:
-        plan = checked_link(journal, args.decision_id, args.plan_id, operation)
+        plan = checked_link(journal, decision_id, plan_id, operation)
     except CaptureInputError:
         try:
             rejected = Operation.begin(
@@ -257,11 +322,12 @@ def _begin(
         "parent." + args.command,
         operation,
         issue=getattr(args, "child", None),
-        decision_id=args.decision_id,
+        decision_id=decision_id,
         plan_id=plan,
         previous_result_id=previous,
         changes=changes,
         scope=scope,
+        **({"request_context": request_context} if request_context is not None else {}),
     )
     try:
         with op.transaction():
