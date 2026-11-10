@@ -3,14 +3,11 @@
 from __future__ import annotations
 
 import copy
-import fnmatch
 import importlib
 import random
-from pathlib import Path
 from typing import Any
 
 import pytest
-import yaml
 
 from tests.support.agents_ops.decision_logs import (
     PublicationError,
@@ -249,49 +246,6 @@ def test_raw_diff_rejects_nonregular_files_and_nonadditive_records(
     raw = f":000000 {mode} {'0' * 40} {'a' * 40} {status}\0README.md\0".encode()
     with pytest.raises(PublicationError, match="unsafe_diff"):
         policy.changes(raw)
-
-
-def test_workflow_filters_only_skip_public_formats_and_keep_mixed_pr_ci() -> None:
-    root = Path(__file__).resolve().parents[3]
-    ci = yaml.safe_load((root / ".github/workflows/ci.yml").read_text())
-    labeler = yaml.safe_load(
-        (root / ".github/workflows/pull-request-labeler.yml").read_text()
-    )
-    ci_events = ci.get("on", ci.get(True))
-    label_events = labeler.get("on", labeler.get(True))
-    patterns = ci_events["pull_request"]["paths-ignore"]
-    assert (
-        patterns
-        == ci_events["push"]["paths-ignore"]
-        == label_events["pull_request_target"]["paths-ignore"]
-    )
-    assert "workflow_dispatch" in ci_events and "push" not in label_events
-    public = {
-        ".agents/logs/parents/README.md",
-        ".agents/logs/parents/parent-1/README.md",
-        ".agents/logs/parents/parent-1/activity-public/README.md",
-        ".agents/logs/parents/parent-1/activity-public/event-public.json",
-        ".agents/logs/parents/parent-1/child-10/README.md",
-        ".agents/logs/parents/parent-1/child-10/d-public/README.md",
-        *{
-            f".agents/logs/parents/parent-1/child-10/d-public/0001-initial/{n}"
-            for n in ("README.md", "instruction.md", "final.md", "meta.json")
-        },
-    }
-    ordinary = {
-        "code.py",
-        ".agents/ops/decision_logs/README.md",
-        ".agents/ops/decision_logs/publication.py",
-        ".github/workflows/ci.yml",
-        ".agents/logs/parents/parent-1/activity-public/private.json",
-    }
-
-    def ignored(path: str) -> bool:
-        return any(fnmatch.fnmatchcase(path, p) for p in patterns)
-
-    assert all(ignored(p) for p in public)
-    assert not any(ignored(p) for p in ordinary)
-    assert not all(ignored(p) for p in public | {"code.py"})
 
 
 @pytest.mark.parametrize("fault", ["none", "duplicate_page", "invalid_page"])

@@ -37,18 +37,23 @@ def _ci_job() -> dict[str, Any]:
 
 
 @pytest.mark.parametrize("event", ["pull_request", "push", "pull_request_target"])
-@pytest.mark.parametrize("changes", ["logs", "code", "mixed"])
+@pytest.mark.parametrize(
+    "changes", ["logs", "decision_logs", "readmes", "code", "mixed"]
+)
 def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
     event: str, changes: str
 ) -> None:
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
     triggers = workflow.get("on", workflow.get(True))
     assert triggers["push"]["branches"] == ["main"]
+    assert "workflow_dispatch" in triggers
     if event == "pull_request_target":
         labeler = yaml.safe_load(
             (REPO_ROOT / ".github/workflows/pull-request-labeler.yml").read_text()
         )
-        selected = labeler.get("on", labeler.get(True))[event]
+        labeler_events = labeler.get("on", labeler.get(True))
+        assert "push" not in labeler_events
+        selected = labeler_events[event]
         assert selected["types"] == [
             "opened",
             "synchronize",
@@ -62,22 +67,47 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
     assert set(ignored) == {
         f".agents/logs/parents/**/{n}"
         for n in ("instruction.md", "final.md", "meta.json")
+    } | {
+        ".agents/logs/parents/parent-*/activity-*/event-*.json",
+        ".agents/logs/parents/README.md",
+        ".agents/logs/parents/parent-*/README.md",
+        ".agents/logs/parents/parent-*/activity-*/README.md",
+        ".agents/logs/parents/parent-*/child-*/README.md",
+        ".agents/logs/parents/parent-*/child-*/d-*/README.md",
+        ".agents/logs/parents/parent-*/child-*/d-*/*-*/README.md",
     }
     log = ".agents/logs/parents/parent-1/child-10/d-abc/0001-initial/"
-    files = (
-        [log + n for n in ("instruction.md", "final.md", "meta.json")]
-        if changes != "code"
-        else []
-    )
-    if changes != "logs":
-        files.append("src/utils/example.py")
+    worker_logs = [log + n for n in ("instruction.md", "final.md", "meta.json")]
+    decision_logs = [".agents/logs/parents/parent-1/activity-public/event-public.json"]
+    readmes = [
+        ".agents/logs/parents/README.md",
+        ".agents/logs/parents/parent-1/README.md",
+        ".agents/logs/parents/parent-1/activity-public/README.md",
+        ".agents/logs/parents/parent-1/child-10/README.md",
+        ".agents/logs/parents/parent-1/child-10/d-abc/README.md",
+        ".agents/logs/parents/parent-1/child-10/d-abc/turn-0001/README.md",
+        log + "README.md",
+    ]
+    code = ["src/utils/example.py"]
+    files = {
+        "logs": worker_logs,
+        "decision_logs": decision_logs,
+        "readmes": readmes,
+        "code": code,
+        "mixed": [*worker_logs, *decision_logs, *readmes, *code],
+    }[changes]
     assert any(
         not any(fnmatch.fnmatchcase(p, pattern) for pattern in ignored) for p in files
-    ) is (changes != "logs")
-    assert not any(
-        fnmatch.fnmatchcase(".agents/ops/worker_logs/schema.py", pattern)
-        for pattern in ignored
-    )
+    ) is (changes in {"code", "mixed"})
+    for ordinary in (
+        ".agents/ops/worker_logs/schema.py",
+        ".agents/ops/decision_logs/publication.py",
+        ".agents/ops/decision_logs/README.md",
+        ".github/workflows/ci.yml",
+        log + "stderr.log",
+        ".agents/logs/parents/parent-1/activity-public/private.json",
+    ):
+        assert not any(fnmatch.fnmatchcase(ordinary, pattern) for pattern in ignored)
     assert workflow["concurrency"] == {
         "group": "ci-${{ github.event.pull_request.number || github.ref }}",
         "cancel-in-progress": "${{ github.event_name == 'pull_request' }}",
