@@ -14,6 +14,7 @@ import subprocess
 import sys
 import uuid
 from collections.abc import Mapping, Sequence
+from contextlib import ExitStack
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -42,16 +43,26 @@ from parent_review_policy import (  # noqa: E402
     BaseAdvance,
     evaluate_coverage,
     evidence,
+    execution_stages,
     hex_value,
     load_json,
     marker,
-    parse_output,
     pr_findings,
+    records,
     request_manifest,
+    superseding_reviews,
+    validate_evidence_completion,
     validate_resolution,
     validate_result,
 )
 from review_policy import neutralize_markers, normalize_rollup  # noqa: E402
+from review_recovery import (  # noqa: E402
+    file_digest,
+    parse_final,
+    runtime_evidence,
+    source_evidence,
+    verify_adoption,
+)
 from review_workspace import (  # noqa: E402
     build_prompt,
     changed_paths,
@@ -264,6 +275,8 @@ def summaries(result: dict[str, Any]) -> tuple[str, dict[int, str]]:
             "\n\n通常1回のレビュー予算を超える例外。理由: "
             + result["exception"]["reason"]
         )
+    if result["kind"] == "adoption":
+        text += f"\n\n採用（{result['mode']}）、AI起動0回。元run: {result['source_run']}\n理由: {result['reason']}"
     text += "\n\n横断指摘:\n" + finding_text(result["cross_findings"])
     by_pr = {}
     for pr in result["prs"]:
@@ -273,68 +286,129 @@ def summaries(result: dict[str, Any]) -> tuple[str, dict[int, str]]:
             f"PR #{n}: {pr['coverage']}。修正担当: {snap['branch']} / 子issue {pr['child_issues']}\n\n{pr['summary']}\n\n"
             + finding_text(pr_findings(result, n))
         )
+        for index, wait in enumerate(pr.get("evidence_waits", []), 1):
+            own += f"\n\n証拠待ち {index}: {wait['question']}\n必要な証拠: {wait['required_evidence']}"
         by_pr[n] = own
         text += "\n\n" + own
     return text, by_pr
 
 
 def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> str:
-    """Publish projections first, then commit the parent record. Pending is not evidence."""
+    """Resume a write-ahead publication by reconciling exact public records."""
+    from merge_gate_policy import projection
+
+    validate_result(result)
+    execution = read_json(run_dir / "execution.json")
+    invocations = 0 if result["kind"] == "adoption" else 1
+    if (
+        execution.get("request_sha256") != result["request_sha256"]
+        or type(execution.get("agent_invocations")) is not int
+        or execution["agent_invocations"] != invocations
+    ):
+        raise ValueError("publication execution/request/invocations mismatch")
     summary, by_pr = summaries(result)
     body = comment_body(result, summary)
     session.public(body)
-    projections = {}
-    for pr in result["prs"]:
-        n = pr["number"]
-        record = {
-            "schema_version": 1,
-            "kind": "pr",
-            "review_run_id": result["review_run_id"],
-            "parent_issue": session.parent,
-            "pr": n,
-            "request_sha256": result["request_sha256"],
-            "result_sha256": digest(result),
-            "snapshot": next(p for p in result["request"]["prs"] if p["number"] == n),
-            "coverage": pr["coverage"],
-            "findings": pr_findings(result, n),
-        }
-        projections[n] = record
-        session.public(comment_body(record, by_pr[n]))
     pending = {
         "schema_version": 1,
         "kind": "pending",
         "review_run_id": result["review_run_id"],
         "request_sha256": result["request_sha256"],
     }
-    comment = session.gh.write(
-        "POST",
-        session.endpoint + "/comments",
-        {
-            "body": comment_body(
-                pending,
-                "結果公開中（未完了）。全対象PRへの公開が完了するまで有効なレビュー結果ではありません。",
-            )
-        },
-    )
+
+    def matching(
+        n: int, kinds: set[str]
+    ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+        with session.gh.fresh_reads():
+            comments = session.gh.comments(n)
+        return [
+            (c, r)
+            for c in comments
+            for r in records([c], session.login)
+            if r.get("review_run_id") == result["review_run_id"] and r["kind"] in kinds
+        ]
+
+    def stage(**updates: Any) -> None:
+        execution = read_json(run_dir / "execution.json")
+        execution.setdefault("stages", {}).setdefault("publication", {}).update(updates)
+        Store.write_json(run_dir / "execution.json", execution)
+
+    stage(status="pending", result_sha256=digest(result))
+    parents = matching(session.parent, {"pending", "result", "adoption"})
+    if len(parents) > 1 or any(r not in (pending, result) for _, r in parents):
+        raise ValueError("conflicting public parent record; cannot resume")
+    if parents:
+        comment, committed = parents[0]
+    else:
+        comment = session.gh.write(
+            "POST",
+            session.endpoint + "/comments",
+            {
+                "body": comment_body(
+                    pending,
+                    "結果公開中（未完了）。全対象PRへの公開が完了するまで有効なレビュー結果ではありません。",
+                )
+            },
+        )
+        committed = pending
     comment_id = comment["id"]
     if type(comment_id) is not int or comment_id < 1:
         raise ValueError("GitHub returned an invalid parent comment ID")
     url = f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{comment_id}"
-    for n, projection in projections.items():
+    stage(parent_comment_id=comment_id, parent_run_url=url, projections=[])
+    done = []
+    for pr in result["prs"]:
+        n = pr["number"]
+        record = projection(result, n, url)
         pr_body = comment_body(
-            {**projection, "parent_run_url": url},
+            record,
             f"[親runの結果]({url})\n\n" + by_pr[n],
         )
         session.public(pr_body)
         (run_dir / f"pr-{n}-comment.md").write_text(pr_body, encoding="utf-8")
+        existing = matching(n, {"pr"})
+        if len(existing) > 1 or any(r != record for _, r in existing):
+            raise ValueError(f"conflicting PR {n} projection; cannot resume")
+        if not existing:
+            if committed != pending:
+                raise ValueError("committed result has a missing projection")
+            session.gh.write(
+                "POST",
+                f"repos/{session.gh.repo}/issues/{n}/comments",
+                {"body": pr_body},
+            )
+        done.append(n)
+        stage(status="projections", projections=done)
+    if committed == pending:
+        stage(status="result")
         session.gh.write(
-            "POST", f"repos/{session.gh.repo}/issues/{n}/comments", {"body": pr_body}
+            "PATCH",
+            f"repos/{session.gh.repo}/issues/comments/{comment_id}",
+            {"body": body},
         )
-    session.gh.write(
-        "PATCH", f"repos/{session.gh.repo}/issues/comments/{comment_id}", {"body": body}
-    )
     (run_dir / "parent-comment.md").write_text(body, encoding="utf-8")
+    stage(status="published")
     return url
+
+
+def publish_result(
+    session: ParentSession, run_dir: Path, result: dict[str, Any]
+) -> str:
+    """Only publication state changes on failure; the immutable result survives."""
+    try:
+        url = publish(session, run_dir, result)
+        execution = read_json(run_dir / "execution.json")
+        execution.update(status="published", parent_run_url=url)
+    except (Exception, KeyboardInterrupt) as exc:
+        (run_dir / "publication-error.log").write_text(str(exc), encoding="utf-8")
+        execution = read_json(run_dir / "execution.json")
+        execution.update(status="publication_failed")
+        execution.setdefault("stages", {}).setdefault("publication", {}).update(
+            status="failed", error=public_error(session, exc)
+        )
+    execution["finished_at"] = now()
+    Store.write_json(run_dir / "execution.json", execution)
+    return str(execution["status"])
 
 
 def run_review(args: argparse.Namespace) -> dict[str, Any]:
@@ -363,9 +437,29 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         execution_file = run_dir / "execution.json"
         if execution_file.exists():
             execution = read_json(execution_file)
+            execution_stages(execution)
+            if not isinstance(execution.get("status"), str) or execution[
+                "status"
+            ] not in {
+                "running",
+                "preparation_failed",
+                "published",
+                "publication_failed",
+            }:
+                raise ValueError("unknown review execution status")
             if execution["request_sha256"] != digest(request):
                 raise ValueError("run ID was already used with a different snapshot")
+            if type(execution.get("agent_invocations")) is not int or execution[
+                "agent_invocations"
+            ] not in {0, 1}:
+                raise ValueError("invalid recorded agent invocation count")
+            if execution.get("kind") == "adoption":
+                raise ValueError(
+                    "adoption cannot launch an agent; use resume-publication"
+                )
             if execution.get("agent_invocations") == 0:
+                if execution.get("status") != "preparation_failed":
+                    raise ValueError("unconfirmed preparation cannot be retried")
                 # No reviewer was launched. Preserve the failed preparation and
                 # accept the parent's explicit resubmission of this same run.
                 attempt = run_dir / "preparation-attempts" / uuid.uuid4().hex
@@ -405,6 +499,13 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
             "operator_authorization": auth,
             "session": identity,
             "agent_invocations": 0,
+            "stage_version": 1,
+            "stages": {
+                "agent": {"status": "not_started", "cleanup_complete": False},
+                "output": {"status": "not_started"},
+                "postcheck": {"status": "not_started"},
+                "publication": {"status": "not_started"},
+            },
         }
         Store.write_json(execution_file, execution)
         previous = []
@@ -416,7 +517,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 and read_json(prior_execution)["agent_invocations"]
             ):
                 previous.append(prior_id)
-    result = result_record(request, execution["started_at"], previous)
+    error: BaseException | None = None
     try:
         context, diffs = collect(session, request)
         context["instruction"] = next(
@@ -473,6 +574,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 if authorized(session, request) != auth:
                     raise ValueError("parent authorization changed before review")
                 execution["agent_invocations"] = 1
+                execution["stages"]["agent"]["status"] = "running"
                 Store.write_json(execution_file, execution)
             run_process_group(
                 [
@@ -501,68 +603,124 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 cwd=root,
                 timeout=args.agent_timeout,
             )
-        parsed = parse_output(
-            output_file.read_text(encoding="utf-8"),
-            [p["number"] for p in request["prs"]],
-        )
-        result.update(parsed)
-        for pr in result["prs"]:
-            pr["child_issues"] = next(
-                p["child_issues"] for p in context["prs"] if p["number"] == pr["number"]
-            )
-        if parsed["verdict"] != "incomplete":
-            result["status"] = "succeeded"
-        else:
-            result["error"] = (
-                "部分収集・未レビューの対象があります。対象の縮約／親判断待ち。"
-            )
-        with store.locked():
-            if authorized(session, request) != auth:
-                raise ValueError("parent authorization changed during review")
-            collect(session, request)
     except (Exception, KeyboardInterrupt) as exc:
         (run_dir / "error.log").write_text(str(exc), encoding="utf-8")
-        result = result_record(request, execution["started_at"], previous)
-        result["error"] = public_error(session, exc)
+        error = exc
+    # Parse and preserve final independently of the runtime and postcheck outcomes.
+    candidate = None
+    if execution["agent_invocations"]:
+        agent = execution["stages"]["agent"]
+        review_workspace = (
+            root / ".claude/worktrees" / ("review-" + request["review_run_id"])
+        )
+        agent["workspace_cleanup_complete"] = not review_workspace.exists()
+        try:
+            runtime = runtime_evidence(run_dir)
+            agent.update(
+                status="finished",
+                cleanup_complete=True,
+                runtime_sha256=digest(runtime),
+                exit_code=runtime["exit_code"],
+            )
+            if runtime["result"] != "completed" or runtime["exit_code"] != 0:
+                raise ValueError(
+                    "review runtime failed; saved final requires explicit recovery"
+                )
+            if not agent["workspace_cleanup_complete"]:
+                raise ValueError("review workspace cleanup is incomplete")
+        except (Exception, KeyboardInterrupt) as exc:
+            if agent["status"] != "finished":
+                agent["status"] = "unconfirmed"
+            agent["error"] = public_error(session, exc)
+            error = error or exc
+        try:
+            final, parsed = parse_final(run_dir, request)
+            candidate = result_record(request, execution["started_at"], previous)
+            candidate.update(parsed)
+            for pr in candidate["prs"]:
+                pr["child_issues"] = next(
+                    p["child_issues"]
+                    for p in context["prs"]
+                    if p["number"] == pr["number"]
+                )
+            candidate["status"] = (
+                "succeeded" if parsed["verdict"] != "incomplete" else "failed"
+            )
+            candidate["error"] = (
+                None
+                if candidate["status"] == "succeeded"
+                else "未確認の対象があります。"
+            )
+            validate_result(candidate)
+            Store.write_json(run_dir / "output.json", candidate)
+            execution["stages"]["output"] = {
+                "status": "validated",
+                "final_file": str(final.relative_to(run_dir)),
+                "final_sha256": file_digest(final),
+                "output_sha256": digest(candidate),
+            }
+        except (Exception, KeyboardInterrupt) as exc:
+            execution["stages"]["output"] = {
+                "status": "invalid",
+                "error": public_error(session, exc),
+            }
+            candidate = None
+            error = error or exc
+        Store.write_json(execution_file, execution)
+        try:
+            with store.locked():
+                if authorized(session, request) != auth:
+                    raise ValueError("parent authorization changed during review")
+                with gh.fresh_reads():
+                    fresh_context, _ = collect(session, request)
+                if any(
+                    a["child_issues"] != b["child_issues"]
+                    for a, b in zip(context["prs"], fresh_context["prs"], strict=True)
+                ):
+                    raise ValueError("PR child assignments changed during review")
+            execution["stages"]["postcheck"] = {
+                "status": "passed",
+                "snapshots_sha256": digest(request["prs"]),
+            }
+        except (Exception, KeyboardInterrupt) as exc:
+            execution["stages"]["postcheck"] = {
+                "status": "failed",
+                "error": public_error(session, exc),
+            }
+            error = error or exc
     runtime_result = run_dir / "agent-runtime" / "result.json"
     if runtime_result.exists():
-        runtime_record = read_json(runtime_result)
-        if (
-            runtime_record.get("result") == "failed"
-            and runtime_record.get("agent_spawned") is False
-            and runtime_record.get("cleanup_complete") is True
-        ):
-            execution["agent_invocations"] = 0
-    result["finished_at"] = now()
+        try:
+            runtime_record = read_json(runtime_result)
+            if (
+                runtime_record.get("result") == "failed"
+                and runtime_record.get("agent_spawned") is False
+                and runtime_record.get("cleanup_complete") is True
+            ):
+                execution["agent_invocations"] = 0
+        except (Exception, KeyboardInterrupt) as exc:
+            error = error or exc
+    result = (
+        candidate
+        if candidate is not None and error is None
+        else result_record(request, execution["started_at"], previous)
+    )
+    if error is not None:
+        result["error"] = public_error(session, error)
+    elif candidate is None:
+        result["error"] = "レビューを開始できませんでした。"
+    # output.json is immutable source evidence, including its timestamps.
+    if result is not candidate:
+        result["finished_at"] = now()
+    validate_result(result)
     Store.write_json(run_dir / "result.json", result)
+    Store.write_json(execution_file, execution)
     if execution["agent_invocations"] == 0:
         execution.update(status="preparation_failed", finished_at=now())
         Store.write_json(execution_file, execution)
         return {"reused": False, "result": result, "publication": "preparation_failed"}
-    try:
-        url = publish(session, run_dir, result)
-        execution.update(status="published", parent_run_url=url)
-    except (Exception, KeyboardInterrupt) as exc:
-        (run_dir / "publication-error.log").write_text(str(exc), encoding="utf-8")
-        execution["status"] = "publication_failed"
-        result = result_record(request, execution["started_at"], previous)
-        result["error"] = (
-            "結果の公開に失敗（部分公開を含む）。成功扱いにせず、新しい明示指示を待ちます。 "
-            + public_error(session, exc)
-        )
-        Store.write_json(run_dir / "result.json", result)
-        # A pending comment is never accepted by the gate. Best-effort failure report.
-        try:
-            failure = comment_body(result, summaries(result)[0])
-            session.public(failure)
-            gh.write("POST", session.endpoint + "/comments", {"body": failure})
-        except Exception as notification_error:
-            execution["failure_notification_error"] = public_error(
-                session, notification_error
-            )
-    execution["finished_at"] = now()
-    Store.write_json(execution_file, execution)
-    return {"reused": False, "result": result, "publication": execution["status"]}
+    publication = publish_result(session, run_dir, result)
+    return {"reused": False, "result": result, "publication": publication}
 
 
 def public_error(session: ParentSession, exc: BaseException) -> str:
@@ -575,6 +733,255 @@ def public_error(session: ParentSession, exc: BaseException) -> str:
     for root in (session.store.directory, Path.cwd(), HERE.parents[2]):
         text = text.replace(str(root), "[local]")
     return text[:1500]
+
+
+def recover(args: argparse.Namespace) -> dict[str, Any]:
+    request = request_manifest(read_json(args.request))
+    if (
+        not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.source_run)
+        or args.source_run == request["review_run_id"]
+    ):
+        raise ValueError("recovery requires a distinct valid source run")
+    reason = args.reason_file.read_text(encoding="utf-8").strip()
+    if not reason:
+        raise ValueError("recovery requires the parent's reason")
+    store = Store(args.state_dir)
+    run_dir = store.directory / "reviews" / request["review_run_id"]
+    with ExitStack() as stack:
+        # Fixed ordering prevents concurrent recoveries from deadlocking.
+        for run in sorted((request["review_run_id"], args.source_run)):
+            lock = stack.enter_context(
+                (store.directory / "reviews" / run / "run.lock").open("a")
+            )
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise ValueError("review run is active; cannot recover") from exc
+        with store.locked():
+            session = ParentSession(
+                GitHub(request["repo"]),
+                store,
+                request["parent_issue"],
+                session_identity(dict(os.environ)),
+            )
+            auth = authorized(session, request)
+            if read_json(run_dir / "request.json") != request:
+                raise ValueError("local recovery request mismatch")
+            candidate, validation = source_evidence(store.directory, args.source_run)
+            source = candidate["request"]
+            authorized(session, source)
+            if superseding_reviews(session.row["reviews"], args.source_run, request):
+                raise ValueError(
+                    "source review is superseded; use the latest relevant execution"
+                )
+            if any(request[k] != source[k] for k in ("repo", "parent_issue", "prs")):
+                raise ValueError("recover requires unchanged source targets")
+            with session.gh.fresh_reads():
+                current_context, _ = collect(session, request)
+            if any(
+                a["child_issues"] != b["child_issues"]
+                for a, b in zip(candidate["prs"], current_context["prs"], strict=True)
+            ):
+                raise ValueError("source PR child assignments changed")
+            execution_path = run_dir / "execution.json"
+            if execution_path.exists():
+                result = validate_result(read_json(run_dir / "result.json"))
+                if (
+                    result["kind"] != "adoption"
+                    or result["source_run"] != args.source_run
+                    or result["reason"] != reason
+                    or result["request"] != request
+                ):
+                    raise ValueError("recovery run already contains different evidence")
+                verify_adoption(store.directory, result)
+            else:
+                result = {
+                    **candidate,
+                    "kind": "adoption",
+                    "review_run_id": request["review_run_id"],
+                    "request": request,
+                    "request_sha256": digest(request),
+                    "started_at": now(),
+                    "finished_at": now(),
+                    "exception": None,
+                    "mode": "recover",
+                    "source_run": args.source_run,
+                    "reason": reason,
+                    "agent_invocations": 0,
+                    "validation": validation,
+                }
+                verify_adoption(store.directory, result)
+                for pr in request["prs"]:
+                    if (
+                        file_digest(run_dir / f"pr-{pr['number']}.diff")
+                        != pr["diff_sha256"]
+                    ):
+                        raise ValueError("recovery frozen diff mismatch")
+                Store.write_json(run_dir / "result.json", result)
+                Store.write_json(
+                    execution_path,
+                    {
+                        "kind": "adoption",
+                        "stage_version": 1,
+                        "agent_invocations": 0,
+                        "source_run": args.source_run,
+                        "request_sha256": digest(request),
+                        "authorization": request.get("authorization", auth),
+                        "operator_authorization": auth,
+                        "session": session.session,
+                        "status": "running",
+                        "started_at": result["started_at"],
+                        "stages": {
+                            "agent": {
+                                "status": "not_invoked",
+                                "cleanup_complete": True,
+                            },
+                            "output": {
+                                "status": "validated",
+                                "output_sha256": validation["output_sha256"],
+                            },
+                            "postcheck": {
+                                "status": "passed",
+                                "snapshots_sha256": digest(request["prs"]),
+                            },
+                            "publication": {"status": "not_started"},
+                        },
+                    },
+                )
+        publication = publish_result(session, run_dir, result)
+    return {"result": result, "publication": publication, "agent_invocations": 0}
+
+
+def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
+    if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
+        raise ValueError("invalid run ID")
+    store = Store(args.state_dir)
+    run_dir = store.directory / "reviews" / args.run
+    with (run_dir / "run.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError("review run is active; cannot resume publication") from exc
+        result = validate_result(read_json(run_dir / "result.json"))
+        request = result["request"]
+        with store.locked():
+            session = ParentSession(
+                GitHub(request["repo"]),
+                store,
+                request["parent_issue"],
+                session_identity(dict(os.environ)),
+            )
+            authorized(session, request)
+            execution = read_json(run_dir / "execution.json")
+            if execution["status"] == "running":
+                stages = execution_stages(execution)
+                if (
+                    stages is None
+                    or stages["postcheck"].get("status") != "passed"
+                    or stages["output"].get("status") != "validated"
+                ):
+                    raise ValueError("interrupted run has unconfirmed output/postcheck")
+                if result["kind"] == "result":
+                    runtime_evidence(run_dir)
+                    if (
+                        stages["agent"].get("workspace_cleanup_complete") is not True
+                        or read_json(run_dir / "output.json") != result
+                    ):
+                        raise ValueError("interrupted run is not ready for publication")
+            if (
+                execution["status"]
+                not in {"published", "publication_failed", "running"}
+                or execution["request_sha256"] != digest(request)
+                or read_json(run_dir / "request.json") != request
+            ):
+                raise ValueError("run is not ready for publication resume")
+            if result["kind"] == "adoption":
+                verify_adoption(store.directory, result)
+                if superseding_reviews(
+                    session.row["reviews"], result["source_run"], request
+                ):
+                    raise ValueError(
+                        "source review is superseded; cannot resume adoption publication"
+                    )
+            with session.gh.fresh_reads():
+                current_context, _ = collect(session, request)
+            if any(p["coverage"] == "reviewed" for p in result["prs"]) and any(
+                a["child_issues"] != b["child_issues"]
+                for a, b in zip(result["prs"], current_context["prs"], strict=True)
+            ):
+                raise ValueError("publication PR child assignments changed")
+        publication = publish_result(session, run_dir, result)
+    return {"result": result, "publication": publication, "agent_invocations": 0}
+
+
+def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
+    if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
+        raise ValueError("invalid run ID")
+    store = Store(args.state_dir)
+    run_dir = store.directory / "reviews" / args.run
+    result = validate_result(read_json(run_dir / "result.json"))
+    request = result["request"]
+    with store.locked():
+        session = ParentSession(
+            GitHub(request["repo"]),
+            store,
+            request["parent_issue"],
+            session_identity(dict(os.environ)),
+        )
+        entry = next((p for p in result["prs"] if p["number"] == args.pr), None)
+        if entry is None or not 1 <= args.wait <= len(entry.get("evidence_waits", [])):
+            raise ValueError("unknown evidence wait for this PR")
+        authorized(session, request, required_issues=set(entry["child_issues"]))
+        execution = read_json(run_dir / "execution.json")
+        if execution["status"] != "published" or entry["coverage"] != "reviewed":
+            raise ValueError("evidence requires a published code review")
+        raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{args.pr}"))
+        select_prs([args.pr], [raw], set(entry["child_issues"]), session.gh.repo)
+        current, _ = snapshot(raw)
+        original = next(p for p in request["prs"] if p["number"] == args.pr)
+        if current["branch"] != original["branch"]:
+            raise ValueError("evidence PR branch changed")
+        proof = evidence(read_json(args.evidence))
+        if proof["reviewed_paths"] != changed_paths(
+            current["merge_base_sha"], current["head_sha"]
+        ):
+            raise ValueError("evidence reviewed_paths must cover the current PR diff")
+        record = {
+            "schema_version": 1,
+            "kind": "evidence",
+            "review_run_id": args.run,
+            "result_sha256": digest(result),
+            "parent_issue": session.parent,
+            "pr": args.pr,
+            "wait": args.wait,
+            "snapshot": current,
+            "evidence": proof,
+        }
+        validate_evidence_completion(record)
+        path = run_dir / f"evidence-{digest(record)}.json"
+        saved = (
+            read_json(path) if path.exists() else {"record": record, "published": False}
+        )
+        if saved["record"] != record:
+            raise ValueError("evidence digest collision")
+        Store.write_json(path, saved)
+        body = comment_body(
+            record,
+            f"PR #{args.pr} 証拠待ち {args.wait} の確認完了（AI起動0回）。\n\nCI: {proof['ci']}\nテスト: {proof['regression_tests']}\n確認: {proof['resolution']}\n確認パス: {proof['reviewed_paths']}",
+        )
+        session.public(body)
+        for n in (args.pr, session.parent):
+            with session.gh.fresh_reads():
+                comments = session.gh.comments(n)
+            if not any(record in records([c], session.login) for c in comments):
+                session.gh.write(
+                    "POST",
+                    f"repos/{session.gh.repo}/issues/{n}/comments",
+                    {"body": body},
+                )
+        saved["published"] = True
+        Store.write_json(path, saved)
+    return {"evidence": record, "agent_invocations": 0}
 
 
 def resolve(args: argparse.Namespace) -> dict[str, Any]:
@@ -718,6 +1125,17 @@ def parser() -> argparse.ArgumentParser:
     fix.add_argument("--finding", required=True)
     fix.add_argument("--fixed-head", required=True)
     fix.add_argument("--evidence", type=Path, required=True)
+    recovery = commands.add_parser("recover")
+    recovery.add_argument("--request", type=Path, required=True)
+    recovery.add_argument("--source-run", required=True)
+    recovery.add_argument("--reason-file", type=Path, required=True)
+    resume = commands.add_parser("resume-publication")
+    resume.add_argument("--run", required=True)
+    complete = commands.add_parser("complete-evidence")
+    complete.add_argument("--run", required=True)
+    complete.add_argument("--pr", type=int, required=True)
+    complete.add_argument("--wait", type=int, required=True)
+    complete.add_argument("--evidence", type=Path, required=True)
     return root
 
 
@@ -728,9 +1146,15 @@ def main(argv: list[str] | None = None) -> int:
             args.agent_timeout <= 0 or not math.isfinite(args.agent_timeout)
         ):
             raise ValueError("agent-timeout must be positive and finite")
-        value = run_review(args) if args.command == "run" else resolve(args)
+        value = {
+            "run": run_review,
+            "resolve": resolve,
+            "recover": recover,
+            "resume-publication": resume_publication,
+            "complete-evidence": complete_evidence,
+        }[args.command](args)
         print(json.dumps(value, ensure_ascii=False, indent=2))
-        if args.command == "run":
+        if args.command in {"run", "recover", "resume-publication"}:
             return (
                 0
                 if value["result"]["status"] == "succeeded"

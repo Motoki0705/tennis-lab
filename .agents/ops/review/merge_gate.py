@@ -15,6 +15,7 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE.parent / "lib"))
 
 from issues import Issue  # noqa: E402
 from merge_gate_policy import (  # noqa: E402
@@ -47,10 +48,12 @@ from parent_review_policy import (  # noqa: E402
     load_json,
     records,
     request_manifest,
+    superseding_reviews,
     validate_result,
 )
 from parent_review_policy import snapshots as validate_snapshots  # noqa: E402
 from review_policy import GateDecision  # noqa: E402
+from review_recovery import verify_adoption  # noqa: E402
 from review_workspace import (  # noqa: E402
     changed_paths,
     full_diff,
@@ -279,6 +282,33 @@ def load_evidence(
     if result["request"] != request or read_json(run_dir / "request.json") != request:
         raise ValueError("local review result/request mismatch")
     auth = authorization(session, request)
+    if result["kind"] == "adoption":
+        source = next(
+            (
+                r["request"]
+                for r in session.row["reviews"]
+                if r["request"]["review_run_id"] == result["source_run"]
+            ),
+            None,
+        )
+        if source is None or source["prs"] != request["prs"]:
+            raise ValueError("adoption has no registered source review")
+        if (
+            read_json(
+                session.store.directory
+                / "reviews"
+                / result["source_run"]
+                / "request.json"
+            )
+            != source
+        ):
+            raise ValueError("adoption source request differs from registry")
+        verify_adoption(session.store.directory, result)
+        for n in superseding_reviews(
+            session.row["reviews"], result["source_run"], request
+        ):
+            if n in view.errors:
+                view.errors[n].append("adoption_source_superseded")
     parent_comments = session.gh.comments(session.parent)
     pr_comments = {n: session.gh.comments(n) for n in view.candidates}
     errors = list(
@@ -294,6 +324,25 @@ def load_evidence(
     state = confirmed_state(session.history(), request, auth)
     resolutions = []
     for record in records(parent_comments, session.login):
+        if (
+            record["kind"] == "evidence"
+            and record["review_run_id"] == request["review_run_id"]
+        ):
+            path = run_dir / f"evidence-{digest(record)}.json"
+            if not path.exists():
+                continue
+            saved = read_json(path)
+            if (
+                saved.get("published") is True
+                and saved.get("record") == record
+                and record in records(pr_comments.get(record["pr"], []), session.login)
+                and record["evidence"]["reviewed_paths"]
+                == changed_paths(
+                    record["snapshot"]["merge_base_sha"], record["snapshot"]["head_sha"]
+                )
+            ):
+                resolutions.append(record)
+            continue
         if (
             record["kind"] != "resolution"
             or record["review_run_id"] != request["review_run_id"]
@@ -338,7 +387,11 @@ def evaluate(
         for current in view.snapshots:
             n = current["number"]
             candidates = [originals[n]] if n in originals else []
-            candidates += [r["fixed_snapshot"] for r in resolutions if r["pr"] == n]
+            candidates += [
+                r["fixed_snapshot"] if r["kind"] == "resolution" else r["snapshot"]
+                for r in resolutions
+                if r["pr"] == n
+            ]
             for original in candidates:
                 if verify_rebased_snapshot(original, current):
                     inherited.add((digest(original), digest(current)))

@@ -1957,7 +1957,7 @@ def test_cli_dependencies_are_published_and_latest_body_controls_resume(
 # The consumer is tested against the producer's actual public/local contract above.
 REVIEW_SCRIPT = OPS / "review/parent_review.py"
 FAKE_PARENT_REVIEWER = r"""
-import json, os, pathlib, sys, time
+import hashlib, json, os, pathlib, sys, time
 args = sys.argv[1:]
 def opt(name):
     return args[args.index(name) + 1]
@@ -1983,6 +1983,48 @@ if os.environ.get("REVIEW_STOP_PARENT"):
     state["parents"]["o/r#1"]["status"] = "ended"
     path.write_text(json.dumps(state))
 pathlib.Path(opt("--out")).write_text(pathlib.Path(os.environ["REVIEW_AGENT_OUTPUT"]).read_text())
+runtime = pathlib.Path(opt("--run-dir"))
+runtime.mkdir()
+(runtime / "final.md").write_bytes(pathlib.Path(opt("--out")).read_bytes())
+schema = pathlib.Path(opt("--json-schema")).read_bytes()
+(runtime / "output-schema.json").write_bytes(schema)
+exit_code = int(os.environ.get("REVIEW_AGENT_FINAL_EXIT", "0"))
+reason = os.environ.get("REVIEW_RUNTIME_REASON", "runtime_error" if exit_code else "completed")
+session_id, turn_id = "review-session", "review-turn"
+event_text = pathlib.Path(os.environ.get("REVIEW_EVENT_OUTPUT", opt("--out"))).read_text()
+events = [
+    {"type":"thread.started", "thread_id":session_id},
+    {"type":"turn.started", "turn_id":turn_id},
+    {"type":"item.completed", "item":{"type":"agent_message", "text":event_text}},
+    {"type":"turn.completed", "usage":{"input_tokens":1,"output_tokens":1}},
+]
+errors = []
+if exit_code and reason != "cli_error":
+    errors = [{"type":"error", "message":"transport failed after completed review"}]
+    events.extend(errors)
+(runtime / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+selected = {"model":"review-fixture", "effort":"max", "service_tier":"priority"}
+(runtime / "result.json").write_text(json.dumps({
+    "result": "failed" if exit_code else "completed", "exit_code": exit_code, "cli_exit_code": exit_code,
+    "turn_end_reason": reason,
+    "agent_spawned": True, "cleanup_complete": True, "finished_at": 1,
+    "prompt_sha256": hashlib.sha256(pathlib.Path(opt("--prompt-file")).read_bytes()).hexdigest(),
+    "run_dir": str(runtime), "output_path": opt("--out"), "final_path": str(runtime / "final.md"),
+    "contract": {"json_schema_sha256": hashlib.sha256(schema).hexdigest(), "cwd": str(cwd),
+                 "mode":"read-only", "settings":{"agent":"codex", "profile":"review", "selected":selected}},
+    "runtime": {"session_id":session_id, "turn_id":turn_id, "requested_session_id":None,
+                "runtime_errors":errors, "effective":{k:{"status":"observed", "value":v, "source":"fixture"} for k,v in selected.items()}}
+}))
+if os.environ.get("REVIEW_POSTCHECK_FAIL"):
+    path = pathlib.Path(os.environ["PARENT_GH_STATE"])
+    state = json.loads(path.read_text())
+    state["prs"][0]["statusCheckRollup"] = None
+    path.write_text(json.dumps(state))
+if os.environ.get("REVIEW_FINAL_ONLY"):
+    pathlib.Path(opt("--out")).unlink()
+if os.environ.get("REVIEW_BROKEN_RUNTIME"):
+    (runtime / "result.json").write_text("{invalid runtime")
+sys.exit(exit_code)
 """
 
 
@@ -2108,6 +2150,7 @@ def make_review_env(
                         "coverage": "reviewed",
                         "summary": "個別diff確認済み",
                         "findings": [],
+                        "evidence_waits": [],
                     }
                     for n in selected
                 ],
@@ -2450,12 +2493,14 @@ def test_failed_run_is_durable_and_never_automatically_retried(
     else:
         extra["REVIEW_AGENT_MUTATE"] = r.request["prs"][1]["head_sha"]
     value = json.loads(r.run(ok=False, extra=extra).stdout)
-    assert value["result"]["status"] == "failed"
+    assert value["result"]["status"] == ("succeeded" if case == "post" else "failed")
+    if case == "post":
+        assert value["publication"] == "publication_failed"
     assert len(r.calls()) == 1
     r.run(ok=False)
     assert len(r.calls()) == 1
     result = json.loads((r.run_dir / "result.json").read_text())
-    assert result["status"] == "failed"
+    assert result["status"] == ("succeeded" if case == "post" else "failed")
     assert all(
         '"status":"succeeded"' not in c["body"].splitlines()[0] for c in r.comments(1)
     )

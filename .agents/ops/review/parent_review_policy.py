@@ -127,13 +127,17 @@ def findings(value: Any, prefix: str) -> list[dict[str, Any]]:
     return result
 
 
-def parse_output(text: str, numbers: Sequence[int]) -> dict[str, Any]:
+def output_object(text: str) -> dict[str, Any]:
     stripped = text.strip()
     fence = re.fullmatch(r"```(?:json)?[ \t]*\n(.*)\n```", stripped, re.DOTALL)
-    data = exact(
+    return exact(
         load_json(fence[1] if fence else stripped),
         {"verdict", "summary", "cross_findings", "prs"},
     )
+
+
+def parse_output(text: str, numbers: Sequence[int]) -> dict[str, Any]:
+    data = output_object(text)
     nonempty(data["summary"], "summary")
     if not isinstance(data["prs"], list) or not isinstance(
         data["cross_findings"], list
@@ -155,12 +159,27 @@ def parse_output(text: str, numbers: Sequence[int]) -> dict[str, Any]:
         cross.append({**finding, "id": f"cross-{i}", "prs": affected})
     prs = []
     for raw in data["prs"]:
-        item = exact(raw, {"number", "coverage", "summary", "findings"})
+        item = exact(
+            raw,
+            {"number", "coverage", "summary", "findings"}
+            | ({"evidence_waits"} if "evidence_waits" in raw else set()),
+        )
         n = number(item["number"])
         nonempty(item["summary"], "PR summary")
         if item["coverage"] not in {"reviewed", "not_reviewed"}:
             raise ValueError("unknown PR coverage")
         parsed = findings(item["findings"], f"pr-{n}")
+        waits = item.get("evidence_waits", [])
+        if not isinstance(waits, list):
+            raise ValueError("evidence_waits must be a list")
+        for wait in waits:
+            exact(wait, {"question", "required_evidence"})
+            nonempty(wait["question"], "evidence question")
+            nonempty(wait["required_evidence"], "required evidence")
+        if len({digest(w) for w in waits}) != len(waits):
+            raise ValueError("duplicate evidence waits")
+        if waits and item["coverage"] != "reviewed":
+            raise ValueError("evidence waits require completed code review")
         if item["coverage"] == "not_reviewed" and parsed:
             raise ValueError("not_reviewed PR cannot carry findings")
         prs.append({**item, "findings": parsed})
@@ -215,13 +234,17 @@ def records(
                 "pr",
                 "resolution",
                 "pending",
+                "adoption",
+                "evidence",
             }
         ):
             raise ValueError("unknown parent-review record")
-        if record["kind"] == "result":
+        if record["kind"] in {"result", "adoption"}:
             validate_result(record)
         elif record["kind"] == "resolution":
             validate_resolution(record)
+        elif record["kind"] == "evidence":
+            validate_evidence_completion(record)
         result.append(record)
     return result
 
@@ -248,7 +271,52 @@ def evidence(value: Any) -> dict[str, Any]:
     return data
 
 
+def execution_stages(execution: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Legacy executions have no stage version; reject unknown versions explicitly."""
+    if "stage_version" not in execution:
+        return None
+    if type(execution["stage_version"]) is not int or execution["stage_version"] != 1:
+        raise ValueError("unknown review stage version")
+    stages = exact(
+        execution.get("stages"), {"agent", "output", "postcheck", "publication"}
+    )
+    for value in stages.values():
+        object_value(value)
+    return stages
+
+
+def superseding_reviews(
+    reviews: Sequence[Mapping[str, Any]], source_run: str, request: Mapping[str, Any]
+) -> dict[int, list[str]]:
+    """A recovery may not select older evidence past any related request.
+
+    Registry order is the same ordering used by the merge gate. No state, failed
+    preparation, cancellation, successful result, or adoption erases a request.
+    The adoption's own request is the sole exclusion, including on resubmission.
+    """
+    requests = [request_manifest(row["request"], instructed=False) for row in reviews]
+    ids = [row["review_run_id"] for row in requests]
+    target = request["review_run_id"]
+    if len(set(ids)) != len(ids) or source_run not in ids or target not in ids:
+        raise ValueError("adoption requires unique registered source and target runs")
+    if (
+        ids.index(source_run) >= ids.index(target)
+        or requests[ids.index(target)] != request
+    ):
+        raise ValueError("adoption source must precede its unchanged request")
+    numbers = {p["number"] for p in request["prs"]}
+    blocked: dict[int, list[str]] = {}
+    for later in requests[ids.index(source_run) + 1 :]:
+        if later["review_run_id"] == target:
+            continue
+        for pr in later["prs"]:
+            if pr["number"] in numbers:
+                blocked.setdefault(pr["number"], []).append(later["review_run_id"])
+    return blocked
+
+
 def validate_result(value: Any) -> dict[str, Any]:
+    adoption = object_value(value).get("kind") == "adoption"
     data = exact(
         value,
         {
@@ -268,13 +336,18 @@ def validate_result(value: Any) -> dict[str, Any]:
             "exception",
             "cross_findings",
             "prs",
-        },
+        }
+        | (
+            {"mode", "source_run", "reason", "agent_invocations", "validation"}
+            if adoption
+            else set()
+        ),
     )
     request = request_manifest(data["request"], instructed=False)
     if (
         type(data["schema_version"]) is not int
         or data["schema_version"] != 1
-        or data["kind"] != "result"
+        or data["kind"] not in {"result", "adoption"}
         or data["review_run_id"] != request["review_run_id"]
         or data["request_sha256"] != digest(request)
     ):
@@ -299,7 +372,11 @@ def validate_result(value: Any) -> dict[str, Any]:
     if [p["number"] for p in data["prs"]] != [p["number"] for p in request["prs"]]:
         raise ValueError("result PR order/set differs from the request")
     for p in data["prs"]:
-        exact(p, {"number", "child_issues", "coverage", "summary", "findings"})
+        exact(
+            p,
+            {"number", "child_issues", "coverage", "summary", "findings"}
+            | ({"evidence_waits"} if "evidence_waits" in p else set()),
+        )
         children = p["child_issues"]
         if not isinstance(children, list) or children != sorted(set(children)):
             raise ValueError("invalid child issue assignment")
@@ -342,6 +419,73 @@ def validate_result(value: Any) -> dict[str, Any]:
             or exception["reason"] != request["reason"]
         ):
             raise ValueError("invalid explicit review exception")
+    if adoption:
+        if data["mode"] != "recover":
+            raise ValueError("unsupported adoption mode")
+        if type(data["agent_invocations"]) is not int or data["agent_invocations"] != 0:
+            raise ValueError("adoption cannot invoke an agent")
+        source = data["source_run"]
+        if (
+            not isinstance(source, str)
+            or not re.fullmatch(
+                rf"parent-{request['parent_issue']}-[0-9a-f]{{32}}", source
+            )
+            or source == data["review_run_id"]
+        ):
+            raise ValueError("invalid adoption source run")
+        nonempty(data["reason"], "adoption reason")
+        validation = exact(
+            data["validation"],
+            {
+                "source_request_sha256",
+                "source_execution_sha256",
+                "source_result_sha256",
+                "runtime_sha256",
+                "final_sha256",
+                "output_sha256",
+                "current_prs",
+            }
+            | ({"events_sha256"} if "events_sha256" in data["validation"] else set()),
+        )
+        for key in validation.keys() - {"current_prs"}:
+            hex_value(validation[key], 64)
+        if snapshots(validation["current_prs"]) != request["prs"]:
+            raise ValueError("adoption target validation mismatch")
+    return data
+
+
+def validate_evidence_completion(value: Any) -> dict[str, Any]:
+    data = exact(
+        value,
+        {
+            "schema_version",
+            "kind",
+            "review_run_id",
+            "result_sha256",
+            "parent_issue",
+            "pr",
+            "wait",
+            "snapshot",
+            "evidence",
+        },
+    )
+    parent = number(data["parent_issue"])
+    if (
+        type(data["schema_version"]) is not int
+        or data["schema_version"] != 1
+        or data["kind"] != "evidence"
+    ):
+        raise ValueError("unknown evidence schema")
+    if not isinstance(data["review_run_id"], str) or not re.fullmatch(
+        rf"parent-{parent}-[0-9a-f]{{32}}", data["review_run_id"]
+    ):
+        raise ValueError("invalid evidence run")
+    n = number(data["pr"])
+    number(data["wait"])
+    hex_value(data["result_sha256"], 64)
+    if snapshots([data["snapshot"]])[0]["number"] != n:
+        raise ValueError("evidence PR mismatch")
+    evidence(data["evidence"])
     return data
 
 
@@ -470,6 +614,11 @@ def evaluate_coverage(
         for record in resolutions
         if record.get("kind") == "resolution"
     ]
+    completions = [
+        validate_evidence_completion(dict(r))
+        for r in resolutions
+        if r.get("kind") == "evidence"
+    ]
     reasons: list[str] = [] if current else ["no_current_targets"]
     unresolved: list[tuple[int, str]] = []
     if result.get("status") != "succeeded" and not any(
@@ -490,6 +639,20 @@ def evaluate_coverage(
         latest = now[n]
         inherited = (digest(original), digest(latest)) in inherited_snapshots
         all_findings = pr_findings(result, n)
+        for index, _ in enumerate(reviewed.get("evidence_waits", []), 1):
+            if not any(
+                r["review_run_id"] == result["review_run_id"]
+                and r["result_sha256"] == digest(result)
+                and r["parent_issue"] == request["parent_issue"]
+                and r["pr"] == n
+                and r["wait"] == index
+                and (
+                    r["snapshot"] == latest
+                    or (digest(r["snapshot"]), digest(latest)) in inherited_snapshots
+                )
+                for r in completions
+            ):
+                reasons.append(f"pr_{n}_evidence_{index}_pending")
         resolved = set()
         for record in valid_resolutions:
             fixed = record["fixed_snapshot"]

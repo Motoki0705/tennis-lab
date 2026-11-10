@@ -123,13 +123,33 @@
               ],
               "additionalProperties": false
             }
+          },
+          "evidence_waits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string"
+                },
+                "required_evidence": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "question",
+                "required_evidence"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
           "number",
           "coverage",
           "summary",
-          "findings"
+          "findings",
+          "evidence_waits"
         ],
         "additionalProperties": false
       },
