@@ -23,6 +23,7 @@ from .document import (
     HTMLIndex,
     content_changes,
     evidence_changes,
+    inspect_document,
     validate_candidate,
     validate_request,
 )
@@ -70,6 +71,14 @@ class WritingContext(Model):
     figures: list[Figure] = Field(default_factory=list)
     change_summaries: list[Text] = Field(default_factory=list)
     preferences: str = ""
+
+
+class WriterOutput(Model):
+    """Model-authored document; change accounting belongs to trusted runtime."""
+
+    request: EditRequest
+    document: Document
+    change_summary: Text
 
 
 class SemanticFinding(Model):
@@ -211,7 +220,9 @@ def _evidence_map(evidence: list[Evidence]) -> dict[str, Evidence]:
     return result
 
 
-def _check_context(context: WritingContext, current: Revision | None) -> None:
+def _check_context(
+    context: WritingContext, current: Revision | None
+) -> list[EvidenceChange]:
     _evidence_map(context.evidence)
     # Compare declarations through the shared contract helper, not a second
     # implementation of evidence change accounting.
@@ -222,23 +233,26 @@ def _check_context(context: WritingContext, current: Revision | None) -> None:
         evidence=context.evidence,
         html="<p data-content-id='context'>Context</p>",
     )
-    expected = evidence_changes(
-        current.document if current else None, desired, reason="context"
+    expected: list[EvidenceChange] = evidence_changes(
+        current.document if current else None,
+        desired,
+        reason="Supplied initial evidence.",
     )
     authorized = context.authorized_evidence_changes
     if current is None:
         if authorized:
             raise ContractError("invalid_request")
+        return expected
     elif {(item.evidence_id, item.kind) for item in expected} != {
         (item.evidence_id, item.kind) for item in authorized
     } or len(expected) != len(authorized):
         raise ContractError("invalid_request")
+    return [item.model_copy(deep=True) for item in authorized]
 
 
 def _check_preservation(
-    candidate: Candidate, context: WritingContext, current: Revision | None
+    document: Document, context: WritingContext, current: Revision | None
 ) -> None:
-    document = candidate.document
     if (
         document.purpose != context.purpose
         or document.audience != context.audience
@@ -339,7 +353,7 @@ class GeminiEditor:
             raise ContractError("invalid_request")
         check_cancel(cancel)
         validate_request(request, current)
-        _check_context(context, current)
+        authorized_changes = _check_context(context, current)
         # There is no previous session or implicit memory. Every turn receives
         # the complete context, current document, request and change history.
         inputs: dict[str, Any] = {
@@ -350,7 +364,7 @@ class GeminiEditor:
         }
         # A concrete wire-shape example prevents ID-only evidence lists and
         # invented request fields observed in native finish attempts. It carries
-        # no prose/layout; the writer must fill HTML and change accounting.
+        # no prose/layout; the writer must fill HTML and a human-readable summary.
         writer_inputs = {
             **inputs,
             "candidate_template": {
@@ -369,20 +383,6 @@ class GeminiEditor:
                     },
                     "html": "",
                 },
-                "changes": [],
-                "evidence_changes": [
-                    {
-                        "evidence_id": item.evidence_id,
-                        "kind": "added",
-                        "reason": "Supplied initial evidence.",
-                    }
-                    for item in context.evidence
-                ]
-                if current is None
-                else [
-                    item.model_dump(mode="json")
-                    for item in context.authorized_evidence_changes
-                ],
                 "change_summary": "",
             },
         }
@@ -391,16 +391,16 @@ class GeminiEditor:
             (prompts / "writer.md").read_text()
             + "\nINPUT_JSON\n"
             + json.dumps(writer_inputs, ensure_ascii=False),
-            Candidate.model_json_schema(),
+            WriterOutput.model_json_schema(),
             timeout=writer_timeout,
             cancel=cancel,
         )
         repairs: tuple[TurnEvidence, ...] = ()
         try:
-            candidate = parse(Candidate, json.dumps(writer.output, ensure_ascii=False))
-            if candidate.request != request:
+            draft = parse(WriterOutput, json.dumps(writer.output, ensure_ascii=False))
+            if draft.request != request:
                 raise ContractError("invalid_candidate")
-            issues = _figure_issues(candidate.document)
+            issues = _figure_issues(draft.document)
         except ContractError as exc:
             raise ContractError("invalid_model_output") from exc
         if issues:
@@ -416,49 +416,55 @@ class GeminiEditor:
                             "max_attempts": 1,
                             "timeout_seconds": FIGURE_REPAIR_TIMEOUT,
                             "issues": issues,
-                            "rejected_candidate": candidate.model_dump(mode="json"),
+                            "rejected_candidate": draft.model_dump(mode="json"),
                         },
                     },
                     ensure_ascii=False,
                 ),
-                Candidate.model_json_schema(),
+                WriterOutput.model_json_schema(),
                 timeout=FIGURE_REPAIR_TIMEOUT,
                 cancel=cancel,
             )
             repairs = (repaired.evidence,)
             try:
-                candidate = parse(
-                    Candidate, json.dumps(repaired.output, ensure_ascii=False)
+                draft = parse(
+                    WriterOutput, json.dumps(repaired.output, ensure_ascii=False)
                 )
             except ContractError as exc:
                 raise ContractError("invalid_model_output") from exc
         try:
-            if candidate.request != request or _figure_issues(candidate.document):
+            if (
+                draft.request != request
+                or draft.document.document_id != request.document_id
+                or _figure_issues(draft.document)
+            ):
                 raise ContractError("invalid_candidate")
-            validate_candidate(candidate, current)
+            inspect_document(draft.document)
         except ContractError as exc:
             raise ContractError("invalid_model_output") from exc
         # Only the trusted compiler may add generated assets. The writer still
         # has to preserve the exact asset manifest supplied by orchestration.
-        if candidate.document.assets != context.assets:
+        if draft.document.assets != context.assets:
             raise ContractError("validation_failed")
-        _check_preservation(candidate, context, current)
+        _check_preservation(draft.document, context, current)
         check_cancel(cancel)
-        compiled = self.compile_document(candidate.document.model_copy(deep=True))
+        compiled = self.compile_document(draft.document.model_copy(deep=True))
         if not isinstance(compiled, Document):
             raise ContractError("invalid_document")
         # Reparse to validate and detach mutable lists even from model_copy().
         compiled = parse(Document, compiled.model_dump_json())
-        candidate = candidate.model_copy(
-            update={
-                "document": compiled,
-                "changes": content_changes(
-                    current.document if current else None, compiled
-                ),
-            }
+        # Build the public Candidate only from final compiled content. Raw slots
+        # have no change list to compare or later replace. Store/verifier inputs
+        # retain the shared Candidate contract and its independent integrity check.
+        candidate = Candidate(
+            request=request,
+            document=compiled,
+            changes=content_changes(current.document if current else None, compiled),
+            evidence_changes=authorized_changes,
+            change_summary=draft.change_summary,
         )
         validate_candidate(candidate, current)
-        _check_preservation(candidate, context, current)
+        _check_preservation(candidate.document, context, current)
         digest = candidate_digest(candidate)
         inputs.update(
             candidate=candidate.model_dump(mode="json"), candidate_digest=digest
