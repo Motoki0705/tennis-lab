@@ -169,7 +169,7 @@ def test_concurrent_retry_reuses_same_pr(logs: LogEnv) -> None:
 def test_local_path_masks_are_published_and_visible_to_parent(
     logs: LogEnv, previously_blocked: bool
 ) -> None:
-    instruction = "観測/補間。保存先は/mnt/unknown/report.txt。\n"
+    instruction = "観測/補間。保存先:[資料](/資料/非公開.txt)。\n"
     final = r"確認は~/.ssh/config と C:\Users\unknown\report.txt"
     path, proof = logs.turn(instruction=instruction)
     directory = Path(journal.read(path)["source"]["run_directory"])
@@ -198,7 +198,7 @@ def test_local_path_masks_are_published_and_visible_to_parent(
         name: git(logs.upstream, "show", f"main:{row['directory']}/{name}")
         for name in schema.FILENAMES
     }
-    assert published["instruction.md"] == "観測/補間。保存先は[local path]。"
+    assert published["instruction.md"] == "観測/補間。保存先:[資料]([local path])。"
     assert published["final.md"] == "確認は[local path] と [local path]"
     assert json.loads(published["meta.json"])["sanitization"] == expected
     assert journal.view(row)["sanitization"] == expected

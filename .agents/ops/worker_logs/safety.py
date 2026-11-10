@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote, unquote, urlsplit
 
-from board.safety import ABSOLUTE_PATH, SESSION_TOKEN
+from board.safety import ABSOLUTE_PATH, SESSION_TOKEN, decoded_text
 
 from .journal import PublicationError, require
 
@@ -47,13 +47,10 @@ class Sanitized:
 
 
 def decoded(value: str) -> str:
-    for _ in range(4):
-        new = unquote(value)
-        if new == value:
-            return value
-        value = new
-    require(unquote(value) == value, "ambiguous_encoding")
-    return value
+    try:
+        return decoded_text(value)
+    except ValueError:
+        raise PublicationError("ambiguous_encoding") from None
 
 
 def path_view(value: str) -> tuple[str, list[tuple[int, int]]]:
@@ -185,9 +182,16 @@ class Guard:
                 ),
                 "control_character",
             )
-            for match in URL.finditer(text):
+            # Inspect raw URLs too: decoding an encoded quote/bracket before
+            # finding URLs can otherwise move a private query path outside one.
+            urls = dict.fromkeys(
+                match[0]
+                for representation in (value, text)
+                for match in URL.finditer(representation)
+            )
+            for raw_url in urls:
                 try:
-                    url = urlsplit(match[0])
+                    url = urlsplit(raw_url)
                     host = url.hostname
                     require(
                         bool(host) and not url.username and not url.password,
@@ -201,8 +205,12 @@ class Guard:
                         "unsafe_url",
                     )
                     require(
-                        not ABSOLUTE_PATH.search(url.query)
-                        and not ABSOLUTE_PATH.search(url.fragment),
+                        not ABSOLUTE_PATH.search(
+                            unicodedata.normalize("NFKC", decoded(url.query))
+                        )
+                        and not ABSOLUTE_PATH.search(
+                            unicodedata.normalize("NFKC", decoded(url.fragment))
+                        ),
                         "unsafe_url",
                     )
                     try:

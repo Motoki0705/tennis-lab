@@ -6,34 +6,22 @@ import re
 import unicodedata
 from collections.abc import Mapping
 from typing import Any
+from urllib.parse import unquote
 
 from .errors import BoardError
 
-# Include the NFKC forms of fullwidth symbols: worker-log checks normalize text.
-# A slash between Japanese words/symbols is prose. An ASCII path component such
-# as /home still starts a path even immediately after Japanese text.
-_FULLWIDTH_SYMBOLS = "".join(
-    unicodedata.normalize("NFKC", chr(c))
-    for c in range(0xFF01, 0xFF61)
-    if not chr(c).isalnum() and c != 0xFF0F
-)
+# Only letters can precede a Japanese word separator. Punctuation, including
+# fullwidth punctuation, must still introduce Japanese-named absolute paths.
 _JAPANESE_LETTERS = (
-    r"\u3040-\u30ff\u31f0-\u31ff\u3400-\u9fff\uf900-\ufaff"
+    r"\u3005-\u3007\u303b\u3041-\u3096\u3099-\u309a\u309d-\u309f"
+    r"\u30a1-\u30fa\u30fc-\u30ff\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
     r"\uff10-\uff19\uff21-\uff3a\uff41-\uff5a\uff66-\uff9f"
     r"\U0001b000-\U0001b16f\U00020000-\U0003ffff"
-)
-_JAPANESE_SEPARATOR = (
-    "["
-    + _JAPANESE_LETTERS
-    + r"\u3000-\u303f\uff01-\uffef○×◎△"
-    + re.escape(_FULLWIDTH_SYMBOLS)
-    + "]"
 )
 ABSOLUTE_PATH = re.compile(
     r"(?<![a-zA-Z0-9_./])(?:"
     r"(?<!https:)(?<!http:)"
-    rf"(?!(?<={_JAPANESE_SEPARATOR})/(?:[{_JAPANESE_LETTERS}]|"
-    rf"(?![.~\\．～＼]){_JAPANESE_SEPARATOR}(?![a-zA-Z0-9_.~/\\])))/(?=\S)"
+    rf"(?!(?<=[{_JAPANESE_LETTERS}])/[{_JAPANESE_LETTERS}])/(?=\S)"
     r"|~[/\\]|[a-zA-Z]:[/\\]|\\\\)",
     re.IGNORECASE,
 )
@@ -42,6 +30,18 @@ SESSION_TOKEN = re.compile(
     r"|\b(?:session|thread)[_-]?id\s*[:=]",
     re.IGNORECASE,
 )
+
+
+def decoded_text(value: str) -> str:
+    """Bound percent decoding consistently across board and worker-log checks."""
+    for _ in range(4):
+        new = unquote(value)
+        if new == value:
+            return value
+        value = new
+    if unquote(value) != value:
+        raise ValueError("ambiguous_encoding")
+    return value
 
 
 def public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> None:
@@ -57,7 +57,14 @@ def public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> No
                 secret and secret in item for secret in secrets
             ) or SESSION_TOKEN.search(item):
                 raise BoardError("board text contains private session information")
-            if ABSOLUTE_PATH.search(item) or item.strip().strip("\"'`") == "/":
+            try:
+                path_text = unicodedata.normalize("NFKC", decoded_text(item))
+            except ValueError:
+                raise BoardError("board text contains ambiguous encoding") from None
+            if any(
+                ABSOLUTE_PATH.search(view) or view.strip().strip("\"'`") == "/"
+                for view in (item, path_text)
+            ):
                 raise BoardError("board text contains a private path")
             if any(
                 unicodedata.category(c).startswith("C") and c not in "\n\t"

@@ -6,6 +6,7 @@ import copy
 import importlib
 import json
 from typing import Any
+from urllib.parse import quote
 
 import pytest
 
@@ -21,13 +22,15 @@ board_safety: Any = importlib.import_module("board.safety")
         "観測/補間/遮蔽推定など",
         "「遮蔽（座標あり/なし）」",
         "カメラ/ボール",
+        "あり/なし",
+        "観測/補間",
+        "カタカナ/テスト",
         "観測/補間をv3に保存",
         "𠮷/漢字",
         "Ａ/Ｂ",
-        "＋/－",
-        "（/）",
-        "○/×",
         "A/B tests/example.py:12 https://example.com/report",
+        "https://example.com/?mode=あり/なし#観測/補間",
+        "https://example.com/?mode=%E3%81%82%E3%82%8A%2F%E3%81%AA%E3%81%97",
     ],
 )
 def test_japanese_word_separators_preserve_public_text(value: str) -> None:
@@ -95,6 +98,87 @@ def test_local_paths_are_detected_then_masked(
 def test_board_keeps_rejecting_real_paths_next_to_japanese(value: str) -> None:
     with pytest.raises(board_safety.BoardError, match="private path"):
         board_safety.public(value, {}, {})
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("[資料](/資料/非公開.txt)", "[資料]([local path])"),
+        ("`/資料/非公開.txt`", "`[local path]`"),
+        ("保存先:/資料/非公開.txt", "保存先:[local path]"),
+        ("保存先：/資料/非公開.txt", "保存先：[local path]"),
+        ("（/資料/x）", "（[local path]）"),
+        ("(/資料/x)", "([local path])"),
+        ("[/資料/x]", "[[local path]]"),
+        ("資料=/資料/x", "資料=[local path]"),
+        (" /資料/x", " [local path]"),
+        ('"/資料/x"', '"[local path]"'),
+        ("'/資料/x'", "'[local path]'"),
+        ("保存先:/ひみつ/ファイル.txt", "保存先:[local path]"),
+        ("保存先：／資料/x", "保存先：[local path]"),
+        ("[資料](%2F資料%2F非公開.txt)", "[資料]([local path])"),
+        ("%60%2F資料%2F非公開.txt%60", "%60[local path]%60"),
+        ("保存先:%252F資料%252F非公開.txt", "保存先:[local path]"),
+        ("保存先%EF%BC%9A%2F資料%2F非公開.txt", "保存先%EF%BC%9A[local path]"),
+        ("＋/－", "＋[local path]"),
+        ("（/）", "（[local path]）"),
+        ("○/×", "○[local path]"),
+    ],
+)
+def test_japanese_named_paths_at_boundaries_are_rejected_or_masked(
+    value: str, expected: str
+) -> None:
+    with pytest.raises(board_safety.BoardError, match="private path"):
+        board_safety.public(value, {}, {})
+    guard = safety.Guard()
+    with pytest.raises(journal.PublicationError, match="absolute_path"):
+        guard.check(value)
+    result = guard.sanitize(value)
+    assert result.text == expected
+    assert result.replacements == 1 and result.local_paths == {"posix": 1}
+    guard.check(result.text)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "https://example.com/?file=/資料/非公開.txt",
+        "https://example.com/#保存先:/資料/非公開.txt",
+        "https://example.com/?file=（/資料/x）",
+        "https://example.com/?file=%2F資料%2F非公開.txt",
+        "https://example.com/#保存先%EF%BC%9A%252F資料%252F非公開.txt",
+        "https://example.com/?file=%60%2F資料%2F非公開.txt%60",
+        "https://example.com/#%5B%2F資料%2F非公開.txt%5D",
+        "%68%74%74%70%73%3A%2F%2Fexample.com%2F%3Ffile%3D%2F資料%2F非公開.txt",
+    ],
+)
+def test_japanese_named_paths_in_url_queries_and_fragments_are_rejected(
+    value: str,
+) -> None:
+    with pytest.raises(board_safety.BoardError, match="private path"):
+        board_safety.public(value, {}, {})
+    guard = safety.Guard()
+    with pytest.raises(journal.PublicationError, match="unsafe_url"):
+        guard.check(value)
+    with pytest.raises(journal.PublicationError, match="unsafe_url"):
+        guard.sanitize(value)
+
+
+@pytest.mark.parametrize("encoding_layers", [4, 5])
+def test_path_decoding_limit_is_shared(encoding_layers: int) -> None:
+    value = "/資料/x"
+    for _ in range(encoding_layers):
+        value = quote(value, safe="")
+    with pytest.raises(board_safety.BoardError):
+        board_safety.public(value, {}, {})
+    guard = safety.Guard()
+    if encoding_layers == 5:
+        with pytest.raises(journal.PublicationError, match="ambiguous_encoding"):
+            guard.sanitize(value)
+    else:
+        result = guard.sanitize(value)
+        assert result.text == "[local path]"
+        assert result.replacements == 1 and result.local_paths == {"posix": 1}
 
 
 @pytest.mark.parametrize(
