@@ -12,7 +12,10 @@ description: 親issueの担当・実装・調査・引継ぎを進める。親AI
 ## 担当と実行根拠
 
 最新のAGENTS.md・共有memory・対象READMEを読み、現在のissue・コメント・PR・既存workerを確認する。
-`status` で担当を調べ、新規担当は `register`、引継ぎは `handoff --accept` を使う。
+`status` で担当を調べ、新規担当は `register --summary`、引継ぎは `handoff --accept` を使う。
+要約はHerdrのAgent一覧で名前の隣に出す、親issueで今何をしているかの短い説明。
+issueと会話から自分で作り、全角12文字（24桁）以内に収める。題名の切り詰めではなく内容を要約する。
+作業の焦点が変わったら `summary --text` で更新する。`status.display_summary` で現在の値を確認できる。
 引継ぎでは保存済みworkerと証拠を保持し、操作する親をCLIが切り替える。
 担当の競合と稼働中workerの重複は、[parent CLI](../../ops/parent/README.md#担当の終了引継ぎ)で解消する。
 表示や連絡が必要な場面では [herdr-session-label](../herdr-session-label/SKILL.md)・[parent-board](../parent-board/SKILL.md)へ進む。
