@@ -412,6 +412,11 @@ gateのGETは鮮度を優先して再取得し、通信待ちで他の親を止�
 timer・poll・hook・agent呼出はない。判定は `merge_gate_policy.evaluate_parent_gate(MergeInput)`、
 I/Oは `merge_gate.py` に分離する。共通引数はサブコマンドより前に置く。
 
+公開ログの専用入口はこの通常gateを緩めず、形式ごとの全差分検査で限定例外を扱う。
+[workerの3ファイル](../worker_logs/README.md#専用prと限定merge例外)と
+[判断記録・再生成README](../decision_logs/README.ja.md#限定公開例外と復旧)は別の検査であり、
+コードや規則が混在するPRには適用しない。
+
 ```bash
 # 未設定または0: 判定とJSON表示だけ。GitHubの更新・mergeは行わない
 AGENT_AUTO_MERGE=0 .venv/bin/python .agents/ops/review/merge_gate.py --parent 1216 merge

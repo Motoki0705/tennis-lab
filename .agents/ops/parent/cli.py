@@ -65,6 +65,9 @@ def parser() -> argparse.ArgumentParser:
     ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
+    publication = commands.add_parser("publish-decision-log")
+    publication.add_argument("--dry-run", action="store_true")
+    publication.add_argument("--retry", action="store_true")
     for name in ("worker-log-status", "publish-worker-log"):
         log = commands.add_parser(name)
         log.add_argument("--child", type=int, required=True)
@@ -292,6 +295,24 @@ def _main(argv: list[str] | None = None) -> int:
             else store,
         )
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "publish-decision-log":
+            from decision_logs.journal import Journal
+            from decision_logs.publication import Publisher
+
+            # Publication bookkeeping never enters the capture adapter: an
+            # otherwise successful publication must not create another batch.
+            owner = (
+                store.read_data()
+                .get("parents", {})
+                .get(f"{gh.repo.casefold()}#{parent}", {})
+            )
+            if owner.get("session") != identity:
+                raise ValueError("decision publication requires the assigned parent")
+            value = Publisher(
+                Path.cwd(), Journal(store.directory, gh.repo, parent)
+            ).publish(dry_run=args.dry_run, retry=args.retry)
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+            return 2 if value["error"] or value["blocked"] else 0
         if args.command == "review-inspect":
             import importlib
 

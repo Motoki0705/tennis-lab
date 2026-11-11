@@ -36,10 +36,11 @@ preflightの `public_key` は私的IDとは独立したuuid4の32桁hex。
   meta.json
 ```
 
-親番号と担当issue番号が同じ単独委任も同じ構造。共有indexはなく、確定した記録は上書きしない。
+親番号と担当issue番号が同じ単独委任も同じ構造。この入口は共有indexを更新せず、確定した記録は上書きしない。
 別パスへの追加と同一ターンの再送は別の契約である。パス分離だけでGitの並行更新・競合一般がなくなるとは扱わない。
-`.gitignore`はログ配下を既定で除外し、parents以下のディレクトリ探索と上記3ファイルだけを許可する。
-raw・stderr・README等のファイルは追跡対象にしない。
+`.gitignore`はログ配下を既定で除外し、この形式ではparents以下のディレクトリ探索と上記3ファイルを許可する。
+raw・stderr等は追跡対象にしない。判断記録と生成READMEの追跡・検査・共有indexは
+[独立した公開形式](../decision_logs/README.ja.md#git公開と閲覧)で扱い、既存3ファイルの例外には含めない。
 
 - `instruction.md`: 親が書いたtask/answerの原文を、必要な無害化後に保存する。標準指示・生成見出し・合成promptは入れない。
 - `final.md`: 親側で受信を確認した最終報告の無害化後の全文。stderr・rawイベント・内部思考は対象外。
@@ -115,8 +116,9 @@ URLは原文と復号後の両方から取り出し、query/fragmentも復号し
 
 ## workflowの範囲と制約
 
-`ci.yml`のpull_requestとmain push、labelerのpull_request_targetでは、公開領域の
-instruction.md/final.md/meta.jsonだけを `paths-ignore` にする。ログのみは未起動、通常規模の混在PRは通常起動。
+`ci.yml`のpull_requestとmain push、labelerのpull_request_targetでは、この形式の
+instruction.md/final.md/meta.jsonと、[別検査の判断記録・生成README](../decision_logs/README.ja.md#限定公開例外と復旧)を
+`paths-ignore` にする。ログのみは未起動、通常規模の混在PRは通常起動。
 knowledge.ymlの対象パス・手動workflow入口は変更せず、skip ciのcommit messageで代用しない。
 labelerにはpushイベントを追加しない。ログ実装のREADMEやPythonは除外対象ではない。
 

@@ -7,11 +7,25 @@ on:
       - '.agents/logs/parents/**/instruction.md'
       - '.agents/logs/parents/**/final.md'
       - '.agents/logs/parents/**/meta.json'
+      - '.agents/logs/parents/parent-*/activity-*/event-*.json'
+      - '.agents/logs/parents/README.md'
+      - '.agents/logs/parents/parent-*/README.md'
+      - '.agents/logs/parents/parent-*/activity-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/d-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/d-*/*-*/README.md'
   pull_request:
     paths-ignore:
       - '.agents/logs/parents/**/instruction.md'
       - '.agents/logs/parents/**/final.md'
       - '.agents/logs/parents/**/meta.json'
+      - '.agents/logs/parents/parent-*/activity-*/event-*.json'
+      - '.agents/logs/parents/README.md'
+      - '.agents/logs/parents/parent-*/README.md'
+      - '.agents/logs/parents/parent-*/activity-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/d-*/README.md'
+      - '.agents/logs/parents/parent-*/child-*/d-*/*-*/README.md'
   workflow_dispatch:
     inputs:
       shards:

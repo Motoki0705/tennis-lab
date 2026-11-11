@@ -4,7 +4,7 @@
 
 結果・親の判断・行動・訂正を表す共通契約version 1、非公開snapshotの保存、
 公開用への変換と既存parent・runner・review操作の捕捉を提供する。
-Git公開と階層README生成は #1816 の範囲。記録は実行権限や成果受入の判断を与えない。
+親ごとのGit公開と階層READMEの決定的生成も提供する。記録は実行権限や成果受入の判断を与えない。
 
 ## 契約と責務
 
@@ -19,6 +19,9 @@ Git公開と階層README生成は #1816 の範囲。記録は実行権限や成�
 | [journal.py](journal.py) | `Journal`。原文の固定と準備・公開の追記履歴 |
 | [projection.py](projection.py) | `render()`・`validate_public()`。公開単位 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`。すべての原記録を参照する表示用の集約 |
+| [navigation.py](navigation.py) | `generate()`・`validate_links()`。階層の決定的生成とリンク検査 |
+| [publication_policy.py](publication_policy.py) | 独立した追加専用例外、再生成バイト列・PR同一性の検査 |
+| [publication.py](publication.py)・[publication_state.py](publication_state.py) | 明示公開、非公開batch、応答喪失からの照合 |
 | [capture.py](capture.py) | 非公開outbox、行動snapshot、状態表示、捕捉だけの再送 |
 | [parent_commands.py](parent_commands.py)、[parent_sources.py](parent_sources.py) | 判断入口、CLI結果、正本コメントと明示検証 |
 | [observations.py](observations.py)、[review_capture.py](review_capture.py) | runner・dispatcher・workerログ・取得・review・mergeの既存の事実 |
@@ -220,6 +223,125 @@ entry配列は追加だけ。flock・ファイル/ディレクトリfsync・atom
 全記録ID・件数・初回/最終記録時刻・最終記録IDを返し、利用側は最終記録から結果を引く。
 原記録と途中の失敗は残り、時間や使用量は補わない。
 
+## Git公開と閲覧
+
+親の判断を記録した後や、まとまった結果を受領した区切りで、担当親が明示実行する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --dry-run
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log
+# blockedの原因を照合・修復した後:
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --retry
+```
+
+timer・定期poll・捕捉ごとの自動公開は追加しない。既存parent stateと担当sessionを照合し、
+issueのclose後の履歴公開も同じ本人確認を行う。新しい実装権限は与えない。
+`Journal.prepare()` で未準備の捕捉を変換し、`Journal.public_payloads()` のうちreadyかつ
+未公開の全記録を親ごとの1 batchへ固定する。blockedは状態に残し、独立して安全な記録は公開できる。
+未完了batchを照合してから次を作る。batchの途中で増えた捕捉は、そのbatchのmerge後の
+次の明示呼出しでまとめる。
+
+既存workerファイルを維持した公開構成:
+
+```text
+.agents/logs/parents/
+  README.md
+  parent-<P>/
+    README.md
+    activity-<public-key>/
+      README.md
+      event-<public-record-id>.json
+    child-<C>/
+      README.md
+      d-<existing-public-key>/
+        README.md
+        turn-<sequence>/
+          README.md
+        <sequence>-<initial|resume>/
+          README.md
+          # 既存instruction.md・final.md・meta.jsonは変更しない。
+```
+
+eventの正本は共通の `{record, sanitization}` envelopeそのもの。READMEは、そのHEADに
+ある公開記録と既存workerファイルから生成する。非公開の捕捉・公開stateやLLMを参照しない。
+因果参照に沿って並べ、独立した記録間だけ時刻・IDで順を固定する。分岐・合流を含む活動を分け、
+**時刻・対象｜結果｜親の判断と理由｜次の行動・実行状態｜根拠** の表にする。
+結果・判断・行動snapshot・訂正はそれぞれの参照と逆参照を残す。原文はescapeし、
+MarkdownリンクやHTMLとして挿入しない。各階層に上下・活動へのリンク、反映した全記録への導線、
+記録時刻の範囲を置く。未判断、判断済み未実行、最終報告などの記録不足を明示する。
+補助情報は折りたたみに置き、時刻・設定・使用量の欠測と累積値を保持して加算しない。
+`turn-<sequence>/README.md` は安定した閲覧先で、連番からinitial/resumeを推測しない。
+workerファイルが後着したら既存フォルダーのREADMEと相互にリンクし、起動前拒否後の
+initial再試行でも先に公開したターンのアドレスを保つ。指示・最終報告の本文は複製しない。
+
+新しい記録を持つ親について、既存ターンに指示・最終報告への導線を生成し、対応記録がなければ
+**導入前・判断未記録** を表示する。新形式の記録がない親は既存ディレクトリへのリンクを維持し、
+公開snapshotから区別できない導入時期・公開待ち・捕捉不足は未確認と明記する。
+過去全ログを一括移行しない。失敗ターンには、公開finalがあると装わずREADMEを置ける。
+公開snapshotだけでは非公開の待機件数や自身のmain反映を判定できないため、各ページの
+**公開待ち** 表示は `decision-log-status` での照合へ案内する。merge後の公開事実だけを理由に
+READMEを再更新しない。
+
+## 限定公開例外と復旧
+
+[既存workerの3ファイル例外](../worker_logs/README.md#専用prと限定merge例外)とは別の条件とする。
+専用branchは `decision-log/parent-<P>/<random-batch-key>`。公開用のdetached worktreeは
+元repoの `.claude/worktrees/decision-log-<batch-key>-<revision>` にだけ作る。
+各revisionは固定mainを唯一の親とする1 commit。
+以下の機械検査を満たしたこの専用PRだけが、Codexレビュー・`Python`・`AGENT_AUTO_MERGE` を
+要求せずcreate/mergeできる。
+
+- 全raw差分、旧/新mode、blobのバイト列を確認する。新規eventは親/活動/IDの正規パスにあり、
+  固定したjournal envelopeと一致すること。既存eventとworkerファイルは不変。
+  削除・rename・symlink・実行可能ファイル・gitlink・余分なファイル・コード/規則の変更を拒否する。
+- schema・graph・metadata・本文・パス・リンクを検査する。必要なREADMEがすべて存在し、
+  PRのHEADの正本からの再生成とバイト単位で一致すること。任意の文章、欠落ページ、
+  正本から生成されないREADMEの変更を拒否する。
+- origin/repo、branch、固定marker、HEAD、mainというbase ref、件数と、全ページの
+  GitHub PRファイル名/変更種別を確認し、merge直前にPRを再取得する。
+
+merge前に最新mainをfetchし、全記録の和集合から再生成する。mainが進んだら新しい検査済み
+revisionを作り、正確なleaseで同じPR branchを更新する。他の親・子の記録とリンクを保持する。
+3回mainの前進を観測したら、待機やpollをせず `pending / main_advanced` で後の明示再実行へ返す。
+GitHubの古い `base.sha` はsnapshotであり、main更新を消す理由にしない。
+HEAD指定でmergeし、実際のmerge treeの生成内容、mainの祖先関係、保存したenvelopeを照合する。
+最終fetchからmergeの間の外部更新もmerge treeで検出する。生成が不一致なら
+`readme_refresh_required` で止め、成功とはしない。明示的な `--retry` はmerge済みPRを
+非公開batch履歴に残し、同じ固定envelopeの `-repair-<number>` branchを作る。
+記録がmainに既存なら、この修復PRは正本から再生成したREADMEだけを変更できる。
+修復を装うeventの追加・改変は行わない。生成内容が保存済みなら後の呼出しでPRは増えない。
+batchのmerge後にworkerファイルが届いた場合も、未公開captureがなくても同じ明示修復で
+閲覧内容を更新できる。修復のための捕捉記録は作らない。
+
+捕捉journalの隣の非公開 `publication.json` にbatch、revision、送信試行、診断を残し、
+flock・fsync・atomic writeを使う。`Journal.publication()` は記録ごとの
+pending/blocked/publishedの事実だけを追記する。公開コマンド自体を捕捉へ送らず、
+公開が次の公開記録を生むループを避ける。commit直後の中断は完全照合したcommitを再利用する。
+push・PR作成・mergeの応答喪失は同じbranch/marker/HEADを照合し、不明なPOST/mergeを
+盲目的に再送しない。open PRが既知の古いrevisionを示す場合は、mainがさらに進んでいても
+最新revisionのローカルcommitとlease付きpushを復旧してから最新HEADを照合する。
+PRへ未反映のrevisionも含め、すべてのrevisionを非公開履歴に保持する。
+merge確認後の記録別journal追記が中断しても、次のbatchを選ぶ前に照合する。
+dirty worktreeや破損journalを自動resetせず、影響する公開だけを確認・修復する。
+確認後はcleanな公開worktreeを削除し、dirtyまたは同一性未確認のものは保持して
+`retained_worktrees` の件数で返す。
+
+`--dry-run` は準備済みenvelopeとローカル `origin/main` から生成を検査し、件数を返す。
+新しい捕捉の準備、fetch、journal/ref更新、worktree作成、GitHub呼出しは行わない。
+`saved_to_main` は現在の全捕捉の公開照合が済んだときだけtrue。
+batchがmergedでも、新しい捕捉やblockedが残れば未公開となる。exit 0のpendingを成功と扱わず、
+errorかblockedがあればexit 2。
+
+workflowの正確な除外パターンは `ci.yml`・`pull-request-labeler.yml`、追跡許可は
+`.gitignore` を正本とする。既存3ファイル、新event、各階層READMEだけを扱い、
+公開実装や任意のrawログを除外しない。`paths-ignore` はパスだけを見て、変更種別や内容は
+検査しない。既存eventの編集、READMEへの手書き追加、新形式とworker 3ファイルの混在だけの
+通常PRでもCIとlabelerは省略され得るが、限定公開例外を得るわけではない。
+専用公開コマンドが全内容とREADME再生成のバイト単位一致を検査し、通常の `merge_gate.py` は
+レビューと対象HEADの `Python` 成功を要求して、check欠落を拒否する。
+この2つの検査が境界を保証する。workflowの省略自体は内容の保証ではない。
+GitHub native path filterの制約は残る。実workflowの省略とGitHub表示は実装merge後の #1817 で確認する。
+
 ## 検証
 
 ```bash
@@ -230,9 +352,13 @@ entry配列は追加だけ。flock・ファイル/ディレクトリfsync・atom
   tests/integration/agents_ops/test_decision_capture_delivery.py \
   tests/e2e/agents_ops/test_decision_capture.py \
   tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
+.venv/bin/python -m pytest tests/unit/agents_ops/test_decision_navigation.py \
+  tests/e2e/agents_ops/test_decision_publication.py \
+  tests/e2e/agents_ops/test_worker_log_publication.py -n 2 --durations=10
 ```
 
 分岐/合流、明示した欠測、負例、無害化、集約、実際の2process追記、fsync中断、
 破損journalを検証する。捕捉はfake GitHub・使い捨てgit/state・offline runnerを使い、
 journal障害と捕捉だけの復旧も検証する。GPU・実agent・networkは不要。
-Git公開とmerge後の実運用受入は後続タスクに残る。
+公開は実gitとfake GitHubでbatch、並行main更新、完全一致、拒否、応答喪失を検証する。
+merge後の実運用受入は #1817 に残る。

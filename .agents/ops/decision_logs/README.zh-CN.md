@@ -3,7 +3,7 @@
 [English](README.md) · [日本語](README.ja.md)
 
 本包提供结果、父级判断、行动和更正的共享版本1契约，保存私有快照并生成安全的公开单元。
-捕获适配器观察现有parent、runner和review操作。Git发布和分层README生成属于 #1816。
+捕获适配器观察现有parent、runner和review操作，并提供按父issue批量Git发布和确定性分层README。
 记录本身不授予执行权限，也不判断成果是否通过验收。
 
 ## 契约与职责
@@ -19,6 +19,9 @@
 | [journal.py](journal.py) | `Journal`；固定原始捕获和仅追加的准备/发布历史 |
 | [projection.py](projection.py) | `render()`、`validate_public()`；公开单元 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`；保留所有原始记录引用的显示分组 |
+| [navigation.py](navigation.py) | `generate()`、`validate_links()`；确定性分层生成与链接检查 |
+| [publication_policy.py](publication_policy.py) | 独立的仅追加例外、生成字节完全一致和PR身份检查 |
+| [publication.py](publication.py)、[publication_state.py](publication_state.py) | 显式发布、私有批次和响应丢失后的核对 |
 | [capture.py](capture.py) | 私有outbox、行动快照、状态和仅捕获重放 |
 | [parent_commands.py](parent_commands.py)、[parent_sources.py](parent_sources.py) | 父级判断入口、CLI结果、原始评论和显式验证 |
 | [observations.py](observations.py)、[review_capture.py](review_capture.py) | 现有runner、dispatcher、worker日志、获取、review和merge事实 |
@@ -216,6 +219,114 @@ status列出来源、行动/结果ID、待投递/未结束receipt、缺失诊断
 每组保留全部记录ID、数量、首次/最后记录时间和最后记录ID；使用方通过最后记录获取最终结果。
 原始捕获和中间失败仍然保留，不补造时长或用量。
 
+## Git发布与导航
+
+父级记录判断或收到一组结果后，由当前负责人显式执行：
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --dry-run
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log
+# 核对并修复blocked原因后：
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --retry
+```
+
+没有定时器、轮询或每次捕获自动发布。入口使用已配置的parent state并检查负责session，
+issue关闭后的历史发布也检查同一身份，不授予新的实现权限。
+通过 `Journal.prepare()` 准备尚未转换的捕获，将 `Journal.public_payloads()` 中所有ready且
+未发布的记录固定到该父issue的一个批次。blocked仍在状态中显示，独立安全的记录可以发布。
+先核对未完成批次，再创建下一批；批次进行中新到达的捕获，在该批merge后的下一次显式调用中处理。
+
+公开目录保留现有worker文件：
+
+```text
+.agents/logs/parents/
+  README.md
+  parent-<P>/
+    README.md
+    activity-<public-key>/
+      README.md
+      event-<public-record-id>.json
+    child-<C>/
+      README.md
+      d-<existing-public-key>/
+        README.md
+        turn-<sequence>/
+          README.md
+        <sequence>-<initial|resume>/
+          README.md
+          # 现有instruction.md、final.md和meta.json不变。
+```
+
+每个event保存共享的 `{record, sanitization}` envelope原样内容。
+README仅从该HEAD的公开记录和现有worker文件生成，不读取私有捕获/发布状态，也不调用LLM。
+按因果引用排序，只有独立记录之间使用时间和ID确定顺序；分开显示活动，包括分支和合流。
+中心表为 **時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠**。
+结果、判断、行动快照和更正各自保留链接与反向引用。正文转义后作为文字显示，不能注入Markdown链接或HTML。
+每页含上下层链接、活动入口、精确的记录成员和记录时间范围，明确显示未判断、已决定未执行和记录不足。
+辅助时间、设置和用量放在折叠区，保留缺失和累计值，不相加。
+稳定的 `turn-<sequence>/README.md` 不会根据序号猜测initial/resume。
+worker文件稍后到达时，与原文件夹README双向链接；启动前拒绝后的initial重试也保留
+先前公开的轮次地址。只链接指示和最终报告，不复制正文。
+
+只为已有新记录的父issue生成历史轮次导航，链接现有指示和最终报告；没有对应记录时显示
+**導入前・判断未記録**。只有旧worker日志的其他父issue仍链接原目录，不批量转换所有历史。
+公开快照无法区分引入时间、待发布和捕获缺失时，明确保留为未确认。
+失败轮次可以有README，但不能假装worker final已经发布。
+公开快照无法统计私有待发布记录或证明自己已进入main，因此每页的 **公開待ち** 提示指向
+`decision-log-status` 进行核对。merge后的发布事实本身不触发README重写。
+
+## 有限发布例外与恢复
+
+这是独立于[worker三个文件例外](../worker_logs/README.md#専用prと限定merge例外)的条件。
+专用branch为 `decision-log/parent-<P>/<random-batch-key>`；detached发布worktree只能位于
+原仓库的 `.claude/worktrees/decision-log-<batch-key>-<revision>`。
+每个revision只有一个commit，其唯一父级是固定main。
+只有以下检查全部通过的专用PR，才可不要求Codex review、`Python` 或 `AGENT_AUTO_MERGE` 而创建/merge：
+
+- 检查完整raw Git差异、旧/新mode和blob字节。新event只能使用规范父issue/活动/ID路径，
+  并与固定journal envelope一致。旧event和worker文件不可更改；拒绝删除、rename、symlink、
+  可执行文件、gitlink、额外文件和代码/规则变更。
+- 检查schema、graph、metadata、公开正文、路径和链接。所需README必须全部存在，
+  与该PR HEAD记录集合的再生成结果逐字节一致；拒绝任意追加正文、缺页或非生成README变更。
+- 检查origin/repo、branch、固定marker、准确HEAD、main base ref、文件数以及GitHub所有分页的
+  PR文件名/状态，并在merge前重新取得PR。
+
+merge前fetch最新main，并从完整记录并集重新生成。main前进时创建新的已验证revision，
+通过准确lease更新同一个PR branch，保留其他父/子issue的记录和链接。
+连续观察到三次main前进时返回 `pending / main_advanced`，等待以后显式重试，不等待或轮询。
+GitHub旧 `base.sha` 是快照，不能据此丢弃main更新。
+按HEAD执行merge，检查实际merge tree的生成内容、main祖先关系和保存的envelope。
+最后一次fetch与merge之间的外部更新也会在merge tree中检测；不一致时停在
+`readme_refresh_required`，不宣称成功。显式 `--retry` 保留已merge PR的私有批次历史，
+使用相同固定envelope建立 `-repair-<number>` branch。记录已在main时，修复PR只能改变
+逐字节符合再生成结果的README，不会为了修复而添加/修改event。导航保存后再次运行不会创建更多PR。
+批次merge后才到达的worker文件也使用同一显式修复，即使没有待发布的新捕获记录；不会补造捕获事实。
+
+捕获journal旁的私有 `publication.json` 保存所有批次、revision、已尝试的变更和诊断，
+采用flock、fsync和原子写入。`Journal.publication()` 只追加每条记录的pending/blocked/published事实。
+发布命令本身不进入捕获适配器，因此不会生成下一轮发布记录。
+commit后中断会复用完全核对的commit；push、PR创建和merge响应丢失时核对相同branch/marker/HEAD，
+不盲目重发结果不明的POST/merge。open PR仍指向已知旧revision时，即使main再次前进，
+也先恢复最新revision的本地commit和带lease的push，再要求最新HEAD一致。
+所有revision均保留在私有历史中，包括从未应用于PR的revision。
+已确认merge但逐记录journal追加中断时，先恢复该批再选择新批次。
+不自动reset dirty worktree或损坏journal；只检查和修复受影响的发布。
+确认后移除clean发布worktree，保留dirty或身份未确认的worktree，并返回 `retained_worktrees` 数量。
+
+`--dry-run` 读取已准备的envelope和本地 `origin/main` 检查生成并报告数量，
+不准备新捕获、fetch、更新journal/ref、创建worktree或调用GitHub。
+只有当前所有捕获均确认发布，`saved_to_main` 才为true；批次merged仍可能剩余新捕获或blocked。
+exit 0的pending不表示发布成功；有error或blocked返回exit 2。
+
+准确workflow排除模式以 `ci.yml` 和 `pull-request-labeler.yml` 为准，跟踪允许规则以 `.gitignore` 为准。
+范围是原三个文件、新event和各层README，不排除发布实现或任意raw日志。
+`paths-ignore` 仅检查路径，不检查变更类型或内容。仅修改旧event、向README手写追加正文、
+或混合新格式与worker三个文件的普通PR，也可能跳过CI和labeler，但不会因此取得有限发布例外。
+专用发布命令检查完整内容与README再生成的逐字节一致性；常规 `merge_gate.py` 仍要求review及
+该PR HEAD的 `Python` 成功，缺少check就拒绝merge。边界由这两项检查保证，跳过workflow本身不保证内容。
+GitHub原生路径过滤限制仍然存在。
+实际workflow省略及GitHub渲染在实现merge后的 #1817 中验证。
+
 ## 验证
 
 ```bash
@@ -226,9 +337,13 @@ status列出来源、行动/结果ID、待投递/未结束receipt、缺失诊断
   tests/integration/agents_ops/test_decision_capture_delivery.py \
   tests/e2e/agents_ops/test_decision_capture.py \
   tests/e2e/agents_ops/test_review_recovery.py -n 2 --durations=10
+.venv/bin/python -m pytest tests/unit/agents_ops/test_decision_navigation.py \
+  tests/e2e/agents_ops/test_decision_publication.py \
+  tests/e2e/agents_ops/test_worker_log_publication.py -n 2 --durations=10
 ```
 
 测试使用临时state覆盖分支/合流、显式缺失状态、拒绝案例、无害化、分组、
 两个真实写入进程、fsync中断及损坏journal。捕获使用fake GitHub、临时git/state和offline runner，
 并验证journal故障与仅捕获恢复；不需要GPU、真实代理或网络。
-Git发布和合并后的实际运行验收属于后续任务。
+发布测试使用真实临时Git和fake GitHub验证批次、并发main更新、精确再生成、拒绝及响应丢失。
+merge后的实际运行验收留给 #1817。
