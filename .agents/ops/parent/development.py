@@ -499,12 +499,27 @@ def verify_completion(session: ParentSession) -> list[int]:
             continue
         task = session.row["tasks"].get(str(n), {})
         verification = task.get("verification", {})
+        preflight = task.get("preflight", {})
+        latest_turn = next(
+            (
+                turn
+                for turn in reversed(preflight.get("turns", []))
+                if not turn.get("cancelled")
+            ),
+            None,
+        )
         if (
             task_status(item) != "completed"
             or task.get("stopped")
             or "needs-human" in item.labels
             or task_errors(task, auth, item.body)
             or not verification.get("evidence")
+            or (
+                task.get("delegated")
+                and latest_turn is not None
+                and preflight.get("accepted_turn_id")
+                != latest_turn["snapshot"]["turn_id"]
+            )
         ):
             raise ValueError(
                 f"#{n}: close, acceptance evidence or current result verification missing"

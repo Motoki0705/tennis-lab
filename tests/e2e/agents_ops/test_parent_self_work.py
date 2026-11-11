@@ -17,19 +17,21 @@ import pytest
 from tests.e2e.agents_ops.test_manual_worker_runs import manual, store
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
 def completion_spec(p: ParentEnv) -> str:
-    return p.spec(
-        {
-            "schema_version": 1,
-            "state": "completed",
-            "reason": "受入条件・実merge・close・実行終了を確認した。",
-            "resume_condition": "完了。追加要件は別途判断する。",
-            "evidence": "自身の要件を差分と回帰テストで確認し、PR #100 の対象HEAD・CI・正式レビュー・mergeを照合した。",
-        }
+    return str(
+        p.spec(
+            {
+                "schema_version": 1,
+                "state": "completed",
+                "reason": "受入条件・実merge・close・実行終了を確認した。",
+                "resume_condition": "完了。追加要件は別途判断する。",
+                "evidence": "自身の要件を差分と回帰テストで確認し、PR #100 の対象HEAD・CI・正式レビュー・mergeを照合した。",
+            }
+        )
     )
 
 
@@ -78,6 +80,11 @@ def test_labelled_parent_resolves_once_and_sync_preserves_requirements(
     assert synced["progress"] == {"1": "continue"}
     after = p.state()["issues"]["1"]["body"]
     assert execution.requirement_body(before) == execution.requirement_body(after)
+    before_sections = p.formats.parse_sections(before)
+    after_sections = p.formats.parse_sections(after)
+    for heading in p.formats.PARENT_REQUIRED:
+        if heading != "進捗概要":
+            assert after_sections[heading] == before_sections[heading]
     assert (
         p.formats.parse_sections(before)[p.formats.TASKS_HEADING]
         == p.formats.parse_sections(after)[p.formats.TASKS_HEADING]
@@ -246,6 +253,29 @@ def test_removed_formal_children_do_not_silently_switch_to_self(
     assert "work targets changed" in denied.stderr and "#10" in denied.stderr
 
 
+def test_review_only_history_prevents_silent_target_switch(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    introduce_split(p)
+    tree = p.worktree("reviewed")
+    (tree / "change.txt").write_text("reviewed implementation\n")
+    run_git(tree, "add", "change.txt")
+    run_git(tree, "commit", "-m", "review target")
+    state = p.state()
+    state["prs"] = [p.pr(100, 10, run_git(tree, "rev-parse", "HEAD"), "codex/reviewed")]
+    p.save(state)
+    p.cli("review-prepare", "--prs", "100")
+    row = store(p).read_data()["parents"]["o/r#1"]
+    assert row["tasks"] == {} and row["reviews"]
+    state = p.state()
+    del state["parents"]["10"]
+    p.save(state)
+    denied = p.cli("status", ok=False)
+    assert "work targets changed" in denied.stderr and "#10" in denied.stderr
+
+
 @pytest.mark.parametrize(
     "gate_env", ["parent_self", "parent_self_worker"], indirect=True
 )
@@ -261,6 +291,7 @@ def test_self_result_review_merge_completion_without_creating_children(
     assert set(g.review.request["requirements"]) == {"1"}
     result = json.loads((g.review.run_dir / "result.json").read_text())
     assert result["prs"][0]["child_issues"] == [1]
+    assert g.review.calls()[0]["context"]["children"] == []
     assert result["request"]["prs"][0]["head_sha"] == p.state()["prs"][0]["head"]["sha"]
     if task.get("delegated"):
         assert task["worker_ended"]["delegation_id"] == task["delegation_id"]
@@ -324,4 +355,41 @@ def test_self_completion_waits_for_real_evidence(
     denied = p.cli("workflow-report", "--spec", completion_spec(p), ok=False)
     assert "pending" in denied.stderr or "acceptance evidence" in denied.stderr
     assert "development_result" not in store(p).read_data()["parents"]["o/r#1"]
+    assert_no_hierarchy_writes(p)
+
+
+@pytest.mark.parametrize("gate_env", ["parent_self_worker"], indirect=True)
+def test_postmerge_worker_check_requires_parent_acceptance(gate_env: GateEnv) -> None:
+    g, p = gate_env, gate_env.review.p
+    response = g.cli("merge")
+    assert response.returncode == 0, response.stderr + response.stdout
+    previous = store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]
+    restart = p.root / "restart.md"
+    restart.write_text("前のrunの終了・回収と同じworkerを確認した。")
+    manual(
+        p,
+        "run-worker",
+        "--child",
+        "1",
+        "--resume",
+        "--prompt-file",
+        p.note("merge後の動作を確認する。"),
+        "--restart-evidence-file",
+        str(restart),
+    )
+    current = store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]
+    assert current["worker_ended"]["delegation_id"] == current["delegation_id"]
+    assert current["verification"] == previous["verification"]
+    denied = p.cli("workflow-report", "--spec", completion_spec(p), ok=False)
+    assert "current result verification missing" in denied.stderr
+    manual(
+        p,
+        "record-result",
+        "--child",
+        "1",
+        "--evidence-file",
+        p.note("merge後確認の実結果を親が受け入れた。"),
+    )
+    accepted = p.cli("workflow-report", "--spec", completion_spec(p))
+    assert json.loads(accepted.stdout)["state"] == "completed"
     assert_no_hierarchy_writes(p)

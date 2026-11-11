@@ -1316,7 +1316,7 @@ def test_workflow_report_rejects_duplicate_json_and_empty_parent_completion(
         ),
         ok=False,
     )
-    assert "no implementation targets" in rejected.stderr
+    assert "acceptance evidence" in rejected.stderr
 
 
 @pytest.mark.parametrize("gate_env", ["standalone"], indirect=True)

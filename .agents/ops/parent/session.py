@@ -503,10 +503,22 @@ class ParentSession:
         parent = family[self.parent]
         return parent, {n: family[n] for n in parent.children}
 
+    def reviewed_targets(self) -> set[int]:
+        reviewed_targets: set[int] = set()
+        for review in self.row.get("reviews", []):
+            requirements = {int(n) for n in review["request"].get("requirements", {})}
+            if requirements:
+                reviewed_targets.update(requirements - {self.parent} or {self.parent})
+        return reviewed_targets
+
     def work_items(self) -> tuple[Issue, dict[int, Issue]]:
         parent, children = self.family()
         items = work_targets.resolve(
-            parent, children, self.row.get("tasks", {}), managed="dispatch" in self.row
+            parent,
+            children,
+            self.row.get("tasks", {}),
+            managed="dispatch" in self.row,
+            reviewed_targets=self.reviewed_targets(),
         )
         if children and any(
             parent.number in closing_issues(p.get("body") or "", self.gh.repo)
@@ -623,8 +635,9 @@ class ParentSession:
         spec = object_value(value["spec"])
         parent, children = self.family()
         previous_self = self.row["tasks"].get(str(self.parent))
-        if previous_self is not None and not work_targets.stopped_self_work(
-            previous_self
+        if self.parent in self.reviewed_targets() or (
+            previous_self is not None
+            and not work_targets.stopped_self_work(previous_self)
         ):
             raise work_targets.WorkTargetsChanged(
                 "cannot split an issue with existing self-work; stop the worker and "

@@ -38,6 +38,7 @@ def resolve(
     tasks: Mapping[str, Any],
     *,
     managed: bool,
+    reviewed_targets: set[int] | None = None,
 ) -> dict[int, Issue]:
     if set(children) != set(parent.children) or any(
         n == parent.number or child.number != n or child.parent != parent.number
@@ -62,6 +63,7 @@ def resolve(
         )
         and not (int(n) == parent.number and stopped_self_work(task))
     }
+    orphaned.update((reviewed_targets or set()) - set(items))
     if orphaned:
         raise WorkTargetsChanged(
             "work targets changed with existing execution/results: "

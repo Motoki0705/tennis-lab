@@ -524,7 +524,8 @@ merge直前にflock下で `merges/<repo digest>/pr-<N>-<head>.json` をprivate s
 同repo/PR/headへの試行済み記録はrunをまたいで保持する。異常終了・応答喪失後も同headを再試行しない。
 remoteがmerge済みなら二重mergeせず、対象issueのclosing完了を確認する。
 収集・割当照合・完了確認の対象はreview-prepare/collectと同じで、直属子があれば子、
-子のない単独issueではそのissue自身を閉じるPRを扱い、不要な親子関係を作らない。
+子のない単独issueでは親ラベル付きでもそのissue自身を閉じるPRを扱い、不要な親子関係を作らない。
+対象の正本は [parentの共通対象解決](../parent/README.md#issue自身を実行する)。自身の停止・branch・重複PRも同じgateで検査する。
 merge直後もremoteのmergeと対象issueのclosed/completedを確認する。子のある親だけ既存の
 `reconcile` / `sync_progress` へ接続し、単独issueの本文を親用進捗へ書き換えない。
 未close・確認不能は `merge_unconfirmed` として残す。親がGitHubとjournalを照合して復旧する。

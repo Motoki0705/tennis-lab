@@ -209,6 +209,10 @@ def gate_env(
     # Only private copies reach tests; case-level sharding remains independent.
     seeds: dict[str | None, GateSeed] = request.config.stash.setdefault(SEEDS, {})
     variant = getattr(request, "param", None)
+    if variant == "parent_self_worker":
+        # A saved worker binds hashes to its absolute worktree/contract. Reusing
+        # that runtime in another temporary root would alter its identity.
+        return make_gate_env(parent_env, monkeypatch, variant)
     if variant not in seeds:
         gate = make_gate_env(parent_env, monkeypatch, variant)
         cache = request.getfixturevalue("tmp_path_factory").mktemp("merge-gate-seed")
