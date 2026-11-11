@@ -59,6 +59,10 @@ from src.tasks.ball_detection.models.mdd import (
     MDDHeatmapConfig,
     MDDHeatmapHybridConfig,
 )
+from src.tasks.ball_detection.models.mdd.multiscale_config import (
+    MDDMultiScaleQueryConfig,
+)
+from src.tasks.ball_detection.models.mdd.stage_config import MDDStageHeatmapConfig
 from src.tasks.ball_detection.training.runtime.compilation import (
     compile_coordinate_model,
     coordinate_compile_scope,
@@ -159,7 +163,7 @@ def train_temporal_model(
     persist: Callable[[Path, str], None] | None = None,
 ) -> dict[str, Any]:
     expected_types = dict(
-        dpt=(MDDHeatmapConfig,),
+        dpt=(MDDHeatmapConfig, MDDStageHeatmapConfig),
         hybrid=(MDDHeatmapHybridConfig,),
         query=QUERY_CONFIG_TYPES,
     ).get(architecture)
@@ -301,6 +305,7 @@ def train_temporal_model(
         model,
         mode=runtime.compile_mode,
         recompile_limit=runtime.compile_recompile_limit,
+        fullgraph=not isinstance(model_config, MDDMultiScaleQueryConfig),
     )
     groups = optimizer_parameter_names(model)
     parameters = dict(model.named_parameters())
@@ -315,6 +320,7 @@ def train_temporal_model(
         eps=1e-8,
     )
     completed, position = 0, parent["sample_position"] if parent else 0
+    inherited_rng = None
     parent_updates = parent["cumulative_updates"] if parent else 0
     parent_input_frames = parent["cumulative_input_frames"] if parent else 0
     if saved is not None:
@@ -333,7 +339,7 @@ def train_temporal_model(
             raise ValueError(
                 "Stage learning-rate schedule is discontinuous at its parent boundary"
             )
-        inherit_optimizer(initial_artifact, optimizer, model, parent)
+        inherited_rng = inherit_optimizer(initial_artifact, optimizer, model, parent)
     output.mkdir(parents=True, exist_ok=True)
     log = output / "train.jsonl"
     if saved is not None:
@@ -375,6 +381,10 @@ def train_temporal_model(
     augmenter = VideoAugmenter(augmentation, budget.seed) if augmentation else None
     if saved is not None:
         restore_rng(saved["rng"], device)
+    elif inherited_rng is not None and parent is not None and parent["mode"] == "full_temporal_weights":
+        # Model/loader construction must not consume the next stage's dropout
+        # stream. Encoder-only transfers intentionally keep fresh query RNG.
+        restore_rng(inherited_rng, device)
     for update in range(completed + 1, target + 1):
         if device.type == "cuda":
             torch.cuda.synchronize(device)

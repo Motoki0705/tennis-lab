@@ -30,6 +30,9 @@ class MHCQueryBlock(nn.Module):
         image = self.norms[1](patches).reshape(b * t, -1, dim)
         delta, _ = self.cross(queries, image, image, need_weights=False)
         residual = streams + delta.reshape_as(streams)
+        return self.temporal_span(residual, times)
+
+    def temporal_span(self, residual: Tensor, times: Tensor) -> Tensor:
         compressed, state = self.mhc.pre(residual, torch.ones_like(residual[..., 0], dtype=torch.bool))
         original = compressed.squeeze(-2)
         value = original + self.temporal(self.norms[2](original), times)

@@ -25,6 +25,9 @@ from src.tasks.ball_detection.models.mdd import (
     DeepMDDQueryDetector,
     MDDMHCQueryConfig,
 )
+from src.tasks.ball_detection.models.mdd.multiscale_config import (
+    MDDMultiScaleQueryConfig,
+)
 from src.tasks.ball_detection.training.runtime.compilation import (
     coordinate_compile_scope,
 )
@@ -176,7 +179,7 @@ def evaluate_temporal_coordinates(
         manifest_sha256=dual_sha256(manifest),
         snapshot=dataset.manifest["ball_store"],
         model_config=asdict(model.config),
-        model_kind="mdd_mhc_query" if type(model.config) is MDDMHCQueryConfig else "mdd_temporal_query",
+        model_kind="mdd_multiscale_query" if type(model.config) is MDDMultiScaleQueryConfig else "mdd_mhc_query" if type(model.config) is MDDMHCQueryConfig else "mdd_temporal_query",
         runtime=asdict(runtime),
         image_decode=jpeg_decoder_contract(runtime.jpeg_decoder),
         identities=identities,

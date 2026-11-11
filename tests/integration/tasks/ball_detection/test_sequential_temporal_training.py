@@ -182,7 +182,7 @@ def test_mhc_direct_t32_dpt_to_t64_freeze_inheritance_and_exact_runner_resume(
     assert all(parameter not in optimizer.state for parameter in groups[1])
     inherited = {name: optimizer.state[parameter] for name, parameter in model.named_parameters() if name.startswith("encoder.")}
     budget = update_budget(learning_rate=1e-4, initial_learning_rate=1e-4, warmup_updates=0,
-                           freeze_updates=1, encoder_lr_ratio=.1, optimizer_transfer="inherit")
+                           freeze_updates=1, encoder_lr_ratio=.1, optimizer_transfer="inherit", schedule_updates=6)
 
     def train(output: Path, *, stop: int | None = None, resume: Path | None = None, model_config=config) -> None:
         options = (dict(resume=resume) if resume is not None else
@@ -234,6 +234,27 @@ def test_mhc_direct_t32_dpt_to_t64_freeze_inheritance_and_exact_runner_resume(
     assert validation["metrics"]["support"]["observed"] == 88
     assert validation["model_kind"] == "mdd_mhc_query"
     assert not validation["absence_detection"]["available"]
+    # Continuing the same model restores the first batch's RNG after all
+    # constructor/loader RNG consumption, in addition to AdamW and sample state.
+    from src.tasks.ball_detection.checkpoints.temporal import rng_state
+    original_batches = runner.coordinate_batches
+    first_batch_rng: list[dict] = []
+
+    def observe_batches(*args, **kwargs):
+        for batch in original_batches(*args, **kwargs):
+            if not first_batch_rng:
+                first_batch_rng.append(rng_state(torch.device("cpu")))
+            yield batch
+
+    with monkeypatch.context() as local:
+        local.setattr(runner, "coordinate_batches", observe_batches)
+        continuation = continuous / "checkpoint-update-00000003.pt"
+        train_temporal_model(architecture="query", phase="finetune",
+                             manifest=prepared / "train_T64.json", evaluation_manifest=prepared / "evaluation_T64.json",
+                             model_config=config, output=tmp_path/"next-stage", budget=replace(budget, schedule_offset=3),
+                             initial_artifact=continuation, initial_artifact_sha256=dual_sha256(continuation),
+                             parent_update=3, stop_after_update=1, **common)
+    assert_tree_equal(first["rng"], first_batch_rng[0], "same_model_stage_rng")
 
 
 def test_continuous_learning_rate_has_requested_endpoints_and_stage_boundaries() -> (
@@ -264,3 +285,35 @@ def test_continuous_learning_rate_has_requested_endpoints_and_stage_boundaries()
         for offset in range(6000, remaining, 6000):
             next_stage = type(first)(**{**vars(first), "schedule_offset": offset})
             assert next_stage.lr(-1) == first.lr(offset - 1)
+
+
+def test_stage_cnn_full_state_resume_preserves_draws_and_augmentation(tmp_path: Path) -> None:
+    from dataclasses import asdict
+
+    from src.tasks.ball_detection.data.augmentation.video import AugmentationConfig
+    from src.tasks.ball_detection.models.mdd.stage_config import MDDStageHeatmapConfig
+
+    prepared = prepare_fixture(tmp_path / "data")
+    model = MDDStageHeatmapConfig(
+        **asdict(replace(small_model("dpt"), encoder_variant="x3d_csn", temporal_mixing="depthwise3d",
+                         residual_blocks=(0, 1, 1, 1, 1, 1))),
+        stage_blocks=("convnext", "convnext", "ffn", "ffn", "ffn"),
+        expansion_ratios=(2.,) * 5,
+    )
+    def train(name, **options):
+        return train_temporal_model(
+            architecture="dpt", phase="pretrain", manifest=prepared/"train_T32.json",
+            evaluation_manifest=prepared/"evaluation_T32.json", model_config=model,
+            output=tmp_path/name, budget=update_budget(), runtime=CoordinateRuntime(cpu_threads=1),
+            device=torch.device("cpu"), augmentation=AugmentationConfig.load(Path("src/tasks/ball_detection/configs/augmentation/mdd_posttraining.yaml")), distance_px=20., **options)
+    train("continuous")
+    train("resumed", stop_after_update=1)
+    train("resumed", resume=tmp_path/"resumed/checkpoint-update-00000001.pt")
+    a, b = state(tmp_path/"continuous"), state(tmp_path/"resumed")
+    for field in ("model_artifact", "optimizer", "schedule", "sample_position", "rng"):
+        assert_tree_equal(a[field], b[field])
+    rows = [[json.loads(x) for x in (tmp_path/name/"train.jsonl").read_text().splitlines()]
+            for name in ("continuous", "resumed")]
+    for arow, brow in zip(*rows, strict=True):
+        assert arow["pack_ids"] == brow["pack_ids"]
+        assert arow["augmentation_sha256"] == brow["augmentation_sha256"]
