@@ -93,9 +93,14 @@ def test_pr_pushes_run_ci_and_only_pr_runs_cancel_previous_runs(
         ".agents/logs/parents/README.md",
         ".agents/logs/parents/parent-1/README.md",
         ".agents/logs/parents/parent-1/activity-public/README.md",
+        ".agents/logs/parents/parent-index-legacy-0001/README.md",
+        ".agents/logs/parents/parent-1/activity-index-activities-0001/README.md",
+        ".agents/logs/parents/parent-1/activity-public-records-0001/README.md",
         ".agents/logs/parents/parent-1/child-10/README.md",
         ".agents/logs/parents/parent-1/child-10/d-abc/README.md",
         ".agents/logs/parents/parent-1/child-10/d-abc/turn-0001/README.md",
+        ".agents/logs/parents/parent-1/child-10/d-index-activities-0001/README.md",
+        ".agents/logs/parents/parent-1/child-10/d-abc/page-children-0001/README.md",
         log + "README.md",
     ]
     code = ["src/utils/example.py"]

@@ -3,6 +3,8 @@
 `agent_exec.sh` はこのcheckoutの `.venv/bin/python` で `agent_runtime.py` を実行する。
 Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1ターンを実行・保存する。
 担当registry、実行枠、GitHub操作、タスクの合否判定は呼出元が管理する。
+親文脈のあるruntime結果・欠測と後続の親判断は [判断記録](../decision_logs/README.ja.md#捕捉元と未対応入口)で辿る。
+記録対象外のrunnerも同節に明記する。
 
 | ファイル | 責務 |
 |---|---|

@@ -40,6 +40,16 @@ def test_deterministic_hierarchy_and_bidirectional_causal_links() -> None:
     random.Random(42).shuffle(shuffled)
     assert navigation.generate(dict(shuffled)) == generated
     assert navigation.generate({**original, **generated}) == generated
+    assert (
+        navigation.generate(
+            {
+                **original,
+                **{n: b"stale view" for n in generated},
+                ".agents/logs/parents/parent-1/activity-index-activities-9999/README.md": b"unrelated view",
+            }
+        )
+        == generated
+    )
     assert len(generated) == 6  # index, parent, activity, child, delegation, turn
     navigation.validate_links({**original, **generated}, generated)
     activity = next(v.decode() for p, v in generated.items() if "/activity-" in p)
@@ -76,7 +86,11 @@ def test_direct_investigation_parallel_workers_join_and_handoff() -> None:
     rows = [*worker, other, join, handoff, followup]
     generated = navigation.generate(files(rows))
     parent = generated[".agents/logs/parents/parent-1/README.md"].decode()
-    assert parent.count("## 活動 ") == 3
+    # Upper levels summarize activities; the canonical activity pages retain
+    # the causal tables and anchors instead of copying every record here.
+    assert len({navigation.event_path(r).rsplit("/", 1)[0] for r in rows}) == 3
+    for group in {navigation.event_path(r).rsplit("/", 1)[0] for r in rows}:
+        assert group.rsplit("/", 1)[-1] + "/README.md)" in parent
     assert "親の直接活動" in parent and "](child-20/README.md)" in parent
     assert "Join both findings" in parent and "未判断" in parent
     canonical = generated[
@@ -93,7 +107,9 @@ def test_prose_cannot_inject_markdown_links_html_or_rows() -> None:
     row["data"]["summary"] = 'result | [extra](https://example.org) <img src="x">\nnext'
     public = files([row])
     generated = navigation.generate(public)
-    text = next(v.decode() for v in generated.values())
+    text = generated[
+        navigation.event_path(row).rsplit("/", 1)[0] + "/README.md"
+    ].decode()
     assert "[extra](" not in text and '<img src="x">' not in text
     assert "&#124;" in text and "&lt;img" in text and "<br>next" in text
 

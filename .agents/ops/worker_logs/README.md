@@ -41,6 +41,9 @@ preflightの `public_key` は私的IDとは独立したuuid4の32桁hex。
 `.gitignore`はログ配下を既定で除外し、この形式ではparents以下のディレクトリ探索と上記3ファイルを許可する。
 raw・stderr等は追跡対象にしない。判断記録と生成READMEの追跡・検査・共有indexは
 [独立した公開形式](../decision_logs/README.ja.md#git公開と閲覧)で扱い、既存3ファイルの例外には含めない。
+結果と親の判断・次の行動は[親の結果・判断一覧](../../logs/parents/README.md)から辿る。
+正常finalを公開できない失敗ターンも判断記録の対象になる。捕捉範囲と未対応入口は
+[判断記録の仕様](../decision_logs/README.ja.md#捕捉元と未対応入口)を参照する。
 
 - `instruction.md`: 親が書いたtask/answerの原文を、必要な無害化後に保存する。標準指示・生成見出し・合成promptは入れない。
 - `final.md`: 親側で受信を確認した最終報告の無害化後の全文。stderr・rawイベント・内部思考は対象外。

@@ -106,23 +106,7 @@ class Publisher:
         self, batch: dict[str, Any], revision: dict[str, Any], head: str | None = None
     ) -> dict[str, str]:
         head = head or revision["head"]
-        require(digest(head, 40), "journal_invalid")
-        require(
-            self.git("rev-list", "--parents", "-n", "1", head).decode().split()
-            == [head, revision["base"]],
-            "unexpected_commit_parent",
-        )
-        diff = policy.changes(
-            self.git(
-                "diff",
-                "--raw",
-                "--abbrev=40",
-                "--no-renames",
-                "-z",
-                revision["base"],
-                head,
-            )
-        )
+        diff = self.commit_diff(revision, head)
         policy.verify(
             self.snapshot(revision["base"]),
             self.snapshot(head),
@@ -130,7 +114,31 @@ class Publisher:
             parent=batch["parent"],
             expected=self.expected(batch),
         )
-        return dict(diff)
+        return diff
+
+    def commit_diff(
+        self, revision: dict[str, Any], head: str | None = None
+    ) -> dict[str, str]:
+        head = head or revision["head"]
+        require(digest(head, 40), "journal_invalid")
+        require(
+            self.git("rev-list", "--parents", "-n", "1", head).decode().split()
+            == [head, revision["base"]],
+            "unexpected_commit_parent",
+        )
+        return dict(
+            policy.changes(
+                self.git(
+                    "diff",
+                    "--raw",
+                    "--abbrev=40",
+                    "--no-renames",
+                    "-z",
+                    revision["base"],
+                    head,
+                )
+            )
+        )
 
     def worktree(self, batch: dict[str, Any], revision: int | None = None) -> Path:
         common = Path(
@@ -339,7 +347,24 @@ class Publisher:
 
     def confirm(self, batch: dict[str, Any], pr: dict[str, Any]) -> dict[str, Any]:
         revision = batch["revisions"][-1]
-        diff = self.verify(batch, revision)
+        status = {r["id"]: r for r in self.journal.status()}
+        # A completed publication already passed the full policy before its
+        # merge fact and every per-record publication fact were persisted.
+        # Its old README bytes may belong to an earlier renderer. Reconcile
+        # that historical fact without pretending it is a new exception: the
+        # exact PR/HEAD/merge, Git structure, ancestry and current envelopes are
+        # still checked below. Every new or unconfirmed revision uses verify().
+        # A repair resets merge_commit to None and gets the full current check.
+        confirmed = (
+            batch["stage"] in {"merged", "readme_refresh_required"}
+            and batch["merge_commit"] is not None
+            and batch["merge_commit"] == pr.get("merge_commit_sha")
+            and all(
+                status[p["record"]["id"]]["publication_status"] == "published"
+                for p in batch["payloads"]
+            )
+        )
+        diff = self.commit_diff(revision) if confirmed else self.verify(batch, revision)
         policy.identity(pr, batch, revision["head"], len(diff))
         require(
             pr.get("merged") is True
@@ -588,7 +613,8 @@ class Publisher:
         # The read precedes lock creation to reject a symlinked private hierarchy.
         document = storage.read(self.path, self.journal.repo, self.journal.parent)
         if dry_run:
-            payloads = self.journal.public_payloads()
+            preview = self.journal.preview_publication(retry=retry)
+            payloads = preview["payloads"]
             base = self.git("rev-parse", "origin/main").decode().strip()
             files = self.snapshot(base)
             expected = {event_path(p["record"]): json_bytes(p) for p in payloads}
@@ -600,12 +626,23 @@ class Publisher:
             batch = next(
                 (b for b in document["batches"] if b["state"] != "merged"), None
             )
-            return self.view(
-                batch,
-                dry_run=True,
-                generated_readmes=len(generate(files)),
-                prepared_records=len(payloads),
-            )
+            generated = generate(files)
+            # generate() checks escaped Markdown after removing its fixed HTML
+            # scaffolding. Do not feed those closing tags to the path guard.
+            return {
+                **self.view(
+                    batch,
+                    dry_run=True,
+                    generated_readmes=len(generated),
+                    prepared_records=preview["prepared_records"],
+                    preview_records=len(payloads),
+                    preview_blocked=preview["blocked"],
+                    blocked=len(preview["blocked"]),
+                ),
+                "preview_readmes": {
+                    name: raw.decode("utf-8") for name, raw in generated.items()
+                },
+            }
         with storage.publication_lock(self.path):
             # Reload under the lock before any fallible preparation. An old
             # Publisher instance must never persist its cached batch history

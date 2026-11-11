@@ -37,6 +37,11 @@ DOCS = [
     DSH_SKILL.with_name("task-template.md"),
     ROOT / ".agents/ops/parent/README.md",
     ROOT / ".agents/ops/worker_logs/README.md",
+    ROOT / ".agents/ops/decision_logs/README.md",
+    ROOT / ".agents/ops/decision_logs/README.ja.md",
+    ROOT / ".agents/ops/decision_logs/README.zh-CN.md",
+    ROOT / ".agents/ops/lib/README.md",
+    ROOT / ".agents/ops/parent/development_workflow.md",
     ROOT / ".agents/ops/board/README.md",
     ROOT / ".agents/ops/herdr_labels/README.md",
     ROOT / ".agents/skills/parent-session/SKILL.md",
@@ -178,6 +183,22 @@ def test_entry_chain_from_agents_md_to_memory_summary() -> None:
     assert (ROOT / "CLAUDE.md").read_text(encoding="utf-8").splitlines()[
         0
     ] == "@AGENTS.md"
+
+
+def test_decision_record_entry_is_reachable_from_operational_docs() -> None:
+    specification = ROOT / ".agents/ops/decision_logs/README.ja.md"
+    for name in (
+        ".agents/skills/parent-session/SKILL.md",
+        ".agents/ops/parent/README.md",
+        ".agents/ops/parent/development_workflow.md",
+        ".agents/ops/worker_logs/README.md",
+        ".agents/ops/lib/README.md",
+    ):
+        doc = ROOT / name
+        assert any(
+            (doc.parent / target.partition("#")[0]).resolve() == specification
+            for _, target, _ in _links(doc)
+        )
 
 
 def test_deepseek_harness_skill_is_discoverable_from_both_agents() -> None:
