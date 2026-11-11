@@ -1544,6 +1544,7 @@ def review_setup(
     *,
     independent: bool = False,
     standalone: bool = False,
+    parent_self: bool = False,
     pr_count: int = 3,
     shared: bool = False,
 ) -> list[int]:
@@ -1558,8 +1559,8 @@ def review_setup(
     p.agreed()
     state = p.state()
     state["prs"] = []
-    for i in range(1 if standalone else pr_count):
-        if not standalone:
+    for i in range(1 if standalone or parent_self else pr_count):
+        if not (standalone or parent_self):
             p.child(f"child-{i}")
         worktree = p.worktree(f"pr-{i}")
         filename = f"change-{i}.txt" if independent else "change.txt"
@@ -1573,7 +1574,7 @@ def review_setup(
         state["prs"].append(
             p.pr(
                 100 + i,
-                1 if standalone else 10 + i,
+                1 if standalone or parent_self else 10 + i,
                 run_git(worktree, "rev-parse", "HEAD"),
             )
         )
@@ -1798,6 +1799,7 @@ def test_nested_manual_parent_keeps_status_reconcile_and_result_commands(
     }
     state["parents"]["20"] = 10
     state["prs"].append(p.pr(50, 20))
+    state["prs"].append(p.pr(51, 10))  # The upper parent's artifact is independent.
     p.save(state)
     identity = {"CLAUDE_CODE_SESSION_ID": "private-nested-parent"}
     p.cli("register", parent="10", extra=identity)
@@ -2120,6 +2122,7 @@ def make_review_env(
     *,
     independent: bool = False,
     standalone: bool = False,
+    parent_self: bool = False,
     pr_count: int = 3,
     shared: bool = False,
     before_review: Callable[[ParentEnv], None] | None = None,
@@ -2132,6 +2135,7 @@ def make_review_env(
         p,
         independent=independent,
         standalone=standalone,
+        parent_self=parent_self,
         pr_count=pr_count,
         shared=shared,
     )

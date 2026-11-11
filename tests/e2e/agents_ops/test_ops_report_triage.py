@@ -615,6 +615,8 @@ def test_renaming_reparenting_and_new_task_key_reuse_metadata_identity(
     assert ops.run("triage").returncode == 0
     reused = json.loads(_create(ops, manifest=_manifest(key="renamed")).stdout)
     assert reused["child"] == 101 and reused["actual_parent"] == 2
+    assert "work targets changed" in reused["target_conflict"]
+    assert "work targets changed" in _parent(ops, "status", ok=False).stderr
     assert len(_children(ops)) == 1
     assert ops.state["parents"]["101"] == 2
 

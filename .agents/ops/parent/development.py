@@ -26,7 +26,7 @@ from lib.agent_settings import implementation_model
 from worker_logs import service as worker_logs
 from worker_logs.sources import original, read_original
 
-from . import worker_preflight
+from . import work_targets, worker_preflight
 from .adopted_tasks import check_task_adoptions
 from .execution import (
     authorization,
@@ -353,9 +353,11 @@ def stop_worker(
     dispatch = managed(session.owner())
     if not dispatch:
         raise ValueError("worker stop requires a managed parent")
-    session.stop_or_resume(child, detail, False)
-    plan = session.launch_plan()
-    targets = {child} | {t["child"] for t in plan["tasks"] if t["state"] == "held"}
+    stopped = session.stop_or_resume(child, detail, False)
+    plan = None if stopped.get("target_conflict") else session.launch_plan()
+    targets = {child} | (
+        {t["child"] for t in plan["tasks"] if t["state"] == "held"} if plan else set()
+    )
     for job in dispatch["jobs"].values():
         if job["role"] != "implementation" or job["child"] not in targets:
             continue
@@ -375,7 +377,8 @@ def stop_worker(
     return {
         "child": child,
         "result": "stop_requested",
-        "launch_plan": session.launch_plan(),
+        "launch_plan": session.launch_plan() if plan is not None else None,
+        **({"target_conflict": stopped["target_conflict"]} if plan is None else {}),
     }
 
 
@@ -490,18 +493,29 @@ def verify_completion(session: ParentSession) -> list[int]:
     merge_gate = importlib.import_module("merge_gate")
     merged: set[int] = set()
     pulls = session.gh.pulls()
+    work_targets.require_separate_self_prs(parent, pulls, session.gh.repo)
     for n, item in items.items():
         if task_status(item) == "cancelled":
             verify_cancellation(session, item, auth)
             continue
         task = session.row["tasks"].get(str(n), {})
         verification = task.get("verification", {})
+        preflight = task.get("preflight", {})
+        latest_turn = (
+            worker_preflight.result_turn(task) if task.get("delegated") else None
+        )
         if (
             task_status(item) != "completed"
             or task.get("stopped")
             or "needs-human" in item.labels
             or task_errors(task, auth, item.body)
             or not verification.get("evidence")
+            or (
+                task.get("delegated")
+                and latest_turn is not None
+                and preflight.get("accepted_turn_id")
+                != latest_turn["snapshot"]["turn_id"]
+            )
         ):
             raise ValueError(
                 f"#{n}: close, acceptance evidence or current result verification missing"

@@ -41,6 +41,7 @@ from parent.policy import (  # noqa: E402
 from parent.session import ParentSession  # noqa: E402
 from parent.snapshot import git, snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
+from parent.work_targets import require_separate_self_prs  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
     evaluate_coverage,
@@ -135,16 +136,16 @@ def authorized(
 def collect(
     session: ParentSession, request: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[int, bytes]]:
-    parent, children = session.family()
+    parent, children = session.work_items()
     selected = [p["number"] for p in request["prs"]]
-    prs = select_prs(
-        selected, session.gh.pulls(), set(children) or {parent.number}, session.gh.repo
-    )
+    pulls = session.gh.pulls()
+    require_separate_self_prs(parent, pulls, session.gh.repo)
+    prs = select_prs(selected, pulls, set(children), session.gh.repo)
 
     def assignments(pulls: Sequence[Mapping[str, Any]]) -> dict[int, set[int]]:
         return {
             pr["number"]: closing_issues(pr.get("body") or "", session.gh.repo)
-            & (set(children) or {parent.number})
+            & set(children)
             for pr in pulls
         }
 
@@ -181,8 +182,7 @@ def collect(
                 "title": pr["title"],
                 "body": pr["body"],
                 "child_issues": sorted(
-                    closing_issues(pr["body"] or "", session.gh.repo)
-                    & (set(children) or {parent.number})
+                    closing_issues(pr["body"] or "", session.gh.repo) & set(children)
                 ),
                 "changed_paths": changed_paths(
                     entry["merge_base_sha"], entry["head_sha"]
@@ -204,16 +204,18 @@ def collect(
         + [
             {"number": c.number, "title": c.title, "body": c.body}
             for c in children.values()
-            if c.number in selected_issues
+            if c.number in selected_issues and c.number != parent.number
         ],
         prs,
     )
     # Recollect after all GitHub/git I/O. Never review a partially collected PR set.
     with session.gh.fresh_reads():
+        if set(session.work_items()[1]) != set(children):
+            raise ValueError("work targets changed during review collection")
         fresh = select_prs(
             selected,
             session.gh.pulls(),
-            set(children) or {parent.number},
+            set(children),
             session.gh.repo,
         )
     if [snapshot(dict(pr))[0] for pr in fresh] != request["prs"] or assignments(
@@ -226,6 +228,7 @@ def collect(
         "children": [
             {"number": c.number, "title": c.title, "body": c.body}
             for c in children.values()
+            if c.number != parent.number
         ],
         "prs": details,
         "review_observations": observations,

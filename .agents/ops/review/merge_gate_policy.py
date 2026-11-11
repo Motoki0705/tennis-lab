@@ -336,7 +336,7 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
             reasons.append("author_unknown")
     except AuthorConflictError:
         reasons.append("author_conflict")
-    targets = set(gate.children) or {gate.parent_issue}
+    targets = set(gate.children)
     linked = closing_issues(pr.get("body") or "", gate.repo) & targets
     if not linked:
         reasons.append("not_direct_child_pr")

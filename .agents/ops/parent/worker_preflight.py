@@ -471,16 +471,27 @@ def check_admission(
         raise ValueError("worker turn differs from the reserved instruction")
 
 
-def require_implementation(session: ParentSession, child: int) -> None:
-    task = session.row["tasks"].get(str(child), {})
-    if not task.get("delegated"):
-        return
-    directory, record = latest_evidence(session, child)
+def result_turn(task: dict[str, Any]) -> dict[str, Any] | None:
+    """Resolve the current result instruction, preserving empty legacy history."""
     value = state(task)
     turn = next((t for t in reversed(value["turns"]) if not t.get("cancelled")), None)
+    if value["turns"] and turn is None:
+        raise ValueError("no non-cancelled worker turn to verify")
+    return turn
+
+
+def require_implementation(session: ParentSession, child: int) -> str | None:
+    """Verify the actual runtime and return the turn ID that was verified."""
+    task = session.row["tasks"].get(str(child), {})
+    if not task.get("delegated"):
+        return None
+    turn = result_turn(task)
+    directory, record = latest_evidence(session, child)
+    value = state(task)
     if turn is not None and (
         turn["source"] != str(directory)
         or record.get("prompt_sha256") != turn.get("prompt_sha256")
     ):
         raise ValueError("worker result does not match the saved instruction")
     bind_runtime(value, record)
+    return turn["snapshot"]["turn_id"] if turn is not None else None
