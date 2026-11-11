@@ -705,12 +705,21 @@ class ParentSession:
                 # A renamed/reparented existing proposal remains the same work.
                 # Do not silently move it or recreate it under another task key.
                 if previous_parent is not None:
-                    return {
+                    actual_parent = self.gh.identity(previous_parent)
+                    reused: dict[str, Any] = {
                         "child": previous_number,
                         "reused": True,
-                        "actual_parent": self.gh.identity(previous_parent),
-                        "progress": self.sync_progress(),
+                        "actual_parent": actual_parent,
                     }
+                    try:
+                        reused["progress"] = self.sync_progress()
+                    except work_targets.WorkTargetsChanged as exc:
+                        if actual_parent == self.parent:
+                            raise
+                        # This is an identity lookup for already reparented
+                        # work, not admission to execute in the old parent.
+                        reused.update(progress={}, target_conflict=str(exc))
+                    return reused
                 if not any(
                     int(m[1]) == self.parent and m[2] == key
                     for m in TASK_MARKER.finditer(previous_body)
