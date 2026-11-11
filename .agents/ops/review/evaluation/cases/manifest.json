@@ -97,7 +97,19 @@
         "number": 1686
       },
       "input_file": "inputs/pr-1686.json",
-      "input_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200"
+      "input_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
+      "input_publication": {
+        "published_sha256": "edd461bdde8fa44d6979d7af63c213690a9c9503430e56e29bb1a36e07fb63b5",
+        "rules": {
+          "local_paths": 0,
+          "native_identifiers": 0,
+          "worktree_paths": 2
+        },
+        "source_commit": "3de0c95c3df0fb76bf61fc71d57818a6b3e10a29",
+        "source_path": ".agents/ops/review/evaluation/cases/inputs/pr-1686.json",
+        "source_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
+        "version": 1
+      }
     },
     {
       "case_id": "pr-1744",

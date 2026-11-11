@@ -7,7 +7,7 @@
 別途の実行指示を受け、2026-11-11に最小案14回を逐次実行した。
 追加起動・形式失敗・runtime失敗・使用量欠測は0件。
 [実測と親の判定資料](../../../../knowledge/reports/review-model-comparison-20261111/README.md)
-を保存した。親の指摘一致判定と採否は結果レポートへ反映済みで、正式レビューの実機受入は未実施。
+を保存した。親の指摘一致判定と採否は結果レポートへ反映済みで、正式レビューの実機受入は完了待ち。
 通常のpytestはオフラインの契約テストだけを実行し、比較を起動しない。
 
 ## 固定した資料
@@ -53,6 +53,10 @@ modelとeffortの実効値は確認でき、service tierの実効値は不明の
 CPUテスト実行は比較では提供しないため、正式レビューの全tool環境と同一ではない。
 
 ## 準備と明示実行
+
+取得サーバーは `DECISION_LOG_RETRIEVAL` または `DECISION_LOG_CAPTURE` が存在すれば、
+空の値でも明示的に拒否する。直接の `serve` を含め、構築時と各呼出し前に検査する。
+起動前に操作者が設定を外す必要があり、黙って無視して正式parent journalへ取得結果を混ぜない。
 
 checkoutと正式parent stateの外に専用stateを置く。
 harnessの出力、runtime、取得receipt、ローカル書込みをprivate権限で保存する。
@@ -114,6 +118,10 @@ wall timeは予約からruntime終了までとし、手動集計待ちを除く�
 `matches` に `finding_id`、`gold_id`、`reason`、`evidence` を記す。
 残りは理由と根拠つきで `false`、`unconfirmed`、`valid_new` に分類する。
 未記入templateを判定済みとして受理しない。
+出力した全指摘を `matches` または `other_findings` にちょうど1回分類する。
+未分類、両方への記入、同じ対応の重複、1指摘と複数goldの対応は拒否する。
+1指摘は独立した1論点を表すためであり、複数指摘が同じgoldに対応する場合はgoldを1回だけ数える。
+親の未記入は保留、明示的な `unconfirmed` だけを確認不能件数とする。
 
 `report --state-dir "$EVAL_STATE" --parent-adjudications adjudications.json` は次を分けて返す。
 
@@ -126,7 +134,9 @@ wall timeは予約からruntime終了までとし、手動集計待ちを除く�
   統合結果として足し合わせない。
 
 検出と見逃しは正解ID単位とし、blockerとmajorを分ける。親の未判定は0件でなく保留とする。
-全体が利用不能な出力は、そのケースの正解をすべて見逃したものとする。
+runtime失敗と無効・欠落出力は、品質件数と指摘率の分母から除外し、比較全体をincompleteとする。
+失敗runtimeの復旧可能なfinalは調査用の `candidate_only` として保持するが、
+親のmatchがあっても検出成功にしない。失敗起動の実測使用量・時間は引き続き加算する。
 誤指摘、指摘の確認不能、コードの `not_reviewed`、証拠待ち、形式失敗、runtime失敗、失敗の和集合を分ける。
 追加起動率は、複数の異なるAI起動を持つepisode数を、観測episode数で割る。
 資格評価のepisodeはケースとモデル、選択射影ではケース単位である。
@@ -137,6 +147,34 @@ wall timeは予約からruntime終了までとし、手動集計待ちを除く�
 AI未起動の操作が元runの使用量を再請求する入力は拒否する。
 元counterの重複は除き、同じcounterの矛盾は拒否する。料金とquotaの節約は推定しない。
 改善率は全組の完了と使用量の確認後、入力+出力またはagent時間で算出する。
+
+## 公開版と読み取り専用の再計算
+
+`input_sha256` は実際に測定した元入力の指紋を保持する。無害化した公開入力には
+`input_publication` として、不変のGit取得元、元入力・公開版の指紋、置換規則と件数を付ける。
+`verify` はローカルGit履歴から元入力を照合し、同じ置換を再現して公開版を検証する。
+非公開の元bundleとrun別の元出力指紋は保持する。公開projectionでの `init` と `prepare` は拒否し、
+無害化した刺激を元実験と同じものとして新規起動しない。
+
+コード変更後の完了済み実験は、次の明示的な読み取り専用経路で再集計する。
+
+```bash
+.venv/bin/python -m review.evaluation report --state-dir "$EVAL_STATE" --repo . \
+  --recorded-provenance knowledge/reports/review-model-comparison-20261111/provenance.json \
+  --parent-adjudications knowledge/reports/review-model-comparison-20261111/adjudications.json \
+  --output reanalysis.json
+.venv/bin/python -m review.evaluation check-publication --repo . --base origin/main
+```
+
+公開provenanceと元ledger・コード・catalog・protocol・非公開入力を照合し、保存final・event・runtimeを
+再検証する。元run・出力・counter・時間の同一性も確認する。起動・collect・ledger更新は行わず、
+通常経路の固定コード検査は維持する。
+
+公開検査は固定入力、判定資料、README、ソースを含むPR全変更ファイルを対象とする。
+取得JSONは既存の厳格Guardとworktree検査、ソース・文書は具体的なhome・一時領域の絶対パス、
+native UUIDと既知のnative識別子を検査する。ソース中のシステム実行パス・schema名・操作者用の
+変数やplaceholderは許容する。正解表の予約済みexample.com資格情報例とrepo-rootのignore規則は
+文書上の例として照合し、実サービスの資格情報URLを免除しない。
 
 ## 過去の再利用と残る受入
 

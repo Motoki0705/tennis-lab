@@ -131,78 +131,103 @@ def candidate_table(
     ]
 
 
+def runtime_succeeded(row: dict[str, Any]) -> bool:
+    return bool(
+        row["agent_invocations"] == 1
+        and row["runtime_status"] == "completed"
+        or row["agent_invocations"] == 0
+        and row["runtime_status"] == "not_invoked"
+    )
+
+
 def judged(
     row: dict[str, Any], expected: list[dict[str, Any]], judgment: dict[str, Any] | None
 ) -> dict[str, Any]:
     emitted = {finding["id"]: finding for finding in findings(row)}
     truth = {finding["id"]: finding for finding in expected}
-    if judgment is None:
-        if row["output_status"] == "valid":
-            return {
-                "status": "awaiting_parent",
-                "true_positives": None,
-                "false_negatives": None,
-                "false_positives": None,
-                "unconfirmed_findings": len(emitted),
-                "by_severity": {
-                    severity: {
-                        "expected": sum(f["severity"] == severity for f in expected),
-                        "detected": None,
-                        "missed": None,
-                    }
-                    for severity in ("blocker", "major")
-                },
-            }
+    if len(emitted) != len(findings(row)) or len(truth) != len(expected):
+        raise ValueError("duplicate finding or gold IDs")
+    matched, classified = set(), set()
+    false, unknown, new = 0, 0, 0
+    if judgment is not None:
+        if (
+            judgment["output_sha256"] != row["output_sha256"]
+            or judgment["adjudicator"] != "parent"
+        ):
+            raise ValueError(
+                "adjudication does not identify this exact output and parent"
+            )
+        for match in judgment["matches"]:
+            if (
+                match["finding_id"] not in emitted
+                or match["gold_id"] not in truth
+                or not match["reason"].strip()
+                or not match["evidence"].strip()
+            ):
+                raise ValueError("invalid parent finding match")
+            if match["finding_id"] in classified:
+                raise ValueError("duplicate match or multiple gold IDs for one finding")
+            matched.add(match["gold_id"])
+            classified.add(match["finding_id"])
+        for item in judgment["other_findings"]:
+            if (
+                item["finding_id"] not in emitted
+                or item["finding_id"] in classified
+                or not item["reason"].strip()
+                or not item["evidence"].strip()
+            ):
+                raise ValueError("conflicting or unsupported parent classification")
+            classified.add(item["finding_id"])
+            if item["classification"] == "false":
+                false += 1
+            elif item["classification"] == "unconfirmed":
+                unknown += 1
+            elif item["classification"] == "valid_new":
+                new += 1
+            else:
+                raise ValueError("unknown parent classification")
+        if set(emitted) != classified:
+            raise ValueError("parent adjudication leaves unclassified findings")
+    exclusion = (
+        "runtime_failure_excluded"
+        if not runtime_succeeded(row)
+        else "format_failure_excluded"
+        if row["output_status"] != "valid"
+        else None
+    )
+    if exclusion is not None:
         return {
-            "status": "unusable_output",
-            "true_positives": 0,
-            "false_negatives": len(truth),
+            "status": exclusion,
+            "true_positives": None,
+            "false_negatives": None,
             "false_positives": None,
-            "unconfirmed_findings": len(emitted),
+            "unconfirmed_findings": None,
+            "additional_valid_findings": None,
             "by_severity": {
                 severity: {
                     "expected": sum(f["severity"] == severity for f in expected),
-                    "detected": 0,
-                    "missed": sum(f["severity"] == severity for f in expected),
+                    "detected": None,
+                    "missed": None,
                 }
                 for severity in ("blocker", "major")
             },
         }
-    if (
-        judgment["output_sha256"] != row["output_sha256"]
-        or judgment["adjudicator"] != "parent"
-    ):
-        raise ValueError("adjudication does not identify this exact output and parent")
-    matched, classified = set(), set()
-    for match in judgment["matches"]:
-        if (
-            match["finding_id"] not in emitted
-            or match["gold_id"] not in truth
-            or not match["reason"].strip()
-            or not match["evidence"].strip()
-        ):
-            raise ValueError("invalid parent finding match")
-        matched.add(match["gold_id"])
-        classified.add(match["finding_id"])
-    false, unknown, new = 0, 0, 0
-    for item in judgment["other_findings"]:
-        if (
-            item["finding_id"] not in emitted
-            or item["finding_id"] in classified
-            or not item["reason"].strip()
-            or not item["evidence"].strip()
-        ):
-            raise ValueError("conflicting or unsupported parent classification")
-        classified.add(item["finding_id"])
-        if item["classification"] == "false":
-            false += 1
-        elif item["classification"] == "unconfirmed":
-            unknown += 1
-        elif item["classification"] == "valid_new":
-            new += 1
-        else:
-            raise ValueError("unknown parent classification")
-    unknown += len(set(emitted) - classified)
+    if judgment is None:
+        return {
+            "status": "awaiting_parent",
+            "true_positives": None,
+            "false_negatives": None,
+            "false_positives": None,
+            "unconfirmed_findings": None,
+            "by_severity": {
+                severity: {
+                    "expected": sum(f["severity"] == severity for f in expected),
+                    "detected": None,
+                    "missed": None,
+                }
+                for severity in ("blocker", "major")
+            },
+        }
     return {
         "status": "parent_adjudicated",
         "true_positives": len(matched),
@@ -274,8 +299,15 @@ def summarize(
                 calls.add(
                     row["counter"]["key"] if row.get("counter") else row["run_id"]
                 )
+        eligible = [
+            row
+            for row in group
+            if runtime_succeeded(row) and row["output_status"] == "valid"
+        ]
+        group_scores = [score for score in cases if score["condition"] == name]
         code_unknown = sum(
-            row.get("output") is None
+            not runtime_succeeded(row)
+            or row.get("output") is None
             or any(p["coverage"] != "reviewed" for p in row["output"]["prs"])
             for row in group
         )
@@ -283,6 +315,14 @@ def summarize(
         conditions[name] = {
             "status": "measured" if group else "not_started",
             "observations": len(group),
+            "quality_eligible_observations": len(eligible),
+            "runtime_excluded_observations": sum(
+                not runtime_succeeded(row) for row in group
+            ),
+            "format_excluded_observations": sum(
+                runtime_succeeded(row) and row["output_status"] != "valid"
+                for row in group
+            ),
             "agent_invocations": sum(map(len, episodes.values())),
             "additional_invocations": sum(
                 max(len(calls) - 1, 0) for calls in episodes.values()
@@ -340,7 +380,7 @@ def summarize(
                         if score["condition"] == name and score[key] is not None
                     ),
                     "pending_runs": sum(
-                        score[key] is None
+                        score["status"] == "awaiting_parent"
                         for score in cases
                         if score["condition"] == name
                     ),
@@ -350,11 +390,13 @@ def summarize(
             "unconfirmed_finding_rate": ratio(
                 sum(
                     score["unconfirmed_findings"]
-                    for score in cases
-                    if score["condition"] == name
+                    for score in group_scores
+                    if score["unconfirmed_findings"] is not None
                 ),
-                sum(len(findings(row)) for row in group),
-            ),
+                sum(len(findings(row)) for row in eligible),
+            )
+            if not any(score["status"] == "awaiting_parent" for score in group_scores)
+            else None,
         }
     return {
         "schema_version": 1,
@@ -362,6 +404,11 @@ def summarize(
         if not rows
         else "awaiting_parent"
         if any(c["status"] == "awaiting_parent" for c in cases)
+        else "incomplete"
+        if any(
+            c["status"] in {"runtime_failure_excluded", "format_failure_excluded"}
+            for c in cases
+        )
         else "scored",
         "conditions": conditions,
         "detection": cases,

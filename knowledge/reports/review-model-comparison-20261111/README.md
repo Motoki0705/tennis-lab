@@ -1,6 +1,6 @@
 # 固定7ケースの実LLM比較: 実行結果と親の判定資料
 
-2026-11-11、承認済み最小案の14起動を記録し、親が全14 run・17指摘を判定した。追加起動は0回。selectは採用せず、既定のfixed（Astra・xhigh）を維持する。正式レビューの実機受入は未実施で、PR #1907の正式レビューで親が確認する。
+2026-11-11、承認済み最小案の14起動を記録し、親が全14 run・17指摘を判定した。追加起動は0回。selectは採用せず、既定のfixed（Astra・xhigh）を維持する。PR #1907の正式レビューで妥当とされたmajor 4件を修正した。再レビューとgateの確認は親の残作業である。
 
 [承認済み規模](https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605)と[今回の実行指示](https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6789859748)に従った。7ケース、2モデル各1回、追加枠込み16起動、各1800秒、入力55M・出力0.22Mが承認目安。実際の起動はAstra、Solの順で各ケースを処理し、再試行しなかった。
 
@@ -76,7 +76,7 @@ runtime失敗0、形式または出力検証失敗0。code未確認のrunは0/14
 - [実行承認要旨](execution-authorization.json)、[全runと成果物の対応](run-index.json)、[詳細集計](report.json)、[実行・公開projectionの指紋](provenance.json)
 - [固定snapshotと入力範囲](../../../.agents/ops/review/evaluation/cases/manifest.json)、[正解表と妥当性確認](../../../.agents/ops/review/evaluation/cases/gold.json)
 
-run_idとcounter.keyはharnessが作った比較標本IDであり、ネイティブセッションIDではない。元出力のSHA-256を親の判定との照合用に保持した。今回の再計算も、非公開stateに対する既存report CLIへparent-adjudicationsを渡して行い、AI起動は0回。実行コード変更の拒否を維持するため、effort修正前の固定版で計算した。以後の再計算も実験時の固定版を使う。公開したoutput.jsonはunsafe URLの例・秘密値の例・ローカルパス・ネイティブ識別子を除いたprojectionであり、その独立した指紋をprovenance.jsonへ記録した。生のstate、runtime、event、CLI transcriptは非公開のまま保持し、Gitへ保存していない。model/effortの観測値と数値は改変せず、実効証拠のsource位置だけを省略した。root付きのrepo参照をrepo-root表記へ置換した場合もprovenanceのsubstitutionsへ記録する。[公開前の照合検査](validation.json)で数値・指紋・識別子除外・逐次実行を確認した。
+run_idとcounter.keyはharnessが作った比較標本IDであり、ネイティブセッションIDではない。元出力のSHA-256を親の判定との照合用に保持した。今回の再計算も、非公開stateに対する既存report CLIへparent-adjudicationsを渡して行い、AI起動は0回。最初の再計算はeffort修正前の固定版で行った。正式レビュー修正後は、公開provenanceに結び付けた明示的な読み取り専用report経路で、元ledger・非公開入力・保存final・event・runtimeを再検証して再計算した。通常の起動経路の固定コード検査は維持する。公開したoutput.jsonはunsafe URLの例・秘密値の例・ローカルパス・ネイティブ識別子を除いたprojectionであり、その独立した指紋をprovenance.jsonへ記録した。生のstate、runtime、event、CLI transcriptは非公開のまま保持し、Gitへ保存していない。model/effortの観測値と数値は改変せず、実効証拠のsource位置だけを省略した。root付きのrepo参照をrepo-root表記へ置換した場合もprovenanceのsubstitutionsへ記録する。[公開前の照合検査](validation.json)で数値・指紋・識別子除外・逐次実行を確認した。
 
 ## 解釈上の制約と残作業
 
@@ -99,4 +99,29 @@ selectは採用しない。条件③は条件①より入力+出力tokenが4.305
 
 もう1件のvalid_new、Astraのモデル指摘`pr-1888-2`（人間指定effortの消失）は#1797のモデル選択に含まれるため、このPRの別commitで修正した。明示effortを保持し、親指定との矛盾と許可外の組を拒否する。修正前に失敗する回帰4 nodeを先に作成し、修正後の成功を確認した。同じIDの正解論点`pr-1888-2`（handoffの候補脱落）とは別の論点であり、過去14 runのスコアは変更しない。
 
-代表的な正式レビューの取得・結果保存・親確認・gateと、実機での経路確認は親の残作業。PR本文をCloses #1863へ切り替えて正式レビューを準備し、この正式レビューで実機受入を行う。
+代表的な正式レビューの取得・結果保存・親確認・gateと、実機での経路確認は親が行う。初回の正式レビューはrequest_changesで、下記4件を修正した。再レビューとgate完了は未確認である。
+
+
+## 正式レビューの4件の修正と再計算
+
+| 指摘 | 修正した契約と検証 |
+|---|---|
+| pr-1907-1 | 直接serveと取得ごとに正式な判断捕捉の設定を拒否する。有効な捕捉先を持つ試験で、CLIが明示拒否しjournalが不変であることを確認した |
+| pr-1907-2 | 全指摘の分類を必須とし、分類漏れ、matchとotherの重複、同一対応の重複、1指摘への複数goldを拒否する。親の未記入と明示unconfirmedを分ける。現行14 runの判定は受理された |
+| pr-1907-3 | runtime失敗のfinalはcandidate_onlyとして保存し、品質件数・指摘率の分母から除く。形式失敗も品質から除外し、比較をincompleteとする。失敗起動の使用量・時間は加算する |
+| pr-1907-4 | 固定入力#1686の具体的なworktree参照2か所を公開版から除いた。実際に測定した元入力の指紋を変更せず、公開版の指紋・Git取得元・置換規則と件数を別に保存し、verifyで変換を再現する |
+
+[修正後の検証記録](review-fix-validation.json)に、回帰テスト、各指摘の故障注入と復元後の成功、
+元の734個の数値またはnull項目の一致を保存した。固定入力だけでなく判定・README・ソースを含む
+PRの公開ファイル全体を検査する。[手順と検証設計](checks.md)を参照。
+
+[run別の入力対応](run-index.json)は、実際に測定した元入力と公開入力の指紋を分ける。
+[来歴](provenance.json)のinput_publicationsに、元commit・元の指紋・公開指紋・置換規則を残した。
+非公開の元bundle、14 runの28個の公開measurement・output、親判定のバイト列は変更していない。
+公開projectionからの新規init・prepareは明示拒否し、今回の入力変換を元の測定と同一視しない。
+
+修正後のparent-adjudicationsによる再計算でも、品質対象は14 run、runtime失敗・形式失敗は0件。
+両モデルの正解6件検出・3件見逃し、Astraの誤指摘1・確認不能1・valid_new 3、Solの各0件は変わらない。
+総入力18,928,215（うちcache17,301,632）・出力110,870 token、モデル時間4222.006秒も同じ。
+条件③の使用量4.305%増・時間1.621%増と、selectを採用せずfixedを維持する結論も変更しない。
+再計算での実LLM・実agent起動は0回である。

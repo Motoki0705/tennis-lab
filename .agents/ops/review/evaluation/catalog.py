@@ -63,10 +63,65 @@ def case_record(number: int, path: Path = DATA / "manifest.json") -> dict[str, A
 def frozen_input(case: dict[str, Any], directory: Path = DATA) -> dict[str, Any]:
     path_arg(case["input_file"])
     value = read(directory / case["input_file"])
-    if digest(value) != case["input_sha256"]:
+    publication = case.get("input_publication")
+    expected = publication["published_sha256"] if publication else case["input_sha256"]
+    if digest(value) != expected:
         raise ValueError("frozen input digest changed")
     validate_input(value, case)
+    from .publication import check_public
+
+    check_public(value)
     return value
+
+
+def measured_catalog(value: dict[str, Any]) -> dict[str, Any]:
+    return {
+        **value,
+        "cases": [
+            {k: v for k, v in case.items() if k != "input_publication"}
+            for case in value["cases"]
+        ],
+    }
+
+
+def verify_input(repo: Path, case: dict[str, Any], directory: Path = DATA) -> None:
+    public = frozen_input(case, directory)
+    publication = case.get("input_publication")
+    if publication is None:
+        return
+    if (
+        set(publication)
+        != {
+            "version",
+            "source_commit",
+            "source_path",
+            "source_sha256",
+            "published_sha256",
+            "rules",
+        }
+        or publication["version"] != 1
+        or publication["source_sha256"] != case["input_sha256"]
+        or not re.fullmatch(r"[0-9a-f]{40}", publication["source_commit"])
+    ):
+        raise ValueError("invalid public input provenance")
+    path_arg(publication["source_path"])
+    original = strict_json(
+        git(
+            repo,
+            "show",
+            publication["source_commit"] + ":" + publication["source_path"],
+        )
+    )
+    if digest(original) != case["input_sha256"]:
+        raise ValueError("original measured input digest changed")
+    validate_input(original, case)
+    from .publication import project_input
+
+    projected, counts = project_input(original)
+    if projected != public or counts != publication["rules"]:
+        raise ValueError(
+            "public input is not the recorded sanitization of the original"
+        )
 
 
 def validate_input(value: dict[str, Any], case: dict[str, Any]) -> None:
@@ -162,6 +217,10 @@ def prepare(
     repo: Path, state: Path, number: int, *, data: Path = DATA
 ) -> dict[str, Any]:
     case = case_record(number, data / "manifest.json")
+    if case.get("input_publication"):
+        raise ValueError(
+            "published projections are analysis-only; cannot launch from changed input"
+        )
     value = frozen_input(case, data)
     diff = verify_snapshot(repo, case)
     directory = state / "bundles" / case["case_id"]

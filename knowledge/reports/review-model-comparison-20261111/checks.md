@@ -68,3 +68,59 @@ pytestは`-n 0`、1回1〜2 nodeで逐次実行し、setup・call時間を測る
 固定コード不一致が拒否されることも確認し、検査を緩めていない。再計算は固定版を用いる。
 
 正式レビューの実機受入、gate確認は親の残作業。追加の実LLM・実agent起動は行わない。
+
+
+## 正式レビュー4件の修正: 検証設計と実測
+
+今回守る契約は、比較の取得を正式journalへ混ぜないこと、親の全分類を必要とすること、
+失敗候補を検出成功にしないこと、公開入力から実worktree参照を除き元の測定へ追跡できること。
+既存の `test_review_evaluation.py` の小型Git履歴、fake runtime、人工観測rowを再利用した。
+分類の異常は軽いunitで確認し、直接serveは同一processのCLI・MCP入口と一時的な正式形式journalまで通す。
+この2 nodeは外部processや実agentを起動しない入口接続テストとして、同じunitファイルに置いた。
+新規の重いE2Eや実験の再実行は追加していない。
+
+既存19件に18 nodeを追加した。分類4、直接serveの捕捉設定2、失敗candidate保存2を含み、
+それ以外は独立した境界を1件ずつ確認する。1関数の最大展開は4件で、
+ローカルGit・journal・bundleは可変なのでテストごとに作成・破棄する。
+親の記入済み判定の受理テストだけは公開JSONを読み、歴史的Gitオブジェクトや実runtimeをCIに要求しない。
+
+修正前の最初の7 nodeは、6 failed・1 passed、1.05秒だった。既存のoverlap拒否が成功のcontrolで、
+失敗6件は正式journalへの書込み、分類漏れ・同一対応の重複・複数goldの受理、
+runtime失敗のtrue_positive計上、公開入力のworktree検出漏れを実際に再現した。
+importやfixture起動の失敗ではなかった。
+
+修正後の対象ファイルは `pytest -n 0` で37 passed、8.09秒。
+全37件の最大setupは0.13秒、最大callは1.67秒で、setup 1秒・1件5秒の基準内だった。
+同時実行は行っていない。読み取り専用の歴史的再集計、provenance・保存finalの改変拒否、
+公開projectionによる新規起動拒否、起動後に捕捉設定が加わる経路も確認した。
+失敗と成功が混在するときに失敗指摘が率の分母を薄めないこと、形式失敗も成功扱いしないことを追加確認した。
+
+| 故障注入 | 検出した失敗 | 注入時 | 復元後 |
+|---|---|---|---|
+| pr-1907-1: サーバーの捕捉拒否を外す | 直接serveが正式journalへ書き込み、拒否せず終了する | 1 failed、0.80秒 | 1 passed、0.45秒 |
+| pr-1907-2: 全分類の検査を外す | 未分類の指摘を受理する | 1 failed、0.26秒 | 1 passed、0.20秒 |
+| pr-1907-3: runtime失敗の除外を外す | 失敗runのmatchが検出成功へ入る | 1 failed、0.26秒 | 1 passed、0.22秒 |
+| pr-1907-4: 公開入力のworktree検査を外す | 危険な固定入力を受理する | 1 failed、0.55秒 | 1 passed、0.34秒 |
+
+各変異は1件ずつ注入し、sourceをバイト単位で復元してから同じnodeを再実行した。
+結果は[review-fix-validation.json](review-fix-validation.json)に保存した。
+
+修正済みreport CLIの `--recorded-provenance` と `--parent-adjudications` を使い、
+元の非公開stateから14 runを読み取り専用で再検証・再計算した。
+通常のload・起動・collectの固定コード検査は緩めていない。
+新しい明示経路は元ledgerの完全一致、元入力・protocol、保存final・event・runtimeと元counter・時間を照合する。
+公開版の親判定を付記する前に、既存reportの734個の数値またはnullが同一であることを確認した。
+新規の品質対象・除外数を付記したが、実測の失敗は0件なので、公開数値と採否結論は変更しない。
+元の28公開runファイルと親判定ファイルのバイト列も保持した。追加AI起動0回。
+
+固定入力7件をverifyで照合し、#1686は元の測定指紋と公開指紋、ローカルGitからの置換再現を確認した。
+公開検査はPR差分の全ファイルへ広げ、JSONは既存Guard、ソース・文書は具体的なprivate pathと
+native識別子を検査する。操作者用の変数・placeholder、システムパス、予約済み再現例の扱いは
+[評価CLI README](../../../.agents/ops/review/evaluation/README.ja.md#公開版と読み取り専用の再計算)を正本とする。
+
+
+故障注入をすべて復元した後の再確認は37 passed、7.64秒だった。
+明示ruffは成功、評価packageとtest/supportの明示mypyは12 source files成功。
+Knowledge検証は638ノード、0 error・0 warning。
+固定7ケースのverifyと、PR全公開105ファイルのcheck-publicationも成功した。
+pre-commitのruff・mypy、公開41ファイルの記録済み指紋、差分の空白検査も成功した。

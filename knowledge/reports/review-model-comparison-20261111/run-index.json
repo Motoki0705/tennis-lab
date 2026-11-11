@@ -2,113 +2,155 @@
   {
     "artifacts": "knowledge/runs/run-i1863-pr1699-astra-20261111",
     "case_id": "pr-1699",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "f12bb694d77797d0fc7bee64b912cae1925b28693e2096c2ee09f315f16737d5",
     "model": "gpt-6-astra",
     "node_id": "run-i1863-pr1699-astra-20261111",
     "original_output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+    "published_input_sha256": "f12bb694d77797d0fc7bee64b912cae1925b28693e2096c2ee09f315f16737d5",
     "run_id": "d98730fdac794b4b965c34601dcbb26b"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1699-sol-20261111",
     "case_id": "pr-1699",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "f12bb694d77797d0fc7bee64b912cae1925b28693e2096c2ee09f315f16737d5",
     "model": "gpt-6.1-sol",
     "node_id": "run-i1863-pr1699-sol-20261111",
     "original_output_sha256": "96c0c841e4e06fd5965396a612bb58bcf1fdc174db8a24ade27e52acf28ebfcd",
+    "published_input_sha256": "f12bb694d77797d0fc7bee64b912cae1925b28693e2096c2ee09f315f16737d5",
     "run_id": "b94b85e4d71f4b08a40b78bba2cef85d"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1766-astra-20261111",
     "case_id": "pr-1766",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "64ea33a055d4d676835df1d4ead24a07fd110ecedccbbc23f9023c9eace3cbea",
     "model": "gpt-6-astra",
     "node_id": "run-i1863-pr1766-astra-20261111",
     "original_output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+    "published_input_sha256": "64ea33a055d4d676835df1d4ead24a07fd110ecedccbbc23f9023c9eace3cbea",
     "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1766-sol-20261111",
     "case_id": "pr-1766",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "64ea33a055d4d676835df1d4ead24a07fd110ecedccbbc23f9023c9eace3cbea",
     "model": "gpt-6.1-sol",
     "node_id": "run-i1863-pr1766-sol-20261111",
     "original_output_sha256": "933830b97d3002bd4924daf39a8606b4c1459a24d5995efcb64822405b8e2a5b",
+    "published_input_sha256": "64ea33a055d4d676835df1d4ead24a07fd110ecedccbbc23f9023c9eace3cbea",
     "run_id": "5b66c526982849fc88c11ac59a013ba6"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1867-astra-20261111",
     "case_id": "pr-1867",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "9103806390cfa69e6887b4b2477e8b3a14a50f16c34654b1d98a16cac73c6b90",
     "model": "gpt-6-astra",
     "node_id": "run-i1863-pr1867-astra-20261111",
     "original_output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+    "published_input_sha256": "9103806390cfa69e6887b4b2477e8b3a14a50f16c34654b1d98a16cac73c6b90",
     "run_id": "ee6d77a108064818b17841a28def94ad"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1867-sol-20261111",
     "case_id": "pr-1867",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "9103806390cfa69e6887b4b2477e8b3a14a50f16c34654b1d98a16cac73c6b90",
     "model": "gpt-6.1-sol",
     "node_id": "run-i1863-pr1867-sol-20261111",
     "original_output_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
+    "published_input_sha256": "9103806390cfa69e6887b4b2477e8b3a14a50f16c34654b1d98a16cac73c6b90",
     "run_id": "da77c51156854806816cbaf1161b45ea"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1872-astra-20261111",
     "case_id": "pr-1872",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "441e2e9908e745e100c61c997d6c09d4340654cd5591df6eaad5b5d0e25b0ca2",
     "model": "gpt-6-astra",
     "node_id": "run-i1863-pr1872-astra-20261111",
     "original_output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+    "published_input_sha256": "441e2e9908e745e100c61c997d6c09d4340654cd5591df6eaad5b5d0e25b0ca2",
     "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1872-sol-20261111",
     "case_id": "pr-1872",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "441e2e9908e745e100c61c997d6c09d4340654cd5591df6eaad5b5d0e25b0ca2",
     "model": "gpt-6.1-sol",
     "node_id": "run-i1863-pr1872-sol-20261111",
     "original_output_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
+    "published_input_sha256": "441e2e9908e745e100c61c997d6c09d4340654cd5591df6eaad5b5d0e25b0ca2",
     "run_id": "2c41a860bd974901b5f86fd4ac1c2a25"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1888-astra-20261111",
     "case_id": "pr-1888",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "a1a935bd2de493baf99fb65b03522fd25083a5517ae2d27067b03586377e5a66",
     "model": "gpt-6-astra",
     "node_id": "run-i1863-pr1888-astra-20261111",
     "original_output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+    "published_input_sha256": "a1a935bd2de493baf99fb65b03522fd25083a5517ae2d27067b03586377e5a66",
     "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1888-sol-20261111",
     "case_id": "pr-1888",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "a1a935bd2de493baf99fb65b03522fd25083a5517ae2d27067b03586377e5a66",
     "model": "gpt-6.1-sol",
     "node_id": "run-i1863-pr1888-sol-20261111",
     "original_output_sha256": "a0b68e25a52651a83e3eeba512090c711a2c95e3a3fa17701e3f08f9b27596d9",
+    "published_input_sha256": "a1a935bd2de493baf99fb65b03522fd25083a5517ae2d27067b03586377e5a66",
     "run_id": "4371202ab146425289e3ab4aa3b7078e"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1686-astra-20261111",
     "case_id": "pr-1686",
+    "input_publication": "sanitized_projection",
+    "measured_input_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
     "model": "gpt-6-astra",
     "node_id": "run-i1863-pr1686-astra-20261111",
     "original_output_sha256": "55eefa3e3f97bb8ae5ae7b7337bc0e2a9cde9c53881e25f0af993239caf3cd1e",
+    "published_input_sha256": "edd461bdde8fa44d6979d7af63c213690a9c9503430e56e29bb1a36e07fb63b5",
     "run_id": "c8c22cb4966a4b518af9482829fd590e"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1686-sol-20261111",
     "case_id": "pr-1686",
+    "input_publication": "sanitized_projection",
+    "measured_input_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
     "model": "gpt-6.1-sol",
     "node_id": "run-i1863-pr1686-sol-20261111",
     "original_output_sha256": "d4c03115082f2a61a4f8aa88e94c44896b292d599eae5132ba24ad1a43954014",
+    "published_input_sha256": "edd461bdde8fa44d6979d7af63c213690a9c9503430e56e29bb1a36e07fb63b5",
     "run_id": "f612b1c64b164ae19de70bd18cc59fda"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1744-astra-20261111",
     "case_id": "pr-1744",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "025acc5c400d6df05c1a61d03c405ce30ef83adefa4333478e130cefcdbcccb7",
     "model": "gpt-6-astra",
     "node_id": "run-i1863-pr1744-astra-20261111",
     "original_output_sha256": "57c0a1297a5f55372667fd7d44bb2f19b67103e79da221fc43569eabf538a2b0",
+    "published_input_sha256": "025acc5c400d6df05c1a61d03c405ce30ef83adefa4333478e130cefcdbcccb7",
     "run_id": "2356b004e1584fb7b10e6fddff35372b"
   },
   {
     "artifacts": "knowledge/runs/run-i1863-pr1744-sol-20261111",
     "case_id": "pr-1744",
+    "input_publication": "measured_input",
+    "measured_input_sha256": "025acc5c400d6df05c1a61d03c405ce30ef83adefa4333478e130cefcdbcccb7",
     "model": "gpt-6.1-sol",
     "node_id": "run-i1863-pr1744-sol-20261111",
     "original_output_sha256": "ebc43318567d2db4c610a545f6567858815bd7c1ad762a11390b353143d9ee44",
+    "published_input_sha256": "025acc5c400d6df05c1a61d03c405ce30ef83adefa4333478e130cefcdbcccb7",
     "run_id": "b8fb4c37a13c4218a131a2bde2ea2295"
   }
 ]

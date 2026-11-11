@@ -49,6 +49,12 @@ not exposed as a reviewer tool. Retrieval uses the existing bounded, journaled
 tools. Existing formal CLI authorization, publication, exclusion and gate checks
 remain unchanged.
 
+The frozen server rejects `DECISION_LOG_RETRIEVAL` or `DECISION_LOG_CAPTURE`
+whenever either variable is present, including an empty value. This check runs
+at construction and before every call, including direct `serve`; remove the
+settings explicitly before starting it. It does not silently discard a capture
+configuration or write comparison receipts into a formal parent journal.
+
 The reviewer works in an empty private git repository. An evaluation-only launcher
 disables shell, image, browser, apps/plugins, hooks, memory, other agents,
 code-mode tools, web search, inherited MCP servers and project instructions. It allows only the registered
@@ -129,6 +135,12 @@ The parent sets `adjudicator: parent`, preserves the exact output and gold
 fingerprints, supplies `matches` with `finding_id`, `gold_id`, `reason`, `evidence`,
 and classifies other findings as `false`, `unconfirmed` or `valid_new` with reasons
 and evidence. An unfilled template is rejected, not interpreted as a verdict.
+Every emitted finding must occur exactly once, either in `matches` or in
+`other_findings`. Duplicate matches, overlap, omissions and assigning one finding
+to several gold issues are rejected. One finding represents one independently
+actionable issue; several findings may identify the same gold issue, which is
+counted once. Missing parent judgments stay pending; only an explicit
+`unconfirmed` classification contributes to the confirmation-failure count.
 
 `report --state-dir "$EVAL_STATE" --parent-adjudications adjudications.json`
 produces the following distinct views:
@@ -145,8 +157,12 @@ produces the following distinct views:
   joint adjudication; per-run true positives must not be summed as a joint score.
 
 Detection/miss counts use distinct gold IDs, with blocker/major breakdowns. Before
-parent adjudication, counts are pending rather than zero. A wholly unusable output
-misses all gold issues for that case. False findings, finding confirmation failures,
+parent adjudication, counts are pending rather than zero. Runtime failures and
+invalid/missing outputs are excluded from quality counts and finding-rate
+denominators, and keep the comparison incomplete. A recoverable final from a
+failed runtime remains available as `candidate_only` for investigation; a parent
+match cannot promote it to a successful detection. Failed calls still contribute
+their measured resource use. False findings, finding confirmation failures,
 code `not_reviewed`, evidence waits, format failures, runtime failures and their
 union are reported separately. The additional-launch rate is episodes with more
 than one unique model call divided by observed episodes. An episode is a case/model
@@ -159,6 +175,40 @@ No-AI operations cannot charge the original run again. Identical source counters
 are deduplicated, while conflicting counts fail. No price, billing or quota
 savings are inferred from token counts. Improvement uses input plus output or
 observed model time, after the paired matrix is complete and usage is known.
+
+## Published projections and read-only reanalysis
+
+`input_sha256` always identifies the input actually measured. A sanitized public
+input additionally has `input_publication`: immutable Git source, original and
+published digests, deterministic replacement rules and counts. `verify` checks
+both digests and replays that exact transformation against local Git history.
+The private original bundles and original per-run output digests are retained.
+Published historical projections are analysis-only: `init` and `prepare` reject
+them rather than silently changing the measured experiment.
+
+After code changes, only the explicit read-only report route can reanalyze the
+completed study:
+
+```bash
+.venv/bin/python -m review.evaluation report --state-dir "$EVAL_STATE" --repo . \
+  --recorded-provenance knowledge/reports/review-model-comparison-20261111/provenance.json \
+  --parent-adjudications knowledge/reports/review-model-comparison-20261111/adjudications.json \
+  --output reanalysis.json
+.venv/bin/python -m review.evaluation check-publication --repo . --base origin/main
+```
+
+This route binds the exact archived ledger, original code/catalog/protocol
+fingerprints and private inputs to published provenance, revalidates final/events
+and runtime evidence, and checks unchanged source identities, counters and times.
+It cannot launch, collect, alter the ledger or relax normal launch validation.
+
+The publication check scans every changed/untracked PR file, including inputs,
+judgments, reports, source and README files. Captured JSON uses the existing
+strict publication guard plus concrete worktree detection; source/prose checks
+concrete local home/temp paths, native UUIDs and known native identifiers while
+allowing system executable paths, schema names and operator placeholders.
+Documented reserved `user:pass@example.com` reproduction URLs and repository-root
+ignore patterns are validated as examples; real credential hosts are not exempt.
 
 ## Historical reuse evidence and remaining acceptance
 

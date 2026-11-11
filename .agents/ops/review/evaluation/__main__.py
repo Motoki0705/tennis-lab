@@ -12,7 +12,15 @@ from typing import Any
 from lib.review_tools.retrieval import RetrievalError
 from worker_logs.journal import atomic
 
-from .catalog import MODELS, catalog, frozen_input, prepare, read, verify_snapshot
+from .catalog import (
+    MODELS,
+    catalog,
+    git,
+    prepare,
+    read,
+    verify_input,
+    verify_snapshot,
+)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -20,6 +28,9 @@ def parser() -> argparse.ArgumentParser:
     commands = root.add_subparsers(dest="command", required=True)
     verify = commands.add_parser("verify")
     verify.add_argument("--repo", type=Path, required=True)
+    public = commands.add_parser("check-publication")
+    public.add_argument("--repo", type=Path, required=True)
+    public.add_argument("--base", default="origin/main")
     init = commands.add_parser("init")
     init.add_argument("--state-dir", type=Path, required=True)
     bundle = commands.add_parser("prepare")
@@ -50,6 +61,8 @@ def parser() -> argparse.ArgumentParser:
     report = commands.add_parser("report")
     report.add_argument("--state-dir", type=Path, required=True)
     report.add_argument("--parent-adjudications", type=Path)
+    report.add_argument("--recorded-provenance", type=Path)
+    report.add_argument("--repo", type=Path)
     report.add_argument("--output", type=Path)
     template = commands.add_parser("adjudication-template")
     template.add_argument("--state-dir", type=Path, required=True)
@@ -78,13 +91,35 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "verify":
             cases = catalog()["cases"]
             for case in cases:
-                frozen_input(case)
+                verify_input(args.repo, case)
                 verify_snapshot(args.repo, case)
             value = {
                 "schema_version": 1,
                 "verified_cases": [case["pr"] for case in cases],
                 "agent_invocations": 0,
             }
+        elif args.command == "check-publication":
+            from .publication import check_files
+
+            base = git(args.repo, "merge-base", args.base, "HEAD").decode().strip()
+            paths = (
+                git(
+                    args.repo,
+                    "diff",
+                    "--name-only",
+                    "--diff-filter=ACMR",
+                    base,
+                    "--",
+                )
+                .decode()
+                .splitlines()
+            )
+            paths += (
+                git(args.repo, "ls-files", "--others", "--exclude-standard")
+                .decode()
+                .splitlines()
+            )
+            value = check_files(args.repo, paths)
         elif args.command == "audit-reuse":
             from .replay import historical_reuse
 
@@ -165,6 +200,10 @@ def main(argv: list[str] | None = None) -> int:
                     read(args.parent_adjudications)
                     if args.parent_adjudications
                     else None,
+                    recorded_provenance=read(args.recorded_provenance)
+                    if args.recorded_provenance
+                    else None,
+                    repo=args.repo,
                 )
                 if args.output:
                     atomic(args.output, value)

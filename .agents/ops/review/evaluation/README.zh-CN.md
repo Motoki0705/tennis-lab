@@ -48,6 +48,10 @@ pilot 和后续事件记录只出现专用 MCP 调用。已观察到实际 model
 
 ## 准备和显式执行
 
+检索服务器在构造时及每次调用前拒绝任何 `DECISION_LOG_RETRIEVAL` 或
+`DECISION_LOG_CAPTURE` 设置，包括空值和直接 `serve` 入口。操作者必须先明确移除配置，
+不会静默忽略配置，也不会把比较收据写入正式 parent journal。
+
 使用 checkout 和正式 parent state 以外的专用 state。harness 输出、runtime、检索凭据和
 本地写入使用私有权限；Codex 也可能保留其正常本地 transcript。不要提交原始 runtime/state。
 
@@ -99,6 +103,9 @@ wall time 从预约到 runtime 结束，不含人工收集延迟；agent 时间�
 路径相同不自动视为一致。父任务保留精确的输出和答案表指纹，填写 `adjudicator: parent`，
 在 `matches` 中提供 `finding_id`、`gold_id`、`reason`、`evidence`；其余问题带理由和证据分类为
 `false`、`unconfirmed` 或 `valid_new`。未填写模板不能作为完成裁定。
+所有输出问题必须在 `matches` 或 `other_findings` 中恰好出现一次。遗漏、交叉分类、重复对应、
+一个问题对应多个 gold 均拒绝；一个问题代表一个可独立修复的论点。多个问题对应同一 gold 时
+只计一次。父任务未填写保持 pending；只有显式 `unconfirmed` 才计入无法确认数。
 
 `report --state-dir "$EVAL_STATE" --parent-adjudications adjudications.json` 区分:
 
@@ -110,7 +117,9 @@ wall time 从预约到 runtime 结束，不含人工收集延迟；agent 时间�
   反事实投影不重复加到物理总量。联合发现需父任务裁定，不能直接相加各 run 的检测数。
 
 检测和漏检按不同 gold ID 计数，区分 blocker/major。未裁定保持 pending 而非零。
-完全不可用输出视为漏掉该案例全部 gold。误报、问题无法确认、代码 `not_reviewed`、
+runtime 失败和无效或缺失输出从质量计数及问题率分母排除，比较保持 incomplete。
+失败 runtime 的可恢复 final 保留为调查候选 `candidate_only`，即使填写 match 也不算检测成功；
+失败调用的实测资源仍全部计入。误报、问题无法确认、代码 `not_reviewed`、
 证据等待、格式失败、runtime 失败及失败并集分别报告。
 额外启动率为含多个独立调用的 episode 数除以已观察 episode 数。
 资格比较的 episode 为案例/模型，选择投影则按案例计算。
@@ -119,6 +128,32 @@ wall time 从预约到 runtime 结束，不含人工收集延迟；agent 时间�
 不能再加一次。累计 counter 与缺失保持排除或未知，不补零。
 无 AI 操作不能再次收取源 run 使用量；相同源 counter 去重，矛盾则拒绝。
 不根据 token 推断费用或 quota 节约。矩阵完整且使用量已知后，才计算输入+输出或 agent 时间改善率。
+
+## 公开投影与只读重算
+
+`input_sha256` 始终标识实际测量的原始输入。无害化公开版通过 `input_publication` 记录不可变 Git
+来源、原始和公开摘要、确定的替换规则和次数。`verify` 用本地 Git 历史重新执行转换并验证两个摘要。
+私有原始 bundle 和每个 run 的原始输出摘要仍保留。包含历史公开投影的 `init` 和 `prepare` 被拒绝，
+不会以改变后的刺激重新启动原实验。
+
+代码更新后，完整的历史实验仅通过明确的只读路径重算：
+
+```bash
+.venv/bin/python -m review.evaluation report --state-dir "$EVAL_STATE" --repo . \
+  --recorded-provenance knowledge/reports/review-model-comparison-20261111/provenance.json \
+  --parent-adjudications knowledge/reports/review-model-comparison-20261111/adjudications.json \
+  --output reanalysis.json
+.venv/bin/python -m review.evaluation check-publication --repo . --base origin/main
+```
+
+此路径把原 ledger、代码、catalog、protocol 和私有输入绑定到公开 provenance，再验证保存的
+final、event 和 runtime，并检查原 run、输出、counter 和时间不变。它不能启动、collect 或更新 ledger，
+普通启动路径仍严格检查冻结代码。
+
+公开检查覆盖 PR 全部变更文件，包括固定输入、裁定、README 和源码。JSON 使用原严格 Guard
+及 worktree 检查；源码和文档检查具体 home/temp 绝对路径、native UUID 及已知 native 标识符，
+允许系统可执行路径、schema 名和操作者模板。答案表中保留域 example.com 的凭证复现例及
+repo-root ignore 规则按文档例验证，不豁免真实服务的凭证 URL。
 
 ## 历史复用与后续验收
 

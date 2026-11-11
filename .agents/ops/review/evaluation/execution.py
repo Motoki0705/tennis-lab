@@ -14,7 +14,18 @@ from typing import Any
 from lib.review_settings import choose, load_policy
 from worker_logs.journal import atomic, locked, private_directory
 
-from .catalog import APPROVED_CASES, DATA, MODELS, catalog, digest, git, prepare, read
+from .catalog import (
+    APPROVED_CASES,
+    DATA,
+    MODELS,
+    catalog,
+    digest,
+    git,
+    measured_catalog,
+    prepare,
+    read,
+    verify_input,
+)
 from .restrictions import inspect_cli
 
 OPS = Path(__file__).resolve().parents[2]
@@ -46,6 +57,13 @@ def initialize(state: Path, *, data: Path = DATA) -> dict[str, Any]:
         return load(state, data=data)
     if state.exists() and any(state.iterdir()):
         raise ValueError("evaluation requires an empty dedicated state directory")
+    if any(
+        case.get("input_publication")
+        for case in catalog(data / "manifest.json")["cases"]
+    ):
+        raise ValueError(
+            "published historical projections are analysis-only; a new study requires original inputs"
+        )
     value: dict[str, Any] = {
         "schema_version": 1,
         "kind": "private_review_evaluation",
@@ -99,6 +117,76 @@ def load(state: Path, *, data: Path = DATA) -> dict[str, Any]:
             "frozen evaluation code, inputs, answer key or protocol changed"
         )
     return value
+
+
+def load_recorded(
+    state: Path, provenance: dict[str, Any], repo: Path, *, data: Path = DATA
+) -> dict[str, Any]:
+    """Read-only reanalysis of one exact archived ledger; never used by launch."""
+    value = read(state / "evaluation.json")
+    if (
+        value.get("kind") != "private_review_evaluation"
+        or value.get("schema_version") != 1
+    ):
+        raise ValueError("not a private review evaluation")
+    if digest(value) != provenance.get("ledger_canonical_sha256"):
+        raise ValueError("recorded ledger differs from the published provenance")
+    for key in (
+        "code_sha256",
+        "catalog_sha256",
+        "gold_sha256",
+        "historical_usage_sha256",
+        "protocol",
+    ):
+        if value[key] != provenance.get(key):
+            raise ValueError("recorded study differs from published provenance")
+    cases = catalog(data / "manifest.json")
+    if (
+        value["catalog_sha256"] != digest(measured_catalog(cases))
+        or value["gold_sha256"] != digest(read(data / "gold.json"))
+        or value["historical_usage_sha256"]
+        != digest(read(data / "historical_usage.json"))
+        or value["protocol"] != read(data / "protocol.json")
+    ):
+        raise ValueError("recorded input, truth or protocol changed")
+    if any(slot["status"] != "collected" for slot in value["runs"]):
+        raise ValueError("recorded analysis requires a fully collected study")
+    for case in cases["cases"]:
+        verify_input(repo, case, data)
+        if any(slot["case_id"] == case["case_id"] for slot in value["runs"]):
+            bundle = read(state / "bundles" / case["case_id"] / "bundle.json")
+            measured = measured_catalog({"cases": [case]})["cases"][0]
+            if (
+                bundle["case"] != measured
+                or digest(bundle["input"]) != measured["input_sha256"]
+            ):
+                raise ValueError(
+                    "private measured input differs from the recorded study"
+                )
+    return value
+
+
+def recorded_observations(state: Path, value: dict[str, Any]) -> list[dict[str, Any]]:
+    saved = {row["run_id"]: row for row in observations(state, value)}
+    result = []
+    for slot in value["runs"]:
+        row = observe(state / "runs" / slot["id"], slot)
+        previous = saved[slot["id"]]
+        for key in (
+            "run_id",
+            "case_id",
+            "model",
+            "role",
+            "counter",
+            "elapsed_seconds",
+            "agent_seconds",
+            "runtime_sha256",
+            "output_sha256",
+        ):
+            if row[key] != previous[key]:
+                raise ValueError("recorded runtime, final or resource evidence changed")
+        result.append(row)
+    return result
 
 
 def observations(state: Path, value: dict[str, Any]) -> list[dict[str, Any]]:
@@ -259,20 +347,14 @@ def reserve(
         return slot
 
 
-def collect(state: Path, identifier: str, *, data: Path = DATA) -> dict[str, Any]:
+def observe(directory: Path, slot: dict[str, Any]) -> dict[str, Any]:
+    identifier = slot["id"]
     for path in (OPS / "lib", OPS / "review"):
         if str(path) not in sys.path:
             sys.path.insert(0, str(path))
     from parent_review_policy import parse_output
     from review_recovery import runtime_evidence, saved_final
 
-    value = load(state, data=data)
-    slot = next(row for row in value["runs"] if row["id"] == identifier)
-    directory = state / "runs" / identifier
-    if slot["status"] == "collected":
-        return next(
-            row for row in observations(state, value) if row["run_id"] == identifier
-        )
     runtime = read(directory / "agent-runtime/result.json")
     if (
         runtime.get("result") not in {"completed", "failed"}
@@ -306,7 +388,10 @@ def collect(state: Path, identifier: str, *, data: Path = DATA) -> dict[str, Any
             final.read_text(), [int(slot["case_id"].removeprefix("pr-"))]
         )
         if proof_error is None:
-            output, output_status = candidate, "valid"
+            output = candidate
+            output_status = (
+                "valid" if runtime["result"] == "completed" else "candidate_only"
+            )
         else:
             output_status = "unverified"
     except (ValueError, OSError):
@@ -356,6 +441,18 @@ def collect(state: Path, identifier: str, *, data: Path = DATA) -> dict[str, Any
         "runtime_sha256": digest(runtime),
         "qualification_only": True,
     }
+    return row
+
+
+def collect(state: Path, identifier: str, *, data: Path = DATA) -> dict[str, Any]:
+    value = load(state, data=data)
+    slot = next(row for row in value["runs"] if row["id"] == identifier)
+    if slot["status"] == "collected":
+        return next(
+            row for row in observations(state, value) if row["run_id"] == identifier
+        )
+    row = observe(state / "runs" / identifier, slot)
+    directory = state / "runs" / identifier
     with locked(state / "evaluation.json"):
         current = load(state, data=data)
         saved = next(run for run in current["runs"] if run["id"] == identifier)

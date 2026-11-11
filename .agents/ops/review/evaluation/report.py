@@ -8,7 +8,13 @@ from typing import Any
 from worker_logs.journal import atomic, locked
 
 from .catalog import DATA, MODELS, catalog, read
-from .execution import forecast, load, observations
+from .execution import (
+    forecast,
+    load,
+    load_recorded,
+    observations,
+    recorded_observations,
+)
 from .metrics import summarize
 
 
@@ -61,10 +67,21 @@ def parent_subset(
 
 
 def report(
-    state: Path, adjudications: dict[str, Any] | None = None, *, data: Path = DATA
+    state: Path,
+    adjudications: dict[str, Any] | None = None,
+    *,
+    data: Path = DATA,
+    recorded_provenance: dict[str, Any] | None = None,
+    repo: Path | None = None,
 ) -> dict[str, Any]:
-    value = load(state, data=data)
-    rows = observations(state, value)
+    if recorded_provenance is not None:
+        if repo is None:
+            raise ValueError("recorded analysis requires an explicit repository")
+        value = load_recorded(state, recorded_provenance, repo, data=data)
+        rows = recorded_observations(state, value)
+    else:
+        value = load(state, data=data)
+        rows = observations(state, value)
     gold = read(data / "gold.json")
     qualification = summarize(rows, gold, adjudications)
     baseline = [

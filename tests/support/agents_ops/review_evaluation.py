@@ -149,6 +149,7 @@ def historical_case(tmp_path: Path, c: Any) -> Any:
     manifest = copy.deepcopy(c.catalog())
     (data / "inputs").mkdir(parents=True)
     for case in manifest["cases"]:
+        case.pop("input_publication", None)
         case["snapshot"] = {**snapshot, "number": case["pr"]}
         context = {
             "parent": {"number": 1, "body": "Frozen requirements"},

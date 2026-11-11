@@ -8,6 +8,29 @@
   "gold_sha256": "5ce87dafb724d54915796f185b5768e3179c1adceadb80c66372b8839f4c8bd5",
   "historical_usage_sha256": "4f5c2a249b1f5b1ed14a870de899cde140df245567297496cac204cfb2528c18",
   "identifiers": "run_id and counter.key are evaluation sample IDs, not native session identities",
+  "input_projection_rules_v1": {
+    "local_paths": "Apply existing Guard.sanitize and retain substitution counts.",
+    "measured_stimulus": "Private original bundles and measured input digests remain unchanged. Public projections cannot launch a new study.",
+    "native_identifiers": "Replace native session-token patterns with [native identity omitted].",
+    "verification": "Replay project_input from the immutable local Git source and require exact published value, both digests and counts.",
+    "worktree_paths": "Replace concrete worktree references with [worktree path omitted]."
+  },
+  "input_publications": [
+    {
+      "case_id": "pr-1686",
+      "measured_input_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
+      "published_sha256": "edd461bdde8fa44d6979d7af63c213690a9c9503430e56e29bb1a36e07fb63b5",
+      "rules": {
+        "local_paths": 0,
+        "native_identifiers": 0,
+        "worktree_paths": 2
+      },
+      "source_commit": "3de0c95c3df0fb76bf61fc71d57818a6b3e10a29",
+      "source_path": ".agents/ops/review/evaluation/cases/inputs/pr-1686.json",
+      "source_sha256": "bc884c5b4fc3a58188fe8e9b33901216c47e3600bd4500cd01ea700a396d6200",
+      "version": 1
+    }
+  ],
   "kind": "private_review_evaluation",
   "ledger_canonical_sha256": "58ee7d040aed729d1922ad3b0a2cea13b7c96c1f690dc993d3fa2dc0f915e83a",
   "native_identity_values_excluded": 28,
@@ -293,9 +316,9 @@
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/report.json",
-      "published_canonical_sha256": "2b66b08ebb84960ce9422b30088d5e63441c767961f7407a0831704f64f87788",
-      "published_file_sha256": "2b66b08ebb84960ce9422b30088d5e63441c767961f7407a0831704f64f87788",
-      "source_canonical_sha256": "eb7c794c0ce0dfdf1ca3e68a31de49409f780210bd6144129b6696a428920e96",
+      "published_canonical_sha256": "ab4e5f8e682150dbe51c793d2bd8bad159efba99c3b9afd60f7e1707b935b909",
+      "published_file_sha256": "ab4e5f8e682150dbe51c793d2bd8bad159efba99c3b9afd60f7e1707b935b909",
+      "source_canonical_sha256": "f938e29ea5eb047c75228644ebedad22c141ba7cfb63a5eee7631dcd9143e397",
       "substitutions": {
         "runtime_source_omitted": 28,
         "unsafe_url_example": 4
@@ -347,9 +370,9 @@
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/run-index.json",
-      "published_canonical_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
-      "published_file_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
-      "source_canonical_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
+      "published_canonical_sha256": "113c8c8573487b3be9758bdbd060dd1f37bef9cef8d1c4504fe720f6f43d3bb7",
+      "published_file_sha256": "113c8c8573487b3be9758bdbd060dd1f37bef9cef8d1c4504fe720f6f43d3bb7",
+      "source_canonical_sha256": "113c8c8573487b3be9758bdbd060dd1f37bef9cef8d1c4504fe720f6f43d3bb7",
       "substitutions": {}
     },
     {
@@ -379,6 +402,13 @@
       "published_file_sha256": "514f093ed6586b38b7a697c9ec8ca9fd1452f544ac85d97baf9f28d3b3771db5",
       "source_canonical_sha256": "514f093ed6586b38b7a697c9ec8ca9fd1452f544ac85d97baf9f28d3b3771db5",
       "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/review-fix-validation.json",
+      "published_canonical_sha256": "88099ae349bcb3a35d3ae9d8b2e3f7308d0e4e372d96019a5e54e4a490c68f0e",
+      "published_file_sha256": "88099ae349bcb3a35d3ae9d8b2e3f7308d0e4e372d96019a5e54e4a490c68f0e",
+      "source_canonical_sha256": "88099ae349bcb3a35d3ae9d8b2e3f7308d0e4e372d96019a5e54e4a490c68f0e",
+      "substitutions": {}
     }
   ],
   "publication_history": [
@@ -407,6 +437,37 @@
       "published_file_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
       "source_canonical_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
       "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/report.json",
+      "published_canonical_sha256": "2b66b08ebb84960ce9422b30088d5e63441c767961f7407a0831704f64f87788",
+      "published_file_sha256": "2b66b08ebb84960ce9422b30088d5e63441c767961f7407a0831704f64f87788",
+      "source_canonical_sha256": "eb7c794c0ce0dfdf1ca3e68a31de49409f780210bd6144129b6696a428920e96",
+      "substitutions": {
+        "runtime_source_omitted": 28,
+        "unsafe_url_example": 4
+      }
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/run-index.json",
+      "published_canonical_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
+      "published_file_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
+      "source_canonical_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
+      "substitutions": {}
+    }
+  ],
+  "published_catalog_sha256": "c76eef184218444450bf32d1f3e862daf59dd37c66b9b221fc9d4868dc22c206",
+  "reanalysis_history": [
+    {
+      "cli_raw_report_file_sha256": "dfc4442747d399c6b868e4b54f52a09a7f4cdcf0da90a3f4409b6dcdb562a5ef",
+      "measured_code_sha256": "a5ef339e78316049caa794df37d348870c035613e1732358622d46fd8730093c",
+      "native_invocations": 0,
+      "parent_adjudications_canonical_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
+      "preexisting_numeric_leaves_unchanged": true,
+      "reanalysis_code_sha256": "e2ab0332ff1a26e1a892a0dff23fa11ca0d548b886dd25e8fe49497d3189284f",
+      "reason": "Address the four accepted PR #1907 major findings; read-only analysis of the original completed study.",
+      "recorded_provenance_mode": true,
+      "validation": "knowledge/reports/review-model-comparison-20261111/review-fix-validation.json"
     }
   ],
   "recalculation": {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,15 @@ from lib.review_tools.retrieval import TEXT, RetrievalError, Retrieved, Tool, te
 from lib.review_tools.review_server import ReviewRetrieval
 from worker_logs.journal import atomic, locked
 
-from .catalog import DATA, case_record, digest, read, validate_input, verify_snapshot
+from .catalog import (
+    DATA,
+    case_record,
+    digest,
+    measured_catalog,
+    read,
+    validate_input,
+    verify_snapshot,
+)
 
 
 class LocalGitHub:
@@ -64,12 +73,24 @@ class LocalGitHub:
 class FrozenRetrieval(ReviewRetrieval):
     tools: dict[str, Tool]
 
+    @staticmethod
+    def require_private_capture() -> None:
+        if any(
+            name in os.environ
+            for name in ("DECISION_LOG_CAPTURE", "DECISION_LOG_RETRIEVAL")
+        ):
+            raise ValueError("formal decision capture is forbidden for evaluation")
+
     def __init__(
         self, repo: Path, bundle_path: Path, journal: Path, *, data: Path = DATA
     ) -> None:
+        self.require_private_capture()
         bundle = read(bundle_path)
         if (
-            bundle["case"] != case_record(bundle["case"]["pr"], data / "manifest.json")
+            bundle["case"]
+            != measured_catalog(
+                {"cases": [case_record(bundle["case"]["pr"], data / "manifest.json")]}
+            )["cases"][0]
             or digest(bundle["input"]) != bundle["case"]["input_sha256"]
         ):
             raise ValueError("evaluation bundle differs from the frozen catalog")
@@ -131,6 +152,11 @@ class FrozenRetrieval(ReviewRetrieval):
                 ),
             }
         )
+
+    def call(self, name: str, arguments: Any) -> dict[str, Any]:
+        self.require_private_capture()
+        response: dict[str, Any] = super().call(name, arguments)
+        return response
 
     def page(self, text: str, artifact: str, **arguments: Any) -> Retrieved:
         data, pagination = text_page(text, **arguments)
