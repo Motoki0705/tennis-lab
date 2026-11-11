@@ -1,0 +1,22 @@
+{
+  "receipt": {
+    "schema": "verified_artifact_snapshot.v1",
+    "generation": "summary-1794387802924708306",
+    "remote": "mounted_drive:outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306",
+    "manifest_sha256": "a17e56636c3d9d1baeb6e2bc98733dba05738237b72c85a2591617fe96ec45a3",
+    "manifest_md5": "d179d1ac9262a37cb24d18bde627c1ef",
+    "files": 459,
+    "size_bytes": 466543505,
+    "marker_id": null,
+    "seconds": 73.18913052199969,
+    "status": "verified"
+  },
+  "readback": {
+    "schema": "verified_artifact_snapshot.v1",
+    "generation": "summary-1794387802924708306",
+    "status": "verified",
+    "files": 459,
+    "manifest_sha256": "a17e56636c3d9d1baeb6e2bc98733dba05738237b72c85a2591617fe96ec45a3",
+    "seconds": 37.557901641999706
+  }
+}

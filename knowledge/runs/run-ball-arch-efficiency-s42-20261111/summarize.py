@@ -122,7 +122,7 @@ def aggregate():
         cases=summaries,
         scope="L4, fixed shapes, BF16 + official MSDA FP32, compile; synthetic resident input; phase-synchronized wall time",
         limitations=[
-            "N=90 samples in three blocks on one GPU; samples are not independent machines",
+            "N=90 samples in three blocks on L4; VM-session effects are not isolated and samples are not independent machines",
             "Isolated component MSE gradients do not quantify the exact end-to-end runtime share",
             "MAC terms exclude normalization, activation, MDD, mHC mixing, memory traffic and backward; MSDA sampling bound is separate",
             "No accuracy/Pareto adoption decision before the scientific training validation",
