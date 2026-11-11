@@ -205,16 +205,20 @@ def test_main_push_requests_each_registered_suite_without_changes(
     assert partition_nodeids(nodes, plan) == (nodes, {})
 
 
+@pytest.mark.parametrize(
+    "node",
+    [
+        "tests/e2e/agents_ops/explain_html/test_browser.py::test_browser_reader_editor_workflow",
+        "tests/e2e/agents_ops/explain_html/test_authoring.py::test_brief_create_open_update_reopen_stop_and_export",
+    ],
+)
 def test_browser_workflow_is_deferred_when_its_runtime_is_not_prepared(
     repository_lanes: tuple[dict[str, Any], list[str]],
+    node: str,
 ) -> None:
     plan = _plan(
         repository_lanes,
         path="tests/integration/tasks/person_tracking/test_recalibration_resume.py",
-    )
-    node = (
-        "tests/e2e/agents_ops/explain_html/test_browser.py"
-        "::test_browser_reader_editor_workflow"
     )
     assert not {"javascript", "ops-scenarios"}.intersection(plan["requested_suites"])
     assert partition_nodeids([node], plan) == ([], {node: "ops-scenarios"})
@@ -229,7 +233,9 @@ def test_registry_keeps_merge_queue_and_unregistered_tests_always_requested(
         "architecture-boundaries",
     }
     registered = {f for suite in registry["suites"] for f in suite["files"]}
-    assert not any(f.startswith("tests/unit/") or "test_knowledge" in f for f in registered)
+    assert not any(
+        f.startswith("tests/unit/") or "test_knowledge" in f for f in registered
+    )
     protected = {
         "tests/e2e/agents_ops/test_merge_gate.py",
         "tests/e2e/agents_ops/test_review_policy.py",
@@ -272,7 +278,9 @@ def test_this_registry_pr_still_requests_every_suite_on_shared_changes(
     assert plan["deferred_suites"] == []
     nodes = [f"{f}::test_contract" for f in files]
     assert partition_nodeids(nodes, plan) == (nodes, {})
-    assert set(plan["requested_suites"]) == {suite["id"] for suite in registry["suites"]}
+    assert set(plan["requested_suites"]) == {
+        suite["id"] for suite in registry["suites"]
+    }
 
 
 def test_empty_paths_are_an_explicit_main_only_exception() -> None:
