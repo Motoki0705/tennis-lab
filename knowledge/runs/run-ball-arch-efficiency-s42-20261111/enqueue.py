@@ -28,4 +28,6 @@ print(result.stdout.strip())
 record=dict(mode=a.mode,attempt=a.attempt,resource='all',queue_result=result.stdout.strip(),command=command,
             commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),queue=str(REPO/'.training_queue'))
 write(ROOT/'queue'/f'{a.mode}-attempt-{a.attempt}.json',record)
-subprocess.run(['bash',str(queue),'start','--idle-timeout','300'],env=env,check=True)
+status=subprocess.run(['bash',str(queue),'status'],env=env,check=True,capture_output=True,text=True)
+if 'worker: RUNNING' not in status.stdout:
+    subprocess.run(['bash',str(queue),'start','--idle-timeout','300'],env=env,check=True)

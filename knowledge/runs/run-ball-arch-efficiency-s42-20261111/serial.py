@@ -76,7 +76,7 @@ def persistence(directory):
                     readback=verification,updated_at=now(),execution_commit=commit())
         publish_index(ROOT/'persistence'/relative/(generation+'.json'),status)
         publish_index(state_path(relative),status)
-        print(json.dumps(dict(event='durable',**status)),flush=True)
+        print(json.dumps(dict(notification='durable',**status)),flush=True)
     return persist
 
 
