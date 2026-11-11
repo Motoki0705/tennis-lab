@@ -175,7 +175,9 @@ CNNはstageごと、queryはblockごとにcheckpointする。実学習で有効�
 
 `MDDMHCQueryConfig` / `configs/model/mdd_mhc_query.yaml` と
 `DeepMDDMHCQueryDetector` は、従来の単一queryと区別した座標モデルを構築する。
-5ch入力、保存T=64、head幅64（`heads=dim/64`）、SwiGLU幅は8/3 dimを64単位で切上げる。
+5ch入力で、ConvNeXt V2/factorizedまたはX3D/CSN/depthwise3dのCNNを明示する。Tをconfigに保存し、
+Attentionのhead幅は正の偶数とする。配布YAMLはT64・head幅64だが、dim256・8 heads（head幅32）も指定できる。
+SwiGLU幅は8/3 dimを64単位で切上げる。
 4つのqueryはそれぞれ独立にN(0,.02)から初期化する。各層の処理は次のとおり。
 
 1. 4 queryが同じframeの `/64` memoryを共有Cross-Attentionで読む。
