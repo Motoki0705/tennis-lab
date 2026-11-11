@@ -1,6 +1,6 @@
 {
   "additional_calls": 0,
-  "adjudication": "parent_pending",
+  "adjudication": "parent_completed",
   "catalog_sha256": "c0c63f0e809be5ad2d921caaf64095a0a04720065ad5ae3a3e480975bd2f12d2",
   "cli_version": "codex-cli 0.167.0",
   "code_sha256": "a5ef339e78316049caa794df37d348870c035613e1732358622d46fd8730093c",
@@ -293,9 +293,9 @@
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/report.json",
-      "published_canonical_sha256": "d0ac4fedbd9d50abc8c0dbd89cd2be158a39218580789ee85e9c1c75da353959",
-      "published_file_sha256": "d0ac4fedbd9d50abc8c0dbd89cd2be158a39218580789ee85e9c1c75da353959",
-      "source_canonical_sha256": "3fe3a0fd4f1292642a21191d1b77f831117028430730e5c28962af46ec36af98",
+      "published_canonical_sha256": "2b66b08ebb84960ce9422b30088d5e63441c767961f7407a0831704f64f87788",
+      "published_file_sha256": "2b66b08ebb84960ce9422b30088d5e63441c767961f7407a0831704f64f87788",
+      "source_canonical_sha256": "eb7c794c0ce0dfdf1ca3e68a31de49409f780210bd6144129b6696a428920e96",
       "substitutions": {
         "runtime_source_omitted": 28,
         "unsafe_url_example": 4
@@ -303,12 +303,10 @@
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/adjudications.json",
-      "published_canonical_sha256": "aeea089abf59673a90a9a7688ec002990527c7f7c1cfbac316c41b72bd653d19",
-      "published_file_sha256": "aeea089abf59673a90a9a7688ec002990527c7f7c1cfbac316c41b72bd653d19",
-      "source_canonical_sha256": "fa9f6c3f0ae3f1dba38c9f22d51150dff3632e559dc1114434aaeb65892c14c9",
-      "substitutions": {
-        "unsafe_url_example": 2
-      }
+      "published_canonical_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
+      "published_file_sha256": "097709b09fee715df2cddf7b8f5afa607a3e3e6ac9009afc505c7a4c4a2cf1c6",
+      "source_canonical_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
+      "substitutions": {}
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/selection.json",
@@ -333,10 +331,12 @@
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/worker-notes.json",
-      "published_canonical_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
-      "published_file_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
-      "source_canonical_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
-      "substitutions": {}
+      "published_canonical_sha256": "6c6bb44bcfc11e0b0e5be2ef582e9c11e5179e7f4f8795d2bfaf6fd0676cedd4",
+      "published_file_sha256": "6c6bb44bcfc11e0b0e5be2ef582e9c11e5179e7f4f8795d2bfaf6fd0676cedd4",
+      "source_canonical_sha256": "5c19ff69a791bdf3ea4f70369afd7f1add3076a50361d9776e77aaadf4489298",
+      "substitutions": {
+        "guard_replacements": 1
+      }
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/projection-checks.json",
@@ -358,8 +358,67 @@
       "published_file_sha256": "f705a9498fef6fb80adfaae6c3e3ebe207370e3ee2f3080e2993472dc4e8ba89",
       "source_canonical_sha256": "f705a9498fef6fb80adfaae6c3e3ebe207370e3ee2f3080e2993472dc4e8ba89",
       "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/adjudication-validation.json",
+      "published_canonical_sha256": "87cd1b1075494aa0d265a2ae666cebbfd696c639991d51128419d951aac346a7",
+      "published_file_sha256": "87cd1b1075494aa0d265a2ae666cebbfd696c639991d51128419d951aac346a7",
+      "source_canonical_sha256": "87cd1b1075494aa0d265a2ae666cebbfd696c639991d51128419d951aac346a7",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/scores.json",
+      "published_canonical_sha256": "dfbf4d0c0f378385e08ca03b94d9e5fa3c9e44c477f755631b8c7853af35c63f",
+      "published_file_sha256": "dfbf4d0c0f378385e08ca03b94d9e5fa3c9e44c477f755631b8c7853af35c63f",
+      "source_canonical_sha256": "dfbf4d0c0f378385e08ca03b94d9e5fa3c9e44c477f755631b8c7853af35c63f",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/outstanding-candidates.json",
+      "published_canonical_sha256": "514f093ed6586b38b7a697c9ec8ca9fd1452f544ac85d97baf9f28d3b3771db5",
+      "published_file_sha256": "514f093ed6586b38b7a697c9ec8ca9fd1452f544ac85d97baf9f28d3b3771db5",
+      "source_canonical_sha256": "514f093ed6586b38b7a697c9ec8ca9fd1452f544ac85d97baf9f28d3b3771db5",
+      "substitutions": {}
     }
   ],
+  "publication_history": [
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/report.json",
+      "published_canonical_sha256": "d0ac4fedbd9d50abc8c0dbd89cd2be158a39218580789ee85e9c1c75da353959",
+      "published_file_sha256": "d0ac4fedbd9d50abc8c0dbd89cd2be158a39218580789ee85e9c1c75da353959",
+      "source_canonical_sha256": "3fe3a0fd4f1292642a21191d1b77f831117028430730e5c28962af46ec36af98",
+      "substitutions": {
+        "runtime_source_omitted": 28,
+        "unsafe_url_example": 4
+      }
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/adjudications.json",
+      "published_canonical_sha256": "aeea089abf59673a90a9a7688ec002990527c7f7c1cfbac316c41b72bd653d19",
+      "published_file_sha256": "aeea089abf59673a90a9a7688ec002990527c7f7c1cfbac316c41b72bd653d19",
+      "source_canonical_sha256": "fa9f6c3f0ae3f1dba38c9f22d51150dff3632e559dc1114434aaeb65892c14c9",
+      "substitutions": {
+        "unsafe_url_example": 2
+      }
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/worker-notes.json",
+      "published_canonical_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
+      "published_file_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
+      "source_canonical_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
+      "substitutions": {}
+    }
+  ],
+  "recalculation": {
+    "before_effort_fix": true,
+    "cli_report_file_sha256": "cc7cc6c219b286d0ebe7e8c4571c39e39af3e324f901a882437c4fea183c68e1",
+    "code_sha256": "a5ef339e78316049caa794df37d348870c035613e1732358622d46fd8730093c",
+    "format_corrections": [],
+    "native_invocations": 0,
+    "parent_adjudications_canonical_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
+    "public_enrichment": "CLIの数値を保持し、candidateの親判定と明示された採否を公開版へ付記した。元の未判定公開記録の照合値はpublication_historyに保持する。",
+    "source_commit": "ead90050ba2ab03feada76af017a7876763330f5"
+  },
   "reserved_calls": 14,
   "schema_version": 1,
   "source_commit": "7f258e95b5770b9b05cd936485821e1356611d09"

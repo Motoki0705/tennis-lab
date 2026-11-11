@@ -7,8 +7,8 @@ This opt-in harness implements the comparison authorized in
 The separately authorized minimum comparison ran on 2026-11-11: fourteen serial
 calls, no additional calls, no runtime/format failures and no missing usage.
 [Execution evidence and parent adjudication material](../../../../knowledge/reports/review-model-comparison-20261111/README.md)
-record the measurements. Finding matches, adoption and formal review acceptance
-remain pending with the parent.
+record the measurements and completed parent adjudication. The result report
+contains the parent's policy decision; formal review acceptance remains pending.
 Normal pytest runs only offline contract tests; it never runs the comparison.
 
 ## Frozen material

@@ -1,0 +1,150 @@
+{
+  "additional_invocations": 0,
+  "adjudicator": "parent",
+  "adoption": {
+    "decided_by": "parent",
+    "decision": "retain_fixed",
+    "decision_source": "親 #1797 の本ターン具体指示。selectは採用せず、既定fixed（Astra・xhigh）を維持する。",
+    "default_policy_change_authorized": false,
+    "formal_acceptance_completed": false,
+    "minimum_improvement": 0.2,
+    "minimum_improvement_met": false,
+    "more_repeats_require_human_decision": true,
+    "ordinary_sol_review_evidence": "insufficient_single_repetition",
+    "paired_matrix_complete": true,
+    "parent_adjudications_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
+    "selection_improvements": {
+      "agent_seconds": -0.01620664449698883,
+      "processed_input_plus_output": -0.04305246489197678
+    }
+  },
+  "by_model": {
+    "gpt-6-astra": {
+      "additional_valid_findings": 3,
+      "by_severity": {
+        "blocker": {
+          "detected": 0,
+          "expected": 0,
+          "missed": 0
+        },
+        "major": {
+          "detected": 6,
+          "expected": 9,
+          "missed": 3
+        }
+      },
+      "emitted_findings": 11,
+      "false_negatives": 3,
+      "false_positives": 1,
+      "missed_gold_ids": [
+        "pr-1699-2",
+        "pr-1867-2",
+        "pr-1888-2"
+      ],
+      "runs": 7,
+      "true_positives": 6,
+      "unconfirmed_finding_rate": 0.09090909090909091,
+      "unconfirmed_findings": 1
+    },
+    "gpt-6.1-sol": {
+      "additional_valid_findings": 0,
+      "by_severity": {
+        "blocker": {
+          "detected": 0,
+          "expected": 0,
+          "missed": 0
+        },
+        "major": {
+          "detected": 6,
+          "expected": 9,
+          "missed": 3
+        }
+      },
+      "emitted_findings": 6,
+      "false_negatives": 3,
+      "false_positives": 0,
+      "missed_gold_ids": [
+        "pr-1699-2",
+        "pr-1867-2",
+        "pr-1888-2"
+      ],
+      "runs": 7,
+      "true_positives": 6,
+      "unconfirmed_finding_rate": 0.0,
+      "unconfirmed_findings": 0
+    }
+  },
+  "conditions": {
+    "astra_fixed": {
+      "additional_valid_findings": 3,
+      "by_severity": {
+        "blocker": {
+          "detected": 0,
+          "expected": 0,
+          "missed": 0
+        },
+        "major": {
+          "detected": 6,
+          "expected": 9,
+          "missed": 3
+        }
+      },
+      "emitted_findings": 11,
+      "false_negatives": 3,
+      "false_positives": 1,
+      "missed_gold_ids": [
+        "pr-1699-2",
+        "pr-1867-2",
+        "pr-1888-2"
+      ],
+      "runs": 7,
+      "true_positives": 6,
+      "unconfirmed_finding_rate": 0.09090909090909091,
+      "unconfirmed_findings": 1
+    },
+    "reuse_fixed": {
+      "historical_avoidable_reviews": 0,
+      "new_ai_invocations_in_replay": 0,
+      "quality_reference": "astra_fixed"
+    },
+    "reuse_select": {
+      "additional_valid_findings": 3,
+      "by_severity": {
+        "blocker": {
+          "detected": 0,
+          "expected": 0,
+          "missed": 0
+        },
+        "major": {
+          "detected": 6,
+          "expected": 9,
+          "missed": 3
+        }
+      },
+      "emitted_findings": 11,
+      "false_negatives": 3,
+      "false_positives": 1,
+      "missed_gold_ids": [
+        "pr-1699-2",
+        "pr-1867-2",
+        "pr-1888-2"
+      ],
+      "runs": 7,
+      "true_positives": 6,
+      "unconfirmed_finding_rate": 0.09090909090909091,
+      "unconfirmed_findings": 1
+    }
+  },
+  "format_failures": 0,
+  "loose_match": {
+    "gold_id": "pr-1872-2",
+    "models": [
+      "gpt-6-astra",
+      "gpt-6.1-sol"
+    ],
+    "note": "親が、起動境界とAI未起動adoptionの契機差を明記した緩い一致として採用した。同じ扱いで比較する。"
+  },
+  "parent_adjudications_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
+  "runtime_failures": 0,
+  "schema_version": 1
+}

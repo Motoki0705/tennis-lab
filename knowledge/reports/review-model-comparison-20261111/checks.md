@@ -16,5 +16,30 @@
 | 差分 | `git diff --cached --check`成功 |
 | pre-commit | 今回の追加・変更ファイルを指定して成功。Python変更がないためruffとmypyはno files to checkでskip。実装準備時の検査記録はPR本文に残す |
 
-一致判定と採否は検証結果に含めない。モデルが出した17件は全て親の判定待ちで、
-正式レビューの実機受入、gate確認、段階導入は未実施。
+## 親判定反映とeffort修正の検証設計
+
+親が14 run・17指摘の判定を記入した。判定の内容を変更せず、schema、元出力と正解表の照合、
+指摘の分類漏れ・重複を検証してから、非公開stateへ既存report CLIを適用する。
+実行コードの固定を検査する仕組みを維持するため、再計算はeffort修正前に行う。
+元の実行証拠・使用量・公開projectionの照合値を保持し、新しい判定の来歴を別に記録する。
+
+effort修正で守る契約は、人間の明示effortを保持し、親との矛盾と許可外の組を拒否すること。
+検出する故障は、human modelを補う際に明示effortを親のeffortで上書きすること。
+既存unitファイルのsettings fixtureを再利用して、保持・矛盾・許可外の3 nodeを追加する。
+さらに実際のCLI引数登録とselection関数で、`--human-review-effort`を渡す1 nodeを追加する。
+引数からpolicy選択までで検出できるため、親registry・git履歴・fake runtimeを作るE2Eは増やさない。
+計4 nodeを修正前に実行し、実装の問題を原因として失敗することを確認する。
+pytestは`-n 0`、1回1〜2 nodeで逐次実行し、setup・call時間を測る。
+既存のfixed既定とhuman model指定の拒否契約も少数nodeで確認する。
+
+親判定の検証と再計算は成功し、書式修正は0件、追加AI起動は0回だった。
+元の入力・出力・使用量・runtimeの指紋、CLI reportの全数値、公開ファイルの指紋を照合した。
+親が記入したadjudications.jsonはバイト単位でも変更していない。
+検証結果は[adjudication-validation.json](adjudication-validation.json)と
+[validation.json](validation.json)に保存した。
+
+修正前の4 nodeは、2件ずつの実行でそれぞれ0.11秒と0.20秒で失敗した。
+保持のnodeでは`human.effort`が`xhigh`から`None`へ失われ、残り3件は
+期待するValueErrorが発生しなかった。importやfixture起動の失敗ではない。
+
+正式レビューの実機受入、gate確認は親の残作業。追加の実LLM・実agent起動は行わない。

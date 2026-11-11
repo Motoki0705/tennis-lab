@@ -1,10 +1,16 @@
 {
   "adoption": {
-    "decision": "parent_required",
+    "decided_by": "parent",
+    "decision": "retain_fixed",
+    "decision_source": "親 #1797 の本ターン具体指示。selectは採用せず、既定fixed（Astra・xhigh）を維持する。",
     "default_policy_change_authorized": false,
     "formal_acceptance_completed": false,
     "minimum_improvement": 0.2,
+    "minimum_improvement_met": false,
+    "more_repeats_require_human_decision": true,
+    "ordinary_sol_review_evidence": "insufficient_single_repetition",
     "paired_matrix_complete": true,
+    "parent_adjudications_sha256": "94faf090a21ae6f01a1584d3eceb81407a0348cf09cc5743855a625536324e2e",
     "selection_improvements": {
       "agent_seconds": -0.01620664449698883,
       "processed_input_plus_output": -0.04305246489197678
@@ -40,7 +46,10 @@
               "severity": "major"
             },
             "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1699-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "d98730fdac794b4b965c34601dcbb26b"
           },
           {
@@ -55,7 +64,8 @@
               "severity": "major"
             },
             "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "valid_new",
             "run_id": "d98730fdac794b4b965c34601dcbb26b"
           },
           {
@@ -70,7 +80,8 @@
               "severity": "major"
             },
             "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "false",
             "run_id": "d98730fdac794b4b965c34601dcbb26b"
           },
           {
@@ -87,7 +98,10 @@
               "severity": "major"
             },
             "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1766-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
           },
           {
@@ -104,7 +118,8 @@
               "severity": "major"
             },
             "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "valid_new",
             "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
           },
           {
@@ -121,7 +136,10 @@
               "severity": "major"
             },
             "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1867-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "ee6d77a108064818b17841a28def94ad"
           },
           {
@@ -138,7 +156,8 @@
               "severity": "major"
             },
             "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "unconfirmed",
             "run_id": "ee6d77a108064818b17841a28def94ad"
           },
           {
@@ -155,7 +174,10 @@
               "severity": "major"
             },
             "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1872-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
           },
           {
@@ -172,7 +194,10 @@
               "severity": "major"
             },
             "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1872-2"
+            ],
+            "parent_verdict": "matched",
             "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
           },
           {
@@ -189,7 +214,10 @@
               "severity": "major"
             },
             "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1888-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
           },
           {
@@ -204,7 +232,8 @@
               "severity": "major"
             },
             "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "valid_new",
             "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
           }
         ],
@@ -220,16 +249,16 @@
             "code_unconfirmed_rate": 0.0,
             "detection": {
               "false_negatives": {
-                "confirmed_sum": 0,
-                "pending_runs": 7
+                "confirmed_sum": 3,
+                "pending_runs": 0
               },
               "false_positives": {
-                "confirmed_sum": 0,
-                "pending_runs": 7
+                "confirmed_sum": 1,
+                "pending_runs": 0
               },
               "true_positives": {
-                "confirmed_sum": 0,
-                "pending_runs": 7
+                "confirmed_sum": 6,
+                "pending_runs": 0
               }
             },
             "elapsed_seconds": {
@@ -242,7 +271,7 @@
             "observations": 7,
             "runtime_failures": 0,
             "status": "measured",
-            "unconfirmed_finding_rate": 1.0,
+            "unconfirmed_finding_rate": 0.09090909090909091,
             "usage": {
               "cached_input_tokens": {
                 "missing_counters": 0,
@@ -372,164 +401,171 @@
         "default_policy_change_authorized": false,
         "detection": [
           {
+            "additional_valid_findings": 1,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 2,
-                "missed": null
+                "missed": 1
               }
             },
             "case_id": "pr-1699",
             "condition": "astra_fixed",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 1,
+            "false_positives": 1,
             "model": "gpt-6-astra",
             "run_id": "d98730fdac794b4b965c34601dcbb26b",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 3
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 1,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 1,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1766",
             "condition": "astra_fixed",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "db47beaea3d04ec6a82c2bed5b723cdd",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 2,
-                "missed": null
+                "missed": 1
               }
             },
             "case_id": "pr-1867",
             "condition": "astra_fixed",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 1,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "ee6d77a108064818b17841a28def94ad",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 1
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 2,
                 "expected": 2,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1872",
             "condition": "astra_fixed",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 2,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 1,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 2,
-                "missed": null
+                "missed": 1
               }
             },
             "case_id": "pr-1888",
             "condition": "astra_fixed",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 1,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "0d21543c86be4e6cabd40fc32e671f7b",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1686",
             "condition": "astra_fixed",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "c8c22cb4966a4b518af9482829fd590e",
-            "status": "awaiting_parent",
-            "true_positives": null,
+            "status": "parent_adjudicated",
+            "true_positives": 0,
             "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1744",
             "condition": "astra_fixed",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "2356b004e1584fb7b10e6fddff35372b",
-            "status": "awaiting_parent",
-            "true_positives": null,
+            "status": "parent_adjudicated",
+            "true_positives": 0,
             "unconfirmed_findings": 0
           }
         ],
@@ -552,7 +588,7 @@
           "unique_counters": 7
         },
         "schema_version": 1,
-        "status": "awaiting_parent"
+        "status": "scored"
       },
       "scope": "measured fresh Astra samples"
     },
@@ -589,7 +625,10 @@
               "severity": "major"
             },
             "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1699-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "d98730fdac794b4b965c34601dcbb26b"
           },
           {
@@ -604,7 +643,8 @@
               "severity": "major"
             },
             "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "valid_new",
             "run_id": "d98730fdac794b4b965c34601dcbb26b"
           },
           {
@@ -619,7 +659,8 @@
               "severity": "major"
             },
             "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "false",
             "run_id": "d98730fdac794b4b965c34601dcbb26b"
           },
           {
@@ -636,7 +677,10 @@
               "severity": "major"
             },
             "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1766-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
           },
           {
@@ -653,7 +697,8 @@
               "severity": "major"
             },
             "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "valid_new",
             "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
           },
           {
@@ -670,7 +715,10 @@
               "severity": "major"
             },
             "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1867-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "ee6d77a108064818b17841a28def94ad"
           },
           {
@@ -687,7 +735,8 @@
               "severity": "major"
             },
             "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "unconfirmed",
             "run_id": "ee6d77a108064818b17841a28def94ad"
           },
           {
@@ -704,7 +753,10 @@
               "severity": "major"
             },
             "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1872-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
           },
           {
@@ -721,7 +773,10 @@
               "severity": "major"
             },
             "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1872-2"
+            ],
+            "parent_verdict": "matched",
             "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
           },
           {
@@ -738,7 +793,10 @@
               "severity": "major"
             },
             "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [
+              "pr-1888-1"
+            ],
+            "parent_verdict": "matched",
             "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
           },
           {
@@ -753,7 +811,8 @@
               "severity": "major"
             },
             "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
-            "parent_verdict": "pending",
+            "parent_gold_ids": [],
+            "parent_verdict": "valid_new",
             "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
           }
         ],
@@ -875,16 +934,16 @@
             "code_unconfirmed_rate": 0.0,
             "detection": {
               "false_negatives": {
-                "confirmed_sum": 0,
-                "pending_runs": 7
+                "confirmed_sum": 3,
+                "pending_runs": 0
               },
               "false_positives": {
-                "confirmed_sum": 0,
-                "pending_runs": 7
+                "confirmed_sum": 1,
+                "pending_runs": 0
               },
               "true_positives": {
-                "confirmed_sum": 0,
-                "pending_runs": 7
+                "confirmed_sum": 6,
+                "pending_runs": 0
               }
             },
             "elapsed_seconds": {
@@ -897,7 +956,7 @@
             "observations": 7,
             "runtime_failures": 0,
             "status": "measured",
-            "unconfirmed_finding_rate": 1.0,
+            "unconfirmed_finding_rate": 0.09090909090909091,
             "usage": {
               "cached_input_tokens": {
                 "missing_counters": 0,
@@ -921,164 +980,171 @@
         "default_policy_change_authorized": false,
         "detection": [
           {
+            "additional_valid_findings": 1,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 2,
-                "missed": null
+                "missed": 1
               }
             },
             "case_id": "pr-1699",
             "condition": "reuse_select",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 1,
+            "false_positives": 1,
             "model": "gpt-6-astra",
             "run_id": "d98730fdac794b4b965c34601dcbb26b",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 3
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 1,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 1,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1766",
             "condition": "reuse_select",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "db47beaea3d04ec6a82c2bed5b723cdd",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 2,
-                "missed": null
+                "missed": 1
               }
             },
             "case_id": "pr-1867",
             "condition": "reuse_select",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 1,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "ee6d77a108064818b17841a28def94ad",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 1
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 2,
                 "expected": 2,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1872",
             "condition": "reuse_select",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 2,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 1,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 1,
                 "expected": 2,
-                "missed": null
+                "missed": 1
               }
             },
             "case_id": "pr-1888",
             "condition": "reuse_select",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 1,
+            "false_positives": 0,
             "model": "gpt-6-astra",
             "run_id": "0d21543c86be4e6cabd40fc32e671f7b",
-            "status": "awaiting_parent",
-            "true_positives": null,
-            "unconfirmed_findings": 2
+            "status": "parent_adjudicated",
+            "true_positives": 1,
+            "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1686",
             "condition": "reuse_select",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6.1-sol",
             "run_id": "f612b1c64b164ae19de70bd18cc59fda",
-            "status": "awaiting_parent",
-            "true_positives": null,
+            "status": "parent_adjudicated",
+            "true_positives": 0,
             "unconfirmed_findings": 0
           },
           {
+            "additional_valid_findings": 0,
             "by_severity": {
               "blocker": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               },
               "major": {
-                "detected": null,
+                "detected": 0,
                 "expected": 0,
-                "missed": null
+                "missed": 0
               }
             },
             "case_id": "pr-1744",
             "condition": "reuse_select",
-            "false_negatives": null,
-            "false_positives": null,
+            "false_negatives": 0,
+            "false_positives": 0,
             "model": "gpt-6.1-sol",
             "run_id": "b8fb4c37a13c4218a131a2bde2ea2295",
-            "status": "awaiting_parent",
-            "true_positives": null,
+            "status": "parent_adjudicated",
+            "true_positives": 0,
             "unconfirmed_findings": 0
           }
         ],
@@ -1101,7 +1167,7 @@
           "unique_counters": 7
         },
         "schema_version": 1,
-        "status": "awaiting_parent"
+        "status": "scored"
       },
       "scope": "counterfactual selection from paired samples, including all actual additional calls; not additive to physical usage",
       "selection": {
@@ -1795,7 +1861,10 @@
           "severity": "major"
         },
         "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1699-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "d98730fdac794b4b965c34601dcbb26b"
       },
       {
@@ -1810,7 +1879,8 @@
           "severity": "major"
         },
         "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [],
+        "parent_verdict": "valid_new",
         "run_id": "d98730fdac794b4b965c34601dcbb26b"
       },
       {
@@ -1825,7 +1895,8 @@
           "severity": "major"
         },
         "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [],
+        "parent_verdict": "false",
         "run_id": "d98730fdac794b4b965c34601dcbb26b"
       },
       {
@@ -1842,7 +1913,10 @@
           "severity": "major"
         },
         "output_sha256": "96c0c841e4e06fd5965396a612bb58bcf1fdc174db8a24ade27e52acf28ebfcd",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1699-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "b94b85e4d71f4b08a40b78bba2cef85d"
       },
       {
@@ -1859,7 +1933,10 @@
           "severity": "major"
         },
         "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1766-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
       },
       {
@@ -1876,7 +1953,8 @@
           "severity": "major"
         },
         "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [],
+        "parent_verdict": "valid_new",
         "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
       },
       {
@@ -1893,7 +1971,10 @@
           "severity": "major"
         },
         "output_sha256": "933830b97d3002bd4924daf39a8606b4c1459a24d5995efcb64822405b8e2a5b",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1766-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "5b66c526982849fc88c11ac59a013ba6"
       },
       {
@@ -1910,7 +1991,10 @@
           "severity": "major"
         },
         "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1867-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "ee6d77a108064818b17841a28def94ad"
       },
       {
@@ -1927,7 +2011,8 @@
           "severity": "major"
         },
         "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [],
+        "parent_verdict": "unconfirmed",
         "run_id": "ee6d77a108064818b17841a28def94ad"
       },
       {
@@ -1942,7 +2027,10 @@
           "severity": "major"
         },
         "output_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1867-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "da77c51156854806816cbaf1161b45ea"
       },
       {
@@ -1959,7 +2047,10 @@
           "severity": "major"
         },
         "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1872-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
       },
       {
@@ -1976,7 +2067,10 @@
           "severity": "major"
         },
         "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1872-2"
+        ],
+        "parent_verdict": "matched",
         "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
       },
       {
@@ -1993,7 +2087,10 @@
           "severity": "major"
         },
         "output_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1872-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "2c41a860bd974901b5f86fd4ac1c2a25"
       },
       {
@@ -2010,7 +2107,10 @@
           "severity": "major"
         },
         "output_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1872-2"
+        ],
+        "parent_verdict": "matched",
         "run_id": "2c41a860bd974901b5f86fd4ac1c2a25"
       },
       {
@@ -2027,7 +2127,10 @@
           "severity": "major"
         },
         "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1888-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
       },
       {
@@ -2042,7 +2145,8 @@
           "severity": "major"
         },
         "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [],
+        "parent_verdict": "valid_new",
         "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
       },
       {
@@ -2059,7 +2163,10 @@
           "severity": "major"
         },
         "output_sha256": "a0b68e25a52651a83e3eeba512090c711a2c95e3a3fa17701e3f08f9b27596d9",
-        "parent_verdict": "pending",
+        "parent_gold_ids": [
+          "pr-1888-1"
+        ],
+        "parent_verdict": "matched",
         "run_id": "4371202ab146425289e3ab4aa3b7078e"
       }
     ],
@@ -2075,16 +2182,16 @@
         "code_unconfirmed_rate": 0.0,
         "detection": {
           "false_negatives": {
-            "confirmed_sum": 0,
-            "pending_runs": 7
+            "confirmed_sum": 3,
+            "pending_runs": 0
           },
           "false_positives": {
-            "confirmed_sum": 0,
-            "pending_runs": 7
+            "confirmed_sum": 1,
+            "pending_runs": 0
           },
           "true_positives": {
-            "confirmed_sum": 0,
-            "pending_runs": 7
+            "confirmed_sum": 6,
+            "pending_runs": 0
           }
         },
         "elapsed_seconds": {
@@ -2097,7 +2204,7 @@
         "observations": 7,
         "runtime_failures": 0,
         "status": "measured",
-        "unconfirmed_finding_rate": 1.0,
+        "unconfirmed_finding_rate": 0.09090909090909091,
         "usage": {
           "cached_input_tokens": {
             "missing_counters": 0,
@@ -2181,16 +2288,16 @@
         "code_unconfirmed_rate": 0.0,
         "detection": {
           "false_negatives": {
-            "confirmed_sum": 0,
-            "pending_runs": 7
+            "confirmed_sum": 3,
+            "pending_runs": 0
           },
           "false_positives": {
             "confirmed_sum": 0,
-            "pending_runs": 7
+            "pending_runs": 0
           },
           "true_positives": {
-            "confirmed_sum": 0,
-            "pending_runs": 7
+            "confirmed_sum": 6,
+            "pending_runs": 0
           }
         },
         "elapsed_seconds": {
@@ -2203,7 +2310,7 @@
         "observations": 7,
         "runtime_failures": 0,
         "status": "measured",
-        "unconfirmed_finding_rate": 1.0,
+        "unconfirmed_finding_rate": 0.0,
         "usage": {
           "cached_input_tokens": {
             "missing_counters": 0,
@@ -2227,325 +2334,339 @@
     "default_policy_change_authorized": false,
     "detection": [
       {
+        "additional_valid_findings": 1,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 2,
-            "missed": null
+            "missed": 1
           }
         },
         "case_id": "pr-1699",
         "condition": "astra_fixed",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 1,
+        "false_positives": 1,
         "model": "gpt-6-astra",
         "run_id": "d98730fdac794b4b965c34601dcbb26b",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 3
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 2,
-            "missed": null
+            "missed": 1
           }
         },
         "case_id": "pr-1699",
         "condition": "reuse_select",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 1,
+        "false_positives": 0,
         "model": "gpt-6.1-sol",
         "run_id": "b94b85e4d71f4b08a40b78bba2cef85d",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 1
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 1,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 1,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1766",
         "condition": "astra_fixed",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6-astra",
         "run_id": "db47beaea3d04ec6a82c2bed5b723cdd",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 2
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 1,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1766",
         "condition": "reuse_select",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6.1-sol",
         "run_id": "5b66c526982849fc88c11ac59a013ba6",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 1
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 2,
-            "missed": null
+            "missed": 1
           }
         },
         "case_id": "pr-1867",
         "condition": "astra_fixed",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 1,
+        "false_positives": 0,
         "model": "gpt-6-astra",
         "run_id": "ee6d77a108064818b17841a28def94ad",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 2
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 1
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 2,
-            "missed": null
+            "missed": 1
           }
         },
         "case_id": "pr-1867",
         "condition": "reuse_select",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 1,
+        "false_positives": 0,
         "model": "gpt-6.1-sol",
         "run_id": "da77c51156854806816cbaf1161b45ea",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 1
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 2,
             "expected": 2,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1872",
         "condition": "astra_fixed",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6-astra",
         "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 2
+        "status": "parent_adjudicated",
+        "true_positives": 2,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 2,
             "expected": 2,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1872",
         "condition": "reuse_select",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6.1-sol",
         "run_id": "2c41a860bd974901b5f86fd4ac1c2a25",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 2
+        "status": "parent_adjudicated",
+        "true_positives": 2,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 1,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 2,
-            "missed": null
+            "missed": 1
           }
         },
         "case_id": "pr-1888",
         "condition": "astra_fixed",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 1,
+        "false_positives": 0,
         "model": "gpt-6-astra",
         "run_id": "0d21543c86be4e6cabd40fc32e671f7b",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 2
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 1,
             "expected": 2,
-            "missed": null
+            "missed": 1
           }
         },
         "case_id": "pr-1888",
         "condition": "reuse_select",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 1,
+        "false_positives": 0,
         "model": "gpt-6.1-sol",
         "run_id": "4371202ab146425289e3ab4aa3b7078e",
-        "status": "awaiting_parent",
-        "true_positives": null,
-        "unconfirmed_findings": 1
+        "status": "parent_adjudicated",
+        "true_positives": 1,
+        "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1686",
         "condition": "astra_fixed",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6-astra",
         "run_id": "c8c22cb4966a4b518af9482829fd590e",
-        "status": "awaiting_parent",
-        "true_positives": null,
+        "status": "parent_adjudicated",
+        "true_positives": 0,
         "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1686",
         "condition": "reuse_select",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6.1-sol",
         "run_id": "f612b1c64b164ae19de70bd18cc59fda",
-        "status": "awaiting_parent",
-        "true_positives": null,
+        "status": "parent_adjudicated",
+        "true_positives": 0,
         "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1744",
         "condition": "astra_fixed",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6-astra",
         "run_id": "2356b004e1584fb7b10e6fddff35372b",
-        "status": "awaiting_parent",
-        "true_positives": null,
+        "status": "parent_adjudicated",
+        "true_positives": 0,
         "unconfirmed_findings": 0
       },
       {
+        "additional_valid_findings": 0,
         "by_severity": {
           "blocker": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           },
           "major": {
-            "detected": null,
+            "detected": 0,
             "expected": 0,
-            "missed": null
+            "missed": 0
           }
         },
         "case_id": "pr-1744",
         "condition": "reuse_select",
-        "false_negatives": null,
-        "false_positives": null,
+        "false_negatives": 0,
+        "false_positives": 0,
         "model": "gpt-6.1-sol",
         "run_id": "b8fb4c37a13c4218a131a2bde2ea2295",
-        "status": "awaiting_parent",
-        "true_positives": null,
+        "status": "parent_adjudicated",
+        "true_positives": 0,
         "unconfirmed_findings": 0
       }
     ],
@@ -2568,7 +2689,7 @@
       "unique_counters": 14
     },
     "schema_version": 1,
-    "status": "awaiting_parent"
+    "status": "scored"
   },
   "schema_version": 1,
   "scope": "private paired model qualification; no new formal review or publication is represented"
