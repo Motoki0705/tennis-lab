@@ -10,7 +10,12 @@ from typing import Any
 
 from agent_events import Events, identifier, parse_cli_event, parse_json
 from agent_output import OutputSchema
-from lib.review_settings import runtime_summary, verify_execution, verify_runtime
+from lib.review_settings import (
+    candidate_references,
+    runtime_summary,
+    verify_execution,
+    verify_runtime,
+)
 from parent.policy import digest, object_value
 from parent_review_policy import (
     execution_stages,
@@ -321,6 +326,7 @@ def verify_adoption(state_dir: Path, adoption: dict[str, Any]) -> None:
             "kind": "recover",
             "source_run": adoption["source_run"],
             "source_request_sha256": digest(source),
+            "candidates": candidate_references(source.get("review_selection", {})),
         }:
             raise ValueError("recovery source differs from frozen request")
         runtime = read_json(
@@ -341,17 +347,69 @@ def verify_result_runtime(
     """The same v3 proof is required at publication, inspection and merge."""
     request = result["request"]
     verify_execution(request, execution)
+    if request["schema_version"] == 3 and result["kind"] == "adoption":
+        verify_adoption(run_dir.parent.parent, result)
+        return
     if (
         request["schema_version"] != 3
         or result["kind"] != "result"
-        or result["status"] != "succeeded"
+        or not any(p["coverage"] == "reviewed" for p in result["prs"])
     ):
         return
     runtime = runtime_evidence(run_dir, request)
     if runtime["result"] != "completed" or runtime["exit_code"] != 0:
-        raise ValueError("successful review has no completed runtime")
+        raise ValueError("reviewed result has no completed runtime")
     stages = execution_stages(execution)
     if stages is None or stages["agent"].get("runtime_sha256") != digest(runtime):
         raise ValueError("review runtime digest differs from execution")
     if result["runtime_settings"] != runtime_summary(runtime):
         raise ValueError("public effective settings differ from review runtime")
+
+
+def handoff_candidates(
+    state_dir: Path,
+    request: dict[str, Any],
+    result: dict[str, Any] | None,
+    *,
+    adopting: bool = False,
+) -> list[dict[str, Any]]:
+    """Freeze verified issues, including uncommitted issues from earlier handoffs.
+
+    Coverage and verdict are deliberately absent. The complete output remains
+    bound by the validation digests, rather than becoming approval evidence.
+    """
+    if result is not None and result["request"] != request:
+        raise ValueError("handoff result differs from source request")
+    choice = request.get("review_selection", {})
+    candidates = {r["source_run"]: r for r in candidate_references(choice)}
+    run = request["review_run_id"]
+    for source_run, frozen in candidates.items():
+        if saved_candidate(state_dir, source_run) != frozen:
+            raise ValueError("inherited handoff candidate changed")
+    candidate = None if adopting else saved_candidate(state_dir, run)
+    if candidate is not None:
+        candidates[run] = candidate
+    return [candidates[key] for key in sorted(candidates)]
+
+
+def saved_candidate(state_dir: Path, run: str) -> dict[str, Any] | None:
+    directory = state_dir / "reviews" / run
+    if not (directory / "output.json").exists():
+        return None
+    candidate, validation = source_evidence(state_dir, run)
+    if candidate == read_json(directory / "result.json"):
+        return None
+    return {
+        "status": "candidate_only",
+        "source_run": run,
+        "validation": validation,
+        "cross_findings": candidate["cross_findings"],
+        "prs": [
+            {
+                "number": p["number"],
+                "findings": p["findings"],
+                "evidence_waits": p.get("evidence_waits", []),
+            }
+            for p in candidate["prs"]
+        ],
+    }

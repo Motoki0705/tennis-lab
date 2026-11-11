@@ -10,7 +10,11 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any
 
-from lib.review_settings import validate_selection, validate_summary
+from lib.review_settings import (
+    candidate_references,
+    validate_selection,
+    validate_summary,
+)
 from parent.execution import require_requirement_targets, validate_authorization
 from parent.policy import digest, nonempty, number, object_value
 from review_policy import parse_finding
@@ -104,6 +108,11 @@ def request_manifest(value: Any, *, instructed: bool = True) -> dict[str, Any]:
         raise ValueError("invalid repository")
     nonempty(data["reason"], "review reason")
     snapshots(data["prs"])
+    if version == 3:
+        for candidate in candidate_references(data["review_selection"]):
+            if not candidate["source_run"].startswith(f"parent-{parent}-"):
+                raise ValueError("handoff candidate belongs to another parent")
+            validate_candidate_issues(candidate)
     if instructed and data["review_state"] != "instructed":
         raise ValueError("review has not been explicitly instructed")
     return {k: v for k, v in data.items() if k != "review_state"}
@@ -205,6 +214,52 @@ def parse_output(text: str, numbers: Sequence[int]) -> dict[str, Any]:
         "cross_findings": cross,
         "prs": sorted(prs, key=lambda p: p["number"]),
     }
+
+
+def validate_candidate_issues(candidate: dict[str, Any]) -> None:
+    """Validate only the projected issues using the existing output contract."""
+    numbers = [p["number"] for p in snapshots(candidate["validation"]["current_prs"])]
+    if [p["number"] for p in candidate["prs"]] != numbers:
+        raise ValueError("handoff candidate PRs differ from source snapshots")
+    raw = {
+        "verdict": "request_changes"
+        if candidate["cross_findings"] or any(p["findings"] for p in candidate["prs"])
+        else "approve",
+        "summary": "Candidate issue validation only; no coverage is adopted.",
+        "cross_findings": [
+            {k: v for k, v in f.items() if k != "id"}
+            for f in candidate["cross_findings"]
+        ],
+        "prs": [
+            {
+                **p,
+                "coverage": "reviewed",
+                "summary": "Candidate issues only",
+                "findings": [
+                    {k: v for k, v in f.items() if k != "id"} for f in p["findings"]
+                ],
+            }
+            for p in candidate["prs"]
+        ],
+    }
+    parsed = parse_output(json.dumps(raw), numbers)
+    if parsed["cross_findings"] != candidate["cross_findings"] or any(
+        a["findings"] != b["findings"]
+        for a, b in zip(parsed["prs"], candidate["prs"], strict=True)
+    ):
+        raise ValueError("handoff candidate finding IDs are not canonical")
+
+
+def pending_handoff_candidates(result: Mapping[str, Any], n: int) -> bool:
+    choice = result["request"].get("review_selection", {})
+    return any(
+        any(n in f["prs"] for f in candidate["cross_findings"])
+        or any(
+            p["number"] == n and (p["findings"] or p["evidence_waits"])
+            for p in candidate["prs"]
+        )
+        for candidate in candidate_references(choice)
+    )
 
 
 def marker(record: Mapping[str, Any]) -> str:
@@ -430,6 +485,12 @@ def validate_result(value: Any) -> dict[str, Any]:
         ),
         [p["number"] for p in request["prs"]],
     )
+    if (
+        modern
+        and data["runtime_settings"] is None
+        and any(p["coverage"] == "reviewed" for p in data["prs"])
+    ):
+        raise ValueError("reviewed results require effective settings")
     if parsed["cross_findings"] != data["cross_findings"] or any(
         a["findings"] != b["findings"]
         for a, b in zip(parsed["prs"], data["prs"], strict=True)
@@ -541,7 +602,8 @@ def validate_resolution(value: Any) -> dict[str, Any]:
     number(data["parent_issue"])
     snapshots([data["fixed_snapshot"]])
     if data["fixed_snapshot"]["number"] != n or not re.fullmatch(
-        rf"(?:changes|(?:cross|pr-{n})-[1-9][0-9]*)", str(data["finding"])
+        rf"(?:changes|handoff-candidates|(?:cross|pr-{n})-[1-9][0-9]*)",
+        str(data["finding"]),
     ):
         raise ValueError("invalid resolution PR/finding")
     hex_value(data["reviewed_head"], 40)
@@ -663,6 +725,9 @@ def evaluate_coverage(
         latest = now[n]
         inherited = (digest(original), digest(latest)) in inherited_snapshots
         all_findings = pr_findings(result, n)
+        candidate_confirmation = (
+            {"handoff-candidates"} if pending_handoff_candidates(result, n) else set()
+        )
         for index, _ in enumerate(reviewed.get("evidence_waits", []), 1):
             if not any(
                 r["review_run_id"] == result["review_run_id"]
@@ -696,7 +761,11 @@ def evaluate_coverage(
                 )
                 or record.get("reviewed_head") != original["head_sha"]
                 or record.get("finding")
-                not in {"changes", *(f["id"] for f in all_findings)}
+                not in {
+                    "changes",
+                    *candidate_confirmation,
+                    *(f["id"] for f in all_findings),
+                }
             ):
                 continue
             if not fixed_inherited and record.get("changed_paths") != sorted(
@@ -708,6 +777,8 @@ def evaluate_coverage(
             ] != fix_diff_digests.get(n):
                 continue
             resolved.add(record["finding"])
+        if candidate_confirmation - resolved:
+            reasons.append(f"pr_{n}_handoff_candidate_unconfirmed")
         if not inherited and not resolved:
             for key in ("base_ref", "merge_base_sha", "branch"):
                 if original[key] != latest[key]:

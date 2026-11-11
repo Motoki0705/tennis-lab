@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -70,6 +71,27 @@ def source(
     return request, result
 
 
+def candidate_records(
+    session: ParentSession,
+    request: dict[str, Any],
+    result: dict[str, Any] | None,
+    *,
+    adopting: bool = False,
+) -> list[dict[str, Any]]:
+    # The review modules also serve standalone scripts; match review-inspect's
+    # module search paths only at this explicit review entry point.
+    root = Path(__file__).resolve().parents[1]
+    for directory in (root / "review", root / "lib"):
+        if str(directory) not in sys.path:
+            sys.path.insert(0, str(directory))
+    from review.review_recovery import handoff_candidates
+
+    records: list[dict[str, Any]] = handoff_candidates(
+        session.store.directory, request, result, adopting=adopting
+    )
+    return records
+
+
 def selection(
     session: ParentSession, args: argparse.Namespace
 ) -> dict[str, Any] | None:
@@ -99,12 +121,15 @@ def selection(
             raise ValueError(
                 "recovery source cannot be combined with a new model choice"
             )
-        request, _ = source(session, args.recover_source_run)
+        request, result = source(session, args.recover_source_run)
         return validate_selection(
             {
                 "kind": "recover",
                 "source_run": args.recover_source_run,
                 "source_request_sha256": digest(request),
+                "candidates": candidate_records(
+                    session, request, result, adopting=True
+                ),
             }
         )
     handoff = None
@@ -119,6 +144,7 @@ def selection(
             "source_request_sha256": digest(request),
             "source_result_sha256": digest(result),
             "scope": Path(args.handoff_scope_file).read_text(encoding="utf-8"),
+            "candidates": candidate_records(session, request, result),
         }
     return choose(
         load_policy(args.review_config_file),
@@ -148,9 +174,14 @@ def verify_references(
     if choice["kind"] == "recover":
         if prs != request["prs"]:
             raise ValueError("recovery requires unchanged source snapshots")
+        if reference["candidates"] != candidate_records(
+            session, request, result, adopting=True
+        ):
+            raise ValueError("recovery inherited candidates changed")
     elif (
         result is None
         or reference["source_result_sha256"] != digest(result)
         or not {p["number"] for p in prs} <= {p["number"] for p in request["prs"]}
+        or reference["candidates"] != candidate_records(session, request, result)
     ):
         raise ValueError("handoff source result/PR correspondence changed")

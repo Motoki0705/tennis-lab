@@ -370,7 +370,9 @@ JSONの`kind=run`は`policy,selected,specified_by,reason,human,handoff`を持つ
 `policy`は`version,mode,fixed,allowed_pairs`、`selected`は`model,effort,service_tier`。
 `specified_by`は`settings / parent_choice / human_instruction`。
 人間の拘束は`human={model,effort,reference}`、引継ぎは
-`handoff={source_run,source_request_sha256,source_result_sha256,scope}`。どちらも不要ならnull。
+`handoff={source_run,source_request_sha256,source_result_sha256,scope,candidates}`。どちらも不要ならnull。
+`candidates`は検証済み保存候補の指摘と証拠待ちを来歴付きで固定する配列で、無ければ空配列。
+候補は`candidate_only`として扱い、coverageや承認を含めない。検証と親の確認は[review契約](../review/README.md#保存候補を含む別runへの引継ぎ)を参照。
 選択・理由・拘束は`lib/review_settings.py`の共通検査を使う。
 
 fixedでは固定値と一致する明示指定だけを許し、selectでは明示選択と理由を必須とする。

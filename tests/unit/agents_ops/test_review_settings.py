@@ -89,6 +89,79 @@ def test_human_constraint_cannot_be_overridden_by_parent(settings: Any) -> None:
         settings.choose(policy, model="gpt-6.1-sol", **args)
 
 
+@pytest.mark.parametrize("bad", ["missing", "coverage", "approval", "duplicate"])
+def test_handoff_candidate_envelope_cannot_claim_coverage_or_approval(
+    settings: Any, bad: str
+) -> None:
+    candidate = {
+        "status": "candidate_only",
+        "source_run": "parent-1-" + "a" * 32,
+        "validation": {
+            **{
+                key: "a" * 64
+                for key in (
+                    "source_request_sha256",
+                    "source_execution_sha256",
+                    "source_result_sha256",
+                    "runtime_sha256",
+                    "events_sha256",
+                    "final_sha256",
+                    "output_sha256",
+                )
+            },
+            "current_prs": [],
+        },
+        "cross_findings": [],
+        "prs": [{"number": 100, "findings": [], "evidence_waits": []}],
+    }
+    handoff: dict[str, Any] = {
+        "source_run": candidate["source_run"],
+        "source_request_sha256": "a" * 64,
+        "source_result_sha256": "a" * 64,
+        "scope": "追加確認",
+        "candidates": [candidate],
+    }
+    if bad == "missing":
+        del handoff["candidates"]
+    elif bad == "coverage":
+        handoff["candidates"][0]["prs"][0]["coverage"] = "reviewed"
+    elif bad == "approval":
+        handoff["candidates"][0]["status"] = "approved"
+    else:
+        handoff["candidates"].append(copy.deepcopy(candidate))
+    with pytest.raises(ValueError):
+        settings.choose(settings.policy_from_pins(pins()), handoff=handoff)
+
+
+@pytest.mark.parametrize("kind", ["finding", "wait", "cross"])
+def test_candidate_issues_block_only_the_affected_pr(
+    monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    monkeypatch.syspath_prepend(str(OPS))
+    monkeypatch.syspath_prepend(str(OPS / "review"))
+    policy = importlib.import_module("parent_review_policy")
+    # This pure policy reads the issue projection, whose source/schema proof is
+    # exercised by the parent CLI E2E cases.
+    candidate = {
+        "cross_findings": [{"prs": [100]}] if kind == "cross" else [],
+        "prs": [
+            {
+                "number": 100,
+                "findings": [{"id": "pr-100-1"}] if kind == "finding" else [],
+                "evidence_waits": [
+                    {"question": "必要な実証", "required_evidence": "テスト結果"}
+                ]
+                if kind == "wait"
+                else [],
+            },
+            {"number": 101, "findings": [], "evidence_waits": []},
+        ],
+    }
+    result = {"request": {"review_selection": {"handoff": {"candidates": [candidate]}}}}
+    assert policy.pending_handoff_candidates(result, 100) is True
+    assert policy.pending_handoff_candidates(result, 101) is False
+
+
 @pytest.mark.parametrize("version", [1, 2, 3])
 def test_requirements_check_is_preserved_for_both_authorized_versions(
     monkeypatch: pytest.MonkeyPatch, version: int

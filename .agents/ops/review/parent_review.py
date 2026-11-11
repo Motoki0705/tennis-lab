@@ -49,6 +49,7 @@ from parent_review_policy import (  # noqa: E402
     hex_value,
     load_json,
     marker,
+    pending_handoff_candidates,
     pr_findings,
     records,
     request_manifest,
@@ -76,6 +77,7 @@ from review_recovery import (  # noqa: E402
     runtime_evidence,
     source_evidence,
     verify_adoption,
+    verify_result_runtime,
 )
 from review_workspace import (  # noqa: E402
     build_prompt,
@@ -337,7 +339,6 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
 
     validate_result(result)
     execution = read_json(run_dir / "execution.json")
-    from review_recovery import verify_result_runtime
 
     verify_result_runtime(run_dir, result, execution)
     invocations = 0 if result["kind"] == "adoption" else 1
@@ -569,7 +570,6 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                     )
                 collect(session, request)
                 recorded_result = validate_result(read_json(run_dir / "result.json"))
-                from review_recovery import verify_result_runtime
 
                 verify_result_runtime(run_dir, recorded_result, execution)
                 return {
@@ -647,6 +647,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 "source_request": source_request,
                 "source_result": source_result,
                 "scope": choice["handoff"]["scope"],
+                "candidates": choice["handoff"]["candidates"],
             }
         Store.write_json(run_dir / "context.json", context)
         root = Path(git("rev-parse", "--show-toplevel").decode().strip())
@@ -1177,7 +1178,6 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
                 request,
             )
             execution = read_json(run_dir / "execution.json")
-            from review_recovery import verify_result_runtime
 
             verify_result_runtime(run_dir, result, execution)
             if execution["status"] == "running":
@@ -1242,6 +1242,7 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
         execution = read_json(run_dir / "execution.json")
         if execution["status"] != "published" or entry["coverage"] != "reviewed":
             raise ValueError("evidence requires a published code review")
+        verify_result_runtime(run_dir, result, execution)
         raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{args.pr}"))
         select_prs([args.pr], [raw], set(entry["child_issues"]), session.gh.repo)
         current, _ = snapshot(raw)
@@ -1346,13 +1347,23 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
         )
         authorized(session, request, required_issues=child_issues)
         execution = read_json(run_dir / "execution.json")
-        if execution["status"] != "published" or result["status"] != "succeeded":
-            raise ValueError("cannot resolve a failed/unpublished review")
         originals = {p["number"]: p for p in request["prs"]}
         if args.pr not in originals:
             raise ValueError("PR is outside the reviewed set")
+        reviewed = next(p for p in result["prs"] if p["number"] == args.pr)
+        if execution["status"] != "published" or reviewed["coverage"] != "reviewed":
+            raise ValueError(
+                "cannot resolve a failed/unpublished review without reviewed PR coverage"
+            )
+
+        verify_result_runtime(run_dir, result, execution)
         if args.finding not in {
             "changes",
+            *(
+                {"handoff-candidates"}
+                if pending_handoff_candidates(result, args.pr)
+                else set()
+            ),
             *(f["id"] for f in pr_findings(result, args.pr)),
         }:
             raise ValueError("unknown finding for this PR")

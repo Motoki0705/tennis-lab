@@ -140,12 +140,60 @@ def load_policy(config: Path | None = None) -> dict[str, Any]:
     return policy_from_pins(read_pins(config or DEFAULT_CONFIG))
 
 
+def validate_candidates(value: Any) -> None:
+    candidates = value
+    if not isinstance(candidates, list):
+        raise ValueError("handoff candidates must be a list")
+    ids = []
+    for raw in candidates:
+        candidate = exact(
+            raw, {"status", "source_run", "validation", "cross_findings", "prs"}
+        )
+        if candidate["status"] != "candidate_only":
+            raise ValueError("handoff issues are candidates, not formal coverage")
+        ids.append(run_id(candidate["source_run"]))
+        validation = exact(
+            candidate["validation"],
+            {
+                "source_request_sha256",
+                "source_execution_sha256",
+                "source_result_sha256",
+                "runtime_sha256",
+                "events_sha256",
+                "final_sha256",
+                "output_sha256",
+                "current_prs",
+            },
+        )
+        for key in validation.keys() - {"current_prs"}:
+            hex_digest(validation[key])
+        for key in ("cross_findings", "prs"):
+            if not isinstance(candidate[key], list):
+                raise ValueError("handoff candidate issues must be lists")
+        for pr in candidate["prs"]:
+            exact(pr, {"number", "findings", "evidence_waits"})
+    if ids != sorted(set(ids)):
+        raise ValueError("handoff candidate runs must be unique and sorted")
+
+
+def candidate_references(selection: dict[str, Any]) -> list[dict[str, Any]]:
+    """Read issue references from an already validated run or recovery choice."""
+    reference = (
+        selection
+        if selection.get("kind") == "recover"
+        else (selection.get("handoff") or {})
+    )
+    records: list[dict[str, Any]] = reference.get("candidates", [])
+    return records
+
+
 def validate_selection(value: Any) -> dict[str, Any]:
     selection = obj(value)
     if selection.get("kind") == "recover":
-        exact(selection, {"kind", "source_run", "source_request_sha256"})
+        exact(selection, {"kind", "source_run", "source_request_sha256", "candidates"})
         run_id(selection["source_run"])
         hex_digest(selection["source_request_sha256"])
+        validate_candidates(selection["candidates"])
         return selection
     selection = exact(
         selection,
@@ -182,12 +230,19 @@ def validate_selection(value: Any) -> dict[str, Any]:
     if selection["handoff"] is not None:
         handoff = exact(
             selection["handoff"],
-            {"source_run", "source_request_sha256", "source_result_sha256", "scope"},
+            {
+                "source_run",
+                "source_request_sha256",
+                "source_result_sha256",
+                "scope",
+                "candidates",
+            },
         )
         run_id(handoff["source_run"])
         hex_digest(handoff["source_request_sha256"])
         hex_digest(handoff["source_result_sha256"])
         text(handoff["scope"], "handoff scope")
+        validate_candidates(handoff["candidates"])
     return selection
 
 

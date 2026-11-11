@@ -62,6 +62,7 @@ review・取得・公開・復旧・明示確認とmerge gateの観測は
 指摘のpath以外に必要な回帰テスト・関連ファイルも明示し、レビューheadから現在headまでの実変更パス（renameの旧/新パスを含む）と完全一致させる。
 未記載パス・理由の欠落・旧3キー形式は公開前に拒否する。指摘のpathがnullでも、親による明示確認があれば同じ契約を使える。
 CI・テストの実行と証拠の確認は親の責任。このコマンドはその確認を記録し、修正差分は実gitから取得する。
+run全体がfailed/incompleteでも、当該PRがreviewedなら同じruntime証拠検証を通して確認できる。
 resolve出力のcoverageは当該PRの修正確認に関する参考判定。他PRの最新状態は取得しないため、
 gateは必ず全対象の最新スナップショットを別途取得して判定する。
 `--fixed-head` は現在のPR headと一致し、branchは元の対象と一致する必要がある。
@@ -218,6 +219,29 @@ final・候補・結果・公開コメントは保持し、正式なfailed結果
 追加AIレビューは `parent review-prepare --reason-file` → `review-request` の新しい明示指示だけで受理する。
 後続runは結果の `exception` と人間向けコメントに、通常1回の予算を超える例外として理由・先行runを表示する。
 
+### 保存候補を含む別runへの引継ぎ
+
+`--handoff-from-run`で指定した元runの正式結果は`review_handoff.source_result`へ渡す。
+`output.json`に正式結果と異なる保存候補があれば、recoverと同じfinal・schema・完了イベント・runtime・工程digestの検証を行う。
+検証した指摘と証拠待ちを、requestの`review_selection.handoff.candidates`へ固定してdigestに含め、contextの`review_handoff.candidates`とプロンプトの指示で渡す。
+候補ごとに`status=candidate_only`、`source_run`、`validation`（元request/execution/result、runtime、events、final、outputのdigestと元snapshot）、
+`cross_findings`、`prs`（number/findings/evidence_waits）を持つ。coverageとverdictは候補へコピーしない。
+正式結果と同一の保存出力は正式結果の資料であり、未採用候補として重複させない。
+保存候補が無ければ空配列にし、raw finalや候補の欠落を承認と推定しない。存在する候補が不正ならprepare前に拒否する。
+さらに、元requestから継承した未採用候補も保持し、次runの候補が無い場合にも引継ぎの途中で落とさない。
+handoff先のrunをrecoverするときも、継承した候補は復旧requestの`review_selection.candidates`へ固定して保持する。
+recoverの対象出力自身は従来どおり正式採用するが、そこに引き継がれていた別runの候補を自動承認しない。
+prepareと起動・再開の参照検証で保存候補を再照合し、固定後の改変を黙って採用しない。
+
+候補を正式なcoverage・承認・解消済み指摘へ自動昇格しない。候補の指摘または証拠待ちが影響するPRは、後続runがapproveでもgateを止める。
+親は後続runの当該PRのreviewed結果と、固定された全候補の指摘・証拠待ち・必要な実証を確認し、
+`resolve --run 後続run --pr PR --finding handoff-candidates --fixed-head HEAD --evidence FILE`で明示確認する。
+FILEは通常と同じ4キーの証拠とし、候補ごとの解消・再検証と要求された証拠への判断をresolutionへ書く。
+この確認は後続resultのdigest・PR・固定snapshot・実変更パスに拘束され、別runへ流用しない。
+head変更には通常の解消記録と同じ実diff照合と、検証済みrebase継承の規則を適用する。
+通常の正式指摘・証拠待ちはこの確認で解消せず、従来の個別手順を続ける。not_reviewedも解消しない。
+元runを正式採用して扱いたい場合はhandoff要求を作る前にrecoverする。後続要求を越えるrecoverは禁止する既存のsuperseding規則を維持する。
+
 ### 保存finalの検証付き採用
 
 新版の要求はprepare時の`--recover-source-run`で元runを固定する。
@@ -323,7 +347,7 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 | `schema_version`, `kind` | `1`, `"result"` |
 | `review_run_id`, `request_sha256`, `request` | run ID、prepare manifestのdigest、`review_state`追加前のmanifest全体（親/repo/理由/各PRのhead/base/ref/merge-base/diff/branch） |
 | `reviewer`, `profile` | `"codex"`, `"review"` |
-| `runtime_settings` | request version 3に必須のキー。成功時はhost検証済みselected/effective、失敗で未確認ならnull。tier未取得は理由付きunavailable、復旧時は元runtimeの値 |
+| `runtime_settings` | request version 3に必須のキー。reviewedを1PRでも含む場合はhost検証済みselected/effectiveが必須。全PRが未確認の失敗だけnullを許す。tier未取得は理由付きunavailable、復旧時は元runtimeの値 |
 | `started_at`, `finished_at` | timezone付きUTC ISO 8601 |
 | `status`, `verdict` | `succeeded/failed`, `approve/request_changes/incomplete` |
 | `summary`, `error` | 総合要約、成功ならnull・失敗なら理由 |
@@ -338,6 +362,7 @@ PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各�
 既存の意味・digestを変えず、追加kindと省略可能な証拠待ち欄として拡張するため、外側の版は上げない。
 request version 3のruntime_settingsも外側version 1のまま厳密に検証する。
 公開・公開再開・照合表示・gateは同じ検証部品でrequest、execution、runtime、公開値を照合する。
+run全体のstatusでは省略せず、reviewedを含むfailed/incomplete結果にも選択値・実効値・runtime digestの検証を適用する。
 利用不能・選択/実効値不一致・継続時の設定不整合は失敗とし、別モデルへ再試行しない。
 過去の証拠は保存した方針で検証し、現在のfixed/select設定だけでは失効させない。
 version=2/3のauthorizationとrequirementsは、作成時の担当・根拠・本文の観測記録である。

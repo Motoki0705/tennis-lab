@@ -733,12 +733,16 @@ selectでは`--review-model`と`--model-reason-file`を必須とし、必要な�
 人間指定がfixedと矛盾しても固定モデルへの振替は行わない。
 
 保存finalの復旧を指示するときは、prepare時に`--recover-source-run ID`で元runを固定する。
-この選択は`{kind:recover,source_run,source_request_sha256}`となり、新しいモデル選択とは併用しない。
+この選択は`{kind:recover,source_run,source_request_sha256,candidates}`となり、新しいモデル選択とは併用しない。
+`candidates`には元requestが継承していた未採用候補を保持し、recoverを経由して指摘・証拠待ちが消えることも防ぐ。
 復旧要求を`run`へ渡すことも拒否する。実効モデルはrecoverが検証する元runの値である。
 別モデルの追加レビューには`--handoff-from-run ID --handoff-scope-file FILE`を使う。
 元request/resultのdigestとPRの対応を固定し、元run・未解決事項・追加確認範囲をcontextへ渡す。
+検証済みの未採用候補があれば、その指摘・証拠待ちと検証来歴もrequestへ固定する。
+連続する引継ぎでも候補を保持し、不正な候補や固定後の改変は明示エラーにする。
 追加レビューの理由は従来の`--reason-file`、モデルを選ぶ理由は`--model-reason-file`に分ける。
 引継ぎはcoverageの合成でも旧指摘の解消でもない。部分確認だけならnot_reviewedのままにする。
+候補が残るPRのgate解除には、[保存候補の引継ぎ契約](../review/README.md#保存候補を含む別runへの引継ぎ)に従う親の明示確認も必要になる。
 
 旧version 1/2には要求時の選択を補作しない。既存証拠の復旧・公開再開・gateは旧契約として検証する。
 未起動の旧requestは従来のfixed設定でだけ起動でき、selectや固定値変更時は新版requestを要求する。
