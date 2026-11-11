@@ -2,10 +2,13 @@
 
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
-This opt-in harness prepares the comparison authorized in
+This opt-in harness implements the comparison authorized in
 [parent #1797](https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605).
-The implementation PR does **not** execute a real model or complete formal review
-acceptance. A separate parent execution instruction is required after PR review.
+The separately authorized minimum comparison ran on 2026-11-11: fourteen serial
+calls, no additional calls, no runtime/format failures and no missing usage.
+[Execution evidence and parent adjudication material](../../../../knowledge/reports/review-model-comparison-20261111/README.md)
+record the measurements. Finding matches, adoption and formal review acceptance
+remain pending with the parent.
 Normal pytest runs only offline contract tests; it never runs the comparison.
 
 ## Frozen material
@@ -53,8 +56,9 @@ code-mode tools, web search, inherited MCP servers and project instructions. It 
 launch if the installed CLI lacks a required restriction. The first CLI version
 is pinned for the comparison. These use the official
 [Codex configuration controls](https://learn.chatgpt.com/docs/config-file/config-reference).
-Actual live tool availability still needs confirmation in the separately
-authorized pilot. CPU test execution is deliberately unavailable, so this paired
+The pilot and remaining event traces show calls only to the dedicated MCP server.
+Effective model and effort were observed; effective service tier remains unavailable.
+CPU test execution is deliberately unavailable, so this paired
 qualification does not reproduce every tool available to a formal review.
 
 ## Preparation and explicit execution

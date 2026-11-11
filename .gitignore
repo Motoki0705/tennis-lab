@@ -219,6 +219,8 @@ experiments_mcmc/
 # Interpreter caches are not reproducibility artifacts.
 knowledge/runs/**/__pycache__/
 knowledge/runs/**/*.py[cod]
+# Sanitized comparison metrics and parent adjudication material (issue #1863).
+!knowledge/reports/review-model-comparison-20261111/*.json
 
 paper/reference/
 

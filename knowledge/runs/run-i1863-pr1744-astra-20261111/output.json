@@ -1,0 +1,14 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [],
+      "number": 1744,
+      "summary": "ID・時間軸・mask・理由の保持、既存mesh配置と頭部姿勢用データの整合、不正入力の拒否と部分出力の除去を確認しました。既存reveal経路への変更はなく、CLI登録と非連続ID・欠測を含むテスト設計も整合しています。"
+    }
+  ],
+  "summary": "指定された head/base の静的レビューを完了し、blocker／major に該当する欠陥は確認できませんでした。CPU実行は未実施です。保存コンテキストには対象HEADのPython・CPU全10分割・Lint成功が記録されています。",
+  "verdict": "approve"
+}

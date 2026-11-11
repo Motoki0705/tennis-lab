@@ -1,0 +1,31 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "静的確認: agent-runtimeがSIGKILLされ、別セッションで起動されたCLIが残る場合でも、_run_reviewはruntime_evidenceの失敗を記録した後に失敗結果を公開し、execution.statusをpublishedまたはpublication_failedにします。この検査はrunningだけを拒否するため、cleanup未確認の旧CLIが残ったまま同PRの新runを起動できます。公開状態とは別に、agentの終了・cleanup証拠を検査する必要があります。",
+          "id": "pr-1872-1",
+          "line": 78,
+          "path": ".agents/ops/review/review_locks.py",
+          "rule": "公開状態だけで終了・cleanup済みと判断しない",
+          "severity": "major"
+        },
+        {
+          "detail": "静的確認: recoverはagent_invocations=0、agent.status=not_invokedのadoptionをrunningとして保存します。公開前に中断すると、この条件が起動済みと誤判定し、cleanup_evidenceが元々作成されない当該runのagent-runtime/result.jsonを要求するため、close-interruptedが必ず失敗します。その後head/baseが進むとrecoverの再送とresume-publicationもsnapshot不一致で失敗し、残ったrunningによって同PRの新runが拒否され続けます。adoptionの未起動状態を正しく扱ってください。",
+          "id": "pr-1872-2",
+          "line": 23,
+          "path": ".agents/ops/review/review_interruption.py",
+          "rule": "AI未起動の復旧runも中断終結できること",
+          "severity": "major"
+        }
+      ],
+      "number": 1872,
+      "summary": "異常終了時の二重起動防止と、復旧runの中断終結に欠陥があります。"
+    }
+  ],
+  "summary": "指定base/headの静的レビューを完了し、majorを2件確認しました。CPUテストは実行していません。",
+  "verdict": "request_changes"
+}

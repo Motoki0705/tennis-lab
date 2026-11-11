@@ -3,9 +3,11 @@
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 [親 #1797 の承認](https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605)
-に基づく比較の準備と、明示実行用のharness。
-この実装PRでは実LLMの起動も正式レビューの実機受入も行わない。
-PRレビュー後、親から別の実行指示を受けて実施する。
+に基づく、明示実行用のharness。
+別途の実行指示を受け、2026-11-11に最小案14回を逐次実行した。
+追加起動・形式失敗・runtime失敗・使用量欠測は0件。
+[実測と親の判定資料](../../../../knowledge/reports/review-model-comparison-20261111/README.md)
+を保存した。指摘の一致・採否・正式レビューの実機受入は親の判断待ち。
 通常のpytestはオフラインの契約テストだけを実行し、比較を起動しない。
 
 ## 固定した資料
@@ -46,7 +48,8 @@ hooks、memory、追加agent、code mode、web検索、既存MCP、project指示
 共通runnerの引数と専用MCPの登録設定だけを受理し、必要な制約がCLIに無ければ起動前に拒否する。
 最初のCLI版を固定する。設定は公式の
 [Codex設定項目](https://learn.chatgpt.com/docs/config-file/config-reference) を利用する。
-実際のtool一覧の確認は、別途承認されたpilotで残る。
+pilotと残りのevent記録では、実際のtool呼出しは専用MCPだけだった。
+modelとeffortの実効値は確認でき、service tierの実効値は不明のまま保持した。
 CPUテスト実行は比較では提供しないため、正式レビューの全tool環境と同一ではない。
 
 ## 準備と明示実行

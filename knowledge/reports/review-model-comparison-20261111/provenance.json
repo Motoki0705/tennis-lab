@@ -1,0 +1,366 @@
+{
+  "additional_calls": 0,
+  "adjudication": "parent_pending",
+  "catalog_sha256": "c0c63f0e809be5ad2d921caaf64095a0a04720065ad5ae3a3e480975bd2f12d2",
+  "cli_version": "codex-cli 0.167.0",
+  "code_sha256": "a5ef339e78316049caa794df37d348870c035613e1732358622d46fd8730093c",
+  "collected_calls": 14,
+  "gold_sha256": "5ce87dafb724d54915796f185b5768e3179c1adceadb80c66372b8839f4c8bd5",
+  "historical_usage_sha256": "4f5c2a249b1f5b1ed14a870de899cde140df245567297496cac204cfb2528c18",
+  "identifiers": "run_id and counter.key are evaluation sample IDs, not native session identities",
+  "kind": "private_review_evaluation",
+  "ledger_canonical_sha256": "58ee7d040aed729d1922ad3b0a2cea13b7c96c1f690dc993d3fa2dc0f915e83a",
+  "native_identity_values_excluded": 28,
+  "private_evidence_retained": true,
+  "projection": "Quantities and original fingerprints preserved; unsafe examples, native identities and local paths removed. Original outputs remain private; published outputs have separate fingerprints.",
+  "protocol": {
+    "adjudicator": "parent",
+    "approval_url": "https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605",
+    "cases": [
+      1699,
+      1766,
+      1867,
+      1872,
+      1888,
+      1686,
+      1744
+    ],
+    "default_policy_change_authorized": false,
+    "effort": "xhigh",
+    "execution_requires_separate_parent_instruction": true,
+    "input_token_envelope": 55000000,
+    "limited_selection_criteria": {
+      "astra_first_boundaries": [
+        "publication",
+        "authorization",
+        "gate",
+        "cancellation",
+        "concurrency",
+        "serious_data_identity"
+      ],
+      "formal_acceptance_required": true,
+      "improvement_metrics": [
+        "processed_input_plus_output",
+        "agent_seconds"
+      ],
+      "include_all_actual_additional_calls": true,
+      "no_additional_gold_major_misses_against_astra": true,
+      "no_worse_false_findings_confirmation_failures_or_runtime_format_failures": true,
+      "parent_decision_required": true,
+      "selected_and_observed_effective_settings_must_match": true
+    },
+    "max_calls": 16,
+    "minimum_improvement": 0.2,
+    "models": [
+      "gpt-6-astra",
+      "gpt-6.1-sol"
+    ],
+    "output_token_envelope": 220000,
+    "paired_calls": 14,
+    "pilot_case": 1699,
+    "repeats": 1,
+    "schema_version": 1,
+    "timeout_seconds": 1800
+  },
+  "public_files": [
+    {
+      "path": "knowledge/runs/run-i1863-pr1699-astra-20261111/measurement.json",
+      "published_canonical_sha256": "2a823ad17a271e805c74e55705df79f3188cc30c41b5b1593f9d85d39fca32b8",
+      "published_file_sha256": "2a823ad17a271e805c74e55705df79f3188cc30c41b5b1593f9d85d39fca32b8",
+      "source_canonical_sha256": "3b75142c553b9a3f51ae9929f7b2f15086cdb22cadd3a17abc9612622dc3ad36",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1699-astra-20261111/output.json",
+      "published_canonical_sha256": "028e49d39d8480ab18c7f722ee77c965aa3f2b436393493e27522ca41cb371c9",
+      "published_file_sha256": "028e49d39d8480ab18c7f722ee77c965aa3f2b436393493e27522ca41cb371c9",
+      "source_canonical_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+      "substitutions": {
+        "unsafe_url_example": 1
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1699-sol-20261111/measurement.json",
+      "published_canonical_sha256": "e79fa72a37efc11cfbe26290ca0e438b4abd26db39fb4d51bf5c61233c1155a1",
+      "published_file_sha256": "e79fa72a37efc11cfbe26290ca0e438b4abd26db39fb4d51bf5c61233c1155a1",
+      "source_canonical_sha256": "a5b0cba04f200f37cda71eb1ec23715a7cdb11cf2368f976c15b816451c8c3e0",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1699-sol-20261111/output.json",
+      "published_canonical_sha256": "eb7bc55000b5e86cdfbcffa02112fc7cf870e0e3fc946c6d00cff42b5753ff0d",
+      "published_file_sha256": "eb7bc55000b5e86cdfbcffa02112fc7cf870e0e3fc946c6d00cff42b5753ff0d",
+      "source_canonical_sha256": "96c0c841e4e06fd5965396a612bb58bcf1fdc174db8a24ade27e52acf28ebfcd",
+      "substitutions": {
+        "unsafe_url_example": 1
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1766-astra-20261111/measurement.json",
+      "published_canonical_sha256": "33829cd55e71a38fd58999f0482f2e81948f9d8018f8ced8acc0897b665a8a55",
+      "published_file_sha256": "33829cd55e71a38fd58999f0482f2e81948f9d8018f8ced8acc0897b665a8a55",
+      "source_canonical_sha256": "676d8c47c5d6f12e7ee4bf838737de11a79dbaf043f1502896e6e937a2713871",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1766-astra-20261111/output.json",
+      "published_canonical_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+      "published_file_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+      "source_canonical_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1766-sol-20261111/measurement.json",
+      "published_canonical_sha256": "d55daf2686049a20268d0898ae6874a6455de8c096472e35adc4b8cf1d931915",
+      "published_file_sha256": "d55daf2686049a20268d0898ae6874a6455de8c096472e35adc4b8cf1d931915",
+      "source_canonical_sha256": "ccb609c437ddd02392355b389e5f2f99c0622ee763f4250d78c812749d998a60",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1766-sol-20261111/output.json",
+      "published_canonical_sha256": "933830b97d3002bd4924daf39a8606b4c1459a24d5995efcb64822405b8e2a5b",
+      "published_file_sha256": "933830b97d3002bd4924daf39a8606b4c1459a24d5995efcb64822405b8e2a5b",
+      "source_canonical_sha256": "933830b97d3002bd4924daf39a8606b4c1459a24d5995efcb64822405b8e2a5b",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1867-astra-20261111/measurement.json",
+      "published_canonical_sha256": "ae93a2d9c13023788bda4e6176c5de6568dd5d1ad5c8d421b298c92a1ead868d",
+      "published_file_sha256": "ae93a2d9c13023788bda4e6176c5de6568dd5d1ad5c8d421b298c92a1ead868d",
+      "source_canonical_sha256": "f79ba8a0affd1fb920dfa9a685f226729fa0df0be2a9aae6cf5dc30d8e9895e7",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1867-astra-20261111/output.json",
+      "published_canonical_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+      "published_file_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+      "source_canonical_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1867-sol-20261111/measurement.json",
+      "published_canonical_sha256": "e3f1895b02f92c1634140827fb28258627f97c69ddd5036c24f95cc51eca6db8",
+      "published_file_sha256": "e3f1895b02f92c1634140827fb28258627f97c69ddd5036c24f95cc51eca6db8",
+      "source_canonical_sha256": "df08e51e784fb169b2e1cca0cd97ecb1b668a7f554ceab4fc5d7702dedc98361",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1867-sol-20261111/output.json",
+      "published_canonical_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
+      "published_file_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
+      "source_canonical_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1872-astra-20261111/measurement.json",
+      "published_canonical_sha256": "4df6936f163652c8e56ffefc42a18f3861906215e745f310bde28d4a3ae66e22",
+      "published_file_sha256": "4df6936f163652c8e56ffefc42a18f3861906215e745f310bde28d4a3ae66e22",
+      "source_canonical_sha256": "e01e471b55f0e5ada4a395987a2edb7f2d3219637bacef33892be1d977429410",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1872-astra-20261111/output.json",
+      "published_canonical_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+      "published_file_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+      "source_canonical_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1872-sol-20261111/measurement.json",
+      "published_canonical_sha256": "153d3924ce2979d199fe43ec999b4139b6768ed7869ffc93a3685e537c60facc",
+      "published_file_sha256": "153d3924ce2979d199fe43ec999b4139b6768ed7869ffc93a3685e537c60facc",
+      "source_canonical_sha256": "23636fd427b1d01c4b03b5e1ae6de6ba95c65dd5f3f3353e31931d06e30a8a95",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1872-sol-20261111/output.json",
+      "published_canonical_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
+      "published_file_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
+      "source_canonical_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1888-astra-20261111/measurement.json",
+      "published_canonical_sha256": "f558fa11009706ff25bf796d86ea4dfcbdc5178cd15629ba5bcacb185ddba358",
+      "published_file_sha256": "f558fa11009706ff25bf796d86ea4dfcbdc5178cd15629ba5bcacb185ddba358",
+      "source_canonical_sha256": "6534a355a2231cf2d7df22408fb9ec412f820b8fd2acdaf44655bed0cce62d45",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1888-astra-20261111/output.json",
+      "published_canonical_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+      "published_file_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+      "source_canonical_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1888-sol-20261111/measurement.json",
+      "published_canonical_sha256": "4d347fa3363255081382f0b2ceb8097d7e293748b80b0dbc534c74cd940b2423",
+      "published_file_sha256": "4d347fa3363255081382f0b2ceb8097d7e293748b80b0dbc534c74cd940b2423",
+      "source_canonical_sha256": "bcffbfa3c3fddaf9968bcf30be6387c13a72e92697953cdee8b5e0f2cd411c5f",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1888-sol-20261111/output.json",
+      "published_canonical_sha256": "a0b68e25a52651a83e3eeba512090c711a2c95e3a3fa17701e3f08f9b27596d9",
+      "published_file_sha256": "a0b68e25a52651a83e3eeba512090c711a2c95e3a3fa17701e3f08f9b27596d9",
+      "source_canonical_sha256": "a0b68e25a52651a83e3eeba512090c711a2c95e3a3fa17701e3f08f9b27596d9",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1686-astra-20261111/measurement.json",
+      "published_canonical_sha256": "81f8f5a1917368f94f3a067e7cff4c26691821b992802783b9e2f0f751fec9de",
+      "published_file_sha256": "81f8f5a1917368f94f3a067e7cff4c26691821b992802783b9e2f0f751fec9de",
+      "source_canonical_sha256": "0522f043764303b83d932d5440ec2b966c8a545822067e029ae63ea3692a0085",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1686-astra-20261111/output.json",
+      "published_canonical_sha256": "55eefa3e3f97bb8ae5ae7b7337bc0e2a9cde9c53881e25f0af993239caf3cd1e",
+      "published_file_sha256": "55eefa3e3f97bb8ae5ae7b7337bc0e2a9cde9c53881e25f0af993239caf3cd1e",
+      "source_canonical_sha256": "55eefa3e3f97bb8ae5ae7b7337bc0e2a9cde9c53881e25f0af993239caf3cd1e",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1686-sol-20261111/measurement.json",
+      "published_canonical_sha256": "5820e9427df3bba4e11d0eb8d1b6a04ddf9c7bf195ebdee5a2c89ce0abc9c057",
+      "published_file_sha256": "5820e9427df3bba4e11d0eb8d1b6a04ddf9c7bf195ebdee5a2c89ce0abc9c057",
+      "source_canonical_sha256": "44d1eab91b08c979babb1836a50c4f368f1c8139fc060993a6e15ab5ba551dd7",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1686-sol-20261111/output.json",
+      "published_canonical_sha256": "d4c03115082f2a61a4f8aa88e94c44896b292d599eae5132ba24ad1a43954014",
+      "published_file_sha256": "d4c03115082f2a61a4f8aa88e94c44896b292d599eae5132ba24ad1a43954014",
+      "source_canonical_sha256": "d4c03115082f2a61a4f8aa88e94c44896b292d599eae5132ba24ad1a43954014",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1744-astra-20261111/measurement.json",
+      "published_canonical_sha256": "cc84175543f3aec5cb9b5e1da5455b5c94fa0ca0b32744c22f2aa5e530d52e5e",
+      "published_file_sha256": "cc84175543f3aec5cb9b5e1da5455b5c94fa0ca0b32744c22f2aa5e530d52e5e",
+      "source_canonical_sha256": "8b7c5e5bc33373912a71a0d8c81ebd61c0c631006ea58cb34f6bf4aab4e91996",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1744-astra-20261111/output.json",
+      "published_canonical_sha256": "57c0a1297a5f55372667fd7d44bb2f19b67103e79da221fc43569eabf538a2b0",
+      "published_file_sha256": "57c0a1297a5f55372667fd7d44bb2f19b67103e79da221fc43569eabf538a2b0",
+      "source_canonical_sha256": "57c0a1297a5f55372667fd7d44bb2f19b67103e79da221fc43569eabf538a2b0",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1744-sol-20261111/measurement.json",
+      "published_canonical_sha256": "81311cce4961ee3604d942c879b9139e3410ef2c5a76b1c951fa06bfee0276ee",
+      "published_file_sha256": "81311cce4961ee3604d942c879b9139e3410ef2c5a76b1c951fa06bfee0276ee",
+      "source_canonical_sha256": "0a11cf4de2dcd6bba8c1a69ffe359290dd60669a31962b8aa811931601aa3c3f",
+      "substitutions": {
+        "runtime_source_omitted": 2
+      }
+    },
+    {
+      "path": "knowledge/runs/run-i1863-pr1744-sol-20261111/output.json",
+      "published_canonical_sha256": "ebc43318567d2db4c610a545f6567858815bd7c1ad762a11390b353143d9ee44",
+      "published_file_sha256": "ebc43318567d2db4c610a545f6567858815bd7c1ad762a11390b353143d9ee44",
+      "source_canonical_sha256": "ebc43318567d2db4c610a545f6567858815bd7c1ad762a11390b353143d9ee44",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/report.json",
+      "published_canonical_sha256": "d0ac4fedbd9d50abc8c0dbd89cd2be158a39218580789ee85e9c1c75da353959",
+      "published_file_sha256": "d0ac4fedbd9d50abc8c0dbd89cd2be158a39218580789ee85e9c1c75da353959",
+      "source_canonical_sha256": "3fe3a0fd4f1292642a21191d1b77f831117028430730e5c28962af46ec36af98",
+      "substitutions": {
+        "runtime_source_omitted": 28,
+        "unsafe_url_example": 4
+      }
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/adjudications.json",
+      "published_canonical_sha256": "aeea089abf59673a90a9a7688ec002990527c7f7c1cfbac316c41b72bd653d19",
+      "published_file_sha256": "aeea089abf59673a90a9a7688ec002990527c7f7c1cfbac316c41b72bd653d19",
+      "source_canonical_sha256": "fa9f6c3f0ae3f1dba38c9f22d51150dff3632e559dc1114434aaeb65892c14c9",
+      "substitutions": {
+        "unsafe_url_example": 2
+      }
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/selection.json",
+      "published_canonical_sha256": "af32f030322dd201a8000452daddab1a8e90a775d33f41d70bbd4f1d7be81494",
+      "published_file_sha256": "af32f030322dd201a8000452daddab1a8e90a775d33f41d70bbd4f1d7be81494",
+      "source_canonical_sha256": "af32f030322dd201a8000452daddab1a8e90a775d33f41d70bbd4f1d7be81494",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/pilot-forecasts.json",
+      "published_canonical_sha256": "655b288233c1ca0f2e25d00c3c8a7a0b192848e050c5fa64b631311b9a5b44c7",
+      "published_file_sha256": "655b288233c1ca0f2e25d00c3c8a7a0b192848e050c5fa64b631311b9a5b44c7",
+      "source_canonical_sha256": "655b288233c1ca0f2e25d00c3c8a7a0b192848e050c5fa64b631311b9a5b44c7",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/pilot-status.json",
+      "published_canonical_sha256": "63860ba6bfd2d081560f1e57088e6aecb2fbf588661fe43addeaff8fe857d81b",
+      "published_file_sha256": "63860ba6bfd2d081560f1e57088e6aecb2fbf588661fe43addeaff8fe857d81b",
+      "source_canonical_sha256": "63860ba6bfd2d081560f1e57088e6aecb2fbf588661fe43addeaff8fe857d81b",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/worker-notes.json",
+      "published_canonical_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
+      "published_file_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
+      "source_canonical_sha256": "1d733fdc5b8d603dd9a866687c31c80ac45c2d5cd0b28c3273dcc4577c73cc66",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/projection-checks.json",
+      "published_canonical_sha256": "1fe8c35d5508af918186aafd6dcb8def14bfecef59fb5072d96ebf52f0c86b93",
+      "published_file_sha256": "1fe8c35d5508af918186aafd6dcb8def14bfecef59fb5072d96ebf52f0c86b93",
+      "source_canonical_sha256": "1fe8c35d5508af918186aafd6dcb8def14bfecef59fb5072d96ebf52f0c86b93",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/run-index.json",
+      "published_canonical_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
+      "published_file_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
+      "source_canonical_sha256": "b210084a508ea431714eb4105ce5d06a4dbe75b47b9405dbfced2d6997e5fde3",
+      "substitutions": {}
+    },
+    {
+      "path": "knowledge/reports/review-model-comparison-20261111/execution-authorization.json",
+      "published_canonical_sha256": "f705a9498fef6fb80adfaae6c3e3ebe207370e3ee2f3080e2993472dc4e8ba89",
+      "published_file_sha256": "f705a9498fef6fb80adfaae6c3e3ebe207370e3ee2f3080e2993472dc4e8ba89",
+      "source_canonical_sha256": "f705a9498fef6fb80adfaae6c3e3ebe207370e3ee2f3080e2993472dc4e8ba89",
+      "substitutions": {}
+    }
+  ],
+  "reserved_calls": 14,
+  "schema_version": 1,
+  "source_commit": "7f258e95b5770b9b05cd936485821e1356611d09"
+}

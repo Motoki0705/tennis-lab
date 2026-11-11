@@ -1,0 +1,5 @@
+{
+  "instruction_file_sha256": "87c9810cafb4808362cf4be607c87072b4aedc0c2c1f8e3ef4cf1490eb11100a",
+  "parent_instruction": "親 #1797（Iris）の2026-11-11の具体指示に基づく、PR #1907での承認済み実LLM比較。\n承認根拠: https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605\n実行指示: https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6789859748\n7ケース #1699 #1766 #1867 #1872 #1888 #1686 #1744 をAstraとSolで各1回、計14回。追加枠込み16回が上限。1起動のtimeoutは1800秒。\n起動は逐次で、同時に1つだけ。比較中はpytest等の重い処理を同時実行しない。\n最初に #1699 のAstraとSolを各1回pilot実行し、各回の状態と使用量を確認する。見積もりが入力55,000,000または出力220,000を超えそうなら次を起動せず親へ返す。\n使用量の欠測、有効性を確認できないpilot、runtime失敗が続く場合も止める。同じ組を黙って再試行しない。\n条件③のケース別選択は同梱selection.jsonを親の指定内容そのままでrecord-selection済み。親は正解表を参照せず変更領域に方針を当てはめたが、正解指摘を事前に知っていることによる偏りの可能性を報告する。\n実GitHubへの書込みはPRのpushと本文更新のみ。正式レビューやissueへの公開コメントは作らない。\nworkerは指摘の一致判定と採否の結論を書かず、親の判定用資料と実測をrepoへ保存する。Refs #1863は維持する。\n",
+  "schema_version": 1
+}

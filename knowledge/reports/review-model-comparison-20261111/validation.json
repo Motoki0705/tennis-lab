@@ -1,0 +1,17 @@
+{
+  "adjudication": "parent_pending",
+  "cache_is_subset_of_input": true,
+  "checked_calls": 14,
+  "counter_values_reconciled": true,
+  "distinct_native_sessions_verified": true,
+  "formal_acceptance": false,
+  "guard_checked_files": 57,
+  "native_identity_values_absent": true,
+  "original_output_and_runtime_fingerprints_verified": true,
+  "paired_matrix_complete": true,
+  "published_file_fingerprints_verified": true,
+  "report_numeric_leaves_unchanged": true,
+  "schema_version": 1,
+  "sequential_runtime_intervals_verified": true,
+  "status": "passed"
+}

@@ -2,8 +2,11 @@
 
 [English](README.md) · [日本語](README.ja.md)
 
-本工具准备[父 issue #1797 批准的比较](https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605)。
-实现 PR 不运行真实模型，也不完成正式审查的实机验收。PR 审查后仍需父任务单独发出执行指令。
+本工具实现[父 issue #1797 批准的比较](https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605)。
+收到单独执行指令后，已于 2026-11-11 串行完成最小方案的十四次调用。
+额外调用、runtime/格式失败及用量缺失均为零。
+[执行证据和父任务判定材料](../../../../knowledge/reports/review-model-comparison-20261111/README.md)
+保留实测；问题匹配、采用判断和正式审查实机验收仍由父任务完成。
 常规 pytest 只运行离线契约测试，不启动比较。
 
 ## 固定资料与隔离
@@ -40,7 +43,8 @@ hooks、memory、额外 agent、code mode、web 搜索、继承的 MCP 和 proje
 只接受共享 runner 参数及已登记的专用 MCP 配置。CLI 缺少必要控制时在启动前拒绝，
 首次 CLI 版本也会固定。使用官方
 [Codex 配置控制](https://learn.chatgpt.com/docs/config-file/config-reference)。
-真实工具列表仍需在另行授权的 pilot 中确认。比较不提供 CPU 测试执行，工具环境与正式审查有差别。
+pilot 和后续事件记录只出现专用 MCP 调用。已观察到实际 model 和 effort；实际 service tier 仍不可用。
+比较不提供 CPU 测试执行，工具环境与正式审查有差别。
 
 ## 准备和显式执行
 

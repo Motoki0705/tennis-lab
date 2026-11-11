@@ -1,0 +1,231 @@
+{
+  "findings": [
+    {
+      "candidate_gold_ids": [
+        "pr-1699-1"
+      ],
+      "case_id": "pr-1699",
+      "finding_id": "pr-1699-1",
+      "impact_claim": "指示やfinal内の資格情報付きURLが拒否されずGit公開される、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "URL抽出はcase-sensitiveだが、絶対パス検査はcase-insensitiveでHTTP(S)を除外する、というモデルの指摘。",
+      "repair_target": ".agents/ops/worker_logs/safety.py:21",
+      "trigger": "大文字のHTTPSスキームとuserinfoを持つURLが、既知private値に含まれない場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1699-1"
+      ],
+      "case_id": "pr-1699",
+      "finding_id": "pr-1699-1",
+      "impact_claim": "認証情報付きURLがinstruction/finalから公開・自動mergeへ通る、という主張。",
+      "model": "gpt-6.1-sol",
+      "processing_claim": "URL正規表現と絶対パス検査で大小文字の扱いが異なる、というモデルの指摘。",
+      "repair_target": ".agents/ops/worker_logs/safety.py:21",
+      "trigger": "大文字HTTPSとuserinfoのURLが既知private値に含まれない場合。"
+    },
+    {
+      "candidate_gold_ids": [],
+      "case_id": "pr-1699",
+      "finding_id": "pr-1699-2",
+      "impact_claim": "正当なログPRがpr_identity_changedで拒否され、自動mergeまで進まない、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "repo比較はcasefoldだがhtml_urlは入力repoとの完全一致を要求する、というモデルの指摘。",
+      "repair_target": ".agents/ops/worker_logs/schema.py:235",
+      "trigger": "dispatcherがrepo名を小文字化し、GitHubが正規表記のPR URLを返す場合。"
+    },
+    {
+      "candidate_gold_ids": [],
+      "case_id": "pr-1699",
+      "finding_id": "pr-1699-3",
+      "impact_claim": "障害解消後も同じログPRをmainへ保存できない、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "merge_attemptedが永続化され、その後の再送をmerge_response_uncertainで拒否する、というモデルの指摘。",
+      "repair_target": ".agents/ops/worker_logs/publication.py:435",
+      "trigger": "PUT送信前の記録後に通信障害やAPI拒否が起き、PRが未merge・openのままの場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1766-1"
+      ],
+      "case_id": "pr-1766",
+      "finding_id": "pr-1766-1",
+      "impact_claim": "取消済みcameraが次tickで自動再起動する、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "work lock解放後のauthorize_retryがcancelledも受理しreadyへ上書きする、というモデルの指摘。",
+      "repair_target": "src/tasks/annotation/recovery.py:80",
+      "trigger": "継続判断の保存とauthorize_retryの間に、同じattemptのstopがcancelledを確定する場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1766-1"
+      ],
+      "case_id": "pr-1766",
+      "finding_id": "pr-1766-1",
+      "impact_claim": "明示retry待ちの要件に反し、取消済みcameraが自動起動する、という主張。",
+      "model": "gpt-6.1-sol",
+      "processing_claim": "authorize_retryがattempt一致だけでcancelledをreadyへ戻す、というモデルの指摘。",
+      "repair_target": "src/tasks/annotation/recovery.py:80",
+      "trigger": "timeoutと競合するpool.stopが、判断保存後のロック解放中に同じattemptをcancelledへ確定する場合。"
+    },
+    {
+      "candidate_gold_ids": [],
+      "case_id": "pr-1766",
+      "finding_id": "pr-1766-2",
+      "impact_claim": "保存修復後も正式recover APIで完成receiptを確定できない、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "cycleが不変holdを再利用し、RetryWorkerも全frame処理済みを理由に拒否する、というモデルの指摘。",
+      "repair_target": "src/tasks/annotation/recovery.py:410",
+      "trigger": "全frame保存後のtimeoutで欠損・破損によりholdを保存し、その後ファイルを修復した場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1867-1"
+      ],
+      "case_id": "pr-1867",
+      "finding_id": "pr-1867-1",
+      "impact_claim": "Bの指摘をresolveせず親確認とCIだけでgateを通せる、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "recoverは元runとsnapshotだけを確認し、gateは最新Cを選ぶ、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/parent_review.py:769",
+      "trigger": "同一snapshotのAにapprove finalがあり、後続Bが重大指摘を公開した後にCでAを採用する場合。"
+    },
+    {
+      "candidate_gold_ids": [],
+      "case_id": "pr-1867",
+      "finding_id": "pr-1867-2",
+      "impact_claim": "終了とcleanupを確認できてもAI起動0回の復旧経路が無くなる、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "recoverはrunningを拒否し、resume-publicationはoutputと失敗resultの一致要求で拒否する、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/review_recovery.py:109",
+      "trigger": "非ゼロ終了runの検証済み候補を保存後、失敗結果の公開中に本体が停止しexecutionがrunningのままの場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1867-1"
+      ],
+      "case_id": "pr-1867",
+      "finding_id": "pr-1867-1",
+      "impact_claim": "R2の指摘をresolveせず親確認とCI成功があればgateを通れる、という主張。",
+      "model": "gpt-6.1-sol",
+      "processing_claim": "gateは最新R3を選び、verify_adoptionはR1との整合だけで後続R2を照合しない、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/merge_gate.py:292",
+      "trigger": "同一snapshotのR1にapprove finalがあり、後続R2がmajorを報告した後にR3がR1をrecoverする場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1872-1"
+      ],
+      "case_id": "pr-1872",
+      "finding_id": "pr-1872-1",
+      "impact_claim": "cleanup未確認の旧CLIと同じPRの新runが並行起動できる、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "排他検査はexecution.statusのrunningだけを拒否し、終了・cleanup証拠を見ない、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/review_locks.py:78",
+      "trigger": "agent-runtimeがSIGKILLされ、別sessionで動くCLIが残っているのに失敗結果の公開まで進んだ場合。"
+    },
+    {
+      "candidate_gold_ids": [],
+      "case_id": "pr-1872",
+      "finding_id": "pr-1872-2",
+      "impact_claim": "snapshot更新後はrecover再送と公開再開もできず、同PRの新runを恒久的に止める、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "close-interruptedが未起動runを起動済みと扱い、作成されていないruntime resultを必須にする、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/review_interruption.py:23",
+      "trigger": "AI未起動のrecover adoptionがrunningを保存して公開前に中断し、後でhead/baseが進んだ場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1872-1"
+      ],
+      "case_id": "pr-1872",
+      "finding_id": "pr-1872-1",
+      "impact_claim": "lease解放後に同PRの別runが新agentを並行起動できる、という主張。",
+      "model": "gpt-6.1-sol",
+      "processing_claim": "running以外を通す排他検査が、起動済みruntimeの終了とcleanupを確認しない、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/review_locks.py:78",
+      "trigger": "共通runnerだけが強制終了して旧CLIが残り、agent工程unconfirmedでも公開処理でexecutionがpublishedまたはpublication_failedになった場合。"
+    },
+    {
+      "candidate_gold_ids": [],
+      "case_id": "pr-1872",
+      "finding_id": "pr-1872-2",
+      "impact_claim": "snapshot更新で再送と公開再開も拒否され、残存runningが同PRの新runを阻止する、という主張。",
+      "model": "gpt-6.1-sol",
+      "processing_claim": "not_invokedも起動済み扱いになり、close-interruptedが存在しないruntimeを要求する、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/review_interruption.py:23",
+      "trigger": "runtimeを作らないrecover adoptionが公開途中で中断し、その間にhead/baseが進む場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1888-1"
+      ],
+      "case_id": "pr-1888",
+      "finding_id": "pr-1888-1",
+      "impact_claim": "保存後の実効設定の不一致や証拠欠損を照合せず、部分結果のPRを承認へ採用できる、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "全体の成功状態だけでruntime検証を省略する一方、coverageとgateはreviewedのPRを独立採用する、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/review_recovery.py:347",
+      "trigger": "あるPRがreviewed、別PRがnot_reviewedとなり、run全体がfailedまたはincompleteの場合。"
+    },
+    {
+      "candidate_gold_ids": [],
+      "case_id": "pr-1888",
+      "finding_id": "pr-1888-2",
+      "impact_claim": "拒否すべきeffortを既定xhighに変え、人間指定として記録・実行できる、という主張。",
+      "model": "gpt-6-astra",
+      "processing_claim": "human modelが無いためhuman effortを通常effort引数で上書きし、明示maxが消える、というモデルの指摘。",
+      "repair_target": ".agents/ops/lib/review_settings.py:210",
+      "trigger": "human_instruction指定でreview-modelをAstra、human-review-effortをmaxとし、human-review-modelを省略して理由と参照を渡した場合。"
+    },
+    {
+      "candidate_gold_ids": [
+        "pr-1888-1"
+      ],
+      "case_id": "pr-1888",
+      "finding_id": "pr-1888-1",
+      "impact_claim": "runtime記録の欠落やモデル・effortの不一致、digestや公開設定の不整合を検出せず、公開再開とAのmergeを許す、という主張。",
+      "model": "gpt-6.1-sol",
+      "processing_claim": "早期returnがruntime検査を省略する一方、coverageとgateはAを採用できる、というモデルの指摘。",
+      "repair_target": ".agents/ops/review/review_recovery.py:347",
+      "trigger": "PR Aがreviewed、PR Bがnot_reviewedで、全体がfailedまたはincompleteになる場合。"
+    }
+  ],
+  "parent_judgment": "pending",
+  "schema_version": 1,
+  "scope": "Worker preparation of model claims and possible gold associations; no parent adjudication.",
+  "unextracted_gold_candidates": [
+    {
+      "gold_id": "pr-1699-2",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6.1-sol"
+      ],
+      "note": "対応候補をworkerは抽出していない。検出・見逃しの最終判断は親が全指摘を確認する。"
+    },
+    {
+      "gold_id": "pr-1867-2",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6.1-sol"
+      ],
+      "note": "対応候補をworkerは抽出していない。検出・見逃しの最終判断は親が全指摘を確認する。"
+    },
+    {
+      "gold_id": "pr-1872-2",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6.1-sol"
+      ],
+      "note": "対応候補をworkerは抽出していない。検出・見逃しの最終判断は親が全指摘を確認する。"
+    },
+    {
+      "gold_id": "pr-1888-2",
+      "models": [
+        "gpt-6-astra",
+        "gpt-6.1-sol"
+      ],
+      "note": "対応候補をworkerは抽出していない。検出・見逃しの最終判断は親が全指摘を確認する。"
+    }
+  ]
+}

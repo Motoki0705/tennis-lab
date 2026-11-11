@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "mixed_case_userinfo",
+    "credential_assignment_value",
+    "uuid_native_identifier",
+    "evaluation_identifier_retained",
+    "opaque_known_native_identifier",
+    "local_absolute_path",
+    "relative_repo_path_retained",
+    "public_github_url_retained"
+  ],
+  "schema_version": 1,
+  "status": "passed"
+}

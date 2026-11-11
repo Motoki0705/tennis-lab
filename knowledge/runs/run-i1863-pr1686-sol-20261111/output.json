@@ -1,0 +1,14 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [],
+      "number": 1686,
+      "summary": "人間本人への帰属確認、未確認時の記録禁止、引用元の扱い、リンク先と既存手順の維持を静的に確認しました。既存10エントリの点検結果もPR本文に記載されています。保存済みコンテキストではCI全14件成功と報告されています。本レビューではCPU実行による検証は行っていません。"
+    }
+  ],
+  "summary": "指定されたhead/baseのレビューを完了しました。blocker・majorの不具合は見つかりませんでした。",
+  "verdict": "approve"
+}

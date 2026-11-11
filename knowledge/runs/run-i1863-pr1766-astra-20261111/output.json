@@ -1,0 +1,31 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "継続判断を保存した後、work lockを解放してauthorize_retryを呼んでいます。この間に、時間切れ処理と競合していたstop()が同じattemptをcancelledへ変更できます。authorize_retryはcancelledも許可対象として受け付けるため、取消がreadyへ上書きされ、次tickで自動再起動します。attempt一致だけでなく、許可時点でもtimed_outであることを同じロック内で保証する必要があります。",
+          "id": "pr-1766-1",
+          "line": 80,
+          "path": "src/tasks/annotation/recovery.py",
+          "rule": "自動継続の許可時にも時間切れ状態を原子的に照合する",
+          "severity": "major"
+        },
+        {
+          "detail": "全frame保存後のtimeoutで、保存ファイルの欠損・破損により一度hold判断を記録すると、正しいファイルを復元してもcycle()はその不変のholdを再利用し、完成receiptを生成しません。一方、RetryWorkerもここでtimed_outかつ全frame処理済みを理由に拒否されます。案内どおりtickを進めても完成せず、正式なrecover APIで復旧できません。修復済みの完成データを明示的に確定する経路が必要です。",
+          "id": "pr-1766-2",
+          "line": 410,
+          "path": "src/tasks/annotation/recovery.py",
+          "rule": "保存修復後に完成を確定できる明示復旧経路を残す",
+          "severity": "major"
+        }
+      ],
+      "number": 1766,
+      "summary": "取消との競合で自動再起動する問題と、保存修復後に完成を確定できない問題があります。"
+    }
+  ],
+  "summary": "固定リビジョンの静的レビューを完了し、majorを2件確認しました。CPU実行検証は行っていません。保存コンテキストのCI結論は成功です。",
+  "verdict": "request_changes"
+}

@@ -1,0 +1,2575 @@
+{
+  "adoption": {
+    "decision": "parent_required",
+    "default_policy_change_authorized": false,
+    "formal_acceptance_completed": false,
+    "minimum_improvement": 0.2,
+    "paired_matrix_complete": true,
+    "selection_improvements": {
+      "agent_seconds": -0.01620664449698883,
+      "processed_input_plus_output": -0.04305246489197678
+    }
+  },
+  "budget": {
+    "hard_token_limit": false,
+    "missing_models": [],
+    "projected_totals_including_reserve": {
+      "input_tokens": 25940690,
+      "output_tokens": 138531
+    },
+    "reason": null,
+    "remaining_extra_slots": 2,
+    "remaining_pairs": 0,
+    "status": "within_estimate"
+  },
+  "conditions": {
+    "astra_fixed": {
+      "results": {
+        "candidate_matches": [
+          {
+            "candidate_gold_ids": [
+              "pr-1699-1"
+            ],
+            "case_id": "pr-1699",
+            "finding": {
+              "detail": "URL抽出が大文字小文字を区別するため、例えば `[HTTPS URL: unsafe authority omitted]` はuserinfo検査を通りません。一方、ABSOLUTE_PATHは大文字小文字を区別せずHTTP(S)を除外するため、この文字列を拒否できません。private一覧にない資格情報が指示・最終報告に含まれると、sanitizeとschema検査を通過してGitへ公開されます。URLスキームを大小文字に依存せず検査してください。",
+              "id": "pr-1699-1",
+              "line": 21,
+              "path": ".agents/ops/worker_logs/safety.py",
+              "rule": "URLの大小文字による資格情報検査の回避",
+              "severity": "major"
+            },
+            "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+            "parent_verdict": "pending",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b"
+          },
+          {
+            "candidate_gold_ids": [],
+            "case_id": "pr-1699",
+            "finding": {
+              "detail": "repoの同一性はcasefoldで比較していますが、html_urlだけは入力repoとの完全一致を要求します。dispatcherは設定・bootstrapのrepoを小文字化するため、`motoki0705/tennis-lab`で記録したターンにGitHubが正規表記の`https://github.com/Motoki0705/tennis-lab/pull/N`を返すと、作成済みの正当なログPRがpr_identity_changedになります。再試行でも同じ判定で停止し、自律経路の自動マージが完了しません。URLのowner/repo部分にも同じ正規化が必要です。",
+              "id": "pr-1699-2",
+              "line": 235,
+              "path": ".agents/ops/worker_logs/schema.py",
+              "rule": "正当な同一リポジトリのPRを大小文字差で拒否",
+              "severity": "major"
+            },
+            "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+            "parent_verdict": "pending",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b"
+          },
+          {
+            "candidate_gold_ids": [],
+            "case_id": "pr-1699",
+            "finding": {
+              "detail": "PUT送信前にmerge_attempted=Trueを永続化しますが、通信障害やAPIによる拒否でマージされなかった場合も解除されません。以後はPRを再取得して未マージ・openと確認できても、この条件で必ずmerge_response_uncertainとなり、--retryでも再送できません。障害解消後もログがmainへ保存されないため、確定した失敗と結果不明を区別し、同一PR・固定HEADを再照合したうえで安全に再試行できる復旧経路が必要です。",
+              "id": "pr-1699-3",
+              "line": 435,
+              "path": ".agents/ops/worker_logs/publication.py",
+              "rule": "マージ未実施の一時障害から復旧できない",
+              "severity": "major"
+            },
+            "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+            "parent_verdict": "pending",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1766-1"
+            ],
+            "case_id": "pr-1766",
+            "finding": {
+              "detail": "継続判断を保存した後、work lockを解放してauthorize_retryを呼んでいます。この間に、時間切れ処理と競合していたstop()が同じattemptをcancelledへ変更できます。authorize_retryはcancelledも許可対象として受け付けるため、取消がreadyへ上書きされ、次tickで自動再起動します。attempt一致だけでなく、許可時点でもtimed_outであることを同じロック内で保証する必要があります。",
+              "id": "pr-1766-1",
+              "line": 80,
+              "path": "src/tasks/annotation/recovery.py",
+              "rule": "自動継続の許可時にも時間切れ状態を原子的に照合する",
+              "severity": "major"
+            },
+            "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+            "parent_verdict": "pending",
+            "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1766-1"
+            ],
+            "case_id": "pr-1766",
+            "finding": {
+              "detail": "全frame保存後のtimeoutで、保存ファイルの欠損・破損により一度hold判断を記録すると、正しいファイルを復元してもcycle()はその不変のholdを再利用し、完成receiptを生成しません。一方、RetryWorkerもここでtimed_outかつ全frame処理済みを理由に拒否されます。案内どおりtickを進めても完成せず、正式なrecover APIで復旧できません。修復済みの完成データを明示的に確定する経路が必要です。",
+              "id": "pr-1766-2",
+              "line": 410,
+              "path": "src/tasks/annotation/recovery.py",
+              "rule": "保存修復後に完成を確定できる明示復旧経路を残す",
+              "severity": "major"
+            },
+            "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+            "parent_verdict": "pending",
+            "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1867-1"
+            ],
+            "case_id": "pr-1867",
+            "finding": {
+              "detail": "静的推論: recoverは指定元runの証拠と現在のsnapshotだけを確認し、その後のrunを照合しません。同じsnapshotでAに有効なapproveのfinalが残り、後続Bが重大指摘を公開した後でも、新規CでAを採用できます。merge_gate.mergeはPRごとの最新runであるCを選ぶため、通常の親確認・CI条件を満たせば、Bの指摘をresolveせずgateを通れます。採用元以後の対象PRのrunを照合し、後続の未解決指摘や失敗を隠す採用を拒否する必要があります。",
+              "id": "pr-1867-1",
+              "line": 769,
+              "path": ".agents/ops/review/parent_review.py",
+              "rule": "採用元より後のレビュー結果を照合する",
+              "severity": "major"
+            },
+            "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+            "parent_verdict": "pending",
+            "run_id": "ee6d77a108064818b17841a28def94ad"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1867-2"
+            ],
+            "case_id": "pr-1867",
+            "finding": {
+              "detail": "静的推論: runtimeが非ゼロ終了して有効なfinalを保存した場合、output.jsonは検証済み候補、result.jsonは失敗結果になります。その後の公開中にSIGKILLされると、終了・cleanup・出力検証が完了していてもexecution.statusはrunningのままです。recoverはこの条件で拒否し、resume-publicationもparent_review.py:883のoutput.jsonとresult.jsonの一致要求で拒否します。保存済み成果をAI起動0回で復旧する入口がなくなるため、終了証拠を検証できるこの状態の採用、または失敗結果の公開再開を可能にする必要があります。",
+              "id": "pr-1867-2",
+              "line": 109,
+              "path": ".agents/ops/review/review_recovery.py",
+              "rule": "公開中断した失敗runにも復旧経路を残す",
+              "severity": "major"
+            },
+            "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+            "parent_verdict": "pending",
+            "run_id": "ee6d77a108064818b17841a28def94ad"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1872-1"
+            ],
+            "case_id": "pr-1872",
+            "finding": {
+              "detail": "静的確認: agent-runtimeがSIGKILLされ、別セッションで起動されたCLIが残る場合でも、_run_reviewはruntime_evidenceの失敗を記録した後に失敗結果を公開し、execution.statusをpublishedまたはpublication_failedにします。この検査はrunningだけを拒否するため、cleanup未確認の旧CLIが残ったまま同PRの新runを起動できます。公開状態とは別に、agentの終了・cleanup証拠を検査する必要があります。",
+              "id": "pr-1872-1",
+              "line": 78,
+              "path": ".agents/ops/review/review_locks.py",
+              "rule": "公開状態だけで終了・cleanup済みと判断しない",
+              "severity": "major"
+            },
+            "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+            "parent_verdict": "pending",
+            "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1872-2"
+            ],
+            "case_id": "pr-1872",
+            "finding": {
+              "detail": "静的確認: recoverはagent_invocations=0、agent.status=not_invokedのadoptionをrunningとして保存します。公開前に中断すると、この条件が起動済みと誤判定し、cleanup_evidenceが元々作成されない当該runのagent-runtime/result.jsonを要求するため、close-interruptedが必ず失敗します。その後head/baseが進むとrecoverの再送とresume-publicationもsnapshot不一致で失敗し、残ったrunningによって同PRの新runが拒否され続けます。adoptionの未起動状態を正しく扱ってください。",
+              "id": "pr-1872-2",
+              "line": 23,
+              "path": ".agents/ops/review/review_interruption.py",
+              "rule": "AI未起動の復旧runも中断終結できること",
+              "severity": "major"
+            },
+            "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+            "parent_verdict": "pending",
+            "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1888-1"
+            ],
+            "case_id": "pr-1888",
+            "finding": {
+              "detail": "静的確認: あるPRがreviewed、別PRがnot_reviewedの場合、全体はfailed/incompleteとなるため、この条件でruntime検証を省略します。しかしevaluate_coverageとmerge gateはreviewedのPRを独立して承認できます。そのため、保存後のruntimeに選択モデルとの不一致や証拠欠損が生じても、公開再開・gateはruntimeやそのdigestを照合せず、当該PRを採用できます。全体の成功状態だけでなく、利用可能なcoverageを持つ部分結果にも同じ検証が必要です。",
+              "id": "pr-1888-1",
+              "line": 347,
+              "path": ".agents/ops/review/review_recovery.py",
+              "rule": "reviewed のPRを含む部分結果にもruntime検証を適用する",
+              "severity": "major"
+            },
+            "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+            "parent_verdict": "pending",
+            "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
+          },
+          {
+            "candidate_gold_ids": [],
+            "case_id": "pr-1888",
+            "finding": {
+              "detail": "静的確認: --review-model-source human_instruction と --review-model gpt-6-astra に --human-review-effort max を添え、理由と参照を指定すると、--human-review-modelがないため、この代入がhuman_effortを通常のeffort引数（省略時はNone）で上書きします。その結果、拒否すべきmax指定が消え、既定のxhighを人間指定として記録・実行できます。明示されたhuman_effortを保持して矛盾・許可リストを検査するか、この引数の組合せを起動前に拒否してください。",
+              "id": "pr-1888-2",
+              "line": 210,
+              "path": ".agents/ops/lib/review_settings.py",
+              "rule": "明示された人間のeffort拘束を上書きしない",
+              "severity": "major"
+            },
+            "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+            "parent_verdict": "pending",
+            "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
+          }
+        ],
+        "conditions": {
+          "astra_fixed": {
+            "additional_invocations": 0,
+            "additional_launch_rate": 0.0,
+            "agent_invocations": 7,
+            "agent_seconds": {
+              "missing": 0,
+              "observed_sum": 2139.1636583805084
+            },
+            "code_unconfirmed_rate": 0.0,
+            "detection": {
+              "false_negatives": {
+                "confirmed_sum": 0,
+                "pending_runs": 7
+              },
+              "false_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 7
+              },
+              "true_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 7
+              }
+            },
+            "elapsed_seconds": {
+              "missing": 0,
+              "observed_sum": 2140.8284108638763
+            },
+            "evidence_waits": 0,
+            "failed_observations": 0,
+            "format_failures": 0,
+            "observations": 7,
+            "runtime_failures": 0,
+            "status": "measured",
+            "unconfirmed_finding_rate": 1.0,
+            "usage": {
+              "cached_input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 8571008
+              },
+              "excluded_non_turn_counters": [],
+              "input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 9348212
+              },
+              "missing_run_ids": [],
+              "output_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 51064
+              },
+              "status": "observed",
+              "unique_counters": 7
+            }
+          },
+          "reuse_fixed": {
+            "additional_invocations": 0,
+            "additional_launch_rate": null,
+            "agent_invocations": 0,
+            "agent_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "code_unconfirmed_rate": null,
+            "detection": {
+              "false_negatives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "false_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "true_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              }
+            },
+            "elapsed_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "evidence_waits": 0,
+            "failed_observations": 0,
+            "format_failures": 0,
+            "observations": 0,
+            "runtime_failures": 0,
+            "status": "not_started",
+            "unconfirmed_finding_rate": null,
+            "usage": {
+              "cached_input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "excluded_non_turn_counters": [],
+              "input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "missing_run_ids": [],
+              "output_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "status": "not_started",
+              "unique_counters": 0
+            }
+          },
+          "reuse_select": {
+            "additional_invocations": 0,
+            "additional_launch_rate": null,
+            "agent_invocations": 0,
+            "agent_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "code_unconfirmed_rate": null,
+            "detection": {
+              "false_negatives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "false_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "true_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              }
+            },
+            "elapsed_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "evidence_waits": 0,
+            "failed_observations": 0,
+            "format_failures": 0,
+            "observations": 0,
+            "runtime_failures": 0,
+            "status": "not_started",
+            "unconfirmed_finding_rate": null,
+            "usage": {
+              "cached_input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "excluded_non_turn_counters": [],
+              "input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "missing_run_ids": [],
+              "output_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "status": "not_started",
+              "unique_counters": 0
+            }
+          }
+        },
+        "default_policy_change_authorized": false,
+        "detection": [
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1699",
+            "condition": "astra_fixed",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 3
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 1,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1766",
+            "condition": "astra_fixed",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "db47beaea3d04ec6a82c2bed5b723cdd",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1867",
+            "condition": "astra_fixed",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "ee6d77a108064818b17841a28def94ad",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1872",
+            "condition": "astra_fixed",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1888",
+            "condition": "astra_fixed",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "0d21543c86be4e6cabd40fc32e671f7b",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1686",
+            "condition": "astra_fixed",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "c8c22cb4966a4b518af9482829fd590e",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 0
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1744",
+            "condition": "astra_fixed",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "2356b004e1584fb7b10e6fddff35372b",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 0
+          }
+        ],
+        "physical_usage": {
+          "cached_input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 8571008
+          },
+          "excluded_non_turn_counters": [],
+          "input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 9348212
+          },
+          "missing_run_ids": [],
+          "output_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 51064
+          },
+          "status": "observed",
+          "unique_counters": 7
+        },
+        "schema_version": 1,
+        "status": "awaiting_parent"
+      },
+      "scope": "measured fresh Astra samples"
+    },
+    "reuse_fixed": {
+      "historical_evidence_report": "cases/historical_reuse.json",
+      "new_ai_invocations_in_replay": 0,
+      "quality_source_run_ids": [
+        "d98730fdac794b4b965c34601dcbb26b",
+        "db47beaea3d04ec6a82c2bed5b723cdd",
+        "ee6d77a108064818b17841a28def94ad",
+        "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
+        "0d21543c86be4e6cabd40fc32e671f7b",
+        "c8c22cb4966a4b518af9482829fd590e",
+        "2356b004e1584fb7b10e6fddff35372b"
+      ],
+      "runtime_latency_saved_in_this_comparison": null,
+      "scope": "quality references the same fresh Astra results; no fresh LLM required to replay reuse/recovery"
+    },
+    "reuse_select": {
+      "requires_parent_joint_adjudication": false,
+      "results": {
+        "candidate_matches": [
+          {
+            "candidate_gold_ids": [
+              "pr-1699-1"
+            ],
+            "case_id": "pr-1699",
+            "finding": {
+              "detail": "URL抽出が大文字小文字を区別するため、例えば `[HTTPS URL: unsafe authority omitted]` はuserinfo検査を通りません。一方、ABSOLUTE_PATHは大文字小文字を区別せずHTTP(S)を除外するため、この文字列を拒否できません。private一覧にない資格情報が指示・最終報告に含まれると、sanitizeとschema検査を通過してGitへ公開されます。URLスキームを大小文字に依存せず検査してください。",
+              "id": "pr-1699-1",
+              "line": 21,
+              "path": ".agents/ops/worker_logs/safety.py",
+              "rule": "URLの大小文字による資格情報検査の回避",
+              "severity": "major"
+            },
+            "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+            "parent_verdict": "pending",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b"
+          },
+          {
+            "candidate_gold_ids": [],
+            "case_id": "pr-1699",
+            "finding": {
+              "detail": "repoの同一性はcasefoldで比較していますが、html_urlだけは入力repoとの完全一致を要求します。dispatcherは設定・bootstrapのrepoを小文字化するため、`motoki0705/tennis-lab`で記録したターンにGitHubが正規表記の`https://github.com/Motoki0705/tennis-lab/pull/N`を返すと、作成済みの正当なログPRがpr_identity_changedになります。再試行でも同じ判定で停止し、自律経路の自動マージが完了しません。URLのowner/repo部分にも同じ正規化が必要です。",
+              "id": "pr-1699-2",
+              "line": 235,
+              "path": ".agents/ops/worker_logs/schema.py",
+              "rule": "正当な同一リポジトリのPRを大小文字差で拒否",
+              "severity": "major"
+            },
+            "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+            "parent_verdict": "pending",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b"
+          },
+          {
+            "candidate_gold_ids": [],
+            "case_id": "pr-1699",
+            "finding": {
+              "detail": "PUT送信前にmerge_attempted=Trueを永続化しますが、通信障害やAPIによる拒否でマージされなかった場合も解除されません。以後はPRを再取得して未マージ・openと確認できても、この条件で必ずmerge_response_uncertainとなり、--retryでも再送できません。障害解消後もログがmainへ保存されないため、確定した失敗と結果不明を区別し、同一PR・固定HEADを再照合したうえで安全に再試行できる復旧経路が必要です。",
+              "id": "pr-1699-3",
+              "line": 435,
+              "path": ".agents/ops/worker_logs/publication.py",
+              "rule": "マージ未実施の一時障害から復旧できない",
+              "severity": "major"
+            },
+            "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+            "parent_verdict": "pending",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1766-1"
+            ],
+            "case_id": "pr-1766",
+            "finding": {
+              "detail": "継続判断を保存した後、work lockを解放してauthorize_retryを呼んでいます。この間に、時間切れ処理と競合していたstop()が同じattemptをcancelledへ変更できます。authorize_retryはcancelledも許可対象として受け付けるため、取消がreadyへ上書きされ、次tickで自動再起動します。attempt一致だけでなく、許可時点でもtimed_outであることを同じロック内で保証する必要があります。",
+              "id": "pr-1766-1",
+              "line": 80,
+              "path": "src/tasks/annotation/recovery.py",
+              "rule": "自動継続の許可時にも時間切れ状態を原子的に照合する",
+              "severity": "major"
+            },
+            "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+            "parent_verdict": "pending",
+            "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1766-1"
+            ],
+            "case_id": "pr-1766",
+            "finding": {
+              "detail": "全frame保存後のtimeoutで、保存ファイルの欠損・破損により一度hold判断を記録すると、正しいファイルを復元してもcycle()はその不変のholdを再利用し、完成receiptを生成しません。一方、RetryWorkerもここでtimed_outかつ全frame処理済みを理由に拒否されます。案内どおりtickを進めても完成せず、正式なrecover APIで復旧できません。修復済みの完成データを明示的に確定する経路が必要です。",
+              "id": "pr-1766-2",
+              "line": 410,
+              "path": "src/tasks/annotation/recovery.py",
+              "rule": "保存修復後に完成を確定できる明示復旧経路を残す",
+              "severity": "major"
+            },
+            "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+            "parent_verdict": "pending",
+            "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1867-1"
+            ],
+            "case_id": "pr-1867",
+            "finding": {
+              "detail": "静的推論: recoverは指定元runの証拠と現在のsnapshotだけを確認し、その後のrunを照合しません。同じsnapshotでAに有効なapproveのfinalが残り、後続Bが重大指摘を公開した後でも、新規CでAを採用できます。merge_gate.mergeはPRごとの最新runであるCを選ぶため、通常の親確認・CI条件を満たせば、Bの指摘をresolveせずgateを通れます。採用元以後の対象PRのrunを照合し、後続の未解決指摘や失敗を隠す採用を拒否する必要があります。",
+              "id": "pr-1867-1",
+              "line": 769,
+              "path": ".agents/ops/review/parent_review.py",
+              "rule": "採用元より後のレビュー結果を照合する",
+              "severity": "major"
+            },
+            "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+            "parent_verdict": "pending",
+            "run_id": "ee6d77a108064818b17841a28def94ad"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1867-2"
+            ],
+            "case_id": "pr-1867",
+            "finding": {
+              "detail": "静的推論: runtimeが非ゼロ終了して有効なfinalを保存した場合、output.jsonは検証済み候補、result.jsonは失敗結果になります。その後の公開中にSIGKILLされると、終了・cleanup・出力検証が完了していてもexecution.statusはrunningのままです。recoverはこの条件で拒否し、resume-publicationもparent_review.py:883のoutput.jsonとresult.jsonの一致要求で拒否します。保存済み成果をAI起動0回で復旧する入口がなくなるため、終了証拠を検証できるこの状態の採用、または失敗結果の公開再開を可能にする必要があります。",
+              "id": "pr-1867-2",
+              "line": 109,
+              "path": ".agents/ops/review/review_recovery.py",
+              "rule": "公開中断した失敗runにも復旧経路を残す",
+              "severity": "major"
+            },
+            "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+            "parent_verdict": "pending",
+            "run_id": "ee6d77a108064818b17841a28def94ad"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1872-1"
+            ],
+            "case_id": "pr-1872",
+            "finding": {
+              "detail": "静的確認: agent-runtimeがSIGKILLされ、別セッションで起動されたCLIが残る場合でも、_run_reviewはruntime_evidenceの失敗を記録した後に失敗結果を公開し、execution.statusをpublishedまたはpublication_failedにします。この検査はrunningだけを拒否するため、cleanup未確認の旧CLIが残ったまま同PRの新runを起動できます。公開状態とは別に、agentの終了・cleanup証拠を検査する必要があります。",
+              "id": "pr-1872-1",
+              "line": 78,
+              "path": ".agents/ops/review/review_locks.py",
+              "rule": "公開状態だけで終了・cleanup済みと判断しない",
+              "severity": "major"
+            },
+            "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+            "parent_verdict": "pending",
+            "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1872-2"
+            ],
+            "case_id": "pr-1872",
+            "finding": {
+              "detail": "静的確認: recoverはagent_invocations=0、agent.status=not_invokedのadoptionをrunningとして保存します。公開前に中断すると、この条件が起動済みと誤判定し、cleanup_evidenceが元々作成されない当該runのagent-runtime/result.jsonを要求するため、close-interruptedが必ず失敗します。その後head/baseが進むとrecoverの再送とresume-publicationもsnapshot不一致で失敗し、残ったrunningによって同PRの新runが拒否され続けます。adoptionの未起動状態を正しく扱ってください。",
+              "id": "pr-1872-2",
+              "line": 23,
+              "path": ".agents/ops/review/review_interruption.py",
+              "rule": "AI未起動の復旧runも中断終結できること",
+              "severity": "major"
+            },
+            "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+            "parent_verdict": "pending",
+            "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
+          },
+          {
+            "candidate_gold_ids": [
+              "pr-1888-1"
+            ],
+            "case_id": "pr-1888",
+            "finding": {
+              "detail": "静的確認: あるPRがreviewed、別PRがnot_reviewedの場合、全体はfailed/incompleteとなるため、この条件でruntime検証を省略します。しかしevaluate_coverageとmerge gateはreviewedのPRを独立して承認できます。そのため、保存後のruntimeに選択モデルとの不一致や証拠欠損が生じても、公開再開・gateはruntimeやそのdigestを照合せず、当該PRを採用できます。全体の成功状態だけでなく、利用可能なcoverageを持つ部分結果にも同じ検証が必要です。",
+              "id": "pr-1888-1",
+              "line": 347,
+              "path": ".agents/ops/review/review_recovery.py",
+              "rule": "reviewed のPRを含む部分結果にもruntime検証を適用する",
+              "severity": "major"
+            },
+            "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+            "parent_verdict": "pending",
+            "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
+          },
+          {
+            "candidate_gold_ids": [],
+            "case_id": "pr-1888",
+            "finding": {
+              "detail": "静的確認: --review-model-source human_instruction と --review-model gpt-6-astra に --human-review-effort max を添え、理由と参照を指定すると、--human-review-modelがないため、この代入がhuman_effortを通常のeffort引数（省略時はNone）で上書きします。その結果、拒否すべきmax指定が消え、既定のxhighを人間指定として記録・実行できます。明示されたhuman_effortを保持して矛盾・許可リストを検査するか、この引数の組合せを起動前に拒否してください。",
+              "id": "pr-1888-2",
+              "line": 210,
+              "path": ".agents/ops/lib/review_settings.py",
+              "rule": "明示された人間のeffort拘束を上書きしない",
+              "severity": "major"
+            },
+            "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+            "parent_verdict": "pending",
+            "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
+          }
+        ],
+        "conditions": {
+          "astra_fixed": {
+            "additional_invocations": 0,
+            "additional_launch_rate": null,
+            "agent_invocations": 0,
+            "agent_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "code_unconfirmed_rate": null,
+            "detection": {
+              "false_negatives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "false_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "true_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              }
+            },
+            "elapsed_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "evidence_waits": 0,
+            "failed_observations": 0,
+            "format_failures": 0,
+            "observations": 0,
+            "runtime_failures": 0,
+            "status": "not_started",
+            "unconfirmed_finding_rate": null,
+            "usage": {
+              "cached_input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "excluded_non_turn_counters": [],
+              "input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "missing_run_ids": [],
+              "output_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "status": "not_started",
+              "unique_counters": 0
+            }
+          },
+          "reuse_fixed": {
+            "additional_invocations": 0,
+            "additional_launch_rate": null,
+            "agent_invocations": 0,
+            "agent_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "code_unconfirmed_rate": null,
+            "detection": {
+              "false_negatives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "false_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              },
+              "true_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 0
+              }
+            },
+            "elapsed_seconds": {
+              "missing": 0,
+              "observed_sum": 0
+            },
+            "evidence_waits": 0,
+            "failed_observations": 0,
+            "format_failures": 0,
+            "observations": 0,
+            "runtime_failures": 0,
+            "status": "not_started",
+            "unconfirmed_finding_rate": null,
+            "usage": {
+              "cached_input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "excluded_non_turn_counters": [],
+              "input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "missing_run_ids": [],
+              "output_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 0
+              },
+              "status": "not_started",
+              "unique_counters": 0
+            }
+          },
+          "reuse_select": {
+            "additional_invocations": 0,
+            "additional_launch_rate": 0.0,
+            "agent_invocations": 7,
+            "agent_seconds": {
+              "missing": 0,
+              "observed_sum": 2173.8323233127594
+            },
+            "code_unconfirmed_rate": 0.0,
+            "detection": {
+              "false_negatives": {
+                "confirmed_sum": 0,
+                "pending_runs": 7
+              },
+              "false_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 7
+              },
+              "true_positives": {
+                "confirmed_sum": 0,
+                "pending_runs": 7
+              }
+            },
+            "elapsed_seconds": {
+              "missing": 0,
+              "observed_sum": 2175.209547519684
+            },
+            "evidence_waits": 0,
+            "failed_observations": 0,
+            "format_failures": 0,
+            "observations": 7,
+            "runtime_failures": 0,
+            "status": "measured",
+            "unconfirmed_finding_rate": 1.0,
+            "usage": {
+              "cached_input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 8951808
+              },
+              "excluded_non_turn_counters": [],
+              "input_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 9750621
+              },
+              "missing_run_ids": [],
+              "output_tokens": {
+                "missing_counters": 0,
+                "observed_sum": 53317
+              },
+              "status": "observed",
+              "unique_counters": 7
+            }
+          }
+        },
+        "default_policy_change_authorized": false,
+        "detection": [
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1699",
+            "condition": "reuse_select",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "d98730fdac794b4b965c34601dcbb26b",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 3
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 1,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1766",
+            "condition": "reuse_select",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "db47beaea3d04ec6a82c2bed5b723cdd",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1867",
+            "condition": "reuse_select",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "ee6d77a108064818b17841a28def94ad",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1872",
+            "condition": "reuse_select",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 2,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1888",
+            "condition": "reuse_select",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6-astra",
+            "run_id": "0d21543c86be4e6cabd40fc32e671f7b",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 2
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1686",
+            "condition": "reuse_select",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6.1-sol",
+            "run_id": "f612b1c64b164ae19de70bd18cc59fda",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 0
+          },
+          {
+            "by_severity": {
+              "blocker": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              },
+              "major": {
+                "detected": null,
+                "expected": 0,
+                "missed": null
+              }
+            },
+            "case_id": "pr-1744",
+            "condition": "reuse_select",
+            "false_negatives": null,
+            "false_positives": null,
+            "model": "gpt-6.1-sol",
+            "run_id": "b8fb4c37a13c4218a131a2bde2ea2295",
+            "status": "awaiting_parent",
+            "true_positives": null,
+            "unconfirmed_findings": 0
+          }
+        ],
+        "physical_usage": {
+          "cached_input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 8951808
+          },
+          "excluded_non_turn_counters": [],
+          "input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 9750621
+          },
+          "missing_run_ids": [],
+          "output_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 53317
+          },
+          "status": "observed",
+          "unique_counters": 7
+        },
+        "schema_version": 1,
+        "status": "awaiting_parent"
+      },
+      "scope": "counterfactual selection from paired samples, including all actual additional calls; not additive to physical usage",
+      "selection": {
+        "choices": [
+          {
+            "case_id": "pr-1699",
+            "model": "gpt-6-astra",
+            "reason": "workerの指示と最終報告をGitへ公開する変更で、公開範囲に関わる。"
+          },
+          {
+            "case_id": "pr-1766",
+            "model": "gpt-6-astra",
+            "reason": "時間切れ後の自動継続で、取消・継続の並行処理に関わる。"
+          },
+          {
+            "case_id": "pr-1867",
+            "model": "gpt-6-astra",
+            "reason": "正式レビューの復旧と公開再開で、gateと公開記録に関わる。"
+          },
+          {
+            "case_id": "pr-1872",
+            "model": "gpt-6-astra",
+            "reason": "レビューの排他と中断終結で、gateと並行処理に関わる。"
+          },
+          {
+            "case_id": "pr-1888",
+            "model": "gpt-6-astra",
+            "reason": "レビューのモデル選択の証拠検証で、gateに関わる。"
+          },
+          {
+            "case_id": "pr-1686",
+            "model": "gpt-6.1-sol",
+            "reason": "memoryの記録対象の文書規則の変更で、通常変更にあたる。"
+          },
+          {
+            "case_id": "pr-1744",
+            "model": "gpt-6.1-sol",
+            "reason": "保存済みsceneから単一の共通bundleを生成する通常のデータ生成変更で、既存テストと受入条件で追える。"
+          }
+        ],
+        "schema_version": 1,
+        "source": "親 #1797 の担当（Iris）が2026-11-11に、人間の承認済み方針に基づいて固定した。正解表は参照していない。"
+      }
+    }
+  },
+  "execution_evidence": [
+    {
+      "agent_seconds": 512.4479320049286,
+      "case_id": "pr-1699",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1798528,
+        "input_tokens": 1925970,
+        "key": "d98730fdac794b4b965c34601dcbb26b",
+        "output_tokens": 10465
+      },
+      "elapsed_seconds": 512.8633689880371,
+      "model": "gpt-6-astra",
+      "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "d98730fdac794b4b965c34601dcbb26b",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6-astra"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "1d758beeba3c6ef81873884a22daeea9788c64a45c94bb6d6a69932beeda1dd9",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 404.8091871738434,
+      "case_id": "pr-1699",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1477120,
+        "input_tokens": 1586861,
+        "key": "b94b85e4d71f4b08a40b78bba2cef85d",
+        "output_tokens": 11625
+      },
+      "elapsed_seconds": 405.01558804512024,
+      "model": "gpt-6.1-sol",
+      "output_sha256": "96c0c841e4e06fd5965396a612bb58bcf1fdc174db8a24ade27e52acf28ebfcd",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "b94b85e4d71f4b08a40b78bba2cef85d",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6.1-sol"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6.1-sol",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "31616c85a02c2160d134184e57467d4a812e43793544db1c4df5dac1e905938a",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 323.24579215049744,
+      "case_id": "pr-1766",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1568000,
+        "input_tokens": 1684582,
+        "key": "db47beaea3d04ec6a82c2bed5b723cdd",
+        "output_tokens": 7546
+      },
+      "elapsed_seconds": 323.40331530570984,
+      "model": "gpt-6-astra",
+      "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "db47beaea3d04ec6a82c2bed5b723cdd",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6-astra"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "27eda4831df8213bd82636c5dea9251a0c289455f7d45f1d3fa5ff0774424c0f",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 389.6020064353943,
+      "case_id": "pr-1766",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1657088,
+        "input_tokens": 1774189,
+        "key": "5b66c526982849fc88c11ac59a013ba6",
+        "output_tokens": 10051
+      },
+      "elapsed_seconds": 389.763076543808,
+      "model": "gpt-6.1-sol",
+      "output_sha256": "933830b97d3002bd4924daf39a8606b4c1459a24d5995efcb64822405b8e2a5b",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "5b66c526982849fc88c11ac59a013ba6",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6.1-sol"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6.1-sol",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "5758ee6a7da059d68e280934cd99770e23f1cd78329ecb53a53359f624159266",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 378.323344707489,
+      "case_id": "pr-1867",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1247872,
+        "input_tokens": 1358335,
+        "key": "ee6d77a108064818b17841a28def94ad",
+        "output_tokens": 9520
+      },
+      "elapsed_seconds": 378.47824597358704,
+      "model": "gpt-6-astra",
+      "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "ee6d77a108064818b17841a28def94ad",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6-astra"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "9c7860a8c076bc75e076f8fc72a0138a1f9e0d223dbaca9563f6bad2edb60947",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 290.4019854068756,
+      "case_id": "pr-1867",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1284864,
+        "input_tokens": 1458392,
+        "key": "da77c51156854806816cbaf1161b45ea",
+        "output_tokens": 8936
+      },
+      "elapsed_seconds": 290.555716753006,
+      "model": "gpt-6.1-sol",
+      "output_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "da77c51156854806816cbaf1161b45ea",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6.1-sol"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6.1-sol",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "78760bdc879eb27cd012817cec35759606cf0610ce6cbf929fb4d22726b871ca",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 313.9564869403839,
+      "case_id": "pr-1872",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1507840,
+        "input_tokens": 1640423,
+        "key": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
+        "output_tokens": 8317
+      },
+      "elapsed_seconds": 314.1083426475525,
+      "model": "gpt-6-astra",
+      "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6-astra"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "533dbcf6b7ee7006c72809dcf1ddb222a8f7296c7390f070bd0077efddd79b48",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 423.77415919303894,
+      "case_id": "pr-1872",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1911424,
+        "input_tokens": 2042391,
+        "key": "2c41a860bd974901b5f86fd4ac1c2a25",
+        "output_tokens": 11145
+      },
+      "elapsed_seconds": 423.9317195415497,
+      "model": "gpt-6.1-sol",
+      "output_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "2c41a860bd974901b5f86fd4ac1c2a25",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6.1-sol"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6.1-sol",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "967e47ba45f5b06a4b471df7d9327e4b6db5adc8261e659cfe988ddc33b87fb7",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 332.06660556793213,
+      "case_id": "pr-1888",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1674368,
+        "input_tokens": 1800013,
+        "key": "0d21543c86be4e6cabd40fc32e671f7b",
+        "output_tokens": 7221
+      },
+      "elapsed_seconds": 332.2263057231903,
+      "model": "gpt-6-astra",
+      "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "0d21543c86be4e6cabd40fc32e671f7b",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6-astra"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "9e11b4a8d27d2d9aa588b595ae1b9e42387870dceb5ef255289bbff3c142a6ad",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 260.4631915092468,
+      "case_id": "pr-1888",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 1244928,
+        "input_tokens": 1376872,
+        "key": "4371202ab146425289e3ab4aa3b7078e",
+        "output_tokens": 7801
+      },
+      "elapsed_seconds": 260.6690676212311,
+      "model": "gpt-6.1-sol",
+      "output_sha256": "a0b68e25a52651a83e3eeba512090c711a2c95e3a3fa17701e3f08f9b27596d9",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "4371202ab146425289e3ab4aa3b7078e",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6.1-sol"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6.1-sol",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "3d84087a646389874ad94c8c73a933b6b8709a4f2ab7e0645e40b49c1dae513c",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 117.89392304420471,
+      "case_id": "pr-1686",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 232704,
+        "input_tokens": 303633,
+        "key": "c8c22cb4966a4b518af9482829fd590e",
+        "output_tokens": 3344
+      },
+      "elapsed_seconds": 118.05536556243896,
+      "model": "gpt-6-astra",
+      "output_sha256": "55eefa3e3f97bb8ae5ae7b7337bc0e2a9cde9c53881e25f0af993239caf3cd1e",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "c8c22cb4966a4b518af9482829fd590e",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6-astra"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "d81cea634df7b5333a1709b34edd155a4633fad323f2492dcf8fa8f06c6e40af",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 129.8481342792511,
+      "case_id": "pr-1686",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 299264,
+        "input_tokens": 361361,
+        "key": "f612b1c64b164ae19de70bd18cc59fda",
+        "output_tokens": 4531
+      },
+      "elapsed_seconds": 130.0059084892273,
+      "model": "gpt-6.1-sol",
+      "output_sha256": "d4c03115082f2a61a4f8aa88e94c44896b292d599eae5132ba24ad1a43954014",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "f612b1c64b164ae19de70bd18cc59fda",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6.1-sol"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6.1-sol",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "5038e2fba5e95aacf45d628dced2267a99d2ce53df6392eada86a1b1bb9424a4",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 161.22957396507263,
+      "case_id": "pr-1744",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 541696,
+        "input_tokens": 635256,
+        "key": "2356b004e1584fb7b10e6fddff35372b",
+        "output_tokens": 4651
+      },
+      "elapsed_seconds": 161.6934666633606,
+      "model": "gpt-6-astra",
+      "output_sha256": "57c0a1297a5f55372667fd7d44bb2f19b67103e79da221fc43569eabf538a2b0",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "2356b004e1584fb7b10e6fddff35372b",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6-astra"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6-astra",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "c9f2e3f6419c7c3b4720d71e43659e0479cbfbad6028fd72477f1ce57b3fcada",
+      "runtime_status": "completed"
+    },
+    {
+      "agent_seconds": 183.94402766227722,
+      "case_id": "pr-1744",
+      "counter": {
+        "basis": "turn",
+        "cached_input_tokens": 855936,
+        "input_tokens": 979937,
+        "key": "b8fb4c37a13c4218a131a2bde2ea2295",
+        "output_tokens": 5717
+      },
+      "elapsed_seconds": 184.12406039237976,
+      "model": "gpt-6.1-sol",
+      "output_sha256": "ebc43318567d2db4c610a545f6567858815bd7c1ad762a11390b353143d9ee44",
+      "output_status": "valid",
+      "proof_error": null,
+      "role": "paired",
+      "run_id": "b8fb4c37a13c4218a131a2bde2ea2295",
+      "runtime_settings": {
+        "effective": {
+          "effort": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "xhigh"
+          },
+          "model": {
+            "source": "Codex turn_context; private transcript location omitted",
+            "status": "observed",
+            "value": "gpt-6.1-sol"
+          },
+          "service_tier": {
+            "reason": "Codex turn_context does not expose effective service_tier",
+            "status": "unavailable",
+            "value": null
+          }
+        },
+        "selected": {
+          "effort": "xhigh",
+          "model": "gpt-6.1-sol",
+          "service_tier": "default"
+        },
+        "validation": "verified"
+      },
+      "runtime_sha256": "28ecbff18112ff026570052d045d6de1ab706d3f3971fb4576e183ef36a79246",
+      "runtime_status": "completed"
+    }
+  ],
+  "qualification": {
+    "candidate_matches": [
+      {
+        "candidate_gold_ids": [
+          "pr-1699-1"
+        ],
+        "case_id": "pr-1699",
+        "finding": {
+          "detail": "URL抽出が大文字小文字を区別するため、例えば `[HTTPS URL: unsafe authority omitted]` はuserinfo検査を通りません。一方、ABSOLUTE_PATHは大文字小文字を区別せずHTTP(S)を除外するため、この文字列を拒否できません。private一覧にない資格情報が指示・最終報告に含まれると、sanitizeとschema検査を通過してGitへ公開されます。URLスキームを大小文字に依存せず検査してください。",
+          "id": "pr-1699-1",
+          "line": 21,
+          "path": ".agents/ops/worker_logs/safety.py",
+          "rule": "URLの大小文字による資格情報検査の回避",
+          "severity": "major"
+        },
+        "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+        "parent_verdict": "pending",
+        "run_id": "d98730fdac794b4b965c34601dcbb26b"
+      },
+      {
+        "candidate_gold_ids": [],
+        "case_id": "pr-1699",
+        "finding": {
+          "detail": "repoの同一性はcasefoldで比較していますが、html_urlだけは入力repoとの完全一致を要求します。dispatcherは設定・bootstrapのrepoを小文字化するため、`motoki0705/tennis-lab`で記録したターンにGitHubが正規表記の`https://github.com/Motoki0705/tennis-lab/pull/N`を返すと、作成済みの正当なログPRがpr_identity_changedになります。再試行でも同じ判定で停止し、自律経路の自動マージが完了しません。URLのowner/repo部分にも同じ正規化が必要です。",
+          "id": "pr-1699-2",
+          "line": 235,
+          "path": ".agents/ops/worker_logs/schema.py",
+          "rule": "正当な同一リポジトリのPRを大小文字差で拒否",
+          "severity": "major"
+        },
+        "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+        "parent_verdict": "pending",
+        "run_id": "d98730fdac794b4b965c34601dcbb26b"
+      },
+      {
+        "candidate_gold_ids": [],
+        "case_id": "pr-1699",
+        "finding": {
+          "detail": "PUT送信前にmerge_attempted=Trueを永続化しますが、通信障害やAPIによる拒否でマージされなかった場合も解除されません。以後はPRを再取得して未マージ・openと確認できても、この条件で必ずmerge_response_uncertainとなり、--retryでも再送できません。障害解消後もログがmainへ保存されないため、確定した失敗と結果不明を区別し、同一PR・固定HEADを再照合したうえで安全に再試行できる復旧経路が必要です。",
+          "id": "pr-1699-3",
+          "line": 435,
+          "path": ".agents/ops/worker_logs/publication.py",
+          "rule": "マージ未実施の一時障害から復旧できない",
+          "severity": "major"
+        },
+        "output_sha256": "1d5963c25f701c2d77b9b3c65491c499f10ed7da6cac4ef48182bb026d859fe2",
+        "parent_verdict": "pending",
+        "run_id": "d98730fdac794b4b965c34601dcbb26b"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1699-1"
+        ],
+        "case_id": "pr-1699",
+        "finding": {
+          "detail": "静的解析上、URL正規表現が大文字小文字を区別するため、`[HTTPS URL: unsafe authority omitted]` はuserinfoの拒否検査を通りません。絶対パス検査側は大文字小文字を区別せずHTTPSを除外するため、この文字列も拒否されません。認証値が既知のprivate値に含まれなければ、instruction/finalから認証情報付きURLがそのままGitへ公開・自動mergeされます。URL検出にも大文字小文字を区別しない照合を適用する必要があります。",
+          "id": "pr-1699-1",
+          "line": 21,
+          "path": ".agents/ops/worker_logs/safety.py",
+          "rule": "公開前のURL検査で認証情報を拒否する",
+          "severity": "major"
+        },
+        "output_sha256": "96c0c841e4e06fd5965396a612bb58bcf1fdc174db8a24ade27e52acf28ebfcd",
+        "parent_verdict": "pending",
+        "run_id": "b94b85e4d71f4b08a40b78bba2cef85d"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1766-1"
+        ],
+        "case_id": "pr-1766",
+        "finding": {
+          "detail": "継続判断を保存した後、work lockを解放してauthorize_retryを呼んでいます。この間に、時間切れ処理と競合していたstop()が同じattemptをcancelledへ変更できます。authorize_retryはcancelledも許可対象として受け付けるため、取消がreadyへ上書きされ、次tickで自動再起動します。attempt一致だけでなく、許可時点でもtimed_outであることを同じロック内で保証する必要があります。",
+          "id": "pr-1766-1",
+          "line": 80,
+          "path": "src/tasks/annotation/recovery.py",
+          "rule": "自動継続の許可時にも時間切れ状態を原子的に照合する",
+          "severity": "major"
+        },
+        "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+        "parent_verdict": "pending",
+        "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1766-1"
+        ],
+        "case_id": "pr-1766",
+        "finding": {
+          "detail": "全frame保存後のtimeoutで、保存ファイルの欠損・破損により一度hold判断を記録すると、正しいファイルを復元してもcycle()はその不変のholdを再利用し、完成receiptを生成しません。一方、RetryWorkerもここでtimed_outかつ全frame処理済みを理由に拒否されます。案内どおりtickを進めても完成せず、正式なrecover APIで復旧できません。修復済みの完成データを明示的に確定する経路が必要です。",
+          "id": "pr-1766-2",
+          "line": 410,
+          "path": "src/tasks/annotation/recovery.py",
+          "rule": "保存修復後に完成を確定できる明示復旧経路を残す",
+          "severity": "major"
+        },
+        "output_sha256": "f218243c5d7bf64cd1236bebcb6f766b5d08e84b5cd66ef9e36e638bfb1e0fe0",
+        "parent_verdict": "pending",
+        "run_id": "db47beaea3d04ec6a82c2bed5b723cdd"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1766-1"
+        ],
+        "case_id": "pr-1766",
+        "finding": {
+          "detail": "継続判断を保存したwork/service lockを解放してからauthorize_retryを呼ぶため、timeoutと競合したpool.stop()が、その間に同じattemptをcancelledへ確定できます。authorize_retryはcancelledも再試行可能状態として受け付けるため、attempt照合を通過してreadyへ戻し、次tickで取消済みcameraを自動起動します。これは「取消後は明示retryを待つ」という要件に反します。現在状態がtimed_outであることの照合とretry許可を、同じロック下で原子的に行う必要があります。実行再現ではなく、状態遷移の静的解析による指摘です。",
+          "id": "pr-1766-1",
+          "line": 80,
+          "path": "src/tasks/annotation/recovery.py",
+          "rule": "取消を自動継続の許可で上書きしない",
+          "severity": "major"
+        },
+        "output_sha256": "933830b97d3002bd4924daf39a8606b4c1459a24d5995efcb64822405b8e2a5b",
+        "parent_verdict": "pending",
+        "run_id": "5b66c526982849fc88c11ac59a013ba6"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1867-1"
+        ],
+        "case_id": "pr-1867",
+        "finding": {
+          "detail": "静的推論: recoverは指定元runの証拠と現在のsnapshotだけを確認し、その後のrunを照合しません。同じsnapshotでAに有効なapproveのfinalが残り、後続Bが重大指摘を公開した後でも、新規CでAを採用できます。merge_gate.mergeはPRごとの最新runであるCを選ぶため、通常の親確認・CI条件を満たせば、Bの指摘をresolveせずgateを通れます。採用元以後の対象PRのrunを照合し、後続の未解決指摘や失敗を隠す採用を拒否する必要があります。",
+          "id": "pr-1867-1",
+          "line": 769,
+          "path": ".agents/ops/review/parent_review.py",
+          "rule": "採用元より後のレビュー結果を照合する",
+          "severity": "major"
+        },
+        "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+        "parent_verdict": "pending",
+        "run_id": "ee6d77a108064818b17841a28def94ad"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1867-2"
+        ],
+        "case_id": "pr-1867",
+        "finding": {
+          "detail": "静的推論: runtimeが非ゼロ終了して有効なfinalを保存した場合、output.jsonは検証済み候補、result.jsonは失敗結果になります。その後の公開中にSIGKILLされると、終了・cleanup・出力検証が完了していてもexecution.statusはrunningのままです。recoverはこの条件で拒否し、resume-publicationもparent_review.py:883のoutput.jsonとresult.jsonの一致要求で拒否します。保存済み成果をAI起動0回で復旧する入口がなくなるため、終了証拠を検証できるこの状態の採用、または失敗結果の公開再開を可能にする必要があります。",
+          "id": "pr-1867-2",
+          "line": 109,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "公開中断した失敗runにも復旧経路を残す",
+          "severity": "major"
+        },
+        "output_sha256": "8f8b09d7eef0a25f109145470c6c4e6ceabae8a113a5230cf3d80543570192b2",
+        "parent_verdict": "pending",
+        "run_id": "ee6d77a108064818b17841a28def94ad"
+      },
+      {
+        "candidate_gold_ids": [],
+        "case_id": "pr-1867",
+        "finding": {
+          "detail": "静的推論（未実行）: 採用元の登録とsnapshotの一致は確認しますが、その後のレビュー結果を照合していません。同一snapshotでR1にapproveの有効finalがあり、後続R2がmajorを報告した後、新規R3でR1をrecoverすると、merge()は最新のR3を選びます。verify_adoption()はR1との整合だけを検証し、公開照合もR3の記録だけを見るため、R2の指摘をresolveせずに、親確認とCI成功が揃えばgateを通過できます。採用時とgateで後続の重複対象runを照合し、未解決指摘や失敗・矛盾を隠す採用を拒否する必要があります。",
+          "id": "pr-1867-1",
+          "line": 292,
+          "path": ".agents/ops/review/merge_gate.py",
+          "rule": "採用元より後のレビュー結果も照合する",
+          "severity": "major"
+        },
+        "output_sha256": "7013bf23341c8ac76e1e89747549f383b72eed71d59a247f55ab16284babea9c",
+        "parent_verdict": "pending",
+        "run_id": "da77c51156854806816cbaf1161b45ea"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1872-1"
+        ],
+        "case_id": "pr-1872",
+        "finding": {
+          "detail": "静的確認: agent-runtimeがSIGKILLされ、別セッションで起動されたCLIが残る場合でも、_run_reviewはruntime_evidenceの失敗を記録した後に失敗結果を公開し、execution.statusをpublishedまたはpublication_failedにします。この検査はrunningだけを拒否するため、cleanup未確認の旧CLIが残ったまま同PRの新runを起動できます。公開状態とは別に、agentの終了・cleanup証拠を検査する必要があります。",
+          "id": "pr-1872-1",
+          "line": 78,
+          "path": ".agents/ops/review/review_locks.py",
+          "rule": "公開状態だけで終了・cleanup済みと判断しない",
+          "severity": "major"
+        },
+        "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+        "parent_verdict": "pending",
+        "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1872-2"
+        ],
+        "case_id": "pr-1872",
+        "finding": {
+          "detail": "静的確認: recoverはagent_invocations=0、agent.status=not_invokedのadoptionをrunningとして保存します。公開前に中断すると、この条件が起動済みと誤判定し、cleanup_evidenceが元々作成されない当該runのagent-runtime/result.jsonを要求するため、close-interruptedが必ず失敗します。その後head/baseが進むとrecoverの再送とresume-publicationもsnapshot不一致で失敗し、残ったrunningによって同PRの新runが拒否され続けます。adoptionの未起動状態を正しく扱ってください。",
+          "id": "pr-1872-2",
+          "line": 23,
+          "path": ".agents/ops/review/review_interruption.py",
+          "rule": "AI未起動の復旧runも中断終結できること",
+          "severity": "major"
+        },
+        "output_sha256": "0ddb0f1bc7f5d9fd215aa6445920450f8b3d3a9533bd62fecaf266b1e389d19c",
+        "parent_verdict": "pending",
+        "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1872-1"
+        ],
+        "case_id": "pr-1872",
+        "finding": {
+          "detail": "この検査はrunning以外を通しますが、_run_review()はruntime終了・cleanupを確認できずagent工程がunconfirmedになっても、publish_result()でexecutionをpublishedまたはpublication_failedにします。共通runnerだけが強制終了した場合、別セッションで起動されたCLIが残り得るため、lease解放後に同じPRの別runが新しいagentを起動できます。公開状態にかかわらず、起動済みruntimeの終了とcleanupを確認する必要があります。静的な経路確認による指摘です。",
+          "id": "pr-1872-1",
+          "line": 78,
+          "path": ".agents/ops/review/review_locks.py",
+          "rule": "公開状態と独立したruntime終了・cleanup確認",
+          "severity": "major"
+        },
+        "output_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
+        "parent_verdict": "pending",
+        "run_id": "2c41a860bd974901b5f86fd4ac1c2a25"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1872-2"
+        ],
+        "case_id": "pr-1872",
+        "finding": {
+          "detail": "recover()が作るadoptionはagent_invocations=0、agent工程がnot_invokedで、当該runのagent-runtimeを作りません。しかし、この判定はnot_invokedも起動済みと扱うため、公開途中で中断したadoptionのclose-interruptedは存在しないruntime記録を要求して失敗します。その間にhead/baseが進むと公開再開とrecover再送も固定snapshot照合で拒否され、残ったrunningによって同じPRの新runが永久に阻止されます。adoptionの非起動状態を検証して終結できる処理が必要です。静的確認による指摘です。",
+          "id": "pr-1872-2",
+          "line": 23,
+          "path": ".agents/ops/review/review_interruption.py",
+          "rule": "AIを起動しない復旧runの中断終結",
+          "severity": "major"
+        },
+        "output_sha256": "4f1cf2d12e6680de0574b92bd9a200e8378df56f77de3f7c16e354893ee09d82",
+        "parent_verdict": "pending",
+        "run_id": "2c41a860bd974901b5f86fd4ac1c2a25"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1888-1"
+        ],
+        "case_id": "pr-1888",
+        "finding": {
+          "detail": "静的確認: あるPRがreviewed、別PRがnot_reviewedの場合、全体はfailed/incompleteとなるため、この条件でruntime検証を省略します。しかしevaluate_coverageとmerge gateはreviewedのPRを独立して承認できます。そのため、保存後のruntimeに選択モデルとの不一致や証拠欠損が生じても、公開再開・gateはruntimeやそのdigestを照合せず、当該PRを採用できます。全体の成功状態だけでなく、利用可能なcoverageを持つ部分結果にも同じ検証が必要です。",
+          "id": "pr-1888-1",
+          "line": 347,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "reviewed のPRを含む部分結果にもruntime検証を適用する",
+          "severity": "major"
+        },
+        "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+        "parent_verdict": "pending",
+        "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
+      },
+      {
+        "candidate_gold_ids": [],
+        "case_id": "pr-1888",
+        "finding": {
+          "detail": "静的確認: --review-model-source human_instruction と --review-model gpt-6-astra に --human-review-effort max を添え、理由と参照を指定すると、--human-review-modelがないため、この代入がhuman_effortを通常のeffort引数（省略時はNone）で上書きします。その結果、拒否すべきmax指定が消え、既定のxhighを人間指定として記録・実行できます。明示されたhuman_effortを保持して矛盾・許可リストを検査するか、この引数の組合せを起動前に拒否してください。",
+          "id": "pr-1888-2",
+          "line": 210,
+          "path": ".agents/ops/lib/review_settings.py",
+          "rule": "明示された人間のeffort拘束を上書きしない",
+          "severity": "major"
+        },
+        "output_sha256": "89b64fee9a4d682c57ffd75c66664128dd7784a3062c66b2c03c15a2af93569a",
+        "parent_verdict": "pending",
+        "run_id": "0d21543c86be4e6cabd40fc32e671f7b"
+      },
+      {
+        "candidate_gold_ids": [
+          "pr-1888-1"
+        ],
+        "case_id": "pr-1888",
+        "finding": {
+          "detail": "PR A が reviewed、PR B が not_reviewed の結果は、正常終了した runtime でも全体が failed/incomplete になります。一方、evaluate_coverage と merge gate は A の承認を許可します。この早期 return はその結果の runtime 検査を省略するため、保存した agent-runtime/result.json が別モデル・effortの記録へ差し替わったり欠損したりしても、実効値・runtime digest・公開 runtime_settings の不一致を検出せず、公開再開と A の merge を許します。全体の succeeded 判定だけでなく、採用可能な reviewed coverage を持つ結果にも照合を必須にしてください。静的な経路確認による指摘です。",
+          "id": "pr-1888-1",
+          "line": 347,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "一部PRが確認済みの incomplete 結果にも runtime 照合を適用する",
+          "severity": "major"
+        },
+        "output_sha256": "a0b68e25a52651a83e3eeba512090c711a2c95e3a3fa17701e3f08f9b27596d9",
+        "parent_verdict": "pending",
+        "run_id": "4371202ab146425289e3ab4aa3b7078e"
+      }
+    ],
+    "conditions": {
+      "astra_fixed": {
+        "additional_invocations": 0,
+        "additional_launch_rate": 0.0,
+        "agent_invocations": 7,
+        "agent_seconds": {
+          "missing": 0,
+          "observed_sum": 2139.1636583805084
+        },
+        "code_unconfirmed_rate": 0.0,
+        "detection": {
+          "false_negatives": {
+            "confirmed_sum": 0,
+            "pending_runs": 7
+          },
+          "false_positives": {
+            "confirmed_sum": 0,
+            "pending_runs": 7
+          },
+          "true_positives": {
+            "confirmed_sum": 0,
+            "pending_runs": 7
+          }
+        },
+        "elapsed_seconds": {
+          "missing": 0,
+          "observed_sum": 2140.8284108638763
+        },
+        "evidence_waits": 0,
+        "failed_observations": 0,
+        "format_failures": 0,
+        "observations": 7,
+        "runtime_failures": 0,
+        "status": "measured",
+        "unconfirmed_finding_rate": 1.0,
+        "usage": {
+          "cached_input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 8571008
+          },
+          "excluded_non_turn_counters": [],
+          "input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 9348212
+          },
+          "missing_run_ids": [],
+          "output_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 51064
+          },
+          "status": "observed",
+          "unique_counters": 7
+        }
+      },
+      "reuse_fixed": {
+        "additional_invocations": 0,
+        "additional_launch_rate": null,
+        "agent_invocations": 0,
+        "agent_seconds": {
+          "missing": 0,
+          "observed_sum": 0
+        },
+        "code_unconfirmed_rate": null,
+        "detection": {
+          "false_negatives": {
+            "confirmed_sum": 0,
+            "pending_runs": 0
+          },
+          "false_positives": {
+            "confirmed_sum": 0,
+            "pending_runs": 0
+          },
+          "true_positives": {
+            "confirmed_sum": 0,
+            "pending_runs": 0
+          }
+        },
+        "elapsed_seconds": {
+          "missing": 0,
+          "observed_sum": 0
+        },
+        "evidence_waits": 0,
+        "failed_observations": 0,
+        "format_failures": 0,
+        "observations": 0,
+        "runtime_failures": 0,
+        "status": "not_started",
+        "unconfirmed_finding_rate": null,
+        "usage": {
+          "cached_input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 0
+          },
+          "excluded_non_turn_counters": [],
+          "input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 0
+          },
+          "missing_run_ids": [],
+          "output_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 0
+          },
+          "status": "not_started",
+          "unique_counters": 0
+        }
+      },
+      "reuse_select": {
+        "additional_invocations": 0,
+        "additional_launch_rate": 0.0,
+        "agent_invocations": 7,
+        "agent_seconds": {
+          "missing": 0,
+          "observed_sum": 2082.8426916599274
+        },
+        "code_unconfirmed_rate": 0.0,
+        "detection": {
+          "false_negatives": {
+            "confirmed_sum": 0,
+            "pending_runs": 7
+          },
+          "false_positives": {
+            "confirmed_sum": 0,
+            "pending_runs": 7
+          },
+          "true_positives": {
+            "confirmed_sum": 0,
+            "pending_runs": 7
+          }
+        },
+        "elapsed_seconds": {
+          "missing": 0,
+          "observed_sum": 2084.065137386322
+        },
+        "evidence_waits": 0,
+        "failed_observations": 0,
+        "format_failures": 0,
+        "observations": 7,
+        "runtime_failures": 0,
+        "status": "measured",
+        "unconfirmed_finding_rate": 1.0,
+        "usage": {
+          "cached_input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 8730624
+          },
+          "excluded_non_turn_counters": [],
+          "input_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 9580003
+          },
+          "missing_run_ids": [],
+          "output_tokens": {
+            "missing_counters": 0,
+            "observed_sum": 59806
+          },
+          "status": "observed",
+          "unique_counters": 7
+        }
+      }
+    },
+    "default_policy_change_authorized": false,
+    "detection": [
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1699",
+        "condition": "astra_fixed",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6-astra",
+        "run_id": "d98730fdac794b4b965c34601dcbb26b",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 3
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1699",
+        "condition": "reuse_select",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6.1-sol",
+        "run_id": "b94b85e4d71f4b08a40b78bba2cef85d",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 1
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 1,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1766",
+        "condition": "astra_fixed",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6-astra",
+        "run_id": "db47beaea3d04ec6a82c2bed5b723cdd",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 2
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 1,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1766",
+        "condition": "reuse_select",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6.1-sol",
+        "run_id": "5b66c526982849fc88c11ac59a013ba6",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 1
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1867",
+        "condition": "astra_fixed",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6-astra",
+        "run_id": "ee6d77a108064818b17841a28def94ad",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 2
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1867",
+        "condition": "reuse_select",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6.1-sol",
+        "run_id": "da77c51156854806816cbaf1161b45ea",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 1
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1872",
+        "condition": "astra_fixed",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6-astra",
+        "run_id": "a0f64ecd43dd4ff2b5fcb0f27eca1cf4",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 2
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1872",
+        "condition": "reuse_select",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6.1-sol",
+        "run_id": "2c41a860bd974901b5f86fd4ac1c2a25",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 2
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1888",
+        "condition": "astra_fixed",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6-astra",
+        "run_id": "0d21543c86be4e6cabd40fc32e671f7b",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 2
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 2,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1888",
+        "condition": "reuse_select",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6.1-sol",
+        "run_id": "4371202ab146425289e3ab4aa3b7078e",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 1
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1686",
+        "condition": "astra_fixed",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6-astra",
+        "run_id": "c8c22cb4966a4b518af9482829fd590e",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 0
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1686",
+        "condition": "reuse_select",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6.1-sol",
+        "run_id": "f612b1c64b164ae19de70bd18cc59fda",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 0
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1744",
+        "condition": "astra_fixed",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6-astra",
+        "run_id": "2356b004e1584fb7b10e6fddff35372b",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 0
+      },
+      {
+        "by_severity": {
+          "blocker": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          },
+          "major": {
+            "detected": null,
+            "expected": 0,
+            "missed": null
+          }
+        },
+        "case_id": "pr-1744",
+        "condition": "reuse_select",
+        "false_negatives": null,
+        "false_positives": null,
+        "model": "gpt-6.1-sol",
+        "run_id": "b8fb4c37a13c4218a131a2bde2ea2295",
+        "status": "awaiting_parent",
+        "true_positives": null,
+        "unconfirmed_findings": 0
+      }
+    ],
+    "physical_usage": {
+      "cached_input_tokens": {
+        "missing_counters": 0,
+        "observed_sum": 17301632
+      },
+      "excluded_non_turn_counters": [],
+      "input_tokens": {
+        "missing_counters": 0,
+        "observed_sum": 18928215
+      },
+      "missing_run_ids": [],
+      "output_tokens": {
+        "missing_counters": 0,
+        "observed_sum": 110870
+      },
+      "status": "observed",
+      "unique_counters": 14
+    },
+    "schema_version": 1,
+    "status": "awaiting_parent"
+  },
+  "schema_version": 1,
+  "scope": "private paired model qualification; no new formal review or publication is represented"
+}

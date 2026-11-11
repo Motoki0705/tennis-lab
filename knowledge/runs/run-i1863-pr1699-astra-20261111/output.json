@@ -1,0 +1,39 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "URL抽出が大文字小文字を区別するため、例えば `[HTTPS URL: unsafe authority omitted]` はuserinfo検査を通りません。一方、ABSOLUTE_PATHは大文字小文字を区別せずHTTP(S)を除外するため、この文字列を拒否できません。private一覧にない資格情報が指示・最終報告に含まれると、sanitizeとschema検査を通過してGitへ公開されます。URLスキームを大小文字に依存せず検査してください。",
+          "id": "pr-1699-1",
+          "line": 21,
+          "path": ".agents/ops/worker_logs/safety.py",
+          "rule": "URLの大小文字による資格情報検査の回避",
+          "severity": "major"
+        },
+        {
+          "detail": "repoの同一性はcasefoldで比較していますが、html_urlだけは入力repoとの完全一致を要求します。dispatcherは設定・bootstrapのrepoを小文字化するため、`motoki0705/tennis-lab`で記録したターンにGitHubが正規表記の`https://github.com/Motoki0705/tennis-lab/pull/N`を返すと、作成済みの正当なログPRがpr_identity_changedになります。再試行でも同じ判定で停止し、自律経路の自動マージが完了しません。URLのowner/repo部分にも同じ正規化が必要です。",
+          "id": "pr-1699-2",
+          "line": 235,
+          "path": ".agents/ops/worker_logs/schema.py",
+          "rule": "正当な同一リポジトリのPRを大小文字差で拒否",
+          "severity": "major"
+        },
+        {
+          "detail": "PUT送信前にmerge_attempted=Trueを永続化しますが、通信障害やAPIによる拒否でマージされなかった場合も解除されません。以後はPRを再取得して未マージ・openと確認できても、この条件で必ずmerge_response_uncertainとなり、--retryでも再送できません。障害解消後もログがmainへ保存されないため、確定した失敗と結果不明を区別し、同一PR・固定HEADを再照合したうえで安全に再試行できる復旧経路が必要です。",
+          "id": "pr-1699-3",
+          "line": 435,
+          "path": ".agents/ops/worker_logs/publication.py",
+          "rule": "マージ未実施の一時障害から復旧できない",
+          "severity": "major"
+        }
+      ],
+      "number": 1699,
+      "summary": "資格情報の公開防止、リポジトリ名の照合、マージ失敗後の復旧に修正が必要です。"
+    }
+  ],
+  "summary": "固定差分の静的レビューを完了し、重大な欠陥を3件確認しました。保存済みのCI・親の再実行報告を参照しましたが、本レビューではCPU実行していません。",
+  "verdict": "request_changes"
+}

@@ -1,0 +1,30 @@
+{
+  "budget": {
+    "hard_token_limit": false,
+    "missing_models": [],
+    "projected_totals_including_reserve": {
+      "input_tokens": 34837048,
+      "output_tokens": 172993
+    },
+    "reason": null,
+    "remaining_extra_slots": 2,
+    "remaining_pairs": 12,
+    "status": "within_estimate"
+  },
+  "runs": [
+    {
+      "case_id": "pr-1699",
+      "id": "d98730fdac794b4b965c34601dcbb26b",
+      "model": "gpt-6-astra",
+      "role": "paired",
+      "status": "collected"
+    },
+    {
+      "case_id": "pr-1699",
+      "id": "b94b85e4d71f4b08a40b78bba2cef85d",
+      "model": "gpt-6.1-sol",
+      "role": "paired",
+      "status": "collected"
+    }
+  ]
+}
