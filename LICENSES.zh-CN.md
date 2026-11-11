@@ -46,6 +46,7 @@ SPDX 标识符 `Hippocratic-3.0-core` 不能代表包含 KPR 所采用附加条�
 
 | 路径 | 来源 URL 与移植来源提交 | 许可证与声明 |
 | --- | --- | --- |
+| `src/utils/models/components/ops/msda/vendor` | [fundamentalvision/Deformable-DETR](https://github.com/fundamentalvision/Deformable-DETR), [origin.json](src/utils/models/components/ops/msda/vendor/origin.json) | Apache-2.0. [LICENSE](src/utils/models/components/ops/msda/vendor/LICENSE), [NOTICE](src/utils/models/components/ops/msda/vendor/NOTICE.md). |
 | `src/submodules/vendor` | [Tennis-Lab](https://github.com/Motoki0705/tennis-lab/tree/37c115e15cf0ba63668d3bc75d468c75a7e8d08c/src/submodules/vendor)（用于核对：`37c115e15cf0ba63668d3bc75d468c75a7e8d08c`） | 容器目录的 `__init__.py` 是采用 Apache-2.0 的原创代码。其下的 GVHMR 适用下一行的条款。 |
 | `src/submodules/vendor/gvhmr` | [zju3dv/GVHMR](https://github.com/zju3dv/GVHMR) 的 [Motoki0705/GVHMR 分支](https://github.com/Motoki0705/GVHMR/tree/900e8c4471e80bb6db5cb14c404c1a0766aba5f4)，移植来源为 `900e8c4471e80bb6db5cb14c404c1a0766aba5f4` | GVHMR 自定义的非商业用途条款。[LICENSE 全文](src/submodules/vendor/gvhmr/LICENSE)、[移植说明](src/submodules/vendor/gvhmr/README.md)。所包含的第三方部分另见下表。 |
 | `src/tasks/person_tracking/deep_ocsort_vendor` | [GerardMaggiolino/Deep-OC-SORT](https://github.com/GerardMaggiolino/Deep-OC-SORT/tree/6bb51d027b137233f5c520b6fcc4f2ae387a6ba9)，`6bb51d027b137233f5c520b6fcc4f2ae387a6ba9` | MIT。也保留了 Roger R. Labbe Jr. 的卡尔曼滤波实现的 MIT 声明。[LICENSE](src/tasks/person_tracking/deep_ocsort_vendor/LICENSE)、[NOTICE](src/tasks/person_tracking/deep_ocsort_vendor/NOTICE.md)。 |

@@ -195,3 +195,61 @@ Attention dropout .1とRoPE base10000は従来の時間queryと同じ。
 新しい重みartifactは `schema=mdd_mhc_coordinates.v1` / `model_kind=mdd_mhc_query`。
 全config・入力契約・元のTを検証し、旧schemaや欠落fieldを読み替えない。
 同じ構成のT32/64/128間では全stateをstrict転送でき、T変更をresumeとして扱わない。
+
+## Stage-wise X3D/CSN residual blocks
+
+`MDDStageHeatmapConfig` / `mdd_stage_dpt_heatmap` is a separate heatmap kind with
+explicit `stage_blocks` and `expansion_ratios` for stages 1..5. The stem and
+spatial downsample/channel transitions are fixed. `ib` expands then applies a
+3×3×3 depthwise convolution; `convnext` applies the same depthwise convolution
+before expansion; `ffn` has only the two pointwise convolutions. All keep the
+same FrameGroupNorm/GELU rules and residual output activation. Expanded width is
+`ceil(channels * expansion_ratio)`. This is not the `convnext_v2` encoder.
+
+Legacy X3D/CSN artifacts remain fixed at IB/e=2 with exactly the original state
+names and execution order. An explicit all-IB/e=2 stage encoder can load those
+encoder weights strictly. Stage artifacts retain their own complete config and
+cannot be relabelled as legacy artifacts.
+
+For depths 0/1/2/3/3/2, all-IB or ConvNeXt→IB has temporal radii 3/6/9/11 at
+/8,/16,/32,/64. ConvNeXt→FFN has radii 3/3/3/3: stages 3..5 do not mix time.
+Convolution-only spatial receptive fields are respectively 55/167/391/711 and
+55/71/103/167 pixels; FrameGroupNorm also couples all spatial positions within
+each frame, so these are not the full normalized network's spatial support.
+
+## Layer-wise MSDA / CA queries
+
+`MDDMultiScaleQueryConfig` / `mdd_multiscale_query` explicitly selects C/M per
+layer. C reads only /64 with the legacy cross-attention. M reads the ordered
+/8,/16,/32,/64 pyramid (or the explicit /16,/32,/64 option), projected to the
+common query width. The /64 projection and spatial-position projection are
+shared with C; M also adds a learned level embedding. No image tokens are
+updated. Four learned queries stay distinct; the temporal RoPE/mHC/SwiGLU span
+and mean-stream coordinate readout are unchanged.
+
+Each M layer generates a 2D reference from its normalized input query using
+Linear→sigmoid. It is a latent edge-normalized feature-grid reference, not the
+endpoint-normalized output-head UV or a GT coordinate. Official offsets are in
+feature cells and divided by (W,H). Bilinear sampling uses zero outside the
+grid. Fixed full images have no invalid feature tokens, including partial CNN
+border cells, so the explicit padding mask is false and valid ratios are one.
+The existing source-image cell-center encoding is preserved for each stride.
+
+B×T is the frame batch; `msda_chunk_size` bounds native calls and is serialized.
+A chunk must satisfy the official `min(batch,im2col_step)` divisibility rule;
+there is no padding or batch correction. Per-kind/ordinal initialization uses
+seed-derived independent RNG scopes, pairing M and C weights across reordered
+layouts without changing data/augmentation seeds.
+
+The [official MSDA boundary](../../../../utils/models/components/ops/msda/README.md)
+executes its complete official projection/sampling/output module in FP32 under
+BF16 autocast. Its explicit compiler-disabled boundary permits graph breaks in
+multi-scale models; compilation errors are not suppressed. Legacy models retain
+full-graph compilation. Construction/restoration on CPU is supported; executing
+an M layer on CPU, without the selected binary, or in an unsupported dtype fails.
+
+The stage and MSDA YAML examples live in `configs/temporal_models/`. Pass them
+explicitly to the temporal CLI's `--model-config`; they are not general Hydra
+`model=` selectors. Their CPU/CUDA, checkpoint and actual-runner contracts are
+verified by the dedicated stage/MSDA tests above. The legacy public mHC Hydra
+selector also participates in the shared CPU model lifecycle contract registry.

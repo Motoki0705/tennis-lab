@@ -142,7 +142,7 @@ def initialize_finetuning(
         type(config) in QUERY_CONFIG_TYPES
         and type(previous.config) is MDDHeatmapConfig
     )
-    mhc_encoder_only = encoder_only and type(config) is MDDMHCQueryConfig
+    mhc_encoder_only = encoder_only and isinstance(config, MDDMHCQueryConfig)
     if mhc_encoder_only:
         if previous.config.frames != 32 or config.frames != 64 or training["phase"] != "pretrain":
             raise ValueError("DPT-to-mHC initialization requires common T32 pretraining and a fresh T64 query")
@@ -210,7 +210,7 @@ def inherit_optimizer(
     optimizer: torch.optim.Optimizer,
     model: TemporalModel,
     receipt: dict[str, Any],
-) -> None:
+) -> dict[str, Any]:
     if (
         not receipt["has_optimizer_state"]
         or dual_sha256(path) != receipt["artifact_sha256"]
@@ -241,6 +241,7 @@ def inherit_optimizer(
                 if states[name] is not None:
                     current["state"][index] = copy.deepcopy(states[name])
     optimizer.load_state_dict(current)
+    return copy.deepcopy(saved["rng"])
 
 
 def read_resume(

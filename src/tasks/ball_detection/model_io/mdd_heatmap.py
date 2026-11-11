@@ -24,6 +24,7 @@ from src.tasks.ball_detection.models.mdd import (
     MDDHeatmapConfig,
     MDDHeatmapHybridConfig,
 )
+from src.tasks.ball_detection.models.mdd.stage_config import MDDStageHeatmapConfig
 from src.tasks.ball_detection.preprocessing.rgb_mdd import input_transform_from_contract
 from src.tasks.base.model_io import BoundModelIO, ModelCall, bind_model_io
 from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
@@ -31,10 +32,13 @@ from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabol
 HEATMAP_MODEL_SCHEMA = "mdd_heatmap_model.v1"
 DPT_HEATMAP_KIND = "mdd_dpt_heatmap"
 HYBRID_HEATMAP_KIND = "mdd_heatmap_hybrid"
+STAGE_HEATMAP_KIND = "mdd_stage_dpt_heatmap"
 HeatmapModel: TypeAlias = MDDDPTDetector | DeepMDDHeatmapHybridDetector
 
 
 def heatmap_model_kind(config: MDDHeatmapConfig) -> str:
+    if type(config) is MDDStageHeatmapConfig:
+        return STAGE_HEATMAP_KIND
     if type(config) is MDDHeatmapHybridConfig:
         return HYBRID_HEATMAP_KIND
     if type(config) is MDDHeatmapConfig:
@@ -109,6 +113,8 @@ def restore_heatmap_model(saved: dict[str, Any]) -> HeatmapModel:
         config_type = MDDHeatmapHybridConfig
     elif kind == DPT_HEATMAP_KIND:
         config_type = MDDHeatmapConfig
+    elif kind == STAGE_HEATMAP_KIND:
+        config_type = MDDStageHeatmapConfig
     else:
         raise BallModelIOError("Unknown heatmap-only model kind")
     raw = saved["model_config"]
