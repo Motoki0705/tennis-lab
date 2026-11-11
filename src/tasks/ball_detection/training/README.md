@@ -62,11 +62,10 @@ peakまで線形warmupした後、最小LR比までcosineで減衰する。継�
 凍結中のCNN LRは0で、既存AdamW状態は変更しない。いずれも明示必須。
 AdamWのbetas=(0.9,0.999)、eps=1e-8と、linear warmup後のcosine scheduleをrecipeへ保存する。
 
-X3D/CSNの共通DPT T32からmHC query T64へは、encoderの入力ch・variant・時間処理・幅・深さを
+共通DPT T32から単一queryまたはmHC queryのT32/T64へは、encoderの入力ch・variant・時間処理・幅・深さを
 照合し、CNNの全stateだけをstrict転送する。dim・heads・FFN幅・層数・DPT幅はこの転送では
 一致を要求せず、Transformerと座標headを新規初期化する。`optimizer_transfer=inherit`は
 一致するencoder parameterのAdamW momentだけを継承し、新規Transformerの状態は初回更新まで空に保つ。
-従来のDPT→単一queryはT32→T32と全構成の照合を維持する。
 同じmHCモデルのT64→T128などは全設定（Tと明示メモリ制御を除く）と全stateを照合する。
 元artifactは保存Tのまま検証し、resumeはT・recipe・ソース・optimizer・RNG・pack位置を保存どおりに復元する。
 encoderのhaloとmHC span・readoutの仕様は[MDDモデル](../models/mdd/README.md#x3dcsn-encoderと4ストリームmhc座標モデル)を参照。
@@ -113,7 +112,7 @@ fine-tuningは新しいoutputへ`--phase finetune`、目的Tのmodel configとtr
 新しい予算を渡し、`--initial-artifact <pretrain/weights-update-NNNNNNNN.pt>`・
 `--initial-artifact-sha256 <SHA-256>`・`--parent-update <固定更新数>`を追加する。
 保存artifactを元のTで検証・復元し、新しいTのモデルへparameter/bufferをstrict転送する。
-T64の事後学習からT128へ進める。DPT→queryだけはT32事前学習からT32の新規queryへのCNN転送とする。
+T64の事後学習からT128へ進める。DPT→queryだけはT32事前学習からT32/T64の新規queryへのCNN転送とする。
 抽出位置と累積更新数・入力枚数を親から継承する。
 `--optimizer-transfer inherit`には親の重み専用artifactではなく、全状態checkpointを渡す。
 同名の転送parameterのAdamW moment/stepを継承し、新規query部分の状態だけ新規にする。

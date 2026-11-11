@@ -219,12 +219,12 @@ class MDDMHCQueryConfig(MDDTemporalQueryConfig):
 
     def __post_init__(self) -> None:
         MDDTemporalQueryConfig.__post_init__(self)
-        if self.encoder_variant != "x3d_csn":
-            raise ValueError("mHC queries require the explicit X3D/CSN encoder")
+        if self.encoder_variant not in {"x3d_csn", "convnext_v2"}:
+            raise ValueError("mHC queries require an explicit X3D/CSN or ConvNeXt V2 encoder")
         if type(self.num_streams) is not int or self.num_streams != 4:
             raise ValueError("mHC queries require exactly four learned streams")
-        if type(self.dim) is not int or type(self.heads) is not int or self.dim != 64 * self.heads:
-            raise ValueError("mHC attention requires head width 64 (heads=dim/64)")
+        if type(self.dim) is not int or type(self.heads) is not int:
+            raise ValueError("mHC dimensions and heads must be explicit integers")
         # The shared component owns numerical validation; do not duplicate it.
         self.mhc_config()
 
