@@ -14,6 +14,8 @@ import re
 from typing import Any
 from urllib.parse import quote
 
+from worker_logs.safety import Guard
+
 LABELS = {
     "code": "コード",
     "requirements": "要件",
@@ -74,8 +76,12 @@ NOT_FINAL = "not a final-report observation"
 def prose(value: Any, limit: int = 1400) -> str:
     """Captured text cannot insert Markdown, HTML, anchors or table rows."""
     value = str(value)
+    checker = Guard()
+    checker.check(value)
     if len(value) > limit:
         value = value[:limit] + "…（表示省略・記録本文を参照）"
+        # Cutting text can create a credential/private-identifier boundary.
+        checker.check(value)
     escaped = "".join(
         f"&#{ord(char)};" if char in "\\`*_{}[]()!#|" else html.escape(char, quote=True)
         for char in value
@@ -83,7 +89,22 @@ def prose(value: Any, limit: int = 1400) -> str:
     return escaped.replace("\r\n", "<br>").replace("\r", "<br>").replace("\n", "<br>")
 
 
+def checked_unescape(value: str) -> str:
+    """Recheck entity-decoded display text before any clipping or re-escaping."""
+    value = html.unescape(value)
+    Guard().check(value)
+    return value
+
+
+def field_label(key: Any) -> str:
+    # A mapping key alone may be safe while adding ': ' makes it a sensitive
+    # assignment. Check both its original name and its translated display label.
+    Guard().check(f"{key}: ")
+    return prose(f"{LABELS.get(key, key)}: ", 80)
+
+
 def evidence_link(item: dict[str, Any]) -> str:
+    Guard().check(item)
     if item["kind"] == "unavailable":
         return "根拠非公開・記録不足: " + prose(item["reason"], 300)
     target = quote(item["url"], safe="/:#?=&%+@,;~.-_")
@@ -118,9 +139,7 @@ def fields(value: Any, *, depth: int = 0, links: bool = True) -> str:
         entries = list(value.items())
         return (
             " / ".join(
-                prose(LABELS.get(k, k), 80)
-                + ": "
-                + fields(v, depth=depth + 1, links=links)
+                field_label(k) + fields(v, depth=depth + 1, links=links)
                 for k, v in entries[:12]
             )
             + (" / 表示省略・記録本文を参照" if len(entries) > 12 else "")
@@ -152,6 +171,9 @@ def literal(value: str) -> tuple[bool, Any]:
             parsed = ast.literal_eval(value)
         except (ValueError, SyntaxError, TypeError, RecursionError, MemoryError):
             return False, None
+    # Keep this outside the parse-error handlers: a public-check failure must
+    # propagate its fixed error code instead of becoming an unparsed fallback.
+    Guard().check(parsed)
     return isinstance(parsed, (dict, list, tuple)), parsed
 
 
@@ -169,22 +191,18 @@ def summary(value: str, *, compact: bool = False) -> str:
             key, raw = match.groups()
             decoded, data = literal(raw)
             if decoded:
-                output.append(
-                    prose(LABELS.get(key, key)) + ": " + fields(data, links=False)
-                )
+                output.append(field_label(key) + fields(data, links=False))
             elif raw in {"None", "True", "False"}:
                 output.append(
-                    prose(LABELS.get(key, key))
-                    + ": "
+                    field_label(key)
                     + fields({"None": None, "True": True, "False": False}[raw])
                 )
             elif raw.startswith(("{", "[", "(")):
                 output.append(
-                    prose(LABELS.get(key, key))
-                    + ": 構造を解釈できない要約・記録本文を参照"
+                    field_label(key) + "構造を解釈できない要約・記録本文を参照"
                 )
             else:
-                output.append(prose(LABELS.get(key, key)) + ": " + prose(raw))
+                output.append(field_label(key) + prose(raw))
         elif part.startswith(("{", "[", "(")):
             output.append("構造を解釈できない要約・記録本文を参照")
         else:
@@ -200,7 +218,9 @@ def summary(value: str, *, compact: bool = False) -> str:
         # Compact index cells have a fixed text budget regardless of the size
         # of a captured literal. Escape once more after flattening generated
         # field markup, so clipping never cuts an entity or an active link.
-        return prose(html.unescape(" / ".join(output[:3])).replace("<br>", " / "), 200)
+        return prose(
+            checked_unescape(" / ".join(output[:3])).replace("<br>", " / "), 200
+        )
     return "<br>".join(output)
 
 

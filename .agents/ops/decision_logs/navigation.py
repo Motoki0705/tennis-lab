@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import heapq
-import html
 import posixpath
 import re
 from collections import defaultdict
@@ -20,6 +19,7 @@ from .graph import references, states, validate_graph
 from .presentation import (
     NOT_FINAL,
     change_fields,
+    checked_unescape,
     evidence_link,
     fields,
     final_report,
@@ -278,7 +278,7 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
             operation = (
                 plans_in_activity[0]["summary"]
                 if plans_in_activity
-                else html.unescape(
+                else checked_unescape(
                     summary(
                         selected[0]["data"].get("summary", KIND[selected[0]["kind"]]),
                         compact=True,

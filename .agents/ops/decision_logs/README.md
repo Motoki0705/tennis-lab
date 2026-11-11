@@ -374,6 +374,10 @@ tails in v1 summary prose are rendered as named fields, using bounded literal
 decoding without code execution. Unparseable containers are marked for inspection
 in the original record instead of being dumped as Python/JSON. All text remains
 escaped, including text decoded from a literal.
+Decoded containers, entity-decoded text and formatted display values pass the
+shared public `Guard` before HTML escaping or omission. Truncated text and field
+labels with their delimiters are checked too; violations propagate the fixed
+public error code and block generation without masking the offending value.
 
 ## Publication exception and recovery
 
