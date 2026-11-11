@@ -122,7 +122,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 
 `agreement.json` は `purpose` / `scope` / `behavior` / `acceptance` / `human_confirmation` の
 5キーだけを持つJSON object。値はすべて非空の文章とし、最後の値に人間の確認発言を引用する。
-`checking` → 会話で認識合わせ・合意 → `agree` の順。担当指定だけでは「担当指定のみ」、
+確認が必要なら `checking` で表示し、人間との合意を `agree` に記録する。既に明確な合意があれば直接 `agree` へ進める。担当指定だけでは「担当指定のみ」、
 `checking` で「要件確認中」、有効な合意コメントで「要件合意済み」となる。
 再度 `checking` に戻しても、既存の親合意と提案別の合意は維持する。停止・取消は `basis-revoke` で明示する。
 `checking` / `agreed` のrevisionは両イベントの過去最大値から進め、取消の連番とは分ける。
@@ -131,7 +131,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 同じ確認中の `checking` と、有効な同一合意への `agree` の再送は冪等で、新しい合意に数えない。
 会話に実際の合意があるかを判断する責任は親agentにあり、CLIは人間の確認を捏造しない。
 既存issueにマーカーなしの人間との合意がある場合は、その発言と合意内容を読み、
-`checking` / `agree` で同じ内容を記録する。記録形式を移すためだけの再承認は求めない。
+`agree` で同じ内容を記録する。記録形式を移すためだけの再承認は求めない。
 
 ### 補足追加の確定待ち
 
