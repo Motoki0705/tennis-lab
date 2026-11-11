@@ -363,6 +363,12 @@ def test_postmerge_worker_check_requires_parent_acceptance(gate_env: GateEnv) ->
     g, p = gate_env, gate_env.review.p
     response = g.cli("merge")
     assert response.returncode == 0, response.stderr + response.stdout
+    # Merge closes the Issue before all requested worker checks have finished.
+    # Stop/resume remains a control of that same worker, never a new assignment.
+    p.cli("stop", "--child", "1", "--spec", p.detail())
+    assert store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]["stopped"]
+    p.cli("resume", "--child", "1", "--spec", p.detail())
+    assert p.state()["issues"]["1"]["state"] == "closed"
     previous = store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]
     restart = p.root / "restart.md"
     restart.write_text("前のrunの終了・回収と同じworkerを確認した。")

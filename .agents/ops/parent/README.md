@@ -368,6 +368,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 `sync` は自身の状態を返し、親ラベルがあれば進捗概要だけを更新する。自身のチェック行や子用要件を作らない。
 空の子一覧・PRのclose・runner終了だけでは完了せず、成果受理、正式レビュー、対象HEADのCI、実merge/closeと実行終了を照合する。
 merge後の確認をworkerへ継続した場合は、そのターンの実結果を親が確認し、`record-result` で受理してから全体完了へ進む。
+その既存workerの停止・再開も同じIssueで扱い、Issueの再openや新しい委任先は作らない。
 worker来歴と親判断は既存のログ形式へ親番号＝担当Issue番号として接続し、ログ専用の作業Issueは要求しない。
 
 途中分割では実行・PR・受入済み成果を自動で別Issueへ移さない。自身への予約や成果が残る間の `create-child`、

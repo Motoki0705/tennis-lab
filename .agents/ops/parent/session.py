@@ -1143,8 +1143,17 @@ class ParentSession:
             parent, _ = self.family()
             children = {self.parent: parent}
             conflict = str(exc)
-        if child not in children or task_status(children[child]) != "open":
-            raise ValueError("stop/resume requires an open direct child")
+        existing = self.row["tasks"].get(str(child), {})
+        if child not in children or not (
+            task_status(children[child]) == "open"
+            or (
+                task_status(children[child]) == "completed"
+                and existing.get("delegated")
+            )
+        ):
+            raise ValueError(
+                "stop/resume requires an open target or a completed target with an existing worker"
+            )
         required = {"reason", "facts", "impact", "resume_condition", "next_action"}
         if set(detail) != required:
             raise ValueError(f"stop/resume requires exactly {sorted(required)}")
