@@ -298,3 +298,58 @@ def conv_linear_macs(module: nn.Module, function: Callable[[], Any]) -> dict[str
             "MSDA sampling (not zero)",
         ],
     )
+
+
+def forward_macs(module: nn.Module, function: Callable[[], Any]) -> dict[str, Any]:
+    """Count Conv/Linear plus explicit attention terms and an MSDA sample bound."""
+    from src.tasks.ball_detection.models.mdd.attention import TimeAttention
+    from src.utils.models.components.ops.msda.api import OfficialMSDeformAttn
+
+    extra = dict(
+        ca_projection=0,
+        ca_attention=0,
+        temporal_attention=0,
+        msda_sampling_upper_bound=0,
+    )
+    handles = []
+
+    def record(layer: nn.Module, args: tuple[Tensor, ...], _output: Tensor) -> None:
+        if isinstance(layer, nn.MultiheadAttention):
+            q, k = args[:2]
+            b, queries, dim = q.shape
+            tokens = k.shape[1]
+            extra["ca_projection"] += int(b * (2 * queries + 2 * tokens) * dim * dim)
+            extra["ca_attention"] += int(2 * b * queries * tokens * dim)
+        elif isinstance(layer, TimeAttention):
+            b, t, dim = args[0].shape
+            extra["temporal_attention"] += int(2 * b * t * t * dim)
+        elif isinstance(layer, OfficialMSDeformAttn):
+            b, queries, dim = args[0].shape
+            # Four bilinear products plus weighted accumulation per channel.
+            # Out-of-grid branches can perform less work: this is a bound,
+            # deliberately separate from the exact projection/attention count.
+            extra["msda_sampling_upper_bound"] += int(
+                5 * b * queries * dim * layer.op.n_levels * layer.op.n_points
+            )
+
+    for layer in module.modules():
+        if isinstance(
+            layer, (nn.MultiheadAttention, TimeAttention, OfficialMSDeformAttn)
+        ):
+            handles.append(layer.register_forward_hook(record))
+    try:
+        result = conv_linear_macs(module, function)
+    finally:
+        for handle in handles:
+            handle.remove()
+    result.update(extra)
+    result["conv_linear_attention_macs"] = result["conv_linear_macs"] + sum(
+        extra[k] for k in ("ca_projection", "ca_attention", "temporal_attention")
+    )
+    result["uncounted"] = [
+        "normalization/activation/MDD/softmax/RoPE",
+        "mHC Sinkhorn, pair dot products and stream weighted mixing",
+        "MSDA coordinate arithmetic/boundary branching (sample MAC upper bound is separate)",
+        "casts/permutes/copies/memory traffic/backward",
+    ]
+    return result

@@ -42,3 +42,14 @@ def test_conv3d_counts_groups_and_temporal_kernel_without_profiler_flops() -> No
     result = conv_linear_macs(model, lambda: model(torch.zeros(2, 4, 5, 7, 11)))
     assert result["conv_linear_macs"] == 2 * 8 * 5 * 7 * 11 * 2 * 27
     assert "MSDA sampling (not zero)" in result["excludes"]
+
+
+def test_functional_mha_projections_and_both_attention_matmuls_are_counted():
+    from tests.benchmarks.ball_detection.efficiency import forward_macs
+
+    model = nn.MultiheadAttention(4, 2, batch_first=True)
+    q, k = torch.zeros(2, 3, 4), torch.zeros(2, 5, 4)
+    counts = forward_macs(model, lambda: model(q, k, k, need_weights=False))
+    assert counts["ca_projection"] == 512
+    assert counts["ca_attention"] == 240
+    assert counts["conv_linear_attention_macs"] == 752
