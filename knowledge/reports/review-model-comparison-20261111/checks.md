@@ -1,8 +1,9 @@
 # 実行後の検証記録
 
-2026-11-11。実モデル14回の終了・cleanup確認後に実行した。
-比較中にpytestを並行実行していない。今回の差分は実測記録、文書、topic登録と
+2026-11-11。以下の表は実モデル14回の終了・cleanup確認後、実測記録を追加した時点の検証。
+比較中にpytestを並行実行していない。その時点の差分は実測記録、文書、topic登録と
 公開済み集計JSONに限ったignore例外であり、harnessの実行コード・固定入力・正解表・protocolは変更していない。
+後続の親判定反映とeffort修正は下段に分けて記録する。
 
 | 検証 | 実行と結果 |
 |---|---|
@@ -41,5 +42,29 @@ pytestは`-n 0`、1回1〜2 nodeで逐次実行し、setup・call時間を測る
 修正前の4 nodeは、2件ずつの実行でそれぞれ0.11秒と0.20秒で失敗した。
 保持のnodeでは`human.effort`が`xhigh`から`None`へ失われ、残り3件は
 期待するValueErrorが発生しなかった。importやfixture起動の失敗ではない。
+
+修正は`choose`でhuman modelを補う際、human effortが未指定のときだけ親のeffortを補う。
+明示effortを保持することで、既存の親指定との矛盾検査・許可する組の検査が働く。
+
+| 修正後の検証 | 結果 |
+|---|---|
+| 保持と親effort矛盾の新規2 node | 2 passed、0.07秒 |
+| 許可外effortとCLI引数の新規2 node | 2 passed、0.29秒 |
+| fixed既定と既存human model拘束の2 node | 2 passed、0.05秒 |
+| 比較harnessの共通runner契約の既存1 node | 1 passed、0.80秒。実agentは起動せず人工runtimeを使用 |
+| 対象2ファイルの明示ruff | 成功 |
+| 対象2ファイルの明示mypy | 2 source files成功 |
+| 修正差分のpre-commit | ruff・mypy成功 |
+
+上のpytestはすべて`-n 0`で1回1〜2 nodeを逐次実行した。新規4 nodeの最大setupは0.02秒、
+最大callはCLI引数経路の0.05秒で、外部資産・ネットワーク・親registry・runtimeの初期化は不要。
+比較harnessの既存1 nodeはsetup 0.15秒、call 0.45秒だった。テスト増分は4 nodeで、
+既存のfunction-scope settings fixtureを使い、CLI nodeだけ小さなreasonファイルを1個作る。
+今回の回帰では修正前失敗と修正後成功を確認したため、追加の故障注入による再実行は行っていない。
+
+修正後にも、親判定のバイト列、再計算したCLI reportの数値、元のrun bundle、公開指紋を照合した。
+14ノードの親判定値もreportと一致し、結果資料とノードの相対リンク83件に欠損は無かった。
+追加行の公開Guard検査は成功した。現在の変更後コードで元の非公開stateを読むと、
+固定コード不一致が拒否されることも確認し、検査を緩めていない。再計算は固定版を用いる。
 
 正式レビューの実機受入、gate確認は親の残作業。追加の実LLM・実agent起動は行わない。

@@ -262,7 +262,8 @@ def choose(
     explicit = model is not None or effort is not None or human_model is not None
     if specified_by == "human_instruction" and human_model is None:
         human_model = model
-        human_effort = effort
+        if human_effort is None:
+            human_effort = effort
     if human_model is not None:
         if model is not None and model != human_model:
             raise ValueError("parent model contradicts human instruction")
