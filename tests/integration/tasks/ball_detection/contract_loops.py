@@ -278,6 +278,7 @@ def _temporal(
         "mdd_dpt_heatmap": "dpt",
         "mdd_heatmap_hybrid": "hybrid",
         "mdd_temporal_query": "query",
+        "mdd_mhc_query": "query",
     }[inputs.config.model.name]
     with patch.object(
         temporal, "build_temporal_model", side_effect=_same_model(model)

@@ -76,6 +76,7 @@ SELECTORS = {
     "mdd_dpt_heatmap": "mdd_dpt_heatmap",
     "mdd_heatmap_hybrid": "mdd_heatmap_hybrid",
     "mdd_temporal_query": "mdd_temporal_query",
+    "mdd_mhc_query": "mdd_mhc_query",
 }
 
 
@@ -111,6 +112,9 @@ def _compose(
     if config.model.name != "mdd_pose":
         config.model.residual_blocks = [0, 1, 1, 1, 1, 1]
         config.model.decoder_channels, config.model.ffn_dim = 8, 64
+    if config.model.name == "mdd_mhc_query":
+        config.model.dim, config.model.heads, config.model.ffn_dim = 64, 1, 192
+        config.model.frames = 32
     return config
 
 
@@ -177,6 +181,7 @@ def _build(config: DictConfig, *, kind: str) -> tuple[Any, LoopInputs]:
             "mdd_dpt_heatmap": "dpt",
             "mdd_heatmap_hybrid": "hybrid",
             "mdd_temporal_query": "query",
+            "mdd_mhc_query": "query",
         }[config.model.name]
         model = build_temporal_model(load_model_config(model_file, architecture))
         manifest = prepare_fixture(root / "temporal") / "train_T32.json"
@@ -396,6 +401,7 @@ FAMILIES = {
             ("mdd_dpt_heatmap", "temporal"),
             ("mdd_heatmap_hybrid", "temporal"),
             ("mdd_temporal_query", "temporal"),
+            ("mdd_mhc_query", "temporal"),
         )
     },
 }
