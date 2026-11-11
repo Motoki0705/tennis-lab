@@ -209,7 +209,7 @@ def gate_env(
     # Only private copies reach tests; case-level sharding remains independent.
     seeds: dict[str | None, GateSeed] = request.config.stash.setdefault(SEEDS, {})
     variant = getattr(request, "param", None)
-    if variant == "parent_self_worker":
+    if variant in {"parent_self_worker", "parent_self_worker_rejected_resume"}:
         # A saved worker binds hashes to its absolute worktree/contract. Reusing
         # that runtime in another temporary root would alter its identity.
         return make_gate_env(parent_env, monkeypatch, variant)
@@ -290,8 +290,12 @@ def make_gate_env(
                     sha=run_git(tree, "rev-parse", "HEAD"), ref=f"codex/pr-{index}"
                 )
         p.save(state)
-        if variant in {"parent_self", "parent_self_worker"}:
-            if variant == "parent_self_worker":
+        if variant in {
+            "parent_self",
+            "parent_self_worker",
+            "parent_self_worker_rejected_resume",
+        }:
+            if variant != "parent_self":
                 from tests.e2e.agents_ops.test_manual_worker_runs import manual
 
                 prs = state["prs"]
@@ -317,6 +321,23 @@ def make_gate_env(
                     "--prompt-file",
                     p.note("実装・検証する。"),
                 )
+                if variant == "parent_self_worker_rejected_resume":
+                    rejected = manual(
+                        p,
+                        "run-worker",
+                        "--child",
+                        "1",
+                        "--resume",
+                        "--prompt-file",
+                        p.note("同じworkerで追加確認する。"),
+                        ok=False,
+                        MANUAL_PREFLIGHT_FAILURE="1",
+                    )
+                    assert rejected.returncode == 2
+                    assert (
+                        json.loads(rejected.stdout)["launch_state"]
+                        == "rejected_before_start"
+                    )
                 state = p.state()
                 state["prs"] = prs
                 p.save(state)
@@ -368,7 +389,8 @@ def make_gate_env(
             "publication_paths",
         },
         standalone=variant == "standalone",
-        parent_self=variant in {"parent_self", "parent_self_worker"},
+        parent_self=variant
+        in {"parent_self", "parent_self_worker", "parent_self_worker_rejected_resume"},
         pr_count=3
         if variant
         in {

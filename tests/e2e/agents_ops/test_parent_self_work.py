@@ -355,7 +355,9 @@ def test_ended_reparented_child_keeps_history_without_blocking_its_sibling(
 
 
 @pytest.mark.parametrize(
-    "gate_env", ["parent_self", "parent_self_worker"], indirect=True
+    "gate_env",
+    ["parent_self", "parent_self_worker", "parent_self_worker_rejected_resume"],
+    indirect=True,
 )
 def test_self_result_review_merge_completion_without_creating_children(
     gate_env: GateEnv,
@@ -375,6 +377,9 @@ def test_self_result_review_merge_completion_without_creating_children(
         assert task["worker_ended"]["delegation_id"] == task["delegation_id"]
         assert len(task["worker_runs"]) == 1
         turn = task["preflight"]["turns"][0]
+        if task.get("launch_failures"):
+            assert len(task["preflight"]["turns"]) == 2
+            assert task["preflight"]["turns"][-1]["cancelled"]
         journal = json.loads(Path(turn["log"]["journal"]).read_text())
         assert journal["source"]["parent"] == journal["source"]["issue"] == 1
     else:
@@ -384,6 +389,8 @@ def test_self_result_review_merge_completion_without_creating_children(
     assert p.state()["issues"]["1"]["state_reason"] == "completed"
     completed = p.cli("workflow-report", "--spec", completion_spec(p))
     assert json.loads(completed.stdout)["state"] == "completed"
+    if task.get("delegated"):
+        assert task["preflight"]["accepted_turn_id"] == turn["snapshot"]["turn_id"]
     p.cli("release", "--ended", "--note-file", p.note("全体受入と実行終了を照合した。"))
     assert store(p).read_data()["parents"]["o/r#1"]["status"] == "ended"
     assert requirement_body(body) == requirement_body(p.state()["issues"]["1"]["body"])
@@ -464,6 +471,23 @@ def test_postmerge_worker_check_requires_parent_acceptance(gate_env: GateEnv) ->
     current = store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]
     assert current["worker_ended"]["delegation_id"] == current["delegation_id"]
     assert current["verification"] == previous["verification"]
+    checked_turn = current["preflight"]["turns"][-1]["snapshot"]["turn_id"]
+    rejected = manual(
+        p,
+        "run-worker",
+        "--child",
+        "1",
+        "--resume",
+        "--prompt-file",
+        p.note("merge後確認の補足を同じworkerに依頼する。"),
+        ok=False,
+        MANUAL_PREFLIGHT_FAILURE="1",
+    )
+    assert json.loads(rejected.stdout)["launch_state"] == "rejected_before_start"
+    current = store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]
+    assert len(current["worker_runs"]) == 2
+    assert len(current["preflight"]["turns"]) == 3
+    assert current["preflight"]["turns"][-1]["cancelled"]
     denied = p.cli("workflow-report", "--spec", completion_spec(p), ok=False)
     assert "current result verification missing" in denied.stderr
     manual(
@@ -473,6 +497,12 @@ def test_postmerge_worker_check_requires_parent_acceptance(gate_env: GateEnv) ->
         "1",
         "--evidence-file",
         p.note("merge後確認の実結果を親が受け入れた。"),
+    )
+    assert (
+        store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]["preflight"][
+            "accepted_turn_id"
+        ]
+        == checked_turn
     )
     accepted = p.cli("workflow-report", "--spec", completion_spec(p))
     assert json.loads(accepted.stdout)["state"] == "completed"

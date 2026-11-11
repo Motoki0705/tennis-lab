@@ -501,13 +501,8 @@ def verify_completion(session: ParentSession) -> list[int]:
         task = session.row["tasks"].get(str(n), {})
         verification = task.get("verification", {})
         preflight = task.get("preflight", {})
-        latest_turn = next(
-            (
-                turn
-                for turn in reversed(preflight.get("turns", []))
-                if not turn.get("cancelled")
-            ),
-            None,
+        latest_turn = (
+            worker_preflight.result_turn(task) if task.get("delegated") else None
         )
         if (
             task_status(item) != "completed"

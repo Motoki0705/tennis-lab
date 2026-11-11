@@ -1242,7 +1242,7 @@ class ParentSession:
     def record_result(self, child: int, evidence: str) -> dict[str, Any]:
         self.owner()
         nonempty(evidence, "verification evidence")
-        worker_preflight.require_implementation(self, child)
+        accepted_turn_id = worker_preflight.require_implementation(self, child)
         # During checking this remains a factual record, without implementation
         # authorization. In an execution phase, stale inputs are an explicit error.
         auth = (
@@ -1298,10 +1298,7 @@ class ParentSession:
         }
         recorded = self.row["tasks"][str(child)]
         if recorded.get("delegated") and "preflight" in recorded:
-            turns = recorded["preflight"]["turns"]
-            recorded["preflight"]["accepted_turn_id"] = (
-                turns[-1]["snapshot"]["turn_id"] if turns else None
-            )
+            recorded["preflight"]["accepted_turn_id"] = accepted_turn_id
         self.store.save()
         from decision_logs.parent_sources import verification
 
