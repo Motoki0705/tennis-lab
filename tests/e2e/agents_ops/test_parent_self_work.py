@@ -151,6 +151,9 @@ def test_split_preserves_self_reservation_and_allows_only_stopping_it(
     p = parent_env
     p.agreed()
     tree = p.worktree("self")
+    assert not importlib.import_module("parent.work_targets").stopped_self_work(
+        {"delegated": True, "stopped": True}
+    )  # A legacy reservation without termination proof must retain its slot.
     args = (
         "delegate",
         "--agent",
@@ -274,6 +277,81 @@ def test_review_only_history_prevents_silent_target_switch(
     p.save(state)
     denied = p.cli("status", ok=False)
     assert "work targets changed" in denied.stderr and "#10" in denied.stderr
+
+
+def test_unregistered_self_pr_blocks_new_child_execution_and_acceptance(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    introduce_split(p)
+    state = p.state()
+    state["prs"] = [p.pr(100, 1)]
+    p.save(state)
+    tree = p.worktree("new-child")
+    start = len(p.calls())
+    for command in (
+        (
+            "delegate",
+            "--child",
+            "10",
+            "--agent",
+            "codex",
+            "--branch",
+            "codex/new-child",
+            "--worktree",
+            str(tree),
+        ),
+        ("record-result", "--child", "10", "--evidence-file", p.note()),
+        ("review-prepare", "--prs", "100"),
+        ("workflow-report", "--spec", completion_spec(p)),
+    ):
+        denied = p.cli(*command, ok=False)
+        assert "existing PR closing the parent itself" in denied.stderr
+    assert store(p).read_data()["parents"]["o/r#1"]["tasks"] == {}
+    assert all(
+        c[c.index("--method") + 1] == "GET"
+        for c in p.calls()[start:]
+        if "--method" in c
+    )
+
+
+def test_ended_reparented_child_keeps_history_without_blocking_its_sibling(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    p.child("moved")
+    p.child("independent")
+    tree = p.worktree("moved")
+    p.cli(
+        "delegate",
+        "--child",
+        "10",
+        "--agent",
+        "codex",
+        "--branch",
+        "codex/moved",
+        "--worktree",
+        str(tree),
+    )
+    task = store(p).read_data()["parents"]["o/r#1"]["tasks"]["10"]
+    p.cli(
+        "record-worker-ended",
+        "--child",
+        "10",
+        "--delegation-id",
+        task["delegation_id"],
+        "--evidence-file",
+        p.note("終了を照合し、正式な別親への移動を整理した。"),
+    )
+    state = p.state()
+    state["parents"]["10"] = 2
+    p.save(state)
+    status = json.loads(p.cli("status").stdout)
+    assert status["launch_plan"]["launchable_children"] == [11]
+    assert not status["tasks"]["10"]["current_work_target"]
+    assert status["tasks"]["10"]["delegation_id"] == task["delegation_id"]
 
 
 @pytest.mark.parametrize(

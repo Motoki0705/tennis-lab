@@ -26,7 +26,7 @@ from lib.agent_settings import implementation_model
 from worker_logs import service as worker_logs
 from worker_logs.sources import original, read_original
 
-from . import worker_preflight
+from . import work_targets, worker_preflight
 from .adopted_tasks import check_task_adoptions
 from .execution import (
     authorization,
@@ -493,6 +493,7 @@ def verify_completion(session: ParentSession) -> list[int]:
     merge_gate = importlib.import_module("merge_gate")
     merged: set[int] = set()
     pulls = session.gh.pulls()
+    work_targets.require_separate_self_prs(parent, pulls, session.gh.repo)
     for n, item in items.items():
         if task_status(item) == "cancelled":
             verify_cancellation(session, item, auth)

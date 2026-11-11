@@ -520,14 +520,6 @@ class ParentSession:
             managed="dispatch" in self.row,
             reviewed_targets=self.reviewed_targets(),
         )
-        if children and any(
-            parent.number in closing_issues(p.get("body") or "", self.gh.repo)
-            for p in self.gh.pulls({parent.number})
-        ):
-            raise work_targets.WorkTargetsChanged(
-                "work targets changed with an existing PR closing the parent itself; "
-                "explicitly reconcile the split and PR ownership before starting other work"
-            )
         return parent, items
 
     def update_body(self, n: int, body: str, expected_body: str) -> None:
@@ -643,7 +635,7 @@ class ParentSession:
                 "cannot split an issue with existing self-work; stop the worker and "
                 "explicitly reconcile its execution/results and PR ownership first"
             )
-        if not children and any(
+        if parent.parent is None and not children and any(
             self.parent in closing_issues(p.get("body") or "", self.gh.repo)
             for p in self.gh.pulls({self.parent})
         ):
@@ -815,10 +807,12 @@ class ParentSession:
             blockers.append(
                 reason("execution_basis_required", "親の有効な実行根拠を記録する。")
             )
+        pulls = self.gh.pulls()
+        work_targets.require_separate_self_prs(parent, pulls, self.gh.repo)
         plan = plan_launches(
             children,
             self.row.get("tasks", {}),
-            self.gh.pulls(),
+            pulls,
             self.gh.repo,
             launch_policy(self.row.get("launch_policy", DEFAULT_LAUNCH_POLICY)),
             blockers,
@@ -1247,14 +1241,16 @@ class ParentSession:
             if phase(self.history()) in {"agreed", "autonomous"}
             else None
         )
-        _, children = self.work_items()
+        parent, children = self.work_items()
         if child not in children:
             raise ValueError("result requires a direct child or the standalone issue")
         from .policy import closing_issues
 
+        pulls = self.gh.pulls()
+        work_targets.require_separate_self_prs(parent, pulls, self.gh.repo)
         prs = [
             p
-            for p in self.gh.pulls()
+            for p in pulls
             if child in closing_issues(p.get("body") or "", self.gh.repo)
         ]
         if not prs:

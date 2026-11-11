@@ -26,6 +26,7 @@ from .policy import (
     select_prs,
 )
 from .session import ParentSession
+from .work_targets import require_separate_self_prs
 
 
 def git(*args: str, cwd: Path | None = None) -> bytes:
@@ -132,7 +133,9 @@ def prepare(
     auth = authorization(session)
     parent, children = session.work_items()
     child_numbers = set(children)
-    prs = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
+    pulls = session.gh.pulls()
+    require_separate_self_prs(parent, pulls, session.gh.repo)
+    prs = select_prs(selected, pulls, child_numbers, session.gh.repo)
     from .worker_preflight import require_implementation
 
     for pr in prs:

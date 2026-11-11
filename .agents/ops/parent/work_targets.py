@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from typing import Any
 
 from issues import Issue
 
-from .policy import dependencies, replace_section
+from .policy import closing_issues, dependencies, replace_section
 
 
 class WorkTargetsChanged(ValueError):
     """Existing work would be orphaned by a change to the formal target set."""
+
+
+def worker_ended(task: Mapping[str, Any]) -> bool:
+    if not task.get("delegated"):
+        return True
+    proof = task.get("worker_ended")
+    return bool(
+        isinstance(proof, dict)
+        and proof.get("delegation_id") == task.get("delegation_id", "legacy")
+        and isinstance(proof.get("evidence"), str)
+        and proof["evidence"].strip()
+    )
 
 
 def stopped_self_work(task: Mapping[str, Any]) -> bool:
@@ -22,13 +34,7 @@ def stopped_self_work(task: Mapping[str, Any]) -> bool:
     transfer. The local worker history is retained even when no work was done.
     """
     return bool(
-        task.get("stopped")
-        and not task.get("verification")
-        and (
-            not task.get("delegated")
-            or task.get("worker_ended", {}).get("delegation_id")
-            == task.get("delegation_id")
-        )
+        task.get("stopped") and not task.get("verification") and worker_ended(task)
     )
 
 
@@ -62,8 +68,17 @@ def resolve(
             or task.get("creation_authorization")
         )
         and not (int(n) == parent.number and stopped_self_work(task))
+        # Ended children may have been formally moved to another parent. Keep
+        # their history without preventing independent siblings from working.
+        # A formerly split parent with *no* remaining children never falls back
+        # to implementing itself from that history.
+        and not (children and int(n) != parent.number and worker_ended(task))
     }
-    orphaned.update((reviewed_targets or set()) - set(items))
+    orphaned.update(
+        n
+        for n in (reviewed_targets or set()) - set(items)
+        if n == parent.number or parent.number in items
+    )
     if orphaned:
         raise WorkTargetsChanged(
             "work targets changed with existing execution/results: "
@@ -72,6 +87,27 @@ def resolve(
             "and PR ownership before starting other work; saved evidence is retained"
         )
     return items
+
+
+def require_separate_self_prs(
+    parent: Issue, pulls: Sequence[Mapping[str, Any]], repo: str
+) -> None:
+    """Check already collected PRs at execution/acceptance boundaries.
+
+    Resolving formal targets for a read-only, per-PR diagnostic must not query
+    unrelated PR bodies or erase other PRs' facts on a retrieval failure.
+    """
+    if (
+        parent.parent is None
+        and parent.children
+        and any(
+            parent.number in closing_issues(pr.get("body") or "", repo) for pr in pulls
+        )
+    ):
+        raise WorkTargetsChanged(
+            "work targets changed with an existing PR closing the parent itself; "
+            "explicitly reconcile the split and PR ownership before starting other work"
+        )
 
 
 def dependency_graph(

@@ -1799,6 +1799,7 @@ def test_nested_manual_parent_keeps_status_reconcile_and_result_commands(
     }
     state["parents"]["20"] = 10
     state["prs"].append(p.pr(50, 20))
+    state["prs"].append(p.pr(51, 10))  # The upper parent's artifact is independent.
     p.save(state)
     identity = {"CLAUDE_CODE_SESSION_ID": "private-nested-parent"}
     p.cli("register", parent="10", extra=identity)
