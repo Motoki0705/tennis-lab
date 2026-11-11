@@ -624,10 +624,11 @@ def test_timeout_reaps_group_when_output_is_open_or_closed(
     assert result.cleanup_complete is None  # A process group alone is insufficient.
     pid = int(child.read_text())
     # After the kill the child is gone, a zombie (Z), or briefly dead (X) while
-    # init reaps it. Reading once avoids racing a separate exists() check.
+    # init reaps it. procfs can report ESRCH if it is reaped after open(),
+    # before read(), as well as ENOENT if it is already absent at open().
     try:
         status = Path(f"/proc/{pid}/status").read_text()
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
         return
     assert re.search(r"^State:\t[ZX] ", status, re.MULTILINE), status
 
