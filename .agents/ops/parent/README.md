@@ -745,6 +745,8 @@ PR open/push/CI完了ではこの入口もレビューも起動しない。
 親の短い判断は `decide --spec`、状態と記録IDは `decision-log-status`、捕捉だけの再送は
 `retry-decision-capture`、親ごとの明示的なGit公開は `publish-decision-log` を使う。
 公開の単位・階層README・限定例外と復旧は[判断記録の公開仕様](../decision_logs/README.ja.md#git公開と閲覧)を参照する。
+人間向けの入口は[親の結果・判断一覧](../../logs/parents/README.md)。親READMEの概要から活動の詳細へ辿る。
+初回も `publish-decision-log --dry-run` で未準備記録を含む表示を確認する。プレビューの項目と制限は公開仕様を参照する。
 取得元・未対応入口・判断spec・操作との結び付けは
 [判断記録の仕様](../decision_logs/README.ja.md#捕捉元と未対応入口)を正本とする。
 既存の要求・runner応答形式、成果受入や担当の権限は変更しない。

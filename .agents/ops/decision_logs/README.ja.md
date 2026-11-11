@@ -20,6 +20,7 @@
 | [projection.py](projection.py) | `render()`・`validate_public()`。公開単位 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`。すべての原記録を参照する表示用の集約 |
 | [navigation.py](navigation.py) | `generate()`・`validate_links()`。階層の決定的生成とリンク検査 |
+| [presentation.py](presentation.py) | 文章・旧summaryの構造値・変更点・補助観測を、安全で上限付きの表示項目へ変換 |
 | [publication_policy.py](publication_policy.py) | 独立した追加専用例外、再生成バイト列・PR同一性の検査 |
 | [publication.py](publication.py)・[publication_state.py](publication_state.py) | 明示公開、非公開batch、応答喪失からの照合 |
 | [capture.py](capture.py) | 非公開outbox、行動snapshot、状態表示、捕捉だけの再送 |
@@ -282,6 +283,35 @@ initial再試行でも先に公開したターンのアドレスを保つ。指�
 **公開待ち** 表示は `decision-log-status` での照合へ案内する。merge後の公開事実だけを理由に
 READMEを再更新しない。
 
+### 概要の配置とページ上限
+
+[親一覧](../../logs/parents/README.md)から親の概要へ進む。親・子・委任・ターンのREADMEは、
+件数・欠測状態・最新の観測結果/行動と、直近最大6件の判断を示し、全記録を複製しない。
+判断には入力結果・理由・再利用/再確認範囲と、実際の後続結果を併記する。
+活動名は記録された操作/コマンドと対象から作り、記録期間を別に示す。
+不透明な活動キーや時刻の近さから、名前・判断・受入・因果関係を補わない。
+最終報告の欠測件数では、取得元が明示した `not a final-report observation` を観測対象外として分ける。
+それ以外の欠測理由は残す。未解決事項は、その判断を記録した時点の記述として扱う。
+
+詳細の5列表と補助情報は活動ページへ置く。12記録までは活動READMEに収め、超える場合は兄弟の
+`activity-<public-key>-records-<sequence>/README.md` へ分割し、前/次ページをつなぐ。
+判断のない機械観測を含め、全記録に正規のアンカーを1つずつ持ち、上位から同じアンカーへリンクする。
+同条件の観測は既存の損失のない集約件数を表示できるが、判断を作らない。
+
+一覧は最大6項目を概要に置き、全一覧を40項目ずつ分割する。生成先は既存のREADMEパターン内とし、
+rootの `parent-index-*`、親配下の `activity-index-*`、子配下の `d-index-*`、
+委任配下の `page-*`、ターンフォルダーへのsuffixを使う。これらは閲覧ページであり、
+架空の親・活動・委任・ターンではない。eventは移動しない。
+固定した項目数でページを割り当て、記録やworkerファイルの追加でも既存ページのアドレスを保つ。
+worker一覧は後で判断記録が加わった親も含めた全workerログの親を載せ、新形式導入で一覧を縮めない。
+既存READMEの本文は生成の入力に使わない。
+
+各ページのUTF-8全体を192 KiB未満とし、超過した生成は拒否する。詳細1記録の表示予算は10 KiBで、
+長い文章は省略を明示し、完全な不変記録へリンクする。原記録や固定envelopeは切り詰めず変更しない。
+v1のsummary内にあるdict/listのliteralは、サイズ制限のあるliteral解析で項目表示へ変換する。
+コードは実行しない。解析できない構造は原記録の確認が必要と明示し、Python/JSONのまま表示しない。
+解析した値を含め、すべての文章をescapeする。
+
 ## 限定公開例外と復旧
 
 [既存workerの3ファイル例外](../worker_logs/README.md#専用prと限定merge例外)とは別の条件とする。
@@ -312,6 +342,10 @@ HEAD指定でmergeし、実際のmerge treeの生成内容、mainの祖先関係
 修復を装うeventの追加・改変は行わない。生成内容が保存済みなら後の呼出しでPRは増えない。
 batchのmerge後にworkerファイルが届いた場合も、未公開captureがなくても同じ明示修復で
 閲覧内容を更新できる。修復のための捕捉記録は作らない。
+全記録の公開確認が済んだ後のrenderer更新も同じ経路で扱う。保存済みmerge事実とbatch全記録の
+published事実で過去の確認を識別し、PR/HEAD/mergeの同一性・Git構造・祖先関係・現在のenvelopeは再照合する。
+旧表示を新rendererとの一致で認定し直さず、mainの古い表示は明示的な `--retry` で更新する。
+修復revisionには現行policyの全検査を適用する。未確認の旧batchはrenderer変更を理由に免除しない。
 
 捕捉journalの隣の非公開 `publication.json` にbatch、revision、送信試行、診断を残し、
 flock・fsync・atomic writeを使う。`Journal.publication()` は記録ごとの
@@ -326,8 +360,13 @@ dirty worktreeや破損journalを自動resetせず、影響する公開だけを
 確認後はcleanな公開worktreeを削除し、dirtyまたは同一性未確認のものは保持して
 `retained_worktrees` の件数で返す。
 
-`--dry-run` は準備済みenvelopeとローカル `origin/main` から生成を検査し、件数を返す。
-新しい捕捉の準備、fetch、journal/ref更新、worktree作成、GitHub呼出しは行わない。
+`--dry-run` は `Journal.preview_publication()` とローカル `origin/main` を使う。
+readyなenvelopeは固定版を保持し、未準備の捕捉は同じrenderer/guardで依存関係も含めて読み取り専用変換する。
+`prepared_records`、`preview_records`、`preview_blocked`（IDとエラーコード）、
+`generated_readmes`、`preview_readmes`（パスとMarkdown本文）を返し、初回も内容を確認できる。
+プレビューで拒否した記録はblocked件数に含む。`--retry --dry-run` はblockedの再検査を準備の固定なしで試す。
+不可逆な準備、fetch、journal/ref更新、lock作成、worktree作成、GitHub呼出しは行わない。
+プレビューはローカルのsnapshotであり、後続の捕捉・guard条件・main更新で実際の公開は変わり得る。
 `saved_to_main` は現在の全捕捉の公開照合が済んだときだけtrue。
 batchがmergedでも、新しい捕捉やblockedが残れば未公開となる。exit 0のpendingを成功と扱わず、
 errorかblockedがあればexit 2。
@@ -362,3 +401,11 @@ GitHub native path filterの制約は残る。実workflowの省略とGitHub表�
 journal障害と捕捉だけの復旧も検証する。GPU・実agent・networkは不要。
 公開は実gitとfake GitHubでbatch、並行main更新、完全一致、拒否、応答喪失を検証する。
 merge後の実運用受入は #1817 に残る。
+
+閲覧の受入テストは [test_decision_acceptance.py](../../../tests/unit/agents_ops/test_decision_acceptance.py) と
+[test_decision_log_acceptance.py](../../../tests/integration/agents_ops/test_decision_log_acceptance.py) にある。
+#1790 を参考にした3異常系、欠測状態、通常委任・親の直接確認・並行分岐・引継ぎ、
+[初回実公開PR #1887](https://github.com/Motoki0705/tennis-lab/pull/1887)のコピーと大量記録を検証する。
+取得だけの再試行は仮想事例と明示する。当時のCI事例は実際には新規レビューへ進んでおり、
+記録されなかった過去の中間判断は欠測のまま残す。実測サイズと検証は #1817 に記録し、
+実装merge後のmain公開とGitHub表示は親が確認する。

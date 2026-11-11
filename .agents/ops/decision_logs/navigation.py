@@ -9,7 +9,7 @@ import re
 from collections import defaultdict
 from pathlib import PurePosixPath
 from typing import Any
-from urllib.parse import quote, urlsplit
+from urllib.parse import urlsplit
 
 from worker_logs import schema as worker_schema
 from worker_logs.journal import decode, require
@@ -17,6 +17,15 @@ from worker_logs.safety import Guard
 
 from .aggregation import aggregate
 from .graph import references, states, validate_graph
+from .presentation import (
+    NOT_FINAL,
+    change_fields,
+    evidence_link,
+    fields,
+    final_report,
+    prose,
+    summary,
+)
 from .projection import validate_public
 from .schema import timestamp
 
@@ -54,6 +63,14 @@ OPERATION = {
     "handoff": "引継ぎ",
     "record": "記録",
 }
+
+# Bound every derived page, including indexes. Record pages use fixed chunks so
+# allocating anchors does not depend recursively on the size of their links.
+PAGE_BYTES = 192 * 1024
+DETAIL_ROWS = 12
+DETAIL_BYTES = 10 * 1024
+INDEX_ROWS = 40
+RECENT = 6
 
 
 def event_path(record: dict[str, Any]) -> str:
@@ -101,27 +118,9 @@ def records(files: dict[str, bytes]) -> list[dict[str, Any]]:
     return result
 
 
-def prose(value: Any) -> str:
-    """Render captured prose as text, never as active Markdown or HTML."""
-    text = "".join(
-        f"&#{ord(char)};" if char in "\\`*_{}[]()!#|" else html.escape(char, quote=True)
-        for char in str(value)
-    )
-    return text.replace("\r\n", "<br>").replace("\r", "<br>").replace("\n", "<br>")
-
-
 def link(source: str, target: str, label: str, anchor: str = "") -> str:
     relative = posixpath.relpath(target, posixpath.dirname(source))
     return f"[{prose(label)}]({relative}{anchor})"
-
-
-def evidence_link(item: dict[str, Any]) -> str:
-    if item["kind"] == "unavailable":
-        return "根拠非公開・記録不足: " + prose(item["reason"])
-    # Escape URL delimiters without turning captured prose into Markdown.
-    target = quote(item["url"], safe="/:#?=&%+@,;~.-_")
-    suffix = "固定版" if item["revision"] else "内容識別あり・全文復元は未保証"
-    return f"[根拠]({target})（{suffix}）"
 
 
 def generate(files: dict[str, bytes]) -> dict[str, bytes]:
@@ -238,10 +237,79 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 ancestor = ancestor.parent
             legacy[f"{ROOT}/README.md"].append(directory)
 
+    activity_groups = {
+        path: selected
+        for path, selected in views.items()
+        if re.fullmatch(
+            rf"{re.escape(ROOT)}/parent-[1-9][0-9]*/activity-[a-f0-9]{{32}}/README.md",
+            path,
+        )
+    }
+    record_pages: dict[str, str] = {}
+    detail_pages: dict[str, tuple[str, list[dict[str, Any]], int, int]] = {}
+    for path, selected in activity_groups.items():
+        scope = selected[0]["scope"]
+        commands = list(
+            dict.fromkeys(
+                match[1]
+                for r in selected
+                if (
+                    match := re.match(
+                        r"^([a-z][a-z0-9_.-]+):", r["data"].get("summary", "")
+                    )
+                )
+            )
+        )
+        operations = list(
+            dict.fromkeys(
+                OPERATION[r["data"]["operation"]]
+                for r in selected
+                if r["kind"] == "action"
+            )
+        )
+        plans_in_activity = [
+            p
+            for r in selected
+            if r["kind"] == "decision"
+            for p in r["data"]["next_actions"]
+        ]
+        operation = "・".join(commands[:2] or operations[:2])
+        if not operation:
+            operation = (
+                plans_in_activity[0]["summary"]
+                if plans_in_activity
+                else html.unescape(
+                    summary(
+                        selected[0]["data"].get("summary", KIND[selected[0]["kind"]]),
+                        compact=True,
+                    )
+                )
+            )
+        target = (
+            f"担当issue #{scope['issue']}"
+            if scope["issue"]
+            else f"親 #{scope['parent']} の直接活動"
+        )
+        if plans_in_activity:
+            target += " / " + plans_in_activity[0]["target"][:100]
+        titles[path] = operation[:120] + " / " + target
+        count = (len(selected) + DETAIL_ROWS - 1) // DETAIL_ROWS
+        for index in range(count):
+            page = (
+                path
+                if count == 1
+                else path.removesuffix("/README.md")
+                + f"-records-{index + 1:04d}/README.md"
+            )
+            chunk = selected[index * DETAIL_ROWS : (index + 1) * DETAIL_ROWS]
+            detail_pages[page] = (path, chunk, index + 1, count)
+            for row in chunk:
+                record_pages[row["id"]] = page
+
     def ref(source: str, record_id: str) -> str:
         return link(
             source,
-            event_path(by_id[record_id]).rsplit("/", 1)[0] + "/README.md",
+            record_pages[record_id],
             labels[record_id],
             "#record-" + record_id,
         )
@@ -250,6 +318,18 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         history = actions[plan_id]
         previous = {a["data"]["previous_action_id"] for a in history}
         return next((a for a in history if a["id"] not in previous), None)
+
+    def result_brief(source: str, record_id: str) -> str:
+        data = by_id[record_id]["data"]
+        return (
+            ref(source, record_id)
+            + " "
+            + prose(data["status"])
+            + " / "
+            + prose(data["observer"])
+            + ": "
+            + summary(data["summary"], compact=True)
+        )
 
     def plans(source: str, decision: dict[str, Any]) -> str:
         output = []
@@ -262,9 +342,22 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 else "判断済み未実行（行動記録なし）"
             )
             chain = " → ".join(ref(source, a["id"]) for a in history)
+            results = list(
+                dict.fromkeys(
+                    key
+                    for a in history
+                    for key in [*action_results[a["id"]], *a["data"]["result_ids"]]
+                )
+            )
             output.append(
                 f"{prose(plan['summary'])}（{OPERATION[plan['operation']]} / {status}）"
                 + (" " + chain if chain else "")
+                + (
+                    "<br>実行の結果: "
+                    + "、".join(result_brief(source, key) for key in results[:3])
+                    if results
+                    else ""
+                )
             )
         return "<br>".join(output) or "次の行動なし（判断の記録どおり）"
 
@@ -292,13 +385,11 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         result, decision, action = "—", "—", "—"
         if row["kind"] == "result":
             state = result_states[key]
-            result = f"{prose(data['summary'])}<br>{prose(data['status'])} / {prose(data['observer'])}"
+            result = f"{summary(data['summary'])}<br>{prose(data['status'])} / {prose(data['observer'])}"
             if state["parent_confirmation"] == "unrecorded":
                 result += "<br>親の確認未記録"
-            if data["final_report"]["status"] == "unavailable":
-                result += "<br>記録不足・最終報告: " + prose(
-                    data["final_report"]["reason"]
-                )
+            result += "<br>" + final_report(data)
+            result += "<br>前回との差: " + change_fields(data["changes"])
             ds = decisions[key]
             decision = (
                 "<br>".join(
@@ -309,7 +400,7 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
             action = "<br>".join(plans(source, d) for d in ds) or "判断待ち"
         elif row["kind"] == "decision":
             result = "入力: " + (
-                "、".join(ref(source, r) for r in data["inputs"])
+                "<br>".join(result_brief(source, r) for r in data["inputs"])
                 or "初回要求・合意（根拠参照）"
             )
             decision = prose(data["evaluation"]) + ": " + prose(data["reason"])
@@ -317,6 +408,15 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 decision += "<br>未解決: " + "、".join(
                     prose(s) for s in data["unresolved"]
                 )
+            for field, label in (
+                ("reuse_scope", "再利用"),
+                ("recheck_scope", "再確認"),
+                ("resume_conditions", "再開条件"),
+            ):
+                if data[field]:
+                    decision += (
+                        "<br>" + label + ": " + "、".join(prose(s) for s in data[field])
+                    )
             action = plans(source, row)
         elif row["kind"] == "action":
             results = list(dict.fromkeys([*action_results[key], *data["result_ids"]]))
@@ -368,44 +468,280 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
             + " |"
         )
 
-    generated = {}
-    for path, selected in sorted(views.items()):
-        times = [timestamp(r["time"]["recorded_at"]) for r in selected]
-        first, last = (
-            (min(times).isoformat(), max(times).isoformat())
-            if times
-            else ("記録なし", "記録なし")
+    generated: dict[str, bytes] = {}
+    table_header = [
+        "| 時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠 |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+
+    def counts(selected: list[dict[str, Any]]) -> str:
+        reports = [r for r in selected if r["kind"] == "result"]
+        pending = sum(
+            (latest := latest_action(p["id"])) is None
+            or latest["data"]["state"] == "decided_not_executed"
+            for r in selected
+            if r["kind"] == "decision"
+            for p in r["data"]["next_actions"]
         )
+        undecided = sum(
+            result_states[r["id"]]["decision"] == "undecided" for r in reports
+        )
+        unverified = sum(
+            result_states[r["id"]]["parent_confirmation"] == "unrecorded"
+            for r in reports
+        )
+        missing = sum(
+            r["data"]["final_report"]["status"] == "unavailable"
+            and r["data"]["final_report"]["reason"] != NOT_FINAL
+            for r in reports
+        )
+        excluded = sum(
+            r["data"]["final_report"] == {"status": "unavailable", "reason": NOT_FINAL}
+            for r in reports
+        )
+        failed = sum(r["data"]["status"] in {"failure", "rejected"} for r in reports)
+        return (
+            f"{len(selected)} 記録 / 判断 {sum(r['kind'] == 'decision' for r in selected)} 件。"
+            f"失敗・拒否の結果: {failed} 件。"
+            f"未判断の結果: {undecided} 件。親の確認未記録: {unverified} 件。"
+            f"判断済み未実行の計画: {pending} 件。記録不足の最終報告: {missing} 件。"
+            f"最終報告の観測対象外: {excluded} 件。"
+        )
+
+    def period(selected: list[dict[str, Any]]) -> str:
+        times = [timestamp(r["time"]["recorded_at"]) for r in selected]
+        return (
+            f"{min(times).isoformat()} 〜 {max(times).isoformat()}"
+            if times
+            else "記録なし"
+        )
+
+    def header(
+        path: str, title: str, selected: list[dict[str, Any]], up: str | None
+    ) -> list[str]:
         lines = [
-            f"# {titles[path]}",
+            f"# {prose(title, 300)}",
             "",
             "結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。",
             "",
-            f"反映範囲: このHEADの記録集合 {len(selected)} 件。記録時刻 {first} 〜 {last}。",
+            f"反映範囲: このHEADの記録集合 {len(selected)} 件。記録時刻 {period(selected)}。",
             "",
             "公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。",
             "",
         ]
-        if path != f"{ROOT}/README.md":
-            up = str(PurePosixPath(path).parent.parent / "README.md")
+        if up:
             lines += [
                 link(path, up, "上の階層")
                 + " · "
                 + link(path, f"{ROOT}/README.md", "親一覧"),
                 "",
             ]
-        children = [
+        lines += [counts(selected), ""]
+        return lines
+
+    def save(path: str, lines: list[str]) -> None:
+        raw = ("\n".join(lines) + "\n").encode("utf-8")
+        require(len(raw) < PAGE_BYTES, "prepared_content_changed")
+        checked = re.sub(
+            r'<a id="record-[a-f0-9]{32}">|</a>|<br>|</?details>|</?summary>',
+            "",
+            raw.decode("utf-8"),
+        )
+        Guard().check([path, checked])
+        generated[path] = raw
+
+    def page_path(owner: str, tag: str, index: int) -> str:
+        directory = owner.removesuffix("/README.md")
+        name = f"{tag}-{index:04d}"
+        if directory == ROOT:
+            return f"{ROOT}/parent-index-{name}/README.md"
+        if re.fullmatch(rf"{re.escape(ROOT)}/parent-[1-9][0-9]*", directory):
+            return f"{directory}/activity-index-{name}/README.md"
+        if re.fullmatch(
+            rf"{re.escape(ROOT)}/parent-[1-9][0-9]*/child-[1-9][0-9]*", directory
+        ):
+            return f"{directory}/d-index-{name}/README.md"
+        if PurePosixPath(directory).name.startswith("d-"):
+            return f"{directory}/page-{name}/README.md"
+        return f"{directory}-{name}/README.md"
+
+    def latest(source: str, selected: list[dict[str, Any]]) -> str:
+        result = next((r for r in reversed(selected) if r["kind"] == "result"), None)
+        action = next((r for r in reversed(selected) if r["kind"] == "action"), None)
+        output = []
+        if result:
+            output += [result_brief(source, result["id"])]
+        if action:
+            output += [
+                ref(source, action["id"])
+                + " "
+                + OPERATION[action["data"]["operation"]]
+                + " / "
+                + STATE[action["data"]["state"]]
+            ]
+        return "<br>".join(output) or "結果・行動の記録なし"
+
+    def catalog(
+        owner: str,
+        tag: str,
+        title: str,
+        targets: list[tuple[str, str, list[dict[str, Any]]]],
+    ) -> list[str]:
+        targets = sorted(
+            targets,
+            key=lambda item: (
+                max(
+                    (timestamp(r["time"]["recorded_at"]) for r in item[2]),
+                    default=timestamp("1970-01-01T00:00:00+00:00"),
+                ),
+                item[0],
+            ),
+        )
+
+        def entries(
+            source: str, items: list[tuple[str, str, list[dict[str, Any]]]]
+        ) -> list[str]:
+            lines = [
+                "| 対象・期間 | 件数と未確認 | 最新の記録 |",
+                "| --- | --- | --- |",
+            ]
+            for target, label, selected in items:
+                lines += [
+                    "| "
+                    + link(source, target, label[:180])
+                    + "<br>"
+                    + period(selected)
+                    + " | "
+                    + counts(selected)
+                    + " | "
+                    + latest(source, selected)
+                    + " |"
+                ]
+            return lines
+
+        if len(targets) <= RECENT:
+            return [f"## {title}", "", *entries(owner, targets), ""] if targets else []
+        count = (len(targets) + INDEX_ROWS - 1) // INDEX_ROWS
+        for i in range(count):
+            path = page_path(owner, tag, i + 1)
+            chunk = targets[i * INDEX_ROWS : (i + 1) * INDEX_ROWS]
+            selected = [r for _, _, group in chunk for r in group]
+            lines = header(path, title + f"（{i + 1} / {count}）", selected, owner)
+            if i:
+                lines += [link(path, page_path(owner, tag, i), "前のページ"), ""]
+            if i + 1 < count:
+                lines += [link(path, page_path(owner, tag, i + 2), "次のページ"), ""]
+            lines += entries(path, chunk)
+            save(path, lines)
+        return [
+            f"## {title}",
+            "",
+            link(
+                owner,
+                page_path(owner, tag, 1),
+                f"全{len(targets)}件の一覧（{count}ページ）",
+            ),
+            "",
+            *entries(owner, targets[-RECENT:]),
+            "",
+        ]
+
+    def bounded_row(
+        path: str, row: dict[str, Any], *, anchor: bool = True
+    ) -> tuple[str, str]:
+        rendered = table_row(path, row)
+        auxiliary = ""
+        if row["kind"] == "result":
+            auxiliary = (
+                "- "
+                + ref(path, row["id"])
+                + "<br>時刻: "
+                + fields(row["time"])
+                + "<br>補助情報（欠測と累積値を保持、加算なし）: "
+                + fields(row["data"]["auxiliary"])
+            )
+        if len((rendered + auxiliary).encode()) > DETAIL_BYTES:
+            # A huge individual record cannot defeat pagination. Its full value
+            # remains in the immutable envelope; omission is visible, not silent.
+            rendered = (
+                f'| <a id="record-{row["id"]}"></a>{ref(path, row["id"])}'
+                + " | 表示省略・記録本文を参照 | "
+                + prose(row["data"].get("reason", ""), 200)
+                + " | "
+                + prose(row["data"].get("state", ""))
+                + " | "
+                + link(path, event_path(row), "完全な記録本文")
+                + " |"
+            )
+            auxiliary = ""
+        if not anchor:
+            rendered = re.sub(r'<a id="record-[a-f0-9]{32}"></a>', "", rendered)
+        return rendered, auxiliary
+
+    def detail_table(path: str, selected: list[dict[str, Any]]) -> list[str]:
+        rendered = [bounded_row(path, r) for r in selected]
+        lines = [*table_header, *(r[0] for r in rendered), ""]
+        auxiliary = [r[1] for r in rendered if r[1]]
+        if auxiliary:
+            lines += [
+                "<details><summary>反映した記録と補助情報</summary>",
+                "",
+                *auxiliary,
+                "",
+                "</details>",
+                "",
+            ]
+        members = {r["id"] for r in selected}
+        for item in aggregated:
+            if item["count"] > 1 and set(item["record_ids"]) <= members:
+                lines += [
+                    f"同条件の取得・確認 {item['count']} 件（{prose(item['first_at'])} 〜 {prose(item['last_at'])}）。原記録は上表に保持。",
+                    "",
+                ]
+        return lines
+
+    for path, selected in sorted(views.items()):
+        up = (
+            str(PurePosixPath(path).parent.parent / "README.md")
+            if path != f"{ROOT}/README.md"
+            else None
+        )
+        lines = header(path, titles[path], selected, up)
+        important = [r for r in selected if r["kind"] == "decision"]
+        if important and path != f"{ROOT}/README.md":
+            lines += [
+                "## 最近の親判断",
+                "",
+                f"判断 {len(important)} 件。直近{min(RECENT, len(important))}件を表示。過去の判断は各活動の詳細へ。",
+                "",
+                *table_header,
+            ]
+            lines += [
+                bounded_row(path, r, anchor=False)[0] for r in important[-RECENT:]
+            ]
+            lines += [""]
+        if path != f"{ROOT}/README.md":
+            lines += ["直近の観測（受入の判定とは別）: " + latest(path, selected), ""]
+        children = sorted(
             p
             for p in views
             if p != path
             and PurePosixPath(p).parent.parent == PurePosixPath(path).parent
-        ]
-        if children:
-            lines += [
-                "下の階層: "
-                + " · ".join(link(path, p, titles[p]) for p in sorted(children)),
-                "",
-            ]
+            and p not in activity_groups
+        )
+        lines += catalog(
+            path, "children", "下の階層", [(p, titles[p], views[p]) for p in children]
+        )
+        activities = sorted(
+            {event_path(r).rsplit("/", 1)[0] + "/README.md" for r in selected}
+        )
+        if path not in activity_groups and path != f"{ROOT}/README.md":
+            lines += catalog(
+                path,
+                "activities",
+                "活動別の結果と判断",
+                [(p, titles[p], activity_groups[p]) for p in activities],
+            )
         if path in related_turns:
             other, label = related_turns[path]
             lines += [link(path, other, label), ""]
@@ -414,125 +750,76 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 "workerログ3ファイルはこのHEADに未収録。公開待ち・記録不足・ターン種別は未確認。",
                 "",
             ]
-        # Every non-activity level has direct links to the canonical activity.
-        activity_paths = sorted(
-            {event_path(r).rsplit("/", 1)[0] + "/README.md" for r in selected}
-        )
-        if activity_paths:
+        if path in detail_pages:
+            lines += ["## 全記録の詳細", "", *detail_table(path, selected)]
+        elif path in activity_groups:
+            count = (len(selected) + DETAIL_ROWS - 1) // DETAIL_ROWS
+            first_page = path.removesuffix("/README.md") + "-records-0001/README.md"
             lines += [
-                "活動: "
-                + " · ".join(
-                    link(path, p, f"活動 {i}") for i, p in enumerate(activity_paths, 1)
-                ),
+                "## 全記録の詳細",
+                "",
+                link(path, first_page, f"全{len(selected)}記録（{count}ページ）"),
                 "",
             ]
-        undecided = sum(
-            result_states[r["id"]]["decision"] == "undecided"
-            for r in selected
-            if r["kind"] == "result"
-        )
-        pending_plans = 0
-        for row in selected:
-            if row["kind"] == "decision":
-                for plan in row["data"]["next_actions"]:
-                    latest = latest_action(plan["id"])
-                    pending_plans += (
-                        latest is None
-                        or latest["data"]["state"] == "decided_not_executed"
-                    )
-        missing_reports = sum(
-            r["kind"] == "result"
-            and r["data"]["final_report"]["status"] == "unavailable"
-            for r in selected
-        )
-        lines += [
-            f"未判断の結果: {undecided} 件。判断済み未実行の計画: {pending_plans} 件。記録不足の最終報告: {missing_reports} 件。",
-            "",
-        ]
-        unresolved = list(
-            dict.fromkeys(
-                s
-                for r in selected
-                if r["kind"] == "decision"
-                for s in r["data"]["unresolved"]
-            )
-        )
-        if unresolved:
+        directories = sorted(set(legacy[path]))
+        if directories and path in logical_turns | set(artifact_directories):
+            for directory in directories:
+                lines += [
+                    "導入前・判断未記録: "
+                    + link(path, directory + "/instruction.md", "既存の指示")
+                    + " · "
+                    + link(path, directory + "/final.md", "既存の最終報告"),
+                    "このHEADに新形式の対応記録なし。導入時期・公開待ち・捕捉不足の区別は未確認。",
+                    "",
+                ]
+        elif directories:
             lines += [
-                "記録された未解決事項（記録時点）: "
-                + "、".join(prose(s) for s in unresolved),
-                "",
-            ]
-        groups: dict[tuple[int, str], list[dict[str, Any]]] = defaultdict(list)
-        for row in selected:
-            groups[(row["scope"]["parent"], row["scope"]["activity_key"])].append(row)
-        for index, group in enumerate(groups.values(), 1):
-            lines += [
-                f"## 活動 {index}",
-                "",
-                "| 時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠 |",
-                "| --- | --- | --- | --- | --- |",
-            ]
-            lines += [table_row(path, r) for r in group]
-            # Grouping remains lossless: every record above keeps its own anchor.
-            members = {r["id"] for r in group}
-            repeated = [
-                g
-                for g in aggregated
-                if g["count"] > 1 and set(g["record_ids"]) <= members
-            ]
-            for item in repeated:
-                lines.append(
-                    f"\n同条件の取得・確認 {item['count']} 件（{prose(item['first_at'])} 〜 {prose(item['last_at'])}）。原記録は上表に保持。"
-                )
-            lines.append("")
-        for directory in sorted(set(legacy[path])):
-            lines += [
-                "導入前・判断未記録: "
-                + link(path, directory + "/instruction.md", "既存の指示")
-                + " · "
-                + link(path, directory + "/final.md", "既存の最終報告"),
-                "このHEADに新形式の対応記録なし。導入時期・公開待ち・捕捉不足の区別は未確認。",
+                f"導入前・判断未記録: {len(directories)} ターン。下の階層で既存の指示と最終報告を参照。",
                 "",
             ]
         if path == f"{ROOT}/README.md":
-            for parent in sorted(worker_parents - set(parents)):
-                lines += [
-                    link(
-                        path,
-                        f"{ROOT}/parent-{parent}",
-                        f"親 #{parent} の既存workerログ",
-                    )
-                    + "（導入前・判断未記録）",
-                    "",
-                ]
+            worker_targets: list[tuple[str, str, list[dict[str, Any]]]] = [
+                (
+                    f"{ROOT}/parent-{p}/README.md"
+                    if p in parents
+                    else f"{ROOT}/parent-{p}",
+                    f"親 #{p} の既存workerログ"
+                    + (
+                        "（判断記録あり）" if p in parents else "（導入前・判断未記録）"
+                    ),
+                    views.get(f"{ROOT}/parent-{p}/README.md", []),
+                )
+                for p in sorted(worker_parents)
+            ]
+            lines += catalog(path, "legacy", "既存workerログを持つ親", worker_targets)
         directory = artifact_directories.get(path, path.rsplit("/", 1)[0])
         for name in ("instruction.md", "final.md", "meta.json"):
             if f"{directory}/{name}" in files:
                 lines += [link(path, f"{directory}/{name}", name), ""]
-        lines += ["<details><summary>反映した記録と補助情報</summary>", ""]
-        for row in selected:
-            lines += [
-                f"- {ref(path, row['id'])}: " + link(path, event_path(row), "正本")
-            ]
-            if row["kind"] == "result":
-                data = row["data"]
-                lines += [
-                    "  - 前回との差: " + prose(data["changes"]),
-                    "  - 時刻・補助情報（欠測と累積値を保持、加算なし）: "
-                    + prose({"time": row["time"], "auxiliary": data["auxiliary"]}),
-                ]
-        lines += ["", "</details>", ""]
-        raw = "\n".join(lines).encode("utf-8")
-        # Guard treats closing HTML tags as local paths. Strip only this
-        # renderer's fixed scaffolding; captured HTML has already been escaped.
-        checked = re.sub(
-            r'<a id="record-[a-f0-9]{32}">|</a>|<br>|</?details>|</?summary>',
-            "",
-            raw.decode("utf-8"),
+        save(path, lines)
+    for path, (owner, selected, number, count) in sorted(detail_pages.items()):
+        if path == owner:
+            continue
+        lines = header(
+            path, titles[owner] + f" / 全記録（{number} / {count}）", selected, owner
         )
-        Guard().check([path, checked])
-        generated[path] = raw
+        prefix = owner.removesuffix("/README.md")
+        if number > 1:
+            lines += [
+                link(
+                    path, prefix + f"-records-{number - 1:04d}/README.md", "前のページ"
+                ),
+                "",
+            ]
+        if number < count:
+            lines += [
+                link(
+                    path, prefix + f"-records-{number + 1:04d}/README.md", "次のページ"
+                ),
+                "",
+            ]
+        lines += detail_table(path, selected)
+        save(path, lines)
     validate_links({**files, **generated}, generated)
     return generated
 

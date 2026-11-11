@@ -142,6 +142,15 @@ def test_new_capture_keeps_frozen_preparation_and_unsafe_raw_input(
     assert (
         prepared["payload"]["record"]["data"]["summary"] == "[private identifier]-retry"
     )
+    original = store.path.read_bytes()
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            journal,
+            "render",
+            lambda *_: pytest.fail("preview re-rendered a frozen envelope"),
+        )
+        assert store.preview_publication()["payloads"] == [prepared["payload"]]
+    assert store.path.read_bytes() == original
     prefix = store.read()["entries"]
     second = result()
     second["data"]["summary"] = "ghp_" + "x" * 30

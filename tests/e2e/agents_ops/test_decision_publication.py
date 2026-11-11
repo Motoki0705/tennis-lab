@@ -13,6 +13,7 @@ import pytest
 
 from tests.support.agents_ops.decision_logs import (
     PublicationError,
+    decision,
     history,
     result,
     schema,
@@ -296,14 +297,26 @@ def test_existing_worker_files_are_immutable_and_legacy_turns_have_navigation(
     navigation.validate_links(saved, navigation.generate(saved))
 
 
-def test_dry_run_is_read_only_and_does_not_prepare_or_publish(env: DecisionEnv) -> None:
-    log = env.capture(prepare=True)
+@pytest.mark.parametrize("prepared", [False, True])
+def test_dry_run_is_read_only_and_does_not_prepare_or_publish(
+    env: DecisionEnv, prepared: bool
+) -> None:
+    log = env.capture(prepare=prepared)
     publisher = env.decision_publisher(log)
     original = log.path.read_bytes()
     refs = git(env.root, "show-ref")
     preview = publisher.publish(dry_run=True)
-    assert preview["dry_run"] and preview["prepared_records"] == 6
+    assert preview["dry_run"] and preview["prepared_records"] == (6 if prepared else 0)
+    assert preview["preview_records"] == 6 and preview["preview_blocked"] == []
     assert preview["generated_readmes"] == 6
+    assert (
+        "Reuse the code check"
+        in preview["preview_readmes"][".agents/logs/parents/parent-1/README.md"]
+    )
+    assert all(
+        len(raw.encode()) < navigation.PAGE_BYTES
+        for raw in preview["preview_readmes"].values()
+    )
     assert not publisher.path.exists() and log.path.read_bytes() == original
     assert git(env.root, "show-ref") == refs and env.github.calls == []
 
@@ -369,11 +382,18 @@ def test_blocked_projection_does_not_hide_safe_records_or_start_an_ai(
     good = result()
     bad = result()
     bad["data"]["summary"] = "ghp_" + "x" * 30
-    log = env.capture([good, bad])
+    dependent = decision([bad])
+    log = env.capture([good, bad, dependent])
+    original = log.path.read_bytes()
+    preview = env.decision_publisher(log).publish(dry_run=True)
+    assert preview["preview_records"] == 1 and preview["blocked"] == 2
+    assert {r["id"] for r in preview["preview_blocked"]} == {bad["id"], dependent["id"]}
+    assert "ghp_" not in json.dumps(preview)
+    assert log.path.read_bytes() == original and env.github.calls == []
     value = env.decision_publisher(log).publish()
     assert (
         value["state"] == "merged"
-        and value["blocked"] == 1
+        and value["blocked"] == 2
         and not value["saved_to_main"]
     ), value
     assert len(navigation.records(env.upstream_files())) == 1
@@ -619,3 +639,67 @@ def test_late_worker_files_refresh_navigation_without_new_capture_records(
     )
     assert env.decision_publisher(log).publish()["saved_to_main"]
     assert env.github.calls == ["create", "merge", "create", "merge"]
+
+
+def test_renderer_upgrade_uses_the_same_readme_only_publication_exception(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log = env.capture()
+
+    def previous_renderer(files: dict[str, bytes]) -> dict[str, bytes]:
+        generated: dict[str, bytes] = navigation.generate(files)
+        generated[".agents/logs/parents/README.md"] += "\n旧版の派生表示。\n".encode()
+        return generated
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publication, "generate", previous_renderer)
+        patch.setattr(publication.policy, "generate", previous_renderer)
+        assert env.decision_publisher(log).publish()["saved_to_main"]
+    frozen = log.path.read_bytes()
+    old_events = {
+        name: raw for name, raw in env.upstream_files().items() if "/event-" in name
+    }
+    stale = env.decision_publisher(log).publish()
+    assert stale["stage"] == "readme_refresh_required"
+    repaired = env.decision_publisher(log).publish(retry=True)
+    assert repaired["saved_to_main"], repaired
+    saved = env.upstream_files()
+    assert all(saved[name] == raw for name, raw in old_events.items())
+    assert all(saved[name] == raw for name, raw in navigation.generate(saved).items())
+    assert log.path.read_bytes() == frozen
+    repair = env.github.rows[max(env.github.rows)]
+    assert all(
+        name.endswith("/README.md")
+        for name in (r["filename"] for r in env.github.files(repair["number"]))
+    )
+
+
+def test_renderer_upgrade_does_not_excuse_an_unconfirmed_publication(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    log = env.capture()
+    publisher = env.decision_publisher(log)
+    original_note = publisher.note
+
+    def previous_renderer(files: dict[str, bytes]) -> dict[str, bytes]:
+        generated: dict[str, bytes] = navigation.generate(files)
+        generated[".agents/logs/parents/README.md"] += b"\nEarlier derived layout.\n"
+        return generated
+
+    def interrupted_note(batch: Any, status: str, **kwargs: Any) -> None:
+        if status == "published":
+            raise Crash()
+        original_note(batch, status, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(publication, "generate", previous_renderer)
+        patch.setattr(publication.policy, "generate", previous_renderer)
+        patch.setattr(publisher, "note", interrupted_note)
+        with pytest.raises(Crash):
+            publisher.publish()
+    assert not any(r["publication_status"] == "published" for r in log.status())
+    refused = env.decision_publisher(log).publish(retry=True)
+    assert (
+        not refused["saved_to_main"] and refused["error"] == "prepared_content_changed"
+    )
+    assert env.github.calls == ["create", "merge"]

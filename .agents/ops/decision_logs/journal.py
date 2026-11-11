@@ -11,7 +11,7 @@ import copy
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from worker_logs.journal import (
     PUBLIC_ERRORS,
@@ -64,14 +64,17 @@ def transform_guard(value: Any, repo: str) -> Guard:
 
 def preparation_sha(entry: dict[str, Any]) -> str:
     """Integrity of the fixed envelope and conditions, without re-rendering."""
-    return sha(
-        json_bytes(
-            {
-                key: value
-                for key, value in entry.items()
-                if key not in {"sequence", "snapshot_sha256"}
-            }
-        )
+    return cast(
+        str,
+        sha(
+            json_bytes(
+                {
+                    key: value
+                    for key, value in entry.items()
+                    if key not in {"sequence", "snapshot_sha256"}
+                }
+            )
+        ),
     )
 
 
@@ -491,6 +494,45 @@ class Journal:
     def public_records(self) -> list[dict[str, Any]]:
         """Safe records for graph/grouping consumers; publication uses payloads."""
         return [p["record"] for p in self.public_payloads()]
+
+    def preview_publication(self, *, retry: bool = False) -> dict[str, Any]:
+        """Read-only transformation; never fixes an envelope or preparation time.
+
+        Ready envelopes retain their frozen bytes. Unprepared captures use the
+        same renderer and current guard as prepare(), in dependency order. A
+        blocked preparation is reconsidered only with the explicit retry flag.
+        This is a snapshot preview, not a promise about a later publication.
+        """
+        row = self.read()
+        preparations = self._preparations(row)
+        checker = self._guard(row)
+        payloads = {}
+        blocked = []
+        for record_id, capture in self._captures(row).items():
+            previous = preparations.get(record_id)
+            try:
+                if previous and previous["status"] == "blocked" and not retry:
+                    raise PublicationError(previous["error"])
+                require(
+                    all(ref in payloads for ref in references(capture["record"])),
+                    "invalid_log_reference",
+                )
+                payload = (
+                    validate_public(previous["payload"], checker)
+                    if previous and previous["status"] == "ready"
+                    else render(capture["record"], self._guard(row, capture["private"]))
+                )
+                payloads[record_id] = payload
+            except PublicationError as error:
+                blocked.append({"id": record_id, "error": str(error)})
+        validate_graph([p["record"] for p in payloads.values()])
+        return {
+            "payloads": list(payloads.values()),
+            "blocked": blocked,
+            "prepared_records": sum(
+                p["status"] == "ready" for p in preparations.values()
+            ),
+        }
 
     def status(self) -> list[dict[str, Any]]:
         row = self.read()
