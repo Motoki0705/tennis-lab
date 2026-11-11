@@ -9,6 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd()))
 from protocol import REPO, ROOT, read, write
+from serial import publish_index
 
 p = argparse.ArgumentParser()
 p.add_argument("mode", choices=("smoke", "measure", "train"))
@@ -94,6 +95,9 @@ record = dict(
     queue=str(REPO / ".training_queue"),
 )
 write(ROOT / "queue" / f"{a.mode}-attempt-{a.attempt}.json", record)
+publish_index(ROOT / "queue" / f"{a.mode}-attempt-{a.attempt}.json", record)
+if a.mode in ("measure", "train"):
+    publish_index(ROOT / "execution.json", record)
 status = subprocess.run(
     ["bash", str(queue), "status"], env=env, check=True, capture_output=True, text=True
 )

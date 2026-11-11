@@ -39,6 +39,7 @@ def main():
         CONFIG.chmod(0o600)
     for name in (
         "plan.json",
+        "execution.json",
         "level-decision.json",
         "preparation-receipt.json",
         "smoke/COMPLETED.json",

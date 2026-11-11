@@ -72,7 +72,7 @@ It excludes input decoding/augmentation and makes no accuracy claim.
 ## Resume after VM loss
 
 Only resume after the old VM is gone. Get the execution commit from the durable
-`serial-status.json` (or the plan before main startup), check out that pushed
+`serial-status.json` (or `execution.json` before main startup), check out that pushed
 version in the same worktree, mount Drive and recreate the compatible venv.
 The Python/Torch/decoder/native ABI must match the recorded environment; do not
 silently downgrade, use CPU, change shape, switch to weights-only or drop state.
@@ -86,6 +86,10 @@ export TENNIS_LAB_DINO_EXTENSION=/content/tennis-lab/outputs/ball_detection/trai
 .venv/bin/python "$RUN/verify_msda.py"
 .venv/bin/python "$RUN/enqueue.py" train
 ```
+
+After measurement, `.venv/bin/python "$RUN/summarize.py" --publish` produces the
+aggregate tables/figure and verifies a second immutable Drive snapshot. This
+operation is CPU-only. Raw samples and full traces stay on Drive.
 
 The serial command restores each latest verified snapshot, skips durably
 completed stages, resumes model/AdamW/RNG/sampler state, and advances only after
