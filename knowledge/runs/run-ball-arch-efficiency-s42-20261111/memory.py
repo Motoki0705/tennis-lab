@@ -18,12 +18,13 @@ from src.tasks.ball_detection.model_io.mdd_temporal import build_temporal_model
 from src.tasks.ball_detection.training.runtime.compilation import compile_coordinate_model, coordinate_compile_scope, coordinate_compilation_report
 
 p=argparse.ArgumentParser();p.add_argument('--case',choices=['T1','T2'],required=True);p.add_argument('--levels',type=int,choices=[3,4],required=True)
+p.add_argument('--chunk',type=int,default=4)
 a=p.parse_args()
 levels=(8,16,32,64) if a.levels==4 else (16,32,64)
-path=ROOT/'qualification'/f'memory-{a.case}-{a.levels}.json'
+path=ROOT/'qualification'/f'memory-{a.case}-{a.levels}-chunk{a.chunk}.json'
 result=dict(case=a.case,levels=levels,shape=[1,64,3,720,1280],microbatches=2,input_frames_per_update=128,
             precision='bf16 with complete official MSDA FP32',cnn_frozen=False,activation_checkpointing=False,
-            msda_chunk_size=4,compile_mode='default',commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+            msda_chunk_size=a.chunk,compile_mode='default',commit=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
             status='running',samples=[])
 write(path,result)
 phase='initialization'
@@ -31,7 +32,7 @@ try:
     if not read(ROOT/'data-verified.json')['complete']: raise RuntimeError('Fixed data must be verified first')
     if torch.cuda.get_device_name()!='NVIDIA L4': raise RuntimeError('L4 required')
     torch.set_num_threads(2);torch.manual_seed(42)
-    model=build_temporal_model(model_config(a.case,levels=levels)).cuda().train()
+    model=build_temporal_model(model_config(a.case,levels=levels,chunk=a.chunk)).cuda().train()
     compile_coordinate_model(model,mode='default',fullgraph=False)
     optimizer=torch.optim.AdamW(model.parameters(),lr=7.360330616529733e-5,weight_decay=.01)
     rgb=torch.randint(256,(1,64,3,720,1280),device='cuda',dtype=torch.uint8)
