@@ -221,8 +221,27 @@ def benchmark(
             record_shapes=True,
             profile_memory=True,
         ) as profile:
-            update()
+            with torch.profiler.record_function("benchmark_inference"):
+                inference()
+            with torch.profiler.record_function("benchmark_training_update"):
+                update()
         profile.export_chrome_trace(str(profiler_path))
+        operators = [
+            dict(
+                name=event.key,
+                count=event.count,
+                self_cpu_us=event.self_cpu_time_total,
+                self_device_us=event.self_device_time_total,
+                device_us=event.device_time_total,
+                input_shapes=event.input_shapes,
+            )
+            for event in profile.key_averages(group_by_input_shape=True)
+        ]
+        import json
+
+        profiler_path.with_name(profiler_path.stem + "-ops.json").write_text(
+            json.dumps(operators, indent=2) + "\n"
+        )
         (profiler_path.parent / (profiler_path.stem + "-ops.txt")).write_text(
             profile.key_averages(group_by_input_shape=True).table(
                 sort_by="self_cuda_time_total", row_limit=150
