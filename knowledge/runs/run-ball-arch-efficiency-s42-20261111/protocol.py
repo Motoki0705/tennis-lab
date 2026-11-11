@@ -20,6 +20,7 @@ REMOTE = "outputs/ball_detection/train/arch_efficiency/s42-20261111"
 DRIVE = Path("/content/drive/MyDrive/tennis_lab")
 CONFIG = Path("/tmp/ball-drive-mount.conf")
 PREPARED = INPUTS / "capacity12k/prepared"
+CNN_CASES = ("C0", "C1", "C2", "C3")
 
 
 def read(path):
@@ -35,13 +36,15 @@ def write(path, value):
 
 
 def model_config(case, *, levels=(8, 16, 32, 64), chunk=4):
-    name = "common-dpt-T32" if case.startswith("C") else "query-d512-l6-T64"
+    if case not in (*CNN_CASES, "CA", "T1", "T2"):
+        raise ValueError("Unknown fixed architecture condition: " + case)
+    name = "common-dpt-T32" if case in CNN_CASES else "query-d512-l6-T64"
     raw = dict(read(INPUTS / name / "run.json")["recipe"]["model"])
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
         raw[key] = tuple(raw[key])
     if case == "C0":
         return MDDHeatmapConfig(**raw)
-    if case.startswith("C"):
+    if case in CNN_CASES:
         kinds = {
             "C1": ("ib",) * 5,
             "C2": ("convnext", "convnext", "ffn", "ffn", "ffn"),
@@ -69,7 +72,7 @@ def model_config(case, *, levels=(8, 16, 32, 64), chunk=4):
 
 
 def budget(case, *, stage=0, smoke=False):
-    if case.startswith("C"):
+    if case in CNN_CASES:
         raw = read(INPUTS / "common-dpt-T32/run.json")["recipe"]["budget"]
     else:
         source = read(INPUTS / "capacity12k/plan.json")
@@ -83,7 +86,7 @@ def budget(case, *, stage=0, smoke=False):
 
 
 def recipe(case):
-    name = "common-dpt-T32" if case.startswith("C") else "query-d512-l6-T64"
+    name = "common-dpt-T32" if case in CNN_CASES else "query-d512-l6-T64"
     return read(INPUTS / name / "run.json")["recipe"]
 
 
