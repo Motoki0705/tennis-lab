@@ -132,12 +132,18 @@ def benchmark(
 
     def inference() -> dict[str, Any]:
         module.eval()
+        torch.cuda.synchronize()
+        torch.cuda.reset_peak_memory_stats()
         with (
             torch.inference_mode(),
             coordinate_compile_scope(module),
             torch.autocast("cuda", dtype=torch.bfloat16),
         ):
             _, result = _timed(lambda: module(*arguments))
+        result.update(
+            peak_allocated=torch.cuda.max_memory_allocated(),
+            peak_reserved=torch.cuda.max_memory_reserved(),
+        )
         return result
 
     def update() -> dict[str, Any]:
@@ -203,8 +209,8 @@ def benchmark(
     for _ in range(repetitions):
         raw["inference"].append(inference())
     inference_peak = dict(
-        allocated=torch.cuda.max_memory_allocated(),
-        reserved=torch.cuda.max_memory_reserved(),
+        allocated=max(row["peak_allocated"] for row in raw["inference"]),
+        reserved=max(row["peak_reserved"] for row in raw["inference"]),
     )
     cold["training"] = update()
     for _ in range(warmup):
