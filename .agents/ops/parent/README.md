@@ -659,7 +659,7 @@ requestやstate・GitHubを書き換えず、agentを起動しない。担当セ
 [reviewの照合表示契約](../review/README.md#既存証拠の照合表示) を参照する。
 意味の判断と次の行動は親が記録し、追加レビューが必要なPRだけを以下の入口へ渡す。
 
-## レビュー要求契約（schema version 2、version 1読取互換）
+## レビュー要求契約（schema version 3、version 1と2の読取互換）
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
@@ -682,7 +682,7 @@ PR未取得・重複・closed・draft・fork・親と無関係をエラーにす
 GitHub取得・git差分取得後にPR集合とhead/baseを再取得し、途中更新を拒否する。
 不足オブジェクトだけ `origin` からSHAをfetchする。
 
-prepareのJSON（追加キーなし）:
+prepareはversion 3を作成する。従来のversion 2のJSONは次の形で、読取時に書き換えない:
 
 ```json
 {
@@ -714,6 +714,35 @@ prepareのJSON（追加キーなし）:
 ```bash
 git diff --no-ext-diff --no-textconv --binary --full-index --no-renames --no-color MERGE_BASE HEAD --
 ```
+
+version 3は上のversion 2へ`review_selection`を追加してdigestに含める。
+選択JSONの定義は[共通ランナー](../lib/README.md#レビュー専用の選択入力)を参照。
+既定fixedでは引数を省略すると設定の固定値を使用する。明示指定は固定値と一致する場合だけ許可する。
+selectでは`--review-model`と`--model-reason-file`を必須とし、必要なら`--review-effort`も指定する。
+通常確認・高リスク確認などの意味判断は親が行う。CLIは行数やパスからモデルを決めない。
+
+これらの引数は`review-prepare`と`review-request --prs`の両方で使える。
+`review-request --run-id`は保存選択を使用し、指定を加えた場合も完全一致を要求する。
+理由・モデル・選択元の変更は、新しい理由付きprepareで別runにする。prepare済みmanifestを変更しない。
+設定の正本は[lib/agents.conf](../lib/agents.conf)で、明示設定の検証には`--review-config-file FILE`を使える。
+実行側の`parent_review.py run`にも同じ内容の設定ファイルを指定する。
+
+人間の指定を親が確認した場合は`--review-model-source human_instruction`と`--human-model-reference`を使う。
+別の親候補との矛盾も検査する場合は`--human-review-model`、必要なら`--human-review-effort`で拘束を渡す。
+人間の発言であることと元指示の意味は親が確認し、CLIは拘束との矛盾・許可外の組を拒否する。
+人間指定がfixedと矛盾しても固定モデルへの振替は行わない。
+
+保存finalの復旧を指示するときは、prepare時に`--recover-source-run ID`で元runを固定する。
+この選択は`{kind:recover,source_run,source_request_sha256}`となり、新しいモデル選択とは併用しない。
+復旧要求を`run`へ渡すことも拒否する。実効モデルはrecoverが検証する元runの値である。
+別モデルの追加レビューには`--handoff-from-run ID --handoff-scope-file FILE`を使う。
+元request/resultのdigestとPRの対応を固定し、元run・未解決事項・追加確認範囲をcontextへ渡す。
+追加レビューの理由は従来の`--reason-file`、モデルを選ぶ理由は`--model-reason-file`に分ける。
+引継ぎはcoverageの合成でも旧指摘の解消でもない。部分確認だけならnot_reviewedのままにする。
+
+旧version 1/2には要求時の選択を補作しない。既存証拠の復旧・公開再開・gateは旧契約として検証する。
+未起動の旧requestは従来のfixed設定でだけ起動でき、selectや固定値変更時は新版requestを要求する。
+手動親と自律親は同じ入口・検証を使う。選択元は判断記録の既存の3分類へ接続する。
 
 親コメントの `event:review, state:targets_fixed` にrun ID・requestのcanonical JSON SHA-256を記録し、
 本文のJSONコードブロックにmanifest全体を載せる。この時点ではレビュー未指示。

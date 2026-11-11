@@ -170,6 +170,18 @@ class GateSeed:
         def relocated(path: Path) -> Path:
             return root / path.relative_to(original)
 
+        # Restoring the immutable seed relocates absolute runtime paths. Bind
+        # that freshly restored proof before any case injects its own changes.
+        directory = relocated(review.run_dir)
+        execution_path = directory / "execution.json"
+        execution = json.loads(execution_path.read_text())
+        if "stages" in execution:
+            runtime = json.loads((directory / "agent-runtime/result.json").read_text())
+            execution["stages"]["agent"]["runtime_sha256"] = (
+                self.template.policy.digest(runtime)
+            )
+            execution_path.write_text(json.dumps(execution))
+
         return GateEnv(
             replace(
                 review,

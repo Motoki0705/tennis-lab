@@ -23,6 +23,8 @@
    指定省略のSol/max、必要時のAstra/maxを使い、既存workerの修正は終了照合後に `continue-worker` で同じsessionへ戻す。
    差分・受入条件・テスト・PRを親が確認してrecord-resultを残す。停止した作業と依存作業だけを保留し、独立作業を進める。
    親がPR群を固定して既存の親単位レビューを明示要求し、指摘修正・通常検証とmerge gateを通す。
+   レビュー用モデルの選択・理由・人間指定・復旧元も開発workflowの共通review-requestへ渡す。
+   dispatcherの実装子用モデル選択とは別に扱い、設定不整合や利用不能で別モデルへ振り替えない。
    自動再レビュー・別session・無制限の修正で停止を回避しない。
    最後に `workflow-report --spec <JSONファイル>` で理由・再開条件・検証証拠をnoteへ残し、その出力を最終文にする。
    completedは実merge/close・gateの試行記録・現在の根拠/要件・親の確認と子の終了を再検査した場合だけ返る。

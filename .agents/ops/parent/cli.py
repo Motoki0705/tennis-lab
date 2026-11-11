@@ -224,6 +224,9 @@ def parser() -> argparse.ArgumentParser:
     review = commands.add_parser("review-prepare")
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
+    from .review_choice import add_arguments as review_choice_arguments
+
+    review_choice_arguments(review)
     inspection = commands.add_parser("review-inspect")
     inspection.add_argument("--prs", type=int, nargs="+", required=True)
     request = commands.add_parser("review-request")
@@ -233,6 +236,7 @@ def parser() -> argparse.ArgumentParser:
     request.add_argument("--evidence-file")
     request.add_argument("--reason-file")
     request.add_argument("--instruction-file", required=True)
+    review_choice_arguments(request)
     state = commands.add_parser("review-state")
     state.add_argument("--run-id", required=True)
     state.add_argument(
@@ -604,12 +608,18 @@ def _main(argv: list[str] | None = None) -> int:
                     number(args.child), read_text(args.evidence_file)
                 )
             elif command == "review-prepare":
+                from .review_choice import selection as review_choice
+
                 result = prepare(
                     session,
                     [number(n) for n in args.prs],
                     read_text(args.reason_file) if args.reason_file else None,
+                    review_selection=review_choice(session, args),
                 )
             elif command == "review-request":
+                from .review_choice import selection as review_choice
+
+                chosen_review = review_choice(session, args)
                 if args.prs:
                     from .review_handoff import request as handoff_review
 
@@ -623,6 +633,7 @@ def _main(argv: list[str] | None = None) -> int:
                         read_text(args.instruction_file),
                         read_text(args.evidence_file),
                         read_text(args.reason_file) if args.reason_file else None,
+                        review_selection=chosen_review,
                     )
                 else:
                     result = transition(
@@ -630,6 +641,7 @@ def _main(argv: list[str] | None = None) -> int:
                         args.run_id,
                         "instructed",
                         read_text(args.instruction_file),
+                        review_selection=chosen_review,
                     )
             else:
                 result = transition(

@@ -137,6 +137,8 @@ def begin(args: Any, request: dict[str, Any]) -> Operation:
     )
     with op.transaction():
         op.row["review_run_id"] = request["review_run_id"]
+        if request.get("review_selection", {}).get("kind") == "run":
+            op.row["model_specified_by"] = request["review_selection"]["specified_by"]
         op.row["review_execution"] = operation == "review"
         op._save()
     return op

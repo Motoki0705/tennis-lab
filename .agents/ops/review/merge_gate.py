@@ -248,6 +248,9 @@ def load_evidence(
     execution = read_json(run_dir / "execution.json")
     if result["request"] != request or read_json(run_dir / "request.json") != request:
         raise ValueError("local review result/request mismatch")
+    from review_recovery import verify_result_runtime
+
+    verify_result_runtime(run_dir, result, execution)
     auth = authorization(session, request)
     if result["kind"] == "adoption":
         source = next(

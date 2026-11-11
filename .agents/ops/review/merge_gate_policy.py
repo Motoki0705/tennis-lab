@@ -136,6 +136,12 @@ def publication_errors(
     validate_result(dict(result))
     stages = execution_stages(execution)
     errors = []
+    from lib.review_settings import verify_execution
+
+    try:
+        verify_execution(dict(result["request"]), dict(execution))
+    except ValueError:
+        errors.append("review_selection_mismatch")
     if (
         execution.get("status") != "published"
         or execution.get("request_sha256") != result["request_sha256"]

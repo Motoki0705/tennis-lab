@@ -10,6 +10,7 @@ from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Any
 
+from lib.review_settings import validate_selection, validate_summary
 from parent.execution import require_requirement_targets, validate_authorization
 from parent.policy import digest, nonempty, number, object_value
 from review_policy import parse_finding
@@ -77,13 +78,17 @@ def snapshots(value: Any) -> list[dict[str, Any]]:
 
 def request_manifest(value: Any, *, instructed: bool = True) -> dict[str, Any]:
     version = object_value(value).get("schema_version")
-    if type(version) is not int or version not in {1, 2}:
+    if type(version) is not int or version not in {1, 2, 3}:
         raise ValueError("unknown review-request schema")
     keys = REQUEST_KEYS | ({"review_state"} if instructed else set())
-    if version == 2:
+    if version in {2, 3}:
         keys |= {"authorization", "requirements"}
+    if version == 3:
+        keys.add("review_selection")
     data = exact(value, keys)
-    if version == 2:
+    if version == 3:
+        validate_selection(data["review_selection"])
+    if version in {2, 3}:
         validate_authorization(data["authorization"])
         requirements = object_value(data["requirements"])
         if str(data["parent_issue"]) not in requirements:
@@ -317,6 +322,7 @@ def superseding_reviews(
 
 def validate_result(value: Any) -> dict[str, Any]:
     adoption = object_value(value).get("kind") == "adoption"
+    modern = object_value(object_value(value).get("request")).get("schema_version") == 3
     data = exact(
         value,
         {
@@ -337,6 +343,7 @@ def validate_result(value: Any) -> dict[str, Any]:
             "cross_findings",
             "prs",
         }
+        | ({"runtime_settings"} if modern else set())
         | (
             {"mode", "source_run", "reason", "agent_invocations", "validation"}
             if adoption
@@ -344,6 +351,23 @@ def validate_result(value: Any) -> dict[str, Any]:
         ),
     )
     request = request_manifest(data["request"], instructed=False)
+    if modern:
+        selection = request["review_selection"]
+        if adoption != (selection["kind"] == "recover"):
+            raise ValueError("review selection kind/result mismatch")
+        if adoption and (
+            selection["source_run"] != data["source_run"]
+            or selection["source_request_sha256"]
+            != object_value(data["validation"]).get("source_request_sha256")
+        ):
+            raise ValueError("adoption source differs from frozen request")
+        if data["runtime_settings"] is None:
+            if data["status"] == "succeeded":
+                raise ValueError("successful review requires effective settings")
+        else:
+            summary = validate_summary(data["runtime_settings"])
+            if not adoption and summary["selected"] != selection["selected"]:
+                raise ValueError("public runtime selection differs from request")
     if (
         type(data["schema_version"]) is not int
         or data["schema_version"] != 1

@@ -3,6 +3,8 @@ tennis-labの親issue #$parent の対象PRを、run $run_id として正式に�
 
 固定対象: $targets
 必要な情報は自ら取得してください。context.jsonと各PRのcheckout・diffは固定資料です。
+context.jsonにreview_handoffがあれば、元runの指摘・未確認事項と親の追加確認範囲を照合してください。
+引継ぎの参照だけでcoverageを継承せず、今回の結果としてPR単位の確認を引き受けてください。部分的な確認しかできないPRはnot_reviewedにしてください。
 review MCPの範囲取得で、固定commitのコード・履歴と、GitHubのissue・PR・コメント・CIログを調べてください。
 疑いがあれば、許可された既存CPUテストを隔離実行して再現・反証してください。
 

@@ -12,7 +12,11 @@ from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_parent_session import (
     single_review_env as single_review_env,
 )
-from tests.e2e.agents_ops.test_review_recovery import recover, recovery_request
+from tests.e2e.agents_ops.test_review_recovery import (
+    next_request,
+    recover,
+    recovery_request,
+)
 
 
 def files(directory: Path) -> dict[str, bytes]:
@@ -248,7 +252,7 @@ def test_inspect_shows_latest_failure_candidate_and_recovery_instead_of_old_appr
 ) -> None:
     r = single_review_env
     r.run()
-    b = recovery_request(r)
+    b = next_request(r)
     response, pending = inspect(r, 100)
     assert response.returncode == 0
     assert pending["prs"][0]["latest_request"] == b.request["review_run_id"]

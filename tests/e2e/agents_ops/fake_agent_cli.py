@@ -20,6 +20,9 @@ def emit(value: dict[str, Any]) -> None:
 
 def main() -> None:
     args = sys.argv[1:]
+    if os.environ.get("FAKE_INVOCATIONS"):
+        with Path(os.environ["FAKE_INVOCATIONS"]).open("a") as calls:
+            calls.write(json.dumps(args) + "\n")
     Path(os.environ["FAKE_ARGS"]).write_text("\n".join(args))
     Path(os.environ["FAKE_CWD"]).write_text(str(Path.cwd()))
     if os.environ.get("FAKE_ENV"):
@@ -36,6 +39,9 @@ def main() -> None:
         )
     agent = Path(sys.argv[0]).name
     scenario = os.environ.get("FAKE_SCENARIO", "success")
+    if scenario == "model_unavailable":
+        print("selected model is not available", file=sys.stderr)
+        raise SystemExit(7)
     if agent == "claude" and "--json-schema" in args:
         schema = json.loads(args[args.index("--json-schema") + 1])
         if (
