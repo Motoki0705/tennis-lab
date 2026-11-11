@@ -40,11 +40,12 @@ def capture_records(r: ReviewEnv) -> list[dict[str, Any]]:
     return [e["record"] for e in value["records"]]
 
 
-def recovery_request(r: ReviewEnv) -> ReviewEnv:
+def next_request(r: ReviewEnv, *, source_run: str | None = None) -> ReviewEnv:
     p = r.p
     manifest = json.loads(
         p.cli(
             "review-prepare",
+            *(["--recover-source-run", source_run] if source_run is not None else []),
             "--prs",
             *[str(pr["number"]) for pr in r.request["prs"]],
             "--reason-file",
@@ -63,6 +64,10 @@ def recovery_request(r: ReviewEnv) -> ReviewEnv:
     path = p.root / "recovery-request.json"
     path.write_text(json.dumps(request))
     return replace(r, request=request, request_path=path)
+
+
+def recovery_request(r: ReviewEnv) -> ReviewEnv:
+    return next_request(r, source_run=r.request["review_run_id"])
 
 
 def recover(r: ReviewEnv, adopted: ReviewEnv, *, ok: bool = True) -> Any:
@@ -499,6 +504,20 @@ def test_adoption_gate_checks_real_source_publication_and_current_ci(
             request=result["request"],
             request_sha256=result["request_sha256"],
         )
+        failed.update(
+            {
+                k: result[k]
+                for k in (
+                    "kind",
+                    "mode",
+                    "source_run",
+                    "reason",
+                    "agent_invocations",
+                    "validation",
+                    "runtime_settings",
+                )
+            }
+        )
         g.policy.validate_result(failed)
         state["comments"]["1"].append(
             {
@@ -584,7 +603,7 @@ def test_legacy_run_without_stages_or_evidence_waits_can_be_recovered(
 
 
 def newer_findings(r: ReviewEnv) -> ReviewEnv:
-    newer = recovery_request(r)
+    newer = next_request(r)
     output = json.loads(newer.output.read_text())
     output["verdict"] = "request_changes"
     output["prs"][0]["findings"] = [
@@ -636,7 +655,7 @@ def test_recover_cannot_skip_later_findings(
     b = newer_findings(a)
     c = recovery_request(b)
     rejected = recover(a, c, ok=False)
-    assert rejected.returncode == 2 and "superseded" in rejected.stderr
+    assert rejected.returncode == 2 and "source differs from frozen" in rejected.stderr
     assert not (c.run_dir / "result.json").exists()
     # The latest source retains B's major, including through an adoption.
     result = json.loads(recover(b, c).stdout)["result"]
@@ -658,7 +677,7 @@ def test_gate_and_resume_reject_legacy_laundered_adoption(
     a = single_review_env
     a.run(ok=False, extra={"REVIEW_AGENT_FINAL_EXIT": "3"})
     b = newer_findings(a)
-    c = recovery_request(b)
+    c = recovery_request(a)
     registry_path = a.run_dir.parents[1] / "registry.json"
     original = registry_path.read_bytes()
     registry = json.loads(original)

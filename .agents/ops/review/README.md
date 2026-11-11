@@ -2,7 +2,7 @@
 
 親が確定・指示したPR群を、Codexの実行1回で統合レビューする。
 PR open/push/CI完了・時間経過から起動するpoll、hook、timerはない。
-入力の正本は [parentのreview-request契約](../parent/README.md#レビュー要求契約schema-version-2version-1読取互換)。
+入力の正本は [parentのreview-request契約](../parent/README.md#レビュー要求契約schema-version-3version-1と2の読取互換)。
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
 review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
@@ -46,7 +46,7 @@ review・取得・公開・復旧・明示確認とmerge gateの観測は
 .venv/bin/python .agents/ops/review/parent_review.py close-interrupted \
   --run parent-1216-32桁hex --reason-file tmp/interruption-reason.txt
 
-# 新しい理由でparent review-prepare → review-requestしたJSONを使う（AIは起動しない）
+# parent review-prepare --recover-source-run 元run → review-requestしたJSONを使う（AIは起動しない）
 .venv/bin/python .agents/ops/review/parent_review.py recover \
   --request tmp/recovery-request.json --source-run parent-1216-元runの32桁hex \
   --reason-file tmp/recovery-reason.txt
@@ -62,6 +62,7 @@ review・取得・公開・復旧・明示確認とmerge gateの観測は
 指摘のpath以外に必要な回帰テスト・関連ファイルも明示し、レビューheadから現在headまでの実変更パス（renameの旧/新パスを含む）と完全一致させる。
 未記載パス・理由の欠落・旧3キー形式は公開前に拒否する。指摘のpathがnullでも、親による明示確認があれば同じ契約を使える。
 CI・テストの実行と証拠の確認は親の責任。このコマンドはその確認を記録し、修正差分は実gitから取得する。
+run全体がfailed/incompleteでも、当該PRがreviewedなら同じruntime証拠検証を通して確認できる。
 resolve出力のcoverageは当該PRの修正確認に関する参考判定。他PRの最新状態は取得しないため、
 gateは必ず全対象の最新スナップショットを別途取得して判定する。
 `--fixed-head` は現在のPR headと一致し、branchは元の対象と一致する必要がある。
@@ -95,7 +96,7 @@ lock fileはunlinkしない。例外・プロセス終了でflockが解放され
 
 ### 明示要求の検査
 
-1. version=2（旧version=1も読取可）の要求を厳密に検査する。prepareだけのJSONは拒否する。
+1. version=3（旧version=1/2も読取可）の要求を厳密に検査する。prepareだけのJSONは拒否する。
    ローカルregistryのactive担当、環境由来ID、openな親、有効な実行根拠、保存済みrun、
    同じrun ID/request digestの公開指示を照合する。
    現在の担当権限と有効な実行根拠を確認する。過去のrequest・実行の担当は来歴として保持し、
@@ -118,7 +119,9 @@ lock fileはunlinkしない。例外・プロセス終了でflockが解放され
 既存の指示コメント分類で認識される運用表示は `excluded_records` にIDを分ける。
 過去runの観測を後から補完・書換えしない。
 5. `agent_exec.sh --agent codex --profile review --mode read-only` を**1回だけ**呼ぶ。
-   model/effort/service tierは [`../lib/agents.conf`](../lib/agents.conf) の `REVIEW_CODEX_*`。
+   version 3のmodel/effort/service tier・理由・選択元はrequestのreview_selectionに固定済み。
+   起動前に [`../lib/agents.conf`](../lib/agents.conf) のreview方針・許可された組と照合し、runnerへ専用入力で渡す。
+   executionとruntimeの選択値、実効model・effortの一致を共通部品で検証する。tier未取得は理由付きで保持する。
    CLIイベント・実効設定・使用量は `agent-runtime/` に保存する（[共通ランナー契約](../lib/README.md)）。
    agentは専用プロセスグループで起動し、timeout/異常終了時は子孫も停止する。
    プロンプトは親の目的・親番号・run ID・固定値・資料とツールの入口だけを含む。
@@ -216,7 +219,35 @@ final・候補・結果・公開コメントは保持し、正式なfailed結果
 追加AIレビューは `parent review-prepare --reason-file` → `review-request` の新しい明示指示だけで受理する。
 後続runは結果の `exception` と人間向けコメントに、通常1回の予算を超える例外として理由・先行runを表示する。
 
+### 保存候補を含む別runへの引継ぎ
+
+`--handoff-from-run`で指定した元runの正式結果は`review_handoff.source_result`へ渡す。
+`output.json`に正式結果と異なる保存候補があれば、recoverと同じfinal・schema・完了イベント・runtime・工程digestの検証を行う。
+検証した指摘と証拠待ちを、requestの`review_selection.handoff.candidates`へ固定してdigestに含め、contextの`review_handoff.candidates`とプロンプトの指示で渡す。
+候補ごとに`status=candidate_only`、`source_run`、`validation`（元request/execution/result、runtime、events、final、outputのdigestと元snapshot）、
+`cross_findings`、`prs`（number/findings/evidence_waits）を持つ。coverageとverdictは候補へコピーしない。
+正式結果と同一の保存出力は正式結果の資料であり、未採用候補として重複させない。
+保存候補が無ければ空配列にし、raw finalや候補の欠落を承認と推定しない。存在する候補が不正ならprepare前に拒否する。
+さらに、元requestから継承した未採用候補も保持し、次runの候補が無い場合にも引継ぎの途中で落とさない。
+handoff先のrunをrecoverするときも、継承した候補は復旧requestの`review_selection.candidates`へ固定して保持する。
+recoverの対象出力自身は従来どおり正式採用するが、そこに引き継がれていた別runの候補を自動承認しない。
+prepareと起動・再開の参照検証で保存候補を再照合し、固定後の改変を黙って採用しない。
+
+候補を正式なcoverage・承認・解消済み指摘へ自動昇格しない。候補の指摘または証拠待ちが影響するPRは、後続runがapproveでもgateを止める。
+親は後続runの当該PRのreviewed結果と、固定された全候補の指摘・証拠待ち・必要な実証を確認し、
+`resolve --run 後続run --pr PR --finding handoff-candidates --fixed-head HEAD --evidence FILE`で明示確認する。
+FILEは通常と同じ4キーの証拠とし、候補ごとの解消・再検証と要求された証拠への判断をresolutionへ書く。
+この確認は後続resultのdigest・PR・固定snapshot・実変更パスに拘束され、別runへ流用しない。
+head変更には通常の解消記録と同じ実diff照合と、検証済みrebase継承の規則を適用する。
+通常の正式指摘・証拠待ちはこの確認で解消せず、従来の個別手順を続ける。not_reviewedも解消しない。
+元runを正式採用して扱いたい場合はhandoff要求を作る前にrecoverする。後続要求を越えるrecoverは禁止する既存のsuperseding規則を維持する。
+
 ### 保存finalの検証付き採用
+
+新版の要求はprepare時の`--recover-source-run`で元runを固定する。
+この参照はrequestのdigestとexecutionへ含め、別の元runへの差替えや新しいagent起動を拒否する。
+現在の既定モデルではなく、元runの選択と実効値を検証して採用結果へ表示する。
+旧requestは選択理由を補わず従来の証拠として検証する。
 
 `recover` は既存parent CLIで新しくprepare/requestした別runを使用し、元runと同じrepo・親・全PR snapshotを要求する。
 `--reason-file` には親の採用理由を書く。元runのrequest・execution・result・final・公開コメントは変更しない。
@@ -269,6 +300,8 @@ JSONの `prs` は番号順。各要素の `latest_request` はregistry順で最�
 |---|---|
 | `snapshot`, `comparison` | 元snapshotと確認したパス、現在との各フィールドの新旧・一致、head間の変更パスとdiff digest、既存rebase継承検査の結果 |
 | `execution`, `runtime`, `result` | 記録された状態・起動回数・工程、runtime終了理由とcleanup、正式結果のcoverage・個別と横断の指摘・証拠待ち |
+| `review_selection`, `runtime_settings` | 固定した方針・選択値・理由・指定元と、観測した実効値。旧requestはlegacy_unrecorded、adoptionは元runの検証済み値 |
+| `settings_check` | 実効値の確認状態。失敗runの未確認値はunconfirmedとして観測し、成功記録との矛盾は整合エラーにする |
 | `publication_errors`, `parent_run_url` | gateと共通の公開照合で得た不一致と親結果への参照。公開検査は元run全体のPR集合に対するもの |
 | `followups`, `coverage_check` | 解消・証拠完了の記録、ローカルと両公開コピーの検査、現在snapshotとの一致、共通coverage検査の未確認理由・未解決指摘 |
 | `input_changes` | 親・対象子・PRの本文とコメントの差。本文は生文字列と既存requirement_body正規化後の両方を表示 |
@@ -314,6 +347,7 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 | `schema_version`, `kind` | `1`, `"result"` |
 | `review_run_id`, `request_sha256`, `request` | run ID、prepare manifestのdigest、`review_state`追加前のmanifest全体（親/repo/理由/各PRのhead/base/ref/merge-base/diff/branch） |
 | `reviewer`, `profile` | `"codex"`, `"review"` |
+| `runtime_settings` | request version 3に必須のキー。reviewedを1PRでも含む場合はhost検証済みselected/effectiveが必須。全PRが未確認の失敗だけnullを許す。tier未取得は理由付きunavailable、復旧時は元runtimeの値 |
 | `started_at`, `finished_at` | timezone付きUTC ISO 8601 |
 | `status`, `verdict` | `succeeded/failed`, `approve/request_changes/incomplete` |
 | `summary`, `error` | 総合要約、成功ならnull・失敗なら理由 |
@@ -326,7 +360,12 @@ PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各�
 `validate_result` は対象digest・全PR集合・判定/coverage・指摘IDを厳密に検査する。
 外側のresult/projection/resolutionと `parent-review:v1` マーカーはversion=1を維持する。
 既存の意味・digestを変えず、追加kindと省略可能な証拠待ち欄として拡張するため、外側の版は上げない。
-version=2のauthorizationとrequirementsは、作成時の担当・根拠・本文の観測記録である。
+request version 3のruntime_settingsも外側version 1のまま厳密に検証する。
+公開・公開再開・照合表示・gateは同じ検証部品でrequest、execution、runtime、公開値を照合する。
+run全体のstatusでは省略せず、reviewedを含むfailed/incomplete結果にも選択値・実効値・runtime digestの検証を適用する。
+利用不能・選択/実効値不一致・継続時の設定不整合は失敗とし、別モデルへ再試行しない。
+過去の証拠は保存した方針で検証し、現在のfixed/select設定だけでは失効させない。
+version=2/3のauthorizationとrequirementsは、作成時の担当・根拠・本文の観測記録である。
 意味のある要件変更と証拠への影響は親が判断し、必要な再検証や確認を記録する。
 PRとclosing対象・対象コードの同一性は機械的に照合し、過去のrequest/result/executionを書き換えない。
 未知のrequest/basis/policy versionや破損は拒否し、未レビューの空記録へ移行しない。

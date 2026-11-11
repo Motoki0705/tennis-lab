@@ -39,6 +39,8 @@ from opsproc import (
     terminate_descendants,
 )
 
+from lib.review_settings import read_object as read_review_selection  # noqa: E402
+
 VERSION = 1
 IDENTITY_ENV = {
     "CLAUDE_CODE_SESSION_ID",
@@ -144,6 +146,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--profile")
     result.add_argument("--model")
     result.add_argument("--effort")
+    result.add_argument("--review-selection-file", type=Path)
     result.add_argument("--task-id")
     result.add_argument("--branch")
     result.add_argument("--run-dir", type=Path)
@@ -312,6 +315,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if args.resume_from
         else None
     )
+    review_selection = (
+        read_review_selection(args.review_selection_file)
+        if args.review_selection_file is not None
+        else previous["contract"].get("review_selection")
+        if previous
+        else None
+    )
     if previous:
         for key in ("model", "effort"):
             if getattr(args, key) is None:
@@ -319,7 +329,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     args, key, previous["contract"]["settings"]["overrides"].get(key)
                 )
     settings = resolve(
-        args.config_file, agent, args.profile, args.model, args.effort, args.mode
+        args.config_file,
+        agent,
+        args.profile,
+        args.model,
+        args.effort,
+        args.mode,
+        review_selection=review_selection,
     )
     home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).resolve()
     branch = branch_at(cwd, bool(args.task_id))
@@ -335,6 +351,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "settings": settings,
         "runtime_home": str(home) if agent == "codex" else str(Path.home() / ".claude"),
     }
+    if review_selection is not None:
+        contract["review_selection"] = review_selection
     if output_schema is not None:
         contract["json_schema_sha256"] = output_schema.sha256
     mcp_bytes = None
@@ -362,7 +380,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         previous["contract"]
     ):
         raise ValueError(
-            "resume task/worktree/branch/read_dirs/json_schema/settings differ from the saved contract"
+            "resume task/worktree/branch/read_dirs/json_schema/review_selection/settings differ from the saved contract"
         )
     run_id = str(uuid.uuid4())
     log_dir = (
@@ -379,6 +397,11 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("prompt and output paths must differ")
     if out.resolve() == args.config_file.resolve():
         raise ValueError("config and output paths must differ")
+    if (
+        args.review_selection_file is not None
+        and out.resolve() == args.review_selection_file.resolve()
+    ):
+        raise ValueError("review selection and output paths must differ")
     if args.json_schema is not None and out.resolve() == args.json_schema.resolve():
         raise ValueError("schema and output paths must differ")
     if out.parent.resolve() == run_dir and out.name != "final.md":
@@ -445,6 +468,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 "last_turn_id": None,
             }
         state["latest_run"] = str(run_dir)
+        if review_selection is not None:
+            write_json(run_dir / "review-selection.json", review_selection)
         events = Events(agent, settings["selected"], state["session_id"], output_schema)
         previous_turn = state["last_turn_id"]
         result: dict[str, Any] = {

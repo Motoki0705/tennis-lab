@@ -442,7 +442,10 @@ def record_autonomous(session: ParentSession, value: dict[str, Any]) -> dict[str
 def require_requirement_targets(
     request: Mapping[str, Any], targets: set[int], *, exact: bool = False
 ) -> None:
-    if request["schema_version"] != 2:
+    version = request.get("schema_version")
+    if type(version) is not int or version not in {1, 2, 3}:
+        raise ValueError("unknown review request version for requirements")
+    if version == 1:
         return
     expected = {str(n) for n in targets | {request["parent_issue"]}}
     actual = set(object_value(request["requirements"]))

@@ -533,7 +533,8 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
 
 
 @pytest.mark.parametrize(
-    "final", [None, "supplement:done", "supplement:failed", "supplement:skipped", "old_parent"]
+    "final",
+    [None, "supplement:done", "supplement:failed", "supplement:skipped", "old_parent"],
 )
 def test_supplement_gates_checking_and_agree_before_writes(
     parent_env: ParentEnv, final: str | None
@@ -568,7 +569,8 @@ def test_supplement_gates_checking_and_agree_before_writes(
         for result in (checked, agreed):
             assert "pending" in result.stderr
             assert (
-                "wait-supplement" in result.stderr and "supplement:skipped" in result.stderr
+                "wait-supplement" in result.stderr
+                and "supplement:skipped" in result.stderr
             )
         assert not any(
             "--method" in call and call[call.index("--method") + 1] != "GET"
@@ -579,7 +581,9 @@ def test_supplement_gates_checking_and_agree_before_writes(
         assert json.loads(agreed.stdout)["phase"] == "要件合意済み"
 
 
-@pytest.mark.parametrize("final", ["supplement:done", "supplement:failed", "supplement:skipped"])
+@pytest.mark.parametrize(
+    "final", ["supplement:done", "supplement:failed", "supplement:skipped"]
+)
 def test_wait_supplement_watches_latest_exact_title_and_refreshes_labels(
     parent_env: ParentEnv, final: str
 ) -> None:
@@ -2007,7 +2011,11 @@ if exit_code and reason != "cli_error":
     errors = [{"type":"error", "message":"transport failed after completed review"}]
     events.extend(errors)
 (runtime / "events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
-selected = {"model":"review-fixture", "effort":"max", "service_tier":"priority"}
+choice = request.get("review_selection")
+selected = choice["selected"] if choice is not None else {"model":"review-fixture", "effort":"max", "service_tier":"priority"}
+effective = {k:{"status":"observed", "value":v, "source":"fixture"} for k,v in selected.items()}
+if os.environ.get("REVIEW_EFFECTIVE_UNAVAILABLE"):
+    effective["model"] = {"status":"unavailable", "value":None, "reason":"model not available"}
 (runtime / "result.json").write_text(json.dumps({
     "result": "failed" if exit_code else "completed", "exit_code": exit_code, "cli_exit_code": exit_code,
     "turn_end_reason": reason,
@@ -2015,9 +2023,10 @@ selected = {"model":"review-fixture", "effort":"max", "service_tier":"priority"}
     "prompt_sha256": hashlib.sha256(pathlib.Path(opt("--prompt-file")).read_bytes()).hexdigest(),
     "run_dir": str(runtime), "output_path": opt("--out"), "final_path": str(runtime / "final.md"),
     "contract": {"json_schema_sha256": hashlib.sha256(schema).hexdigest(), "cwd": str(cwd),
-                 "mode":"read-only", "settings":{"agent":"codex", "profile":"review", "selected":selected}},
+                 "mode":"read-only", "settings":{"agent":"codex", "profile":"review", "selected":selected},
+                 **({"review_selection":choice} if choice is not None else {})},
     "runtime": {"session_id":session_id, "turn_id":turn_id, "requested_session_id":None,
-                "runtime_errors":errors, "effective":{k:{"status":"observed", "value":v, "source":"fixture"} for k,v in selected.items()}}
+                "runtime_errors":errors, "effective":effective}
 }))
 if os.environ.get("REVIEW_POSTCHECK_FAIL"):
     path = pathlib.Path(os.environ["PARENT_GH_STATE"])
