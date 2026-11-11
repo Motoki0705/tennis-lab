@@ -13,7 +13,9 @@ import traceback
 from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd()))
+sys.path.insert(0, str(Path.cwd() / "tests/benchmarks/ball_detection"))
 import torch
+from efficiency import benchmark, environment, forward_macs
 from protocol import DRIVE, REMOTE, ROOT, model_config, read, write
 from serial import index_store, snapshot_store
 from torch import nn
@@ -27,11 +29,6 @@ from src.tasks.ball_detection.models.mdd.multiscale_query import (
 )
 from src.tasks.ball_detection.training.heatmap_objective import heatmap_objective
 from src.utils.checksum import dual_sha256
-from tests.benchmarks.ball_detection.efficiency import (
-    benchmark,
-    environment,
-    forward_macs,
-)
 
 
 class Full(nn.Module):

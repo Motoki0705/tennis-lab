@@ -1,6 +1,7 @@
 """Recovery must reject corrupt or ambiguous input artifacts before training."""
 
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -11,6 +12,13 @@ from recover import copy_immutable
 from restore_inputs import copy_file, copy_snapshot
 
 from src.utils.checksum import dual_sha256
+
+
+def test_measurement_entrypoints_import_outside_pytest_namespace():
+    directory = Path(__file__).resolve().parent
+    code = f"import sys; sys.path.insert(0, {str(directory)!r}); import measure, summarize; print('direct entrypoints imported')"
+    result = subprocess.check_output([sys.executable, "-c", code], text=True)
+    assert result.strip() == "direct entrypoints imported"
 
 
 def test_frozen_input_copy_checks_hash_and_refuses_corrupt_existing_file(tmp_path):

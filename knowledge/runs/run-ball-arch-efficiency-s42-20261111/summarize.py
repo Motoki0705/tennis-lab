@@ -6,16 +6,17 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd()))
+sys.path.insert(0, str(Path.cwd() / "tests/benchmarks/ball_detection"))
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+from efficiency import quantiles
 from protocol import ROOT, read, write
 from serial import index_store, snapshot_store
 
 from src.utils.artifact_store import RcloneSnapshotStore
-from tests.benchmarks.ball_detection.efficiency import quantiles
 
 
 def aggregate():
