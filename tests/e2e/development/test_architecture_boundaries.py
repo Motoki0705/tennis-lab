@@ -443,6 +443,12 @@ COURT_LINE_PREPROCESSING_CONSUMERS = {
     ),
 }
 EXPECTED_DIRECT_FORWARD_VALIDATION_BOUNDARIES = {
+    # The compiler-disabled native CUDA boundary validates dtype/device,
+    # spatial metadata and im2col divisibility before unsafe native dispatch.
+    # Construction/loading on CPU stays portable; actual execution has no
+    # CPU/reference fallback. Covered by explicit CPU rejection and L4 tests.
+    ("src.utils.models.components.ops.msda.api.OfficialMSDeformAttn.forward", "Python raise"): 9,
+    ("src.utils.models.components.ops.msda.api.OfficialMSDeformAttn.forward", "Python shape/value validation branch"): 6,
     # The standalone loss accepts a prediction with optional heads. Reject an
     # active term with a missing head rather than silently contributing zero.
     # These two structural checks do not inspect tensor values or alter state.
@@ -684,6 +690,9 @@ COURT_TRANSFORMER_PATCH_POSITIONS_PATH = (
     "src.tasks.court_detection.models.dinov3_dpt.build_patch_positions",
 )
 EXPECTED_TRANSITIVE_FORWARD_VALIDATION_BOUNDARIES_BY_PATH = {
+    ("src.utils.models.components.ops.msda.api.OfficialMSDeformAttn.forward",): {
+        "Python raise": 9, "Python shape/value validation branch": 6,
+    },
     # Shared physical integration/normalization retain their public contracts.
     # Keep these exact paths/counts; do not hide other checks in BLCS forward.
     ("src.tasks.blcs.training.losses.BLCSLoss.forward",): {"Python raise": 2},
@@ -902,7 +911,10 @@ def _scan_repository() -> _RepositorySnapshot:
                 "experiments",
                 "tests",
             )
-            if not relative.startswith("src/submodules/vendor/")
+            if not relative.startswith((
+                "src/submodules/vendor/",
+                "src/utils/models/components/ops/msda/vendor/",
+            ))
             and (REPOSITORY_ROOT / relative).is_file()
         )
     )
@@ -1955,6 +1967,7 @@ def test_repository_snapshot_is_fresh_and_detects_mutation(
         "src/__init__.py",
         "src/domain/probe.py",
         "src/submodules/vendor/probe.py",
+        "src/utils/models/components/ops/msda/vendor/probe.py",
         "scripts/probe.py",
         "tests/test_reference.py",
         "tests/benchmarks/probe.py",
