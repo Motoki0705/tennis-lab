@@ -10,7 +10,7 @@
 
 143 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 57 件。親の確認未記録: 41 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 57 件。
 
-直近の観測（受入の判定とは別）: [結果 397](../activity-f277d7b0254b4f67b4b857534c8f67de-records-0012/README.md#record-35e4f036a9554851b75e54a3db45fde5) success / parent&#95;verification: parent.review-state: success / 対象PR: 1890 / レビュー状態: fixes&#95;verified<br>[行動 398](../activity-f277d7b0254b4f67b4b857534c8f67de-records-0012/README.md#record-d5790f1d4dbf4c9287658ae12ed1e3c0) 検証 / 終了（成果受入とは別）
+直近の観測（受入の判定とは別）: [結果 409](../activity-f277d7b0254b4f67b4b857534c8f67de-records-0012/README.md#record-35e4f036a9554851b75e54a3db45fde5) success / parent&#95;verification: parent.review-state: success / 対象PR: 1890 / レビュー状態: fixes&#95;verified<br>[行動 410](../activity-f277d7b0254b4f67b4b857534c8f67de-records-0012/README.md#record-d5790f1d4dbf4c9287658ae12ed1e3c0) 検証 / 終了（成果受入とは別）
 
 ## 全記録の詳細
 

@@ -1,0 +1,31 @@
+# parent.record-result / 担当issue &#35;1804
+
+結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
+
+反映範囲: このHEADの記録集合 5 件。記録時刻 2026-11-11T06:32:50.212640+00:00 〜 2026-11-11T06:33:08.064779+00:00。
+
+公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
+
+[上の階層](../README.md) · [親一覧](../../README.md)
+
+5 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 2 件。親の確認未記録: 2 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 2 件。
+
+直近の観測（受入の判定とは別）: [結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0) success / parent&#95;verification: parent.record-result: success / 担当issue: 1804 / 進捗: 項目なし / 対象PR: 1902<br>[行動 558](README.md#record-0121db185d4f493b94f2e8f8ca784893) 検証 / 終了（成果受入とは別）
+
+## 全記録の詳細
+
+| 時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠 |
+| --- | --- | --- | --- | --- |
+| <a id="record-b0096d787c3740e9aba670bac70aa120"></a>[行動 554](README.md#record-b0096d787c3740e9aba670bac70aa120)<br>2026-11-11T06:32:50.212640+00:00（記録時刻）<br>[親 &#35;1804](../README.md) / [担当 &#35;1804](../child-1804/README.md) / [ターン 3](../child-1804/d-f4c5bf6321ae4f7b841ba5b6e778b534/turn-0003/README.md) | 結果記録なし | 記録不足・判断: parent decision not recorded for this operation | parent.record-result: requested<br>検証 / 要求済み・実行未確認 | [記録本文](event-b0096d787c3740e9aba670bac70aa120.json)<br>次の記録: [行動 555](README.md#record-2fd8a4cb4ccd4e7ab201de157cdd89d3) |
+| <a id="record-2fd8a4cb4ccd4e7ab201de157cdd89d3"></a>[行動 555](README.md#record-2fd8a4cb4ccd4e7ab201de157cdd89d3)<br>2026-11-11T06:32:50.318863+00:00（記録時刻）<br>[親 &#35;1804](../README.md) / [担当 &#35;1804](../child-1804/README.md) / [ターン 3](../child-1804/d-f4c5bf6321ae4f7b841ba5b6e778b534/turn-0003/README.md) | [結果 556](README.md#record-0092aea659014d3a89f5715d276252ee)、[結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0) | 記録不足・判断: parent decision not recorded for this operation | parent handler entered; no AI launch implied<br>検証 / 実行中 | [記録本文](event-2fd8a4cb4ccd4e7ab201de157cdd89d3.json)<br>前の記録: [行動 554](README.md#record-b0096d787c3740e9aba670bac70aa120)<br>次の記録: [結果 556](README.md#record-0092aea659014d3a89f5715d276252ee)、[結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0)、[行動 558](README.md#record-0121db185d4f493b94f2e8f8ca784893) |
+| <a id="record-0092aea659014d3a89f5715d276252ee"></a>[結果 556](README.md#record-0092aea659014d3a89f5715d276252ee)<br>2026-11-11T06:33:02.576334+00:00（記録時刻）<br>[親 &#35;1804](../README.md) / [担当 &#35;1804](../child-1804/README.md) / [ターン 3](../child-1804/d-f4c5bf6321ae4f7b841ba5b6e778b534/turn-0003/README.md) | parent.record-result: PRs=1902<br>PR &#35;1902 指摘 pr-1902-1 の修正（head a2aea90725d48d17f49ab0e0e105f8ee3eaea91a、commit a2aea9072）。<br>success / parent&#95;verification<br>親の確認未記録<br>最終報告の観測対象外（記録された理由による）<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-0092aea659014d3a89f5715d276252ee.json)<br>根拠非公開・記録不足: capture&#95;source=parent.record-result; artifact=saved parent verification; content&#95;sha256=1f294b969117bb16cba584eece0d388332ed7d004d9224a8c882b2c44efe9171; private evidence<br>根拠非公開・記録不足: capture&#95;source=parent.record-result; artifact=registry task verification and child issue evidence; content&#95;sha256=1f294b969117bb16cba584eece0d388332ed7d004d9224a8c882b2c44efe9171; private evidence<br>前の記録: [行動 555](README.md#record-2fd8a4cb4ccd4e7ab201de157cdd89d3)、[結果 547](../activity-4be2e52d5fdf4f3485b97ea3c9f4b588/README.md#record-31e1e0bed8744e7ab073faef4ff6f4cc)<br>次の記録: [結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0)、[行動 558](README.md#record-0121db185d4f493b94f2e8f8ca784893) |
+| <a id="record-4b07a20b6aaa4be4a8565964bc13e4b0"></a>[結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0)<br>2026-11-11T06:33:07.985029+00:00（記録時刻）<br>[親 &#35;1804](../README.md) / [担当 &#35;1804](../child-1804/README.md) / [ターン 3](../child-1804/d-f4c5bf6321ae4f7b841ba5b6e778b534/turn-0003/README.md) | parent.record-result: success<br>担当issue: 1804 / 進捗: 項目なし / 対象PR: 1902<br>success / parent&#95;verification<br>親の確認未記録<br>最終報告の観測対象外（記録された理由による）<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-4b07a20b6aaa4be4a8565964bc13e4b0.json)<br>根拠非公開・記録不足: capture&#95;source=parent.record-result; artifact=command response; content&#95;sha256=031f11b62a529136c185dcf4256d503eae6c7e9aa94a7655119dd96c32b7c5fb; private evidence<br>前の記録: [行動 555](README.md#record-2fd8a4cb4ccd4e7ab201de157cdd89d3)、[結果 556](README.md#record-0092aea659014d3a89f5715d276252ee)、[結果 547](../activity-4be2e52d5fdf4f3485b97ea3c9f4b588/README.md#record-31e1e0bed8744e7ab073faef4ff6f4cc)<br>次の記録: [行動 558](README.md#record-0121db185d4f493b94f2e8f8ca784893) |
+| <a id="record-0121db185d4f493b94f2e8f8ca784893"></a>[行動 558](README.md#record-0121db185d4f493b94f2e8f8ca784893)<br>2026-11-11T06:33:08.064779+00:00（記録時刻）<br>[親 &#35;1804](../README.md) / [担当 &#35;1804](../child-1804/README.md) / [ターン 3](../child-1804/d-f4c5bf6321ae4f7b841ba5b6e778b534/turn-0003/README.md) | [結果 556](README.md#record-0092aea659014d3a89f5715d276252ee)、[結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0) | 記録不足・判断: parent decision not recorded for this operation | parent.record-result: ended<br>検証 / 終了（成果受入とは別） | [記録本文](event-0121db185d4f493b94f2e8f8ca784893.json)<br>前の記録: [行動 555](README.md#record-2fd8a4cb4ccd4e7ab201de157cdd89d3)、[結果 556](README.md#record-0092aea659014d3a89f5715d276252ee)、[結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0) |
+
+<details><summary>反映した記録と補助情報</summary>
+
+- [結果 556](README.md#record-0092aea659014d3a89f5715d276252ee)<br>時刻: 発生時刻: 未取得: source occurrence time unavailable / 受信時刻: 観測: 2026-11-11T06:33:02.576314+00:00 / 記録時刻: 2026-11-11T06:33:02.576334+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+- [結果 557](README.md#record-4b07a20b6aaa4be4a8565964bc13e4b0)<br>時刻: 発生時刻: 未取得: source occurrence time unavailable / 受信時刻: 観測: 2026-11-11T06:33:07.984964+00:00 / 記録時刻: 2026-11-11T06:33:07.985029+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+
+</details>
+
