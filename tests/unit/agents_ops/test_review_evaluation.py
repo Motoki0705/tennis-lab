@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import copy
 import importlib
+import importlib.util
 import json
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
@@ -22,9 +24,26 @@ OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 def modules(monkeypatch: pytest.MonkeyPatch) -> Any:
     monkeypatch.syspath_prepend(str(OPS))
     monkeypatch.syspath_prepend(str(OPS / "lib"))
+    # Other suites import a different top-level "review" package. Exercise
+    # that collision even when this file runs alone, without evicting it.
+    if "review" not in sys.modules:
+        foreign = ModuleType("review")
+        foreign.__dict__["__path__"] = []
+        monkeypatch.setitem(sys.modules, "review", foreign)
+    alias = "_tennis_lab_review_evaluation"
+    if alias not in sys.modules:
+        spec = importlib.util.spec_from_file_location(
+            alias,
+            OPS / "review/evaluation/__init__.py",
+            submodule_search_locations=[str(OPS / "review/evaluation")],
+        )
+        assert spec is not None and spec.loader is not None
+        package = importlib.util.module_from_spec(spec)
+        sys.modules[alias] = package
+        spec.loader.exec_module(package)
     return SimpleNamespace(
         **{
-            name: importlib.import_module("review.evaluation." + name)
+            name: importlib.import_module(alias + "." + name)
             for name in (
                 "catalog",
                 "transport",
