@@ -329,6 +329,52 @@ triageの引渡し・受領・提案別合意は既存のマーカー付きイ�
 担当親の自由文の連絡には [note](#自由文の進捗連絡) を使い、既存合意のコメント鮮度を保つ。
 人間が独立に作ったissueには受領操作は不要で、同じregister/checking/agreeから開始する。
 
+## Issue自身を実行する
+
+Issueの分割基準と実装者の選択は [parent-session skill](../../skills/parent-session/SKILL.md#親が判断すること)を参照する。
+一つのバグ修正を実装・テスト・README更新までまとめて受け入れる場合は、同じIssueのまま進める。
+独立してmergeできるAPIとその利用側を別担当で並行に進める場合や、一方だけを保留する必要がある場合は分割が役立つ。
+一Issueを常に一PRへ制限する契約ではない。
+
+`work_items()` が全入口の対象を解決する。正式な直属子があればopen/closedともその子だけ、
+正式な子がなく上位親もなければ `issue:parent` の有無によらず自身一件を返す。
+入れ子の手動親は従来どおり自分の子を管理する。正式な上位親を持つ葉Issueをこの入口で切り離して実行しない。
+取得失敗はエラーのまま扱い、子なしや全子完了への変換はしない。
+CLIの `--child N` は担当Issue番号の指定で、自身の番号も受け付ける。子作成や自己参照のsub-issue登録は行わない。
+
+担当登録・有効な実行根拠を揃え、専用worktreeで実装して `Closes #1216` を持つPRを作る最短例:
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp/agreement.json
+# 親が直接実装した後、差分・受入条件・対象HEADのテストを確認する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-result --child 1216 --evidence-file tmp/tests.md
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
+  --prs 1250 --instruction-file tmp/review.md --evidence-file tmp/tests.md > tmp/review-request.json
+```
+
+直接実装にはdelegate・架空のworker・終了記録は不要。
+同じ成果をworkerへまとめて依頼する場合だけ、実装前に以下を使う（worktreeは作成済みとする）。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 delegate --child 1216 \
+  --agent codex --branch codex/small-fix --worktree /path/to/main/.claude/worktrees/small-fix
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --child 1216 --prompt-file tmp/task.md
+```
+
+以後は両経路とも同じ [正式レビュー要求](#レビュー要求契約schema-version-3version-1と2の読取互換) と
+[merge gate](../review/README.md#merge-gate)、全体受入・[終了照合](development_workflow.md#待機完了担当終了)を使う。
+レビュー指摘や必要なmerge後確認は同じworkerへの継続で扱い、確認専用Issueや必須planningを追加しない。
+`sync` は自身の状態を返し、親ラベルがあれば進捗概要だけを更新する。自身のチェック行や子用要件を作らない。
+空の子一覧・PRのclose・runner終了だけでは完了せず、成果受理、正式レビュー、対象HEADのCI、実merge/closeと実行終了を照合する。
+worker来歴と親判断は既存のログ形式へ親番号＝担当Issue番号として接続し、ログ専用の作業Issueは要求しない。
+
+途中分割では実行・PR・受入済み成果を自動で別Issueへ移さない。自身への予約や成果が残る間の `create-child`、
+外部での分割・親子の切離しによって既存対象が外れた後の新規起動・レビュー・merge・完了確認は、理由付きで拒否する。
+既存の履歴は保持する。成果とPRのない自身の作業は、明示的な停止とworker終了の照合後に分割できる。
+分割と稼働が重なった場合も既存の自身の作業への `stop` / `stop-worker` は使えるが、継続は整理が済むまで拒否する。
+成果やPRがある場合は、担当親が元の関係とPRの帰属を明示的に整理してから進める。記録を消して新しいworkerを起動しない。
+
 ## 子の作成・委任・再開
 
 ```bash
@@ -363,7 +409,7 @@ triageの `ops-report-task:v1` 出典を持つ既存作業は [自動Issue化](.
 親関係のない既存提案が別キーなら番号を示して拒否し、孤立issueを明示的に移行・照合してから扱う。
 
 `delegate` は実在する専用git worktree・branch・agent prefixを確認し、起動予約を先に保存する。
-未分割の単独issueは自身の番号を `--child` に指定でき、正式な子を新しい親として扱うことは拒否する。
+未分割のIssueは親ラベル付きでも自身の番号を `--child` に指定できる（[対象解決](#issue自身を実行する)）。
 `action: launch` を受けた手動親は [run-worker](#手動workerの起動継続とrun記録) を呼ぶ。`delegate` 自体は起動しない。
 既存PR・委任予約・完了・取消・停止・依存保留・予約上限・利用できる依存PRの不在があれば起動を拒否する。
 `reconcile` は正式な子、全状態のPRの `Closes/Fixes/Resolves #子番号`（同repoのURLも可）、
@@ -375,11 +421,11 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 `delegate --restart-evidence-file tmp/evidence.md` で明示的に再予約する。既存PRがあれば再予約もしない。
 
 `record-result --child N --evidence-file tmp/tests.md` はclosing指示とbranchを照合し、
-子の成果物欄へPRと検証結果を追記する。記録だけで子を完了扱いにせず、過去の検証記録も残す。
+担当Issueの成果物欄へPRと検証結果を追記する。記録だけで完了扱いにせず、過去の検証記録も残す。
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
 根拠・担当・子の要件が変わったときは親が成果への影響を判断し、必要な部分を再確認してrecord-resultへ記録する。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
-単独issueの結果も同じ入口を使い、親用の子一覧は生成しない。
+自身を対象とする結果も同じ入口を使い、子一覧は生成しない。
 
 ### 並列起動の選択と予約上限
 
@@ -681,7 +727,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
 対象は直属子にclosing指示があるopen PRの任意の部分集合。
 PR未取得・重複・closed・draft・fork・親と無関係をエラーにする。
 他のopen PRの追加・更新・closeは選択した対象のcoverageを失効させない。
-分割していない単独issueではそのissueを閉じるPRを同じ方法で扱う。
+分割していないIssueでは親ラベル付きでもそのissueを閉じるPRを同じ方法で扱う。
 GitHub取得・git差分取得後にPR集合とhead/baseを再取得し、途中更新を拒否する。
 不足オブジェクトだけ `origin` からSHAをfetchする。
 

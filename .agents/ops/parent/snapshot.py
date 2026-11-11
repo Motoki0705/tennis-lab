@@ -130,8 +130,8 @@ def prepare(
     )
     row = session.agreed()
     auth = authorization(session)
-    parent, children = session.family()
-    child_numbers = set(children) or {parent.number}
+    parent, children = session.work_items()
+    child_numbers = set(children)
     prs = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
     from .worker_preflight import require_implementation
 
@@ -147,6 +147,8 @@ def prepare(
         diffs[item["number"]] = diff
     # Protect the collection window: changes during git I/O are not covered.
     with session.gh.fresh_reads():
+        if set(session.work_items()[1]) != child_numbers:
+            raise ValueError("work targets changed while freezing review targets")
         fresh = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
     for before, after in zip(prs, fresh, strict=True):
         if any(
@@ -280,19 +282,19 @@ def transition(
         raise ValueError(f"invalid review transition {current} -> {target}")
     if target == "instructed":
         request = run["request"]
-        parent, children = session.family()
+        parent, children = session.work_items()
         from .worker_preflight import require_implementation
 
         for entry in request["prs"]:
             raw = session.gh.get(f"repos/{session.gh.repo}/pulls/{entry['number']}")
             for child in closing_issues(raw.get("body") or "", session.gh.repo) & (
-                set(children) or {parent.number}
+                set(children)
             ):
                 require_implementation(session, child)
         prs = select_prs(
             [p["number"] for p in request["prs"]],
             session.gh.pulls(),
-            set(children) or {parent.number},
+            set(children),
             session.gh.repo,
         )
         require_requirement_targets(
@@ -301,7 +303,7 @@ def transition(
                 n
                 for pr in prs
                 for n in closing_issues(pr.get("body") or "", session.gh.repo)
-                & (set(children) or {parent.number})
+                & set(children)
             },
             exact=True,
         )

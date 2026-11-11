@@ -39,7 +39,9 @@ def main() -> int:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     store = importlib.import_module("parent.state").Store(state_dir)
     row = store.read_data()["parents"]["o/r#1"]
-    task = row["tasks"]["10"]
+    task = next(
+        t for t in row["tasks"].values() if t.get("delegation_id") == opt("--task-id")
+    )
     saved = task["worker_runs"][-1]
     assert saved["delegation_id"] == opt("--task-id") == task["delegation_id"]
     assert state_dir / saved["run_dir"] == directory
@@ -100,6 +102,8 @@ def main() -> int:
                 "contract": contract,
                 "prompt_sha256": hashlib.sha256(raw).hexdigest(),
                 "cleanup_complete": True,
+                "runner": None,
+                "process": None,
                 "started_at": 1794013200,
                 "finished_at": 1794013201,
                 "runtime": {

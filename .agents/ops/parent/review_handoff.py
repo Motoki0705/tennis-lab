@@ -75,7 +75,7 @@ def request(
 ) -> dict[str, Any]:
     session.agreed()
     parent, children = session.work_items()
-    targets = set(children) or {parent.number}
+    targets = set(children)
     linked: set[int] = set()
     for n in prs:
         pr = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))

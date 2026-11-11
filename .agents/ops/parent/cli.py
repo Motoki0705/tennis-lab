@@ -37,6 +37,11 @@ def read_object(path: str) -> dict[str, Any]:
     return object_value(json.loads(read_text(path)))
 
 
+WORK_ITEM_HELP = (
+    "担当Issue番号。正式な子なしでは --parent と同じ番号を指定（子の新設ではない）"
+)
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     try:
@@ -73,7 +78,7 @@ def parser() -> argparse.ArgumentParser:
     publication.add_argument("--retry", action="store_true")
     for name in ("worker-log-status", "publish-worker-log"):
         log = commands.add_parser(name)
-        log.add_argument("--child", type=int, required=True)
+        log.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         log.add_argument("--turn", type=int)
         log.add_argument("--delegation-key")
         if name == "publish-worker-log":
@@ -101,11 +106,11 @@ def parser() -> argparse.ArgumentParser:
             project.add_argument("--spec", required=True)
     commands.add_parser("workflow-report").add_argument("--spec", required=True)
     cancellation = commands.add_parser("record-cancellation")
-    cancellation.add_argument("--child", type=int, required=True)
+    cancellation.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     cancellation.add_argument("--spec", required=True)
     for name in ("start-worker", "continue-worker", "inspect-worker", "stop-worker"):
         worker = commands.add_parser(name)
-        worker.add_argument("--child", type=int, required=True)
+        worker.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         if name in {"start-worker", "continue-worker"}:
             worker.add_argument(
                 "--prompt-file",
@@ -160,14 +165,14 @@ def parser() -> argparse.ArgumentParser:
     receipt.add_argument("--report", type=int, required=True)
     receipt.add_argument("--proposal", required=True)
     delegate = commands.add_parser("delegate")
-    delegate.add_argument("--child", type=int, required=True)
+    delegate.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     delegate.add_argument("--agent", choices=("claude", "codex"), required=True)
     delegate.add_argument("--branch", required=True)
     delegate.add_argument("--worktree", type=Path, required=True)
     delegate.add_argument("--dependencies", type=int, nargs="*")
     delegate.add_argument("--restart-evidence-file")
     result = commands.add_parser("record-result")
-    result.add_argument("--child", type=int, required=True)
+    result.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     result.add_argument("--evidence-file", required=True)
     policy = commands.add_parser("configure-delegation")
     policy.add_argument(
@@ -175,11 +180,11 @@ def parser() -> argparse.ArgumentParser:
     )
     policy.add_argument("--reason-file", required=True)
     ended = commands.add_parser("record-worker-ended")
-    ended.add_argument("--child", type=int, required=True)
+    ended.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     ended.add_argument("--delegation-id", required=True)
     ended.add_argument("--evidence-file", required=True)
     manual = commands.add_parser("run-worker")
-    manual.add_argument("--child", type=int, required=True)
+    manual.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     manual.add_argument(
         "--prompt-file",
         type=Path,
@@ -203,13 +208,13 @@ def parser() -> argparse.ArgumentParser:
         help="parent's selection reason; required for an initial alternate model",
     )
     run_record = commands.add_parser("record-worker-run")
-    run_record.add_argument("--child", type=int, required=True)
+    run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
     decision = commands.add_parser(
         "decide-worker-plan",
         help="bind a parent answer to the latest completed planning final",
     )
-    decision.add_argument("--child", type=int, required=True)
+    decision.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     decision.add_argument(
         "--action", choices=("approve", "investigate", "reject"), required=True
     )
@@ -218,11 +223,11 @@ def parser() -> argparse.ArgumentParser:
         "refresh-worker-plan",
         help="refresh the saved controller; normal continuation does this automatically",
     )
-    refresh.add_argument("--child", type=int, required=True)
+    refresh.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     refresh.add_argument("--evidence-file", required=True)
     for command in ("stop", "resume", "improvement"):
         sub = commands.add_parser(command)
-        sub.add_argument("--child", type=int, required=True)
+        sub.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         sub.add_argument("--spec", required=True)
     review = commands.add_parser("review-prepare")
     review.add_argument("--prs", type=int, nargs="+", required=True)

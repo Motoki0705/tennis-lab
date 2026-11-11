@@ -353,9 +353,11 @@ def stop_worker(
     dispatch = managed(session.owner())
     if not dispatch:
         raise ValueError("worker stop requires a managed parent")
-    session.stop_or_resume(child, detail, False)
-    plan = session.launch_plan()
-    targets = {child} | {t["child"] for t in plan["tasks"] if t["state"] == "held"}
+    stopped = session.stop_or_resume(child, detail, False)
+    plan = None if stopped.get("target_conflict") else session.launch_plan()
+    targets = {child} | (
+        {t["child"] for t in plan["tasks"] if t["state"] == "held"} if plan else set()
+    )
     for job in dispatch["jobs"].values():
         if job["role"] != "implementation" or job["child"] not in targets:
             continue
@@ -375,7 +377,8 @@ def stop_worker(
     return {
         "child": child,
         "result": "stop_requested",
-        "launch_plan": session.launch_plan(),
+        "launch_plan": session.launch_plan() if plan is not None else None,
+        **({"target_conflict": stopped["target_conflict"]} if plan is None else {}),
     }
 
 

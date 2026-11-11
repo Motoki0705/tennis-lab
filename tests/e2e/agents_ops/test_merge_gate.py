@@ -286,6 +286,43 @@ def make_gate_env(
                     sha=run_git(tree, "rev-parse", "HEAD"), ref=f"codex/pr-{index}"
                 )
         p.save(state)
+        if variant in {"parent_self", "parent_self_worker"}:
+            if variant == "parent_self_worker":
+                from tests.e2e.agents_ops.test_manual_worker_runs import manual
+
+                prs = state["prs"]
+                prs[0]["head"]["ref"] = "codex/pr-0"
+                state["prs"] = []
+                p.save(state)
+                p.cli(
+                    "delegate",
+                    "--child",
+                    "1",
+                    "--agent",
+                    "codex",
+                    "--branch",
+                    "codex/pr-0",
+                    "--worktree",
+                    str(p.repo / ".claude/worktrees/pr-0"),
+                )
+                manual(
+                    p,
+                    "run-worker",
+                    "--child",
+                    "1",
+                    "--prompt-file",
+                    p.note("実装・検証する。"),
+                )
+                state = p.state()
+                state["prs"] = prs
+                p.save(state)
+            p.cli(
+                "record-result",
+                "--child",
+                "1",
+                "--evidence-file",
+                p.note("自身の受入条件・差分・テストを確認した。"),
+            )
         if variant == "preflight_dependency":
             # Reserve before publishing the PRs, then provide terminal offline
             # worker records. Review/merge still use their real public CLIs.
@@ -327,6 +364,7 @@ def make_gate_env(
             "publication_paths",
         },
         standalone=variant == "standalone",
+        parent_self=variant in {"parent_self", "parent_self_worker"},
         pr_count=3
         if variant
         in {
