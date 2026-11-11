@@ -23,12 +23,15 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 | `prompt_template.md` | 親の受入条件・個別diff・依存/インターフェースを1実行で確認する指示 |
 | `result_schema.json` | 共通ランナーへ渡す出力schema |
 | `../lib/review_tools/` | 固定commit・GitHub GET取得と隔離CPUテスト |
+| `evaluation/` | [非公開比較](evaluation/README.ja.md)。歴史snapshot・正解表・専用state・指標集計。通常pytestから実LLMを起動しない |
 
 ## 実行
 
 review・取得・公開・復旧・明示確認とmerge gateの観測は
 [判断記録](../decision_logs/README.ja.md#捕捉元と未対応入口)へ保存する。
 捕捉は、このREADMEの実行・再利用・復旧・merge判定を変更しない。
+中断終結とhandoffの明示判断IDのつなぎ方は
+[レビューの因果リンク](../decision_logs/README.ja.md#レビューの因果リンク)を参照する。
 
 ```bash
 # 担当親がparent CLIでprepare / request済みのJSONだけを渡す

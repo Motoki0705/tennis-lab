@@ -1,0 +1,389 @@
+{
+  "schema_version": 1,
+  "case_id": "pr-1766",
+  "cutoff": "2026-11-08T21:46:52.549157+00:00",
+  "context": {
+    "parent": {
+      "body": "## 目的・背景\n\ntennis_scene の ball_detection に、通常の検出モデルに代えてGPTが元動画からプレー中の1球を白紙で探索・注釈する実行オプションを追加する。注釈開始からシーン再構成までを一連の処理とし、同じ注釈を将来の検出器学習用データセットとして公開できるようにする。\n\n2026-11-07のユーザー回答と追加の検証対象指定を反映した。回答の原文は [回答記録](https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6688753434) に記録する。実装・注釈campaign・学習はまだ開始していない。現在は合意した設計に基づく子issueの起票を行う。\n\n## 全体のスコープ\n\n対象:\n- src/tennis_scene の ball_detection の方式選択、annotation-workflowからの白紙注釈、注釈保存、下流への接続。\n- camera単位の画像入力の分離、GPTによる前後frameの参照・探索・補完・自己修正。\n- 観測・補間・遮蔽推定・画面外・未解決・生きた球なし等を保持する注釈形式video_ball_annotation.v3を新設し、reader・scene・datasetへの接続を更新する。注釈schemaのv3とdataset snapshotの版名は区別する。\n- 推測を含むGPTの注釈を三角測量・学習教師に使用できる経路。\n- 各cameraの注釈workerを1回90分（5400秒）で実行し、時間切れ時は保存済みの進捗から自動継続する。\n- data/ball_detection/ への明示オプションによる不変snapshot公開。画像・教師・採用mask・来歴・splitを学習readerまで接続する。\n- 保存済みのコート検出・カメラ校正・コートの向き・カメラ配置を固定入力として読み込む経路。\n- 小規模なテスト入力で、時間切れ後の自動継続、v3注釈の再読込、固定幾何を用いた三角測量、dataset snapshot公開を検証する。\n\n後続タスクでは、既存実データの移行と、指定clipを使った新規GPT注釈・三角測量・dataset公開の受入検証を行う。\n\n対象外:\n- 今回の完成範囲を超える追加学習・評価・モデル採用の実行。\n- 他cameraの画像や既存のボール検出予測をGPTに提示する注釈。\n- プレー対象以外の予備球・隣接コートの球を網羅する注釈。\n- 3D Refinerの学習、人物・poseの新規開発、既存注釈の一括上書き。\n- 外部への一般公開・配布は現時点で要求されていない。今回の公開先はdata/ball_detection/とする。\n\n## 全体方針・合意事項\n\n以下は2026-11-07までの人間の回答。起票時の未合意案より優先する。\n\n1. **一連の実行**: 明示オプションでGPT注釈を開始し、保存した注釈を後続pipelineへ渡すところまで一連の処理として実行する。\n2. **白紙注釈**: 既存のボール検出モデルの予測案・heatmap・予測由来の探索領域を使わない。\n3. **対象球**: カメラが向いているコートでプレーしている、生きたボール1球。全ボール検出へ意味を広げない。\n4. **閲覧範囲と裁量**: 同じcameraの前後画像を参照できる。他cameraの画像は見せない。その範囲で、閲覧順、拡大・切り出し、注釈の進め方、補完・推測の手順はGPTが自由度高く決める。固定した手順や、全frameを1枚ずつ独立に目視する追加条件を勝手に課さない。\n5. **schema**: 注釈形式をvideo_ball_annotation.v3へ更新する（今回の追加確認で確定）。dataset snapshotをb3という名前にする指定ではない。v3の具体的なfield設計やv2互換出力の要否は設計時に決める。既存実データの移行はラップトップ上の今回作業では行わず、後続タスクとして残す。\n6. **推測の利用**: 補間・遮蔽推定などを三角測量と学習に使ってよい。根拠はユーザーの「推測の精度は高い」というヒューリスティックであり、本issueで実測済みの精度保証ではない。推測の由来は保持し、実観測に偽装しない。従来のobserved_only条件で黙って除外しない。\n7. **unknownの最小化と採用**: 前後文脈や補完を使ってできるだけunknownを残さないようpromptで指示し、返ってきたGPTの判断を信用して利用する。能力限界で残るunknownは認める。unknownゼロを絶対条件にせず、独立QA・人手による逐点承認・未合意の精度閾値を追加しない。構文、入力対応、座標・状態の整合性は機械検証する。\n8. 各cameraの注釈workerには、1回の実行につき90分（5400秒）の上限を適用する。時間切れで作業が残っていれば、同じworkflow内で検証済みの途中保存を引き継ぎ、未処理範囲から次のworkerを自動起動する。継続先にも同じ上限を適用する。進捗と停止理由を記録し、注釈済みの範囲と最終unknown、未処理範囲を区別する。\n9. 学習可能なdataset snapshotを公開する機能を実装し、小規模入力で検証する。注釈は常に保存し、snapshot公開は実行時の明示オプションで選ぶ。その指定を公開の承認として扱う。\n10. **split**: 同じ元収録の全camera・関連clipを一つのgroupにまとめて分割する。既存評価用groupをtrainへ混ぜない。\n11. **基盤**: annotation-workflowと現行統合CLI・台帳・保存基盤を拡張する。PR #1690はマージ済み。進捗表示・増分保存・有限timeout・復旧の仕組みは再利用し、白紙注釈と今回の教師採用規則を接続する。\n12. 今回の完了範囲は実装と小規模テスト。指定clip000_20261103の全3030 camera/frameを対象とする実動画受入は後続タスクとし、座標利用不可の合計81件以下、最終unknown25件以下の両方を確認する。81は参照の17+26+28に余裕10を加えた値。後続では保存した新規GPT注釈から三角測量結果を生成し、dataset snapshotも実データで公開・再読込する。\n\n13. **生きた球なし**: 「球の場所は分かるが、プレー中の球はない」を独立状態として追加する。out_of_frame（対象球は画面外）・unknown（判断不能）と区別する。状態名no_active_ballは設計案であり、画面内に手持ち球・予備球等が存在することを否定する状態ではない。遮蔽は別に保持し、推測座標が使えるかと状態を分離する。\n14. 指定clipの受入検証では、保存済みのコート検出に加え、`court_calibration`、`court_side`、`camera_alignment`を固定入力として使う。\n\n起票時の「v2必須」「観測点だけを三角測量・教師へ使用」「全frameの独立目視確認率や未合意の精度閾値による追加採用gate」は、現在の合意条件として残さない。以前の「基本timeoutなし」「unknown17件程度」は今回の追加回答で置き換え、90分[local path]、座標利用不可81件以下かつunknown25件以下を現在の条件とする。\n\n## 全体の完了条件\n\n- [ ] 明示オプションで通常推論とGPT白紙注釈を選べ、注釈から後続処理まで一連で実行できる。GPT方式にball checkpoint・既存予測receiptを要求しない。\n- [ ] 対象球の定義、同じcameraの前後参照、他camera画像禁止、unknown最小化、作業手順の裁量をpromptと画像提供の両方で守る。\n- [ ] 生きた球なし・画面外・未知・遮蔽、観測/推測の由来、座標・元frame/PTSを保持するvideo_ball_annotation.v3とreaderを提供する。既存実データの移行は後続タスクとして追跡し、今回の完了に見せない。\n- [ ] GPT注釈を常に保存し、保存済み結果を読み直して利用できる。未処理範囲を最終unknownに偽装せず、入力・frame・状態・座標の不整合を検出する。\n- [ ] 推測点を観測と区別したまま、三角測量と学習教師へ使用できる。既存のobserved_onlyや教師maskで黙って落とさない。三角測量に使用できる座標が2view未満の時刻は欠測とする。\n- [ ] 各cameraのworkerに90分の上限を適用し、時間切れ後に保存済みの進捗を読み込んで自動継続する。小規模テストで、同じworkflowの未処理範囲から再開し、保存済み注釈を保持することを確認する。\n- [ ] 小規模テストで、保存したv3注釈を正式readerで読み直し、固定したコート検出・校正・向き・配置を使って三角測量する。推測点の寄与、2view未満の欠測、固定入力の来歴を照合する。\n- [ ] 小規模テストで、明示した公開オプションにより `data/ball_detection/` 形式の不変snapshotを生成し、readerで状態・教師mask・group/splitを確認する。同一収録の全camera・関連clipが同一group/splitに入り、再実行で二重登録が起きないことを確認する。\n- [ ] 小規模テストの結果と再開・固定入力の再利用・公開の手順を提示する。実動画の受入条件と既存実データの移行は「後続タスクの受入検証」に記録する。\n\n## 子タスクのチェックリスト\n\n- [x] #1706 プレー球の注釈v3と状態・由来・利用条件を定義する\n- [x] #1707 ローカル動画を予測不要の注釈要求として登録する\n- [x] #1708 単一カメラの白紙注釈と探索方針の比較基盤を作る\n- [ ] #1709 90分の時間切れから同じ注釈workflowを自動継続する\n- [x] #1711 v3注釈・固定幾何のimportと三角測量を接続する\n- [x] #1712 v3注釈をプレー球の学習snapshotとして公開する\n- [ ] #1713 sceneの一連実行を接続し小規模テストと利用手順を完成させる\n\n## 進捗概要\n\n子の起動予約: なし。上限: 全子。\n- #1706: 完了 — 完了済み。 / 既存PRを照合して継続する: #1742 / 委任予約済み。既存worker・worktreeを照合する。\n- #1707: 完了 — 完了済み。 / 既存PRを照合して継続する: #1745 / 委任予約済み。既存worker・worktreeを照合する。\n- #1708: 完了 — 完了済み。 / 既存PRを照合して継続する: #1763 / 委任予約済み。既存worker・worktreeを照合する。\n- #1709: 継続 — 既存PRを照合して継続する: #1766 / 委任予約済み。既存worker・worktreeを照合する。\n- #1711: 完了 — 完了済み。 / 既存PRを照合して継続する: #1758 / 委任予約済み。既存worker・worktreeを照合する。\n- #1712: 完了 — 完了済み。 / 既存PRを照合して継続する: #1761 / 委任予約済み。既存worker・worktreeを照合する。\n- #1713: 継続 — 起動可能（stacked branch: PR #1766）\n\n## 依存関係・進め方\n\n1. 本文の回答を要件の正本とし、未決事項のうち採否に影響する内容だけを具体化する。実装担当が決められるfield名等のために再承認を要求しない。\n2. 実装を依頼された担当親がparent-sessionで登録し、v3 schema → 白紙worker・camera分離・90分と自動継続 → 固定幾何によるscene接続とdataset接続 → 小規模テストの順に進める。正式な子issueと依存関係は子タスクのチェックリストを参照する。\n3. 後続作業として既存実データの移行と、指定clipを使った注釈・三角測量・dataset公開の実行検証を追跡する。指定clipの参照は生成後の集計・比較に使う。\n4. 既存の運用workflowが未対応のために、運用中の即席スクリプトで代替せず、正式なコード・契約・skillの対応範囲として整備する。\n\n関連:\n- #1088: 共通の注釈・公開・学習基盤。\n- #1690: マージ済みの進捗・増分継続基盤。\n- #1370: 既存GPT注釈から3D Refinerを学習する別の親。本issueは注釈生成とscene/dataset接続を担当し、Refinerの本学習は扱わない。推測利用は今回のユーザー回答に基づく。\n\n## 状態の意味とschema設計\n\nユーザーからの「out_of_frameとunknownに差がないのか」という質問への整理。以下の状態の意味と、現在のv2が表現できる範囲を区別する。\n\n| 意味 | 座標と利用の考え方 |\n|---|---|\n| out_of_frame | 対象の生きた球が画像の外にあると判断できた状態。画像内座標がないことと、状態が分からないことは異なる |\n| unknown / unresolved | 対象球の状態や位置を、参照・補完しても決められなかった状態 |\n| no_active_ball（名称案） | 球の場所は分かるが、プレー中の対象球はない状態。見えている手持ち球・予備球を対象球の座標へ流用しない |\n| occluded | 対象球が遮蔽物に隠れていると判断した状態。位置まで推定できれば推測座標を保存する |\n| observed | 当該cameraの画像で位置を確認した点 |\n| interpolated / estimated | 同じcameraの文脈・補完等から得た点。今回の方針では三角測量・教師への利用を許可する |\n| unreviewed / 未処理 | 注釈処理が済んでいない状態。GPTが作業を終えて残したunknownと混同しない |\n\n現在のv2のstatusはobserved / interpolated / occlusion_estimated / unresolvedで、out_of_frame専用状態を持たない。現行readerはunresolvedをunknownとして扱い、確認済み不在の負例にはしない。一方、既存BallLabelsにはout_of_frame等の詳細状態がある。\n\nv3へ更新することと「生きた球なし」を独立状態として追加することは確定。位置の有無、画面外・遮蔽・未知・生きた球なしの状態、観測/推測の由来を分離して保持するfield設計は実装事項。新schemaでunknownを別状態へ名称変更しただけで改善扱いにしない。画面外の推測座標を保存・利用するかは未決事項に記す。\n\n## 後続タスクの受入検証\n\n- [ ] 既存実データをv3へ移行し、座標・状態・由来・splitの照合結果を残す。\n- [ ] 指定clipの全3030 camera/frameを処理し、座標利用不可81件以下かつ最終unknown25件以下を確認する。camera別・状態別の内訳を残す。\n- [ ] 保存した新規GPT注釈を読み直し、固定幾何で三角測量した結果と、実データのsnapshot公開・再読込結果を保存する。実動画の結果と可視化を提示する。\n\n### 指定clipによる実動画検証\n\n検証root（repo相対）:\n`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/`\n\nユーザー提供参照の正本:\n`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json`\n\n入力は `data/samples/cam0.mp4`・`cam1.mp4`・`cam2.mp4`。clipは `meiji_3cam/video_000/clip_000`、3camera×1010frame、frame 0〜1009、1920×1080、59.94006fps。\n2026-11-07に、動画3本、参照JSON、元CSV6本の保存済みidentityとの一致を確認し、JSONのpositionsから再集計した。注釈・三角測量の新規実行はまだ行っていない。\n\n| camera | 直接観測 | 採用された推定座標 | 最終unknown | 座標なしの遮蔽 | 除外された外挿 | 利用可能座標 | 利用可能座標なし |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| cam0 | 714 | 256 | 0 | 12 | 28 | 970 | 40 |\n| cam1 | 985 | 0 | 17 | 8 | 0 | 985 | 25 |\n| cam2 | 890 | 114 | 0 | 6 | 0 | 1004 | 6 |\n| 合計 | 2589 | 370 | 17 | 26 | 28 | 2959 | 71 |\n\n**集計上の注意**:\n- 最終unknownは `reference_kind=unknown` の17件。元CSV由来の `source_status=unknown` は415件あり、そのうち370件は補完後に採用された推定座標、28件は除外された外挿である。415件を未解決の基準にしない。\n- 座標なしの遮蔽は26件。さらにcam0末尾の982〜1009の外挿28件が既存のユーザー判断で採点対象外になっている。今回の新規注釈方針を理由に参照側の除外を変更しない。\n- 現在の合否条件は「座標利用不可の合計81件以下」かつ「最終unknown25件以下」。参照は2959/3030件が利用可、71件が利用不可。新規結果でunknownだけ減り、座標なしの別状態が増えた場合も合計と内訳を示す。\n- 81件は参照のunknown17件・座標なし遮蔽26件・除外外挿28件に余裕10件を加えた値。両閾値は3cameraの全3030件の合計に適用し、camera別には内訳を報告する。追加のcamera別上限を勝手に設けない。座標利用不可は最終結果で対象球の利用可能座標がないものを数え、生きた球なし・画面外も座標がなければ含める。未処理は最終unknownとは別に残し、完走と扱わない。\n\n**新規workflowでの確認**:\n1. 3本の元動画から新規に白紙注釈する。GPTは担当cameraの画像だけを見て、同じcameraの前後参照・補完・自己修正を行う。参照の座標・frame別状態、既存のボール検出・heatmap・3D軌道を注釈入力に渡さない。参照は生成完了後の集計・比較に用いる。\n2. 1回のworkflow起動で全対象を処理し、注釈を保存する。90分に達したworkerは保存済み進捗から同じworkflow内で自動継続する。内部の複数画像要求・複数モデル応答・自己修正は可能。手作業で追加修正した結果や、独立した複数runの最良値を「一発」の結果にしない。\n3. 最終状態を同じ意味へ対応付けて、camera別・全体のunknown数、観測/推測数、画面外、遮蔽、利用可能座標数を報告する。未知が残った位置・連続区間も保存する。座標誤差・overlay動画は補助情報であり、未合意の追加合否閾値は置かない。\n4. メモリ内の結果だけでなく、保存済みGPT注釈を正式readerで読み直し、sceneのball入力として三角測量まで実行する。推測点の利用と由来を維持し、3D座標・有効mask・寄与camera・欠測理由を保存する。終了コード0や全欠測の出力だけで成立扱いにしない。\n5. dataset公開オプションを付けた実行で、同じ注釈の不変snapshotを公開し、readerが観測・推測・負例・未知のmaskとgroup/splitを正しく読めることを確認する。この検証用収録の公開を理由に既存の評価groupをtrainへ移さない。\n\n**再利用する中間生成物**:\n`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1/scene.json` に各cameraのcourt_detectionがあり、`bundle.json` にはcourt_calibration / court_side / camera_alignmentの固定参照がある。記述ファイルの存在と保存済みchecksumの一致は確認した。\n実行時には配列を含む参照と入力動画の対応を正式readerで検証し、コート検出・`court_calibration`・`court_side`・`camera_alignment`を固定して読み込む。ball_detection・ball_points・ball_triangulationは新規GPT注釈から生成し、固定入力の出自を記録する。\n\n## 未決事項・人間の判断が必要な点\n\n残る論点を以下に記す。\n\n| 論点 | 残る内容・具体案 |\n|---|---|\n| 生きた球なしの教師採用 | 状態の追加は確定。画像内に手持ち球や予備球がある場合、プレー球専用教師と全ボール検出器向け教師で意味が違う。対象定義と採用maskを明示し、既存全ボール教師へ無条件の負例として混ぜない |\n| 推測点の利用詳細 | 利用する方針は確定。観測点との重み、画面外へ外挿した座標の保存/利用、既存ball_pointsの外れ値除去・平滑化をどこまで通すかを設計する。従来の補間秒数上限や低い重みを無断で持ち込まない |\n| v3接続と後続移行 | v3のfield・writer/reader・scene/dataset接続を設計する。旧v2実データの移行は後続タスクとし、旧データの取扱い・移行手順・保持する状態/由来[local path]。dataset snapshot名の変更とは混同しない |\n| 自動継続で進捗を引き継げない場合 | 保存済みの進捗から時間切れ後に自動継続する方針は確定。保存の欠損・不整合、進捗が増えない場合、外部サービス障害やプロセス消失時の復旧方法を設計する |\n\n今回の指定clipについて、入力・camera数・frame数・解像度・比較参照は特定済み。将来の任意動画の区間指定はCLI設計で扱い、この検証の対象を黙って短縮しない。\n\n## 現状確認と必要な実装変更\n\n- [統合CLI](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/annotation/README.md)は予測receiptからのレビューが前提。予測不要の開始契約と、sceneのローカル動画・camera/frameの登録を追加する。\n- [レビューと教師採用](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/ball_detection/annotation/review/README.md)はobserved_onlyを扱い、補間・遮蔽推定を教師から除外する。今回の「GPTを信用し推測も利用する」方針として明示的に更新し、旧方式へ静かに戻さない。\n- [sceneのv2変換](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/pipeline/imports/ball_annotations.py)もobservedだけを観測にする。schema、ball_points、side/alignment、triangulation、学習maskまで利用条件を照合する。推測を利用可能にすることと、観測由来maskを偽ることを分ける。\n- 既存の有限timeoutと進捗保存を再利用し、cameraごとの90分上限と同一workflow内での自動継続を接続する。小規模テストで時間切れからの再開を検証する。[workerの時間処理](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/ball_detection/annotation/review/worker.py)\n- [publisher](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/ball_detection/generate_dataset/frame_store/publishing/README.md)の不変snapshot・復旧・split管理を再利用する。元動画の自動廃棄や、検証用groupのtrain混入を持ち込まない。\n- [参照reader](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/ground_truth/README.md)は採用済み推定点を含む正解を読み、採点以外の入力に混ぜない。指定データの補完前source_statusと補完後reference_kindを区別して比較する。\n- PR #1690で導入された進捗表示・有限timeout・継続の仕組みを再利用し、白紙注釈用の自動継続に接続する。\n\n## 2026-11-07 追加回答の記録\n\nこの節は本会話で人間が示した変更と、続く選択式質問への回答をCodexが転記したもの。今回も要件の更新であり、コード変更・worker起動・データ移行を実施した記録ではない。\n\n- 「球の場所は分かるが、プレー中の球はない」という状態を追加する。\n- 閾値の確認への回答: 「合計81件以下＋unknown25件以下」。座標利用不可は17+26+28+10=81を基準とする。\n- 90分の適用範囲の確認への回答: 「各カメラの注釈workerの1回の実行」。\n- b3の意味の確認への回答: 「注釈形式をv3にする」。\n- ラップトップでの作業のため、既存実データの移行は後続タスクとして残す。\n\n同日の追加回答\n\n> 90分で終わらない場合は、途中保存した進捗から自動継続してください。実動画での注釈・三角測量・データセット公開の検証も後続タスクに回し、今回は実装と小規模テストまでにします。保存済みの幾何情報は固定して使う方針で、issueに反映してください。\n\n## 子issue起票時の設計具体化\n\n子issue設計への質問に回答した後、人間から「では,子issueを作成してください。」との指示を受けた。今回実行するのは正式な子issue・後続関連issueの起票と依存関係の登録までであり、実装workerの起動、実動画実行、学習、PRのmergeを開始する指示とは扱わない。\n\n設計の詳細は[子issue設計案](https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6703977230)を基礎にし、続く質問と回答を以下のとおり具体化する。\n\n- **継続テスト**: 3camera×12frameの短い合成動画と制御可能なテストworkerを使う。cam0が一部を正式APIで保存して通知した後、監督プロセスが使うテスト時計を期限へ進める。実際の期限判定・停止・進捗回収・次attempt起動・残りの処理を通す。production設定の5400秒と境界判定を別に検証し、短い実時間でのOSプロセス/子孫終了の試験も再利用する。テスト値を本番へ流用せず、DBへ直接timed_outを書いて接続済みとみなさない。\n- **注釈方法の最適化**: 人間の「どのようにしたらトークン予算を抑えて精度を高くできるか、試行錯誤の必要性があります」という意図に沿い、画像取得・拡大・編集・保存の道具と、探索方針[local path]。前後画像の閲覧は利用可能な操作であり、固定の順次手順にしない。探索方針をrun単位で版固定して比較でき、応答別トークン・画像要求・unknown・座標利用可否・精度を測定できるようにする。今回は比較可能な実装と小規模テストまで、実GPTによる比較と実動画受入は後続タスクで行う。トークン削減率や新しい強制予算上限を未合意の合否条件にしない。\n- **sceneのimport**: ball task側にv3 readerを置き、tennis_scene側のBallAnnotationImporterがscene成果物へ変換する。FixedGeometryImporterは保存済み幾何を出自付きの固定入力として扱う。importer自身はGPTを起動せず、workflowが注釈・import・下流実行を接続する。利用可能な座標と直接観測を別maskにし、推測を観測へ偽装しない。旧幾何artifactの依存情報を上書きして新注釈由来に見せない。\n- **dataset公開**: splitに加え、active_ballという教師対象、状態別教師mask、推測重み、画像[local path]、版・重複・修正、公開対象の完了範囲を明示する。元v3から直接公開し、三角測量や平滑化で変わった点をGPTの元注釈へ戻さない。観測と推測の同重みは初期設計案であり、field設計とともに実装時に明示する。既存の全ボール教師へno_active_ballを無条件の負例として混ぜない。\n- **作業範囲**: 今回の必須子7件と、既存実データ移行・探索方針比較/実動画受入の後続関連2件に分ける。後続2件は今回の親の必須子一覧には入れず、関連issueとして追跡する。後続を未実行のまま今回の実装・小規模テストが完了しても、実動画合格やデータ移行完了と報告しない。\n\n## 成果物・関連PR\n\n- 必須子は #1706、#1707、#1708、#1709、#1711、#1712、#1713。正式なsub-issue関係と先行依存を登録済み。\n- 後続関連issue: #1714 既存実データのv3移行、#1715 探索方針比較とclip000の実動画受入。今回の親の必須子一覧には含めない。#1715は新規白紙注釈を検証するため、#1714の完了を待たない。\n- 設計案: https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6703977230 。設計IDの対応は D1=#1706、D2=#1707、D3=#1708、D4=#1709、D5=#1711、D6=#1712、D7=#1713、F1=#1714、F2=#1715。\n- 実装PR・実動画の実行結果・dataset公開成果物は未作成。今回の成果はissueの分割・起票と依存関係の登録。\n",
+      "number": 1698,
+      "title": "[GPTボール注釈] シーン再構成に白紙のオンデマンド注釈と学習データ公開を接続する"
+    },
+    "children": [
+      {
+        "body": "親issue: #1698\n\n## このタスクの目的\n\ncameraごとに5400秒のattemptを実行し、保存済みの有効な増分を引き継いで一連の処理を完走させる。\n\n## 具体的な変更内容・対象範囲\n\n主対象: src/tasks/annotation/production.py・recovery.py・review_progress.py・contracts.py、必要なbase/annotation/workers接続。\n- #1690のtimeout・authorize_retry・進捗検証・資源受付を再利用し、直接注釈用の事前許可された自動継続policyを追加する。\n- cameraごとに5400秒を設定し、正常終了との競合を解決してから、未処理範囲を同じplan/scope/要求の次attemptへ渡す。\n- retry許可の保存と次worker起動を分け、controller再起動・二重tickでも次attemptを二重起動しない。\n- 最終unknownを完了済み判断として扱い、cameraが完成したら再起動しない。\n- 進捗なし、壊れた保存、quota/外部障害、取消は区別する。正常な時間切れ継続を手動判断待ちへ戻さず、復旧不能の異常を無限再試行しない。具体の異常復旧規則を記録する。\n- 検証環境はCPUの3camera×12frame合成動画、正式サービスAPIを呼ぶ制御worker、実controller/保存/監督処理。cam0がframe 0〜3を原子的に保存して通知した後に監督プロセスのテスト時計を5400秒の期限へ進め、実際の期限判定・停止・回収・次attemptでframe 4〜11の完了を確認する。\n- 親プロセスだけのmonotonic差替えでは別プロセスの期限は進まないため、監督側へ届くテスト用clock/control境界を設計する。productionでは使えないよう分離する。\n- productionの5400秒伝搬、新規/継続attemptの期限、期限直前/到達の境界を確認する。DBへ直接timed_outを書いて済ませず、短い実時間の期限による実プロセス/子孫終了の既存試験も再利用する。待機は通知[local path]、90分かかる動画や長いsleepを使わない。\n\n設計根拠: 親issueの最新合意と https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6703977230 。共通要件は親を正本とする。\n\n## 対象外\n\nv3のラベル規則、画像探索、一般的な全taskの自動retry化、実時間90分を待つ試験。\n\n## 依存関係\n\n- #1707\n- #1708\n\n## 作業状況・停止事項\n\n未着手。今回の依頼は起票までであり、実装worker・学習・実動画検証は起動していない。先行依存と親の合意範囲を実装開始時に照合する。\n\n## Acceptance checklist\n\n- [ ] 各cameraのattemptに5400秒を渡し、timeout後は保存された未処理範囲から自動継続する\n  文脈: 親issueの90分[local path]。\n  下流への影響: 利用者の手動continue操作なしで進められる。\n  検証方法・証拠: test_production.py::test_continue_reviews_authorizes_verified_progress_without_launching と test_workers.py::test_timeout_and_owned_stop_terminate_descendants を再利用。clock/終了イベントを注入し、90分は実際に待たずproduction設定値の伝搬を検証する。\n\n- [ ] 再開・二重tick・終了競合でもworkerと編集を二重生成しない\n  文脈: retry受付と起動の間でも中断する。\n  下流への影響: 二重注釈・予約漏れ・完成結果の取消を防ぐ。\n  検証方法・証拠: test_workers.py::test_authorized_retry_records_decision_and_waits_for_admission と test_stop_does_not_cancel_concurrent_retry を拡張。timeout回収後/許可保存後/起動後の中断点を検証する。\n\n- [ ] 完成済みunknownと未処理を区別し、異常時の状態と次の対応を報告する\n  文脈: unknown削減努力と完走判定を両立する。\n  下流への影響: unknownゼロまで自動ループする誤動作を防ぐ。\n  検証方法・証拠: test_production.py::test_run_reports_a_blocked_campaign_only_after_live_work_settles を拡張し、完成・進捗なし・保存欠損・quotaを独立したケースで確認する。\n\n- [ ] 保存後の時間切れから再開完了までを同じworkflowで実行し、他cameraと既存編集を保持する\n  文脈: 時計やDBの一部だけをmockしても監督プロセスとcontrollerの接続は保証できない。\n  下流への影響: 本番の90分境界で停止したworkerの成果を失わず自動継続できる。\n  検証方法・証拠: 上記3camera×12frameのintegrationで、cam0の原子的保存通知→監督時計の期限到達→実停止→次attempt→完了を検証する。cam1/cam2は完成済みとして再起動しない。保存途中・許可保存後のcontroller再起動・終了競合を軽い層に配置し、実時間終了の既存test_timeout_and_owned_stop_terminate_descendantsも実行する。\n\n<!-- parent-task:v1 parent=1698 key=automatic-annotation-continuation spec=426b1eba2b054c5b432259809e2ae3d7bd2668eabf11fba6a945e9449d4cd554 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/automatic-annotation-continuation`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1766 (open)\n\n検証結果:\n> 子 #1709 の成果: PR #1766。対象HEAD d3d59cf13 のCI（Lint、CPU tests 0〜9、Python）がすべて成功。親が local_controller.py・recovery.py・supervisor.py・pool.py・_test_clock.py の差分を読み、継続判断がattemptごとの不変記録として保存されること、試験用時計がtest layout以外では拒否されることを確認した。PR本文によると、3camera×12frameの実プロセス試験で、時間切れからの自動継続・完成camera・進捗なし・保存破損・quota・cancelを区別している。ローカルでのPSSテスト1件の失敗は、変更前のmainでも再現すると報告されている。実GPT・GPU・実動画での受入は範囲外。\n\n",
+        "number": 1709,
+        "title": "[GPTボール注釈 #1698] 90分の時間切れから同じ注釈workflowを自動継続する"
+      }
+    ],
+    "prs": [
+      {
+        "body": "白紙注釈のcamera workerが90分で時間切れになった後、保存した編集を保持して未処理frameだけを同じworkflowで自動継続します。最終unknownは処理済みとして扱い、完成したcameraを再起動しません。\n\nCloses #1709\n親: #1698（scene CLIへの配線は #1713）\n\n## 実装\n\n- `LocalAnnotationController` を追加し、登録完了receipt・固定runtime・全cameraを照合。初回と継続attemptに5400秒を渡し、既存WorkerPool・ResourceManager・正式cameraサービスを使用します。\n- plan/runtime/scopeを固定した白紙専用policyと、attempt別の理由・開始/終了件数・残数・head revisionを不変保存します。判断保存・retry許可・次tickの資源受付を分け、共通のwork/service lockとattempt照合で再起動・二重tick・明示retryの競合を処理します。\n- 共有v3利用判定で処理済みframeの増加を検証し、未処理数が減る場合だけ通常timeoutを継続します。処理済みから未処理への退行は拒否するため、正常継続も入力frame数で有限です。\n- 全frameを保存した直後のtimeoutは正式storeから完成receiptを回収します。元のworker履歴はtimed_outのまま保持し、cameraのcompleteとVideoCompletionを下流へ渡します。unknownゼロ・追加QAは要求しません。\n- supervisorは期限判定時の終了済みchildを先に回収し、期限前のquota/外部エラーを通常timeoutで隠さないようにしました。\n- test layout専用socketで監督側の時計を制御します。実child終了のpidfdと同じselectorで待ち、実際の期限判定・停止・子孫回収を通します。poolとsupervisorの双方でproduction利用を拒否します。\n\n## 異常時の扱い\n\n| 原因 | 次の対応 |\n|---|---|\n| timeout・有効な増分・未処理あり | 自動継続。手動continue不要 |\n| timeout・進捗なし | 理由付きで保留し、原因確認後の明示retry |\n| 保存欠損・hash/入力不一致・壊れたrevision | invalid_saved_progress。成果を保持し、復元・修正と明示復旧を要求。別revisionへ自動fallbackしない |\n| quota/rate limit | campaignの新規受付を停止し、未起動予約を取消。容量回復後にResumeWorkersとRetryWorker |\n| worker/外部障害・validation_failed・deferred | 理由を確認して明示復旧。無限retryしない |\n| 取消 | 保存を保持し、明示retryまで停止 |\n| 一時的な資源不足 | 同じpending要求で受付待ち。attempt/予約を重複作成しない |\n\nREADMEに利用API・完成receipt・各復旧手順を記載しました。blockedでもliveなcamera/サービスの終了まで処理を続けます。\n\n## 受入条件の証拠\n\n- 3camera×12frameのCPU合成動画、正式ツールclientを呼ぶ制御worker、実controller・資源stage・store・supervisorを使用。cam0がframe 0〜3を原子的に保存した通知の後、監督時計を5399.999→5400秒に進め、実停止とtimed_out receiptを確認します。DBへtimed_outを直接書く代替は使っていません。\n- 許可保存後と次worker起動後にcontrollerを作り直し、cam0のframe 4〜11だけを完了。cam0は2 attempts、cam1/cam2は各1 attempt、既存編集・最終unknown・旧revision・plan/scope/requestを保持します。\n- 軽い層で保存transaction途中、許可保存の前後、明示retryとの競合、完成unknown、進捗なし、保存欠損/破損、quota、外部障害、取消、最後のstageの終了待ちを確認します。\n- 既存のcontinue_reviews、authorize_retry、stop/retry競合、run_finished、短い実時間での実process/子孫終了テストを再利用しました。\n\n## 検証と増分\n\n- 関連範囲: **412 passed / 1 failed、437.46秒**（pytest -n 0）。失敗は既存の `test_worker_inherits_resource_lease_and_records_real_pss`。変更前origin/main（2e55f4dbe）の別worktreeでも同じ「controller PIDのPSSが得られない」assertで失敗することを確認（2.76秒）。本変更の退行として扱っていません。\n- 自動継続本体（ffefd17d6）: **33 passed、73.05秒**。新規unit 15件、代表integration、指定の既存継続・競合・実時間timeout試験を再実行。\n- 全frame保存後のquotaでも完成receiptがなければ明示復旧できるよう補正（608b04298）。quota停止を迂回せず、ResumeWorkers後のRetryWorkerを確認するunitを拡張し、**15 passed、17.90秒**。ruff/mypyも再度成功。\n- collect-only: 同じ関連範囲でmain **395件 → 416件（+21件）**。追加はunit 20件、integration 1件、削除なし。最大parametrizeは8件、unit fixtureの最大setupは0.67秒。\n- integrationは独立したCPU controller processでの最終実測41.67秒。16回の正式サービスstageと4 worker attemptsを実processでつなぐ代表1件であり、ここをmockすると今回の接続契約を検出できないため5秒を超えます。実時間90分や待機用の長いsleepはありません。\n- 進捗なしを継続分岐へ入れる変異でno_progressケースの失敗を確認（保存decisionと進捗の矛盾を検出）。復元後の33件は成功。\n- pre-commit: ruff / mypy成功。\n- CI run 42523849644は9 CPUレーンとLintが成功し、レーン8の新規integrationが初回pollのPSS上限で失敗。全体テストを収集したpytest processの常駐メモリが1 GiB fixture予算へ混在したため、実controllerを独立CPU processへ分離しました。予算を増やさず、実計測・資源受付・監督・保存を維持し、ローカルで **1 passed、45.05秒**（call 41.67秒）を確認。修正後は下記の最終CIですべて成功しました。\n\n実GPT API・GPU・実動画受入は実行していません。認識品質の受入、sceneの一連CLI、dataset公開の呼出しは本PRの検証範囲に含めません。\n\n\n## 最終CI\n\nHEAD `d3d59cf13f7eb89aa61033b27105a4b8c76efdab` の [CI run 42525240331](https://github.com/Motoki0705/tennis-lab/actions/runs/42525240331) は **success**。GitHub APIで、CPU lane plan・Lint・CPU tests 0〜9・**Python** の13 jobsすべてがcompleted/successであることを確認しました。\n\n修正したレーン8は1547 passed / 1 skipped。今回の3camera integrationもCIで46.25秒（call）で成功しました。worktreeはclean、PRはopen/mergeableで、mergeは行っていません。統合レビュー・merge・closeは親担当へ返します。\n",
+        "changed_paths": [
+          "src/tasks/annotation/README.md",
+          "src/tasks/annotation/configuration.py",
+          "src/tasks/annotation/contracts.py",
+          "src/tasks/annotation/local_controller.py",
+          "src/tasks/annotation/production.py",
+          "src/tasks/annotation/recovery.py",
+          "src/tasks/annotation/review_progress.py",
+          "src/tasks/ball_detection/annotation/video/agent/README.ja.md",
+          "src/tasks/ball_detection/annotation/video/agent/README.md",
+          "src/tasks/ball_detection/annotation/video/agent/README.zh-CN.md",
+          "src/tasks/base/annotation/workers/README.md",
+          "src/tasks/base/annotation/workers/__main__.py",
+          "src/tasks/base/annotation/workers/_test_clock.py",
+          "src/tasks/base/annotation/workers/pool.py",
+          "src/tasks/base/annotation/workers/supervisor.py",
+          "tests/integration/tasks/annotation/test_automatic_continuation.py",
+          "tests/support/tasks/annotation_events.py",
+          "tests/support/tasks/blank_agent.py",
+          "tests/support/tasks/local_annotation.py",
+          "tests/unit/tasks/annotation/test_local_controller.py",
+          "tests/unit/tasks/base/annotation/test_workers.py"
+        ],
+        "child_issues": [
+          1709
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1766,
+        "title": "白紙camera注釈を90分の時間切れ後に保存済み進捗から自動継続する"
+      }
+    ],
+    "instruction": "PR #1766（子 #1709）を統合レビューしてください。#1708（PR #1763、merge済み）の白紙camera注釈workerについて、各cameraの1回の試行を5400秒に制限し、時間切れになったら保存済みの進捗から人手なしで自動継続する変更です。既存の #1690 系の時間切れ・authorize_retry・進捗の仕組みを再利用しています。後続 #1713 がこのcontrollerをsceneの一連実行へ接続します。\n\n重点的に確認してほしい点:\n- 自動継続の条件が一意か。時間切れかつ新しく処理済みになったframeがある場合だけ継続し、全frame処理済みなら追加workerなしで確定し、進捗なし・保存破損・quota・失敗・cancelは保留して明示的なretryを待つか。未処理を最終unknownに読み替えていないか。最終unknownを含む完成cameraを再起動しないか。\n- 継続判断（`workflow/continuations/<work_id>[local path]<attempt>.json`）の不変性と競合。ロックの取り方、判断の記録と `authorize_retry` の間で中断した場合の復旧、明示retryやstopとの競合、古い判断を新しいattemptへ適用しないことを確認してほしい。\n- `AnnotationContinuationPolicy` と固定されたplan・runtime・scope・timeoutの照合。productionで5400秒以外を拒否する検証が、既存の予測レビュー経路を壊していないか。\n- supervisorの `exit_status` の変更。以前は timed_out が quota・failure より優先されたが、今回は時間切れ前に観測した quota・failure を優先する。この順序の変更が自動継続の判断と既存のレビュー経路にとって妥当か。また、時間切れの判定前に完了済みの子をreapする変更を確認してほしい。\n- 試験用の論理時計（`_test_clock.py`、`--test-control-fd`）がtest layoutでだけ有効になり、productionで静かに有効にならないか。workerへfdが漏れないか。\n- 既存の `Controller`・`recover` の予測レビュー経路（ball_review、source_screening、learning）への影響。\n\nこの環境の制約: WSL2環境のため、隔離CPUテストのprobeが通らず `cpu_tests` は提供できません。CIログ本文も #1609 が未解決のため `ci_log` で取得できません。対象HEADのcheck runの結論（Lint、CPU tests 0〜9、Python がすべて success）はAPIで確認できます。この2点だけを理由に `not_reviewed` にせず、固定commitのコード・差分全文・issueの証跡・CIの結論で判定してください。ログ本文やテスト再実行がなければ判断できない点が具体的にある場合だけ、その点を明記して `not_reviewed` にしてください。",
+    "parent_comments": [
+      {
+        "id": 6688753434,
+        "body": "2026-11-07の人間からの回答を、会話から転記した要件更新の根拠です（Codexによる代筆）。以下の引用は人間の発言であり、agentの推奨案ではありません。現在の要件・受入条件はissue本文に反映します。\n\n> 一番については、一連の処理として実行することが目標です。ボールはプレー中の1球とします。プレー中の一球というのは、カメラが向いているコートでプレーしているボール、生きたボールということです。GPTは前後の画像を見てよいです。また、別のカメラの画像は見てはいけません。ただし、どのようにアノテーション作業をするかというのは、そもそもGPT自身に自由度高く決めさせたい部分ではあります。\n\n> また、V2準拠という方針については柔軟にいきたいと考えています。必要に応じては、V2を新しくしてV3にすることも検討しています。推測は、三角測量や学習に使えます。推測の精度は高いというヒューリスティックです。\n\n> したがって、モデルには補完などを用いて、できるだけアンノーンがないようにするというプロンプトでの指示を与え、返ってきたものに関して、それを信用する形にしたいと思います。基本的に時間切れの設定はつけないような方針にしたいと考えています。はい、今回は学習のデータセットの公開までを完成させることとします。あなたの推奨通り、注釈自体は常に保存し、データセット公開は実行時の明示的なオプションで選ぶ方式にします。同じ元収録の全camera・関連clipを一つのグループとして分割とします。\n\n続けて、検証対象にrepo相対の `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103` を指定した。以下はその追加指示の引用。\n\n> 正解のアノテーションとして保存されているものと、もののアンノウンの数があると思いますが、これが大体の敷地として、ここに一発のワークフローでこの敷地あたりまで行けることを確認することを今回のゴールとしたいと考えています。また、保存されたGPTによるアノテーションの結果を後続のパイプラインで使用できるか、具体的には三角測量までいけるかを確かめたいと思います。口頭の検出については、中間生成物を用いてください。\n\n音声入力と思われる「敷地」はunknown数の「閾値・目安」、「口頭の検出」は「コート検出」と解釈して本文へ反映する。「一発」は1回のworkflow起動での達成として扱い、内部の画像閲覧・補完・自己修正を1回のモデル応答に制限する意味には解釈しない。",
+        "created_at": "2026-11-06T15:39:38Z",
+        "updated_at": "2026-11-06T15:39:38Z",
+        "html_url": "https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6688753434"
+      }
+    ]
+  },
+  "github": {
+    "repos/Motoki0705/tennis-lab/issues/1698": {
+      "as_of": "2026-11-08T21:46:52.549157+00:00",
+      "value": {
+        "body": "## 目的・背景\n\ntennis_scene の ball_detection に、通常の検出モデルに代えてGPTが元動画からプレー中の1球を白紙で探索・注釈する実行オプションを追加する。注釈開始からシーン再構成までを一連の処理とし、同じ注釈を将来の検出器学習用データセットとして公開できるようにする。\n\n2026-11-07のユーザー回答と追加の検証対象指定を反映した。回答の原文は [回答記録](https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6688753434) に記録する。実装・注釈campaign・学習はまだ開始していない。現在は合意した設計に基づく子issueの起票を行う。\n\n## 全体のスコープ\n\n対象:\n- src/tennis_scene の ball_detection の方式選択、annotation-workflowからの白紙注釈、注釈保存、下流への接続。\n- camera単位の画像入力の分離、GPTによる前後frameの参照・探索・補完・自己修正。\n- 観測・補間・遮蔽推定・画面外・未解決・生きた球なし等を保持する注釈形式video_ball_annotation.v3を新設し、reader・scene・datasetへの接続を更新する。注釈schemaのv3とdataset snapshotの版名は区別する。\n- 推測を含むGPTの注釈を三角測量・学習教師に使用できる経路。\n- 各cameraの注釈workerを1回90分（5400秒）で実行し、時間切れ時は保存済みの進捗から自動継続する。\n- data/ball_detection/ への明示オプションによる不変snapshot公開。画像・教師・採用mask・来歴・splitを学習readerまで接続する。\n- 保存済みのコート検出・カメラ校正・コートの向き・カメラ配置を固定入力として読み込む経路。\n- 小規模なテスト入力で、時間切れ後の自動継続、v3注釈の再読込、固定幾何を用いた三角測量、dataset snapshot公開を検証する。\n\n後続タスクでは、既存実データの移行と、指定clipを使った新規GPT注釈・三角測量・dataset公開の受入検証を行う。\n\n対象外:\n- 今回の完成範囲を超える追加学習・評価・モデル採用の実行。\n- 他cameraの画像や既存のボール検出予測をGPTに提示する注釈。\n- プレー対象以外の予備球・隣接コートの球を網羅する注釈。\n- 3D Refinerの学習、人物・poseの新規開発、既存注釈の一括上書き。\n- 外部への一般公開・配布は現時点で要求されていない。今回の公開先はdata/ball_detection/とする。\n\n## 全体方針・合意事項\n\n以下は2026-11-07までの人間の回答。起票時の未合意案より優先する。\n\n1. **一連の実行**: 明示オプションでGPT注釈を開始し、保存した注釈を後続pipelineへ渡すところまで一連の処理として実行する。\n2. **白紙注釈**: 既存のボール検出モデルの予測案・heatmap・予測由来の探索領域を使わない。\n3. **対象球**: カメラが向いているコートでプレーしている、生きたボール1球。全ボール検出へ意味を広げない。\n4. **閲覧範囲と裁量**: 同じcameraの前後画像を参照できる。他cameraの画像は見せない。その範囲で、閲覧順、拡大・切り出し、注釈の進め方、補完・推測の手順はGPTが自由度高く決める。固定した手順や、全frameを1枚ずつ独立に目視する追加条件を勝手に課さない。\n5. **schema**: 注釈形式をvideo_ball_annotation.v3へ更新する（今回の追加確認で確定）。dataset snapshotをb3という名前にする指定ではない。v3の具体的なfield設計やv2互換出力の要否は設計時に決める。既存実データの移行はラップトップ上の今回作業では行わず、後続タスクとして残す。\n6. **推測の利用**: 補間・遮蔽推定などを三角測量と学習に使ってよい。根拠はユーザーの「推測の精度は高い」というヒューリスティックであり、本issueで実測済みの精度保証ではない。推測の由来は保持し、実観測に偽装しない。従来のobserved_only条件で黙って除外しない。\n7. **unknownの最小化と採用**: 前後文脈や補完を使ってできるだけunknownを残さないようpromptで指示し、返ってきたGPTの判断を信用して利用する。能力限界で残るunknownは認める。unknownゼロを絶対条件にせず、独立QA・人手による逐点承認・未合意の精度閾値を追加しない。構文、入力対応、座標・状態の整合性は機械検証する。\n8. 各cameraの注釈workerには、1回の実行につき90分（5400秒）の上限を適用する。時間切れで作業が残っていれば、同じworkflow内で検証済みの途中保存を引き継ぎ、未処理範囲から次のworkerを自動起動する。継続先にも同じ上限を適用する。進捗と停止理由を記録し、注釈済みの範囲と最終unknown、未処理範囲を区別する。\n9. 学習可能なdataset snapshotを公開する機能を実装し、小規模入力で検証する。注釈は常に保存し、snapshot公開は実行時の明示オプションで選ぶ。その指定を公開の承認として扱う。\n10. **split**: 同じ元収録の全camera・関連clipを一つのgroupにまとめて分割する。既存評価用groupをtrainへ混ぜない。\n11. **基盤**: annotation-workflowと現行統合CLI・台帳・保存基盤を拡張する。PR #1690はマージ済み。進捗表示・増分保存・有限timeout・復旧の仕組みは再利用し、白紙注釈と今回の教師採用規則を接続する。\n12. 今回の完了範囲は実装と小規模テスト。指定clip000_20261103の全3030 camera/frameを対象とする実動画受入は後続タスクとし、座標利用不可の合計81件以下、最終unknown25件以下の両方を確認する。81は参照の17+26+28に余裕10を加えた値。後続では保存した新規GPT注釈から三角測量結果を生成し、dataset snapshotも実データで公開・再読込する。\n\n13. **生きた球なし**: 「球の場所は分かるが、プレー中の球はない」を独立状態として追加する。out_of_frame（対象球は画面外）・unknown（判断不能）と区別する。状態名no_active_ballは設計案であり、画面内に手持ち球・予備球等が存在することを否定する状態ではない。遮蔽は別に保持し、推測座標が使えるかと状態を分離する。\n14. 指定clipの受入検証では、保存済みのコート検出に加え、`court_calibration`、`court_side`、`camera_alignment`を固定入力として使う。\n\n起票時の「v2必須」「観測点だけを三角測量・教師へ使用」「全frameの独立目視確認率や未合意の精度閾値による追加採用gate」は、現在の合意条件として残さない。以前の「基本timeoutなし」「unknown17件程度」は今回の追加回答で置き換え、90分[local path]、座標利用不可81件以下かつunknown25件以下を現在の条件とする。\n\n## 全体の完了条件\n\n- [ ] 明示オプションで通常推論とGPT白紙注釈を選べ、注釈から後続処理まで一連で実行できる。GPT方式にball checkpoint・既存予測receiptを要求しない。\n- [ ] 対象球の定義、同じcameraの前後参照、他camera画像禁止、unknown最小化、作業手順の裁量をpromptと画像提供の両方で守る。\n- [ ] 生きた球なし・画面外・未知・遮蔽、観測/推測の由来、座標・元frame/PTSを保持するvideo_ball_annotation.v3とreaderを提供する。既存実データの移行は後続タスクとして追跡し、今回の完了に見せない。\n- [ ] GPT注釈を常に保存し、保存済み結果を読み直して利用できる。未処理範囲を最終unknownに偽装せず、入力・frame・状態・座標の不整合を検出する。\n- [ ] 推測点を観測と区別したまま、三角測量と学習教師へ使用できる。既存のobserved_onlyや教師maskで黙って落とさない。三角測量に使用できる座標が2view未満の時刻は欠測とする。\n- [ ] 各cameraのworkerに90分の上限を適用し、時間切れ後に保存済みの進捗を読み込んで自動継続する。小規模テストで、同じworkflowの未処理範囲から再開し、保存済み注釈を保持することを確認する。\n- [ ] 小規模テストで、保存したv3注釈を正式readerで読み直し、固定したコート検出・校正・向き・配置を使って三角測量する。推測点の寄与、2view未満の欠測、固定入力の来歴を照合する。\n- [ ] 小規模テストで、明示した公開オプションにより `data/ball_detection/` 形式の不変snapshotを生成し、readerで状態・教師mask・group/splitを確認する。同一収録の全camera・関連clipが同一group/splitに入り、再実行で二重登録が起きないことを確認する。\n- [ ] 小規模テストの結果と再開・固定入力の再利用・公開の手順を提示する。実動画の受入条件と既存実データの移行は「後続タスクの受入検証」に記録する。\n\n## 子タスクのチェックリスト\n\n- [x] #1706 プレー球の注釈v3と状態・由来・利用条件を定義する\n- [x] #1707 ローカル動画を予測不要の注釈要求として登録する\n- [x] #1708 単一カメラの白紙注釈と探索方針の比較基盤を作る\n- [ ] #1709 90分の時間切れから同じ注釈workflowを自動継続する\n- [x] #1711 v3注釈・固定幾何のimportと三角測量を接続する\n- [x] #1712 v3注釈をプレー球の学習snapshotとして公開する\n- [ ] #1713 sceneの一連実行を接続し小規模テストと利用手順を完成させる\n\n## 進捗概要\n\n子の起動予約: なし。上限: 全子。\n- #1706: 完了 — 完了済み。 / 既存PRを照合して継続する: #1742 / 委任予約済み。既存worker・worktreeを照合する。\n- #1707: 完了 — 完了済み。 / 既存PRを照合して継続する: #1745 / 委任予約済み。既存worker・worktreeを照合する。\n- #1708: 完了 — 完了済み。 / 既存PRを照合して継続する: #1763 / 委任予約済み。既存worker・worktreeを照合する。\n- #1709: 継続 — 既存PRを照合して継続する: #1766 / 委任予約済み。既存worker・worktreeを照合する。\n- #1711: 完了 — 完了済み。 / 既存PRを照合して継続する: #1758 / 委任予約済み。既存worker・worktreeを照合する。\n- #1712: 完了 — 完了済み。 / 既存PRを照合して継続する: #1761 / 委任予約済み。既存worker・worktreeを照合する。\n- #1713: 継続 — 起動可能（stacked branch: PR #1766）\n\n## 依存関係・進め方\n\n1. 本文の回答を要件の正本とし、未決事項のうち採否に影響する内容だけを具体化する。実装担当が決められるfield名等のために再承認を要求しない。\n2. 実装を依頼された担当親がparent-sessionで登録し、v3 schema → 白紙worker・camera分離・90分と自動継続 → 固定幾何によるscene接続とdataset接続 → 小規模テストの順に進める。正式な子issueと依存関係は子タスクのチェックリストを参照する。\n3. 後続作業として既存実データの移行と、指定clipを使った注釈・三角測量・dataset公開の実行検証を追跡する。指定clipの参照は生成後の集計・比較に使う。\n4. 既存の運用workflowが未対応のために、運用中の即席スクリプトで代替せず、正式なコード・契約・skillの対応範囲として整備する。\n\n関連:\n- #1088: 共通の注釈・公開・学習基盤。\n- #1690: マージ済みの進捗・増分継続基盤。\n- #1370: 既存GPT注釈から3D Refinerを学習する別の親。本issueは注釈生成とscene/dataset接続を担当し、Refinerの本学習は扱わない。推測利用は今回のユーザー回答に基づく。\n\n## 状態の意味とschema設計\n\nユーザーからの「out_of_frameとunknownに差がないのか」という質問への整理。以下の状態の意味と、現在のv2が表現できる範囲を区別する。\n\n| 意味 | 座標と利用の考え方 |\n|---|---|\n| out_of_frame | 対象の生きた球が画像の外にあると判断できた状態。画像内座標がないことと、状態が分からないことは異なる |\n| unknown / unresolved | 対象球の状態や位置を、参照・補完しても決められなかった状態 |\n| no_active_ball（名称案） | 球の場所は分かるが、プレー中の対象球はない状態。見えている手持ち球・予備球を対象球の座標へ流用しない |\n| occluded | 対象球が遮蔽物に隠れていると判断した状態。位置まで推定できれば推測座標を保存する |\n| observed | 当該cameraの画像で位置を確認した点 |\n| interpolated / estimated | 同じcameraの文脈・補完等から得た点。今回の方針では三角測量・教師への利用を許可する |\n| unreviewed / 未処理 | 注釈処理が済んでいない状態。GPTが作業を終えて残したunknownと混同しない |\n\n現在のv2のstatusはobserved / interpolated / occlusion_estimated / unresolvedで、out_of_frame専用状態を持たない。現行readerはunresolvedをunknownとして扱い、確認済み不在の負例にはしない。一方、既存BallLabelsにはout_of_frame等の詳細状態がある。\n\nv3へ更新することと「生きた球なし」を独立状態として追加することは確定。位置の有無、画面外・遮蔽・未知・生きた球なしの状態、観測/推測の由来を分離して保持するfield設計は実装事項。新schemaでunknownを別状態へ名称変更しただけで改善扱いにしない。画面外の推測座標を保存・利用するかは未決事項に記す。\n\n## 後続タスクの受入検証\n\n- [ ] 既存実データをv3へ移行し、座標・状態・由来・splitの照合結果を残す。\n- [ ] 指定clipの全3030 camera/frameを処理し、座標利用不可81件以下かつ最終unknown25件以下を確認する。camera別・状態別の内訳を残す。\n- [ ] 保存した新規GPT注釈を読み直し、固定幾何で三角測量した結果と、実データのsnapshot公開・再読込結果を保存する。実動画の結果と可視化を提示する。\n\n### 指定clipによる実動画検証\n\n検証root（repo相対）:\n`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/`\n\nユーザー提供参照の正本:\n`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/human_annotations/ground_truth_v1/ground_truth.json`\n\n入力は `data/samples/cam0.mp4`・`cam1.mp4`・`cam2.mp4`。clipは `meiji_3cam/video_000/clip_000`、3camera×1010frame、frame 0〜1009、1920×1080、59.94006fps。\n2026-11-07に、動画3本、参照JSON、元CSV6本の保存済みidentityとの一致を確認し、JSONのpositionsから再集計した。注釈・三角測量の新規実行はまだ行っていない。\n\n| camera | 直接観測 | 採用された推定座標 | 最終unknown | 座標なしの遮蔽 | 除外された外挿 | 利用可能座標 | 利用可能座標なし |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| cam0 | 714 | 256 | 0 | 12 | 28 | 970 | 40 |\n| cam1 | 985 | 0 | 17 | 8 | 0 | 985 | 25 |\n| cam2 | 890 | 114 | 0 | 6 | 0 | 1004 | 6 |\n| 合計 | 2589 | 370 | 17 | 26 | 28 | 2959 | 71 |\n\n**集計上の注意**:\n- 最終unknownは `reference_kind=unknown` の17件。元CSV由来の `source_status=unknown` は415件あり、そのうち370件は補完後に採用された推定座標、28件は除外された外挿である。415件を未解決の基準にしない。\n- 座標なしの遮蔽は26件。さらにcam0末尾の982〜1009の外挿28件が既存のユーザー判断で採点対象外になっている。今回の新規注釈方針を理由に参照側の除外を変更しない。\n- 現在の合否条件は「座標利用不可の合計81件以下」かつ「最終unknown25件以下」。参照は2959/3030件が利用可、71件が利用不可。新規結果でunknownだけ減り、座標なしの別状態が増えた場合も合計と内訳を示す。\n- 81件は参照のunknown17件・座標なし遮蔽26件・除外外挿28件に余裕10件を加えた値。両閾値は3cameraの全3030件の合計に適用し、camera別には内訳を報告する。追加のcamera別上限を勝手に設けない。座標利用不可は最終結果で対象球の利用可能座標がないものを数え、生きた球なし・画面外も座標がなければ含める。未処理は最終unknownとは別に残し、完走と扱わない。\n\n**新規workflowでの確認**:\n1. 3本の元動画から新規に白紙注釈する。GPTは担当cameraの画像だけを見て、同じcameraの前後参照・補完・自己修正を行う。参照の座標・frame別状態、既存のボール検出・heatmap・3D軌道を注釈入力に渡さない。参照は生成完了後の集計・比較に用いる。\n2. 1回のworkflow起動で全対象を処理し、注釈を保存する。90分に達したworkerは保存済み進捗から同じworkflow内で自動継続する。内部の複数画像要求・複数モデル応答・自己修正は可能。手作業で追加修正した結果や、独立した複数runの最良値を「一発」の結果にしない。\n3. 最終状態を同じ意味へ対応付けて、camera別・全体のunknown数、観測/推測数、画面外、遮蔽、利用可能座標数を報告する。未知が残った位置・連続区間も保存する。座標誤差・overlay動画は補助情報であり、未合意の追加合否閾値は置かない。\n4. メモリ内の結果だけでなく、保存済みGPT注釈を正式readerで読み直し、sceneのball入力として三角測量まで実行する。推測点の利用と由来を維持し、3D座標・有効mask・寄与camera・欠測理由を保存する。終了コード0や全欠測の出力だけで成立扱いにしない。\n5. dataset公開オプションを付けた実行で、同じ注釈の不変snapshotを公開し、readerが観測・推測・負例・未知のmaskとgroup/splitを正しく読めることを確認する。この検証用収録の公開を理由に既存の評価groupをtrainへ移さない。\n\n**再利用する中間生成物**:\n`outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103/fixed_input_bundle_v1/scene.json` に各cameraのcourt_detectionがあり、`bundle.json` にはcourt_calibration / court_side / camera_alignmentの固定参照がある。記述ファイルの存在と保存済みchecksumの一致は確認した。\n実行時には配列を含む参照と入力動画の対応を正式readerで検証し、コート検出・`court_calibration`・`court_side`・`camera_alignment`を固定して読み込む。ball_detection・ball_points・ball_triangulationは新規GPT注釈から生成し、固定入力の出自を記録する。\n\n## 未決事項・人間の判断が必要な点\n\n残る論点を以下に記す。\n\n| 論点 | 残る内容・具体案 |\n|---|---|\n| 生きた球なしの教師採用 | 状態の追加は確定。画像内に手持ち球や予備球がある場合、プレー球専用教師と全ボール検出器向け教師で意味が違う。対象定義と採用maskを明示し、既存全ボール教師へ無条件の負例として混ぜない |\n| 推測点の利用詳細 | 利用する方針は確定。観測点との重み、画面外へ外挿した座標の保存/利用、既存ball_pointsの外れ値除去・平滑化をどこまで通すかを設計する。従来の補間秒数上限や低い重みを無断で持ち込まない |\n| v3接続と後続移行 | v3のfield・writer/reader・scene/dataset接続を設計する。旧v2実データの移行は後続タスクとし、旧データの取扱い・移行手順・保持する状態/由来[local path]。dataset snapshot名の変更とは混同しない |\n| 自動継続で進捗を引き継げない場合 | 保存済みの進捗から時間切れ後に自動継続する方針は確定。保存の欠損・不整合、進捗が増えない場合、外部サービス障害やプロセス消失時の復旧方法を設計する |\n\n今回の指定clipについて、入力・camera数・frame数・解像度・比較参照は特定済み。将来の任意動画の区間指定はCLI設計で扱い、この検証の対象を黙って短縮しない。\n\n## 現状確認と必要な実装変更\n\n- [統合CLI](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/annotation/README.md)は予測receiptからのレビューが前提。予測不要の開始契約と、sceneのローカル動画・camera/frameの登録を追加する。\n- [レビューと教師採用](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/ball_detection/annotation/review/README.md)はobserved_onlyを扱い、補間・遮蔽推定を教師から除外する。今回の「GPTを信用し推測も利用する」方針として明示的に更新し、旧方式へ静かに戻さない。\n- [sceneのv2変換](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/pipeline/imports/ball_annotations.py)もobservedだけを観測にする。schema、ball_points、side/alignment、triangulation、学習maskまで利用条件を照合する。推測を利用可能にすることと、観測由来maskを偽ることを分ける。\n- 既存の有限timeoutと進捗保存を再利用し、cameraごとの90分上限と同一workflow内での自動継続を接続する。小規模テストで時間切れからの再開を検証する。[workerの時間処理](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/ball_detection/annotation/review/worker.py)\n- [publisher](https://github.com/Motoki0705/tennis-lab/blob/main/src/tasks/ball_detection/generate_dataset/frame_store/publishing/README.md)の不変snapshot・復旧・split管理を再利用する。元動画の自動廃棄や、検証用groupのtrain混入を持ち込まない。\n- [参照reader](https://github.com/Motoki0705/tennis-lab/blob/main/src/tennis_scene/ground_truth/README.md)は採用済み推定点を含む正解を読み、採点以外の入力に混ぜない。指定データの補完前source_statusと補完後reference_kindを区別して比較する。\n- PR #1690で導入された進捗表示・有限timeout・継続の仕組みを再利用し、白紙注釈用の自動継続に接続する。\n\n## 2026-11-07 追加回答の記録\n\nこの節は本会話で人間が示した変更と、続く選択式質問への回答をCodexが転記したもの。今回も要件の更新であり、コード変更・worker起動・データ移行を実施した記録ではない。\n\n- 「球の場所は分かるが、プレー中の球はない」という状態を追加する。\n- 閾値の確認への回答: 「合計81件以下＋unknown25件以下」。座標利用不可は17+26+28+10=81を基準とする。\n- 90分の適用範囲の確認への回答: 「各カメラの注釈workerの1回の実行」。\n- b3の意味の確認への回答: 「注釈形式をv3にする」。\n- ラップトップでの作業のため、既存実データの移行は後続タスクとして残す。\n\n同日の追加回答\n\n> 90分で終わらない場合は、途中保存した進捗から自動継続してください。実動画での注釈・三角測量・データセット公開の検証も後続タスクに回し、今回は実装と小規模テストまでにします。保存済みの幾何情報は固定して使う方針で、issueに反映してください。\n\n## 子issue起票時の設計具体化\n\n子issue設計への質問に回答した後、人間から「では,子issueを作成してください。」との指示を受けた。今回実行するのは正式な子issue・後続関連issueの起票と依存関係の登録までであり、実装workerの起動、実動画実行、学習、PRのmergeを開始する指示とは扱わない。\n\n設計の詳細は[子issue設計案](https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6703977230)を基礎にし、続く質問と回答を以下のとおり具体化する。\n\n- **継続テスト**: 3camera×12frameの短い合成動画と制御可能なテストworkerを使う。cam0が一部を正式APIで保存して通知した後、監督プロセスが使うテスト時計を期限へ進める。実際の期限判定・停止・進捗回収・次attempt起動・残りの処理を通す。production設定の5400秒と境界判定を別に検証し、短い実時間でのOSプロセス/子孫終了の試験も再利用する。テスト値を本番へ流用せず、DBへ直接timed_outを書いて接続済みとみなさない。\n- **注釈方法の最適化**: 人間の「どのようにしたらトークン予算を抑えて精度を高くできるか、試行錯誤の必要性があります」という意図に沿い、画像取得・拡大・編集・保存の道具と、探索方針[local path]。前後画像の閲覧は利用可能な操作であり、固定の順次手順にしない。探索方針をrun単位で版固定して比較でき、応答別トークン・画像要求・unknown・座標利用可否・精度を測定できるようにする。今回は比較可能な実装と小規模テストまで、実GPTによる比較と実動画受入は後続タスクで行う。トークン削減率や新しい強制予算上限を未合意の合否条件にしない。\n- **sceneのimport**: ball task側にv3 readerを置き、tennis_scene側のBallAnnotationImporterがscene成果物へ変換する。FixedGeometryImporterは保存済み幾何を出自付きの固定入力として扱う。importer自身はGPTを起動せず、workflowが注釈・import・下流実行を接続する。利用可能な座標と直接観測を別maskにし、推測を観測へ偽装しない。旧幾何artifactの依存情報を上書きして新注釈由来に見せない。\n- **dataset公開**: splitに加え、active_ballという教師対象、状態別教師mask、推測重み、画像[local path]、版・重複・修正、公開対象の完了範囲を明示する。元v3から直接公開し、三角測量や平滑化で変わった点をGPTの元注釈へ戻さない。観測と推測の同重みは初期設計案であり、field設計とともに実装時に明示する。既存の全ボール教師へno_active_ballを無条件の負例として混ぜない。\n- **作業範囲**: 今回の必須子7件と、既存実データ移行・探索方針比較/実動画受入の後続関連2件に分ける。後続2件は今回の親の必須子一覧には入れず、関連issueとして追跡する。後続を未実行のまま今回の実装・小規模テストが完了しても、実動画合格やデータ移行完了と報告しない。\n\n## 成果物・関連PR\n\n- 必須子は #1706、#1707、#1708、#1709、#1711、#1712、#1713。正式なsub-issue関係と先行依存を登録済み。\n- 後続関連issue: #1714 既存実データのv3移行、#1715 探索方針比較とclip000の実動画受入。今回の親の必須子一覧には含めない。#1715は新規白紙注釈を検証するため、#1714の完了を待たない。\n- 設計案: https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6703977230 。設計IDの対応は D1=#1706、D2=#1707、D3=#1708、D4=#1709、D5=#1711、D6=#1712、D7=#1713、F1=#1714、F2=#1715。\n- 実装PR・実動画の実行結果・dataset公開成果物は未作成。今回の成果はissueの分割・起票と依存関係の登録。\n",
+        "number": 1698,
+        "title": "[GPTボール注釈] シーン再構成に白紙のオンデマンド注釈と学習データ公開を接続する"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/issues/1698/comments": {
+      "as_of": "2026-11-08T21:46:52.549157+00:00",
+      "value": [
+        {
+          "id": 6688753434,
+          "body": "2026-11-07の人間からの回答を、会話から転記した要件更新の根拠です（Codexによる代筆）。以下の引用は人間の発言であり、agentの推奨案ではありません。現在の要件・受入条件はissue本文に反映します。\n\n> 一番については、一連の処理として実行することが目標です。ボールはプレー中の1球とします。プレー中の一球というのは、カメラが向いているコートでプレーしているボール、生きたボールということです。GPTは前後の画像を見てよいです。また、別のカメラの画像は見てはいけません。ただし、どのようにアノテーション作業をするかというのは、そもそもGPT自身に自由度高く決めさせたい部分ではあります。\n\n> また、V2準拠という方針については柔軟にいきたいと考えています。必要に応じては、V2を新しくしてV3にすることも検討しています。推測は、三角測量や学習に使えます。推測の精度は高いというヒューリスティックです。\n\n> したがって、モデルには補完などを用いて、できるだけアンノーンがないようにするというプロンプトでの指示を与え、返ってきたものに関して、それを信用する形にしたいと思います。基本的に時間切れの設定はつけないような方針にしたいと考えています。はい、今回は学習のデータセットの公開までを完成させることとします。あなたの推奨通り、注釈自体は常に保存し、データセット公開は実行時の明示的なオプションで選ぶ方式にします。同じ元収録の全camera・関連clipを一つのグループとして分割とします。\n\n続けて、検証対象にrepo相対の `outputs/tennis_scene/evaluate/ball3d_comparison/clip000_20261103` を指定した。以下はその追加指示の引用。\n\n> 正解のアノテーションとして保存されているものと、もののアンノウンの数があると思いますが、これが大体の敷地として、ここに一発のワークフローでこの敷地あたりまで行けることを確認することを今回のゴールとしたいと考えています。また、保存されたGPTによるアノテーションの結果を後続のパイプラインで使用できるか、具体的には三角測量までいけるかを確かめたいと思います。口頭の検出については、中間生成物を用いてください。\n\n音声入力と思われる「敷地」はunknown数の「閾値・目安」、「口頭の検出」は「コート検出」と解釈して本文へ反映する。「一発」は1回のworkflow起動での達成として扱い、内部の画像閲覧・補完・自己修正を1回のモデル応答に制限する意味には解釈しない。",
+          "created_at": "2026-11-06T15:39:38Z",
+          "updated_at": "2026-11-06T15:39:38Z",
+          "html_url": "https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6688753434"
+        }
+      ]
+    },
+    "repos/Motoki0705/tennis-lab/issues/1709": {
+      "as_of": "2026-11-08T21:46:52.549157+00:00",
+      "value": {
+        "body": "親issue: #1698\n\n## このタスクの目的\n\ncameraごとに5400秒のattemptを実行し、保存済みの有効な増分を引き継いで一連の処理を完走させる。\n\n## 具体的な変更内容・対象範囲\n\n主対象: src/tasks/annotation/production.py・recovery.py・review_progress.py・contracts.py、必要なbase/annotation/workers接続。\n- #1690のtimeout・authorize_retry・進捗検証・資源受付を再利用し、直接注釈用の事前許可された自動継続policyを追加する。\n- cameraごとに5400秒を設定し、正常終了との競合を解決してから、未処理範囲を同じplan/scope/要求の次attemptへ渡す。\n- retry許可の保存と次worker起動を分け、controller再起動・二重tickでも次attemptを二重起動しない。\n- 最終unknownを完了済み判断として扱い、cameraが完成したら再起動しない。\n- 進捗なし、壊れた保存、quota/外部障害、取消は区別する。正常な時間切れ継続を手動判断待ちへ戻さず、復旧不能の異常を無限再試行しない。具体の異常復旧規則を記録する。\n- 検証環境はCPUの3camera×12frame合成動画、正式サービスAPIを呼ぶ制御worker、実controller/保存/監督処理。cam0がframe 0〜3を原子的に保存して通知した後に監督プロセスのテスト時計を5400秒の期限へ進め、実際の期限判定・停止・回収・次attemptでframe 4〜11の完了を確認する。\n- 親プロセスだけのmonotonic差替えでは別プロセスの期限は進まないため、監督側へ届くテスト用clock/control境界を設計する。productionでは使えないよう分離する。\n- productionの5400秒伝搬、新規/継続attemptの期限、期限直前/到達の境界を確認する。DBへ直接timed_outを書いて済ませず、短い実時間の期限による実プロセス/子孫終了の既存試験も再利用する。待機は通知[local path]、90分かかる動画や長いsleepを使わない。\n\n設計根拠: 親issueの最新合意と https://github.com/Motoki0705/tennis-lab/issues/1698#issuecomment-6703977230 。共通要件は親を正本とする。\n\n## 対象外\n\nv3のラベル規則、画像探索、一般的な全taskの自動retry化、実時間90分を待つ試験。\n\n## 依存関係\n\n- #1707\n- #1708\n\n## 作業状況・停止事項\n\n未着手。今回の依頼は起票までであり、実装worker・学習・実動画検証は起動していない。先行依存と親の合意範囲を実装開始時に照合する。\n\n## Acceptance checklist\n\n- [ ] 各cameraのattemptに5400秒を渡し、timeout後は保存された未処理範囲から自動継続する\n  文脈: 親issueの90分[local path]。\n  下流への影響: 利用者の手動continue操作なしで進められる。\n  検証方法・証拠: test_production.py::test_continue_reviews_authorizes_verified_progress_without_launching と test_workers.py::test_timeout_and_owned_stop_terminate_descendants を再利用。clock/終了イベントを注入し、90分は実際に待たずproduction設定値の伝搬を検証する。\n\n- [ ] 再開・二重tick・終了競合でもworkerと編集を二重生成しない\n  文脈: retry受付と起動の間でも中断する。\n  下流への影響: 二重注釈・予約漏れ・完成結果の取消を防ぐ。\n  検証方法・証拠: test_workers.py::test_authorized_retry_records_decision_and_waits_for_admission と test_stop_does_not_cancel_concurrent_retry を拡張。timeout回収後/許可保存後/起動後の中断点を検証する。\n\n- [ ] 完成済みunknownと未処理を区別し、異常時の状態と次の対応を報告する\n  文脈: unknown削減努力と完走判定を両立する。\n  下流への影響: unknownゼロまで自動ループする誤動作を防ぐ。\n  検証方法・証拠: test_production.py::test_run_reports_a_blocked_campaign_only_after_live_work_settles を拡張し、完成・進捗なし・保存欠損・quotaを独立したケースで確認する。\n\n- [ ] 保存後の時間切れから再開完了までを同じworkflowで実行し、他cameraと既存編集を保持する\n  文脈: 時計やDBの一部だけをmockしても監督プロセスとcontrollerの接続は保証できない。\n  下流への影響: 本番の90分境界で停止したworkerの成果を失わず自動継続できる。\n  検証方法・証拠: 上記3camera×12frameのintegrationで、cam0の原子的保存通知→監督時計の期限到達→実停止→次attempt→完了を検証する。cam1/cam2は完成済みとして再起動しない。保存途中・許可保存後のcontroller再起動・終了競合を軽い層に配置し、実時間終了の既存test_timeout_and_owned_stop_terminate_descendantsも実行する。\n\n<!-- parent-task:v1 parent=1698 key=automatic-annotation-continuation spec=426b1eba2b054c5b432259809e2ae3d7bd2668eabf11fba6a945e9449d4cd554 -->\n\n## 成果物・関連PR\n\n担当: codex\n\nbranch: `codex/automatic-annotation-continuation`\n\nPR・検証結果: 未作成。既存の委任記録を照合して再開する。\n\n成果PR: #1766 (open)\n\n検証結果:\n> 子 #1709 の成果: PR #1766。対象HEAD d3d59cf13 のCI（Lint、CPU tests 0〜9、Python）がすべて成功。親が local_controller.py・recovery.py・supervisor.py・pool.py・_test_clock.py の差分を読み、継続判断がattemptごとの不変記録として保存されること、試験用時計がtest layout以外では拒否されることを確認した。PR本文によると、3camera×12frameの実プロセス試験で、時間切れからの自動継続・完成camera・進捗なし・保存破損・quota・cancelを区別している。ローカルでのPSSテスト1件の失敗は、変更前のmainでも再現すると報告されている。実GPT・GPU・実動画での受入は範囲外。\n\n",
+        "number": 1709,
+        "title": "[GPTボール注釈 #1698] 90分の時間切れから同じ注釈workflowを自動継続する"
+      }
+    },
+    "repos/Motoki0705/tennis-lab/pulls/1766": {
+      "as_of": "2026-11-08T21:46:52.549157+00:00",
+      "value": {
+        "body": "白紙注釈のcamera workerが90分で時間切れになった後、保存した編集を保持して未処理frameだけを同じworkflowで自動継続します。最終unknownは処理済みとして扱い、完成したcameraを再起動しません。\n\nCloses #1709\n親: #1698（scene CLIへの配線は #1713）\n\n## 実装\n\n- `LocalAnnotationController` を追加し、登録完了receipt・固定runtime・全cameraを照合。初回と継続attemptに5400秒を渡し、既存WorkerPool・ResourceManager・正式cameraサービスを使用します。\n- plan/runtime/scopeを固定した白紙専用policyと、attempt別の理由・開始/終了件数・残数・head revisionを不変保存します。判断保存・retry許可・次tickの資源受付を分け、共通のwork/service lockとattempt照合で再起動・二重tick・明示retryの競合を処理します。\n- 共有v3利用判定で処理済みframeの増加を検証し、未処理数が減る場合だけ通常timeoutを継続します。処理済みから未処理への退行は拒否するため、正常継続も入力frame数で有限です。\n- 全frameを保存した直後のtimeoutは正式storeから完成receiptを回収します。元のworker履歴はtimed_outのまま保持し、cameraのcompleteとVideoCompletionを下流へ渡します。unknownゼロ・追加QAは要求しません。\n- supervisorは期限判定時の終了済みchildを先に回収し、期限前のquota/外部エラーを通常timeoutで隠さないようにしました。\n- test layout専用socketで監督側の時計を制御します。実child終了のpidfdと同じselectorで待ち、実際の期限判定・停止・子孫回収を通します。poolとsupervisorの双方でproduction利用を拒否します。\n\n## 異常時の扱い\n\n| 原因 | 次の対応 |\n|---|---|\n| timeout・有効な増分・未処理あり | 自動継続。手動continue不要 |\n| timeout・進捗なし | 理由付きで保留し、原因確認後の明示retry |\n| 保存欠損・hash/入力不一致・壊れたrevision | invalid_saved_progress。成果を保持し、復元・修正と明示復旧を要求。別revisionへ自動fallbackしない |\n| quota/rate limit | campaignの新規受付を停止し、未起動予約を取消。容量回復後にResumeWorkersとRetryWorker |\n| worker/外部障害・validation_failed・deferred | 理由を確認して明示復旧。無限retryしない |\n| 取消 | 保存を保持し、明示retryまで停止 |\n| 一時的な資源不足 | 同じpending要求で受付待ち。attempt/予約を重複作成しない |\n\nREADMEに利用API・完成receipt・各復旧手順を記載しました。blockedでもliveなcamera/サービスの終了まで処理を続けます。\n\n## 受入条件の証拠\n\n- 3camera×12frameのCPU合成動画、正式ツールclientを呼ぶ制御worker、実controller・資源stage・store・supervisorを使用。cam0がframe 0〜3を原子的に保存した通知の後、監督時計を5399.999→5400秒に進め、実停止とtimed_out receiptを確認します。DBへtimed_outを直接書く代替は使っていません。\n- 許可保存後と次worker起動後にcontrollerを作り直し、cam0のframe 4〜11だけを完了。cam0は2 attempts、cam1/cam2は各1 attempt、既存編集・最終unknown・旧revision・plan/scope/requestを保持します。\n- 軽い層で保存transaction途中、許可保存の前後、明示retryとの競合、完成unknown、進捗なし、保存欠損/破損、quota、外部障害、取消、最後のstageの終了待ちを確認します。\n- 既存のcontinue_reviews、authorize_retry、stop/retry競合、run_finished、短い実時間での実process/子孫終了テストを再利用しました。\n\n## 検証と増分\n\n- 関連範囲: **412 passed / 1 failed、437.46秒**（pytest -n 0）。失敗は既存の `test_worker_inherits_resource_lease_and_records_real_pss`。変更前origin/main（2e55f4dbe）の別worktreeでも同じ「controller PIDのPSSが得られない」assertで失敗することを確認（2.76秒）。本変更の退行として扱っていません。\n- 自動継続本体（ffefd17d6）: **33 passed、73.05秒**。新規unit 15件、代表integration、指定の既存継続・競合・実時間timeout試験を再実行。\n- 全frame保存後のquotaでも完成receiptがなければ明示復旧できるよう補正（608b04298）。quota停止を迂回せず、ResumeWorkers後のRetryWorkerを確認するunitを拡張し、**15 passed、17.90秒**。ruff/mypyも再度成功。\n- collect-only: 同じ関連範囲でmain **395件 → 416件（+21件）**。追加はunit 20件、integration 1件、削除なし。最大parametrizeは8件、unit fixtureの最大setupは0.67秒。\n- integrationは独立したCPU controller processでの最終実測41.67秒。16回の正式サービスstageと4 worker attemptsを実processでつなぐ代表1件であり、ここをmockすると今回の接続契約を検出できないため5秒を超えます。実時間90分や待機用の長いsleepはありません。\n- 進捗なしを継続分岐へ入れる変異でno_progressケースの失敗を確認（保存decisionと進捗の矛盾を検出）。復元後の33件は成功。\n- pre-commit: ruff / mypy成功。\n- CI run 42523849644は9 CPUレーンとLintが成功し、レーン8の新規integrationが初回pollのPSS上限で失敗。全体テストを収集したpytest processの常駐メモリが1 GiB fixture予算へ混在したため、実controllerを独立CPU processへ分離しました。予算を増やさず、実計測・資源受付・監督・保存を維持し、ローカルで **1 passed、45.05秒**（call 41.67秒）を確認。修正後は下記の最終CIですべて成功しました。\n\n実GPT API・GPU・実動画受入は実行していません。認識品質の受入、sceneの一連CLI、dataset公開の呼出しは本PRの検証範囲に含めません。\n\n\n## 最終CI\n\nHEAD `d3d59cf13f7eb89aa61033b27105a4b8c76efdab` の [CI run 42525240331](https://github.com/Motoki0705/tennis-lab/actions/runs/42525240331) は **success**。GitHub APIで、CPU lane plan・Lint・CPU tests 0〜9・**Python** の13 jobsすべてがcompleted/successであることを確認しました。\n\n修正したレーン8は1547 passed / 1 skipped。今回の3camera integrationもCIで46.25秒（call）で成功しました。worktreeはclean、PRはopen/mergeableで、mergeは行っていません。統合レビュー・merge・closeは親担当へ返します。\n",
+        "changed_paths": [
+          "src/tasks/annotation/README.md",
+          "src/tasks/annotation/configuration.py",
+          "src/tasks/annotation/contracts.py",
+          "src/tasks/annotation/local_controller.py",
+          "src/tasks/annotation/production.py",
+          "src/tasks/annotation/recovery.py",
+          "src/tasks/annotation/review_progress.py",
+          "src/tasks/ball_detection/annotation/video/agent/README.ja.md",
+          "src/tasks/ball_detection/annotation/video/agent/README.md",
+          "src/tasks/ball_detection/annotation/video/agent/README.zh-CN.md",
+          "src/tasks/base/annotation/workers/README.md",
+          "src/tasks/base/annotation/workers/__main__.py",
+          "src/tasks/base/annotation/workers/_test_clock.py",
+          "src/tasks/base/annotation/workers/pool.py",
+          "src/tasks/base/annotation/workers/supervisor.py",
+          "tests/integration/tasks/annotation/test_automatic_continuation.py",
+          "tests/support/tasks/annotation_events.py",
+          "tests/support/tasks/blank_agent.py",
+          "tests/support/tasks/local_annotation.py",
+          "tests/unit/tasks/annotation/test_local_controller.py",
+          "tests/unit/tasks/base/annotation/test_workers.py"
+        ],
+        "child_issues": [
+          1709
+        ],
+        "ci": [
+          {
+            "name": "CPU lane plan",
+            "state": "success"
+          },
+          {
+            "name": "label",
+            "state": "success"
+          },
+          {
+            "name": "Lint",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (0)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (1)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (2)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (3)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (4)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (5)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (6)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (7)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (8)",
+            "state": "success"
+          },
+          {
+            "name": "CPU tests (9)",
+            "state": "success"
+          },
+          {
+            "name": "Python",
+            "state": "success"
+          }
+        ],
+        "number": 1766,
+        "title": "白紙camera注釈を90分の時間切れ後に保存済み進捗から自動継続する"
+      }
+    }
+  },
+  "provenance": {
+    "kind": "projection_of_saved_pre_review_context",
+    "source_context_sha256": "09f37ac98179f70cff193ffd2c834f75c10b510258821eb61313630ae6f086bc",
+    "excluded_comments": [
+      {
+        "id": 6703923131,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6703928632,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6703977230,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6703982268,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6704283983,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6704309050,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6704392280,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6721967591,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6721998671,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722341247,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722342047,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722362061,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722362883,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722422634,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6722427753,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6723122697,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6723123726,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6723210533,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6723214636,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6723949569,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6723950593,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6724020947,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6724024872,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6724743753,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6724744636,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6724811411,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6724816927,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6726190042,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6726191012,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6726276885,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6726514129,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6726517100,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6727548762,
+        "reason": "operational_record_excluded"
+      },
+      {
+        "id": 6727549716,
+        "reason": "operational_record_excluded"
+      }
+    ],
+    "sanitization_replacements": 7,
+    "unavailable": [
+      "PR and child discussions were not captured; unregistered endpoints are rejected",
+      "CI payload is the captured checks summary, not reconstructed raw logs"
+    ]
+  }
+}

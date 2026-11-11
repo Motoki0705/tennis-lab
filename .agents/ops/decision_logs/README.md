@@ -120,6 +120,7 @@ the complete response and error details remain private evidence.
 | `review-prepare` / `review-request` / `review-state` | Fixed request and explicit instruction/state outcomes. Only explicit receipt/verification operations set parent verification |
 | Review `run` | Existing execution/output/result/publication states, including valid output from a failed runtime, exception and public predecessor review keys. Publication preserves the original result. Reusing a consumed run is a fetch, not another AI review |
 | Review `recover` / `resume-publication` / `complete-evidence` / `resolve` | Existing saved-source recovery, publication-only retry, and explicit parent verification. They retain predecessor results and never become another AI invocation |
+| Review `close-interrupted` | Existing cleanup/exit confirmation as `verify`, including runs without a final result. It accepts no code coverage or findings and does not verify the source review result |
 | Review retrieval tools | Existing received acquisition receipts, including failed CI requests. Repeating the same tool/arguments under the same review binding is `retry_fetch`; only the query instruction is known unchanged |
 | Merge gate `merge` | Per-PR evaluations, saved merge attempts/results and aggregate outcome. Dry-run eligibility remains distinct from an actual merge |
 | Worker-log receive/publish, `worker-log-status` / `publish-worker-log` | Existing journal views, final/publication failures and confirmed main publication; publication retries use `retry_publication` and reference the preceding captured result |
@@ -144,6 +145,32 @@ parent binding, and parser/identity/repository failures before a parent namespac
 is resolved. No historical conversation or arbitrary past run is reconstructed.
 Review fix-resolution policy and automatic recovery/model selection are unchanged.
 No polling, agent restart or Git publication is added by capture.
+
+## Review causal links
+
+Use the existing `decide`, journal, publication and navigation mechanisms. Find
+the captured source review result ID `R` in `decision-log-status`. A parent's
+handoff decision names `R` in `decide.inputs`, states retained/rechecked scopes,
+and includes a `review` next-action plan. Prepare with
+`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`,
+then issue `review-request --run-id NEXT --instruction-file instruction.txt
+--decision-id D --retry-of R`. A single matching plan needs no `--plan-id`.
+Preparation is a fetch; attach the review plan to `review-request`, which binds
+the subsequent `run`. Explicit handoff metadata must reference a result from
+that exact source operation and include it in the decision inputs; an unrelated
+result or decision is rejected. Legacy handoffs without decision metadata remain
+usable with a visible missing decision, not an invented one.
+
+`close-interrupted` accepts the same decision/plan/retry/comparison arguments as
+other controls. A `verify` plan can confirm exit/cleanup, but its result leaves
+`verifies` empty: the original review remains unaccepted. Closure may succeed
+with no final/result file and publishes no formal review. Recovery is
+`retry_fetch`, publication-only retry is `retry_publication`, and model choices
+retain selected and observed settings through the existing runner observations.
+These records feed the existing public envelopes and generated README links from
+source result to decision, action and next result; capture itself never publishes.
+The isolated [comparison harness](../review/evaluation/README.md) does not capture
+its fabricated or historical observations into this formal parent journal.
 
 ## Explicit parent decisions
 

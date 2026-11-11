@@ -60,6 +60,8 @@ annotations/
 *.csv
 *.json
 !/.agents/ops/issue_supplement/schemas/*.schema.json
+!/.agents/ops/review/evaluation/cases/*.json
+!/.agents/ops/review/evaluation/cases/inputs/*.json
 !scripts/ci_metrics/package.json
 !scripts/ci_metrics/package-lock.json
 !/.claude/settings.json

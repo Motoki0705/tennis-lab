@@ -1502,7 +1502,7 @@ def parser() -> argparse.ArgumentParser:
     complete.add_argument("--pr", type=int, required=True)
     complete.add_argument("--wait", type=int, required=True)
     complete.add_argument("--evidence", type=Path, required=True)
-    for control in (recovery, resume, complete):
+    for control in (recovery, resume, complete, close):
         control.add_argument("--decision-id")
         control.add_argument("--plan-id")
         control.add_argument("--retry-of")
@@ -1525,14 +1525,25 @@ def main(argv: list[str] | None = None) -> int:
             "close-interrupted": close_interrupted,
             "complete-evidence": complete_evidence,
         }[args.command]
-        if args.command in {"recover", "resume-publication", "complete-evidence"}:
+        if args.command in {
+            "recover",
+            "resume-publication",
+            "complete-evidence",
+            "close-interrupted",
+        }:
             if args.command == "recover":
                 request = request_manifest(read_json(args.request))
             else:
                 if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.run):
                     raise ValueError("invalid run ID")
                 run_dir = args.state_dir / "reviews" / args.run
-                if (run_dir / "execution.json").exists():
+                if args.command == "close-interrupted":
+                    # Closure also works without a final/result and on a closed
+                    # run's idempotent resubmission. It grants no review coverage.
+                    request = request_manifest(
+                        read_json(run_dir / "request.json"), instructed=False
+                    )
+                elif (run_dir / "execution.json").exists():
                     # A closed run never has a formal result; say so before reading one.
                     require_not_closed(
                         read_json(run_dir / "execution.json"),
@@ -1540,9 +1551,10 @@ def main(argv: list[str] | None = None) -> int:
                             read_json(run_dir / "request.json"), instructed=False
                         ),
                     )
-                request = validate_result(
-                    read_json(args.state_dir / "reviews" / args.run / "result.json")
-                )["request"]
+                if args.command != "close-interrupted":
+                    request = validate_result(read_json(run_dir / "result.json"))[
+                        "request"
+                    ]
             value = decision_capture.control(args, request, operation)
         else:
             value = operation(args)

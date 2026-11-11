@@ -103,6 +103,7 @@ outbox只保存私有投递输入，不是发布单元。
 | `review-prepare` / `review-request` / `review-state` | 固定请求及显式指示/状态结果；只有显式接收/验证才记录父级确认 |
 | review `run` | 既有execution、output、result和发布状态，包括runtime失败时的有效输出、exception及先前review公开键。发布不改变原result；读取已消费run不是新AI评审 |
 | review `recover` / `resume-publication` / `complete-evidence` / `resolve` | 既有保存证据恢复、仅发布重试和父级显式验证。保留前一结果，不算新AI启动 |
+| review `close-interrupted` | 以 `verify` 捕获结束和 cleanup，支持缺失 final/result。不会接收 coverage/问题，也不把源审查标为已验证 |
 | review获取tool | 包括CI获取失败的既有receipt。同一review绑定、tool和参数的重试为 `retry_fetch`；只确认查询指示不变，不猜测网络等条件 |
 | merge gate `merge` | 各PR判定、保存的merge尝试/结果及整体结果。区分dry-run合格和实际合并 |
 | worker日志接收/发布、`worker-log-status` / `publish-worker-log` | 既有journal状态、final/发布失败和main保存确认。仅发布重试为 `retry_publication`，引用前一结果 |
@@ -120,6 +121,23 @@ outbox只保存私有投递输入，不是发布单元。
 没有父级绑定的runner，以及父级namespace确定前的参数解析、identity和仓库解析失败。
 不重建过去对话或任意历史run。不更改review修复确认、恢复和模型选择策略；
 捕获不会添加定期轮询、AI重启或Git发布。
+
+## 审查因果链接
+
+复用既有 `decide`、journal、发布与 README 生成。用 `decision-log-status` 找到源审查结果 ID `R`。
+父级 handoff 判断须把 `R` 放入 `decide.inputs`，说明复用及重查范围，并指定 `review` next-action plan。
+先 `review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`，
+再 `review-request --run-id NEXT --instruction-file instruction.txt --decision-id D --retry-of R`。
+单个匹配 plan 无需 `--plan-id`。prepare 是 fetch，review plan 应绑定后续 run 的 review-request。
+显式 handoff 元数据必须引用该源操作捕获的结果，且判断 inputs 包含它；拒绝其他 run 结果或无关判断。
+未提供判断元数据的旧 handoff 仍可使用，并明确标注判断未记录。
+
+`close-interrupted` 也接受共通判断 ID、plan、前一结果和比较参数。
+`verify` plan 只确认结束及 cleanup，结果 `verifies` 保持空，源审查未被接收。
+没有 final/result 的中断也可终结，不发布正式 review。
+恢复为 `retry_fetch`，仅发布重试为 `retry_publication`；模型选择与有效设置沿用 runner 观察路径。
+既有公开 envelope 和层级 README 将源结果、判断、行动、后续结果相连；capture 不自动发布。
+[私有比较](../review/evaluation/README.zh-CN.md) 的人工结果和历史观察不混入正式 parent journal。
 
 ## 显式记录父级判断
 

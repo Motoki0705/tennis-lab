@@ -69,6 +69,58 @@ def previous_run(
     )
 
 
+def validate_handoff_link(args: Any, store: Any, repo: str, parent: int) -> None:
+    """Bind an explicitly supplied causal edge to the exact handoff source.
+
+    Legacy handoffs without decision metadata remain usable. Once a parent
+    supplies a decision, it must name the source result in both inputs and
+    --retry-of; neither timestamps nor a source run imply that judgment.
+    """
+    source_run = getattr(args, "handoff_from_run", None)
+    identifier = getattr(args, "run_id", None)
+    if source_run is None and identifier:
+        row = (
+            store.read_data().get("parents", {}).get(f"{repo.casefold()}#{parent}", {})
+        )
+        request: dict[str, Any] = next(
+            (
+                r["request"]
+                for r in row.get("reviews", [])
+                if r["request"]["review_run_id"] == identifier
+            ),
+            {},
+        )
+        selection = request.get("review_selection", {})
+        if selection.get("kind") == "run" and selection.get("handoff"):
+            source_run = selection["handoff"]["source_run"]
+    if source_run is None:
+        return
+    previous = args.retry_of
+    if previous is None and args.decision_id is None:
+        return
+    source_op = previous_run(store.directory, repo, parent, source_run)
+    if source_op is None or previous not in {
+        r["id"] for r in source_op.records("result")
+    }:
+        raise CaptureInputError("handoff_requires_matching_source_result")
+    if args.decision_id is not None:
+        records = Journal(store.directory, repo, parent).read()["entries"]
+        decision = next(
+            (
+                e["record"]
+                for e in records
+                if e["event"] == "capture" and e["record"]["id"] == args.decision_id
+            ),
+            None,
+        )
+        if (
+            decision is None
+            or decision["kind"] != "decision"
+            or previous not in decision["data"]["inputs"]
+        ):
+            raise CaptureInputError("handoff_decision_must_reference_source_result")
+
+
 def begin(args: Any, request: dict[str, Any]) -> Operation:
     directory, repo, parent = args.state_dir, request["repo"], request["parent_issue"]
     mapped = previous_run(directory, repo, parent, request["review_run_id"])
@@ -192,6 +244,7 @@ def begin_control(
         "recover": "retry_fetch",
         "resume-publication": "retry_publication",
         "complete-evidence": "verify",
+        "close-interrupted": "verify",
     }[args.command]
     plan = checked_link(
         Journal(directory, repo, parent), args.decision_id, args.plan_id, operation
@@ -251,17 +304,24 @@ def control(
         operation = op.row["operation"]
         if value.get("result"):
             result(value["result"], artifact="control result.json")
+        closing = args.command == "close-interrupted"
         observe(
             value,
             status="success"
-            if value.get("publication", "published") == "published"
+            if closing
+            or value.get("publication", "published") == "published"
             and value.get("result", {}).get("status", "succeeded") == "succeeded"
             else "failure",
             observer="parent_verification" if operation == "verify" else "machine",
             verifies=[r["id"] for r in source_op.records("result")]
-            if operation == "verify" and source_op
+            if operation == "verify" and source_op and not closing
             else [],
-            summary=f"review.{args.command}: agent_invocations=0; publication={value.get('publication')}; source_review_key={source_op.row['scope']['review_key'] if source_op else None}",
+            summary=f"review.{args.command}: agent_invocations=0; publication={value.get('publication')}; source_review_key={source_op.row['scope']['review_key'] if source_op else None}"
+            + (
+                f"; execution_status={value['status']}; cleanup confirmed; no review coverage or findings accepted"
+                if closing
+                else ""
+            ),
         )
         return value
     except BaseException as exc:
