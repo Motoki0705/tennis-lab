@@ -10,6 +10,7 @@ from typing import Any
 
 from herdr_labels.client import Herdr
 from herdr_labels.coordination import Guard, owner_token, read_record, state_root
+from herdr_labels.service import parent_summary
 
 from .access import as_parent, parent_state
 from .activity import summary
@@ -114,19 +115,24 @@ def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
 
 
 def _publish_name(
-    env: Mapping[str, str], identity: str, repo: str, parent: int, name: str
+    env: Mapping[str, str], owner: Mapping[str, Any], repo: str, parent: int, name: str
 ) -> str:
+    identity = owner["session"]
     with _confirmed_target(env, identity) as destination:
         if destination is None:
             return "not_configured"
         client, guard = destination
+        # The parent record is the only source of the summary. A token left by
+        # an older title-based label, or a summary not yet synchronized, is an
+        # error rather than text to carry over into the renamed label.
+        summary = parent_summary(env, f"{repo}#{parent}", owner)
         pane = guard.pane
         tokens = pane.get("tokens", {})
         if (
             tokens.get("tl_owner") != owner_token(identity)
             or tokens.get("tl_parent") != f"{repo}#{parent}"
             or tokens.get("tl_engine") != pane["agent"]
-            or not tokens.get("tl_topic")
+            or tokens.get("tl_topic") != summary
         ):
             raise BoardError(
                 "confirmed parent label changed; synchronize parent display"
@@ -134,7 +140,7 @@ def _publish_name(
         result = client.publish(
             pane,
             agent=pane["agent"],
-            display=f"{name} · {tokens['tl_topic']}",
+            display=f"{name} · {summary}",
             tokens={
                 "tl_name": name,
                 **{
@@ -170,9 +176,7 @@ def update(
                 if retired or not owner or owner["status"] != "active":
                     result["status"] = "recipient_unavailable"
                 elif renamed:
-                    result["status"] = _publish_name(
-                        env, owner["session"], repo, parent, name
-                    )
+                    result["status"] = _publish_name(env, owner, repo, parent, name)
                 else:
                     count = summary(connection, assignment_id).unread_count
                     result["status"] = _publish(env, owner["session"], count)

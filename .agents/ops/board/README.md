@@ -598,7 +598,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m board rename --parent 123 --name Barr
 結果JSONは`assignment_id`・`repo`・`parent`・`old_name`・`new_name`・
 `status`（`renamed` / `unchanged`）と、対象親のHerdr表示更新結果`display_sync`を返す。
 表示は保存済みの確認済みserver/terminalの対応と会話・process世代を再照合し、
-`tennis-parent` sourceで表示名（`新名 · 要約`）と`tl_name`だけを更新する。要約は表示中の`tl_topic`を使い、ない場合は拒否する。未読・他のtokenを保持する。
+`tennis-parent` sourceで表示名（`新名 · 要約`）と`tl_name`だけを更新する。要約は親記録の`display_summary`を使い、未登録・表示中の`tl_topic`との不一致（旧版の題名tokenを含む）では拒否する。未読・他のtokenを保持する。
 対応がない場合は`not_configured`、対象が一時不在なら`recipient_unavailable`とし、別paneを推測しない。
 表示更新の失敗は`error`を返して終了値1にし、改名は取り消さない（成功0、入力・改名失敗2）。
 表示を修復するときは同じ`--name 新名`を再指定するか、対象の親自身がHerdr表示のsyncを実行する。

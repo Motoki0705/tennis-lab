@@ -584,6 +584,8 @@ def test_board_rename_refreshes_only_the_confirmed_parent_display(
         "owner_changed",
         "native_changed",
         "missing_summary",
+        "legacy_title",
+        "stale_summary",
         "missing_owner",
     ],
 )
@@ -608,6 +610,19 @@ def test_board_rename_reports_projection_failure_without_undoing_the_rename(
     elif condition == "missing_summary":
         # Renaming must not invent the label text it no longer finds.
         state["panes"]["w1:p1"]["tokens"].pop("tl_topic")
+    elif condition == "legacy_title":
+        # A parent running since the title-based label keeps its old tl_topic
+        # but has never registered a summary; the old title must not survive.
+        state["panes"]["w1:p1"]["tokens"]["tl_topic"] = "旧Issueタイトル"
+        owner = labels.owner()
+        del owner["display_summary"]
+        labels.set_registry({"o/r#42": owner})
+    elif condition == "stale_summary":
+        # The record changed after the last sync; renaming must not keep the
+        # superseded token as if it were the current summary.
+        labels.set_registry(
+            {"o/r#42": {**labels.owner(), "display_summary": "新しい要約"}}
+        )
     else:
         for path in (labels.registry.parent.parent / "herdr-labels/owners").glob(
             "*.json"
