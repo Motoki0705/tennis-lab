@@ -121,16 +121,22 @@ class Spatial(nn.Module):
                 .expand(-1, -1, shapes.shape[0], -1)
             )
         outputs = []
-        for first in range(0, q.shape[0], self.chunk):
-            last = first + self.chunk
+        parts = zip(
+            q.split(self.chunk),
+            references.split(self.chunk),
+            v.split(self.chunk),
+            mask.split(self.chunk),
+            strict=True,
+        )
+        for query, reference, value, padding in parts:
             outputs.append(
                 self.cross(
-                    q[first:last],
-                    references[first:last],
-                    self.normv(v[first:last]),
+                    query,
+                    reference,
+                    self.normv(value),
                     shapes,
                     starts,
-                    mask[first:last],
+                    padding,
                 )
             )
         return torch.cat(outputs)
