@@ -119,7 +119,8 @@ wall time 从预约到 runtime 结束，不含人工收集延迟；agent 时间�
 检测和漏检按不同 gold ID 计数，区分 blocker/major。未裁定保持 pending 而非零。
 runtime 失败和无效或缺失输出从质量计数及问题率分母排除，比较保持 incomplete。
 失败 runtime 的可恢复 final 保留为调查候选 `candidate_only`，即使填写 match 也不算检测成功；
-失败调用的实测资源仍全部计入。误报、问题无法确认、代码 `not_reviewed`、
+失败调用的实测资源仍全部计入。
+runtime 失败计数包含 agent 启动前的失败；正常复用的 `not_invoked` 与失败区分。误报、问题无法确认、代码 `not_reviewed`、
 证据等待、格式失败、runtime 失败及失败并集分别报告。
 额外启动率为含多个独立调用的 episode 数除以已观察 episode 数。
 资格比较的 episode 为案例/模型，选择投影则按案例计算。

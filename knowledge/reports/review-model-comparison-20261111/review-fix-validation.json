@@ -38,7 +38,16 @@
       "source_restored_exactly": true
     }
   ],
+  "final_pytest": {
+    "added_nodes": 19,
+    "max_call_seconds": 1.62,
+    "max_setup_seconds": 0.16,
+    "passed": 38,
+    "seconds": 7.74,
+    "workers": 0
+  },
   "format_excluded_runs": 0,
+  "initial_reanalysis_code_sha256": "e2ab0332ff1a26e1a892a0dff23fa11ca0d548b886dd25e8fe49497d3189284f",
   "initial_reproduction": {
     "failed": 6,
     "passed_control": 1,
@@ -59,11 +68,18 @@
     "seconds": 7.64,
     "workers": 0
   },
+  "post_prestart_fix_report_byte_identical": true,
   "pre_commit": {
     "mypy": "passed",
     "ruff": "passed"
   },
   "preexisting_numeric_leaves_unchanged": true,
+  "prestart_failure_regression": {
+    "after_fix": "passed_in_full_target_file",
+    "before_fix": "failed",
+    "reason": "runtime_failures was 0 for failed runtime before agent start",
+    "seconds": 0.37
+  },
   "public_input_replacements": {
     "pr-1686": {
       "local_paths": 0,
@@ -185,7 +201,7 @@
   "publication_scope": "all changed and untracked PR files; JSON data, source and documentation",
   "published_fingerprints_verified": 41,
   "quality_eligible_runs": 14,
-  "reanalysis_code_sha256": "e2ab0332ff1a26e1a892a0dff23fa11ca0d548b886dd25e8fe49497d3189284f",
+  "reanalysis_code_sha256": "79c5e1cc61c6a9a44048dae9f7db7384b1f1e53aed71dc3d13270e63bf81c680",
   "review_findings": [
     "pr-1907-1",
     "pr-1907-2",

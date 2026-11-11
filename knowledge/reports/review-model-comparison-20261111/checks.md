@@ -124,3 +124,11 @@ native識別子を検査する。操作者用の変数・placeholder、システ
 Knowledge検証は638ノード、0 error・0 warning。
 固定7ケースのverifyと、PR全公開105ファイルのcheck-publicationも成功した。
 pre-commitのruff・mypy、公開41ファイルの記録済み指紋、差分の空白検査も成功した。
+
+
+共通の見直しで、AI起動前の失敗がruntime失敗件数に入らない境界も確認した。
+品質除外は既に行われるが、件数が0のままになるため、起動前失敗の1 nodeを追加し、
+修正前に `runtime_failures` が0になって失敗することを確認した（1 failed、0.37秒）。
+正常なno-call再利用と起動失敗を共通の成功判定で分け、後者をruntime失敗に数えるよう修正した。
+追加後は38 passed、7.74秒。新規増分は合計19 nodeとなった。
+実測14 runはすべて起動成功なので、再計算したreportは以前のCLI出力と完全一致する。

@@ -859,6 +859,27 @@ def test_runtime_failure_candidate_is_retained_but_excluded_from_quality(
     assert result["status"] != "scored"
 
 
+def test_runtime_failure_before_agent_start_is_counted(modules: Any) -> None:
+    row, gold, _ = scoring_case()
+    row.update(
+        agent_invocations=0,
+        counter=None,
+        runtime_status="failed",
+        output_status="missing",
+        output=None,
+        output_sha256=None,
+    )
+    result = modules.metrics.summarize(
+        [row], {"schema_version": 1, "cases": [gold]}
+    )
+    cost = result["conditions"]["astra_fixed"]
+    assert cost["runtime_failures"] == 1
+    assert cost["agent_invocations"] == 0
+    assert cost["quality_eligible_observations"] == 0
+    assert cost["detection"]["true_positives"]["confirmed_sum"] == 0
+    assert result["status"] == "incomplete"
+
+
 @pytest.mark.parametrize(
     "capture_variable", ["DECISION_LOG_RETRIEVAL", "DECISION_LOG_CAPTURE"]
 )

@@ -162,7 +162,8 @@ invalid/missing outputs are excluded from quality counts and finding-rate
 denominators, and keep the comparison incomplete. A recoverable final from a
 failed runtime remains available as `candidate_only` for investigation; a parent
 match cannot promote it to a successful detection. Failed calls still contribute
-their measured resource use. False findings, finding confirmation failures,
+their measured resource use.
+Runtime failures include startup failures before an agent is spawned; no-call reuse with `not_invoked` is reported separately. False findings, finding confirmation failures,
 code `not_reviewed`, evidence waits, format failures, runtime failures and their
 union are reported separately. The additional-launch rate is episodes with more
 than one unique model call divided by observed episodes. An episode is a case/model

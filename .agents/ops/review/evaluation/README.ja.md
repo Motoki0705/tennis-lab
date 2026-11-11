@@ -137,6 +137,7 @@ wall timeは予約からruntime終了までとし、手動集計待ちを除く�
 runtime失敗と無効・欠落出力は、品質件数と指摘率の分母から除外し、比較全体をincompleteとする。
 失敗runtimeの復旧可能なfinalは調査用の `candidate_only` として保持するが、
 親のmatchがあっても検出成功にしない。失敗起動の実測使用量・時間は引き続き加算する。
+runtime失敗件数にはAI起動前の失敗も含める。再利用のための正常な `not_invoked` とは区別する。
 誤指摘、指摘の確認不能、コードの `not_reviewed`、証拠待ち、形式失敗、runtime失敗、失敗の和集合を分ける。
 追加起動率は、複数の異なるAI起動を持つepisode数を、観測episode数で割る。
 資格評価のepisodeはケースとモデル、選択射影ではケース単位である。

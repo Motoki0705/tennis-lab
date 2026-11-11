@@ -405,9 +405,9 @@
     },
     {
       "path": "knowledge/reports/review-model-comparison-20261111/review-fix-validation.json",
-      "published_canonical_sha256": "88099ae349bcb3a35d3ae9d8b2e3f7308d0e4e372d96019a5e54e4a490c68f0e",
-      "published_file_sha256": "88099ae349bcb3a35d3ae9d8b2e3f7308d0e4e372d96019a5e54e4a490c68f0e",
-      "source_canonical_sha256": "88099ae349bcb3a35d3ae9d8b2e3f7308d0e4e372d96019a5e54e4a490c68f0e",
+      "published_canonical_sha256": "550c7b1972fc5d131a33ff8114889339d0c9613389bff282d751793cea1559bd",
+      "published_file_sha256": "550c7b1972fc5d131a33ff8114889339d0c9613389bff282d751793cea1559bd",
+      "source_canonical_sha256": "550c7b1972fc5d131a33ff8114889339d0c9613389bff282d751793cea1559bd",
       "substitutions": {}
     }
   ],
@@ -468,6 +468,14 @@
       "reason": "Address the four accepted PR #1907 major findings; read-only analysis of the original completed study.",
       "recorded_provenance_mode": true,
       "validation": "knowledge/reports/review-model-comparison-20261111/review-fix-validation.json"
+    },
+    {
+      "cli_raw_report_file_sha256": "dfc4442747d399c6b868e4b54f52a09a7f4cdcf0da90a3f4409b6dcdb562a5ef",
+      "measured_code_sha256": "a5ef339e78316049caa794df37d348870c035613e1732358622d46fd8730093c",
+      "native_invocations": 0,
+      "reanalysis_code_sha256": "79c5e1cc61c6a9a44048dae9f7db7384b1f1e53aed71dc3d13270e63bf81c680",
+      "reason": "Count startup failures before agent spawn as runtime failures; successful no-call reuse remains distinct.",
+      "report_byte_identical_to_previous_reanalysis": true
     }
   ],
   "recalculation": {

@@ -334,8 +334,7 @@ def summarize(
                 row["output_status"] in {"invalid", "missing"} for row in group
             ),
             "runtime_failures": sum(
-                row["agent_invocations"] == 1 and row["runtime_status"] != "completed"
-                for row in group
+                not runtime_succeeded(row) for row in group
             ),
             "failed_observations": sum(
                 row["output_status"] != "valid"
