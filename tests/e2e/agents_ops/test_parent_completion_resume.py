@@ -18,6 +18,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     evidence_comments,
     evidence_number,
     run_git,
+    untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
@@ -585,6 +586,8 @@ def test_legacy_result_migration_preserves_review_and_completion(
             )
         ]
         p.save(state)
+        # The legacy fixture predates posting these acknowledgement events.
+        untracked_legacy_fixture(p)
     with control.store.locked():
         task = flow.session.row["tasks"]["1"]
         task.pop("preflight")

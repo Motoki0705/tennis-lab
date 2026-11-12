@@ -164,9 +164,36 @@ def saved(history: History) -> dict[str, Record]:
 
 
 def completion(session: ParentSession) -> Record | None:
-    return saved(session.gh.record_history(session.parent, session.login)).get(
-        "completion"
-    )
+    history = session.gh.record_history(session.parent, session.login)
+    record = saved(history).get("completion")
+    statuses = publication_status(history)
+    if record and not any(
+        r["key"] == "completion" and r["state"] == "published" for r in statuses
+    ):
+        raise ValueError(
+            "completion notification is not published on the parent; retry notify with the same spec before completion or release --ended"
+        )
+    return record
+
+
+def publication_status(history: History) -> list[dict[str, Any]]:
+    history.require_valid()
+    notices = {}
+    for r in history.records:
+        if r.payload.get("event") == "notification":
+            if r.source != "legacy_parent_comment":
+                raise ValueError("notification is not published on the parent issue")
+            notices[r.payload["key"]] = r.url
+    return [
+        {
+            "key": key,
+            "kind": r.payload["notification"]["kind"],
+            "state": "published" if key in notices else "pending",
+            "record_url": r.url,
+            "url": notices.get(key),
+        }
+        for key, r in saved(history).items()
+    ]
 
 
 def notify(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:

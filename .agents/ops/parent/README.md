@@ -221,6 +221,19 @@ noteのgeneration＋body digest等の保存済み識別子から作る。
 同一媒体内の同一payloadの再掲は、従来どおり履歴として保持する。
 片方の取得・検証が失敗したとき、他方の過去の成功記録だけを使って続けない。
 
+liveな共通readerは、選択したstateの `comment-outbox/` と `comment-updates/` に送信・照合済みとして
+残る全コメントを、記録種別の許可リストを使わず照合する。親・証拠用Issue・PR投影の保存先、
+comment ID、認証publisher、本文全体のdigestが一致しなければ明示エラーにする。
+旧version 1のoutboxは親または検証済み証拠用Issueの番号で、新version 2は保存した親番号と媒体でも照合する。
+取得済みsnapshotの純粋parserにはこのI/Oを混ぜず、収集時・実行直前のlive読取で検査する。
+
+この完全性検査で検出できるのは、同じstateにjournalが残る記録の欠落・改変である。
+別ホスト・別stateが書いた記録、journal導入前の旧コメント、消失・削除されたjournalが示していた過去の存在は
+証明できない。旧形式の読取互換は履歴の完全性保証を意味しない。
+journalの無い旧親コメントだけで取消が削除されると旧合意へ戻る問題は、origin/main
+`2016fa9c4bace66a4d13e98b38841e6565bcbd9c` でも再現した既存挙動である。
+journalを削除してエラーを回避せず、remoteと保存済み証拠を運用者が照合する。
+
 証拠側のマーカーなしコメントと別publisherのコメントは、出典URLとpublisher照合結果を持つ
 `History.diagnostics` にそれぞれ `unmarked_evidence_comment` / `untrusted_evidence_publisher` として残す。
 この診断がある履歴を権限・レビュー等へ投影すると明示エラーになる。
@@ -284,17 +297,28 @@ CLIは意味を推測せず、指定した種類・key・記録・参照と重�
 本文中の引用は機械証拠の先頭マーカーとして読まない。これは自由文noteの予約語拒否とは別の契約である。
 同じkey/同じspecは元のURLを返し、同じkey/異なる内容はconflictで停止する。
 証拠側保存だけで中断しても、同じspecで親通知と進捗同期だけを続ける。新しいAI・実験を起動しない。
+`status.notifications` は全種類について `{key, kind, state, record_url, url}` を返す。
+`state=pending` は証拠だけが保存された状態で `url=null`、`published` は同じkey・spec digest・
+証拠参照・生成本文が一致する親コメントを確認できた状態。statusは通知を投稿しない。
 後日の承認や方針変更は新しいkeyと差分を使う。過去の成果や未確認事項を上書きしない。
 
 completionは親ごとに固定key `completion`。手動の全体完了報告もこの入口へ集約する。
 `workflow-report completed` は全体の実merge/close/受入を検証したうえで、この完了記録の参照だけを保存する。
 完了記録が無ければ、親AIが成果・未達/残件・成果物を明示してnotifyするまで拒否する。
-`release --ended` も既存の完了記録を参照し、全文を親へ再掲しない。担当終了だけで全体完了を生成しない。
+証拠の完了記録があっても親通知が未公開なら `workflow-report completed` と `release --ended` を拒否し、
+担当をactiveのまま保つ。同じspecのnotifyで親通知だけを補ってから再実行する。
+`release --ended` も公開確認済みの既存完了記録を参照し、全文を親へ再掲しない。担当終了だけで全体完了を生成しない。
 
 コメントの新規POSTは共有stateの `comment-outbox/` でkeyと本文digestを送信前にfsyncする。
 再試行で同一publisher/本文が1件なら照合して再利用する。複数・改変・削除はエラー。
 送信済みでGitHub上に一致が無ければ `publication uncertain` として再POSTせず、運用者による明示照合まで止める。
 送信前中断と応答喪失を「失敗したから再送」で区別しない。共有stateの保全・別ホスト同時作成禁止は上記Issue作成と共通。
+唯一の本文更新であるレビューpending→result/adoptionは、同じcomment IDの更新前・更新後digestを
+`comment-updates/` にPATCH前に保存し、再取得が一致してからboundとする。
+sent中は保存した更新前または更新後の本文だけを許し、bound後は更新後だけを許す。
+PATCH応答喪失からの再開でも、確認した確定本文をoutboxへ記録し、以後pendingへ戻った場合は拒否する。
+pendingは成功結果として扱わない。旧outboxがpendingを記録したまま更新意図の証拠が無く別本文になっている場合も、
+現在値を補って通さず不一致として停止する。
 
 `sync` は進捗概要の `parent-progress:v1` ブロックを保存済み履歴と作業状態から生成する。
 段階・未解消の質問とリンク・継続/停止/依存保留・主要成果/残件・最新通知/合意・証拠用Issueへ辿れる。

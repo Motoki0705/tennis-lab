@@ -311,15 +311,35 @@ def read_history(
     *,
     parent_comments: Sequence[Mapping[str, Any]] | None = None,
 ) -> History:
-    evidence = gh.evidence_issues().find(parent, login)
-    return parse_history(
+    from .comment_journal import verify
+
+    manager = gh.evidence_issues()
+    evidence = manager.find(parent, login)
+    legacy = gh.comments(parent) if parent_comments is None else list(parent_comments)
+    machine = gh.comments(evidence.number) if evidence else []
+    history = parse_history(
         gh.repo,
         parent,
         login,
-        gh.comments(parent) if parent_comments is None else parent_comments,
-        gh.comments(evidence.number) if evidence else [],
+        legacy,
+        machine,
         evidence_issue=evidence.number if evidence else None,
     )
+    rows = {parent: legacy}
+    if evidence:
+        rows[evidence.number] = machine
+    try:
+        verify(
+            gh,
+            manager.directory.parent,
+            parent,
+            login,
+            rows,
+            evidence.number if evidence else None,
+        )
+    except ValueError as exc:
+        raise HistoryValidationError(str(exc)) from exc
+    return history
 
 
 def from_projection(

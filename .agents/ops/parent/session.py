@@ -217,6 +217,8 @@ class ParentSession:
         return {"parent": self.parent, "display_summary": row["display_summary"]}
 
     def status(self) -> dict[str, Any]:
+        from .notifications import publication_status
+
         row = self.row
         _, items = self.work_items()
         history = self.history()
@@ -228,6 +230,9 @@ class ParentSession:
             "display_summary": row.get("display_summary"),
             "current_session_is_owner": bool(row and row["session"] == self.session),
             "phase": PHASES[phase(history)],
+            "notifications": publication_status(
+                self.gh.record_history(self.parent, self.login)
+            ),
             "tasks": {
                 n: {
                     **visible_task(task, run_paths),

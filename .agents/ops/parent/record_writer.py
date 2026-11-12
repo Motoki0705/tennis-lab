@@ -8,16 +8,16 @@ from typing import TYPE_CHECKING, Any
 
 from worker_logs.journal import atomic, locked
 
+from . import comment_journal
 from .history import comment_url, parse_history
-from .judgement_comments import read_json
-from .policy import digest, number, object_value
+from .policy import digest, number
 
 if TYPE_CHECKING:
     from .session import ParentSession
 
 
 def post_once(
-    session: ParentSession, issue: int, body: str, key: str
+    session: ParentSession, issue: int, body: str, key: str, *, projection: bool = False
 ) -> dict[str, Any]:
     """A lost response is reconciled. Absence after a sent intent never causes POST."""
     session.public(body)
@@ -28,9 +28,15 @@ def post_once(
         / f"{digest([gh.repo.casefold(), issue, key])}.json"
     )
     identity = {
-        "version": 1,
+        "version": 2,
         "repo": gh.repo.casefold(),
+        "parent": session.parent,
         "issue": number(issue),
+        "source": "pr"
+        if projection
+        else "legacy_parent_comment"
+        if issue == session.parent
+        else "evidence_issue",
         "publisher": session.login,
         "body_sha256": digest(body),
         "key": key,
@@ -38,9 +44,14 @@ def post_once(
     with ExitStack() as locks, gh.fresh_reads():
         with session.store.unlocked_read() if session.store._lock else nullcontext():
             locks.enter_context(locked(path))
-        if path.is_symlink():
-            raise ValueError("comment outbox is a symlink")
-        saved = object_value(read_json(path.read_text())) if path.exists() else None
+        saved = (
+            comment_journal.load(path) if path.exists() or path.is_symlink() else None
+        )
+        if saved is not None and saved["version"] == 1:
+            identity = {
+                k: v for k, v in identity.items() if k not in {"parent", "source"}
+            }
+            identity["version"] = 1
         if saved is not None and (
             set(saved) != set(identity) | {"state", "comment_id"}
             or any(saved.get(k) != v for k, v in identity.items())
@@ -111,7 +122,7 @@ def write_record(session: ParentSession, body: str) -> dict[str, Any]:
                 return post_once(
                     session, number(comment["_parent_record_issue"]), body, digest(body)
                 )
-            return comment
+            return post_once(session, session.parent, body, digest(body))
     issue = session.gh.evidence_issues().ensure(
         session.parent,
         session.login,
@@ -132,3 +143,72 @@ def write_record(session: ParentSession, body: str) -> dict[str, Any]:
 
 def url(session: ParentSession, comment: dict[str, Any]) -> str:
     return comment_url(session.gh.repo, session.parent, comment)
+
+
+def replace_pending(session: ParentSession, comment: dict[str, Any], body: str) -> None:
+    """Journal the sole mutable record transition before its idempotent PATCH."""
+    from review.parent_review_policy import records
+
+    session.public(body)
+    before = records([comment], session.login)
+    after = records([{"body": body, "user": {"login": session.login}}], session.login)
+    if (
+        len(before) != 1
+        or len(after) != 1
+        or before[0]["kind"] != "pending"
+        or after[0]["kind"] not in {"result", "adoption"}
+        or any(before[0][k] != after[0][k] for k in ("review_run_id", "request_sha256"))
+        or after[0]["request"]["parent_issue"] != session.parent
+    ):
+        raise ValueError("only a matching pending review can be finalized")
+    issue = number(comment.get("_parent_record_issue", session.parent))
+    cid = number(comment["id"])
+    row = {
+        "version": 1,
+        "repo": session.gh.repo.casefold(),
+        "parent": session.parent,
+        "issue": issue,
+        "publisher": session.login,
+        "comment_id": cid,
+        "from_sha256": digest(comment["body"]),
+        "to_sha256": digest(body),
+    }
+    path = (
+        session.store.directory
+        / "comment-updates"
+        / f"{digest([row['repo'], issue, cid])}.json"
+    )
+    with ExitStack() as locks, session.gh.fresh_reads():
+        with session.store.unlocked_read() if session.store._lock else nullcontext():
+            locks.enter_context(locked(path))
+        saved = (
+            comment_journal.load(path, update=True)
+            if path.exists() or path.is_symlink()
+            else None
+        )
+        if saved is not None and any(saved[k] != v for k, v in row.items()):
+            raise ValueError("comment update journal conflict")
+        observed = [c for c in session.gh.comments(issue) if c["id"] == cid]
+        if (
+            len(observed) != 1
+            or observed[0].get("user", {}).get("login") != session.login
+        ):
+            raise ValueError("pending review changed or disappeared")
+        current = digest(observed[0].get("body") or "")
+        if current != row["to_sha256"]:
+            if current != row["from_sha256"] or (saved and saved["state"] == "bound"):
+                raise ValueError("pending review changed after publication")
+            atomic(path, {**row, "state": "sent"})
+            session.gh.write(
+                "PATCH",
+                f"repos/{session.gh.repo}/issues/comments/{cid}",
+                {"body": body},
+            )
+            observed = [c for c in session.gh.comments(issue) if c["id"] == cid]
+            if (
+                len(observed) != 1
+                or observed[0].get("user", {}).get("login") != session.login
+                or observed[0].get("body") != body
+            ):
+                raise ValueError("review update could not be verified")
+        atomic(path, {**row, "state": "bound"})

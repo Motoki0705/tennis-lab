@@ -17,7 +17,11 @@ import yaml
 
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_number
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_number,
+    untracked_legacy_fixture,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -215,6 +219,7 @@ def move_machine_records(env: ParentEnv) -> dict[int, int]:
     ]
     state["comments"]["1"].extend(legacy)
     env.save(state)
+    untracked_legacy_fixture(env)
     return moved
 
 

@@ -383,11 +383,14 @@ result_sha256,snapshot,coverage,findings,parent_run_url}`。
 結果に `evidence_waits` があるPRはprojectionにも同じ配列を含む。旧projectionは省略したまま照合する。
 保存先の実permalinkからrun全体を読める。
 
-公開は「親に `kind=pending`（schema_version/run ID/request digestだけ）を作る →
+公開は「証拠用Issueに `kind=pending`（schema_version/run ID/request digestだけ）を作る →
 全PRへprojectionを投稿 → 同じpendingをresultへ更新」の順。pendingやPRコメント単独は成功の証拠ではない。
 途中失敗では工程の失敗をローカルへ保存する。`resume-publication` は認証loginの先頭行recordを再取得し、
 一致するpending/projection/resultを再利用して欠けた書込みだけを行う。投稿の応答喪失も同じ照合で復旧し、
 同runの別内容・重複・先行failed記録があれば停止する。公開済みコメントは上書きせず、pendingだけを正式結果へ更新する。
+PRへのprojection・resolution・evidenceも共通comment journalに保存し、pendingの更新には更新前後のWALを使う。
+読取時の完全性検査・保証範囲は [親履歴の共通reader](../parent/README.md#機械証拠の保存共通reader) が正本。
+送信済みのpending/PR投影がremoteに見えない場合は `resume-publication` も拒否し、再POSTしない。
 gateは成功resultと全PRのprojection/digest、
 ローカルexecutionのpublishedを照合し、同runの失敗記録・公開不整合があれば停止する。
 投稿応答喪失も自動再レビューの理由にしない。

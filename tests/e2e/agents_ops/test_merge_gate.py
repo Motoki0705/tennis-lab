@@ -23,6 +23,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     peer_board_request,
     review_policy_module,
     run_git,
+    untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
@@ -142,6 +143,31 @@ class GateEnv:
                     record["findings"] = self.policy.pr_findings(result, n)
                 comment["body"] = self.policy.marker(record)
         p.save(state)
+        self.attest_fixture_comments()
+
+    def attest_fixture_comments(self) -> None:
+        # This helper constructs an alternate published fixture, including its
+        # transport attestations; direct remote tampering never uses it.
+        p = self.review.p
+        state = p.state()
+        directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+        comments = {
+            (int(n), c["id"]): c for n, rows in state["comments"].items() for c in rows
+        }
+        atomic = importlib.import_module("worker_logs.journal").atomic
+        updates = {}
+        for path in (directory / "comment-updates").glob("*.json"):
+            row = json.loads(path.read_text())
+            key = (row["issue"], row["comment_id"])
+            updates[key] = row["from_sha256"]
+            row["to_sha256"] = self.policy.digest(comments[key]["body"])
+            atomic(path, row)
+        for path in (directory / "comment-outbox").glob("*.json"):
+            row = json.loads(path.read_text())
+            key = (row["issue"], row["comment_id"])
+            if row["body_sha256"] != updates.get(key):
+                row["body_sha256"] = self.policy.digest(comments[key]["body"])
+                atomic(path, row)
 
 
 @dataclass(frozen=True)
@@ -1266,6 +1292,9 @@ def test_rejections_never_merge_or_launch_agent(
         record["result_sha256"] = "f" * 64
         state["comments"]["100"][0]["body"] = g.policy.marker(record)
     p.save(state)
+    if case in {"not_received", "fixing"}:
+        # These acknowledgement events have never been posted in this fixture.
+        untracked_legacy_fixture(p)
     # Successful CI cannot mask the rejection. Other PRs stay unmergeable.
     state = p.state()
     for pr in state["prs"]:
@@ -1279,13 +1308,15 @@ def test_rejections_never_merge_or_launch_agent(
         assert (
             "conflicting parent evidence record" in json.loads(result.stderr)["error"]
         )
-    elif case in {"foreign_result", "quoted_result"}:
+    elif case in {
+        "parent_missing",
+        "projection_missing",
+        "projection_digest",
+        "foreign_result",
+        "quoted_result",
+    }:
         assert result.returncode == 2
-        assert (
-            "untrusted_evidence_publisher"
-            if case == "foreign_result"
-            else "unmarked_evidence_comment"
-        ) in json.loads(result.stderr)["error"]
+        assert "comment journal" in json.loads(result.stderr)["error"]
     else:
         assert result.returncode == 1, result.stderr
         rows = g.results(result)
@@ -1892,7 +1923,13 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
                 if g.policy.records([comment], "operator") == [old]:
                     comment["body"] = g.policy.marker(replacement)
         p.save(state)
-    rows = g.results(g.cli("merge"))
+        g.attest_fixture_comments()
+    result = g.cli("merge")
+    if resolution == "unpublished":
+        assert result.returncode == 2 and "comment journal" in result.stderr
+        assert not g.merge_calls()
+        return
+    rows = g.results(result)
     if resolution == "valid":
         assert [c[2] for c in g.merge_calls()] == ["100"]
         assert rows[100]["action"] == "merged"
@@ -1927,6 +1964,7 @@ def test_missing_parent_run_cannot_use_old_pr_approval(gate_env: GateEnv) -> Non
         }
     ]
     p.save(state)
+    untracked_legacy_fixture(p)
     result = g.cli("merge")
     assert result.returncode == 1, result.stderr
     assert all(

@@ -7,6 +7,7 @@ import hashlib
 import importlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections.abc import Callable
@@ -22,6 +23,17 @@ from tests.support.agents_ops.worker_preflight import completed_implementation
 
 ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
+
+
+def untracked_legacy_fixture(p: ParentEnv) -> None:
+    """Construct pre-journal test data; never use this to repair live evidence."""
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    assert directory.is_relative_to(p.root)
+    for name in ("comment-outbox", "comment-updates"):
+        path = directory / name
+        if path.exists():
+            shutil.rmtree(path)
+
 
 FAKE_GH = r"""
 import json, os, re, sys
@@ -980,6 +992,7 @@ def test_board_marker_and_ack_cannot_supply_human_agreement(
     # Keep the checking event so no other agreement can authorize the task.
     agreement = evidence_comments(state).pop()["body"]
     p.save(state)
+    untracked_legacy_fixture(p)
     body = {
         "exact": agreement,
         "quoted": "引用\n" + agreement,

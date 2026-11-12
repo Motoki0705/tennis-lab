@@ -346,20 +346,15 @@ def test_publication_resume_reconciles_each_write_without_duplicates(
         execution["stages"]["publication"]["status"] = "pending"
         (r.run_dir / "execution.json").write_text(json.dumps(execution))
     immutable = (r.run_dir / "result.json").read_bytes()
-    if failure == "pending":
+    if failure in {"pending", "projection"}:
         # A failed POST has an uncertain outcome. No remote match authorizes a new POST.
         before = copy.deepcopy(r.p.state()["comments"])
         posts = [c for c in r.p.calls() if "POST" in c]
         for _ in range(2):
-            value = json.loads(
-                r.cli(
-                    "resume-publication", "--run", r.request["review_run_id"], ok=False
-                ).stdout
+            refused = r.cli(
+                "resume-publication", "--run", r.request["review_run_id"], ok=False
             )
-            assert (
-                value["publication"] == "publication_failed"
-                and value["agent_invocations"] == 0
-            )
+            assert refused.returncode == 2 and "comment journal" in refused.stderr
         assert r.p.state()["comments"] == before
         assert [c for c in r.p.calls() if "POST" in c] == posts
         assert (r.run_dir / "result.json").read_bytes() == immutable and len(
@@ -475,10 +470,9 @@ def test_evidence_wait_requires_current_four_key_public_completion(
         c for c in state["comments"]["100"] if '"kind":"evidence"' not in c["body"]
     ]
     r.p.save(state)
-    assert (
-        "pr_100_evidence_1_pending"
-        in g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]["reasons"]
-    )
+    rejected = g.cli("merge", AGENT_AUTO_MERGE="0")
+    assert rejected.returncode == 2 and "comment journal" in rejected.stderr
+    assert not g.merge_calls()
 
 
 @pytest.mark.parametrize(

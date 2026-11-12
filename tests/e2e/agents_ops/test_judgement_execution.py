@@ -19,7 +19,11 @@ from tests.e2e.agents_ops.test_execution_basis import (
 from tests.e2e.agents_ops.test_human_agreement import agreements, delegation_args
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_comments
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    untracked_legacy_fixture,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -149,6 +153,7 @@ def test_legacy_human_snapshot_with_judgement_remains_executable(
         policy.marker(event)
     )
     p.save(state)
+    untracked_legacy_fixture(p)
     publish(p, monkeypatch, 1, "human_hold")
     p.child("legacy")
     launch = json.loads(p.cli(*delegation_args(p.worktree("legacy"))).stdout)

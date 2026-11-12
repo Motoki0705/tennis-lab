@@ -293,7 +293,7 @@ def test_corrupted_notification_outbox_is_not_reset_to_an_empty_state(
     )
     path.write_text("{}")
     before = p.state()
-    assert "outbox conflict" in notify(p, spec, ok=False).stderr
+    assert "invalid comment journal" in notify(p, spec, ok=False).stderr
     assert p.state() == before and path.read_text() == "{}"
 
 

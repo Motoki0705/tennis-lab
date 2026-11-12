@@ -28,6 +28,7 @@ from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_parent_session import (
     single_review_env as single_review_env,
 )
+from tests.e2e.agents_ops.test_review_recovery import inject_lost_response
 from tests.support.agents_ops.decision_logs import graph
 
 C = importlib.import_module("decision_logs.capture")
@@ -515,11 +516,8 @@ def test_review_publication_failure_keeps_observed_result_and_new_run_predecesso
     single_review_env: ReviewEnv,
 ) -> None:
     r = single_review_env
-    failed = json.loads(
-        r.run(
-            ok=False, extra={"PARENT_FAIL_PATH": "repos/o/r/issues/100/comments"}
-        ).stdout
-    )
+    inject_lost_response(r, target="repos/o/r/issues/100/comments", method="POST")
+    failed = json.loads(r.run(ok=False).stdout)
     assert failed["publication"] == "publication_failed"
     rows = captured(state_dir(r.p))
     assert any(

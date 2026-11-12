@@ -16,6 +16,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
     evidence_comments,
     review_setup,
+    untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
@@ -122,6 +123,7 @@ def test_legacy_human_agreement_is_usable_without_fabricating_history(
         policy.marker(event)
     )
     p.save(state)
+    untracked_legacy_fixture(p)
     before = p.state(), registry(p).read_bytes()
     status = json.loads(p.cli("status").stdout)
     assert status["execution_basis"]["kind"] == "human_agreement"
@@ -172,6 +174,8 @@ def test_human_body_observation_preserves_review_evidence(
             policy.marker(event)
         )
     p.save(state)
+    if change == "legacy":
+        untracked_legacy_fixture(p)
     saved = {path.name: path.read_bytes() for path in g.review.run_dir.glob("*.json")}
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert all(row["decision"] == "merge" for row in rows.values())

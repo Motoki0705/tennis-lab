@@ -18,6 +18,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     make_review_env,
     review_policy_module,
     run_git,
+    untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.worker_preflight import completed_implementation
@@ -881,6 +882,7 @@ def test_legacy_public_review_and_local_result_survive_migration(
     old["version"] = 1
     old["parents"]["o/r#1"]["reviews"][-1]["request"] = request
     registry(p).write_text(json.dumps(old))
+    untracked_legacy_fixture(p)
     result_bytes = (run_dir / "result.json").read_bytes()
     response = g.cli("merge", AGENT_AUTO_MERGE="0")
     assert response.returncode == 0, response.stderr + response.stdout
@@ -1061,6 +1063,7 @@ def test_legacy_human_agreement_remains_readable_and_requires_reagreement_for_ch
     agreed["body"] = policy.marker(event)
     agreed["created_at"] = "2026-10-22T03:00:00Z"
     p.save(state)
+    untracked_legacy_fixture(p)
     before = p.state(), registry(p).read_bytes()
     p.cli("status")
     assert (p.state(), registry(p).read_bytes()) == before
