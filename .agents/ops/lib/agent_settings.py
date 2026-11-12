@@ -73,6 +73,8 @@ def resolve(
     model: str | None,
     effort: str | None,
     mode: str,
+    *,
+    review_selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     raw = config.read_bytes()
     pins = _parse_pins(raw)
@@ -97,6 +99,20 @@ def resolve(
         k: v for k, v in {"model": model, "effort": effort}.items() if v is not None
     }
     selected.update(overrides)
+    if review_selection is not None and (agent, profile, mode) != (
+        "codex",
+        "review",
+        "read-only",
+    ):
+        raise ValueError("review selection requires read-only Codex review profile")
+    if agent == "codex" and profile == "review":
+        from lib.review_settings import launch_selection, policy_from_pins
+
+        policy = policy_from_pins(pins)
+        if review_selection is not None:
+            selected = dict(launch_selection(review_selection, pins)["selected"])
+        elif policy["mode"] != "fixed":
+            raise ValueError("select review profile requires --review-selection-file")
     if any(
         not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9._:/-]*", value)
         for value in (defaults["model"], selected["model"])
@@ -136,7 +152,12 @@ def resolve(
         "overrides": overrides,
         "selected": selected,
         "selection_sources": {
-            k: "task" if k in overrides else prefix + k.upper() for k in selected
+            k: "review_selection"
+            if review_selection is not None
+            else "task"
+            if k in overrides
+            else prefix + k.upper()
+            for k in selected
         },
         "max_threads": threads,
     }

@@ -76,6 +76,17 @@ def test_gitignore_tracks_only_public_worker_log_files(tmp_path: Path) -> None:
     allowed = {
         f"{directory}/{name}" for name in ("instruction.md", "final.md", "meta.json")
     }
+    allowed.update(
+        {
+            ".agents/logs/parents/README.md",
+            ".agents/logs/parents/parent-1/README.md",
+            ".agents/logs/parents/parent-1/child-10/README.md",
+            ".agents/logs/parents/parent-1/child-10/d-example/README.md",
+            f"{directory}/README.md",
+            ".agents/logs/parents/parent-1/activity-example/README.md",
+            ".agents/logs/parents/parent-1/activity-example/event-example.json",
+        }
+    )
     ignored = {
         ".agents/logs/raw.md",
         ".agents/logs/instruction.md",
@@ -89,7 +100,10 @@ def test_gitignore_tracks_only_public_worker_log_files(tmp_path: Path) -> None:
         f"{directory}/events.json",
         f"{directory}/payload.txt",
         f"{directory}/code.py",
-        f"{directory}/README.md",
+        ".agents/logs/parents/README.txt",
+        ".agents/logs/parents/raw/README.md",
+        ".agents/logs/parents/parent-1/activity-example/private.json",
+        ".agents/logs/parents/parent-1/private/event-example.json",
     }
     for name in allowed | ignored:
         target = tmp_path / name

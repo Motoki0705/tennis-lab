@@ -11,6 +11,8 @@ from typing import Any
 
 import pytest
 
+from tests.e2e.agents_ops.test_merge_gate import GateEnv
+from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_improvements import (
     create_approved_child,
     decide,
@@ -105,13 +107,13 @@ def test_publication_with_decision_link_recovers_after_response_loss_and_concurr
 
 
 @pytest.mark.parametrize("lost_event", ["completion", "ended"])
+@pytest.mark.parametrize("gate_env", ["parent_self"], indirect=True)
 def test_finish_response_loss_repairs_only_missing_record(
-    parent_env: ParentEnv, lost_event: str
+    gate_env: GateEnv, lost_event: str
 ) -> None:
-    from tests.e2e.agents_ops.test_parent_completion_records import agree
-
-    p = parent_env
-    agree(p)
+    g, p = gate_env, gate_env.review.p
+    merged = g.cli("merge")
+    assert merged.returncode == 0, merged.stderr
     spec = finish_for(p)
     p.env["PARENT_FAIL_AFTER_COMMENT_CONTAINING"] = f'"event": "{lost_event}"'
     p.cli("release", "--ended", "--spec", p.spec(spec), ok=False)
@@ -122,6 +124,7 @@ def test_finish_response_loss_repairs_only_missing_record(
     assert sum('"event": "ended"' in b for b in bodies) == 1
     assert json.loads(p.cli("status").stdout)["completion"]["acceptance"] == "completed"
     assert post_count(p) == 0
+    assert len(g.merge_calls()) == len(g.review.calls()) == 1
 
 
 def test_manual_revocation_between_preparation_and_spawn_never_starts_runner(

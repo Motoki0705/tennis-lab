@@ -281,6 +281,11 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
                 "cancelled_before_start"
             ]
             assert not (Path(cancelled["directory"]) / "runtime").exists()
+            with (
+                session.store.locked(),
+                pytest.raises(ValueError, match="cancelled reservation"),
+            ):
+                session.record_result(10, "未起動の取消予約を成果にしない。")
             corrupted = d.row()
             corrupted["dispatch"]["jobs"][cancelled["id"]]["resume_from"] = None
             d.update(corrupted)
@@ -325,6 +330,11 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
             for line in (d.h.root / "runtime-calls.jsonl").read_text().splitlines()
         ]
         assert "resume" in calls[1]["args"]
+        with session.store.locked():
+            session.record_result(10, "同じworkerの修正差分と実結果を確認した。")
+        assert d.row()["tasks"]["10"]["preflight"]["accepted_turn_id"] == current[
+            "preflight"
+        ]["turn_id"]
     finally:
         d.control.reconcile(stop=True)
 
@@ -1321,7 +1331,7 @@ def test_workflow_report_rejects_duplicate_json_and_empty_parent_completion(
         ),
         ok=False,
     )
-    assert "no implementation targets" in rejected.stderr
+    assert "acceptance evidence" in rejected.stderr
 
 
 @pytest.mark.parametrize("gate_env", ["standalone"], indirect=True)

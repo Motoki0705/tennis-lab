@@ -464,7 +464,7 @@ def test_autonomous_shared_merge_uses_current_review_without_path_permission(
     p = parent_env
     g = auto_gate(p, monkeypatch, shared=True)
     request = g.review.request
-    assert request["schema_version"] == 2
+    assert request["schema_version"] == 3
     assert request["authorization"]["execution_basis_kind"] == "autonomous_decision"
     allowed = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert allowed[100]["decision"] == "merge"
@@ -585,7 +585,7 @@ def test_stale_delegation_needs_explicit_parent_result_verification(
     )
     assert (
         json.loads(p.cli("review-prepare", "--prs", "100").stdout)["schema_version"]
-        == 2
+        == 3
     )
     p.cli(
         "delegate",
@@ -829,6 +829,7 @@ def test_legacy_public_review_and_local_result_survive_migration(
     request.pop("review_state")
     request.pop("authorization")
     request.pop("requirements")
+    request.pop("review_selection")
     request["schema_version"] = 1
     request_sha = policy.digest(request)
     agreement = next(
@@ -839,8 +840,10 @@ def test_legacy_public_review_and_local_result_survive_migration(
     auth = {"generation": 1, "agreement_sha256": agreement["agreement_sha256"]}
     run_dir = g.review.run_dir
     result = json.loads((run_dir / "result.json").read_text())
+    result.pop("runtime_settings")
     result.update(request=request, request_sha256=request_sha)
     execution = json.loads((run_dir / "execution.json").read_text())
+    execution.pop("review_selection")
     execution.update(authorization=auth, request_sha256=request_sha)
     for name, data in (
         ("request", request),

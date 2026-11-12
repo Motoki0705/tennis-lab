@@ -138,8 +138,9 @@ requirements.available=falseとなり、finishを拒否する。一括移行や�
 実merge・レビュー・子の終了等の既存検査に加え、supervisorは当該job/担当generation/権限に結び付いたfinish receiptを照合する。
 手書きの最終completed JSONだけでは完了しない。
 
-子なし `issue:parent` でも手動finish・候補記録・起票・判断はできる。自律×子なし親の実行対象resolverと
-completedまでのE2E受入は **#1804待ち**。この機能は架空の子やfallback resolverで補わない。
+子なし `issue:parent` も [共通resolver](README.md#issue自身を実行する)で親自身の成果を照合する。
+手動finishと自律completedは同じ実merge・受入・終了の証拠を要求し、空の子一覧だけで完了にしない。
+候補の発見元に架空の子は作らず、独自のresolverや完了fallbackは置かない。
 
 ## 判断ログと導入順
 
@@ -149,7 +150,8 @@ completedまでのE2E受入は **#1804待ち**。この機能は架空の子やf
 理由は候補の正本を参照し、`decide` 等へ同じ文章を再入力しない。人間判断の正本も候補コメントである。
 終了済み元親のjournalを別sessionから公開・更新する経路は追加しない。改善親の担当がagreeへ承認を取り込んだ時点で、
 改善親graphに「承認を観測した結果」と元コメント参照を記録する。未判断・見送り・承認済み未起動・実行失敗は成功と区別する。
-#1865/#1871の捕捉・公開用変換を利用し、**#1876の表示連携の受入はmerge後**に行う。
+既存の捕捉・公開用変換・階層READMEを利用する。独自のPublisherや表示基盤は追加しない。
+実際の運用記録の公開・表示の受入は、担当親が既存の明示公開手順で行う。
 
 最初の新出典publishの前に、この変更を含むmainのopsへdispatcherサービスと手動CLIの両方を切り替える。
 古いopsを使った親/workerの委任を止め、稼働中のrunは既存の停止・回収手順で確認してから新しいopsで再開する。

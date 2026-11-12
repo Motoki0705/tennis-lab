@@ -10,6 +10,8 @@
 
 Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
 担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
+表示する要約（`display_summary`）は親ごとの記録に保存し、`register --summary`と`summary --text`で設定する。
+幅・検証・要約がない場合の扱いはherdr_labelsの[要約](../herdr_labels/README.md#要約)が正本。
 同じ位置で[board](../board/README.md)の名前も同期し、結果を`board_sync`へ返す。
 
 ## 判断と機械的な検査
@@ -35,7 +37,8 @@ CLIは現在の担当、対象repo/issue/PR/branch、runとsession、終了と�
 | 担当開始、要件確認、要件合意と人間の確認の引用 | 親issueコメント |
 | 自律着手の根拠・入力・コメント分類・取消 | 親issueコメントの `execution_basis` / `basis_revoked` イベント |
 | 正式な親子関係、子のopen/closedと理由 | GitHub sub-issue / issue |
-| 子の具体的な停止理由・根拠・再開条件・次の対応、改善候補 | 子issue本文 |
+| 子の具体的な停止理由・根拠・再開条件・次の対応 | 子issue本文 |
+| 改善候補・切り出し判断・後継への人間判断 | 元親の構造化コメント。子の欄は参照 |
 | 子の一覧と全体進捗、停止/再開通知、レビュー対象・指示・状態 | 親issue本文・コメント |
 | レビュー対象のバイト列 | ローカル `reviews/<run ID>/pr-<N>.diff` と `request.json` |
 
@@ -111,7 +114,8 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 workerの起動・継続では `--dispatcher-state-dir` も同じscheduleへ向ける。
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register --summary 親担当の要約表示
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 summary --text 要約表示の実機確認
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent https://github.com/Motoki0705/tennis-lab/issues/1216 status
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 checking
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp/agreement.json
@@ -119,7 +123,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 
 `agreement.json` は `purpose` / `scope` / `behavior` / `acceptance` / `human_confirmation` の
 5キーだけを持つJSON object。値はすべて非空の文章とし、最後の値に人間の確認発言を引用する。
-`checking` → 会話で認識合わせ・合意 → `agree` の順。担当指定だけでは「担当指定のみ」、
+確認が必要なら `checking` で表示し、人間との合意を `agree` に記録する。既に明確な合意があれば直接 `agree` へ進める。担当指定だけでは「担当指定のみ」、
 `checking` で「要件確認中」、有効な合意コメントで「要件合意済み」となる。
 再度 `checking` に戻しても、既存の親合意と提案別の合意は維持する。停止・取消は `basis-revoke` で明示する。
 `checking` / `agreed` のrevisionは両イベントの過去最大値から進め、取消の連番とは分ける。
@@ -128,7 +132,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 同じ確認中の `checking` と、有効な同一合意への `agree` の再送は冪等で、新しい合意に数えない。
 会話に実際の合意があるかを判断する責任は親agentにあり、CLIは人間の確認を捏造しない。
 既存issueにマーカーなしの人間との合意がある場合は、その発言と合意内容を読み、
-`checking` / `agree` で同じ内容を記録する。記録形式を移すためだけの再承認は求めない。
+`agree` で同じ内容を記録する。記録形式を移すためだけの再承認は求めない。
 
 ### 補足追加の確定待ち
 
@@ -326,6 +330,56 @@ triageの引渡し・受領・提案別合意は既存のマーカー付きイ�
 担当親の自由文の連絡には [note](#自由文の進捗連絡) を使い、既存合意のコメント鮮度を保つ。
 人間が独立に作ったissueには受領操作は不要で、同じregister/checking/agreeから開始する。
 
+## Issue自身を実行する
+
+Issueの分割基準と実装者の選択は [parent-session skill](../../skills/parent-session/SKILL.md#親が判断すること)を参照する。
+一つのバグ修正を実装・テスト・README更新までまとめて受け入れる場合は、同じIssueのまま進める。
+独立してmergeできるAPIとその利用側を別担当で並行に進める場合や、一方だけを保留する必要がある場合は分割が役立つ。
+一Issueを常に一PRへ制限する契約ではない。
+
+`work_items()` が全入口の対象を解決する。正式な直属子があればopen/closedともその子だけ、
+正式な子がなく上位親もなければ `issue:parent` の有無によらず自身一件を返す。
+入れ子の手動親は従来どおり自分の子を管理する。正式な上位親を持つ葉Issueをこの入口で切り離して実行しない。
+取得失敗はエラーのまま扱い、子なしや全子完了への変換はしない。
+CLIの `--child N` は担当Issue番号の指定で、自身の番号も受け付ける。子作成や自己参照のsub-issue登録は行わない。
+
+担当登録・有効な実行根拠を揃え、専用worktreeで実装して `Closes #1216` を持つPRを作る最短例:
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp/agreement.json
+# 親が直接実装した後、差分・受入条件・対象HEADのテストを確認する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-result --child 1216 --evidence-file tmp/tests.md
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
+  --prs 1250 --instruction-file tmp/review.md --evidence-file tmp/tests.md > tmp/review-request.json
+```
+
+直接実装にはdelegate・架空のworker・終了記録は不要。
+同じ成果をworkerへまとめて依頼する場合だけ、実装前に以下を使う（worktreeは作成済みとする）。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 delegate --child 1216 \
+  --agent codex --branch codex/small-fix --worktree /path/to/main/.claude/worktrees/small-fix
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --child 1216 --prompt-file tmp/task.md
+```
+
+以後は両経路とも同じ [正式レビュー要求](#レビュー要求契約schema-version-3version-1と2の読取互換) と
+[merge gate](../review/README.md#merge-gate)、全体受入・[終了照合](development_workflow.md#待機完了担当終了)を使う。
+レビュー指摘や必要なmerge後確認は同じworkerへの継続で扱い、確認専用Issueや必須planningを追加しない。
+`sync` は自身の状態を返し、親ラベルがあれば進捗概要だけを更新する。自身のチェック行や子用要件を作らない。
+空の子一覧・PRのclose・runner終了だけでは完了せず、成果受理、正式レビュー、対象HEADのCI、実merge/closeと実行終了を照合する。
+merge後の確認をworkerへ継続した場合は、そのターンの実結果を親が確認し、`record-result` で受理してから全体完了へ進む。
+その既存workerの停止・再開も同じIssueで扱い、Issueの再openや新しい委任先は作らない。
+worker来歴と親判断は既存のログ形式へ親番号＝担当Issue番号として接続し、ログ専用の作業Issueは要求しない。
+
+途中分割では実行・PR・受入済み成果を自動で別Issueへ移さない。自身への予約や成果が残る間の `create-child`、
+分割で自身の作業が対象外になった場合、未終了workerが正式対象から外れた場合、全子を切離した後の自身への切替は理由付きで拒否する。
+終了を照合して別の正式親へ移した子の履歴は保持し、残った独立子は従来どおり進められる。
+移管済み提案の作成を旧親から再送した場合も、実番号と正式親を返して再作成しない。旧親の対象整理が必要なら `target_conflict` を明示し、起動許可にはしない。
+既存の履歴は保持する。成果とPRのない自身の作業は、明示的な停止とworker終了の照合後に分割できる。
+分割と稼働が重なった場合も既存の自身の作業への `stop` / `stop-worker` は使えるが、継続は整理が済むまで拒否する。
+成果やPRがある場合は、担当親が元の関係とPRの帰属を明示的に整理してから進める。記録を消して新しいworkerを起動しない。
+
 ## 子の作成・委任・再開
 
 ```bash
@@ -360,7 +414,7 @@ triageの `ops-report-task:v1` 出典を持つ既存作業は [自動Issue化](.
 親関係のない既存提案が別キーなら番号を示して拒否し、孤立issueを明示的に移行・照合してから扱う。
 
 `delegate` は実在する専用git worktree・branch・agent prefixを確認し、起動予約を先に保存する。
-未分割の単独issueは自身の番号を `--child` に指定でき、正式な子を新しい親として扱うことは拒否する。
+未分割のIssueは親ラベル付きでも自身の番号を `--child` に指定できる（[対象解決](#issue自身を実行する)）。
 `action: launch` を受けた手動親は [run-worker](#手動workerの起動継続とrun記録) を呼ぶ。`delegate` 自体は起動しない。
 既存PR・委任予約・完了・取消・停止・依存保留・予約上限・利用できる依存PRの不在があれば起動を拒否する。
 `reconcile` は正式な子、全状態のPRの `Closes/Fixes/Resolves #子番号`（同repoのURLも可）、
@@ -372,11 +426,11 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 `delegate --restart-evidence-file tmp/evidence.md` で明示的に再予約する。既存PRがあれば再予約もしない。
 
 `record-result --child N --evidence-file tmp/tests.md` はclosing指示とbranchを照合し、
-子の成果物欄へPRと検証結果を追記する。記録だけで子を完了扱いにせず、過去の検証記録も残す。
+担当Issueの成果物欄へPRと検証結果を追記する。記録だけで完了扱いにせず、過去の検証記録も残す。
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
 根拠・担当・子の要件が変わったときは親が成果への影響を判断し、必要な部分を再確認してrecord-resultへ記録する。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
-単独issueの結果も同じ入口を使い、親用の子一覧は生成しない。
+自身を対象とする結果も同じ入口を使い、子一覧は生成しない。
 
 ### 並列起動の選択と予約上限
 
@@ -664,7 +718,7 @@ requestやstate・GitHubを書き換えず、agentを起動しない。担当セ
 [reviewの照合表示契約](../review/README.md#既存証拠の照合表示) を参照する。
 意味の判断と次の行動は親が記録し、追加レビューが必要なPRだけを以下の入口へ渡す。
 
-## レビュー要求契約（schema version 2、version 1読取互換）
+## レビュー要求契約（schema version 3、version 1と2の読取互換）
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
@@ -683,11 +737,11 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
 対象は直属子にclosing指示があるopen PRの任意の部分集合。
 PR未取得・重複・closed・draft・fork・親と無関係をエラーにする。
 他のopen PRの追加・更新・closeは選択した対象のcoverageを失効させない。
-分割していない単独issueではそのissueを閉じるPRを同じ方法で扱う。
+分割していないIssueでは親ラベル付きでもそのissueを閉じるPRを同じ方法で扱う。
 GitHub取得・git差分取得後にPR集合とhead/baseを再取得し、途中更新を拒否する。
 不足オブジェクトだけ `origin` からSHAをfetchする。
 
-prepareのJSON（追加キーなし）:
+prepareはversion 3を作成する。従来のversion 2のJSONは次の形で、読取時に書き換えない:
 
 ```json
 {
@@ -720,6 +774,39 @@ prepareのJSON（追加キーなし）:
 git diff --no-ext-diff --no-textconv --binary --full-index --no-renames --no-color MERGE_BASE HEAD --
 ```
 
+version 3は上のversion 2へ`review_selection`を追加してdigestに含める。
+選択JSONの定義は[共通ランナー](../lib/README.md#レビュー専用の選択入力)を参照。
+既定fixedでは引数を省略すると設定の固定値を使用する。明示指定は固定値と一致する場合だけ許可する。
+selectでは`--review-model`と`--model-reason-file`を必須とし、必要なら`--review-effort`も指定する。
+通常確認・高リスク確認などの意味判断は親が行う。CLIは行数やパスからモデルを決めない。
+
+これらの引数は`review-prepare`と`review-request --prs`の両方で使える。
+`review-request --run-id`は保存選択を使用し、指定を加えた場合も完全一致を要求する。
+理由・モデル・選択元の変更は、新しい理由付きprepareで別runにする。prepare済みmanifestを変更しない。
+設定の正本は[lib/agents.conf](../lib/agents.conf)で、明示設定の検証には`--review-config-file FILE`を使える。
+実行側の`parent_review.py run`にも同じ内容の設定ファイルを指定する。
+
+人間の指定を親が確認した場合は`--review-model-source human_instruction`と`--human-model-reference`を使う。
+別の親候補との矛盾も検査する場合は`--human-review-model`、必要なら`--human-review-effort`で拘束を渡す。
+人間の発言であることと元指示の意味は親が確認し、CLIは拘束との矛盾・許可外の組を拒否する。
+人間指定がfixedと矛盾しても固定モデルへの振替は行わない。
+
+保存finalの復旧を指示するときは、prepare時に`--recover-source-run ID`で元runを固定する。
+この選択は`{kind:recover,source_run,source_request_sha256,candidates}`となり、新しいモデル選択とは併用しない。
+`candidates`には元requestが継承していた未採用候補を保持し、recoverを経由して指摘・証拠待ちが消えることも防ぐ。
+復旧要求を`run`へ渡すことも拒否する。実効モデルはrecoverが検証する元runの値である。
+別モデルの追加レビューには`--handoff-from-run ID --handoff-scope-file FILE`を使う。
+元request/resultのdigestとPRの対応を固定し、元run・未解決事項・追加確認範囲をcontextへ渡す。
+検証済みの未採用候補があれば、その指摘・証拠待ちと検証来歴もrequestへ固定する。
+連続する引継ぎでも候補を保持し、不正な候補や固定後の改変は明示エラーにする。
+追加レビューの理由は従来の`--reason-file`、モデルを選ぶ理由は`--model-reason-file`に分ける。
+引継ぎはcoverageの合成でも旧指摘の解消でもない。部分確認だけならnot_reviewedのままにする。
+候補が残るPRのgate解除には、[保存候補の引継ぎ契約](../review/README.md#保存候補を含む別runへの引継ぎ)に従う親の明示確認も必要になる。
+
+旧version 1/2には要求時の選択を補作しない。既存証拠の復旧・公開再開・gateは旧契約として検証する。
+未起動の旧requestは従来のfixed設定でだけ起動でき、selectや固定値変更時は新版requestを要求する。
+手動親と自律親は同じ入口・検証を使う。選択元は判断記録の既存の3分類へ接続する。
+
 親コメントの `event:review, state:targets_fixed` にrun ID・requestのcanonical JSON SHA-256を記録し、
 本文のJSONコードブロックにmanifest全体を載せる。この時点ではレビュー未指示。
 `review-request` は同じ対象が現在も有効なことを再検査して、親の明示指示をコメントへ記録する。
@@ -748,7 +835,11 @@ PR open/push/CI完了ではこの入口もレビューも起動しない。
 
 既存入口の結果・行動は非公開の判断journalへ自動捕捉する。
 親の短い判断は `decide --spec`、状態と記録IDは `decision-log-status`、捕捉だけの再送は
-`retry-decision-capture` を使う。取得元・未対応入口・判断spec・操作との結び付けは
+`retry-decision-capture`、親ごとの明示的なGit公開は `publish-decision-log` を使う。
+公開の単位・階層README・限定例外と復旧は[判断記録の公開仕様](../decision_logs/README.ja.md#git公開と閲覧)を参照する。
+人間向けの入口は[親の結果・判断一覧](../../logs/parents/README.md)。親READMEの概要から活動の詳細へ辿る。
+初回も `publish-decision-log --dry-run` で未準備記録を含む表示を確認する。プレビューの項目と制限は公開仕様を参照する。
+取得元・未対応入口・判断spec・操作との結び付けは
 [判断記録の仕様](../decision_logs/README.ja.md#捕捉元と未対応入口)を正本とする。
 既存の要求・runner応答形式、成果受入や担当の権限は変更しない。
 

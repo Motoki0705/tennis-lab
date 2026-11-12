@@ -70,10 +70,12 @@ def request(
     instruction: str,
     evidence: str,
     reason: str | None,
+    *,
+    review_selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     session.agreed()
     parent, children = session.work_items()
-    targets = set(children) or {parent.number}
+    targets = set(children)
     linked: set[int] = set()
     for n in prs:
         pr = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
@@ -85,5 +87,5 @@ def request(
         require_implementation(session, child)
         runner_ended(session, child)
         session.record_result(child, evidence)
-    fixed = prepare(session, prs, reason)
+    fixed = prepare(session, prs, reason, review_selection=review_selection)
     return transition(session, fixed["review_run_id"], "instructed", instruction)

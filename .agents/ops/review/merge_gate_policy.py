@@ -136,6 +136,12 @@ def publication_errors(
     validate_result(dict(result))
     stages = execution_stages(execution)
     errors = []
+    from lib.review_settings import verify_execution
+
+    try:
+        verify_execution(dict(result["request"]), dict(execution))
+    except ValueError:
+        errors.append("review_selection_mismatch")
     if (
         execution.get("status") != "published"
         or execution.get("request_sha256") != result["request_sha256"]
@@ -330,7 +336,7 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
             reasons.append("author_unknown")
     except AuthorConflictError:
         reasons.append("author_conflict")
-    targets = set(gate.children) or {gate.parent_issue}
+    targets = set(gate.children)
     linked = closing_issues(pr.get("body") or "", gate.repo) & targets
     if not linked:
         reasons.append("not_direct_child_pr")

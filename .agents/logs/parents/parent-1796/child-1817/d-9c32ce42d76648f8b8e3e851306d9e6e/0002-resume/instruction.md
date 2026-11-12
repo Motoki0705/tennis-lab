@@ -1,0 +1,9 @@
+The integration review of PR #1890 (parent issue #1796, review run `parent-1796-3e2e0b584d024f119f9b087924756d7b`) raised 1 major finding. The finding text is in the parent issue and the PR's review comments. The parent judged it valid. Fix it on the same branch and PR.
+
+pr-1890-1 (presentation.py): Suppose a summary contains a credential written in Unicode escape form, for example the underscore in a GitHub token prefix written as `_`. The existing Guard checks the text before decoding, so this escape passes. Then `literal()` decodes it, and `fields()` → `prose()` turns the underscore into an HTML entity, so the final Guard in `navigation.save()` cannot detect it either. On GitHub the entity is turned back into a character, so the credential is displayed.
+- Apply the same public Guard (credentials, local paths, private IDs, unsafe URLs, control characters, and so on) to every display value that presentation decodes or formats, after decoding and before HTML escaping. If a value violates the Guard, block the page generation with a fixed error code. Do not mask it silently.
+- Also check whether any other display path in navigation.py or presentation.py produces a value that skips the Guard because of decoding or entity conversion. If you find one, close it the same way.
+- First add a regression test that reproduces the finding's path, using a dummy value written in escape form inside the test code. Do not write a real token pattern verbatim. Confirm the test fails before the fix and passes after it.
+- Confirm that the existing 205 records on main still regenerate with the new code without being blocked.
+
+Do not write local absolute paths in instructions or reports, not even as examples. Memory is still tight, so run pytest with `-n 1` on the target test files only. The time limit is about 2 hours. Push the fix, wait for the CI `Python` result on the target HEAD, then report the change, the tests, the HEAD and the CI result.

@@ -1,0 +1,32 @@
+# parent.publish-worker-log・worker&#95;logs.publish / 担当issue &#35;1816
+
+結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
+
+反映範囲: このHEADの記録集合 6 件。記録時刻 2026-11-11T00:56:32.006721+00:00 〜 2026-11-11T00:56:34.974091+00:00。
+
+公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
+
+[上の階層](../README.md) · [親一覧](../../README.md)
+
+6 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 2 件。親の確認未記録: 2 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 2 件。
+
+直近の観測（受入の判定とは別）: [結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543) success / machine: parent.publish-worker-log: success / 担当issue: 1816<br>[行動 211](README.md#record-2c52e976b0954c03999e5f8bab84e78d) 公開 / 終了（成果受入とは別）
+
+## 全記録の詳細
+
+| 時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠 |
+| --- | --- | --- | --- | --- |
+| <a id="record-d258519dcbc94d95886e96f43d3a2f24"></a>[行動 206](README.md#record-d258519dcbc94d95886e96f43d3a2f24)<br>2026-11-11T00:56:32.006721+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) | 結果記録なし | 記録不足・判断: parent decision not recorded for this operation | parent.publish-worker-log: requested<br>公開 / 要求済み・実行未確認 | [記録本文](event-d258519dcbc94d95886e96f43d3a2f24.json)<br>次の記録: [行動 207](README.md#record-10acc401088940edbd4714dd1d261664) |
+| <a id="record-10acc401088940edbd4714dd1d261664"></a>[行動 207](README.md#record-10acc401088940edbd4714dd1d261664)<br>2026-11-11T00:56:32.114013+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) | [結果 208](README.md#record-baad754177724261a08871e259334d1a) | 記録不足・判断: parent decision not recorded for this operation | parent handler entered; no AI launch implied<br>公開 / 実行中 | [記録本文](event-10acc401088940edbd4714dd1d261664.json)<br>前の記録: [行動 206](README.md#record-d258519dcbc94d95886e96f43d3a2f24)<br>次の記録: [結果 208](README.md#record-baad754177724261a08871e259334d1a)、[行動 209](README.md#record-36040a86f9da4732be973ce8a8ea9f10) |
+| <a id="record-baad754177724261a08871e259334d1a"></a>[結果 208](README.md#record-baad754177724261a08871e259334d1a)<br>2026-11-11T00:56:34.601248+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) | worker&#95;logs.publish: delegation&#95;key=d-2968076048af45308f9eeca06cdf1bfc<br>ターン: 4<br>状態: pending<br>段階: mergeability&#95;pending<br>main保存確認: いいえ<br>エラー: 記録値なし<br>partial / machine<br>親の確認未記録<br>最終報告の観測対象外（記録された理由による）<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-baad754177724261a08871e259334d1a.json)<br>根拠非公開・記録不足: capture&#95;source=parent.publish-worker-log; artifact=worker-log journal publication view; content&#95;sha256=6f6cb2616ff0130568d3affdab392013518174f14792c506680b458c3d2d8613; private evidence<br>前の記録: [行動 207](README.md#record-10acc401088940edbd4714dd1d261664)、[結果 202](../activity-b4640fa94e2a4fe7a0ed6742f6e4ee76/README.md#record-3563248224ae4157acb5c18aa2971666)<br>次の記録: [行動 209](README.md#record-36040a86f9da4732be973ce8a8ea9f10)、[結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543)、[行動 211](README.md#record-2c52e976b0954c03999e5f8bab84e78d) |
+| <a id="record-36040a86f9da4732be973ce8a8ea9f10"></a>[行動 209](README.md#record-36040a86f9da4732be973ce8a8ea9f10)<br>2026-11-11T00:56:34.707967+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) | [結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543)、[結果 208](README.md#record-baad754177724261a08871e259334d1a) | 記録不足・判断: parent decision not recorded for this operation | parent.publish-worker-log: ended<br>公開 / 終了（成果受入とは別） | [記録本文](event-36040a86f9da4732be973ce8a8ea9f10.json)<br>前の記録: [行動 207](README.md#record-10acc401088940edbd4714dd1d261664)、[結果 208](README.md#record-baad754177724261a08871e259334d1a)<br>次の記録: [結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543)、[行動 211](README.md#record-2c52e976b0954c03999e5f8bab84e78d) |
+| <a id="record-bbf0af149b604955ae9b8a6050ac6543"></a>[結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543)<br>2026-11-11T00:56:34.834923+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) | parent.publish-worker-log: success<br>担当issue: 1816<br>success / machine<br>親の確認未記録<br>最終報告の観測対象外（記録された理由による）<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-bbf0af149b604955ae9b8a6050ac6543.json)<br>根拠非公開・記録不足: capture&#95;source=parent.publish-worker-log; artifact=command response; content&#95;sha256=3b63801e41df55e9e16bdc93344e0f94145ef5fc4cabfc5e88ad4e9d94d38516; private evidence<br>前の記録: [行動 209](README.md#record-36040a86f9da4732be973ce8a8ea9f10)、[結果 208](README.md#record-baad754177724261a08871e259334d1a)<br>次の記録: [行動 211](README.md#record-2c52e976b0954c03999e5f8bab84e78d)、[結果 214](../activity-d23f9c3593f847bcb05b47f31c31f615/README.md#record-4f391637432145db8cc072bf17e0c931) |
+| <a id="record-2c52e976b0954c03999e5f8bab84e78d"></a>[行動 211](README.md#record-2c52e976b0954c03999e5f8bab84e78d)<br>2026-11-11T00:56:34.974091+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) | [結果 208](README.md#record-baad754177724261a08871e259334d1a)、[結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543) | 記録不足・判断: parent decision not recorded for this operation | parent.publish-worker-log: ended<br>公開 / 終了（成果受入とは別） | [記録本文](event-2c52e976b0954c03999e5f8bab84e78d.json)<br>前の記録: [行動 209](README.md#record-36040a86f9da4732be973ce8a8ea9f10)、[結果 208](README.md#record-baad754177724261a08871e259334d1a)、[結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543) |
+
+<details><summary>反映した記録と補助情報</summary>
+
+- [結果 208](README.md#record-baad754177724261a08871e259334d1a)<br>時刻: 発生時刻: 未取得: source occurrence time unavailable / 受信時刻: 観測: 2026-11-11T00:56:34.601232+00:00 / 記録時刻: 2026-11-11T00:56:34.601248+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+- [結果 210](README.md#record-bbf0af149b604955ae9b8a6050ac6543)<br>時刻: 発生時刻: 未取得: source occurrence time unavailable / 受信時刻: 観測: 2026-11-11T00:56:34.834908+00:00 / 記録時刻: 2026-11-11T00:56:34.834923+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+
+</details>
+

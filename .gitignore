@@ -91,6 +91,13 @@ logs/
 !/.agents/logs/parents/**/instruction.md
 !/.agents/logs/parents/**/final.md
 !/.agents/logs/parents/**/meta.json
+!/.agents/logs/parents/README.md
+!/.agents/logs/parents/parent-*/README.md
+!/.agents/logs/parents/parent-*/activity-*/README.md
+!/.agents/logs/parents/parent-*/child-*/README.md
+!/.agents/logs/parents/parent-*/child-*/d-*/README.md
+!/.agents/logs/parents/parent-*/child-*/d-*/*-*/README.md
+!/.agents/logs/parents/parent-*/activity-*/event-*.json
 outputs/
 results/
 wandb/

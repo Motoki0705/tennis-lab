@@ -240,9 +240,16 @@ class Supervisor:
         ]
         task = row["tasks"].get(str(session.parent), {})
         if not implementations:
-            raise ValueError(
-                "closed parent has no implementation delegation to reconcile"
-            )
+            if task.get("delegated"):
+                raise ValueError(
+                    "closed parent has no implementation delegation to reconcile"
+                )
+            # Direct implementation has no worker runtime to invent. The same
+            # gate journal, review, close and acceptance checks still apply.
+            from parent.development import verify_completion
+
+            verify_completion(session)
+            return
         previous = max(implementations, key=lambda j: j["sequence"])
         if (
             not task.get("delegated")

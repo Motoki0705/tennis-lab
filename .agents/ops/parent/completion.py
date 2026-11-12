@@ -208,24 +208,11 @@ def record(
     sha = digest(spec)
     previous = session.row.get("completion")
     if spec["state"] == "completed" and prs is None:
-        parent, items = session.work_items()
-        if items:
-            from .development import verify_completion
+        from .development import verify_completion
 
-            prs = verify_completion(session)
-        else:
-            # #1804 owns execution of an unsplit labelled parent. This operation
-            # only records the parent's explicit acceptance; it cannot delegate,
-            # manufacture a worker/PR or make autonomous completion succeed.
-            if parent.children or session.row.get("tasks"):
-                raise ValueError(
-                    "no resolved execution targets for existing work; inspect the resolver"
-                )
-            if "needs-human" in parent.labels:
-                raise ValueError(
-                    "human decision label is still pending; completion does not clear needs-human"
-                )
-            prs = []
+        # The shared resolver includes a childless parent's own work. Manual and
+        # autonomous completion require the same execution/merge evidence.
+        prs = verify_completion(session)
     if (
         previous
         and previous["finish_sha256"] == sha

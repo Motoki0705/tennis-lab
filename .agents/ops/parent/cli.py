@@ -37,6 +37,11 @@ def read_object(path: str) -> dict[str, Any]:
     return object_value(json.loads(read_text(path), object_pairs_hook=unique_object))
 
 
+WORK_ITEM_HELP = (
+    "担当Issue番号。正式な子なしでは --parent と同じ番号を指定（子の新設ではない）"
+)
+
+
 def parser() -> argparse.ArgumentParser:
     root = argparse.ArgumentParser(description=__doc__)
     try:
@@ -54,8 +59,11 @@ def parser() -> argparse.ArgumentParser:
         help="issue number or https://github.com/owner/repo/issues/N",
     )
     commands = root.add_subparsers(dest="command", required=True)
+    commands.add_parser("register").add_argument(
+        "--summary", help="sidebar summary (<= 24 display columns)"
+    )
+    commands.add_parser("summary").add_argument("--text", required=True)
     for command in (
-        "register",
         "status",
         "checking",
         "wait-supplement",
@@ -65,9 +73,12 @@ def parser() -> argparse.ArgumentParser:
     ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
+    publication = commands.add_parser("publish-decision-log")
+    publication.add_argument("--dry-run", action="store_true")
+    publication.add_argument("--retry", action="store_true")
     for name in ("worker-log-status", "publish-worker-log"):
         log = commands.add_parser(name)
-        log.add_argument("--child", type=int, required=True)
+        log.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         log.add_argument("--turn", type=int)
         log.add_argument("--delegation-key")
         if name == "publish-worker-log":
@@ -95,11 +106,11 @@ def parser() -> argparse.ArgumentParser:
             project.add_argument("--spec", required=True)
     commands.add_parser("workflow-report").add_argument("--spec", required=True)
     cancellation = commands.add_parser("record-cancellation")
-    cancellation.add_argument("--child", type=int, required=True)
+    cancellation.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     cancellation.add_argument("--spec", required=True)
     for name in ("start-worker", "continue-worker", "inspect-worker", "stop-worker"):
         worker = commands.add_parser(name)
-        worker.add_argument("--child", type=int, required=True)
+        worker.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         if name in {"start-worker", "continue-worker"}:
             worker.add_argument(
                 "--prompt-file",
@@ -160,14 +171,14 @@ def parser() -> argparse.ArgumentParser:
     receipt.add_argument("--report", type=int, required=True)
     receipt.add_argument("--proposal", required=True)
     delegate = commands.add_parser("delegate")
-    delegate.add_argument("--child", type=int, required=True)
+    delegate.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     delegate.add_argument("--agent", choices=("claude", "codex"), required=True)
     delegate.add_argument("--branch", required=True)
     delegate.add_argument("--worktree", type=Path, required=True)
     delegate.add_argument("--dependencies", type=int, nargs="*")
     delegate.add_argument("--restart-evidence-file")
     result = commands.add_parser("record-result")
-    result.add_argument("--child", type=int, required=True)
+    result.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     result.add_argument("--evidence-file", required=True)
     policy = commands.add_parser("configure-delegation")
     policy.add_argument(
@@ -175,11 +186,11 @@ def parser() -> argparse.ArgumentParser:
     )
     policy.add_argument("--reason-file", required=True)
     ended = commands.add_parser("record-worker-ended")
-    ended.add_argument("--child", type=int, required=True)
+    ended.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     ended.add_argument("--delegation-id", required=True)
     ended.add_argument("--evidence-file", required=True)
     manual = commands.add_parser("run-worker")
-    manual.add_argument("--child", type=int, required=True)
+    manual.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     manual.add_argument(
         "--prompt-file",
         type=Path,
@@ -203,13 +214,13 @@ def parser() -> argparse.ArgumentParser:
         help="parent's selection reason; required for an initial alternate model",
     )
     run_record = commands.add_parser("record-worker-run")
-    run_record.add_argument("--child", type=int, required=True)
+    run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
     decision = commands.add_parser(
         "decide-worker-plan",
         help="bind a parent answer to the latest completed planning final",
     )
-    decision.add_argument("--child", type=int, required=True)
+    decision.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     decision.add_argument(
         "--action", choices=("approve", "investigate", "reject"), required=True
     )
@@ -218,11 +229,11 @@ def parser() -> argparse.ArgumentParser:
         "refresh-worker-plan",
         help="refresh the saved controller; normal continuation does this automatically",
     )
-    refresh.add_argument("--child", type=int, required=True)
+    refresh.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     refresh.add_argument("--evidence-file", required=True)
     for command in ("stop", "resume"):
         sub = commands.add_parser(command)
-        sub.add_argument("--child", type=int, required=True)
+        sub.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         sub.add_argument("--spec", required=True)
     improvement = commands.add_parser("improvement")
     improvement.add_argument("--child", type=int)
@@ -240,6 +251,9 @@ def parser() -> argparse.ArgumentParser:
     review = commands.add_parser("review-prepare")
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
+    from .review_choice import add_arguments as review_choice_arguments
+
+    review_choice_arguments(review)
     inspection = commands.add_parser("review-inspect")
     inspection.add_argument("--prs", type=int, nargs="+", required=True)
     request = commands.add_parser("review-request")
@@ -249,6 +263,7 @@ def parser() -> argparse.ArgumentParser:
     request.add_argument("--evidence-file")
     request.add_argument("--reason-file")
     request.add_argument("--instruction-file", required=True)
+    review_choice_arguments(request)
     state = commands.add_parser("review-state")
     state.add_argument("--run-id", required=True)
     state.add_argument(
@@ -311,6 +326,24 @@ def _main(argv: list[str] | None = None) -> int:
             else store,
         )
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "publish-decision-log":
+            from decision_logs.journal import Journal
+            from decision_logs.publication import Publisher
+
+            # Publication bookkeeping never enters the capture adapter: an
+            # otherwise successful publication must not create another batch.
+            owner = (
+                store.read_data()
+                .get("parents", {})
+                .get(f"{gh.repo.casefold()}#{parent}", {})
+            )
+            if owner.get("session") != identity:
+                raise ValueError("decision publication requires the assigned parent")
+            value = Publisher(
+                Path.cwd(), Journal(store.directory, gh.repo, parent)
+            ).publish(dry_run=args.dry_run, retry=args.retry)
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+            return 2 if value["error"] or value["blocked"] else 0
         if args.command == "review-inspect":
             import importlib
 
@@ -508,7 +541,9 @@ def _main(argv: list[str] | None = None) -> int:
             elif command == "basis-check":
                 result = validate_candidate(session, args.basis_sha256, args.generation)
             elif command == "register":
-                result = session.register()
+                result = session.register(args.summary)
+            elif command == "summary":
+                result = session.set_summary(args.text)
             elif command == "status":
                 # Status works outside a live session; disclose no raw session identifiers.
                 with suppress(ValueError):
@@ -646,12 +681,18 @@ def _main(argv: list[str] | None = None) -> int:
                     number(args.child), read_text(args.evidence_file)
                 )
             elif command == "review-prepare":
+                from .review_choice import selection as review_choice
+
                 result = prepare(
                     session,
                     [number(n) for n in args.prs],
                     read_text(args.reason_file) if args.reason_file else None,
+                    review_selection=review_choice(session, args),
                 )
             elif command == "review-request":
+                from .review_choice import selection as review_choice
+
+                chosen_review = review_choice(session, args)
                 if args.prs:
                     from .review_handoff import request as handoff_review
 
@@ -665,6 +706,7 @@ def _main(argv: list[str] | None = None) -> int:
                         read_text(args.instruction_file),
                         read_text(args.evidence_file),
                         read_text(args.reason_file) if args.reason_file else None,
+                        review_selection=chosen_review,
                     )
                 else:
                     result = transition(
@@ -672,6 +714,7 @@ def _main(argv: list[str] | None = None) -> int:
                         args.run_id,
                         "instructed",
                         read_text(args.instruction_file),
+                        review_selection=chosen_review,
                     )
             else:
                 result = transition(
@@ -692,7 +735,14 @@ def _main(argv: list[str] | None = None) -> int:
                 args.dispatcher_state_dir,
             )
             integration_failed = result["stop"]["state"] == "stopping"
-        if command in {"register", "reconcile", "sync", "release", "handoff"}:
+        if command in {
+            "register",
+            "summary",
+            "reconcile",
+            "sync",
+            "release",
+            "handoff",
+        }:
             # The mutation is durable and its registry lock is released. Sync
             # the caller and unnamed active peers before projecting the name.
             result = {**result, "parent_action_applied": True}

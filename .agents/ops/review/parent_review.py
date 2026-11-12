@@ -41,6 +41,7 @@ from parent.policy import (  # noqa: E402
 from parent.session import ParentSession  # noqa: E402
 from parent.snapshot import git, snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
+from parent.work_targets import require_separate_self_prs  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
     evaluate_coverage,
@@ -49,6 +50,7 @@ from parent_review_policy import (  # noqa: E402
     hex_value,
     load_json,
     marker,
+    pending_handoff_candidates,
     pr_findings,
     records,
     request_manifest,
@@ -76,6 +78,7 @@ from review_recovery import (  # noqa: E402
     runtime_evidence,
     source_evidence,
     verify_adoption,
+    verify_result_runtime,
 )
 from review_workspace import (  # noqa: E402
     build_prompt,
@@ -123,22 +126,26 @@ def authorized(
     auth = require_run_authorization(session, request, required_issues=required_issues)
     if instruction.get("request_sha256") != digest(request):
         raise ValueError("review instruction refers to another request")
+    if request["schema_version"] == 3:
+        from parent.review_choice import verify_references
+
+        verify_references(session, request["review_selection"], request["prs"])
     return auth
 
 
 def collect(
     session: ParentSession, request: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[int, bytes]]:
-    parent, children = session.family()
+    parent, children = session.work_items()
     selected = [p["number"] for p in request["prs"]]
-    prs = select_prs(
-        selected, session.gh.pulls(), set(children) or {parent.number}, session.gh.repo
-    )
+    pulls = session.gh.pulls()
+    require_separate_self_prs(parent, pulls, session.gh.repo)
+    prs = select_prs(selected, pulls, set(children), session.gh.repo)
 
     def assignments(pulls: Sequence[Mapping[str, Any]]) -> dict[int, set[int]]:
         return {
             pr["number"]: closing_issues(pr.get("body") or "", session.gh.repo)
-            & (set(children) or {parent.number})
+            & set(children)
             for pr in pulls
         }
 
@@ -175,8 +182,7 @@ def collect(
                 "title": pr["title"],
                 "body": pr["body"],
                 "child_issues": sorted(
-                    closing_issues(pr["body"] or "", session.gh.repo)
-                    & (set(children) or {parent.number})
+                    closing_issues(pr["body"] or "", session.gh.repo) & set(children)
                 ),
                 "changed_paths": changed_paths(
                     entry["merge_base_sha"], entry["head_sha"]
@@ -198,16 +204,18 @@ def collect(
         + [
             {"number": c.number, "title": c.title, "body": c.body}
             for c in children.values()
-            if c.number in selected_issues
+            if c.number in selected_issues and c.number != parent.number
         ],
         prs,
     )
     # Recollect after all GitHub/git I/O. Never review a partially collected PR set.
     with session.gh.fresh_reads():
+        if set(session.work_items()[1]) != set(children):
+            raise ValueError("work targets changed during review collection")
         fresh = select_prs(
             selected,
             session.gh.pulls(),
-            set(children) or {parent.number},
+            set(children),
             session.gh.repo,
         )
     if [snapshot(dict(pr))[0] for pr in fresh] != request["prs"] or assignments(
@@ -220,6 +228,7 @@ def collect(
         "children": [
             {"number": c.number, "title": c.title, "body": c.body}
             for c in children.values()
+            if c.number != parent.number
         ],
         "prs": details,
         "review_observations": observations,
@@ -250,6 +259,7 @@ def result_record(
         "request": request,
         "reviewer": "codex",
         "profile": "review",
+        **({"runtime_settings": None} if request["schema_version"] == 3 else {}),
         "started_at": started,
         "finished_at": now(),
         "status": "failed",
@@ -294,6 +304,13 @@ def finding_text(items: list[dict[str, Any]]) -> str:
 
 def summaries(result: dict[str, Any]) -> tuple[str, dict[int, str]]:
     text = f"親統合レビュー `{result['review_run_id']}` — {result['status']} / {result['verdict']}\n\nCodex（reviewプロファイル）、{result['started_at']} → {result['finished_at']}\n\n{result['summary']}"
+    if result["request"]["schema_version"] == 3:
+        choice = result["request"]["review_selection"]
+        if choice["kind"] == "run":
+            text += f"\n\n選択: {choice['selected']['model']} / {choice['selected']['effort']} ({choice['specified_by']})\n理由: {choice['reason']}"
+        if result["runtime_settings"] is not None:
+            observed = result["runtime_settings"]["effective"]
+            text += f"\n\n実効モデル: {observed['model']['value']} / {observed['effort']['value']}"
     if result["error"]:
         text += "\n\n未完了: " + result["error"]
     if result["exception"]:
@@ -325,6 +342,8 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
 
     validate_result(result)
     execution = read_json(run_dir / "execution.json")
+
+    verify_result_runtime(run_dir, result, execution)
     invocations = 0 if result["kind"] == "adoption" else 1
     if (
         execution.get("request_sha256") != result["request_sha256"]
@@ -484,6 +503,16 @@ def _locked_review(args: argparse.Namespace, request: dict[str, Any]) -> dict[st
 
 def _run_review(args: argparse.Namespace) -> dict[str, Any]:
     request = request_manifest(read_json(args.request))
+    from lib.review_settings import (
+        LEGACY_FIXED,
+        load_policy,
+        runtime_summary,
+        verify_execution,
+    )
+
+    choice = request.get("review_selection")
+    if choice is not None and choice["kind"] != "run":
+        raise ValueError("recovery request cannot launch an agent; use recover")
     gh = GitHub(request["repo"])
     identity = session_identity(dict(os.environ))
     store = Store(args.state_dir)
@@ -501,6 +530,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         execution_file = run_dir / "execution.json"
         if execution_file.exists():
             execution = read_json(execution_file)
+            verify_execution(request, execution)
             require_not_closed(execution, request)
             execution_stages(execution)
             if not isinstance(execution.get("status"), str) or execution[
@@ -542,12 +572,31 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                         "run is running/interrupted after agent launch; never execute it twice"
                     )
                 collect(session, request)
+                recorded_result = validate_result(read_json(run_dir / "result.json"))
+
+                verify_result_runtime(run_dir, recorded_result, execution)
                 return {
                     "reused": True,
-                    "result": validate_result(read_json(run_dir / "result.json")),
+                    "result": recorded_result,
                     "publication": execution["status"],
                 }
         authorized(session, request, launching=True)
+        if choice is not None:
+            from lib.agent_settings import DEFAULT_CONFIG, read_pins
+            from lib.review_settings import launch_selection
+
+            launch_selection(
+                choice, read_pins(args.review_config_file or DEFAULT_CONFIG)
+            )
+        else:
+            legacy_policy = load_policy(args.review_config_file)
+            if (
+                legacy_policy["mode"] != "fixed"
+                or legacy_policy["fixed"] != LEGACY_FIXED
+            ):
+                raise ValueError(
+                    "legacy request requires original fixed settings; prepare a new request"
+                )
         for pr in request["prs"]:
             if (
                 hashlib.sha256(
@@ -558,6 +607,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 raise ValueError("local frozen diff digest mismatch")
         execution = {
             "request_sha256": digest(request),
+            **({"review_selection": choice} if choice is not None else {}),
             "status": "running",
             "started_at": now(),
             "authorization": request.get("authorization", auth),
@@ -590,12 +640,26 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
             for run in session.row["reviews"]
             if run["request"] == request
         )
+        if choice is not None and choice["handoff"] is not None:
+            from parent.review_choice import source
+
+            source_request, source_result = source(
+                session, choice["handoff"]["source_run"]
+            )
+            context["review_handoff"] = {
+                "source_request": source_request,
+                "source_result": source_result,
+                "scope": choice["handoff"]["scope"],
+                "candidates": choice["handoff"]["candidates"],
+            }
         Store.write_json(run_dir / "context.json", context)
         root = Path(git("rev-parse", "--show-toplevel").decode().strip())
         template = (HERE / "prompt_template.md").read_text(encoding="utf-8")
         prompt = build_prompt(request, context, diffs, template)
         prompt_file, output_file = run_dir / "prompt.md", run_dir / "agent_output.md"
         prompt_file.write_text(prompt, encoding="utf-8")
+        if choice is not None:
+            Store.write_json(run_dir / "review-selection.json", choice)
         cpu_tests = read_json(args.cpu_tests_file) if args.cpu_tests_file else {}
         retrieval_config = {
             "repo": str(root),
@@ -651,6 +715,19 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                     "codex",
                     "--profile",
                     "review",
+                    *(
+                        [
+                            "--review-selection-file",
+                            str(run_dir / "review-selection.json"),
+                        ]
+                        if choice is not None
+                        else []
+                    ),
+                    *(
+                        ["--config-file", str(args.review_config_file.resolve())]
+                        if args.review_config_file is not None
+                        else []
+                    ),
                     "--cwd",
                     str(cwd),
                     "--prompt-file",
@@ -684,7 +761,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         )
         agent["workspace_cleanup_complete"] = not review_workspace.exists()
         try:
-            runtime = runtime_evidence(run_dir)
+            runtime = runtime_evidence(run_dir, request)
             agent.update(
                 status="finished",
                 cleanup_complete=True,
@@ -705,6 +782,10 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         try:
             final, parsed = parse_final(run_dir, request)
             candidate = result_record(request, execution["started_at"], previous)
+            if choice is not None:
+                candidate["runtime_settings"] = runtime_summary(
+                    read_json(run_dir / "agent-runtime/result.json")
+                )
             candidate.update(parsed)
             for pr in candidate["prs"]:
                 pr["child_issues"] = next(
@@ -817,6 +898,11 @@ def public_error(session: ParentSession, exc: BaseException) -> str:
 
 def recover(args: argparse.Namespace) -> dict[str, Any]:
     request = request_manifest(read_json(args.request))
+    if request["schema_version"] == 3 and (
+        request["review_selection"]["kind"] != "recover"
+        or request["review_selection"]["source_run"] != args.source_run
+    ):
+        raise ValueError("recovery source differs from frozen request")
     if (
         not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", args.source_run)
         or args.source_run == request["review_run_id"]
@@ -901,6 +987,17 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                     "agent_invocations": 0,
                     "validation": validation,
                 }
+                if request["schema_version"] == 3:
+                    from lib.review_settings import runtime_summary
+
+                    result["runtime_settings"] = runtime_summary(
+                        read_json(
+                            store.directory
+                            / "reviews"
+                            / args.source_run
+                            / "agent-runtime/result.json"
+                        )
+                    )
                 verify_adoption(store.directory, result)
                 for pr in request["prs"]:
                     if (
@@ -917,6 +1014,11 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                         "agent_invocations": 0,
                         "source_run": args.source_run,
                         "request_sha256": digest(request),
+                        **(
+                            {"review_selection": request["review_selection"]}
+                            if request["schema_version"] == 3
+                            else {}
+                        ),
                         "authorization": request.get("authorization", auth),
                         "operator_authorization": auth,
                         "session": session.session,
@@ -1079,6 +1181,8 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
                 request,
             )
             execution = read_json(run_dir / "execution.json")
+
+            verify_result_runtime(run_dir, result, execution)
             if execution["status"] == "running":
                 stages = execution_stages(execution)
                 if (
@@ -1141,6 +1245,7 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
         execution = read_json(run_dir / "execution.json")
         if execution["status"] != "published" or entry["coverage"] != "reviewed":
             raise ValueError("evidence requires a published code review")
+        verify_result_runtime(run_dir, result, execution)
         raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{args.pr}"))
         select_prs([args.pr], [raw], set(entry["child_issues"]), session.gh.repo)
         current, _ = snapshot(raw)
@@ -1245,13 +1350,23 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
         )
         authorized(session, request, required_issues=child_issues)
         execution = read_json(run_dir / "execution.json")
-        if execution["status"] != "published" or result["status"] != "succeeded":
-            raise ValueError("cannot resolve a failed/unpublished review")
         originals = {p["number"]: p for p in request["prs"]}
         if args.pr not in originals:
             raise ValueError("PR is outside the reviewed set")
+        reviewed = next(p for p in result["prs"] if p["number"] == args.pr)
+        if execution["status"] != "published" or reviewed["coverage"] != "reviewed":
+            raise ValueError(
+                "cannot resolve a failed/unpublished review without reviewed PR coverage"
+            )
+
+        verify_result_runtime(run_dir, result, execution)
         if args.finding not in {
             "changes",
+            *(
+                {"handoff-candidates"}
+                if pending_handoff_candidates(result, args.pr)
+                else set()
+            ),
             *(f["id"] for f in pr_findings(result, args.pr)),
         }:
             raise ValueError("unknown finding for this PR")
@@ -1356,6 +1471,7 @@ def parser() -> argparse.ArgumentParser:
     )
     run.add_argument("--isolation-proof", type=Path)
     run.add_argument("--request", required=True, type=Path)
+    run.add_argument("--review-config-file", type=Path)
     run.add_argument(
         "--agent-exec", type=Path, default=HERE.parent / "lib/agent_exec.sh"
     )

@@ -26,6 +26,7 @@ from .policy import (
     select_prs,
 )
 from .session import ParentSession
+from .work_targets import require_separate_self_prs
 
 
 def git(*args: str, cwd: Path | None = None) -> bytes:
@@ -113,13 +114,28 @@ def snapshot(pr: dict[str, Any]) -> tuple[dict[str, Any], bytes]:
 
 
 def prepare(
-    session: ParentSession, selected: list[int], reason: str | None
+    session: ParentSession,
+    selected: list[int],
+    reason: str | None,
+    *,
+    review_selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    from lib.review_settings import choose, load_policy, validate_selection
+
+    from .review_choice import verify_references
+
+    choice = (
+        validate_selection(review_selection)
+        if review_selection is not None
+        else choose(load_policy())
+    )
     row = session.agreed()
     auth = authorization(session)
-    parent, children = session.family()
-    child_numbers = set(children) or {parent.number}
-    prs = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
+    parent, children = session.work_items()
+    child_numbers = set(children)
+    pulls = session.gh.pulls()
+    require_separate_self_prs(parent, pulls, session.gh.repo)
+    prs = select_prs(selected, pulls, child_numbers, session.gh.repo)
     from .worker_preflight import require_implementation
 
     for pr in prs:
@@ -134,6 +150,8 @@ def prepare(
         diffs[item["number"]] = diff
     # Protect the collection window: changes during git I/O are not covered.
     with session.gh.fresh_reads():
+        if set(session.work_items()[1]) != child_numbers:
+            raise ValueError("work targets changed while freezing review targets")
         fresh = select_prs(selected, session.gh.pulls(), child_numbers, session.gh.repo)
     for before, after in zip(prs, fresh, strict=True):
         if any(
@@ -152,6 +170,7 @@ def prepare(
                 "PR changed while freezing review targets; retry explicitly"
             )
     requirements = {str(parent.number): digest(requirement_body(parent.body))}
+    verify_references(session, choice, entries)
     for pr in prs:
         for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
             requirements[str(n)] = digest(requirement_body(children[n].body))
@@ -164,6 +183,7 @@ def prepare(
         reviews
         and reviews[-1]["state"] == "targets_fixed"
         and reviews[-1]["request"]["prs"] == entries
+        and reviews[-1]["request"].get("review_selection") == choice
         and set(reviews[-1]["request"].get("requirements", requirements))
         == set(requirements)
         and (reason is None or reason == reviews[-1]["request"].get("reason"))
@@ -181,7 +201,8 @@ def prepare(
         nonempty(reason, "new review reason")
     run_id = "parent-" + str(session.parent) + "-" + uuid.uuid4().hex
     request = {
-        "schema_version": 2,
+        "schema_version": 3,
+        "review_selection": choice,
         "authorization": auth,
         "requirements": requirements,
         "review_run_id": run_id,
@@ -221,7 +242,12 @@ def publish_targets(session: ParentSession, request: dict[str, Any]) -> None:
 
 
 def transition(
-    session: ParentSession, run_id: str, target: str, evidence: str
+    session: ParentSession,
+    run_id: str,
+    target: str,
+    evidence: str,
+    *,
+    review_selection: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     row = session.agreed()
     nonempty(evidence, "review instruction/evidence")
@@ -233,6 +259,11 @@ def transition(
     )
     if run is None:
         raise ValueError("unknown review run")
+    if (
+        review_selection is not None
+        and run["request"].get("review_selection") != review_selection
+    ):
+        raise ValueError("review selection is frozen; prepare a new run with reason")
     # A run's progress does not grant coverage to a changed child. Gate checks
     # each PR separately so a stopped child does not stop independent work.
     auth = require_run_authorization(
@@ -254,19 +285,19 @@ def transition(
         raise ValueError(f"invalid review transition {current} -> {target}")
     if target == "instructed":
         request = run["request"]
-        parent, children = session.family()
+        parent, children = session.work_items()
         from .worker_preflight import require_implementation
 
         for entry in request["prs"]:
             raw = session.gh.get(f"repos/{session.gh.repo}/pulls/{entry['number']}")
             for child in closing_issues(raw.get("body") or "", session.gh.repo) & (
-                set(children) or {parent.number}
+                set(children)
             ):
                 require_implementation(session, child)
         prs = select_prs(
             [p["number"] for p in request["prs"]],
             session.gh.pulls(),
-            set(children) or {parent.number},
+            set(children),
             session.gh.repo,
         )
         require_requirement_targets(
@@ -275,7 +306,7 @@ def transition(
                 n
                 for pr in prs
                 for n in closing_issues(pr.get("body") or "", session.gh.repo)
-                & (set(children) or {parent.number})
+                & set(children)
             },
             exact=True,
         )

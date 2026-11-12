@@ -196,6 +196,16 @@ def _begin(
     verifies = list(getattr(args, "verifies", None) or [])
     task: dict[str, Any] = {}
     specified_by = "parent_choice" if getattr(args, "model", None) else "settings"
+    if args.command in {"review-prepare", "review-request"}:
+        specified_by = (
+            "human_instruction"
+            if getattr(args, "human_review_model", None)
+            or getattr(args, "review_model_source", None) == "human_instruction"
+            else "parent_choice"
+            if getattr(args, "review_model", None)
+            or getattr(args, "review_effort", None)
+            else "settings"
+        )
     try:
         data = store.read_data()
         task = (
@@ -372,6 +382,10 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
     if isinstance(value, dict) and value.get("review_run_id"):
         try:
             with op.transaction():
+                if value.get("review_selection", {}).get("kind") == "run":
+                    op.row["model_specified_by"] = value["review_selection"][
+                        "specified_by"
+                    ]
                 op.row["review_run_id"] = value["review_run_id"]
                 op._save()
         except Exception:

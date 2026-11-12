@@ -3,6 +3,8 @@
 `agent_exec.sh` はこのcheckoutの `.venv/bin/python` で `agent_runtime.py` を実行する。
 Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1ターンを実行・保存する。
 担当registry、実行枠、GitHub操作、タスクの合否判定は呼出元が管理する。
+親文脈のあるruntime結果・欠測と後続の親判断は [判断記録](../decision_logs/README.ja.md#捕捉元と未対応入口)で辿る。
+記録対象外のrunnerも同節に明記する。
 
 | ファイル | 責務 |
 |---|---|
@@ -348,6 +350,7 @@ effortはmaxを必須とする。親effortは設定または `--effort` で変�
   overrideがあっても不足・不正な既定設定を許容しない。
 - `--profile review` / `ops_report` / `ops_scout` / `issue_judgement`: プロファイルの固定値を使う。
   `--model` / `--effort` / `--role` との併用を拒否する。
+  reviewだけは下記の専用選択入力を受け付ける。他profileの設定・引数・継続契約は変えない。
   `ops_report` はClaude親、`ops_scout` はCodex調査子、`issue_judgement` はCodex着手判定に対応する。
 - configは隣の `agents.conf`。明示設定は `--config-file FILE`。内容はリテラルな
   `NAME=value` とコメントだけで、shellとして評価しない。環境変数の同名pinは読まない。
@@ -355,6 +358,33 @@ effortはmaxを必須とする。親effortは設定または `--effort` で変�
 
 利用可能モデルへの事前アクセス確認は行わない。指定モデルを1回起動し、失敗・異なる実効値を
 非ゼロ終了にする。他モデルへの振替や自動再試行はしない。
+
+### レビュー専用の選択入力
+
+`agents.conf`の`REVIEW_SELECTION_MODE`は`fixed`（既定）または`select`。
+`REVIEW_SELECTION_POLICY_VERSION`と`REVIEW_CODEX_ALLOWED_PAIRS`は方針の版と許可するmodel:effortの組を定義する。
+固定値・tierは既存の`REVIEW_CODEX_*`を使い、固定値自身も許可された組であることを必須とする。
+同名の環境変数を読まず、設定欠落・未知の版・不正な組・重複を拒否する。
+
+正式レビューは親CLIが固定した選択を`--review-selection-file FILE`で渡す。
+この入力はCodexのreview profileかつread-onlyでだけ受理する。
+JSONの`kind=run`は`policy,selected,specified_by,reason,human,handoff`を持つ。
+`policy`は`version,mode,fixed,allowed_pairs`、`selected`は`model,effort,service_tier`。
+`specified_by`は`settings / parent_choice / human_instruction`。
+人間の拘束は`human={model,effort,reference}`、引継ぎは
+`handoff={source_run,source_request_sha256,source_result_sha256,scope,candidates}`。どちらも不要ならnull。
+`candidates`は検証済み保存候補の指摘と証拠待ちを来歴付きで固定する配列で、無ければ空配列。
+候補は`candidate_only`として扱い、coverageや承認を含めない。検証と親の確認は[review契約](../review/README.md#保存候補を含む別runへの引継ぎ)を参照。
+選択・理由・拘束は`lib/review_settings.py`の共通検査を使う。
+
+fixedでは固定値と一致する明示指定だけを許し、selectでは明示選択と理由を必須とする。
+runnerは起動前に保存された方針と現在のreview設定を照合し、相違を黙って解決しない。
+選択を`contract.review_selection`と`review-selection.json`へ保存し、実効model・effortとの一致も検証する。
+実効tierが未取得なら理由付きunavailableを維持し、観測できたときだけ一致を要求する。
+resumeで入力を省略した場合は保存選択を復元する。変更した選択・関連方針は起動前に拒否する。
+コメント・他profile・configパスだけの変更は引き続き実行契約を変えない。
+専用入力のない従来のreview呼出しはfixedでだけ使用でき、selectではエラーになる。
+`kind=recover`は元runの参照であり、runnerへの起動入力にはできない。
 
 ## 起動・継続
 

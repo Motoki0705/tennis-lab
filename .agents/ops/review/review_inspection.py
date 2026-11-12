@@ -186,12 +186,36 @@ def inspect_run(
         else None
     )
     entry["execution"] = None
+    entry["review_selection"] = request.get(
+        "review_selection", {"status": "legacy_unrecorded"}
+    )
     runtime_path = directory / "agent-runtime/result.json"
     runtime = (
         attempt(errors, "runtime", read_json, runtime_path)
         if runtime_path.exists()
         else None
     )
+    entry["runtime_settings"] = None
+    entry["settings_check"] = {"status": "not_observed"}
+    if runtime is not None:
+        from lib.review_settings import runtime_view, verify_runtime
+
+        entry["runtime_settings"] = attempt(
+            errors, "runtime_settings", runtime_view, runtime
+        )
+        try:
+            verify_runtime(request, runtime)
+            entry["settings_check"] = {
+                "status": "confirmed"
+                if request["schema_version"] == 3
+                else "legacy_unbound"
+            }
+        except ValueError:
+            entry["settings_check"] = {"status": "unconfirmed"}
+            if runtime.get("result") == "completed":
+                errors.append(
+                    {"scope": "effective_settings", "error_type": "ValueError"}
+                )
     entry["runtime"] = (
         {
             key: runtime.get(key)
@@ -282,6 +306,18 @@ def inspect_run(
     if result["request"] != request:
         errors.append({"scope": "result", "error_type": "RequestMismatch"})
         return entry
+    from review_recovery import verify_result_runtime
+
+    attempt(
+        errors,
+        "review_settings",
+        verify_result_runtime,
+        directory,
+        result,
+        execution or {},
+    )
+    if result["kind"] == "adoption":
+        entry["runtime_settings"] = result.get("runtime_settings")
     reviewed = next(p for p in result["prs"] if p["number"] == n)
     entry["result"] = {
         "retained_only": (execution or {}).get("status") == CLOSED,
@@ -301,11 +337,16 @@ def inspect_run(
     if result["kind"] == "adoption":
         from review_recovery import verify_adoption
 
-        attempt(
+        def verified_source() -> bool:
+            verify_adoption(session.store.directory, result)
+            return True
+
+        if attempt(
             errors,
             "adoption_source",
-            lambda: verify_adoption(session.store.directory, result),
-        )
+            verified_source,
+        ):
+            entry["settings_check"] = {"status": "source_verified"}
         superseded = attempt(
             errors,
             "adoption_registry",
@@ -461,10 +502,8 @@ def inspect_reviews(
         raise ValueError("duplicate review run IDs")
     session = ParentSession(gh, store, parent, None)
     root_errors: list[dict[str, str]] = []
-    gh.issue(parent)
-    children = {
-        r["number"] for r in gh.rows(f"repos/{gh.repo}/issues/{parent}/sub_issues")
-    }
+    _, items = session.work_items()
+    children = set(items)
     parent_comments = attempt(
         root_errors, "parent_comments", lambda: gh.comments(parent)
     )
@@ -505,9 +544,7 @@ def inspect_reviews(
             errors.append({"scope": "pr", "error_type": "IdentityMismatch"})
             raw = None
         if raw is not None:
-            linked = closing_issues(raw.get("body") or "", gh.repo) & (
-                children or {parent}
-            )
+            linked = closing_issues(raw.get("body") or "", gh.repo) & children
             pr["identity"] = {
                 "head_repo": raw["head"]["repo"]["full_name"],
                 "base_repo": raw["base"]["repo"]["full_name"],
