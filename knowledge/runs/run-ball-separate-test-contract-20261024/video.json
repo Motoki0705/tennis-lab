@@ -1,0 +1,30 @@
+{
+  "conditions": 6,
+  "file": "tmp/separate-test-review/comparison-wide.mp4",
+  "fps": 30.0,
+  "frames": 8,
+  "frames_inspected": [
+    4
+  ],
+  "height": 512,
+  "identities": {
+    "scored_frame_sha256": "8d11b9bc25621023af17845359dd12a22f543f3ba4c5148dc41b64efab43ac6b",
+    "target_identity_sha256": "f29ba9136f9f2988d1363612e06b911b5af98d060bba581031b9b474e2012da8",
+    "teacher_identity_sha256": "57b0b2d1eb50b48c5861d4365fd56278383e3b82b10ac846b04e95d63afc63fc"
+  },
+  "panel_width": 480,
+  "prediction_inference_performed_for_rendering": false,
+  "real_data": false,
+  "rgb_source_size": [
+    24,
+    24
+  ],
+  "schema_version": 1,
+  "sha256": "ed3aac2c23993b4ec043253f25cfe50b5a7c272b7ab9663a93beeefa9c0e568f",
+  "snapshot_hashes": {
+    "index.npz": "58ae93681f3cbf895fcab59fc6a251e7e6f18e2f12a50158e73adbbd21b9f913",
+    "metadata.json": "1f05b856662da691f6423090d2726d936eacc7d4be5316dd561906480e6c6844"
+  },
+  "status": "rendered_and_visually_inspected_synthetic_comparison",
+  "width": 2920
+}

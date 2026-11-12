@@ -1,0 +1,16 @@
+{
+  "status": "confirmed",
+  "levels": [
+    16,
+    32,
+    64
+  ],
+  "chunk_size": 4,
+  "rationale": "Four levels OOM in T1 even at chunk=1. Both T1/T2 pass forward/backward/optimizer at the unchanged full joint-training shape with three levels and chunk=4. No checkpointing, T, batch, dim or resolution changes.",
+  "evidence": [
+    "qualification/memory-T1-3-chunk4.json",
+    "qualification/memory-T2-3-chunk4.json",
+    "qualification/memory-T1-4.json",
+    "qualification/memory-T1-4-chunk1.json"
+  ]
+}
