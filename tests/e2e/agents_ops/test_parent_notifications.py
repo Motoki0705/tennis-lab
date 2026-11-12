@@ -324,6 +324,35 @@ def test_current_incomplete_acceptance_overrides_a_notice_with_no_remaining_work
     assert "失敗の表示が未確認。" in "\n".join(c["body"] for c in p.comments())
 
 
+def test_unagreed_acceptance_change_does_not_inherit_reported_no_remaining_work(
+    parent_env: ParentEnv,
+) -> None:
+    from tests.e2e.agents_ops.test_parent_completion_records import agree
+
+    p = parent_env
+    agree(p)
+    spec = notification(p, "completion", "completion")
+    spec["details"]["remaining"] = []
+    result = json.loads(notify(p, spec).stdout)
+    state = p.state()
+    policy = importlib.import_module("parent.policy")
+    body = state["issues"]["1"]["body"]
+    state["issues"]["1"]["body"] = policy.replace_section(
+        body,
+        "全体の完了条件",
+        policy.raw_section(body, "全体の完了条件") + "\n- [ ] 新しい形式にも対応する。",
+    )
+    p.save(state)
+    p.cli("sync")
+    current = json.loads(p.cli("status").stdout)["completion"]
+    assert current["acceptance"] == "unverified" and current["record"] is None
+    assert current["requirements"]["available"] is False
+    body = p.state()["issues"]["1"]["body"]
+    assert "現在の未達・残件: 未確認" in body
+    assert "未達・残件: なし" not in body
+    assert "通知に記録した残件: なし" in body and result["url"] in body
+
+
 def test_corrupted_notification_outbox_is_not_reset_to_an_empty_state(
     parent_env: ParentEnv,
 ) -> None:

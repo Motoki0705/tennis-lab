@@ -357,15 +357,9 @@ def progress_lines(session: ParentSession, history: History) -> list[str]:
             and not acceptance["applies_to_current_basis"]
         )
         lines += [
-            ("過去の成果: " if historical else "主要成果: ")
+            ("過去の成果: " if historical else "主要成果の報告: ")
             + (" / ".join(d["achievements"]) or "未達"),
-            (
-                "過去の通知に記録した残件: "
-                if historical
-                else "通知に記録した残件: "
-                if current is not None
-                else "未達・残件: "
-            )
+            ("過去の通知に記録した残件: " if historical else "通知に記録した残件: ")
             + (" / ".join(d["remaining"]) or "なし"),
             ("過去の全体の結果・判断: " if historical else "全体の結果・判断: ")
             + notices.get(achieved.payload["key"], achieved.url),
@@ -382,7 +376,7 @@ def progress_lines(session: ParentSession, history: History) -> list[str]:
             )
         else:
             lines.append("現在の未達・残件: なし（現在の受入条件を照合済み）。")
-    elif historical:
+    else:
         lines.append("現在の未達・残件: 未確認。現在の受入条件に対する再確認が必要。")
     latest = next(
         (
