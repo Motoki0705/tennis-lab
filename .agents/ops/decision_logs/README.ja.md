@@ -150,7 +150,7 @@ conditions/expected_resultを指定し、IDはCLIが割り当てる。初回判�
 | `review_reason` | `run_id`。固定review要求の理由 |
 | `improvement` | `key` と候補の `event_id`。元親の正本コメントにある切り出し判断 |
 
-`note` は[親の共通reader](../parent/README.md#機械証拠の保存共通reader)から検証し、実際の媒体のcomment URLを参照する。
+`note` と `improvement` は[親の共通reader](../parent/README.md#機械証拠の保存共通reader)から検証し、実際の媒体のcomment URLを参照する。
 理由本文を公開記録へ再コピーせず、参照/fingerprintを保持する。
 親のactorキーは私的sessionに対応するランダムな公開キーで、引継ぎで過去の判断者を変えない。
 次の対応CLI（review/mergeも含む）へ返された判断IDを渡すと、後続結果が行動を介してつながる。

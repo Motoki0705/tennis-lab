@@ -22,7 +22,7 @@ from tests.e2e.agents_ops.test_parent_improvements import (
     record,
     source_finished,
 )
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_number
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.improvements import candidate_spec, finish_for
 
@@ -420,6 +420,9 @@ def test_reapproved_requirements_do_not_inherit_previous_acceptance(
     )
     saved = json.loads(p.cli("status").stdout)["completion"]["record"]
     assert saved["improvement_approval"]["decision_id"] == first_approval
+    completed_body = p.state()["issues"]["1"]["body"]
+    assert "現在の段階: workflow完了照合済み" in completed_body
+    assert "未達・残件: なし" in completed_body
     assert (
         json.loads(p.cli("status", parent="2").stdout)["improvements"][0]["execution"]
         == "accepted"
@@ -474,6 +477,33 @@ def test_reapproved_requirements_do_not_inherit_previous_acceptance(
     assert changed["execution"] != "accepted"
     target = json.loads(p.cli("status").stdout)["completion"]
     assert target["record"] == saved and target["acceptance"] == "unverified"
+    body = p.state()["issues"]["1"]["body"]
+    assert "現在の受入: 未確認" in body
+    assert "現在の段階: workflow完了照合済み" not in body
+    assert "未達・残件: なし" not in body
+    assert "過去の成果:" in body
+    assert "現在の未達・残件: 未確認" in body
+    assert "全体の受入条件と実merge/closeを照合した。" in body
+    prior_result = next(
+        line
+        for line in completed_body.splitlines()
+        if line.startswith("全体の結果・判断:")
+    )
+    assert prior_result.split(": ", 1)[1] in body
+    pending = finish_for(p)
+    pending["state"] = "incomplete"
+    pending["acceptance"][-1]["state"] = "unverified"
+    pending["remaining_required"] = ["追加した形式の結果取得は未確認。"]
+    p.cli("release", "--ended", "--spec", p.spec(pending))
+    body = p.state()["issues"]["1"]["body"]
+    assert "現在の受入: 未完了" in body
+    assert "現在の未達・残件: 未完了" in body
+    assert "現在の段階: workflow完了照合済み" not in body
+    assert "未達・残件: なし" not in body
+    assert (
+        f"現在の受入記録: https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-"
+        in body
+    )
     assert saved["finish_sha256"] in "\n".join(c["body"] for c in p.comments())
     assert len(g.merge_calls()) == len(g.review.calls()) == 1
 

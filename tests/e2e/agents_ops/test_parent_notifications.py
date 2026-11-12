@@ -275,6 +275,55 @@ def test_progress_preserves_human_notes_and_unchanged_sync_does_not_patch(
     assert not any("PATCH" in c for c in p.calls()[offset:])
 
 
+@pytest.mark.parametrize("kind", ["impact", "completion"])
+def test_progress_does_not_apply_an_outcome_before_the_current_agreement(
+    parent_env: ParentEnv, kind: str
+) -> None:
+    p = parent_env
+    p.agreed()
+    spec = notification(
+        p, kind, "completion" if kind == "completion" else "training-wait"
+    )
+    result = json.loads(notify(p, spec).stdout)
+    before = p.state()["issues"]["1"]["body"]
+    assert "未達・残件: " in before and "過去の成果:" not in before
+    p.agreed()
+    body = p.state()["issues"]["1"]["body"]
+    assert "現在の段階: agreed" in body
+    assert "現在の受入: 未確認" in body
+    assert "過去の成果:" in body
+    assert "現在の未達・残件: 未確認" in body
+    assert (
+        "過去の通知に記録した残件: " + " / ".join(spec["details"]["remaining"]) in body
+    )
+    assert result["url"] in body
+
+
+def test_current_incomplete_acceptance_overrides_a_notice_with_no_remaining_work(
+    parent_env: ParentEnv,
+) -> None:
+    from tests.e2e.agents_ops.test_parent_completion_records import agree, finish_spec
+
+    p = parent_env
+    agree(p)
+    spec = notification(p, "completion", "completion")
+    spec["details"]["remaining"] = []
+    result = json.loads(notify(p, spec).stdout)
+    finish = finish_spec(p)
+    finish["state"] = "incomplete"
+    finish["acceptance"][-1]["state"] = "unverified"
+    finish["remaining_required"] = ["失敗の表示が未確認。"]
+    p.cli("release", "--ended", "--spec", p.spec(finish))
+    body = p.state()["issues"]["1"]["body"]
+    assert "現在の受入: 未完了" in body
+    assert "現在の未達・残件: 未完了" in body
+    assert "未達・残件: なし" not in body
+    assert "全体の受入は未記録" not in body
+    assert "現在の段階: workflow完了照合済み" not in body
+    assert "現在の受入記録:" in body and result["url"] in body
+    assert "失敗の表示が未確認。" in "\n".join(c["body"] for c in p.comments())
+
+
 def test_corrupted_notification_outbox_is_not_reset_to_an_empty_state(
     parent_env: ParentEnv,
 ) -> None:

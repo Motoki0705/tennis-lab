@@ -105,6 +105,9 @@ publisherのparent-session/review進捗は除くが、checking/agreed/basis_revo
 
 `material(snapshot, N, sources=())` は対象の親子・依存・提案出典レポートの閉包と関連PR/担当/コードに絞った同じ射影。
 判定の `sources` にあるissue・コメントの所属issueも起点に加え、その正式関係・依存・提案出典を再帰的に含める。
+コメントの公開URLは実保存先を指す。証拠用Issueの番号は保存済みsnapshotの `history_owner` で所属する作業Issueへ戻し、
+判定の鮮度照合だけでなくsupervisorの初回起動・子の予約・親の継続予約でも同じ所属を収集する。
+継続時は直前の親jobの `start-input.json` を所属解決に使い、証拠容器を作業subjectへ渡さない。
 明示引用したPRはclosing先が閉包外でも本文・head・状態を含める。明示引用したコメントはID/login/本文も
 `source_comments` に固定する。通常は除外するシステム進捗記録でも、引用した本文の編集・削除は入力変更となる。
 自身の判定表示を独立出典として使うことは引き続き拒否する。

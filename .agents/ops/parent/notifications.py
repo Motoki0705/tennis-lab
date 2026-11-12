@@ -276,15 +276,59 @@ def progress_lines(session: ParentSession, history: History) -> list[str]:
     review = next(
         (e["state"] for e in reversed(events) if e.get("event") == "review"), "未指示"
     )
+    acceptance = session.completion_status()
+    current = None
+    if acceptance["applies_to_current_basis"]:
+        current = next(
+            (
+                r
+                for r in reversed(history.records)
+                if r.payload.get("event") == "completion"
+                and r.payload.get("finish_sha256")
+                == acceptance["record"]["finish_sha256"]
+            ),
+            None,
+        )
+        if current is None:
+            raise ValueError("current acceptance record missing from verified history")
+    basis = next(
+        (
+            r
+            for r in reversed(history.records)
+            if r.payload.get("event") in {"agreed", "execution_basis", "basis_revoked"}
+        ),
+        None,
+    )
+    outcome = decisions.get("completion")
+    completed = acceptance["acceptance"] == "completed"
+    report = session.row.get("development_result", {})
+    reported = (
+        completed
+        and report.get("completion_receipt", {}).get("finish_sha256")
+        == acceptance["record"]["finish_sha256"]
+        and any(
+            e.get("event") == "workflow_completed"
+            and e.get("report_sha256") == report.get("report_sha256")
+            for e in events
+        )
+    )
     stage = (
         "workflow完了照合済み"
-        if any(e.get("event") == "workflow_completed" for e in events)
+        if reported
+        else "全体受入完了"
+        if completed
         else "全体成果記録済み"
-        if "completion" in decisions
+        if outcome is not None
+        and acceptance["record"] is None
+        and (basis is None or outcome.comment_id > basis.comment_id)
         else phase(events)
     )
     lines = [
-        f"現在の段階: {stage} / 担当: {session.row.get('status', '未登録')} / レビュー: {review}"
+        f"現在の段階: {stage} / 担当: {session.row.get('status', '未登録')} / 直近のレビュー記録: {review}",
+        "現在の受入: "
+        + {"completed": "完了", "incomplete": "未完了", "unverified": "未確認"}[
+            acceptance["acceptance"]
+        ],
     ]
     lines.append(
         "判断待ち: "
@@ -304,17 +348,42 @@ def progress_lines(session: ParentSession, history: History) -> list[str]:
         ),
         None,
     )
+    historical = False
     if achieved:
         d = achieved.payload["notification"]["details"]
+        historical = (basis is not None and achieved.comment_id < basis.comment_id) or (
+            achieved.payload["notification"]["kind"] == "completion"
+            and acceptance["record"] is not None
+            and not acceptance["applies_to_current_basis"]
+        )
         lines += [
-            "主要成果: " + (" / ".join(d["achievements"]) or "未達"),
-            "未達・残件: " + (" / ".join(d["remaining"]) or "なし"),
-            "全体の結果・判断: " + notices.get(achieved.payload["key"], achieved.url),
+            ("過去の成果: " if historical else "主要成果: ")
+            + (" / ".join(d["achievements"]) or "未達"),
+            (
+                "過去の通知に記録した残件: "
+                if historical
+                else "通知に記録した残件: "
+                if current is not None
+                else "未達・残件: "
+            )
+            + (" / ".join(d["remaining"]) or "なし"),
+            ("過去の全体の結果・判断: " if historical else "全体の結果・判断: ")
+            + notices.get(achieved.payload["key"], achieved.url),
         ]
     else:
         lines += [
-            "主要成果・未達/残件: 全体の受入は未記録。各作業の成果物・検証を参照。"
+            "主要成果・通知上の残件: 全体への成果通知は未記録。各作業の成果物・検証を参照。"
         ]
+    if current is not None:
+        lines.append(f"現在の受入記録: {current.url}")
+        if not completed:
+            lines.append(
+                f"現在の未達・残件: 未完了（[現在の受入記録]({current.url})）。"
+            )
+        else:
+            lines.append("現在の未達・残件: なし（現在の受入条件を照合済み）。")
+    elif historical:
+        lines.append("現在の未達・残件: 未確認。現在の受入条件に対する再確認が必要。")
     latest = next(
         (
             r

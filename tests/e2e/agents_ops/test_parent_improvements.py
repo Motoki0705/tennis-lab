@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib
 import json
 import os
@@ -263,6 +264,21 @@ def test_candidate_reason_and_approval_are_linked_without_writing_ended_source_j
         cut["data"]["reason"]
         == "See existing improvement reason in referenced evidence"
     )
+    candidate_body = next(
+        c
+        for c in p.state()["comments"][str(evidence_number(p.state()))]
+        if '"event": "candidate"' in c["body"]
+    )
+    assert cut["data"]["source"]["evidence"] == [
+        {
+            "kind": "public",
+            "url": f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-{candidate_body['id']}",
+            "revision": None,
+            "content_sha256": hashlib.sha256(
+                candidate_body["body"].encode()
+            ).hexdigest(),
+        }
+    ]
     assert any(
         row["kind"] == "action"
         and row["data"]["decision_id"] == cut["id"]

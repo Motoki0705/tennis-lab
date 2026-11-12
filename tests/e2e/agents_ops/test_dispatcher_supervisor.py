@@ -42,7 +42,7 @@ class DispatchGitHub(FakeGitHub):
             row = self.issues[int(endpoint.rsplit("/", 1)[1])]
             row.update(payload)
             return copy.deepcopy(row)
-        return super().write(method, endpoint, payload)
+        return cast(dict[str, Any], super().write(method, endpoint, payload))
 
 
 class DispatchHarness:
@@ -761,6 +761,72 @@ def test_worker_rechecks_cited_external_inputs_after_reservation(
     assert invoke_worker(d, monkeypatch, job["id"]) == []
     assert "judgement inputs changed" in d.job()["diagnostic"]
     assert d.state()["runs"][0]["candidates"]["2"]["state"] == "capacity_wait"
+
+
+@pytest.mark.parametrize("turn", ["initial", "continuation", "changed-source"])
+def test_evidence_comment_citation_survives_runtime_reservations(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, turn: str
+) -> None:
+    policy = importlib.import_module("parent.policy")
+    d.h.gh._store = d.h.store
+    with d.h.store.locked():
+        d.h.store.save()
+        evidence = d.h.gh.evidence_issues().ensure(1, "operator", store=d.h.store)
+    note = d.h.gh.write(
+        "POST",
+        f"repos/o/r/issues/{evidence.number}/comments",
+        {
+            "body": policy.marker(
+                {
+                    "parent": 1,
+                    "event": "note",
+                    "generation": 1,
+                    "body_sha256": policy.digest("根拠"),
+                }
+            )
+            + "\n\n根拠"
+        },
+    )
+    first = decision(1)
+    first["sources"].append(f"comment:1:{note['id']}")
+    d.h.response(first)
+    result = d.run()
+    assert result["result"] == "recorded", result
+    assert d.control.assign() == [1]
+    original = d.job()
+    citation = (
+        f"https://github.com/o/r/issues/{evidence.number}#issuecomment-{note['id']}"
+    )
+    assert citation in d.row()["dispatch"]["candidate"]["sources"]
+    if turn == "continuation":
+        fixture_runtime(d, monkeypatch)
+        d.accepted()
+        d.runtime(original)
+        d.control.reconcile()
+        d.control.resume(1, "同じ証拠を参照して続ける。")
+        d.control.reconcile()
+        assert d.job()["resume_from"] == str(Path(original["directory"]) / "runtime")
+    elif turn == "changed-source":
+        changed = "引用した根拠の変更。"
+        d.h.gh.comment_rows[evidence.number][0]["body"] = (
+            policy.marker(
+                {
+                    "parent": 1,
+                    "event": "note",
+                    "generation": 1,
+                    "body_sha256": policy.digest(changed),
+                }
+            )
+            + "\n\n"
+            + changed
+        )
+    calls = invoke_worker(d, monkeypatch, d.job()["id"])
+    if turn == "changed-source":
+        assert calls == []
+        assert "judgement inputs changed" in d.job()["diagnostic"]
+    else:
+        assert len(calls) == 1 and calls[0]["phase"] == "starting"
+        assert d.row()["status"] == "active"
 
 
 def test_worker_claim_validates_inside_registry_lock_and_starts_only_once(

@@ -593,6 +593,7 @@ def reason_reference(
     )
     if kind == "improvement":
         from issues.improvement import render_event
+        from parent.improvements import comment_url as improvement_comment_url
         from parent.improvements import get
 
         _, candidate = get(session, reference["key"])
@@ -600,7 +601,9 @@ def reason_reference(
         require(original["id"] == reference["event_id"], "reference_unavailable")
         evidence = {
             "kind": "public",
-            "url": f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{candidate['comments'][original['id']]}",
+            "url": improvement_comment_url(
+                session, session.parent, candidate["comments"][original["id"]]
+            ),
             "revision": None,
             "content_sha256": sha(render_event(original).encode()),
         }
