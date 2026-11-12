@@ -152,6 +152,21 @@ def setup(no_hooks: bool) -> None:
         _run([sys.executable, "-m", "pre_commit", "install"])
 
 
+@click.command(
+    context_settings={"ignore_unknown_options": True, "help_option_names": []}
+)
+@click.argument("arguments", nargs=-1, type=click.UNPROCESSED)
+def ops(arguments: tuple[str, ...]) -> None:
+    """Control operational jobs: status/install/on/off/run/logs [target]."""
+    result = subprocess.run(
+        [sys.executable, "-m", "ops_control", *arguments],
+        cwd=REPO_ROOT,
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT / ".agents/ops")},
+        check=False,
+    )
+    raise click.exceptions.Exit(result.returncode)
+
+
 def _uv_tool_bin_directory() -> Path | None:
     result = subprocess.run(
         ["uv", "tool", "dir", "--bin"],

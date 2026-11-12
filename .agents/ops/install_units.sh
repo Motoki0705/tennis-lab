@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Link the repo's systemd --user units (.agents/ops/*/systemd/*.{service,timer}) into
-# ~/.config/systemd/user and reload. Timers and the dispatcher supervisor are
-# only enabled with --enable.
+# ~/.config/systemd/user and reload. Never enable or start units here.
 #
-# Usage: install_units.sh [--enable] [--dry-run]
+# User entry: spin ops install [target] [--dry-run]; spin ops on <target>
+# Internal usage: install_units.sh [--dry-run] [--unit NAME ...]
 #
 # Units must reference the main checkout via %h/projects/tennis-lab (or TENNIS_LAB_ROOT
 # set in the unit) so they keep working after worktrees are removed.
@@ -11,11 +11,20 @@
 set -euo pipefail
 
 main() {
-  local enable=0 dry_run=0
+  local dry_run=0
+  local -a requested=()
   while (($#)); do
     case "$1" in
-      --enable) enable=1; shift ;;
+      --enable)
+        echo 'install_units: --enable was removed; use spin ops install, then spin ops on <target>' >&2
+        exit 2 ;;
       --dry-run) dry_run=1; shift ;;
+      --unit)
+        if (($# < 2)) || [[ "$2" == */* || "$2" == -* ]]; then
+          echo 'install_units: --unit requires a unit filename' >&2
+          exit 2
+        fi
+        requested+=("$2"); shift 2 ;;
       *) echo "install_units: unknown argument: $1" >&2; exit 2 ;;
     esac
   done
@@ -69,6 +78,29 @@ main() {
     fi
   done
 
+  if ((${#requested[@]})); then
+    local name match
+    local -a selected=()
+    for name in "${requested[@]}"; do
+      match=''
+      for f in "${units[@]}"; do
+        if [[ "$(basename "$f")" == "$name" ]]; then
+          if [[ -n "$match" ]]; then
+            echo "install_units: duplicate source unit: $name" >&2
+            exit 2
+          fi
+          match="$f"
+        fi
+      done
+      if [[ -z "$match" ]]; then
+        echo "install_units: unknown unit: $name" >&2
+        exit 2
+      fi
+      selected+=("$match")
+    done
+    units=("${selected[@]}")
+  fi
+
   ((dry_run)) || mkdir -p "$unit_dir"
   for f in "${units[@]}"; do
     echo "link $(basename "$f") -> $f"
@@ -76,14 +108,11 @@ main() {
   done
   ((dry_run)) && return 0
 
-  systemctl --user daemon-reload
-  if ((enable)); then
-    for f in "${units[@]}"; do
-      if [[ "$f" == *.timer || "$(basename "$f")" == tennis-lab-dispatch-supervisor.service ]]; then
-        systemctl --user enable --now "$(basename "$f")"
-      fi
-    done
-  fi
+  systemctl --user daemon-reload || {
+    local result=$?
+    echo 'install_units: user manager reload failed; check the user bus and loginctl enable-linger <user>' >&2
+    return "$result"
+  }
 }
 
 main "$@"

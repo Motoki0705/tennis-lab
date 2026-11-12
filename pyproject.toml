@@ -413,6 +413,7 @@ package = "src"
     ".spin/cmds.py:setup",
     ".spin/cmds.py:setup_nht",
     ".spin/cmds.py:doctor",
+    ".spin/cmds.py:ops",
 ]
 "Quality" = [
     ".spin/cmds.py:lint",

@@ -1482,10 +1482,9 @@ def test_installer_disabled_install_and_main_source_only(tmp_path: Path) -> None
         capture_output=True,
         text=True,
     )
-    assert enabled.returncode == 0, enabled.stderr
-    assert (
-        "--user enable --now tennis-lab-dispatch-supervisor.service" in log.read_text()
-    )
+    assert enabled.returncode == 2
+    assert "spin ops on <target>" in enabled.stderr
+    assert log.read_text().splitlines() == ["--user daemon-reload"]
     subprocess.run(
         [
             "git",

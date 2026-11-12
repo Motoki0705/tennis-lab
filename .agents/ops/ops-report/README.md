@@ -654,19 +654,21 @@ if [ -f ~/.config/tennis-lab-agents/weekly-report.env ]; then
   sed -i 's/^WEEKLY_REPORT_/OPS_REPORT_/' ~/.config/tennis-lab-agents/ops-report.env
 fi
 cd ~/projects/tennis-lab
-.agents/ops/install_units.sh --dry-run
-.agents/ops/install_units.sh                    # link + daemon-reload
+spin ops install --dry-run
+spin ops install                              # link + daemon-reload
 systemd-analyze --user verify .agents/ops/ops-report/systemd/*.{service,timer}
 # 導入完了後に基準を記録してからtimerを有効化（既存stateがあればinitは繰り返さない）
 .venv/bin/python .agents/ops/ops-report/ops_report.py schedule init
 .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
-systemctl --user enable --now tennis-lab-ops-report.timer tennis-lab-ops-triage.timer
+spin ops on report
+spin ops on triage
 # unit実効値、日次の次回check、3日周期の次回slotを照合
 systemctl --user cat tennis-lab-ops-report.service tennis-lab-ops-report.timer tennis-lab-ops-triage.service
-systemctl --user show tennis-lab-ops-report.timer -p NextElapseUSecRealtime -p LastTriggerUSec
+spin ops status report
+spin ops status triage
 systemctl --user list-timers --all 'tennis-lab-*'
 .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
-journalctl --user -u tennis-lab-ops-report.service
+spin ops logs report
 ```
 
 旧timer/serviceがinactive・disabledでunitリンクも無いこと、新timerだけがreportを起動することを確認する。
@@ -676,6 +678,8 @@ journalctl --user -u tennis-lab-ops-report.service
 
 unitは `%h/projects/tennis-lab`（メインcheckout）と `.venv/bin/python` を使う。`claude` / `codex` / `gh` は
 `~/.local/bin` か `/usr/bin` にある前提で `PATH` を設定している。
+停止は `spin ops off report` / `spin ops off triage`。timerの無効化と実行中serviceの停止を両方照合する。
+共通の導入・ON/OFF・状態・ログ・user bus/lingerの契約は [ops_control README](../ops_control/README.md) を参照する。
 
 ## 改訂の仕方（固めすぎない）
 

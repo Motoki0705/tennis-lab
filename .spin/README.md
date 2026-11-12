@@ -40,6 +40,7 @@ shaderの両方をimportして検証する。
 | コマンド | 用途 |
 |---|---|
 | `spin doctor [--strict]` | Python、`.venv`、lockfile、主要 CLI、submodule を診断する。通常は任意機能の不足を警告し、`--strict` では警告も失敗にする |
+| `spin ops status\|install\|on\|off\|run\|logs [target]` | 運用unitを制御する。対象・導入・停止照合・接続エラーの契約は [ops_control README](../.agents/ops/ops_control/README.md) |
 | `spin setup-nht [--with-sfm-learned \| --render-only]` | NHT submoduleを固定commitへ更新し、公開CLIを独立した`uv tool`環境へインストールする。`--render-only`ではtrainerを構築しない |
 | `spin lint [--fix] [PATHS...]` | `src/`, `tests/`, `.spin/` を Ruff で検査する。`--changed --base <ref>` で差分だけを検査できる |
 | `spin typecheck [PATHS...]` | 既定では `origin/main` との差分だけを mypy で検査する。`--all` で全体を検査する |

@@ -296,7 +296,7 @@ def _run_installer(
         bin_dir,
         "systemctl",
         f'#!/usr/bin/env bash\necho "$*" >> {calls}\n'
-        f'[[ "$*" == *enable* ]] && exit {systemctl_status}\nexit 0\n',
+        f'[[ "$*" == *daemon-reload* ]] && exit {systemctl_status}\nexit 0\n',
     )
     result = subprocess.run(
         ["bash", str(installer), *args],
@@ -311,26 +311,29 @@ def _run_installer(
 @pytest.mark.parametrize(
     "unit_names", [["demo.service"], ["demo.service", "demo.timer", "zz.service"]]
 )
-def test_install_units_enable_succeeds_and_enables_only_timers(
+def test_install_units_never_enables_units(
     tmp_path: Path, unit_names: list[str]
 ) -> None:
-    result, calls = _run_installer(tmp_path, unit_names, "--enable")
+    result, calls = _run_installer(tmp_path, unit_names)
 
     assert result.returncode == 0, result.stderr
-    enabled = [
-        c for c in calls.read_text(encoding="utf-8").splitlines() if "enable" in c
-    ]
-    assert enabled == (
-        ["--user enable --now demo.timer"] if "demo.timer" in unit_names else []
-    )
+    assert calls.read_text().splitlines() == ["--user daemon-reload"]
 
 
-def test_install_units_propagates_enable_failure(tmp_path: Path) -> None:
+def test_install_units_propagates_reload_failure(tmp_path: Path) -> None:
     result, _ = _run_installer(
-        tmp_path, ["demo.service", "demo.timer"], "--enable", systemctl_status=5
+        tmp_path, ["demo.service", "demo.timer"], systemctl_status=5
     )
 
     assert result.returncode == 5
+
+
+def test_install_units_rejects_removed_enable_before_side_effects(tmp_path: Path) -> None:
+    result, calls = _run_installer(tmp_path, ["demo.service", "demo.timer"], "--enable")
+    assert result.returncode == 2
+    assert "spin ops on <target>" in result.stderr
+    assert not calls.exists()
+    assert not (tmp_path / "config").exists()
 
 
 def test_install_units_creates_missing_unit_dir(tmp_path: Path) -> None:
@@ -344,7 +347,7 @@ def test_install_units_creates_missing_unit_dir(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("cwd_in_worktree", [False, True])
-@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+@pytest.mark.parametrize("extra", [[], ["--dry-run"]])
 def test_install_units_rejects_linked_source_before_side_effects(
     tmp_path: Path, cwd_in_worktree: bool, extra: list[str]
 ) -> None:
@@ -379,7 +382,7 @@ RETIRED_UNITS = [
 
 @pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
 @pytest.mark.parametrize("where", ["direct", "dangling", "wants"])
-@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+@pytest.mark.parametrize("extra", [[], ["--dry-run"]])
 def test_installer_refuses_retired_units_before_side_effects(
     tmp_path: Path, name: str, readme: str, where: str, extra: list[str]
 ) -> None:
@@ -406,7 +409,7 @@ def test_installer_refuses_retired_units_before_side_effects(
 
 
 @pytest.mark.parametrize(("name", "readme"), RETIRED_UNITS)
-@pytest.mark.parametrize("extra", [[], ["--enable"], ["--dry-run"]])
+@pytest.mark.parametrize("extra", [[], ["--dry-run"]])
 def test_installer_never_reintroduces_retired_source(
     tmp_path: Path, name: str, readme: str, extra: list[str]
 ) -> None:
@@ -457,13 +460,11 @@ def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
         "tennis-lab-ops-triage.service",
         "tennis-lab-ops-triage.timer",
     }
-    result, calls = _run_installer(tmp_path, units, "--enable")
+    result, calls = _run_installer(tmp_path, units)
     assert result.returncode == 0, result.stderr
     assert sorted(p.name for p in (tmp_path / "config/systemd/user").iterdir()) == units
     assert calls.read_text().splitlines() == [
         "--user daemon-reload",
-        "--user enable --now tennis-lab-ops-report.timer",
-        "--user enable --now tennis-lab-ops-triage.timer",
     ]
     service = (source / "tennis-lab-ops-report.service").read_text()
     timer = (source / "tennis-lab-ops-report.timer").read_text()
