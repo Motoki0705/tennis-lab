@@ -1,0 +1,492 @@
+{
+  "complete": true,
+  "source_commit": "929ad65645c1c7522e8921f1b439619d636a0128",
+  "adapter_training_commit": "eda5ee08073da498347d411e075905f4ac94e25e",
+  "stages": [
+    {
+      "stage": "length-s1-T64",
+      "updates": 6000,
+      "full_state_readback_exact": true,
+      "manifest_members_and_all_bytes_exact": true,
+      "file_count": 11,
+      "size_bytes": 225462654,
+      "sample_position": 16000,
+      "optimizer_step_histogram": {
+        "15400": 116,
+        "6000": 85
+      },
+      "validation_identities": {
+        "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+        "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+        "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec"
+      },
+      "observed_pts_identity_matches_baseline": true,
+      "metrics_recomputed": {
+        "mean_error_px": 33.92097911269842,
+        "median_error_px": 11.249391555786133,
+        "p95_error_px": 140.26506652832026,
+        "within_distance_rate": 0.7032162203268868
+      },
+      "prediction_kind_counts": {
+        "observed": 85473,
+        "masked": 11310,
+        "out_of_frame": 2712,
+        "reviewed_empty": 29173
+      },
+      "checkpoint_sha256": "06bb050b356bc3f1afed3493a761d37934f340dea65e7c141a479ff1112b8f50",
+      "freeze_boundary": [
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 1,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 1
+            }
+          ],
+          "augmentation_seconds": 0.4656244709985913,
+          "augmentation_sha256": [
+            "89b4d2fa439db79615bd7f523a9010fb5b4512bcc4e9493ef35c542ae217f0b9"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 1280128,
+          "cumulative_updates": 10001,
+          "data_wait_seconds": 0.9765640480036382,
+          "encoder_frozen": true,
+          "encoder_learning_rate": 0.0,
+          "frames_per_second": 2.2303138319747347,
+          "gradient_norm": 2.8788485527038574,
+          "input_frames": 128,
+          "learning_rate": 7.360330616529733e-05,
+          "loss": 0.09180127120599514,
+          "loss_sum": 11.291556358337402,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 5,
+            "observed": 123,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/u86Dvjae6MA__432243e8abb7cfb5__f000020850-000021240:286:128"
+          ],
+          "pack_indices": [
+            27009
+          ],
+          "peak_reserved_vram_bytes": 4116709376,
+          "peak_vram_bytes": 2817062912,
+          "sample_position": 10001,
+          "seconds": 57.39102639500197,
+          "teachers_by_kind": {
+            "masked": 5,
+            "observed": 123,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "update": 1,
+          "valid_teachers": 123
+        },
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 1,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 1
+            }
+          ],
+          "augmentation_seconds": 0.09104551299969899,
+          "augmentation_sha256": [
+            "6795ab8234740f46f3aa99f6f918a4c0de1c2d7390c478ae628128a3fd572f40"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 1356800,
+          "cumulative_updates": 10600,
+          "data_wait_seconds": 0.0005140490029589273,
+          "encoder_frozen": true,
+          "encoder_learning_rate": 0.0,
+          "frames_per_second": 311.0947895444169,
+          "gradient_norm": 1.4494620561599731,
+          "input_frames": 128,
+          "learning_rate": 7.315778396372439e-05,
+          "loss": 0.029465964160014672,
+          "loss_sum": 2.8581985235214233,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 2,
+            "observed": 97,
+            "out_of_frame": 29,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/li7iFMSFVEc__b8201949fca29459__f000011569-000012347:507:128"
+          ],
+          "pack_indices": [
+            23183
+          ],
+          "peak_reserved_vram_bytes": 11077156864,
+          "peak_vram_bytes": 6855796736,
+          "sample_position": 10600,
+          "seconds": 0.4114501570002176,
+          "teachers_by_kind": {
+            "masked": 2,
+            "observed": 97,
+            "out_of_frame": 29,
+            "reviewed_empty": 0
+          },
+          "update": 600,
+          "valid_teachers": 97
+        },
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 0,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 0
+            }
+          ],
+          "augmentation_seconds": 0.08222105199820362,
+          "augmentation_sha256": [
+            "32459ffb1cacad8e01d339def436bdbf40a6eeecf9e96daa7a7d821122b68c9b"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 1356928,
+          "cumulative_updates": 10601,
+          "data_wait_seconds": 0.00016919700283324346,
+          "encoder_frozen": false,
+          "encoder_learning_rate": 7.315629823173613e-06,
+          "frames_per_second": 1.204435915915116,
+          "gradient_norm": 1.9353152513504028,
+          "input_frames": 128,
+          "learning_rate": 7.315629823173613e-05,
+          "loss": 0.014763333834707737,
+          "loss_sum": 1.8897067308425903,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 0,
+            "observed": 128,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/LJyPFRs3iJY__acae4df1880c2d14__f000016004-000016783:155:128"
+          ],
+          "pack_indices": [
+            9844
+          ],
+          "peak_reserved_vram_bytes": 14346616832,
+          "peak_vram_bytes": 10890600960,
+          "sample_position": 10601,
+          "seconds": 106.2738152430029,
+          "teachers_by_kind": {
+            "masked": 0,
+            "observed": 128,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "update": 601,
+          "valid_teachers": 128
+        },
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 0,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 0
+            }
+          ],
+          "augmentation_seconds": 0.05949704199883854,
+          "augmentation_sha256": [
+            "43f9f91a1eddacba4d28bf5c3dfa17a0e1cc049119bfcc80fea359c0a8bbd7f2"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 2048000,
+          "cumulative_updates": 16000,
+          "data_wait_seconds": 0.0008223270015150774,
+          "encoder_frozen": false,
+          "encoder_learning_rate": 3.730640535393426e-06,
+          "frames_per_second": 175.09523631677138,
+          "gradient_norm": 0.9088323712348938,
+          "input_frames": 128,
+          "learning_rate": 3.730640535393426e-05,
+          "loss": 0.003659644862636924,
+          "loss_sum": 0.46843454241752625,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 0,
+            "observed": 128,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/Y2tXXU60x6E__9c3865218a7201ac__f000014026-000014805:555:128"
+          ],
+          "pack_indices": [
+            17440
+          ],
+          "peak_reserved_vram_bytes": 11968446464,
+          "peak_vram_bytes": 10581860352,
+          "sample_position": 16000,
+          "seconds": 0.7310307389998343,
+          "teachers_by_kind": {
+            "masked": 0,
+            "observed": 128,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "update": 6000,
+          "valid_teachers": 128
+        }
+      ]
+    },
+    {
+      "stage": "length-s2-T64",
+      "updates": 6000,
+      "full_state_readback_exact": true,
+      "manifest_members_and_all_bytes_exact": true,
+      "file_count": 11,
+      "size_bytes": 226520394,
+      "sample_position": 22000,
+      "optimizer_step_histogram": {
+        "20800": 116,
+        "12000": 85
+      },
+      "validation_identities": {
+        "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+        "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+        "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec"
+      },
+      "observed_pts_identity_matches_baseline": true,
+      "metrics_recomputed": {
+        "mean_error_px": 28.526567810816783,
+        "median_error_px": 7.652594566345215,
+        "p95_error_px": 120.72167205810501,
+        "within_distance_rate": 0.7616908263428217
+      },
+      "prediction_kind_counts": {
+        "observed": 85473,
+        "masked": 11310,
+        "out_of_frame": 2712,
+        "reviewed_empty": 29173
+      },
+      "checkpoint_sha256": "22ca7c9c4621e1ae690cf43c3f45494187e18222558a8f61ac6e442df62e7849",
+      "freeze_boundary": [
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 0,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 0
+            }
+          ],
+          "augmentation_seconds": 0.11887277100322535,
+          "augmentation_sha256": [
+            "0fbf70beee5874497905a595e3853d9f50e5d5943385554a8029007dc47f69ec"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 2048128,
+          "cumulative_updates": 16001,
+          "data_wait_seconds": 0.7922642119992815,
+          "encoder_frozen": true,
+          "encoder_learning_rate": 0.0,
+          "frames_per_second": 2.1062814600365476,
+          "gradient_norm": 0.7569230794906616,
+          "input_frames": 128,
+          "learning_rate": 3.729690081136307e-05,
+          "loss": 0.004782158349241529,
+          "loss_sum": 0.5356017351150513,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 16,
+            "observed": 112,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/0rEajKxTiwI__0e222f9caa2fb492__f000009523-000010302:283:128"
+          ],
+          "pack_indices": [
+            1269
+          ],
+          "peak_reserved_vram_bytes": 3894411264,
+          "peak_vram_bytes": 3269490688,
+          "sample_position": 16001,
+          "seconds": 60.770605652000086,
+          "teachers_by_kind": {
+            "masked": 16,
+            "observed": 112,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "update": 1,
+          "valid_teachers": 112
+        },
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 1,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 1
+            }
+          ],
+          "augmentation_seconds": 0.07597699600228225,
+          "augmentation_sha256": [
+            "9959360086167dee8f16cdee745d126d48f1c83f89e78ea03666f3cedd6f4220"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 2124800,
+          "cumulative_updates": 16600,
+          "data_wait_seconds": 0.04918230899784248,
+          "encoder_frozen": true,
+          "encoder_learning_rate": 0.0,
+          "frames_per_second": 335.25959702977354,
+          "gradient_norm": 0.43647873401641846,
+          "input_frames": 128,
+          "learning_rate": 3.162704782865207e-05,
+          "loss": 0.00548968491229144,
+          "loss_sum": 0.3019326701760292,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 0,
+            "observed": 56,
+            "out_of_frame": 72,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/XOyLr5p9Png__4effb6f339b9e93c__f000007881-000008648:299:128"
+          ],
+          "pack_indices": [
+            16783
+          ],
+          "peak_reserved_vram_bytes": 7438598144,
+          "peak_vram_bytes": 6903900160,
+          "sample_position": 16600,
+          "seconds": 0.3817936940031359,
+          "teachers_by_kind": {
+            "masked": 1,
+            "observed": 55,
+            "out_of_frame": 72,
+            "reviewed_empty": 0
+          },
+          "update": 600,
+          "valid_teachers": 55
+        },
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 0,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 0
+            }
+          ],
+          "augmentation_seconds": 0.07265423599892529,
+          "augmentation_sha256": [
+            "dd44e5c6bbe324754139003d1a7393d417eb0ba0da7f2c0501c359e73b163516"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 2124928,
+          "cumulative_updates": 16601,
+          "data_wait_seconds": 0.04124431500167702,
+          "encoder_frozen": false,
+          "encoder_learning_rate": 3.161766032223689e-06,
+          "frames_per_second": 18.38472970452428,
+          "gradient_norm": 0.9668478965759277,
+          "input_frames": 128,
+          "learning_rate": 3.161766032223689e-05,
+          "loss": 0.02046898745355152,
+          "loss_sum": 2.1492436826229095,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 13,
+            "observed": 105,
+            "out_of_frame": 10,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/4gqKzK_c3es__9dabd4f69e8ba5f2__f000013667-000014055:141:128"
+          ],
+          "pack_indices": [
+            3863
+          ],
+          "peak_reserved_vram_bytes": 11737759744,
+          "peak_vram_bytes": 10935755264,
+          "sample_position": 16601,
+          "seconds": 6.962299802999041,
+          "teachers_by_kind": {
+            "masked": 13,
+            "observed": 105,
+            "out_of_frame": 10,
+            "reviewed_empty": 0
+          },
+          "update": 601,
+          "valid_teachers": 105
+        },
+        {
+          "augmentation_eligibility": [
+            {
+              "occlusion_applied": 0,
+              "occlusion_eligible": 1,
+              "occlusion_requested": 0
+            }
+          ],
+          "augmentation_seconds": 0.0036364549996505957,
+          "augmentation_sha256": [
+            "d0e278b17cdc8a21071d3681e128f5150a7250402bb1bd8e37364bc48417acc9"
+          ],
+          "child_windows": 2,
+          "cumulative_input_frames": 2816000,
+          "cumulative_updates": 22000,
+          "data_wait_seconds": 0.012097290997189702,
+          "encoder_frozen": false,
+          "encoder_learning_rate": 1e-07,
+          "frames_per_second": 195.6591154246007,
+          "gradient_norm": 0.21433426439762115,
+          "input_frames": 128,
+          "learning_rate": 1e-06,
+          "loss": 0.003818750032223761,
+          "loss_sum": 0.4888000041246414,
+          "microbatches": 2,
+          "original_teachers_by_kind": {
+            "masked": 0,
+            "observed": 128,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "pack_ids": [
+            "chat_annotation/oz_-2HZb1Rg__1f48c180d4f818f3__f000020700-000021479:635:128"
+          ],
+          "pack_indices": [
+            25160
+          ],
+          "peak_reserved_vram_bytes": 11989417984,
+          "peak_vram_bytes": 10227965952,
+          "sample_position": 22000,
+          "seconds": 0.6541990120022092,
+          "teachers_by_kind": {
+            "masked": 0,
+            "observed": 128,
+            "out_of_frame": 0,
+            "reviewed_empty": 0
+          },
+          "update": 6000,
+          "valid_teachers": 128
+        }
+      ]
+    }
+  ],
+  "independent_readbacks": 15,
+  "query_updates": 12000,
+  "terminal_event": {
+    "schema_version": 1,
+    "job": "0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1",
+    "service_result": null,
+    "queue_returncode": 0,
+    "terminal_states": [
+      "done"
+    ],
+    "state": "done",
+    "timestamp": 1794501190.6120627,
+    "periodic_polling": false
+  },
+  "terminal_event_drive_verified": true,
+  "metric_method": "all observed frame errors, float64 aggregation, linear 95th percentile",
+  "does_not_rerun_inference": true
+}
