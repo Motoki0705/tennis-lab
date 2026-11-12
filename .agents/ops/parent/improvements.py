@@ -14,6 +14,7 @@ from issues.improvement import (
     confirmation,
     contract,
     event,
+    execution_terms,
     fields,
     fingerprint,
     human_state,
@@ -442,6 +443,9 @@ def decide(
             )
     else:
         raw = session.gh.issue(target)
+    requirements = contract(raw.get("body") or "")
+    if action == "approve":
+        execution_terms(requirements)  # Fail before publishing an unusable approval.
     data = {
         "request_key": value["request_key"],
         "request_sha256": requested,
@@ -449,7 +453,7 @@ def decide(
         "issue": target,
         "human_confirmation": value["human_confirmation"],
         "reason": value["reason"],
-        "requirements": contract(raw.get("body") or ""),
+        "requirements": requirements,
         "previous_decision": value["previous_decision"],
     }
     row_event = event(source, "decision", row["revision"], row["last"]["id"], data)
@@ -605,15 +609,12 @@ def agreement(
     if binding is None or binding["decision_id"] != decision_id:
         raise ValueError("agree requires the current improvement approval reference")
     candidate = candidates(session, binding["parent"])[binding["key"]]
-    spec = candidate["candidate"]["data"]["spec"]
-    confirmation = candidate["decisions"][-1]["data"]["human_confirmation"]
+    decision = candidate["decisions"][-1]
+    if decision["id"] != decision_id:
+        raise ValueError("improvement approval changed while deriving agreement")
+    confirmation = decision["data"]["human_confirmation"]
     value = {
-        "purpose": spec["purpose"],
-        "scope": spec["scope"] + "\n\n対象外: " + spec["out_of_scope"],
-        "behavior": spec["behavior"],
-        "acceptance": "\n".join(spec["acceptance"])
-        + "\n\n停止条件: "
-        + spec["stop_conditions"],
+        **execution_terms(decision["data"]["requirements"]),
         "human_confirmation": confirmation["quote"]
         + "\n\n出典: "
         + confirmation["source"],

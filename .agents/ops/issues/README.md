@@ -269,6 +269,8 @@ parent_body = render_parent_body(
 `parse_source` / `index_sources` は全open/closedの本文から出典を照合し、重複・不正な出典を拒否する。
 `contract` は出典マーカーを除く前文も比較する。通常文章の空白・改行を正規化し、fence内の文字列を保持する。
 前文の保存キー `_preamble` は予約済みで、同名の見出しによる契約の上書きを拒否する。
+`execution_terms(requirements)` は承認snapshotから実行合意の4欄を生成する。必須節と追加節の扱いは
+[人間判断と実行](../parent/improvements.md#人間判断と実行)を参照する。
 これは `ProposalSource` / `index_proposals`・`ai-proposed`・`parent-task:v1` とは独立した出典である。
 
 `issues.creation.create_issue_once` は固定draft・送信前receipt・出典に一致する候補の照合を共有する。

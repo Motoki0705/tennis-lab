@@ -712,3 +712,102 @@ def test_preamble_requirement_change_invalidates_existing_authorization(
         "requirements changed" in denied.stderr and "I-1-result-access" in denied.stderr
     )
     assert json.loads(p.cli("status", parent="10").stdout)["tasks"] == {}
+
+
+@pytest.mark.parametrize("entry", ["agree", "basis-record"])
+def test_execution_uses_approved_body_after_candidate_scope_is_narrowed(
+    parent_env: ParentEnv, entry: str
+) -> None:
+    p = parent_env
+    p.agreed()
+    proposed = {
+        **candidate_spec(),
+        "purpose": "保存結果の取得と削除を簡素化する。",
+        "scope": "保存済み結果の取得と削除。",
+        "behavior": "結果を取得し、選択した結果を削除する。",
+        "acceptance": ["結果を取得でき、選択した結果を削除できる。"],
+    }
+    p.cli("improvement", "--key", "result-access", "--spec", p.spec(proposed))
+    publish(p)
+    state = p.state()
+    marker = state["issues"]["10"]["body"].splitlines()[0]
+    sections = {
+        "目的・背景": "保存結果の取得だけを簡素化する。",
+        "全体のスコープ": "対象: 保存済み結果の取得。対象外: 削除。",
+        "全体方針・合意事項": "保存結果を一度だけ取得し、内容を変更しない。",
+        "全体の完了条件": "- [ ] 結果を取得し、削除を実行しない。",
+        "依存関係・進め方": "依存なし。保存結果を取得したら終了する。",
+        "進捗概要": "本文の範囲を縮小して人間判断待ち。",
+    }
+    state["issues"]["10"]["body"] = (
+        marker + "\n\n" + p.formats.render_parent_body(sections)
+    )
+    p.save(state)
+    approval = json.loads(decide(p, "approve").stdout)["decision_id"]
+    source_finished(p)
+    p.cli("register", parent="10")
+    expected = {
+        "purpose": sections["目的・背景"],
+        "scope": sections["全体のスコープ"],
+        "behavior": sections["全体方針・合意事項"]
+        + "\n\n## 依存関係・進め方\n\n"
+        + sections["依存関係・進め方"],
+        "acceptance": sections["全体の完了条件"],
+    }
+    if entry == "agree":
+        p.cli("agree", "--improvement-approval", approval, parent="10")
+    else:
+        # Approval itself does not remove needs-human; the existing autonomous
+        # rules still require its separate removal before recording a basis.
+        state = p.state()
+        state["issues"]["10"]["labels"] = [{"name": "issue:parent"}]
+        p.save(state)
+        inputs = json.loads(p.cli("basis-input", parent="10").stdout)
+        basis = {
+            **expected,
+            "schema_version": 1,
+            "kind": "autonomous_decision",
+            "rationale": "承認済みの取得だけを実行する。",
+            "sources": ["https://github.com/o/r/issues/10"],
+            "input_sha256": importlib.import_module("parent.policy").digest(inputs),
+            "policy_version": "autonomous-start/v1",
+        }
+        value = {"basis": basis, "inputs": inputs, "ignored_comments": []}
+        p.cli("basis-record", "--spec", p.spec(value), parent="10")
+        stale = {**value, "basis": {**basis, "scope": proposed["scope"]}}
+        rejected = p.cli("basis-record", "--spec", p.spec(stale), parent="10", ok=False)
+        assert "human-approved improvement scope" in rejected.stderr
+    status = json.loads(p.cli("status", parent="10").stdout)
+    assert {k: status["execution_basis"][k] for k in expected} == expected
+    events = importlib.import_module("parent.policy").events(
+        p.state()["comments"]["10"], "operator", 10
+    )
+    saved = next(
+        e for e in reversed(events) if e["event"] in {"agreed", "execution_basis"}
+    )
+    assert saved["improvement_approval"]["decision_id"] == approval
+    saved_terms = saved["agreement" if entry == "agree" else "basis"]
+    assert {k: saved_terms[k] for k in expected} == expected
+    assert status["tasks"] == {} and not (p.root / "runner-calls.jsonl").exists()
+    if entry == "agree":
+        state = p.state()
+        state["issues"]["10"]["body"] = state["issues"]["10"]["body"].replace(
+            "## 全体のスコープ", "## 廃止した範囲"
+        )
+        p.save(state)
+        before = copy.deepcopy(state["comments"])
+        rejected = decide(
+            p,
+            "approve",
+            decision_spec(
+                previous=approval,
+                request="missing-scope",
+                quote="本文の必須欄を確認してください。",
+            ),
+            ok=False,
+        )
+        assert (
+            "approval snapshot" in rejected.stderr
+            and "全体のスコープ" in rejected.stderr
+        )
+        assert p.state()["comments"] == before

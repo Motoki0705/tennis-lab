@@ -101,6 +101,15 @@ agree・create-child・delegate・run-worker（resumeを含む）・start-worker
 dispatcher候補判定・supervisorの起動直前で、正本の現在の承認を照合する。
 dispatcherに新たな自動割当経路は作らず、既存の自律着手条件に従う。承認記録で `needs-human` は外さない。
 
+実行合意は、承認eventの `requirements` snapshotから生成する。起票後に本文の範囲を変更して承認した場合も、
+候補specの旧範囲で補わない。「目的・背景」→purpose、「全体のスコープ」→scope、
+「全体方針・合意事項」→behavior、「全体の完了条件」→acceptanceと対応させる。
+「依存関係・進め方」と残りの保護対象節は見出し順でbehaviorへ付け、前文も「承認本文の前文」として保持する。
+これにより対象外・停止条件・追加規約を落とさず、本文にない意味を推定しない。
+上記5つの必須節が欠ける・空の場合はapproveとagreeを明示エラーにする。
+自律根拠のpurpose/scope/behavior/acceptanceも、この同じ変換結果と照合する。
+変換の共通APIは `issues.improvement.execution_terms(requirements)`。人間の引用・出典は同じ承認eventから取り込む。
+
 承認は候補revision・改善親番号・本文の要件を固定する。出典マーカーと最初の見出しの間の前文も含み、
 そこでの補足details・コードを捨てない。通常文章の空白・改行、チェック状態、進捗節の変化は許容し、
 目的・範囲・受入条件・前文・未知の追加節・コードなどの変化は新しい判断まで拒否する。意味の同値性をLLMで推定しない。

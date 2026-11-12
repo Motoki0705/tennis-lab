@@ -324,3 +324,60 @@ def test_completion_applies_only_to_current_approval_and_requirements(
             source.marker(), api.ImprovementSource(13, source.key).marker()
         )
     assert not applies(saved, source, candidate, 20, body)
+
+
+def approval_requirements() -> dict[str, str]:
+    return {
+        "目的・背景": "取得操作を減らす。",
+        "全体のスコープ": "取得のみ。削除は対象外。",
+        "全体方針・合意事項": "保存内容を変更せずに取得する。",
+        "全体の完了条件": "- [ ] 取得しても保存内容が変わらない。",
+        "依存関係・進め方": "依存なし。取得に失敗したら停止する。",
+    }
+
+
+@pytest.mark.parametrize("fault", ["missing", "empty"])
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "目的・背景",
+        "全体のスコープ",
+        "全体方針・合意事項",
+        "全体の完了条件",
+        "依存関係・進め方",
+    ],
+)
+def test_approved_execution_requires_every_mandatory_section(
+    api: Any, heading: str, fault: str
+) -> None:
+    requirements = approval_requirements()
+    if fault == "missing":
+        del requirements[heading]
+    else:
+        requirements[heading] = " \n"
+    with pytest.raises(ValueError, match=heading):
+        api.execution_terms(requirements)
+
+
+def test_approved_execution_retains_preamble_extra_rules_and_stop_conditions(
+    api: Any,
+) -> None:
+    body = (
+        api.ImprovementSource(12, "retrieval").marker()
+        + "\n\n外部送信は禁止。\n\n"
+        + "\n\n".join(f"## {h}\n\n{v}" for h, v in approval_requirements().items())
+        + '\n\n## 追加の規約\n\n```python\nmode = "read only"\n```\n'
+        + "\n## 進捗概要\n\n表示だけの進捗。\n"
+    )
+    requirements = api.contract(body)
+    terms = api.execution_terms(requirements)
+    assert terms["purpose"] == "取得操作を減らす。"
+    assert terms["scope"] == "取得のみ。削除は対象外。"
+    assert terms["acceptance"] == "- [ ] 取得しても保存内容が変わらない。"
+    assert "保存内容を変更せずに取得する。" in terms["behavior"]
+    assert "依存なし。取得に失敗したら停止する。" in terms["behavior"]
+    assert "外部送信は禁止。" in terms["behavior"]
+    assert '```python\nmode = "read only"\n```' in terms["behavior"]
+    assert "表示だけの進捗。" not in terms["behavior"]
+    # Canonical comments sort object keys; mapping insertion order is not consent.
+    assert api.execution_terms(dict(reversed(list(requirements.items())))) == terms

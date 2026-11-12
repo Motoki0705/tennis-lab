@@ -189,6 +189,31 @@ def contract(body: str) -> dict[str, str]:
     return result
 
 
+def execution_terms(requirements: Mapping[str, str]) -> dict[str, str]:
+    """Project the approved snapshot, never the proposal's former scope.
+
+    Additional protected sections and the preamble remain execution constraints;
+    their meaning must not be guessed or lost while adapting to agreement fields.
+    """
+    sections = {
+        "purpose": "目的・背景",
+        "scope": "全体のスコープ",
+        "behavior": "全体方針・合意事項",
+        "acceptance": "全体の完了条件",
+    }
+    for heading in (*sections.values(), "依存関係・進め方"):
+        content = requirements.get(heading)
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError(
+                f"approval snapshot requires a nonempty section: {heading}"
+            )
+    terms = {field: requirements[heading] for field, heading in sections.items()}
+    for heading in sorted(set(requirements) - set(sections.values())):
+        label = "承認本文の前文" if heading == PREAMBLE_KEY else heading
+        terms["behavior"] += f"\n\n## {label}\n\n{requirements[heading]}"
+    return terms
+
+
 def validate_spec(value: Any) -> dict[str, Any]:
     spec = fields(
         value, SPEC_TEXT | {"schema_version", "acceptance", "unmet_acceptance"}
