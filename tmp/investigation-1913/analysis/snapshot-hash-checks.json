@@ -1,0 +1,870 @@
+[
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/COMPLETED.json",
+    "drive_id": "13nJ39KE_bgXgoOQCoEMY98-aVRwK2ekp",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/continuity.json",
+    "drive_id": "16On0ZtNc6HC4CL7-mcc2qPWH_kUwU28y",
+    "sha256": "b44391a09c23da10beab09aece3a4a5a9cc0b418ac972b8cda63e8fdc9a9e571",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/latest.json",
+    "drive_id": "16R3DqQSwRdw7r1dm_9NPKe9WxM16NefT",
+    "sha256": "17da9ecb0173807c9ba22bf00c36b988dcdcee32bcab26fd5f8e42c38d341c05",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/run.json",
+    "drive_id": "1nUOel_rIHCTifFvB4UhHzhZ3v_KZ-wQW",
+    "sha256": "9be96f3eea578188584339a03667ffaccbf13acfa7a00826ecb10b4d80d5e0da",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/validation-update-00006000.json",
+    "drive_id": "10xOw1A2y1k_ilRGUvdaE2O_mwCUOQYmu",
+    "sha256": "8e885f69f2f59a4e1efe5dc6c0f0685cd956de14bea76c739df3babe95041d22",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d768-l4-T64-q06000-q12000/completed-00006000-3a2dc546/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/COMPLETED.json",
+    "drive_id": "1IsjxnyP2t2wS31YyovDwtug5G8RWkEjY",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/continuity.json",
+    "drive_id": "1t2f-hjtpPRy0qpSbEURrbRvdIhEKfLQJ",
+    "sha256": "83d7b887599e20749d2f2bed7496f723117d7f8dbb9c137a729bbf565b4a20fe",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/latest.json",
+    "drive_id": "1IOO8TWYpfiTVMXrutEL-VPOq17FD1X4q",
+    "sha256": "e9b8eb05a63e9fc339320d06fbd4c0af920cbd2e093c519f1222d4a8452d811a",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/run.json",
+    "drive_id": "1aokArukjs6vwsDnFJQnlrKMKghE7fbeb",
+    "sha256": "f282c03a0625b1281982917fcc929ce060f0b269d10788d7490509ebd7544378",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/validation-update-00006000.json",
+    "drive_id": "1jHZCrHQRKsAnF1uLz8fBFRZalBrhAeZ-",
+    "sha256": "81a96901b0506bf6e89c9d19ccf27b83f35ed2e0ec1a8f1441bb9411e26b095b",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s2-T64/completed-00006000-3edf5d47/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/COMPLETED.json",
+    "drive_id": "1YWrZGB6UwiVb1GgxGN5zM9GOX7kNTeTN",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/latest.json",
+    "drive_id": "1SpN3cAyWkCS5M_KSaFsdzZZi9bQR6V7b",
+    "sha256": "ec927ecd525a5ca3e3c1151255e1e3a35ee2b5ba397a43293852a6ee0c3bb04d",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/run.json",
+    "drive_id": "13N7vSARjPaw-76O0GuppoINREdEtNPu9",
+    "sha256": "eb4376f7e72e9d639e4ce20ee8a5bc379c65af39c15e50c52bb2665797ea022a",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/validation-update-00006000.json",
+    "drive_id": "1Xkr7-1iWboKkbuMyqd_SEY97BvtgbWnx",
+    "sha256": "ac873b9d3d84241a4e593865eda19aa434f56ce4e89b92bbe14c2cb6206428cb",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/COMPLETED.json",
+    "drive_id": "16yyfcoMGxADKYv5ZmudSwPx3Nh5bY3oZ",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/continuity.json",
+    "drive_id": "1NeeRvJePlmtWm_vHXEBsjDF12FL2v6m6",
+    "sha256": "485fb4a8f8db93b6d72ea53ec583626b5eab4d9c30b80e3ed997cef5788aff6e",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/latest.json",
+    "drive_id": "1AZaZYOJrnjhCOy3IzGGom_ZKP9ytqK5Q",
+    "sha256": "9e3ab5af89ef82f06fce609d804a859ed99bdb473124562311f8db9b1d63bc83",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/run.json",
+    "drive_id": "1cZvJs2aCKTR1KOKX-uMsPrvdnlWvxyIe",
+    "sha256": "676ac6e57c4073cd01b68477b16106e3f26f87fc13cd5013364c96059dbfa14c",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/validation-update-00006000.json",
+    "drive_id": "197IqCFfeoawEtwtLU6Xwjp6a2llFnRK8",
+    "sha256": "0be82277cb0084022200f95812998e81cfafddccd9303b4694bb9118199bf92a",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l4-T64-q06000-q12000/completed-00006000-093ef210/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/COMPLETED.json",
+    "drive_id": "18bsb_qLDNRibh1z3uvI3Tc9WrQtKiOm_",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/latest.json",
+    "drive_id": "13F7Z1nlzWa7yD7sJVn3VFC-NSRPraEQZ",
+    "sha256": "1357e1ab117602dcfc23e730dd6dc3e31f43be5e671681da8e88b4cb3f3f0c28",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/run.json",
+    "drive_id": "12pwKZ6cdtDirgyFFFFgcsCE6iUQRenf_",
+    "sha256": "90ebbca7aba801269cccf37fcf00e6ad420ce9a92e7bdac596df48964dda1df1",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/validation-update-00006000.json",
+    "drive_id": "1kXF69-VM8bhVkO9APHqI1safnCSbjpPG",
+    "sha256": "67210a213e2fc7362e9427382695208da1288c441517f594ea60212a0df5ea21",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d1024-l4-T64/completed-00006000-2428a941/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/COMPLETED.json",
+    "drive_id": "1YYEijJpB_BES0u0nd4gt2f6ueiKbmcoz",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/continuity.json",
+    "drive_id": "1S6ApHaYo6rXKpKbTmMtJNXWL4R2njbkC",
+    "sha256": "abfbb512f789750185f86e4253055f5ce4f6ff96cf0b228089db2ac47d3c2a6a",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/latest.json",
+    "drive_id": "1oDu7ql9g3CfPqWqpgPZ525bmMDCq6dOr",
+    "sha256": "add7e978252c1d1b36d74c8d02c2979399ae677792718bb12fe70e9ae83ee9a1",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/run.json",
+    "drive_id": "1gFGnJ4bDZmVFYcY_re8RpKW1Rq9MkuNZ",
+    "sha256": "166b5aaea42bf87b65f37a848a11af991470f2255fe18f8d65c3b5a1ea1c6f04",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/validation-update-00006000.json",
+    "drive_id": "1qvnbDgx93LNOUFB1fiaipa2Ovw-AwyNm",
+    "sha256": "d0d0564338a2eeca34774440f5ae9778d30c7b1531ce7aea9dcfb0f60ea67c81",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d256-l4-T64-q06000-q12000/completed-00006000-7856ff0f/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/COMPLETED.json",
+    "drive_id": "15TjdB_-Yj0aLp5h7gIrM8qWs9z3iyj7s",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/latest.json",
+    "drive_id": "1kTDCoAhSb9CYoe0dUOEDQZ3fmoTqlNZQ",
+    "sha256": "6302c7f5e0953d7638ff9156ec2534e0ee2e53f1ca517a72e14b208bb2ef2091",
+    "marker": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/run.json",
+    "drive_id": "1rDyp3uwNIp5zOV5jPpM29JZe6cGmRvsY",
+    "sha256": "cbf8ca0c93b656eef299720bc16b4f5d450b5f0163f95423632590027314b021",
+    "marker": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/validation-update-00006000.json",
+    "drive_id": "1Ys6Lo2SVtxGm616-TBrZTGY3W5Bx-Rle",
+    "sha256": "5f9d8e2235af09e7525b1d827e26bc52a26547d82d53c54e76cd99e9f1fb3bb9",
+    "marker": "outputs/ball_detection/train/sequential_length/s42-20261025-main/query-T64/completed-00006000-49c39810/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/COMPLETED.json",
+    "drive_id": "1c6NHaYn13xQ0p1nvF9G-pcAspGIPF1WV",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/latest.json",
+    "drive_id": "1eYMw3V-MCm384F0JjDo8r1Eyf49kBhTS",
+    "sha256": "3620b7cff9a30e1ce6961f6de7f7b240db014a7040bf6b8f3a5e52e8be1ca461",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/run.json",
+    "drive_id": "1UPEhwz4_Sy-mZ5b640TRcFyfxIAH12pF",
+    "sha256": "e1fdbeb910ae9bacebd12cb854dcbd5cf6027acdee06af4fcabd1bb5f0f3c839",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/validation-update-00006000.json",
+    "drive_id": "1rD3-BoufmTvnPlT0k2n0_7w4Hf1_J3hX",
+    "sha256": "2a8fb398331e3254c225733d981736ffd2724f5463863fdbfe7089e2eba75f68",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l6-T64/completed-00006000-d6608285/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/COMPLETED.json",
+    "drive_id": "1mUJREH4IPoRU_jLpgTHtyz_syaZvktp_",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/latest.json",
+    "drive_id": "1mOVeAVWbjPUW46NGykSrJddfprnuNCQ8",
+    "sha256": "4d8e4c65f7714d5247f01174469e17011000f5277da181475449843120b30788",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/run.json",
+    "drive_id": "1pOgKTJffBsys3iFyV6O-KOdqu7WIUzhO",
+    "sha256": "083e1a2e41ad9721cecf3a2737d3fbed7037b32c6328f905e870baaac9708265",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/validation-update-00006000.json",
+    "drive_id": "1JzIovsBiBZ7imtIX0dmc3iMSVAXlPg5I",
+    "sha256": "d897499e11cbd276a7936af22e53a91c0bc5e7caf87da7429620ca6254f06d63",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l8-T64/completed-00006000-5bc5e413/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/COMPLETED.json",
+    "drive_id": "1sRpFtc9D9okJtxdH6Hnn7e26EMUhvwrb",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/continuity.json",
+    "drive_id": "130_gnWqp4bIia8DI8LsrPzwHNKBvdYif",
+    "sha256": "c90dba259acef77e3edf7799a907dd724e5feed1cd19486ff2eaa90a8978989f",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/latest.json",
+    "drive_id": "10i60xAxwNK7-8nFtajAM-h-GFY1Bjn4n",
+    "sha256": "f338b21af1b42de4eb56c4f91d23e8f4ca9365ce663e9dcbb2952ee0b5608396",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/run.json",
+    "drive_id": "1YAtficKtTHjZZiUEmZXiRyRK47cPuqI2",
+    "sha256": "ee790ad00990aa496f6ae44f40b6021497cc32a6465c76c30a0899fb6d323dac",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/validation-update-00006000.json",
+    "drive_id": "1OqMoLS5yVYIrczwDHVxpG2-ZxQZpa1pw",
+    "sha256": "e9b0a9b3c606ac64b9af7a375157f425f4c6bd465c9ecfa4813250f092f0fd79",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d1024-l4-T64-q06000-q12000/completed-00006000-1e7654a9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/COMPLETED.json",
+    "drive_id": "1MTjcv9TLyvmHlBzBgtZC9c6oNHw-WIOX",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/continuity.json",
+    "drive_id": "1yICODafW1G34GNMVOcAi1tkqlEwSQipu",
+    "sha256": "119e7a024754523d442da665c599dd3b4de80500c9fec03466430aee706af903",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/latest.json",
+    "drive_id": "1nEwYJNOxgfFjMScaPhi2bwITZtnWV1fN",
+    "sha256": "864887a4f789b06c619bc5cd321e52108089ea2f125f700cdc72d5f1a9ba9a22",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/run.json",
+    "drive_id": "15u4zYV-kBtbVTfKupukdqAPa9NOKZHn0",
+    "sha256": "e193066a048666e3cd8c640d9d332ed66ccfc73eaf1185c50a670fc1c216f0cb",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/validation-update-00006000.json",
+    "drive_id": "1sj0gjpEQNO5fI1s3nP2n0bf187YOD9at",
+    "sha256": "78a46d66df647dd67e24f8727eec3416f94201aaa7170ba8c2741e1733e20e67",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d384-l4-T64-q06000-q12000/completed-00006000-4003b411/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/COMPLETED.json",
+    "drive_id": "1Vb2snDmnTmt-ZTBTWP8qhXQOEAwTTLKo",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/continuity.json",
+    "drive_id": "1YB7-_yjpx9mGEfXzc2aCxBcR5NgGv7GK",
+    "sha256": "2930c668fe08b7cd4224b3d5bc7cd444daf09df7efb837e8b79971519347ea80",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/latest.json",
+    "drive_id": "1W34w1D7PKPmvpcEbDhGirdrH7Pjqy7tC",
+    "sha256": "7733564403f1c6f9454b2c71d28133c44359e738be20df90e91797756b139b22",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/run.json",
+    "drive_id": "1sNM31MGvoL0hK7gmSJ5mVxhTVrLzvPSF",
+    "sha256": "4ad28fd79e0f72cdc89cbc840a80526cdfa9a9873c12e15c710342d4524526d4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/validation-update-00006000.json",
+    "drive_id": "1FYR6-AANrEytIoxgROzgGwTwUk_LupTX",
+    "sha256": "b362625a3d83f2f6c434c4294c1dd39e0c1e9300f29d7eed59eff2ad93d38e6b",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l8-T64-q06000-q12000/completed-00006000-3672cf86/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/COMPLETED.json",
+    "drive_id": "1KT7uYegakQHL1eK3RAh7cCD7D8f3bIta",
+    "sha256": "42c776153b73d15f4c73cfe61856a065665bfb90510b1686490a7ce656b9e65f",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/latest.json",
+    "drive_id": "1m7-gIUUbdola0o1V5nldQUPD7tc1_5eK",
+    "sha256": "455aa5ca6725233cca332ee2db81e41804901494b456cc654c35dbc7e72bdef4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/run.json",
+    "drive_id": "1EUT9Ncy_VDMqbOBNXdy0-irwKqnV7blM",
+    "sha256": "d0ba4f3717a0b55882e895a5f1fddc772e9c0c96f2a79d9216e291981fdcf183",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/validation-update-00010000.json",
+    "drive_id": "1HAfULFWWYRVTjDMSVCtbe62Gzc_Pexci",
+    "sha256": "c06a221762b27b8a9c528d2240f49b1dd1657d46b6f4fc74d3c036616507132a",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/COMPLETED.json",
+    "drive_id": "1wdevC3sIkzJu0-m8j5TquZkvIXgCbF7p",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/continuity.json",
+    "drive_id": "1xvRBYZ1ANSjb6bxH8uOvAxQmOAQbAIeT",
+    "sha256": "db0d603e00a0a5b2978802543bc64e8b609cd8dec06cc6629882d46de405e82d",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/latest.json",
+    "drive_id": "1ViWwR0AbEKWELAOXsC-iL2M45vuZmD5E",
+    "sha256": "33135ac0d5a2aceb1debcbf3ad3c1389b7dbeb1c9c0c37040c4e6e0cb4d699bb",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/run.json",
+    "drive_id": "1COyb-q4AStnaL3q_9-izy4C3qOCLDsJB",
+    "sha256": "9fe217063b4f477850fce5d569e05d32d2f49bec693436274e6f3ac9467a6ae9",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/validation-update-00006000.json",
+    "drive_id": "1ZObKyUb01QBwNKM2CwLNslliEf8PdpU8",
+    "sha256": "7d1375c838155412fd9d414e19cddcc288697c895c5939cef72731a02d7c1abf",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s2-T64/completed-00006000-6ecda4c3/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/COMPLETED.json",
+    "drive_id": "1IhodmOcDh4_LxpUaE5gKL_d2AyMeRPEt",
+    "sha256": "e87870eebc3e9e74c482bebff5e628c602d09c6a2c7724821a56e35ff3f385c4",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/continuity.json",
+    "drive_id": "1zhufqqWbofYwaEo2AdWL1knDqeiYz7q4",
+    "sha256": "01a59fc0c4fbcee02a195915e1aa7cdbf43062f5626a08cf8eb541e66e667760",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/latest.json",
+    "drive_id": "1Ljq4wNjYCIpvAXxCoqn6bQMwow41--nz",
+    "sha256": "2f3b215c9e8292cddf89871198c0127ceab1b3d2c0f38b330f84a219459c5bfc",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/run.json",
+    "drive_id": "1bnW9lsRC5-ksADQn6jHsoQpKbepmPWkW",
+    "sha256": "f9cb5feaa1d6af241120d121a7b2665c930da11ec21b7c292210681877ecbd4b",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/validation-update-00006000.json",
+    "drive_id": "17QE6gKvypb7uxb6z9aF47H1-jKVVgBaa",
+    "sha256": "b5275054e3f8b28b47bc73ea4a1768a7e6c8eeb0159be5d5463370a52bc51aa0",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261110-12k/query-d512-l6-T64-q06000-q12000/completed-00006000-9e0acce9/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/COMPLETED.json",
+    "drive_id": "1TRfPnJpI9eJitzsgWUeUzOZT0vl-WEtX",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/continuity.json",
+    "drive_id": "1mpfu05VeMkbM2yEhkdMQZUa0_KT-Svqc",
+    "sha256": "5989160a02716a819990ba7e9a827791acf69f8f1f6d0134f3b1370b425d1241",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/latest.json",
+    "drive_id": "18I8t1xeh4-q_4W2u7PyAgG6mMv5cXc2E",
+    "sha256": "b4ec4be852feae8b2b18eff1e3b6d3f88d0907bc74b413c85ae32896b5432a3e",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/run.json",
+    "drive_id": "1qhsieR5NNM2Pz782gAZf8cFMW7qsQnTM",
+    "sha256": "063a80cc1a40beb357c71b112e534cad53291a4666bd985bbe9488fe25a3ea7b",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/validation-update-00006000.json",
+    "drive_id": "190kqhp_tOSHP_GUyQcftm7vz7uDX46eB",
+    "sha256": "4e713e264a8530923f5b51d9553091f8093acc6b58725203b0e43142b225fd74",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/cnn-s1-T32/completed-00006000-267ccd37/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/COMPLETED.json",
+    "drive_id": "1kQjAkTqsS1EKxrGjr2H6dmZLEK2GYwBO",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/latest.json",
+    "drive_id": "15OYVonFTkZmhP6zC07fPCHWgPlxP88Ua",
+    "sha256": "b928b3c5e8c27186d26ba3bdec161ebd61af23875e8f84e981dee26de96fd8fd",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/run.json",
+    "drive_id": "1UB6OWMTLSFeaNmsX6r-i2_3FSwwch1kr",
+    "sha256": "159ccd042ada2819ad74fa63faa3e088a83f638b5c6c079426b5b9aec037def7",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/validation-update-00006000.json",
+    "drive_id": "1NhwzZKAoHH8t4hjG14fydJHeBXcMuLn0",
+    "sha256": "b036b23f7950b9b6b463009368b726962d49dc1f0c2eaaba29fe4374902aa5d6",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-0/full-C0.json",
+    "drive_id": "1NbuDPHGvLU3cmkmSy8qUj-GalnWn9Q_x",
+    "sha256": "8fb546b860e711f0d0125fc1146bc3bfca3b0b64842db172311c14d6e251e069",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-0/full-C1.json",
+    "drive_id": "1ioulJAS8tih-4mX_P8Uw1FwXWMDQ-czq",
+    "sha256": "7aecf47fac2269b2474378934593ad29f5c6f00d0f1d2c57fe1663f61f46a4d7",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-0/full-C2.json",
+    "drive_id": "19afK2fN3QOOBdPpo3ky1hPFuLKAP8IAz",
+    "sha256": "8c918e30fca781383f006fc0b39786e5217022df5324c11c51f957df14b613f6",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-0/full-C3.json",
+    "drive_id": "11kbE5F4qAQ1yhA1dnBpLRsRgXRLCEC4K",
+    "sha256": "095405068e7beb275fa63d91b8fdb69d5d84a7a0a254ef468cdabb17e506978a",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-0/full-CA.json",
+    "drive_id": "1bNDIfSs5GFV31W4CZ5iWg6FhSw3yN6Dk",
+    "sha256": "287fd2a52916810881d9668ee3991d1b8b86e34cd0102ca9441e99eafa61c8a7",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-0/full-T1.json",
+    "drive_id": "1mZAp3NtIlO61RGP6N_CRF7L9bG9q6xGH",
+    "sha256": "501d23600867e8ac4d6d03c0bfb3e6db179bfc4e5a79ebe72528a7bc8f545a96",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-0/full-T2.json",
+    "drive_id": "17WIK6uycukBOlpuqVmYxnojUKNyRH_Dh",
+    "sha256": "fb510905eba8eaba950556b5dd9dcfe8879648575d19c81a0c00fd44da6dcc45",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-1/full-C0.json",
+    "drive_id": "1RtXcEpuCMBHclTMC899GDnMQ-ckOUAx_",
+    "sha256": "8199c6f1f2d926227fb6c5a5e94b915fd20b260011de71929c186f2bcf75458c",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-1/full-C1.json",
+    "drive_id": "1xpAAUpEreoHMOmlt3-R8sFhEnXXQgVtD",
+    "sha256": "e0ef4e59ae38231cc917656e4ef5ddc50d64a0bfb1b426263d107a538907255a",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-1/full-C2.json",
+    "drive_id": "1HUVl-Qn7tQu9MkZb0JKDaszvY5UZkDn1",
+    "sha256": "24d6b97a3f10afea8a4c5016cd818ef28e36c91f660b657f86da3e41d5cdb23f",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-1/full-C3.json",
+    "drive_id": "193sArxuiOPP4mnDHJM5qtT4Da56-eewa",
+    "sha256": "80fbbef14b0f19807947d8e8066b9caa6c4f76902cb59d4c2978ac4b3c32303b",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-1/full-CA.json",
+    "drive_id": "1-jNy0yuc7MHDZntqEb1W-vdciDeI-EA8",
+    "sha256": "3989c8ce9202e61c8867be410b4ac33661e4cbd4ec60eb70d398dedbf0e75a72",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-1/full-T1.json",
+    "drive_id": "16I2j4_LEGxyEBzhqDt0FLXnqUH0VtCAS",
+    "sha256": "bed258cdcdef32aea094bda1c49d5dba897db742ea56e91b0a22f6c7e49827a3",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-1/full-T2.json",
+    "drive_id": "1mq5f6baBrppGAsnplat9clUr8kj3oTno",
+    "sha256": "0db907f80b7d9d5ec7584ae81e1915a323f20a9971d422eae102ae8cbb33d307",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-2/full-C0.json",
+    "drive_id": "1m_O_j-4fDH3uuNS_JBjSfEbGMBtjLnRA",
+    "sha256": "a226e187a0f9e58f17fec6b5be3176410f0cd551d8229b1b7644e43e8f30f5ef",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-2/full-C1.json",
+    "drive_id": "1kY8tr0--otN--Fe-qvt2uqthswM7NPAm",
+    "sha256": "14c4d7d195e66adec0ec942cb03ddf4b96091dc56bd3273be0bafed2995275a2",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-2/full-C2.json",
+    "drive_id": "1EjF3yrgH6ljl4IBmPsWcuZF4WyOAFABG",
+    "sha256": "7e678d5ad8c3b534b3c00ff036b175c8d9f6f264b861bd49101d29fec3ddec1d",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-2/full-C3.json",
+    "drive_id": "17TL0t6UI0S-mjKutgAK14oMOjWI96XWp",
+    "sha256": "08ed8036173ba2966d451f098f9ceb842f5280ec425f561777f4436609c43d75",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-2/full-CA.json",
+    "drive_id": "1r6s5UUo8HYbMAkoGj83dGz88VgxapbUR",
+    "sha256": "40af44b852e10ce55431bf51b2d4bb74c7f0ebc391b8434f49ffd44ddfa36595",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-2/full-T1.json",
+    "drive_id": "1EMj2hL4ICNK2lmlffLLO66TUkaLoXEE1",
+    "sha256": "a7f266f96300d9a405de596e79225fb6d7a63869fc6596a7be4d73b80404b17a",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/block-2/full-T2.json",
+    "drive_id": "1nyhtf5qIDUI0U3u1eWY_DZ1mohRv-kkf",
+    "sha256": "7da3825e99a2d8e55d3245e84ac4c8f851cc8aed85095e1a15aac7680111fde2",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/definition.json",
+    "drive_id": "1RN56wRvbR0MfMZPtACtYw2QZPJ2lojm0",
+    "sha256": "e12994938ce97195e2a98a5ac487c2c3115e12c07ab6b296b16ff047296ce4d7",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/order.json",
+    "drive_id": "1KQSphlORy6kKsGghuAFZfClEcv73fNKv",
+    "sha256": "d45f1fd871cf4516faf87f8a3dc7ed19351d58a428ccdaa12bbf8b3ad3013961",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/summary.json",
+    "drive_id": "1Q7L7Nl77b805ObrzxNztBGv0MA2bIg5E",
+    "sha256": "f6a31b2e96175d3a64f943cc53bea487a45d45bd8a0a9f823c7928b7545a6c9c",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/summary-1794387802924708306/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q06000-q12000/checkpoint-00005500-cddcef20/latest.json",
+    "drive_id": "1Kv3XSrZH6rcPfQXX2j2DDG9takTO66ct",
+    "sha256": "4b3416a149efa71376f5091ee1e3a07c7c2fac30a7bf683d289785cd8859d9ba",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q06000-q12000/checkpoint-00005500-cddcef20/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q06000-q12000/checkpoint-00005500-cddcef20/run.json",
+    "drive_id": "1yPxUsMUH_iRPgS7L5gw3RbWeZEaM_6S0",
+    "sha256": "50b566b983bed81073c41f2913f86f748ac420c44c460625645a004bd4e117ad",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q06000-q12000/checkpoint-00005500-cddcef20/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/COMPLETED.json",
+    "drive_id": "1jLh_0SwkAyj05Iy_U4rKCD3IwO-Jxpi9",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/latest.json",
+    "drive_id": "1V8uQk1jYXb4NmcqoklQ6qVnjw3NCCghT",
+    "sha256": "4b2b3ab11e951fd08e707e1ea30982ef9bb4e5e1f1e2079ea93070e1b6aa091d",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/run.json",
+    "drive_id": "1sLONMYv19zwZHEoo-eGvum3g42F7TD5A",
+    "sha256": "1941310002705de00b498afc5781ab7d1f9df3e865cb55239ddc0226f270d704",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/validation-update-00006000.json",
+    "drive_id": "1cTp5EwSeoJlbxbuenL8-A38NSFmUiD3J",
+    "sha256": "1e0cee49315a745ef5b632c6b17d8f3824b0ed5932c9d04fd4cc59e54a203c6b",
+    "marker": "outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q00000-q06000/completed-00006000-8dd54729/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64/checkpoint-00005500-0281b1ba/continuity.json",
+    "drive_id": "1Ho9nwksJ-q4WTF6HYezuyAj3HJEL3Os_",
+    "sha256": "a340c9787a15f9a3cd71cef805ef3ad8eb7ca480d531096610d3e2323ac6f6ce",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64/checkpoint-00005500-0281b1ba/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64/checkpoint-00005500-0281b1ba/latest.json",
+    "drive_id": "1UQU6aC-SZMn7tNTFgVWzI81DE4UjavSJ",
+    "sha256": "f9e55556535d5577461193ff611b200ac4683ce02111b6369783fe9f22efa345",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64/checkpoint-00005500-0281b1ba/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64/checkpoint-00005500-0281b1ba/run.json",
+    "drive_id": "1Bzj00SA5NPc4EYdhs_efICQqjY9A_9hi",
+    "sha256": "75e4649f12c58635bc1011e6973595d9ee081dcfc6492cfd2b36ef70ba29d121",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64/checkpoint-00005500-0281b1ba/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/COMPLETED.json",
+    "drive_id": "1aaw64SmNBJAo7nOM-xraxtlT1lbEKUI_",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/latest.json",
+    "drive_id": "13m98tnGXF6hnVOW1jlf3uS51UWCQDXO8",
+    "sha256": "4c1e4b34819d575e6d0ff2f11290f8be58dbfb6f05b085cf352fa1733ac9b66a",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/run.json",
+    "drive_id": "11jUuJJ7W91UYgQAy13KclgsD6XX0AtNk",
+    "sha256": "8d170d40839875e3c8db4f0d7aeff775dd24687a83d14ad99a8d5093584f98c3",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/validation-update-00006000.json",
+    "drive_id": "1OMDNe8IYE4B5JFs0SIkh52ubuYIRTWjV",
+    "sha256": "230729bb904f5ed8694b316d45ea3ade0e4526885fa268d5cad8043c3c5ec2b2",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/COMPLETED.json",
+    "drive_id": "1GvEIEodByXLvImv3gB8lgnp-Elp0tsay",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/continuity.json",
+    "drive_id": "15lZKA3h2rwZ8DqRaLA34-tom59imIJV3",
+    "sha256": "a42aff95c6f2a604245145c47a977a99600eaecabe58492ab181991437dd4a29",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/latest.json",
+    "drive_id": "1BhivVMvvw53aYDN-_IaSEHnTcx9ukhgn",
+    "sha256": "7aa1a0f1ffc5b1ae727150cfb4d40bd9f6f13f73a5cd4a115efb2250f10226a5",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/run.json",
+    "drive_id": "1kzcM2_wdONgRByJgPAcNGuZ8_qWW-7yd",
+    "sha256": "ce0ca716e96bb09e93dea81028eca62f352feffedae45b361660ba45f4ab9ec0",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/validation-update-00006000.json",
+    "drive_id": "1z6zuBos1Q1EAANPs47zDblckjc7nF5XV",
+    "sha256": "64bc7d16efb74df907d97907fb2762a45d352cbfad7a623e46cfdc37b9467682",
+    "marker": "outputs/ball_detection/train/query_controls/s42-20261111-main/queries-s1-T32/completed-00006000-78444f3c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/COMPLETED.json",
+    "drive_id": "1c1Ham39rk8HwkfL3hPew6s_iJawcSrMN",
+    "sha256": "1ed7b73a46c6a4c177f6ddc63081aeccc141ef45a5b5060c6f399a33a7a45593",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/latest.json",
+    "drive_id": "1zDBIw4YAchMHaYJyKxXvh7DY3kqzSZTL",
+    "sha256": "56ec9c5ee8a17a6cb1b153c0b383fafdf6f3c89d18e94d838d8a35716f0d0733",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/run.json",
+    "drive_id": "17vIFZcSLJSJfIhuOpK2wCBNmJjh-YTCl",
+    "sha256": "5a1a575fa396a1dfd06f07392606b6881e7db704362b293c0f6944765616a71a",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/_SNAPSHOT.json",
+    "match": true
+  },
+  {
+    "path": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/validation-update-00006000.json",
+    "drive_id": "1-60f2CkuDUEmxODcFUu0yb0Nzzh7k5JZ",
+    "sha256": "bd0b64c036fb34361d826e9039b14914e7b7473e2dac56d4b4dfb57963b130a8",
+    "marker": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/completed-00006000-c381c33c/_SNAPSHOT.json",
+    "match": true
+  }
+]

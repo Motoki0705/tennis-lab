@@ -1,0 +1,50 @@
+{
+  "cases": {
+    "C0": {
+      "counted_gmac_per_frame": 19.003136,
+      "inference_ms_per_frame_p50": 4.264591932296753,
+      "update_ms_p50": 2313.544189453125,
+      "peak_allocated_gib": 8.58881664276123
+    },
+    "C1": {
+      "counted_gmac_per_frame": 18.261248,
+      "inference_ms_per_frame_p50": 3.6993919610977173,
+      "update_ms_p50": 2075.6875,
+      "peak_allocated_gib": 7.85321044921875
+    },
+    "C2": {
+      "counted_gmac_per_frame": 18.77752832,
+      "inference_ms_per_frame_p50": 3.307711958885193,
+      "update_ms_p50": 1861.1394653320312,
+      "peak_allocated_gib": 7.588698387145996
+    },
+    "C3": {
+      "counted_gmac_per_frame": 18.9036032,
+      "inference_ms_per_frame_p50": 3.7246559858322144,
+      "update_ms_p50": 2114.3624267578125,
+      "peak_allocated_gib": 8.148315906524658
+    },
+    "CA": {
+      "counted_gmac_per_frame": 4.155681536,
+      "inference_ms_per_frame_p50": 3.1604479551315308,
+      "update_ms_p50": 1653.0524291992188,
+      "peak_allocated_gib": 12.409987926483154
+    },
+    "T1": {
+      "counted_gmac_per_frame": 7.873885568,
+      "inference_ms_per_frame_p50": 5.0926477909088135,
+      "update_ms_p50": 3244.9608154296875,
+      "peak_allocated_gib": 17.28899049758911
+    },
+    "T2": {
+      "counted_gmac_per_frame": 7.873885568,
+      "inference_ms_per_frame_p50": 5.072704076766968,
+      "update_ms_p50": 3225.660400390625,
+      "peak_allocated_gib": 17.4587721824646
+    }
+  },
+  "raw_full_model_jsons": 21,
+  "samples_per_case": 90,
+  "pr_48_cases_equal_drive_summary": true,
+  "note": "Drive cold_start/compilation retained in raw evidence, omitted in small PR summary"
+}
