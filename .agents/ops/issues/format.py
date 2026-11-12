@@ -205,6 +205,17 @@ def raw_section(body: str, heading: str) -> str:
     return body[span[0] : span[1]].strip() if span else ""
 
 
+def raw_preamble(body: str) -> str:
+    """Retain prose/examples before the first real section, using the same parser."""
+    sections = parse_sections(body)
+    if not sections:
+        return body
+    span = section_span(body, next(iter(sections)))
+    assert span is not None
+    # section_span begins immediately after the header, not at its line start.
+    return body[: span[0]].rpartition("\n")[0]
+
+
 def parent_reference(body: str) -> int | None:
     lines = visible_lines(body)
     references = [

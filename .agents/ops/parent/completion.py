@@ -116,6 +116,21 @@ def status(session: ParentSession) -> dict[str, Any]:
     applies = result.get("available") is True and session.row.get("completion", {}).get(
         "basis_ref"
     ) == result.get("basis_ref")
+    if applies:
+        from .improvements import completion_applies, observe
+
+        current = observe(session.gh, session.parent, session.login)
+        saved = session.row["completion"]
+        if current is not None:
+            applies = completion_applies(
+                saved,
+                current["source"],
+                current["candidate"],
+                session.parent,
+                current["issue"].get("body") or "",
+            )
+        elif saved.get("improvement_approval"):
+            applies = False
     return {
         "requirements": result,
         "record": session.row.get("completion"),

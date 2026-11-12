@@ -101,8 +101,9 @@ agree・create-child・delegate・run-worker（resumeを含む）・start-worker
 dispatcher候補判定・supervisorの起動直前で、正本の現在の承認を照合する。
 dispatcherに新たな自動割当経路は作らず、既存の自律着手条件に従う。承認記録で `needs-human` は外さない。
 
-承認は候補revision・改善親番号・本文の要件を固定する。空白・チェック状態・進捗節の変化は許容し、
-目的・範囲・受入条件・未知の追加節・コードなどの変化は新しい判断まで拒否する。意味の同値性をLLMで推定しない。
+承認は候補revision・改善親番号・本文の要件を固定する。出典マーカーと最初の見出しの間の前文も含み、
+そこでの補足details・コードを捨てない。通常文章の空白・改行、チェック状態、進捗節の変化は許容し、
+目的・範囲・受入条件・前文・未知の追加節・コードなどの変化は新しい判断まで拒否する。意味の同値性をLLMで推定しない。
 保留・見送り・撤回は起動直前の検査と同じロックで停止要求を保存し、既存runner/supervisorで対象の停止・回収を照合する。
 未確認なら `stop.state=stopping` を返し、同じdecideを再送して復旧する。停止確認前に承認し直しても起動できない。
 2世代目も新しい候補・新しい承認が必要で、前世代の権限は継承しない。
@@ -137,6 +138,10 @@ requirements.available=falseとなり、finishを拒否する。一括移行や�
 自律は [workflow-report](development_workflow.md#待機完了担当終了) のcompleted入力version 2へfinishを含める。
 実merge・レビュー・子の終了等の既存検査に加え、supervisorは当該job/担当generation/権限に結び付いたfinish receiptを照合する。
 手書きの最終completed JSONだけでは完了しない。
+
+改善親の受入表示は、completionに保存したdecision_idが示す承認・要件と、現在の承認・本文を照合する。
+同じ候補revisionでも新しい承認に過去の受入を引き継がず、元親statusのacceptedと改善親statusの受入済み表示を外す。
+過去のcompletionと公開済み終了コメントは保持する。文章の体裁だけの変更では受入を失効させない。
 
 子なし `issue:parent` も [共通resolver](README.md#issue自身を実行する)で親自身の成果を照合する。
 手動finishと自律completedは同じ実merge・受入・終了の証拠を要求し、空の子一覧だけで完了にしない。

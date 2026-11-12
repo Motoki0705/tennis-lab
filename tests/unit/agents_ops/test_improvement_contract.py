@@ -135,12 +135,66 @@ def test_formatting_and_progress_are_safe_but_scope_code_and_unknown_sections_ar
     )
     api.approved(candidate, source, 20, cosmetic)
     for material in (
+        body.replace(
+            source.marker(), source.marker() + "\n\n追加で動画100本を処理する。"
+        ),
         body.replace("GPUは対象外", "GPUも実行する"),
         body + "\n## 追加要件\n\n動画100本を処理する。",
         body + "\n```python\ntrain()\n```\n",
     ):
         with pytest.raises(ValueError, match="requirements changed"):
             api.approved(candidate, source, 20, material)
+
+
+@pytest.mark.parametrize("kind", ["prose", "supplement", "fence"])
+def test_approved_preamble_is_protected_and_formatting_is_preserved(
+    api: Any, kind: str
+) -> None:
+    source, rows, body = chain(api)
+    preamble = "保存済みの結果だけを取得する。 処理済みなら終了する。"
+    body = body.replace(source.marker(), source.marker() + "\n\n" + preamble)
+    if kind == "supplement":
+        body = importlib.import_module(
+            "issue_supplement.invariants"
+        ).render_supplements(
+            body,
+            [
+                {
+                    "after": preamble,
+                    "content": "保存済み結果は[README](README.md)を参照できる。",
+                }
+            ],
+        )
+    elif kind == "fence":
+        body = body.replace(
+            preamble, preamble + "\n\n```python\n## 見出しの例\nlimit = 1\n```"
+        )
+    rows[-1] = api.event(
+        source,
+        "decision",
+        1,
+        rows[-2]["id"],
+        {**rows[-1]["data"], "requirements": api.contract(body)},
+    )
+    candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    cosmetic = body.replace(
+        preamble, "保存済みの結果だけを取得する。\n\n  処理済みなら終了する。"
+    )
+    api.approved(candidate, source, 20, cosmetic)
+    changed = body.replace(
+        "README.md"
+        if kind == "supplement"
+        else "limit = 1"
+        if kind == "fence"
+        else "処理済みなら終了する。",
+        "CHANGED.md"
+        if kind == "supplement"
+        else "limit = 100"
+        if kind == "fence"
+        else "追加の動画も処理する。",
+    )
+    with pytest.raises(ValueError, match="requirements changed"):
+        api.approved(candidate, source, 20, changed)
 
 
 @pytest.mark.parametrize(
@@ -213,3 +267,60 @@ def test_source_is_independent_of_title_and_quoted_examples(api: Any) -> None:
         api.index_sources([(20, source.marker()), (21, source.marker())])
     with pytest.raises(ValueError):
         api.parse_source("text\n" + source.marker())
+
+
+def test_section_cannot_shadow_the_preamble_contract(api: Any) -> None:
+    source, _, body = chain(api)
+    body = body.replace(source.marker(), source.marker() + "\n\n前文の作業要件。")
+    with pytest.raises(ValueError, match="reserved approval contract heading"):
+        api.contract(body + "\n## _preamble\n\n別の条件。\n")
+
+
+@pytest.mark.parametrize("change", ["decision", "body", "source", "hold"])
+def test_completion_applies_only_to_current_approval_and_requirements(
+    api: Any, change: str
+) -> None:
+    source, rows, body = chain(api)
+    applies = importlib.import_module("parent.improvements").completion_applies
+    saved = {
+        "state": "completed",
+        "improvement_approval": {
+            "parent": 12,
+            "key": source.key,
+            "revision": 1,
+            "issue": 20,
+            "decision_id": rows[-1]["id"],
+        },
+    }
+    candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    assert applies(saved, source, candidate, 20, body)
+    # Scope applicability does not turn an explicitly incomplete result into
+    # unverified; the caller separately displays its recorded outcome.
+    assert applies({**saved, "state": "incomplete"}, source, candidate, 20, body)
+    if change in {"decision", "hold"}:
+        rows.append(
+            api.event(
+                source,
+                "decision",
+                1,
+                rows[-1]["id"],
+                {
+                    **rows[-1]["data"],
+                    "request_key": "human-2",
+                    "human_confirmation": {
+                        "quote": "今の条件で再判断してください。",
+                        "source": "新しい人間の発言。",
+                    },
+                    "previous_decision": rows[-1]["id"],
+                    "action": "approve" if change == "decision" else "hold",
+                },
+            )
+        )
+        candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    elif change == "body":
+        body = body.replace("GPUは対象外", "GPUも実行する")
+    else:
+        body = body.replace(
+            source.marker(), api.ImprovementSource(13, source.key).marker()
+        )
+    assert not applies(saved, source, candidate, 20, body)

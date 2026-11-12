@@ -621,6 +621,40 @@ def agreement(
     return value, binding
 
 
+def completion_applies(
+    completion: dict[str, Any],
+    source: ImprovementSource,
+    candidate: dict[str, Any],
+    target: int,
+    body: str,
+) -> bool:
+    """A saved result belongs to the exact decision and its protected text.
+
+    The immutable decision ID references the accepted requirements snapshot;
+    candidate revision/issue alone cannot identify a later reapproval's scope.
+    """
+    decisions = candidate["decisions"]
+    if not decisions:
+        return False
+    expected = {
+        "parent": source.parent,
+        "key": source.key,
+        "revision": candidate["revision"],
+        "issue": target,
+        "decision_id": decisions[-1]["id"],
+    }
+    if (
+        completion.get("improvement_approval") != expected
+        or parse_source(body) != source
+    ):
+        return False
+    try:
+        approved(candidate, source, target, body)
+    except ValueError:
+        return False
+    return True
+
+
 def status(session: ParentSession) -> list[dict[str, Any]]:
     result = []
     for fixed_key, row in candidates(session).items():
@@ -639,15 +673,16 @@ def status(session: ParentSession) -> list[dict[str, Any]]:
         )
         owner = session.store.parents.get(f"{session.gh.repo.casefold()}#{target}", {})
         completion = owner.get("completion", {})
-        binding = completion.get("improvement_approval", {})
-        accepted = completion.get("state") == "completed" and all(
-            binding.get(k) == v
-            for k, v in {
-                "parent": source.parent,
-                "key": source.key,
-                "revision": row["revision"],
-                "issue": target,
-            }.items()
+        accepted = (
+            target is not None
+            and completion.get("state") == "completed"
+            and completion_applies(
+                completion,
+                source,
+                row,
+                target,
+                session.gh.issue(target).get("body") or "",
+            )
         )
         execution = execution_status(session, target, owner, accepted=accepted)
         decisions = row["decisions"]

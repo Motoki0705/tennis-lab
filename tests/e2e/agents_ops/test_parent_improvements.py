@@ -681,3 +681,27 @@ def test_approval_waits_for_supplement_and_material_changes_need_a_new_decision(
             ok=False,
         ).stderr
     )
+
+
+def test_preamble_requirement_change_invalidates_existing_authorization(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    record(p)
+    publish(p)
+    approval = json.loads(decide(p, "approve").stdout)["decision_id"]
+    source_finished(p)
+    p.cli("register", parent="10")
+    p.cli("agree", "--improvement-approval", approval, parent="10")
+    state = p.state()
+    marker, remaining = state["issues"]["10"]["body"].split("\n", 1)
+    state["issues"]["10"]["body"] = (
+        marker + "\n\n追加で未処理の動画100本も処理する。\n" + remaining
+    )
+    p.save(state)
+    denied = p.cli("agree", "--improvement-approval", approval, parent="10", ok=False)
+    assert (
+        "requirements changed" in denied.stderr and "I-1-result-access" in denied.stderr
+    )
+    assert json.loads(p.cli("status", parent="10").stdout)["tasks"] == {}

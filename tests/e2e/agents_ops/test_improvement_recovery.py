@@ -260,13 +260,13 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
         assert set(current.row["dispatch"]["jobs"]) == set(before["dispatch"]["jobs"])
 
 
-def test_completed_first_generation_does_not_authorize_the_next(
-    parent_env: ParentEnv,
+def approved_gate(
+    p: ParentEnv,
     monkeypatch: pytest.MonkeyPatch,
-) -> None:
+    variant: str | None = None,
+) -> tuple[GateEnv, str]:
     from tests.e2e.agents_ops.test_merge_gate import make_gate_env
 
-    p = parent_env
     original_agree = p.agreed
     first_approval = []
 
@@ -316,7 +316,16 @@ def test_completed_first_generation_does_not_authorize_the_next(
         p.cli("agree", "--improvement-approval", approval)
 
     monkeypatch.setattr(p, "agreed", agreed_improvement)
-    g = make_gate_env(p, monkeypatch)
+    g = make_gate_env(p, monkeypatch, variant)
+    return g, first_approval[0]
+
+
+def test_completed_first_generation_does_not_authorize_the_next(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    p = parent_env
+    g, first_approval = approved_gate(p, monkeypatch)
     p.cli(
         "record-result",
         "--child",
@@ -352,7 +361,7 @@ def test_completed_first_generation_does_not_authorize_the_next(
     second = str(result["issue"])
     p.cli("register", parent=second)
     denied = p.cli(
-        "agree", "--improvement-approval", first_approval[0], parent=second, ok=False
+        "agree", "--improvement-approval", first_approval, parent=second, ok=False
     )
     assert "pending" in denied.stderr
     status = json.loads(p.cli("status").stdout)
@@ -361,6 +370,90 @@ def test_completed_first_generation_does_not_authorize_the_next(
         and status["completion"]["acceptance"] == "completed"
     )
     assert status["improvements"][0]["human_decision"] == "pending"
+    assert len(g.merge_calls()) == len(g.review.calls()) == 1
+
+
+def test_reapproved_requirements_do_not_inherit_previous_acceptance(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    p = parent_env
+    g, first_approval = approved_gate(p, monkeypatch, "parent_self")
+    merged = g.cli("merge")
+    assert merged.returncode == 0, merged.stderr
+    p.cli(
+        "workflow-report",
+        "--spec",
+        p.spec(
+            {
+                "schema_version": 2,
+                "state": "completed",
+                "finish": finish_for(p),
+                "reason": "元の条件を受け入れた。",
+                "resume_condition": "完了。",
+                "evidence": "元の条件についてPR #100 のレビュー・mergeと結果を確認。",
+            }
+        ),
+    )
+    saved = json.loads(p.cli("status").stdout)["completion"]["record"]
+    assert saved["improvement_approval"]["decision_id"] == first_approval
+    assert (
+        json.loads(p.cli("status", parent="2").stdout)["improvements"][0]["execution"]
+        == "accepted"
+    )
+
+    state = p.state()
+    state["issues"]["1"]["body"] = state["issues"]["1"]["body"].replace(
+        "\n\n", "\n\n\n"
+    )
+    p.save(state)
+    assert (
+        json.loads(p.cli("status", parent="2").stdout)["improvements"][0]["execution"]
+        == "accepted"
+    )
+    policy = importlib.import_module("parent.policy")
+    body = state["issues"]["1"]["body"]
+    state["issues"]["1"].update(
+        body=policy.replace_section(
+            body,
+            "全体の完了条件",
+            policy.raw_section(body, "全体の完了条件")
+            + "\n- [ ] 新しい形式の結果も取得できる。",
+        ),
+        state="open",
+        state_reason="reopened",
+    )
+    p.save(state)
+    changed = json.loads(p.cli("status", parent="2").stdout)["improvements"][0]
+    response = p.cli(
+        "improvement-decide",
+        "--candidate",
+        "I-2-first",
+        "--action",
+        "approve",
+        "--spec",
+        p.spec(
+            decision_spec(
+                previous=first_approval,
+                request="expanded-requirements",
+                quote="追加の受入条件を含めた範囲で実行してください。",
+            )
+        ),
+        parent="2",
+    )
+    renewed = json.loads(response.stdout)["decision_id"]
+    p.cli("agree", "--improvement-approval", renewed)
+    current = json.loads(p.cli("status", parent="2").stdout)["improvements"][0]
+    assert (
+        current["revision"] == 1 and current["decision_id"] == renewed != first_approval
+    )
+    assert current["execution"] == "not_started"
+    assert changed["execution"] != "accepted"
+    target = json.loads(p.cli("status").stdout)["completion"]
+    assert target["record"] == saved and target["acceptance"] == "unverified"
+    assert saved["finish_sha256"] in "\n".join(
+        c["body"] for c in p.state()["comments"]["1"]
+    )
     assert len(g.merge_calls()) == len(g.review.calls()) == 1
 
 

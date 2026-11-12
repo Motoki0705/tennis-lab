@@ -13,10 +13,11 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from .format import _scan_markdown, parse_sections, raw_section
+from .format import _scan_markdown, parse_sections, raw_preamble, raw_section
 
 EVENT_PREFIX = "<!-- parent-improvement:v1 "
 SOURCE_PREFIX = "<!-- parent-improvement-source:"
+PREAMBLE_KEY = "_preamble"
 PROGRESS = frozenset(
     {
         "子タスクのチェックリスト",
@@ -140,10 +141,12 @@ def index_sources(rows: Iterable[tuple[int, str]]) -> dict[ImprovementSource, in
 def contract(body: str) -> dict[str, str]:
     """Only known progress and whitespace changes are presentation changes.
 
-    Unknown sections, links, numbers, exclusions and stop conditions remain
+    Preamble, unknown sections, links, numbers, exclusions and stop conditions remain
     protected. This is not a natural-language equivalence classifier.
     """
     sections = parse_sections(body)
+    if PREAMBLE_KEY in sections:
+        raise ValueError("reserved approval contract heading: " + PREAMBLE_KEY)
 
     def normalize(content: str) -> str:
         # Keep fenced examples byte-sensitive: indentation/quoted spaces can be
@@ -170,11 +173,20 @@ def contract(body: str) -> dict[str, str]:
             parts.append(re.sub(r"\s+", " ", "\n".join(prose)).strip())
         return "\n".join(parts).strip()
 
-    return {
+    result = {
         heading: normalize(raw_section(body, heading))
         for heading in sections
         if heading not in PROGRESS
     }
+    preamble = raw_preamble(body)
+    if parse_source(body) is not None:
+        # Only the source marker is metadata. Other text, including supplement
+        # details and fenced examples, remains part of the approved requirements.
+        preamble = preamble.partition("\n")[2]
+    normalized = normalize(preamble)
+    if normalized:
+        result[PREAMBLE_KEY] = normalized
+    return result
 
 
 def validate_spec(value: Any) -> dict[str, Any]:
