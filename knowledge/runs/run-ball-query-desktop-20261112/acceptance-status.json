@@ -1,34 +1,32 @@
 {
-  "status": "startup_acceptance_pending_worker_runtime_exit",
-  "production_started": false,
+  "status": "startup_accepted",
+  "complete": true,
+  "accepted_at": 1794494995.8657606,
+  "scope": "desktop resume startup; final12k evaluation and research comparison remain pending",
+  "production_started": true,
   "production_scheduled": true,
   "systemd_unit": "tennis-i1899-length-desktop-a1.service",
   "systemd_pid": 1557549,
   "systemd_parent_pid": 278,
-  "minimum_host_available_bytes": 17317019648,
-  "host_total_bytes": 25200631808,
-  "host_total_minus_available_peak_bytes": 7883612160,
-  "probe_seconds_steady": 0.7977422689982632,
-  "remaining_updates": 6500,
-  "remaining_train_only_seconds_estimate": 5185.324748488711,
-  "estimate_excludes": [
-    "input verification",
-    "compilation",
-    "fixed validation",
-    "Drive publication and independent readback"
-  ],
+  "queue_id": "0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1",
+  "source_commit": "929ad65645c1c7522e8921f1b439619d636a0128",
+  "adapter_training_commit": "eda5ee08073da498347d411e075905f4ac94e25e",
+  "acceptance": "startup-acceptance.json",
+  "stage1_terminal_update": 6000,
+  "stage2_accepted_update": 628,
+  "cnn_unfreeze_update": 601,
   "cpu_tests": {
     "frozen_passed": 10,
-    "adapter_passed": 7
+    "adapter_passed": 7,
+    "real_artifact_startup_checker": "passed"
   },
+  "periodic_training_monitoring_after_acceptance": false,
+  "remaining": [
+    "finish second stage6000",
+    "terminal fixed validation and full Drive publication/readback",
+    "four-condition comparison and knowledge results"
+  ],
   "validator_requested": 0,
   "validator_attempted": 0,
-  "validator_completed": 0,
-  "remaining": [
-    "production actual launch",
-    "first resumed update model/AdamW/RNG/sample/LR finite audit",
-    "stage1 6000 checkpoint Drive save and independent readback",
-    "stage2 startup and optional CNN unfreeze601"
-  ],
-  "time": 1794492020.618484
+  "validator_completed": 0
 }

@@ -1,0 +1,133 @@
+{
+  "schema": "ball_query_desktop_startup_acceptance_summary.v1",
+  "complete": true,
+  "accepted_at_utc": "2026-11-12T14:49:55.865761+00:00",
+  "scope": "startup only; full12k/4-condition comparison pending",
+  "fixed_training_commit": "929ad65645c1c7522e8921f1b439619d636a0128",
+  "adapter_training_commit": "eda5ee08073da498347d411e075905f4ac94e25e",
+  "queue_id": "0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1",
+  "resource": "all",
+  "trainer": {
+    "pid": 1594405,
+    "ppid": 1594280,
+    "pgid": 1594280
+  },
+  "service": "tennis-i1899-length-desktop-a1.service",
+  "service_pid": 1557549,
+  "service_ppid": 278,
+  "initial_resume": {
+    "update": 5500,
+    "sample_position": 15500,
+    "model_exact": true,
+    "AdamW_exact": true,
+    "RNG_exact": true,
+    "first_update": 5501,
+    "first_head_lr": 4.2035650616334327e-05,
+    "first_encoder_lr": 4.2035650616334325e-06
+  },
+  "first_stage": {
+    "update": 6000,
+    "sample_position": 16000,
+    "baseline_pack_teacher_augmentation_exact": true,
+    "validation_frames": 128668,
+    "observed_position_teachers": 85473,
+    "validation_identities": {
+      "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+      "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+      "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec"
+    },
+    "snapshot": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00006000-398d9150",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/query_controls/s42-20261111-main/desktop-attempts/20261112-a1/production/length-s1-T64/checkpoint-00006000-398d9150",
+      "manifest_sha256": "54b4ea70e678b88bcecabc994b966d697c682ee0276c9a4c74d46ab1f9821122",
+      "manifest_md5": "7f84b585761caeeb8e172dfb39e673b9",
+      "files": 10,
+      "size_bytes": 225462536,
+      "marker_id": "1-CIprVK9-qIpnOnoKiUvheIMf9PgEzBS",
+      "seconds": 65.27492888199777,
+      "status": "verified"
+    },
+    "independent_readback": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00006000-398d9150",
+      "status": "verified",
+      "files": 10,
+      "manifest_sha256": "54b4ea70e678b88bcecabc994b966d697c682ee0276c9a4c74d46ab1f9821122",
+      "seconds": 46.508177363997675
+    },
+    "full_state_equal": true
+  },
+  "second_stage": {
+    "accepted_update": 628,
+    "model_keys_exact": 205,
+    "new_keys": 0,
+    "AdamW_states_exact": 201,
+    "first_sample": 16001,
+    "first_head_lr": 3.729690081136307e-05,
+    "first_encoder_lr": 0.0,
+    "checkpoint500_encoder_tensors_unchanged": 116,
+    "checkpoint500_encoder_AdamW_states_unchanged": 116,
+    "checkpoint500_query_AdamW_step": 6500,
+    "unfreeze_rows": [
+      {
+        "update": 600,
+        "encoder_frozen": true,
+        "learning_rate": 3.162704782865207e-05,
+        "encoder_learning_rate": 0.0,
+        "loss": 0.00548968491229144,
+        "gradient_norm": 0.43647873401641846
+      },
+      {
+        "update": 601,
+        "encoder_frozen": false,
+        "learning_rate": 3.161766032223689e-05,
+        "encoder_learning_rate": 3.161766032223689e-06,
+        "loss": 0.02046898745355152,
+        "gradient_norm": 0.9668478965759277
+      }
+    ]
+  },
+  "resources": {
+    "peak_training_allocated_bytes": 11194680320,
+    "peak_training_reserved_bytes": 11989417984,
+    "trainer_peak_rss_bytes": 4556832768,
+    "minimum_host_available_bytes": 13355917312
+  },
+  "speed": {
+    "median_unfrozen_update_seconds": 0.7228031739978178,
+    "measurement_source": "second_stage_unfrozen_updates_after_601",
+    "updates_remaining": 5372,
+    "training_only_seconds_remaining": 3882.898650716277,
+    "excludes": "future checkpoint publication/readback, fixed terminal validation, compilation",
+    "reference_checkpoint_publish_and_readback_seconds": 111.78310624599544,
+    "future_snapshot_events_estimate_including_completed": 12,
+    "rough_total_seconds_remaining": 5971.1159730467625,
+    "estimate_method": "accepted628: unfrozen median * remaining updates + future checkpoint/completed events * observed first6000 publish+readback + observed first validation duration; network and compilation vary"
+  },
+  "adapter_sources_drive_verified": {
+    "complete": true,
+    "files": 25,
+    "bytes": 91057,
+    "source": "outputs/ball_detection/train/query_controls/s42-20261111-main/desktop-attempts/20261112-a1/documentation/production-start-v1",
+    "source_id": "1UrtWc-5gFXkwl6WxXpzHQ1zFH6rVdys2",
+    "all_adapter_python_sources_match": {
+      "rebuild_dataset.py": true,
+      "service.py": true,
+      "verify_dataset.py": true,
+      "desktop.py": true,
+      "accept_startup.py": true,
+      "test_desktop.py": true
+    },
+    "expected_manifest_sha256": "dd55f431d9578a1f7573ed0606855a9c8af6c75e138d7ab942a9374c926547ad",
+    "independent_readback": "outputs/ball_detection/train/query_controls/desktop-resume-20261112/production-start-independent-readback",
+    "verified_at": 1794493696.6039553
+  },
+  "details": "startup-acceptance.json",
+  "details_sha256": "f2881c9116bb0e107ce2aec17640e731383c0841974a2d66118a956b05b8cd1e",
+  "periodic_training_monitoring": false,
+  "terminal_event_root": "notifications/",
+  "validator_requested": 0,
+  "validator_attempted": 0,
+  "validator_completed": 0
+}

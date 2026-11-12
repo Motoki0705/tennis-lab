@@ -1,7 +1,8 @@
 # 系列長条件のデスクトップ継続
 
-データ・固定環境・実GPU更新の継続可否は確認できた。本番は実装worker runtimeの
-終了待ちで、まだ開始していない。最初の周期checkpointと後半開始による起動受入は未完了。
+データ・固定環境・実GPU更新の継続可否を確認し、本番を再開した。2026-11-12 14:49 UTCに、
+前半6kの固定validation・Drive保存・独立readback、後半開始と600→601のCNN解除を受け入れた。
+学習はsystemd配下で継続し、受入検査processは終了した。query累積12kの終端評価・全4条件比較は残る。
 
 対象は [#1899](https://github.com/Motoki0705/tennis-lab/issues/1899) の③だけ。
 ①・②の12k学習と旧基準は再実行しない。固定実験sourceをdetached worktree
@@ -37,6 +38,10 @@ BF16、default compile、nvJPEG、image prefetch、4 workers、128frames/update�
 microbatch_windows=1、seed42、モデル・teacher・augmentation・AdamW・LR曲線を保つ。
 各段600更新までCNN凍結、解除後のCNN LRはheadの0.1倍、offsetは0→6,000。
 
+実際に環境復元に使ったuvは0.13.7。元のuv0.11.3はPython3.11.17を取得できなかった。
+cwdを固定sourceにし、`UV_PROJECT_ENVIRONMENT="$ROOT/env" "$ROOT/tools/uv" sync --locked --no-install-project --python 3.11.17`
+で専用envを作成した。固定lockは元の `inputs/inputs-v1/uv.lock` とsource bundleから復元できる。
+
 `desktop.py prepare` は元manifestのdata rootだけをローカルへ移し、派生した2つのmanifest digestと
 checkpoint recipeの対応3fieldをコピー上で変更する。元checkpointは保持する。
 全model・AdamW・schedule・RNG・sample・残るmetadataの再帰一致を確認し、`relocation.json` に記録する。
@@ -58,6 +63,8 @@ probe失敗時は自動再試行しない。
 `outputs/ball_detection/train/query_controls/desktop-resume-20261112/`。
 `progress.json`、`dataset-verified.json`、`relocation.json`、`probe-acceptance.json`、
 `production-status.json`、`production-host-memory.json`、`production/readback-receipts/` を参照する。
+実command・環境・source・テストは `documentation/production-start-v1/` の25ファイルを
+Driveから別directoryへ復元して検証した。起動後の受入は `startup-acceptance.json` に記録する。
 
 実probeでは5,501・5,502更新が成功し、両行のpack・教師・拡張・LRが旧基準に一致した。
 model・AdamW・RNGを完全復元し、loss・勾配も有限。allocated peak 10,581,860,352 bytes
@@ -66,6 +73,40 @@ host availableの最小値は17,317,019,648 bytes（16.13 GiB）、trainer自身
 最初の更新はcompile込み159.57秒、次は0.798秒（160.45 frames/s）。
 この1つの定常更新からの単純見積りは残り6,500更新で約86分だが、
 固定validation・再検証・compile・保存時間は別に必要。最終速度や完了時刻を保証する測定ではない。
+
+## 本番の起動受入
+
+親の照合用の小さな記録は [startup-acceptance-summary.json](startup-acceptance-summary.json)、
+実ログ・receipt・全指標の詳細は [startup-acceptance.json](startup-acceptance.json)。旧基準との全log行、
+validationのtarget/teacher/scored frame identity、Driveから復元した全model・AdamW・RNG・schedule・
+sample・log・manifestの一致を検査した。後半628更新の時点で受入を記録している。
+
+| 実ログの位置 | head LR | CNN LR | CNN凍結 |
+|---|---:|---:|---|
+| 前半の再開5,501 | 4.2035650616e-5 | 4.2035650616e-6 | 解除済み |
+| 前半6,000 | 3.7306405354e-5 | 3.7306405354e-6 | 解除済み |
+| 後半1 | 3.7296900811e-5 | 0 | あり |
+| 後半600 | 3.1627047829e-5 | 0 | あり |
+| 後半601 | 3.1617660322e-5 | 3.1617660322e-6 | 解除 |
+
+後半はmodel 205 keys・named AdamW 201件・sample位置16,000を継承し、新規model keyは0件。
+後半500更新の独立readbackでは、CNNの116 tensorとAdamW116件が前半終端から不変、
+queryのAdamW85件がstep6,500であることも確認した。601更新はloss 0.020469・grad norm 0.966848で有限。
+再開時は全RNGを復元し、新段の境界は旧基準のseed42構築を維持した。
+
+前半6kの周期snapshotは10 files / 225,462,536 bytes。Drive公開65.27秒・独立readback46.51秒。
+completed世代と後半500の周期snapshotも保持する。固定validationは128,668 frames、observed85,473で
+旧基準とidentityが一致した。前半6kの途中評価は平均33.92・中央値11.25・P95 140.27 px、20px以内70.32%。
+最終12kの比較は後半完了後に行う。
+
+デスクトップの学習step peakはallocated10.43 / reserved11.17 GiB、trainer自身のpeak RSSは4.24 GiB、
+host available最小12.44 GiB。後半のCNN解除後の定常更新medianは0.723秒だった。
+受入時点の残り5,372更新は演算だけで約65分。前半のvalidationとsnapshot公開/readbackの実測を
+将来の保存回数へ代入した概算は約100分で、保存先速度や追加compileで変動する。
+
+受入後は定期的な学習進捗確認を終了し、serviceのterminal eventだけを残す。
+実行中のjob・source・command・環境・Drive復元先は [production-provenance.json](production-provenance.json) と
+[production-start-acceptance.json](production-start-acceptance.json) に固定した。
 
 ## 実行と状態確認
 
@@ -102,8 +143,8 @@ systemdの`service.py wait-and-serve`が当該runtimeの終了をpidfdイベン�
 旧probe PGIDの消滅を証明してから本番を共有queueへ登録する。
 `deferred-launch.json` が待機／登録の正本、`production-registration.json` が実際のqueue ID。
 登録失敗や残存PGIDでは停止し、自動再試行しない。
-このworkerターン内では本番開始と安定条件は未確認であり、親が同じworker sessionへ
-継続指示を送り、本番の最初の更新・6,000保存とreadback・後半開始を照合する必要がある。
+旧runtimeの停止・cleanup後に旧PGIDが消滅し、serviceが一度だけ本番を登録した。
+継続ターンでは同じjobを受け入れ、新規probeや再投入をしていない。
 
 保存先は既存Colab履歴と別の、Drive root相対
 `outputs/ball_detection/train/query_controls/s42-20261111-main/desktop-attempts/20261112-a1/`。
@@ -115,4 +156,6 @@ systemdの`service.py wait-and-serve`が当該runtimeの終了をpidfdイベン�
 失敗・VM/host消失後は自動再開しない。最新のverified receiptを選び、既存writerの不在、
 source・入力・状態・原因を確認したうえで、新attemptへfull-stateを復元する。
 `desktop.py` の初回入口は意図的に再実行を拒否するので、既存attemptを消して使い回さない。
+[復元と再開の手順](recovery.md)に、CPUだけのsnapshot復元コマンドと照合条件を示す。
+稼働中のadapter worktree・固定source・dataset・専用envは終了イベントまで保持する。
 merge・Issue close・全4条件比較の確定はこの起動作業には含めない。

@@ -11,3 +11,9 @@ systemd側でruntime終了イベントをpidfdで待ってから登録する。
 実子process・pipe・pidfdを使うCPUテストで、process終了前にはqueue登録しないこと、
 終了後のcwd・all予約・冪等keyを確認する。terminal eventはqueueのdone/failedを
 根拠とし、Drive通知失敗を成功にせず自動再試行しないことを小さなfixtureで検証する。
+
+本番の起動受入は固定runnerの実成果物を入力に検証する。旧基準との全log行照合、
+6k validationのteacher/frame identity、checkpoint・named AdamW・RNG・sampleの
+独立readback一致、後半1/600/601の実LRとfreezeを検査する。
+件数だけの一致やreceiptの存在だけでは合格にしない。待機はinotify/pidfdで行い、
+指定の受入点または失敗・process終了で検査processを終了する。
