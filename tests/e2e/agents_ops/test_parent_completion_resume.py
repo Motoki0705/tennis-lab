@@ -318,12 +318,16 @@ def test_labelled_parent_recovers_completion_with_or_without_a_worker(
     assert flow.control.claim("o/r#1", resumed["id"]) is not None
     flow.accept(resumed)
     p.announce_completion()
+    from tests.support.agents_ops.improvements import finish_for
+
+    acceptance = finish_for(p, state_dir=flow.control.store.directory)
     with flow.control.store.locked():
         result = importlib.import_module("parent.development").report(
             flow.session,
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": acceptance,
                 "reason": "親自身の成果を再照合した。",
                 "resume_condition": "完了。",
                 "evidence": "対象HEADのCI・正式レビュー・merge journal・受入証拠と実行終了を確認した。",
@@ -384,12 +388,16 @@ def test_closed_standalone_parent_resumes_same_session_and_finishes(
     development = importlib.import_module("parent.development")
     assert len(flow.row()["dispatch"]["jobs"]) == len(row["dispatch"]["jobs"])
     p.announce_completion()
+    from tests.support.agents_ops.improvements import finish_for
+
+    acceptance = finish_for(p, state_dir=control.store.directory)
     with control.store.locked():
         result = development.report(
             flow.session,
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": acceptance,
                 "reason": "実merge/closeと全体受入を照合した。",
                 "resume_condition": "完了。追加要件は別issueで扱う。",
                 "evidence": "同じ親が保存済みのレビュー・検証・終了を再確認した。",

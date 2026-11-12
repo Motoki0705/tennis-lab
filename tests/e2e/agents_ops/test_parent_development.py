@@ -31,6 +31,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     review_policy_module,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.improvements import finish_for
 from tests.support.agents_ops.worker_preflight import completed_implementation
 
 
@@ -156,8 +157,9 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
                 mod.report(
                     session,
                     {
-                        "schema_version": 1,
+                        "schema_version": 2,
                         "state": "completed",
+                        "finish": {},
                         "reason": "子が成功を報告",
                         "resume_condition": "完了",
                         "evidence": "exit 0",
@@ -1133,8 +1135,9 @@ def test_completed_parent_distinguishes_confirmed_cancellation_from_success(
         "--spec",
         p.spec(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": finish_for(p),
                 "reason": "全体受入を確認した。",
                 "resume_condition": "完了。追加要件は別途判断。",
                 "evidence": "実merge/closeと取消理由・引継ぎ先を照合した。",
@@ -1198,8 +1201,9 @@ def test_cancellation_confirmation_never_hides_unresolved_work(
             "--spec",
             p.spec(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "state": "completed",
+                    "finish": {},
                     "reason": "取消だけ。",
                     "resume_condition": "要件を再判断する。",
                     "evidence": "実装完了はない。",
@@ -1320,8 +1324,9 @@ def test_workflow_report_rejects_duplicate_json_and_empty_parent_completion(
         "--spec",
         p.spec(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": {},
                 "reason": "完了",
                 "resume_condition": "なし",
                 "evidence": "全体確認した",
@@ -1372,8 +1377,9 @@ def test_completed_report_requires_gate_real_merge_close_and_parent_verification
         "--spec",
         p.spec(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": finish_for(p),
                 "reason": "受入と実merge/closeを確認した。",
                 "resume_condition": "完了。追加要件は別途判断。",
                 "evidence": "全体の受入条件をdiffとテストで確認。PR #100 の実mergeとissue closeを照合。",

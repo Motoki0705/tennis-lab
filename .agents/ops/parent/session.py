@@ -91,7 +91,14 @@ def visible_task(task: dict[str, Any], private_paths: set[str]) -> dict[str, Any
     return {
         key: redact(value)
         for key, value in task.items()
-        if key not in {"worker_runs", "model_reason", "preflight", "launch_failures"}
+        if key
+        not in {
+            "worker_runs",
+            "model_reason",
+            "preflight",
+            "launch_failures",
+            "manual_launcher",
+        }
     } | (
         {"worker_phase": worker_preflight.summary(task)}
         if task.get("delegated")
@@ -248,6 +255,8 @@ class ParentSession:
             "proposal_receipts": proposals.receipts(history),
             "proposal_agreements": proposals.agreed_receipts(history),
             "input_changes": execution.input_changes(self),
+            "improvements": self.improvement_status(),
+            "completion": self.completion_status(),
             "execution_basis": next(
                 (
                     e["basis"]
@@ -272,6 +281,16 @@ class ParentSession:
                 "public_recorded": public_state is not None,
             }
         ]
+
+    def improvement_status(self) -> list[dict[str, Any]]:
+        from .improvements import status
+
+        return status(self)
+
+    def completion_status(self) -> dict[str, Any]:
+        from .completion import status
+
+        return status(self)
 
     def lifecycle(self, action: str, note: str) -> dict[str, Any]:
         row = self.row
@@ -441,14 +460,32 @@ class ParentSession:
 
     def agree(
         self,
-        agreement: dict[str, Any],
+        agreement: dict[str, Any] | None,
         report: int | None = None,
         pid: str | None = None,
+        improvement_approval: str | None = None,
     ) -> dict[str, Any]:
         self.owner()
         from .supplement import require_final
 
         require_final(self.gh, self.parent)
+        from . import improvements
+
+        binding = improvements.require(self)
+        if improvement_approval is not None:
+            if agreement is not None or report is not None or pid is not None:
+                raise ValueError(
+                    "use an improvement approval reference without a second agreement spec"
+                )
+            agreement, binding = improvements.agreement(self, improvement_approval)
+        elif binding is not None:
+            raise ValueError(
+                "agree requires --improvement-approval; a generic agreement cannot bypass the candidate decision"
+            )
+        if agreement is None:
+            raise ValueError(
+                "agreement spec or improvement approval reference is required"
+            )
         if (report is None) != (pid is None):
             raise ValueError("proposal agreement requires both --report and --proposal")
         fields = {"purpose", "scope", "behavior", "acceptance", "human_confirmation"}
@@ -488,6 +525,12 @@ class ParentSession:
         else:
             if phase(history) == "agreed" and last_phase.get("agreement_sha256") == sha:
                 self.agreed()  # Retrying agree must not silently accept new comments.
+                if binding is not None:
+                    from decision_logs.parent_sources import (
+                        improvement_approval as capture_approval,
+                    )
+
+                    capture_approval(self, binding)
                 return self.status()
             from .agreement_comments import snapshot as comment_inputs
 
@@ -500,7 +543,18 @@ class ParentSession:
                         self.gh.issue(self.parent).get("body") or ""
                     )
                 ),
+                "acceptance_snapshot": {
+                    heading: raw_section(
+                        self.gh.issue(self.parent).get("body") or "", heading
+                    )
+                    for heading in ("全体の完了条件", "Acceptance checklist")
+                    if raw_section(
+                        self.gh.issue(self.parent).get("body") or "", heading
+                    )
+                },
             }
+            if binding is not None:
+                event["improvement_approval"] = binding
         titles = {
             "purpose": "目的",
             "scope": "範囲",
@@ -525,6 +579,12 @@ class ParentSession:
             text,
         )
         self.agreed()
+        if binding is not None:
+            from decision_logs.parent_sources import (
+                improvement_approval as capture_approval,
+            )
+
+            capture_approval(self, binding)
         return self.status()
 
     def family(self) -> tuple[Issue, dict[int, Issue]]:
@@ -1028,6 +1088,9 @@ class ParentSession:
         parent, children = self.work_items()
         if child not in children:
             raise ValueError("delegate requires a direct child or the standalone issue")
+        from .improvements import require as require_improvement
+
+        require_improvement(self, child)
         from .adopted_tasks import check_task_adoptions
 
         check_task_adoptions(self.gh, parent.body)
@@ -1284,25 +1347,12 @@ class ParentSession:
             **({"target_conflict": conflict} if conflict else {}),
         }
 
-    def improvement(self, child: int, value: dict[str, Any]) -> dict[str, Any]:
-        self.owner()
-        _, children = self.work_items()
-        if child not in children or set(value) != {"purpose", "evidence", "scope"}:
-            raise ValueError(
-                "improvement requires a direct child and purpose/evidence/scope"
-            )
-        text = "\n\n".join(f"{key}: {nonempty(v, key)}" for key, v in value.items())
-        section = "次の改善候補"
-        current = raw_section(children[child].body, section)
-        if text not in current:
-            self.update_body(
-                child,
-                replace_section(
-                    children[child].body, section, (current + "\n\n" + text).strip()
-                ),
-                children[child].body,
-            )
-        return {"child": child, "recorded": True, "current_scope_changed": False}
+    def improvement(
+        self, child: int | None, value: dict[str, Any], key: str | None = None
+    ) -> dict[str, Any]:
+        from .improvements import record
+
+        return record(self, child, value, key)
 
     def record_result(self, child: int, evidence: str) -> dict[str, Any]:
         self.owner()

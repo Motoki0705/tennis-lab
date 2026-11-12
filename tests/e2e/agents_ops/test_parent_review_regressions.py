@@ -150,7 +150,7 @@ def test_completion_waits_for_parent_publication_then_recovers_once(
     status = json.loads(p.cli("status").stdout)
     assert status["assignment"] == "active"
     assert status["notifications"][0]["state"] == "pending"
-    report = completion_spec(p)
+    report = completion_spec(p, accepted=True)
     refused = p.cli("workflow-report", "--spec", report, ok=False)
     ended = p.cli(
         "release", "--ended", "--note-file", p.note("全体受入後に終了する。"), ok=False

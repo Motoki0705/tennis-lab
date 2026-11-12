@@ -191,7 +191,7 @@ def start_worker(
                 "additional instructions require an undelivered planning decision"
             )
     with session.store.locked():
-        session.owner()
+        session.agreed()
         control = controller(session, directory)
     control.reconcile(parent=session.parent)
     with session.store.locked():
@@ -587,41 +587,54 @@ def verify_completion(session: ParentSession) -> list[int]:
 
 
 def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
+    completed = spec.get("state") == "completed"
     if (
         set(spec)
         != {"schema_version", "state", "reason", "resume_condition", "evidence"}
+        | ({"finish"} if completed else set())
         or type(spec["schema_version"]) is not int
-        or spec["schema_version"] != 1
+        or spec["schema_version"] != (2 if completed else 1)
         or spec["state"] not in {"waiting", "completed", "failed"}
     ):
-        raise ValueError("invalid workflow report schema")
+        raise ValueError(
+            "invalid workflow report schema; completed requires version 2 and structured finish"
+        )
     session.owner()
     for key in ("reason", "resume_condition", "evidence"):
         nonempty(spec[key], key)
     # Validate public text before any result/state mutation.
     session.public(spec)
     prs = verify_completion(session) if spec["state"] == "completed" else []
-    if spec["state"] == "completed":
-        from .notifications import completion
+    completion = None
+    if completed:
+        from .completion import record
+        from .notifications import completion as published_completion
 
-        record = completion(session)
-        if record is None:
+        notice = published_completion(session)
+        if notice is None:
             raise ValueError(
                 "completed requires an explicit completion notification; use notify with key=completion and verified achievements/remaining/artifacts"
             )
+        if spec["finish"].get("state") != "completed":
+            raise ValueError("completed report requires a completed finish")
+        completion = record(session, spec["finish"], prs=prs)
         session.post(
             {
                 "event": "workflow_completed",
-                "completion_ref": record.url,
+                "completion_ref": notice.url,
                 "report_sha256": digest(spec),
             },
-            f"開発workflow: completed\n\n全体の成果・未達・残件: {record.url}\n検証記録: {digest(spec)}",
+            f"開発workflow: completed\n\n全体の成果・未達・残件: {notice.url}\n検証記録: {digest(spec)}",
         )
     else:
         session.note(
             f"開発workflow: {spec['state']}\n\n理由: {spec['reason']}\n\n"
             f"再開条件: {spec['resume_condition']}\n\n受入・検証の証拠:\n{spec['evidence']}"
         )
+    response = {
+        "schema_version": 1,
+        **{k: spec[k] for k in ("state", "reason", "resume_condition")},
+    }
     session.row["development_result"] = {
         "schema_version": 1,
         "report_sha256": digest(spec),
@@ -634,11 +647,18 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
         if spec["state"] == "completed"
         else [],
     }
+    if completion is not None:
+        dispatch = managed(session.row)
+        session.row["development_result"]["completion_receipt"] = {
+            "job": dispatch["active_job"] if dispatch else None,
+            "generation": session.row["generation"],
+            "authorization": authorization(session),
+            "response_sha256": digest(response),
+            "finish_sha256": completion["finish_sha256"],
+        }
     session.store.save()
     session.sync_progress()
-    return {
-        k: spec[k] for k in ("schema_version", "state", "reason", "resume_condition")
-    }
+    return response
 
 
 def refresh_worker_plan(

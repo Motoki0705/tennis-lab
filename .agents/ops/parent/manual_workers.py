@@ -6,13 +6,11 @@ import copy
 import hashlib
 import json
 import re
-import subprocess
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from decision_logs.capture import runtime_environment
 from dispatcher.runtime import Runtime, load
 from lib.agent_settings import implementation_model
 from worker_logs import service as worker_logs
@@ -443,6 +441,7 @@ def run_worker(
 ) -> tuple[int, dict[str, Any]]:
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
+        session.agreed()
         previous_task = copy.deepcopy(current_task(session, child))
         command, delegation, instruction = prepare_run(
             session,
@@ -465,22 +464,11 @@ def run_worker(
         bind_worker_task(session.row["tasks"][str(child)])
     # A foreground runner must not hold a registry or parent operation lock.
     # Bytes in both directions: the runner reads UTF-8 and the locale may not be.
-    try:
-        directory = Path(command[command.index("--run-dir") + 1])
-        proc = subprocess.run(
-            command,
-            input=instruction.encode("utf-8"),
-            capture_output=True,
-            check=False,
-            env=runtime_environment(
-                directory,
-                actual_operation="continue_ai"
-                if command[1] == "resume"
-                else "start_ai",
-            ),
-        )
-    except OSError as exc:
-        proc = subprocess.CompletedProcess(command, 127, b"", str(exc).encode("utf-8"))
+    from .improvement_runtime import execute_manual
+
+    proc = execute_manual(
+        gh, store, parent, identity, child, command, instruction, delegation
+    )
     code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
     directory = Path(command[command.index("--run-dir") + 1])
     if code in {2, 127} and not directory.exists():
@@ -516,6 +504,9 @@ def run_worker(
                 "delegation_id": delegation,
                 "evidence": "Common runner rejected this attempt before creating a runtime; no worker started.",
             }
+            for field in ("stopped", "last_status", "last_operation"):
+                if field in current:
+                    previous_task[field] = current[field]
             session.row["tasks"][str(child)] = previous_task
             store.save()
         log_result = worker_logs.reject_unstarted(log_path)
@@ -566,6 +557,8 @@ def run_worker(
             ):
                 raise ValueError("worker reservation changed during execution")
             runner_ended(session, child)
+            current.pop("manual_launcher", None)
+            store.save()
     log_result = worker_logs.finish_manual(
         log_path, Path(command[command.index("--run-dir") + 1]), RUNNER
     )

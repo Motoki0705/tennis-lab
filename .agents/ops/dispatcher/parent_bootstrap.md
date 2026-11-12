@@ -28,7 +28,9 @@
    自動再レビュー・別session・無制限の修正で停止を回避しない。
    最後に `workflow-report --spec <JSONファイル>` で理由・再開条件・検証証拠を保存し、その出力を最終文にする。
    completedの前に、全体の成果・未達/残件・成果物を固定completion通知へ記録する。
-   completedは実merge/close・gateの試行記録・現在の根拠/要件・親の確認と子の終了を再検査した場合だけ返る。
+   completedの入力はversion 2と構造化finishを使う。合意時の全受入項目と次回改善を分け、候補なしも明示する。
+   実merge/close・gateの試行記録・現在の根拠/要件・親の確認と子の終了を再検査した場合だけ返る。
+   schemaはparent/development_workflow.mdとparent/improvements.mdを参照する。手書きのcompleted最終JSONで代替しない。
    CI待ち・情報不足・権限不足はwaiting、実行失敗はfailedにして、証拠と再開条件を証拠用Issueへ残す。
    担当終了は最終イベントを確認したsupervisorが行うため、生存中の親から `release --ended` しない。
    自由文の進捗・理由は `note --body-file` で証拠へ保存する。親Issueへの通知はparent-session skillの基準で

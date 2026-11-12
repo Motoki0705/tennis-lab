@@ -25,6 +25,9 @@ issueと会話から自分で作り、全角12文字（24桁）以内に収め�
 人間の判断が必要な不足だけを質問し、実行権限を起票・担当指定・自律根拠から捏造しない。
 dispatcherから起動した親は、予約を `accept` して[開発workflow](../../ops/parent/development_workflow.md)を使う。
 人間合意と自律判断は、それぞれ元の出典を保持する。
+終了時改善から作られた親は、専用の人間判断を `agree --improvement-approval` へ取り込む。
+担当登録は議論のために可能だが、元親の合意・ラベル削除・自己採用・自律根拠を実行承認の代わりにしない。
+判断記録・承認の保証範囲と再送手順は [終了時改善](../../ops/parent/improvements.md#人間判断と実行)を参照する。
 
 ## 親が判断すること
 
@@ -105,7 +108,12 @@ merge後の確認が残れば同じworkerへ続けて依頼する。issueのclos
 
 mergeは有効な権限と [merge gate](../../ops/review/README.md#merge-gate)の条件が揃った対象から行う。
 対象コード・CI・レビューの照合を省略しない。条件不足ならそのmergeを保留し、独立作業を進める。
-merge後のCIと全体の受入条件を確認し、完了根拠と残課題を報告して担当を終了する。
+merge後のCIと全体の受入条件を確認する。今回の受入結果と次回改善を分け、
+[構造化finish](../../ops/parent/improvements.md#今回の受入と候補整理)を手動の `release --ended --spec` または自律の `workflow-report` へ渡す。
+未達の受入条件を改善へ移してcompletedにしない。候補なしも明示し、noteだけの担当終了を受入済みと報告しない。
+次回改善は `improvement` に安定keyで記録し、子で発見した場合だけ `--child` を付ける。
+独立した新親の起票は `improvement-publish`、実行承認・保留・見送り・撤回は `improvement-decide` を明示する。
+候補整理から再帰的に起票せず、次世代にも新たな人間判断を求める。元親の完了を改善の判断待ちへ戻さない。
 
 ## 保留・失敗から進める
 

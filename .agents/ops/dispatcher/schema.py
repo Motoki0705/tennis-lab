@@ -126,6 +126,25 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
         snapshot["repo"], n, snapshot["publisher"], raw["comments"]
     ).session_events()
     facts = []
+    from issues.improvement import approved, parse_source, read_candidates
+
+    improvement = parse_source(raw["body"])
+    if improvement is not None:
+        source = issues.get(str(improvement.parent))
+        if source is None:
+            raise ValueError(
+                "improvement source missing from dispatcher snapshot; recollect"
+            )
+        candidates = read_candidates(
+            source["comments"], improvement.parent, snapshot["publisher"]
+        )
+        candidate = candidates.get(improvement.key)
+        if candidate is None:
+            raise ValueError("improvement source candidate is unavailable")
+        try:
+            approved(candidate, improvement, n, raw["body"])
+        except ValueError as exc:
+            facts.append(str(exc))
     if (
         supplement_state(
             labels, raw["created_at"], snapshot["supplement_enabled_since"]

@@ -1455,6 +1455,7 @@ def test_parent_record_error_without_input_changes_is_fatal(
         ("cancelled_dependency", "dependency_wait", "not_planned"),
         ("closed_unmerged_pr", "existing_owner", "PR #100"),
         ("needs_human", "human_hold", "needs-human"),
+        ("improvement", "human_hold", "I-200-result-access"),
         ("supplement_pending", "human_hold", "supplementはpending"),
         ("checking", "human_hold", "phaseはchecking"),
         ("revoked", "human_hold", "phaseはchecking"),
@@ -1489,6 +1490,35 @@ def test_mechanical_guard_is_exposed_and_enforced(
         ]
     elif blocker == "needs_human":
         h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
+    elif blocker == "improvement":
+        from tests.support.agents_ops.improvements import candidate_spec
+
+        api = importlib.import_module("issues.improvement")
+        source = api.ImprovementSource(200, "result-access")
+        h.gh.issues[200] = issue(200, state="closed", reason="completed")
+        h.gh.issues[1]["body"] = source.marker() + "\n\n" + h.gh.issues[1]["body"]
+        candidate = api.event(
+            source,
+            "candidate",
+            1,
+            None,
+            {"source_issue": 200, "spec": candidate_spec(), "legacy": False},
+        )
+        linked = api.event(
+            source,
+            "published",
+            1,
+            candidate["id"],
+            {"issue": 1, "mode": "created", "draft_sha256": "a" * 64},
+        )
+        h.gh.comment_rows[200] = [
+            {
+                "id": 100 + i,
+                "user": {"login": "operator"},
+                "body": api.render_event(value),
+            }
+            for i, value in enumerate([candidate, linked])
+        ]
     elif blocker == "supplement_pending":
         h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
         h.gh.enabled_since = "2026-10-30T00:00:00Z"

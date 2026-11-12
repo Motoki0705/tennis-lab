@@ -14,7 +14,9 @@ if TYPE_CHECKING:
     from .github import GitHub
 
 Source = Literal["legacy_parent_comment", "evidence_issue"]
-Family = Literal["parent-session", "parent-review", "issue-start-judgement"]
+Family = Literal[
+    "parent-session", "parent-review", "issue-start-judgement", "parent-improvement"
+]
 
 
 class HistoryValidationError(ValueError):
@@ -114,6 +116,15 @@ def _payload(
         return "issue-start-judgement", object_value(
             read_json(line[len(JUDGEMENT_PREFIX) : -4])
         )
+    if line.startswith("<!-- parent-improvement:"):
+        from issues.improvement import EVENT_PREFIX, render_event, validate_event
+
+        if not line.startswith(EVENT_PREFIX) or not line.endswith(" -->"):
+            raise ValueError("unknown or malformed improvement comment")
+        data = validate_event(read_json(line[len(EVENT_PREFIX) : -4]))
+        if data["parent"] != parent or render_event(data) != body:
+            raise ValueError("improvement comment does not match its canonical record")
+        return "parent-improvement", data
     return None
 
 
@@ -274,6 +285,9 @@ def _parse_history(
             )
             if digest(text) != data["body_sha256"]:
                 raise ValueError("notification differs from its evidence record")
+    from issues.improvement import read_candidates
+
+    read_candidates(comments, parent, login)
     return History(
         tuple(sorted(records, key=lambda r: r.comment_id)),
         tuple(diagnostics),

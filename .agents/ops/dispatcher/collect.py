@@ -11,6 +11,7 @@ from typing import Any
 
 from issues import parse_proposal_source, parse_sections, parse_task_metadata
 from issues.evidence import is_evidence_issue, require_work_issue
+from issues.improvement import parse_source as improvement_source
 from issues.supplement_state import read_enabled_since, supplement_state
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
@@ -204,6 +205,8 @@ def _collect(
                 }
             )
         source_reports: set[int] = set()
+        improvement = improvement_source(raw.get("body") or "")
+        improvement_sources = [improvement.parent] if improvement is not None else []
         if not is_container({"labels": labels, "body": raw.get("body") or ""}):
             source = parse_proposal_source(raw.get("body") or "")
             if source is not None:
@@ -237,6 +240,11 @@ def _collect(
             "children": children,
             "dependencies": deps,
             "source_reports": sorted(source_reports),
+            **(
+                {"improvement_sources": improvement_sources}
+                if improvement_sources
+                else {}
+            ),
             "comments": sorted(normalized_comments, key=lambda x: x["id"]),
         }
         supplement_state(
@@ -245,7 +253,13 @@ def _collect(
             enabled_since,
         )
         pending.extend(
-            [*children, *deps, *source_reports, *([parent] if parent else [])]
+            [
+                *children,
+                *deps,
+                *source_reports,
+                *improvement_sources,
+                *([parent] if parent else []),
+            ]
         )
     if seeds is None and any(issues[str(n)]["state"] != "open" for n in subjects):
         raise ValueError("issue listing changed during collection")
@@ -311,6 +325,7 @@ def related(snapshot: Mapping[str, Any], issue: int) -> set[int]:
                 *raw["children"],
                 *raw["dependencies"],
                 *raw["source_reports"],
+                *raw.get("improvement_sources", []),
                 *([raw["parent"]] if raw["parent"] else []),
             ]
         )

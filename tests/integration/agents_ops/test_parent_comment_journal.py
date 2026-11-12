@@ -6,6 +6,7 @@ import copy
 import importlib
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -16,7 +17,7 @@ def setup(tmp_path: Path):
     state = importlib.import_module("parent.state")
     writer = importlib.import_module("parent.record_writer")
     journal = importlib.import_module("parent.comment_journal")
-    gh = FakeGitHub()
+    gh: Any = FakeGitHub()
     gh.evidence_directory = tmp_path / "evidence-issues"
     session = SimpleNamespace(
         gh=gh,
@@ -54,6 +55,8 @@ def verify(session, evidence: int, journal) -> None:
         "parent-review/evidence",
         "notification_record",
         "notification",
+        "completion",
+        "parent-improvement",
     ],
 )
 def test_every_record_family_is_attested_without_a_type_allowlist(

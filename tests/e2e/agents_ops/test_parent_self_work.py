@@ -19,14 +19,16 @@ from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.improvements import finish_for
 
 
-def completion_spec(p: ParentEnv) -> str:
+def completion_spec(p: ParentEnv, *, accepted: bool = False) -> str:
     return str(
         p.spec(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": finish_for(p) if accepted else {},
                 "reason": "受入条件・実merge・close・実行終了を確認した。",
                 "resume_condition": "完了。追加要件は別途判断する。",
                 "evidence": "自身の要件を差分と回帰テストで確認し、PR #100 の対象HEAD・CI・正式レビュー・mergeを照合した。",
@@ -392,7 +394,7 @@ def test_self_result_review_merge_completion_without_creating_children(
     assert merged.returncode == 0, merged.stderr + merged.stdout
     assert p.state()["issues"]["1"]["state_reason"] == "completed"
     p.announce_completion()
-    completed = p.cli("workflow-report", "--spec", completion_spec(p))
+    completed = p.cli("workflow-report", "--spec", completion_spec(p, accepted=True))
     assert json.loads(completed.stdout)["state"] == "completed"
     if task.get("delegated"):
         assert task["preflight"]["accepted_turn_id"] == turn["snapshot"]["turn_id"]
@@ -513,6 +515,6 @@ def test_postmerge_worker_check_requires_parent_acceptance(gate_env: GateEnv) ->
         == checked_turn
     )
     p.announce_completion()
-    accepted = p.cli("workflow-report", "--spec", completion_spec(p))
+    accepted = p.cli("workflow-report", "--spec", completion_spec(p, accepted=True))
     assert json.loads(accepted.stdout)["state"] == "completed"
     assert_no_hierarchy_writes(p)

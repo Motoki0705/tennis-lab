@@ -949,7 +949,9 @@ def test_inherited_lease_and_orphan_recovery_charge_gpu_conservatively(
         assert sample.active_by_stage == {}
         assert not attempt_is_protected(guard, item)
         assert item.plan in retained(guard)
-        assert sample.gpu_charged_seconds == (5 if mode == "orphan" else 2.5)
+        assert sample.gpu_charged_seconds == pytest.approx(
+            5 if mode == "orphan" else 2.5, rel=0, abs=1e-9
+        )
         # A new campaign inherits consumed time from this same budget scope.
         next_plan = make_plan(layout, "next")
         too_much = request(layout, next_plan, "next", stage="gpu", gpu=100.0)

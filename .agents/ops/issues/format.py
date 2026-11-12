@@ -176,6 +176,46 @@ def parse_sections(body: str) -> dict[str, str]:
     return {name: "\n".join(lines).strip() for name, lines in sections.items()}
 
 
+def section_span(body: str, heading: str) -> tuple[int, int] | None:
+    """Use the shared Markdown parser as authority; refuse ambiguous raw editing."""
+    sections = parse_sections(body)
+    if heading not in sections:
+        return None
+    headings: list[tuple[str, re.Match[str]]] = []
+    for match in re.finditer(r"(?m)^## (\S.*?)[ \t]*$", body):
+        try:
+            prefix = parse_sections(body[: match.end()])
+        except ValueError as exc:
+            if str(exc) in {"unclosed code fence", "unclosed HTML comment"}:
+                continue  # Examples/comments do not define an editable section.
+            raise
+        name = next(reversed(prefix), None)
+        if name and (not headings or headings[-1][0] != name):
+            headings.append((name, match))
+    if [name for name, _ in headings] != list(sections):
+        raise ValueError("ambiguous raw Markdown section boundaries")
+    index = list(sections).index(heading)
+    return headings[index][1].end(), headings[index + 1][1].start() if index + 1 < len(
+        headings
+    ) else len(body)
+
+
+def raw_section(body: str, heading: str) -> str:
+    span = section_span(body, heading)
+    return body[span[0] : span[1]].strip() if span else ""
+
+
+def raw_preamble(body: str) -> str:
+    """Retain prose/examples before the first real section, using the same parser."""
+    sections = parse_sections(body)
+    if not sections:
+        return body
+    span = section_span(body, next(iter(sections)))
+    assert span is not None
+    # section_span begins immediately after the header, not at its line start.
+    return body[: span[0]].rpartition("\n")[0]
+
+
 def parent_reference(body: str) -> int | None:
     lines = visible_lines(body)
     references = [
@@ -382,6 +422,11 @@ def validate_body(body: str, *, is_parent: bool, is_child: bool) -> tuple[str, .
     errors: list[str] = []
     try:
         parse_proposal_source(body)
+        from .improvement import parse_source
+
+        improvement = parse_source(body)
+        if improvement is not None and (not is_parent or is_child):
+            errors.append("an improvement proposal must remain an independent parent")
         reference = parent_reference(body)
         if (reference is not None) != is_child:
             errors.append("parent reference must be present only for a child")

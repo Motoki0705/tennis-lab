@@ -248,6 +248,8 @@ if tail == "comments":
     save()
     if os.environ.get("PARENT_FAIL_AFTER_COMMENT") in (n, "any"):
         fail()
+    if os.environ.get("PARENT_FAIL_AFTER_COMMENT_CONTAINING") and os.environ["PARENT_FAIL_AFTER_COMMENT_CONTAINING"] in payload["body"]:
+        fail()
     response(comment, 201)
 if method == "PATCH":
     for k, v in payload.items():
@@ -1672,7 +1674,16 @@ def review_setup(
         state["issues"]["1"].update(
             title="人間が作成した単独タスク",
             labels=[{"name": "bug"}],
-            body="## 目的\n単独タスクを実装する。\n\n## 完了条件\n回帰テストが通る。\n",
+            body="## 目的\n単独タスクを実装する。\n\n## Acceptance checklist\n- [ ] 回帰テストが通る。\n",
+        )
+        p.save(state)
+    else:
+        policy = importlib.import_module("parent.policy")
+        state = p.state()
+        state["issues"]["1"]["body"] = policy.replace_section(
+            state["issues"]["1"]["body"],
+            "全体の完了条件",
+            "- [ ] 各成果の受入と統合結果を確認する。",
         )
         p.save(state)
     p.agreed()
