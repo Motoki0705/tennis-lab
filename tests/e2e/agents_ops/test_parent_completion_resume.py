@@ -13,7 +13,12 @@ import pytest
 
 from tests.e2e.agents_ops.test_dispatcher_supervisor import FixtureRuntime
 from tests.e2e.agents_ops.test_merge_gate import GateEnv, make_gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    evidence_number,
+    run_git,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -311,6 +316,7 @@ def test_labelled_parent_recovers_completion_with_or_without_a_worker(
     resumed = flow.close_and_reserve()
     assert flow.control.claim("o/r#1", resumed["id"]) is not None
     flow.accept(resumed)
+    p.announce_completion()
     with flow.control.store.locked():
         result = importlib.import_module("parent.development").report(
             flow.session,
@@ -376,6 +382,7 @@ def test_closed_standalone_parent_resumes_same_session_and_finishes(
     assert "existing worker" in blocked.stderr
     development = importlib.import_module("parent.development")
     assert len(flow.row()["dispatch"]["jobs"]) == len(row["dispatch"]["jobs"])
+    p.announce_completion()
     with control.store.locked():
         result = development.report(
             flow.session,
@@ -566,9 +573,9 @@ def test_legacy_result_migration_preserves_review_and_completion(
         # accepted/confirmed it: the existing PR is genuinely still in review.
         state = p.state()
         policy = importlib.import_module("parent.policy")
-        state["comments"]["1"] = [
+        state["comments"][str(evidence_number(state))] = [
             comment
-            for comment in state["comments"]["1"]
+            for comment in evidence_comments(state)
             if not any(
                 event.get("event") == "review"
                 and event.get("review_run_id")

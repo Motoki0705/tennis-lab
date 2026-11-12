@@ -75,16 +75,38 @@ def test_explicit_notifications_keep_sources_and_question_state(
     p.cli("register")
     assert not p.state()["comments"].get("1")
     question = notification(p, "question", "resume-training")
+    question["details"]["question"] = (
+        "May [CLI] parent-review:v1 <!-- literal --> resume?"
+    )
     first = json.loads(notify(p, question).stdout)
     assert len(p.state()["comments"]["1"]) == 1
     assert first["url"] in p.state()["issues"]["1"]["body"]
+    assert f"[質問]({first['url']})" in p.state()["issues"]["1"]["body"]
+    assert "&lt;!-- literal --&gt;" in p.state()["issues"]["1"]["body"]
     changed = notification(p, "agreement", "ci-policy")
+    original = "Run CI on every push; parent-session:v1 <!-- original literal -->"
+    changed["details"]["answers"][0]["quote"] = original
     changed["resolves"] = [question["key"]]
     result = json.loads(notify(p, changed).stdout)
     body = p.state()["issues"]["1"]["body"]
     assert "判断待ち: なし" in body
     assert result["url"] in body
     assert "Run CI on every push" in p.state()["comments"]["1"][-1]["body"]
+    assert (
+        "parent-session:v1 &lt;!-- original literal --&gt;"
+        in p.state()["comments"]["1"][-1]["body"]
+    )
+    records = [
+        json.loads(c["body"].splitlines()[0][len("<!-- parent-session:v1 ") : -4])
+        for c in p.comments()
+        if c["body"].startswith("<!-- parent-session:v1 ")
+    ]
+    saved = next(
+        r
+        for r in records
+        if r.get("event") == "notification_record" and r["key"] == "ci-policy"
+    )
+    assert saved["notification"]["details"]["answers"][0]["quote"] == original
     notify(p, changed)
     assert len(p.state()["comments"]["1"]) == 2
 
@@ -221,10 +243,20 @@ def test_later_human_close_approval_is_a_difference_and_keeps_unverified_work(
     ]
 
 
+@pytest.mark.parametrize("standalone", [False, True])
 def test_progress_preserves_human_notes_and_unchanged_sync_does_not_patch(
     parent_env: ParentEnv,
+    standalone: bool,
 ) -> None:
     p = parent_env
+    if standalone:
+        state = p.state()
+        state["issues"]["1"].update(
+            title="Human standalone task",
+            labels=[{"name": "bug"}],
+            body="Original human description.\n",
+        )
+        p.save(state)
     p.cli("register")
     state = p.state()
     state["issues"]["1"]["body"] += "\nHuman note outside generated progress.\n"
@@ -233,6 +265,10 @@ def test_progress_preserves_human_notes_and_unchanged_sync_does_not_patch(
     notify(p, spec)
     assert "Human note outside generated progress." in p.state()["issues"]["1"]["body"]
     assert "Full training after evaluation repair" in p.state()["issues"]["1"]["body"]
+    if standalone:
+        issue = p.state()["issues"]["1"]
+        assert issue["body"].startswith("Original human description.")
+        assert issue["labels"] == [{"name": "bug"}] and p.state()["parents"] == {}
     offset = len(p.calls())
     p.cli("sync")
     p.cli("sync")

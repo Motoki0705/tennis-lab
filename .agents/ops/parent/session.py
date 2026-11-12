@@ -573,11 +573,18 @@ class ParentSession:
                 raise ValueError(
                     "parent role label missing; migrate explicitly using issues"
                 )
-            return {t["child"]: t["state"] for t in self.launch_plan()["tasks"]}
+            if parent.parent is not None:
+                return {t["child"]: t["state"] for t in self.launch_plan()["tasks"]}
         plan = self.launch_plan()
         states = {t["child"]: t["state"] for t in plan["tasks"]}
         tasks = [
-            ChildTask(n, parse_title(child.title).summary, task_status(child))
+            ChildTask(
+                n,
+                parse_title(child.title).summary
+                if PARENT_LABEL in parent.labels
+                else child.title,
+                task_status(child),
+            )
             for n, child in children.items()
         ]
         # Keep the observed names of existing local tasks for read-only status

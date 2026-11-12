@@ -312,8 +312,9 @@ def test_legacy_request_is_not_rewritten_or_given_an_invented_choice(
     registry["parents"]["o/r#1"]["reviews"][0]["request"] = manifest
     registry_path.write_text(json.dumps(registry))
     state = r.p.state()
-    for comment in state["comments"]["1"]:
-        comment["body"] = comment["body"].replace(old_digest, new_digest)
+    for rows in state["comments"].values():
+        for comment in rows:
+            comment["body"] = comment["body"].replace(old_digest, new_digest)
     r.p.save(state)
     r.request.clear()
     r.request.update(manifest, review_state="instructed")

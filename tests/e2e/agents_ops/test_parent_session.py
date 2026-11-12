@@ -820,7 +820,8 @@ def test_sync_cannot_patch_parent_during_supplement_even_without_agreement(
         assert not any("PATCH" in call for call in p.calls()[offset:])
         assert p.state()["issues"]["1"]["body"] == state["issues"]["1"]["body"]
     else:
-        assert not any("PATCH" in call for call in p.calls()[offset:])
+        assert sum("PATCH" in call for call in p.calls()[offset:]) == 1
+        assert "parent-progress:v1" in p.state()["issues"]["1"]["body"]
 
 
 def test_update_body_gates_target_issue_instead_of_session_parent(

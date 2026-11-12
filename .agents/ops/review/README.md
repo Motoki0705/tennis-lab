@@ -150,7 +150,7 @@ executionのstatusは `preparation_failed` / `running` / `published` / `publicat
 | `agent` | 起動前/実行中/終了、runtimeのdigest・終了コード、runtimeとworkspaceのcleanup完了 |
 | `output` | 保存finalの形式・schema・対象・判定整合の検証結果、finalと解析結果のdigest |
 | `postcheck` | 対象と担当権限の再取得・照合結果 |
-| `publication` | pending → projections（完了したPR）→ result → published、親コメントID、失敗理由 |
+| `publication` | pending → projections（完了したPR）→ result → published、親側記録のcomment ID、失敗理由 |
 
 完了イベントと対応しschemaを満たすfinalはruntime非ゼロ終了後も解析し、`output.json` に結果候補を保存する。
 通常runの `result.json` はruntime・出力・事後照合を通過した結果、または失敗結果であり、候補とは区別する。

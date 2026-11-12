@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import re
+from html import escape
 from typing import TYPE_CHECKING, Any
 
-from .policy import digest, marker, nonempty, note_body, object_value
+from .policy import MAX_NOTE_CHARS, digest, marker, nonempty, object_value
 
 if TYPE_CHECKING:
     from .history import History, Record
@@ -27,11 +28,18 @@ DETAILS = {
 }
 
 
+def notice_text(value: Any) -> str:
+    text = nonempty(value, "notification text")
+    if len(text) > MAX_NOTE_CHARS:
+        raise ValueError(f"notification text exceeds {MAX_NOTE_CHARS} characters")
+    return text
+
+
 def strings(value: Any, field: str, *, empty: bool = False) -> list[str]:
     if not isinstance(value, list) or (not value and not empty):
         raise ValueError(f"{field} requires a list{' (nonempty)' if not empty else ''}")
     for item in value:
-        note_body(nonempty(item, field))
+        notice_text(nonempty(item, field))
     if len(value) != len(set(value)):
         raise ValueError(f"duplicate {field}")
     return value
@@ -62,7 +70,7 @@ def validate(spec: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             "completion uses the fixed key 'completion'; other keys must be distinct"
         )
-    note_body(spec["summary"])
+    notice_text(spec["summary"])
     strings(spec["evidence"], "evidence")
     strings(spec["resolves"], "resolves", empty=True)
     if spec["kind"] == "question" and spec["resolves"]:
@@ -86,17 +94,17 @@ def validate(spec: dict[str, Any]) -> dict[str, Any]:
             for answer in value:
                 if not isinstance(answer, dict) or set(answer) != {"source", "quote"}:
                     raise ValueError("answer requires source/quote")
-                note_body(answer["source"])
-                note_body(answer["quote"])
+                notice_text(answer["source"])
+                notice_text(answer["quote"])
         else:
-            note_body(value)
+            notice_text(value)
     return spec
 
 
 def render(spec: dict[str, Any]) -> str:
     validate(spec)
     d = spec["details"]
-    parts = [spec["summary"]]
+    parts = [escape(spec["summary"], quote=False)]
     labels = {
         "question": "判断してほしいこと",
         "resume_condition": "再開条件",
@@ -129,17 +137,22 @@ def render(spec: dict[str, Any]) -> str:
         value = d[name]
         if name == "answers":
             parts.extend(
-                f"回答の原文（{a['source']}）:\n"
-                + "\n".join("> " + line for line in a["quote"].splitlines())
+                f"回答の原文（{escape(a['source'], quote=False)}）:\n"
+                + "\n".join(
+                    "> " + escape(line, quote=False) for line in a["quote"].splitlines()
+                )
                 for a in value
             )
         else:
             parts.append(
                 f"{labels[name]}: "
-                + ((" / ".join(value) or "なし") if isinstance(value, list) else value)
+                + escape(
+                    (" / ".join(value) or "なし") if isinstance(value, list) else value,
+                    quote=False,
+                )
             )
     parts.append("証拠:\n" + "\n".join(f"- {v}" for v in spec["evidence"]))
-    return note_body("\n\n".join(parts))
+    return notice_text("\n\n".join(parts))
 
 
 def saved(history: History) -> dict[str, Record]:
@@ -250,7 +263,7 @@ def progress_lines(session: ParentSession, history: History) -> list[str]:
         "判断待ち: "
         + (
             " / ".join(
-                f"[{r.payload['notification']['details']['question']}]({notices.get(r.payload['key'], r.url)})"
+                f"{r.payload['notification']['details']['question']}（[質問]({notices.get(r.payload['key'], r.url)})）"
                 for r in questions
             )
             or "なし"
@@ -304,4 +317,7 @@ def progress_lines(session: ParentSession, history: History) -> list[str]:
     ]
     if pending:
         lines.append("親通知の公開待ち: " + " / ".join(pending))
-    return [line.replace("\r", " ").replace("\n", " ") for line in lines]
+    return [
+        escape(line.replace("\r", " ").replace("\n", " "), quote=False)
+        for line in lines
+    ]
