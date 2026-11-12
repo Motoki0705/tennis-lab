@@ -1,0 +1,33 @@
+# 担当issue &#35;1899
+
+結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
+
+反映範囲: このHEADの記録集合 31 件。記録時刻 2026-11-12T13:27:00.532115+00:00 〜 2026-11-12T15:16:13.370303+00:00。
+
+公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
+
+[上の階層](../README.md) · [親一覧](../../README.md)
+
+31 記録 / 判断 0 件。失敗・拒否の結果: 3 件。未判断の結果: 11 件。親の確認未記録: 11 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 1 件。最終報告の観測対象外: 9 件。
+
+直近の観測（受入の判定とは別）: [結果 653](../activity-02d7fdb668c34f07a1ce2608de994a21/README.md#record-d823a362709148d19ead01492924a33a) success / machine: parent.run-worker: success / 担当issue: 1899 / 終了値: 0<br>[行動 654](../activity-02d7fdb668c34f07a1ce2608de994a21/README.md#record-c9e427c0d6b64a9580760226df8d1266) 同じAIの継続 / 終了（成果受入とは別）
+
+## 下の階層
+
+| 対象・期間 | 件数と未確認 | 最新の記録 |
+| --- | --- | --- |
+| [担当issue &#35;1899 の委任](d-3c3e45c8e5a8444486c99f6cc7bebee8/README.md)<br>2026-11-12T13:28:29.900127+00:00 〜 2026-11-12T15:16:13.370303+00:00 | 27 記録 / 判断 0 件。失敗・拒否の結果: 3 件。未判断の結果: 10 件。親の確認未記録: 10 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 1 件。最終報告の観測対象外: 8 件。 | [結果 653](../activity-02d7fdb668c34f07a1ce2608de994a21/README.md#record-d823a362709148d19ead01492924a33a) success / machine: parent.run-worker: success / 担当issue: 1899 / 終了値: 0<br>[行動 654](../activity-02d7fdb668c34f07a1ce2608de994a21/README.md#record-c9e427c0d6b64a9580760226df8d1266) 同じAIの継続 / 終了（成果受入とは別） |
+
+## 活動別の結果と判断
+
+[全7件の一覧（1ページ）](d-index-activities-0001/README.md)
+
+| 対象・期間 | 件数と未確認 | 最新の記録 |
+| --- | --- | --- |
+| [parent.inspect-worker / 担当issue &#35;1899](../activity-add4d925551b4b23a4cef3bf722df11b/README.md)<br>2026-11-12T13:30:06.473272+00:00 〜 2026-11-12T13:30:07.186007+00:00 | 4 記録 / 判断 0 件。失敗・拒否の結果: 1 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。 | [結果 623](../activity-add4d925551b4b23a4cef3bf722df11b/README.md#record-ecfad3a6c83549ef96015b2dc9668414) failure / machine: parent.inspect-worker: post-start failure / ValueError / details in private evidence<br>[行動 624](../activity-add4d925551b4b23a4cef3bf722df11b/README.md#record-fc3accdf47c94ddc967eb614cc8a310e) 取得 / 終了（成果受入とは別） |
+| [worker&#95;logs.receive / 担当issue &#35;1899](../activity-f6f2266490ef42d1b2be151d05f869cd/README.md)<br>2026-11-12T14:08:54.370821+00:00 〜 2026-11-12T14:08:54.433726+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 1 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。 | [結果 633](../activity-f6f2266490ef42d1b2be151d05f869cd/README.md#record-a15b5306ae834f1d8cd2b10f22aca49c) failure / machine: worker&#95;logs.receive: delegation&#95;key=d-3c3e45c8e5a8444486c99f6cc7bebee8 / ターン: 1 / 状態: worker&#95;failed<br>[行動 634](../activity-f6f2266490ef42d1b2be151d05f869cd/README.md#record-f164307641aa4f21bb521d9f963583ac) 記録 / 終了（成果受入とは別） |
+| [parent.run-worker・runner.result / 担当issue &#35;1899](../activity-502cb9dd69d54247884734b536f6083e/README.md)<br>2026-11-12T13:28:29.900127+00:00 〜 2026-11-12T14:08:54.510401+00:00 | 7 記録 / 判断 0 件。失敗・拒否の結果: 1 件。未判断の結果: 3 件。親の確認未記録: 3 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 1 件。最終報告の観測対象外: 2 件。 | [結果 635](../activity-502cb9dd69d54247884734b536f6083e/README.md#record-9d176a75d3754d2d95c4e8da67b4abfb) failure / machine: parent.run-worker: failure / 担当issue: 1899 / 終了値: 143<br>[行動 636](../activity-502cb9dd69d54247884734b536f6083e/README.md#record-e2d4cee464ee49d5bc5f48acd1222d8f) 新しいAIの起動 / 終了（成果受入とは別） |
+| [worker&#95;logs.receive / 担当issue &#35;1899](../activity-d91c47b40c42440898626184411aecdb/README.md)<br>2026-11-12T15:15:51.288583+00:00 〜 2026-11-12T15:15:51.364633+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。 | [結果 648](../activity-d91c47b40c42440898626184411aecdb/README.md#record-c1e4cf486faf4316bd2120539852a0be) partial / machine: worker&#95;logs.receive: delegation&#95;key=d-3c3e45c8e5a8444486c99f6cc7bebee8 / ターン: 2 / 状態: ready<br>[行動 649](../activity-d91c47b40c42440898626184411aecdb/README.md#record-a0898b9b2b964ddb9ac2f77c99f721d1) 記録 / 終了（成果受入とは別） |
+| [worker&#95;logs.publish / 担当issue &#35;1899](../activity-f62c6ded875a47e7a52f74072f634b15/README.md)<br>2026-11-12T15:16:13.184354+00:00 〜 2026-11-12T15:16:13.270161+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。 | [結果 651](../activity-f62c6ded875a47e7a52f74072f634b15/README.md#record-c4b794d3e00b4f22a35f99e13fd37d14) partial / machine: worker&#95;logs.publish: delegation&#95;key=d-3c3e45c8e5a8444486c99f6cc7bebee8 / ターン: 2 / 状態: pending<br>[行動 652](../activity-f62c6ded875a47e7a52f74072f634b15/README.md#record-5446d89f819f47bca7ebd6908fcf88c2) 公開 / 終了（成果受入とは別） |
+| [parent.run-worker・runner.result / 担当issue &#35;1899](../activity-02d7fdb668c34f07a1ce2608de994a21/README.md)<br>2026-11-12T14:09:16.882344+00:00 〜 2026-11-12T15:16:13.370303+00:00 | 7 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 3 件。親の確認未記録: 3 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 2 件。 | [結果 653](../activity-02d7fdb668c34f07a1ce2608de994a21/README.md#record-d823a362709148d19ead01492924a33a) success / machine: parent.run-worker: success / 担当issue: 1899 / 終了値: 0<br>[行動 654](../activity-02d7fdb668c34f07a1ce2608de994a21/README.md#record-c9e427c0d6b64a9580760226df8d1266) 同じAIの継続 / 終了（成果受入とは別） |
+
