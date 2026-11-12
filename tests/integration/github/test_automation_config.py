@@ -15,6 +15,17 @@ def _load_yaml(path: Path) -> dict[str, Any]:
         return cast(dict[str, Any], yaml.safe_load(file))
 
 
+def _issue_labeler_inputs() -> dict[str, Any]:
+    workflow = _load_yaml(GITHUB / "workflows/issue-labeler.yml")
+    inputs = [
+        step["with"]
+        for step in workflow["jobs"]["label"]["steps"]
+        if step.get("uses", "").split("@", 1)[0] == "github/issue-labeler"
+    ]
+    assert len(inputs) == 1, "expected one issue-labeler action"
+    return cast(dict[str, Any], inputs[0])
+
+
 def _pr_labels_for(*changed_files: str) -> set[str]:
     config = _load_yaml(GITHUB / "labeler.yml")
     matched: set[str] = set()
@@ -37,8 +48,7 @@ def _issue_labels_for(
     # github/issue-labeler main.ts builds this string from its numeric inputs.
     # Each label requires all its expressions to match the assembled content.
     if inputs is None:
-        workflow = _load_yaml(GITHUB / "workflows/issue-labeler.yml")
-        inputs = workflow["jobs"]["label"]["steps"][0]["with"]
+        inputs = _issue_labeler_inputs()
     content = f"{title}\n\n" if int(inputs["include-title"]) == 1 else ""
     if int(inputs["include-body"]) == 1:
         content += body
@@ -88,8 +98,7 @@ def test_issue_labeler_only_configures_work_types_and_scans_title() -> None:
         "documentation",
         "followup",
     }
-    workflow = _load_yaml(GITHUB / "workflows/issue-labeler.yml")
-    inputs = workflow["jobs"]["label"]["steps"][0]["with"]
+    inputs = _issue_labeler_inputs()
     assert inputs["include-body"] == 0
     assert inputs["include-title"] == 1
 
