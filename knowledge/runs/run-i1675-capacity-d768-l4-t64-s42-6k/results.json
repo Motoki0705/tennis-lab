@@ -1,0 +1,171 @@
+{
+  "schema": "ball_capacity_completed_condition.v1",
+  "stage": "query-d768-l4-T64",
+  "stage_complete": true,
+  "campaign_complete": false,
+  "campaign": "s42-20261103-main",
+  "issue": 1675,
+  "recorded_date": "2026-11-09",
+  "model": {
+    "activation_checkpointing": false,
+    "decoder_channels": 128,
+    "dim": 768,
+    "dropout": 0.1,
+    "encoder_variant": "x3d_csn",
+    "ffn_dim": 2048,
+    "frame_chunk_size": null,
+    "frames": 64,
+    "heads": 12,
+    "input_channels": 5,
+    "layers": 4,
+    "mhc_coefficient_dim": 64,
+    "mhc_eps": 1e-06,
+    "mhc_residual_identity_bias": 4.0,
+    "mhc_sinkhorn_iters": 20,
+    "mhc_update_scale_init": 0.0,
+    "mixed_channels": [
+      256,
+      512
+    ],
+    "num_streams": 4,
+    "residual_blocks": [
+      0,
+      1,
+      2,
+      3,
+      3,
+      2
+    ],
+    "rope_base": 10000.0,
+    "stem_channels": [
+      16,
+      32,
+      64,
+      128
+    ],
+    "temporal_mixing": "depthwise3d"
+  },
+  "budget": {
+    "betas": [
+      0.9,
+      0.999
+    ],
+    "checkpoint_interval": 500,
+    "encoder_lr_ratio": 0.1,
+    "eps": 1e-08,
+    "evaluation_interval": 6000,
+    "freeze_updates": 600,
+    "gamma": 2.0,
+    "gradient_clip": 1.0,
+    "initial_learning_rate": 7.360330616529733e-05,
+    "input_frames": 128,
+    "learning_rate": 7.360330616529733e-05,
+    "loss_normalization": "sum_valid_frame_losses/sum_valid_frames_per_update",
+    "microbatch_windows": 1,
+    "minimum_lr_ratio": 0.0135863462132287,
+    "optimizer": "AdamW",
+    "optimizer_transfer": "inherit",
+    "schedule": "linear_warmup_cosine",
+    "schedule_offset": 0,
+    "schedule_updates": 12000,
+    "seed": 42,
+    "sigma_ratio": 0.012,
+    "updates": 6000,
+    "warmup_updates": 0,
+    "weight_decay": 0.01
+  },
+  "runtime": {
+    "compile_mode": "default",
+    "compile_recompile_limit": 8,
+    "cpu_threads": 2,
+    "image_prefetch": true,
+    "input_verification": "upfront",
+    "jpeg_decoder": "nvjpeg",
+    "num_workers": 4,
+    "pin_memory": true,
+    "precision": "bf16",
+    "prefetch_factor": 2
+  },
+  "gpu": "NVIDIA L4",
+  "metrics": {
+    "mean_error_px": 43.44988764632289,
+    "median_error_px": 17.636838912963867,
+    "p95_error_px": 185.2376983642572,
+    "within_20px_rate": 0.5665063821323693,
+    "observed_frames": 85473,
+    "validation_owner_frames": 128668,
+    "physical_training_updates": 6000,
+    "shared_parent_updates": 10000,
+    "total_parameters": 41946662,
+    "gmac_per_frame": 4.582170112,
+    "training_joint_median_s_per_update": 1.7492249679999077,
+    "training_joint_timing_samples": 5395,
+    "training_peak_allocated_gib": 13.621273040771484,
+    "training_peak_reserved_gib": 17.7734375,
+    "benchmark_median_s_per_update": 1.7070768459998362,
+    "measured_training_update_hours": 2.872117923341956,
+    "validation_seconds": 1031.9447939109978,
+    "last_train_loss": 0.0030433337087742984
+  },
+  "support": {
+    "frames": 128668,
+    "masked": 11310,
+    "observed": 85473,
+    "out_of_frame": 2712,
+    "reviewed_empty": 29173,
+    "scored_frames": 117358
+  },
+  "evaluation_identities": {
+    "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+    "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+    "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec"
+  },
+  "image_decode": {
+    "apply_exif_orientation": false,
+    "color_order": "RGB",
+    "cuda_version": "13.0",
+    "decoder": "torchvision.io.decode_jpeg/nvjpeg",
+    "device": "cuda",
+    "pixels_identical_to_opencv": false,
+    "version": "0.29.1+cu130"
+  },
+  "validation_artifact_sha256": "412db035be0f66218eed3af97fc308b821eda3f3e2a6fb2e33f4bbf893b86b27",
+  "validation_summary_sha256": "230729bb904f5ed8694b316d45ea3ade0e4526885fa268d5cad8043c3c5ec2b2",
+  "receipt": {
+    "files": 10,
+    "generation": "completed-00006000-979dee4e",
+    "manifest_md5": "fc335691dac76a3eceba1e2cc4ec17cf",
+    "manifest_sha256": "eea0a1e940b74a94cd45a6523cdf7d643eecc739526fe4dc60ebd7cb1bd10d13",
+    "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d768-l4-T64/completed-00006000-979dee4e",
+    "schema": "verified_artifact_snapshot.v1",
+    "seconds": 63.30429688100048,
+    "size_bytes": 752802837,
+    "status": "verified"
+  },
+  "drive_receipt_path": "persistence/query-d768-l4-T64/completed-00006000-979dee4e.json",
+  "checkpoint_sha256": "6ee48b6cf17faa969cad49c0f94c20fc39bf175644b23d614d9efac0fcbd8bfa",
+  "sample_position": 16000,
+  "verification": {
+    "completed_payloads_verified": true,
+    "validation_summary_sha256_verified": true,
+    "train_log_sha256_verified": true,
+    "all6000_updates_finite_128frames": true,
+    "freeze600_then_encoder_lr_point1": true,
+    "draw_and_augmentation_sha256": "e55f70d9a6716501ef5076a95d19325e9811bfbcf82686a4146a4ea069e55d99",
+    "same_draws_and_augmentations_as_d512": true,
+    "same_validation_identities_and_decoder_as_d512": true
+  },
+  "comparison_d512": {
+    "mean_error_px": 48.73284289313937,
+    "median_error_px": 25.80021095275879,
+    "p95_error_px": 184.10769348144518,
+    "within_distance_rate": 0.30586267008295015
+  },
+  "timing_scope": "Same report.py definition: records[max(5, freeze_updates+5):], updates606..6000; per-update input wait, augmentation, forward/backward and optimizer; excludes validation/Drive/preflight outside updates. Sum of update durations can include restart compilation.",
+  "limitations": [
+    "Single seed42; no variance or significance estimate.",
+    "Frozen validation only; no independent test.",
+    "Partial capacity matrix; final52000-update report not run.",
+    "No model adoption or pipeline checkpoint change."
+  ]
+}

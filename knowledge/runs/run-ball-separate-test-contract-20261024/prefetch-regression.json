@@ -1,0 +1,55 @@
+{
+  "inline_regression": "test_hybrid_resume_with_inline_loading_matches_continuous_training",
+  "observations": [
+    {
+      "attempt": "combined",
+      "collected": 627,
+      "log": "tmp/scoped-validation.log",
+      "passed_before_interrupt": 609,
+      "status": "interrupted_after_wait"
+    },
+    {
+      "attempt": "isolated",
+      "failed": 1,
+      "log": "tmp/resume-isolated.log",
+      "passed": 2,
+      "status": "worker_timed_out",
+      "watchdog_seconds": 90
+    },
+    {
+      "attempt": "explicit_spawn_trial",
+      "failed": 1,
+      "log": "tmp/resume-spawn-validation.log",
+      "passed": 2,
+      "status": "worker_timed_out",
+      "trial_reverted": true,
+      "watchdog_seconds": 90
+    },
+    {
+      "attempt": "unchanged_base",
+      "base_ref": "9043b045554d43ec03be7b0074f3031ae6190c65",
+      "elapsed_seconds": 55.8,
+      "failed": 1,
+      "log": "tmp/baseline-prefetch-validation.log",
+      "read_only_code_copy": "tmp/baseline-readonly",
+      "status": "worker_timed_out",
+      "watchdog_seconds": 45
+    }
+  ],
+  "observed_stack": [
+    "multiprocessing.queues.Queue.get",
+    "torch.utils.data.DataLoader._try_get_data",
+    "src/tasks/ball_detection/training/runtime/images.py:coordinate_batches",
+    "src/tasks/ball_detection/training/temporal_heatmap/runner.py:233"
+  ],
+  "original_runtime": {
+    "device": "cpu",
+    "num_workers": 1,
+    "prefetch_factor": 2
+  },
+  "processes_left_running": false,
+  "schema_version": 1,
+  "scope_decision": "Training runner and runtime are unchanged; preserve the original regression and return this wait to the parent",
+  "status": "unresolved_existing_prefetch_wait",
+  "test": "tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py::test_resume_matches_uninterrupted_weights_optimizer_schedule_rng_and_pack_position[hybrid]"
+}

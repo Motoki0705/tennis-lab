@@ -1,0 +1,214 @@
+{
+  "schema": "ball_capacity_colab_recovery_record.v1",
+  "colab_session": "ball-capacity-20261108-unique",
+  "colab_service_job": "ball-capacity-service-20261108-b",
+  "qualification_job": {
+    "job_id": "ball-resume-qualification-1",
+    "status": "completed",
+    "returncode": 0,
+    "drive_saved_at": "2026-11-08T14:17:27.422851+00:00"
+  },
+  "source_base_commit": "e99753cc7f2da87199965faa7cf60c64f8bd006e",
+  "operational_commit": "49f65880ba3079b9e49905dc677ec0da1611378b",
+  "source_files_verified": 162,
+  "frozen_controller_and_lock_unchanged": true,
+  "input_snapshot_marker": "b6cab45141f1ab50019870fe5ab7ea977d57a2a0af20751b676fafd0e3667a96",
+  "dataset": {
+    "complete": true,
+    "files": 2925,
+    "bytes": 157028755547,
+    "independent_sha256_providers": [
+      "hashlib/OpenSSL",
+      "CPython _sha256"
+    ],
+    "local_membership_verified": true,
+    "remote_inventory_and_distribution_unchanged": true
+  },
+  "restored_stages": [
+    {
+      "stage": "common-dpt-T32",
+      "update": 10000,
+      "checkpoint": "checkpoint-update-00010000.pt",
+      "checkpoint_sha256": "8a10a5a856703946d36df4a9490a62f68e05522b96bde0730f648f3e7c9b053e",
+      "optimizer_parameter_states": 177,
+      "rng_devices": 1,
+      "sample_position": 10000,
+      "train_log": {
+        "bytes": 10754299,
+        "sha256": "49ad0b8d8466eeff3dec19e0edce54fdd49a4d3a6c3330bddb3bb6588a070ed5"
+      },
+      "last_loss": 0.0003899479606410577,
+      "last_gradient_norm": 0.0024081782903522253,
+      "runtime": {
+        "compile_mode": "default",
+        "compile_recompile_limit": 8,
+        "cpu_threads": 2,
+        "image_prefetch": true,
+        "input_verification": "upfront",
+        "jpeg_decoder": "nvjpeg",
+        "num_workers": 4,
+        "pin_memory": true,
+        "precision": "bf16",
+        "prefetch_factor": 2
+      },
+      "validation_present": true
+    },
+    {
+      "stage": "query-d256-l4-T64",
+      "update": 6000,
+      "checkpoint": "checkpoint-update-00006000.pt",
+      "checkpoint_sha256": "bfada3b786f990587f9894cea2ee5e67c450d51946796e6aa218db271813e95b",
+      "optimizer_parameter_states": 282,
+      "rng_devices": 1,
+      "sample_position": 16000,
+      "train_log": {
+        "bytes": 6432056,
+        "sha256": "7276a2f3ea99fc3e25d3332bd27105d38ee42d4eb8535d059df96e82c2ac0b17"
+      },
+      "last_loss": 0.005754936020821333,
+      "last_gradient_norm": 1.8189414739608765,
+      "runtime": {
+        "compile_mode": "default",
+        "compile_recompile_limit": 8,
+        "cpu_threads": 2,
+        "image_prefetch": true,
+        "input_verification": "upfront",
+        "jpeg_decoder": "nvjpeg",
+        "num_workers": 4,
+        "pin_memory": true,
+        "precision": "bf16",
+        "prefetch_factor": 2
+      },
+      "validation_present": true
+    },
+    {
+      "stage": "query-d384-l4-T64",
+      "update": 6000,
+      "checkpoint": "checkpoint-update-00006000.pt",
+      "checkpoint_sha256": "24b707e1b22bd384ecf8d5d08da467a9d635283b4e99d846b902d8174f4db423",
+      "optimizer_parameter_states": 282,
+      "rng_devices": 1,
+      "sample_position": 16000,
+      "train_log": {
+        "bytes": 6431563,
+        "sha256": "a1ff78c34b1cc31f99f6502adcf4a2e375ee9f2ffb8e060f2d259e8fbb5b8a9c"
+      },
+      "last_loss": 0.0029916478088125587,
+      "last_gradient_norm": 1.1639320850372314,
+      "runtime": {
+        "compile_mode": "default",
+        "compile_recompile_limit": 8,
+        "cpu_threads": 2,
+        "image_prefetch": true,
+        "input_verification": "upfront",
+        "jpeg_decoder": "nvjpeg",
+        "num_workers": 4,
+        "pin_memory": true,
+        "precision": "bf16",
+        "prefetch_factor": 2
+      },
+      "validation_present": true
+    },
+    {
+      "stage": "query-d512-l4-T64",
+      "update": 5500,
+      "checkpoint": "checkpoint-update-00005500.pt",
+      "checkpoint_sha256": "ca8bbce5f8b8b7f15165f4fa68ee5d7a0a4173f823e84f76cc63d2afe532f7a4",
+      "optimizer_parameter_states": 282,
+      "rng_devices": 1,
+      "sample_position": 15500,
+      "train_log": {
+        "bytes": 5893693,
+        "sha256": "45d43df98b444b9bd3680442edd212ed518e36601e205c15e109c9ec6e8d9758"
+      },
+      "last_loss": 0.014824313647819288,
+      "last_gradient_norm": 2.913825511932373,
+      "runtime": {
+        "compile_mode": "default",
+        "compile_recompile_limit": 8,
+        "cpu_threads": 2,
+        "image_prefetch": true,
+        "input_verification": "upfront",
+        "jpeg_decoder": "nvjpeg",
+        "num_workers": 4,
+        "pin_memory": true,
+        "precision": "bf16",
+        "prefetch_factor": 2
+      },
+      "validation_present": false
+    }
+  ],
+  "restored_receipts": {
+    "query-d384-l4-T64": {
+      "files": 10,
+      "generation": "completed-00006000-1f861099",
+      "manifest_md5": "139601ad8693e3c3e8608ced22e5b1fb",
+      "manifest_sha256": "a06940a5c1e87c896dc873ff227c7f4132da4060bf766153bfba03b6eae4e8fc",
+      "marker_id": null,
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d384-l4-T64/completed-00006000-1f861099",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 34.03621334700438,
+      "size_bytes": 294840408,
+      "status": "verified"
+    },
+    "query-d256-l4-T64": {
+      "files": 10,
+      "generation": "completed-00006000-774ff990",
+      "manifest_md5": "d1f1f5d25d0b761b8f6c129f7cb54523",
+      "manifest_sha256": "0143b9ee33eef7e02b8d63885a677d02db05d70cb85a7fe320ccb50a5fe7735a",
+      "marker_id": null,
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d256-l4-T64/completed-00006000-774ff990",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 24.376575680995302,
+      "size_bytes": 210279494,
+      "status": "verified"
+    },
+    "query-d512-l4-T64": {
+      "files": 7,
+      "generation": "checkpoint-00005500-46e2a0f8",
+      "manifest_md5": "441703542782390f836a7c148604b7b5",
+      "manifest_sha256": "cd71dff5457f6158999fc0310bf12426277114cf2efacf450692d7a30ba2f9fc",
+      "marker_id": null,
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/query-d512-l4-T64/checkpoint-00005500-46e2a0f8",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 40.42443523200018,
+      "size_bytes": 351241421,
+      "status": "verified"
+    },
+    "common-dpt-T32": {
+      "files": 10,
+      "generation": "completed-00010000-dc030faf",
+      "manifest_md5": "29958290723acda22c48cfb7f5ea0886",
+      "manifest_sha256": "e5292807bcd7140b043ba9ccfd692625e407ea2d1c54fa2c06e1f8ab60d3ecee",
+      "marker_id": null,
+      "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf",
+      "schema": "verified_artifact_snapshot.v1",
+      "seconds": 21.243707293004263,
+      "size_bytes": 183933839,
+      "status": "verified"
+    }
+  },
+  "pre_service_guard_suite": {
+    "successful": true,
+    "tests": 10,
+    "restored_update": 5500,
+    "gpu_updates": 0,
+    "controller_changed": false,
+    "seconds": 15.316
+  },
+  "queue": {
+    "id": "0-8205851830421231174_2026-11-08T14-29-29-578768825Z_19722_ball-capacity-resume-s42-20261108.job",
+    "resource": "all",
+    "issue": 1675,
+    "provider": "codex",
+    "command": "PATH=/tmp/ball-tools:$PATH OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 PYTHONWARNINGS=ignore .venv/bin/python -B knowledge/runs/run-ball-capacity-scaling-20261103/resume_json_plan.py train --workspace-root /content/tennis-lab --run-id s42-20261103-main --rclone-config /tmp/ball-drive-mount.conf --benchmark /content/tennis-lab/outputs/ball_detection/train/capacity_scaling/s42-20261103-main/benchmark.json --resume",
+    "worker_identity_confirmed_against_runner": true
+  },
+  "persistence": {
+    "runner_output": "outputs/ball_detection/train/capacity_scaling/s42-20261103-main",
+    "worker_periodic_output_copy": false,
+    "artifact_store_remote": "mounted_drive",
+    "backend_alias": "gdrive:tennis_lab"
+  },
+  "status": "running; first resumed periodic checkpoint acceptance pending"
+}
