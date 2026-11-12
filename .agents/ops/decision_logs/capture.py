@@ -152,6 +152,7 @@ class Operation:
         previous_result_id: str | None = None,
         changes: dict[str, str] | None = None,
         scope: dict[str, Any] | None = None,
+        request_context: dict[str, Any] | None = None,
     ) -> Operation:
         directory = Path(directory).absolute()
         journal = Journal(directory, repo, parent)
@@ -206,6 +207,11 @@ class Operation:
             },
             "runtime_directory": None,
             "counter_key": new_id(),
+            **(
+                {"request_context": copy.deepcopy(request_context)}
+                if request_context is not None
+                else {}
+            ),
         }
         op = cls(journal.path.parent / "captures" / (new_id() + ".json"), row)
         op.action("requested", f"{entrypoint}: requested")

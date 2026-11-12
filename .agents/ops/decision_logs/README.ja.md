@@ -100,6 +100,8 @@ outboxは非公開の配送入力であり、公開単位ではない。
 | `record-worker-run` / `record-worker-ended` | 既存runner根拠の明示登録 / 親による終了確認 |
 | `record-result` | 保存された検証とPR・証拠。明示検証が捕捉済み結果を参照する。`review-request --prs` 内も同じメソッドを使う |
 | `note` / `decide-worker-plan` | 正本コメントへの参照 / 保存済み計画回答の結果。共通判断を自動で作らず、`decide` から理由の正本を参照できる |
+| `improvement` / `improvement-publish` | 候補観測・明示的な切り出し判断を正本コメント参照で記録し、起票要求/結果へ接続。元親の担当中の操作だけを捕捉する |
+| `agree` / `basis-record` / `create-child` / `workflow-report` | 根拠記録・子作成・全体受入の既存結果。改善親のagreeは人間承認を観測した結果として出典コメントを参照し、実行済みと扱わない |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI結果と正本コメント。dispatcherの取消とrunnerの停止/復旧は別の事実 |
 | `review-prepare` / `review-request` / `review-state` | 固定要求、明示指示・状態の結果。親の受領/検証は明示操作でだけ記録する |
 | review `run` | 既存execution・output・result・公開状態。runtime失敗時の有効な出力、exceptionと先行reviewの公開キーも保持。公開で元resultを変えず、消費済みrunの取得は新しいAIレビューにしない |
@@ -146,10 +148,15 @@ conditions/expected_resultを指定し、IDはCLIが割り当てる。初回判�
 | `worker_plan` | `child` と計画回答コマンドの `decision_id` |
 | `model_reason` | `child`。現在保存されているモデル選択理由 |
 | `review_reason` | `run_id`。固定review要求の理由 |
+| `improvement` | `key` と候補の `event_id`。元親の正本コメントにある切り出し判断 |
 
 理由本文を公開記録へ再コピーせず、参照/fingerprintを保持する。
 親のactorキーは私的sessionに対応するランダムな公開キーで、引継ぎで過去の判断者を変えない。
 次の対応CLI（review/mergeも含む）へ返された判断IDを渡すと、後続結果が行動を介してつながる。
+
+終了時改善の `improvement-decide` は候補正本への人間判断を記録するが、終了済み元親のjournal公開権限を広げない。
+改善親側のagreeで承認を観測し、別graphの記録IDを直接つなぐ代わりに元コメントURLを参照する。
+手順・人間確認の保証範囲は [終了時改善](../parent/improvements.md)を参照する。
 
 ## 捕捉失敗と復旧
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from issues import (
     NO_CHILDREN,
@@ -25,6 +25,7 @@ from issues import (
     task_status,
     validate_body,
 )
+from issues.creation import create_issue_once
 from parent.github import GitHub
 from parent.policy import digest, replace_section
 from parent.state import Store
@@ -203,7 +204,7 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
         raise ValueError(
             "organization inputs/ownership/code changed; retry with current evidence"
         )
-    return current
+    return cast(dict[str, Any], current)
 
 
 def _status(
@@ -421,10 +422,6 @@ def _apply(
             name = node["key"]
             if name in numbers:
                 continue
-            if node["role"] != "reuse" and name in tx["attempted"]:
-                raise ValueError(
-                    "prior issue creation outcome is unknown and no matching issue was found; reconcile GitHub before retrying"
-                )
             current = _guard(gh, store, root, tx)
             bound = org.bindings(tx["plan"], tx["fixed"]["proposals"], name)
             if node["role"] == "reuse":
@@ -455,19 +452,36 @@ def _apply(
             )
             if errors:
                 raise ValueError("invalid publication draft: " + "; ".join(errors))
-            tx["drafts"][name] = draft
-            journal.save()  # An ambiguous create response can always find this exact node.
             _guard(gh, store, root, tx)
             if node["role"] == "reuse":
+                tx["drafts"][name] = draft
+                journal.save()
                 created = gh.write(
                     "PATCH",
                     f"repos/{gh.repo}/issues/{node['issue']}",
                     {"body": draft["body"]},
                 )
             else:
-                tx["attempted"].append(name)
-                journal.save()
-                created = gh.write("POST", f"repos/{gh.repo}/issues", draft)
+                receipt = {
+                    "draft": tx["drafts"].get(name),
+                    "attempted": name in tx["attempted"],
+                    "number": tx["numbers"].get(name),
+                }
+
+                def save_creation(
+                    name: str = name, receipt: dict[str, Any] = receipt
+                ) -> None:
+                    # Preserve the existing triage journal format and policy.
+                    tx["drafts"][name] = receipt["draft"]
+                    if receipt["attempted"] and name not in tx["attempted"]:
+                        tx["attempted"].append(name)
+                    if receipt["number"] is not None:
+                        tx["numbers"][name] = receipt["number"]
+                    journal.save()
+
+                created = create_issue_once(
+                    gh, draft=draft, receipt=receipt, matches=[], save=save_creation
+                )
             n = gh.identity(created)
             numbers[name] = n
             tx["numbers"] = numbers
