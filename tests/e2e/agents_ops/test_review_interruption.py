@@ -19,6 +19,7 @@ from tests.e2e.agents_ops.test_review_concurrency import subset_request
 from tests.e2e.agents_ops.test_review_inspection import inspect
 from tests.e2e.agents_ops.test_review_recovery import (
     gate_for,
+    inject_lost_response,
     json_edit,
     recover,
     recovery_request,
@@ -307,7 +308,9 @@ def test_publication_does_not_prove_exit_before_another_run(
         else "REVIEW_LEAVE_WORKSPACE": "1"
     }
     if status == "publication_failed":
-        extra["PARENT_FAIL_PATH"] = "repos/o/r/issues/100/comments"
+        # Keep remote publication verifiable while independently testing exit
+        # evidence. An absent sent POST must stop at the common reader.
+        inject_lost_response(r, target="repos/o/r/issues/100/comments", method="POST")
     r.run(ok=False, extra=extra)
     execution_path = r.run_dir / "execution.json"
     execution = json.loads(execution_path.read_text())
@@ -358,7 +361,7 @@ def launch_gap(r: ReviewEnv, monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def supervisor_confirmation(r: ReviewEnv, **updates: Any) -> Path:
-    path = r.p.root / "cleanup-confirmation.json"
+    path: Path = r.p.root / "cleanup-confirmation.json"
     path.write_text(
         json.dumps(
             {

@@ -127,6 +127,42 @@ def events(
                 note_body(body[len(first) + 2 :])
             ):
                 raise ValueError("note marker body digest mismatch")
+        if event.get("event") == "notification_record":
+            from .notifications import render, validate
+
+            if set(event) != {
+                "parent",
+                "event",
+                "key",
+                "notification_sha256",
+                "notification",
+            }:
+                raise ValueError("malformed notification record")
+            spec = validate(object_value(event["notification"]))
+            if (
+                event["key"] != spec["key"]
+                or event["notification_sha256"] != digest(spec)
+                or body != first + "\n\n" + render(spec)
+            ):
+                raise ValueError("notification record digest/body mismatch")
+        if event.get("event") == "notification":
+            from .execution import sha256
+
+            if set(event) != {
+                "parent",
+                "event",
+                "key",
+                "notification_sha256",
+                "record_url",
+                "body_sha256",
+            }:
+                raise ValueError("malformed notification marker")
+            sha256(event["notification_sha256"])
+            nonempty(event["record_url"], "notification record URL")
+            if not body.startswith(first + "\n\n") or event["body_sha256"] != digest(
+                body[len(first) + 2 :]
+            ):
+                raise ValueError("notification marker body digest mismatch")
         if event.get("event") in {"agreed", "proposal_agreed"}:
             agreement = object_value(event.get("agreement"))
             if set(agreement) != {

@@ -8,6 +8,7 @@ import time
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Any
 
+from issues.evidence import require_work_issue
 from parent import metrics
 from parent.policy import nonempty, number, object_value
 
@@ -251,6 +252,7 @@ class Projects:
         result["children"] = [number(child["number"]) for child in children]
         result["assignees"] = [row["login"] for row in complete(result["assignees"])]
         result["labels"] = [row["name"] for row in complete(result["labels"])]
+        require_work_issue(result)
         return result
 
     def mutate(

@@ -332,9 +332,10 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
         assert "resume" in calls[1]["args"]
         with session.store.locked():
             session.record_result(10, "同じworkerの修正差分と実結果を確認した。")
-        assert d.row()["tasks"]["10"]["preflight"]["accepted_turn_id"] == current[
-            "preflight"
-        ]["turn_id"]
+        assert (
+            d.row()["tasks"]["10"]["preflight"]["accepted_turn_id"]
+            == current["preflight"]["turn_id"]
+        )
     finally:
         d.control.reconcile(stop=True)
 
@@ -1127,6 +1128,8 @@ def test_completed_parent_distinguishes_confirmed_cancellation_from_success(
             delegated=True, delegation_id="unfinished-cancelled-worker"
         )
         registry.write_text(json.dumps(data))
+    if change == "none":
+        p.announce_completion()
     result = p.cli(
         "workflow-report",
         "--spec",
@@ -1248,7 +1251,7 @@ def test_explicit_state_path_and_report_keep_owner_and_use_note(
     row = json.loads((alternate / "registry.json").read_text())["parents"]["o/r#1"]
     assert row["status"] == "active" and row["development_result"]["prs"] == []
     marker = importlib.import_module("parent.policy").events(
-        p.state()["comments"]["1"], "operator", 1
+        p.comments(), "operator", 1
     )[-1]
     assert marker["event"] == "note"
     assert "human_confirmation" not in json.dumps(marker)
@@ -1367,6 +1370,8 @@ def test_completed_report_requires_gate_real_merge_close_and_parent_verification
         state = p.state()
         state["prs"][0]["head"]["sha"] = "f" * 40
         p.save(state)
+    if remote in {"success", "lost_response"}:
+        p.announce_completion()
     completed = p.cli(
         "workflow-report",
         "--spec",

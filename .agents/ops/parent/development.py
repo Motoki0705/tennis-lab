@@ -608,18 +608,33 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
     completion = None
     if completed:
         from .completion import record
+        from .notifications import completion as published_completion
 
+        notice = published_completion(session)
+        if notice is None:
+            raise ValueError(
+                "completed requires an explicit completion notification; use notify with key=completion and verified achievements/remaining/artifacts"
+            )
         if spec["finish"].get("state") != "completed":
             raise ValueError("completed report requires a completed finish")
         completion = record(session, spec["finish"], prs=prs)
+        session.post(
+            {
+                "event": "workflow_completed",
+                "completion_ref": notice.url,
+                "report_sha256": digest(spec),
+            },
+            f"開発workflow: completed\n\n全体の成果・未達・残件: {notice.url}\n検証記録: {digest(spec)}",
+        )
+    else:
+        session.note(
+            f"開発workflow: {spec['state']}\n\n理由: {spec['reason']}\n\n"
+            f"再開条件: {spec['resume_condition']}\n\n受入・検証の証拠:\n{spec['evidence']}"
+        )
     response = {
         "schema_version": 1,
         **{k: spec[k] for k in ("state", "reason", "resume_condition")},
     }
-    session.note(
-        f"開発workflow: {spec['state']}\n\n理由: {spec['reason']}\n\n"
-        f"再開条件: {spec['resume_condition']}\n\n受入・検証の証拠:\n{spec['evidence']}"
-    )
     session.row["development_result"] = {
         "schema_version": 1,
         "report_sha256": digest(spec),
@@ -642,6 +657,7 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
             "finish_sha256": completion["finish_sha256"],
         }
     session.store.save()
+    session.sync_progress()
     return response
 
 

@@ -17,7 +17,7 @@ from lib.review_settings import (
 )
 from parent.execution import require_requirement_targets, validate_authorization
 from parent.policy import digest, nonempty, number, object_value
-from review_policy import parse_finding
+from review.review_policy import parse_finding
 
 PREFIX = "<!-- parent-review:v1 "
 SNAPSHOT_KEYS = {

@@ -22,7 +22,7 @@ from tests.e2e.agents_ops.test_parent_improvements import (
     record,
     source_finished,
 )
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_number
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.improvements import candidate_spec, finish_for
 
@@ -114,12 +114,13 @@ def test_finish_response_loss_repairs_only_missing_record(
     g, p = gate_env, gate_env.review.p
     merged = g.cli("merge")
     assert merged.returncode == 0, merged.stderr
+    p.announce_completion()
     spec = finish_for(p)
     p.env["PARENT_FAIL_AFTER_COMMENT_CONTAINING"] = f'"event": "{lost_event}"'
     p.cli("release", "--ended", "--spec", p.spec(spec), ok=False)
     del p.env["PARENT_FAIL_AFTER_COMMENT_CONTAINING"]
     p.cli("release", "--ended", "--spec", p.spec(spec))
-    bodies = [c["body"] for c in p.state()["comments"]["1"]]
+    bodies = [c["body"] for c in p.comments()]
     assert sum('"event": "completion"' in b for b in bodies) == 1
     assert sum('"event": "ended"' in b for b in bodies) == 1
     assert json.loads(p.cli("status").stdout)["completion"]["acceptance"] == "completed"
@@ -236,7 +237,26 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
         None,
         {"source_issue": 2, "spec": candidate_spec(), "legacy": False},
     )
-    d.h.gh.issues[1]["body"] = source.marker() + "\n\n" + d.h.gh.issues[1]["body"]
+    formats = importlib.import_module("issues")
+    rendered = importlib.import_module("issues.cli").render_spec(
+        {
+            "role": "parent",
+            "identifier": "改善",
+            "summary": "未承認の改善",
+            "children": [],
+            "improvement_source": {"parent": 2, "key": "next"},
+            "sections": {
+                h: "人間との議論待ち。"
+                for h in formats.PARENT_REQUIRED
+                if h != formats.TASKS_HEADING
+            },
+        }
+    )
+    d.h.gh.issues[1].update(
+        title=rendered["title"],
+        body=rendered["body"],
+        labels=[{"name": label} for label in rendered["labels"]],
+    )
     d.h.gh.comment_rows[2] = [
         {"id": 9000, "user": {"login": "operator"}, "body": api.render_event(candidate)}
     ]
@@ -338,7 +358,9 @@ def test_completed_first_generation_does_not_authorize_the_next(
     before = post_count(p)
     record(p)
     assert post_count(p) == before  # Organizing never recursively publishes.
+    p.announce_completion()
     finish = finish_for(p, candidates=["I-1-result-access"])
+    p.announce_completion()
     p.cli(
         "workflow-report",
         "--spec",
@@ -381,6 +403,7 @@ def test_reapproved_requirements_do_not_inherit_previous_acceptance(
     g, first_approval = approved_gate(p, monkeypatch, "parent_self")
     merged = g.cli("merge")
     assert merged.returncode == 0, merged.stderr
+    p.announce_completion()
     p.cli(
         "workflow-report",
         "--spec",
@@ -397,6 +420,9 @@ def test_reapproved_requirements_do_not_inherit_previous_acceptance(
     )
     saved = json.loads(p.cli("status").stdout)["completion"]["record"]
     assert saved["improvement_approval"]["decision_id"] == first_approval
+    completed_body = p.state()["issues"]["1"]["body"]
+    assert "現在の段階: workflow完了照合済み" in completed_body
+    assert "未達・残件: なし" in completed_body
     assert (
         json.loads(p.cli("status", parent="2").stdout)["improvements"][0]["execution"]
         == "accepted"
@@ -451,9 +477,34 @@ def test_reapproved_requirements_do_not_inherit_previous_acceptance(
     assert changed["execution"] != "accepted"
     target = json.loads(p.cli("status").stdout)["completion"]
     assert target["record"] == saved and target["acceptance"] == "unverified"
-    assert saved["finish_sha256"] in "\n".join(
-        c["body"] for c in p.state()["comments"]["1"]
+    body = p.state()["issues"]["1"]["body"]
+    assert "現在の受入: 未確認" in body
+    assert "現在の段階: workflow完了照合済み" not in body
+    assert "未達・残件: なし" not in body
+    assert "過去の成果:" in body
+    assert "現在の未達・残件: 未確認" in body
+    assert "全体の受入条件と実merge/closeを照合した。" in body
+    prior_result = next(
+        line
+        for line in completed_body.splitlines()
+        if line.startswith("全体の結果・判断:")
     )
+    assert prior_result.split(": ", 1)[1] in body
+    pending = finish_for(p)
+    pending["state"] = "incomplete"
+    pending["acceptance"][-1]["state"] = "unverified"
+    pending["remaining_required"] = ["追加した形式の結果取得は未確認。"]
+    p.cli("release", "--ended", "--spec", p.spec(pending))
+    body = p.state()["issues"]["1"]["body"]
+    assert "現在の受入: 未完了" in body
+    assert "現在の未達・残件: 未完了" in body
+    assert "現在の段階: workflow完了照合済み" not in body
+    assert "未達・残件: なし" not in body
+    assert (
+        f"現在の受入記録: https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-"
+        in body
+    )
+    assert saved["finish_sha256"] in "\n".join(c["body"] for c in p.comments())
     assert len(g.merge_calls()) == len(g.review.calls()) == 1
 
 

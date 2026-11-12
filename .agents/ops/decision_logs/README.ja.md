@@ -87,7 +87,7 @@ runtimeの終了値から推定しない。
 
 結果のevidenceに `capture_source`・artifact・観測snapshotのfingerprintを残す。
 非公開根拠は公開不可と明示し、fingerprintだけで全文を保存したとは扱わない。
-親コメント、公開済みreview・workerログは取得できた固定の公開根拠も参照する。
+親の証拠用Issue（旧親コメントを含む）、公開済みreview・workerログは取得できた固定の公開根拠も参照する。
 outboxは非公開の配送入力であり、公開単位ではない。
 親の応答の要約は公開可能な項目だけに絞り、assignmentや任意の入れ子の状態を丸ごとコピーしない。
 私的な来歴IDは捕捉前に登録する。完全な応答とエラー詳細は非公開根拠に残す。
@@ -150,6 +150,7 @@ conditions/expected_resultを指定し、IDはCLIが割り当てる。初回判�
 | `review_reason` | `run_id`。固定review要求の理由 |
 | `improvement` | `key` と候補の `event_id`。元親の正本コメントにある切り出し判断 |
 
+`note` と `improvement` は[親の共通reader](../parent/README.md#機械証拠の保存共通reader)から検証し、実際の媒体のcomment URLを参照する。
 理由本文を公開記録へ再コピーせず、参照/fingerprintを保持する。
 親のactorキーは私的sessionに対応するランダムな公開キーで、引継ぎで過去の判断者を変えない。
 次の対応CLI（review/mergeも含む）へ返された判断IDを渡すと、後続結果が行動を介してつながる。

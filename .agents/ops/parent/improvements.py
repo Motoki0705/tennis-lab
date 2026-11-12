@@ -46,7 +46,7 @@ def candidates(
 ) -> dict[str, dict[str, Any]]:
     return dict(
         read_candidates(
-            session.gh.comments(parent or session.parent),
+            session.gh.parent_comments(parent or session.parent, session.login),
             parent or session.parent,
             session.login,
         )
@@ -65,11 +65,12 @@ def append(session: ParentSession, row: dict[str, Any]) -> int:
     body = render_event(row)
     session.public(body)
     observed = candidates(session).get(row["key"])
-    if observed and row["id"] in observed["comments"]:
-        return int(observed["comments"][row["id"]])
-    if row["previous"] != (observed["last"]["id"] if observed else None):
+    replay = observed and row["id"] in observed["comments"]
+    if not replay and row["previous"] != (observed["last"]["id"] if observed else None):
         raise ValueError("candidate changed before recording; reread the current state")
-    response = session.gh.write("POST", session.endpoint + "/comments", {"body": body})
+    from .record_writer import write_record
+
+    response = write_record(session, body)
     comment_id = positive(response.get("id"))
     from decision_logs.parent_sources import comment
 
@@ -81,6 +82,16 @@ def append(session: ParentSession, row: dict[str, Any]) -> int:
     ):
         comment(session, row, body, response)
     return int(comment_id)
+
+
+def comment_url(session: ParentSession, parent: int, comment_id: int) -> str:
+    from .history import comment_url as public_url
+
+    comments = session.gh.parent_comments(parent, session.login)
+    matches = [c for c in comments if c["id"] == comment_id]
+    if len(matches) != 1:
+        raise ValueError("improvement evidence comment is missing or duplicated")
+    return public_url(session.gh.repo.casefold(), parent, matches[0])
 
 
 def record(
@@ -154,7 +165,7 @@ def record(
     if origin != session.parent:
         body = children[origin].body
         current = raw_section(body, "次の改善候補")
-        ref = f"- [{source.candidate_id}](https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{comment_id}) — {spec['purpose']}"
+        ref = f"- [{source.candidate_id}]({comment_url(session, session.parent, comment_id)}) — {spec['purpose']}"
         lines = [
             line
             for line in current.splitlines()
@@ -191,7 +202,7 @@ def draft(
         )
     # Repository spelling may change across callers; it must not change the
     # frozen POST when restoring the same candidate after a lost response.
-    ref = f"https://github.com/{session.gh.repo.casefold()}/issues/{source.parent}#issuecomment-{row['comments'][row['candidate']['id']]}"
+    ref = comment_url(session, source.parent, row["comments"][row["candidate"]["id"]])
     rendered = render_spec(
         {
             "role": "parent",
@@ -506,7 +517,9 @@ def observe(gh: Any, parent: int, publisher: str) -> dict[str, Any] | None:
     source = parse_source(raw.get("body") or "")
     if source is None:
         return None
-    rows = read_candidates(gh.comments(source.parent), source.parent, publisher)
+    rows = read_candidates(
+        gh.parent_comments(source.parent, publisher), source.parent, publisher
+    )
     candidate = rows.get(source.key)
     if candidate is None:
         raise ValueError(f"{source.candidate_id}: source candidate is unavailable")
@@ -701,7 +714,9 @@ def status(session: ParentSession) -> list[dict[str, Any]]:
                 "human_decision": human_state(row),
                 "decision_id": decisions[-1]["id"] if decisions else None,
                 "execution": execution,
-                "record": f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{row['comments'][row['last']['id']]}",
+                "record": comment_url(
+                    session, session.parent, row["comments"][row["last"]["id"]]
+                ),
             }
         )
     return result

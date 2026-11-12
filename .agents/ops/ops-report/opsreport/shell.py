@@ -13,11 +13,21 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from issues.evidence import is_evidence_issue
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
 
 from opsproc import CommandError, run, run_process_group  # noqa: E402
 
-__all__ = ["CommandError", "gh", "gh_json", "gh_list", "git", "run", "run_process_group"]
+__all__ = [
+    "CommandError",
+    "gh",
+    "gh_json",
+    "gh_list",
+    "git",
+    "run",
+    "run_process_group",
+]
 
 
 def gh(args: Sequence[str], *, cwd: Path) -> str:
@@ -34,6 +44,12 @@ def gh_json(args: Sequence[str], *, cwd: Path) -> Any:
 
 def gh_list(args: Sequence[str], *, limit: int, cwd: Path) -> list[dict[str, Any]]:
     """Run a ``gh ... list`` command and fail if the result may have been truncated."""
+    args = list(args)
+    work_issues = args[:2] == ["issue", "list"]
+    if work_issues:
+        index = args.index("--json") + 1
+        fields = args[index].split(",")
+        args[index] = ",".join(dict.fromkeys([*fields, "labels", "body"]))
     rows = gh_json([*args, "--limit", str(limit)], cwd=cwd)
     if not isinstance(rows, list):
         raise CommandError(f"gh {shlex.join(args)} did not return a JSON list")
@@ -41,7 +57,7 @@ def gh_list(args: Sequence[str], *, limit: int, cwd: Path) -> list[dict[str, Any
         raise CommandError(
             f"gh {shlex.join(args)} hit --limit {limit}; results may be truncated"
         )
-    return rows
+    return [row for row in rows if not is_evidence_issue(row)] if work_issues else rows
 
 
 def git(args: Sequence[str], *, cwd: Path, ok_codes: tuple[int, ...] = (0,)) -> str:

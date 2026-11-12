@@ -228,6 +228,13 @@ def record(
         # The shared resolver includes a childless parent's own work. Manual and
         # autonomous completion require the same execution/merge evidence.
         prs = verify_completion(session)
+    if spec["state"] == "completed":
+        from .notifications import completion as published_completion
+
+        if published_completion(session) is None:
+            raise ValueError(
+                "completed finish requires a published completion notification"
+            )
     if (
         previous
         and previous["finish_sha256"] == sha

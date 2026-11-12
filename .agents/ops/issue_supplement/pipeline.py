@@ -27,6 +27,7 @@ from issues.supplement_state import (
     supplement_state,
 )
 from parent.execution import PROGRESS_SECTIONS
+from parent.history import HistoryValidationError
 
 from .github import (
     GitHub,
@@ -99,7 +100,10 @@ def prepare(gh: GitHub, number: int, *, manual: bool) -> dict[str, Any]:
     if state != "pending":
         return outcome(bundle, "not_target", f"state_{state}")["report"]
     if has_execution_record(
-        gh.comments(number), gh.repo.split("/")[0], gh.repo, number
+        gh.parent_comments(number, gh.repo.split("/")[0]),
+        gh.repo.split("/")[0],
+        gh.repo,
+        number,
     ):
         return outcome(
             bundle,
@@ -178,7 +182,7 @@ def generate(
     try:
         issue = gh.issue(number)
         state = issue_state(gh, issue)
-        comments = gh.comments(number)
+        comments = gh.parent_comments(number, gh.repo.split("/")[0])
         write_json(
             run_dir / "initial-input.json", {"issue": issue, "comments": comments}
         )
@@ -188,7 +192,7 @@ def generate(
         if has_execution_record(comments, publisher, gh.repo, number):
             return outcome(bundle, "skipped", "execution_record_exists")
         issue = (stable_issue if wait is None else wait)(gh, number)
-        comments = gh.comments(number)
+        comments = gh.parent_comments(number, gh.repo.split("/")[0])
         history = gh.history(number)
         write_json(
             run_dir / "input.json",
@@ -436,7 +440,10 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
     if issue_state(gh, current) != "pending":
         return outcome(bundle, "not_target", "state_changed_before_apply")["report"]
     if has_execution_record(
-        gh.comments(number), gh.repo.split("/")[0], gh.repo, number
+        gh.parent_comments(number, gh.repo.split("/")[0]),
+        gh.repo.split("/")[0],
+        gh.repo,
+        number,
     ):
         state = final_label(gh, number, SUPPLEMENT_SKIPPED_LABEL)
         return outcome(bundle, state, "execution_record_exists")["report"]
@@ -489,7 +496,10 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
     # The last GitHub read before a body PATCH must check agreement/execution
     # records, including one that completed while the failed label was cleared.
     if has_execution_record(
-        gh.comments(number), gh.repo.split("/")[0], gh.repo, number
+        gh.parent_comments(number, gh.repo.split("/")[0]),
+        gh.repo.split("/")[0],
+        gh.repo,
+        number,
     ):
         return outcome(
             bundle,
@@ -552,13 +562,13 @@ def fail(
     state = issue_state(gh, current)
     if state in {"not_target", "done", "skipped"}:
         return state, None
-    comments = gh.comments(number)
     record_error = None
     try:
+        comments = gh.parent_comments(number, gh.repo.split("/")[0])
         recorded = has_execution_record(
             comments, gh.repo.split("/")[0], gh.repo, number
         )
-    except ValueError:
+    except HistoryValidationError:
         recorded = False
         record_error = "invalid_execution_record"
     if recorded:

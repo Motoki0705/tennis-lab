@@ -67,6 +67,20 @@ if endpoint.endswith("/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE"):
         {"name": "ISSUE_SUPPLEMENT_ENABLED_SINCE", "value": state["enabled_since"]},
         state.get("variable_status", 200),
     )
+if endpoint.startswith("repos/o/r/issues?state=all"):
+    page = int(endpoint.split("page=")[-1])
+    response(
+        [state["issue"], *state.get("evidence_issues", [])][
+            (page - 1) * 100 : page * 100
+        ]
+    )
+if endpoint.startswith("repos/o/r/issues/") and state.get("evidence_issues"):
+    for issue in state["evidence_issues"]:
+        if endpoint == f"repos/o/r/issues/{issue['number']}":
+            response(issue)
+        if endpoint.startswith(f"repos/o/r/issues/{issue['number']}/comments?"):
+            page = int(endpoint.split("page=")[-1])
+            response(state.get("evidence_comments", [])[(page - 1) * 100 : page * 100])
 if endpoint == "repos/o/r/issues/1" and method == "GET":
     state["issue_reads"] = state.get("issue_reads", 0) + 1
     mutation = state.get("mutation")
@@ -130,9 +144,7 @@ if endpoint == "repos/o/r/issues/1" and method == "PATCH":
     if "body" in payload:
         if state.get("interference") in {"before", "same_author"}:
             editor = (
-                BOT_EDITOR
-                if state["interference"] == "same_author"
-                else HUMAN_EDITOR
+                BOT_EDITOR if state["interference"] == "same_author" else HUMAN_EDITOR
             )
             edit("concurrent edit", editor)
         if state.get("interference") != "missing_history":

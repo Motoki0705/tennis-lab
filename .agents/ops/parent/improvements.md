@@ -7,7 +7,8 @@
 ## 候補の正本
 
 安定IDは `I-<元親番号>-<key>`。keyは親が選ぶ64文字以下の小文字英数字・ハイフンで、改名・再提案でも変えない。
-元親の `parent-improvement:v1` 構造化コメント列が唯一の正本である。候補revision、直前eventの参照、内容digestを検査し、
+元親に対応する証拠用Issueの `parent-improvement:v1` 構造化コメント列が正本である。旧親コメントも
+[共通reader](README.md#機械証拠の保存共通reader)で読み、候補revision、直前eventの参照、内容digestを検査し、
 欠落・分岐・未知version・同じ配送keyの異なる内容を拒否する。子の「次の改善候補」欄は正本へのリンクだけを置く。
 元親がcloseしてもコメントを参照でき、同じ候補の補足・起票・人間判断の再送は元親の担当・実装を再開しない。
 
@@ -144,6 +145,8 @@ dispatcherに新たな自動割当経路は作らず、既存の自律着手条�
 requirements.available=falseとなり、finishを拒否する。一括移行や推測で埋めない。
 
 手動は `release --ended --spec tmp/finish.json`。従来の `--note-file` は受入未確認の担当終了として維持する。
+completedの前に[完了通知の契約](README.md#自由文の進捗連絡)で親へ固定completionを公開する。
+finishは受入項目の機械記録として証拠用Issueへ保存し、通知本文を再掲しない。
 自律は [workflow-report](development_workflow.md#待機完了担当終了) のcompleted入力version 2へfinishを含める。
 実merge・レビュー・子の終了等の既存検査に加え、supervisorは当該job/担当generation/権限に結び付いたfinish receiptを照合する。
 手書きの最終completed JSONだけでは完了しない。

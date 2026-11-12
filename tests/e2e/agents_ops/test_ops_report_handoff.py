@@ -12,6 +12,8 @@ from typing import Any
 
 import pytest
 
+from tests.e2e.agents_ops.test_ops_report_triage import _events
+
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 sys.path.insert(0, str(OPS / "ops-report"))
 sys.path.insert(0, str(OPS))
@@ -631,10 +633,7 @@ def test_ledger_report_uses_existing_triage_owner_receipt_without_agent_start(
     assert result.returncode == 0, result.stderr
     updated = next(i for i in ops.state["issues"] if i["number"] == 100)["body"]
     assert "親 #1: 採用済み提案の受領待ち" in updated
-    events = [
-        json.loads(c["body"].splitlines()[0][len("<!-- parent-session:v1 ") : -4])
-        for c in ops.state.get("comments", {}).get("1", [])
-    ]
-    assert sum(e["event"] == "proposal_pending" for e in events) == 1
+    assert len(_events(ops, "proposal_pending")) == 1
+    assert not ops.state.get("comments", {}).get("1")
     assert not [i for i in ops.state["issues"] if "issue:child" in i["labels"]]
     assert not (ops.tmp / "organization_calls.jsonl").exists()

@@ -29,7 +29,13 @@ from worker_logs import service as worker_logs
 from worker_logs import sources as log_sources
 
 from . import judgement
-from .collect import assert_material_fresh, collect, material, source_references
+from .collect import (
+    assert_material_fresh,
+    collect,
+    history_owner,
+    material,
+    source_references,
+)
 from .outcomes import read_result
 from .runtime import Runtime, alive, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
@@ -376,7 +382,7 @@ class Supervisor:
             self.gh,
             self.store,
             Path(self.schedule.read()["config"]["cwd"]),
-            [session.parent, *cited_issues],
+            [session.parent, *(history_owner(snapshot, n) for n in cited_issues)],
         )
         # The dispatcher itself changes this row while binding/finishing jobs.
         # Its authorization and the current delegation were checked above;
@@ -577,9 +583,14 @@ class Supervisor:
             )
             snapshot = load(Path(run["directory"]) / "input.json")
         else:
+            previous = dispatch["jobs"][dispatch["active_job"]]
+            snapshot = load(Path(previous["directory"]) / "start-input.json")
             cited_issues, _, _ = source_references(self.gh.repo.casefold(), sources)
             snapshot = collect(
-                self.gh, self.store, Path(config["cwd"]), [parent, *cited_issues]
+                self.gh,
+                self.store,
+                Path(config["cwd"]),
+                [parent, *(history_owner(snapshot, n) for n in cited_issues)],
             )
         job_id = uuid.uuid4().hex
         directory = (

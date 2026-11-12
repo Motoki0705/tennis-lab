@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib
 import json
 import os
@@ -16,7 +17,7 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_number
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.improvements import candidate_spec
 
@@ -263,6 +264,21 @@ def test_candidate_reason_and_approval_are_linked_without_writing_ended_source_j
         cut["data"]["reason"]
         == "See existing improvement reason in referenced evidence"
     )
+    candidate_body = next(
+        c
+        for c in p.state()["comments"][str(evidence_number(p.state()))]
+        if '"event": "candidate"' in c["body"]
+    )
+    assert cut["data"]["source"]["evidence"] == [
+        {
+            "kind": "public",
+            "url": f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-{candidate_body['id']}",
+            "revision": None,
+            "content_sha256": hashlib.sha256(
+                candidate_body["body"].encode()
+            ).hexdigest(),
+        }
+    ]
     assert any(
         row["kind"] == "action"
         and row["data"]["decision_id"] == cut["id"]
@@ -279,7 +295,9 @@ def test_candidate_reason_and_approval_are_linked_without_writing_ended_source_j
         approval["scope"]["parent"] == 10 and approval["data"]["observer"] == "machine"
     )
     assert any(
-        e.get("url", "").startswith("https://github.com/o/r/issues/1#issuecomment-")
+        e.get("url", "").startswith(
+            f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-"
+        )
         for e in approval["data"]["evidence"]
     )
     assert "execution not started" in approval["data"]["summary"]
@@ -437,10 +455,16 @@ def source_finished(p: ParentEnv) -> None:
 
 
 def post_count(p: ParentEnv) -> int:
-    return sum(
-        "repos/o/r/issues" in call and call[call.index("--method") + 1] == "POST"
-        for call in p.calls()
-        if "--method" in call
+    return int(
+        sum(
+            "repos/o/r/issues" in call and call[call.index("--method") + 1] == "POST"
+            for call in p.calls()
+            if "--method" in call
+        )
+        - sum(
+            row.get("labels") == [{"name": "parent-evidence"}]
+            for row in p.state()["issues"].values()
+        )
     )
 
 
@@ -486,14 +510,16 @@ def test_publication_recovers_only_missing_links_after_source_close(
     p = parent_env
     p.agreed()
     record(p)
+    # Link recovery exercises an accepted POST with a lost response. An absent
+    # sent comment remains uncertain and must not authorize another POST.
     p.env[
         "PARENT_FAIL_AFTER_CREATE"
         if failure == "create_response"
-        else "PARENT_FAIL_PATH"
-    ] = "1" if failure == "create_response" else "repos/o/r/issues/1/comments"
+        else "PARENT_FAIL_AFTER_COMMENT_CONTAINING"
+    ] = "1" if failure == "create_response" else '"event": "published"'
     publish(p, ok=False)
     p.env.pop("PARENT_FAIL_AFTER_CREATE", None)
-    p.env.pop("PARENT_FAIL_PATH", None)
+    p.env.pop("PARENT_FAIL_AFTER_COMMENT_CONTAINING", None)
     source_finished(p)
     # Recovery must not require the old owner or revive its assignment.
     p.env["CLAUDE_CODE_SESSION_ID"] = "different-recording-session"
@@ -509,7 +535,13 @@ def test_publication_recovers_only_missing_links_after_source_close(
     assert result["issue"] == 10 and post_count(p) == 1
     source = json.loads(p.cli("status").stdout)
     assert source["assignment"] == "ended"
-    assert len(p.state()["issues"]) == 3
+    assert (
+        sum(
+            row.get("labels") != [{"name": "parent-evidence"}]
+            for row in p.state()["issues"].values()
+        )
+        == 3
+    )
 
 
 def test_unknown_creation_does_not_repeat_post_when_lookup_temporarily_has_no_issue(
@@ -608,9 +640,9 @@ def test_explicit_approval_is_imported_once_and_old_replay_cannot_revoke_a_stop(
     source_finished(p)
     p.cli("register", parent="10")
     p.cli("agree", "--improvement-approval", approved["decision_id"], parent="10")
-    count = len(p.state()["comments"]["10"])
+    count = len(p.comments(10))
     p.cli("agree", "--improvement-approval", approved["decision_id"], parent="10")
-    assert len(p.state()["comments"]["10"]) == count
+    assert len(p.comments(10)) == count
     assert "needs-human" in {
         label["name"] for label in p.state()["issues"]["10"]["labels"]
     }
@@ -662,6 +694,7 @@ def test_approval_waits_for_supplement_and_material_changes_need_a_new_decision(
     publish(p)
     state = p.state()
     state["supplement_enabled_since"] = "2026-10-30T00:00:00Z"
+    state["issues"]["1"]["labels"].append({"name": "supplement:done"})
     p.save(state)
     assert "pending" in decide(p, "approve", ok=False).stderr
     state["issues"]["10"]["labels"].append({"name": "supplement:done"})
@@ -780,7 +813,7 @@ def test_execution_uses_approved_body_after_candidate_scope_is_narrowed(
     status = json.loads(p.cli("status", parent="10").stdout)
     assert {k: status["execution_basis"][k] for k in expected} == expected
     events = importlib.import_module("parent.policy").events(
-        p.state()["comments"]["10"], "operator", 10
+        p.comments(10), "operator", 10
     )
     saved = next(
         e for e in reversed(events) if e["event"] in {"agreed", "execution_basis"}

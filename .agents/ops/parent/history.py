@@ -1,0 +1,407 @@
+"""Typed, publisher-validated history across legacy comments and an evidence issue."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Literal
+
+from .judgement_comments import PREFIX as JUDGEMENT_PREFIX
+from .judgement_comments import owned_comment, read_json
+from .policy import digest, events, number, object_value
+
+if TYPE_CHECKING:
+    from .github import GitHub
+
+Source = Literal["legacy_parent_comment", "evidence_issue"]
+Family = Literal[
+    "parent-session", "parent-review", "issue-start-judgement", "parent-improvement"
+]
+
+
+class HistoryValidationError(ValueError):
+    """Fetched history is invalid; distinguish this from retrieval failures."""
+
+
+@dataclass(frozen=True)
+class Record:
+    family: Family
+    payload: dict[str, Any]
+    source: Source
+    comment_id: int
+    url: str
+    publisher: str
+    publisher_verified: bool
+    body: str
+
+
+@dataclass(frozen=True)
+class Diagnostic:
+    code: str
+    source: Source
+    comment_id: int
+    url: str
+    publisher: str
+    publisher_verified: bool
+
+
+@dataclass(frozen=True)
+class History:
+    records: tuple[Record, ...]
+    diagnostics: tuple[Diagnostic, ...]
+    parent_comments: list[dict[str, Any]]
+    _comments: list[dict[str, Any]]
+
+    def require_valid(self) -> None:
+        if self.diagnostics:
+            raise HistoryValidationError(
+                "; ".join(
+                    f"{d.code}: {d.url} publisher={d.publisher}"
+                    for d in self.diagnostics
+                )
+            )
+
+    @property
+    def comments(self) -> list[dict[str, Any]]:
+        self.require_valid()
+        return self._comments
+
+    def session_events(self) -> list[dict[str, Any]]:
+        self.require_valid()
+        return [
+            {**r.payload, "body": r.body}
+            for r in self.records
+            if r.family == "parent-session"
+        ]
+
+
+def comment_url(repo: str, parent: int, comment: Mapping[str, Any]) -> str:
+    issue = number(comment.get("_parent_record_issue", parent))
+    return f"https://github.com/{repo}/issues/{issue}#issuecomment-{number(comment.get('id'))}"
+
+
+def _payload(
+    body: str,
+    comment: Mapping[str, Any],
+    repo: str,
+    parent: int,
+    login: str,
+    *,
+    parent_scope: bool = True,
+) -> tuple[Family, dict[str, Any]] | None:
+    line = body.split("\n", 1)[0].rstrip("\r")
+    if line.startswith("<!-- parent-session:v"):
+        parsed = events([comment], login, parent)[0]
+        return "parent-session", {k: v for k, v in parsed.items() if k != "body"}
+    if line.startswith("<!-- parent-review:v"):
+        from review.parent_review_policy import records
+
+        parsed = records([comment], login)[0]
+        target = parsed.get("parent_issue", parsed.get("parent"))
+        if target is None and isinstance(parsed.get("request"), dict):
+            target = parsed["request"].get("parent_issue")
+        if parent_scope and (
+            (target != parent and not (target is None and parsed["kind"] == "pending"))
+            or parsed["kind"] == "pr"
+        ):
+            raise ValueError(
+                "parent-review record belongs to another parent or to a PR"
+            )
+        return "parent-review", parsed
+    if line.startswith("<!-- issue-start-judgement:v"):
+        if not line.startswith(JUDGEMENT_PREFIX) or not owned_comment(
+            comment, login, repo, parent
+        ):
+            raise ValueError("unknown or malformed judgement marker")
+        return "issue-start-judgement", object_value(
+            read_json(line[len(JUDGEMENT_PREFIX) : -4])
+        )
+    if line.startswith("<!-- parent-improvement:"):
+        from issues.improvement import EVENT_PREFIX, render_event, validate_event
+
+        if not line.startswith(EVENT_PREFIX) or not line.endswith(" -->"):
+            raise ValueError("unknown or malformed improvement comment")
+        data = validate_event(read_json(line[len(EVENT_PREFIX) : -4]))
+        if data["parent"] != parent or render_event(data) != body:
+            raise ValueError("improvement comment does not match its canonical record")
+        return "parent-improvement", data
+    return None
+
+
+def _logical_key(family: Family, payload: dict[str, Any]) -> str:
+    """Use recorded revision/run/operation IDs; never fill missing legacy fields."""
+    event = payload.get("event")
+    fields: tuple[str, ...] = ()
+    if family == "parent-session":
+        if event in {"checking", "agreed", "execution_basis", "basis_revoked"}:
+            fields = ("revision",)
+        elif event == "proposal_agreed":
+            fields = ("revision", "source")
+        elif event in {"proposal_pending", "proposal_received"}:
+            fields = ("source",)
+        elif event == "agreement_comments":
+            fields = ("agreement_sha256", "revision", "classification_revision")
+        elif event == "review":
+            fields = ("review_run_id", "state")
+        elif event == "assigned":
+            fields = ("generation",)
+        elif event == "note":
+            fields = ("generation", "body_sha256")
+        elif event in {"notification", "notification_record"}:
+            fields = ("key",)
+        elif event in {"child_stopped", "child_resumed"}:
+            fields = ("child", "operation")
+    elif family == "parent-review":
+        event = payload["kind"]
+        fields = ("review_run_id",)
+        if event in {"resolution", "evidence"}:
+            fields += (
+                "pr",
+                "finding" if event == "resolution" else "wait",
+                "fixed_snapshot" if event == "resolution" else "snapshot",
+            )
+    else:
+        fields = (
+            ("issue", "revision")
+            if "revision" in payload
+            else ("issue", "detail_sha256")
+        )
+    identity = (
+        {key: payload[key] for key in fields}
+        if fields and all(key in payload for key in fields)
+        else payload
+    )
+    return digest([family, event, identity])
+
+
+def _parse_history(
+    repo: str,
+    parent: int,
+    login: str,
+    parent_comments: Sequence[Mapping[str, Any]],
+    evidence_comments: Sequence[Mapping[str, Any]],
+    *,
+    evidence_issue: int | None,
+) -> History:
+    if evidence_issue is None and evidence_comments:
+        raise ValueError("evidence comments require a verified issue binding")
+    records, diagnostics, comments = [], [], []
+    keys: dict[str, Record] = {}
+    ids: set[int] = set()
+    groups: tuple[tuple[Source, int | None, Sequence[Mapping[str, Any]]], ...] = (
+        ("legacy_parent_comment", parent, parent_comments),
+        ("evidence_issue", evidence_issue, evidence_comments),
+    )
+    for source, issue, rows in groups:
+        for raw in rows:
+            cid = number(raw.get("id"))
+            if cid in ids:
+                raise ValueError("duplicate comment ID in parent evidence history")
+            ids.add(cid)
+            body = raw.get("body") or ""
+            if not isinstance(body, str):
+                raise ValueError("comment body must be text")
+            publisher = object_value(raw.get("user")).get("login")
+            if not isinstance(publisher, str) or not publisher:
+                raise ValueError("comment publisher missing")
+            verified = publisher == login
+            url = f"https://github.com/{repo}/issues/{issue}#issuecomment-{cid}"
+            payload = _payload(body, raw, repo, parent, login) if verified else None
+            if source == "evidence_issue" and (not verified or payload is None):
+                diagnostics.append(
+                    Diagnostic(
+                        "untrusted_evidence_publisher"
+                        if not verified
+                        else "unmarked_evidence_comment",
+                        source,
+                        cid,
+                        url,
+                        publisher,
+                        verified,
+                    )
+                )
+                continue
+            comments.append(
+                {**raw, "_parent_record_issue": issue, "_parent_record_source": source}
+            )
+            if payload is None:
+                continue
+            family, data = payload
+            record = Record(family, data, source, cid, url, publisher, verified, body)
+            key = _logical_key(family, data)
+            previous = keys.get(key)
+            if previous is not None:
+                if previous.payload != data:
+                    raise ValueError(
+                        f"conflicting parent evidence record: {previous.url} / {url}"
+                    )
+                if previous.source != source:
+                    raise ValueError(
+                        f"duplicate parent evidence record across media: {previous.url} / {url}"
+                    )
+            keys[key] = record
+            records.append(record)
+    for record in records:
+        if record.payload.get("event") == "notification_record":
+            spec = record.payload["notification"]
+            earlier = [r for r in records if r.comment_id < record.comment_id]
+            if any(ref not in {r.url for r in earlier} for ref in spec["evidence"]):
+                raise ValueError("notification evidence missing from verified history")
+            questions = {
+                r.payload["key"]
+                for r in earlier
+                if r.payload.get("event") == "notification_record"
+                and r.payload["notification"]["kind"] == "question"
+            }
+            if any(key not in questions for key in spec["resolves"]):
+                raise ValueError("notification resolves an unknown question")
+        if record.payload.get("completion_ref") and not any(
+            r.url == record.payload["completion_ref"]
+            and r.payload.get("event") == "notification_record"
+            and r.payload.get("key") == "completion"
+            for r in records
+        ):
+            raise ValueError("completion evidence missing from verified history")
+        if record.payload.get("event") == "notification":
+            from .notifications import render
+
+            data = record.payload
+            linked = [
+                r
+                for r in records
+                if r.url == data["record_url"]
+                and r.payload.get("event") == "notification_record"
+            ]
+            if (
+                len(linked) != 1
+                or linked[0].payload["key"] != data["key"]
+                or linked[0].payload["notification_sha256"]
+                != data["notification_sha256"]
+            ):
+                raise ValueError("notification evidence missing or inconsistent")
+            text = (
+                render(linked[0].payload["notification"])
+                + f"\n\n[判断・通知の保存記録]({data['record_url']})"
+            )
+            if digest(text) != data["body_sha256"]:
+                raise ValueError("notification differs from its evidence record")
+    from issues.improvement import read_candidates
+
+    read_candidates(comments, parent, login)
+    return History(
+        tuple(sorted(records, key=lambda r: r.comment_id)),
+        tuple(diagnostics),
+        [dict(c) for c in parent_comments],
+        sorted(comments, key=lambda c: c["id"]),
+    )
+
+
+def parse_history(
+    repo: str,
+    parent: int,
+    login: str,
+    parent_comments: Sequence[Mapping[str, Any]],
+    evidence_comments: Sequence[Mapping[str, Any]],
+    *,
+    evidence_issue: int | None,
+) -> History:
+    try:
+        return _parse_history(
+            repo,
+            parent,
+            login,
+            parent_comments,
+            evidence_comments,
+            evidence_issue=evidence_issue,
+        )
+    except ValueError as exc:
+        raise HistoryValidationError(str(exc)) from exc
+
+
+def read_history(
+    gh: GitHub,
+    parent: int,
+    login: str,
+    *,
+    parent_comments: Sequence[Mapping[str, Any]] | None = None,
+) -> History:
+    from .comment_journal import verify
+
+    manager = gh.evidence_issues()
+    evidence = manager.find(parent, login)
+    legacy = gh.comments(parent) if parent_comments is None else list(parent_comments)
+    machine = gh.comments(evidence.number) if evidence else []
+    history = parse_history(
+        gh.repo,
+        parent,
+        login,
+        legacy,
+        machine,
+        evidence_issue=evidence.number if evidence else None,
+    )
+    rows = {parent: legacy}
+    if evidence:
+        rows[evidence.number] = machine
+    try:
+        verify(
+            gh,
+            manager.directory.parent,
+            parent,
+            login,
+            rows,
+            evidence.number if evidence else None,
+        )
+    except ValueError as exc:
+        raise HistoryValidationError(str(exc)) from exc
+    return history
+
+
+def from_projection(
+    repo: str, parent: int, login: str, comments: Sequence[Mapping[str, Any]]
+) -> History:
+    """Revalidate a pinned collector projection without network I/O or new fields.
+
+    Live collection verifies the binding on GitHub before making this projection;
+    dispatcher freshness recollects it. Old snapshots remain legacy-only.
+    """
+    legacy, evidence = [], []
+    issue = None
+    for comment in comments:
+        metadata = {"_parent_record_source", "_parent_record_issue"} & comment.keys()
+        if metadata and (
+            len(metadata) != 2
+            or comment["_parent_record_source"]
+            not in {"legacy_parent_comment", "evidence_issue"}
+            or (
+                comment["_parent_record_source"] == "legacy_parent_comment"
+                and comment["_parent_record_issue"] != parent
+            )
+        ):
+            raise HistoryValidationError("invalid pinned parent evidence provenance")
+        if comment.get("_parent_record_source") == "evidence_issue":
+            n = number(comment.get("_parent_record_issue"))
+            if issue is not None and issue != n:
+                raise ValueError("multiple evidence issues in a pinned history")
+            issue = n
+            evidence.append(comment)
+        else:
+            legacy.append(comment)
+    return parse_history(repo, parent, login, legacy, evidence, evidence_issue=issue)
+
+
+def instruction_comments(
+    repo: str, parent: int, login: str, comments: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    from .execution import comment_snapshot
+
+    result = []
+    for comment in comments:
+        item = comment_snapshot(comment)
+        if (
+            item["login"] == login
+            and _payload(item["body"], comment, repo, parent, login, parent_scope=False)
+            is not None
+        ):
+            continue
+        result.append(item)
+    return result

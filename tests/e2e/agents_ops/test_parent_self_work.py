@@ -41,10 +41,14 @@ def assert_no_hierarchy_writes(p: ParentEnv) -> None:
     writes = [
         c for c in p.calls() if "--method" in c and c[c.index("--method") + 1] != "GET"
     ]
-    assert not any(
-        "repos/o/r/issues" in c or any("/sub_issues" in arg for arg in c)
-        for c in writes
-    )
+    assert not any(any("/sub_issues" in arg for arg in c) for c in writes)
+    created = [c for c in writes if "repos/o/r/issues" in c and "POST" in c]
+    containers = [
+        row
+        for row in p.state()["issues"].values()
+        if {v["name"] for v in row["labels"]} == {"parent-evidence"}
+    ]
+    assert len(created) == len(containers) == 1
     assert p.state()["parents"] == {}
 
 
@@ -389,11 +393,15 @@ def test_self_result_review_merge_completion_without_creating_children(
     merged = g.cli("merge")
     assert merged.returncode == 0, merged.stderr + merged.stdout
     assert p.state()["issues"]["1"]["state_reason"] == "completed"
+    p.announce_completion()
     completed = p.cli("workflow-report", "--spec", completion_spec(p, accepted=True))
     assert json.loads(completed.stdout)["state"] == "completed"
     if task.get("delegated"):
         assert task["preflight"]["accepted_turn_id"] == turn["snapshot"]["turn_id"]
     p.cli("release", "--ended", "--note-file", p.note("全体受入と実行終了を照合した。"))
+    p.cli("release", "--ended", "--note-file", p.note("全体受入と実行終了を照合した。"))
+    notices = p.state()["comments"]["1"]
+    assert len(notices) == 1 and '"key": "completion"' in notices[0]["body"]
     assert store(p).read_data()["parents"]["o/r#1"]["status"] == "ended"
     assert requirement_body(body) == requirement_body(p.state()["issues"]["1"]["body"])
     assert_no_hierarchy_writes(p)
@@ -506,6 +514,7 @@ def test_postmerge_worker_check_requires_parent_acceptance(gate_env: GateEnv) ->
         ]
         == checked_turn
     )
+    p.announce_completion()
     accepted = p.cli("workflow-report", "--spec", completion_spec(p, accepted=True))
     assert json.loads(accepted.stdout)["state"] == "completed"
     assert_no_hierarchy_writes(p)

@@ -68,7 +68,10 @@ def test_labelled_self_worker_continues_and_split_cancels_new_turn(
                 write["method"] == "POST"
                 and (
                     write["endpoint"].endswith("/sub_issues")
-                    or write["endpoint"] == "repos/o/r/issues"
+                    or (
+                        write["endpoint"] == "repos/o/r/issues"
+                        and write["payload"].get("labels") != ["parent-evidence"]
+                    )
                 )
             )
             for write in d.h.gh.writes

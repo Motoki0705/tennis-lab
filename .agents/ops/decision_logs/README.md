@@ -101,7 +101,7 @@ from runtime exit status.
 
 Each result's evidence identifies `capture_source`, artifact and the fingerprint
 of the observed snapshot. Private evidence stays explicitly unavailable publicly;
-a fingerprint alone is not a content archive. Canonical parent comments and
+a fingerprint alone is not a content archive. Parent evidence issues (including legacy parent comments) and
 published review/worker-log artifacts also retain fixed public evidence where
 available. Outboxes keep private delivery inputs; they are never publication units.
 Parent response summaries project public fields instead of copying assignments
@@ -175,6 +175,7 @@ Instead of `reason`, use exactly one `reason_ref`:
 | `review_reason` | `run_id`; the fixed review request's reason |
 | `improvement` | `key` and candidate `event_id`; the splitting judgment in the source parent's canonical comment |
 
+`note` and `improvement` references use the [shared parent reader](../parent/README.md#機械証拠の保存共通reader) and the comment URL on the actual medium.
 The decision retains a reference/fingerprint, not another copy of the public
 reason. Parent actor keys are random private-session mappings; handoff does not
 relabel earlier decisions. Pass the returned decision ID on the next supported

@@ -13,7 +13,13 @@ import pytest
 
 from tests.e2e.agents_ops.test_dispatcher_supervisor import FixtureRuntime
 from tests.e2e.agents_ops.test_merge_gate import GateEnv, make_gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    evidence_number,
+    run_git,
+    untracked_legacy_fixture,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -230,6 +236,38 @@ def completion_workflow(
             "rationale": basis["rationale"],
             "sources": basis["sources"],
         }
+        # Seed the pinned judgement and initial reservation, as assign() does.
+        # Continuations must read an existing parent's start-input, never create
+        # an initial job by silently collecting over an absent prior snapshot.
+        directory = schedule.directory / "judgements/fixture-judgement"
+        store.write_json(directory / "input.json", snapshot)
+        store.write_json(
+            directory / "result.json",
+            {
+                "schema_version": 2,
+                "result": "recorded",
+                "input_sha256": candidate["input_sha256"],
+                "decisions": [{"issue": 1, "disposition": "startable"}],
+                "deferred": [],
+                "candidates": [candidate],
+                "publications": [],
+                "diagnostics": [],
+            },
+        )
+        scheduled["runs"].append(
+            {
+                "id": "fixture-judgement",
+                "slot": scheduled["cursor"],
+                "explicit": False,
+                "phase": "recorded",
+                "controller": None,
+                "directory": str(directory),
+                "diagnostic": None,
+                "candidates": {"1": {"state": "assigned", "reason": "fixture"}},
+            }
+        )
+        schedule.write(scheduled)
+        session.row["session"] = "dispatcher-reservation:fixture-assignment"
         session.row["dispatch"] = {
             "schema_version": 1,
             "assignment_id": "fixture-assignment",
@@ -311,6 +349,7 @@ def test_labelled_parent_recovers_completion_with_or_without_a_worker(
     resumed = flow.close_and_reserve()
     assert flow.control.claim("o/r#1", resumed["id"]) is not None
     flow.accept(resumed)
+    p.announce_completion()
     from tests.support.agents_ops.improvements import finish_for
 
     acceptance = finish_for(p, state_dir=flow.control.store.directory)
@@ -380,6 +419,7 @@ def test_closed_standalone_parent_resumes_same_session_and_finishes(
     assert "existing worker" in blocked.stderr
     development = importlib.import_module("parent.development")
     assert len(flow.row()["dispatch"]["jobs"]) == len(row["dispatch"]["jobs"])
+    p.announce_completion()
     from tests.support.agents_ops.improvements import finish_for
 
     acceptance = finish_for(p, state_dir=control.store.directory)
@@ -574,9 +614,9 @@ def test_legacy_result_migration_preserves_review_and_completion(
         # accepted/confirmed it: the existing PR is genuinely still in review.
         state = p.state()
         policy = importlib.import_module("parent.policy")
-        state["comments"]["1"] = [
+        state["comments"][str(evidence_number(state))] = [
             comment
-            for comment in state["comments"]["1"]
+            for comment in evidence_comments(state)
             if not any(
                 event.get("event") == "review"
                 and event.get("review_run_id")
@@ -586,6 +626,8 @@ def test_legacy_result_migration_preserves_review_and_completion(
             )
         ]
         p.save(state)
+        # The legacy fixture predates posting these acknowledgement events.
+        untracked_legacy_fixture(p)
     with control.store.locked():
         task = flow.session.row["tasks"]["1"]
         task.pop("preflight")

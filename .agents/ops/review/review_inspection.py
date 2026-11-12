@@ -505,7 +505,9 @@ def inspect_reviews(
     _, items = session.work_items()
     children = set(items)
     parent_comments = attempt(
-        root_errors, "parent_comments", lambda: gh.comments(parent)
+        root_errors,
+        "parent_comments",
+        lambda: gh.parent_comments(parent, session.login),
     )
     comment_cache: dict[int, list[dict[str, Any]]] = {}
     if parent_comments is not None:

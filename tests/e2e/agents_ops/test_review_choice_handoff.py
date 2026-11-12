@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.agents_ops.test_parent_session import ReviewEnv
+from tests.e2e.agents_ops.test_parent_session import ReviewEnv, untracked_legacy_fixture
 from tests.e2e.agents_ops.test_parent_session import pair_review_env as pair_review_env
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_parent_session import (
@@ -312,14 +312,16 @@ def test_legacy_request_is_not_rewritten_or_given_an_invented_choice(
     registry["parents"]["o/r#1"]["reviews"][0]["request"] = manifest
     registry_path.write_text(json.dumps(registry))
     state = r.p.state()
-    for comment in state["comments"]["1"]:
-        comment["body"] = comment["body"].replace(old_digest, new_digest)
+    for rows in state["comments"].values():
+        for comment in rows:
+            comment["body"] = comment["body"].replace(old_digest, new_digest)
     r.p.save(state)
     r.request.clear()
     r.request.update(manifest, review_state="instructed")
     r.request_path.write_text(json.dumps(r.request))
     path = r.run_dir / "request.json"
     path.write_text(json.dumps(manifest))
+    untracked_legacy_fixture(r.p)
     before = path.read_bytes()
     result = json.loads(r.run().stdout)["result"]
     assert result["request_sha256"] == new_digest

@@ -14,6 +14,7 @@ from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_parent_session import (
     single_review_env as single_review_env,
 )
+from tests.e2e.agents_ops.test_review_recovery import inject_lost_response
 
 
 def decision(r: ReviewEnv, command: str) -> list[str]:
@@ -112,15 +113,19 @@ def test_capture_initialization_failure_preserves_review_and_missing_diagnostic(
 ) -> None:
     r = single_review_env
     immutable = None
+    failure_path = ""
     if command != "run":
-        r.run(ok=False, extra={"PARENT_FAIL_PATH": "repos/o/r/issues/1/comments"})
+        inject_lost_response(r, target="repos/o/r/issues/100/comments", method="POST")
+        r.run(ok=False)
         immutable = (r.run_dir / "result.json").read_bytes()
+        pending = next(c for c in r.p.comments() if '"kind":"pending"' in c["body"])
+        failure_path = f"repos/o/r/issues/comments/{pending['id']}"
     flags = decision(r, command) if with_decision else []
     original_clock = inject(r, fault)
     extra = (
         {"REVIEW_AGENT_FINAL_EXIT": "3"}
         if command == "run" and original_fails
-        else {"PARENT_FAIL_PATH": "repos/o/r/issues/1/comments"}
+        else {"PARENT_FAIL_PATH": failure_path}
         if original_fails
         else {}
     )

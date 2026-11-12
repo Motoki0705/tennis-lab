@@ -18,10 +18,12 @@ def comment(
     try:
         evidence = []
         if type(response.get("id")) is int:
+            from parent.history import comment_url
+
             evidence.append(
                 {
                     "kind": "public",
-                    "url": f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{response['id']}",
+                    "url": comment_url(session.gh.repo, session.parent, response),
                     "revision": None,
                     "content_sha256": sha(body.encode()),
                 }
@@ -102,11 +104,12 @@ def improvement_candidate(
         return {}
     try:
         from issues.improvement import ImprovementSource, render_event
+        from parent.improvements import comment_url
 
         from .journal import Journal
         from .parent_commands import decide_value
 
-        url = f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{comment_id}"
+        url = comment_url(session, session.parent, comment_id)
         evidence = {
             "kind": "public",
             "url": url,
@@ -187,14 +190,14 @@ def improvement_approval(session: Any, binding: dict[str, Any]) -> None:
         return
     try:
         from issues.improvement import render_event
-        from parent.improvements import candidates
+        from parent.improvements import candidates, comment_url
 
         candidate = candidates(session, binding["parent"])[binding["key"]]
         decision = candidate["decisions"][-1]
         comment_id = candidate["comments"][decision["id"]]
         evidence = {
             "kind": "public",
-            "url": f"https://github.com/{session.gh.repo}/issues/{binding['parent']}#issuecomment-{comment_id}",
+            "url": comment_url(session, binding["parent"], comment_id),
             "revision": None,
             "content_sha256": sha(render_event(decision).encode()),
         }

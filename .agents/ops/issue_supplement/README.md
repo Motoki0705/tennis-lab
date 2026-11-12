@@ -43,7 +43,7 @@ wait-supplementはこの1つのrunが全jobを終えるまで待つ。別runの�
    done/skippedや非対象は再実行しない。通常のpendingでも生成前に記録を確認する。
    title・body・labels・created_at・作者・全コメントをprivateなrun dirへ保存する。
    本文が60秒変わらなくなるまで10秒以下の間隔で確認する。10分以内に安定しなければ失敗。
-2. repository ownerをpublisherとして `parent.policy.events` の合意・実行根拠と、
+2. repository ownerをpublisherとして [共通reader](../parent/README.md#機械証拠の保存共通reader) 経由の合意・実行根拠と、
    `parent.judgement_comments.owned_comment` が完全検証した `startable` の判定記録を調べる。
    既に記録があれば本文を変更せず `supplement:skipped` にする。引用・別publisher・保留判定は実行根拠にしない。
    壊れた所有コメントは解析失敗とし、補足せず `supplement:failed` にする。

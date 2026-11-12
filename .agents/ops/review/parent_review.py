@@ -34,6 +34,7 @@ from parent.github import GitHub  # noqa: E402
 from parent.policy import (  # noqa: E402
     closing_issues,
     digest,
+    number,
     object_value,
     review_state,
     select_prs,
@@ -224,7 +225,7 @@ def collect(
         raise ValueError("PR set/snapshots changed during collection")
     return {
         "parent": {"number": parent.number, "title": parent.title, "body": parent.body},
-        "parent_comments": session.gh.comments(parent.number),
+        "parent_comments": session.gh.parent_comments(parent.number, session.login),
         "children": [
             {"number": c.number, "title": c.title, "body": c.body}
             for c in children.values()
@@ -339,6 +340,7 @@ def summaries(result: dict[str, Any]) -> tuple[str, dict[int, str]]:
 def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> str:
     """Resume a write-ahead publication by reconciling exact public records."""
     from merge_gate_policy import projection
+    from parent.record_writer import post_once, replace_pending, write_record
 
     validate_result(result)
     execution = read_json(run_dir / "execution.json")
@@ -365,7 +367,7 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
         n: int, kinds: set[str]
     ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
         with session.gh.fresh_reads():
-            comments = session.gh.comments(n)
+            comments = session.gh.review_comments(n, session.parent, session.login)
         return [
             (c, r)
             for c in comments
@@ -392,21 +394,20 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
     if parents:
         comment, committed = parents[0]
     else:
-        comment = session.gh.write(
-            "POST",
-            session.endpoint + "/comments",
-            {
-                "body": comment_body(
-                    pending,
-                    "結果公開中（未完了）。全対象PRへの公開が完了するまで有効なレビュー結果ではありません。",
-                )
-            },
+        comment = write_record(
+            session,
+            comment_body(
+                pending,
+                "結果公開中（未完了）。全対象PRへの公開が完了するまで有効なレビュー結果ではありません。",
+            ),
         )
         committed = pending
     comment_id = comment["id"]
     if type(comment_id) is not int or comment_id < 1:
         raise ValueError("GitHub returned an invalid parent comment ID")
-    url = f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{comment_id}"
+    from parent.history import comment_url
+
+    url = comment_url(session.gh.repo, session.parent, comment)
     stage(parent_comment_id=comment_id, parent_run_url=url, projections=[])
     done = []
     for pr in result["prs"]:
@@ -421,23 +422,24 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
         existing = matching(n, {"pr"})
         if len(existing) > 1 or any(r != record for _, r in existing):
             raise ValueError(f"conflicting PR {n} projection; cannot resume")
-        if not existing:
-            if committed != pending:
-                raise ValueError("committed result has a missing projection")
-            session.gh.write(
-                "POST",
-                f"repos/{session.gh.repo}/issues/{n}/comments",
-                {"body": pr_body},
-            )
+        if not existing and committed != pending:
+            raise ValueError("committed result has a missing projection")
+        published_body = existing[0][0]["body"] if existing else pr_body
+        post_once(session, n, published_body, digest(published_body), projection=True)
         done.append(n)
         stage(status="projections", projections=done)
     if committed == pending:
         stage(status="result")
-        session.gh.write(
-            "PATCH",
-            f"repos/{session.gh.repo}/issues/comments/{comment_id}",
-            {"body": body},
-        )
+        replace_pending(session, comment, body)
+    # Reconciliation after a lost PATCH response must attest the final bytes,
+    # even when its update WAL is still sent. A later rollback to pending fails.
+    published_parent_body = comment["body"] if committed == result else body
+    post_once(
+        session,
+        number(comment.get("_parent_record_issue", session.parent)),
+        published_parent_body,
+        digest(published_parent_body),
+    )
     (run_dir / "parent-comment.md").write_text(body, encoding="utf-8")
     stage(status="published")
     decision_capture.published(url, body)
@@ -1283,13 +1285,16 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
         session.public(body)
         for n in (args.pr, session.parent):
             with session.gh.fresh_reads():
-                comments = session.gh.comments(n)
+                comments = session.gh.review_comments(n, session.parent, session.login)
             if not any(record in records([c], session.login) for c in comments):
-                session.gh.write(
-                    "POST",
-                    f"repos/{session.gh.repo}/issues/{n}/comments",
-                    {"body": body},
-                )
+                if n == session.parent:
+                    from parent.record_writer import write_record
+
+                    write_record(session, body)
+                else:
+                    from parent.record_writer import post_once
+
+                    post_once(session, n, body, digest(body), projection=True)
         saved["published"] = True
         Store.write_json(path, saved)
     return {"evidence": record, "agent_invocations": 0}
@@ -1422,13 +1427,21 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
             session.public(body)
             # Parent record is committed only after the PR projection is posted.
             for n in (args.pr, session.parent):
-                endpoint = f"repos/{session.gh.repo}/issues/{n}/comments"
                 if not any(
                     c.get("body") == body
                     and c.get("user", {}).get("login") == session.login
-                    for c in session.gh.comments(n)
+                    for c in session.gh.review_comments(
+                        n, session.parent, session.login
+                    )
                 ):
-                    session.gh.write("POST", endpoint, {"body": body})
+                    if n == session.parent:
+                        from parent.record_writer import write_record
+
+                        write_record(session, body)
+                    else:
+                        from parent.record_writer import post_once
+
+                        post_once(session, n, body, digest(body), projection=True)
             saved["published"] = True
             Store.write_json(record_path, saved)
         resolved = [

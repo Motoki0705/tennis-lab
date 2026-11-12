@@ -67,6 +67,7 @@ def test_unsplit_manual_parent_finishes_with_no_candidate_and_retries_without_re
     before = requirement_body(p.state()["issues"]["1"]["body"])
     merged = g.cli("merge")
     assert merged.returncode == 0, merged.stderr
+    p.announce_completion()
     spec = finish_for(p)
     response = json.loads(p.cli("release", "--ended", "--spec", p.spec(spec)).stdout)
     assert (
@@ -81,9 +82,7 @@ def test_unsplit_manual_parent_finishes_with_no_candidate_and_retries_without_re
     assert requirement_body(p.state()["issues"]["1"]["body"]) == before
     assert set(response["tasks"]) == {"1"} and p.state()["parents"] == {}
     assert len(g.merge_calls()) == len(g.review.calls()) == 1
-    assert "次回改善: なし。" in "\n".join(
-        c["body"] for c in p.state()["comments"]["1"]
-    )
+    assert "次回改善: なし。" in "\n".join(c["body"] for c in p.comments())
 
 
 def test_unmet_acceptance_exported_to_candidate_cannot_finish(
@@ -113,6 +112,7 @@ def test_recorded_completion_and_failed_proposal_publication_are_independent(
     p.env["PARENT_FAIL_AFTER_CREATE"] = "1"
     p.cli("improvement-publish", "--candidate", "I-1-next", ok=False)
     del p.env["PARENT_FAIL_AFTER_CREATE"]
+    p.announce_completion()
     spec = finish_for(p, candidates=["I-1-next"])
     status = json.loads(p.cli("release", "--ended", "--spec", p.spec(spec)).stdout)
     assert (

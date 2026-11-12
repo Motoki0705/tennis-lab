@@ -48,6 +48,7 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
         "followup",
         "ai-proposed",
         "ops-report",
+        "parent-evidence",
         "agent:claude",
         "agent:codex",
         "python",
@@ -506,6 +507,24 @@ def test_strip_apply_preserves_a_label_reapplied_by_human_since_plan(
     assert "skip #1 keep 'ci': last labeled by human" in result.stdout
     assert all("/issues/1/labels/" not in call[-1] for call in gh_env.writes())
     assert len(gh_env.writes()) == 2
+
+
+def test_strip_excludes_evidence_during_listing_and_rechecks_before_write(
+    gh_env: GHEnv,
+) -> None:
+    routes = strip_routes()
+    listing = f"repos/{REPO}/issues?state=open&per_page=100"
+    routes[listing][0].append(issue(9, "ci", "parent-evidence"))
+    routes[f"repos/{REPO}/issues/1"] = {
+        **routes[f"repos/{REPO}/issues/1"],
+        "body": "<!-- parent-evidence:v1 {} -->",
+    }
+    gh_env.routes(routes)
+    result = gh_env.run("strip-auto-labels", "--repo", REPO, "--apply")
+    assert result.returncode == 0, result.stderr
+    assert "skip #1: evidence container" in result.stdout
+    assert not any("/issues/9/events" in " ".join(call) for call in gh_env.calls())
+    assert not any("/issues/1/labels/" in " ".join(call) for call in gh_env.writes())
 
 
 def test_strip_apply_skips_an_issue_closed_since_plan(gh_env: GHEnv) -> None:

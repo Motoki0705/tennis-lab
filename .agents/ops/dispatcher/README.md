@@ -77,6 +77,10 @@ GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#gi
   旧キーを持つ保存済み入力は再利用せず、[補足処理の移行手順](../issue_supplement/README.md#名称設定ラベルの移行)に従い再収集する。
   記録前の再取得でも同じ値との一致を確認する。設定が変わったら古い判断を延期し、別の境界へ黙って切り替えない。
 - `issues`（番号文字列→本文・コメント・state/state_reason・labels・assignees・正式parent/children・dependencies・source_reports）。
+  証拠用Issueは作業subject/正式関係から[除外](../issues/README.md#証拠用issueの除外)する。
+  各作業Issueの機械コメントは [共通reader](../parent/README.md#機械証拠の保存共通reader) の投影を含む。
+  証拠側のコメントだけに `_parent_record_source=evidence_issue` と実保存先 `_parent_record_issue` を保持し、
+  固定snapshotの再読では同じparserで検証する。旧snapshotへ欠けたfieldを補わない。
   GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の補足追加判定](../issues/README.md#親issueの補足追加状態)へ渡す。
   親、子、先行依存、提案出典レポートはclosedも含め再帰的に収集する。別親に属する同repo依存も収集する。
 - `pulls`（全状態・全ページのPRとclosing指示・head・merge状態）、`owners`（既存registryの状態・generation・内容digest・委任予約の投影）。
@@ -101,6 +105,9 @@ publisherのparent-session/review進捗は除くが、checking/agreed/basis_revo
 
 `material(snapshot, N, sources=())` は対象の親子・依存・提案出典レポートの閉包と関連PR/担当/コードに絞った同じ射影。
 判定の `sources` にあるissue・コメントの所属issueも起点に加え、その正式関係・依存・提案出典を再帰的に含める。
+コメントの公開URLは実保存先を指す。証拠用Issueの番号は保存済みsnapshotの `history_owner` で所属する作業Issueへ戻し、
+判定の鮮度照合だけでなくsupervisorの初回起動・子の予約・親の継続予約でも同じ所属を収集する。
+継続時は直前の親jobの `start-input.json` を所属解決に使い、証拠容器を作業subjectへ渡さない。
 明示引用したPRはclosing先が閉包外でも本文・head・状態を含める。明示引用したコメントはID/login/本文も
 `source_comments` に固定する。通常は除外するシステム進捗記録でも、引用した本文の編集・削除は入力変更となる。
 自身の判定表示を独立出典として使うことは引き続き拒否する。
@@ -147,16 +154,17 @@ agentがstartableを返し、機械的阻害条件がある場合はrun全体を
 自然言語の明示停止・見送り・対象外、重要な未決事項、scopeと完了条件の妥当性はread-only agentが原文とコードを読んで判断する。
 これらの意味的判断をfixtureの正解だけで検証済みとは扱わない。
 
-報告容器を除く判断は当該issueへ、理由・確認事実・不足情報・再開条件・次の対応・出典・管理先を記録する。
-同じpublisher・repo・issueに属する厳密な `issue-start-judgement:v1` マーカーと本文を検証し、同内容なら書かず、
-変わった場合はそのコメントだけPATCHする。他人の同形マーカーを自分のコメントとして扱わない。
-自分のコメントの破損・複数一致は上書きせず診断する。本文や指示に編集があれば対象subjectを延期する。
-判断コメントの形式・識別は `parent/judgement_comments.py` を正本とし、人間合意後のコメント検査・
-自律根拠の指示射影・判定のdigestから同じ条件で除外する。先頭行のマーカー、publisher、repo・issue、
-構造化したdetailとdigest、再構築した本文全体の一致を要求する。マーカーの引用・偽装・追記や他publisherは除外しない。
-表示は同じコメントをPATCHし、新しい根拠の `ignored_comments` には固定しない。
-表示更新で実行根拠を失効させず、同一内容の再送で投稿を増やさないためである。
-旧根拠が表示のID/digestを固定している場合も、現存コメントがこの厳密な形式であると再検証できたものだけを常時除外する。
+報告容器を除く判断は当該Issueの証拠用Issueへ、理由・確認事実・不足情報・再開条件・次の対応・出典・管理先を記録する。
+同じpublisher・repo・issueに属する厳密な `issue-start-judgement:v1` マーカーと本文を検証する。
+最新の判定と同内容なら書かず、変わった場合はrevisionを増やして追記する。過去の判断をPATCHで消さない。
+旧revisionなし記録もそのまま読み、欠けた値を補わない。他publisherの同形マーカーを自分の記録として扱わない。
+判断の保存と、人間への質問や全体影響の通知は別の操作。通知基準と入口は
+[parent-session](../../skills/parent-session/SKILL.md#親issueへ伝えること)と[親CLI](../parent/README.md#自由文の進捗連絡)を参照する。
+
+形式・識別は `parent/judgement_comments.py` が正本。共通readerを通し、人間合意後のコメント検査・
+自律根拠の指示射影・判定digestから同じ条件で除外する。先頭行のマーカー、publisher、repo・issue、
+構造化したdetailとdigest、再構築した本文全体の一致を要求する。引用や通常の人間コメントは自動除外しない。
+旧根拠が表示ID/digestを固定している場合も、現存コメントがこの厳密な形式であると再検証できるものだけを除外する。
 形式の破損や通常の指示・明示分類した通常コメントの編集/削除は引き続き拒否する。
 
 startableは `execution_input()` の固定値と最新値を照合し、version付きbasisを生成して `record_autonomous()` に渡す。

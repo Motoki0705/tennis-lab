@@ -86,7 +86,7 @@
 
 结果的evidence注明 `capture_source`、artifact和观察快照的fingerprint。
 私有证据仍明确标记为不可公开；fingerprint不等于全文档案。
-已公开的父级评论、review和worker日志还保留可用的固定公开证据。
+父级证据Issue（包括旧父级评论）、已公开的review和worker日志还保留可用的固定公开证据。
 outbox只保存私有投递输入，不是发布单元。
 父级响应摘要只投影可公开字段，不整份复制assignment或任意嵌套状态。
 私有来源ID在捕获前注册；完整响应与错误详情保留为私有证据。
@@ -149,6 +149,7 @@ conditions/expected_result字段；CLI分配ID。初始判断须在 `basis` 提�
 | `review_reason` | `run_id`；固定review请求的理由 |
 | `improvement` | `key` 和候选 `event_id`；原父级正本评论中的拆分判断 |
 
+`note` 和 `improvement` 通过[父级共用reader](../parent/README.md#機械証拠の保存共通reader)验证，并引用实际存储位置的评论URL。
 判断保留引用/fingerprint，不再次复制公开理由正文。
 父级actor键是私有session对应的随机公开键；交接不会改变旧判断的作者。
 把返回的判断ID传给下一条支持的CLI（包括review/merge），后续结果通过行动与之连接。
