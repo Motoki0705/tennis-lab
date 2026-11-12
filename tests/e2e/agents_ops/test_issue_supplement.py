@@ -869,12 +869,25 @@ def judgement(disposition: str = "startable") -> str:
 
 
 @pytest.mark.parametrize("record", [agreement(), execution_basis(), judgement()])
+@pytest.mark.parametrize("medium", ["legacy_parent_comment", "evidence_issue"])
 def test_existing_execution_records_skip_without_agent_calls_or_body_writes(
-    supplement_env: SupplementEnv, record: str
+    supplement_env: SupplementEnv, record: str, medium: str
 ) -> None:
     env = supplement_env
     state = env.state()
-    state["comments"] = [comment(record)]
+    if medium == "legacy_parent_comment":
+        state["comments"] = [comment(record)]
+    else:
+        state["evidence_issues"] = [
+            {
+                **state["issue"],
+                "id": 99,
+                "number": 9,
+                "labels": [{"name": "parent-evidence"}],
+                "body": '<!-- parent-evidence:v1 {"parent": 1, "repo": "o/r"} -->',
+            }
+        ]
+        state["evidence_comments"] = [comment(record)]
     env.save(state)
     assert env.run("supplement") == 0 and env.bundle()["status"] == "skipped"
     assert env.calls("agy") == []

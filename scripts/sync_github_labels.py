@@ -18,6 +18,9 @@ from urllib.parse import quote
 
 import yaml
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / ".agents/ops"))
+from issues.evidence import is_evidence_issue  # noqa: E402
+
 MANIFEST = Path(__file__).resolve().parents[1] / ".github/labels.yml"
 AXES = ("hierarchy", "work-type", "origin", "area", "status")
 LABELER_BOT = "github-actions[bot]"
@@ -213,7 +216,11 @@ def fetch_strip_plan(
 ) -> tuple[int, list[StripDecision]]:
     rows = _rows(repo, "issues?state=open&per_page=100")
     issues = [
-        row for row in rows if "pull_request" not in row and row["state"] == "open"
+        row
+        for row in rows
+        if "pull_request" not in row
+        and row["state"] == "open"
+        and not is_evidence_issue(row)
     ]
     decisions = []
     for issue in issues:
@@ -253,6 +260,9 @@ def apply_strip(repo: str, decisions: Sequence[StripDecision]) -> int:
         current = _issue(repo, number)
         if "pull_request" in current or current["state"] != "open":
             print(f"skip #{number}: no longer an open issue")
+            continue
+        if is_evidence_issue(current):
+            print(f"skip #{number}: evidence container")
             continue
         present = _label_names(current)
         events = _rows(repo, f"issues/{number}/events?per_page=100")

@@ -6,6 +6,12 @@ PR open/push/CI完了・時間経過から起動するpoll、hook、timerはな�
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
 review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
+親側の要求・公開結果・followupは [共通reader](../parent/README.md#機械証拠の保存共通reader) から取得する。
+旧親コメントと証拠用Issueの両方を検証し、`parent_run_url` は実際の保存先のcomment permalinkと照合する。
+各PRのprojection・followupコピーは従来どおりそのPRから読む。保存済みpayloadやdigestを媒体変更で書き換えない。
+この基盤段階のwriterは親Issueへ投稿する。証拠側へ移したpendingの公開再開や判定表示の更新は、
+writer切替後の入口を必要とするため明示拒否する。既存の親側pendingは従来どおり再開できる。
+
 | ファイル | 責務 |
 |---|---|
 | `parent_review.py` | 明示runの受理、収集、Codex実行、記録公開、親による修正確認 |

@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+from parent.history import comment_url
 from worker_logs.journal import decode, locked, require
 from worker_logs.schema import json_bytes, sha
 
@@ -506,14 +507,14 @@ def reason_reference(
         }
         matches = [
             c
-            for c in session.gh.comments(session.parent)
+            for c in session.gh.parent_comments(session.parent, session.login)
             if c["body"] in notes and c.get("user", {}).get("login") == session.login
         ]
         require(bool(matches), "reference_unavailable")
         comment = min(matches, key=lambda c: c["id"])
         evidence = {
             "kind": "public",
-            "url": f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{comment['id']}",
+            "url": comment_url(session.gh.repo, session.parent, comment),
             "revision": None,
             "content_sha256": sha(comment["body"].encode()),
         }

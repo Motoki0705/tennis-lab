@@ -224,7 +224,7 @@ def collect(
         raise ValueError("PR set/snapshots changed during collection")
     return {
         "parent": {"number": parent.number, "title": parent.title, "body": parent.body},
-        "parent_comments": session.gh.comments(parent.number),
+        "parent_comments": session.gh.parent_comments(parent.number, session.login),
         "children": [
             {"number": c.number, "title": c.title, "body": c.body}
             for c in children.values()
@@ -365,7 +365,7 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
         n: int, kinds: set[str]
     ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
         with session.gh.fresh_reads():
-            comments = session.gh.comments(n)
+            comments = session.gh.review_comments(n, session.parent, session.login)
         return [
             (c, r)
             for c in comments
@@ -406,7 +406,16 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
     comment_id = comment["id"]
     if type(comment_id) is not int or comment_id < 1:
         raise ValueError("GitHub returned an invalid parent comment ID")
-    url = f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{comment_id}"
+    from parent.history import comment_url
+
+    url = comment_url(session.gh.repo, session.parent, comment)
+    if (
+        committed == pending
+        and comment.get("_parent_record_issue", session.parent) != session.parent
+    ):
+        raise ValueError(
+            "pending evidence publication requires the evidence writer; parent writer cannot resume it"
+        )
     stage(parent_comment_id=comment_id, parent_run_url=url, projections=[])
     done = []
     for pr in result["prs"]:
@@ -1283,7 +1292,7 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
         session.public(body)
         for n in (args.pr, session.parent):
             with session.gh.fresh_reads():
-                comments = session.gh.comments(n)
+                comments = session.gh.review_comments(n, session.parent, session.login)
             if not any(record in records([c], session.login) for c in comments):
                 session.gh.write(
                     "POST",
@@ -1426,7 +1435,9 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
                 if not any(
                     c.get("body") == body
                     and c.get("user", {}).get("login") == session.login
-                    for c in session.gh.comments(n)
+                    for c in session.gh.review_comments(
+                        n, session.parent, session.login
+                    )
                 ):
                     session.gh.write("POST", endpoint, {"body": body})
             saved["published"] = True

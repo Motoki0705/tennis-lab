@@ -146,6 +146,7 @@ conditions/expected_result字段；CLI分配ID。初始判断须在 `basis` 提�
 | `model_reason` | `child`；当前保存的模型选择理由 |
 | `review_reason` | `run_id`；固定review请求的理由 |
 
+`note` 通过[父级共用reader](../parent/README.md#機械証拠の保存共通reader)验证，并引用实际存储位置的评论URL。
 判断保留引用/fingerprint，不再次复制公开理由正文。
 父级actor键是私有session对应的随机公开键；交接不会改变旧判断的作者。
 把返回的判断ID传给下一条支持的CLI（包括review/merge），后续结果通过行动与之连接。

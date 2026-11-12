@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from issues import ProposalSource
 
-from .policy import digest, events, number, object_value
+from .policy import digest, number, object_value
 
 # Reports keep their CLI package beside the hyphenated ops-report directory.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "ops-report"))
@@ -83,7 +83,9 @@ def deliver(
     for key in session.store.parents:
         repo, _, other = key.rpartition("#")
         if repo == session.gh.repo.casefold() and int(other) != session.parent:
-            history = events(session.gh.comments(int(other)), session.login, int(other))
+            history = session.gh.record_history(
+                int(other), session.login
+            ).session_events()
             if matching(history, source, expected):
                 raise ValueError(
                     "proposal already delivered to another parent; reconcile by hand"

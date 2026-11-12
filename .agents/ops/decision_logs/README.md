@@ -172,6 +172,7 @@ Instead of `reason`, use exactly one `reason_ref`:
 | `model_reason` | `child`; the currently saved model-selection reason |
 | `review_reason` | `run_id`; the fixed review request's reason |
 
+`note` references use the [shared parent reader](../parent/README.md#機械証拠の保存共通reader) and the comment URL on the actual medium.
 The decision retains a reference/fingerprint, not another copy of the public
 reason. Parent actor keys are random private-session mappings; handoff does not
 relabel earlier decisions. Pass the returned decision ID on the next supported

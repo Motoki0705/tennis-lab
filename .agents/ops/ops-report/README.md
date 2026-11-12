@@ -7,6 +7,9 @@
 
 ## 構成
 
+作業Issueの列挙・triageは [証拠容器の除外契約](../issues/README.md#証拠用issueの除外) に従う。
+organizationの合意/確認中判定は親の共通readerの履歴を使い、証拠用Issue自体を提案の実装先にしない。
+
 | パス | 役割 |
 |---|---|
 | `ops_report.py` | CLI入口（`report` / `triage` / `migrate-checkpoint` / `schedule init` / `schedule status`） |

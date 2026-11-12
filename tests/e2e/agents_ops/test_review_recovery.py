@@ -534,16 +534,19 @@ def test_adoption_gate_checks_real_source_publication_and_current_ci(
     response = g.cli("merge", AGENT_AUTO_MERGE="0")
     assert response.returncode in {1, 2}
     assert len(r.calls()) == 1 and not g.merge_calls()
-    if case in {"source_missing", "source_invocations", "unregistered_source"}:
+    if case == "same_run_failed":
+        assert response.returncode == 2
+        error = json.loads(response.stderr)
+        assert error["reasons"] == ["input_or_collection_error"]
+        assert "conflicting parent evidence record" in error["error"]
+    elif case in {"source_missing", "source_invocations", "unregistered_source"}:
         assert response.returncode == 2
         if case == "unregistered_source":
             assert "registered source review" in response.stderr
     else:
         reasons = g.results(response)[100]["reasons"]
         expected = (
-            "parent_result_missing_or_inconsistent"
-            if case == "same_run_failed"
-            else "ci_python_failure"
+            "ci_python_failure"
             if case == "latest_ci"
             else "review_not_published_or_authorized"
         )

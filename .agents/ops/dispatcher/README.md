@@ -77,6 +77,10 @@ GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#gi
   旧キーを持つ保存済み入力は再利用せず、[補足処理の移行手順](../issue_supplement/README.md#名称設定ラベルの移行)に従い再収集する。
   記録前の再取得でも同じ値との一致を確認する。設定が変わったら古い判断を延期し、別の境界へ黙って切り替えない。
 - `issues`（番号文字列→本文・コメント・state/state_reason・labels・assignees・正式parent/children・dependencies・source_reports）。
+  証拠用Issueは作業subject/正式関係から[除外](../issues/README.md#証拠用issueの除外)する。
+  各作業Issueの機械コメントは [共通reader](../parent/README.md#機械証拠の保存共通reader) の投影を含む。
+  証拠側のコメントだけに `_parent_record_source=evidence_issue` と実保存先 `_parent_record_issue` を保持し、
+  固定snapshotの再読では同じparserで検証する。旧snapshotへ欠けたfieldを補わない。
   GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の補足追加判定](../issues/README.md#親issueの補足追加状態)へ渡す。
   親、子、先行依存、提案出典レポートはclosedも含め再帰的に収集する。別親に属する同repo依存も収集する。
 - `pulls`（全状態・全ページのPRとclosing指示・head・merge状態）、`owners`（既存registryの状態・generation・内容digest・委任予約の投影）。

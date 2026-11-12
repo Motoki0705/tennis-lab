@@ -25,6 +25,7 @@ from .collect import (
     assert_fresh,
     assert_material_fresh,
     collect,
+    history_owner,
     is_container,
     material,
     source_references,
@@ -70,7 +71,7 @@ def publish_decision(
     session.public(body)
     existing = [
         c
-        for c in session.gh.comments(session.parent)
+        for c in session.gh.parent_comments(session.parent, session.login)
         if owned_comment(c, session.login, session.gh.repo, session.parent)
     ]
     if len(existing) > 1:
@@ -78,6 +79,10 @@ def publish_decision(
     if existing and existing[0]["body"] == body:
         return "unchanged"
     if existing:
+        if existing[0].get("_parent_record_issue", session.parent) != session.parent:
+            raise ValueError(
+                "evidence judgement update requires the evidence writer; parent writer cannot update it"
+            )
         session.gh.write(
             "PATCH",
             f"repos/{session.gh.repo}/issues/comments/{number(existing[0]['id'])}",
@@ -193,7 +198,10 @@ def retain_fresh_decisions(
         return
     seeds = {d["issue"] for d in decisions}
     for decision in decisions:
-        seeds.update(source_references(snapshot["repo"], decision["sources"])[0])
+        seeds.update(
+            history_owner(snapshot, n)
+            for n in source_references(snapshot["repo"], decision["sources"])[0]
+        )
     current = collect(gh, store, root, seeds)
     for decision in decisions:
         n = decision["issue"]

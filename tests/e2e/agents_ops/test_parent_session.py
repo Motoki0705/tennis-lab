@@ -113,6 +113,8 @@ def paged(rows):
     return rows[(page-1)*100:page*100]
 if endpoint == "user":
     response({"login": "operator"})
+if path == "repos/o/r/labels/parent-evidence":
+    response({"name": "parent-evidence"})
 if path == "repos/o/r/actions/variables/issue_supplement_enabled_since":
     supplement = state.pop("complete_supplement_on_activation_read", None)
     if supplement:
@@ -199,6 +201,7 @@ if n is None:
     state["next"] += 1
     row = {"id": int(n)+10000, "number": int(n), "repository_url": "https://api.github.com/repos/o/r",
            "title": payload["title"], "body": payload["body"], "labels": [{"name": x} for x in payload["labels"]],
+           "user": {"login": "operator"},
            "state": "open", "state_reason": None, "created_at": "2026-10-31T00:00:00Z"}
     state["issues"][n] = row
     save()

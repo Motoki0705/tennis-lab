@@ -106,6 +106,7 @@ class FakeGitHub:
 
     def __init__(self) -> None:
         self._fresh = False
+        self._store = None
         self.issues = {1: issue(1)}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -144,7 +145,11 @@ class FakeGitHub:
 
         if path == "repos/o/r/issues":
             return paged(
-                [v for _, v in sorted(self.issues.items()) if v["state"] == "open"]
+                [
+                    v
+                    for _, v in sorted(self.issues.items())
+                    if params.get("state") == ["all"] or v["state"] == "open"
+                ]
             )
         if path == "repos/o/r/pulls":
             return paged(self.prs)
@@ -198,6 +203,26 @@ class FakeGitHub:
 
     def comments(self, n: int) -> list[dict[str, Any]]:
         return self.rows(f"repos/o/r/issues/{n}/comments")
+
+    def evidence_issues(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.evidence_issues(self)
+
+    def history_read_scope(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.history_read_scope(self)
+
+    def evidence_rows(self) -> list[dict[str, Any]]:
+        return cast(
+            list[dict[str, Any]],
+            importlib.import_module("parent.github").GitHub.evidence_rows(self),
+        )
+
+    def record_history(self, n: int, login: str | None = None, **kwargs: Any) -> Any:
+        return importlib.import_module("parent.github").GitHub.record_history(
+            self, n, login, **kwargs
+        )
+
+    def parent_comments(self, n: int, login: str | None = None) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self.record_history(n, login).comments)
 
     def pulls(self, issues: set[int] | None = None) -> list[dict[str, Any]]:
         rows = self.rows("repos/o/r/pulls?state=all")

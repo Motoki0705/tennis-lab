@@ -631,6 +631,7 @@ def test_review_authorization_survives_only_unrelated_agreement_records(
     if change == "changed_agreement":
         agreed["agreement"]["scope"] = "独立した作業を追加。既存対象の受入条件は維持。"
         agreed["agreement_sha256"] = policy.digest(agreed["agreement"])
+        agreed["revision"] += 1  # A changed payload is a new logical agreement.
     elif change == "checking":
         p.agreed()  # Explicit checking revokes old evidence even with the same digest.
         state = p.state()
@@ -1274,9 +1275,15 @@ def test_rejections_never_merge_or_launch_agent(
             pr["mergeable"] = None
     p.save(state)
     result = g.cli("merge")
-    assert result.returncode == 1, result.stderr
-    rows = g.results(result)
-    assert reason in rows[103 if case == "outside" else 100]["reasons"]
+    if case == "failed_record":
+        assert result.returncode == 2
+        assert (
+            "conflicting parent evidence record" in json.loads(result.stderr)["error"]
+        )
+    else:
+        assert result.returncode == 1, result.stderr
+        rows = g.results(result)
+        assert reason in rows[103 if case == "outside" else 100]["reasons"]
     assert g.merge_calls() == []
 
 

@@ -170,11 +170,65 @@ PATCH直前に `require_final` が書込み対象 `n` をキャッシュを使�
 手動再実行時は担当親の本文更新を止めてから行い、競合を疑う場合は編集履歴と現在の本文を照合する。
 triageの履歴検査と再適用は [ops-report README](../ops-report/README.md#採用提案の自動issue化) を参照する。
 
+### 機械証拠の保存・共通reader
+
+機械記録は `GitHub.record_history(parent, publisher)` が返す `parent.history.History` を通して読む。
+従来の親コメントと、親ごとに1件の証拠用Issueのコメントを同時に取得・検証する。
+`History.records` は型付きの記録で、元payload・原文・`source`（`legacy_parent_comment` /
+`evidence_issue`）・comment ID/URL・publisher・`publisher_verified` を保持する。
+`session_events()` は従来のpolicy入力、`comments` はレビュー等の既存parser向けの投影。
+単一媒体を読む `GitHub.comments()` はPRの投影や一般の資料取得用に残す。
+`policy.events`・`parent_review_policy.records`・`judgement_comments` は媒体を選ばない純粋validatorとして再利用する。
+
+証拠用Issueの取得は `parent evidence`、明示作成は `parent evidence --create`。
+どちらも `--repo`・`--parent`・`--state-dir` は通常のCLIと共通。作成の前に管理者が
+[ラベルの同期CLI](../issues/README.md#ラベル)で専用ラベルを準備する。自動作成やwriterの自動切替は行わない。
+この保存基盤だけの段階では、既存writerの投稿先は従来の親Issueのまま。
+
+証拠用Issueの本文1行目は次のJSONマーカー。現在の認証publisherが作者であり、同じrepository内で、
+ラベルが `parent-evidence` だけであることを毎回GitHub応答で照合する。タイトルは結び付きの根拠にしない。
+
+```html
+<!-- parent-evidence:v1 {"parent": 123, "repo": "owner/repo"} -->
+```
+
+`repo` はcasefold、`parent` は正整数。マーカーの追加キー・重複JSONキー・未知version・別publisher・
+ラベル不一致を拒否する。ローカル番号だけでは信用しない。検索indexを使わず、全状態のIssue一覧を
+全ページ取得して候補を検査し、複数候補があれば選ばずエラーにする。
+dispatcherの1回のread-only収集内では発見用の一覧を共有し、次の収集で再取得する。
+通常はopenのまま保持する。終了による完了数の増加や再開時の状態変更を避け、追記する保存容器であることを示すため。
+closedにしても履歴は読め、作業対象への除外は状態に依存しない。
+作業Issueへの誤用を防ぐ共通判定と経路は [issues API](../issues/README.md#証拠用issueの除外) を参照する。
+
+作成は共有state配下 `evidence-issues/` の親・repo別lockで直列化する。
+このlockを待つ間は親registryを解放し、先行作成のGitHub I/O後の再取得を妨げない。
+POST前に送信intentをfsyncして保存し、応答とGitHub再取得を照合してから番号を保存する。
+応答喪失・中断後は同じ入口で既存Issueを照合する。送信済みで候補が見えない場合は
+`creation uncertain` として止め、再POSTしない。GitHubのIssue作成APIに冪等keyはないため、
+送信直前の中断でも手動照合が必要になり得る。別ホスト・別stateで同時に新規作成しない。
+復旧時はjournalを保全し、GitHubを照合する。壊れたjournalや欠落した既知の結び付きを空状態へ置き換えない。
+通常の読取・status・inspectionはIssueもローカルjournalも作成しない。
+
+履歴は媒体に優先順位を付けず、GitHub comment IDの昇順で結合する。作成/編集時刻では並べ替えない。
+同じIDの重複、媒体をまたぐ同じ論理key、同じkeyで異なるpayloadはエラー。
+keyは合意/根拠のrevision、レビューのrun＋state/kind、提案のsource、停止のoperation、
+noteのgeneration＋body digest等の保存済み識別子から作る。
+修正確認・証拠確認は対象PR・指摘/wait・固定snapshotも含む。
+識別子のない旧形式では原payload自体をkeyに使い、欠けたfieldを現在値で補わない。
+同一媒体内の同一payloadの再掲は、従来どおり履歴として保持する。
+片方の取得・検証が失敗したとき、他方の過去の成功記録だけを使って続けない。
+
+証拠側のマーカーなしコメントと別publisherのコメントは、出典URLとpublisher照合結果を持つ
+`History.diagnostics` にそれぞれ `unmarked_evidence_comment` / `untrusted_evidence_publisher` として残す。
+この診断がある履歴を権限・レビュー等へ投影すると明示エラーになる。
+親側の通常コメントは、同じloginの人間の発言も含め、従来どおり指示入力として保持する。
+旧合意のcomment baseline・requirements digest等が無い場合も、その欠測を保持する。旧コメントの読取期限は設けない。
+
 ### 合意・進捗コメント
 
 コメントの1行目は `<!-- parent-session:v1 <JSON> -->`。
 JSONは `parent`、`event` とイベント固有の値を持ち、`<` / `>` をUnicode escapeする。
-現在の `gh api user` と同じloginによるコメントだけを読み、本文中の引用マーカーを無視する。
+機械記録の信頼境界は上記readerが扱い、本文中の引用マーカーを無視する。
 合意には構造化した `agreement` と、そのcanonical JSONの `agreement_sha256` を含める。
 canonical JSONはUTF-8、`ensure_ascii=False, sort_keys=True, separators=(",", ":")`。
 再実行時は同一イベントを再投稿しない。別ghアカウントへの移管は自動で信用せず、

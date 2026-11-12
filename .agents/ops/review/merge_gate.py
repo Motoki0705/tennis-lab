@@ -42,7 +42,10 @@ from parent.policy import (  # noqa: E402
 from parent.session import ParentSession  # noqa: E402
 from parent.snapshot import snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
-from parent.work_targets import dependency_graph, require_separate_self_prs  # noqa: E402
+from parent.work_targets import (  # noqa: E402
+    dependency_graph,
+    require_separate_self_prs,
+)
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
     load_json,
@@ -287,7 +290,7 @@ def load_evidence(
         ):
             if n in view.errors:
                 view.errors[n].append("adoption_source_superseded")
-    parent_comments = session.gh.comments(session.parent)
+    parent_comments = session.gh.parent_comments(session.parent, session.login)
     pr_comments = {n: session.gh.comments(n) for n in view.candidates}
     errors = list(
         publication_errors(

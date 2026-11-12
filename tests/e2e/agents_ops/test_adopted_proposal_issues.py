@@ -54,6 +54,11 @@ class FakeGitHub:
     issue_rows = github.GitHub.issue_rows
     issue = github.GitHub.issue
     comments = github.GitHub.comments
+    evidence_issues = github.GitHub.evidence_issues
+    history_read_scope = github.GitHub.history_read_scope
+    evidence_rows = github.GitHub.evidence_rows
+    record_history = github.GitHub.record_history
+    parent_comments = github.GitHub.parent_comments
     pulls = github.GitHub.pulls
     identity = github.GitHub.identity
     family = github.GitHub.family
@@ -62,6 +67,7 @@ class FakeGitHub:
     def __init__(self) -> None:
         self.parent: int | None = None
         self._fresh = False
+        self._store = None
         self.issues: dict[int, dict[str, Any]] = {}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}

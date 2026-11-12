@@ -9,6 +9,7 @@ from typing import Any
 
 from issues import Issue, task_status
 from parent.execution import task_errors
+from parent.history import comment_url
 from parent.policy import (
     closing_issues,
     dependencies,
@@ -188,7 +189,7 @@ def publication_errors(
         errors.append("parent_result_missing_or_inconsistent")
     url = execution.get("parent_run_url")
     urls = {
-        f"https://github.com/{result['request']['repo']}/issues/{result['request']['parent_issue']}#issuecomment-{c['id']}"
+        comment_url(result["request"]["repo"], result["request"]["parent_issue"], c)
         for c in parent_comments
         if c.get("id") and records([c], login) == [result]
     }

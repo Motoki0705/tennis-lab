@@ -36,7 +36,6 @@ from .policy import (
     closing_issues,
     dependencies,
     digest,
-    events,
     marker,
     next_agreement_revision,
     nonempty,
@@ -108,6 +107,7 @@ class ParentSession:
         self.key = f"{gh.repo.casefold()}#{parent}"
         self.endpoint = f"repos/{gh.repo}/issues/{parent}"
         self.gh.parent = parent
+        self.gh.evidence_directory = store.directory / "evidence-issues"
         self.store.focus(self.key)
         self.login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
 
@@ -124,7 +124,7 @@ class ParentSession:
         return row
 
     def history(self) -> list[dict[str, Any]]:
-        return events(self.gh.comments(self.parent), self.login, self.parent)
+        return self.gh.record_history(self.parent, self.login).session_events()
 
     def agreed(self) -> dict[str, Any]:
         row = self.owner()
@@ -635,9 +635,13 @@ class ParentSession:
                 "cannot split an issue with existing self-work; stop the worker and "
                 "explicitly reconcile its execution/results and PR ownership first"
             )
-        if parent.parent is None and not children and any(
-            self.parent in closing_issues(p.get("body") or "", self.gh.repo)
-            for p in self.gh.pulls({self.parent})
+        if (
+            parent.parent is None
+            and not children
+            and any(
+                self.parent in closing_issues(p.get("body") or "", self.gh.repo)
+                for p in self.gh.pulls({self.parent})
+            )
         ):
             raise work_targets.WorkTargetsChanged(
                 "cannot split an issue with an existing self-work PR; reconcile it first"

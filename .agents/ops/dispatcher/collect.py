@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from issues import parse_proposal_source, parse_sections, parse_task_metadata
+from issues.evidence import is_evidence_issue, require_work_issue
 from issues.supplement_state import read_enabled_since, supplement_state
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
-from parent.policy import closing_issues, digest, events, nonempty, number, object_value
+from parent.history import History, from_projection, instruction_comments
+from parent.policy import closing_issues, digest, nonempty, number, object_value
 from parent.state import Store
-
-from .records import owned_comment
 
 
 class InputsChanged(ValueError):
@@ -58,9 +58,13 @@ def unique_numbers(rows: Iterable[Mapping[str, Any]], label: str) -> list[int]:
 
 
 def is_container(raw: Mapping[str, Any]) -> bool:
-    return "ops-report" in {x["name"] for x in raw["labels"]} or (
-        raw["body"].splitlines()[0] if raw["body"] else ""
-    ).startswith("<!-- ops-report:v")
+    return (
+        is_evidence_issue(raw)
+        or "ops-report" in {x["name"] for x in raw["labels"]}
+        or (raw["body"].splitlines()[0] if raw["body"] else "").startswith(
+            "<!-- ops-report:v"
+        )
+    )
 
 
 def body_dependencies(body: str, repo: str) -> list[int]:
@@ -85,6 +89,13 @@ def body_dependencies(body: str, repo: str) -> list[int]:
 def collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
+    with gh.history_read_scope():
+        return _collect(gh, store, root, seeds)
+
+
+def _collect(
+    gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
+) -> dict[str, Any]:
     """Caller holds Store.locked(). Every page/failure is significant."""
     login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
     with gh.fresh_reads():
@@ -95,7 +106,7 @@ def collect(
             for r in gh.rows(
                 f"repos/{gh.repo}/issues?state=open&sort=created&direction=asc"
             )
-            if "pull_request" not in r
+            if "pull_request" not in r and not is_evidence_issue(r)
         ]
         subjects = sorted(unique_numbers(listed, "open issues"))
         for raw in listed:
@@ -153,6 +164,8 @@ def collect(
         if not isinstance(labels, list) or not isinstance(assignees, list):
             raise ValueError("issue labels/assignees missing")
         parent_raw = gh.get(base + "/parent", missing_parent=True)
+        if parent_raw is not None:
+            require_work_issue(object_value(parent_raw))
         parent = gh.identity(parent_raw) if parent_raw is not None else None
         children_raw = gh.rows(base + "/sub_issues")
         children = sorted(unique_numbers(children_raw, "children"))
@@ -162,8 +175,9 @@ def collect(
             | set(body_dependencies(raw.get("body") or "", gh.repo))
         )
         for row in [*children_raw, *formal_deps]:
+            require_work_issue(row)
             gh.identity(row)
-        comments = gh.comments(n)
+        comments = gh.parent_comments(n, login)
         ids = [comment_snapshot(c)["id"] for c in comments]
         if len(set(ids)) != len(ids):
             raise ValueError("duplicate comments within/across pages")
@@ -179,6 +193,14 @@ def collect(
                     "id": item["id"],
                     "user": {"login": item["login"]},
                     "body": item["body"],
+                    **(
+                        {
+                            "_parent_record_issue": c["_parent_record_issue"],
+                            "_parent_record_source": "evidence_issue",
+                        }
+                        if c.get("_parent_record_source") == "evidence_issue"
+                        else {}
+                    ),
                 }
             )
         source_reports: set[int] = set()
@@ -342,6 +364,25 @@ def require_current_snapshot(snapshot: Mapping[str, Any]) -> None:
         )
 
 
+def history_owner(snapshot: Mapping[str, Any], issue: int) -> int:
+    if str(issue) in snapshot["issues"]:
+        return issue
+    owners = {
+        int(n)
+        for n, raw in snapshot["issues"].items()
+        if any(
+            c.get("_parent_record_source") == "evidence_issue"
+            and c.get("_parent_record_issue") == issue
+            for c in raw["comments"]
+        )
+    }
+    if len(owners) != 1:
+        raise ValueError(
+            f"evidence source issue #{issue} has no unique collected parent"
+        )
+    return owners.pop()
+
+
 def material(
     snapshot: Mapping[str, Any],
     issue: int | None = None,
@@ -351,6 +392,7 @@ def material(
     cited_issues, cited_pulls, cited_comments = source_references(
         snapshot["repo"], sources
     )
+    cited_issues = {history_owner(snapshot, n) for n in cited_issues}
     if issue is None:
         selected = {int(n) for n in snapshot["issues"]}
     else:
@@ -360,16 +402,12 @@ def material(
     issues = {}
     for n in sorted(selected):
         raw = snapshot["issues"][str(n)]
-        prose = []
-        for c in raw["comments"]:
-            if owned_comment(c, snapshot["publisher"], snapshot["repo"], n):
-                continue
-            if c["user"]["login"] == snapshot["publisher"] and c["body"].startswith(
-                ("<!-- parent-session:v1 ", "<!-- parent-review:v1 ")
-            ):
-                continue
-            prose.append(comment_snapshot(c))
-        history = events(raw["comments"], snapshot["publisher"], n)
+        prose = instruction_comments(
+            snapshot["repo"], n, snapshot["publisher"], raw["comments"]
+        )
+        history = from_projection(
+            snapshot["repo"], n, snapshot["publisher"], raw["comments"]
+        ).session_events()
         controls = [
             {k: v for k, v in e.items() if k != "body"}
             for e in history
@@ -405,9 +443,10 @@ def material(
         # omits their system progress markers. Missing comments change this map.
         result["source_comments"] = {
             f"{n}:{c['id']}": comment_snapshot(c)
-            for n in sorted({n for n, _ in cited_comments})
+            for n in sorted({history_owner(snapshot, n) for n, _ in cited_comments})
             for c in snapshot["issues"][str(n)]["comments"]
-            if (n, c["id"]) in cited_comments
+            if (c.get("_parent_record_issue", n), c["id"]) in cited_comments
+            or (n, c["id"]) in cited_comments
         }
     return result
 
@@ -433,6 +472,16 @@ class SnapshotGitHub(GitHub):
         )
         return result
 
+    def record_history(
+        self, parent: int, login: str | None = None, **kwargs: Any
+    ) -> History:
+        return from_projection(
+            self.repo,
+            parent,
+            login or self.snapshot["publisher"],
+            self.comments(parent),
+        )
+
 
 def assert_material_fresh(
     snapshot: dict[str, Any],
@@ -456,6 +505,8 @@ def assert_fresh(
 ) -> dict[str, Any]:
     """Caller holds the registry lock; no agent is launched on a mismatch."""
     cited_issues, _, _ = source_references(snapshot["repo"], sources)
-    current = collect(gh, store, root, [issue, *cited_issues])
+    current = collect(
+        gh, store, root, [issue, *(history_owner(snapshot, n) for n in cited_issues)]
+    )
     assert_material_fresh(snapshot, current, issue, sources)
     return current

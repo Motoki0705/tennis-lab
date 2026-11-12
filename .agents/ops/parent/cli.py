@@ -73,6 +73,7 @@ def parser() -> argparse.ArgumentParser:
     ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
+    commands.add_parser("evidence").add_argument("--create", action="store_true")
     publication = commands.add_parser("publish-decision-log")
     publication.add_argument("--dry-run", action="store_true")
     publication.add_argument("--retry", action="store_true")
@@ -288,6 +289,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "worker-log-status",
                 "review-inspect",
                 "decision-log-status",
+                "evidence",
             }
             else session_identity(dict(os.environ))
         )
@@ -512,6 +514,10 @@ def _main(argv: list[str] | None = None) -> int:
                 result = session.status()
             elif command == "checking":
                 result = session.checking()
+            elif command == "evidence":
+                result = gh.evidence_issues().describe(
+                    parent, session.login, create=args.create
+                )
             elif command == "note":
                 result = session.note(read_text(args.body_file))
             elif command == "workflow-report":
