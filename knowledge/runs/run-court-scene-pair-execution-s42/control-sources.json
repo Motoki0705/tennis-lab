@@ -1,0 +1,28 @@
+{
+  "schema": "court_scene_pair_execution_control_sources_v1",
+  "drive_control": "operations/colab/court-scene-pair-20261110-recovery5/control",
+  "drive_helper_ref": "6f2966a8b6f2ea8fe090e3380465593ccd1cc633",
+  "scientific_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "operational_ref": "113cd45b894ae19ba964188ef04838de6db95e5b",
+  "files": {
+    "drive-cli/drive.py": {
+      "bytes": 14862,
+      "sha256": "785e8913f32b98de0e3bc27c3b27161939b02f1bdf7f8a44a6fcd56413cc2254"
+    },
+    "drive-cli/drive_core.py": {
+      "bytes": 18424,
+      "sha256": "d87b8407717335beb8d12f60142450e36ba7df749e4d2d3936447ad4ede9daa0"
+    },
+    "drive-cli/drive_management.py": {
+      "bytes": 11854,
+      "sha256": "f4118a2d5dfd26b5263abc862eab63e1a37337390b5851f282d98f34a2743feb"
+    },
+    "queue_service.py": {
+      "bytes": 2504,
+      "sha256": "02a980499d0db8f564d65ebf972be1a1aea05534a8dc99fd0ae62b678ac32c8e"
+    }
+  },
+  "generated_colab_repro_sha256": "d07d827c655fdfac1b9be82ab16296a0e0a46806a7329688d4515a39fec1977e",
+  "generated_colab_repro_preserved_as": "colab-repro.sh",
+  "note": "All helper bytes agree with the actual deployment manifest. The generated Colab replay command is retained byte for byte; repro.sh only stages the missing VM control helpers before invoking it."
+}

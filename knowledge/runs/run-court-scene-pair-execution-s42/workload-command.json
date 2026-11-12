@@ -1,0 +1,11 @@
+{
+  "schema": "court_scene_pair_original_workload_command_v1",
+  "command": "bash knowledge/runs/run-court-scene-pair-colab-s42/recovery_bootstrap.sh",
+  "cwd": "/content/tennis-lab",
+  "issue": 1585,
+  "resource": "all",
+  "expected_registration_count": 1,
+  "registered_at": "2026-11-09T23:39:38.843445+00:00",
+  "registration_returncode": 0,
+  "source_record": "operations/colab/court-scene-pair-20261110-recovery5/control/startup-registration-proof.json"
+}

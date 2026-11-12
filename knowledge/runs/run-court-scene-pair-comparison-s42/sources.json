@@ -1,0 +1,489 @@
+{
+  "schema": "court_scene_pair_comparison_sources_v1",
+  "scientific_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "group_source": "https://github.com/Motoki0705/tennis-lab/issues/1581#issuecomment-6533537917",
+  "inputs_identity": "4d7b39d613471fd9f94a64dcb36d8fbba3a939fa0517773125af394cc3c1ca33",
+  "drive_campaign": "outputs/court_detection/campaign/scene-pair-5500-s384-colab",
+  "campaign_progress": {
+    "condition": null,
+    "latest_saved_update": 33160,
+    "schema": "court_scene_pair_progress_v1",
+    "stage": "complete",
+    "started_at": "2026-11-09T23:40:20.165513+00:00",
+    "status": "completed",
+    "updated_at": "2026-11-10T04:37:28.356047+00:00"
+  },
+  "common": {
+    "evaluation_manifest_sha256": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444",
+    "real_ids_sha256": "941d04e604e1aa2791d8f94c8129f30432677b66e7f97f5a6f92123ca33ee2f8",
+    "synthetic_ids_sha256": "d1f81ccefdfcb7608bc623f4cbfa321e384268d0d70ebd3ff0edc69a91c624cb",
+    "source_objects": {
+      "src": "5c65b7156a169489f3fa45be7ca9f7b3f37ef60b",
+      "third_party/dinov3": "4add255125e6cbf446c6a43c5f3028aa41b63648",
+      "uv.lock": "4ca6e7452b403d015fba963b6517d90373263951"
+    },
+    "pool_sha256": "3b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c",
+    "pretrained_sha256": "08c60483bc63c04f533611e34bf70b120eedb7240f469bc16e9e20bf344b941d"
+  },
+  "conditions": {
+    "scene-1": {
+      "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-1-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "92e30ba6055af1cb67047867106246e8a14be65f122dbc3dd24cb58d1c094782",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/scene-1-s42/evaluation.json",
+      "evaluation_sha256": "dd3e9de22d49760e4ea6ec7be55a5b943b15c5f95a20970a81f119c5a372c311",
+      "global_step": 33160,
+      "config_digest": "0f3c1d203eaf32707398d6d277ce8fee89e2193000fc5c315f69c8de86e6fb36",
+      "data_condition_digest": "a0fea90664c15f44727d1dfffed69d8296efd1b913a9b56fb84d5033dd8c42e9",
+      "train_scene_images": {
+        "B00": 5500
+      },
+      "fit_val_scene_images": {
+        "B00": 500
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "46f43e4e423185641f25fc8dd2332b3e4164b9eff72da11d02e26f6da0a80e69",
+        "synthetic_court/validation_subset": "061e73f2c6fe465ce43941a7c1dcf968c6853763564ffa375b6f0879870ec2c1",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-scene-1.json",
+      "original_marker_sha256": "0d6e9a555af580514e41cd3664a579b827e71082968312a38f53a5fe0aafbd21",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/scene-1.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/scene-1.val.subset.json"
+      },
+      "legacy_real_five_metrics_and_ids_exact_equal": true,
+      "legacy_evaluation_sha256": "2ed28c9cf98e95ee82b8344632e4271ace255f509526dd61afc73c6764505a8a"
+    },
+    "scene-2": {
+      "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-2-s42/logs/version_1/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "e0bb2e99f28e021a04498a5f6d15449af25c2f86f8908dea3d9eaf2f6a454e73",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/scene-2-s42/evaluation.json",
+      "evaluation_sha256": "d18d85111583ea5bd26893da7d655ece7c3dd712416211e31b3ef86867007625",
+      "global_step": 33160,
+      "config_digest": "a1ee7f541c19d3ca856b74b45b5551e0ad451544cb113837f6dafc417dfe89fe",
+      "data_condition_digest": "ed8a33597b1f251abe600137ef2e57c5674b142752054c1a21b39fe45823ea3d",
+      "train_scene_images": {
+        "B00": 2750,
+        "B01": 2750
+      },
+      "fit_val_scene_images": {
+        "B00": 250,
+        "B01": 250
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "d998608daefb2192fef531c6dbece26b4d95d53407917e6ea66a1d699576d3eb",
+        "synthetic_court/validation_subset": "384c27304ca9268bde511a632116f544b8327d72b970a90e45950c8817ff7dab",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-scene-2.json",
+      "original_marker_sha256": "fe3cc93edf9820a898932f751453ad067ff70f7ea4f8919569bf32232f7606f2",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/scene-2.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/scene-2.val.subset.json"
+      },
+      "legacy_real_five_metrics_and_ids_exact_equal": true,
+      "legacy_evaluation_sha256": "1a8b24c37589943e00d5d8629925c924d3da135c73edc017c6b280672f29fbfb"
+    },
+    "scene-3": {
+      "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-3-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "246e0f4ab4ac45e21d64b559db436bcf8ba73f8242d1e662a5c7d19f971410fe",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/scene-3-s42/evaluation.json",
+      "evaluation_sha256": "3b2c0a3a5f4592c3ec5b1855bf1716c48f9d70eea4cba0ea3965e2a6c20ccc57",
+      "global_step": 33160,
+      "config_digest": "df016ec9b879ef403c8fc13a1dda9a213a11b8312915ef97f4dc77e971ca32ed",
+      "data_condition_digest": "b253d04436a9a3c2ae30ceaa3a7f6be1752348cc65490f00f72dc0295038a07f",
+      "train_scene_images": {
+        "B00": 1833,
+        "B01": 1833,
+        "B02": 1834
+      },
+      "fit_val_scene_images": {
+        "B00": 167,
+        "B01": 167,
+        "B02": 166
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "a6fe696de60fb3f2be704b408fa832e8f60f33d9446e65ecb0f4908edd7125ee",
+        "synthetic_court/validation_subset": "4346ba94fcb5f03f8edf56a202607343940314f6b54b7f5a94bb943cf13acc63",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-scene-3.json",
+      "original_marker_sha256": "a1da450734de1baf8a3ced7095426fd6b55c136c1cfa6526e62fea4d84b1ba9c",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/scene-3.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/scene-3.val.subset.json"
+      },
+      "legacy_real_five_metrics_and_ids_exact_equal": true,
+      "legacy_evaluation_sha256": "c5a309528213634c81493d14f3df5f669648ae219f7adb896a6f308cde9f805c"
+    },
+    "scene-4": {
+      "checkpoint": "outputs/court_detection/train/scene-diversity-6000-s384-colab/scene-4-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "4519cf00d083de3c64f0ed48995668bb08cad9c82c94a23b2db5cc10aab2a5d4",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/scene-4-s42/evaluation.json",
+      "evaluation_sha256": "7285b62e3931a6378078091789aa5b1617b956ac801fa4b71f9d60bf8d8d97da",
+      "global_step": 33160,
+      "config_digest": "ad227da596f685e1198b94cf906c44509032e069e0636ac124f33f7bc82838a0",
+      "data_condition_digest": "42bde8bc253e157c545693dd53cc96f6b35f1dbcdf4fdfbce786cf40c4cd9e5b",
+      "train_scene_images": {
+        "B00": 1375,
+        "B01": 1375,
+        "B02": 1375,
+        "B03": 1375
+      },
+      "fit_val_scene_images": {
+        "B00": 125,
+        "B01": 125,
+        "B02": 125,
+        "B03": 125
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "ff51d964889567f4ccd50f4549f634e1f1ebd5c730e7283568ce0c65c498e605",
+        "synthetic_court/validation_subset": "204052da33708fbf70d895703136102e5d8f25ebaa5fec6ae6d1327cd4e08750",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-scene-4.json",
+      "original_marker_sha256": "af109afaf52feb6241feb4ff43a4021fc0ca5c85cfbfb3d2cb35f71c439bfcd7",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/scene-4.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/scene-4.val.subset.json"
+      },
+      "legacy_real_five_metrics_and_ids_exact_equal": true,
+      "legacy_evaluation_sha256": "5ee6b2796685a98553e859bcb05d9be3b6edacb78a2971117de74f3e6456cdfb"
+    },
+    "P02": {
+      "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P02-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "c87cd194be49e85d8307f81a9df56179052d5fbe6e65f34d2f8addca2ea42bc3",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/P02-s42/evaluation.json",
+      "evaluation_sha256": "227f69f871642489b733a3dd5186f667e12caf3060ab4b6e02f773b83f6540d1",
+      "global_step": 33160,
+      "config_digest": "6685aeb1dddf5cd97aea97d1ac3b330549cffae0a63272a1160173267edb56ff",
+      "data_condition_digest": "fc449045c33d19eba59efb0581d43fa4b1f01ce07aee4b1ca8bba1030b9f6123",
+      "train_scene_images": {
+        "B00": 2750,
+        "B02": 2750
+      },
+      "fit_val_scene_images": {
+        "B00": 250,
+        "B02": 250
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "d5489a000744f79034a171d27373bc323fcb9ce775b0569cbad6978a832533cd",
+        "synthetic_court/validation_subset": "7615261d6ab7a0cb0a09e0d2cf198b0461517b6c3041e55faaf1024eee399bc7",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-P02.json",
+      "original_marker_sha256": "287ab81f6fb3f384ea34008e76fd9e6dee01b640839a03de980988c88cf24504",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/pair-b00-b02.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/pair-b00-b02.val.subset.json"
+      }
+    },
+    "P03": {
+      "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P03-s42/logs/version_1/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "d31cc85df0c3d97a4676af8a3aa4b68f553f960a204d47058628658bb4536915",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/P03-s42/evaluation.json",
+      "evaluation_sha256": "ae1b0b28375b0a0ff3828bb4c0f549ea3d80d250ac6a3873232f21a9e2bb957d",
+      "global_step": 33160,
+      "config_digest": "56bf38f90c02d2303a4fff100e7880dad2e802de62052322f3db31e1a641605b",
+      "data_condition_digest": "f16d166290c9e67c085ac998ce4f47959c2cfcf93dbd4793ba9c5c75eabec3c7",
+      "train_scene_images": {
+        "B00": 2750,
+        "B03": 2750
+      },
+      "fit_val_scene_images": {
+        "B00": 250,
+        "B03": 250
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "813251d6802739e01f177023b04177ea99303a17180cdfd5288371380e48a2b0",
+        "synthetic_court/validation_subset": "71efa5f6d1f90fe45aafb196d255b9f3c2ca20212b36412141ac2123b04ff0b0",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-P03.json",
+      "original_marker_sha256": "25ebef99254bd6ed0d49d8449f9a4e4d59fc6ec0653bacc7c467817ddab22d31",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/pair-b00-b03.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/pair-b00-b03.val.subset.json"
+      }
+    },
+    "P12": {
+      "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P12-s42/logs/version_0/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "b079116cac2add89c70c062f370dabe9fc53567335a8c2473fd3cca88bef1cb3",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/P12-s42/evaluation.json",
+      "evaluation_sha256": "a3ad23de386b0149d7dcd09f2fb06713068f69ae86f76f9c15ca92b0d8c1165c",
+      "global_step": 33160,
+      "config_digest": "341589809cd119f4ef168d663d0d65f1aeeea1b27f5ec306318854681b7fcb65",
+      "data_condition_digest": "93b31ceaca2b5eb7166abd56872bfc85f834803b9125676d6504b045f12dcb67",
+      "train_scene_images": {
+        "B01": 2750,
+        "B02": 2750
+      },
+      "fit_val_scene_images": {
+        "B01": 250,
+        "B02": 250
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "c456cdd47c24654be78702515a42a0b2d16d6dc975779335029e767d74dd270b",
+        "synthetic_court/validation_subset": "2763a2fcbc028b14c2cc49c2e3db81553d62a17462bccd6c86f6d24e04bb47f9",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-P12.json",
+      "original_marker_sha256": "3e10ce4eb11c42d71d062ed5d31ce566cd696c7b1ec2adebcd2e9ef75f90e658",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/pair-b01-b02.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/pair-b01-b02.val.subset.json"
+      }
+    },
+    "P13": {
+      "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P13-s42/logs/version_1/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "470d55d2e4428f227ec3168a4bca78d7d4eff0ed300ef96b5100b1b058f6337e",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/P13-s42/evaluation.json",
+      "evaluation_sha256": "677d4bad34459ecb4da71c340e55c7caa5233dabf44d8fcd48b990553ce8ced9",
+      "global_step": 33160,
+      "config_digest": "7b87244acd74be93503c3f6849df492e3fa0c19b7817df820db4c338c2f5dd1e",
+      "data_condition_digest": "3b9e32057cbc31afdbbfbde82fd8bc20564da3397cfb88ce9b62d2e43e2d9b63",
+      "train_scene_images": {
+        "B01": 2750,
+        "B03": 2750
+      },
+      "fit_val_scene_images": {
+        "B01": 250,
+        "B03": 250
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "eb5ebb99ec5d2ff565ddcb6ff4b52d23d266b951baf3050a8d6931a5987aee40",
+        "synthetic_court/validation_subset": "bd66c1861fa19132223864ed2d3f84f7634e00befb3203da6f96c1a92cc609e3",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-P13.json",
+      "original_marker_sha256": "feea573b6129a7a193b8ccbac6288d8baa50c4fa8499c8c4857a9ddceee9a5b2",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/pair-b01-b03.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/pair-b01-b03.val.subset.json"
+      }
+    },
+    "P23": {
+      "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P23-s42/logs/version_1/checkpoints/update-00033160.ckpt",
+      "checkpoint_sha256": "681a8dca1201727377163d52c517ae974ba43227eb3fefb92cd40300d1ff768f",
+      "evaluation": "outputs/court_detection/evaluate/scene-pair-5500-s384-colab/P23-s42/evaluation.json",
+      "evaluation_sha256": "e7f96b55707ffd41a38c602ad5bbfee67ca5b355b7f4675553d846355a6bcb58",
+      "global_step": 33160,
+      "config_digest": "91464a627c0ed7afa2ebe00d1330047d7c5f9d1defcdb8ff69ed97743f7d5bf3",
+      "data_condition_digest": "6c02627ba32a4e9425b99e93c7974e51c2e89b7135bb4446c3724032c033a11e",
+      "train_scene_images": {
+        "B02": 2750,
+        "B03": 2750
+      },
+      "fit_val_scene_images": {
+        "B02": 250,
+        "B03": 250
+      },
+      "data_manifest_sha256": {
+        "synthetic_court/dataset_subset": "7cf319907f21a998c17589845fbc68b56dc4675d2b72fc7c5f0be0e46c6eb94e",
+        "synthetic_court/validation_subset": "5dc279b6af4ccb1803a199c944330c62183a4d496a67064b007924a3ae8643c3",
+        "evaluation_registry": "0afa23310e0e31957454b1188479011dd630330a2084f3817b0919cf2a7e5e0a",
+        "tennis_court_detector": "fd0aa741a66ce6f47f85cadc798658be7a7a06a7729f21adf324f8b360771f41",
+        "synthetic_court/evaluation_subset": "e81c401b5590a2ab940e26095abc474b28f7ac23c8224b78f7e1e857cb745444"
+      },
+      "original_marker": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/done/evaluate-P23.json",
+      "original_marker_sha256": "679e51c268fb29b6ec07f6fa6a0bfafa173e337a18dcea50e1501ed49722c30d",
+      "evaluation_artifact_count": 37,
+      "training_source": {
+        "kind": "synthetic_court_dataset_subset",
+        "schema": "v3",
+        "court_scope": "target_court",
+        "manifest": "court_scene_diversity_6000_v1/pair-b02-b03.train.subset.json",
+        "validation_manifest": "court_scene_diversity_6000_v1/pair-b02-b03.val.subset.json"
+      }
+    }
+  },
+  "restarts": [
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/probe-P02-a36f092066c746cebe6ea8030e97718e.json",
+      "sha256": "ea31a247c123913859fa517baea180710a6d8dd27a0d6a3de1d5a5f750fd3348",
+      "condition": "P02",
+      "probe": true,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P02-f52e25f009bc44d8a9c3cfc4b519276b.json",
+      "sha256": "6f590d5fcb07d17f6d41104e47b6618e13fa4e64bb3d6cedd46447feba12f98e",
+      "condition": "P02",
+      "probe": false,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3316
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P03-396f81f317c840ff892fc8cc44237e1f.json",
+      "sha256": "a9124275c52b0fd89c4b1388db8377da30724342b1869492242c823a23d96925",
+      "condition": "P03",
+      "probe": false,
+      "resume_update": 19896,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 19897,
+        "last_possible": 23212
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": {
+        "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P03-s42/logs/version_0/checkpoints/update-00019896.ckpt",
+        "checkpoint_sha256": "98430e4fcd10e25a12d96decfbc2cc4999fb18a6864f1d3ba146687cc18340e7",
+        "global_step": 19896
+      }
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P03-cb44287cee2d4458ad32e2c3f4c0e1a4.json",
+      "sha256": "089a73d46da8ae819833f7cf057f2e2599cc842ce5c0239ae2ed55a2ee2fbd30",
+      "condition": "P03",
+      "probe": false,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3316
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P12-3833b2fcb4c748f3a409792b61fdc176.json",
+      "sha256": "d772a029d58f67f5fff43d05a9b91ca7d5b1fbf00bd352e822deb52e0a5a0bc4",
+      "condition": "P12",
+      "probe": false,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3316
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P13-a7d78291c4db431bb3d1627bb8a371ff.json",
+      "sha256": "9a7c50b456bbfc35c7a777b814f16e804e6cd30d876a57f297ecf76ab60bc439",
+      "condition": "P13",
+      "probe": false,
+      "resume_update": 6632,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 6633,
+        "last_possible": 9948
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": {
+        "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P13-s42/logs/version_0/checkpoints/update-00006632.ckpt",
+        "checkpoint_sha256": "c116914c481ae1ee6889acd6ae5132bf11cd25f5a020e24a57523d9cde88970a",
+        "global_step": 6632
+      }
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P13-f51ebe842460464e86458eef0efed40c.json",
+      "sha256": "5e777cb308cf35681b354fa889f06c8238cc161d4d08ffd7b6d37446b33afb91",
+      "condition": "P13",
+      "probe": false,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3316
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P23-07948a99e47c458881fc6b72fa7475cd.json",
+      "sha256": "2488d106734e6fd0f6512b93d5a02a51e5ee00da143936bf86333a8c4bd046bd",
+      "condition": "P23",
+      "probe": false,
+      "resume_update": 29844,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 29845,
+        "last_possible": 33160
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": {
+        "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P23-s42/logs/version_0/checkpoints/update-00029844.ckpt",
+        "checkpoint_sha256": "0a3684916317f6d2d1e9bf4837711b799b6a09009d0d84a954c107af25582c4b",
+        "global_step": 29844
+      }
+    },
+    {
+      "record": "outputs/court_detection/campaign/scene-pair-5500-s384-colab/restarts/train-P23-fde31c75e7cb413eb51751c44d53165e.json",
+      "sha256": "d943696e8251fbee656555485f898f39d619a0b630d1d11d6815e9acd1385bf6",
+      "condition": "P23",
+      "probe": false,
+      "resume_update": 0,
+      "discarded_updates": {
+        "actual_last_update": null,
+        "first_possible": 1,
+        "last_possible": 3316
+      },
+      "limit": "Unsaved tail length is unknown after VM loss; mid-epoch DataLoader/RNG order is not exact.",
+      "resume_checkpoint": null
+    }
+  ],
+  "verification_scope": "Hashes and report identities extracted from the actual verified Drive campaign. The original Colab campaign checked full checkpoint payloads before publishing done markers. This CPU aggregation does not reload checkpoint payloads."
+}

@@ -22,10 +22,10 @@
 ## Court Detection
 
 - **現行**: `multiscale_depth3` のcheckpointと、画像だけによる領域探索を組み合わせ、各カメラの先頭frameだけを推論します。[Meiji 3cameraの校正が通った](nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)ことが採用の根拠です。このcheckpointを学習したrunのノードはなく、独立したheld-out testでの精度も未確立です。
-- **合成データのscene数**（#1343、2026-10-30に完了）: [固定5500枚の1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)では、4sceneが実画像valの集計5指標で最良でした（KP平均 53.95→23.61 px）。2sceneでは悪化しており、単調な改善ではありません。seed42の単一試行で追加順も固定のため、scene数だけの効果は確定していません。画像数スケーリングの本実験と追加seedは行わない判断です。
+- **合成データのscene組合せ**（#1581）: [全6ペアと共通4scene評価](nodes/court_detection/000067-group-court-scene-pair-s42.md)が完了しました。固定5,500枚・33,160更新・seed42では、同群2ペアの実画像KP中央値平均57.36 pxに対し、異群4ペアは4.57 px（δ=+52.80 px）で、全5指標が同群側で悪い向きでした。P03（B00+B03）が実画像KP中央値で最良（2.97 px）、共通合成の4scene平均ではscene-4が最良です。単一seed・再開・会場とsurface等の交絡があり、一般的な因果効果や採用変更にはしません。旧[1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)は当時の4条件の証拠として保持します。
 - **backbone**（#983）: [凍結DINOv3 S/S+/B/Lの比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)では、出力ごとに最良のサイズが異なり、サイズによる一様な改善は見られませんでした（1 seed）。
 - **後処理**: KP・LINEの共同推定やPROSACは保存予測での診断までで、人手GTのある会場分離benchmarkはありません。Meijiの全frame処理ではCPUの幾何後処理が重く、並列化・batch化の余地があります（[時間分解](nodes/court_detection/000033-run-court-meiji-hybrid-cpu-profile-20260923.md)）。
-- **次の実験**: 収録を分けた実画像testで、従来のhomography推定・PROSAC・共同推定のKP距離、geometry valid率、失敗率、処理時間、下流E2Eを比べます。シーン組合せの比較は[manifest作成](nodes/synthetic_data_generation/000029-run-court-scene-pair-manifests-v1.md)まで済み、学習と評価は親#1581で行います。B/Lの複数seedも残っています。
+- **次の比較候補**: 収録を分けた実画像testで、従来のhomography推定・PROSAC・共同推定のKP距離、geometry valid率、失敗率、処理時間、下流E2Eを比べます。scene組合せは追加seed、3sceneから1つずつ抜く配置、会場を固定したsurface対照が候補ですが、今回追加実行はしていません。画像数スケーリングは実施しない判断を維持し、B/Lの複数seedも残っています。
 
 ## Ball Detection
 
