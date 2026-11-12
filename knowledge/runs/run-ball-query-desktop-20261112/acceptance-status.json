@@ -1,0 +1,34 @@
+{
+  "status": "startup_acceptance_pending_worker_runtime_exit",
+  "production_started": false,
+  "production_scheduled": true,
+  "systemd_unit": "tennis-i1899-length-desktop-a1.service",
+  "systemd_pid": 1557549,
+  "systemd_parent_pid": 278,
+  "minimum_host_available_bytes": 17317019648,
+  "host_total_bytes": 25200631808,
+  "host_total_minus_available_peak_bytes": 7883612160,
+  "probe_seconds_steady": 0.7977422689982632,
+  "remaining_updates": 6500,
+  "remaining_train_only_seconds_estimate": 5185.324748488711,
+  "estimate_excludes": [
+    "input verification",
+    "compilation",
+    "fixed validation",
+    "Drive publication and independent readback"
+  ],
+  "cpu_tests": {
+    "frozen_passed": 10,
+    "adapter_passed": 7
+  },
+  "validator_requested": 0,
+  "validator_attempted": 0,
+  "validator_completed": 0,
+  "remaining": [
+    "production actual launch",
+    "first resumed update model/AdamW/RNG/sample/LR finite audit",
+    "stage1 6000 checkpoint Drive save and independent readback",
+    "stage2 startup and optional CNN unfreeze601"
+  ],
+  "time": 1794492020.618484
+}

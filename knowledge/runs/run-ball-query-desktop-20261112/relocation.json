@@ -1,0 +1,30 @@
+{
+  "complete": true,
+  "source_commit": "929ad65645c1c7522e8921f1b439619d636a0128",
+  "source_directory": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-local-runtime",
+  "original_checkpoint_sha256": "4c5f6bede86cab7e7aab09e3ea5f2100838ec22a08b6512f36f45bd2844b3943",
+  "adapted_checkpoint_sha256": "84e2c8c8eee7c4b191a134403843c2ed6c059dbc2d4fff6a4ca10a259fd92d88",
+  "changed_fields": [
+    "recipe.data.snapshot.directory",
+    "recipe.manifest_sha256",
+    "recipe.evaluation_manifest_sha256",
+    "run.recipe",
+    "latest.sha256"
+  ],
+  "manifests_before": {
+    "train_manifest.json": "4efd2d30a928ed53dc9289d759cfeacd9a0bac7f65749634717258d0c973113c",
+    "evaluation_manifest.json": "84d7714369a882f983e0e58bf48ff3d367ad6656af76ca4890416785733e2cea"
+  },
+  "manifests_after": {
+    "train_manifest.json": "1a2e1d4f0bf4d64afd3658c6f2ecdbb4fe439e3ff7dfc48db2ebd57dccddca2d",
+    "evaluation_manifest.json": "af1773174bdbeed86ee5339846bb6f30ac42d86e26abd1e60c0c685b9c8b6fae"
+  },
+  "model_optimizer_schedule_rng_sample_exact": true,
+  "original_store": "/content/tennis-lab/data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+  "local_store": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-desktop/outputs/ball_detection/train/query_controls/desktop-resume-20261112/dataset",
+  "original_gpu": "NVIDIA L4",
+  "local_gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "bitwise_gpu_continuation_guaranteed": false,
+  "remote_attempt": "tennis_lab/outputs/ball_detection/train/query_controls/s42-20261111-main/desktop-attempts/20261112-a1",
+  "parent_run": "s42-20261111-main"
+}
