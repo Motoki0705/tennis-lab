@@ -341,22 +341,25 @@ def test_human_revocation_stops_a_running_offline_worker_and_confirms_cleanup(
         assert readable, "offline worker did not report its startup event"
         directory = Path(os.read(fd, 4096).decode().strip())
         assert directory.is_relative_to(p.root)
-        result = json.loads(
-            decide(
-                p,
-                "revoke",
-                decision_spec(
-                    previous=previous,
-                    request="stop-running",
-                    quote="実行中の改善を停止してください。",
-                ),
-            ).stdout
+        decision = decision_spec(
+            previous=previous,
+            request="stop-running",
+            quote="実行中の改善を停止してください。",
         )
-        assert result["state"] == "revoked" and result["stop"]["state"] == "stopped"
+        response = decide(p, "revoke", decision, ok=None)
+        result = json.loads(response.stdout)
+        assert result["state"] == "revoked"
+        assert result["stop"]["state"] in {"stopping", "stopped"}
+        assert response.returncode == (result["stop"]["state"] == "stopping")
+        # The stop request can precede result.json. Wait on the actual launcher
+        # exit, then replay the same decision to capture the cleanup proof.
         _, stderr = proc.communicate(timeout=30)
         assert proc.returncode != 0, stderr
         record = json.loads((directory / "result.json").read_text())
         assert record["result"] == "failed" and record["cleanup_complete"] is True
+        replayed = json.loads(decide(p, "revoke", decision).stdout)
+        assert replayed["decision_id"] == result["decision_id"]
+        assert replayed["reused"] is True and replayed["stop"]["state"] == "stopped"
         assert len((p.root / "offline-calls.jsonl").read_text().splitlines()) == 1
         run_improvement_worker(p, ok=False)
         assert not (p.root / "runner-calls.jsonl").exists()
@@ -408,7 +411,11 @@ def decision_spec(
 
 
 def decide(
-    p: ParentEnv, action: str, spec: dict[str, Any] | None = None, *, ok: bool = True
+    p: ParentEnv,
+    action: str,
+    spec: dict[str, Any] | None = None,
+    *,
+    ok: bool | None = True,
 ) -> Any:
     return p.cli(
         "improvement-decide",
