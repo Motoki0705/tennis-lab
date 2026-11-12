@@ -15,6 +15,7 @@ import pytest
 from tests.e2e.agents_ops.test_merge_gate import GateEnv, ci_rollup
 from tests.e2e.agents_ops.test_parent_session import (
     ReviewEnv,
+    evidence_number,
     review_policy_module,
     run_git,
 )
@@ -316,12 +317,14 @@ def test_publication_resume_reconciles_each_write_without_duplicates(
     r = pair_review_env
     extra = {}
     if failure == "pending":
-        extra["PARENT_FAIL_PATH"] = "repos/o/r/issues/1/comments"
+        extra["PARENT_FAIL_PATH"] = (
+            f"repos/o/r/issues/{evidence_number(r.p.state())}/comments"
+        )
     elif failure == "projection":
         extra["PARENT_FAIL_PATH"] = "repos/o/r/issues/101/comments"
     elif failure.startswith("lost") or failure == "interrupted_pending":
         target = (
-            "repos/o/r/issues/1/comments"
+            f"repos/o/r/issues/{evidence_number(r.p.state())}/comments"
             if failure in {"lost_pending", "interrupted_pending"}
             else "repos/o/r/issues/101/comments"
         )
@@ -343,6 +346,27 @@ def test_publication_resume_reconciles_each_write_without_duplicates(
         execution["stages"]["publication"]["status"] = "pending"
         (r.run_dir / "execution.json").write_text(json.dumps(execution))
     immutable = (r.run_dir / "result.json").read_bytes()
+    if failure == "pending":
+        # A failed POST has an uncertain outcome. No remote match authorizes a new POST.
+        before = copy.deepcopy(r.p.state()["comments"])
+        posts = [c for c in r.p.calls() if "POST" in c]
+        for _ in range(2):
+            value = json.loads(
+                r.cli(
+                    "resume-publication", "--run", r.request["review_run_id"], ok=False
+                ).stdout
+            )
+            assert (
+                value["publication"] == "publication_failed"
+                and value["agent_invocations"] == 0
+            )
+        assert r.p.state()["comments"] == before
+        assert [c for c in r.p.calls() if "POST" in c] == posts
+        assert (r.run_dir / "result.json").read_bytes() == immutable and len(
+            r.calls()
+        ) == 1
+        assert "uncertain" in (r.run_dir / "publication-error.log").read_text()
+        return
     resumed = json.loads(
         r.cli("resume-publication", "--run", r.request["review_run_id"]).stdout
     )
@@ -519,7 +543,7 @@ def test_adoption_gate_checks_real_source_publication_and_current_ci(
             }
         )
         g.policy.validate_result(failed)
-        state["comments"]["1"].append(
+        state["comments"][str(evidence_number(state))].append(
             {
                 "id": 10000,
                 "user": {"login": "operator"},

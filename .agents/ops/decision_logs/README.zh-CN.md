@@ -86,7 +86,7 @@
 
 结果的evidence注明 `capture_source`、artifact和观察快照的fingerprint。
 私有证据仍明确标记为不可公开；fingerprint不等于全文档案。
-已公开的父级评论、review和worker日志还保留可用的固定公开证据。
+父级证据Issue（包括旧父级评论）、已公开的review和worker日志还保留可用的固定公开证据。
 outbox只保存私有投递输入，不是发布单元。
 父级响应摘要只投影可公开字段，不整份复制assignment或任意嵌套状态。
 私有来源ID在捕获前注册；完整响应与错误详情保留为私有证据。

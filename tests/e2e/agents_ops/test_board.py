@@ -1343,7 +1343,8 @@ def test_name_failure_does_not_undo_parent_or_skip_display(
         connection.execute(f"PRAGMA user_version={board.storage.SCHEMA_VERSION}")
     repaired = p.cli("register")
     assert json.loads(repaired.stdout)["board_sync"]["status"] == "assigned"
-    assert len(p.state()["comments"]["1"]) == 1
+    assert len(p.comments()) == 1
+    assert not p.state()["comments"]["1"]
 
 
 @pytest.mark.parametrize(

@@ -65,6 +65,8 @@ def validate(spec: dict[str, Any]) -> dict[str, Any]:
     note_body(spec["summary"])
     strings(spec["evidence"], "evidence")
     strings(spec["resolves"], "resolves", empty=True)
+    if spec["kind"] == "question" and spec["resolves"]:
+        raise ValueError("a question cannot resolve questions")
     details = object_value(spec["details"])
     if set(details) != DETAILS[spec["kind"]]:
         raise ValueError("invalid notification details")
@@ -178,8 +180,6 @@ def notify(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
         for key in spec["resolves"]
     ):
         raise ValueError("notification resolves an unknown question")
-    if spec["kind"] == "question" and spec["resolves"]:
-        raise ValueError("a question cannot resolve questions")
     sha = digest(spec)
     record = session.post(
         {

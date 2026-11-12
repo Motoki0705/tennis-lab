@@ -174,15 +174,21 @@ def _children(ops: Any) -> list[dict[str, Any]]:
     return [i for i in ops.state["issues"] if "issue:child" in i["labels"]]
 
 
+def _evidence_number(ops: Any) -> int:
+    [row] = [r for r in ops.state["issues"] if "parent-evidence" in r["labels"]]
+    return int(row["number"])
+
+
 def _events(ops: Any, kind: str) -> list[dict[str, Any]]:
     found = []
-    for comment in ops.state.get("comments", {}).get("1", []):
-        first = comment["body"].splitlines()[0]
-        if not first.startswith("<!-- parent-session:v1 "):
-            continue
-        event = json.loads(first[len("<!-- parent-session:v1 ") : -4])
-        if event["event"] == kind:
-            found.append(event)
+    for rows in ops.state.get("comments", {}).values():
+        for comment in rows:
+            first = comment["body"].splitlines()[0]
+            if not first.startswith("<!-- parent-session:v1 "):
+                continue
+            event = json.loads(first[len("<!-- parent-session:v1 ") : -4])
+            if event["event"] == kind and event["parent"] == 1:
+                found.append(event)
     return found
 
 
@@ -537,12 +543,17 @@ def test_pending_and_receipt_response_loss_are_idempotent(ops_env: Any) -> None:
     _select(ops)
     assert (
         ops.run(
-            "triage", FAKE_GH_API_FAIL_AFTER_SAVE="repos/o/r/issues/1/comments"
+            "triage",
+            FAKE_GH_API_FAIL_AFTER_SAVE=f"repos/o/r/issues/{_evidence_number(ops)}/comments",
         ).returncode
         == 1
     )
     assert ops.run("triage").returncode == 0
-    _receive(ops, ok=False, FAKE_GH_API_FAIL_AFTER_SAVE="repos/o/r/issues/1/comments")
+    _receive(
+        ops,
+        ok=False,
+        FAKE_GH_API_FAIL_AFTER_SAVE=f"repos/o/r/issues/{_evidence_number(ops)}/comments",
+    )
     _create(ops, ok=False)
     _receive(ops)
     assert (

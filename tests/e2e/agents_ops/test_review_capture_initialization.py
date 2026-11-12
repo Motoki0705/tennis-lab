@@ -113,14 +113,14 @@ def test_capture_initialization_failure_preserves_review_and_missing_diagnostic(
     r = single_review_env
     immutable = None
     if command != "run":
-        r.run(ok=False, extra={"PARENT_FAIL_PATH": "repos/o/r/issues/1/comments"})
+        r.run(ok=False, extra={"PARENT_FAIL_PATH": "repos/o/r/issues/100/comments"})
         immutable = (r.run_dir / "result.json").read_bytes()
     flags = decision(r, command) if with_decision else []
     original_clock = inject(r, fault)
     extra = (
         {"REVIEW_AGENT_FINAL_EXIT": "3"}
         if command == "run" and original_fails
-        else {"PARENT_FAIL_PATH": "repos/o/r/issues/1/comments"}
+        else {"PARENT_FAIL_PATH": "repos/o/r/issues/100/comments"}
         if original_fails
         else {}
     )

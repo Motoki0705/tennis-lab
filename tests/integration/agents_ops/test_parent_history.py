@@ -171,3 +171,41 @@ def test_invalid_owned_record_never_falls_back_to_legacy_success(body: str) -> N
             [{"id": 20, "user": {"login": "publisher"}, "body": body}],
             evidence_issue=9,
         )
+
+
+@pytest.mark.parametrize("missing", ["evidence", "question"])
+def test_notification_history_rejects_missing_references(missing: str) -> None:
+    notifications = importlib.import_module("parent.notifications")
+    source = comment(10, {"event": "assigned", "generation": 1})
+    spec = {
+        "schema_version": 1,
+        "key": "close-approval",
+        "kind": "agreement",
+        "summary": "Human close approval",
+        "evidence": [
+            f"https://github.com/o/r/issues/9#issuecomment-{99 if missing == 'evidence' else 10}"
+        ],
+        "resolves": ["absent-question"] if missing == "question" else [],
+        "details": {
+            "change": "Close approved",
+            "impact": "Unverified work remains",
+            "answers": [
+                {
+                    "source": "conversation:original",
+                    "quote": "Close with remaining work",
+                }
+            ],
+        },
+    }
+    row = comment(
+        20,
+        {
+            "event": "notification_record",
+            "key": spec["key"],
+            "notification_sha256": digest(spec),
+            "notification": spec,
+        },
+    )
+    row["body"] = row["body"].replace("\n\nrecord", "\n\n" + notifications.render(spec))
+    with pytest.raises(ValueError, match="evidence missing|unknown question"):
+        parse_history("o/r", 1, "publisher", [], [source, row], evidence_issue=9)

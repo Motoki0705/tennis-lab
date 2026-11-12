@@ -233,11 +233,17 @@ def _parse_history(
     for record in records:
         if record.payload.get("event") == "notification_record":
             spec = record.payload["notification"]
-            if any(
-                ref not in {r.url for r in records if r.comment_id < record.comment_id}
-                for ref in spec["evidence"]
-            ):
+            earlier = [r for r in records if r.comment_id < record.comment_id]
+            if any(ref not in {r.url for r in earlier} for ref in spec["evidence"]):
                 raise ValueError("notification evidence missing from verified history")
+            questions = {
+                r.payload["key"]
+                for r in earlier
+                if r.payload.get("event") == "notification_record"
+                and r.payload["notification"]["kind"] == "question"
+            }
+            if any(key not in questions for key in spec["resolves"]):
+                raise ValueError("notification resolves an unknown question")
         if record.payload.get("completion_ref") and not any(
             r.url == record.payload["completion_ref"]
             and r.payload.get("event") == "notification_record"

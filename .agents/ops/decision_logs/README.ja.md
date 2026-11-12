@@ -87,7 +87,7 @@ runtimeの終了値から推定しない。
 
 結果のevidenceに `capture_source`・artifact・観測snapshotのfingerprintを残す。
 非公開根拠は公開不可と明示し、fingerprintだけで全文を保存したとは扱わない。
-親コメント、公開済みreview・workerログは取得できた固定の公開根拠も参照する。
+親の証拠用Issue（旧親コメントを含む）、公開済みreview・workerログは取得できた固定の公開根拠も参照する。
 outboxは非公開の配送入力であり、公開単位ではない。
 親の応答の要約は公開可能な項目だけに絞り、assignmentや任意の入れ子の状態を丸ごとコピーしない。
 私的な来歴IDは捕捉前に登録する。完全な応答とエラー詳細は非公開根拠に残す。

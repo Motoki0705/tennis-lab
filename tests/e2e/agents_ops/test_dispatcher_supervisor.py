@@ -42,7 +42,7 @@ class DispatchGitHub(FakeGitHub):
             row = self.issues[int(endpoint.rsplit("/", 1)[1])]
             row.update(payload)
             return copy.deepcopy(row)
-        return cast(dict[str, Any], super().write(method, endpoint, payload))
+        return super().write(method, endpoint, payload)
 
 
 class DispatchHarness:
@@ -146,7 +146,10 @@ class DispatchHarness:
             decision(1),
             *(
                 decision(
-                    n, "existing_parent", target=1, deps=(dependencies or {}).get(n, [])
+                    n,
+                    "existing_parent",
+                    target=1,
+                    deps=tuple((dependencies or {}).get(n, [])),
                 )
                 for n in children
             ),
@@ -435,7 +438,7 @@ def test_mixed_deferral_reserves_fresh_subject_and_defers_changed_subject_to_nex
             d.h.gh.issues[1]["body"] += "\n要件変更"
 
     def edit_during_publication() -> None:
-        if stage == "publication" or len(d.h.gh.writes) == 2:
+        if stage == "publication" or len(d.h.gh.record_writes) == 2:
             d.h.gh.on_write = None
             d.h.gh.issues[1]["body"] += "\n要件変更"
 
@@ -533,7 +536,7 @@ def test_changed_candidate_never_starts(d: DispatchHarness, change: str) -> None
     if change == "body":
         d.h.gh.issues[1]["body"] += "\nrequirement changed"
     elif change == "comment":
-        d.h.gh.comment_rows[1].append(
+        d.h.gh.comment_rows.setdefault(1, []).append(
             {"id": 999, "user": {"login": "human"}, "body": "stop"}
         )
     elif change == "code":
@@ -550,7 +553,7 @@ def test_changed_candidate_never_starts(d: DispatchHarness, change: str) -> None
         )
     else:
         marker = next(
-            c for c in d.h.gh.comment_rows[1] if '"execution_basis"' in c["body"]
+            c for c in d.h.gh.record_rows(1) if '"execution_basis"' in c["body"]
         )
         first, rest = marker["body"].split("\n", 1)
         event = json.loads(first[len("<!-- parent-session:v1 ") : -4])
@@ -724,7 +727,7 @@ def test_worker_rechecks_initial_parent_inputs_after_reservation(
     if change == "body":
         d.h.gh.issues[1]["body"] += "\n実行根拠を変更する。"
     elif change == "comment":
-        d.h.gh.comment_rows[1].append(
+        d.h.gh.comment_rows.setdefault(1, []).append(
             {"id": 999, "user": {"login": "human"}, "body": "明示停止"}
         )
     elif change == "code":

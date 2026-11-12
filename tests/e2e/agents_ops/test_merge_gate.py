@@ -18,6 +18,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     OPS,
     ParentEnv,
     ReviewEnv,
+    evidence_number,
     make_review_env,
     peer_board_request,
     review_policy_module,
@@ -623,9 +624,7 @@ def test_review_authorization_survives_only_unrelated_agreement_records(
     state = p.state()
     policy = importlib.import_module("parent.policy")
     agreed = next(
-        e
-        for e in policy.events(state["comments"]["1"], "operator", 1)
-        if e["event"] == "agreed"
+        e for e in policy.events(p.comments(), "operator", 1) if e["event"] == "agreed"
     )
     agreed.pop("body")
     if change == "changed_agreement":
@@ -643,7 +642,7 @@ def test_review_authorization_survives_only_unrelated_agreement_records(
         data = json.loads(registry.read_text())
         data["parents"]["o/r#1"]["generation"] += 1
         registry.write_text(json.dumps(data))
-    state["comments"]["1"].append(
+    state["comments"][str(evidence_number(state))].append(
         {"id": 9999, "user": {"login": "operator"}, "body": policy.marker(agreed)}
     )
     p.save(state)
@@ -1187,9 +1186,9 @@ def test_rejections_never_merge_or_launch_agent(
         remove = {"fixes_verified"} | (
             {"result_received"} if case == "not_received" else set()
         )
-        state["comments"]["1"] = [
+        state["comments"][str(evidence_number(state))] = [
             c
-            for c in state["comments"]["1"]
+            for c in state["comments"][str(evidence_number(state))]
             if not any(f'"state": "{s}"' in c["body"] for s in remove)
         ]
     elif case == "interrupted":
@@ -1239,7 +1238,7 @@ def test_rejections_never_merge_or_launch_agent(
     elif case in {"parent_missing", "foreign_result", "quoted_result", "failed_record"}:
         comment = next(
             c
-            for c in state["comments"]["1"]
+            for c in state["comments"][str(evidence_number(state))]
             if g.policy.records([c], "operator")
             and g.policy.records([c], "operator")[0]["kind"] == "result"
         )
@@ -1248,12 +1247,12 @@ def test_rejections_never_merge_or_launch_agent(
         elif case == "quoted_result":
             comment["body"] = "引用\n" + comment["body"]
         elif case == "parent_missing":
-            comment["body"] = "<!-- agent-cross-review:v4 approve -->"
+            state["comments"][str(evidence_number(state))].remove(comment)
         else:
             failed = json.loads((r.run_dir / "result.json").read_text())
             failed.update(status="failed", verdict="incomplete", error="公開失敗")
             failed["prs"][0]["coverage"] = "not_reviewed"
-            state["comments"]["1"].append(
+            state["comments"][str(evidence_number(state))].append(
                 {
                     "id": 9999,
                     "user": {"login": "operator"},
@@ -1280,6 +1279,13 @@ def test_rejections_never_merge_or_launch_agent(
         assert (
             "conflicting parent evidence record" in json.loads(result.stderr)["error"]
         )
+    elif case in {"foreign_result", "quoted_result"}:
+        assert result.returncode == 2
+        assert (
+            "untrusted_evidence_publisher"
+            if case == "foreign_result"
+            else "unmarked_evidence_comment"
+        ) in json.loads(result.stderr)["error"]
     else:
         assert result.returncode == 1, result.stderr
         rows = g.results(result)
@@ -1859,9 +1865,9 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
         p.save(state)
     elif resolution == "unpublished":
         state = p.state()
-        state["comments"]["1"] = [
+        state["comments"][str(evidence_number(state))] = [
             c
-            for c in state["comments"]["1"]
+            for c in state["comments"][str(evidence_number(state))]
             if not any(
                 rec["kind"] == "resolution" for rec in g.policy.records([c], "operator")
             )

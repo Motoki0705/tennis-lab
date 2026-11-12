@@ -138,6 +138,8 @@ class FakeGitHub:
             raise ValueError("injected GET failure")
         if endpoint == "user":
             return {"login": "operator"}
+        if endpoint == "repos/o/r/labels/parent-evidence":
+            return {"name": "parent-evidence"}
         if endpoint == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
             raise importlib.import_module("issues.cli").GitHubHTTPError(
                 endpoint, 404, "Not Found"
@@ -213,6 +215,7 @@ class FakeGitHub:
 
     def write(self, method: str, endpoint: str, payload: dict[str, Any]) -> Any:
         self.writes.append((method, endpoint, copy.deepcopy(payload)))
+        self._history_rows = None
         if method == "PATCH" and "/issues/comments/" in endpoint:
             cid = int(endpoint.split("/")[-1])
             result = next(
@@ -229,8 +232,13 @@ class FakeGitHub:
             self.comment_rows.setdefault(n, []).append(comment)
             result = comment
         elif method == "POST" and endpoint == "repos/o/r/issues":
-            n = max(self.issues, default=0) + 1
-            row = raw_issue(n, **payload)
+            evidence = "parent-evidence" in payload["labels"]
+            n = (
+                max([9000, *self.issues]) + 1
+                if evidence
+                else max((n for n in self.issues if n < 9000), default=0) + 1
+            )
+            row = raw_issue(n, **payload, user={"login": "operator"})
             row["labels"] = [{"name": name} for name in payload["labels"]]
             self.issues[n] = row
             result = row
@@ -1351,7 +1359,10 @@ def test_source_change_defers_only_its_subject_closure_in_v2(
     elif stage == "publication":
 
         def on_write() -> None:
-            if h.gh.writes[-1][1] == "repos/o/r/issues/101/comments":
+            if (
+                h.gh.writes[-1][1].endswith("/comments")
+                and '"issue": 101' in h.gh.writes[-1][2]["body"].splitlines()[0]
+            ):
                 h.gh.on_write = None
                 revoke()
 
@@ -1476,7 +1487,7 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
         session.revoke_basis("親が追加要件を確認し、再合意まで停止する。")
         with pytest.raises(ValueError, match="有効な実行根拠"):
             session.agreed()
-    history = policy.events(h.gh.comment_rows[101], "operator", 101)
+    history = policy.events(h.gh.parent_comments(101), "operator", 101)
     assert any(e["event"] == "note" for e in history)
     assert not any(
         e["event"] in {"agreed", "proposal_received", "proposal_agreed"}
@@ -1779,7 +1790,7 @@ def test_triage_publishes_only_until_the_scheduled_judgement_entry_runs(
         for c in calls
     )
     assert len(h.calls()) == 1  # Only the proposal organizer used a runtime here.
-    comments = h.gh.comment_rows[101]
+    comments = h.gh.parent_comments(101)
     basis = next(
         e["basis"]
         for e in reversed(policy.events(comments, "operator", 101))

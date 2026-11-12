@@ -14,6 +14,7 @@ from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
+    evidence_comments,
     make_review_env,
     review_policy_module,
     run_git,
@@ -72,14 +73,8 @@ def test_valid_autonomous_basis_allows_split_delegation_and_result(
     value = spec(p)
     recorded = record(p, value)
     record(p, value)
-    assert (
-        sum(
-            '"event": "execution_basis"' in c["body"]
-            for c in p.state()["comments"]["1"]
-        )
-        == 1
-    )
-    assert not any('"event": "agreed"' in c["body"] for c in p.state()["comments"]["1"])
+    assert sum('"event": "execution_basis"' in c["body"] for c in p.comments()) == 1
+    assert not any('"event": "agreed"' in c["body"] for c in p.comments())
     p.child("worker")
     worktree = p.worktree("worker")
     launch = json.loads(
@@ -244,7 +239,7 @@ def test_long_issue_and_instruction_are_bound_without_copying_them_into_public_r
     assert "body_sha256" in value["inputs"]["issue"]
     assert "sha256" in value["inputs"]["comments"][0]
     record(p, value)
-    assert len(p.state()["comments"]["1"][-1]["body"]) < 60000
+    assert len(p.comments()[-1]["body"]) < 60000
     state = p.state()
     state["comments"]["1"][0]["body"] += "停止の指示。"
     p.save(state)
@@ -289,7 +284,7 @@ def test_returning_to_a_previous_basis_and_repeated_revocation_are_not_lost(
     record(p, changed)
     restored = record(p, original)
     history = importlib.import_module("parent.policy").events(
-        p.state()["comments"]["1"], "operator", 1
+        p.comments(), "operator", 1
     )
     roots = [e for e in history if e["event"] == "execution_basis"]
     assert [e["revision"] for e in roots] == [1, 2, 3]
@@ -304,7 +299,7 @@ def test_returning_to_a_previous_basis_and_repeated_revocation_are_not_lost(
         p.child("revoked", ok=False)
         p.agreed()
     history = importlib.import_module("parent.policy").events(
-        p.state()["comments"]["1"], "operator", 1
+        p.comments(), "operator", 1
     )
     assert [e["revision"] for e in history if e["event"] == "basis_revoked"] == [1, 2]
 
@@ -470,7 +465,7 @@ def test_autonomous_shared_merge_uses_current_review_without_path_permission(
     assert allowed[100]["decision"] == "merge"
     assert "shared_exemption" not in allowed[100]
     assert g.merge_calls() == []
-    assert not any('"event": "agreed"' in c["body"] for c in p.state()["comments"]["1"])
+    assert not any('"event": "agreed"' in c["body"] for c in p.comments())
     assert len(g.review.calls()) == 1
 
 
@@ -833,9 +828,7 @@ def test_legacy_public_review_and_local_result_survive_migration(
     request["schema_version"] = 1
     request_sha = policy.digest(request)
     agreement = next(
-        e
-        for e in policy.events(p.state()["comments"]["1"], "operator", 1)
-        if e["event"] == "agreed"
+        e for e in policy.events(p.comments(), "operator", 1) if e["event"] == "agreed"
     )
     auth = {"generation": 1, "agreement_sha256": agreement["agreement_sha256"]}
     run_dir = g.review.run_dir
@@ -980,13 +973,7 @@ def test_human_unrelated_comment_classification_preserves_review(
     entries = [ignored_comment(c) for c in comments]
     for _ in range(2):
         p.cli("agreement-ignore-comments", "--ignored-comments", p.spec(entries))
-    assert (
-        sum(
-            '"event": "agreement_comments"' in c["body"]
-            for c in p.state()["comments"]["1"]
-        )
-        == 1
-    )
+    assert sum('"event": "agreement_comments"' in c["body"] for c in p.comments()) == 1
     assert (
         (g.review.run_dir / "result.json").read_bytes(),
         registry(p).read_bytes(),
@@ -1046,7 +1033,7 @@ def test_human_comment_reclassification_records_return_to_previous_text(
     policy = importlib.import_module("parent.policy")
     records = [
         e
-        for e in policy.events(p.state()["comments"]["1"], "operator", 1)
+        for e in policy.events(p.comments(), "operator", 1)
         if e["event"] == "agreement_comments"
     ]
     assert [e["classification_revision"] for e in records] == [1, 2, 3]
@@ -1064,7 +1051,9 @@ def test_legacy_human_agreement_remains_readable_and_requires_reagreement_for_ch
     p.agreed()
     policy = importlib.import_module("parent.policy")
     state = p.state()
-    agreed = next(c for c in state["comments"]["1"] if '"event": "agreed"' in c["body"])
+    agreed = next(
+        c for c in evidence_comments(state) if '"event": "agreed"' in c["body"]
+    )
     [event] = policy.events([agreed], "operator", 1)
     agreement = event["agreement"]
     event.pop("body")

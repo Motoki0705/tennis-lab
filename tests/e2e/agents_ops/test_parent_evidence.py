@@ -17,7 +17,7 @@ import yaml
 
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_number
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -56,7 +56,7 @@ def test_creation_is_idempotent_after_response_loss_and_parallel_retries(
     assert {json.loads(r.stdout)["number"] for r in results} == {created[0]["number"]}
     posts = [c for c in env.calls() if "POST" in c and "repos/o/r/issues" in c]
     assert len(posts) == 1
-    assert not env.state()["comments"]
+    assert not any(env.state()["comments"].values())
 
 
 def test_uncertain_creation_without_remote_match_never_posts_again(
@@ -189,19 +189,31 @@ def test_evidence_cannot_be_assigned_or_read_as_a_work_family(
 
 
 def move_machine_records(env: ParentEnv) -> dict[int, int]:
-    """Build a dual-medium fixture; production writers remain unchanged."""
+    """Build mixed legacy/evidence history without creating a second container."""
     state = env.state()
-    state["issues"]["9"] = evidence_issue(env)
-    originals = state["comments"]["1"]
+    dest = str(evidence_number(state))
+    originals = state["comments"][dest]
     machines = [
         c
         for c in originals
         if c["body"].startswith(("<!-- parent-session:", "<!-- parent-review:"))
     ]
     first = 1 + max(c["id"] for rows in state["comments"].values() for c in rows)
-    moved = {c["id"]: first + i for i, c in enumerate(machines)}
-    state["comments"]["9"] = [{**c, "id": moved[c["id"]]} for c in machines]
-    state["comments"]["1"] = [c for c in originals if c not in machines]
+    legacy = [
+        c
+        for c in machines
+        if any(
+            f'"event": "{event}"' in c["body"].splitlines()[0]
+            for event in ("assigned", "checking")
+        )
+    ]
+    moved = {
+        c["id"]: c["id"] if c in legacy else first + i for i, c in enumerate(machines)
+    }
+    state["comments"][dest] = [
+        {**c, "id": moved[c["id"]]} for c in machines if c not in legacy
+    ]
+    state["comments"]["1"].extend(legacy)
     env.save(state)
     return moved
 
@@ -270,7 +282,9 @@ def test_review_gate_and_inspection_read_evidence_permalink_without_new_agent(
     execution = json.loads(execution_path.read_text())
     old_url = execution["parent_run_url"]
     cid = moved[int(old_url.rsplit("-", 1)[1])]
-    new_url = f"https://github.com/o/r/issues/9#issuecomment-{cid}"
+    new_url = (
+        f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-{cid}"
+    )
     execution["parent_run_url"] = new_url
     execution["stages"]["publication"].update(
         parent_comment_id=cid, parent_run_url=new_url
@@ -291,7 +305,7 @@ def test_review_gate_and_inspection_read_evidence_permalink_without_new_agent(
     state = p.state()
     result = next(
         c
-        for c in state["comments"]["9"]
+        for c in state["comments"][str(evidence_number(state))]
         if g.policy.records([c], "operator")
         and g.policy.records([c], "operator")[0]["kind"] == "result"
     )

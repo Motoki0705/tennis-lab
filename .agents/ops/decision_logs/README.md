@@ -101,7 +101,7 @@ from runtime exit status.
 
 Each result's evidence identifies `capture_source`, artifact and the fingerprint
 of the observed snapshot. Private evidence stays explicitly unavailable publicly;
-a fingerprint alone is not a content archive. Canonical parent comments and
+a fingerprint alone is not a content archive. Parent evidence issues (including legacy parent comments) and
 published review/worker-log artifacts also retain fixed public evidence where
 available. Outboxes keep private delivery inputs; they are never publication units.
 Parent response summaries project public fields instead of copying assignments

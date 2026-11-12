@@ -101,7 +101,7 @@ if args[:2] == ["pr", "merge"]:
 assert args[0] == "api", args
 method = args[args.index("--method") + 1]
 endpoint = next(a for a in args if a == "user" or a.startswith("repos/"))
-if os.environ.get("PARENT_FAIL_PATH") == endpoint and method != "GET":
+if os.environ.get("PARENT_FAIL_PATH") == endpoint and method != "GET" and not (os.environ.get("PARENT_FAIL_AFTER_CHILD_RELATION") and state["parents"].get("10") != 1):
     fail()
 if os.environ.get("PARENT_FAIL_GET_PATH") == endpoint and method == "GET":
     fail()
@@ -197,8 +197,12 @@ if n is None:
     if method == "GET":
         response(paged(list(state["issues"].values())))
     assert method == "POST", method
-    n = str(state["next"])
-    state["next"] += 1
+    if payload["labels"] == ["parent-evidence"]:
+        n = str(state.get("next_evidence", 9000))
+        state["next_evidence"] = int(n) + 1
+    else:
+        n = str(state["next"])
+        state["next"] += 1
     row = {"id": int(n)+10000, "number": int(n), "repository_url": "https://api.github.com/repos/o/r",
            "title": payload["title"], "body": payload["body"], "labels": [{"name": x} for x in payload["labels"]],
            "user": {"login": "operator"},
@@ -230,6 +234,8 @@ if tail == "comments":
     comment = {"id": 1 + max((c["id"] for rows in state["comments"].values() for c in rows), default=0), "user": {"login": "operator"}, "body": payload["body"]}
     state["comments"].setdefault(n, []).append(comment)
     save()
+    if os.environ.get("PARENT_FAIL_AFTER_COMMENT") in (n, "any"):
+        fail()
     response(comment, 201)
 if method == "PATCH":
     for k, v in payload.items():
@@ -244,6 +250,35 @@ def run_git(directory: Path, *args: str) -> str:
         ["git", *args], cwd=directory, capture_output=True, text=True, check=True
     )
     return result.stdout.strip()
+
+
+def evidence_number(state: dict[str, Any], parent: int = 1) -> int:
+    matches = [
+        int(n)
+        for n, row in state["issues"].items()
+        if row["labels"] == [{"name": "parent-evidence"}]
+        and json.loads(
+            row["body"].splitlines()[0][len("<!-- parent-evidence:v1 ") : -4]
+        )["parent"]
+        == parent
+    ]
+    assert len(matches) == 1, "fixture requires exactly one evidence issue"
+    return matches[0]
+
+
+def evidence_comments(state: dict[str, Any], parent: int = 1) -> list[dict[str, Any]]:
+    return cast(
+        list[dict[str, Any]],
+        state["comments"].setdefault(str(evidence_number(state, parent)), []),
+    )
+
+
+def work_issues(state: dict[str, Any]) -> dict[str, Any]:
+    return {
+        n: r
+        for n, r in state["issues"].items()
+        if {x["name"] for x in r["labels"]} != {"parent-evidence"}
+    }
 
 
 @dataclass
@@ -264,6 +299,23 @@ class ParentEnv:
     def calls(self) -> list[list[str]]:
         return [json.loads(line) for line in self.calls_path.read_text().splitlines()]
 
+    def comments(self, n: int = 1) -> list[dict[str, Any]]:
+        state = self.state()
+        rows = list(state["comments"].get(str(n), []))
+        evidence = [
+            r
+            for r in state["issues"].values()
+            if r["labels"] == [{"name": "parent-evidence"}]
+            and json.loads(
+                r["body"].splitlines()[0][len("<!-- parent-evidence:v1 ") : -4]
+            )["parent"]
+            == n
+        ]
+        assert len(evidence) <= 1
+        if evidence:
+            rows += state["comments"].get(str(evidence[0]["number"]), [])
+        return sorted(rows, key=lambda c: c["id"])
+
     def spec(self, value: Any) -> str:
         path = self.root / "input.json"
         path.write_text(json.dumps(value, ensure_ascii=False))
@@ -273,6 +325,48 @@ class ParentEnv:
         path = self.root / "note.md"
         path.write_text(text)
         return str(path)
+
+    def announce_completion(self) -> dict[str, Any]:
+        """Act as the parent: explicitly select and record the verified overall outcome."""
+        source = json.loads(
+            self.cli(
+                "note",
+                "--body-file",
+                self.note("親が全体の受入・実merge/closeと残件を照合した。"),
+            ).stdout
+        )["url"]
+        artifacts = [
+            f"https://github.com/o/r/pull/{pr['number']}"
+            for pr in self.state()["prs"]
+            if pr.get("merged_at")
+        ]
+        assert artifacts, "completion fixture requires actual merged deliverables"
+        return cast(
+            dict[str, Any],
+            json.loads(
+                self.cli(
+                    "notify",
+                    "--spec",
+                    self.spec(
+                        {
+                            "schema_version": 1,
+                            "kind": "completion",
+                            "key": "completion",
+                            "summary": "全体の実装と受入を確認した。",
+                            "evidence": [source],
+                            "resolves": [],
+                            "details": {
+                                "achievements": [
+                                    "全体の受入条件と実merge/closeを照合した。"
+                                ],
+                                "remaining": [],
+                                "artifacts": artifacts,
+                            },
+                        }
+                    ),
+                ).stdout
+            ),
+        )
 
     def cli(
         self,
@@ -494,7 +588,7 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
             {
                 "issues": issues,
                 "parents": {},
-                "comments": {},
+                "comments": {"1": []},
                 "prs": [],
                 "next": 10,
                 "default_branch": "main",
@@ -726,7 +820,7 @@ def test_sync_cannot_patch_parent_during_supplement_even_without_agreement(
         assert not any("PATCH" in call for call in p.calls()[offset:])
         assert p.state()["issues"]["1"]["body"] == state["issues"]["1"]["body"]
     else:
-        assert any("PATCH" in call for call in p.calls()[offset:])
+        assert not any("PATCH" in call for call in p.calls()[offset:])
 
 
 def test_update_body_gates_target_issue_instead_of_session_parent(
@@ -883,7 +977,7 @@ def test_board_marker_and_ack_cannot_supply_human_agreement(
     state = p.state()
     # Move a genuine, otherwise valid agreement from fake GitHub to the board.
     # Keep the checking event so no other agreement can authorize the task.
-    agreement = state["comments"]["1"].pop()["body"]
+    agreement = evidence_comments(state).pop()["body"]
     p.save(state)
     body = {
         "exact": agreement,
@@ -910,7 +1004,9 @@ def test_board_review_marker_and_ack_cannot_instruct_fixed_review(
     policy = importlib.import_module("parent.policy")
     fixed = next(
         event
-        for event in reversed(policy.events(p.state()["comments"]["1"], "operator", 1))
+        for event in reversed(
+            policy.events(evidence_comments(p.state()), "operator", 1)
+        )
         if event["event"] == "review"
     )
     fixed.pop("body")
@@ -939,24 +1035,27 @@ def test_assignment_is_not_agreement_and_both_inputs(parent_env: ParentEnv) -> N
         str(p.root),
         ok=False,
     )
-    assert len(p.state()["issues"]) == 2
-    assert not any(
-        "POST" in call and call[-3:] == ["repos/o/r/issues", "--input", "-"]
-        for call in p.calls()
-    )
+    assert len(work_issues(p.state())) == 2
+    assert (
+        sum(
+            "POST" in call and call[-3:] == ["repos/o/r/issues", "--input", "-"]
+            for call in p.calls()
+        )
+        == 1
+    )  # The evidence container is allowed; no work issue was created.
     p.cli("checking")
     assert json.loads(p.cli("status").stdout)["phase"] == "要件確認中"
     p.child("still-forbidden", ok=False)
     p.agreed()
     assert json.loads(p.cli("status").stdout)["phase"] == "要件合意済み"
     assert (
-        p.state()["comments"]["1"][-1]["body"]
+        evidence_comments(p.state())[-1]["body"]
         .splitlines()[0]
         .startswith("<!-- parent-session:v1 ")
     )
     assert (
         "> この目的・範囲・動作・受入条件で進めてください。"
-        in p.state()["comments"]["1"][-1]["body"]
+        in evidence_comments(p.state())[-1]["body"]
     )
     # Machine-private IDs never enter comments or issue bodies.
     assert "private-session-a-unique" not in json.dumps(p.state())
@@ -1145,14 +1244,17 @@ def test_child_creation_recovers_partial_failure_without_duplicates(
             if failure == "relation"
             else "repos/o/r/issues/1"
         )
+        if failure == "progress":
+            p.env["PARENT_FAIL_AFTER_CHILD_RELATION"] = "1"
     p.child("idempotent", source=True, ok=False)
     p.env.pop("PARENT_FAIL_PATH", None)
     p.env.pop("PARENT_FAIL_AFTER_CREATE", None)
+    p.env.pop("PARENT_FAIL_AFTER_CHILD_RELATION", None)
     result = json.loads(p.child("idempotent", source=True).stdout)
     assert result["reused"] and result["child"] == 10
     p.child("idempotent", source=True)
     state = p.state()
-    assert len(state["issues"]) == 4 and state["parents"]["10"] == 1
+    assert len(work_issues(state)) == 4 and state["parents"]["10"] == 1
     child = state["issues"]["10"]
     assert child["body"].splitlines()[0].startswith("<!-- ops-report-proposal:")
     assert {x["name"] for x in child["labels"]} == {
@@ -1189,7 +1291,7 @@ def test_child_key_conflict_and_duplicate_existing_fail_closed(
     state["issues"]["99"] = {**state["issues"]["10"], "number": 99, "id": 10099}
     p.save(state)
     p.child("one", ok=False)
-    assert len(p.state()["issues"]) == 5
+    assert len(work_issues(p.state())) == 5
 
 
 def test_concurrent_registration_never_owns_two_parents(parent_env: ParentEnv) -> None:
@@ -1229,7 +1331,7 @@ def test_rechecking_revokes_agreement_and_missing_confirmation_fails(
     agreement["human_confirmation"] = "この変更した要件で合意します。"
     p.cli("agree", "--spec", p.spec(agreement))
     p.child("after-change")
-    assert len(p.state()["issues"]) == 5
+    assert len(work_issues(p.state())) == 5
 
 
 def test_report_and_human_assignment_share_entry_and_never_imply_consent(
@@ -1247,7 +1349,7 @@ def test_report_and_human_assignment_share_entry_and_never_imply_consent(
         result = json.loads(p.cli("register", parent=str(n)).stdout)
         assert result["phase"] == "担当指定のみ"
         p.cli("release", "--note-file", p.note(), parent=str(n))
-    assert len(p.state()["issues"]) == 2
+    assert len(work_issues(p.state())) == 2
 
 
 def test_proposal_identity_prevents_duplicate_under_new_task_key(
@@ -1257,7 +1359,7 @@ def test_proposal_identity_prevents_duplicate_under_new_task_key(
     p.agreed()
     p.child("original", source=True)
     assert json.loads(p.child("new-key", source=True).stdout)["reused"]
-    assert len(p.state()["issues"]) == 4
+    assert len(work_issues(p.state())) == 4
 
 
 def test_local_identifiers_are_rejected_from_public_notes(
@@ -1278,11 +1380,11 @@ def test_stop_resume_retries_and_repeated_cycles_keep_distinct_notices(
     p.child("a")
     for _ in range(2):
         for action in ("stop", "resume"):
-            p.env["PARENT_FAIL_PATH"] = "repos/o/r/issues/1/comments"
+            p.env["PARENT_FAIL_AFTER_COMMENT"] = str(evidence_number(p.state()))
             p.cli(action, "--child", "10", "--spec", p.detail(), ok=False)
-            p.env.pop("PARENT_FAIL_PATH")
+            p.env.pop("PARENT_FAIL_AFTER_COMMENT")
             p.cli(action, "--child", "10", "--spec", p.detail())
-    comments = p.state()["comments"]["1"]
+    comments = evidence_comments(p.state())
     for event in ("child_stopped", "child_resumed"):
         assert (
             sum(f'"event": "{event}"' in c["body"].splitlines()[0] for c in comments)
@@ -1298,15 +1400,15 @@ def test_handoff_retries_do_not_lose_claim_or_repeat_notice(
     p.agreed()
     p.cli("handoff", "--note-file", p.note())
     second = {"CLAUDE_CODE_SESSION_ID": "private-session-b-unique"}
-    p.env["PARENT_FAIL_PATH"] = "repos/o/r/issues/1/comments"
+    p.env["PARENT_FAIL_AFTER_COMMENT"] = str(evidence_number(p.state()))
     p.cli("handoff", "--accept", "--note-file", p.note(), ok=False, extra=second)
-    p.env.pop("PARENT_FAIL_PATH")
+    p.env.pop("PARENT_FAIL_AFTER_COMMENT")
     p.cli("handoff", "--accept", "--note-file", p.note(), extra=second)
     assert json.loads(p.cli("status", extra=second).stdout)["current_session_is_owner"]
     assert (
         sum(
             '"event": "handoff"' in c["body"].splitlines()[0]
-            for c in p.state()["comments"]["1"]
+            for c in evidence_comments(p.state())
         )
         == 1
     )
@@ -1334,7 +1436,7 @@ def test_partial_stop_dependency_resume_and_improvement_preserve_scope(
         word in body
         for word in ("仕様の確認待ち", "再現ログを確認済み", "判断の合意を記録")
     )
-    notification = state["comments"]["1"][-1]["body"]
+    notification = evidence_comments(state)[-1]["body"]
     assert "#10" in notification and "#11" in notification and "#12" in notification
     assert "再現ログを確認済み" not in notification
     assert "#11: 依存保留" in state["issues"]["1"]["body"]
@@ -1615,7 +1717,9 @@ def test_invalid_review_set_has_no_public_request(
     p.cli("review-prepare", "--prs", *map(str, selected), ok=case == "missing")
     if case == "missing":
         return
-    assert not any('"event": "review"' in c["body"] for c in p.state()["comments"]["1"])
+    assert not any(
+        '"event": "review"' in c["body"] for c in evidence_comments(p.state())
+    )
 
 
 def test_review_snapshot_explicit_once_handoff_and_states(
@@ -1663,7 +1767,7 @@ def test_review_snapshot_explicit_once_handoff_and_states(
     handed = json.loads(p.cli(*args).stdout)
     assert handed["review_state"] == "instructed"
     p.cli(*args)
-    comments = p.state()["comments"]["1"]
+    comments = evidence_comments(p.state())
     assert (
         sum('"state": "instructed"' in c["body"].splitlines()[0] for c in comments) == 1
     )
@@ -1709,7 +1813,7 @@ def test_changed_review_target_refuses_instruction(parent_env: ParentEnv) -> Non
     )
     assert not any(
         '"state": "instructed"' in c["body"].splitlines()[0]
-        for c in p.state()["comments"]["1"]
+        for c in evidence_comments(p.state())
     )
 
 
@@ -1720,7 +1824,9 @@ def test_snapshot_collection_window_update_is_not_published(
     selected = review_setup(p, pr_count=2)
     p.env["PARENT_CHANGE_PULLS_ON_READ"] = "1"
     p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
-    assert not any('"event": "review"' in c["body"] for c in p.state()["comments"]["1"])
+    assert not any(
+        '"event": "review"' in c["body"] for c in evidence_comments(p.state())
+    )
 
 
 def test_instruction_recovers_from_public_post_then_local_save_failure(
@@ -1742,7 +1848,7 @@ def test_instruction_recovers_from_public_post_then_local_save_failure(
     assert (
         sum(
             '"state": "instructed"' in c["body"].splitlines()[0]
-            for c in p.state()["comments"]["1"]
+            for c in evidence_comments(p.state())
         )
         == 1
     )
@@ -2070,7 +2176,7 @@ class ReviewEnv:
         return [json.loads(line) for line in self.calls_path.read_text().splitlines()]
 
     def comments(self, n: int) -> list[dict[str, Any]]:
-        return cast(list[dict[str, Any]], self.p.state()["comments"].get(str(n), []))
+        return self.p.comments(n)
 
     def cli(
         self, *args: str, ok: bool = True, extra: dict[str, str] | None = None
@@ -2411,9 +2517,9 @@ def test_invalid_or_uninstructed_review_never_launches(
         p.cli("basis-revoke", "--reason-file", p.note("親が実行根拠を取り消した。"))
         state = p.state()
     elif case in {"no_instruction", "foreign_instruction", "quoted_instruction"}:
-        instruction = state["comments"]["1"][-1]
+        instruction = evidence_comments(state)[-1]
         if case == "no_instruction":
-            state["comments"]["1"].pop()
+            evidence_comments(state).pop()
         elif case == "foreign_instruction":
             instruction["user"]["login"] = "attacker"
         else:
