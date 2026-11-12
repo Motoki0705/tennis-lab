@@ -236,6 +236,38 @@ def completion_workflow(
             "rationale": basis["rationale"],
             "sources": basis["sources"],
         }
+        # Seed the pinned judgement and initial reservation, as assign() does.
+        # Continuations must read an existing parent's start-input, never create
+        # an initial job by silently collecting over an absent prior snapshot.
+        directory = schedule.directory / "judgements/fixture-judgement"
+        store.write_json(directory / "input.json", snapshot)
+        store.write_json(
+            directory / "result.json",
+            {
+                "schema_version": 2,
+                "result": "recorded",
+                "input_sha256": candidate["input_sha256"],
+                "decisions": [{"issue": 1, "disposition": "startable"}],
+                "deferred": [],
+                "candidates": [candidate],
+                "publications": [],
+                "diagnostics": [],
+            },
+        )
+        scheduled["runs"].append(
+            {
+                "id": "fixture-judgement",
+                "slot": scheduled["cursor"],
+                "explicit": False,
+                "phase": "recorded",
+                "controller": None,
+                "directory": str(directory),
+                "diagnostic": None,
+                "candidates": {"1": {"state": "assigned", "reason": "fixture"}},
+            }
+        )
+        schedule.write(scheduled)
+        session.row["session"] = "dispatcher-reservation:fixture-assignment"
         session.row["dispatch"] = {
             "schema_version": 1,
             "assignment_id": "fixture-assignment",
