@@ -153,26 +153,29 @@ class ParentSession:
                 "public payload contains private session/worktree information"
             )
 
-    def post(self, event: dict[str, Any], text: str) -> None:
+    def post(self, event: dict[str, Any], text: str) -> dict[str, Any]:
+        from .record_writer import write_record
+
         data = {"parent": self.parent, **event}
         body = marker(data) + "\n\n" + text
         self.public(body)
-        if any(item["body"] == body for item in self.history()):
-            return
-        response = self.gh.write("POST", self.endpoint + "/comments", {"body": body})
+        response = write_record(self, body)
         from decision_logs.parent_sources import comment
 
         comment(self, data, body, response)
+        return response
 
     def note(self, body: str) -> dict[str, Any]:
         row = self.owner()
         text = note_body(body)
         sha = digest(text)
-        self.post(
+        response = self.post(
             {"event": "note", "generation": row["generation"], "body_sha256": sha},
             text,
         )
-        return {"parent": self.parent, "body_sha256": sha}
+        from .record_writer import url
+
+        return {"parent": self.parent, "body_sha256": sha, "url": url(self, response)}
 
     def register(self, summary: str | None = None) -> dict[str, Any]:
         if self.session is None:
@@ -266,11 +269,32 @@ class ParentSession:
         ]
 
     def lifecycle(self, action: str, note: str) -> dict[str, Any]:
-        row = self.owner()
+        row = self.row
         nonempty(note, "handoff/release note")
-        self.post({"event": action, "generation": row["generation"]}, note)
+        self.public(note)
+        if not (row.get("status") == action and row.get("session") == self.session):
+            row = self.owner()
+        event = {"event": action, "generation": row["generation"]}
+        if action == "ended":
+            from .notifications import completion
+
+            record = completion(self)
+            if record:
+                event["completion_ref"] = record.url
+                note = f"担当終了。全体の成果・未達・残件: {record.url}"
+        if row.get("status") == action and row.get("session") == self.session:
+            if not any(
+                e["body"] == marker({"parent": self.parent, **event}) + "\n\n" + note
+                for e in self.history()
+            ):
+                raise ValueError("lifecycle retry differs from its recorded evidence")
+            self.sync_progress()
+            return self.status()
+        self.owner()
+        self.post(event, note)
         row["status"] = action
         self.store.save()
+        self.sync_progress()
         return self.status()
 
     def accept(self, note: str, recover: bool = False) -> dict[str, Any]:
@@ -604,8 +628,33 @@ class ParentSession:
                 f"未分割。自身 #{self.parent} を作業対象として進める。全体受入は別途照合する。",
             )
         summary = "\n".join(lines) if states else "未分割（子issue未作成）"
+        from .notifications import progress_lines
+
+        history = self.gh.record_history(self.parent, self.login)
+        summary = "\n".join(progress_lines(self, history)) + "\n\n" + summary
+        start, end = "<!-- parent-progress:v1 -->", "<!-- /parent-progress -->"
+        current = raw_section(body, "進捗概要")
+        block = start + "\n" + summary + "\n" + end
+        if start in current or end in current:
+            if (
+                current.count(start) != 1
+                or current.count(end) != 1
+                or current.index(start) > current.index(end)
+            ):
+                raise ValueError("invalid managed progress block; reconcile explicitly")
+            current = (
+                current[: current.index(start)]
+                + block
+                + current[current.index(end) + len(end) :]
+            )
+        else:
+            current = block + (
+                "\n\n既存の記述（自動更新の対象外）:\n" + current.strip()
+                if current.strip()
+                else ""
+            )
         self.update_body(
-            self.parent, replace_section(body, "進捗概要", summary), parent.body
+            self.parent, replace_section(body, "進捗概要", current), parent.body
         )
         return states
 

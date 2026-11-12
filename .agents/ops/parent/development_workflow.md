@@ -37,7 +37,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123
 親は子のscope・対象外・受入条件・依存・テスト条件・PR作成時点を指示ファイルへ書く。
 モデル選択は [AGENTS.md](../../../AGENTS.md#開発ルール) に従い、通常はSol/max、未解決の数理・幾何アルゴリズムや
 広範囲の統合設計などの高難度の委任では親がAstra/maxを選べる。人間との合意によるモデル指定を優先する。
-選択肢は `agents.conf` の既定・代替の2種で、effortはmax固定。理由は親issueへの `note` と具体指示へ残す。
+選択肢は `agents.conf` の既定・代替の2種で、effortはmax固定。理由は `note`（証拠用Issue）と具体指示へ残す。
 同一委任・sessionの途中では変更せず、利用不可・実効値不一致を別モデルへ振り替えない。
 GPU・Blenderはtraining queueを使い、未指定の資源予算を作らない。
 
@@ -136,7 +136,9 @@ worker終了イベントでのログ保存と公開失敗の照合・再開は [
 まとまった区切りで [Git公開と閲覧](../decision_logs/README.ja.md#git公開と閲覧)を行う。
 ログPRは実装成果のPR・レビュー要求へ混ぜず、公開履歴を通常の成果受理の証拠に読み替えない。
 
-自由文は `note --body-file`、親進捗は `sync` を使う。素の進捗コメントを人間の指示と自動分類しない。
+記録・通知・進捗同期は [親CLIの専用入口](README.md#自由文の進捗連絡) を使う。
+completedの前に、親が `notify` の固定completionへ全体の成果・未達/残件・成果物を記録する。
+workflow-reportと担当終了はその同じ記録を参照し、完了報告を再投稿しない。素の通常コメントを自動除外しない。
 合意後の未分類コメントは [既存の分類手順](README.md#稼働中の親への移行) で確認する。
 最終イベントは同じstateで `workflow-report --spec tmp/report.json` を呼んで得る。
 specは追加キーなしの次のJSON（evidenceも非空）。CLIの最終JSONはdispatcherの4キー契約を維持する。

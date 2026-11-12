@@ -136,6 +136,8 @@ def _logical_key(family: Family, payload: dict[str, Any]) -> str:
             fields = ("generation",)
         elif event == "note":
             fields = ("generation", "body_sha256")
+        elif event in {"notification", "notification_record"}:
+            fields = ("key",)
         elif event in {"child_stopped", "child_resumed"}:
             fields = ("child", "operation")
     elif family == "parent-review":
@@ -148,7 +150,11 @@ def _logical_key(family: Family, payload: dict[str, Any]) -> str:
                 "fixed_snapshot" if event == "resolution" else "snapshot",
             )
     else:
-        fields = ("issue",)
+        fields = (
+            ("issue", "revision")
+            if "revision" in payload
+            else ("issue", "detail_sha256")
+        )
     identity = (
         {key: payload[key] for key in fields}
         if fields and all(key in payload for key in fields)
@@ -224,6 +230,44 @@ def _parse_history(
                     )
             keys[key] = record
             records.append(record)
+    for record in records:
+        if record.payload.get("event") == "notification_record":
+            spec = record.payload["notification"]
+            if any(
+                ref not in {r.url for r in records if r.comment_id < record.comment_id}
+                for ref in spec["evidence"]
+            ):
+                raise ValueError("notification evidence missing from verified history")
+        if record.payload.get("completion_ref") and not any(
+            r.url == record.payload["completion_ref"]
+            and r.payload.get("event") == "notification_record"
+            and r.payload.get("key") == "completion"
+            for r in records
+        ):
+            raise ValueError("completion evidence missing from verified history")
+        if record.payload.get("event") == "notification":
+            from .notifications import render
+
+            data = record.payload
+            linked = [
+                r
+                for r in records
+                if r.url == data["record_url"]
+                and r.payload.get("event") == "notification_record"
+            ]
+            if (
+                len(linked) != 1
+                or linked[0].payload["key"] != data["key"]
+                or linked[0].payload["notification_sha256"]
+                != data["notification_sha256"]
+            ):
+                raise ValueError("notification evidence missing or inconsistent")
+            text = (
+                render(linked[0].payload["notification"])
+                + f"\n\n[判断・通知の保存記録]({data['record_url']})"
+            )
+            if digest(text) != data["body_sha256"]:
+                raise ValueError("notification differs from its evidence record")
     return History(
         tuple(sorted(records, key=lambda r: r.comment_id)),
         tuple(diagnostics),

@@ -73,6 +73,7 @@ def parser() -> argparse.ArgumentParser:
     ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
+    commands.add_parser("notify").add_argument("--spec", required=True)
     commands.add_parser("evidence").add_argument("--create", action="store_true")
     publication = commands.add_parser("publish-decision-log")
     publication.add_argument("--dry-run", action="store_true")
@@ -520,6 +521,11 @@ def _main(argv: list[str] | None = None) -> int:
                 )
             elif command == "note":
                 result = session.note(read_text(args.body_file))
+                session.sync_progress()
+            elif command == "notify":
+                from .notifications import notify
+
+                result = notify(session, read_object(args.spec))
             elif command == "workflow-report":
                 from .development import load, report
 
@@ -663,6 +669,15 @@ def _main(argv: list[str] | None = None) -> int:
                 result = transition(
                     session, args.run_id, args.state, read_text(args.evidence_file)
                 )
+            if command in {
+                "checking",
+                "agree",
+                "basis-revoke",
+                "review-prepare",
+                "review-request",
+                "review-state",
+            }:
+                session.sync_progress()
         integration_failed = False
         if command in {
             "register",

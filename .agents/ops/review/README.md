@@ -9,8 +9,9 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 親側の要求・公開結果・followupは [共通reader](../parent/README.md#機械証拠の保存共通reader) から取得する。
 旧親コメントと証拠用Issueの両方を検証し、`parent_run_url` は実際の保存先のcomment permalinkと照合する。
 各PRのprojection・followupコピーは従来どおりそのPRから読む。保存済みpayloadやdigestを媒体変更で書き換えない。
-この基盤段階のwriterは親Issueへ投稿する。証拠側へ移したpendingの公開再開や判定表示の更新は、
-writer切替後の入口を必要とするため明示拒否する。既存の親側pendingは従来どおり再開できる。
+新規の親側記録は証拠用Issueへ保存し、各PRの投影はPRへ残す。親へのレビュー操作通知は作らない。
+公開途中の既存pendingは、元のcomment ID/媒体で同じ公開を完了させる。旧親側pendingも同じURLを保ち、
+新しいコピーを証拠用Issueへ作らない。この継続以外に親へ機械記録を新規POSTする経路はない。
 
 | ファイル | 責務 |
 |---|---|
@@ -346,7 +347,7 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 人間向け本文もHTMLコメントを無害化する。本文中の引用、他login、旧PR単位review markerは証拠にしない。
 `records(comments, trusted_login)` は認証中publisherの先頭行だけを読み、不正な記録は例外で拒否する。
 
-`kind=result` の親コメントとローカル `result.json` が同じ内容の正本。キーは以下のみ。
+`kind=result` の証拠用Issueのコメント（旧親コメントも読取）とローカル `result.json` が同じ内容の正本。キーは以下のみ。
 
 | キー | 内容 |
 |---|---|
@@ -380,10 +381,10 @@ PRとclosing対象・対象コードの同一性は機械的に照合し、過�
 result_sha256,snapshot,coverage,findings,parent_run_url}`。
 `result_sha256` は親result全体のdigest、snapshotはprepareの当該PR、findingsは個別＋当該PRに関係する横断指摘。
 結果に `evidence_waits` があるPRはprojectionにも同じ配列を含む。旧projectionは省略したまま照合する。
-親コメントへのpermalinkからrun全体を読める。
+保存先の実permalinkからrun全体を読める。
 
 公開は「親に `kind=pending`（schema_version/run ID/request digestだけ）を作る →
-全PRへprojectionを投稿 → 親コメントをresultへ更新」の順。pendingやPRコメント単独は成功の証拠ではない。
+全PRへprojectionを投稿 → 同じpendingをresultへ更新」の順。pendingやPRコメント単独は成功の証拠ではない。
 途中失敗では工程の失敗をローカルへ保存する。`resume-publication` は認証loginの先頭行recordを再取得し、
 一致するpending/projection/resultを再利用して欠けた書込みだけを行う。投稿の応答喪失も同じ照合で復旧し、
 同runの別内容・重複・先行failed記録があれば停止する。公開済みコメントは上書きせず、pendingだけを正式結果へ更新する。

@@ -17,6 +17,7 @@ from .policy import digest, nonempty, number, object_value
 
 if TYPE_CHECKING:
     from .github import GitHub
+    from .state import Store
 
 
 @dataclass(frozen=True)
@@ -131,7 +132,9 @@ class EvidenceIssues:
             )
         return matches[0] if matches else None
 
-    def ensure(self, parent: int, login: str) -> EvidenceIssue:
+    def ensure(
+        self, parent: int, login: str, *, store: Store | None = None
+    ) -> EvidenceIssue:
         """One durable POST intent, serialized across local processes/worktrees.
 
         A crash before sending may require manual reconciliation. GitHub has no
@@ -139,10 +142,11 @@ class EvidenceIssues:
         timed-out POST was not accepted. Keep the journal when recovering state.
         """
         path = self.path(parent)
+        registry = store or self.gh._store
         with ExitStack() as locks, self.gh.fresh_reads():
             # Never wait for the creation lock while holding the registry:
             # its owner may be reacquiring that registry after GitHub I/O.
-            with self.gh._store.unlocked_read() if self.gh._store else nullcontext():
+            with registry.unlocked_read() if registry else nullcontext():
                 locks.enter_context(locked(path))
             self.gh.issue(parent)  # A container can never itself receive evidence.
             found = self.find(parent, login)

@@ -18,10 +18,12 @@ def comment(
     try:
         evidence = []
         if type(response.get("id")) is int:
+            from parent.history import comment_url
+
             evidence.append(
                 {
                     "kind": "public",
-                    "url": f"https://github.com/{session.gh.repo}/issues/{session.parent}#issuecomment-{response['id']}",
+                    "url": comment_url(session.gh.repo, session.parent, response),
                     "revision": None,
                     "content_sha256": sha(body.encode()),
                 }
