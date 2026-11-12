@@ -344,6 +344,8 @@ pendingは成功結果として扱わない。旧outboxがpendingを記録した
 | review targets_fixed/instructed/result_received/fixes_verified/complete | 証拠＋run | レビュー段階・対象・固定証拠 |
 | parent-review pending/result/adoption | 証拠。PR側のpr projectionは各PR | 公開済み結果とPRへの参照。pendingは未完了 |
 | parent-review resolution/evidence | 証拠＋該当PRのコピー | 解消/証拠待ちと確認先 |
+| parent-improvement candidate/published/decision | 証拠（旧親コメントも読取）＋子の参照 | 改善候補・起票・人間判断の詳細への参照 |
+| completion（構造化finish） | 証拠＋受入receipt | 各受入条件の確認先。人間向け成果は固定completion通知 |
 | issue-start-judgement | 証拠、revision付きで追記 | 判定理由・不足・再開条件。既存判定をPATCHで消さない |
 | child_stopped/resumed | 対象本文＋証拠＋registry | 停止/継続/依存保留と再開条件 |
 | create-child、delegate、record-result、取消・改善候補 | 正式関係・対象本文・registry、既存判断/workerログ | 作業・成果物・検証・未達/残件 |

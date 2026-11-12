@@ -156,6 +156,10 @@ def test_completion_waits_for_parent_publication_then_recovers_once(
         "release", "--ended", "--note-file", p.note("全体受入後に終了する。"), ok=False
     )
     assert "not published" in refused.stderr and "not published" in ended.stderr
+    finish_path = p.root / "unpublished-finish.json"
+    finish_path.write_text(json.dumps(json.loads(Path(report).read_text())["finish"]))
+    structured_end = p.cli("release", "--ended", "--spec", str(finish_path), ok=False)
+    assert "not published" in structured_end.stderr
     assert json.loads(p.cli("status").stdout)["assignment"] == "active"
     notify(p, spec, extra={"PARENT_FAIL_AFTER_COMMENT": "1"}, ok=False)
     notify(p, spec)

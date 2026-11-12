@@ -237,7 +237,26 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
         None,
         {"source_issue": 2, "spec": candidate_spec(), "legacy": False},
     )
-    d.h.gh.issues[1]["body"] = source.marker() + "\n\n" + d.h.gh.issues[1]["body"]
+    formats = importlib.import_module("issues")
+    rendered = importlib.import_module("issues.cli").render_spec(
+        {
+            "role": "parent",
+            "identifier": "改善",
+            "summary": "未承認の改善",
+            "children": [],
+            "improvement_source": {"parent": 2, "key": "next"},
+            "sections": {
+                h: "人間との議論待ち。"
+                for h in formats.PARENT_REQUIRED
+                if h != formats.TASKS_HEADING
+            },
+        }
+    )
+    d.h.gh.issues[1].update(
+        title=rendered["title"],
+        body=rendered["body"],
+        labels=[{"name": label} for label in rendered["labels"]],
+    )
     d.h.gh.comment_rows[2] = [
         {"id": 9000, "user": {"login": "operator"}, "body": api.render_event(candidate)}
     ]

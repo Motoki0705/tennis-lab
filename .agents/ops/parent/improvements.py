@@ -91,7 +91,7 @@ def comment_url(session: ParentSession, parent: int, comment_id: int) -> str:
     matches = [c for c in comments if c["id"] == comment_id]
     if len(matches) != 1:
         raise ValueError("improvement evidence comment is missing or duplicated")
-    return public_url(session.gh.repo, parent, matches[0])
+    return public_url(session.gh.repo.casefold(), parent, matches[0])
 
 
 def record(

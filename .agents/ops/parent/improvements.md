@@ -145,6 +145,8 @@ dispatcherに新たな自動割当経路は作らず、既存の自律着手条�
 requirements.available=falseとなり、finishを拒否する。一括移行や推測で埋めない。
 
 手動は `release --ended --spec tmp/finish.json`。従来の `--note-file` は受入未確認の担当終了として維持する。
+completedの前に[完了通知の契約](README.md#自由文の進捗連絡)で親へ固定completionを公開する。
+finishは受入項目の機械記録として証拠用Issueへ保存し、通知本文を再掲しない。
 自律は [workflow-report](development_workflow.md#待機完了担当終了) のcompleted入力version 2へfinishを含める。
 実merge・レビュー・子の終了等の既存検査に加え、supervisorは当該job/担当generation/権限に結び付いたfinish receiptを照合する。
 手書きの最終completed JSONだけでは完了しない。

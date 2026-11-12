@@ -494,14 +494,16 @@ def test_publication_recovers_only_missing_links_after_source_close(
     p = parent_env
     p.agreed()
     record(p)
+    # Link recovery exercises an accepted POST with a lost response. An absent
+    # sent comment remains uncertain and must not authorize another POST.
     p.env[
         "PARENT_FAIL_AFTER_CREATE"
         if failure == "create_response"
-        else "PARENT_FAIL_PATH"
-    ] = "1" if failure == "create_response" else "repos/o/r/issues/1/comments"
+        else "PARENT_FAIL_AFTER_COMMENT_CONTAINING"
+    ] = "1" if failure == "create_response" else '"event": "published"'
     publish(p, ok=False)
     p.env.pop("PARENT_FAIL_AFTER_CREATE", None)
-    p.env.pop("PARENT_FAIL_PATH", None)
+    p.env.pop("PARENT_FAIL_AFTER_COMMENT_CONTAINING", None)
     source_finished(p)
     # Recovery must not require the old owner or revive its assignment.
     p.env["CLAUDE_CODE_SESSION_ID"] = "different-recording-session"
@@ -517,7 +519,13 @@ def test_publication_recovers_only_missing_links_after_source_close(
     assert result["issue"] == 10 and post_count(p) == 1
     source = json.loads(p.cli("status").stdout)
     assert source["assignment"] == "ended"
-    assert len(p.state()["issues"]) == 3
+    assert (
+        sum(
+            row.get("labels") != [{"name": "parent-evidence"}]
+            for row in p.state()["issues"].values()
+        )
+        == 3
+    )
 
 
 def test_unknown_creation_does_not_repeat_post_when_lookup_temporarily_has_no_issue(
@@ -616,9 +624,9 @@ def test_explicit_approval_is_imported_once_and_old_replay_cannot_revoke_a_stop(
     source_finished(p)
     p.cli("register", parent="10")
     p.cli("agree", "--improvement-approval", approved["decision_id"], parent="10")
-    count = len(p.state()["comments"]["10"])
+    count = len(p.comments(10))
     p.cli("agree", "--improvement-approval", approved["decision_id"], parent="10")
-    assert len(p.state()["comments"]["10"]) == count
+    assert len(p.comments(10)) == count
     assert "needs-human" in {
         label["name"] for label in p.state()["issues"]["10"]["labels"]
     }
@@ -670,6 +678,7 @@ def test_approval_waits_for_supplement_and_material_changes_need_a_new_decision(
     publish(p)
     state = p.state()
     state["supplement_enabled_since"] = "2026-10-30T00:00:00Z"
+    state["issues"]["1"]["labels"].append({"name": "supplement:done"})
     p.save(state)
     assert "pending" in decide(p, "approve", ok=False).stderr
     state["issues"]["10"]["labels"].append({"name": "supplement:done"})
