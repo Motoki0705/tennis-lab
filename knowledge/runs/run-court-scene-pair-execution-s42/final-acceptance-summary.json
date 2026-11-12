@@ -1,0 +1,40 @@
+{
+  "schema": "court_scene_pair_final_acceptance_v1",
+  "at": "2026-11-10T04:58:38.159204+00:00",
+  "verified": true,
+  "inputs_identity": "4d7b39d613471fd9f94a64dcb36d8fbba3a939fa0517773125af394cc3c1ca33",
+  "managed_job": {
+    "job_id": "court-campaign-service-20261110-r6-nb3",
+    "status": "completed",
+    "returncode": 0,
+    "drive_saved_at": "2026-11-10T04:55:25.769262+00:00",
+    "finished_at": "2026-11-10T04:55:25.769283+00:00"
+  },
+  "owned_session": "court-scene-pair-20261110-recovery5",
+  "owned_session_stopped": true,
+  "scientific_ref": "17ad301bf8d80a5d094f28bb48f3431c7d9b5d89",
+  "operational_adapter_ref": "113cd45b894ae19ba964188ef04838de6db95e5b",
+  "host_transport_ref": "7b441c465ff4451f294216a9d9c416e686eca640",
+  "all_sixteen_stages_present": true,
+  "campaign_progress": {
+    "condition": null,
+    "latest_saved_update": 33160,
+    "schema": "court_scene_pair_progress_v1",
+    "stage": "complete",
+    "started_at": "2026-11-09T23:40:20.165513+00:00",
+    "status": "completed",
+    "updated_at": "2026-11-10T04:37:28.356047+00:00"
+  },
+  "evaluation_Drive_download_count": 9,
+  "restart_record_count": 9,
+  "queue_done_means_exit0": "Pinned training_queue.sh only moves workload to done under rc==0 and records completion after owned descendants ended",
+  "finalized_at": "2026-11-10T04:59:09.917579+00:00",
+  "source_Drive": "operations/colab/court-scene-pair-20261110-recovery5/control/final-campaign-acceptance-20261110.json",
+  "source_sha256": "3c00804af99e139e91d89bfbefbca64daad655f58878e90b19bd2cb4ad4058f4",
+  "campaign_transfer": {
+    "verified_files": 85,
+    "verified_bytes": 8316576
+  },
+  "verification_scope": "Original campaign.verify on actual Colab preceded every done marker; latest P23 fullstate separately gate3. This parent audit checks downloaded reports and published markers, does not reload every checkpoint.",
+  "pending_history": "Two earlier Notebook requests were cancelled before worker/queue execution and persisted as terminal history; they are not scientific stage failures."
+}
