@@ -98,6 +98,9 @@ user busの不通・state破損・仕事の証拠不足・停止/再開失敗は
 - `runs.jsonl`: 取得、保守停止、更新、再開、終了のイベント。systemd journalにも同じ内容を出力する。
 - `resume.json`: 停止した常駐serviceの再開対象。再開の照合が終わるまで保持する。
   更新が強制終了された場合、次回はunitと内部enabledを再確認して復旧する。手動OFFを上書きしない。
+  各行の元のmain PIDと `phase`（pending/stop_requested/stopping/stopped/starting/resumed/left_off）を
+  atomicに保存する。HUP送信前にstop_requested、停止確認後にstopped、起動要求前にstartingを記録する。
+  停止待ちの旧PIDがactiveでも再開成功とみなさず、停止完了と新PIDの起動を確認してから記録を削除する。
 
 終了コードは0（updated/unchanged）、75（明示的なskip）、2（failed）。serviceの最終結果と
 jobの理由は区別して確認する。再開が失敗した場合は更新済みでもfailedになり、再開記録を残す。

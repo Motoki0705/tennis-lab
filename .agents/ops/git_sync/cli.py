@@ -200,7 +200,8 @@ def main(argv: list[str] | None = None) -> int:
     os.umask(0o077)
 
     def interrupted(signum: int, frame: object) -> None:
-        raise InterruptedError(f"git-sync interrupted by signal {signum}")
+        # selectors/subprocess may consume InterruptedError as a syscall EINTR.
+        raise ControlError(f"git-sync interrupted by signal {signum}")
 
     signal.signal(signal.SIGTERM, interrupted)
     signal.signal(signal.SIGINT, interrupted)

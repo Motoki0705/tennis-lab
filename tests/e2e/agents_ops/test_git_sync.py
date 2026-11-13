@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -141,25 +142,34 @@ def sync(control: ControlEnv) -> Iterator[SyncEnv]:
     git(producer, "config", "user.email", "sync@example.invalid")
     # A real harmless process supplies /proc signal-handler evidence to the
     # fake user manager. It never reads or writes the actual checkout.
-    with subprocess.Popen(
-        [
-            sys.executable,
-            "-c",
-            "import signal,sys; signal.signal(signal.SIGHUP, lambda *args: None); print('ready', flush=True); sys.stdin.read()",
-        ],
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        text=True,
-    ) as process:
+    with ExitStack() as stack:
+        processes = [
+            stack.enter_context(
+                subprocess.Popen(
+                    [
+                        sys.executable,
+                        "-c",
+                        "import signal,sys; signal.signal(signal.SIGHUP, lambda *args: None); print('ready', flush=True); sys.stdin.read()",
+                    ],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    text=True,
+                )
+            )
+            for _ in range(3)
+        ]
         try:
-            assert process.stdout is not None
-            assert process.stdout.readline().strip() == "ready"
+            for process in processes:
+                assert process.stdout is not None
+                assert process.stdout.readline().strip() == "ready"
             state = control.read()
-            state["units"][SUPERVISOR]["MainPID"] = str(process.pid)
+            state["supervisor_pids"] = [str(process.pid) for process in processes]
+            state["units"][SUPERVISOR]["MainPID"] = state["supervisor_pids"][0]
             control.write(state)
             yield SyncEnv(control, origin, producer)
         finally:
-            process.communicate(timeout=5)
+            for process in processes:
+                process.communicate(timeout=5)
 
 
 def test_fast_forward_keeps_local_data_venv_and_worktree_and_reports_dependencies(
@@ -525,6 +535,43 @@ def test_supervisor_resume_preserves_each_off_state(
     assert any("kill" in call for call in calls) == active
     assert sync.control.read()["dispatcher"]["enabled"] == internal
     assert not any("enable" in call or "shutdown" in call for call in calls)
+
+
+@pytest.mark.parametrize("interrupts", [[1], [1, 2]])
+def test_interrupted_delayed_hup_waits_for_old_pid_before_resuming(
+    sync: SyncEnv, interrupts: list[int]
+) -> None:
+    target = sync.publish({"app.py": "new\n"})
+    before = git(sync.repo, "rev-parse", "HEAD")
+    state = sync.control.read()
+    old_pid = state["units"][SUPERVISOR]["MainPID"]
+    state["units"][SUPERVISOR].update(ActiveState="active", UnitFileState="enabled")
+    state["dispatcher"]["enabled"] = True
+    state.update(hup_exit_after_polls=8, interrupt_hup_calls=interrupts)
+    sync.control.write(state)
+    result = sync.run("operation_failed", 2)
+    assert git(sync.repo, "rev-parse", "HEAD") == before
+    ticket = sync.directory / "resume.json"
+    if len(interrupts) == 2:
+        assert result["resume_pending"] is True
+        saved = json.loads(ticket.read_text())
+        assert saved[0]["phase"] in {"stop_requested", "stopping"}
+        assert saved[0]["main_pid"] == int(old_pid)
+        sync.run("fast_forwarded")
+        assert git(sync.repo, "rev-parse", "HEAD") == target
+    else:
+        assert result["resume_pending"] is False
+    assert not ticket.exists()
+    current = sync.control.read()["units"][SUPERVISOR]
+    assert current["ActiveState"] == "active"
+    assert current["MainPID"] != old_pid
+    calls = sync.control.calls()
+    exited = next(
+        i for i, call in enumerate(calls) if call[:2] == ["resident_exited", SUPERVISOR]
+    )
+    started = calls.index(["systemctl", "--user", "start", SUPERVISOR])
+    assert exited < started
+    assert sync.control.read()["dispatcher"]["enabled"] is True
 
 
 def test_off_during_pause_is_rechecked_and_not_undone(sync: SyncEnv) -> None:

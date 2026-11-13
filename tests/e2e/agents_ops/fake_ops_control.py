@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import sys
 from pathlib import Path
 
@@ -13,6 +14,7 @@ tool = Path(sys.argv[0]).name
 if tool == "__main__.py":
     tool = "dispatcher"
 args = sys.argv[1:]
+interrupt_parent = False
 call = [tool, *args]
 with Path(os.environ["FAKE_OPS_CALLS"]).open("a") as stream:
     stream.write(json.dumps(call) + "\n")
@@ -23,6 +25,8 @@ def finish(code: int = 0) -> None:
         state["bus_lost"] = True
         del state["lose_bus_after_call"]
     state_file.write_text(json.dumps(state))
+    if interrupt_parent:
+        os.kill(os.getppid(), signal.SIGTERM)
     raise SystemExit(code)
 
 
@@ -73,6 +77,16 @@ if command == "show":
         finish()
     unit = args[1]
     data = state["units"][unit]
+    if unit == "tennis-lab-dispatch-supervisor.service" and state.get(
+        "hup_polls_remaining", 0
+    ):
+        state["hup_polls_remaining"] -= 1
+        if not state["hup_polls_remaining"]:
+            data["ActiveState"] = "inactive"
+            with Path(os.environ["FAKE_OPS_CALLS"]).open("a") as stream:
+                stream.write(
+                    json.dumps(["resident_exited", unit, data.get("MainPID")]) + "\n"
+                )
     for key, value in data.items():
         if key not in state.get("omit_properties", []):
             print(f"{key}={value}")
@@ -122,11 +136,23 @@ for unit in args[1:]:
         data["ActiveState"] = "inactive"
     elif command == "kill" and unit not in state.get("sticky_active", []):
         assert "--signal=HUP" in args
-        data["ActiveState"] = "inactive"
+        delay = state.get("hup_exit_after_polls", 0)
+        data["ActiveState"] = "active" if delay else "inactive"
+        state["hup_polls_remaining"] = delay
+        state["hup_count"] = state.get("hup_count", 0) + 1
+        interrupt_parent = state["hup_count"] in state.get("interrupt_hup_calls", [])
         if state.get("disable_after_pause"):
             data["UnitFileState"] = "disabled"
             state["dispatcher"]["enabled"] = False
     elif command == "start":
+        if (
+            unit == "tennis-lab-dispatch-supervisor.service"
+            and "supervisor_pids" in state
+        ):
+            state["supervisor_pid_index"] = (
+                state.get("supervisor_pid_index", 0) + 1
+            ) % len(state["supervisor_pids"])
+            data["MainPID"] = state["supervisor_pids"][state["supervisor_pid_index"]]
         # A completed oneshot returns inactive and preserves enablement.
         resident = unit in {
             "tennis-lab-dispatch-supervisor.service",
