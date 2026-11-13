@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import fcntl
 import importlib
 import json
@@ -238,16 +239,7 @@ def test_failure_is_not_success_and_retry_finishes_both_registration_and_files(
         if stage == "rename":
             patch.setattr(lab.inventory, "quarantine_tree", fail)
         elif stage == "unregister":
-            real_git = lab.inventory.git
-            patch.setattr(
-                lab.inventory,
-                "git",
-                lambda repo, *args, **kwargs: (
-                    fail()
-                    if args[:2] == ("worktree", "remove")
-                    else real_git(repo, *args, **kwargs)
-                ),
-            )
+            patch.setattr(lab.inventory, "unregister", fail)
         else:
             patch.setattr(lab.inventory, "remove_tree", fail)
         code, report = lab.cleaner().run(cleanup=True)
@@ -531,12 +523,19 @@ def test_parent_ownership_is_released_and_native_process_is_stopped(
     path = lab.add()
     row = parent_row()
     ident = {"pid": 123456, "boot_id": "fake", "start_ticks": "1"}
-    row["owner_runtime"] = {"cwd": str(path), "process": ident}
+    row["owner_runtime"] = {
+        "cwd": str(path),
+        "process": ident,
+        "session": row["session"],
+        "generation": row["generation"],
+    }
     registry = save_registry(lab, row)
     stopped = []
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
     monkeypatch.setattr(
-        lab.lifecycle.processes, "stop_tree", lambda identity: stopped.append(identity)
+        lab.lifecycle.processes,
+        "stop_tree",
+        lambda identity, **kwargs: stopped.append(identity),
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -699,53 +698,133 @@ def test_symlink_inserted_after_stop_does_not_redirect_removal(
     assert (tmp_path / "old-worktrees/task/tracked").read_text() == "original\n"
 
 
+class NativeForest:
+    def __init__(
+        self, lab: Lab, monkeypatch: pytest.MonkeyPatch, *, newborn: str | None = None
+    ) -> None:
+        self.proc = lab.lifecycle.processes
+        self.nodes: dict[int, Any] = {}
+        self.signals: list[tuple[int, int]] = []
+        self.frozen: set[int] = set()
+        self.now = 0.0
+        self.calls = 0
+        self.newborn = newborn
+        for pid, parent in ((1, 0), (101, 1), (102, 101), (900, 1)):
+            self.add(pid, parent)
+        monkeypatch.setattr(self.proc, "snapshot", self.snapshot)
+        monkeypatch.setattr(
+            self.proc,
+            "process_identity",
+            lambda pid: self.nodes.get(pid, {}).get("identity"),
+        )
+        monkeypatch.setattr(
+            self.proc, "threads_stopped", lambda item: item["pid"] in self.frozen
+        )
+        monkeypatch.setattr(self.proc, "open_pidfd", lambda pid: pid + 1000)
+        monkeypatch.setattr(self.proc, "signal_pidfd", self.signal)
+        real_close = os.close
+        monkeypatch.setattr(
+            os, "close", lambda fd: None if fd in {1101, 1102, 1103} else real_close(fd)
+        )
+        monkeypatch.setattr(self.proc.time, "monotonic", lambda: self.now)
+        monkeypatch.setattr(self.proc, "Event", lambda: SimpleNamespace(wait=self.wait))
+
+    def add(self, pid: int, parent: int) -> None:
+        self.nodes[pid] = {
+            "identity": {"pid": pid, "boot_id": "boot", "start_ticks": str(pid)},
+            "parent": parent,
+        }
+
+    def snapshot(self) -> dict[int, Any]:
+        result = copy.deepcopy(self.nodes)
+        self.calls += 1
+        if self.calls == 1 and self.newborn:
+            self.add(
+                103,
+                102
+                if self.newborn == "child"
+                else 900
+                if self.newborn == "other"
+                else 1,
+            )
+        return result
+
+    def wait(self, duration: float) -> None:
+        self.now += 1
+
+    def signal(self, fd: int, sig: int) -> None:
+        pid = fd - 1000
+        self.signals.append((pid, sig))
+        if sig == self.proc.signal.SIGSTOP:
+            self.frozen.add(pid)
+        else:
+            if sig == self.proc.signal.SIGKILL:
+                owned = {101, 102, 103} if self.newborn == "child" else {101, 102}
+                assert all(p in self.frozen for p in self.nodes if p in owned)
+            self.nodes.pop(pid, None)
+            for child in self.nodes.values():
+                if child["parent"] == pid:
+                    child["parent"] = 1
+
+
 def test_native_stop_pins_children_and_parent_without_pid_reuse(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    proc = lab.lifecycle.processes
-    identities = {
-        pid: {"pid": pid, "boot_id": "boot", "start_ticks": str(pid)}
-        for pid in (101, 102)
-    }
-    parent = dict(identities[101])
-    real_iter = Path.iterdir
-    real_text = Path.read_text
+    forest = NativeForest(lab, monkeypatch)
+    parent = dict(forest.nodes[101]["identity"])
+    forest.proc.stop_tree(parent)
+    assert set(forest.nodes) == {1, 900}
+    signals = list(forest.signals)
+    forest.add(101, 1)
+    forest.nodes[101]["identity"]["start_ticks"] = "reused"
+    forest.proc.stop_tree(parent)
+    assert forest.signals == signals
+
+
+def test_native_stop_finds_child_born_after_snapshot_and_reparented_during_kill(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    forest = NativeForest(lab, monkeypatch, newborn="child")
+    forest.proc.stop_tree(forest.nodes[101]["identity"])
+    assert set(forest.nodes) == {1, 900}
+    assert (103, forest.proc.signal.SIGKILL) in forest.signals
+    assert all(sig != forest.proc.signal.SIGTERM for _, sig in forest.signals)
+
+
+def test_native_stop_preserves_new_child_of_an_existing_other_process(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    forest = NativeForest(lab, monkeypatch, newborn="other")
+    forest.proc.stop_tree(forest.nodes[101]["identity"])
+    assert set(forest.nodes) == {1, 900, 103}
+    assert not any(pid in {900, 103} for pid, _ in forest.signals)
+
+
+def test_unattributed_new_orphan_blocks_cleanup_and_replay_until_it_exits(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch, newborn="orphan")
+    parent = dict(forest.nodes[101]["identity"])
     monkeypatch.setattr(
-        Path,
-        "iterdir",
-        lambda path: (
-            iter([Path("/proc/101"), Path("/proc/102")])
-            if str(path) == "/proc"
-            else real_iter(path)
+        forest.proc,
+        "agents",
+        lambda root: (
+            [{"identity": parent, "sessions": []}] if 101 in forest.nodes else []
         ),
     )
-    monkeypatch.setattr(
-        Path,
-        "read_text",
-        lambda path, *a, **kw: (
-            f"101 (codex) S 1 {'0 ' * 30}"
-            if str(path) == "/proc/101/stat"
-            else f"102 (tool) S 101 {'0 ' * 30}"
-            if str(path) == "/proc/102/stat"
-            else real_text(path, *a, **kw)
-        ),
-    )
-    monkeypatch.setattr(proc, "process_identity", lambda pid: identities.get(pid))
-    monkeypatch.setattr(proc, "open_pidfd", lambda pid: pid + 1000)
-    monkeypatch.setattr(os, "close", lambda fd: None)
-    signalled = []
-
-    def send(fd: int, sig: int) -> None:
-        signalled.append(fd - 1000)
-        identities.pop(fd - 1000, None)
-
-    monkeypatch.setattr(proc, "signal_pidfd", send)
-    proc.stop_tree(parent)
-    assert signalled == [102, 101]
-    # A previously saved PID now belongs to another process; never signal it.
-    identities[101] = {**parent, "start_ticks": "new"}
-    proc.stop_tree(parent)
-    assert signalled == [102, 101]
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True)
+    assert code == 1
+    assert report["results"][0]["deleted"] is False
+    assert path.exists()
+    assert 103 in forest.nodes
+    assert not any(pid == 103 for pid, sig in forest.signals)
+    assert lab.cleaner().run(cleanup=True)[0] == 1
+    assert path.exists()
+    forest.nodes.pop(103)
+    lab.run(cleanup=True)
+    assert not path.exists()
 
 
 def test_legacy_parent_session_is_linked_by_existing_herdr_process_stamp(
@@ -780,7 +859,9 @@ def test_legacy_parent_session_is_linked_by_existing_herdr_process_stamp(
         lambda root: list(remaining) if root == path else [],
     )
     monkeypatch.setattr(
-        lab.lifecycle.processes, "stop_tree", lambda identity: remaining.clear()
+        lab.lifecycle.processes,
+        "stop_tree",
+        lambda identity, **kwargs: remaining.clear(),
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -795,6 +876,8 @@ def test_split_registry_interruption_is_replayed_before_reading_ownership(
     row["owner_runtime"] = {
         "cwd": str(path),
         "process": {"pid": 123, "boot_id": "fake", "start_ticks": "1"},
+        "session": row["session"],
+        "generation": row["generation"],
     }
     registry = save_registry(lab, row)
     Store = importlib.import_module("parent.state").Store
@@ -802,7 +885,9 @@ def test_split_registry_interruption_is_replayed_before_reading_ownership(
     with store.locked():
         store.migrate()
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
-    monkeypatch.setattr(lab.lifecycle.processes, "stop_tree", lambda identity: None)
+    monkeypatch.setattr(
+        lab.lifecycle.processes, "stop_tree", lambda identity, **kwargs: None
+    )
     ExpiryStore = lab.lifecycle.ExpiryStore
     original = ExpiryStore.write_json
 
@@ -856,10 +941,10 @@ def test_runner_claimed_during_rename_is_stopped_using_original_contract(
 def test_completed_fallback_record_does_not_expire_recycled_admin_inode(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    real = lab.inventory.identity
+    real = lab.inventory.opened_identity
     monkeypatch.setattr(
         lab.inventory,
-        "identity",
+        "opened_identity",
         lambda path, *, birth=False: (
             {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(path)
         ),
@@ -868,6 +953,7 @@ def test_completed_fallback_record_does_not_expire_recycled_admin_inode(
     first = lab.run()["entries"][0]
     lab.now += LIFETIME
     lab.run(cleanup=True)
+    lab.git("worktree", "prune", "--expire=now")
     lab.add("replacement", path=path)
     report = lab.run(cleanup=True)
     current = report["entries"][0]
@@ -925,3 +1011,170 @@ def test_explicit_runner_directory_is_discovered_for_deleted_cwd(
     )
     monkeypatch.setattr(os, "readlink", lambda candidate: str(path) + " (deleted)")
     assert lab.lifecycle.processes.run_directories(path) == {external}
+
+
+@pytest.mark.parametrize("point", ["before_pin", "after_pin"])
+def test_unregistration_keeps_replacement_created_in_the_last_gap(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, point: str
+) -> None:
+    path = lab.add()
+    original_admin = Path(lab.git("rev-parse", "--absolute-git-dir", cwd=path))
+    fired: list[bool] = []
+
+    def replace() -> None:
+        if fired:
+            return
+        fired.append(True)
+        lab.git("worktree", "add", "--force", "-qb", "replacement", str(path))
+        (path / "new-work").write_text("keep this replacement")
+        monkeypatch.setattr(lab.inventory, "birth_time", lambda fd: lab.now)
+
+    if point == "before_pin":
+        real_save = lab.storage.State.save
+        saves = []
+
+        def save(state: Any) -> None:
+            real_save(state)
+            if any(r["phase"] == "quarantined" for r in state.records.values()):
+                saves.append(True)
+                if len(saves) == 2:
+                    replace()
+
+        monkeypatch.setattr(lab.storage.State, "save", save)
+    else:
+        old = original_admin.stat()
+        real_scandir = os.scandir
+
+        def scandir(fd: Any) -> Any:
+            if isinstance(fd, int):
+                st = os.fstat(fd)
+                if (st.st_dev, st.st_ino) == (old.st_dev, old.st_ino):
+                    replace()
+            return real_scandir(fd)
+
+        monkeypatch.setattr(os, "scandir", scandir)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert fired
+    assert path.is_dir(), "replacement worktree was removed"
+    assert (path / "new-work").read_text() == "keep this replacement"
+    assert lab.git("branch", "--show-current", cwd=path) == "replacement"
+    assert str(path) in lab.git("worktree", "list", "--porcelain")
+
+
+def test_external_removal_observation_retires_fallback_identity(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = lab.inventory.opened_identity
+    monkeypatch.setattr(
+        lab.inventory,
+        "opened_identity",
+        lambda path, *, birth=False: (
+            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(path)
+        ),
+    )
+    path = lab.add()
+    first = lab.run()["entries"][0]
+    lab.git("worktree", "remove", str(path))
+    assert lab.run()["entries"] == []
+    retired_phase = lab.records()[first["id"]]["phase"]
+    lab.now += LIFETIME
+    lab.add("replacement", path=path)
+    report = lab.run(cleanup=True)
+    current = report["entries"][0]
+    assert path.is_dir(), "reused administration inode inherited the old deadline"
+    assert retired_phase == "absent"
+    assert current["id"] != first["id"]
+    assert current["created_at"] == lab.storage.utc(lab.now)
+    assert current["source"] == "first_observed"
+    assert current["selected"] is False
+    assert path.exists()
+
+
+@pytest.mark.parametrize(
+    "binding", ["old_session", "old_generation", "unbound", "old_dispatch"]
+)
+def test_stale_parent_runtime_does_not_release_new_owner_or_children(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, binding: str
+) -> None:
+    old = lab.add()
+    row = parent_row()
+    row["generation"] = 2
+    saved = {
+        "cwd": str(old),
+        "process": {"pid": 123, "boot_id": "fake", "start_ticks": "1"},
+        "session": row["session"],
+        "generation": row["generation"],
+    }
+    if binding == "old_session":
+        saved["session"] = "codex:old-owner"
+    elif binding == "old_generation":
+        saved["generation"] = 1
+    elif binding == "unbound":
+        saved.pop("session")
+        saved.pop("generation")
+    else:
+        saved["cwd"] = str(lab.repo / ".claude/worktrees/new-owner")
+        row["dispatch"] = {
+            "session": row["session"],
+            "jobs": {
+                "old": {
+                    "role": "parent",
+                    "cwd": str(old),
+                    "authorization": {"generation": 1},
+                    "phase": "ended",
+                }
+            },
+        }
+        monkeypatch.setattr(
+            lab.lifecycle, "managed", lambda current: current.get("dispatch")
+        )
+    row["owner_runtime"] = saved
+    row["tasks"]["2"] = {
+        "worktree": str(lab.repo / ".claude/worktrees/other"),
+        "stopped": False,
+    }
+    registry = save_registry(lab, row)
+    monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
+    stopped = []
+    monkeypatch.setattr(
+        lab.lifecycle.processes,
+        "stop_tree",
+        lambda identity, **kwargs: stopped.append(identity),
+    )
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    current = json.loads(registry.read_text())["parents"]["o/r#1"]
+    assert current["status"] == "active"
+    assert current["tasks"]["2"]["stopped"] is False
+    assert not stopped
+
+
+def test_observed_registration_loss_does_not_rebind_pending_deletion_to_reused_inode(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = lab.inventory.opened_identity
+    monkeypatch.setattr(
+        lab.inventory,
+        "opened_identity",
+        lambda fd, *, birth=False: (
+            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(fd)
+        ),
+    )
+    path = lab.add()
+    lab.run()
+    lab.now += LIFETIME
+    with monkeypatch.context() as patch:
+        patch.setattr(
+            lab.inventory,
+            "remove_tree",
+            lambda *a: (_ for _ in ()).throw(OSError("interrupt")),
+        )
+        assert lab.cleaner().run(cleanup=True)[0] == 1
+    lab.run()
+    lab.git("worktree", "prune", "--expire=now")
+    lab.add("replacement", path=path)
+    (path / "new-work").write_text("keep")
+    lab.run(cleanup=True)
+    assert (path / "new-work").read_text() == "keep"
+    assert lab.git("branch", "--show-current", cwd=path) == "replacement"

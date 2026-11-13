@@ -34,6 +34,8 @@ repo-keyはGit common directoryから算出し、別cloneの状態を分離す�
 `worktrees.json` にUTCの作成時刻、根拠、管理ディレクトリのdevice/inode/birth time、
 パス、HEAD、削除phaseをfsync＋atomic renameで保存する。同パスでも管理ディレクトリが別個体なら
 新しい記録にする。birth timeが取れない環境ではdevice/inodeで同一性を照合する。
+scanで登録消失を観測した記録は再利用せず、同じ管理名・inodeが現れても新しい初観測として扱う。
+削除途中の実体の復旧記録は残し、消失した登録への操作権限だけを失効させる。
 scan/dry-runも初観測記録とレポートを更新するが、repo・worktree・稼働jobを変更しない。
 
 `report-latest.json` と標準出力のJSONは、`created_at` / `source` / `deadline` / `decided_at`、
@@ -49,10 +51,17 @@ scan/dry-runも初観測記録とレポートを更新するが、repo・worktre
 terminal result・`cleanup_complete`・runner/CLI/groupの消滅を確認してから `worker_ended` を記録する。
 dispatcherの未起動予約は既存cancel APIを使い、起動済jobは停止確認後に `phase=ended` とする。
 対象worktreeで動く親は強制解除（`released`、成功完了にはしない）し、dispatcherの自動継続も止める。
+保存した来歴は現在のsession/generationに一致する場合だけ担当停止の根拠とする。
+handoff時は来歴を移管先へ更新し、移管先のnativeプロセスが確認できない場合は旧来歴を失効させる。
 停止未確認は `recovery_required` / `stop_failed` を保持し、削除成功として返さない。
 
 共通ランナーのprivate state配下のrunと、同じユーザーのnative Codex/Claudeプロセスも確認する。
-native agentはPID・boot ID・start ticksを照合し、pidfdでその子孫をTERM→KILLする。
+native agentはPID・boot ID・start ticksを照合し、pidfdで親子をSIGSTOPする。
+全threadの停止後にも一覧を取り直し、新規の子を含む閉包が停止状態に固定されたことを確認してSIGKILLする。
+TERM handlerやSIGCONTを実行させず、確認済みPIDは親が変わっても消滅まで追跡する。
+新しく現れたPIDが旧親の外側の祖先に引き取られ、元の子か独立した新規jobかを確認できない場合は、
+推測して停止せず非0を返す。`native-stops/` に保存した観測・PID identityは再実行でも引き継ぎ、
+当該PIDとその後継候補が消滅するまで削除成功にしない。既存の別processから生まれた子は対象に含めない。
 既存の手動親はHerdrのprivateなsession/process対応も照合する。
 自分のagent祖先は停止できないため、該当する直接呼出しは明示失敗し、mainのserviceから再実行する。
 任意の外部daemonや他ユーザーのプロセスを制御可能とはみなさない。
@@ -65,7 +74,10 @@ training queueは既存のシェル単語decoderで参照を探し、既存cance
 intentの保存後に別の更新があれば上書きせず明示失敗する。
 期限到達後の削除intentと元のdirectory identityを先に保存し、実体を同じ `.claude/worktrees/` 内の
 `.expired-<id>` へrenameする。新規起動を遮断して停止を再確認した後、
-`git worktree remove --force --force` でその登録だけを解除し、fdベースのrmtreeで隔離実体を削除する。
+開いてidentityを確認した旧Git管理ディレクトリの内容だけをfd相対で削除して登録を解除し、
+fdベースのrmtreeで隔離実体を削除する。パスから登録を選び直す `git worktree remove` は使用しない。
+管理名が同時に再作成されても新登録に触れないよう、空の旧管理ディレクトリ自体は残す。
+空ディレクトリは登録worktreeとして列挙されず、Gitの通常のprune/GCで整理される。
 中断後は保存phase・実体identity・現在のGit登録を再照合して不足分だけを行う。
 他のmissing worktreeを巻き込む全体pruneはしない。
 

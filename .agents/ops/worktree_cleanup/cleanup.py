@@ -50,7 +50,8 @@ class Cleaner:
                 (
                     r
                     for r in state.records.values()
-                    if r["phase"] != "deleted"
+                    if r["phase"] not in {"deleted", "absent"}
+                    and not r.get("registration_lost_at")
                     and r["admin"] == row["admin"]
                     and inventory.same_registration(
                         r["admin_identity"], row["admin_identity"]
@@ -61,7 +62,10 @@ class Cleaner:
             if previous is not None:
                 row.update(id=previous["id"], admin_identity=previous["admin_identity"])
             key = row["id"]
-            if state.records.get(key, {}).get("phase") == "deleted":
+            if state.records.get(key, {}).get("phase") in {
+                "deleted",
+                "absent",
+            } or state.records.get(key, {}).get("registration_lost_at"):
                 # An inode can be recycled after a completed removal on a
                 # filesystem without btime; a live registration is a new one.
                 row["id"] = key = uuid.uuid4().hex + uuid.uuid4().hex
@@ -89,11 +93,14 @@ class Cleaner:
             entries.append(self.entry(record, now, row["scope_error"]))
         # Resume interrupted deletion even after Git's registration is gone.
         for key, row in state.records.items():
+            if key not in live_ids and row["phase"] == "observed":
+                row.update(phase="absent", disappeared_at=utc(now))
             if key not in live_ids and row["phase"] in {
                 "stopping",
                 "quarantined",
                 "unregistered",
             }:
+                row.setdefault("registration_lost_at", utc(now))
                 entries.append(
                     self.entry(
                         row, now, inventory.scope_error(self.repo, Path(row["path"]))
@@ -124,6 +131,8 @@ class Cleaner:
         }
 
     def current(self, row: dict[str, Any]) -> dict[str, Any] | None:
+        if row.get("registration_lost_at"):
+            return None
         return next(
             (
                 r
@@ -200,9 +209,7 @@ class Cleaner:
                 raise CleanupError("original path was recreated during expiry")
             row["head"] = live["head"]
             state.save()
-            inventory.git(
-                self.repo, "worktree", "remove", "--force", "--force", "--", str(path)
-            )
+        inventory.unregister(self.common, row)
         if self.current(row) is not None:
             raise CleanupError("Git registration remains after forced removal")
         row["phase"] = "unregistered"

@@ -136,6 +136,7 @@ class State:
                     "quarantined",
                     "unregistered",
                     "deleted",
+                    "absent",
                 }
             ):
                 raise CleanupError(f"malformed worktree record: {key}")

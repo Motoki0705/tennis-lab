@@ -81,13 +81,17 @@ def birth_time(fd: int) -> int | None:
 def identity(path: Path, *, birth: bool = False) -> dict[str, Any]:
     fd = open_directory(path)
     try:
-        st = os.fstat(fd)
-        result: dict[str, Any] = {"device": st.st_dev, "inode": st.st_ino}
-        if birth:
-            result["birth_time_ns"] = birth_time(fd)
-        return result
+        return opened_identity(fd, birth=birth)
     finally:
         os.close(fd)
+
+
+def opened_identity(fd: int, *, birth: bool = False) -> dict[str, Any]:
+    st = os.fstat(fd)
+    result: dict[str, Any] = {"device": st.st_dev, "inode": st.st_ino}
+    if birth:
+        result["birth_time_ns"] = birth_time(fd)
+    return result
 
 
 def registration_id(admin: Path, ident: dict[str, Any]) -> str:
@@ -287,3 +291,48 @@ def remove_tree(path: Path, expected: dict[str, Any]) -> None:
         shutil.rmtree(path.name, dir_fd=parent)
     finally:
         os.close(parent)
+
+
+def unregister(common: Path, row: dict[str, Any]) -> None:
+    """Invalidate only the opened administrative inode, never a path-selected tree.
+
+    Git can prune a missing worktree and reuse its management name during this
+    call. Descriptor-relative removal keeps that replacement untouched. Leave
+    the empty management directory for Git's ordinary prune/GC: rmdir by name
+    would reintroduce the same replacement race.
+    """
+    import shutil
+
+    if row.get("registration_lost_at"):
+        return
+    admin = Path(row["admin"])
+    if admin.parent != common / "worktrees" or admin.is_symlink():
+        raise CleanupError("administrative directory is outside this repository")
+    try:
+        fd = open_directory(admin)
+    except FileNotFoundError:
+        return
+    try:
+        actual = opened_identity(fd, birth=True)
+        if not same_registration(actual, row["admin_identity"]):
+            return  # The old registration already disappeared; keep its successor.
+        if not shutil.rmtree.avoids_symlink_attacks:
+            raise CleanupError("fd-based rmtree is required")
+        with os.scandir(fd) as entries:
+            names = sorted(
+                (entry.name for entry in entries), key=lambda name: name == "gitdir"
+            )
+        for name in names:
+            try:
+                mode = os.stat(name, dir_fd=fd, follow_symlinks=False).st_mode
+                if stat.S_ISDIR(mode):
+                    shutil.rmtree(name, dir_fd=fd)
+                else:
+                    os.unlink(name, dir_fd=fd)
+            except FileNotFoundError:
+                continue  # Concurrent Git pruning removed this old inode's data.
+        os.fsync(fd)
+        if os.listdir(fd):
+            raise CleanupError("old administrative directory is still being written")
+    finally:
+        os.close(fd)

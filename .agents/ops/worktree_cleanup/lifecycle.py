@@ -96,7 +96,11 @@ class Stopper:
             for key, row in self.store.parents.items():
                 dispatch = managed(row)
                 saved_runtime = row.get("owner_runtime", {})
-                saved_owner = processes.within(saved_runtime.get("cwd", ""), root)
+                saved_owner = (
+                    saved_runtime.get("session") == row["session"]
+                    and saved_runtime.get("generation") == row["generation"]
+                    and processes.within(saved_runtime.get("cwd", ""), root)
+                )
                 if saved_owner and saved_runtime.get("process") is not None:
                     native.append(
                         {
@@ -112,6 +116,9 @@ class Stopper:
                         dispatch
                         and any(
                             job["role"] == "parent"
+                            and dispatch.get("session") == row["session"]
+                            and job.get("authorization", {}).get("generation")
+                            == row["generation"]
                             and processes.within(job["cwd"], root)
                             for job in dispatch["jobs"].values()
                         )
@@ -367,10 +374,20 @@ class Stopper:
         # Only processes physically in quarantine are selected. Replaying an
         # old deletion must not stop a replacement's jobs at the original path.
         self.loose_runs(root, contract_root=original, discovered_only=True)
-        for agent in processes.agents(root):
-            processes.stop_tree(agent["identity"])
+        self.stop_native(root, processes.agents(root))
         if processes.agents(root):
             raise CleanupError("native agents remain in quarantined worktree")
+
+    def stop_native(self, root: Path, native: list[dict[str, Any]]) -> None:
+        proof = (
+            self.root
+            / "native-stops"
+            / (hashlib.sha256(os.fsencode(root)).hexdigest() + ".json")
+        )
+        if proof.exists():
+            processes.stop_tree(None, proof=proof)
+        for agent in native:
+            processes.stop_tree(agent["identity"], proof=proof)
 
     def stop(self, root: Path, stamp: str) -> None:
         native = processes.agents(root)
@@ -384,11 +401,10 @@ class Stopper:
                 action()
             except (OSError, ValueError, CleanupError) as exc:
                 errors.append(str(exc))
-        for agent in native:
-            try:
-                processes.stop_tree(agent["identity"])
-            except (OSError, ValueError, CleanupError) as exc:
-                errors.append(str(exc))
+        try:
+            self.stop_native(root, native)
+        except (OSError, ValueError, CleanupError) as exc:
+            errors.append(str(exc))
         if processes.agents(root):
             errors.append("native agents remain in expired worktree")
         if self.store.path.exists():
