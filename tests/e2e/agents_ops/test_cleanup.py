@@ -204,7 +204,16 @@ class Lab:
         self, *args: str, cwd: Path | None = None
     ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
-            [sys.executable, str(CLEANUP), *self.argv(*args)],
+            [
+                sys.executable,
+                str(ROOT / ".agents/ops/checkout_job.py"),
+                "--repo",
+                str(self.repo),
+                "--",
+                sys.executable,
+                str(CLEANUP),
+                *self.argv(*args),
+            ],
             cwd=cwd or self.repo,
             env=self.env,
             text=True,
@@ -296,13 +305,29 @@ def _import_cleanup(lab: Lab, monkeypatch: pytest.MonkeyPatch) -> Any:
     monkeypatch.syspath_prepend(str(CLEANUP_DIR))
     for name in ("cleanup", "inventory", "classify"):
         monkeypatch.delitem(sys.modules, name, raising=False)
-    import cleanup  # type: ignore[import-not-found]
+    cleanup = importlib.import_module("cleanup")
 
+    assert cleanup.__file__ is not None
     assert Path(cleanup.__file__).resolve() == CLEANUP.resolve()
     for key, value in lab.env.items():
         monkeypatch.setenv(key, value)
     monkeypatch.chdir(lab.repo)
     return cleanup
+
+
+def test_direct_cleanup_is_refused_before_inventory(lab: Lab) -> None:
+    result = subprocess.run(
+        [sys.executable, str(CLEANUP), *lab.argv("scan")],
+        cwd=lab.repo,
+        env=lab.env,
+        text=True,
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert result.returncode == 75, result.stdout + result.stderr
+    assert "checkout_job.py" in result.stderr
+    assert not Path(lab.env["FAKE_GH_ARGS"]).exists()
 
 
 def _git_status(lab: Lab, *args: str, cwd: Path) -> int:

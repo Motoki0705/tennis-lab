@@ -23,6 +23,69 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
 
+## メインcheckoutと運用jobの排他
+
+`checkout_lock.py` はGit共通ディレクトリの `ops-code.lock` を共有する。
+有限の運用jobは `.agents/ops/checkout_job.py --repo <main> -- <command...>` で起動し、
+コードのimport前から終了まで共有lockを保持する。exec後もFDを継承するため、子が継承したFDを
+閉じるまで排他が続く。systemdのcleanup・report・triage・dispatch判定はこの入口を使う。
+手動で同じ運用jobを実行するときもこの入口を使う。lockファイルは削除しない。
+
+### 既存CLIと新規jobの接続
+
+有限jobの公開入口はlauncherの外から呼ぶと75で拒否する。launcherはexec前にlock FDと
+repo rootを子へ渡し、入口の `require_checkout_job()` が実FDのinode・共有lock・中断マーカーを
+検査する。環境変数を設定するだけでは通らない。手動実行とsystemdの起動方法は同じ。
+
+| 入口 | 起動方法 |
+|---|---|
+| `ops-report/ops_report.py` の全subcommand | 有限launcher。直接file実行は拒否 |
+| `cleanup/cleanup.py` のscan/apply-auto/delete | 有限launcher。直接file実行は拒否 |
+| `dispatcher run` / `dispatcher.judgement` | 有限launcher。直接の判定起動は拒否 |
+| `dispatcher supervise` | `--supervisor` 専用launcher。直接CLIや有限launcherからは拒否 |
+| `board web` | `--board-web-port PORT` 専用launcher。直接CLIからは拒否 |
+| dispatcherのinit/status/enable/disable/shutdown等、boardの投稿・状態CLI | 判定agentや常駐jobを起動しない管理入口。直接利用可能 |
+
+新しい有限job（worktree-cleanup等）はCLIのproject importより前に次を置き、serviceと手動例を
+上の有限launcherへ接続する。CLIを呼ばない内部Python APIのテストは、必要な依存を直接渡してよい。
+
+```python
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # .agents/ops
+if __name__ == "__main__":
+    from lib.checkout_lock import require_checkout_job
+    require_checkout_job()
+# project imports and main follow
+```
+
+```bash
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/<job>/<entry>.py <arguments...>
+```
+
+別の有限CLIをsubprocessで呼ぶ場合もlauncherを使う。Pythonのsubprocessは既定でFDを閉じるため、
+環境変数だけを引き継いでも入口は拒否する。内部APIを呼ぶ場合は、呼出元jobのlock保持中に実行する。
+
+`--supervisor` の試験用state overrideはlauncherの `--state-dir` / `--parent-state-dir`、
+`--once` は `--` の後へ渡す。常駐入口は共有lockを寿命全体で保持しないため専用modeを使う。
+
+常駐dispatcherは `checkout_job.py --repo <main> --supervisor` でimportを保護し、各周期の
+reconcile/assign/launchを共有lockで保護する。更新が排他lockを持つ間は新規起動を行わない。
+`ops-control.lock` はspinによるdispatcherのON/OFFと保守時の停止・再開を直列化する。
+保守側は両lockを非待機で取得し、jobや制御操作と競合したら延期する。
+board webは `checkout_job.py --repo <main> --board-web-port 8790` でimportを保護し、
+保守側が停止・再開する。常駐serviceに共有lockを寿命全体で保持させない。
+
+state rootは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents`。
+共通lockはstate rootを変更しても変わらず、同じGit共通ディレクトリへ集約される。
+
+更新中は同じGit共通ディレクトリの `ops-code.blocked` も保持する。更新processが失われても
+launcherはマーカーが残る間、コードをimportせず75で拒否し、supervisorも新規処理を始めない。
+マーカーを手動で消さず、mainの追跡ファイルとGit操作を修復してからgit-syncを再実行する。
+更新側が整合性を確認してマーカーを解除する。
+
 `opsproc.run_process_group()` の任意引数 `cancel` は `threading.Event`。
 set済みなら起動せず、実行中のsetはprocess groupを停止・回収して `ProcessCancelled(CommandError)`
 を送出する。timeout・通常終了の回収と、cancelを指定しない既存呼出の動作は保持する。

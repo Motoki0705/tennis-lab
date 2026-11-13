@@ -600,7 +600,14 @@ class OpsEnv:
                 cmd += ["--base-ref", "main"]
             if "--now" not in args:
                 cmd += ["--now", NOW]
-        return cmd
+        return [
+            sys.executable,
+            str(ROOT / ".agents/ops/checkout_job.py"),
+            "--repo",
+            str(self.repo),
+            "--",
+            *cmd,
+        ]
 
     def run(
         self, *args: str, cwd: Path | None = None, **extra_env: str

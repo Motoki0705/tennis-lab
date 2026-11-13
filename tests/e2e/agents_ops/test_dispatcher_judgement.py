@@ -1973,20 +1973,24 @@ def test_preview_and_cli_print_no_candidates_or_local_private_information(
     umask = os.umask(0o022)
     os.umask(umask)
     try:
-        code = h.mod.main(
-            [
-                "--repo",
-                "o/r",
-                "--cwd",
-                str(h.work),
-                "--run-dir",
-                str(h.root / "cli"),
-                "--parent-state-dir",
-                str(h.store.directory),
-                "--timeout",
-                "15",
-            ]
-        )
+        lock = importlib.import_module("lib.checkout_lock")
+        with lock.checkout_lock(h.work) as fd:
+            monkeypatch.setenv(lock.CHECKOUT_ROOT_ENV, str(h.work))
+            monkeypatch.setenv(lock.CHECKOUT_FD_ENV, str(fd))
+            code = h.mod.main(
+                [
+                    "--repo",
+                    "o/r",
+                    "--cwd",
+                    str(h.work),
+                    "--run-dir",
+                    str(h.root / "cli"),
+                    "--parent-state-dir",
+                    str(h.store.directory),
+                    "--timeout",
+                    "15",
+                ]
+            )
     finally:
         os.umask(umask)
     output = capsys.readouterr().out

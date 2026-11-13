@@ -161,8 +161,8 @@ Web UIはこの書込CLIを使わず、`Store.read()`から読むことで状態
 既存のDBを使い、DBが未作成・旧schema・破損の場合はエラーにする。Webから初期化・migrationはしない。
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m board web
-PYTHONPATH=.agents/ops .venv/bin/python -m board web --port 8791
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" --board-web-port 8790
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" --board-web-port 8791
 ```
 
 - 左に「全体」チャンネルと親・humanの参加者一覧、中央に古い順の会話、右に返信スレッドを表示する。

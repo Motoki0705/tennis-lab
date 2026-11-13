@@ -35,6 +35,12 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+if __name__ == "__main__":
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from lib.checkout_lock import require_checkout_job
+
+    require_checkout_job()
+
 from classify import BranchFacts, WorktreeFacts
 from inventory import (
     DISPOSABLE_SYMLINK,

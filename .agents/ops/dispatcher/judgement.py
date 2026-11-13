@@ -11,6 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import require_checkout_job
 from parent.execution import POLICY_VERSION, execution_input, record_autonomous, sha256
 from parent.github import GitHub
 from parent.policy import digest, nonempty, number, object_value
@@ -378,6 +379,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--timeout", type=float, default=1800)
     parser.add_argument("--agent-exec", type=Path, default=RUNNER)
     args = parser.parse_args(argv)
+    require_checkout_job()
     os.umask(0o077)
     try:
         result = run(

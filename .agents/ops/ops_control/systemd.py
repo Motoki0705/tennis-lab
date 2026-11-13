@@ -11,6 +11,8 @@ MANAGER_HINT = (
     "`sudo loginctl enable-linger <user>` and retry."
 )
 PROPERTIES = {
+    "main_pid": "MainPID",
+    "exec_start": "ExecStart",
     "fragment_path": "FragmentPath",
     "load_state": "LoadState",
     "unit_file_state": "UnitFileState",

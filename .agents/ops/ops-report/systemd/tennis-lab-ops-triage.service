@@ -7,5 +7,5 @@ Type=oneshot
 WorkingDirectory=%h/projects/tennis-lab
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 EnvironmentFile=-%h/.config/tennis-lab-agents/ops-report.env
-ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/ops-report/ops_report.py triage
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/checkout_job.py --repo %h/projects/tennis-lab -- %h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/ops-report/ops_report.py triage
 TimeoutStartSec=15min
