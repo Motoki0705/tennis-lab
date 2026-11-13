@@ -186,6 +186,8 @@ class ParentSession:
         return {"parent": self.parent, "body_sha256": sha, "url": url(self, response)}
 
     def register(self, summary: str | None = None) -> dict[str, Any]:
+        from lib.identity import native_runtime
+
         if self.session is None:
             raise ValueError("session identity missing")
         if summary is not None:
@@ -205,6 +207,10 @@ class ParentSession:
                 "tasks": previous.get("tasks", {}),
                 "reviews": previous.get("reviews", []),
             }
+            self.store.save()
+        runtime = native_runtime()
+        if runtime is not None and self.row.get("owner_runtime") != runtime:
+            self.row["owner_runtime"] = runtime
             self.store.save()
         if summary is not None and self.row.get("display_summary") != summary:
             self.row["display_summary"] = summary
