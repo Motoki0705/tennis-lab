@@ -20,6 +20,19 @@
       "passed": 13,
       "seconds": 4.69,
       "source_log": "adapter-cpu-recovery-final.log"
+    },
+    {
+      "command": "pytest tests/unit/tasks/ball_detection/training/test_desktop_guard.py knowledge/runs/run-ball-arch-desktop-20261113/test_serial.py knowledge/runs/run-ball-arch-desktop-20261113/test_state.py -n 0 -q --durations=5",
+      "passed": 23,
+      "seconds": 3.34,
+      "new_guard_cases": 10,
+      "source_log": "outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/a3-guard-and-adapter-tests.log"
+    },
+    {
+      "command": "pytest tests/unit/tasks/ball_detection/training/test_desktop_guard.py -n 2 -q -p scripts.ci_metrics.pytest_plugin --ci-metrics-dir=<attempt3>/guard-ci-metrics-reproduction --durations=5",
+      "passed": 10,
+      "seconds": 9.89,
+      "source_log": "desktop-recovery-20261113-a3/guard-ci-reproduction.log"
     }
   ],
   "native": {
@@ -186,10 +199,12 @@
     "evidence": "archive-metadata/inventory-before-production.json"
   },
   "execution_commit_ci": {
-    "headSha": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
-    "run_id": 43363864266,
-    "check": "Python",
-    "conclusion": "success"
+    "commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+    "run_id": 43374423329,
+    "python": "success",
+    "python_job_id": 131720871642,
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43374423329",
+    "confirmation": "gh run watch --exit-status returned 0 and GitHub Python job completed successfully"
   },
   "previous_execution_commit_ci": {
     "conclusion": "success",
@@ -242,5 +257,11 @@
     "old_writer_confirmed_stopped": true,
     "scientific_state_exact": true,
     "finished_at": 1794543375.2520573
+  },
+  "historical_execution_commit_ci": {
+    "headSha": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+    "run_id": 43363864266,
+    "check": "Python",
+    "conclusion": "success"
   }
 }

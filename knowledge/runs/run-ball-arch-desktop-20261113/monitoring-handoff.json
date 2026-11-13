@@ -1,49 +1,49 @@
 {
   "schema_version": 1,
   "issue": 1859,
-  "captured_at": 1794544657.4155881,
+  "captured_at": 1794551144.704986,
   "worker_acceptance_complete": true,
   "parent_owns_future_monitoring": true,
   "periodic_followup_registered": false,
-  "execution_commit": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+  "execution_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
   "source_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113",
   "reporting_bundle": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/knowledge/runs/run-ball-arch-desktop-20261113",
-  "active_output_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2",
+  "active_output_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3",
   "retained_dependency_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113",
   "drive_root_relative": "outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1",
-  "systemd_unit": "tennis-ball-arch-desktop-production-20261113-a2.service",
+  "systemd_unit": "tennis-ball-arch-desktop-production-20261113-a3.service",
   "systemd_exec_stop_post_present": true,
   "queue_directory": "/home/kamimura/projects/tennis-lab/.training_queue",
-  "queue_job_id": "0-8205456105980236667_2026-11-13T04-24-54-019763332Z_1008078_ball-arch-desktop-production-a2",
+  "queue_job_id": "0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3",
   "queue_resource": "all",
   "processes_at_capture": {
     "service": {
-      "pid": 1008145,
+      "pid": 1408456,
       "ppid": 5652,
-      "pgid": 1008145,
-      "sid": 1008145,
-      "proc_starttime_ticks": 1505906
+      "pgid": 1408456,
+      "sid": 1408456,
+      "proc_starttime_ticks": 2093461
     },
     "serial": {
-      "pid": 1008325,
-      "ppid": 1008200,
-      "pgid": 1008200,
-      "sid": 1008200,
-      "proc_starttime_ticks": 1505946
+      "pid": 1408638,
+      "ppid": 1408505,
+      "pgid": 1408505,
+      "sid": 1408505,
+      "proc_starttime_ticks": 2093503
     },
-    "T1": {
-      "pid": 1018768,
-      "ppid": 1008325,
-      "pgid": 1008200,
-      "sid": 1008200,
-      "proc_starttime_ticks": 1525596
+    "T2": {
+      "pid": 1477580,
+      "ppid": 1408638,
+      "pgid": 1408505,
+      "sid": 1408505,
+      "proc_starttime_ticks": 2192066
     }
   },
   "pid_scope": "Snapshot only; later stage PID is in production-environment-<case>-<stage>-encoder_msda.json",
   "terminal_event": {
-    "local": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/notifications/0-8205456105980236667_2026-11-13T04-24-54-019763332Z_1008078_ball-arch-desktop-production-a2.json",
-    "remote": "outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/notifications/0-8205456105980236667_2026-11-13T04-24-54-019763332Z_1008078_ball-arch-desktop-production-a2.json",
-    "upload_readback_receipt": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/notifications/0-8205456105980236667_2026-11-13T04-24-54-019763332Z_1008078_ball-arch-desktop-production-a2-upload.json",
+    "local": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3/notifications/0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3.json",
+    "remote": "outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/notifications/0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3.json",
+    "upload_readback_receipt": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3/notifications/0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3-upload.json",
     "trigger": "service.py on queue exit and systemd ExecStopPost; local record precedes upload",
     "success": "state == done AND returncode == 0, root COMPLETED.json true, all stage predicates satisfied",
     "failure": "failed/cancelled/process_ended_without_terminal_receipt; queue serve returncode alone is insufficient"
@@ -115,33 +115,39 @@
     },
     "preflight_receipt": "preflight-receipt.json",
     "preflight_readback": "preflight-readback.json",
-    "live_host_guard": "production-environment-T1-1-encoder_msda-host.json",
-    "startup_proof": "startup-acceptance.json",
+    "live_host_guard": "production-environment-T2-0-encoder_msda-host.json",
+    "startup_proof": "attempt-3-startup-acceptance.json",
     "actual_resume": "production/T1-q06000-q12000/actual-resume.json"
   },
   "startup": {
-    "resume_update": 5500,
-    "accepted_through_update": 5511,
-    "query_cumulative_updates": 11511,
+    "resume_stage": "T1-q06000-q12000",
+    "resume_update": 6000,
+    "replayed_T1_updates": 0,
+    "T1_completed_and_validation_readback": true,
+    "accepted_stage": "T2-q00000-q06000",
+    "accepted_through_update": 11,
     "post_compile_updates": 10,
     "sample_positions": [
-      21501,
-      21511
+      10001,
+      10011
     ],
     "finite_loss_grad_lr": true,
-    "peak_allocated_bytes": 10803609600,
-    "peak_reserved_bytes": 12595494912,
+    "peak_allocated_bytes": 7147210752,
+    "peak_reserved_bytes": 9737076736,
     "allocator_limit_bytes": 13682291507,
-    "minimum_host_available_bytes": 16152305664,
+    "minimum_host_available_bytes": 17030041600,
     "minimum_host_threshold_bytes": 4294967296,
-    "evidence": "startup-acceptance.json"
+    "minimum_d_drive_available_bytes": 33458446336,
+    "d_drive_available_threshold_bytes": 10737418240,
+    "evidence": "attempt-3-startup-acceptance.json"
   },
   "milestones": [
     {
       "name": "T1 tail 6000 / query cumulative 12000",
       "stage": "T1-q06000-q12000",
       "predicate": "pointer.event == completed; update == 6000; receipt.status == verified; readback.status == verified; checkpoint_state_equal == true; local COMPLETED.complete == true",
-      "expected_final_sample_position": 22000
+      "expected_final_sample_position": 22000,
+      "verified_at_handoff": true
     },
     {
       "name": "T1 12k fixed validation and per-frame predictions",
@@ -152,7 +158,8 @@
         "p95_error_px",
         "within_distance_rate"
       ],
-      "coordinate_system": "original/source pixels"
+      "coordinate_system": "original/source pixels",
+      "verified_at_handoff": true
     },
     {
       "name": "T2 first checkpoint 500",
@@ -179,25 +186,25 @@
     "controller": "production-FAILED.json",
     "stage_errors": "production-FAILED-<case>-encoder_msda.json",
     "host_guards": "production-environment-<case>-<number>-encoder_msda-host.json",
-    "host_guard_reason": "minimum_available_bytes < threshold_bytes identifies RAM; maximum_filesystem_growth_bytes > storage_stop_threshold_bytes identifies storage; generic MemoryError text is not enough",
+    "host_guard_reason": "trigger_reason identifies d_drive_available_space, host_available_ram or resource_measurement_failed. Compare the recorded minimum to its threshold. WSL growth is telemetry only.",
     "queue_terminal": [
-      "/home/kamimura/projects/tennis-lab/.training_queue/done/0-8205456105980236667_2026-11-13T04-24-54-019763332Z_1008078_ball-arch-desktop-production-a2.job",
-      "/home/kamimura/projects/tennis-lab/.training_queue/failed/0-8205456105980236667_2026-11-13T04-24-54-019763332Z_1008078_ball-arch-desktop-production-a2.job",
-      "/home/kamimura/projects/tennis-lab/.training_queue/cancelled/0-8205456105980236667_2026-11-13T04-24-54-019763332Z_1008078_ball-arch-desktop-production-a2.job"
+      "/home/kamimura/projects/tennis-lab/.training_queue/done/0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3.job",
+      "/home/kamimura/projects/tennis-lab/.training_queue/failed/0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3.job",
+      "/home/kamimura/projects/tennis-lab/.training_queue/cancelled/0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3.job"
     ],
-    "journal": "journalctl --user -u tennis-ball-arch-desktop-production-20261113-a2.service --no-pager -n 100",
-    "stop": "systemctl --user stop tennis-ball-arch-desktop-production-20261113-a2.service",
+    "journal": "journalctl --user -u tennis-ball-arch-desktop-production-20261113-a3.service --no-pager -n 100",
+    "stop": "systemctl --user stop tennis-ball-arch-desktop-production-20261113-a3.service",
     "policy": "OOM, nonfinite values or persistence errors stop the serial order. Preserve failure evidence; no automatic retry, scope/shape/precision change or weights-only resume."
   },
   "recovery": {
     "document": "recovery.md",
-    "requirements": "Diagnose cause, confirm this active unit/queue/GPU writer is stopped, preserve old attempt, choose a fresh output root; retain dependency root for env/native/compiler cache.",
+    "requirements": "Diagnose cause, confirm this active unit/queue/GPU writer is stopped, preserve old attempt, choose a fresh output root; retain dependency root for env/native/compiler cache. D: available must remain at least 10 GiB and host available at least 4 GiB.",
     "attempt_rule": "bootstrap outputs max production-registration-aN in the supplied latest attempt root + 1. Check all existing production-aN queue/unit registrations; if that key already exists, inspect it and choose a larger unused integer/fresh root. Never reuse an old idempotency key.",
     "commands": [
       "cd /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113",
       "export RCLONE_CONFIG=/home/kamimura/.config/tennis-lab/rclone-drive.conf",
-      "OLD_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2",
-      "NEW_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3",
+      "OLD_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3",
+      "NEW_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4",
       "ADAPTER=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113/knowledge/runs/run-ball-arch-desktop-20261113",
       "PY=\"$OLD_ROOT/env-original/bin/python\"",
       "\"$PY\" \"$ADAPTER/bootstrap_recovery.py\" --from-root \"$OLD_ROOT\" --root \"$NEW_ROOT\"",
@@ -207,25 +214,27 @@
     ]
   },
   "storage": {
-    "limit_new_filesystem_bytes": 20000000000,
-    "guard_stop_bytes": 19000000000,
-    "filesystem_baseline_used_bytes": 861225312256,
-    "filesystem_used_at_capture": 879436296192,
-    "filesystem_growth_at_capture": 18210983936,
-    "observed_failed_attempt_peak_growth_bytes": 19201273856,
-    "temporary_download_bytes_reclaimed": 1542991872,
-    "note": "Whole-filesystem delta is conservative and affected by other writers; same baseline and 19 GB stop threshold are preserved across attempts. RGB payloads are hardlinks, not new copies.",
     "historical_archive": "/mnt/e/tennis-lab-archive/outputs/ball_detection/train/arch_efficiency/s42-20261111",
     "archive_files": 1917,
     "archive_bytes": 19243387824,
-    "archive_verified": true
+    "archive_verified": true,
+    "d_drive": "/mnt/d",
+    "d_available_minimum_bytes": 10737418240,
+    "d_available_at_capture_bytes": 33458446336,
+    "minimum_d_available_during_startup_bytes": 33458446336,
+    "filesystem_growth_is_telemetry_only": true,
+    "filesystem_baseline_used_bytes": 861225312256,
+    "filesystem_used_at_capture": 882546524160,
+    "filesystem_growth_at_capture": 21321211904,
+    "filesystem_growth_includes_other_writers": true,
+    "cleanup_record": "attempt-3-local-cleanup.json",
+    "allocated_blocks_released_this_recovery": 1476173824
   },
   "retained_worktrees": [
     "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop",
     "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113"
   ],
   "remaining_unconfirmed": [
-    "T1 tail 6000/12k validation",
     "T2 500 checkpoint and 600-to-601 unfreeze",
     "T2/C1/C2/C3 completion and integrated accuracy report"
   ],
@@ -235,8 +244,17 @@
     "Compiled BF16 elementwise gradient identity across different fusions is not claimed; FP32 compiled and full-shape eager BF16 gradient equivalence were checked."
   ],
   "documentation_persistence_receipt": {
-    "local": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2/monitoring-handoff-receipt.json",
+    "local": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3/monitoring-handoff-receipt.json",
     "remote": "outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/monitoring-handoff-receipt.json",
     "scope": "immutable snapshot of committed reporting bundle plus SHA readback; receipt is produced after this commit"
-  }
+  },
+  "production_source_ci": {
+    "commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+    "run_id": 43374423329,
+    "python": "success",
+    "python_job_id": 131720871642,
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43374423329",
+    "confirmation": "gh run watch --exit-status returned 0 and GitHub Python job completed successfully"
+  },
+  "recovery_selection_evidence": "attempt-2-storage-recovery.json"
 }

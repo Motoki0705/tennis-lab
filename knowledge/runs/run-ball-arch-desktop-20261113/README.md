@@ -1,8 +1,9 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
-supersedes the original prohibition on checkpointing for T1/T2. This run continues
-T1 from tail update 5,500 (query cumulative 11,500), then T2, C1, C2 and C3.
+supersedes the original prohibition on checkpointing for T1/T2. The initial desktop migration started
+T1 from tail update 5,500 (query cumulative 11,500). The current recovery adopts
+its fully verified update 6,000, then continues T2, C1, C2 and C3.
 No completed stage is repeated. C1/C2/C3 retain their original recipe and do not
 checkpoint activations. A different GPU cannot promise bitwise continuation.
 Its timing/memory must not be compared with the historical untrained L4 benchmark.
@@ -13,7 +14,7 @@ qualification, lifecycle and evidence; it does not replace historical generation
 
 ## Inputs and safety
 
-`$ROOT` is the active run output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2`
+`$ROOT` is the active run output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3`
 below the implementation worktree. `$SOURCE` is the immutable pushed runtime checkout.
 `$ADAPTER` is this directory in that checkout. `$PY` is `$ROOT/env-original/bin/python`.
 `$QUEUE` is the main repository's shared `.training_queue`; set `$RCLONE_CONFIG`
@@ -57,7 +58,10 @@ to the authenticated private config. Never print its contents.
 
 ## Qualification and startup
 
-Prepare the fully verified inputs once, then use the private interpreter:
+The following qualification commands describe the initial setup, which is
+already complete. Do not repeat them in the active recovery root. For another
+recovery, follow the current handoff and recovery document. The private
+interpreter is used throughout:
 
 ```bash
 "$PY" "$ADAPTER/build_msda.py" --root "$ROOT" --assets "$MAIN_REPO"
@@ -99,10 +103,12 @@ E archive, and the policy, start the single production command from `$SOURCE`:
 
 ```bash
 RCLONE_CONFIG="$RCLONE_CONFIG" "$PY" "$ADAPTER/launch.py" \
-  --root "$ROOT" --kind production --session "$CODEX_SESSION_ID" --attempt 1
+  --root "$ROOT" --kind production --session "$CODEX_SESSION_ID" --attempt "$ATTEMPT"
 ```
 
-Registration is idempotent per attempt. A failed attempt is never silently
+`$ATTEMPT` must be fresh; use `recovery-bootstrap.json` and inspect existing
+queue/unit registrations as described in recovery.md. Registration is idempotent
+per attempt. A failed attempt is never silently
 re-enqueued. A user systemd unit owns foreground queue `serve`; agent descendant
 cleanup cannot stop it. The serial command uses a writer lock, invokes each
 stage in a separate process, waits for validation and verified completion,
@@ -125,17 +131,17 @@ removed after durable verification, keeping local storage bounded. The ledger
 size and source commit for each evicted tensor. Diagnostic snapshots and their
 `probe-receipts/` are also read back before local probe tensors are evicted.
 
-Inspect `production-registration-a2.json`, `serial-status.json`,
+Inspect `production-registration-a3.json`, `serial-status.json`,
 `production-status.json`, `stage-status/*/state.json`, `persistence/`, logs,
 and the recorded service/queue identities. The systemd terminal event is written
 once when the queue exits; no periodic follow-up or post-acceptance progress
 polling is registered. Full environment/build and local paths remain output
 metadata; versioned summaries link the evidence.
 
-The revised worker acceptance is at least ten finite continuous updates after
-T1's cold compilation, resuming the original tail 5,500 full state. Allocated and
-reserved VRAM must remain below the allocator cap, and host available RAM above
-the guard threshold. The worker leaves a committed `monitoring-handoff.json`
+Worker acceptance is at least ten finite continuous post-compile updates in
+the first running stage after recovery. Allocated and reserved VRAM must remain
+below the allocator cap, host available RAM at least 4 GiB and D: available
+space at least 10 GiB. The worker leaves a committed `monitoring-handoff.json`
 with the actual unit, job, process identities and authoritative evidence paths.
 The parent then monitors T1 tail 6,000/12k validation and prediction readback,
 T2's 500 checkpoint and 600-to-601 unfreeze, and every condition's completion.
@@ -203,6 +209,60 @@ exit/ExecStopPost, then uploaded and SHA-read back. A missing event alongside an
 inactive unit needs investigation. Failure paths and the precise fresh-root
 recovery commands are in the handoff and [recovery.md](recovery.md).
 
-Startup acceptance was captured after update 5511 (sample 21511), with ten updates
-after the first compile update. Execution commit: `cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee`.
-Active service: `tennis-ball-arch-desktop-production-20261113-a2.service`. Identities and exact commands are in the handoff.
+The historical attempt-2 startup prefix is retained in `startup-acceptance.json`
+(update 5511 / sample 21511, execution `cb3243ed4`). Its later storage failure
+is recorded in [attempt-2-storage-recovery.json](attempt-2-storage-recovery.json).
+The attempt-3 identities and acceptance prefix are in the current handoff.
+
+## Interrupted 6,000 checkpoint recovery
+
+Attempt 2 completed T1 tail update 6,000 and fixed validation, but its checkpoint
+readback crossed the old 19 GB whole-WSL growth threshold. Host RAM was adequate.
+The parent replaced this storage proxy with physical D: available space below
+10 GiB; whole-WSL growth remains telemetry only. CPU guard and existing adapter
+tests passed 23 cases in 3.34 seconds, including 10 new guard cases.
+
+The uploaded `checkpoint-00006000-8586c177` was independently restored with
+pinned marker SHA-256 `2719458b1e83187eb55acd14f5e23bc71db98a0e1a21fcbc29efc4f1159e85e0`.
+All 11 files (550,906,644 bytes), including checkpoint, committed log, validation
+and predictions, matched the stopped local output. Full model/AdamW/RNG/LR/
+sampler state and the weights artifact matched exactly; the strict resume reader
+accepted update 6,000 / sample 22,000. Its verified checkpoint pointer was
+published and independently read back. The normal runner, rather than this
+verification, publishes the completed-stage marker. No T1 optimizer updates or
+validation need to be repeated.
+
+T1 query cumulative 12k validation has observed 85,473 frames, mean 35.3367 px,
+median 8.9393 px, P95 176.7366 px and <=20 px rate 0.741907 in original/source
+coordinates. This is a validation result, not a deployment decision. Full metrics,
+identities, exact SHA-256 and recovery evidence are in the linked attempt-2 record.
+
+Guard implementation: `6ddf48cfa`; CI-compatible tests and production source:
+`2cb49a907241bdfecd718c71a14c1da93965c57f`. Its CI Python succeeded in run
+[43374423329](https://github.com/Motoki0705/tennis-lab/actions/runs/43374423329).
+The initial CI test-double failure and its correction are retained in the recovery
+record; the fixed tests also passed with xdist and the real CI measurement plugin.
+[attempt-3-local-cleanup.json](attempt-3-local-cleanup.json) records 1,476,173,824
+WSL allocated bytes released from exact Drive-protected stopped-attempt tensors
+and the independent readback cache. This does not claim a matching VHDX shrink.
+The initial root was inventoried; its env/native/compiler resources were retained,
+and the unused cloned env has no single-link file blocks to reclaim.
+
+## Attempt-3 acceptance
+
+T1 was restored at 6,000 / sample 22,000, including actual model/AdamW/RNG/
+sampler checks, and completed with zero replayed updates. Its fixed validation
+and predictions are in the independently restored completed snapshot. T2 then
+recorded updates 1–11 / samples 10,001–10,011 with finite loss, gradient norm
+and learning rates. After the first compile update, the next ten updates had
+median 1.8348 seconds. Peak allocated/reserved was 7,147,210,752 / 9,737,076,736
+bytes; the CNN is still frozen at this acceptance prefix. Host available RAM
+minimum was 17,030,041,600 bytes and D: available minimum 33,458,446,336 bytes,
+inside the 4 GiB / 10 GiB lower bounds. See
+[attempt-3-startup-acceptance.json](attempt-3-startup-acceptance.json).
+
+The active unit is `tennis-ball-arch-desktop-production-20261113-a3.service`.
+The handoff contains the actual queue identity, PID/PGID, terminal-event path
+and fresh-root attempt-4 recovery commands. T2 500 persistence, 600→601 unfreeze
+and remaining completions belong to the parent. No periodic follow-up or
+further live progress polling is registered by this worker.
