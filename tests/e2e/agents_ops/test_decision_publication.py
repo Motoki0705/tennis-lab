@@ -291,10 +291,39 @@ def test_existing_worker_files_are_immutable_and_legacy_turns_have_navigation(
         raw.decode()
         for name, raw in saved.items()
         if name.endswith("/0001-initial/README.md")
-        and "導入前・判断未記録" in raw.decode()
+        and "対応イベントなし" in raw.decode()
     ]
     assert legacy and all("instruction.md" in r and "final.md" in r for r in legacy)
     navigation.validate_links(saved, navigation.generate(saved))
+
+
+def test_typed_termination_after_prior_publication_recovers_without_rewriting_history(
+    env: DecisionEnv,
+) -> None:
+    from tests.support.agents_ops.traceability import (
+        observation_record,
+        termination_observation,
+        worker_observation,
+    )
+
+    first = env.capture([observation_record(worker_observation("ended", "absent"))])
+    assert env.decision_publisher(first).publish()["saved_to_main"]
+    original = env.upstream_files()
+    closing = observation_record(termination_observation(), issue=None, delegation=None)
+    log = env.capture([closing])
+    env.github.failure = "merge_response_lost"
+    result = env.decision_publisher(log).publish()
+    assert not result["saved_to_main"]
+    recovered = env.decision_publisher(log).publish(retry=True)
+    assert recovered["saved_to_main"], recovered
+    saved = env.upstream_files()
+    assert all(
+        saved[name] == value for name, value in original.items() if "/event-" in name
+    )
+    parent = saved[".agents/logs/parents/parent-1/README.md"].decode()
+    assert "担当終了" in parent and "最終報告なし" in parent
+    assert env.decision_publisher(log).publish()["saved_to_main"]
+    assert env.github.calls == ["create", "merge", "create", "merge"]
 
 
 @pytest.mark.parametrize("prepared", [False, True])

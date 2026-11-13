@@ -43,17 +43,17 @@ def test_capture_adapter_failure_preserves_successful_log_publication(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     capture: Any = importlib.import_module("decision_logs.capture")
-    observations: Any = importlib.import_module("decision_logs.observations")
+    trace_capture: Any = importlib.import_module("decision_logs.trace_capture")
     service: Any = importlib.import_module("worker_logs.service")
     path = logs.ready()
     monkeypatch.setattr(
         service, "Publisher", lambda root, target: logs.publisher(target)
     )
 
-    def invalid_capture_metadata(raw: bytes) -> Any:
+    def invalid_capture_metadata(*args: Any) -> Any:
         raise ValueError("injected capture metadata conversion failure")
 
-    monkeypatch.setattr(observations, "decode", invalid_capture_metadata)
+    monkeypatch.setattr(trace_capture, "worker_log_snapshot", invalid_capture_metadata)
     value = service.publish(path)
     assert value["saved_to_main"] is True and value["state"] == "merged"
     assert logs.github.calls == ["create", "merge"]

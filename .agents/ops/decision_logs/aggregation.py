@@ -41,6 +41,7 @@ def aggregate(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
             and left["action_id"] == right["action_id"]
             and left["verifies"] == right["verifies"] == []
             and left["final_report"] == right["final_report"]
+            and left.get("observation") == right.get("observation")
             and all(
                 left["auxiliary"][k] == right["auxiliary"][k]
                 for k in ("selected_model", "effective_model")

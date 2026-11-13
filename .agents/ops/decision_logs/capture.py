@@ -416,6 +416,7 @@ class Operation:
         observer: str = "machine",
         verifies: list[str] | None = None,
         final_report: dict[str, Any] | None = None,
+        observation: dict[str, Any] | None = None,
         auxiliary: dict[str, Any] | None = None,
         at: str | None = None,
         evidence: list[dict[str, Any]] | None = None,
@@ -423,42 +424,46 @@ class Operation:
     ) -> str:
         results = self.records("result")
         previous = results[-1]["id"] if results else self.row["previous_result_id"]
+        value = record(
+            "result",
+            self.row["scope"],
+            {
+                "action_id": self.records("action")[-1]["id"],
+                "previous_result_id": previous,
+                "verifies": verifies or [],
+                "status": status,
+                "summary": summary,
+                "changes": self.row["changes"]
+                if previous and not results
+                else {k: "unconfirmed" for k in CHANGE_FIELDS},
+                "evidence": [
+                    source(entrypoint or self.row["entrypoint"], artifact, payload),
+                    *(
+                        [
+                            source(
+                                "parent.worker-context",
+                                "saved preflight comparison inputs",
+                                self.row["worker_context"],
+                            )
+                        ]
+                        if self.row.get("worker_context")
+                        else []
+                    ),
+                    *(evidence or []),
+                ],
+                "observer": observer,
+                "final_report": final_report
+                or missing("not a final-report observation"),
+                "auxiliary": auxiliary or empty_auxiliary(),
+                "repeat": None,
+            },
+            at=at,
+        )
+        if observation is not None:
+            value["schema_version"] = 2
+            value["data"]["observation"] = copy.deepcopy(observation)
         return self.emit(
-            record(
-                "result",
-                self.row["scope"],
-                {
-                    "action_id": self.records("action")[-1]["id"],
-                    "previous_result_id": previous,
-                    "verifies": verifies or [],
-                    "status": status,
-                    "summary": summary,
-                    "changes": self.row["changes"]
-                    if previous and not results
-                    else {k: "unconfirmed" for k in CHANGE_FIELDS},
-                    "evidence": [
-                        source(entrypoint or self.row["entrypoint"], artifact, payload),
-                        *(
-                            [
-                                source(
-                                    "parent.worker-context",
-                                    "saved preflight comparison inputs",
-                                    self.row["worker_context"],
-                                )
-                            ]
-                            if self.row.get("worker_context")
-                            else []
-                        ),
-                        *(evidence or []),
-                    ],
-                    "observer": observer,
-                    "final_report": final_report
-                    or missing("not a final-report observation"),
-                    "auxiliary": auxiliary or empty_auxiliary(),
-                    "repeat": None,
-                },
-                at=at,
-            ),
+            value,
             key or "result:" + artifact + ":" + sha(json_bytes(payload)),
             payload=payload,
         )
@@ -475,6 +480,7 @@ class Operation:
         artifact: str = "command response",
         evidence: list[dict[str, Any]] | None = None,
         final_report: dict[str, Any] | None = None,
+        observation: dict[str, Any] | None = None,
         entrypoint: str | None = None,
     ) -> None:
         self.result(
@@ -486,6 +492,7 @@ class Operation:
             verifies=verifies,
             evidence=evidence,
             final_report=final_report,
+            observation=observation,
             entrypoint=entrypoint,
         )
         if state is not None:
