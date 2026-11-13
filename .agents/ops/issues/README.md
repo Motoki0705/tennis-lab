@@ -82,10 +82,10 @@ repo:Motoki0705/tennis-lab is:issue is:open label:"issue:standalone" label:resea
 親・子・単独のいずれにも未分類の確認候補:
 
 ```text
-repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:child" -label:"issue:standalone" -label:ops-report
+repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:child" -label:"issue:standalone" -label:ops-report -label:parent-evidence
 ```
 
-最後の検索は確認候補の抽出であり、全件にstandaloneを自動付与する根拠にはしない。
+最後の検索は確認候補の抽出であり、全件にstandaloneを自動付与する根拠にはしない。レポート容器と証拠用Issueは除外する。
 
 ## 証拠用Issueの除外
 
