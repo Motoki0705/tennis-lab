@@ -93,6 +93,8 @@ user busの不通・state破損・仕事の証拠不足・停止/再開失敗は
 
 - `status.json`: 最終結果。`spin ops status git-sync` の `last_run` に同じJSONを表示する。
   `outcome`、`reason`、開始/終了時刻、更新前後と取得commit、依存/gitlink差分、拒否の詳細を含む。
+  `resume_pending` は常駐serviceの復旧記録が残っているかを示す。
+  `checkout_blocked` は更新中/復旧待ちマーカーの有無を示す。
 - `runs.jsonl`: 取得、保守停止、更新、再開、終了のイベント。systemd journalにも同じ内容を出力する。
 - `resume.json`: 停止した常駐serviceの再開対象。再開の照合が終わるまで保持する。
   更新が強制終了された場合、次回はunitと内部enabledを再確認して復旧する。手動OFFを上書きしない。
@@ -100,6 +102,11 @@ user busの不通・state破損・仕事の証拠不足・停止/再開失敗は
 終了コードは0（updated/unchanged）、75（明示的なskip）、2（failed）。serviceの最終結果と
 jobの理由は区別して確認する。再開が失敗した場合は更新済みでもfailedになり、再開記録を残す。
 通常の停止signalではfinallyで復旧を試みる。再開記録の破損は手動確認が必要で、削除して成功扱いにしない。
+失敗後も、再開前にmain・追跡ファイル・Git操作を再検査する。部分更新やローカル編集が残る場合は
+`resume_blocked_reason` を保存してserviceを停止したままにし、人間がcheckoutを修復した後の再実行で復旧する。
+更新前にGit共通ディレクトリへ `ops-code.blocked` を作り、mainの整合性を確認してから解除する。
+強制終了や部分更新でマーカーが残った間は、ロックが解放されても新しい有限jobと常駐serviceの
+importを拒否する。マーカーを手動削除せず、checkoutを修復してgit-syncを再実行する。
 
 ## 検証
 

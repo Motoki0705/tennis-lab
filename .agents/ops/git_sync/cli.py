@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.checkout_lock import checkout_lock, state_root
+from lib.checkout_lock import checkout_barrier, checkout_lock, state_root
 from ops_control.systemd import ControlError
 
 from .git import Repository, Skip
@@ -69,8 +69,28 @@ def run(root: Path, directory: Path) -> dict[str, Any]:
     repo = Repository(root)
     maintenance = Maintenance(repo.root, directory, journal.event)
     outcome, reason, details = "failed", "unexpected_error", {}
+    barrier: Path | None = None
+
+    def resume() -> None:
+        if maintenance.ticket.exists() or (barrier is not None and barrier.exists()):
+            try:
+                repo.preflight()
+            except Skip as exc:
+                journal.data["resume_blocked_reason"] = exc.reason
+                journal.event(
+                    "resident_resume_deferred",
+                    checkout_reason=exc.reason,
+                    **exc.details,
+                )
+                raise ControlError(f"resident restart deferred: {exc.reason}") from exc
+            if barrier is not None and barrier.exists():
+                barrier.unlink()
+                journal.event("checkout_barrier_cleared")
+            maintenance.resume()
+
     try:
         repo.validate_main()
+        barrier = checkout_barrier(repo.root)
         with checkout_lock(
             repo.root, name="ops-control", exclusive=True, blocking=False
         ) as control_fd:
@@ -79,11 +99,13 @@ def run(root: Path, directory: Path) -> dict[str, Any]:
             with checkout_lock(repo.root, exclusive=True, blocking=False) as code_fd:
                 if code_fd is None:
                     raise Skip("checkout_jobs_running")
+                # A saved resume ticket must never launch jobs from a dirty,
+                # partially updated or non-main checkout after an interruption.
+                head = repo.preflight()
+                journal.data["head_before"] = head
                 try:
                     # Complete a previous interrupted pause before a new one.
-                    maintenance.resume()
-                    head = repo.preflight()
-                    journal.data["head_before"] = head
+                    resume()
                     target = repo.fetch()
                     journal.data["fetched_commit"] = target
                     journal.data.update(repo.changes(head, target))
@@ -97,6 +119,8 @@ def run(root: Path, directory: Path) -> dict[str, Any]:
                         if repo.preflight() != head:
                             raise Skip("head_changed_during_preflight")
                         repo.check_target(head, target)
+                        with barrier.open("x", encoding="utf-8") as marker:
+                            json.dump({"before": head, "target": target}, marker)
                         journal.event("fast_forward", target=target)
                         repo.merge(target)
                         if repo.git("rev-parse", "HEAD^{commit}").strip() != target:
@@ -107,19 +131,39 @@ def run(root: Path, directory: Path) -> dict[str, Any]:
                     journal.data["head_after"] = repo.git(
                         "rev-parse", "HEAD^{commit}"
                     ).strip()
+                except Exception as exc:
+                    journal.event(
+                        "update_failed",
+                        error=str(exc),
+                        stderr=getattr(exc, "stderr", None),
+                    )
+                    raise
                 finally:
                     try:
                         repo.release()
                     finally:
-                        maintenance.resume()
+                        resume()
     except Skip as exc:
         outcome, reason, details = "skipped", exc.reason, exc.details
-    except (OSError, ValueError, ControlError, subprocess.SubprocessError) as exc:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        ControlError,
+        subprocess.SubprocessError,
+    ) as exc:
         outcome, reason = "failed", "operation_failed"
         details = {"error": str(exc)}
         if isinstance(exc, subprocess.CalledProcessError):
             details["stderr"] = exc.stderr
-    return journal.finish(outcome, reason, **details)
+    return journal.finish(
+        outcome,
+        reason,
+        resume_pending=maintenance.ticket.exists(),
+        checkout_blocked=bool(barrier is not None and barrier.exists()),
+        **details,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:

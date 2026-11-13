@@ -614,6 +614,100 @@ def test_board_web_is_quiesced_and_restored_with_its_enablement_intact(
     assert sync.control.read()["units"][unit]["UnitFileState"] == "enabled"
 
 
+def test_saved_resume_ticket_does_not_start_supervisor_from_another_branch(
+    sync: SyncEnv,
+) -> None:
+    state = sync.control.read()
+    state["units"][SUPERVISOR].update(ActiveState="inactive", UnitFileState="enabled")
+    state["dispatcher"]["enabled"] = True
+    sync.control.write(state)
+    sync.directory.mkdir(parents=True)
+    ticket = sync.directory / "resume.json"
+    ticket.write_text(json.dumps([{"unit": SUPERVISOR, "restart": True}]))
+    git(sync.repo, "checkout", "-qb", "feature")
+    result = sync.run("non_main_branch", 75)
+    assert result["resume_pending"] is True
+    assert ticket.exists()
+    assert ["systemctl", "--user", "start", SUPERVISOR] not in sync.control.calls()
+
+
+@pytest.mark.parametrize("partial", [False, True])
+def test_merge_failure_resumes_only_a_consistent_checkout(
+    sync: SyncEnv, partial: bool
+) -> None:
+    sync.publish({"app.py": "new\n"})
+    before = git(sync.repo, "rev-parse", "HEAD")
+    state = sync.control.read()
+    state["units"][SUPERVISOR].update(ActiveState="active", UnitFileState="enabled")
+    state["dispatcher"]["enabled"] = True
+    sync.control.write(state)
+    install_git_hook(
+        sync,
+        f"""
+if 'merge' in args:
+    if {partial!r}: Path('app.py').write_text('partial checkout\\n')
+    sys.exit(11)
+sys.exit(subprocess.call([real, *args]))
+""",
+    )
+    result = sync.run("operation_failed", 2)
+    assert git(sync.repo, "rev-parse", "HEAD") == before
+    assert result["resume_pending"] == partial
+    assert result["checkout_blocked"] == partial
+    assert (sync.directory / "resume.json").exists() == partial
+    assert (
+        sync.control.read()["units"][SUPERVISOR]["ActiveState"] == "active"
+    ) != partial
+    if partial:
+        assert result["resume_blocked_reason"] == "tracked_changes"
+        assert (sync.repo / "app.py").read_text() == "partial checkout\n"
+        marker = sync.repo.parent / "unsafe-job-ran"
+        blocked = subprocess.run(
+            [
+                sys.executable,
+                str(LAUNCHER),
+                "--repo",
+                str(sync.repo),
+                "--",
+                sys.executable,
+                "-c",
+                "import pathlib,sys; pathlib.Path(sys.argv[1]).touch()",
+                str(marker),
+            ],
+            text=True,
+            capture_output=True,
+            timeout=10,
+            check=False,
+        )
+        assert blocked.returncode == 75
+        assert not marker.exists()
+        # Simulate a human repair without having the updater reset any files.
+        (sync.repo / "app.py").write_text("old\n")
+        (Path(sync.control.environment["PATH"].split(os.pathsep)[0]) / "git").unlink()
+        sync.run("fast_forwarded")
+        assert not (sync.directory / "resume.json").exists()
+        assert sync.control.read()["units"][SUPERVISOR]["ActiveState"] == "active"
+
+
+def test_abandoned_update_blocks_imports_until_clean_main_is_revalidated(
+    sync: SyncEnv,
+) -> None:
+    barrier = sync.repo / ".git/ops-code.blocked"
+    barrier.write_text("interrupted update\n")
+    blocked = subprocess.run(
+        [sys.executable, str(LAUNCHER), "--repo", str(sync.repo), "--supervisor"],
+        text=True,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    assert blocked.returncode == 75
+    assert "checkout recovery pending" in blocked.stderr
+    result = sync.run("already_current")
+    assert result["checkout_blocked"] is False
+    assert not barrier.exists()
+
+
 def test_fetch_error_is_not_reported_as_a_skip_or_success(sync: SyncEnv) -> None:
     git(
         sync.repo,
