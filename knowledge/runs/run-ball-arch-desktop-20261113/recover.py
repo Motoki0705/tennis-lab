@@ -101,6 +101,7 @@ def main(root, stopped):
     for name in (
         "checkpoint-policy.json",
         "probe-acceptance.json",
+        "probe-matrix.json",
         "native-qualification.json",
         "archive-acceptance.json",
     ):

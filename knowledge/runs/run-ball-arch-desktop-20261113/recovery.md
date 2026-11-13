@@ -28,11 +28,14 @@ ATTEMPT=$("$PY" -c 'import json,sys; print(json.load(open(sys.argv[1]))["next_qu
 ```
 
 `bootstrap_recovery.py` rejects a live old unit, preserves the original storage
-baseline, and sets `next_queue_attempt` to the largest previous production
+baseline, reuses the private environment/native binary/compiler cache, and sets
+`next_queue_attempt` to the largest previous production
 registration attempt plus one. For a later recovery, `OLD_ROOT` is the latest
 attempt root. If a same-day queue/unit key is already registered elsewhere,
 inspect and preserve it, then choose an integer larger than every registered
 `production-aN` attempt; never repurpose an existing key.
+Keep the referenced old root: the new root's private environment and compiler
+cache point into it. The dataset itself remains SHA-verified hardlinks.
 
 `recover.py` downloads and verifies the desktop pointers and original desktop
 preflight, then restores each pinned immutable generation. `migrate_resume`

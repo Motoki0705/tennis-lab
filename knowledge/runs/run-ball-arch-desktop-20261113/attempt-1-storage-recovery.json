@@ -1,0 +1,134 @@
+{
+  "production-registration-a1.json": {
+    "schema_version": 1,
+    "job": "0-8205457925286547267_2026-11-13T03-54-34-713452732Z_956631_ball-arch-desktop-production-a1",
+    "command": "env TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue RCLONE_CONFIG=/home/kamimura/.config/tennis-lab/rclone-drive.conf TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/msda-build/lib/MultiScaleDeformableAttention.so TORCHINDUCTOR_COMPILE_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/cache/inductor TRITON_CACHE_DIR=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/cache/triton TENNIS_SOURCE_COMMIT=7b7aed4f02d0c813d07261fea73e99f9381b57e3 /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/env-original/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113/knowledge/runs/run-ball-arch-desktop-20261113/desktop.py production --root /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113",
+    "request": [
+      "bash",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113/.agents/skills/training-queue/scripts/training_queue.sh",
+      "add",
+      "env TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue RCLONE_CONFIG=/home/kamimura/.config/tennis-lab/rclone-drive.conf TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/msda-build/lib/MultiScaleDeformableAttention.so TORCHINDUCTOR_COMPILE_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 TORCHINDUCTOR_CACHE_DIR=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/cache/inductor TRITON_CACHE_DIR=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/cache/triton TENNIS_SOURCE_COMMIT=7b7aed4f02d0c813d07261fea73e99f9381b57e3 /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/env-original/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113/knowledge/runs/run-ball-arch-desktop-20261113/desktop.py production --root /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113",
+      "--name",
+      "ball-arch-desktop-production-a1",
+      "--provider",
+      "codex",
+      "--session",
+      "01a1d27b-f6bd-7f70-b155-52874013e862",
+      "--issue",
+      "1859",
+      "--resource",
+      "all",
+      "--idempotency-key",
+      "i1859/desktop-20261113/production-a1"
+    ],
+    "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113",
+    "source_commit": "7b7aed4f02d0c813d07261fea73e99f9381b57e3",
+    "unit": "tennis-ball-arch-desktop-production-20261113-a1.service",
+    "session": "01a1d27b-f6bd-7f70-b155-52874013e862",
+    "resource": "all",
+    "timestamp": 1794542074.7300863
+  },
+  "production-environment-T1-1-encoder_msda-host.json": {
+    "schema_version": 1,
+    "minimum_available_bytes": 19763523584,
+    "threshold_bytes": 4294967296,
+    "triggered": true,
+    "maximum_filesystem_growth_bytes": 19201273856,
+    "storage_stop_threshold_bytes": 19000000000,
+    "updated_at": 1794542439.3703678,
+    "timestamp": 1794542439.3706596,
+    "finished_at": 1794542439.3756554
+  },
+  "temporary-download-cleanup.json": {
+    "complete": true,
+    "scope": "Only three identified temporary download directories; no shared archive/cache pruning",
+    "records": [
+      {
+        "path": "/home/kamimura/.cache/uv/.tmpC7Bgw5",
+        "files": 270,
+        "allocated_bytes": 415490048,
+        "logical_bytes": 414947667,
+        "mtime": 1794533338.085755,
+        "reason": "Interrupted private Python 3.13 torch/triton downloads at 01:28/01:32 UTC; no installed hardlinks and no process descriptors",
+        "version_sources": []
+      },
+      {
+        "path": "/home/kamimura/.cache/uv/.tmpbdXMrq",
+        "files": 11168,
+        "allocated_bytes": 561135616,
+        "logical_bytes": 533201450,
+        "mtime": 1794533574.457948,
+        "reason": "Interrupted private Python 3.13 torch/triton downloads at 01:28/01:32 UTC; no installed hardlinks and no process descriptors",
+        "version_sources": []
+      },
+      {
+        "path": "/home/kamimura/.cache/uv/.tmpdvVJdz",
+        "files": 11168,
+        "allocated_bytes": 561135616,
+        "logical_bytes": 533201450,
+        "mtime": 1794533338.0457544,
+        "reason": "Interrupted private Python 3.13 torch/triton downloads at 01:28/01:32 UTC; no installed hardlinks and no process descriptors",
+        "version_sources": []
+      }
+    ],
+    "no_open_descriptors": true,
+    "all_file_link_counts_one": true,
+    "before_filesystem_used_bytes": 880104316928,
+    "created_at": 1794542641.3852842,
+    "after_filesystem_used_bytes": 878561325056,
+    "reclaimed_filesystem_bytes": 1542991872
+  },
+  "manual-initial-state-reverification.json": {
+    "complete": true,
+    "reason": "Attempt 1 stopped in initial readback before any new optimizer update; identified temporary downloads reclaimed",
+    "scientific_updates_consumed": 0,
+    "original_update": 5500,
+    "sample_position": 21500,
+    "full_state_equal": true,
+    "receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "initialized-00005500-72fa971d",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/initialized-00005500-72fa971d",
+      "manifest_sha256": "65f622facdc7c1dedb6cf321159006bcdb6b77311e377b1a2f473e4ff03def8f",
+      "manifest_md5": "15241eab1c0361900437a009da465725",
+      "files": 9,
+      "size_bytes": 484845537,
+      "marker_id": "1lkB8dot6yhvG6tSgyqbhGvGc5o3nzQX1",
+      "seconds": 95.0720082659991,
+      "status": "verified"
+    },
+    "readback": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "initialized-00005500-72fa971d",
+      "status": "verified",
+      "files": 9,
+      "manifest_sha256": "65f622facdc7c1dedb6cf321159006bcdb6b77311e377b1a2f473e4ff03def8f",
+      "seconds": 70.93325537999954
+    },
+    "finished_at": 1794542987.6626363
+  },
+  "terminal_event": {
+    "schema_version": 1,
+    "returncode": 1,
+    "queue_returncode": 0,
+    "terminal_states": [
+      "failed"
+    ],
+    "state": "failed",
+    "finished_at": 1794542501.5196874,
+    "kind": "production",
+    "job": "0-8205457925286547267_2026-11-13T03-54-34-713452732Z_956631_ball-arch-desktop-production-a1",
+    "service_result": null,
+    "pid": 956665,
+    "periodic_progress_polling": false
+  },
+  "terminal_event_upload": {
+    "verified": true,
+    "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/notifications/0-8205457925286547267_2026-11-13T03-54-34-713452732Z_956631_ball-arch-desktop-production-a1.json",
+    "sha256": "d98062bfec7160b95885dbbfe28c5de1d3ea34a9226454dd2aaa18ccecca9072"
+  },
+  "scientific_optimizer_updates_applied": 0,
+  "failed_attempt_preserved": true,
+  "whole_filesystem_growth_is_conservative_including_other_writers": true,
+  "recovery": "fresh root desktop-recovery-20261113-a2; exact full state at 5500, same policy and source, shared private environment/native/compiler cache"
+}

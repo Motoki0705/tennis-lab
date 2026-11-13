@@ -66,7 +66,7 @@ def main(old, root):
         "full-shape-equivalence.json",
     ):
         (root / name).write_bytes((old / name).read_bytes())
-    for name in ("env-original", "msda-build"):
+    for name in ("env-original", "msda-build", "cache"):
         (root / name).symlink_to((old / name).resolve(), target_is_directory=True)
     rebuild(old / "dataset", root / "dataset", root / "dataset-verified.json")
     prepare(root)

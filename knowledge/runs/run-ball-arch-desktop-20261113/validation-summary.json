@@ -174,5 +174,28 @@
     "All 7 official gradcheck widths passed; native CUDA test count is 5.",
     "Compiled BF16 output proximity and finite gradients do not claim elementwise gradient equality across differently fused graphs.",
     "E archive receipt covers the complete historical tree before any desktop publication."
-  ]
+  ],
+  "old_writer_recheck": {
+    "complete": true,
+    "original_file_count": 1917,
+    "original_bytes": 19243387824,
+    "original_latest_modified": "2026-11-11T20:39:22.475Z",
+    "original_ids_sizes_hashes_modified_unchanged": true,
+    "excluded_new_desktop_prefix": "desktop-attempts/",
+    "checked_at": 1794541592.9341362,
+    "evidence": "archive-metadata/inventory-before-production.json"
+  },
+  "execution_commit_ci": {
+    "conclusion": "success",
+    "headSha": "7b7aed4f02d0c813d07261fea73e99f9381b57e3",
+    "python": [
+      {
+        "conclusion": "success",
+        "databaseId": 131676636936,
+        "name": "Python",
+        "status": "completed"
+      }
+    ],
+    "status": "completed"
+  }
 }

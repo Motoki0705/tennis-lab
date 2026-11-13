@@ -26,6 +26,15 @@ metrics:
   full_shape_cnn_parameters_compared: 133
   maximum_query_absolute_gradient_error: 1.1920928955078125e-07
   maximum_cnn_absolute_gradient_error: 0.0
+  probe_t1_peak_allocated_bytes: 10803609600
+  probe_t1_peak_reserved_bytes: 12595494912
+  probe_t1_warm_median_update_seconds: 3.7699728485004016
+  probe_t2_peak_allocated_bytes: 10803609600
+  probe_t2_peak_reserved_bytes: 12532580352
+  probe_t2_warm_median_update_seconds: 3.16164077600024
+  probe_c1_peak_allocated_bytes: 9396956160
+  probe_c1_peak_reserved_bytes: 10475274240
+  probe_c1_warm_median_update_seconds: 1.805800879999879
 artifacts:
   run_dir: knowledge/runs/run-ball-arch-desktop-20261113
   output_dir: outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113
@@ -48,6 +57,12 @@ tags: [checkpointing, desktop-resume, msda]
 専用Python3.13.16 / Torch2.14.1+cu130と元の167 runtime package版を一致させた。元環境自身の依存metadata conflictは記録して明示的に同じ版を復元し、共有.venvを変更していない。sm_120向け公式MSDAの7 CUDA/C++ソースは既存の公式照合済みmanifestと同一。無制限register版はdouble backwardの1,024-thread blockでregister上限を超えたが、ソースを変えずcompilerのmaxrregcount=64で公式全7幅gradcheckが通った。
 
 BF16実形状T64/720pのquery・CNNをchain-rule VJPで比較し、全375パラメータの勾配を照合した。query最大絶対差1.192e-7、CNN差0。全体非checkpoint参照が16GBに収まらないため、queryのfeature VJPを各非checkpoint CNN stageへ適用した診断であり、本番にはdetachを入れていない。native CUDA5テストも成功した。FP32のcompiled replayは出力・全勾配一致を確認したが、BF16 compiled graph同士はfusionが異なり要素ごとの勾配一致を主張しない。出力の近似一致・全勾配有限と、別のeager BF16等価性を記録している。
+
+# 実データprobeと容量
+
+MSDAのみ再計算する候補はT1/T2とも80% allocator上限でOOM。CNN各stageとMSDA chunkを再計算する`encoder_msda`では、T1の5,500 full stateから3更新、CNN非凍結のT2で3更新が有限に進んだ。両者のallocated最大10.80GB、reserved最大はT1 12.60GB / T2 12.53GB。C1はcheckpointingなしで3更新、allocated9.40GB / reserved10.48GBだった。T1/T2の範囲を同一に固定し、C2/C3はrecipeを変えない。probe更新は科学上の予算に数えない。各初回はcompileを含み、後続2更新だけの中央値はT1 3.77秒、T2 3.16秒、C1 1.81秒である。短い資格確認であり、一般的な速度推定やL4との比には使わない。
+
+最初の本番attemptは初期5,500 checkpointのreadback中、filesystem増分19.20GBで19GBガードに止まり、新規optimizer更新はなかった。24GB host RAMのavailableは約19.8GBで、RAM不足ではない。中断した環境downloadの一時3 directoryを、使用中descriptorなし・共有hardlinkなしと確認して削除し、1.54GBを回収した。失敗と終了eventを残し、5,500 full stateを再保存・独立照合してから新しいattemptへ移す。compiler cacheも再利用して重複を避ける。詳細はbundleの`attempt-1-storage-recovery.json`。20GBの容量制約は維持する。
 
 # 判断と残る評価
 

@@ -1,0 +1,109 @@
+{
+  "schema_version": 1,
+  "run_id": "run-ball-arch-desktop-20261113",
+  "files": [
+    {
+      "path": "probes/encoder_msda/C1-dpt-10000/weights-update-00000003.pt",
+      "size_bytes": 21230165,
+      "sha256": "12c2c709be0da3e721bc0cef499dff76234d97387855468d2f93f964fcfe736f",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794541886522003953",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/C1-dpt-10000/probe-1794541886522003953",
+      "manifest_sha256": "4ab028150315233ca2462437a049a3bfd72b6025cfd5feaad18412b3d8330ad1",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/encoder_msda/C1-dpt-10000/checkpoint-update-00000003.pt",
+      "size_bytes": 60595691,
+      "sha256": "75510be5bfed9b6cd389eec22df5f9dafbab075ceb68eeb539ab1449de54f24b",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794541886522003953",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/C1-dpt-10000/probe-1794541886522003953",
+      "manifest_sha256": "4ab028150315233ca2462437a049a3bfd72b6025cfd5feaad18412b3d8330ad1",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/encoder_msda/T1-q06000-q12000/checkpoint-update-00005503.pt",
+      "size_bytes": 346284019,
+      "sha256": "3d6afc98a84424c9e616feb2961e7d9b99ed70e17f4d1bea20b23cee1b8ed7ac",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794540775463023341",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/T1-q06000-q12000/probe-1794540775463023341",
+      "manifest_sha256": "118e124d84664d6c078209c52f709721290bd0db83baaddf956ce59d4eee5bfa",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/encoder_msda/T1-q06000-q12000/weights-update-00005500.pt",
+      "size_bytes": 116301749,
+      "sha256": "a7c7e55ced30dc6303300c44d974315012ce6b49ade3f15c8005e56e51d1f8be",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794540775463023341",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/T1-q06000-q12000/probe-1794540775463023341",
+      "manifest_sha256": "118e124d84664d6c078209c52f709721290bd0db83baaddf956ce59d4eee5bfa",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/encoder_msda/T1-q06000-q12000/weights-update-00005503.pt",
+      "size_bytes": 115977797,
+      "sha256": "955599b3f68755f9af8b650eaf8e7144858b43412806382da254385fee7f7136",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794540775463023341",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/T1-q06000-q12000/probe-1794540775463023341",
+      "manifest_sha256": "118e124d84664d6c078209c52f709721290bd0db83baaddf956ce59d4eee5bfa",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/encoder_msda/T1-q06000-q12000/checkpoint-update-00005500.pt",
+      "size_bytes": 346647057,
+      "sha256": "f64be356ea7eef5d136078f4417017c03254f1ae78e52ca9e55e6684f2973fda",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794540775463023341",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/T1-q06000-q12000/probe-1794540775463023341",
+      "manifest_sha256": "118e124d84664d6c078209c52f709721290bd0db83baaddf956ce59d4eee5bfa",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/msda/T1-q06000-q12000/weights-update-00005500.pt",
+      "size_bytes": 116301749,
+      "sha256": "d5d51250900f5a34ea03791038b18dcb8f92e4fba3acfc18db19dda4420cba43",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794539786718115332",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/msda/T1-q06000-q12000/probe-1794539786718115332",
+      "manifest_sha256": "2cbcc0bbda4f99ef203ae2c7ac2e21d37268810ed9fcba37f5d92535e36007d9",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/msda/T1-q06000-q12000/checkpoint-update-00005500.pt",
+      "size_bytes": 346646993,
+      "sha256": "5a9f13cb7552b9292421dc2fdbe11c1fc6826ca8a57fbaccbfff5d5e1a7298d4",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794539786718115332",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/msda/T1-q06000-q12000/probe-1794539786718115332",
+      "manifest_sha256": "2cbcc0bbda4f99ef203ae2c7ac2e21d37268810ed9fcba37f5d92535e36007d9",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/encoder_msda/T2-q00000-q06000/weights-update-00000003.pt",
+      "size_bytes": 115897925,
+      "sha256": "94b0c10cdd8a748a333ffe0a0f50f6797ec4250da0ca22886d89e6e9e248a536",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794541356767719737",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/T2-q00000-q06000/probe-1794541356767719737",
+      "manifest_sha256": "6e4c6f186c07245de4525324f801f3ac2f0ffe81125cefc2610b9343c1b1c625",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "probes/encoder_msda/T2-q00000-q06000/checkpoint-update-00000003.pt",
+      "size_bytes": 346204019,
+      "sha256": "fc9e0df68554cb0de39aaae209f5a07866d1dd710d2396ae932ca5f4396dffc4",
+      "pre_deletion_head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+      "protected_generation": "probe-1794541356767719737",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/T2-q00000-q06000/probe-1794541356767719737",
+      "manifest_sha256": "6e4c6f186c07245de4525324f801f3ac2f0ffe81125cefc2610b9343c1b1c625",
+      "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    }
+  ],
+  "scientific_artifacts_deleted": false,
+  "immutable_drive_generations_retained": true,
+  "source_output_root": "outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113"
+}
