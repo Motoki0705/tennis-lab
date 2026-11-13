@@ -23,11 +23,13 @@ Pythonのimport rootは `.agents/ops`。`--cwd` はcommit済みでtrackedファ�
 
 ```bash
 # previewでも判定agentは1回起動する。GitHubへは書かず、割当可能なcandidatesは返さない
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher.judgement \
+PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python -m dispatcher.judgement \
   --repo Motoki0705/tennis-lab --cwd "$worktree" --run-dir "$run_dir"
 
 # 判断コメントと実行根拠まで記録する。親の予約・起動は行わない
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher.judgement \
+PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python -m dispatcher.judgement \
   --repo Motoki0705/tennis-lab --cwd "$worktree" --run-dir "$run_dir" --apply
 ```
 
@@ -268,6 +270,7 @@ fake GitHub・fake Claude CLI・一時registry・使い捨てgitを使う。既�
 
 ## 半日周期とsupervisor
 
+判定・常駐jobは [共通launcher](../lib/README.md#既存cliと新規jobの接続) から起動する。
 `python -m dispatcher` はschedule・割当・runtime管理の入口。systemd用の同じ入口は `dispatch.py`。
 `service.py` は判定agentの予定実行、`schedule.py` はAsia/Tokyoのslotとrun journal、
 `supervisor.py` はregistry内の担当予約・イベント・実行枠、`worker.py` / `runtime.py` は共通ランナーへの接続を担当する。
@@ -294,10 +297,12 @@ PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init \
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher status
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher enable
 # 通常はtimerがrun、常駐supervisorがsuperviseを呼ぶ
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher run
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher supervise --once
+PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python -m dispatcher run
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" --supervisor -- --once
 # 明示的な再判断。disabled中や終了未確認runがある場合は実行しない
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher run --explicit
+PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python -m dispatcher run --explicit
 # 今後の割当の設定。既存親の子上限・実行設定は黙って変更しない
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher configure --max-parents 2 --max-children 2
 ```

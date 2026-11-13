@@ -4,10 +4,40 @@ from __future__ import annotations
 
 import fcntl
 import os
+import stat
 import subprocess
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+
+CHECKOUT_ROOT_ENV = "TENNIS_LAB_CHECKOUT_ROOT"
+CHECKOUT_FD_ENV = "TENNIS_LAB_CHECKOUT_FD"
+
+
+def require_checkout_job() -> None:
+    """Reject CLI jobs without the launcher's inherited, real checkout lock FD."""
+    try:
+        root = Path(os.environ[CHECKOUT_ROOT_ENV])
+        descriptor = int(os.environ[CHECKOUT_FD_ENV])
+        if not root.is_absolute():
+            raise ValueError("checkout root must be absolute")
+        actual = os.fstat(descriptor)
+        expected = (common_directory(root) / "ops-code.lock").stat()
+        if not stat.S_ISREG(actual.st_mode) or (actual.st_dev, actual.st_ino) != (
+            expected.st_dev,
+            expected.st_ino,
+        ):
+            raise ValueError("not the checkout lock descriptor")
+        fcntl.flock(descriptor, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        if checkout_barrier(root).exists():
+            raise ValueError("checkout recovery pending")
+    except (KeyError, ValueError, OSError, OverflowError) as exc:
+        print(
+            f"checkout job refused: {exc}; use checkout_job.py --repo <main> -- <command...>",
+            file=sys.stderr,
+        )
+        raise SystemExit(75) from exc
 
 
 def state_root() -> Path:

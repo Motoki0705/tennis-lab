@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from lib.checkout_lock import checkout_barrier, checkout_lock
+from lib.checkout_lock import checkout_barrier, checkout_lock, require_checkout_job
 from parent.github import GitHub
 from parent.policy import nonempty
 from parent.state import state_directory
@@ -188,8 +188,16 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
     return {"result": args.command}
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, _supervisor_launcher: bool = False) -> int:
     args = parser().parse_args(argv)
+    if args.command == "run":
+        require_checkout_job()
+    if args.command == "supervise" and not _supervisor_launcher:
+        print(
+            "dispatcher supervise: use checkout_job.py --repo <main> --supervisor",
+            file=sys.stderr,
+        )
+        return 75
     os.umask(0o077)
     try:
         result = execute(args)

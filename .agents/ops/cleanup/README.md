@@ -30,12 +30,15 @@ worktree は人間が承認した `delete worktree:<path>` でのみ、しかも
 
 ## 使い方
 
+[共通launcherの契約](../lib/README.md#既存cliと新規jobの接続)を使う。直接のfile実行は拒否する。
+
 ```bash
-PY=.venv/bin/python; C=.agents/ops/cleanup/cleanup.py
-$PY $C scan --report-json /tmp/cleanup.json        # dry-run（何も消さない）。--no-disk で du を省略
-$PY $C apply-auto --report-json FILE               # auto_delete の branch だけ削除（timer と同じ）
-$PY $C delete 'branch:feat/x@0123abcd4567'         # 承認済み branch を削除（tip が変わっていたら拒否）
-$PY $C delete 'worktree:/abs/path@0123abcd4567'    # 承認済み worktree を削除（clean なときだけ）
+PY=.venv/bin/python
+C=("$PY" .agents/ops/checkout_job.py --repo "$PWD" -- "$PY" .agents/ops/cleanup/cleanup.py)
+"${C[@]}" scan --report-json /tmp/cleanup.json        # dry-run（何も消さない）。--no-disk で du を省略
+"${C[@]}" apply-auto --report-json FILE               # auto_delete の branch だけ削除（timer と同じ）
+"${C[@]}" delete 'branch:feat/x@0123abcd4567'         # 承認済み branch を削除（tip が変わっていたら拒否）
+"${C[@]}" delete 'worktree:/abs/path@0123abcd4567'    # 承認済み worktree を削除（clean なときだけ）
 ```
 
 - `--repo`（既定: cwd のrepoのメインcheckout）、`--config`（既定: `config.toml`）、

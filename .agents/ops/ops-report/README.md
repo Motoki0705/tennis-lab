@@ -390,13 +390,16 @@ page = reobservation_input(
 
 ```bash
 # 元の予定回と未完了レポートissueを明示。最初は書込みなしで照合する。
-.venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
   --slot YYYYMMDD --report-issue NUMBER --dry-run
 # 同じ引数から --dry-run を外すと移行する。
-.venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py migrate-checkpoint \
   --slot YYYYMMDD --report-issue NUMBER
 # 移行成功後、同じ回の不足分を新しい調査経路で再開する。
-.venv/bin/python .agents/ops/ops-report/ops_report.py report --if-due
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py report --if-due
 ```
 
 - stateの置き場所は下記「予定と状態」と同じ。scheduleのanchor・3日周期・成功/失敗履歴は変更しない。
@@ -452,16 +455,22 @@ page = reobservation_input(
 
 ## 手動実行
 
+[共通launcherの契約](../lib/README.md#既存cliと新規jobの接続)を使う。直接のfile実行は拒否する。
+
 ```bash
 cd ~/projects/tennis-lab
 # 導入後の予定・前回結果を確認
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
 # 本文を標準出力へ（issueは作らない）。agentは実行される。
-.venv/bin/python .agents/ops/ops-report/ops_report.py report --dry-run --output /tmp/report.md
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py report --dry-run --output /tmp/report.md
 # 本番（ops-report ラベルのissueを作成）
-.venv/bin/python .agents/ops/ops-report/ops_report.py report --agent claude
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py report --agent claude
 # 採用提案の引渡し（--dry-run で確認、子issueは作成しない）
-.venv/bin/python .agents/ops/ops-report/ops_report.py triage --dry-run
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py triage --dry-run
 ```
 
 実headlessでの証拠取得と改善ループの通し確認は親の #1461 で行う。
@@ -661,8 +670,10 @@ spin ops install --dry-run
 spin ops install                              # link + daemon-reload
 systemd-analyze --user verify .agents/ops/ops-report/systemd/*.{service,timer}
 # 導入完了後に基準を記録してからtimerを有効化（既存stateがあればinitは繰り返さない）
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule init
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule init
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
 spin ops on report
 spin ops on triage
 # unit実効値、日次の次回check、3日周期の次回slotを照合
@@ -670,7 +681,8 @@ systemctl --user cat tennis-lab-ops-report.service tennis-lab-ops-report.timer t
 spin ops status report
 spin ops status triage
 systemctl --user list-timers --all 'tennis-lab-*'
-.venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
+.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python .agents/ops/ops-report/ops_report.py schedule status
 spin ops logs report
 ```
 

@@ -42,7 +42,7 @@ class DispatchGitHub(FakeGitHub):
             row = self.issues[int(endpoint.rsplit("/", 1)[1])]
             row.update(payload)
             return copy.deepcopy(row)
-        return cast(dict[str, Any], super().write(method, endpoint, payload))
+        return super().write(method, endpoint, payload)
 
 
 class DispatchHarness:
@@ -1594,16 +1594,40 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
     parent = d.h.root / "cli-registry"
 
     def cli(*args: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [
+        command = [
+            sys.executable,
+            str(ROOT / ".agents/ops/dispatcher/dispatch.py"),
+            "--state-dir",
+            str(schedule),
+            "--parent-state-dir",
+            str(parent),
+            *args,
+        ]
+        if args[0] == "run":
+            command = [
                 sys.executable,
-                str(ROOT / ".agents/ops/dispatcher/dispatch.py"),
+                str(ROOT / ".agents/ops/checkout_job.py"),
+                "--repo",
+                str(d.h.work),
+                "--",
+                *command,
+            ]
+        elif args[0] == "supervise":
+            command = [
+                sys.executable,
+                str(ROOT / ".agents/ops/checkout_job.py"),
+                "--repo",
+                str(d.h.work),
+                "--supervisor",
                 "--state-dir",
                 str(schedule),
                 "--parent-state-dir",
                 str(parent),
-                *args,
-            ],
+                "--",
+                *args[1:],
+            ]
+        return subprocess.run(
+            command,
             capture_output=True,
             text=True,
             check=False,
