@@ -8,7 +8,7 @@ title: RTX 5060 Tiへの本学習移管とactivation checkpointing検証
 issue: 1859
 provider: codex
 date: '2026-11-13'
-status: running
+status: failed
 summary_impact: none
 config:
   seed: 42
@@ -98,3 +98,7 @@ attempt 3はT2 backwardの1,283更新付近でhost availableが旧4GiB下限を�
 attempt 4は検証済み`checkpoint-00001000-e2f35d3f`を独立readbackし、model381 key・AdamW375 state・RNG・LR位置・sample11,000・1,000行logを完全復元した。既存state keyの追加はない。明示許可したrunner observerのsource差分だけをbyte固定で移管し、未commitの1,001〜1,283更新は採用していない。systemd user serviceと共有queue resource=allで、push済みsourceから1,001〜1,011更新・sample11,001〜11,011が有限・連続に進んだ。data draw/augmentation/LRは同じattempt-3 prefixと一致した。CNN解除済みでallocated最大10,803,609,600 / reserved最大12,763,267,072 bytes、compile初回37.7527秒・後続10更新中央値3.4532秒だった。host available最小8,412,168,192、admission最小8,616,722,432、D:最小16,144,359,424 bytesは各下限内。親子RSS合計の最大は13,527,920,640 bytes。受入prefixではRAM待機は発生していない。
 
 現在の実行・保存先・unit/queue/PID/PGID・終了event・待機logのキーと新attempt復旧コマンドは`monitoring-handoff.json`、受入根拠は`attempt-4-startup-acceptance.json`。実行checkoutは固定し、報告commitを別に残す。T2完了や以降の条件は待たず、監視を親へ返す。定期follow-upは登録しない。
+
+その後、報告HEADのCI待機中にattempt 4がD: availableの10GiB下限で停止した。guard実測10,708,541,440 bytesは閾値10,737,418,240未満で、RAMが停止原因ではない。serviceはfailed・MainPID0、queueもfailed、terminal eventはDrive保存・独立SHA readback済み。T2の1,001〜1,313更新・sample11,001〜11,313は有限・連続だったが、次のcheckpointには到達せず、検証済み最新pointerは1,000更新の`initialized-00001000-120a3ef2`のまま。未commitの更新は再開に採用しない。実行commitと最初の報告HEADのCI Python成功を、現在の本番成功とは扱わない。
+
+停止調査時のD:空きは6,279,356,416 bytesへさらに減っており、親が許可した容量停止条件に従い、追加起動や他issueの整理は行わない。D:消費を特定のwriterへ帰属する証拠はない。`attempt-4-storage-stop.json`と現在のhandoffを根拠に容量回復と新attempt5の判断を親へ返す。ノードはfailedだが、科学上の比較・scene採用の判断は変えずsummary_impactはnoneのままとする。

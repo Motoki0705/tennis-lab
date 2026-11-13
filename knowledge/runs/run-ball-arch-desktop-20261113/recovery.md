@@ -1,5 +1,11 @@
 # Resume a stopped desktop attempt
 
+Attempt 4 currently has a verified terminal storage failure: D: available is
+below its 10 GiB threshold. Restore adequate physical capacity before executing
+the commands below. The accepted startup prefix does not imply a live service.
+The newest verified T2 pointer is still update 1,000; its local 1,001–1,313 suffix
+is uncommitted. See `attempt-4-storage-stop.json` for the exact failed state.
+
 First inspect the unit/job in `monitoring-handoff.json`, queue state, GPU processes,
 `production-FAILED.json`, `production-FAILED-<case>-encoder_msda.json` and the terminal event. Diagnose the
 cause and confirm the old writer is stopped. A second writer is forbidden.

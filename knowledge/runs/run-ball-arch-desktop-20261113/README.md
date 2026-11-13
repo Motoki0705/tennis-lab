@@ -1,5 +1,10 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
+Current state: **attempt 4 stopped on D: available space below 10 GiB** after
+its accepted startup prefix. It is no longer running. Do not restart until
+physical D: capacity is restored. See [attempt-4-storage-stop.json](attempt-4-storage-stop.json)
+and the corrected [monitoring-handoff.json](monitoring-handoff.json).
+
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
 supersedes the original prohibition on checkpointing for T1/T2. The initial desktop migration started
 T1 from tail update 5,500 (query cumulative 11,500). T1 has since completed with
@@ -347,3 +352,27 @@ The production job was never duplicated or restarted for this helper race.
 Worker observation ends at this accepted prefix. The parent owns future RAM waits,
 T2 validation and all remaining condition completions. Wait events and every new
 update's RSS are exposed in the handoff. No periodic follow-up is registered.
+
+## Attempt-4 storage stop after the accepted prefix
+
+While the reporting HEAD's CI was completing, attempt 4 later stopped during T2
+forward because D: available fell below 10 GiB. The guard recorded
+10,708,541,440 bytes, below 10,737,418,240, with host available minimum
+8,395,161,600 bytes; RAM was not the trigger. The failed unit has MainPID 0,
+the queue job is in `failed/`, and its terminal event was uploaded and independently
+SHA-read back. No next stage was started. Both the execution source and the first
+reporting HEAD passed CI Python; this subsequent runtime failure is separate.
+
+Local updates 1,001–1,313 / sample positions 11,001–11,313 remained continuous
+and finite. They have no newer verified checkpoint and must not be adopted.
+The latest verified pointer remains update 1,000,
+`initialized-00001000-120a3ef2`, with matching full-state/readback evidence.
+The successful startup proof remains a historical prefix; it does not assert
+current service liveness or worker completion. The current handoff sets
+`worker_acceptance_complete=false` and records the storage block.
+
+At the stop investigation D: available was 6,279,356,416 bytes, already below
+the limit. No additional cleanup or restart was performed. The evidence does
+not attribute D: consumption to a particular writer. Restore adequate capacity
+before following the fresh-root/unused-attempt-5 recovery commands. Original
+private environment/native/cache and stopped-attempt evidence remain intact.

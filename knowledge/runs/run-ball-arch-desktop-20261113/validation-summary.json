@@ -376,5 +376,12 @@
     "maximum_process_tree_rss_bytes": 13527920640,
     "wait_events_count": 0,
     "source": "attempt-4-startup-acceptance.json"
+  },
+  "current_runtime_stop": {
+    "evidence": "attempt-4-storage-stop.json",
+    "reason": "d_drive_available_space",
+    "last_local_update": 1313,
+    "latest_verified_update": 1000,
+    "worker_acceptance_complete": false
   }
 }

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "issue": 1859,
-  "captured_at": 1794559657.8255,
-  "worker_acceptance_complete": true,
+  "captured_at": 1794561000.7291512,
+  "worker_acceptance_complete": false,
   "parent_owns_future_monitoring": true,
   "periodic_followup_registered": false,
   "execution_commit": "15cdc684ff60a210cb1d8209f393e60490ca8f44",
@@ -39,7 +39,7 @@
       "proc_starttime_ticks": 3017166
     }
   },
-  "pid_scope": "Snapshot only; later stage PID is in production-environment-<case>-<stage>-encoder_msda.json",
+  "pid_scope": "Historical capture only; all attempt-4 production processes have exited.",
   "terminal_event": {
     "local": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/notifications/0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4.json",
     "remote": "outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/notifications/0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4.json",
@@ -208,7 +208,7 @@
   },
   "recovery": {
     "document": "recovery.md",
-    "requirements": "Diagnose the failure and confirm the old service/queue/GPU writer stopped. Use a fresh root and unused attempt. Retain private env/native/cache. Admit updates at >=6 GiB RAM; emergency stop below 2 GiB and D: below 10 GiB. Restore only verified full state; the observer source change must match the pinned transition.",
+    "requirements": "D: is below its 10 GiB stop threshold; restore adequate capacity before any recovery. Diagnose the failure and confirm the old service/queue/GPU writer stopped. Use a fresh root and unused attempt. Retain private env/native/cache. Admit updates at >=6 GiB RAM; emergency stop below 2 GiB and D: below 10 GiB. Restore only verified full state; the observer source change must match the pinned transition.",
     "attempt_rule": "bootstrap outputs max production-registration-aN in the supplied latest attempt root + 1. Check all existing production-aN queue/unit registrations; if that key already exists, inspect it and choose a larger unused integer/fresh root. Never reuse an old idempotency key.",
     "commands": [
       "cd /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113",
@@ -221,7 +221,16 @@
       "\"$PY\" \"$ADAPTER/recover.py\" --root \"$NEW_ROOT\" --old-writer-stopped",
       "ATTEMPT=$(\"$PY\" -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"next_queue_attempt\"])' \"$NEW_ROOT/recovery-bootstrap.json\")",
       "\"$PY\" \"$ADAPTER/launch.py\" --root \"$NEW_ROOT\" --kind production --session 01a1d27b-f6bd-7f70-b155-52874013e862 --attempt \"$ATTEMPT\""
-    ]
+    ],
+    "latest_verified_at_failure": {
+      "update": 1000,
+      "generation": "initialized-00001000-120a3ef2",
+      "manifest_sha256": "57ab45dd1b56c1115e4790f3035eec0f68411e643227aa22e3f286965dabb5c0",
+      "local_uncommitted_suffix_not_adopted": [
+        1001,
+        1313
+      ]
+    }
   },
   "storage": {
     "historical_archive": "/mnt/e/tennis-lab-archive/outputs/ball_detection/train/arch_efficiency/s42-20261111",
@@ -245,6 +254,7 @@
     "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop-runtime-20261113"
   ],
   "remaining_unconfirmed": [
+    "D: capacity recovery and a fresh verified-state restart",
     "T2 first-stage and second-stage completion/validation",
     "C1/C2/C3 completion/validation and integrated report"
   ],
@@ -310,5 +320,15 @@
     "persistence": "Wait log is included in checkpoint snapshots when present. New waits after the latest snapshot remain local until the next snapshot.",
     "rss_semantics": "Sum of training parent and recursive children RSS, including shared pages; not PSS.",
     "emergency_scope": "2 GiB safety stop also applies during setup, persistence and waiting."
+  },
+  "startup_prefix_accepted": true,
+  "current_runtime": {
+    "state": "failed",
+    "active": false,
+    "reason": "d_drive_available_space",
+    "evidence": "attempt-4-storage-stop.json",
+    "last_local_update": 1313,
+    "latest_verified_update": 1000,
+    "restart_blocked_by_d_capacity": true
   }
 }
