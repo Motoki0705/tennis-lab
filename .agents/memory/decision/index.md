@@ -9,3 +9,4 @@
 - [テスト用の値を本番planに使わない](keep-test-values-out-of-production-plans.md)
 - [公開向け文書は英語版を既定にして日本語・簡体字中国語版を別ファイルに分け、ハッシュ値は書かない](public-docs-english-default.md)
 - [CI短縮を受けてPRごとに検証し、成功をmergeの必須条件にする](pr-ci-required.md)
+- [長時間の学習は子に見届けさせず、起動の確認までで子を終え、以後のprocess監視は親が行う](parent-monitors-long-training.md)
