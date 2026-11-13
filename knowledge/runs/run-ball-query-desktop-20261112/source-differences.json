@@ -1,0 +1,27 @@
+{
+  "frozen_training_commit": "929ad65645c1c7522e8921f1b439619d636a0128",
+  "training_sources_verified": 162,
+  "controllers_verified": 20,
+  "lock_unchanged": true,
+  "frozen_checkout_clean": true,
+  "actual_changed_training_source_files": [],
+  "scientific_recipe_changes": [],
+  "operational_differences": [
+    "L4 to actual RTX5060Ti; no GPU name spoof",
+    "dedicated lock environment; shared venv unchanged",
+    "snapshot directory relocation and resulting manifest digests in copied checkpoint recipe",
+    "gdrive remote instead of mounted_drive alias; separate desktop attempt",
+    "allocator fraction0.8 and host available RAM4GiB guard",
+    "TORCHINDUCTOR_COMPILE_THREADS=1",
+    "systemd queue lifecycle and pidfd gate after runtime/subreaper exit",
+    "independent Drive readback after every checkpoint"
+  ],
+  "rclone_local": "1.60.1-DEV",
+  "rclone_historical": "1.75.2",
+  "probe_adapter_snapshot": "documentation/probe-adapter",
+  "production_adapter_checksums": "production-adapter-sha256.json",
+  "validator_requested": 0,
+  "validator_attempted": 0,
+  "validator_completed": 0,
+  "timestamp": 1794491954.2280838
+}

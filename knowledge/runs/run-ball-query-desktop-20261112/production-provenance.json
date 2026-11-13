@@ -1,0 +1,65 @@
+{
+  "complete": true,
+  "adapter_commit": "eda5ee08073da498347d411e075905f4ac94e25e",
+  "fixed_training_commit": "929ad65645c1c7522e8921f1b439619d636a0128",
+  "queue_id": "0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1",
+  "queue_state": "state=running\nresource=all\nslot=all\npid=1594280\npgid=1594280\nwait=none\n",
+  "resource": "all",
+  "lineage": [
+    {
+      "pid": 1594405,
+      "ppid": 1594280,
+      "pgid": 1594280,
+      "comm": "python",
+      "is_agent_runtime": false
+    },
+    {
+      "pid": 1594280,
+      "ppid": 1594251,
+      "pgid": 1594280,
+      "comm": "bash",
+      "is_agent_runtime": false
+    },
+    {
+      "pid": 1594251,
+      "ppid": 1594228,
+      "pgid": 1557549,
+      "comm": "bash",
+      "is_agent_runtime": false
+    },
+    {
+      "pid": 1594228,
+      "ppid": 1557549,
+      "pgid": 1557549,
+      "comm": "bash",
+      "is_agent_runtime": false
+    },
+    {
+      "pid": 1557549,
+      "ppid": 278,
+      "pgid": 1557549,
+      "comm": "python",
+      "is_agent_runtime": false
+    },
+    {
+      "pid": 278,
+      "ppid": 1,
+      "pgid": 278,
+      "comm": "systemd",
+      "is_agent_runtime": false
+    },
+    {
+      "pid": 1,
+      "ppid": 0,
+      "pgid": 1,
+      "comm": "systemd",
+      "is_agent_runtime": false
+    }
+  ],
+  "systemd_unit": "tennis-i1899-length-desktop-a1.service",
+  "runtime_ancestor_absent": true,
+  "full_checkpoint_origin": "checkpoint-00005500-0281b1ba",
+  "adapter_sources_match_independent_drive_readback": true,
+  "replication": "original inputs-v1 source.bundle and this source directory; never substitute current main",
+  "timestamp": 1794493197.8154168
+}

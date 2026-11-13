@@ -1,0 +1,18 @@
+{
+  "complete": true,
+  "files": 25,
+  "bytes": 91057,
+  "source": "outputs/ball_detection/train/query_controls/s42-20261111-main/desktop-attempts/20261112-a1/documentation/production-start-v1",
+  "source_id": "1UrtWc-5gFXkwl6WxXpzHQ1zFH6rVdys2",
+  "all_adapter_python_sources_match": {
+    "rebuild_dataset.py": true,
+    "service.py": true,
+    "verify_dataset.py": true,
+    "desktop.py": true,
+    "accept_startup.py": true,
+    "test_desktop.py": true
+  },
+  "expected_manifest_sha256": "dd55f431d9578a1f7573ed0606855a9c8af6c75e138d7ab942a9374c926547ad",
+  "independent_readback": "outputs/ball_detection/train/query_controls/desktop-resume-20261112/production-start-independent-readback",
+  "verified_at": 1794493696.6039553
+}

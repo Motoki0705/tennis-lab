@@ -1,0 +1,11 @@
+{
+  "job": "0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1",
+  "command": "env TRAINING_QUEUE_DIR=/home/kamimura/projects/tennis-lab/.training_queue TORCHINDUCTOR_COMPILE_THREADS=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-desktop/outputs/ball_detection/train/query_controls/desktop-resume-20261112/env/bin/python /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-desktop/knowledge/runs/run-ball-query-desktop-20261112/desktop.py production --root /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-desktop/outputs/ball_detection/train/query_controls/desktop-resume-20261112 --source /home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-local-runtime --rclone-config /home/kamimura/.config/tennis-lab/rclone-drive.conf",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-query-local-runtime",
+  "stdout": "queued: 0-8205507466335230348_2026-11-12T14-08-53-664769651Z_1594191_ball-query-length-desktop-production-a1.job\n",
+  "stderr": "[history] 1 legacy terminal jobs: retaining for 7 days from first observation (end time unknown)\n[history] retaining 12 inconsistent jobs; inspect with list --include-expired (history=inconsistent)\n",
+  "session": "01a1cff2-2254-7020-bc61-a6913f619fbc",
+  "provider": "codex",
+  "resource": "all",
+  "timestamp": 1794492533.681218
+}

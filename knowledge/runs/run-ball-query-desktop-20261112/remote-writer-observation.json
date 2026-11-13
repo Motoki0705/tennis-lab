@@ -1,0 +1,96 @@
+{
+  "timestamp": 1794491054.5564406,
+  "cli_returncode": 0,
+  "stdout": "\n[colab] A new version of Colab CLI is available: 0.8.0 (current: 0.7.4)\n[colab] Run 'colab update' to update.\n[colab] To silence this check, set \"enable_update_check\": false in ~/.config/colab-cli/settings.json\n\n[colab] No active sessions found on server.\n",
+  "stderr": "",
+  "latest_stage_status": {
+    "stage": {
+      "name": "length-s1-T64",
+      "model": {
+        "stem_channels": [
+          16,
+          32,
+          64,
+          128
+        ],
+        "mixed_channels": [
+          192,
+          256
+        ],
+        "residual_blocks": [
+          0,
+          1,
+          2,
+          2,
+          1,
+          1
+        ],
+        "decoder_channels": 128,
+        "dim": 256,
+        "heads": 8,
+        "layers": 4,
+        "ffn_dim": 704,
+        "dropout": 0.1,
+        "rope_base": 10000.0,
+        "activation_checkpointing": false,
+        "encoder_variant": "convnext_v2",
+        "temporal_mixing": "factorized",
+        "input_channels": 5,
+        "frames": 64,
+        "frame_chunk_size": null
+      },
+      "budget": {
+        "betas": [
+          0.9,
+          0.999
+        ],
+        "checkpoint_interval": 500,
+        "encoder_lr_ratio": 0.1,
+        "eps": 1e-08,
+        "evaluation_interval": 6000,
+        "freeze_updates": 600,
+        "gamma": 2.0,
+        "gradient_clip": 1.0,
+        "initial_learning_rate": 7.360330616529733e-05,
+        "input_frames": 128,
+        "learning_rate": 7.360330616529733e-05,
+        "loss_normalization": "sum_valid_frame_losses/sum_valid_frames_per_update",
+        "microbatch_windows": 1,
+        "minimum_lr_ratio": 0.0135863462132287,
+        "optimizer": "AdamW",
+        "optimizer_transfer": "inherit",
+        "schedule": "linear_warmup_cosine",
+        "schedule_offset": 0,
+        "schedule_updates": 12000,
+        "seed": 42,
+        "sigma_ratio": 0.012,
+        "updates": 6000,
+        "warmup_updates": 0,
+        "weight_decay": 0.01
+      },
+      "parent": {
+        "checkpoint": "/content/tennis-lab/outputs/ball_detection/train/sequential_length/s42-20261025-main/common-dpt-T32/checkpoint-update-00010000.pt",
+        "sha256": "f26b368a6910e50126283d5f02f8466d37b846dba899b3d5735b9da6a700c56a",
+        "update": 10000
+      },
+      "output": "/content/tennis-lab/outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64"
+    },
+    "status": "checkpoint",
+    "update": 5500,
+    "updated_at": "2026-11-11T21:05:27.092520+00:00",
+    "receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00005500-0281b1ba",
+      "remote": "mounted_drive:outputs/ball_detection/train/query_controls/s42-20261111-main/length-s1-T64/checkpoint-00005500-0281b1ba",
+      "manifest_sha256": "b984b41af3bae1ef6957a00b93be25059b21922eb560310109c5e86fe4eadfde",
+      "manifest_md5": "8528b7afb5f0eb0a80b32cdc43cdf279",
+      "files": 8,
+      "size_bytes": 150525901,
+      "marker_id": null,
+      "seconds": 17.661652265996963,
+      "status": "verified"
+    },
+    "queue_id": "0-8205618045614919810_2026-11-11T07-25-54-385080189Z_14118_query-controls-length-a2"
+  },
+  "comment": "No new VM allocation; read-only server session query"
+}

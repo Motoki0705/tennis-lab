@@ -1,0 +1,90 @@
+{
+  "complete": true,
+  "comparison": "canonical JSON, as used by frozen read_resume; dataclass tuple fields equal JSON lists",
+  "checks": {
+    "model": true,
+    "budget": true,
+    "runtime": true,
+    "augmentation": true,
+    "architecture": true,
+    "phase": true,
+    "torch_version": true,
+    "source_identity": true,
+    "cnn_parent": true,
+    "sample_position": true,
+    "schedule": true
+  },
+  "optimizer_named_states": 201,
+  "optimizer_step_histogram": {
+    "14900": 116,
+    "5500": 85
+  },
+  "sample_position": 15500,
+  "cuda_rng_devices": 1,
+  "rates": [
+    {
+      "stage": "length-s1-T64",
+      "schedule_offset": 0,
+      "update1": 7.360330616529733e-05,
+      "update600": 7.315778396372439e-05,
+      "update601": 7.315629823173613e-05,
+      "update6000": 3.730640535393426e-05,
+      "resumed5501": 4.2035650616334327e-05
+    },
+    {
+      "stage": "length-s2-T64",
+      "schedule_offset": 6000,
+      "update1": 3.729690081136307e-05,
+      "update600": 3.162704782865207e-05,
+      "update601": 3.161766032223689e-05,
+      "update6000": 1e-06,
+      "resumed5501": 1.3093779070056234e-06
+    }
+  ],
+  "historical_initialization_audit_complete": true,
+  "runtime": {
+    "compile_mode": "default",
+    "compile_recompile_limit": 8,
+    "cpu_threads": 2,
+    "image_prefetch": true,
+    "input_verification": "upfront",
+    "jpeg_decoder": "nvjpeg",
+    "num_workers": 4,
+    "pin_memory": true,
+    "precision": "bf16",
+    "prefetch_factor": 2
+  },
+  "model": {
+    "stem_channels": [
+      16,
+      32,
+      64,
+      128
+    ],
+    "mixed_channels": [
+      192,
+      256
+    ],
+    "residual_blocks": [
+      0,
+      1,
+      2,
+      2,
+      1,
+      1
+    ],
+    "decoder_channels": 128,
+    "dim": 256,
+    "heads": 8,
+    "layers": 4,
+    "ffn_dim": 704,
+    "dropout": 0.1,
+    "rope_base": 10000.0,
+    "activation_checkpointing": false,
+    "encoder_variant": "convnext_v2",
+    "temporal_mixing": "factorized",
+    "input_channels": 5,
+    "frames": 64,
+    "frame_chunk_size": null
+  }
+}
