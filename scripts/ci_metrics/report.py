@@ -39,6 +39,7 @@ def summarize(root: Path) -> dict[str, Any]:
     controller: list[dict[str, Any]] = []
     inventories: list[list[str]] = []
     universes: dict[str, list[list[str]]] = defaultdict(list)
+    system_inventories: dict[str, list[list[str] | None]] = defaultdict(list)
     fixtures: dict[str, dict[str, Any]] = {}
     detail_events: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for path in sorted(root.glob("events-*.jsonl")):
@@ -66,6 +67,9 @@ def summarize(root: Path) -> dict[str, Any]:
                     detail_events[event["event"]].append(event)
         universes[role].extend(
             e["nodeids"] for e in events if e["event"] == "cpu_universe"
+        )
+        system_inventories[role].extend(
+            e.get("system_deps_nodeids") for e in events if e["event"] == "cpu_universe"
         )
         finished = [e for e in events if e["event"] == "session_finish"]
         if len(finished) != 1:
@@ -211,7 +215,12 @@ def summarize(root: Path) -> dict[str, Any]:
                 if reference is not None and reference != universe:
                     raise ValueError("workers disagree on pre-selection CPU universe")
                 reference = universe
-                audit_partition(manifests[role], universe, plan)
+                audit_partition(
+                    manifests[role],
+                    universe,
+                    plan,
+                    system_deps=system_inventories[role][0],
+                )
                 if manifests[role]["selected_nodeids"] != nodeids:
                     raise ValueError(
                         "executed inventory differs from lane/shard selection"
@@ -344,6 +353,15 @@ def summarize(root: Path) -> dict[str, Any]:
             default=None,
         )
     finish_codes = [p["finish"]["exitstatus"] for p in processes if p["finish"]]
+    shard = metadata.get("shard")
+    if (
+        shard
+        and shard["index"] == shard["count"]
+        and any(row["status"] in {"skipped", "xfailed", "xpassed"} for row in results)
+    ):
+        issues.append(
+            "every system dependency test must execute (skip/xfail forbidden)"
+        )
     successful = (
         not issues
         and run.get("status") == "completed"

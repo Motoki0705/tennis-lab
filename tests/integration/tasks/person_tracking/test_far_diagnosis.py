@@ -17,6 +17,7 @@ from src.tennis_scene.pipeline.components.person_detection import PersonDetectio
 from src.utils.checksum import dual_sha256
 
 
+@pytest.mark.system_deps
 def test_cpu_report_counts_same_units_extra_nonplayers_scores_and_summed_runtime(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     clip = 'video_000/clip_000'
     boxes = np.array([[0, 0, 10, 20], [0, 100, 30, 200], [40, 0, 50, 20]], np.float32)

@@ -2,14 +2,14 @@
 
 [English](sharding.md) · [日本語](sharding.ja.md)
 
-CI 独立执行 lint，并默认将请求的 CPU 目标分给10个测试 job，每个使用2个 worker。手动dispatch可选 `shards=1/2/4/6/8/10` 和 `workers=2/4`，比较相同源码的调度。明确指定worker数量，不使用依赖主机的 `auto`。手动单job基准上限120分钟，普通shard仍为60分钟。固定名称
+CI 独立执行 lint，并默认将请求的 CPU 目标分给10个普通测试 job，每个使用2个 worker，并增加1个必需的system runtime job。手动dispatch可选 `shards=1/2/4/6/8/10` 和 `workers=2/4`，比较相同源码的调度。明确指定worker数量，不使用依赖主机的 `auto`。手动单job基准上限120分钟，普通shard仍为60分钟。固定名称
 `Python` 使用 `always()`，仅在plan、lint、所有测试job和覆盖审计成功后通过，保持merge必需check。
 PR选择与main/手动完整请求的正本为[通道注册表与计划](README.zh-CN.md#通道注册表与计划)。仅PR取消之前的run。
 
 ## 分配与 fixture
 
 每个 worker 用正常 CPU marker 收集当前源码，包括由通道注册表选中的 court dataset 集成，先记录通道选择前的完整集合，再分配请求的
-nodeid，包括未注册的新测试。`cpu-file-times.json` 保存测得的 phase 时间；按成本从大到小分配
+nodeid，包括未注册的新测试。`system_deps_nodeids` 子集同时记录到event和manifest。标记case始终进入R，普通分片只分配R中未标记case，独立job只选择全部标记case；未标记的相邻case保留文件推迟策略。`cpu-file-times.json` 保存测得的 phase 时间；按成本从大到小分配
 给当前最轻的 shard，同成本按名称/index稳定排序。默认按文件保留共享准备。
 仅将 function fixture 独立的重文件明确列入 `split_files`，使用各用例 `test_seconds` 分配。
 添加前须检查 fixture 共享范围。若后来加入module/class fixture，收集会拒绝该分割文件。
@@ -21,7 +21,7 @@ nodeid，包括未注册的新测试。`cpu-file-times.json` 保存测得的 pha
 
 ## 证据与失败语义
 
-schema-2的 `shard-gw*.json` 保存 `universe_nodeids`（U）、`requested_nodeids`（R）、
+schema-3的 `shard-gw*.json` 保存 `system_deps_nodeids` 以及 `universe_nodeids`（U）、`requested_nodeids`（R）、
 `deferred`（D: nodeid到suite id）、plan/policy/scope、分组、选中nodeid（S_i）、profile和未知估计。
 独立的 `cpu_universe` event在CPU marker之后、通道选择之前记录U；`lane-plan.json` 保存固定请求。
 汇总从实际 phase 重新生成报告，并要求：
@@ -33,22 +33,22 @@ schema-2的 `shard-gw*.json` 保存 `universe_nodeids`（U）、`requested_nodei
 - U = R ⊎ D，每个延后case均有注册表与plan依据。
 - 请求scope的观测完整且成功，实际执行等于计划。
 - R = S_0 ⊎ ... ⊎ S_n，无缺失、重复或空shard。
-- plan、lint与全部matrix job成功，不能把skip/cancel视为成功。
+- marker清单与独立event及全部shard一致，普通分片不混入标记case，独立job全部case均passed（skip/xfail为0）。
+- plan、lint、全部matrix和独立runtime job成功，不能把skip/cancel视为成功。
 
 从所有manifest删除同一个case也会被独立的选择前event检出。D不计入skip或成功。
 汇总报告 `scoped_cpu_success`，而 `full_cpu_success` 还要求D为空。
 U是既有marker与明确排除后的CPU集合，不代表所有环境的全部测试。
-历史schema-1 artifact保留 `full_nodeids` 的含义，可供profile读取；混用schema或与lane plan一起使用会失败。
+历史schema-1/2观测可供profile读取但不能证明新runtime覆盖。schema-1 artifact保留 `full_nodeids` 的含义，可供profile读取；混用schema或与lane plan一起使用会失败。
 
 准备或分配失败、缺失 artifact、失败/取消或其他 HEAD 均使 `Python` 失败。
-原有合法 CPU 排除和 setup/module skip 保持可见。matrix 禁用 fail-fast。apt 的网络重试
-和 step 时长有上限，下载失败不会转换为省略测试。
+原有合法 CPU 排除和 setup/module skip 保持可见。matrix 禁用 fail-fast。按[runtime准备契约](README.zh-CN.md#固定的系统运行环境)限制并验证下载；失败不会转换为省略。
 
 部分重试仅在同一run、同一HEAD（`source_sha`）和同一lane plan（`plan_id`）内，
 复用固定plan与每个shard的最新结果。未重试的成功shard可保留之前的attempt。
 attempt可在上述范围内混用；其他run、HEAD或plan会被拒绝。
 
-plan artifact名为 `cpu-lane-plan-RUN`，测量名为 `cpu-test-measurements-RUN-shard-N`。
+plan artifact名为 `cpu-lane-plan-RUN`，测量名为 `cpu-test-measurements-RUN-shard-N`。普通index为0至count-1，独立runtime的index等于count（默认10），不增加普通CPU数量。
 两者上传均设置 `overwrite: true`，仅替换重试的plan/shard。
 失败attempt的测量可能被覆盖删除，job日志仍保留。重试全部job时，GitHub会删除之前的artifact。
 下载明确指定 `run-id` 与 `github-token`，使用覆盖整个run的REST API。
@@ -67,7 +67,7 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 观测，证据及比较限制见[baseline](baseline.zh-CN.md)。fixture/suite 大幅变化后，从完整
 测量刷新 profile，不能只按文件数量选择分片数。
 
-依赖准备检查已有ffmpeg/rclone版本，仅安装缺失binary，再验证两个命令。apt各限180秒，网络重试2次、超时30秒，Actions step上限8分钟。7个subprocess场景覆盖已有/缺失、update/install失败、timeout、安装后仍缺失与版本检查失败。
+准备与pin维护以[runtime契约](README.zh-CN.md#固定的系统运行环境)为准。
 
 ## 重新生成实测profile
 

@@ -399,6 +399,7 @@ markers = [
     "slow: Slow running tests",
     "local_data: Tests requiring large local datasets/models (not for CI)",
     "cuda: Tests requiring CUDA/GPU (skipped if GPU unavailable)",
+    "system_deps: Tests executing real ffmpeg/rclone binaries (required dedicated CI lane)",
 ]
 filterwarnings = [
     "ignore::DeprecationWarning",

@@ -108,7 +108,12 @@ def _collection_details(nodeids: list[str]) -> list[dict[str, Any]]:
     ]
 
 
-def _observation(root: Path, outcome: str = "passed") -> list[dict[str, Any]]:
+def _observation(
+    root: Path,
+    outcome: str = "passed",
+    *,
+    nodeid: str = "tests/test_sample.py::test_one",
+) -> list[dict[str, Any]]:
     root.mkdir(exist_ok=True)
     write_json(root / "environment.json", {"workers": 0, "full_cpu_target": True})
     exitcode = int(outcome in {"setup_failed", "failed", "teardown_failed"})
@@ -123,7 +128,6 @@ def _observation(root: Path, outcome: str = "passed") -> list[dict[str, Any]]:
             "finished_at": 5,
         },
     )
-    nodeid = "tests/test_sample.py::test_one"
     reports = [
         {
             "phase": "setup",
@@ -200,7 +204,7 @@ def _observation(root: Path, outcome: str = "passed") -> list[dict[str, Any]]:
         else ""
     )
     (root / "junit.xml").write_text(
-        f'<testsuites><testsuite><testcase classname="tests.test_sample" name="test_one" time="{0.5 * len(reports)}">{tag}</testcase></testsuite></testsuites>'
+        f'<testsuites><testsuite><testcase classname="{nodeid.split("::")[0].replace("/", ".").removesuffix(".py")}" name="{nodeid.split("::")[-1]}" time="{0.5 * len(reports)}">{tag}</testcase></testsuite></testsuites>'
     )
     _events(root, events)
     return events
@@ -365,6 +369,120 @@ def scoped_observation(tmp_path: Path) -> Path:
         },
     )
     return tmp_path
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        None,
+        "missing_runtime",
+        "duplicate_runtime",
+        "runtime_skip",
+        "runtime_xfail",
+        "runtime_failure",
+        "normal_contamination",
+        "missing_markers",
+        "wrong_head",
+        "runtime_job_skipped",
+    ],
+)
+def test_required_system_runtime_cannot_lose_or_skip_tests(
+    scoped_observation: Path, fault: str | None
+) -> None:
+    import shutil
+
+    root = scoped_observation
+    normal = root / "shard-0/tests"
+    system = root / "shard-1/tests"
+    system.parent.mkdir()
+    node = "tests/test_wide.py::test_deferred"
+    plan = json.loads((normal / "lane-plan.json").read_text())
+    normal_manifest = json.loads((normal / "shard-controller.json").read_text())
+    universe = normal_manifest["universe_nodeids"]
+    neighbour = "tests/test_wide.py::test_without_binary"
+    universe.append(neighbour)
+    # A marker in a path-deferred file is still mandatory on every PR; its
+    # unmarked neighbours retain the file policy (covered by the scoped audit).
+    normal_manifest.update(
+        schema_version=3,
+        system_deps_nodeids=[node],
+        requested_nodeids=universe[:2],
+        deferred={neighbour: "wide"},
+    )
+    metadata = json.loads((normal / "environment.json").read_text())
+    outcome = {
+        "runtime_skip": "skipped",
+        "runtime_xfail": "xfailed",
+        "runtime_failure": "failed",
+    }.get(fault or "", "passed")
+    for directory, index in ((normal, 0), (system, 1)):
+        events = _observation(
+            directory,
+            outcome if index else "passed",
+            nodeid=node if index else universe[0],
+        )
+        events.insert(
+            2,
+            {
+                "event": "cpu_universe",
+                "nodeids": universe,
+                "system_deps_nodeids": [node],
+                "details": _collection_details(universe),
+                "at": 1.15,
+                "monotonic_s": 1.15,
+            },
+        )
+        _events(directory, events)
+        write_json(
+            directory / "environment.json",
+            {**metadata, "shard": {**metadata["shard"], "index": index}},
+        )
+        write_json(directory / "lane-plan.json", plan)
+        write_json(
+            directory / "shard-controller.json",
+            {
+                **normal_manifest,
+                "index": index,
+                "selected_nodeids": [node] if index else [universe[0]],
+            },
+        )
+    if fault == "missing_runtime":
+        shutil.rmtree(system.parent)
+    elif fault == "duplicate_runtime":
+        shutil.copytree(system.parent, root / "duplicate")
+    elif fault == "normal_contamination":
+        normal_manifest["selected_nodeids"] = universe
+        write_json(normal / "shard-controller.json", normal_manifest)
+    elif fault == "missing_markers":
+        for directory in (normal, system):
+            manifest = json.loads((directory / "shard-controller.json").read_text())
+            manifest["system_deps_nodeids"] = []
+            write_json(directory / "shard-controller.json", manifest)
+    elif fault == "wrong_head":
+        observed = json.loads((system / "environment.json").read_text())
+        observed["source"]["commit"] = "b" * 40
+        write_json(system / "environment.json", observed)
+    needs = {
+        name: {"result": "success"} for name in ("plan", "lint", "tests", "system-deps")
+    }
+    if fault == "runtime_job_skipped":
+        needs["system-deps"]["result"] = "skipped"
+    result = verify_shards(
+        root, 1, sha="a" * 40, run_id="123", attempt="1", needs=needs, lane_plan=plan
+    )
+    assert result["success"] is (fault is None), result["issues"]
+    if fault == "runtime_failure":
+        assert result["observations_complete"] is True
+        assert result["system_deps"]["counts"] == {"failed": 1}
+    if fault is None:
+        assert result["selected_count"] == result["requested_count"] == 2
+        assert result["system_deps"] == {
+            "nodeids": [node],
+            "counts": {"passed": 1},
+            "required": True,
+        }
+        assert result["counts"] == {"passed": 2}
+        assert result["deferred_count"] == 1
 
 
 def test_scoped_success_does_not_count_deferred_tests_as_skips_or_full_success(

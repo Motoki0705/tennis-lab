@@ -18,7 +18,7 @@ pytestのstdout/stderrはjobログへ転送し、`pytest.log`にも保存しま�
 `reason`・`owner`（空でない文字列）を持ちます。fileの重複・不存在、未知の項目、
 担当者・理由の欠落、不正なpatternはplanを失敗にします。fileの探索は `pyproject.toml` の
 pytest設定に従います。未登録fileは常に実行し、登録済みfileは新規caseを含む収集case全体が
-例外の対象です。`paths` が空でないsuiteは、自身のtest file変更でも実行します。
+例外の対象です。ただし `system_deps` は下記のとおりmarker付きcaseだけ繰延べを上書きします。`paths` が空でないsuiteは、自身のtest file変更でも実行します。
 空の `paths` 配列は、通常のpath選別PRでは自身のtest file変更も含めて繰延べる明示指定です。
 ユーザーが承認した全repoのarchitecture巡回に使います。後述の全件要求には、すべてのsuiteを含めます。
 登録時は局所helper・設定・依存先のpathも含めてください。suite一覧・理由・担当者の正本は登録表です。
@@ -63,6 +63,44 @@ court datasetのfake renderとtemp rootによるtyped configは通常のCPU選�
 
 GPUと `local_data and not cuda` の手動受入は
 [ローカルrunnerの使い方](../github_actions/README.md#使い方)を参照してください。
+
+## 固定したシステム実行環境
+
+実ffmpeg/rcloneを使うテストは `system_deps` で宣言します。PR・main push・manualのすべてで、
+通常CPU群に加えて専用の **System dependency tests** jobを必須にします。
+marker付きcaseはfileの通常caseがpath選別で繰延べられても毎回実行します。
+専用へ移すのはmarker付きcaseだけで、依存不要の隣接caseは登録表のfile方針を保ちます。
+Driveのconfig拒否2件はlocal config fixtureで検証し、rcloneを必要としません。
+専用jobも必須 `Python` 集約に含めます。準備失敗、証拠の欠落・重複、誤った経路、skip・xfailを
+成功にしません。完全分割とartifactの契約は[分割の正本](sharding.ja.md#証拠と失敗)を参照してください。
+
+通常CPU群はsystem installerとaptを呼びません。browserを要求するplanでは `npm ci` と
+`playwright install chromium --only-shell` を実行し、`--with-deps` は使いません。
+hosted runnerにある共有libraryを使い、取得・起動失敗は明示失敗にします
+（`CI_REQUIRE_BROWSER=1`）。package managerへのfallbackはありません。
+Ubuntu配布元の不通は準備を止めませんが、GitHub/PyPI/npm・Playwright CDNへの依存は残ります。
+専用jobはbrowser/DINOの準備を必要としません。
+
+版・URL・期待SHA-256の正本は [`system-deps.json`](system-deps.json) だけです。
+hostに別版があっても、installerは固定版を使います。
+
+- ffmpeg: [FFmpeg-Buildsの月末GPL静的Linux x86-64版](https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/tag/autobuild-2026-10-31-12-59)、n8.1.3、libx264付き。旧BtbNのprojectで、現在はFFmpeg-Buildsへredirectされます。月末assetの保持期間は2年なので、2028年10月より前に更新してください。
+- rclone: [公式v1.76.0](https://downloads.rclone.org/v1.76.0/)。署名付きSHA256SUMSとrelease公開鍵をmanifestとともに保存します。準備のたびに隔離GPG keyringで署名と固定fingerprintを検証し、archiveのpinを署名済みentryと照合します。keyserverと実行時のchecksum探索は使いません。[上流の署名仕様](https://rclone.org/release_signing/)を参照してください。
+
+取得は接続15秒・curl全体180秒・retryなしで終了します。展開・実行前にSHA-256を照合し、
+`.ci-system-deps-cache` にあるarchiveも再照合します。CIはcold archive directoryから開始し、
+localでの再利用は任意です。cache破損時も別取得へ切り替えず失敗します。
+指定されたbinary memberだけを取り出し、版とlibx264を検査してから `GITHUB_PATH` へbinを公開します。
+sudo/apt、別配布元、host binaryへのfallbackはありません。Actionsの準備stepは8分で打ち切ります。
+
+更新担当は `Motoki0705` です。pin更新時は上流release/digestとrclone署名/fingerprintを確認し、
+必要なら署名済みsumsを更新し、実binary全件・取得/経路の故障注入・CIを再実行します。
+不一致が起きたchecksumを自動更新しません。localでの準備:
+
+```bash
+bash scripts/ci_metrics/install_system_deps.sh
+export PATH="$PWD/.ci-system-deps/bin:$PATH"
+```
 
 ## テスト増減とコストの警告
 

@@ -20,7 +20,7 @@ paths), `paths` (repository-relative shell patterns for dependencies), `reason`
 and `owner` (nonempty strings). Overlapping files, missing files, unknown fields,
 missing owners/reasons and invalid patterns fail planning. Files follow the
 pytest discovery patterns in `pyproject.toml`. Unregistered files always run;
-an exception covers every collected case in that file, including new cases.
+an exception covers ordinary cases in that file, including new cases. The `system_deps` runtime overrides deferral only for marked cases (see below).
 For a suite with nonempty `paths`, changing its own test file also requests it.
 An empty `paths` array explicitly defers the suite on ordinary path-selected PRs,
 including changes to its own test file. This is used for the user-approved whole-repository
@@ -76,6 +76,51 @@ typed configuration contracts use the normal CPU selection.
 
 Manual GPU and `local_data and not cuda` acceptance are documented in the
 [local runner instructions](../github_actions/README.md#使い方).
+
+## Pinned system runtimes
+
+Tests that execute real ffmpeg/rclone carry `system_deps`. Every PR, main push
+and manual run requires one dedicated **System dependency tests** job in addition
+to the ordinary CPU shards. These marked cases always run, including in files
+whose ordinary cases are path-deferred. Only marked cases move to that job;
+unmarked neighbours keep the file registry policy. Two Drive configuration-refusal
+cases use a local configuration fixture and need no rclone. The runtime job is
+included in the required `Python` aggregate. Runtime preparation failure, missing
+or duplicate observations, unexpected routing, skip and xfail fail acceptance.
+The complete partition and artifact contract is in [sharding](sharding.md#evidence-and-failure-semantics).
+
+Ordinary shards never invoke the system installer or apt. Browser-enabled requests
+use `npm ci` and `playwright install chromium --only-shell` without `--with-deps`;
+they use the hosted runner's existing shared libraries. Download or browser launch
+failure is explicit (`CI_REQUIRE_BROWSER=1`), with no package-manager fallback.
+Ubuntu archive unavailability therefore does not gate preparation; GitHub/PyPI/npm
+and the Playwright CDN remain external dependencies. The dedicated job needs none
+of the browser/DINO preparation.
+
+[`system-deps.json`](system-deps.json) is the only version/URL/SHA-256 registry.
+The installer always uses its pins, even when the host has another version:
+
+- ffmpeg: the [FFmpeg-Builds monthly GPL static Linux x86-64 release](https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/tag/autobuild-2026-10-31-12-59), n8.1.3, including libx264. This is the project formerly under BtbN, now redirected to FFmpeg-Builds. Monthly assets are retained for two years; refresh before October 2028.
+- rclone: [official v1.76.0](https://downloads.rclone.org/v1.76.0/), with the signed SHA256SUMS and release public key stored alongside the manifest. Each preparation verifies that signature in an isolated GPG keyring against the pinned fingerprint, then matches the archive pin against the signed entry. No keyserver or runtime checksum discovery is used; see [upstream signing](https://rclone.org/release_signing/).
+
+Each download has a 15-second connection limit, a 180-second total curl limit and
+no retry. SHA-256 is checked before extracting or executing a binary, including
+archives already present in `.ci-system-deps-cache`. The CI job starts with a cold
+archive directory; local reuse is optional. Bad cached bytes fail rather than
+triggering a different download. Only the named binary member is extracted;
+versions and the libx264 encoder are checked before publishing `bin` to `GITHUB_PATH`.
+There is no sudo/apt, alternate supplier or host-binary fallback. The Actions
+preparation step has an eight-minute limit.
+
+Owner: `Motoki0705`. Updating pins requires checking the upstream release/digest,
+verifying the rclone signature/fingerprint, replacing its signed sums if needed,
+and rerunning all real-binary cases plus installer/routing fault tests and CI.
+Do not update a checksum automatically after a mismatch. For local preparation:
+
+```bash
+bash scripts/ci_metrics/install_system_deps.sh
+export PATH="$PWD/.ci-system-deps/bin:$PATH"
+```
 
 ## Test growth and cost warnings
 

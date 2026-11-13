@@ -32,7 +32,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 def _ci_job() -> dict[str, Any]:
     workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
-    assert set(workflow["jobs"]) == {"plan", "lint", "tests", "python"}
+    assert set(workflow["jobs"]) == {"plan", "lint", "tests", "system-deps", "python"}
     return cast(dict[str, Any], workflow["jobs"]["tests"])
 
 
@@ -196,7 +196,26 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     aggregate = workflow["jobs"]["python"]
     assert aggregate["name"] == "Python"
     assert aggregate["if"] == "always()"
-    assert set(aggregate["needs"]) == {"plan", "lint", "tests"}
+    assert set(aggregate["needs"]) == {"plan", "lint", "tests", "system-deps"}
+    runtime = workflow["jobs"]["system-deps"]
+    assert runtime["needs"] == ["plan"]
+    assert any(
+        "install_system_deps.sh" in step.get("run", "") for step in runtime["steps"]
+    )
+    assert not any(
+        "install_system_deps.sh" in step.get("run", "") for step in job["steps"]
+    )
+    assert not any(
+        "apt-get" in step.get("run", "") or "--with-deps" in step.get("run", "")
+        for job in workflow["jobs"].values()
+        for step in job["steps"]
+    )
+    browser = next(
+        step
+        for step in job["steps"]
+        if step["name"] == "Prepare pinned Playwright and Chromium"
+    )
+    assert "playwright install chromium --only-shell" in browser["run"]
     planning = workflow["jobs"]["plan"]
     assert "needs" not in planning
     assert not any("uv sync" in step.get("run", "") for step in planning["steps"])
@@ -307,6 +326,58 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     ]
 
 
+def test_browser_preparation_reaches_pytest_without_ubuntu_packages(
+    tmp_path: Path,
+) -> None:
+    job = _ci_job()
+    step = next(
+        s for s in job["steps"] if s["name"] == "Prepare pinned Playwright and Chromium"
+    )
+    binary = tmp_path / "bin"
+    binary.mkdir()
+    (binary / "python3").symlink_to(sys.executable)
+    log = tmp_path / "calls.jsonl"
+    common = (
+        f"#!{sys.executable}\nimport json, sys\n"
+        f"with open({str(log)!r}, 'a') as stream: stream.write(json.dumps(sys.argv) + chr(10))\n"
+    )
+    for name in ("apt-get", "sudo", "npm"):
+        path = binary / name
+        path.write_text(
+            common
+            + (
+                "sys.exit('Ubuntu unavailable')\n"
+                if name != "npm"
+                else "assert sys.argv[1:] == ['ci', '--prefix', 'scripts/ci_metrics', '--no-audit', '--no-fund']\n"
+            )
+        )
+        path.chmod(0o755)
+    browser = tmp_path / "scripts/ci_metrics/node_modules/.bin/playwright"
+    browser.parent.mkdir(parents=True)
+    browser.write_text(
+        common + "assert sys.argv[1:] == ['install', 'chromium', '--only-shell']\n"
+    )
+    browser.chmod(0o755)
+    (tmp_path / "test_ready.py").write_text("def test_reached_pytest(): pass\n")
+    result = subprocess.run(
+        [
+            "/bin/bash",
+            "-euc",
+            step["run"]
+            + f"\n{shlex.quote(sys.executable)} -m pytest -o addopts='' -q test_ready.py",
+        ],
+        cwd=tmp_path,
+        env={**os.environ, "PATH": str(binary)},
+        capture_output=True,
+        text=True,
+        timeout=15,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 passed" in result.stdout
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    assert [Path(row[0]).name for row in calls] == ["npm", "playwright"]
+
+
 @pytest.mark.parametrize(
     "failing_test,shard_count,workers",
     [(False, 1, 1), (True, 2, 2)],
@@ -341,6 +412,12 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/integration/test_integration.py": "def test_integration(): pass\n",
         "tests/e2e/test_e2e.py": "def test_e2e(): pass\n",
         "tests/newly_added_test.py": f"def test_new(): assert {not failing_test}\n",
+        "tests/test_runtime.py": (
+            "import pytest\n"
+            "@pytest.mark.system_deps\n"
+            "def test_real_binary(): pass\n"
+            "def test_without_binary(): pass\n"
+        ),
         **{f"tests/test_extra_{i}.py": "def test_extra(): pass\n" for i in range(5)},
         "tests/test_setup_outcomes.py": (
             "import pytest\n"
@@ -401,9 +478,20 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
     job_logs = []
     monkeypatch.syspath_prepend(str(REPO_ROOT / ".agents/ops"))
     classify = importlib.import_module("ci_watch.classify")
-    for index in range(shard_count):
+    for index in range(shard_count + 1):
+        current_template = (
+            template
+            if index < shard_count
+            else next(
+                step["run"]
+                for step in yaml.safe_load(
+                    (REPO_ROOT / ".github/workflows/ci.yml").read_text()
+                )["jobs"]["system-deps"]["steps"]
+                if step["name"] == "Test"
+            )
+        )
         command = shlex.split(
-            template.replace("${{ matrix.shard }}", str(index))
+            current_template.replace("${{ matrix.shard }}", str(index))
             .replace("$CI_SHARD_COUNT", str(shard_count))
             .replace("$CI_WORKERS", str(workers))
         )
@@ -437,17 +525,27 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
                     {"endpoint": f"fixture job log {index}", "object": "fixture"},
                 )
             )
-        measured = tmp_path / f".ci-metrics/shard-{index}/tests"
+        measured = tmp_path / (
+            f".ci-metrics/shard-{index}/tests"
+            if index < shard_count
+            else ".ci-metrics/shard-system-deps/tests"
+        )
         assert (measured / "pytest.log").read_text() in output
         summary = json.loads((measured / "summary.json").read_text())
         assert summary["issues"] == []
         assert summary["successful_test_baseline"] == (completed.returncode == 0)
         assert summary["full_cpu_baseline"] is False
+        selected = json.loads((measured / "inventory.json").read_text())
+        if index == shard_count:
+            assert selected == ["tests/test_runtime.py::test_real_binary"]
+            assert summary["counts"] == {"passed": 1}
+        else:
+            assert "tests/test_runtime.py::test_real_binary" not in selected
         failures += summary["counts"].get("failed", 0)
         inventory.extend(json.loads((measured / "inventory.json").read_text()))
         results.extend(json.loads((measured / "results.json").read_text()))
         summaries.append(summary)
-    assert len(inventory) == len(set(inventory)) == (12 if failing_test else 11)
+    assert len(inventory) == len(set(inventory)) == (14 if failing_test else 13)
     assert any(
         "test_court_dataset.py::test_court_contract" in node for node in inventory
     )
@@ -496,6 +594,7 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
         "tests/e2e/test_e2e.py",
         "tests/newly_added_test.py",
         "tests/test_setup_outcomes.py",
+        "tests/test_runtime.py",
         *(f"tests/test_extra_{i}.py" for i in range(5)),
     }
 
@@ -770,87 +869,166 @@ def test_ci_measurements_are_retained_when_preparation_or_tests_fail() -> None:
 
 
 @pytest.mark.parametrize(
-    "scenario, expected",
+    "scenario, expected, reason",
     [
-        ("existing", 0),
-        ("install", 0),
-        ("update_failure", 42),
-        ("install_failure", 43),
-        ("timeout", 124),
-        ("missing_after", 127),
-        ("version_failure", 44),
+        ("download", 0, None),
+        ("cached", 0, None),
+        ("corrupt_download", 1, "SHA-256 mismatch"),
+        ("corrupt_cache", 1, "SHA-256 mismatch"),
+        ("download_failure", 42, "download unavailable"),
+        ("timeout", 28, "download timed out"),
+        ("bad_archive", 1, "preparation failed"),
+        ("version_failure", 44, "broken executable"),
+        ("missing_codec", 1, "libx264"),
+        ("signature_failure", 43, "invalid signature"),
+        ("wrong_signer", 1, "pinned signer"),
+        ("signed_pin_mismatch", 1, "differs from signed SHA256SUMS"),
     ],
 )
 def test_system_dependencies_are_verified_and_failures_are_not_hidden(
-    tmp_path: Path, scenario: str, expected: int
+    tmp_path: Path, scenario: str, expected: int, reason: str | None
 ) -> None:
+    import hashlib
+    import io
+    import tarfile
+    import zipfile
+
     binary = tmp_path / "bin"
     binary.mkdir()
+    (binary / "python3").symlink_to(sys.executable)
     log = tmp_path / "calls.jsonl"
+    manifest = json.loads(
+        (REPO_ROOT / "scripts/ci_metrics/system-deps.json").read_text()
+    )
+    archives = tmp_path / "archives"
+    archives.mkdir()
+    for row in manifest["binaries"]:
+        source = (
+            f"#!{sys.executable}\nimport sys\n"
+            + (
+                "print('broken executable', file=sys.stderr); sys.exit(44)\n"
+                if scenario == "version_failure"
+                else ""
+            )
+            + (
+                f"print({('' if scenario == 'missing_codec' else 'libx264')!r} if '-encoders' in sys.argv else 'ffmpeg version {row['version']} fixture')\n"
+                if row["name"] == "ffmpeg"
+                else f"print('rclone {row['version']}')\n"
+            )
+        ).encode()
+        archive = archives / row["url"].rsplit("/", 1)[-1]
+        if row["format"] == "tar.xz":
+            with tarfile.open(archive, "w:xz") as tar:
+                info = tarfile.TarInfo(row["member"])
+                info.size = len(source)
+                tar.addfile(info, io.BytesIO(source))
+        else:
+            with zipfile.ZipFile(archive, "w") as zipped:
+                zipped.writestr(row["member"], source)
+        if scenario == "bad_archive" and row["name"] == "ffmpeg":
+            archive.write_bytes(b"not an archive")
+        row["sha256"] = hashlib.sha256(archive.read_bytes()).hexdigest()
+    manifest["rclone_sums"] = "sums"
+    manifest["rclone_key"] = "key"
+    (tmp_path / "key").write_text("fixture key verified by fake gpg")
+    rclone = manifest["binaries"][1]
+    (tmp_path / "sums").write_text(
+        f"{rclone['sha256']}  {rclone['url'].rsplit('/', 1)[-1]}\n"
+    )
+    if scenario == "signed_pin_mismatch":
+        rclone["sha256"] = "0" * 64
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest))
+    common = (
+        "import json, os, sys, shutil\nfrom pathlib import Path\n"
+        f"scenario = {scenario!r}\n"
+        f"with open({str(log)!r}, 'a') as stream: "
+        "stream.write(json.dumps(sys.argv) + chr(10))\n"
+    )
 
     def executable(name: str, source: str) -> None:
         path = binary / name
-        path.write_text(f"#!{sys.executable}\n" + source)
+        path.write_text(f"#!{sys.executable}\n" + common + source)
         path.chmod(0o755)
 
-    executable("ffmpeg", "print('ffmpeg version fixture')\n")
-    if scenario in {"existing", "version_failure"}:
-        executable(
-            "rclone",
-            "print('rclone fixture'); raise SystemExit("
-            + ("44" if scenario == "version_failure" else "0")
-            + ")\n",
-        )
-    common = (
-        "import json, os, sys\nfrom pathlib import Path\n"
-        f"scenario = {scenario!r}\n"
-        f"with open({str(log)!r}, 'a') as stream: "
-        "stream.write(json.dumps(sys.argv) + '\\n')\n"
+    executable("sudo", "sys.exit('Ubuntu unavailable: sudo must never run')\n")
+    executable("apt-get", "sys.exit('Ubuntu unavailable: apt must never run')\n")
+    executable("ffmpeg", "sys.exit('unverified host binary must never run')\n")
+    executable("rclone", "sys.exit('unverified host binary must never run')\n")
+    executable(
+        "curl",
+        "assert sys.argv[sys.argv.index('--max-time') + 1] == '180'\n"
+        "assert sys.argv[sys.argv.index('--retry') + 1] == '0'\n"
+        "assert sys.argv[sys.argv.index('--proto-redir') + 1] == '=https'\n"
+        "if scenario == 'download_failure': print('download unavailable', file=sys.stderr); sys.exit(42)\n"
+        "if scenario == 'timeout': print('download timed out', file=sys.stderr); sys.exit(28)\n"
+        "destination = Path(sys.argv[sys.argv.index('--output') + 1])\n"
+        f"shutil.copyfile(Path({str(archives)!r}) / sys.argv[-1].rsplit('/', 1)[-1], destination)\n"
+        "if scenario == 'corrupt_download': destination.write_bytes(b'corrupt')\n",
     )
     executable(
-        "timeout",
-        common
-        + "assert sys.argv[1] == '180s'\n"
-        + "if scenario == 'timeout': raise SystemExit(124)\n"
-        + "os.execvp(sys.argv[2], sys.argv[2:])\n",
+        "gpg",
+        "assert '--no-auto-key-retrieve' in sys.argv\n"
+        "if '--decrypt' in sys.argv:\n"
+        "    if scenario == 'signature_failure': print('invalid signature', file=sys.stderr); sys.exit(43)\n"
+        f"    print('[GNUPG:] VALIDSIG {('0' * 40 if scenario == 'wrong_signer' else manifest['rclone_signer'])} 2026 fixture')\n"
+        "    shutil.copyfile(sys.argv[-1], sys.argv[sys.argv.index('--output') + 1])\n",
     )
-    installed_script = f"#!{sys.executable}\nprint(chr(82))\n"
-    executable(
-        "sudo",
-        common
-        + "assert sys.argv[1] == 'apt-get'\n"
-        + "if 'update' in sys.argv and scenario == 'update_failure': raise SystemExit(42)\n"
-        + "if 'install' in sys.argv:\n"
-        + "    assert sys.argv[-1] == 'rclone' and 'ffmpeg' not in sys.argv\n"
-        + "    if scenario == 'install_failure': raise SystemExit(43)\n"
-        + "    if scenario != 'missing_after':\n"
-        + f"        path = Path({str(binary / 'rclone')!r})\n"
-        + f"        path.write_text({installed_script!r})\n"
-        + "        path.chmod(0o755)\n",
-    )
+    cache = tmp_path / "cache"
+    if scenario in {"cached", "corrupt_cache"}:
+        shutil.copytree(archives, cache)
+        if scenario == "corrupt_cache":
+            (cache / manifest["binaries"][0]["url"].rsplit("/", 1)[-1]).write_bytes(
+                b"corrupt"
+            )
+    output = tmp_path / "installed"
+    github_path = tmp_path / "github-path"
+    workflow = yaml.safe_load((REPO_ROOT / ".github/workflows/ci.yml").read_text())
     step = next(
-        s for s in _ci_job()["steps"] if s["name"] == "Install system dependencies"
+        s
+        for s in workflow["jobs"]["system-deps"]["steps"]
+        if s["name"] == "Install pinned system dependencies"
     )
     assert step["timeout-minutes"] == 8
     completed = subprocess.run(
-        ["/bin/bash", *shlex.split(step["run"])[1:]],
+        [
+            "/bin/bash",
+            *shlex.split(step["run"])[1:],
+            "--manifest",
+            str(manifest_path),
+            "--cache",
+            str(cache),
+            "--output",
+            str(output),
+        ],
         cwd=REPO_ROOT,
-        env={**os.environ, "PATH": str(binary)},
+        env={**os.environ, "PATH": str(binary), "GITHUB_PATH": str(github_path)},
         capture_output=True,
         text=True,
         timeout=10,
     )
     assert completed.returncode == expected, completed.stdout + completed.stderr
-    calls = (
-        [json.loads(line) for line in log.read_text().splitlines()]
-        if log.exists()
-        else []
+    if reason:
+        assert reason in completed.stdout + completed.stderr
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    assert not any(
+        Path(row[0]).name in {"apt-get", "sudo", "ffmpeg", "rclone"} for row in calls
     )
-    assert bool(calls) == (scenario not in {"existing", "version_failure"})
+    if scenario in {
+        "cached",
+        "corrupt_cache",
+        "signature_failure",
+        "wrong_signer",
+        "signed_pin_mismatch",
+    }:
+        assert not any(Path(row[0]).name == "curl" for row in calls)
     if expected == 0:
-        assert "ffmpeg version fixture" in completed.stdout
-    if scenario == "update_failure":
-        assert not any("install" in row for row in calls)
+        assert github_path.read_text().strip() == str(output / "bin")
+        assert (output / "bin/ffmpeg").is_file() and (output / "bin/rclone").is_file()
+        assert "Verified rclone SHA256SUMS signature" in completed.stdout
+    else:
+        assert not github_path.exists()
+        assert not (output / "bin").exists()
 
 
 def test_cpu_dependency_group_preserves_default_gpu_environment() -> None:

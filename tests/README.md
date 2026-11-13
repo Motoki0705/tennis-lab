@@ -117,6 +117,13 @@ CI の常時実行から外す file は [`scripts/ci_metrics/lanes.json`](../scr
 項目・PR/mainの選別・監査・成功証拠は [CI レーンの正本](../scripts/ci_metrics/README.ja.md#レーン登録表と計画)を参照する。
 この文書に別の登録表や選別規則を作らない。
 
+実際のffmpeg・rcloneを実行するテストは `system_deps` markerで宣言する。
+コマンド文字列を検査するテストや、テスト自身のfake実行ファイルだけを使うテストには付けない。
+これはunit/integration/e2eとは独立した実行環境の宣言である。
+CIの実行経路・固定版の取得・全件実行とskipの監査は
+[CIレーンの正本](../scripts/ci_metrics/README.ja.md#固定したシステム実行環境)を参照する。
+新しい外部実行ファイルを加える場合も、既存のテスト設計に取得版・検証方法・担当・障害時の終了を含める。
+
 ## 配置例
 
 - `src/utils/geometry/angles.py` のような純粋ロジックは `tests/unit/utils/geometry/test_angles.py` に置く。

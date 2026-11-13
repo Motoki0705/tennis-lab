@@ -126,10 +126,9 @@ def inspect_shards(
     issues: list[str] = []
     successful = True
     directories = sorted(root.glob("*/tests"))
-    if len(directories) != count:
-        issues.append(f"expected {count} shard artifacts, found {len(directories)}")
     full_inventory: list[str] | None = None
     requested_inventory: list[str] | None = None
+    system_inventory: list[str] | None = None
     deferred: dict[str, str] = {}
     reference_lane = lane_plan
     reference_assignments = None
@@ -174,7 +173,7 @@ def inspect_shards(
                     "shard attempt is newer than aggregate attempt or aggregate attempt is invalid"
                 )
             shard = metadata["shard"]
-            if shard["count"] != count or not 0 <= shard["index"] < count:
+            if shard["count"] != count or not 0 <= shard["index"] <= count:
                 raise ValueError("unexpected shard index/count")
             if shard["index"] in indices:
                 raise ValueError("duplicate shard index")
@@ -197,7 +196,7 @@ def inspect_shards(
                     "workers disagree on the full CPU inventory/assignment"
                 )
             if (
-                plan["schema_version"] not in {1, 2}
+                plan["schema_version"] not in {1, 2, 3}
                 or plan["index"] != shard["index"]
                 or plan["count"] != count
                 or plan["profile_sha256"] != shard["profile_sha256"]
@@ -207,7 +206,7 @@ def inspect_shards(
                 schema = plan["schema_version"]
             if plan["schema_version"] != schema:
                 raise ValueError("mixed legacy and lane-aware shard schemas")
-            if schema == 2:
+            if schema in {2, 3}:
                 observed_lane = read_plan(directory / "lane-plan.json")
                 observed_attempt = parse_attempt(observed_lane.get("attempt"))
                 if (
@@ -227,6 +226,11 @@ def inspect_shards(
                 plan_attempt = observed_lane["attempt"]
                 all_ids = plan["universe_nodeids"]
                 requested_ids = plan["requested_nodeids"]
+                if schema == 3:
+                    if system_inventory is None:
+                        system_inventory = plan["system_deps_nodeids"]
+                    if plan["system_deps_nodeids"] != system_inventory:
+                        raise ValueError("shards disagree on system dependency markers")
                 if reference_assignments is None:
                     reference_assignments = plan["assignments"]
                     deferred = plan["deferred"]
@@ -247,12 +251,18 @@ def inspect_shards(
             selected = plan["selected_nodeids"]
             if not all_ids or len(set(all_ids)) != len(all_ids):
                 raise ValueError("invalid full CPU inventory")
-            expected_selection = [
-                nodeid
-                for nodeid in requested_ids
-                if plan["assignments"][group_key(nodeid, plan["split_files"])]
-                == shard["index"]
-            ]
+            system = set(system_inventory or [])
+            expected_selection = (
+                system_inventory
+                if schema == 3 and shard["index"] == count
+                else [
+                    nodeid
+                    for nodeid in requested_ids
+                    if nodeid not in system
+                    and plan["assignments"][group_key(nodeid, plan["split_files"])]
+                    == shard["index"]
+                ]
+            )
             if selected != expected_selection:
                 raise ValueError(
                     "selected inventory does not match the file assignment"
@@ -281,6 +291,14 @@ def inspect_shards(
             successful &= summary["successful_test_baseline"] is True
             if inventory != selected:
                 raise ValueError("executed inventory differs from the shard plan")
+            if (
+                schema == 3
+                and shard["index"] == count
+                and (not selected or set(summary["counts"]) - {"passed", "failed"})
+            ):
+                raise ValueError(
+                    "every system dependency test must execute (skip/xfail forbidden)"
+                )
             executed.extend(inventory)
             outcomes.update(summary["counts"])
             case_outcomes.update(
@@ -291,7 +309,12 @@ def inspect_shards(
             )
         except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
             issues.append(f"{directory.parent.name}: {error}")
-    if sorted(indices) != list(range(count)):
+    expected_count = count + int(schema == 3)
+    if len(directories) != expected_count:
+        issues.append(
+            f"expected {expected_count} shard artifacts, found {len(directories)}"
+        )
+    if sorted(indices) != list(range(expected_count)):
         issues.append("missing/duplicate shard indices")
     if requested_inventory is None or Counter(executed) != Counter(requested_inventory):
         issues.append(
@@ -320,7 +343,7 @@ def inspect_shards(
                 and sum(measured.values()) == len(nodes),
             }
     return {
-        "schema_version": 2 if schema == 2 else 1,
+        "schema_version": schema or 1,
         "observations_complete": not issues,
         "successful_test_observations": not issues and successful,
         "issues": issues,
@@ -330,6 +353,17 @@ def inspect_shards(
         "plan_attempt": plan_attempt,
         "shard_attempts": shard_attempts,
         "shard_count": count,
+        "system_deps": {
+            "nodeids": system_inventory or [],
+            "counts": dict(
+                Counter(
+                    case_outcomes[n]
+                    for n in (system_inventory or [])
+                    if n in case_outcomes
+                )
+            ),
+            "required": schema == 3,
+        },
         "universe_count": len(full_inventory or []),
         "requested_count": len(requested_inventory or []),
         "deferred_count": len(deferred),
@@ -370,10 +404,19 @@ def verify_shards(
     )
     if not result["successful_test_observations"]:
         result["issues"].append("incomplete/failed test observations")
-    if set(needs) != {"plan", "lint", "tests"} or any(
+    expected_jobs = {"plan", "lint", "tests"}
+    if result["schema_version"] == 3 or "system-deps" in needs:
+        expected_jobs.add("system-deps")
+        if result["schema_version"] != 3:
+            result["issues"].append(
+                "required system dependency coverage is unavailable"
+            )
+    if set(needs) != expected_jobs or any(
         row.get("result") != "success" for row in needs.values()
     ):
-        result["issues"].append("plan, lint and every CPU test job must succeed")
+        result["issues"].append(
+            "plan, lint and every CPU/runtime test job must succeed"
+        )
     result["success"] = not result["issues"]
     result["full_cpu_success"] &= result["success"]
     result["scoped_cpu_success"] &= result["success"]
