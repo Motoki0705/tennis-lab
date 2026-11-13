@@ -1,0 +1,12 @@
+{
+  "schema": "verified_artifact_snapshot.v1",
+  "generation": "completed-00006000-44ebe9ee",
+  "remote": "gdrive:tennis_lab/outputs/ball_detection/train/query_controls/s42-20261111-main/desktop-attempts/20261112-a1/production/length-s1-T64/completed-00006000-44ebe9ee",
+  "manifest_sha256": "93caaadb6efa1a9eb9ad2c8e595b85f74291ce308c0a3c71c409974f63614001",
+  "manifest_md5": "45b5226bbaccd096cff2ee378039a41e",
+  "files": 11,
+  "size_bytes": 225462654,
+  "marker_id": "1Yu-GmUgdxXQ0X9d363oOn0ihpuicPtvE",
+  "seconds": 70.36928057700061,
+  "status": "verified"
+}

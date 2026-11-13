@@ -1,0 +1,9 @@
+{
+  "resume": true,
+  "parent_update": 5500,
+  "parent_sample_position": 15500,
+  "checkpoint_sha256": "84e2c8c8eee7c4b191a134403843c2ed6c059dbc2d4fff6a4ca10a259fd92d88",
+  "model_exact": true,
+  "adamw_exact": true,
+  "rng_exact_before_first_batch": true
+}
