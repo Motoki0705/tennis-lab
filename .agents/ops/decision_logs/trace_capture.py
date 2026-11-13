@@ -247,6 +247,6 @@ def capture_termination(
             summary="Parent lifecycle and publication reconciliation observed; acceptance is recorded separately",
             observation=observation,
             evidence=evidence,
-            key="termination:" + sha(json_bytes(value)),
+            key="termination:" + sha(json_bytes(observation)),
             at=value["observed_at"],
         )

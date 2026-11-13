@@ -170,13 +170,31 @@ def test_handoff_and_unverified_acceptance_are_not_completed_by_runtime_end(
     }
     path = tmp_path / "termination.json"
     worker_journal.atomic(path, receipt)
-    trace.capture_termination(parent, path)
+    first = trace.capture_termination(parent, path)
     public = public_files(parent.journal)
     page = navigation.generate(public)[
         ".agents/logs/parents/parent-1/README.md"
     ].decode()
     assert "引継ぎ受領" in page and "unverified" in page
     assert "completed" not in page
+    # Acceptance evidence may become available after the lifecycle receipt.
+    # Re-reading that same receipt must preserve the newly explicit judgment.
+    second = trace.capture_termination(
+        parent,
+        path,
+        acceptance={"state": "completed", "evidence": [evidence()]},
+    )
+    assert second != first
+    records = navigation.records(public_files(parent.journal))
+    assert [
+        row["data"]["observation"]["acceptance"]["state"]
+        for row in records
+        if row["kind"] == "result"
+    ] == ["unverified", "completed"]
+    latest = navigation.generate(public_files(parent.journal))[
+        ".agents/logs/parents/parent-1/README.md"
+    ].decode()
+    assert "最後の親の受入（明示記録時点）: completed" in latest
 
 
 def test_historical_import_is_explicit_idempotent_and_namespace_bounded(

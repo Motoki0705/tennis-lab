@@ -411,6 +411,8 @@ for both. Receipt location and release/handoff/supervisor wiring remain a later 
 Public actor/resume text must pass the existing guard; private IDs/paths are not labels.
 Acceptance defaults to unverified, independently of assignment end. Views link
 the canonical acceptance/end evidence and show remaining work, actor and resume destination.
+Replaying an identical observation is idempotent; later explicit acceptance evidence
+appends a new observation even when the private lifecycle receipt is unchanged.
 An uninspected historical remaining inventory is unknown, not an empty success.
 
 [historical_observations.json](historical_observations.json) contains bounded,

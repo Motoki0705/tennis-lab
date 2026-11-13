@@ -335,6 +335,7 @@ initial/resume为键。清单是经过验证的worker三个文件与event轮次�
 准确保存位置与release/handoff/supervisor配线由后续集成确定。
 公开担当与恢复指令也通过Guard，不把私有ID或路径作为显示名称。
 验收默认未确认，与担当结束分开；显示原始验收/结束依据、剩余发布、担当和恢复入口。
+相同观察的重放保持幂等；即使结束receipt不变，后到的明确验收依据也追加为新观察。
 历史导入时未核对的残项标为未确认，不把空数组当作发布完成。
 
 [historical_observations.json](historical_observations.json) 仅包含已同意事例的来源观察：
