@@ -119,6 +119,7 @@ def test_recorded_completion_and_failed_proposal_publication_are_independent(
         status["completion"]["acceptance"] == "completed"
         and status["improvements"][0]["publication"] == "outcome_unknown"
     )
+    assert status["unpublished_improvements"] == ["I-1-next"]
     p.cli("improvement-propose")
     status = json.loads(p.cli("status").stdout)
     assert (

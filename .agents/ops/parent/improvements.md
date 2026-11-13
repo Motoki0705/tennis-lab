@@ -45,7 +45,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement --ke
 ## 提案Issueへの列挙
 
 親が終了時に候補を整理・記録した後、`improvement-propose` を明示実行する。
-記録や `release --ended` だけでは自動起票しない。`release --ended` と完了した `workflow-report` の結果の `unpublished_improvements` で未掲載の候補を確認できる。
+記録や `release --ended` だけでは自動起票しない。`release --ended` の結果の `unpublished_improvements` と `status.improvements[].unpublished` で未掲載の候補を確認できる。自律終了後もstatusから参照できる。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement-propose
