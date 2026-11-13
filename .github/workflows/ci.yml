@@ -175,7 +175,7 @@ jobs:
           PY
 
       - name: Install system dependencies
-        timeout-minutes: 8
+        timeout-minutes: 10
         run: bash scripts/ci_metrics/install_system_deps.sh
 
       - name: Prepare pinned upstream DINO CPU losses
