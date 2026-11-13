@@ -10,6 +10,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+import torch
 
 BUNDLE = Path("knowledge/runs/run-ball-arch-desktop-20261113")
 GIB = 1024**3
@@ -64,13 +65,10 @@ def test_preflight_refuses_low_d_space_before_cuda_calls(guard, monkeypatch, tmp
         calls.append("device")
         return 1
 
-    cuda = SimpleNamespace(
-        device_count=device_count,
-        get_device_name=lambda: guard.GPU,
-        set_per_process_memory_fraction=lambda fraction: calls.append(fraction),
-        get_device_properties=lambda _: SimpleNamespace(total_memory=16 * GIB),
-    )
-    monkeypatch.setitem(sys.modules, "torch", SimpleNamespace(cuda=cuda))
+    monkeypatch.setattr(torch.cuda, "device_count", device_count)
+    monkeypatch.setattr(torch.cuda, "get_device_name", lambda: guard.GPU)
+    monkeypatch.setattr(torch.cuda, "set_per_process_memory_fraction", lambda fraction: calls.append(fraction))
+    monkeypatch.setattr(torch.cuda, "get_device_properties", lambda _: SimpleNamespace(total_memory=16 * GIB))
     monkeypatch.setenv("TENNIS_RUN_ID", "owned-job")
     monkeypatch.setenv("TRAINING_QUEUE_DIR", str(tmp_path / ".training_queue"))
     monkeypatch.setenv("TENNIS_SOURCE_COMMIT", "pushed")
