@@ -38,6 +38,12 @@ class DispatchStore(Store):
             )
 
     @contextmanager
+    def snapshot(self) -> Iterator[Store]:
+        with super().snapshot():
+            self._require_registry()
+            yield self
+
+    @contextmanager
     def locked(self) -> Iterator[Store]:
         with super().locked():
             self._require_registry()

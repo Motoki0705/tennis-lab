@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from lib.agent_events import runtime_errors_failed
+
 from . import journal, schema
 from .journal import PublicationError, require
 from .safety import Guard
@@ -261,6 +263,7 @@ def receive(path: Path, proof: dict[str, Any]) -> dict[str, Any]:
             if (
                 record.get("result") != "completed"
                 or record.get("turn_end_reason") != "completed"
+                or runtime_errors_failed(record)
             ):
                 journal.fail(path, row, "worker_failed", state="worker_failed")
                 return journal.view(row)

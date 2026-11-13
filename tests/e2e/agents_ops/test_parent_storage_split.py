@@ -223,3 +223,24 @@ def test_new_transaction_never_reuses_old_github_facts(
         assert gh.get("user") == {"revision": 1}
     with store.locked():
         assert gh.get("user") == {"revision": 2}
+
+
+@pytest.mark.parametrize("read_only_command", [False, True])
+def test_unbound_reader_observes_changes_unless_a_single_cli_opts_into_caching(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, read_only_command: bool
+) -> None:
+    module = importlib.import_module("parent.github")
+    gh = module.GitHub("o/r")
+    gh.parent = 1
+    gh._read_only_cache = read_only_command
+    remote = {"revision": 1}
+
+    def fetch(self: object, endpoint: str, **kwargs: object) -> object:
+        return dict(remote)
+
+    monkeypatch.setattr(module.IssueGitHub, "get", fetch)
+    assert gh.get("repos/o/r/issues/1") == {"revision": 1}
+    remote["revision"] = 2
+    assert gh.get("repos/o/r/issues/1") == {"revision": 1 if read_only_command else 2}
+    with gh.fresh_reads():
+        assert gh.get("repos/o/r/issues/1") == {"revision": 2}

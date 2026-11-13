@@ -50,9 +50,10 @@ def publish(
             "error": "journal_unavailable",
             "saved_to_main": False,
         }
-    from decision_logs.observations import worker_log
+    if not dry_run:
+        from decision_logs.observations import worker_log
 
-    worker_log(path, result, retry=retry)
+        worker_log(path, result, retry=retry)
     return result
 
 
@@ -150,8 +151,10 @@ def _command(
 ) -> dict[str, Any]:
     data = store.read_data()
     owner = data.get("parents", {}).get(f"{gh.repo.casefold()}#{parent}")
+    if not publish_logs or dry_run:
+        owner = owner or {}
     require(isinstance(owner, dict), "log_owner_unavailable")
-    if publish_logs:
+    if publish_logs and not dry_run:
         # Historical publication does not require the issue to remain open, or
         # re-authorize an implementation. The saved capture is the authority.
         require(owner.get("session") == identity, "log_owner_mismatch")
@@ -224,9 +227,6 @@ def _command(
             results.append(publish(path, dry_run=dry_run, retry=retry))
         else:
             result = journal.view(row)
-            from decision_logs.observations import worker_log
-
-            worker_log(path, result, entrypoint="worker_logs.status")
             results.append(result)
     phase = owner.get("tasks", {}).get(str(child), {}).get("preflight", {})
     legacy = [

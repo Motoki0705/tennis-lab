@@ -263,6 +263,12 @@ issue关闭后的历史发布也检查同一身份，不授予新的实现权限
 未发布的记录固定到该父issue的一个批次。blocked仍在状态中显示，独立安全的记录可以发布。
 先核对未完成批次，再创建下一批；批次进行中新到达的捕获，在该批merge后的下一次显式调用中处理。
 
+release、handoff和自律父级结束时，也会在worker日志与结束结果捕获后调用发布。
+固定本次捕获边界，最多处理现有批次和一个剩余批次。发布未完成不会撤销负责状态变更，
+剩余工作、负责方和恢复命令写入[结束checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint)。
+mergeable为null时，完成全部检查后仍发送固定HEAD的merge请求；false和HTTP拒绝保留为失败。
+status和dry-run不创建捕获或锁。
+
 公开目录保留现有worker文件：
 
 ```text

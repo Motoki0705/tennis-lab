@@ -682,7 +682,7 @@ def refresh_worker_plan(
 def worker_command(
     args: Any, gh: GitHub, parent: int, identity: str, store: Store
 ) -> dict[str, Any]:
-    with store.locked():
+    with store.snapshot() if args.command == "inspect-worker" else store.locked():
         session = ParentSession(gh, store, parent, identity)
         if args.command == "inspect-worker":
             return inspect_worker(session, args.child)

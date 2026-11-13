@@ -225,15 +225,27 @@ class ParentSession:
         return {"parent": self.parent, "display_summary": row["display_summary"]}
 
     def status(self) -> dict[str, Any]:
+        from worker_logs.reconciliation import remaining_publications
+
         from .notifications import publication_status
 
         row = self.row
         _, items = self.work_items()
         history = self.history()
         run_paths = self.run_paths()
+        try:
+            publications = remaining_publications(
+                self.gh.repo, self.parent, state_dir=self.store.directory
+            )
+            inventory_error = None
+        except (ValueError, OSError, KeyError, TypeError):
+            publications = None
+            inventory_error = "journal_unavailable"
         return {
             "repo": self.gh.repo,
             "parent": self.parent,
+            "remaining_publications": publications,
+            "publication_inventory_error": inventory_error,
             "assignment": row.get("status", "unassigned"),
             "display_summary": row.get("display_summary"),
             "current_session_is_owner": bool(row and row["session"] == self.session),

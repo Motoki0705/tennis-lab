@@ -27,6 +27,7 @@ from issues import (
     render_parent_body,
     render_standalone_body,
 )
+from lib.agent_events import runtime_errors_failed
 from parent.github import GitHub
 from parent.history import from_projection
 from parent.policy import (
@@ -250,7 +251,7 @@ def execute(root: Path, run_dir: Path) -> Any:
         or settings.get("profile") is not None
         or settings.get("overrides") != {}
         or selected != settings.get("defaults")
-        or runtime.get("runtime_errors")
+        or runtime_errors_failed(evidence)
         or evidence.get("cleanup_complete") is not True
         or any(
             object_value(effective.get(k)).get("status") != "observed"

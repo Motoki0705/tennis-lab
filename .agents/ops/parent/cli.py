@@ -22,6 +22,7 @@ from . import metrics
 from .agreement_comments import record_ignored
 from .execution import execution_input, record_autonomous, validate_candidate
 from .github import GitHub
+from .log_publication import BEFORE_WORKER, Continuation, read_only
 from .policy import issue_number, nonempty, number, object_value
 from .proposals import receive
 from .session import ParentSession
@@ -80,7 +81,15 @@ def parser() -> argparse.ArgumentParser:
     publication.add_argument("--retry", action="store_true")
     for name in ("worker-log-status", "publish-worker-log"):
         log = commands.add_parser(name)
-        log.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
+        if name == "publish-worker-log":
+            targets = log.add_mutually_exclusive_group(required=True)
+            targets.add_argument("--child", type=int, help=WORK_ITEM_HELP)
+            targets.add_argument("--all-parents", action="store_true")
+            targets.add_argument("--adopt-orphan-prs", action="store_true")
+            log.add_argument("--source-parent", type=int, action="append")
+            log.add_argument("--pr", type=int, nargs="+")
+        else:
+            log.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         log.add_argument("--turn", type=int)
         log.add_argument("--delegation-key")
         if name == "publish-worker-log":
@@ -281,7 +290,21 @@ def parser() -> argparse.ArgumentParser:
 def _main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     capture_token = None
+    continuation = None
     try:
+        if args.command == "publish-worker-log":
+            if (args.source_parent and not args.all_parents) or (
+                args.pr and not args.adopt_orphan_prs
+            ):
+                raise ValueError(
+                    "--source-parent requires --all-parents; --pr requires --adopt-orphan-prs"
+                )
+            if (args.all_parents or args.adopt_orphan_prs) and (
+                args.turn is not None or args.delegation_key is not None or args.retry
+            ):
+                raise ValueError(
+                    "bulk recovery does not accept --turn, --delegation-key or --retry"
+                )
         if args.command == "state-migrate":
             with Store(args.state_dir or state_directory()).locked() as migration_store:
                 migration_store.migrate()
@@ -299,7 +322,11 @@ def _main(argv: list[str] | None = None) -> int:
         # Missing identity is a configuration error before any network/state write.
         identity = (
             None
-            if args.command
+            if (
+                args.command in {"publish-worker-log", "publish-decision-log"}
+                and getattr(args, "dry_run", False)
+            )
+            or args.command
             in {
                 "status",
                 "basis-input",
@@ -324,14 +351,36 @@ def _main(argv: list[str] | None = None) -> int:
             store = Store(args.state_dir)
         gh = GitHub(
             args.repo,
-            store=None
-            if args.command in {"wait-supplement", "review-inspect"}
-            else store,
+            store=None if read_only(args) else store,
         )
+        # Inspection and waiting have always used a fresh, unbound reader.
+        # Other read-only commands keep their former per-transaction reuse.
+        gh._read_only_cache = read_only(args) and args.command not in {
+            "review-inspect",
+            "wait-supplement",
+        }
         parent = issue_number(args.parent, gh.repo)
+        continuation = Continuation(args, store, gh.repo, parent, identity)
+        if args.command == "publish-worker-log" and (
+            args.all_parents or args.adopt_orphan_prs
+        ):
+            from worker_logs.reconciliation import bulk_command
+
+            value = bulk_command(
+                gh.repo, parent, identity, store=store, args=args, root=Path.cwd()
+            )
+            code = (
+                2
+                if value.get("error") or any(r.get("error") for r in value["logs"])
+                else 0
+            )
+            continuation.recovery_visits(value)
+            value = continuation.complete(args, value, exit_code=code)
+            print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+            return code
         if args.command == "publish-decision-log":
-            from decision_logs.journal import Journal
             from decision_logs.publication import Publisher
+            from worker_logs.reconciliation import decision_journal
 
             # Publication bookkeeping never enters the capture adapter: an
             # otherwise successful publication must not create another batch.
@@ -340,13 +389,15 @@ def _main(argv: list[str] | None = None) -> int:
                 .get("parents", {})
                 .get(f"{gh.repo.casefold()}#{parent}", {})
             )
-            if owner.get("session") != identity:
+            if owner.get("session") != identity and not args.dry_run:
                 raise ValueError("decision publication requires the assigned parent")
             value = Publisher(
-                Path.cwd(), Journal(store.directory, gh.repo, parent)
+                Path.cwd(), decision_journal(gh.repo, parent, state_dir=store.directory)
             ).publish(dry_run=args.dry_run, retry=args.retry)
+            code = 2 if value["error"] or value["blocked"] else 0
+            value = continuation.complete(args, value, exit_code=code)
             print(json.dumps(value, ensure_ascii=False, sort_keys=True))
-            return 2 if value["error"] or value["blocked"] else 0
+            return code
         if args.command == "review-inspect":
             import importlib
 
@@ -383,16 +434,19 @@ def _main(argv: list[str] | None = None) -> int:
                 parent,
                 retry=args.command == "retry-decision-capture",
             )
+            continuation.sweep()
             print(json.dumps(value, ensure_ascii=False, sort_keys=True))
             return 0 if value["status"] == "captured" else 2
-        capture_source = True
+        if args.command in BEFORE_WORKER:
+            continuation.sweep()
+        capture_source = not read_only(args)
         if args.command in {"improvement", "improvement-publish"}:
             owner = (
                 store.read_data()
                 .get("parents", {})
                 .get(f"{gh.repo.casefold()}#{parent}", {})
             )
-            capture_source = (
+            capture_source = capture_source and (
                 owner.get("status") == "active" and owner.get("session") == identity
             )
         capture_token = CURRENT.set(
@@ -421,7 +475,7 @@ def _main(argv: list[str] | None = None) -> int:
                 or any(r.get("error") for r in log_result["logs"])
                 else 0
             )
-            log_result = decision_capture.complete(args, log_result, exit_code=code)
+            log_result = continuation.complete(args, log_result, exit_code=code)
             print(json.dumps(log_result, ensure_ascii=False, sort_keys=True))
             return code
         if args.command == "wait-supplement":
@@ -457,25 +511,44 @@ def _main(argv: list[str] | None = None) -> int:
                 if args.restart_evidence_file
                 else None,
             )
-            worker_result = decision_capture.complete(
-                args, worker_result, exit_code=code
-            )
+            worker_result = continuation.complete(args, worker_result, exit_code=code)
             print(
                 json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
             )
             return code
+        if args.command in workers:
+            from .development import worker_command
+
+            with (
+                nullcontext()
+                if read_only(args)
+                else store.operation(f"{gh.repo.casefold()}#{parent}")
+            ):
+                worker_result = worker_command(
+                    args, gh, parent, nonempty(identity, "parent identity"), store
+                )
+            worker_result = continuation.complete(args, worker_result)
+            print(
+                json.dumps(worker_result, ensure_ascii=False, indent=2, sort_keys=True)
+            )
+            return 0
         operation = (
             nullcontext()
-            if args.command
-            in {"status", "reconcile", "basis-input", "basis-check", "inspect-worker"}
+            if read_only(args) or args.command == "reconcile"
             else store.operation(f"{gh.repo.casefold()}#{parent}")
         )
         project_operation = (
             store.operation(f"project:{args.owner.casefold()}#{args.project}")
-            if args.command in {"project-setup", "project-sync"}
+            if args.command in {"project-setup", "project-sync"} and not read_only(args)
             else nullcontext()
         )
-        transaction = nullcontext() if args.command in workers else store.locked()
+        transaction = (
+            nullcontext()
+            if args.command in workers
+            else store.snapshot()
+            if read_only(args)
+            else store.locked()
+        )
         from .improvements import lock_key
 
         improvement_operation = (
@@ -485,19 +558,6 @@ def _main(argv: list[str] | None = None) -> int:
             else nullcontext()
         )
         with improvement_operation, operation, project_operation, transaction:
-            if args.command in workers:
-                from .development import worker_command
-
-                worker_result = worker_command(
-                    args, gh, parent, nonempty(identity, "parent identity"), store
-                )
-                worker_result = decision_capture.complete(args, worker_result)
-                print(
-                    json.dumps(
-                        worker_result, ensure_ascii=False, indent=2, sort_keys=True
-                    )
-                )
-                return 0
             session = ParentSession(gh, store, parent, identity)
             command = args.command
             result: Any
@@ -832,13 +892,17 @@ def _main(argv: list[str] | None = None) -> int:
                 if delivery["status"] == "error":
                     integration_failed = True
                 result = {**result, "board_delivery": delivery}
-        result = decision_capture.complete(
+        result = continuation.complete(
             args, result, exit_code=1 if integration_failed else 0
         )
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 1 if integration_failed else 0
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         decision_capture.failed(exc)
+        if continuation is not None:
+            observed_exit = continuation.failed()
+            if observed_exit is not None:
+                print(json.dumps(observed_exit, ensure_ascii=False, sort_keys=True))
         # Do not echo arbitrary gh payloads/registry contents containing local IDs.
         print(f"parent-session: {exc}", file=sys.stderr)
         return 2

@@ -10,7 +10,7 @@ import shutil
 import signal
 import subprocess
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Any, cast
 
@@ -731,7 +731,7 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
 
     def bound_github(repo: str, *, store: Any) -> Any:
         def get(endpoint: str, *, missing_parent: bool = False) -> object:
-            with store.unlocked_read():
+            with store.unlocked_read() if store is not None else nullcontext():
                 return original_get(endpoint, missing_parent=missing_parent)
 
         monkeypatch.setattr(d.h.gh, "get", get)
@@ -775,9 +775,9 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     )
     result = json.loads(capsys.readouterr().out)
     assert result["result"] == "reserved"
-    assert operations == ["o/r#1"]
+    assert operations == ["o/r#1"] * 3
     assert cli.main([*common, "inspect-worker", "--child", "1"]) == 0
-    assert operations == ["o/r#1"]
+    assert operations == ["o/r#1"] * 3
     result = json.loads(capsys.readouterr().out)
     assert result["termination_confirmed"] is False and result["task_success"] is None
     spec = d.h.root / "stop.json"
@@ -796,7 +796,7 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
         )
     )
     assert cli.main([*common, "stop-worker", "--child", "1", "--spec", str(spec)]) == 0
-    assert operations == ["o/r#1", "o/r#1"]
+    assert operations == ["o/r#1"] * 6
     assert json.loads(capsys.readouterr().out)["result"] == "stop_requested"
     assert d.row()["tasks"]["1"]["worker_ended"]
     assert not (d.h.root / "unused-state").exists()

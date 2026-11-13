@@ -155,6 +155,21 @@ def main() -> None:
     if scenario == "exit_error":
         print("configured model unavailable", file=sys.stderr)
         sys.exit(7)
+    if (
+        scenario
+        in {"reconnect", "reconnect_unfinished", "fatal_completed", "reconnect_late"}
+        and scenario != "reconnect_late"
+    ):
+        emit(
+            {
+                "type": "error",
+                "message": "authentication failed"
+                if scenario == "fatal_completed"
+                else "Reconnecting... 2/5 (workspace routing discovery timed out)",
+            }
+        )
+        if scenario == "reconnect_unfinished":
+            return
     structured = "--json-schema" in args or "--output-schema" in args
     payload = {"message": prompt.strip()}
     if scenario == "schema_mismatch":
@@ -184,6 +199,13 @@ def main() -> None:
                         "input_tokens": -1 if scenario == "invalid_usage" else 10,
                         "output_tokens": 5,
                     },
+                }
+            )
+        if scenario == "reconnect_late":
+            emit(
+                {
+                    "type": "error",
+                    "message": "Reconnecting... 2/5 (workspace routing discovery timed out)",
                 }
             )
     else:

@@ -640,6 +640,16 @@ stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, 
 | `descendants_reaped` | 1 | CLI終了後も残ったtoolsを回収。タスク完了にはしない |
 | `cleanup_failed` | 1 | プロセス回収未確認。supervisorが照合するまで再開しない |
 
+Codexの `error` は原文を `runtime_errors` と `events.jsonl` に保持する。
+既知の `Reconnecting... n/m (workspace routing discovery timed out)`（正整数でn<=m）だけは、
+同じrunの開始後、最終応答と唯一のturn.completedより前にあり、全errorがこの形式の場合に回復候補とする。
+CLI終了値0、finalファイルとの一致、session/turnと実効設定、cleanup完了、残存プロセスなし、
+強制回収された子孫なしを従来どおり確認した後だけcompletedになる。
+未知error・turn.failed・完了後のerror・最終文不一致・未完了・停止・回収失敗は成功へ変えない。
+`lib.agent_events.runtime_errors_failed(record)` が保存イベント・final・終了証拠を再照合する共通分類関数で、
+worker公開・dispatcher判定・ops-reportも使う。非空のruntime_errorsだけで失敗へ戻さず、
+completedラベルだけでエラーを無視しない。既存のfailed resultを遡及変更する機能ではない。
+
 設定・入力・再開契約の事前拒否は終了値2でCLIを起動しない。run dir作成前の拒否は
 result.jsonを生成しないので、呼出元は終了値とJSONの有無を両方確認する。
 

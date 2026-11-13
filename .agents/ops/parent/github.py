@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 
 class GitHub(IssueGitHub):
+    _read_only_cache = False
+
     def __init__(self, repo: str | None, *, store: Store | None = None) -> None:
         super().__init__(repo)
         self._store = store
@@ -46,7 +48,7 @@ class GitHub(IssueGitHub):
             self._cache_epoch = self._store.transaction_epoch
         key = (endpoint, missing_parent)
         if (
-            self._store is not None
+            (self._store is not None or self._read_only_cache)
             and self.parent is not None
             and not self._fresh
             and key in self._cache

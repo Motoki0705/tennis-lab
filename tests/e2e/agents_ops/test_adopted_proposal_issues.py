@@ -578,6 +578,20 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
     )
 
 
+def test_organizer_accepts_completed_run_with_verified_reconnect_notice(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_ORGANIZATION_SCENARIO", "reconnect")
+    h = harness
+    assert not h.run().errors
+    record = json.loads(
+        h.tmp.joinpath("run-1/organization-runtime/result.json").read_text()
+    )
+    assert record["runtime"]["runtime_errors"] and record["result"] == "completed"
+    assert len(h.calls()) == 1
+
+
 def test_multiple_proposals_share_parent_and_keep_distinct_index_anchors(
     harness: Harness,
 ) -> None:

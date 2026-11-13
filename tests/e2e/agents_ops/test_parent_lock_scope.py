@@ -158,7 +158,9 @@ def test_github_reads_do_not_hold_registry_lock(
     instrument(p)
     result, elapsed = traced_cli(p, command, extra={"PARENT_GET_DELAY": "0.05"})
     assert result.returncode == 0, result.stderr + result.stdout
-    spans = intervals(p)
+    spans = [] if command == "status" else intervals(p)
+    if command == "status":
+        assert not Path(p.env["PARENT_LOCK_TRACE"]).exists()
     held_seconds = sum(end - start for start, end in spans)
     gets = rows(p.env["PARENT_GET_TRACE"])
     (p.root / "measurement.json").write_text(

@@ -39,7 +39,7 @@ def test_owner_note_is_idempotent_and_preserves_state(
         if phase == "checking":
             p.cli("checking")
     policy = importlib.import_module("parent.policy")
-    before = registry(p).read_bytes(), p.cli("status").stdout
+    before = registry(p).read_bytes(), json.loads(p.cli("status").stdout)
     inputs = p.cli("basis-input").stdout
     text = "## 進捗\n\n検証を完了した。次は依存先の結果を確認する。"
     result = p.cli("note", "--body-file", p.note("\n" + text + "\n"))
@@ -62,7 +62,16 @@ def test_owner_note_is_idempotent_and_preserves_state(
     state = p.state()
     assert p.cli("note", "--body-file", p.note(text)).stdout == result.stdout
     assert p.state() == state
-    assert (registry(p).read_bytes(), p.cli("status").stdout) == before
+    after = json.loads(p.cli("status").stdout)
+    # Capturing a note adds unpublished decision observations. Every existing
+    # workflow fact remains unchanged; status itself still writes nothing.
+    inventory = after.pop("remaining_publications")
+    prior_inventory = before[1].pop("remaining_publications")
+    assert inventory and inventory[0]["kind"] == "decision_log"
+    assert inventory[0]["unpublished_count"] > (
+        prior_inventory[0]["unpublished_count"] if prior_inventory else 0
+    )
+    assert (registry(p).read_bytes(), after) == before
     assert p.cli("basis-input").stdout == inputs
 
 

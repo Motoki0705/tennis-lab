@@ -1212,6 +1212,82 @@ def test_parent_completion_does_not_free_unconfirmed_child_reservation(
     assert d.control.assign() == []
 
 
+def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_locks(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fixture_runtime(d, monkeypatch)
+    d.prepare()
+    d.control.assign()
+    d.accepted()
+    row = d.row()
+    job = d.job(row)
+    d.runtime(job, state="completed")
+    response = json.loads((Path(job["directory"]) / "runtime/final.md").read_text())
+    with d.control.store.locked():
+        current = d.control.store.parents["o/r#1"]
+        auth = d.mod.authorization(d.control._session("o/r#1", current))
+        current["completion"] = {"state": "completed", "finish_sha256": "f" * 64}
+        current["development_result"] = {
+            "completion_receipt": {
+                "job": job["id"],
+                "generation": current["generation"],
+                "authorization": auth,
+                "response_sha256": importlib.import_module("parent.policy").digest(
+                    response
+                ),
+                "finish_sha256": "f" * 64,
+            }
+        }
+        d.control.store.save()
+    lifecycle = importlib.import_module("worker_logs.lifecycle")
+    reconciliation = importlib.import_module("worker_logs.reconciliation")
+    calls = []
+
+    def workers(*args: Any, **kwargs: Any) -> list:
+        assert d.control.store._lock is None
+        assert d.control.store.read_data()["parents"]["o/r#1"]["status"] == "ended"
+        calls.append("workers")
+        return []
+
+    def decisions(*args: Any, **kwargs: Any) -> dict:
+        assert d.control.store._lock is None and calls == ["workers"]
+        log = reconciliation.decision_journal(
+            "o/r", 1, state_dir=d.control.store.directory
+        )
+        assert any(e["key"] == "supervisor-ended:1" for e in log.read()["entries"])
+        calls.append("decisions")
+        return {"error": "github_failed"}
+
+    monkeypatch.setattr(lifecycle, "continue_workers", workers)
+    monkeypatch.setattr(lifecycle, "publish_decisions", decisions)
+    d.control.reconcile()
+    ended = d.row()
+    checkpoint = ended["publication_exit"]
+    assert ended["status"] == "ended" and ended["dispatch"]["phase"] == "completed"
+    assert (
+        checkpoint["event"] == "ended"
+        and checkpoint["publication_actor"] == "unassigned"
+    )
+    assert (
+        checkpoint["error"] == "github_failed"
+        and checkpoint["remaining_complete"] is True
+    )
+    assert checkpoint["remaining"][0]["kind"] == "decision_log"
+    assert checkpoint["remaining"][0]["unpublished_count"] == 1
+    assert checkpoint["resume_command"] and "publication_exit_pending" not in ended
+    d.control.reconcile()
+    lifecycle.capture_supervised_exit("o/r", 1, 1, state_dir=d.control.store.directory)
+    assert calls == ["workers", "decisions"]
+    assert (
+        len(
+            reconciliation.decision_journal(
+                "o/r", 1, state_dir=d.control.store.directory
+            ).status()
+        )
+        == 1
+    )
+
+
 def test_bootstrap_does_not_bind_a_different_cli_session(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:

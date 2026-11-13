@@ -62,6 +62,72 @@ class Store:
             metrics.flock(lock, fcntl.LOCK_EX)
             yield
 
+    def _validate_loaded(self) -> None:
+        if (
+            set(self.data) != {"version", "parents"}
+            or type(self.data["version"]) is not int
+            or self.data["version"] not in {1, 2}
+        ):
+            raise ValueError("unknown or malformed parent-session state")
+        parents: dict[str, Any] = {}
+        for key, row in object_value(self.data["parents"]).items():
+            canonical = key.casefold()
+            if canonical in parents:
+                raise ValueError(
+                    f"registry contains a repository alias collision: {canonical}"
+                )
+            parents[canonical] = row
+            if (
+                not isinstance(row, dict)
+                or not {"session", "status", "generation", "tasks", "reviews"}
+                <= row.keys()
+                or row["status"]
+                not in {"active", "released", "ended", "handoff_pending"}
+            ):
+                raise ValueError(f"invalid parent-session record: {key}")
+            if (
+                not isinstance(row["session"], str)
+                or not row["session"]
+                or not isinstance(row["tasks"], dict)
+                or not isinstance(row["reviews"], list)
+                or type(row["generation"]) is not int
+                or row["generation"] < 1
+            ):
+                raise ValueError(f"invalid parent-session data types: {key}")
+            for task in row["tasks"].values():
+                object_value(task)
+                if "authorization" in task:
+                    validate_authorization(task["authorization"])
+            for review in row["reviews"]:
+                object_value(review)
+                request = object_value(review.get("request"))
+                version = request.get("schema_version")
+                if type(version) is not int or version not in {1, 2, 3}:
+                    raise ValueError("unknown or malformed saved review request")
+                if version in {2, 3}:
+                    validate_authorization(request.get("authorization"))
+                if version == 3:
+                    from lib.review_settings import validate_selection
+
+                    validate_selection(request.get("review_selection"))
+        owners = [
+            r["session"]
+            for r in parents.values()
+            if r["status"] in {"active", "handoff_pending"}
+        ]
+        if len(owners) != len(set(owners)):
+            raise ValueError(
+                "registry contains multiple active parents for one session"
+            )
+        self.data["parents"] = parents
+
+    @contextmanager
+    def snapshot(self) -> Iterator[Store]:
+        """Read a validated ownership snapshot without creating locks or paths."""
+        self.data = self.read_data()
+        self._validate_loaded()
+        yield self
+
     @contextmanager
     def locked(self) -> Iterator[Store]:
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -72,63 +138,7 @@ class Store:
             self._write_invalid = False
             self.data = self.read_data()
             self._saved = copy.deepcopy(self.data)
-            if (
-                set(self.data) != {"version", "parents"}
-                or type(self.data["version"]) is not int
-                or self.data["version"] not in {1, 2}
-            ):
-                raise ValueError("unknown or malformed parent-session state")
-            parents: dict[str, Any] = {}
-            for key, row in object_value(self.data["parents"]).items():
-                canonical = key.casefold()
-                if canonical in parents:
-                    raise ValueError(
-                        f"registry contains a repository alias collision: {canonical}"
-                    )
-                parents[canonical] = row
-                if (
-                    not isinstance(row, dict)
-                    or not {"session", "status", "generation", "tasks", "reviews"}
-                    <= row.keys()
-                    or row["status"]
-                    not in {"active", "released", "ended", "handoff_pending"}
-                ):
-                    raise ValueError(f"invalid parent-session record: {key}")
-                if (
-                    not isinstance(row["session"], str)
-                    or not row["session"]
-                    or not isinstance(row["tasks"], dict)
-                    or not isinstance(row["reviews"], list)
-                    or type(row["generation"]) is not int
-                    or row["generation"] < 1
-                ):
-                    raise ValueError(f"invalid parent-session data types: {key}")
-                for task in row["tasks"].values():
-                    object_value(task)
-                    if "authorization" in task:
-                        validate_authorization(task["authorization"])
-                for review in row["reviews"]:
-                    object_value(review)
-                    request = object_value(review.get("request"))
-                    version = request.get("schema_version")
-                    if type(version) is not int or version not in {1, 2, 3}:
-                        raise ValueError("unknown or malformed saved review request")
-                    if version in {2, 3}:
-                        validate_authorization(request.get("authorization"))
-                    if version == 3:
-                        from lib.review_settings import validate_selection
-
-                        validate_selection(request.get("review_selection"))
-            owners = [
-                r["session"]
-                for r in parents.values()
-                if r["status"] in {"active", "handoff_pending"}
-            ]
-            if len(owners) != len(set(owners)):
-                raise ValueError(
-                    "registry contains multiple active parents for one session"
-                )
-            self.data["parents"] = parents
+            self._validate_loaded()
             # Keep the envelope readable by active older CLIs. Versioned evidence
             # is additive inside tasks/reviews; never rewrite legacy evidence.
             self._lock = lock

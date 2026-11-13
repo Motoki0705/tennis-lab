@@ -322,6 +322,14 @@ stay visible in status; independently safe records can still be published.
 An unfinished batch is reconciled before creating another. New captures arriving
 during a batch wait for the next explicit invocation after that batch merges.
 
+Release, handoff and supervised completion also invoke publication after worker
+logs and the terminal command capture. They fix the capture boundary and process
+at most the existing batch and one remaining batch. Failed publication never
+undoes ownership changes; the [exit checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint)
+retains outstanding work, its owner and a resume command. Null mergeability does
+not delay a verified, SHA-pinned merge request. False and HTTP rejections remain
+failures. Status and dry-run create neither captures nor locks.
+
 The public tree keeps the existing worker files in place:
 
 ```text

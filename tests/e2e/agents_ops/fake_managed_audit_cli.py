@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import json
 import os
 import select
@@ -16,6 +18,19 @@ from uuid import uuid4
 
 def emit(**event: Any) -> None:
     print(json.dumps(event), flush=True)
+
+
+def pidfd_open(pid: int) -> int:
+    # Some Python builds omit os.pidfd_open although the host libc/kernel
+    # support it. Keep the same event-based wait in both interpreters.
+    libc = ctypes.CDLL(None, use_errno=True)
+    descriptor = int(libc.pidfd_open(ctypes.c_int(pid), ctypes.c_uint(0)))
+    if descriptor < 0:
+        code = ctypes.get_errno()
+        if code == errno.ESRCH:
+            raise ProcessLookupError(code, os.strerror(code))
+        raise OSError(code, os.strerror(code))
+    return descriptor
 
 
 def request(server: subprocess.Popen[str], method: str, **params: Any) -> Any:
@@ -86,7 +101,7 @@ def audit_tasks(
         assert select.select([channels[task]], [], [], 15)[0], task
         runner_pid = json.loads(os.read(channels[task], 512))
         try:
-            finished = os.pidfd_open(runner_pid)
+            finished = pidfd_open(runner_pid)
         except ProcessLookupError:
             pass  # The runner has already exited after sending its notification.
         else:
@@ -178,6 +193,11 @@ def main() -> None:
         )
         emit(type="thread.started", thread_id=session)
         emit(type="turn.started")
+        if os.environ.get("FAKE_SCOUT_RECONNECT") == "1":
+            emit(
+                type="error",
+                message="Reconnecting... 2/5 (workspace routing discovery timed out)",
+            )
 
     config = servers["ops_report"]
     with subprocess.Popen(

@@ -273,6 +273,12 @@ issueのclose後の履歴公開も同じ本人確認を行う。新しい実装�
 未完了batchを照合してから次を作る。batchの途中で増えた捕捉は、そのbatchのmerge後の
 次の明示呼出しでまとめる。
 
+release/handoffと自律親の終了時は、worker公開と今回の終了結果の捕捉後に同じ公開処理を呼ぶ。
+捕捉上限を固定し、既存batchと終了までの残件を最大2回で処理する。公開が未完了でも担当変更を拒否せず、
+残件・担当・再開先を [終了checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint) に残す。
+mergeableがnullでも全検査後にHEAD指定mergeを要求し、falseとHTTP拒否は失敗として残す。
+statusとdry-runはcaptureもlockも作成しない。
+
 既存workerファイルを維持した公開構成:
 
 ```text
