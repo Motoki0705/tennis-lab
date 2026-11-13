@@ -446,32 +446,29 @@ stateはwaiting/completed/failed。finalの不正・担当未受理・runner失�
 
 ## systemdへの導入・有効化・停止
 
-merge後にmain checkoutで人間が実施する。worktreeからinstallerを実行すると、リンク作成前に拒否する。
-installerの既定はunitリンクとdaemon-reloadだけで、disabled状態から導入できる。
-`--enable` は全timerとdispatch-supervisorを有効化するため、対象だけ有効化する以下の手順を通常使う。
+merge後にmain checkoutで人間が実施する。worktreeからinstallすると、リンク作成前に拒否する。
+導入はunitリンクとdaemon-reloadだけで、有効化は対象を指定する。
+制御・残存照合・user bus/lingerの扱いは [ops_control README](../ops_control/README.md) が正本。
 
 ```bash
 cd ~/projects/tennis-lab
-.agents/ops/install_units.sh --dry-run
-.agents/ops/install_units.sh
+spin ops install dispatcher --dry-run
+spin ops install dispatcher
 systemd-analyze calendar '*-*-* 08:00:00 Asia/Tokyo' '*-*-* 20:00:00 Asia/Tokyo'
 systemd-analyze --user verify .agents/ops/dispatcher/systemd/*
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init --repo Motoki0705/tennis-lab --cwd "$PWD"
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher enable
-systemctl --user enable --now tennis-lab-dispatch-supervisor.service tennis-lab-dispatch-judgement.timer
+spin ops on dispatcher
 systemctl --user cat tennis-lab-dispatch-judgement.timer tennis-lab-dispatch-supervisor.service
 systemctl --user list-timers --all 'tennis-lab-dispatch-*'
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher status
-journalctl --user -u tennis-lab-dispatch-judgement.service -u tennis-lab-dispatch-supervisor.service
+spin ops status dispatcher
+spin ops logs dispatcher
 
 # 停止。timerのdisableだけでは実行中のserviceは停止しない
-systemctl --user disable --now tennis-lab-dispatch-judgement.timer
-PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher shutdown
-systemctl --user stop tennis-lab-dispatch-judgement.service
-systemctl --user disable --now tennis-lab-dispatch-supervisor.service
+spin ops off dispatcher
 ```
 
-再開時はinitを繰り返さず、status/実プロセスを照合してenableし、同じ2unitを有効化する。
+再開時はinitを繰り返さず、status/実プロセスを照合して `spin ops on dispatcher` を実行する。
+停止後に管理job・子・判定の照合が残ると非0を返す。既存の復旧手順で確認してから再開する。
 timerはPersistent=trueで復帰時を1回へ集約する。ランダム遅延はなく、精度は1秒。
 supervisorは1秒ごとにruntime/イベントを照合するが、判定agentを呼ばない。
 systemdのKillMode=control-groupは停止時の離脱子孫も対象にする。複数ホストの排他は行わない。

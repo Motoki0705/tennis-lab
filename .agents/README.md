@@ -51,7 +51,8 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/lib/agent_exec.sh](ops/lib/agent_exec.sh) | Claude（親、既定Opus）/ Codex（実装子、既定Sol・明示でAstra）を read-only または write で headless 起動・同一session継続・状態確認・停止する共通ランナー。既定値・選択値・実効値と終了理由をrun dirへ記録し、`task_success` は判定しない。`--profile` で job 別の固定値を選ぶ。契約は [ops/lib/README.md](ops/lib/README.md) |
 | [ops/lib/agents.conf](ops/lib/agents.conf) | 自動運用で使う model・effort（Codexは service_tier も）の固定値。呼び出し環境のCLI設定で黙って変わらないよう、全自動運用がここを参照する。job 別のプロファイル（例: レビュー用の `REVIEW_CODEX_*`）もここに置く |
 | [ops/lib/opsproc.py](ops/lib/opsproc.py) | ops job 共通のサブプロセス実行。agent はプロセスグループごと起動・停止し、子孫プロセスを残さない |
-| [ops/install_units.sh](ops/install_units.sh) | `ops/*/systemd/` の unit を `~/.config/systemd/user` へリンクする。`--enable` を付けたときだけ timer を有効化する |
+| [ops/ops_control/](ops/ops_control/README.md) | `spin ops` の対象表と実処理。運用unitの状態・導入・対象ごとのON/OFF・単発実行・ログを扱う |
+| [ops/install_units.sh](ops/install_units.sh) | `spin ops install` が使うunit導入処理。`ops/*/systemd/` を `~/.config/systemd/user` へリンクしdaemon-reloadする。有効化は `spin ops on <target>` |
 | [ops/ops-report/](ops/ops-report/README.md) | Claude親とCodex調査子の並列全体調査、3日周期の運用レポート（未完了回は部分公開・再開）、採用提案の日次triage |
 | [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、依存を照合する順次merge gate、共有基盤パスの一覧 |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |

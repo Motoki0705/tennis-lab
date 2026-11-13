@@ -26,7 +26,7 @@ worktree は人間が承認した `delete worktree:<path>` でのみ、しかも
 | `inventory.py` | 事実収集（git, `gh pr list`, `/proc`, training queue, `du`） |
 | `classify.py` | 事実→分類の純粋関数。理由コードの一覧（`REASON_KINDS`）の正本 |
 | `config.toml` | 方針パラメータ（全キー必須。未知キーはエラー） |
-| `systemd/` | 日次 timer（`apply-auto`）。`.agents/ops/install_units.sh` で導入 |
+| `systemd/` | 日次 timer（`apply-auto`）。`spin ops install cleanup` で導入 |
 
 ## 使い方
 
@@ -218,7 +218,9 @@ worktree は clean なものしか消さないので、復元は `git worktree a
 `systemd/tennis-lab-cleanup.{service,timer}`：毎日 04:30（±15分）にメインcheckoutのコードで
 `apply-auto --report-json %S/tennis-lab-agents/cleanup/report-latest.json` を実行する
 （`%S` = `~/.local/state`）。`Persistent=true` で停止中の分は起動時に実行。導入・有効化はPR merge後に
-人間が `.agents/ops/install_units.sh --enable` で行う。
+人間がメインcheckoutから `spin ops install cleanup`、`spin ops on cleanup` の順で行う。
+`cleanup` はbranch整理の独立対象で、`agents` の集合には含まない。停止は `spin ops off cleanup`。
+共通の状態・導入・ログ・user bus/lingerの契約は [ops_control README](../ops_control/README.md) を参照する。
 
 ## テスト
 

@@ -34,6 +34,7 @@ def test_help_lists_project_workflows() -> None:
     for command in (
         "doctor",
         "lint",
+        "ops",
         "setup",
         "setup-nht",
         "test",
