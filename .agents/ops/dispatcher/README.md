@@ -471,6 +471,12 @@ spin ops off dispatcher
 停止後に管理job・子・判定の照合が残ると非0を返す。既存の復旧手順で確認してから再開する。
 timerはPersistent=trueで復帰時を1回へ集約する。ランダム遅延はなく、精度は1秒。
 supervisorは1秒ごとにruntime/イベントを照合するが、判定agentを呼ばない。
+
+メインcheckoutの保守では、[共通checkout lock](../lib/README.md#メインcheckoutと運用jobの排他) を
+排他的に取得し、statusで判定・親・子の未終了記録がないことを確認してから、supervisorのmain
+processへSIGHUPを送る。この保守停止は内部enabledを保持する。SIGTERM/SIGINTによる通常停止は
+従来どおりshutdownする。SIGHUPをjob実行中に送らない。更新後は停止前にactive・enabledだった
+supervisorだけを、内部enabledとunitのenabledを再確認して再開する。
 systemdのKillMode=control-groupは停止時の離脱子孫も対象にする。複数ホストの排他は行わない。
 
 検証は `test_dispatcher_supervisor.py`。fake GitHub/時計/CLI、一時registry、使い捨てgitとfake systemctlで行う。

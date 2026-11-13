@@ -7,7 +7,7 @@ Type=simple
 WorkingDirectory=%h/projects/tennis-lab
 Environment=PYTHONPATH=%h/projects/tennis-lab/.agents/ops
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=%h/projects/tennis-lab/.venv/bin/python -m board web --port 8790
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/checkout_job.py --repo %h/projects/tennis-lab --board-web-port 8790
 Restart=on-failure
 RestartSec=5
 UMask=0077

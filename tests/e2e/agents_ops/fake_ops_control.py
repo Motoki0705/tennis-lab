@@ -96,7 +96,7 @@ if command == "link":
         if unit not in state.get("sticky_enabled", []):
             state["units"][unit]["UnitFileState"] = "linked"
     finish()
-assert command in {"enable", "disable", "start", "stop"}, args
+assert command in {"enable", "disable", "start", "stop", "kill"}, args
 for unit in args[1:]:
     if unit.startswith("--"):
         continue
@@ -120,9 +120,23 @@ for unit in args[1:]:
             data["ActiveState"] = "inactive"
     elif command == "stop" and unit not in state.get("sticky_active", []):
         data["ActiveState"] = "inactive"
+    elif command == "kill" and unit not in state.get("sticky_active", []):
+        assert "--signal=HUP" in args
+        data["ActiveState"] = "inactive"
+        if state.get("disable_after_pause"):
+            data["UnitFileState"] = "disabled"
+            state["dispatcher"]["enabled"] = False
     elif command == "start":
         # A completed oneshot returns inactive and preserves enablement.
-        data.update(ActiveState="inactive", Result="success", ExecMainStatus="0")
+        resident = unit in {
+            "tennis-lab-dispatch-supervisor.service",
+            "tennis-lab-board-web.service",
+        }
+        data.update(
+            ActiveState="active" if resident else "inactive",
+            Result="success",
+            ExecMainStatus="0",
+        )
 if state.get("lose_bus_after_mutation"):
     state["bus_lost"] = True
 finish()

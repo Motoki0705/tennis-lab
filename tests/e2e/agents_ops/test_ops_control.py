@@ -71,7 +71,13 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
         base = tmp_path / name
         repo = base / "repo"
         ops = repo / ".agents/ops"
-        shutil.copytree(ROOT / ".agents/ops/ops_control", ops / "ops_control")
+        shutil.copytree(
+            ROOT / ".agents/ops/ops_control",
+            ops / "ops_control",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+        (ops / "lib").mkdir()
+        shutil.copy(ROOT / ".agents/ops/lib/checkout_lock.py", ops / "lib")
         shutil.copy(ROOT / ".agents/ops/install_units.sh", ops)
         for job in ("dispatcher", "ops-report", "cleanup", "board"):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
@@ -110,6 +116,14 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             timer = path.suffix == ".timer"
             units[path.name] = {
                 "FragmentPath": str(path),
+                "ExecStart": next(
+                    (
+                        line.removeprefix("ExecStart=")
+                        for line in path.read_text().splitlines()
+                        if line.startswith("ExecStart=")
+                    ),
+                    "",
+                ).replace("%h/projects/tennis-lab", str(repo)),
                 "LoadState": "loaded",
                 "UnitFileState": "disabled"
                 if timer or path.name == SUPERVISOR

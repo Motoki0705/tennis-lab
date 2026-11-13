@@ -1645,6 +1645,69 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
         assert (schedule / "schedule.json").read_bytes() == before
 
 
+def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cli = importlib.import_module("dispatcher.cli")
+    lock = importlib.import_module("lib.checkout_lock").checkout_lock
+    calls = []
+    for name in ("reconcile", "assign", "launch_reserved"):
+        monkeypatch.setattr(
+            cli.Supervisor, name, lambda self, _name=name: calls.append(_name)
+        )
+    monkeypatch.setattr(cli.signal, "signal", lambda *args: None)
+    args = cli.parser().parse_args(
+        [
+            "--state-dir",
+            str(d.schedule.directory),
+            "--parent-state-dir",
+            str(d.h.store.directory),
+            "supervise",
+            "--once",
+        ]
+    )
+    with lock(d.h.work, exclusive=True):
+        assert cli.execute(args)["result"] == "supervise"
+    assert calls == []
+    assert cli.execute(args)["result"] == "supervise"
+    assert calls == ["reconcile", "assign", "launch_reserved"]
+
+
+@pytest.mark.parametrize("maintenance", [True, False])
+def test_supervisor_maintenance_pause_preserves_enabled_but_normal_stop_shuts_down(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, maintenance: bool
+) -> None:
+    cli = importlib.import_module("dispatcher.cli")
+    handlers = {}
+    calls = []
+    monkeypatch.setattr(
+        cli.signal, "signal", lambda signum, handler: handlers.update({signum: handler})
+    )
+    monkeypatch.setattr(
+        cli.Supervisor, "reconcile", lambda self, **kw: calls.append(kw)
+    )
+    monkeypatch.setattr(cli.Supervisor, "assign", lambda self: None)
+    monkeypatch.setattr(cli.Supervisor, "launch_reserved", lambda self: None)
+
+    def stop(_seconds: float) -> None:
+        signum = cli.signal.SIGHUP if maintenance else cli.signal.SIGTERM
+        handlers[signum](signum, None)
+
+    monkeypatch.setattr(cli.time, "sleep", stop)
+    args = cli.parser().parse_args(
+        [
+            "--state-dir",
+            str(d.schedule.directory),
+            "--parent-state-dir",
+            str(d.h.store.directory),
+            "supervise",
+        ]
+    )
+    assert cli.execute(args)["result"] == "supervise"
+    assert d.state()["enabled"] == maintenance
+    assert ({"stop": True} in calls) != maintenance
+
+
 def test_stop_during_popen_stops_launcher_before_runtime_record(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:

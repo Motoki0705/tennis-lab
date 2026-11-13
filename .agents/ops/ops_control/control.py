@@ -9,6 +9,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import checkout_lock, state_root
+
 from .systemd import ControlError, ManagerUnavailable, Systemd
 from .targets import Step, Target
 
@@ -68,6 +70,14 @@ class Controller:
         *,
         continue_on_unavailable: bool = False,
     ) -> None:
+        if target.status_file:
+            try:
+                path = state_root() / target.status_file
+                report["last_run"] = (
+                    json.loads(path.read_text()) if path.exists() else None
+                )
+            except (OSError, ValueError) as exc:
+                report["errors"].append(f"job status: {exc}")
         for unit in target.units:
             try:
                 report["units"].append(self.systemd.status(unit))
@@ -130,6 +140,13 @@ class Controller:
                 )
 
     def operate(self, action: str, target: Target) -> dict[str, Any]:
+        if target.verify_dispatcher and action in {"on", "off"}:
+            # Serialize operator intent with maintenance's stop/restart interval.
+            with checkout_lock(self.repo_root, name="ops-control", exclusive=True):
+                return self._operate(action, target)
+        return self._operate(action, target)
+
+    def _operate(self, action: str, target: Target) -> dict[str, Any]:
         report: dict[str, Any] = {
             "target": target.name,
             "kind": target.kind,

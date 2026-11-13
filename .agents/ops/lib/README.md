@@ -23,6 +23,24 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 
 固定commitとGitHub GETの取得・隔離CPUテストは [review_tools](review_tools/README.md) を正本とする。
 
+## メインcheckoutと運用jobの排他
+
+`checkout_lock.py` はGit共通ディレクトリの `ops-code.lock` を共有する。
+有限の運用jobは `.agents/ops/checkout_job.py --repo <main> -- <command...>` で起動し、
+コードのimport前から終了まで共有lockを保持する。exec後もFDを継承するため、子が継承したFDを
+閉じるまで排他が続く。systemdのcleanup・report・triage・dispatch判定はこの入口を使う。
+手動で同じ運用jobを実行するときもこの入口を使う。lockファイルは削除しない。
+
+常駐dispatcherは `checkout_job.py --repo <main> --supervisor` でimportを保護し、各周期の
+reconcile/assign/launchを共有lockで保護する。更新が排他lockを持つ間は新規起動を行わない。
+`ops-control.lock` はspinによるdispatcherのON/OFFと保守時の停止・再開を直列化する。
+保守側は両lockを非待機で取得し、jobや制御操作と競合したら延期する。
+board webは `checkout_job.py --repo <main> --board-web-port 8790` でimportを保護し、
+保守側が停止・再開する。常駐serviceに共有lockを寿命全体で保持させない。
+
+state rootは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents`。
+共通lockはstate rootを変更しても変わらず、同じGit共通ディレクトリへ集約される。
+
 `opsproc.run_process_group()` の任意引数 `cancel` は `threading.Event`。
 set済みなら起動せず、実行中のsetはprocess groupを停止・回収して `ProcessCancelled(CommandError)`
 を送出する。timeout・通常終了の回収と、cancelを指定しない既存呼出の動作は保持する。
