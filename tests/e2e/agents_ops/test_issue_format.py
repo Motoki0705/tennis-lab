@@ -909,6 +909,7 @@ def test_render_is_deterministic_and_always_a_local_dry_run(
         {"labels": ["issue:parent"]},
         {"labels": ["issue:child"]},
         {"labels": ["issue:standalone"]},
+        {"labels": ["issue:proposal"]},
         {"role": "standalone"},
         {"unknown": "not silently ignored"},
         {"sections": {"このタスクの目的": "目的だけ"}},
@@ -984,7 +985,12 @@ def test_manual_templates_share_the_contract(
 def test_standalone_templates_use_manifest_roles(fmt: ModuleType) -> None:
     manifest = yaml.safe_load((ROOT / ".github/labels.yml").read_text())
     hierarchy = {label["name"] for label in manifest["hierarchy"]}
-    assert hierarchy == {fmt.PARENT_LABEL, fmt.CHILD_LABEL, fmt.STANDALONE_LABEL}
+    assert hierarchy == {
+        fmt.PARENT_LABEL,
+        fmt.CHILD_LABEL,
+        fmt.STANDALONE_LABEL,
+        fmt.PROPOSAL_LABEL,
+    }
     expected = {
         "01_bug.md": {"bug", fmt.STANDALONE_LABEL},
         "02_feature.md": {"enhancement", fmt.STANDALONE_LABEL},
@@ -1006,3 +1012,33 @@ def test_issue_docs_relative_links_resolve() -> None:
         ):
             if "://" not in target:
                 assert (doc.parent / target.split("#")[0]).exists(), (doc, target)
+
+
+@pytest.mark.parametrize("other", ["issue:parent", "issue:child", "issue:standalone"])
+def test_proposal_is_exclusive_without_requiring_work_sections(
+    fmt: ModuleType, other: str
+) -> None:
+    issue = fmt.Issue(
+        99, "改善提案", "候補一覧", frozenset({fmt.PROPOSAL_LABEL, other})
+    )
+    problems = fmt.check_consistency({99: issue})
+    assert {p.code for p in problems} == {"label.proposal"}
+    clean = fmt.Issue(99, "改善提案", "候補一覧", frozenset({fmt.PROPOSAL_LABEL}))
+    assert fmt.check_consistency({99: clean}) == ()
+
+
+@pytest.mark.parametrize("relation", ["parent", "children", "body_hint"])
+def test_proposal_rejects_formal_and_body_relationship_hints(
+    fmt: ModuleType, relation: str
+) -> None:
+    issue = fmt.Issue(
+        99,
+        "改善提案",
+        "親issue: #10" if relation == "body_hint" else "候補一覧",
+        frozenset({fmt.PROPOSAL_LABEL}),
+        parent=10 if relation == "parent" else None,
+        children=(10,) if relation == "children" else (),
+    )
+    assert any(
+        p.code == "relationship.proposal" for p in fmt.check_consistency({99: issue})
+    )

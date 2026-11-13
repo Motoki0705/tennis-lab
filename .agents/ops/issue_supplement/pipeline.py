@@ -76,6 +76,7 @@ def issue_state(gh: GitHub, issue: dict[str, Any]) -> str:
             [item["name"] for item in issue["labels"]],
             issue["created_at"],
             gh.enabled_since,
+            body=issue.get("body") or "",
         ),
     )
 
@@ -83,18 +84,18 @@ def issue_state(gh: GitHub, issue: dict[str, Any]) -> str:
 def prepare(gh: GitHub, number: int, *, manual: bool) -> dict[str, Any]:
     """Close the agreement gate before inspecting records for a manual retry."""
     bundle = bundle_for(gh.repo, number, 1)
-    state = issue_state(gh, gh.issue(number))
+    state = issue_state(gh, gh.issue(number, allow_proposal=True))
     if state == "failed" and manual:
         # Re-read immediately before the targeted deletion. Never clear a human
         # skip or a completed run which appeared after the first read.
-        if issue_state(gh, gh.issue(number)) != "failed":
+        if issue_state(gh, gh.issue(number, allow_proposal=True)) != "failed":
             raise ValueError("supplement_label_conflict")
         gh.request(
             "DELETE",
             f"repos/{gh.repo}/issues/{number}/labels/{quote(SUPPLEMENT_FAILED_LABEL, safe='')}",
             {},
         )
-        state = issue_state(gh, gh.issue(number))
+        state = issue_state(gh, gh.issue(number, allow_proposal=True))
         if state != "pending":
             raise ValueError("supplement_label_conflict")
     if state != "pending":
@@ -180,7 +181,7 @@ def generate(
     bundle = bundle_for(gh.repo, number, attempt)
     report = bundle["report"]
     try:
-        issue = gh.issue(number)
+        issue = gh.issue(number, allow_proposal=True)
         state = issue_state(gh, issue)
         comments = gh.parent_comments(number, gh.repo.split("/")[0])
         write_json(
@@ -402,7 +403,7 @@ def generate(
 
 
 def final_label(gh: GitHub, number: int, label: str) -> str:
-    issue = gh.issue(number)
+    issue = gh.issue(number, allow_proposal=True)
     labels = [item["name"] for item in issue["labels"]]
     state = issue_state(gh, issue)
     if state == "not_target":
@@ -417,7 +418,7 @@ def final_label(gh: GitHub, number: int, label: str) -> str:
         {"labels": [label]},
     )
     confirmed = {
-        item["name"] for item in gh.issue(number)["labels"]
+        item["name"] for item in gh.issue(number, allow_proposal=True)["labels"]
     } & SUPPLEMENT_FINAL_LABELS
     if confirmed != {label}:
         # GitHub has no atomic add-if-absent for labels. Detect the residual
@@ -436,7 +437,7 @@ def apply(gh: GitHub, bundle: Handoff) -> dict[str, Any]:
         raise ValueError("failed_bundle_cannot_be_applied")
     if bundle["status"] == "not_target":
         return bundle["report"]
-    current = gh.issue(number)
+    current = gh.issue(number, allow_proposal=True)
     if issue_state(gh, current) != "pending":
         return outcome(bundle, "not_target", "state_changed_before_apply")["report"]
     if has_execution_record(
@@ -558,7 +559,7 @@ def failure_result(
 def fail(
     gh: GitHub, number: int, bundle: Handoff | None = None
 ) -> tuple[str, str | None]:
-    current = gh.issue(number)
+    current = gh.issue(number, allow_proposal=True)
     state = issue_state(gh, current)
     if state in {"not_target", "done", "skipped"}:
         return state, None

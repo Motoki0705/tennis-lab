@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Any
 
 from issues import parse_proposal_source, parse_sections, parse_task_metadata
-from issues.evidence import is_evidence_issue, require_work_issue
+from issues.evidence import is_evidence_issue, is_proposal_issue, require_work_issue
 from issues.improvement import parse_source as improvement_source
+from issues.improvement_proposals import parse_extraction
 from issues.supplement_state import read_enabled_since, supplement_state
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
@@ -61,6 +62,7 @@ def unique_numbers(rows: Iterable[Mapping[str, Any]], label: str) -> list[int]:
 def is_container(raw: Mapping[str, Any]) -> bool:
     return (
         is_evidence_issue(raw)
+        or is_proposal_issue(raw)
         or "ops-report" in {x["name"] for x in raw["labels"]}
         or (raw["body"].splitlines()[0] if raw["body"] else "").startswith(
             "<!-- ops-report:v"
@@ -107,7 +109,9 @@ def _collect(
             for r in gh.rows(
                 f"repos/{gh.repo}/issues?state=open&sort=created&direction=asc"
             )
-            if "pull_request" not in r and not is_evidence_issue(r)
+            if "pull_request" not in r
+            and not is_evidence_issue(r)
+            and not is_proposal_issue(r)
         ]
         subjects = sorted(unique_numbers(listed, "open issues"))
         for raw in listed:
@@ -205,7 +209,9 @@ def _collect(
                 }
             )
         source_reports: set[int] = set()
-        improvement = improvement_source(raw.get("body") or "")
+        improvement = improvement_source(raw.get("body") or "") or parse_extraction(
+            raw.get("body") or ""
+        )
         improvement_sources = [improvement.parent] if improvement is not None else []
         if not is_container({"labels": labels, "body": raw.get("body") or ""}):
             source = parse_proposal_source(raw.get("body") or "")
@@ -251,6 +257,7 @@ def _collect(
             [label["name"] for label in issues[str(n)]["labels"]],
             issues[str(n)]["created_at"],
             enabled_since,
+            body=raw.get("body") or "",
         )
         pending.extend(
             [

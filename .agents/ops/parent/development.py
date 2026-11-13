@@ -635,6 +635,13 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
         "schema_version": 1,
         **{k: spec[k] for k in ("state", "reason", "resume_condition")},
     }
+    if spec["state"] == "completed":
+        from .improvement_proposals import eligible
+        from .improvements import candidates
+
+        response["unpublished_improvements"] = [
+            f"I-{session.parent}-{k}" for k in sorted(eligible(candidates(session)))
+        ]
     session.row["development_result"] = {
         "schema_version": 1,
         "report_sha256": digest(spec),

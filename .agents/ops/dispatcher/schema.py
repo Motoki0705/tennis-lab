@@ -127,8 +127,9 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
     ).session_events()
     facts = []
     from issues.improvement import approved, parse_source, read_candidates
+    from issues.improvement_proposals import parse_extraction
 
-    improvement = parse_source(raw["body"])
+    improvement = parse_source(raw["body"]) or parse_extraction(raw["body"])
     if improvement is not None:
         source = issues.get(str(improvement.parent))
         if source is None:
@@ -138,16 +139,33 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
         candidates = read_candidates(
             source["comments"], improvement.parent, snapshot["publisher"]
         )
-        candidate = candidates.get(improvement.key)
-        if candidate is None:
-            raise ValueError("improvement source candidate is unavailable")
-        try:
-            approved(candidate, improvement, n, raw["body"])
-        except ValueError as exc:
-            facts.append(str(exc))
+        from issues.improvement import ImprovementSource
+
+        keys = improvement.keys if hasattr(improvement, "keys") else (improvement.key,)
+        for k in keys:
+            candidate = candidates.get(k)
+            if candidate is None:
+                raise ValueError("improvement source candidate is unavailable")
+            try:
+                if hasattr(improvement, "keys"):
+                    data = candidate["extraction"]
+                    if (
+                        data is None
+                        or data["data"]["proposal"] != improvement.proposal
+                        or set(data["data"]["decision_ids"]) != set(keys)
+                    ):
+                        raise ValueError("extraction approval records are incomplete")
+                approved(
+                    candidate, ImprovementSource(improvement.parent, k), n, raw["body"]
+                )
+            except ValueError as exc:
+                facts.append(str(exc))
     if (
         supplement_state(
-            labels, raw["created_at"], snapshot["supplement_enabled_since"]
+            labels,
+            raw["created_at"],
+            snapshot["supplement_enabled_since"],
+            body=raw["body"],
         )
         == "pending"
     ):

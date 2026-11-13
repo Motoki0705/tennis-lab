@@ -73,7 +73,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
         ops = repo / ".agents/ops"
         shutil.copytree(ROOT / ".agents/ops/ops_control", ops / "ops_control")
         shutil.copy(ROOT / ".agents/ops/install_units.sh", ops)
-        for job in ("dispatcher", "ops-report", "cleanup", "board"):
+        for job in ("dispatcher", "ops-report", "cleanup", "board", "parent"):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
         spin.mkdir()
@@ -207,6 +207,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "report",
         "triage",
         "cleanup",
+        "proposal-expiry",
     }
     report = next(row for row in data["targets"] if row["target"] == "report")
     units = {unit["unit"]: unit for unit in report["units"]}
@@ -368,7 +369,13 @@ def test_manager_loss_during_mutation_stays_unavailable(
     else:
         assert control.read()["units"][SUPERVISOR]["UnitFileState"] == "enabled"
         for timer in (REPORT_TIMER, TRIAGE_TIMER):
-            assert ["systemctl", "--user", "enable", "--now", timer] not in control.calls()
+            assert [
+                "systemctl",
+                "--user",
+                "enable",
+                "--now",
+                timer,
+            ] not in control.calls()
             assert control.read()["units"][timer]["UnitFileState"] == "disabled"
 
 
@@ -427,7 +434,10 @@ def test_off_manager_loss_keeps_reports_and_attempts_all_stops(
             assert control.read()["units"][timer]["UnitFileState"] != "enabled"
             assert control.read()["units"][service]["ActiveState"] == "inactive"
     else:
-        assert [report["outcome"] for report in others] == ["unavailable", "unavailable"]
+        assert [report["outcome"] for report in others] == [
+            "unavailable",
+            "unavailable",
+        ]
         assert all(report["errors"] for report in others)
         assert control.read()["units"][REPORT]["ActiveState"] == "active"
 
@@ -558,3 +568,21 @@ def test_new_target_only_needs_registry_entry_and_unit_files(
     for source in (ops / "future/systemd").iterdir():
         assert (config / source.name).is_symlink()
         assert (config / source.name).resolve() == source
+
+
+def test_proposal_expiry_timer_is_installed_without_automatic_extraction(
+    control: ControlEnv,
+) -> None:
+    result = control.run("install", "proposal-expiry")
+    assert result.returncode == 0, result.stderr
+    config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
+    assert {p.name for p in config.iterdir()} == {
+        "tennis-lab-improvement-expire.service",
+        "tennis-lab-improvement-expire.timer",
+    }
+    timer = (config / "tennis-lab-improvement-expire.timer").read_text()
+    service = (config / "tennis-lab-improvement-expire.service").read_text()
+    assert "OnCalendar=daily" in timer and "Persistent=true" in timer
+    assert "Type=oneshot" in service and "improvement-expire" in service
+    assert "improvement-extract" not in service and "PYTHONPATH=.agents/ops" in service
+    assert [call for call in control.calls() if call[2] != "show"] == [["systemctl", "--user", "daemon-reload"]]

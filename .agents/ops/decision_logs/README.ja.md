@@ -100,7 +100,7 @@ outboxは非公開の配送入力であり、公開単位ではない。
 | `record-worker-run` / `record-worker-ended` | 既存runner根拠の明示登録 / 親による終了確認 |
 | `record-result` | 保存された検証とPR・証拠。明示検証が捕捉済み結果を参照する。`review-request --prs` 内も同じメソッドを使う |
 | `note` / `decide-worker-plan` | 正本コメントへの参照 / 保存済み計画回答の結果。共通判断を自動で作らず、`decide` から理由の正本を参照できる |
-| `improvement` / `improvement-publish` | 候補観測・明示的な切り出し判断を正本コメント参照で記録し、起票要求/結果へ接続。元親の担当中の操作だけを捕捉する |
+| `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | 候補観測・明示的な切り出し判断を正本コメント参照で記録し、提案公開・会話判断・まとめた取り出しの要求/結果へ接続。元親の担当中の操作だけを捕捉する |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | 根拠記録・子作成・全体受入の既存結果。改善親のagreeは人間承認を観測した結果として出典コメントを参照し、実行済みと扱わない |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI結果と正本コメント。dispatcherの取消とrunnerの停止/復旧は別の事実 |
 | `review-prepare` / `review-request` / `review-state` | 固定要求、明示指示・状態の結果。親の受領/検証は明示操作でだけ記録する |

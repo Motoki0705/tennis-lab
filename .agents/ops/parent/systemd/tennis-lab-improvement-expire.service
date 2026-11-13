@@ -1,0 +1,13 @@
+[Unit]
+Description=Close expired tennis-lab improvement proposals
+Documentation=file://%h/projects/tennis-lab/.agents/ops/parent/improvements.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=.agents/ops
+UMask=0077
+ExecStart=%h/projects/tennis-lab/.venv/bin/python -m parent --repo Motoki0705/tennis-lab improvement-expire
+TimeoutStartSec=15min
+KillMode=control-group

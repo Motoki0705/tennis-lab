@@ -11,16 +11,19 @@
 | `issue:parent` | 全体の目的・合意・進捗を管理する親。分割前にも付ける |
 | `issue:child` | GitHubの正式なsub-issueとして直属の親を持ち、具体的な1タスクを担当する子 |
 | `issue:standalone` | 親にも子にも属さず、単独の作業単位として扱うIssue。正式な親も子も持たず、管理上も親として扱わない作業Issueに付ける |
+| `issue:proposal` | 未判断を含む改善候補を元親ごとに列挙する提案。作業対象ではなく、正式な親も子も持たない |
 
 親と子を兼ねるissueには `issue:parent`・`issue:child` の両ラベルを付ける。
-`issue:standalone` は両ラベルと排他。未分割の親や全子完了後の親は、子が0件でも親のまま扱う。
+`issue:standalone` は両ラベルと排他。`issue:proposal` は他の3役割と排他。未分割の親や全子完了後の親は、子が0件でも親のまま扱う。
 他issueへの参照・依存関係・発見元があることだけで子とは判定しない。
 `ops-report` のレポート容器とPRにはstandaloneを付けない。
 別軸のラベルは役割区分の代わりにならず、ラベルから親番号を推測しない。
 役割ラベルのない既存issueをラベル欠如だけで単独と断定せず、作業対象になった時に段階適用する。
 
 この分類ラベルの付与から実行承認・担当予約は生成しない。既存の実行根拠・停止・レビュー・merge条件を維持し、
-`needs-human` は引き続き人間の承認待ちを意味する。
+`needs-human` は引き続き人間の承認待ちを意味する。提案のラベル操作・本文編集は承認にならない。
+改善提案の正本・公開・会話判断・取り出し・期限は [終了時改善](../parent/improvements.md) を参照する。
+親CLIの担当・委任・worker起動、dispatcher/supervisor、本文補足、Project表示、ops-report/triageの作業対象から提案を除外する。
 
 | 利用場面 | テンプレート |
 |---|---|
@@ -39,7 +42,7 @@
 
 | 軸（マニフェストのキー） | 意味 | 付与主体 |
 |---|---|---|
-| 階層（`hierarchy`） | 親・子・単独の役割（上表） | 起票者・担当親・テンプレート・親CLI・triage。`issues check` で正式な関係と照合する |
+| 階層（`hierarchy`） | 親・子・単独・改善提案の役割（上表） | 起票者・担当親・テンプレート・親CLI・triage。`issues check` で正式な関係と照合する |
 | 作業種別（`work-type`） | バグ修正・機能改善・調査研究・文書・追補 | テンプレート、起票者・親CLIの明示指定、issue-labelerのタイトル先頭prefix |
 | 起票元（`origin`） | `ai-proposed` は運用レポートの採用提案からの起票、`agent:*` は起票agent | 前者はレポートtriage、後者は起票agent。通常のAI作業・親CLIの子起票には `ai-proposed` を付けない |
 | 対象領域（`area`） | 対象モジュール・CI・テスト・依存・外部コード・Python・知見 | issueは起票者・親CLIの明示指定だけ。PRは `.github/labeler.yml` が変更ファイルから付け、Dependabotは設定で指定する |
@@ -79,13 +82,19 @@ repo:Motoki0705/tennis-lab is:issue is:open label:"issue:standalone"
 repo:Motoki0705/tennis-lab is:issue is:open label:"issue:standalone" label:research
 ```
 
-親・子・単独のいずれにも未分類の確認候補:
+改善提案一覧（作業一覧とは分ける）:
 
 ```text
-repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:child" -label:"issue:standalone" -label:ops-report -label:parent-evidence
+repo:Motoki0705/tennis-lab is:issue is:open label:"issue:proposal"
 ```
 
-最後の検索は確認候補の抽出であり、全件にstandaloneを自動付与する根拠にはしない。レポート容器と証拠用Issueは除外する。
+役割のいずれにも未分類の確認候補:
+
+```text
+repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:child" -label:"issue:standalone" -label:"issue:proposal" -label:ops-report -label:parent-evidence
+```
+
+最後の検索は確認候補の抽出であり、全件にstandaloneを自動付与する根拠にはしない。改善提案・レポート容器・証拠用Issueは除外する。
 
 ## 証拠用Issueの除外
 
@@ -298,8 +307,8 @@ parent_body = render_parent_body(
 その場合は子の必須節もsectionsに含める。本文の各値に別の `##` 節を埋め込まず、別のキーにする。
 生成時の形式違反は `ValueError`、`validate_body` はエラー文字列のtupleを返す。
 `parse_title` / `parent_reference` / `parse_child_tasks` / `parse_sections` は検査・更新に再利用できる。
-`PARENT_LABEL` / `CHILD_LABEL` / `STANDALONE_LABEL` をimportして付与し、他の軸のラベルを維持する。
-親・子の `render` specでは役割ラベルを生成するため、任意の `labels` への3種の役割ラベルの混入を拒否する。
+`PARENT_LABEL` / `CHILD_LABEL` / `STANDALONE_LABEL` / `PROPOSAL_LABEL` をimportして付与し、他の軸のラベルを維持する。
+親・子の `render` specでは役割ラベルを生成するため、任意の `labels` への4種の役割ラベルの混入を拒否する。
 
 レポート経由でも、親は**レポートissueではなく開発用の親issue**。採用、Issue整理、人間合意、自律着手の根拠を
 区別する。既存の手動親は [parent CLI](../parent/README.md#採用提案の受領)、未担当の採用提案は
@@ -314,23 +323,20 @@ parent_body = render_parent_body(
    同じキーの複数issue、不正・重複メタデータはエラー。`parse_proposal_source(body)` で現在の選択肢まで
    比較し、一致しない既存issueを再利用しない。タイトル改名・親付替えで重複起票しないことをテスト済み。
 
-## 終了時改善の独立親
+## 終了時改善の提案と取り出し
 
-`issues.improvement.ImprovementSource(parent, key)` は `I-<元親>-<key>` の候補を表す。
-`render` specの `improvement_source: {parent: N, key: KEY}` はrole=parent・正式親なしのときだけ使え、
-本文1行目に `<!-- parent-improvement-source:v1 parent=N key=KEY -->` を置く。
-`parse_source` / `index_sources` は全open/closedの本文から出典を照合し、重複・不正な出典を拒否する。
-`contract` は出典マーカーを除く前文も比較する。通常文章の空白・改行を正規化し、fence内の文字列を保持する。
-前文の保存キー `_preamble` は予約済みで、同名の見出しによる契約の上書きを拒否する。
-`execution_terms(requirements)` は承認snapshotから実行合意の4欄を生成する。必須節と追加節の扱いは
-[人間判断と実行](../parent/improvements.md#人間判断と実行)を参照する。
-これは `ProposalSource` / `index_proposals`・`ai-proposed`・`parent-task:v1` とは独立した出典である。
+候補の `issues.improvement.ImprovementSource(parent, key)` と構造化コメントreaderを使う。
+提案generationと取り出しの出典は `issues.improvement_proposals.Proposal` / `Extraction` が描画・解析する。
+新規公開は `parent improvement-propose`、会話の判断は `improvement-decide`、承認分の取り出しは `improvement-extract`。
+各マーカー・承認snapshot・冪等な復旧の正本は [終了時改善](../parent/improvements.md) に置く。
+旧 `parent-improvement-source` とpublished/decision eventは読み続け、新方式の公開には使わない。
 
-`issues.creation.create_issue_once` は固定draft・送信前receipt・出典に一致する候補の照合を共有する。
-呼出側は一致条件と永続化・排他を提供する。応答不明で一致先も未観測なら再POSTせず、明示的な再送時に照合する。
-終了時改善のcallerは最初のPOSTに `issue:parent` / `needs-human` を含め、元親の子・依存に追加しない。
-候補の正本・人間判断・既存issueへの集約・導入順は [parentの終了時改善](../parent/improvements.md)を参照する。
-候補の受入と元親の全体受入を混ぜず、子テンプレートの改善欄は元親の正本コメントへの参照に使う。
+`issues.creation.create_issue_once` は固定draft・送信前receipt・出典照合を共有する。
+呼出側が一致条件・永続化・排他を提供する。応答不明で一致先も未観測なら再POSTしない。
+`issues.improvement.contract` は進捗以外の要件（前文・未知節・fence内も含む）を保護し、`execution_terms` が実行合意へ変換する。
+`_preamble` は予約済みで、同名見出しによる上書きを拒否する。
+`issues check` は `label.proposal` で役割ラベル混在、`relationship.proposal` で正式関係や親子の役割hintとの矛盾を報告する。
+提案本文に親子の必須節は要求しない。
 
 ## triageによる出典と復旧契約
 

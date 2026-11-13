@@ -590,6 +590,10 @@ class ParentSession:
 
     def family(self) -> tuple[Issue, dict[int, Issue]]:
         family = self.gh.family(self.parent)
+        from issues.evidence import require_work_issue
+
+        for item in family.values():
+            require_work_issue({"labels": item.labels, "body": item.body})
         parent = family[self.parent]
         return parent, {n: family[n] for n in parent.children}
 

@@ -112,7 +112,9 @@ merge後のCIと全体の受入条件を確認する。今回の受入結果と�
 [構造化finish](../../ops/parent/improvements.md#今回の受入と候補整理)を手動の `release --ended --spec` または自律の `workflow-report` へ渡す。
 未達の受入条件を改善へ移してcompletedにしない。候補なしも明示し、noteだけの担当終了を受入済みと報告しない。
 次回改善は `improvement` に安定keyで記録し、子で発見した場合だけ `--child` を付ける。
-独立した新親の起票は `improvement-publish`、実行承認・保留・見送り・撤回は `improvement-decide` を明示する。
+候補を記録した後に `improvement-propose` で改善提案Issueへ列挙し、会話の判断を `improvement-decide` へ記録する。
+人間が取り出しを指示したら `improvement-extract` で承認分全件を1つのparentへまとめる。
+期限・復旧・取り出し後の合意は [終了時改善](../../ops/parent/improvements.md) を参照する。
 候補整理から再帰的に起票せず、次世代にも新たな人間判断を求める。元親の完了を改善の判断待ちへ戻さない。
 
 ## 保留・失敗から進める

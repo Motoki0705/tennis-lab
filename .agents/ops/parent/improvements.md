@@ -1,16 +1,16 @@
 # 終了時改善と全体受入
 
 今回の成果の受入と、次回改善の採否・実行を分ける。候補を残しても元親のAcceptance・正式な子・依存を増やさない。
-改善の起票や公開が失敗しても今回の受入を未達へ戻さず、`status` でそれぞれの状態を確認する。
-操作は既存の [parent CLI](README.md)、共通の [issues API](../issues/README.md) を使う。
+提案の公開・取り出しに失敗しても今回の受入を未達へ戻さず、`status.improvements` と `status.completion` で別々に確認する。
+操作は既存の [parent CLI](README.md) と [issues API](../issues/README.md) を使う。
 
 ## 候補の正本
 
-安定IDは `I-<元親番号>-<key>`。keyは親が選ぶ64文字以下の小文字英数字・ハイフンで、改名・再提案でも変えない。
-元親に対応する証拠用Issueの `parent-improvement:v1` 構造化コメント列が正本である。旧親コメントも
-[共通reader](README.md#機械証拠の保存共通reader)で読み、候補revision、直前eventの参照、内容digestを検査し、
+安定IDは `I-<元親番号>-<key>`。keyは親が選ぶ64文字以下の小文字英数字・ハイフンで、改名でも変えない。
+元親の証拠用Issueの `parent-improvement:v1` 構造化コメント列が正本である。
+[共通reader](README.md#機械証拠の保存共通reader) は旧親コメントも読み、revision、直前eventの参照、内容digestを検査する。
 欠落・分岐・未知version・同じ配送keyの異なる内容を拒否する。子の「次の改善候補」欄は正本へのリンクだけを置く。
-元親がcloseしてもコメントを参照でき、同じ候補の補足・起票・人間判断の再送は元親の担当・実装を再開しない。
+元親が終了しても候補の公開・判断・取り出しは元親の担当を再開しない。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement --key result-access --spec tmp/improvement.json
@@ -37,86 +37,132 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement --ke
 }
 ```
 
-今回の未達条件に関係する案なら `unmet_acceptance` に `status.completion.requirements.criteria` のIDを記録する。
-その候補の起票・承認と元親のcompletedは拒否する。自由文から達成の真偽を推定せず、親が証拠を確認する責任を持つ。
-旧3フィールド（purpose/evidence/scope）のspecは発見記録として保持し、返されたkeyで不足を補うまで起票できない。
-記録・整理だけで別issueを作ることはない。候補の更新は承認を引き継がない。
+今回の未達条件に関係する案は `unmet_acceptance` に `status.completion.requirements.criteria` のIDを記録する。
+その候補の公開・承認と元親のcompletedは拒否する。自由文から達成の真偽を推定せず、親が証拠を確認する。
+旧3フィールド（purpose/evidence/scope）の発見記録は読み続け、不足を同じkeyで補うまで公開しない。
+候補の内容を更新するとrevisionが進み、以前の承認は失効する。2世代目も新しい候補・新しい人間承認が必要。
 
-## 起票と復旧
+## 提案Issueへの列挙
+
+親が終了時に候補を整理・記録した後、`improvement-propose` を明示実行する。
+記録や `release --ended` だけでは自動起票しない。`release --ended` と完了した `workflow-report` の結果の `unpublished_improvements` で未掲載の候補を確認できる。
 
 ```bash
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement-publish --candidate I-1216-result-access
-# 同目的の既存issueへ集約する場合
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement-publish --candidate I-1216-result-access --existing 1300
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement-propose
 ```
 
-新規作成は親テンプレートからrenderし、**POSTのlabelsに `issue:parent` と `needs-human` を含める**。
-出典は本文1行目の `<!-- parent-improvement-source:v1 parent=1216 key=result-access -->`。
-`ai-proposed`・`ops-report-proposal`・`parent-task:v1` は流用しない。正式親・依存は追加しない。
-タイトルでは同一性を判断しない。人間/親が同目的を照合して `--existing` へ渡す。既存open・closed/completed・
-closed/not_plannedの本文・ラベル・親子関係・状態は維持する。参照の追加は既存issueの実行権限を拡張せず、既存の合意経路を使う。
-すでにこの候補から作成したissueも、改名・close・見送り後に別issueへ複製しない。
-
-共有private stateへ固定draft・送信前receiptを永続化し、repo単位の操作ロックで同時再送を直列化する。
-全open/closedの出典索引から作成済みissueを照合し、リンク記録だけが欠けた場合はその部分を補う。
-POSTが成功した可能性があるのに応答が失われ、索引にもまだ見えない場合は `outcome_unknown` で停止する。
-同じ候補IDで再送して照合する。receipt削除・key変更・タイトル検索による再POSTで復旧しない。
-同じrepoの操作は同じstate/lockを共有する。別ホストの独立stateからの同時書込みの排他は提供しない。
-
-再提案は同じ候補key・同じissueで境界と根拠を更新し、新しい人間判断を記録する。本文の新しい要件も人間に確認してもらう。
-issueのreopenや `needs-human` の解除は、この操作の副作用として行わない。
+元親ごとに同時にopenな提案Issueは1件。ラベルは `issue:proposal`・`needs-human`・`enhancement`。
+提案は作業対象ではなく、正式な親も子も持たない。役割の排他・各作業入口の除外は [issues規約](../issues/README.md#ラベル)を参照する。
+出典は本文1行目の `<!-- parent-improvement-proposal:v1 parent=1216 generation=1 -->`。
+初回作成と候補追加は正本の候補・判断・取り出しeventから本文を描画する。本文の手編集は判断に使わない。
+各候補のID・revision・目的・観測と根拠・対象/対象外・受入条件・状態を列挙する。
+期限はGitHubの作成日時から7日後（UTC）。候補追加や本文編集では延びない。
+closeした提案は再openしない。後から記録した新しい候補は、次のgenerationの提案へ載せる。
+終了した提案の候補の更新を、別generationへの再掲載として扱わない。
 
 ## 人間判断と実行
+
+人間の会話での指示を、候補revisionと掲載先のopenな提案Issueへ結び付ける。
+改善親の本文や補足確定は承認の入力にしない。候補の目的・範囲・対象外・受入条件・停止条件・根拠をsnapshotへ固定する。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement-decide --candidate I-1216-result-access --action approve --spec tmp/human-decision.json
 ```
 
-actionは `approve`（実行承認）/ `hold`（保留）/ `decline`（見送り）/ `revoke`（承認撤回）。specは次の形式。
+actionは `approve`（承認）/ `hold`（保留）/ `decline`（見送り）/ `revoke`（撤回）。単一候補のspec:
 
 ```json
 {
   "schema_version": 1,
-  "request_key": "human-20261111-1",
+  "request_key": "human-20261113-1",
   "revision": 1,
   "previous_decision": null,
   "human_confirmation": {
-    "quote": "この候補の記載した範囲で実装を進めてください",
-    "source": "2026-11-11の人間との会話。候補 I-1216-result-access と改善親 #1300 を確認"
+    "quote": "この候補の記載した範囲を承認します",
+    "source": "2026-11-13の人間との会話。候補 I-1216-result-access を確認"
   },
-  "reason": "元発言を確認し、この候補の境界に対する実行承認として記録した"
+  "reason": "元発言を確認し、この候補の境界に対する承認として記録した"
 }
 ```
 
-revisionとprevious_decisionは最新status/正本コメントで確認する。2回目以降は直前のdecision_idを指定する。
-同じrequest_key・内容の再送は不足した停止処理だけを復旧し、後から行われた撤回を古い承認で上書きしない。
-新しい承認は新しい元発言・request_keyが必要。対象issueの補足追加が確定するまでapproveできない。
+revisionとprevious_decisionは正本コメントまたはstatusで確認する。2回目以降は直前のdecision_idを指定する。
+同じrequest_key・内容の再送は不足した本文投影・停止処理を復旧し、後からの撤回を古い承認で上書きしない。
+新しい承認は新しい元発言・request_keyが必要。候補の内容変更後は新しいrevisionを指定する。
 
-人間とagentが同じGitHub loginを使うため、loginやラベルを人間の承認証明にはしない。
-**保証範囲は既存agreeと同じ**で、親が人間の元発言を確認して引用・出典を記録する。別credential・署名・人間性の認証は提供しない。
-AIの自己採用、元親の合意、自律実行根拠、`needs-human` の削除は専用判断eventの代わりにならない。
+1回の発言で複数候補を判断するときは `--candidate` を繰り返す。上記specのrevision/previous_decisionを次のmapへ置き換える。
+共通の引用・出典・request_keyから候補ごとのeventを作り、全対象を検査してから追記する。途中失敗は同じspecで再送する。
 
-未承認でも改善親の `register` / `handoff --accept` は可能で、議論・判断の記録を進められる。
-実装は `agree --improvement-approval <decision_id>` で承認を取り込み、既存のcreate-child/delegate/run-worker経路へ渡す。
-agree・create-child・delegate・run-worker（resumeを含む）・start-worker/continue-worker・実行authorization・
-dispatcher候補判定・supervisorの起動直前で、正本の現在の承認を照合する。
-dispatcherに新たな自動割当経路は作らず、既存の自律着手条件に従う。承認記録で `needs-human` は外さない。
+```json
+{
+  "candidates": {
+    "I-1216-result-access": {"revision": 1, "previous_decision": null},
+    "I-1216-other": {"revision": 2, "previous_decision": null}
+  }
+}
+```
 
-実行合意は、承認eventの `requirements` snapshotから生成する。起票後に本文の範囲を変更して承認した場合も、
-候補specの旧範囲で補わない。「目的・背景」→purpose、「全体のスコープ」→scope、
-「全体方針・合意事項」→behavior、「全体の完了条件」→acceptanceと対応させる。
-「依存関係・進め方」と残りの保護対象節は見出し順でbehaviorへ付け、前文も「承認本文の前文」として保持する。
-これにより対象外・停止条件・追加規約を落とさず、本文にない意味を推定しない。
-上記5つの必須節が欠ける・空の場合はapproveとagreeを明示エラーにする。
-自律根拠のpurpose/scope/behavior/acceptanceも、この同じ変換結果と照合する。
-変換の共通APIは `issues.improvement.execution_terms(requirements)`。人間の引用・出典は同じ承認eventから取り込む。
+人間とagentが同じGitHub loginを使うため、login・ラベル・チェックは人間の承認証明ではない。
+保証範囲は既存agreeと同じで、親が人間の元発言を確認して引用・出典を記録する。AIの自己採用や元親の合意では代用しない。
+判断後に提案本文を再描画する。提案がcloseした後の新しい判断・取り出しは拒否する。
+ただし**取り出した候補への保留・見送り・撤回**は、既存parentを止めるため引き続き受け付ける。再承認はしない。
 
-承認は候補revision・改善親番号・本文の要件を固定する。出典マーカーと最初の見出しの間の前文も含み、
-そこでの補足details・コードを捨てない。通常文章の空白・改行、チェック状態、進捗節の変化は許容し、
-目的・範囲・受入条件・前文・未知の追加節・コードなどの変化は新しい判断まで拒否する。意味の同値性をLLMで推定しない。
-保留・見送り・撤回は起動直前の検査と同じロックで停止要求を保存し、既存runner/supervisorで対象の停止・回収を照合する。
-未確認なら `stop.state=stopping` を返し、同じdecideを再送して復旧する。停止確認前に承認し直しても起動できない。
-2世代目も新しい候補・新しい承認が必要で、前世代の権限は継承しない。
+## 承認分の取り出しと復旧
+
+人間が「承認した候補をparentにして」などと指示したときだけAIが実行する。自動取り出しのtimerはない。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 improvement-extract --candidates I-1216-result-access I-1216-other
+# 取り出し結果のdecision_idsのいずれかを指定すると、記録された全候補の承認を取り込む
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1300 agree --improvement-approval DECISION_ID
+```
+
+指定集合は、その提案の現在承認済み・未取り出しの全候補と一致する必要がある。不足・余分を列挙して拒否する。
+未判断・保留・見送り・撤回・期限切れや別の提案に属する候補は取り出さない。
+新parentのラベルは `issue:parent`・`enhancement`。`needs-human` は付けない。
+親テンプレートの節に全候補の承認snapshotと出典リンクをまとめ、出典目印に提案番号と全候補IDを保持する。
+承認snapshotを起票後の自動背景追加で変えないよう、取り出したparentも本文補足の対象外とする。起動時の全承認照合は維持する。
+取り出しeventを記録して提案本文を更新し、completedでcloseする。残った候補は「提案終了」として残す。
+
+propose/extractは共有private stateへ固定draft・送信前receiptを永続化し、repo単位の改善操作ロックで直列化する。
+既存の `create_issue_once` と全open/closedの出典索引を使い、応答喪失後も同じIssueで不足分だけを復旧する。
+POST成功の可能性があり、索引で未観測なら `outcome_unknown` として停止し、再POSTしない。
+同じ引数で再送する。receipt削除・key変更・タイトル検索では復旧しない。別ホストの独立state間の排他は提供しない。
+取り出しが送信済みの提案は期限処理から外し、明示的なextract再送で起票結果・event・closeを収束させる。
+
+agree・create-child・delegate・run-worker（resume含む）・start/continue-worker・authorization・dispatcher・supervisorの起動直前で、全候補の現在の承認を照合する。
+1候補でも撤回・保留・見送りになればparent全体の起動を拒否し、既存の停止要求経路を使う。他の候補だけを続けない。
+停止未確認なら `stop.state=stopping` を返し、同じdecideを再送して回収を確認する。
+実行合意は生成parent本文の保護対象要件から `issues.improvement.execution_terms` で変換する。
+「目的・背景」→purpose、「全体のスコープ」→scope、「全体方針・合意事項」→behavior、「全体の完了条件」→acceptance。
+「依存関係・進め方」と残りの保護対象節はbehaviorに加え、前文も保持する。必須5節の欠落・空欄は拒否する。
+空白・チェック状態・進捗の体裁変更以外の要件変更は実行を拒否する。意味の同値性を推測しない。
+
+## 期限切れcloseとunit導入
+
+```bash
+# 担当登録・session identityは不要。repo全体の提案を走査する
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo Motoki0705/tennis-lab improvement-expire --dry-run
+# テスト・再現用の固定時刻
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo Motoki0705/tennis-lab improvement-expire --now 2026-11-21T00:00:00Z
+```
+
+作成から7日経過した、取り出されていないopenな提案をnot_plannedでcloseする。
+期限判定にはGitHubの作成日時と正本に保存された出典を使い、本文の期限表示を信用しない。
+失効した候補をcloseコメントに列挙し、承認済み・未取り出しを区別する。同じコメントを再投稿しない。
+GitHub取得・更新に失敗すれば非0で終了し、stdoutのclosed/pending/errorsに部分結果を返す。
+成功済みのcloseを戻さず、再実行で残りを処理する。
+
+`parent/systemd/tennis-lab-improvement-expire.service` はoneshot、対応timerは日次・`Persistent=true`。
+mainへmerge後に [unit installer](../install_units.sh) を使う（この操作だけでは有効化しない）。
+
+```bash
+spin ops install proposal-expiry
+spin ops on proposal-expiry
+```
+
+unitはmain checkoutと既存unitと同じPATH、通常のgh認証設定を使う。`~/.bashrc` は読まない。
+カスタムの認証環境が必要なら既存unitと同様にsystemdのuser環境へ明示設定する。
+実ホストの導入・有効化・ラベル同期・代表フローの実GitHub受入は担当親が行う。
 
 ## 今回の受入と候補整理
 
@@ -151,7 +197,7 @@ finishは受入項目の機械記録として証拠用Issueへ保存し、通知
 実merge・レビュー・子の終了等の既存検査に加え、supervisorは当該job/担当generation/権限に結び付いたfinish receiptを照合する。
 手書きの最終completed JSONだけでは完了しない。
 
-改善親の受入表示は、completionに保存したdecision_idが示す承認・要件と、現在の承認・本文を照合する。
+取り出したparentの受入表示は、completionに保存した全decision_idの承認・要件と、現在の承認・本文を照合する。
 同じ候補revisionでも新しい承認に過去の受入を引き継がず、元親statusのacceptedと改善親statusの受入済み表示を外す。
 過去のcompletionと公開済み終了コメントは保持する。文章の体裁だけの変更では受入を失効させない。
 
@@ -159,18 +205,13 @@ finishは受入項目の機械記録として証拠用Issueへ保存し、通知
 手動finishと自律completedは同じ実merge・受入・終了の証拠を要求し、空の子一覧だけで完了にしない。
 候補の発見元に架空の子は作らず、独自のresolverや完了fallbackは置かない。
 
-## 判断ログと導入順
+## 判断ログと互換
 
-元親担当中の候補観測・切り出し理由・起票要求/結果は [既存判断journal](../decision_logs/README.ja.md)へ捕捉する。
-`improvement` が返す公開decision_idを `improvement-publish --decision-id` へ渡すと、その判断と起票を関連付けられる。
-同じ候補・宛先・判断参照の再送は前回結果につながるretry_publicationとして捕捉し、同じ計画を二重に要求しない。
-理由は候補の正本を参照し、`decide` 等へ同じ文章を再入力しない。人間判断の正本も候補コメントである。
-終了済み元親のjournalを別sessionから公開・更新する経路は追加しない。改善親の担当がagreeへ承認を取り込んだ時点で、
-改善親graphに「承認を観測した結果」と元コメント参照を記録する。未判断・見送り・承認済み未起動・実行失敗は成功と区別する。
-既存の捕捉・公開用変換・階層READMEを利用する。独自のPublisherや表示基盤は追加しない。
-実際の運用記録の公開・表示の受入は、担当親が既存の明示公開手順で行う。
+候補観測・切り出し理由・公開/取り出し要求と結果・会話判断は [既存判断journal](../decision_logs/README.ja.md) へ接続する。
+`improvement` が返す公開decision_idは `improvement-propose --decision-id` へ渡せる。
+同じ判断参照の再送はretry_publicationとして前回結果へ接続する。正本の理由を別ログへ再入力しない。
+終了した元親のjournalは別sessionから更新せず、取り出したparentのagreeで全承認を観測した結果と元コメントへの参照を記録する。
 
-最初の新出典publishの前に、この変更を含むmainのopsへdispatcherサービスと手動CLIの両方を切り替える。
-古いopsを使った親/workerの委任を止め、稼働中のrunは既存の停止・回収手順で確認してから新しいopsで再開する。
-dispatcherのinstall/運用とprivate stateの保持は [dispatcher README](../dispatcher/README.md)に従う。
-新しい入口のhelpと、fake GitHubでの起動拒否テストを確認してからpublishを使う。実GitHubへの試験大量起票や過去issueの一括移行はしない。
+既存の候補記録・旧published/decision eventは共通readerで読み続ける。旧方式の改善親を見つけた場合は自動移行せず担当親へ返す。
+運用開始前にmainの新しいCLI・dispatcherへ切り替え、旧runを既存の停止・回収手順で確認する。
+helpとfake GitHubの起動拒否・復旧テストを確認し、実機受入は人間承認の範囲で1つの代表フローを行う。

@@ -19,6 +19,7 @@ from .evidence import EVIDENCE_LABEL, require_work_issue
 from .format import (
     CHILD_LABEL,
     PARENT_LABEL,
+    PROPOSAL_LABEL,
     STANDALONE_LABEL,
     ChildTask,
     ParentRef,
@@ -110,6 +111,7 @@ def render_spec(value: object) -> dict[str, object]:
         PARENT_LABEL in labels
         or CHILD_LABEL in labels
         or STANDALONE_LABEL in labels
+        or PROPOSAL_LABEL in labels
         or EVIDENCE_LABEL in labels
         or len(set(labels)) != len(labels)
     ):
@@ -323,7 +325,7 @@ class GitHub:
                 continue
             base = f"repos/{self.repo}/issues/{current}"
             raw = _object(self.get(base), "issue")
-            require_work_issue(raw)
+            require_work_issue(raw, allow_proposal=True)
             if self.identity(raw) != current:
                 raise ValueError("issue response number differs from request")
             # Only this endpoint's documented 404 means no parent. All other
@@ -339,7 +341,7 @@ class GitHub:
                         "sub_issues response must be a page of at most 100 issues"
                     )
                 for row in rows:
-                    require_work_issue(_object(row, "sub-issue"))
+                    require_work_issue(_object(row, "sub-issue"), allow_proposal=True)
                 page_children = [self.identity(row) for row in rows]
                 if len(set(page_children)) != len(page_children) or set(
                     children

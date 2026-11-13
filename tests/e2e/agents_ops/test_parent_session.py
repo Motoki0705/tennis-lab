@@ -218,7 +218,7 @@ if n is None:
     row = {"id": int(n)+10000, "number": int(n), "repository_url": "https://api.github.com/repos/o/r",
            "title": payload["title"], "body": payload["body"], "labels": [{"name": x} for x in payload["labels"]],
            "user": {"login": "operator"},
-           "state": "open", "state_reason": None, "created_at": "2026-10-31T00:00:00Z"}
+           "state": "open", "state_reason": None, "created_at": os.environ.get("PARENT_CREATED_AT", "2026-10-31T00:00:00Z")}
     state["issues"][n] = row
     save()
     if os.environ.get("PARENT_FAIL_AFTER_CREATE"):
@@ -252,6 +252,8 @@ if tail == "comments":
         fail()
     response(comment, 201)
 if method == "PATCH":
+    if os.environ.get("PARENT_FAIL_PATCH_ISSUE") == n:
+        fail()
     for k, v in payload.items():
         row[k] = [{"name": x} for x in v] if k == "labels" else v
     save()

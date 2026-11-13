@@ -98,7 +98,7 @@ def test_unmet_acceptance_exported_to_candidate_cannot_finish(
     assert "unfinished acceptance" in denied.stderr
     status = json.loads(p.cli("status").stdout)
     assert status["assignment"] == "active" and status["completion"]["record"] is None
-    p.cli("improvement-publish", "--candidate", "I-1-failure-display", ok=False)
+    p.cli("improvement-propose", ok=False)
 
 
 @pytest.mark.parametrize("gate_env", ["parent_self"], indirect=True)
@@ -110,7 +110,7 @@ def test_recorded_completion_and_failed_proposal_publication_are_independent(
     assert merged.returncode == 0, merged.stderr
     p.cli("improvement", "--key", "next", "--spec", p.spec(candidate_spec()))
     p.env["PARENT_FAIL_AFTER_CREATE"] = "1"
-    p.cli("improvement-publish", "--candidate", "I-1-next", ok=False)
+    p.cli("improvement-propose", ok=False)
     del p.env["PARENT_FAIL_AFTER_CREATE"]
     p.announce_completion()
     spec = finish_for(p, candidates=["I-1-next"])
@@ -119,7 +119,7 @@ def test_recorded_completion_and_failed_proposal_publication_are_independent(
         status["completion"]["acceptance"] == "completed"
         and status["improvements"][0]["publication"] == "outcome_unknown"
     )
-    p.cli("improvement-publish", "--candidate", "I-1-next")
+    p.cli("improvement-propose")
     status = json.loads(p.cli("status").stdout)
     assert (
         status["assignment"] == "ended"

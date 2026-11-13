@@ -3,22 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from issues.cli import render_spec
-from issues.creation import create_issue_once
 from issues.improvement import (
     ImprovementSource,
     approved,
     candidate_key,
     confirmation,
-    contract,
     event,
     execution_terms,
     fields,
     fingerprint,
     human_state,
-    index_sources,
     key,
     parse_source,
     positive,
@@ -27,7 +23,7 @@ from issues.improvement import (
     text,
     validate_spec,
 )
-from worker_logs.journal import atomic, decode
+from issues.improvement_proposals import parse_extraction
 
 from .policy import raw_section, replace_section
 
@@ -91,7 +87,7 @@ def comment_url(session: ParentSession, parent: int, comment_id: int) -> str:
     matches = [c for c in comments if c["id"] == comment_id]
     if len(matches) != 1:
         raise ValueError("improvement evidence comment is missing or duplicated")
-    return public_url(session.gh.repo.casefold(), parent, matches[0])
+    return cast(str, public_url(session.gh.repo.casefold(), parent, matches[0]))
 
 
 def record(
@@ -136,15 +132,18 @@ def record(
     spec = validate_spec(value)
     source = ImprovementSource(session.parent, key(fixed_key))
     previous = candidates(session).get(source.key)
-    if previous and previous["publication"] is None:
-        receipt = _receipt(session, source)
+    if previous is not None and previous["candidate"]["data"]["spec"] != spec:
+        from .improvement_proposals import load_receipt
+
+        receipt = load_receipt(session, f"proposal-{session.parent}")
         if (
-            receipt is not None
+            receipt
             and receipt["creation"]["attempted"]
-            and previous["candidate"]["data"]["spec"] != spec
+            and source.key in receipt["members"]
+            and previous["proposal"] is None
         ):
             raise ValueError(
-                "recover the attempted publication before revising its candidate"
+                "recover the attempted proposal before revising its candidate"
             )
     data = {"source_issue": origin, "spec": spec, "legacy": legacy}
     if previous and previous["candidate"]["data"] == data:
@@ -187,199 +186,13 @@ def record(
     }
 
 
-def draft(
-    session: ParentSession, source: ImprovementSource, row: dict[str, Any]
-) -> dict[str, Any]:
-    data = row["candidate"]["data"]
-    spec = data["spec"]
-    if data["legacy"]:
-        raise ValueError(
-            "candidate boundary is incomplete; update the same key before publishing"
-        )
-    if spec["unmet_acceptance"]:
-        raise ValueError(
-            "unfinished original acceptance must remain with the original task"
-        )
-    # Repository spelling may change across callers; it must not change the
-    # frozen POST when restoring the same candidate after a lost response.
-    ref = comment_url(session, source.parent, row["comments"][row["candidate"]["id"]])
-    rendered = render_spec(
-        {
-            "role": "parent",
-            "identifier": "継続改善",
-            "summary": spec["purpose"],
-            "children": [],
-            "labels": ["enhancement", "needs-human"],
-            "improvement_source": {"parent": source.parent, "key": source.key},
-            "sections": {
-                "目的・背景": spec["purpose"] + "\n\n" + spec["observation"],
-                "全体のスコープ": "対象:\n"
-                + spec["scope"]
-                + "\n\n対象外:\n"
-                + spec["out_of_scope"],
-                "全体方針・合意事項": "人間の実行判断待ち。起票は実行承認ではありません。\n\n期待する動作:\n"
-                + spec["behavior"],
-                "全体の完了条件": "\n".join(
-                    "- [ ] " + criterion for criterion in spec["acceptance"]
-                ),
-                "進捗概要": "未着手。人間の実行判断待ち。",
-                "依存関係・進め方": "未分割。元親は出典であり先行依存ではありません。\n\n停止条件:\n"
-                + spec["stop_conditions"],
-                "改善の出典": f"[{source.candidate_id}]({ref})\n\n根拠:\n{spec['evidence']}\n\n切り出し判断:\n{spec['judgment']}",
-                "未決事項・人間の判断が必要な点": spec["unknowns"],
-            },
-        }
-    )
-    return {k: rendered[k] for k in ("title", "body", "labels")}
-
-
-def receipt_path(session: ParentSession, source: ImprovementSource) -> Path:
-    return Path(
-        Path(session.store.directory)
-        / "improvement-publications"
-        / str(fingerprint(session.gh.repo.casefold()))
-        / f"{source.parent}-{source.key}.json"
-    )
-
-
-def _receipt(
-    session: ParentSession, source: ImprovementSource
-) -> dict[str, Any] | None:
-    path = receipt_path(session, source)
-    if path.is_symlink():
-        raise ValueError("improvement receipt must not be a symlink")
-    if not path.exists():
-        return None
-    value = decode(path.read_bytes())
-    fields(
-        value,
-        {"schema_version", "repo", "parent", "key", "candidate_revision", "creation"},
-    )
-    if (
-        type(value["schema_version"]) is not int
-        or value["schema_version"] != 1
-        or value["repo"] != session.gh.repo.casefold()
-        or value["parent"] != source.parent
-        or value["key"] != source.key
-    ):
-        raise ValueError("improvement publication receipt identity changed")
-    positive(value["candidate_revision"])
-    fields(value["creation"], {"draft", "attempted", "number"})
-    return dict(value)
-
-
-def publish(
-    session: ParentSession, candidate: str, existing: int | None
-) -> dict[str, Any]:
-    source, row = get(session, candidate)
-    if session.row.get("status") in {"active", "handoff_pending"}:
-        session.owner()
-    # Always index all states. A partial/failed listing must never permit a POST.
-    rows = session.gh.issue_rows()
-    index = index_sources(
-        (positive(raw["number"]), raw.get("body") or "") for raw in rows
-    )
-    receipt = _receipt(session, source)
-    publication = row["publication"]
-    if publication is not None:
-        n = publication["data"]["issue"]
-        if existing is not None and existing != n:
-            raise ValueError("candidate already points to another issue")
-        if publication["data"]["mode"] == "created" and index.get(source) != n:
-            raise ValueError(
-                "published proposal disappeared or lost its source; do not recreate it"
-            )
-        session.gh.issue(n)
-        return {
-            "candidate_id": source.candidate_id,
-            "issue": n,
-            "reused": True,
-            "publication": publication["data"]["mode"],
-        }
-    if existing is not None:
-        if receipt is not None and receipt["creation"]["attempted"]:
-            raise ValueError(
-                "creation was attempted; reconcile that issue before changing destination"
-            )
-        n = positive(existing)
-        if n == source.parent:
-            raise ValueError(
-                "an improvement cannot be attached back to its source parent"
-            )
-        target = session.gh.issue(n)
-        if source in index and index[source] != n:
-            raise ValueError("candidate already has a different created proposal")
-        # Reference an existing purpose without rewriting its scope, provenance,
-        # owner, labels, close reason or human decision.
-        row_event = event(
-            source,
-            "published",
-            row["revision"],
-            row["last"]["id"],
-            {
-                "issue": n,
-                "mode": "reference",
-                "draft_sha256": fingerprint(target.get("body") or ""),
-            },
-        )
-    else:
-        fixed_draft = draft(session, source, row)
-        if receipt is None:
-            receipt = {
-                "schema_version": 1,
-                "repo": session.gh.repo.casefold(),
-                "parent": source.parent,
-                "key": source.key,
-                "candidate_revision": row["revision"],
-                "creation": {"draft": None, "attempted": False, "number": None},
-            }
-        elif receipt["candidate_revision"] != row["revision"]:
-            raise ValueError(
-                "candidate changed during publication; recover the original issue first"
-            )
-        matches = [raw for raw in rows if raw["number"] == index.get(source)]
-        session.public(fixed_draft)
-        created = create_issue_once(
-            session.gh,
-            draft=fixed_draft,
-            receipt=receipt["creation"],
-            matches=matches,
-            save=lambda: atomic(receipt_path(session, source), receipt),
-        )
-        n = positive(created["number"])
-        with session.gh.fresh_reads():
-            target = session.gh.issue(n)
-            if parse_source(target.get("body") or "") != source:
-                raise ValueError("created proposal source mismatch")
-            labels = {label["name"] for label in target["labels"]}
-            if "issue:parent" not in labels:
-                raise ValueError("created proposal lost its parent role")
-            if (
-                session.gh.get(
-                    f"repos/{session.gh.repo}/issues/{n}/parent", missing_parent=True
-                )
-                is not None
-            ):
-                raise ValueError("improvement proposal acquired a formal parent")
-        row_event = event(
-            source,
-            "published",
-            row["revision"],
-            row["last"]["id"],
-            {"issue": n, "mode": "created", "draft_sha256": fingerprint(fixed_draft)},
-        )
-    append(session, row_event)
-    return {
-        "candidate_id": source.candidate_id,
-        "issue": n,
-        "reused": bool(existing or matches),
-        "publication": row_event["data"]["mode"],
-    }
-
-
-def decide(
+def _decision(
     session: ParentSession, candidate: str, action: str, value: dict[str, Any]
-) -> dict[str, Any]:
+) -> tuple[ImprovementSource, dict[str, Any], bool]:
+    from datetime import UTC, datetime
+
+    from .improvement_proposals import candidate_requirements, deadline, proposal_issue
+
     source, row = get(session, candidate)
     fields(
         value,
@@ -409,15 +222,7 @@ def decide(
     if replay:
         if replay["data"]["request_sha256"] != requested:
             raise ValueError("human decision request key has different content")
-        # Returning the old receipt must not reinstate an approval after revoke.
-        stage_stop(session, source, row)
-        return {
-            "candidate_id": source.candidate_id,
-            "decision_id": replay["id"],
-            "state": human_state(row),
-            "issue": replay["data"]["issue"],
-            "reused": True,
-        }
+        return source, replay, True
     if value["revision"] != row["revision"] or type(value["revision"]) is not int:
         raise ValueError("human decision refers to a different candidate revision")
     latest = row["decisions"][-1] if row["decisions"] else None
@@ -425,74 +230,119 @@ def decide(
         raise ValueError(
             "human decision changed; inspect the latest decision before superseding it"
         )
-    publication = row["publication"]
-    if publication is None:
-        raise ValueError(
-            "publish or link the candidate before recording the execution decision"
-        )
-    target = publication["data"]["issue"]
+    membership = row["proposal"]
+    if membership is None:
+        raise ValueError("propose the candidate before recording a human decision")
+    raw = proposal_issue(session, membership)
+    # A negative decision on an extracted candidate must still stop its parent.
+    # Closed proposals otherwise cannot receive new decisions or reapprovals.
+    stopping_extracted = row["extraction"] is not None and action != "approve"
+    if not stopping_extracted and (
+        raw["state"] != "open"
+        or raw.get("state_reason") == "reopened"
+        or deadline(raw) <= datetime.now(UTC)
+    ):
+        raise ValueError("closed or expired proposal cannot receive a human decision")
     if action == "approve":
-        if publication["data"]["mode"] != "created":
-            raise ValueError(
-                "a reference does not extend an existing issue's execution authority; use its existing agreement"
-            )
+        from .improvement_proposals import validate_candidate
+
+        validate_candidate(row)
         if any(
             d["data"]["human_confirmation"] == value["human_confirmation"]
             for d in row["decisions"]
         ):
             raise ValueError(
-                "a new approval after a decision/revision needs a new human instruction, not replayed consent"
+                "a new approval needs a new human instruction, not replayed consent"
             )
-        from .supplement import require_final
-
-        raw = require_final(session.gh, target)
-        if parse_source(raw.get("body") or "") != source:
-            raise ValueError("approval target lost its improvement source")
-        if row["candidate"]["data"]["spec"]["unmet_acceptance"]:
-            raise ValueError(
-                "unfinished source acceptance cannot be approved as a successor"
-            )
-    else:
-        raw = session.gh.issue(target)
-    requirements = contract(raw.get("body") or "")
-    if action == "approve":
-        execution_terms(requirements)  # Fail before publishing an unusable approval.
     data = {
+        "target": "candidate",
         "request_key": value["request_key"],
         "request_sha256": requested,
         "action": action,
-        "issue": target,
+        "issue": raw["number"],
         "human_confirmation": value["human_confirmation"],
         "reason": value["reason"],
-        "requirements": requirements,
+        "requirements": candidate_requirements(row["candidate"]["data"]["spec"]),
         "previous_decision": value["previous_decision"],
     }
-    row_event = event(source, "decision", row["revision"], row["last"]["id"], data)
-    append(session, row_event)
-    stage_stop(session, source, get(session, source.key)[1])
-    return {
-        "candidate_id": source.candidate_id,
-        "decision_id": row_event["id"],
-        "state": {
-            "approve": "approved",
-            "hold": "held",
-            "decline": "declined",
-            "revoke": "revoked",
-        }[action],
-        "issue": target,
-        "reused": False,
-    }
+    return (
+        source,
+        event(source, "decision", row["revision"], row["last"]["id"], data),
+        False,
+    )
+
+
+def decide(
+    session: ParentSession,
+    candidate: str | list[str],
+    action: str,
+    value: dict[str, Any],
+) -> dict[str, Any]:
+    from .improvement_proposals import proposal_issue, refresh
+
+    requested = [candidate] if isinstance(candidate, str) else candidate
+    if not requested or len(
+        {candidate_key(c, session.parent) for c in requested}
+    ) != len(requested):
+        raise ValueError("human decision requires unique candidates")
+    specs = []
+    for c in requested:
+        if "candidates" in value:
+            details = value["candidates"]
+            if not isinstance(details, dict) or set(details) != set(requested):
+                raise ValueError(
+                    "decision spec must pin every requested candidate revision/previous_decision"
+                )
+            fields(details[c], {"revision", "previous_decision"})
+            spec = {k: v for k, v in value.items() if k != "candidates"} | details[c]
+        elif len(requested) == 1:
+            spec = value
+        else:
+            raise ValueError(
+                "multi-candidate decision requires candidates revision map"
+            )
+        specs.append(_decision(session, c, action, spec))
+    results = []
+    projections = {}
+    for source, row_event, replay in specs:
+        if not replay:
+            append(session, row_event)
+        observed = get(session, source.key)[1]
+        stage_stop(session, source, observed)
+        results.append(
+            {
+                "candidate_id": source.candidate_id,
+                "decision_id": row_event["id"],
+                "state": human_state(observed),
+                "issue": row_event["data"]["issue"],
+                "reused": replay,
+            }
+        )
+        if observed["proposal"] is not None:
+            projections[observed["proposal"]["data"]["issue"]] = observed["proposal"]
+    for membership in projections.values():
+        raw = proposal_issue(session, membership)
+        refresh(
+            session,
+            raw,
+            ended="期限切れ"
+            if raw.get("state_reason") == "not_planned"
+            else "提案終了"
+            if raw["state"] == "closed"
+            else None,
+        )
+    return results[0] if len(results) == 1 else {"decisions": results}
 
 
 def stage_stop(
     session: ParentSession, source: ImprovementSource, row: dict[str, Any]
 ) -> None:
     """Commit stop intent before releasing the decision/admission lock."""
-    publication = row["publication"]
+    publication = row["extraction"] or row["publication"]
     if (
         human_state(row) not in {"held", "declined", "revoked"}
         or publication is None
-        or publication["data"]["mode"] != "created"
+        or (row["extraction"] is None and publication["data"]["mode"] != "created")
     ):
         return
     target_key = f"{session.gh.repo.casefold()}#{publication['data']['issue']}"
@@ -514,16 +364,34 @@ def stage_stop(
 
 def observe(gh: Any, parent: int, publisher: str) -> dict[str, Any] | None:
     raw = gh.issue(parent)
+    from issues.evidence import require_work_issue
+
+    require_work_issue(raw)
     source = parse_source(raw.get("body") or "")
-    if source is None:
+    extraction = parse_extraction(raw.get("body") or "")
+    if source is None and extraction is None:
         return None
-    rows = read_candidates(
-        gh.parent_comments(source.parent, publisher), source.parent, publisher
-    )
-    candidate = rows.get(source.key)
-    if candidate is None:
-        raise ValueError(f"{source.candidate_id}: source candidate is unavailable")
-    return {"source": source, "candidate": candidate, "issue": raw}
+    if source is not None:
+        origin = source.parent
+        sources = [source]
+    else:
+        assert extraction is not None
+        origin = extraction.parent
+        sources = [ImprovementSource(origin, k) for k in extraction.keys]
+    rows = read_candidates(gh.parent_comments(origin, publisher), origin, publisher)
+    entries = []
+    for item in sources:
+        candidate = rows.get(item.key)
+        if candidate is None:
+            raise ValueError(f"{item.candidate_id}: source candidate is unavailable")
+        entries.append((item, candidate))
+    return {
+        "source": entries[0][0],
+        "candidate": entries[0][1],
+        "issue": raw,
+        "approvals": entries,
+        "extraction": extraction,
+    }
 
 
 def require(
@@ -534,7 +402,10 @@ def require(
     n = target or session.parent
     if not fresh:
         raw = session.gh.issue(n)
-        if parse_source(raw.get("body") or "") is None:
+        if (
+            parse_source(raw.get("body") or "") is None
+            and parse_extraction(raw.get("body") or "") is None
+        ):
             if n == session.parent and any(
                 e.get("improvement_approval") for e in session.history()
             ):
@@ -564,7 +435,27 @@ def require(
             observed["issue"],
         )
         try:
-            decision = approved(candidate, source, n, raw.get("body") or "")
+            if observed["extraction"] is not None:
+                extraction = observed["extraction"]
+                extraction_rows = [c["extraction"] for _, c in observed["approvals"]]
+                if any(e is None for e in extraction_rows):
+                    raise ValueError(
+                        "extraction record incomplete; recover improvement-extract before execution"
+                    )
+                data = extraction_rows[0]["data"]
+                if (
+                    any(e["data"] != data for e in extraction_rows)
+                    or data["proposal"] != extraction.proposal
+                    or set(data["decision_ids"]) != set(extraction.keys)
+                ):
+                    raise ValueError(
+                        "extraction provenance differs from canonical approvals"
+                    )
+            decisions = [
+                approved(c, item, n, raw.get("body") or "")
+                for item, c in observed["approvals"]
+            ]
+            decision = decisions[0]
         except ValueError as exc:
             from decision_logs.capture import current
 
@@ -591,7 +482,21 @@ def require(
             raise ExecutionBasisStale(
                 f"{source.candidate_id}: previous runtime stop/cleanup is still pending; retry improvement-decide"
             )
+        group = (
+            {
+                "proposal": observed["extraction"].proposal,
+                "approvals": [
+                    {"key": item.key, "revision": c["revision"], "decision_id": d["id"]}
+                    for (item, c), d in zip(
+                        observed["approvals"], decisions, strict=True
+                    )
+                ],
+            }
+            if observed["extraction"] is not None
+            else {}
+        )
         return {
+            **group,
             "parent": source.parent,
             "key": source.key,
             "revision": candidate["revision"],
@@ -606,33 +511,61 @@ def input_state(gh: Any, parent: int, publisher: str) -> dict[str, Any] | None:
         return None
     source, candidate = observed["source"], observed["candidate"]
     decisions = candidate["decisions"]
-    return {
+    result = {
         "parent": source.parent,
         "key": source.key,
         "revision": candidate["revision"],
         "state": human_state(candidate),
         "decision_id": decisions[-1]["id"] if decisions else None,
     }
+    if observed["extraction"] is not None:
+        result["approvals"] = [
+            {
+                "key": item.key,
+                "revision": c["revision"],
+                "state": human_state(c),
+                "decision_id": c["decisions"][-1]["id"] if c["decisions"] else None,
+            }
+            for item, c in observed["approvals"]
+        ]
+    return result
 
 
 def agreement(
     session: ParentSession, decision_id: str
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     binding = require(session)
-    if binding is None or binding["decision_id"] != decision_id:
-        raise ValueError("agree requires the current improvement approval reference")
-    candidate = candidates(session, binding["parent"])[binding["key"]]
+    if binding is None or decision_id not in [
+        a["decision_id"] for a in binding.get("approvals", [binding])
+    ]:
+        raise ValueError(
+            "agree requires a current improvement approval reference; all extracted approvals are imported"
+        )
+    recorded = candidates(session, binding["parent"])
+    candidate = recorded[binding["key"]]
     decision = candidate["decisions"][-1]
-    if decision["id"] != decision_id:
-        raise ValueError("improvement approval changed while deriving agreement")
-    confirmation = decision["data"]["human_confirmation"]
-    value = {
-        **execution_terms(decision["data"]["requirements"]),
-        "human_confirmation": confirmation["quote"]
-        + "\n\n出典: "
-        + confirmation["source"],
-    }
-    return value, binding
+    if "approvals" in binding:
+        requirements = candidate["extraction"]["data"]["requirements"]
+        confirmations = []
+        for item in binding["approvals"]:
+            row = recorded[item["key"]]
+            if row["decisions"][-1]["id"] != item["decision_id"]:
+                raise ValueError(
+                    "improvement approval changed while deriving agreement"
+                )
+            confirmation = row["decisions"][-1]["data"]["human_confirmation"]
+            confirmations.append(
+                f"I-{binding['parent']}-{item['key']}: "
+                + confirmation["quote"]
+                + "\n\n出典: "
+                + confirmation["source"]
+            )
+        human = "\n\n".join(confirmations)
+    else:
+        requirements = decision["data"]["requirements"]
+        confirmation = decision["data"]["human_confirmation"]
+        human = confirmation["quote"] + "\n\n出典: " + confirmation["source"]
+    return {**execution_terms(requirements), "human_confirmation": human}, binding
 
 
 def completion_applies(
@@ -657,6 +590,35 @@ def completion_applies(
         "issue": target,
         "decision_id": decisions[-1]["id"],
     }
+    if candidate["extraction"] is not None:
+        binding = completion.get("improvement_approval") or {}
+        data = candidate["extraction"]["data"]
+        extraction = parse_extraction(body)
+        if (
+            extraction is None
+            or extraction.parent != source.parent
+            or extraction.proposal != data["proposal"]
+            or set(extraction.keys) != set(data["decision_ids"])
+            or binding.get("parent") != source.parent
+            or binding.get("issue") != target
+            or {a["key"]: a["decision_id"] for a in binding.get("approvals", [])}
+            != data["decision_ids"]
+            or not any(
+                a
+                == {
+                    "key": source.key,
+                    "revision": candidate["revision"],
+                    "decision_id": decisions[-1]["id"],
+                }
+                for a in binding.get("approvals", [])
+            )
+        ):
+            return False
+        try:
+            approved(candidate, source, target, body)
+        except ValueError:
+            return False
+        return True
     if (
         completion.get("improvement_approval") != expected
         or parse_source(body) != source
@@ -671,19 +633,26 @@ def completion_applies(
 
 def status(session: ParentSession) -> list[dict[str, Any]]:
     result = []
+    from .improvement_proposals import load_receipt
+
+    receipt = load_receipt(session, f"proposal-{session.parent}")
     for fixed_key, row in candidates(session).items():
         source = ImprovementSource(session.parent, fixed_key)
         publication = row["publication"]
-        receipt = _receipt(session, source)
-        pending = (
-            receipt is not None
+        extraction = row["extraction"]
+        proposal = row["proposal"]
+        pending = bool(
+            receipt
             and receipt["creation"]["attempted"]
-            and publication is None
+            and fixed_key in receipt["members"]
+            and proposal is None
         )
         target = (
-            publication["data"]["issue"]
+            extraction["data"]["issue"]
+            if extraction
+            else publication["data"]["issue"]
             if publication
-            else (receipt["creation"]["number"] if receipt else None)
+            else None
         )
         owner = session.store.parents.get(f"{session.gh.repo.casefold()}#{target}", {})
         completion = owner.get("completion", {})
@@ -698,6 +667,14 @@ def status(session: ParentSession) -> list[dict[str, Any]]:
                 session.gh.issue(target).get("body") or "",
             )
         )
+        if accepted and extraction is not None and target is not None:
+            observed = observe(session.gh, target, session.login)
+            accepted = observed is not None and all(
+                completion_applies(
+                    completion, item, c, target, observed["issue"].get("body") or ""
+                )
+                for item, c in observed["approvals"]
+            )
         execution = execution_status(session, target, owner, accepted=accepted)
         decisions = row["decisions"]
         result.append(
@@ -705,11 +682,19 @@ def status(session: ParentSession) -> list[dict[str, Any]]:
                 "candidate_id": source.candidate_id,
                 "revision": row["revision"],
                 "purpose": row["candidate"]["data"]["spec"]["purpose"],
-                "publication": publication["data"]["mode"]
-                if publication
-                else "outcome_unknown"
-                if pending
-                else "not_requested",
+                "proposal": proposal["data"]["issue"] if proposal else None,
+                "unpublished": publication is None and proposal is None,
+                "publication": (
+                    "extracted"
+                    if extraction
+                    else "proposed"
+                    if proposal
+                    else publication["data"]["mode"]
+                    if publication
+                    else "outcome_unknown"
+                    if pending
+                    else "not_requested"
+                ),
                 "issue": target,
                 "human_decision": human_state(row),
                 "decision_id": decisions[-1]["id"] if decisions else None,
