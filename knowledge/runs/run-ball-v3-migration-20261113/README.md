@@ -44,3 +44,9 @@ Driveの場所・容量・旧/新readerは `storage-and-readers.json`、旧archi
 保留対象の処理完了を補える新しい証拠は得られなかった。
 少数公開は `meiji-active-ball-v3-dry-20261113`、本集合は `meiji-active-ball-v3-20261113`
 という独立の新versionへ保存する。native JPEGはsnapshotへhardlinkする。
+
+
+本実行の初回attemptは、8本の準備後、prepared JPEGの公開保護漏れを修正するために
+SIGINTで停止した（終了コード130）。v3や旧ファイルを上書きせず、準備済み成果物を再利用する。
+追加したGC回帰は修正前に参照数0で失敗した。既存receiptの不変な保護記録を変更せず、
+manifest内の画像archiveへ追加の公開保護を作る修正を実装した。

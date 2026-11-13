@@ -41,6 +41,7 @@ from src.tasks.base.annotation.artifacts import (
 from src.tasks.base.annotation.collection.local import retain_local_source
 from src.tasks.base.annotation.collection.preparation import prepare_frame_range
 from src.tasks.base.annotation.contracts import (
+    ClipManifest,
     FrameRange,
     MediaFingerprint,
     PublicationReceipt,
@@ -49,6 +50,8 @@ from src.tasks.base.annotation.contracts import (
 )
 from src.tasks.base.annotation.paths import AnnotationLayout
 from src.tasks.base.annotation.plan import ProductPlan
+from src.tasks.base.annotation.storage.catalog import StorageCatalog
+from tests.support.annotation_storage import assert_expired_but_protected
 from tests.support.tasks.ball_detection.v2_annotation import legacy_data
 from tests.support.tasks.local_annotation import local_configuration
 
@@ -103,6 +106,7 @@ def migrated(tmp_path: Path) -> tuple[AnnotationLayout, MigrationPublishRequest]
 def test_migrated_snapshot_replays_after_receipt_interruption(migrated, monkeypatch: pytest.MonkeyPatch) -> None:
     layout, request = migrated
     original_bytes = {e.original: verify_reference(layout, e.original).read_bytes() for e in request.annotations}
+    archives = tuple(read_document(layout, e.manifest, ClipManifest).media for e in request.annotations)
     submit, learning = Mock(), Mock()
     monkeypatch.setattr("src.tasks.base.annotation.execution.runner.StageRunner.submit", submit)
     monkeypatch.setattr("src.tasks.base.annotation.learning.service.Learning.register", learning)
@@ -119,7 +123,16 @@ def test_migrated_snapshot_replays_after_receipt_interruption(migrated, monkeypa
             BallPublisher(layout).publish(request)
     with monkeypatch.context() as patch:
         patch.setattr(BallPublisher, "_build", Mock(side_effect=AssertionError("completed snapshot rebuilt")))
-        reference = BallPublisher(layout).publish(request)
+        original_protect = StorageCatalog.protect
+
+        def previous_protection(self, record, *, database=None):
+            if set(record.references) == set(archives):
+                return  # Simulate a pre-fix receipt with only its original protection.
+            return original_protect(self, record, database=database)
+
+        with monkeypatch.context() as previous:
+            previous.setattr(StorageCatalog, "protect", previous_protection)
+            reference = BallPublisher(layout).publish(request)
         assert BallPublisher(layout).publish(request) == reference
     receipt = read_document(layout, reference, PublicationReceipt)
     snapshot, store = load_snapshot(layout, receipt.snapshot)
@@ -139,6 +152,13 @@ def test_migrated_snapshot_replays_after_receipt_interruption(migrated, monkeypa
         assert annotation.frames[3].state == "unknown"
         assert store.metadata["clips"][clip.index]["provenance"]["original_v2"] in [e.original.model_dump(mode="json") for e in request.annotations]
     assert all(verify_reference(layout, ref).read_bytes() == data for ref, data in original_bytes.items())
+    # The immutable manifest reference alone does not retain its nested archive.
+    # Same-request replay needs prepared bytes after snapshot hardlinks exist.
+    assert_expired_but_protected(
+        layout,
+        archives,
+        "publication",
+    )
     submit.assert_not_called()
     learning.assert_not_called()
 

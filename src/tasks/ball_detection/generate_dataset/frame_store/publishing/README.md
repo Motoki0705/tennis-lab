@@ -86,6 +86,8 @@ requestの全入力はexpected_inputのdigest順で一度ずつ列挙する。
 公開時には元v2からconverterを再実行してv3/移行記録を照合し、元動画bytesと実復号PTS、
 画像manifestのcamera・収録group・frame/PTS・寸法・Q90 archiveを検証する。
 元版・移行記録・入力参照はsnapshotの由来と公開保護に残す。
+prepared JPEG archiveも、manifestの参照先を明示的な公開保護へ登録する。
+既存receiptの不変な保護記録は変更せず、画像用の追加保護へ同じ再送で収束する。
 
 旧storeの汎用教師はbaseへ混ぜない。移行の呼出側は、旧snapshotの元収録group/splitを
 独立に照合して同じsplitを指定し、変換できない対象と理由を別に保存する。

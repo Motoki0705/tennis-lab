@@ -10,7 +10,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, TypeAlias, cast
 
 import numpy as np
 
@@ -44,6 +44,7 @@ from src.tasks.base.annotation.artifacts import (
 )
 from src.tasks.base.annotation.contracts import (
     ArtifactRef,
+    ClipManifest,
     Document,
     PublicationReceipt,
     content_digest,
@@ -70,7 +71,7 @@ from .partition import publication_splits
 from .snapshot import load_snapshot, validate_snapshot
 from .videos import load_video_annotations
 
-PublicationRequest = PublishRequest | VideoPublishRequest | MigrationPublishRequest
+PublicationRequest: TypeAlias = PublishRequest | VideoPublishRequest | MigrationPublishRequest
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS ball_publications (
@@ -551,6 +552,13 @@ class BallPublisher:
     def publish(self, request: PublicationRequest) -> ArtifactRef:
         request = type(request).model_validate_json(request.canonical_bytes())
         inputs = self._inputs(request)
+        # The migration route has no worker registration retaining its prepared
+        # archive. Keep the typed manifests in publication's dependency closure;
+        # a reference to the manifest itself does not traverse its media field.
+        migration_manifests = (
+            tuple(read_document(self.layout, a.manifest, ClipManifest) for a in request.annotations)
+            if isinstance(request, MigrationPublishRequest) else ()
+        )
         relative = f"ball_detection/{inputs.product.dataset_version}/frames"
         destination = self.layout.artifact_path(
             ArtifactRef(
@@ -707,6 +715,20 @@ class BallPublisher:
                     ),
                     database=db,
                 )
+                if migration_manifests:
+                    # Existing receipt protection is immutable. Add a separate
+                    # closure so publications made before this fix replay safely.
+                    self.catalog.protect(
+                        protection(
+                            self.layout,
+                            identity="publication-migration-images-v1-" + reference.digest,
+                            kind="publication",
+                            reason="prepared native JPEG archives required for migration replay",
+                            roots=(),
+                            documents=migration_manifests,
+                        ),
+                        database=db,
+                    )
                 db.execute(
                     "UPDATE ball_publications SET receipt=? WHERE request_id=?",
                     (reference.model_dump_json(), request.sha256),
