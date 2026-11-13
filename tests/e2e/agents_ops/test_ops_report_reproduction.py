@@ -11,6 +11,7 @@ import io
 import json
 import os
 import re
+import select
 import subprocess
 import sys
 import threading
@@ -623,6 +624,17 @@ def test_timeout_reaps_group_when_output_is_open_or_closed(
     assert result.reason == "timeout" and result.exit_code != 0
     assert result.cleanup_complete is None  # A process group alone is insufficient.
     pid = int(child.read_text())
+    # Waiting for the leader does not wait for this child's pending SIGKILL.
+    try:
+        descriptor = os.pidfd_open(pid)
+    except ProcessLookupError:
+        return
+    try:
+        assert select.select([descriptor], [], [], 5)[0], (
+            f"child {pid} survived timeout"
+        )
+    finally:
+        os.close(descriptor)
     # After the kill the child is gone, a zombie (Z), or briefly dead (X) while
     # init reaps it. procfs can report ESRCH if it is reaped after open(),
     # before read(), as well as ENOENT if it is already absent at open().
