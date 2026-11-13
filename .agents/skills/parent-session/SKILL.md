@@ -80,6 +80,7 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 |---|---|
 | 手動親から起動 | `delegate` → `run-worker --prompt-file` |
 | 同じworkerへ修正・質問の回答・merge後の確認を依頼 | `run-worker --resume --prompt-file`。前回の終了・回収はCLIが照合する。 |
+| 手動workerの終了通知を待つ | `wait-worker --child N --timeout 秒` を会話の背景実行で待つ。[起動から終了通知までの手順](../../ops/parent/README.md#会話の背景実行で終了を待つ)を使う。 |
 | 今回は調査して報告させる | 起動・継続に `--planning` を指定し、判断してほしい点を指示する。 |
 | 調査報告への回答を保存して送る | 必要なら `decide-worker-plan` を使う。直接の継続指示でもよい。 |
 | 自律親から起動・継続 | `start-worker` / `continue-worker`。実行の予約と同一sessionの照合は開発workflowを参照する。 |
@@ -88,7 +89,9 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 workerへの具体指示は、担当範囲・成果・受入条件・確認したい不具合・必要な資源と制約を中心にする。
 テスト設計は [tests README](../../../tests/README.md#テスト作成方針)に従い、既存テストで足りる部分を再利用する。
 共通規則は[標準worker指示](../../ops/parent/worker_prompt.md)から渡されるので複製しない。
-workerの最終文は返された `final_file` または `inspect-worker` の `final_file` から読む。
+手動workerは `wait-worker` のJSONで終了と回収・runnerの結果・終了記録を確認し、返された `final_file` を読む。
+生存不明・回収未確認・timeoutは終了成功に読み替えず、自前の待機ループは作らない。
+自律workerの最終文は `inspect-worker` の `final_file` から読む。
 
 ## 成果とレビュー
 

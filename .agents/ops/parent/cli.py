@@ -218,6 +218,13 @@ def parser() -> argparse.ArgumentParser:
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
+    wait = commands.add_parser(
+        "wait-worker", help="read-only wait for the latest recorded manual worker run"
+    )
+    wait.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
+    wait.add_argument(
+        "--timeout", type=float, help="finite positive seconds; default: no limit"
+    )
     decision = commands.add_parser(
         "decide-worker-plan",
         help="bind a parent answer to the latest completed planning final",
@@ -306,6 +313,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "basis-record",
                 "basis-check",
                 "wait-supplement",
+                "wait-worker",
                 "worker-log-status",
                 "review-inspect",
                 "decision-log-status",
@@ -325,10 +333,21 @@ def _main(argv: list[str] | None = None) -> int:
         gh = GitHub(
             args.repo,
             store=None
-            if args.command in {"wait-supplement", "review-inspect"}
+            if args.command in {"wait-supplement", "wait-worker", "review-inspect"}
             else store,
         )
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "wait-worker":
+            from .worker_wait import wait_worker
+
+            code, value = wait_worker(
+                store,
+                f"{gh.repo.casefold()}#{parent}",
+                number(args.child),
+                timeout=args.timeout,
+            )
+            print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+            return code
         if args.command == "publish-decision-log":
             from decision_logs.journal import Journal
             from decision_logs.publication import Publisher
