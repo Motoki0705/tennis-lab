@@ -93,7 +93,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
         shutil.copy(ROOT / ".spin/cmds.py", spin)
         (repo / "pyproject.toml").write_text(
             '[tool.spin]\npackage = "src"\n[tool.spin.commands]\n'
-            'Ops = [".spin/cmds.py:ops"]\n'
+            'Ops = [".spin/cmds.py:ops", ".spin/cmds.py:worktrees"]\n'
         )
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
         fake = Path(__file__).with_name("fake_ops_control.py").read_text()

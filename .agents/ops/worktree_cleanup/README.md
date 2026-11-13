@@ -22,6 +22,14 @@ ON/OFF/status等の契約は [ops_control](../ops_control/README.md)。`agents` 
 service停止は子プロセスを含む。中断された削除は次回cleanupで再開する。
 unitの導入・有効化はmerge後のホスト検証で行う。
 
+serviceと手動のspin入口は [共通checkout launcher](../lib/README.md#メインcheckoutと運用jobの排他) を使う。
+コードのimport前から終了まで共有lockを保持し、git-syncは排他lockを取得できなければ延期する。
+git-syncが先ならcleanupはimport・停止・削除の前に待ち、更新と常駐serviceの復旧が終わってから実行する。
+scan/dry-runも複数モジュールのimportと初観測記録を更新中のコードから分離するため同じlauncherを使う。
+モジュールの直接実行は終了コード75で拒否する。spinを使わない場合は共通lib READMEの有限launcherから
+`python -m worktree_cleanup scan` または `python -m worktree_cleanup cleanup [--dry-run]` を起動する。
+更新中断の保護マーカーが残る場合も75で拒否する。マーカーを削除せずgit-syncの復旧手順に従う。
+
 ## 作成時刻と状態
 
 [inventory.py](inventory.py) が `.git/worktrees/<id>` の開いたディレクトリにLinux `statx` を実行し、
@@ -50,6 +58,8 @@ scan/dry-runも初観測記録とレポートを更新するが、repo・worktre
 対象の委任は `stopped` にして新規起動を止め、共通ランナーのstop/statusで
 terminal result・`cleanup_complete`・runner/CLI/groupの消滅を確認してから `worker_ended` を記録する。
 dispatcherの未起動予約は既存cancel APIを使い、起動済jobは停止確認後に `phase=ended` とする。
+期限削除は担当とjobの状態を更新し、常駐supervisorのunit有効化や内部enabled、git-syncのresume記録は変更しない。
+git-syncの保守停止・再開は排他lock内で実行されるため、この停止処理と並行しない。
 対象worktreeで動く親は強制解除（`released`、成功完了にはしない）し、dispatcherの自動継続も止める。
 保存した来歴は現在のsession/generationに一致する場合だけ担当停止の根拠とする。
 handoff時は来歴を移管先へ更新し、移管先のnativeプロセスが確認できない場合は旧来歴を失効させる。
@@ -87,8 +97,9 @@ fdベースのrmtreeで隔離実体を削除する。パスから登録を選び
 worktree削除ではbranchを消さない。merge済branchの整理は既存 [cleanup](../cleanup/README.md) の
 `apply-auto` をそのまま使う（別timerの次回実行、または明示実行）。
 
-終了コードは0成功、1調査・停止・削除の失敗、2引数エラー、3lock競合。
+終了コードは0成功、1調査・停止・削除の失敗、2引数エラー、3scan/cleanup同士のlock競合、75launcher拒否。
 `--repo` と `--state-dir` は両コマンドに指定できる。時計の差替えはテスト用Python APIでのみ行う。
+`--repo` はlauncherのrepoと同じGit共通ディレクトリのcheckoutに限る。別cloneにはそのcloneのlauncherを使う。
 
 ## 検証
 

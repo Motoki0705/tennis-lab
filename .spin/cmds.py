@@ -174,7 +174,17 @@ def ops(arguments: tuple[str, ...]) -> None:
 def worktrees(arguments: tuple[str, ...]) -> None:
     """Scan or forcibly expire worktrees: scan/cleanup [--dry-run]."""
     result = subprocess.run(
-        [sys.executable, "-m", "worktree_cleanup", *arguments],
+        [
+            sys.executable,
+            str(REPO_ROOT / ".agents/ops/checkout_job.py"),
+            "--repo",
+            str(REPO_ROOT),
+            "--",
+            sys.executable,
+            "-m",
+            "worktree_cleanup",
+            *arguments,
+        ],
         cwd=REPO_ROOT,
         env={**os.environ, "PYTHONPATH": str(REPO_ROOT / ".agents/ops")},
         check=False,

@@ -312,6 +312,11 @@ def test_concurrent_scan_and_cleanup_fail_without_mutation(lab: Lab) -> None:
             result = subprocess.run(
                 [
                     sys.executable,
+                    str(ROOT / ".agents/ops/checkout_job.py"),
+                    "--repo",
+                    str(lab.repo),
+                    "--",
+                    sys.executable,
                     "-m",
                     "worktree_cleanup",
                     command,
@@ -365,7 +370,7 @@ def test_stop_failure_preserves_registration_and_returns_failure(
 def test_public_spin_scan_and_dry_run_do_not_delete(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    lab.add()
+    worktree = lab.add()
     shutil.copytree(
         ROOT / ".agents/ops",
         lab.repo / ".agents/ops",
@@ -379,7 +384,7 @@ def test_public_spin_scan_and_dry_run_do_not_delete(
     )
     for args in (("scan",), ("cleanup", "--dry-run")):
         proc = subprocess.run(
-            [sys.executable, "-m", "spin", "worktrees", *args],
+            [sys.executable, "-m", "spin", "worktrees", *args, "--repo", str(worktree)],
             cwd=lab.repo,
             capture_output=True,
             text=True,
