@@ -6,6 +6,9 @@ hierarchy:
   - name: "issue:child"
     color: "FED7AA"
     description: "正式なsub-issueとして直属の親を持つ子issue（.agents/ops/issues/README.md）"
+  - name: "issue:standalone"
+    color: "7DD3FC"
+    description: "親にも子にも属さず、単独の作業単位として扱うIssue（.agents/ops/issues/README.md）"
 
 work-type:
   - name: bug

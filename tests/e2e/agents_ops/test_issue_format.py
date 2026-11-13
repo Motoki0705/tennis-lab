@@ -100,16 +100,55 @@ def codes(fmt: ModuleType, snapshots: dict[int, Any]) -> set[str]:
     return {problem.code for problem in fmt.check_consistency(snapshots)}
 
 
-def test_parent_two_children_and_standalone_are_distinct(fmt: ModuleType) -> None:
+@pytest.mark.parametrize("labelled", [False, True], ids=["legacy", "standalone"])
+def test_parent_two_children_and_standalone_are_distinct(
+    fmt: ModuleType, labelled: bool
+) -> None:
     snapshots = family(fmt)
     snapshots[50] = fmt.Issue(
-        50, "[バグ] 単独のバグ", "既存の単独テンプレート本文", frozenset({"bug"})
+        50,
+        "[バグ] 単独のバグ",
+        "自由形式の単独本文。発見元: #10、依存先: #11。",
+        frozenset({"bug", *([fmt.STANDALONE_LABEL] if labelled else [])}),
     )
     assert fmt.check_consistency(snapshots) == ()
     assert fmt.parse_title(snapshots[11].title).parent == fmt.ParentRef(
         "開発ループ", 10
     )
     assert fmt.parent_reference(snapshots[11].body) == 10
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        pytest.param({"labels": frozenset({"issue:parent"})}, id="parent-label"),
+        pytest.param({"labels": frozenset({"issue:child"})}, id="child-label"),
+        pytest.param({"parent": 10}, id="formal-parent"),
+        pytest.param({"children": (11,)}, id="formal-child"),
+        pytest.param(
+            {"body": "## 子タスクのチェックリスト\n\n未分割（子issue未作成）"},
+            id="parent-checklist",
+        ),
+        pytest.param({"body": "親issue: #10"}, id="parent-reference"),
+        pytest.param({"title": "[開発ループ #10] 単独のバグ"}, id="child-title"),
+    ],
+)
+def test_standalone_rejects_role_and_relationship_hints(
+    fmt: ModuleType, change: dict[str, Any]
+) -> None:
+    snapshots = family(fmt)
+    snapshots[50] = replace(
+        fmt.Issue(50, "単独のバグ", "自由形式の本文。", frozenset()),
+        **{
+            **change,
+            "labels": frozenset({fmt.STANDALONE_LABEL})
+            | change.get("labels", frozenset()),
+        },
+    )
+    assert any(
+        problem.issue == 50 and problem.code == "label.standalone"
+        for problem in fmt.check_consistency(snapshots)
+    )
 
 
 @pytest.mark.parametrize(
@@ -805,6 +844,9 @@ def test_render_is_deterministic_and_always_a_local_dry_run(
         {"parent": {"identifier": "開発ループ", "number": True}},
         {"children": []},
         {"labels": ["issue:parent"]},
+        {"labels": ["issue:child"]},
+        {"labels": ["issue:standalone"]},
+        {"role": "standalone"},
         {"unknown": "not silently ignored"},
         {"sections": {"このタスクの目的": "目的だけ"}},
     ],
@@ -845,6 +887,13 @@ def test_render_parent_preserves_agreement_and_closed_acceptance(
     assert "以前の合意を削除しない。" in output["body"]
     assert "- [x] 親子関係の矛盾を検出できる" in output["body"]
     assert "- [ ] #13 本文を検査する（取消）" in output["body"]
+    invalid = issue_cli.run(
+        "render",
+        "--spec",
+        "-",
+        spec={**spec, "labels": ["research", fmt.STANDALONE_LABEL]},
+    )
+    assert invalid.returncode == 2 and "role labels are generated" in invalid.stderr
     assert issue_cli.calls() == []
 
 
@@ -867,6 +916,23 @@ def test_manual_templates_share_the_contract(
     if "issue:parent" in labels:
         assert fmt.parse_child_tasks(fmt.parse_sections(text)[fmt.TASKS_HEADING]) == ()
     assert ".agents/ops/issues/README.md" in text
+
+
+def test_standalone_templates_use_manifest_roles(fmt: ModuleType) -> None:
+    manifest = yaml.safe_load((ROOT / ".github/labels.yml").read_text())
+    hierarchy = {label["name"] for label in manifest["hierarchy"]}
+    assert hierarchy == {fmt.PARENT_LABEL, fmt.CHILD_LABEL, fmt.STANDALONE_LABEL}
+    expected = {
+        "01_bug.md": {"bug", fmt.STANDALONE_LABEL},
+        "02_feature.md": {"enhancement", fmt.STANDALONE_LABEL},
+        "03_research.md": {"research", fmt.STANDALONE_LABEL},
+    }
+    for template in TEMPLATES.glob("*.md"):
+        metadata = yaml.safe_load(template.read_text().split("---", 2)[1])
+        if template.name in expected:
+            assert set(metadata["labels"]) == expected[template.name]
+        else:
+            assert fmt.STANDALONE_LABEL not in metadata["labels"]
 
 
 def test_issue_docs_relative_links_resolve() -> None:

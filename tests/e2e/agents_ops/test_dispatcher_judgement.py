@@ -435,16 +435,18 @@ def test_supplement_changes_before_recording_defer_without_writes(
 def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
     h: Harness,
 ) -> None:
+    standalone = importlib.import_module("issues").STANDALONE_LABEL
+    h.gh.issues[1]["labels"] = [{"name": standalone}]
     h.gh.issues.update(
         {
-            2: issue(2, labels=("ai-proposed", "ready")),
+            2: issue(2, labels=("ai-proposed", "ready", standalone)),
             3: issue(3),
             4: issue(4, labels=("issue:parent",)),
             5: issue(5),
             6: issue(6, state="closed", reason="not_planned"),
             7: issue(7),
             8: issue(8),
-            9: issue(9, labels=("needs-human",)),
+            9: issue(9, labels=("needs-human", standalone)),
             10: issue(10, labels=("ops-report",)),
         }
     )

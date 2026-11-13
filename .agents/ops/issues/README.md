@@ -10,18 +10,26 @@
 |---|---|
 | `issue:parent` | 全体の目的・合意・進捗を管理する親。分割前にも付ける |
 | `issue:child` | GitHubの正式なsub-issueとして直属の親を持ち、具体的な1タスクを担当する子 |
+| `issue:standalone` | 親にも子にも属さず、単独の作業単位として扱うIssue。正式な親も子も持たず、管理上も親として扱わない作業Issueに付ける |
 
-両方を兼ねるissueには両ラベルを付ける。別軸のラベルは親子区分の代わりにならない。
-ラベルから親番号を推測しない。
+親と子を兼ねるissueには `issue:parent`・`issue:child` の両ラベルを付ける。
+`issue:standalone` は両ラベルと排他。未分割の親や全子完了後の親は、子が0件でも親のまま扱う。
+他issueへの参照・依存関係・発見元があることだけで子とは判定しない。
+`ops-report` のレポート容器とPRにはstandaloneを付けない。
+別軸のラベルは役割区分の代わりにならず、ラベルから親番号を推測しない。
+役割ラベルのない既存issueをラベル欠如だけで単独と断定せず、作業対象になった時に段階適用する。
+
+この分類ラベルの付与から実行承認・担当予約は生成しない。既存の実行根拠・停止・レビュー・merge条件を維持し、
+`needs-human` は引き続き人間の承認待ちを意味する。
 
 | 利用場面 | テンプレート |
 |---|---|
 | 全体の構想・複数タスクの統括 | [親issue](../../../.github/ISSUE_TEMPLATE/06_parent.md) |
 | 親の合意範囲から分割した1タスク | [子issue](../../../.github/ISSUE_TEMPLATE/07_child.md) |
-| 親を持たない単独タスク | 既存の[バグ](../../../.github/ISSUE_TEMPLATE/01_bug.md)・[機能](../../../.github/ISSUE_TEMPLATE/02_feature.md)・[調査](../../../.github/ISSUE_TEMPLATE/03_research.md)。親子ラベルは付けない |
+| 親も子も持たない単独タスク | [バグ](../../../.github/ISSUE_TEMPLATE/01_bug.md)・[機能](../../../.github/ISSUE_TEMPLATE/02_feature.md)・[調査](../../../.github/ISSUE_TEMPLATE/03_research.md)。作業種別と `issue:standalone` を付ける |
 | 研究ループ | [研究テーマ](../../../.github/ISSUE_TEMPLATE/04_research_theme.md)は親、[研究サイクル](../../../.github/ISSUE_TEMPLATE/05_research_cycle.md)は子。共通項目に研究固有の項目を加える |
 
-単独タスクを分割するときは親へ移行する。単独タスクを既存の親へ編入するときは子へ移行する。
+単独タスクを分割するときは親へ、既存の親へ編入するときは子へ[明示的に移行](#単独から親子への明示移行)する。
 研究の指標・評価条件・合意・知見の置き場やclose判断は[research-loop](../../skills/research-loop/SKILL.md)に従う。
 
 ## ラベル
@@ -31,7 +39,7 @@
 
 | 軸（マニフェストのキー） | 意味 | 付与主体 |
 |---|---|---|
-| 階層（`hierarchy`） | 親・子の役割（上表） | 起票者・担当親・親CLI。`issues check` で正式な関係と照合する |
+| 階層（`hierarchy`） | 親・子・単独の役割（上表） | 起票者・担当親・テンプレート・親CLI・triage。`issues check` で正式な関係と照合する |
 | 作業種別（`work-type`） | バグ修正・機能改善・調査研究・文書・追補 | テンプレート、起票者・親CLIの明示指定、issue-labelerのタイトル先頭prefix |
 | 起票元（`origin`） | `ai-proposed` は運用レポートの採用提案からの起票、`agent:*` は起票agent | 前者はレポートtriage、後者は起票agent。通常のAI作業・親CLIの子起票には `ai-proposed` を付けない |
 | 対象領域（`area`） | 対象モジュール・CI・テスト・依存・外部コード・Python・知見 | issueは起票者・親CLIの明示指定だけ。PRは `.github/labeler.yml` が変更ファイルから付け、Dependabotは設定で指定する |
@@ -56,6 +64,28 @@ issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml)
 人間・agentによる付与は残し、イベント・actorを特定できないものも理由を表示して残す。
 全対象の取得に成功してから書き込みを始め、解除直前にもissueの状態と全イベントを再確認する。
 取得失敗を空結果へ置き換えず、非ゼロで終了する。
+
+### 人間向けの検索
+
+単独タスク一覧:
+
+```text
+repo:Motoki0705/tennis-lab is:issue is:open label:"issue:standalone"
+```
+
+単独の調査タスク:
+
+```text
+repo:Motoki0705/tennis-lab is:issue is:open label:"issue:standalone" label:research
+```
+
+親・子・単独のいずれにも未分類の確認候補:
+
+```text
+repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:child" -label:"issue:standalone" -label:ops-report
+```
+
+最後の検索は確認候補の抽出であり、全件にstandaloneを自動付与する根拠にはしない。
 
 ## 証拠用Issueの除外
 
@@ -268,7 +298,8 @@ parent_body = render_parent_body(
 その場合は子の必須節もsectionsに含める。本文の各値に別の `##` 節を埋め込まず、別のキーにする。
 生成時の形式違反は `ValueError`、`validate_body` はエラー文字列のtupleを返す。
 `parse_title` / `parent_reference` / `parse_child_tasks` / `parse_sections` は検査・更新に再利用できる。
-`PARENT_LABEL` / `CHILD_LABEL` をimportして付与し、作業種別・対象領域・起票元ラベルを維持する。
+`PARENT_LABEL` / `CHILD_LABEL` / `STANDALONE_LABEL` をimportして付与し、他の軸のラベルを維持する。
+親・子の `render` specでは役割ラベルを生成するため、任意の `labels` への3種の役割ラベルの混入を拒否する。
 
 レポート経由でも、親は**レポートissueではなく開発用の親issue**。採用、Issue整理、人間合意、自律着手の根拠を
 区別する。既存の手動親は [parent CLI](../parent/README.md#採用提案の受領)、未担当の採用提案は
@@ -303,9 +334,15 @@ parent_body = render_parent_body(
 
 ## triageによる出典と復旧契約
 
-`render_standalone_body(sections)` は子の具体的な必須節・Acceptanceを持ち、親参照・親子ラベルを持たない
-単独作業を生成する。親・子は従来の共通APIを使い、`ai-proposed` と役割ラベル、正式なsub-issue、親一覧を揃える。
+`render_standalone_body(sections)` は子の具体的な必須節・Acceptanceを持ち、親参照を持たない単独作業の本文を生成する。
+triageはrole=standaloneにだけ `ai-proposed` と `STANDALONE_LABEL` を付ける。
+人間が単独テンプレートで起票する本文は自由形式で、親・子の必須節を要求しない。
+親・子は従来の共通APIを使い、`ai-proposed` とそれぞれの役割ラベル、正式なsub-issue、親一覧を揃える。
 レポートの `ops-report` ラベルと容器メタデータは作業issueへコピーしない。
+reuseでは既存ラベルを保持し、standaloneを後付けしない。
+保存済みpublication draftがある再開・復旧では、そのtitle・body・labelsを固定リクエストとして使う。
+新ラベル導入前のdraftを再描画してラベルを差し替えず、作成済みissueも保存draftと照合する。
+応答不明時は出典による実在確認を先に行い、未観測のPOSTを自動再送しない。入力・コード版の鮮度検査は維持する。
 
 既存の `ProposalSource` / `index_proposals` は1提案→1つの**索引anchor**を維持する。
 1提案を複数子へ分ける場合は親をanchorにする。複数提案を共通親へまとめる場合は各提案の子に別anchorを置く。
@@ -369,6 +406,8 @@ closed/取消を含む一式のラベル、prefix、本文参照、必須項目�
 既に取得できたissueの `/parent` のHTTP 404 のうちGitHubが親の不在に返す `No parent issue found` だけを「親なし」とし、403・5xxや他の404（issue自体が無い `Not Found` を含む）は失敗。
 closedの理由が不明な子を完了と推測しない。編集中に跨った取得は不整合になり得るため、編集を終えて再検査する。
 自然言語のスコープの矛盾・合意の正当性・進捗概要と通知コメントの内容は担当親が確認する。
+`label.standalone` はstandaloneと親子ラベル・正式な親子関係・子一覧節・親参照・子タイトルprefixの矛盾を示す。
+役割ラベルのない既存issueに新ラベルを要求する検査は行わない。
 
 ### GitHub GETの接続断と再試行
 
@@ -394,9 +433,55 @@ ghが正常終了したのにHTTP statusがない応答は、接続断とみな�
 **新規は起票時、既存は着手・再開・親付替えなど今後作業対象になる時**に、起票者と担当親が適用する。
 対象外のOpen全件・Closedを含む過去全件の一括改名・ラベル付与・本文移行は行わない。
 #1284で合意した一度だけのopen issueの誤ラベル解除は例外とし、上記 `strip-auto-labels` で行う。
+standaloneの初回移行は [#1878](https://github.com/Motoki0705/tennis-lab/issues/1878) の指定11件だけを再確認し、
+付与済み・対象外・競合/未解決と根拠を記録する。付与数だけで完了とせず、競合を未解決のまま初回移行完了としない。
 途中失敗しても新issueを作り直さず、実番号・現在の関係を再取得して不足分を揃える。
 
-今回の導入後は担当親が明示的に #1216, #1217〜#1223, #1225 だけを次の順で移行する。
+### 単独から親・子への明示移行
+
+1. 対象issueと編入先の本文・タイトル・コメント・全ラベル・担当・open/closedと理由・正式な親/子を再取得して退避する。
+   API失敗を「関係なし」へ読み替えない。保存済みtriage計画・journalや進行中処理がラベル一致を前提にしていれば、
+   その処理と照合・復旧してから移行する。公開途中の固定draftと異なるラベルを外付けしない。
+2. 昇格では親の識別名・必須節・子一覧を整え、子0件なら未分割表記を使う。
+   編入では正式親を確認し、子のprefix付きタイトル・冒頭の親参照・必須節を整える。
+   共通APIまたは `issues render` のdraftを元の内容と比較し、合意・Acceptance・履歴の参照や追加節を保持する。
+3. UTF-8の本文ファイルを用意し、役割追加とstandalone除去を本文・タイトルと同じ1回の編集で行う。
+   下の変数には再取得して確認した番号・タイトルを指定する。他のラベル・担当・状態・履歴は保つ。
+
+   昇格（単独→親）:
+
+   ```bash
+   gh issue edit "$task_issue" --repo Motoki0705/tennis-lab \
+     --title "$parent_title" --body-file tmp/task.body.md \
+     --add-label issue:parent --remove-label issue:standalone
+   ```
+
+   編入（単独→既存親の子）:
+
+   ```bash
+   gh issue edit "$task_issue" --repo Motoki0705/tennis-lab \
+     --title "$child_title" --body-file tmp/task.body.md \
+     --add-label issue:child --remove-label issue:standalone
+   ```
+
+4. 昇格後に子を作る場合は親CLIを使う。standaloneが残った親の分割は拒否する。
+   編入では正式な関係を再確認し、未登録の場合だけ次のPOSTを行う。`task_rest_id` はGETで確認した子のRESTのidで、
+   issue番号ではない。既に正しい関係なら再追加しない。予期しない親があれば自動上書きせず担当親間で解消する。
+
+   ```bash
+   gh api --method POST "repos/Motoki0705/tennis-lab/issues/$parent_issue/sub_issues" \
+     -F sub_issue_id="$task_rest_id"
+   ```
+
+5. 正式関係から親一覧・進捗を更新し、`issues check --issue "$task_issue"`（編入先も同様）が0になるまで照合する。
+   変更前後の状態・ラベル・関係と理由をPR/issueへ記録する。分類だけを理由に作業を起動・再open・closeしない。
+   途中失敗では現在の本文・ラベル・正式関係・一覧を再取得し、不足分だけを揃えて再検査する。
+   ラベルが既に揃っていれば編集を繰り返さず、既存の関係も再POSTしない。親CLIの子作成復旧も、
+   他のラベルを保持してstandaloneだけを除き、ラベルが一致していればPATCHしない。
+
+### 親子規約導入時の移行
+
+#1225で対象を限定した #1216, #1217〜#1223, #1225 の移行は次の手順を使う。
 
 1. 管理者が `issue:parent` / `issue:child` ラベルを作成する（既存なら内容を確認）。
 2. 担当親が対象の本文・コメント・ラベル・open/closedと理由・sub-issue関係をGETして退避し、

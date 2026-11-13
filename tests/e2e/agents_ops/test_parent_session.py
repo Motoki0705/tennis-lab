@@ -1266,6 +1266,10 @@ def test_child_creation_recovers_partial_failure_without_duplicates(
     p.env.pop("PARENT_FAIL_PATH", None)
     p.env.pop("PARENT_FAIL_AFTER_CREATE", None)
     p.env.pop("PARENT_FAIL_AFTER_CHILD_RELATION", None)
+    if failure == "after-create":
+        state = p.state()
+        state["issues"]["10"]["labels"].append({"name": p.formats.STANDALONE_LABEL})
+        p.save(state)
     result = json.loads(p.child("idempotent", source=True).stdout)
     assert result["reused"] and result["child"] == 10
     p.child("idempotent", source=True)
@@ -1291,8 +1295,50 @@ def test_child_creation_only_adds_role_to_explicit_work_type_and_area_labels(
     p.child("explicit-labels")
     labels = {x["name"] for x in p.state()["issues"]["10"]["labels"]}
     assert labels == {"enhancement", "ci", "tests", "issue:child"}
+
+    def label_patches() -> int:
+        return sum(
+            "PATCH" in call and "repos/o/r/issues/10" in call for call in p.calls()
+        )
+
+    assert label_patches() == 0
+    state = p.state()
+    state["issues"]["10"]["labels"].extend(
+        [{"name": p.formats.STANDALONE_LABEL}, {"name": "agent:codex"}]
+    )
+    p.save(state)
+    p.child("explicit-labels")
+    labels.add("agent:codex")
+    assert {x["name"] for x in p.state()["issues"]["10"]["labels"]} == labels
+    assert label_patches() == 1
     p.child("explicit-labels")
     assert {x["name"] for x in p.state()["issues"]["10"]["labels"]} == labels
+    assert label_patches() == 1
+    assert (
+        sum(
+            "POST" in call and "repos/o/r/issues/1/sub_issues" in call
+            for call in p.calls()
+        )
+        == 1
+    )
+
+
+def test_child_creation_requires_explicit_standalone_parent_migration(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    state = p.state()
+    state["issues"]["1"]["labels"].append({"name": p.formats.STANDALONE_LABEL})
+    p.save(state)
+    before = len(p.calls())
+    result = p.child("cannot-split", ok=False)
+    assert "migrate the parent" in result.stderr
+    assert p.formats.STANDALONE_LABEL in result.stderr
+    assert p.state() == state
+    assert not any(
+        method in call for call in p.calls()[before:] for method in ("POST", "PATCH")
+    )
 
 
 def test_child_key_conflict_and_duplicate_existing_fail_closed(

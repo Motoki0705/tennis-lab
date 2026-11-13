@@ -15,6 +15,7 @@ from dispatcher import collect as inputs
 from issues import (
     CHILD_LABEL,
     PARENT_LABEL,
+    STANDALONE_LABEL,
     Issue,
     ParentRef,
     ProposalSource,
@@ -543,6 +544,9 @@ def render_node(
             render_child_body(n, sections),
         )
         labels.append(CHILD_LABEL)
-    else:
+    elif role == "standalone":
         title, body = node["summary"], render_standalone_body(sections)
+        labels.append(STANDALONE_LABEL)
+    else:
+        raise ValueError("unknown new organization node role")
     return {"title": title, "body": body, "labels": labels}

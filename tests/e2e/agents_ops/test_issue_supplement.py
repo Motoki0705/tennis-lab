@@ -932,7 +932,15 @@ def test_corrupt_owned_judgement_fails_closed_instead_of_using_substring_detecti
 
 @pytest.mark.parametrize(
     "change",
-    ["label", "created_before_activation", "disabled", "done", "failed", "skipped"],
+    [
+        "label",
+        "standalone",
+        "created_before_activation",
+        "disabled",
+        "done",
+        "failed",
+        "skipped",
+    ],
 )
 def test_non_targets_and_already_final_automatic_runs_do_nothing(
     supplement_env: SupplementEnv, change: str
@@ -941,6 +949,10 @@ def test_non_targets_and_already_final_automatic_runs_do_nothing(
     state = env.state()
     if change == "label":
         state["issue"]["labels"] = [{"name": "issue:child"}]
+    elif change == "standalone":
+        state["issue"]["labels"] = [
+            {"name": importlib.import_module("issues").STANDALONE_LABEL}
+        ]
     elif change == "created_before_activation":
         state["issue"]["created_at"] = "2026-10-29T00:00:00Z"
     elif change == "disabled":

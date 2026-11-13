@@ -19,6 +19,7 @@ from .evidence import EVIDENCE_LABEL, require_work_issue
 from .format import (
     CHILD_LABEL,
     PARENT_LABEL,
+    STANDALONE_LABEL,
     ChildTask,
     ParentRef,
     ProposalSource,
@@ -108,6 +109,7 @@ def render_spec(value: object) -> dict[str, object]:
     if (
         PARENT_LABEL in labels
         or CHILD_LABEL in labels
+        or STANDALONE_LABEL in labels
         or EVIDENCE_LABEL in labels
         or len(set(labels)) != len(labels)
     ):

@@ -68,6 +68,7 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
         "module: tennis-scene",
         "issue:parent",
         "issue:child",
+        "issue:standalone",
         "supplement:done",
         "supplement:failed",
         "supplement:skipped",
@@ -75,7 +76,11 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
     assert all(
         spec.axis == "status" for spec in specs if spec.name.startswith("supplement:")
     )
-    for name, color in (("issue:parent", "F97316"), ("issue:child", "FED7AA")):
+    for name, color in (
+        ("issue:parent", "F97316"),
+        ("issue:child", "FED7AA"),
+        ("issue:standalone", "7DD3FC"),
+    ):
         assert next(s.color for s in specs if s.name == name) == color
         assert sum(s.color.upper() == color for s in specs) == 1
     followup = next(s for s in specs if s.name == "followup")
