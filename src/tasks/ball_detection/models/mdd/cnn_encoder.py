@@ -12,6 +12,14 @@ from src.tasks.ball_detection.models.mdd.blocks import (
 )
 from src.tasks.ball_detection.models.mdd.config import MDDPretrainConfig
 from src.tasks.ball_detection.models.mdd.execution import checkpoint_call
+from src.tasks.ball_detection.models.mdd.x3d_csn import X3DCSNEncoder
+
+
+def build_mdd_encoder(config: MDDPretrainConfig) -> DeepMDDEncoder | X3DCSNEncoder:
+    """Select the explicit topology without renaming legacy checkpoint state."""
+    if config.encoder_variant == "x3d_csn":
+        return X3DCSNEncoder(config)
+    return DeepMDDEncoder(config)
 
 
 class SpatialConv(nn.Sequential):
@@ -51,6 +59,8 @@ class DeepMDDEncoder(nn.Module):
     """Return /8, /16, /32, /64 features as B,T,C,H,W, including both 3D layers."""
     def __init__(self, config: MDDPretrainConfig) -> None:
         super().__init__()
+        if config.encoder_variant == "x3d_csn":
+            raise ValueError("Use build_mdd_encoder for the X3D/CSN topology")
         self.activation_checkpointing = config.activation_checkpointing
         self.frame_chunk_size = config.frame_chunk_size
         widths = (*config.stem_channels, *config.mixed_channels)

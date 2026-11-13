@@ -6,8 +6,12 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.ball_detection.models.mdd.attention import FusionBlock, QueryFusionBlock
-from src.tasks.ball_detection.models.mdd.cnn_encoder import DeepMDDEncoder
-from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig, MDDPretrainConfig
+from src.tasks.ball_detection.models.mdd.cnn_encoder import build_mdd_encoder
+from src.tasks.ball_detection.models.mdd.config import (
+    MDDMHCQueryConfig,
+    MDDPoseConfig,
+    MDDPretrainConfig,
+)
 from src.tasks.ball_detection.models.mdd.execution import (
     checkpoint_call,
     decode_frame_heatmaps,
@@ -83,7 +87,7 @@ class MDDDPTDetector(nn.Module):
         super().__init__()
         self.config = config
         self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b, frames=config.frames)
-        self.encoder = DeepMDDEncoder(config)
+        self.encoder = build_mdd_encoder(config)
         self.decoder = DPTDecoder(encoder_channels=self.encoder.feature_channels,
                                   decoder_channels=config.decoder_channels, reassemble_factors=(1., 1., 1., 1.),
                                   block_style="residual")
@@ -103,16 +107,21 @@ class DeepMDDQueryTrunk(nn.Module):
         super().__init__()
         self.config = config
         self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b, frames=config.frames)
-        self.encoder = DeepMDDEncoder(config)
+        self.encoder = build_mdd_encoder(config)
         self.projection = nn.Linear(config.mixed_channels[-1], config.dim)
         self.spatial_position = nn.Linear(2, config.dim)
+        self._build_query_modules(config)
+        self.encoder_frozen = False
+
+    def _build_query_modules(self, config: MDDPretrainConfig) -> None:
+        if isinstance(config, MDDMHCQueryConfig):
+            raise ValueError("mHC query config requires DeepMDDMHCQueryDetector")
         self.ball_query = nn.Parameter(torch.randn(config.dim) * .02)
         query_config = MDDPoseConfig("conv2d", None, "query_only", config.frames, config.stem_channels,
                                     config.mixed_channels, config.dim, config.heads, config.layers,
                                     config.dropout, config.rope_base)
         self.blocks = nn.ModuleList(QueryFusionBlock(query_config, ffn=nn.Sequential(
             SwiGLU(config.dim, config.ffn_dim), nn.Dropout(config.dropout))) for _ in range(config.layers))
-        self.encoder_frozen = False
 
     def freeze_encoder(self, frozen: bool) -> None:
         self.encoder_frozen = frozen
@@ -136,7 +145,7 @@ class DeepMDDQueryTrunk(nn.Module):
         xx = (xx + (xx + 63).clamp_max(rgb.shape[-1] - 1)) / (2 * (rgb.shape[-1] - 1))
         y, x = torch.meshgrid(yy, xx, indexing="ij")
         patches = patches + self.spatial_position(torch.stack((x, y), -1).reshape(h * w, 2))[None, None]
-        query = self.ball_query.expand(b, t, -1)
+        query = self.ball_query.expand(b, t, *self.ball_query.shape)
         for block in self.blocks:
             # Retain block inputs and shared patches; recompute attention/FFN per block.
             query = checkpoint_call(block, query, patches, timestamps - timestamps[:, :1],
