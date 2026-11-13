@@ -39,6 +39,31 @@ def advance_main(logs: LogEnv, files: dict[str, str]) -> str:
     return cast(str, git(logs.root, "rev-parse", "HEAD"))
 
 
+def test_publication_accepts_canonical_repo_url(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = logs.ready()
+    create = logs.github.create
+
+    def canonical_pr(branch: str, title: str, body: str) -> dict[str, Any]:
+        pr: dict[str, Any] = create(branch, title, body)
+        pr["html_url"] = f"https://github.com/O/R/pull/{pr['number']}"
+        for side in ("base", "head"):
+            pr[side]["repo"]["full_name"] = "O/R"
+        logs.github.rows[pr["number"]] = pr
+        return pr
+
+    monkeypatch.setattr(logs.github, "create", canonical_pr)
+    result = logs.publisher(path).publish()
+    assert result["state"] == "merged" and result["saved_to_main"] is True, result
+    row = journal.read(path)
+    assert row["source"]["repo"] == logs.github.repo == "o/r"
+    assert logs.github.get(row["pr_number"])["html_url"] == (
+        "https://github.com/O/R/pull/100"
+    )
+    assert logs.github.calls == ["create", "merge"]
+
+
 def test_capture_adapter_failure_preserves_successful_log_publication(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
