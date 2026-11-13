@@ -79,7 +79,14 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
         (ops / "lib").mkdir()
         shutil.copy(ROOT / ".agents/ops/lib/checkout_lock.py", ops / "lib")
         shutil.copy(ROOT / ".agents/ops/install_units.sh", ops)
-        for job in ("dispatcher", "ops-report", "cleanup", "board", "git_sync"):
+        for job in (
+            "dispatcher",
+            "ops-report",
+            "cleanup",
+            "board",
+            "git_sync",
+            "worktree_cleanup",
+        ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
         spin.mkdir()
@@ -222,6 +229,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "triage",
         "cleanup",
         "git-sync",
+        "worktree-cleanup",
     }
     report = next(row for row in data["targets"] if row["target"] == "report")
     units = {unit["unit"]: unit for unit in report["units"]}
@@ -383,7 +391,13 @@ def test_manager_loss_during_mutation_stays_unavailable(
     else:
         assert control.read()["units"][SUPERVISOR]["UnitFileState"] == "enabled"
         for timer in (REPORT_TIMER, TRIAGE_TIMER):
-            assert ["systemctl", "--user", "enable", "--now", timer] not in control.calls()
+            assert [
+                "systemctl",
+                "--user",
+                "enable",
+                "--now",
+                timer,
+            ] not in control.calls()
             assert control.read()["units"][timer]["UnitFileState"] == "disabled"
 
 
@@ -442,7 +456,10 @@ def test_off_manager_loss_keeps_reports_and_attempts_all_stops(
             assert control.read()["units"][timer]["UnitFileState"] != "enabled"
             assert control.read()["units"][service]["ActiveState"] == "inactive"
     else:
-        assert [report["outcome"] for report in others] == ["unavailable", "unavailable"]
+        assert [report["outcome"] for report in others] == [
+            "unavailable",
+            "unavailable",
+        ]
         assert all(report["errors"] for report in others)
         assert control.read()["units"][REPORT]["ActiveState"] == "active"
 
@@ -457,7 +474,9 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
     assert json.loads(result.stdout)["targets"][0]["units"] == []
 
 
-@pytest.mark.parametrize("target", ["report", "triage", "cleanup", "git-sync"])
+@pytest.mark.parametrize(
+    "target", ["report", "triage", "cleanup", "git-sync", "worktree-cleanup"]
+)
 def test_run_starts_only_oneshot_without_enabling_timer(
     control: ControlEnv, target: str
 ) -> None:
@@ -467,6 +486,7 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "triage": "tennis-lab-ops-triage",
         "cleanup": "tennis-lab-cleanup",
         "git-sync": "tennis-lab-git-sync",
+        "worktree-cleanup": "tennis-lab-worktree-cleanup",
     }[target]
     assert ["systemctl", "--user", "start", prefix + ".service"] in control.calls()
     assert control.read()["units"][prefix + ".timer"]["UnitFileState"] == "disabled"
@@ -600,3 +620,28 @@ def test_new_target_only_needs_registry_entry_and_unit_files(
     for source in (ops / "future/systemd").iterdir():
         assert (config / source.name).is_symlink()
         assert (config / source.name).resolve() == source
+
+
+def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(
+    control: ControlEnv,
+) -> None:
+    target = "worktree-cleanup"
+    stem = "tennis-lab-worktree-cleanup"
+    assert control.run("install", target).returncode == 0
+    checked(control, "on", target)
+    data = checked(control, "status", target)
+    assert {unit["unit"] for unit in data["targets"][0]["units"]} == {
+        stem + ".timer",
+        stem + ".service",
+    }
+    assert control.run("logs", target).returncode == 0
+    checked(control, "off", target)
+    assert ["systemctl", "--user", "stop", stem + ".service"] in control.calls()
+    source = control.repo / ".agents/ops/worktree_cleanup/systemd"
+    timer = (source / (stem + ".timer")).read_text()
+    assert "OnCalendar=*-*-* 04:30:00 Asia/Tokyo" in timer
+    assert "RandomizedDelaySec" not in timer
+    assert "Persistent=true" in timer
+    service = (source / (stem + ".service")).read_text()
+    assert "-m worktree_cleanup cleanup" in service
+    assert "KillMode=control-group" in service

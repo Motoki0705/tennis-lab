@@ -55,7 +55,8 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/install_units.sh](ops/install_units.sh) | `spin ops install` が使うunit導入処理。`ops/*/systemd/` を `~/.config/systemd/user` へリンクしdaemon-reloadする。有効化は `spin ops on <target>` |
 | [ops/ops-report/](ops/ops-report/README.md) | Claude親とCodex調査子の並列全体調査、3日周期の運用レポート（未完了回は部分公開・再開）、採用提案の日次triage |
 | [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、依存を照合する順次merge gate、共有基盤パスの一覧 |
-| [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、cleanなworktreeの承認制削除・候補一覧 |
+| [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、期限前のcleanなworktreeの手動削除・候補一覧 |
+| [ops/worktree_cleanup/](ops/worktree_cleanup/README.md) | `.claude/worktrees/` の登録worktreeを作成から336時間で強制削除し、管理jobの停止と状態を照合する |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/issue_supplement/](ops/issue_supplement/README.md) | 作成直後の親issueにGeminiで背景を補足するworkflow。不変条件・独立した意味検査・照合付きの書き込みを行う |
 | [ops/explain_html/](ops/explain_html/README.md) | 説明HTMLの共通契約・版store、指定Geminiの候補生成/意味検査、ローカルHTTP/job runtime |

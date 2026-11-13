@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily tennis-lab worktree expiry at 04:30 Asia/Tokyo
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 Asia/Tokyo
+AccuracySec=1s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
