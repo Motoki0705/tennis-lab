@@ -1,0 +1,917 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-13T08:46:10.888794+00:00",
+  "code_commit": "0ce00c378dcb3a8ed170f481f4e1339ecbd53f6b",
+  "policy_count": 4,
+  "comparison_runs_started": 0,
+  "acceptance_started": false,
+  "videos": [
+    {
+      "camera_id": "cam0",
+      "file_name": "cam0.mp4",
+      "status": "verified",
+      "input": {
+        "source": {
+          "recording_id": "meiji_3cam/video_000",
+          "camera_id": "cam0",
+          "file_name": "cam0.mp4",
+          "media_sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+          "size_bytes": 11850811,
+          "width": 1920,
+          "height": 1080,
+          "frame_count": 1010,
+          "time_base": "1/2997003",
+          "nominal_fps": "2997003/50000",
+          "rotation": 0
+        },
+        "target": {
+          "target_semantics": "active_ball",
+          "label": "tennis_ball",
+          "track_id": "active_ball"
+        },
+        "frame_range": {
+          "start": 0,
+          "stop": 64
+        },
+        "frames": [
+          {
+            "frame_index": 0,
+            "pts": 0
+          },
+          {
+            "frame_index": 1,
+            "pts": 50000
+          },
+          {
+            "frame_index": 2,
+            "pts": 100000
+          },
+          {
+            "frame_index": 3,
+            "pts": 150000
+          },
+          {
+            "frame_index": 4,
+            "pts": 200000
+          },
+          {
+            "frame_index": 5,
+            "pts": 250000
+          },
+          {
+            "frame_index": 6,
+            "pts": 300000
+          },
+          {
+            "frame_index": 7,
+            "pts": 350000
+          },
+          {
+            "frame_index": 8,
+            "pts": 400000
+          },
+          {
+            "frame_index": 9,
+            "pts": 450000
+          },
+          {
+            "frame_index": 10,
+            "pts": 500000
+          },
+          {
+            "frame_index": 11,
+            "pts": 550000
+          },
+          {
+            "frame_index": 12,
+            "pts": 600000
+          },
+          {
+            "frame_index": 13,
+            "pts": 650000
+          },
+          {
+            "frame_index": 14,
+            "pts": 700000
+          },
+          {
+            "frame_index": 15,
+            "pts": 750000
+          },
+          {
+            "frame_index": 16,
+            "pts": 800000
+          },
+          {
+            "frame_index": 17,
+            "pts": 850000
+          },
+          {
+            "frame_index": 18,
+            "pts": 900000
+          },
+          {
+            "frame_index": 19,
+            "pts": 950000
+          },
+          {
+            "frame_index": 20,
+            "pts": 1000000
+          },
+          {
+            "frame_index": 21,
+            "pts": 1050000
+          },
+          {
+            "frame_index": 22,
+            "pts": 1100000
+          },
+          {
+            "frame_index": 23,
+            "pts": 1150000
+          },
+          {
+            "frame_index": 24,
+            "pts": 1200000
+          },
+          {
+            "frame_index": 25,
+            "pts": 1250000
+          },
+          {
+            "frame_index": 26,
+            "pts": 1300000
+          },
+          {
+            "frame_index": 27,
+            "pts": 1350000
+          },
+          {
+            "frame_index": 28,
+            "pts": 1400000
+          },
+          {
+            "frame_index": 29,
+            "pts": 1450000
+          },
+          {
+            "frame_index": 30,
+            "pts": 1500000
+          },
+          {
+            "frame_index": 31,
+            "pts": 1550000
+          },
+          {
+            "frame_index": 32,
+            "pts": 1600000
+          },
+          {
+            "frame_index": 33,
+            "pts": 1650000
+          },
+          {
+            "frame_index": 34,
+            "pts": 1700000
+          },
+          {
+            "frame_index": 35,
+            "pts": 1750000
+          },
+          {
+            "frame_index": 36,
+            "pts": 1800000
+          },
+          {
+            "frame_index": 37,
+            "pts": 1850000
+          },
+          {
+            "frame_index": 38,
+            "pts": 1900000
+          },
+          {
+            "frame_index": 39,
+            "pts": 1950000
+          },
+          {
+            "frame_index": 40,
+            "pts": 2000000
+          },
+          {
+            "frame_index": 41,
+            "pts": 2050000
+          },
+          {
+            "frame_index": 42,
+            "pts": 2100000
+          },
+          {
+            "frame_index": 43,
+            "pts": 2150000
+          },
+          {
+            "frame_index": 44,
+            "pts": 2200000
+          },
+          {
+            "frame_index": 45,
+            "pts": 2250000
+          },
+          {
+            "frame_index": 46,
+            "pts": 2300000
+          },
+          {
+            "frame_index": 47,
+            "pts": 2350000
+          },
+          {
+            "frame_index": 48,
+            "pts": 2400000
+          },
+          {
+            "frame_index": 49,
+            "pts": 2450000
+          },
+          {
+            "frame_index": 50,
+            "pts": 2500000
+          },
+          {
+            "frame_index": 51,
+            "pts": 2550000
+          },
+          {
+            "frame_index": 52,
+            "pts": 2600000
+          },
+          {
+            "frame_index": 53,
+            "pts": 2650000
+          },
+          {
+            "frame_index": 54,
+            "pts": 2700000
+          },
+          {
+            "frame_index": 55,
+            "pts": 2750000
+          },
+          {
+            "frame_index": 56,
+            "pts": 2800000
+          },
+          {
+            "frame_index": 57,
+            "pts": 2850000
+          },
+          {
+            "frame_index": 58,
+            "pts": 2900000
+          },
+          {
+            "frame_index": 59,
+            "pts": 2950000
+          },
+          {
+            "frame_index": 60,
+            "pts": 3000000
+          },
+          {
+            "frame_index": 61,
+            "pts": 3050000
+          },
+          {
+            "frame_index": 62,
+            "pts": 3100000
+          },
+          {
+            "frame_index": 63,
+            "pts": 3150000
+          }
+        ]
+      }
+    },
+    {
+      "camera_id": "cam1",
+      "file_name": "cam1.mp4",
+      "status": "verified",
+      "input": {
+        "source": {
+          "recording_id": "meiji_3cam/video_000",
+          "camera_id": "cam1",
+          "file_name": "cam1.mp4",
+          "media_sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+          "size_bytes": 19479451,
+          "width": 1920,
+          "height": 1080,
+          "frame_count": 1010,
+          "time_base": "1/2997003",
+          "nominal_fps": "2997003/50000",
+          "rotation": 0
+        },
+        "target": {
+          "target_semantics": "active_ball",
+          "label": "tennis_ball",
+          "track_id": "active_ball"
+        },
+        "frame_range": {
+          "start": 0,
+          "stop": 64
+        },
+        "frames": [
+          {
+            "frame_index": 0,
+            "pts": 0
+          },
+          {
+            "frame_index": 1,
+            "pts": 50000
+          },
+          {
+            "frame_index": 2,
+            "pts": 100000
+          },
+          {
+            "frame_index": 3,
+            "pts": 150000
+          },
+          {
+            "frame_index": 4,
+            "pts": 200000
+          },
+          {
+            "frame_index": 5,
+            "pts": 250000
+          },
+          {
+            "frame_index": 6,
+            "pts": 300000
+          },
+          {
+            "frame_index": 7,
+            "pts": 350000
+          },
+          {
+            "frame_index": 8,
+            "pts": 400000
+          },
+          {
+            "frame_index": 9,
+            "pts": 450000
+          },
+          {
+            "frame_index": 10,
+            "pts": 500000
+          },
+          {
+            "frame_index": 11,
+            "pts": 550000
+          },
+          {
+            "frame_index": 12,
+            "pts": 600000
+          },
+          {
+            "frame_index": 13,
+            "pts": 650000
+          },
+          {
+            "frame_index": 14,
+            "pts": 700000
+          },
+          {
+            "frame_index": 15,
+            "pts": 750000
+          },
+          {
+            "frame_index": 16,
+            "pts": 800000
+          },
+          {
+            "frame_index": 17,
+            "pts": 850000
+          },
+          {
+            "frame_index": 18,
+            "pts": 900000
+          },
+          {
+            "frame_index": 19,
+            "pts": 950000
+          },
+          {
+            "frame_index": 20,
+            "pts": 1000000
+          },
+          {
+            "frame_index": 21,
+            "pts": 1050000
+          },
+          {
+            "frame_index": 22,
+            "pts": 1100000
+          },
+          {
+            "frame_index": 23,
+            "pts": 1150000
+          },
+          {
+            "frame_index": 24,
+            "pts": 1200000
+          },
+          {
+            "frame_index": 25,
+            "pts": 1250000
+          },
+          {
+            "frame_index": 26,
+            "pts": 1300000
+          },
+          {
+            "frame_index": 27,
+            "pts": 1350000
+          },
+          {
+            "frame_index": 28,
+            "pts": 1400000
+          },
+          {
+            "frame_index": 29,
+            "pts": 1450000
+          },
+          {
+            "frame_index": 30,
+            "pts": 1500000
+          },
+          {
+            "frame_index": 31,
+            "pts": 1550000
+          },
+          {
+            "frame_index": 32,
+            "pts": 1600000
+          },
+          {
+            "frame_index": 33,
+            "pts": 1650000
+          },
+          {
+            "frame_index": 34,
+            "pts": 1700000
+          },
+          {
+            "frame_index": 35,
+            "pts": 1750000
+          },
+          {
+            "frame_index": 36,
+            "pts": 1800000
+          },
+          {
+            "frame_index": 37,
+            "pts": 1850000
+          },
+          {
+            "frame_index": 38,
+            "pts": 1900000
+          },
+          {
+            "frame_index": 39,
+            "pts": 1950000
+          },
+          {
+            "frame_index": 40,
+            "pts": 2000000
+          },
+          {
+            "frame_index": 41,
+            "pts": 2050000
+          },
+          {
+            "frame_index": 42,
+            "pts": 2100000
+          },
+          {
+            "frame_index": 43,
+            "pts": 2150000
+          },
+          {
+            "frame_index": 44,
+            "pts": 2200000
+          },
+          {
+            "frame_index": 45,
+            "pts": 2250000
+          },
+          {
+            "frame_index": 46,
+            "pts": 2300000
+          },
+          {
+            "frame_index": 47,
+            "pts": 2350000
+          },
+          {
+            "frame_index": 48,
+            "pts": 2400000
+          },
+          {
+            "frame_index": 49,
+            "pts": 2450000
+          },
+          {
+            "frame_index": 50,
+            "pts": 2500000
+          },
+          {
+            "frame_index": 51,
+            "pts": 2550000
+          },
+          {
+            "frame_index": 52,
+            "pts": 2600000
+          },
+          {
+            "frame_index": 53,
+            "pts": 2650000
+          },
+          {
+            "frame_index": 54,
+            "pts": 2700000
+          },
+          {
+            "frame_index": 55,
+            "pts": 2750000
+          },
+          {
+            "frame_index": 56,
+            "pts": 2800000
+          },
+          {
+            "frame_index": 57,
+            "pts": 2850000
+          },
+          {
+            "frame_index": 58,
+            "pts": 2900000
+          },
+          {
+            "frame_index": 59,
+            "pts": 2950000
+          },
+          {
+            "frame_index": 60,
+            "pts": 3000000
+          },
+          {
+            "frame_index": 61,
+            "pts": 3050000
+          },
+          {
+            "frame_index": 62,
+            "pts": 3100000
+          },
+          {
+            "frame_index": 63,
+            "pts": 3150000
+          }
+        ]
+      }
+    },
+    {
+      "camera_id": "cam2",
+      "file_name": "cam2.mp4",
+      "status": "verified",
+      "input": {
+        "source": {
+          "recording_id": "meiji_3cam/video_000",
+          "camera_id": "cam2",
+          "file_name": "cam2.mp4",
+          "media_sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+          "size_bytes": 19787313,
+          "width": 1920,
+          "height": 1080,
+          "frame_count": 1010,
+          "time_base": "1/2997003",
+          "nominal_fps": "2997003/50000",
+          "rotation": 0
+        },
+        "target": {
+          "target_semantics": "active_ball",
+          "label": "tennis_ball",
+          "track_id": "active_ball"
+        },
+        "frame_range": {
+          "start": 0,
+          "stop": 64
+        },
+        "frames": [
+          {
+            "frame_index": 0,
+            "pts": 0
+          },
+          {
+            "frame_index": 1,
+            "pts": 50000
+          },
+          {
+            "frame_index": 2,
+            "pts": 100000
+          },
+          {
+            "frame_index": 3,
+            "pts": 150000
+          },
+          {
+            "frame_index": 4,
+            "pts": 200000
+          },
+          {
+            "frame_index": 5,
+            "pts": 250000
+          },
+          {
+            "frame_index": 6,
+            "pts": 300000
+          },
+          {
+            "frame_index": 7,
+            "pts": 350000
+          },
+          {
+            "frame_index": 8,
+            "pts": 400000
+          },
+          {
+            "frame_index": 9,
+            "pts": 450000
+          },
+          {
+            "frame_index": 10,
+            "pts": 500000
+          },
+          {
+            "frame_index": 11,
+            "pts": 550000
+          },
+          {
+            "frame_index": 12,
+            "pts": 600000
+          },
+          {
+            "frame_index": 13,
+            "pts": 650000
+          },
+          {
+            "frame_index": 14,
+            "pts": 700000
+          },
+          {
+            "frame_index": 15,
+            "pts": 750000
+          },
+          {
+            "frame_index": 16,
+            "pts": 800000
+          },
+          {
+            "frame_index": 17,
+            "pts": 850000
+          },
+          {
+            "frame_index": 18,
+            "pts": 900000
+          },
+          {
+            "frame_index": 19,
+            "pts": 950000
+          },
+          {
+            "frame_index": 20,
+            "pts": 1000000
+          },
+          {
+            "frame_index": 21,
+            "pts": 1050000
+          },
+          {
+            "frame_index": 22,
+            "pts": 1100000
+          },
+          {
+            "frame_index": 23,
+            "pts": 1150000
+          },
+          {
+            "frame_index": 24,
+            "pts": 1200000
+          },
+          {
+            "frame_index": 25,
+            "pts": 1250000
+          },
+          {
+            "frame_index": 26,
+            "pts": 1300000
+          },
+          {
+            "frame_index": 27,
+            "pts": 1350000
+          },
+          {
+            "frame_index": 28,
+            "pts": 1400000
+          },
+          {
+            "frame_index": 29,
+            "pts": 1450000
+          },
+          {
+            "frame_index": 30,
+            "pts": 1500000
+          },
+          {
+            "frame_index": 31,
+            "pts": 1550000
+          },
+          {
+            "frame_index": 32,
+            "pts": 1600000
+          },
+          {
+            "frame_index": 33,
+            "pts": 1650000
+          },
+          {
+            "frame_index": 34,
+            "pts": 1700000
+          },
+          {
+            "frame_index": 35,
+            "pts": 1750000
+          },
+          {
+            "frame_index": 36,
+            "pts": 1800000
+          },
+          {
+            "frame_index": 37,
+            "pts": 1850000
+          },
+          {
+            "frame_index": 38,
+            "pts": 1900000
+          },
+          {
+            "frame_index": 39,
+            "pts": 1950000
+          },
+          {
+            "frame_index": 40,
+            "pts": 2000000
+          },
+          {
+            "frame_index": 41,
+            "pts": 2050000
+          },
+          {
+            "frame_index": 42,
+            "pts": 2100000
+          },
+          {
+            "frame_index": 43,
+            "pts": 2150000
+          },
+          {
+            "frame_index": 44,
+            "pts": 2200000
+          },
+          {
+            "frame_index": 45,
+            "pts": 2250000
+          },
+          {
+            "frame_index": 46,
+            "pts": 2300000
+          },
+          {
+            "frame_index": 47,
+            "pts": 2350000
+          },
+          {
+            "frame_index": 48,
+            "pts": 2400000
+          },
+          {
+            "frame_index": 49,
+            "pts": 2450000
+          },
+          {
+            "frame_index": 50,
+            "pts": 2500000
+          },
+          {
+            "frame_index": 51,
+            "pts": 2550000
+          },
+          {
+            "frame_index": 52,
+            "pts": 2600000
+          },
+          {
+            "frame_index": 53,
+            "pts": 2650000
+          },
+          {
+            "frame_index": 54,
+            "pts": 2700000
+          },
+          {
+            "frame_index": 55,
+            "pts": 2750000
+          },
+          {
+            "frame_index": 56,
+            "pts": 2800000
+          },
+          {
+            "frame_index": 57,
+            "pts": 2850000
+          },
+          {
+            "frame_index": 58,
+            "pts": 2900000
+          },
+          {
+            "frame_index": 59,
+            "pts": 2950000
+          },
+          {
+            "frame_index": 60,
+            "pts": 3000000
+          },
+          {
+            "frame_index": 61,
+            "pts": 3050000
+          },
+          {
+            "frame_index": 62,
+            "pts": 3100000
+          },
+          {
+            "frame_index": 63,
+            "pts": 3150000
+          }
+        ]
+      }
+    }
+  ],
+  "reference": {
+    "json_present": false,
+    "source_files": [
+      {
+        "relative_path": "source/ball_positions.csv",
+        "present": false
+      },
+      {
+        "relative_path": "source/ball_positions (1).csv",
+        "present": false
+      },
+      {
+        "relative_path": "source/ball_positions (2).csv",
+        "present": false
+      },
+      {
+        "relative_path": "source/ball_events.csv",
+        "present": false
+      },
+      {
+        "relative_path": "source/ball_events (1).csv",
+        "present": false
+      },
+      {
+        "relative_path": "source/ball_estimation_segments.csv",
+        "present": false
+      }
+    ],
+    "status": "missing",
+    "sha256": null
+  },
+  "fixed_bundle": {
+    "json_present": false,
+    "scene_present": false,
+    "status": "missing",
+    "sha256": null
+  },
+  "comparison_inputs_verified": false,
+  "acceptance_inputs_verified": false,
+  "comparison_input_errors": [
+    "reference JSON and source CSVs are not verified"
+  ],
+  "acceptance_input_errors": [
+    "reference JSON and source CSVs are not verified",
+    "original fixed bundle is not verified"
+  ]
+}

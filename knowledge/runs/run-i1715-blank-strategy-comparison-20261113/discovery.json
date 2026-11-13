@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-13T08:46:35.684204+00:00",
+  "comparison_started": false,
+  "checked_local_roots": [
+    "main_checkout/data/samples",
+    "main_checkout/outputs/tennis_scene",
+    "main_checkout/outputs/_worktree-preserved",
+    "main_checkout/.claude/worktrees (ground_truth.json and bundle.json filename search)",
+    "/mnt/e/tennis-lab-archive",
+    "/mnt/e/wsl-offload (archive metadata; the October archive predates the November reference)",
+    "Windows Downloads/Documents/OneDrive (matching asset filenames only)"
+  ],
+  "local_result": "Recovered the exact three original sample videos from preserved multiview-sample output; no original clip000 ground truth/source CSVs/fixed bundle located in the checked locations.",
+  "connected_drive_searches": [
+    {
+      "query": "clip000_20261103",
+      "results": 0
+    },
+    {
+      "query": "ground_truth_v1",
+      "results": 0
+    },
+    {
+      "query": "name = 'ground_truth.json' and trashed = false",
+      "results": 0
+    },
+    {
+      "query": "trashed = false and (name contains 'ball_positions' or name contains 'ball_events' or name contains 'ball3d' or name contains 'clip000')",
+      "results": 0
+    }
+  ],
+  "project_drive_listing": {
+    "command": "list --path outputs/tennis_scene --max-depth 3",
+    "entry_count": 8,
+    "entries": [
+      "outputs/tennis_scene/reproduction",
+      "outputs/tennis_scene/reproduction/overview_demo",
+      "outputs/tennis_scene/reproduction/overview_demo/20261102033646_complete_artifacts",
+      "outputs/tennis_scene/visualize",
+      "outputs/tennis_scene/visualize/player_view",
+      "outputs/tennis_scene/visualize/player_view/blender-acceptance",
+      "outputs/tennis_scene/visualize/player_view/blender-acceptance-20261109",
+      "outputs/tennis_scene/visualize/player_view/stabilization-comparison"
+    ],
+    "expected_evaluate_subtree_present": false,
+    "listing_truncated": false
+  },
+  "limitation": "These are searches of the connected account and listed storage locations, not proof that no other backup or machine holds the assets.",
+  "next_required_asset": "The original ground_truth_v1 directory including ground_truth.json and all six source CSVs. The original fixed_input_bundle_v1 is additionally required for acceptance."
+}

@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-13T08:48:11.622890+00:00",
+  "official_sample_verification": {
+    "command": ".venv/bin/python -m src.utils.sample_dataset --data-root \"$PWD/data\" --verify-only",
+    "exit_code": 0,
+    "verified_files": 5
+  },
+  "preflight": {
+    "command": "bash knowledge/runs/run-i1715-blank-strategy-comparison-20261113/repro.sh",
+    "exit_code": 2,
+    "verified_original_videos": 3,
+    "missing_reference_json": true,
+    "missing_source_csvs": 6,
+    "missing_bundle_json": true,
+    "missing_scene_json": true,
+    "comparison_input_gate_passed": false,
+    "model_launched": false
+  },
+  "pytest": {
+    "command": ".agents/ops/pytest_locked.sh tests/integration/tasks/annotation/test_blank_benchmark.py::test_two_strategies_share_exact_inputs_but_not_progress_and_compare_usage_and_error -q --durations=0 --durations-min=0 --junitxml=outputs/ball_detection/evaluate/blank-strategy-comparison-20261113/pytest.xml",
+    "collected": 1,
+    "passed": 1,
+    "failed": 0,
+    "pytest_workers": 4,
+    "elapsed_seconds": 32.81,
+    "setup_seconds_rounded": 0.02,
+    "call_seconds_rounded": 19.92,
+    "teardown_seconds_rounded": 0.0,
+    "scope": "Real CPU services and fake model/synthetic usage; not a real GPT run",
+    "new_tests": 0
+  },
+  "ruff": {
+    "command": ".venv/bin/ruff check knowledge/runs/run-i1715-blank-strategy-comparison-20261113/preflight.py",
+    "exit_code": 0
+  },
+  "knowledge_validation": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_validate.py --check-summary --base-ref origin/main",
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 0,
+    "nodes": 677
+  },
+  "repro_path_validation": {
+    "command": ".venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py",
+    "exit_code": 0,
+    "repro_scripts": 424,
+    "script_references": 522,
+    "missing": 0,
+    "unverifiable": 0,
+    "initial_failure": "The variable PYTHONPATH=$repo_root was not resolvable by the reproducibility checker; changed to PYTHONPATH=. after cd to the checkout root."
+  },
+  "pre_commit": {
+    "command": ".venv/bin/pre-commit run",
+    "exit_code": 0,
+    "hooks": {
+      "ruff": "skipped: no matching production files",
+      "mypy": "skipped: no matching production files"
+    },
+    "note": "The run-specific preflight.py separately passed ruff and was executed on all three real videos."
+  },
+  "validator_evaluations": {
+    "requested": 0,
+    "attempted": 0,
+    "completed": 0
+  },
+  "bash_syntax": {
+    "command": "bash -n knowledge/runs/run-i1715-blank-strategy-comparison-20261113/repro.sh",
+    "exit_code": 0
+  }
+}

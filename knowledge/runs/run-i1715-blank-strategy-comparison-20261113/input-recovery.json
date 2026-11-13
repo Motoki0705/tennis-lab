@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "trusted_identity_record": "knowledge/runs/run-ball3d-evaluation-foundation-20261103/inputs.json",
+  "files": [
+    {
+      "camera_id": "cam0",
+      "source": "main_checkout/outputs/_worktree-preserved/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam0.mp4",
+      "destination": "data/samples/cam0.mp4",
+      "sha256": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+      "size_bytes": 11850811,
+      "matched_trusted_record": true
+    },
+    {
+      "camera_id": "cam1",
+      "source": "main_checkout/outputs/_worktree-preserved/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam1.mp4",
+      "destination": "data/samples/cam1.mp4",
+      "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+      "size_bytes": 19479451,
+      "matched_trusted_record": true
+    },
+    {
+      "camera_id": "cam2",
+      "source": "main_checkout/outputs/_worktree-preserved/multiview-sample/outputs/multiview_sample_preflight/input_data/samples/cam2.mp4",
+      "destination": "data/samples/cam2.mp4",
+      "sha256": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461",
+      "size_bytes": 19787313,
+      "matched_trusted_record": true
+    }
+  ],
+  "main_checkout_modified": false
+}
