@@ -84,6 +84,13 @@ A broader query-span/memory replay prototype failed the pinned Inductor
 partitioner; it is excluded from the supported option and production matrix.
 The two retained scopes compiled successfully without changing compiler policy.
 The main T2 recipe still freezes the CNN for its first 600 updates per stage.
+Earlier qualification a3/a4 also exposed an over-strict comparison between
+differently fused BF16 compiled graphs. The final qualification separates exact
+FP32 compiled replay and full-shape eager BF16 chain-rule equivalence from the
+BF16 compiler's rounding differences. It requires close compiled BF16 outputs
+and every finite parameter gradient; it does not claim elementwise compiled
+BF16 gradient identity. Original failures and the numerical diagnostic remain
+in the run outputs, and the accepted evidence is `native-qualification.json`.
 
 After reviewing these records, CI Python success for the pushed source, complete
 E archive, and the policy, start the single production command from `$SOURCE`:
@@ -98,6 +105,8 @@ re-enqueued. A user systemd unit owns foreground queue `serve`; agent descendant
 cleanup cannot stop it. The serial command uses a writer lock, invokes each
 stage in a separate process, waits for validation and verified completion,
 and fails immediately on OOM, nonfinite gradients or persistence errors.
+The runtime checkout is additionally git-worktree-locked while its service uses
+it. The parent may unlock/remove it only after the terminal event and acceptance.
 
 ## State, persistence and continuation
 

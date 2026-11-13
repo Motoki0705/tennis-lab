@@ -42,6 +42,10 @@ A zero-update initialization pointer contains no scientific state; the pinned
 initializer reproduces it. It never silently falls back from a later desktop
 state to the historical 5,500 checkpoint. Scope, shapes, precision and compile
 policy remain fixed. Recovery refuses any unexplained state/config difference.
+Completed stages retain their reports and exact immutable-generation retirement
+proof without duplicating tensor caches. T2's completed first stage retains its
+full state until the second stage has a verified checkpoint. Restore caches are
+removed one stage at a time; scientific Drive generations remain intact.
 
 On a new host without these local immutable inputs/private environment, first
 repeat verified input acquisition, fixed-snapshot reconstruction and original

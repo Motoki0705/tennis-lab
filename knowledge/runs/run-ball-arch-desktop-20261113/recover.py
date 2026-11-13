@@ -15,6 +15,24 @@ from rebuild_dataset import sha, write
 from state import migrate_resume, model_config
 
 
+def completed_metadata(root, selected, target, status):
+    """Keep durable completed stages without duplicating their tensor caches."""
+    if status["event"] != "completed" or not status.get("checkpoint_state_equal"):
+        raise ValueError("Completed recovery needs a full-state-equal durable receipt")
+    target.mkdir(parents=True, exist_ok=False)
+    retired = []
+    for path in selected.iterdir():
+        if path.suffix == ".pt":
+            retired.append(dict(path=str((target/path.name).relative_to(root)), sha256=sha(path),
+                                size_bytes=path.stat().st_size,
+                                protected_generation=status["receipt"]["generation"],
+                                remote=status["receipt"]["remote"], execution_commit=status["execution_commit"],
+                                reason="completed stage; independently restored tensor remains in Drive"))
+        elif path.is_file():
+            shutil.copyfile(path, target/path.name)
+    write(target/"retired-weights.json",dict(schema_version=1, files=retired))
+
+
 def main(root, stopped):
     if not stopped:
         raise ValueError(
@@ -93,6 +111,8 @@ def main(root, stopped):
             raise ValueError("Local recovery prerequisite differs: " + name)
         shutil.copyfile(preflight / name, target)
     plan = json.loads((root / "original/plan.json").read_text())
+    pointers = {stage_name(c,n): json.loads(path.read_text()) for c,n in STAGES
+                if (path := work/"stage-status"/stage_name(c,n)/"state.json").exists()}
     restored = []
     for case, number in STAGES:
         name = stage_name(case, number)
@@ -121,25 +141,34 @@ def main(root, stopped):
         ).restore(receipt["generation"], manifest_sha256=receipt["manifest_sha256"])
         configuration = model_config(plan, case, policy["scope"])
         target = root / "production" / name
-        checkpoint = migrate_resume(
-            root, selected, target, configuration, expected_update=status["update"]
-        )
-        for source in selected.iterdir():
-            if source.name.startswith("validation-") or source.name in {
-                "COMPLETED.json",
-                "STOPPED.json",
-            }:
-                shutil.copyfile(source, target / source.name)
+        child = pointers.get(stage_name("T2",1), {})
+        needs_parent_state = case == "T2" and number == 0 and not child.get("update",0)
+        completed = status["event"] == "completed"
+        if completed and not needs_parent_state:
+            completed_metadata(root,selected,target,status)
+            digest=json.loads((target/"latest.json").read_text())["sha256"]
+        else:
+            checkpoint = migrate_resume(
+                root, selected, target, configuration, expected_update=status["update"]
+            )
+            digest=sha(checkpoint)
+            for source in selected.iterdir():
+                if source.name.startswith("validation-") or source.name in {"COMPLETED.json", "STOPPED.json"}:
+                    shutil.copyfile(source, target / source.name)
         write(root / "stage-status" / name / "state.json", status)
         restored.append(
             dict(
                 stage=name,
                 update=status["update"],
-                completed=status["event"] == "completed",
+                completed=completed,
                 source_receipt=receipt,
-                adapted_checkpoint_sha256=sha(checkpoint),
+                adapted_checkpoint_sha256=digest,
+                tensor_cache_retired=completed and not needs_parent_state,
             )
         )
+        # The immutable generation is still on Drive. Only one downloaded
+        # recovery cache is retained at a time under the shared 20 GB budget.
+        shutil.rmtree(selected)
     if not restored:
         raise ValueError(
             "No verified desktop generation exists; do not silently fall back to the initial checkpoint"

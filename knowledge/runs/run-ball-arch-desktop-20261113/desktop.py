@@ -71,6 +71,19 @@ def publish_preflight(root, config):
              "original-vm-pip-freeze.txt", "msda-build-manifest.json", "msda-numerical-check.json")
     for name in names:
         shutil.copyfile(root / name, directory / name)
+    for name in ("recovery-bootstrap.json", "recovery-acceptance.json"):
+        if (root/name).exists():
+            shutil.copyfile(root/name,directory/name)
+    for source_name, saved_name in (
+        ("original-preparation/msda-compatibility.patch", "msda-compatibility.patch"),
+        ("msda-build/invocation.json", "msda-build-invocation.json"),
+        ("msda-build/resources.txt", "msda-build-resources.txt"),
+        ("msda-build-sm120-unbounded/resources.txt", "msda-unbounded-resources.txt"),
+        ("msda-build-manifest-unbounded.json", "msda-unbounded-build-manifest.json"),
+        ("checkpoint-diagnostic.json", "checkpoint-diagnostic.json"),
+    ):
+        if (root/source_name).exists():
+            shutil.copyfile(root/source_name,directory/saved_name)
     for path in source.iterdir():
         if path.is_file() and path.suffix in {".py", ".md", ".json"}:
             target = directory / "reproduction" / path.name
@@ -291,7 +304,7 @@ def run_stage(root, mode, case, number, scope, stop=None, joint=False):
     rows = validate_log(output, bud)
     relevant = [row for row in rows if row["update"] > (5500 if case == "T1" else 0)]
     summary = dict(metadata, result=result, status="passed", samples=relevant,
-                   compilation_peak_allocated=torch.cuda.max_memory_allocated(), compilation_peak_reserved=torch.cuda.max_memory_reserved())
+                   last_update_peak_allocated=torch.cuda.max_memory_allocated(), last_update_peak_reserved=torch.cuda.max_memory_reserved())
     write(path.with_name(path.stem + "-result.json"), summary)
     return result
 

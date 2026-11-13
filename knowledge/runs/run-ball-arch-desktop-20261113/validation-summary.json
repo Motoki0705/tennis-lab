@@ -1,0 +1,178 @@
+{
+  "schema_version": 1,
+  "issue": 1859,
+  "validator_evaluations_requested": 0,
+  "cpu": [
+    {
+      "command": "pytest tests/unit/tasks/ball_detection/models/mdd/test_multiscale_query.py tests/unit/tasks/ball_detection/models/mdd/test_x3d_csn.py tests/unit/tasks/ball_detection/model_io/test_mdd_temporal.py tests/unit/tasks/ball_detection/checkpoints/test_temporal.py knowledge/runs/run-ball-arch-desktop-20261113/test_state.py -n 0 -q",
+      "passed": 47,
+      "seconds": 7.07,
+      "source_log": "checkpoint-cpu-tests-final.log"
+    },
+    {
+      "command": "pytest tests/unit/utils/configuration/test_audit.py::test_repository_source_satisfies_current_audit tests/unit/tasks/ball_detection/models/mdd/test_multiscale_query.py -n 0 -q",
+      "passed": 15,
+      "seconds": 82.24,
+      "source_log": "audit-cpu-fix.log"
+    },
+    {
+      "command": "pytest knowledge/runs/run-ball-arch-desktop-20261113/test_state.py knowledge/runs/run-ball-arch-desktop-20261113/test_serial.py -n 0 -q",
+      "passed": 12,
+      "seconds": 4.69,
+      "source_log": "adapter-cpu-final.log"
+    }
+  ],
+  "native": {
+    "complete": true,
+    "allocator_fraction": 0.8,
+    "numerical": "msda-numerical-check.json",
+    "cuda_tests_returncode": 0,
+    "full_shape": "full-shape-equivalence.json",
+    "finished_at": 1794537708.3397837
+  },
+  "full_shape": {
+    "complete": true,
+    "shape": [
+      1,
+      64,
+      3,
+      720,
+      1280
+    ],
+    "model": "T1 saved 11500 query updates",
+    "precision": "BF16; official MSDA FP32",
+    "reference": "component VJP chain rule; uncheckpointed stage-local CNN plus uncheckpointed full query",
+    "actual_production_detaches": false,
+    "all_parameter_gradients_compared": true,
+    "query_parameter_count": 242,
+    "cnn_parameter_count": 133,
+    "maximum_query_absolute_gradient_error": 1.1920928955078125e-07,
+    "maximum_cnn_absolute_gradient_error": 0.0,
+    "samples": [
+      {
+        "component": "query",
+        "activation_checkpointing": false,
+        "peak_allocated": 6539555328,
+        "peak_reserved": 6763315200,
+        "seconds": 1.3768801960013661
+      },
+      {
+        "component": "query",
+        "activation_checkpointing": true,
+        "peak_allocated": 3571290112,
+        "peak_reserved": 3839885312,
+        "seconds": 1.2348894090009708
+      },
+      {
+        "component": "encoder",
+        "activation_checkpointing": false,
+        "peak_allocated": 12060617728,
+        "peak_reserved": 13017022464,
+        "seconds": 3.3189051560002554
+      },
+      {
+        "component": "encoder",
+        "activation_checkpointing": true,
+        "peak_allocated": 13423710720,
+        "peak_reserved": 13583253504,
+        "seconds": 2.0321353599993017
+      }
+    ]
+  },
+  "environment": {
+    "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "torch": "2.14.1+cu130",
+    "torchvision": "0.29.1+cu130",
+    "numpy": "2.5.4",
+    "cuda": "13.0",
+    "exact_original_runtime_packages": 167,
+    "differences": {},
+    "dependency_metadata_conflicts_preserved": true
+  },
+  "msda": {
+    "official": {
+      "repository": "https://github.com/fundamentalvision/Deformable-DETR",
+      "commit": "11169a60c33333af00a4849f1808023eba96a931",
+      "license": "Apache-2.0"
+    },
+    "dino": {
+      "commit": "d84a491d41898b3befd8294d1cf2614661fc0953",
+      "cuda_cpp_all_identical": true,
+      "function_identical": true,
+      "module_difference": "DINO adds FP16 branch; adapter vendors official module without it"
+    },
+    "binary_sha256": "f92765489d767bf604d0ad0bcf3c9017f23af499cd62271ae5a982d40a920b3a",
+    "official_source_sha256_exact": true,
+    "cuda_algorithm_changes": false,
+    "extra_nvcc_flags": "--maxrregcount=64",
+    "compute_capability": [
+      12,
+      0
+    ],
+    "driver": "610.88"
+  },
+  "archive": {
+    "complete": true,
+    "schema_version": 1,
+    "receipt": {
+      "schema_version": 1,
+      "action": "download-tree",
+      "rclone_config": "/home/kamimura/.config/tennis-lab/rclone-drive.conf",
+      "source": "outputs/ball_detection/train/arch_efficiency/s42-20261111",
+      "source_id": "1zKtsf4lPE19CbhazItOIAbbyH31BRywV",
+      "destination": "/mnt/e/tennis-lab-archive/outputs/ball_detection/train/arch_efficiency/s42-20261111",
+      "status": "completed",
+      "verified": true,
+      "reused": false,
+      "total_files": 1917,
+      "total_bytes": 19243387824
+    },
+    "progress": {
+      "schema_version": 1,
+      "operation": "completed",
+      "completed_files": 1917,
+      "completed_bytes": 19243387824,
+      "updated_at": "2026-11-13T02:05:49.383574+00:00",
+      "elapsed_seconds": 2480.637564416,
+      "last_progress_at": "2026-11-13T02:05:49.383574+00:00",
+      "total_files": 1917,
+      "total_bytes": 19243387824,
+      "current_path": "startup-stability.json"
+    },
+    "expected_manifest_sha256": "07bf4ee0f450ce3d955e6ff500780171e3086dc036703083cc448a1af265821b",
+    "source_latest_modified": "2026-11-11T20:39:22.475Z",
+    "source_closed_tree_rechecked": true,
+    "completed_at": 1794535850.225163,
+    "training_uses_archive": false
+  },
+  "fixed_dataset": {
+    "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+    "verified_files": 2925,
+    "verified_bytes": 157028755547,
+    "hardlinks_only": true,
+    "all_sha256_verified": true,
+    "additional_payload_bytes": 0
+  },
+  "code_pr_ci": {
+    "pr": 1950,
+    "head": "5ece0993805fd1b647ed24698bc97e3f3ad51218",
+    "run_id": 43357209401,
+    "check": "Python",
+    "conclusion": "success"
+  },
+  "initial_run_pr_ci": {
+    "pr": 1955,
+    "head": "768f4cad27741e3a827f8a411ccc655d3e9be742",
+    "run_id": 43357350155,
+    "check": "Python",
+    "conclusion": "success"
+  },
+  "evidence_output_root": "outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113",
+  "notes": [
+    "Test commands overlap; counts are not additive.",
+    "The initial 47 include 44 model/resume tests and 3 adapter state tests.",
+    "All 7 official gradcheck widths passed; native CUDA test count is 5.",
+    "Compiled BF16 output proximity and finite gradients do not claim elementwise gradient equality across differently fused graphs.",
+    "E archive receipt covers the complete historical tree before any desktop publication."
+  ]
+}

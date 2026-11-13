@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 import desktop  # noqa: E402
 from desktop import retire_weights, run_ordered  # noqa: E402
 from rebuild_dataset import sha, write  # noqa: E402
+from recover import completed_metadata  # noqa: E402
 from service import notify  # noqa: E402
 
 
@@ -104,3 +105,25 @@ def test_failed_retirement_ledger_publication_keeps_local_state(tmp_path, monkey
     with pytest.raises(OSError,match="Drive unavailable"):
         retire_weights(tmp_path,directory,include_latest=True)
     assert checkpoint.read_bytes() == b"full state"
+
+
+def test_completed_recovery_keeps_validation_and_generation_proof_without_duplicating_tensors(tmp_path):
+    selected=tmp_path/"downloaded"
+    selected.mkdir()
+    checkpoint=selected/"checkpoint-update-00006000.pt"
+    checkpoint.write_bytes(b"verified full state")
+    write(selected/"latest.json",dict(update=6000,checkpoint=checkpoint.name,sha256=sha(checkpoint)))
+    write(selected/"COMPLETED.json",dict(complete=True))
+    write(selected/"validation-update-00006000.json",dict(metrics=dict(support=dict(observed=85473))))
+    status=dict(event="completed",checkpoint_state_equal=True,
+                receipt=dict(generation="immutable-completed",remote="durable"),execution_commit="pushed")
+    target=tmp_path/"production/T1"
+    completed_metadata(tmp_path,selected,target,status)
+    assert not (target/checkpoint.name).exists()
+    assert checkpoint.exists()
+    assert json.loads((target/"COMPLETED.json").read_text())["complete"]
+    record=json.loads((target/"retired-weights.json").read_text())["files"][0]
+    assert record["sha256"] == sha(checkpoint)
+    assert record["protected_generation"] == "immutable-completed"
+    with pytest.raises(ValueError,match="full-state-equal"):
+        completed_metadata(tmp_path,selected,tmp_path/"unverified",dict(status,checkpoint_state_equal=False))

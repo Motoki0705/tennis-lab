@@ -48,7 +48,7 @@ def main(old, root):
     if state in {"active", "activating", "deactivating", "reloading"}:
         raise ValueError("The old writer's service is still live")
     root.mkdir(parents=True)
-    for name in ("original", "inputs"):
+    for name in ("original", "original-preparation", "inputs"):
         link_tree(old / name, root / name)
     for name in (
         "storage-baseline.json",
