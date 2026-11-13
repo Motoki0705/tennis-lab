@@ -9,7 +9,9 @@ import os
 import shutil
 import subprocess
 import sys
+from contextlib import contextmanager
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -581,12 +583,38 @@ def test_dispatcher_jobs_finish_and_free_child_reservations(
     monkeypatch.setattr(
         lab.lifecycle, "managed", lambda current: current.get("dispatch")
     )
+    waited = []
+    if phase == "starting":
+        attempts = []
+
+        @contextmanager
+        def delayed_launcher(lock: Path) -> Any:
+            attempts.append(lock)
+            if len(attempts) == 1:
+                # The launcher records its exit after the runner has stopped,
+                # while cleanup is outside the shared registry lock.
+                data = json.loads(registry.read_text())
+                data["parents"]["o/r#1"]["dispatch"]["jobs"]["job"]["runner_exit"] = 143
+                registry.write_text(json.dumps(data))
+                yield None
+            else:
+                yield 1
+
+        monkeypatch.setattr(lab.lifecycle, "gate", delayed_launcher)
+        monkeypatch.setattr(
+            lab.lifecycle,
+            "Event",
+            lambda: SimpleNamespace(wait=lambda duration: waited.append(duration)),
+        )
     lab.now += LIFETIME
     lab.run(cleanup=True)
     current = json.loads(registry.read_text())["parents"]["o/r#1"]
     assert current["tasks"]["2"]["stopped"] is True
     assert current["tasks"]["2"]["worker_ended"]["delegation_id"] == "a" * 32
     assert current["dispatch"]["jobs"]["job"]["phase"] == "ended"
+    if phase == "starting":
+        assert waited
+        assert current["dispatch"]["jobs"]["job"]["runner_exit"] == 143
     assert not path.exists()
 
 

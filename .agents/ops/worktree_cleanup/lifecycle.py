@@ -14,7 +14,7 @@ from threading import Event
 from typing import Any
 
 from dispatcher.runtime import Runtime, alive, gate
-from dispatcher.supervisor import Supervisor, managed
+from dispatcher.supervisor import Supervisor, event, managed
 from parent.manual_workers import run_directory, worker_runs
 
 from . import processes
@@ -175,11 +175,19 @@ class Stopper:
                                 Path(job["runner"]),
                                 task_id=job["task_id"],
                             )
-                            with gate(directory / "lifetime.lock") as fd:
-                                if fd is None or alive(job.get("worker")):
+                            deadline = time.monotonic() + self.timeout
+                            while True:
+                                with gate(directory / "lifetime.lock") as fd:
+                                    finished = fd is not None and not alive(
+                                        job.get("worker")
+                                    )
+                                if finished:
+                                    break
+                                if time.monotonic() >= deadline:
                                     raise CleanupError(
                                         "dispatcher launcher termination unconfirmed"
                                     )
+                                Event().wait(0.05)
                             job.update(phase="ended", diagnostic="worktree_expired")
                 for n in selected:
                     task = row["tasks"][n]
@@ -245,7 +253,26 @@ class Stopper:
                     # Jobs may finish concurrently; do not replace an entire old row.
                     for job_id, job in row["dispatch"]["jobs"].items():
                         if job["phase"] == "ended":
-                            current["dispatch"]["jobs"][job_id].update(job)
+                            target = current["dispatch"]["jobs"][job_id]
+                            if (
+                                job.get("cancelled_before_start")
+                                and target["phase"] != "ended"
+                            ):
+                                event(
+                                    current["dispatch"],
+                                    "runtime_cancelled",
+                                    job_id=job_id,
+                                    reason="worktree_expired",
+                                )
+                            # Preserve exit/launcher evidence written while stop
+                            # waited outside the registry lock.
+                            for field in (
+                                "phase",
+                                "diagnostic",
+                                "cancelled_before_start",
+                            ):
+                                if field in job:
+                                    target[field] = job[field]
                     if failed:
                         current["dispatch"].update(
                             phase="recovery_required",
