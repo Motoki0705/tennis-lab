@@ -476,16 +476,26 @@ def read_candidates(
             elif row["event"] == "extracted":
                 proposal = candidate["proposal"]
                 decisions = candidate["decisions"]
+                pinned = next(
+                    (
+                        d
+                        for d in decisions
+                        if d["id"] == row["data"]["decision_ids"].get(row["key"])
+                    ),
+                    None,
+                )
                 if (
                     candidate["extraction"] is not None
                     or proposal is None
                     or row["data"]["proposal"] != proposal["data"]["issue"]
-                    or human_state(candidate) != "approved"
-                    or not decisions
-                    or row["data"]["decision_ids"].get(row["key"])
-                    != decisions[-1]["id"]
+                    or pinned is None
+                    or pinned["data"]["action"] != "approve"
+                    or pinned["data"].get("target") != "candidate"
+                    or pinned["data"]["issue"] != row["data"]["proposal"]
                 ):
-                    raise ValueError("extraction has no matching current approval")
+                    raise ValueError(
+                        "extraction has no matching pinned candidate approval"
+                    )
                 candidate["extraction"] = row
             else:
                 pub = (

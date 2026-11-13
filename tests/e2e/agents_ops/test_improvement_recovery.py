@@ -242,7 +242,6 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
             "identifier": "改善",
             "summary": "未承認の改善",
             "children": [],
-            "improvement_source": {"parent": 2, "key": "next"},
             "sections": {
                 h: "人間との議論待ち。"
                 for h in formats.PARENT_REQUIRED
@@ -252,7 +251,7 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
     )
     d.h.gh.issues[1].update(
         title=rendered["title"],
-        body=rendered["body"],
+        body=source.marker() + "\n\n" + rendered["body"],
         labels=[{"name": label} for label in rendered["labels"]],
     )
     d.h.gh.comment_rows[2] = [

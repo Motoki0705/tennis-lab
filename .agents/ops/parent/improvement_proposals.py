@@ -500,6 +500,8 @@ def extract(session: ParentSession, requested: list[str]) -> dict[str, Any]:
                 f"extraction must include all approved candidates: missing={sorted(approved_keys - set(keys))}, extra={sorted(set(keys) - approved_keys)}"
             )
     for k, row in selected.items():
+        if recovering:
+            continue
         validate_candidate(row)
         if human_state(row) != "approved":
             raise ValueError(
@@ -507,7 +509,13 @@ def extract(session: ParentSession, requested: list[str]) -> dict[str, Any]:
             )
         if row["decisions"][-1]["revision"] != row["revision"]:
             raise ValueError("candidate revision changed after approval")
-    decision_ids = {k: r["decisions"][-1]["id"] for k, r in selected.items()}
+    # An attempted POST can only be reconciled, never repeated. Preserve its
+    # original approvals even if a later human decision has stopped execution.
+    if recovering:
+        assert receipt is not None
+        decision_ids = receipt["decision_ids"]
+    else:
+        decision_ids = {k: r["decisions"][-1]["id"] for k, r in selected.items()}
     if receipt is None:
         draft = extraction_draft(session, source, selected)
         receipt = {
@@ -566,6 +574,12 @@ def extract(session: ParentSession, requested: list[str]) -> dict[str, Any]:
             )
         elif row["extraction"]["data"] != data:
             raise ValueError("conflicting extraction record")
+    from .improvements import stage_stop
+
+    for k in keys:
+        stage_stop(
+            session, ImprovementSource(session.parent, k), candidates(session)[k]
+        )
     refresh(session, raw, ended="提案終了", close="completed")
     return {
         "issue": target,

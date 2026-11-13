@@ -128,6 +128,7 @@ propose/extractは共有private stateへ固定draft・送信前receiptを永続�
 POST成功の可能性があり、索引で未観測なら `outcome_unknown` として停止し、再POSTしない。
 同じ引数で再送する。receipt削除・key変更・タイトル検索では復旧しない。別ホストの独立state間の排他は提供しない。
 取り出しが送信済みの提案は期限処理から外し、明示的なextract再送で起票結果・event・closeを収束させる。
+送信後に承認が撤回された場合も、作成済みの同じparentとの照合とcloseだけを復旧する。元の承認参照を保存し、撤回後の実行は拒否する。
 
 agree・create-child・delegate・run-worker（resume含む）・start/continue-worker・authorization・dispatcher・supervisorの起動直前で、全候補の現在の承認を照合する。
 1候補でも撤回・保留・見送りになればparent全体の起動を拒否し、既存の停止要求経路を使う。他の候補だけを続けない。
@@ -201,7 +202,7 @@ finishは受入項目の機械記録として証拠用Issueへ保存し、通知
 手書きの最終completed JSONだけでは完了しない。
 
 取り出したparentの受入表示は、completionに保存した全decision_idの承認・要件と、現在の承認・本文を照合する。
-同じ候補revisionでも新しい承認に過去の受入を引き継がず、元親statusのacceptedと改善親statusの受入済み表示を外す。
+同じ候補revisionでも新しい承認に過去の受入を引き継がず、元親statusのacceptedと取り出したparentの受入済み表示を外す。
 過去のcompletionと公開済み終了コメントは保持する。文章の体裁だけの変更では受入を失効させない。
 
 子なし `issue:parent` も [共通resolver](README.md#issue自身を実行する)で親自身の成果を照合する。

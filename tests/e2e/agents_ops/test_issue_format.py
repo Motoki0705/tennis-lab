@@ -911,6 +911,7 @@ def test_render_is_deterministic_and_always_a_local_dry_run(
         {"labels": ["issue:standalone"]},
         {"labels": ["issue:proposal"]},
         {"role": "standalone"},
+        {"improvement_source": {"parent": 1, "key": "legacy"}},
         {"unknown": "not silently ignored"},
         {"sections": {"このタスクの目的": "目的だけ"}},
     ],

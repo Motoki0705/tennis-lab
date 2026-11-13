@@ -404,3 +404,17 @@ def test_grouped_extraction_provenance_rejects_ambiguous_candidates(
         marker = "前文\n" + marker
     with pytest.raises(ValueError):
         proposals.parse_extraction(marker)
+
+
+def test_legacy_reference_publication_is_readable_without_granting_execution(
+    api: Any,
+) -> None:
+    source, rows, body = chain(api)
+    rows[1] = api.event(
+        source, "published", 1, rows[0]["id"], {**rows[1]["data"], "mode": "reference"}
+    )
+    rows[2] = api.event(source, "decision", 1, rows[1]["id"], rows[2]["data"])
+    candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    assert candidate["publication"]["data"]["mode"] == "reference"
+    with pytest.raises(ValueError, match="different issue"):
+        api.approved(candidate, source, 20, body)

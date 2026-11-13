@@ -126,7 +126,8 @@ repo:Motoki0705/tennis-lab is:issue is:open -label:"issue:parent" -label:"issue:
 設定とGitHub上のラベル作成は管理者が別途行う。
 
 有効かつ現在 `issue:parent` を持ち、GitHubの `created_at` が有効化時刻**以降**のissueだけが対象。
-それ以外は `not_target`。対象で確定ラベルがなければ `pending`、あれば以下の状態になる。
+`issue:proposal` と [承認snapshotから取り出したparent](../parent/improvements.md#承認分の取り出しと復旧) は対象外。
+呼出側はラベル・作成日時とともに `body` を渡す。それ以外の非対象も `not_target`。対象で確定ラベルがなければ `pending`、あれば以下の状態になる。
 確定ラベルが2種類以上付いていたら、非対象のissueでも例外にする。
 
 | 公開定数 | ラベル | 状態・意味 |
@@ -158,6 +159,7 @@ state = supplement_state(
     [label["name"] for label in issue["labels"]],
     issue["created_at"],
     enabled_since,
+    body=issue.get("body") or "",
 )
 ```
 
@@ -165,7 +167,7 @@ state = supplement_state(
   共通 `issues.cli.GitHub`（`parent.github.GitHub` も可）が `gh api --include --method GET` で
   `repos/{repo}/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE` を取得する。
   `GitHubHTTPError.status == 404` のときだけ `None`、設定済みなら検証したUTC文字列を返す。
-- `supplement_state(labels, created_at, enabled_since) -> SupplementState`: `labels` はラベル**名の文字列**のiterable。
+- `supplement_state(labels, created_at, enabled_since, *, body="") -> SupplementState`: `labels` はラベル**名の文字列**のiterable。
   RESTのラベルobjectそのものは渡さない。日時はUTC秒形式の文字列、無効の場合だけ `enabled_since=None`。
   不正な日時・確定ラベルの競合は `ValueError`。戻り値の型 `SupplementState` は上記5状態の `Literal`。
 - `SUPPLEMENT_FINAL_LABELS` は3つの確定ラベルの `frozenset[str]`、

@@ -664,6 +664,21 @@ def test_revision_and_replayed_human_instruction_do_not_restore_approval(
         ).stderr
     )
     extract(p, ok=False)
+    revised_approval = json.loads(
+        decide(
+            p,
+            "approve",
+            decision_spec(
+                previous=revoked["decision_id"],
+                revision=2,
+                request="approve-revision-2",
+                quote="取得一覧を追加したrevision 2を承認する。",
+            ),
+        ).stdout
+    )
+    extract(p)
+    assert "取得一覧も含む" in p.state()["issues"]["11"]["body"]
+    assert revised_approval["decision_id"] != approval["decision_id"]
 
 
 @pytest.mark.parametrize("fault", ["post", "record", "close"])
@@ -947,5 +962,54 @@ def test_reopened_proposal_does_not_restore_its_candidates(
                 quote="保留する。",
             ),
             ok=False,
+        ).stderr
+    )
+
+
+def test_expiry_without_checkout_launcher_is_rejected_before_github(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    result = subprocess.run(
+        [sys.executable, "-m", "parent", "--repo", "o/r", "improvement-expire"],
+        cwd=p.repo,
+        env=p.env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 75 and "checkout_job.py" in result.stderr
+    assert p.calls() == []
+
+
+def test_extraction_response_loss_then_revocation_repairs_existing_parent_without_authority(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    record(p)
+    publish(p)
+    approval = json.loads(decide(p, "approve").stdout)["decision_id"]
+    p.env["PARENT_FAIL_AFTER_CREATE"] = "1"
+    extract(p, ok=False)
+    del p.env["PARENT_FAIL_AFTER_CREATE"]
+    decide(
+        p,
+        "revoke",
+        decision_spec(
+            previous=approval,
+            request="stop-during-recovery",
+            quote="応答が途切れた改善の承認を撤回する。",
+        ),
+    )
+    result = json.loads(extract(p).stdout)
+    assert result["issue"] == 11 and result["reused"] is True and post_count(p) == 2
+    assert p.state()["issues"]["10"]["state"] == "closed"
+    source_finished(p)
+    p.cli("register", parent="11")
+    assert (
+        "revoked"
+        in p.cli(
+            "agree", "--improvement-approval", approval, parent="11", ok=False
         ).stderr
     )
