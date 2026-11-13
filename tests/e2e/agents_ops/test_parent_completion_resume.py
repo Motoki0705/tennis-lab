@@ -13,7 +13,13 @@ import pytest
 
 from tests.e2e.agents_ops.test_dispatcher_supervisor import FixtureRuntime
 from tests.e2e.agents_ops.test_merge_gate import GateEnv, make_gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    evidence_number,
+    run_git,
+    untracked_legacy_fixture,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -129,7 +135,9 @@ class CompletionWorkflow:
 
 @pytest.fixture
 def completion_workflow(
-    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
 ) -> CompletionWorkflow:
     p = parent_env
     policy = importlib.import_module("parent.policy")
@@ -162,7 +170,11 @@ def completion_workflow(
         )
 
     monkeypatch.setattr(p, "agreed", autonomous_basis)
-    g = make_gate_env(p, monkeypatch, "standalone")
+    variant = getattr(request, "param", "standalone")
+    direct = variant == "parent_self_direct"
+    g = make_gate_env(
+        p, monkeypatch, "parent_self" if variant != "standalone" else variant
+    )
     state = p.state()
     for issue in state["issues"].values():
         issue["assignees"] = []
@@ -208,7 +220,7 @@ def completion_workflow(
             "schema_version": 1,
             "repo": "o/r",
             "parent": 1,
-            "route": "standalone",
+            "route": "standalone" if variant == "standalone" else "parent",
             "priority": 1,
             "basis_sha256": auth["execution_basis_sha256"],
             "generation": auth["generation"],
@@ -224,6 +236,38 @@ def completion_workflow(
             "rationale": basis["rationale"],
             "sources": basis["sources"],
         }
+        # Seed the pinned judgement and initial reservation, as assign() does.
+        # Continuations must read an existing parent's start-input, never create
+        # an initial job by silently collecting over an absent prior snapshot.
+        directory = schedule.directory / "judgements/fixture-judgement"
+        store.write_json(directory / "input.json", snapshot)
+        store.write_json(
+            directory / "result.json",
+            {
+                "schema_version": 2,
+                "result": "recorded",
+                "input_sha256": candidate["input_sha256"],
+                "decisions": [{"issue": 1, "disposition": "startable"}],
+                "deferred": [],
+                "candidates": [candidate],
+                "publications": [],
+                "diagnostics": [],
+            },
+        )
+        scheduled["runs"].append(
+            {
+                "id": "fixture-judgement",
+                "slot": scheduled["cursor"],
+                "explicit": False,
+                "phase": "recorded",
+                "controller": None,
+                "directory": str(directory),
+                "diagnostic": None,
+                "candidates": {"1": {"state": "assigned", "reason": "fixture"}},
+            }
+        )
+        schedule.write(scheduled)
+        session.row["session"] = "dispatcher-reservation:fixture-assignment"
         session.row["dispatch"] = {
             "schema_version": 1,
             "assignment_id": "fixture-assignment",
@@ -237,44 +281,47 @@ def completion_workflow(
             "active_job": None,
             "events": [],
         }
-        pr = p.state()["prs"][0]
-        session.row["tasks"]["1"] = {
-            "delegated": True,
-            "delegation_id": "fixture-delegation",
-            "agent": "codex",
-            "authorization": auth,
-            "worktree": str(p.repo / ".claude/worktrees/pr-0"),
-            "branch": pr["head"]["ref"],
-            "requirements_sha256": policy.digest(
-                execution.requirement_body(p.state()["issues"]["1"]["body"])
-            ),
-        }
-        preflight = importlib.import_module("parent.worker_preflight")
-        task = session.row["tasks"]["1"]
-        task["preflight"] = preflight.new(task["delegation_id"])
-        prepared, _ = preflight.prepare_turn(
-            session,
-            1,
-            "検証済みの実装。",
-            resume=False,
-        )
-        preflight.commit_turn(task, prepared)
         parent = control._job(session.key, session.row)
-        implementation = control._job(
-            session.key,
-            session.row,
-            child=1,
-            delegation_id="fixture-delegation",
-            prompt="検証済みの実装。",
-        )
-        implementation["phase"] = "ended"
-        session.row["tasks"]["1"]["worker_ended"] = {
-            "delegation_id": "fixture-delegation",
-            "evidence": "fixture workerの終了・回収を確認した。",
-        }
+        implementation = {}
+        if not direct:
+            pr = p.state()["prs"][0]
+            session.row["tasks"]["1"] = {
+                "delegated": True,
+                "delegation_id": "fixture-delegation",
+                "agent": "codex",
+                "authorization": auth,
+                "worktree": str(p.repo / ".claude/worktrees/pr-0"),
+                "branch": pr["head"]["ref"],
+                "requirements_sha256": policy.digest(
+                    execution.requirement_body(p.state()["issues"]["1"]["body"])
+                ),
+            }
+            preflight = importlib.import_module("parent.worker_preflight")
+            task = session.row["tasks"]["1"]
+            task["preflight"] = preflight.new(task["delegation_id"])
+            prepared, _ = preflight.prepare_turn(
+                session,
+                1,
+                "検証済みの実装。",
+                resume=False,
+            )
+            preflight.commit_turn(task, prepared)
+            implementation = control._job(
+                session.key,
+                session.row,
+                child=1,
+                delegation_id="fixture-delegation",
+                prompt="検証済みの実装。",
+            )
+            implementation["phase"] = "ended"
+            session.row["tasks"]["1"]["worker_ended"] = {
+                "delegation_id": "fixture-delegation",
+                "evidence": "fixture workerの終了・回収を確認した。",
+            }
         store.save()
     flow = CompletionWorkflow(g, control, session, parent, implementation)
-    flow.runtime(implementation, live=False)
+    if implementation:
+        flow.runtime(implementation, live=False)
     assert control.claim("o/r#1", parent["id"]) is not None
     flow.accept(parent)
     p.cli(
@@ -285,6 +332,53 @@ def completion_workflow(
         p.note("親が差分・受入条件・テストを確認した。"),
     )
     return flow
+
+
+@pytest.mark.parametrize(
+    "completion_workflow", ["parent_self", "parent_self_direct"], indirect=True
+)
+def test_labelled_parent_recovers_completion_with_or_without_a_worker(
+    completion_workflow: CompletionWorkflow,
+) -> None:
+    flow = completion_workflow
+    before = flow.row()
+    p = flow.gate.review.p
+    assert {label["name"] for label in p.state()["issues"]["1"]["labels"]} == {
+        "issue:parent"
+    }
+    resumed = flow.close_and_reserve()
+    assert flow.control.claim("o/r#1", resumed["id"]) is not None
+    flow.accept(resumed)
+    p.announce_completion()
+    from tests.support.agents_ops.improvements import finish_for
+
+    acceptance = finish_for(p, state_dir=flow.control.store.directory)
+    with flow.control.store.locked():
+        result = importlib.import_module("parent.development").report(
+            flow.session,
+            {
+                "schema_version": 2,
+                "state": "completed",
+                "finish": acceptance,
+                "reason": "親自身の成果を再照合した。",
+                "resume_condition": "完了。",
+                "evidence": "対象HEADのCI・正式レビュー・merge journal・受入証拠と実行終了を確認した。",
+            },
+        )
+    flow.finish(resumed, "completed", result)
+    after = flow.row()
+    assert after["status"] == "ended" and after["dispatch"]["phase"] == "completed"
+    assert (
+        after["session"] == before["session"]
+        and after["generation"] == before["generation"]
+    )
+    if not flow.implementation:
+        assert not after["tasks"]["1"].get("delegated")
+        assert "worker_ended" not in after["tasks"]["1"]
+        assert all(
+            job["role"] == "parent" for job in after["dispatch"]["jobs"].values()
+        )
+    assert p.state()["parents"] == {}
 
 
 @pytest.mark.parametrize("state", ["waiting", "failed"])
@@ -325,12 +419,17 @@ def test_closed_standalone_parent_resumes_same_session_and_finishes(
     assert "existing worker" in blocked.stderr
     development = importlib.import_module("parent.development")
     assert len(flow.row()["dispatch"]["jobs"]) == len(row["dispatch"]["jobs"])
+    p.announce_completion()
+    from tests.support.agents_ops.improvements import finish_for
+
+    acceptance = finish_for(p, state_dir=control.store.directory)
     with control.store.locked():
         result = development.report(
             flow.session,
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": acceptance,
                 "reason": "実merge/closeと全体受入を照合した。",
                 "resume_condition": "完了。追加要件は別issueで扱う。",
                 "evidence": "同じ親が保存済みのレビュー・検証・終了を再確認した。",
@@ -515,9 +614,9 @@ def test_legacy_result_migration_preserves_review_and_completion(
         # accepted/confirmed it: the existing PR is genuinely still in review.
         state = p.state()
         policy = importlib.import_module("parent.policy")
-        state["comments"]["1"] = [
+        state["comments"][str(evidence_number(state))] = [
             comment
-            for comment in state["comments"]["1"]
+            for comment in evidence_comments(state)
             if not any(
                 event.get("event") == "review"
                 and event.get("review_run_id")
@@ -527,6 +626,8 @@ def test_legacy_result_migration_preserves_review_and_completion(
             )
         ]
         p.save(state)
+        # The legacy fixture predates posting these acknowledgement events.
+        untracked_legacy_fixture(p)
     with control.store.locked():
         task = flow.session.row["tasks"]["1"]
         task.pop("preflight")

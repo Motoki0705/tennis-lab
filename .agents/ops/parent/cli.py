@@ -26,7 +26,7 @@ from .policy import issue_number, nonempty, number, object_value
 from .proposals import receive
 from .session import ParentSession
 from .snapshot import prepare, transition
-from .state import Store, state_directory
+from .state import Store, state_directory, unique_object
 
 
 def read_text(path: str) -> str:
@@ -34,7 +34,12 @@ def read_text(path: str) -> str:
 
 
 def read_object(path: str) -> dict[str, Any]:
-    return object_value(json.loads(read_text(path)))
+    return object_value(json.loads(read_text(path), object_pairs_hook=unique_object))
+
+
+WORK_ITEM_HELP = (
+    "担当Issue番号。正式な子なしでは --parent と同じ番号を指定（子の新設ではない）"
+)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -68,12 +73,14 @@ def parser() -> argparse.ArgumentParser:
     ):
         commands.add_parser(command)
     commands.add_parser("note").add_argument("--body-file", required=True)
+    commands.add_parser("notify").add_argument("--spec", required=True)
+    commands.add_parser("evidence").add_argument("--create", action="store_true")
     publication = commands.add_parser("publish-decision-log")
     publication.add_argument("--dry-run", action="store_true")
     publication.add_argument("--retry", action="store_true")
     for name in ("worker-log-status", "publish-worker-log"):
         log = commands.add_parser(name)
-        log.add_argument("--child", type=int, required=True)
+        log.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         log.add_argument("--turn", type=int)
         log.add_argument("--delegation-key")
         if name == "publish-worker-log":
@@ -101,11 +108,11 @@ def parser() -> argparse.ArgumentParser:
             project.add_argument("--spec", required=True)
     commands.add_parser("workflow-report").add_argument("--spec", required=True)
     cancellation = commands.add_parser("record-cancellation")
-    cancellation.add_argument("--child", type=int, required=True)
+    cancellation.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     cancellation.add_argument("--spec", required=True)
     for name in ("start-worker", "continue-worker", "inspect-worker", "stop-worker"):
         worker = commands.add_parser(name)
-        worker.add_argument("--child", type=int, required=True)
+        worker.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         if name in {"start-worker", "continue-worker"}:
             worker.add_argument(
                 "--prompt-file",
@@ -142,7 +149,11 @@ def parser() -> argparse.ArgumentParser:
     )
     release = commands.add_parser("release")
     release.add_argument("--ended", action="store_true")
-    release.add_argument("--note-file", required=True)
+    release_input = release.add_mutually_exclusive_group(required=True)
+    release_input.add_argument("--note-file")
+    release_input.add_argument(
+        "--spec", help="structured acceptance and next improvements; requires --ended"
+    )
     handoff = commands.add_parser("handoff")
     handoff.add_argument("--accept", action="store_true")
     handoff.add_argument(
@@ -152,7 +163,9 @@ def parser() -> argparse.ArgumentParser:
     )
     handoff.add_argument("--note-file", required=True)
     agree = commands.add_parser("agree")
-    agree.add_argument("--spec", required=True)
+    agree_input = agree.add_mutually_exclusive_group(required=True)
+    agree_input.add_argument("--spec")
+    agree_input.add_argument("--improvement-approval")
     agree.add_argument("--report", type=int)
     agree.add_argument("--proposal")
     commands.add_parser("create-child").add_argument("--spec", required=True)
@@ -160,14 +173,14 @@ def parser() -> argparse.ArgumentParser:
     receipt.add_argument("--report", type=int, required=True)
     receipt.add_argument("--proposal", required=True)
     delegate = commands.add_parser("delegate")
-    delegate.add_argument("--child", type=int, required=True)
+    delegate.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     delegate.add_argument("--agent", choices=("claude", "codex"), required=True)
     delegate.add_argument("--branch", required=True)
     delegate.add_argument("--worktree", type=Path, required=True)
     delegate.add_argument("--dependencies", type=int, nargs="*")
     delegate.add_argument("--restart-evidence-file")
     result = commands.add_parser("record-result")
-    result.add_argument("--child", type=int, required=True)
+    result.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     result.add_argument("--evidence-file", required=True)
     policy = commands.add_parser("configure-delegation")
     policy.add_argument(
@@ -175,11 +188,11 @@ def parser() -> argparse.ArgumentParser:
     )
     policy.add_argument("--reason-file", required=True)
     ended = commands.add_parser("record-worker-ended")
-    ended.add_argument("--child", type=int, required=True)
+    ended.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     ended.add_argument("--delegation-id", required=True)
     ended.add_argument("--evidence-file", required=True)
     manual = commands.add_parser("run-worker")
-    manual.add_argument("--child", type=int, required=True)
+    manual.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     manual.add_argument(
         "--prompt-file",
         type=Path,
@@ -203,13 +216,13 @@ def parser() -> argparse.ArgumentParser:
         help="parent's selection reason; required for an initial alternate model",
     )
     run_record = commands.add_parser("record-worker-run")
-    run_record.add_argument("--child", type=int, required=True)
+    run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
     decision = commands.add_parser(
         "decide-worker-plan",
         help="bind a parent answer to the latest completed planning final",
     )
-    decision.add_argument("--child", type=int, required=True)
+    decision.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     decision.add_argument(
         "--action", choices=("approve", "investigate", "reject"), required=True
     )
@@ -218,12 +231,25 @@ def parser() -> argparse.ArgumentParser:
         "refresh-worker-plan",
         help="refresh the saved controller; normal continuation does this automatically",
     )
-    refresh.add_argument("--child", type=int, required=True)
+    refresh.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     refresh.add_argument("--evidence-file", required=True)
-    for command in ("stop", "resume", "improvement"):
+    for command in ("stop", "resume"):
         sub = commands.add_parser(command)
-        sub.add_argument("--child", type=int, required=True)
+        sub.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
         sub.add_argument("--spec", required=True)
+    improvement = commands.add_parser("improvement")
+    improvement.add_argument("--child", type=int)
+    improvement.add_argument("--key")
+    improvement.add_argument("--spec", required=True)
+    publish = commands.add_parser("improvement-publish")
+    publish.add_argument("--candidate", required=True)
+    publish.add_argument("--existing", type=int)
+    decide = commands.add_parser("improvement-decide")
+    decide.add_argument("--candidate", required=True)
+    decide.add_argument(
+        "--action", choices=("approve", "hold", "decline", "revoke"), required=True
+    )
+    decide.add_argument("--spec", required=True)
     review = commands.add_parser("review-prepare")
     review.add_argument("--prs", type=int, nargs="+", required=True)
     review.add_argument("--reason-file")
@@ -283,6 +309,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "worker-log-status",
                 "review-inspect",
                 "decision-log-status",
+                "evidence",
             }
             else session_identity(dict(os.environ))
         )
@@ -358,8 +385,20 @@ def _main(argv: list[str] | None = None) -> int:
             )
             print(json.dumps(value, ensure_ascii=False, sort_keys=True))
             return 0 if value["status"] == "captured" else 2
+        capture_source = True
+        if args.command in {"improvement", "improvement-publish"}:
+            owner = (
+                store.read_data()
+                .get("parents", {})
+                .get(f"{gh.repo.casefold()}#{parent}", {})
+            )
+            capture_source = (
+                owner.get("status") == "active" and owner.get("session") == identity
+            )
         capture_token = CURRENT.set(
             decision_capture.begin(args, store, gh.repo, parent)
+            if capture_source
+            else None
         )
         if args.command in {"worker-log-status", "publish-worker-log"}:
             from worker_logs.service import command as log_command
@@ -437,7 +476,15 @@ def _main(argv: list[str] | None = None) -> int:
             else nullcontext()
         )
         transaction = nullcontext() if args.command in workers else store.locked()
-        with operation, project_operation, transaction:
+        from .improvements import lock_key
+
+        improvement_operation = (
+            store.operation(lock_key(gh.repo))
+            if args.command
+            in {"improvement", "improvement-publish", "improvement-decide"}
+            else nullcontext()
+        )
+        with improvement_operation, operation, project_operation, transaction:
             if args.command in workers:
                 from .development import worker_command
 
@@ -507,8 +554,17 @@ def _main(argv: list[str] | None = None) -> int:
                 result = session.status()
             elif command == "checking":
                 result = session.checking()
+            elif command == "evidence":
+                result = gh.evidence_issues().describe(
+                    parent, session.login, create=args.create
+                )
             elif command == "note":
                 result = session.note(read_text(args.body_file))
+                session.sync_progress()
+            elif command == "notify":
+                from .notifications import notify
+
+                result = notify(session, read_object(args.spec))
             elif command == "workflow-report":
                 from .development import load, report
 
@@ -521,12 +577,22 @@ def _main(argv: list[str] | None = None) -> int:
                 )
             elif command == "agree":
                 result = session.agree(
-                    read_object(args.spec), args.report, args.proposal
+                    read_object(args.spec) if args.spec else None,
+                    args.report,
+                    args.proposal,
+                    args.improvement_approval,
                 )
             elif command == "release":
-                result = session.lifecycle(
-                    "ended" if args.ended else "released", read_text(args.note_file)
-                )
+                if args.spec:
+                    if not args.ended:
+                        raise ValueError("structured finish requires release --ended")
+                    from .completion import release
+
+                    result = release(session, read_object(args.spec))
+                else:
+                    result = session.lifecycle(
+                        "ended" if args.ended else "released", read_text(args.note_file)
+                    )
             elif command == "handoff":
                 note = read_text(args.note_file)
                 result = (
@@ -585,7 +651,21 @@ def _main(argv: list[str] | None = None) -> int:
                     number(args.child), read_object(args.spec), command == "resume"
                 )
             elif command == "improvement":
-                result = session.improvement(number(args.child), read_object(args.spec))
+                result = session.improvement(
+                    number(args.child) if args.child is not None else None,
+                    read_object(args.spec),
+                    args.key,
+                )
+            elif command == "improvement-publish":
+                from .improvements import publish
+
+                result = publish(session, args.candidate, args.existing)
+            elif command == "improvement-decide":
+                from .improvements import decide
+
+                result = decide(
+                    session, args.candidate, args.action, read_object(args.spec)
+                )
             elif command in {
                 "decide-worker-plan",
                 "refresh-worker-plan",
@@ -652,7 +732,30 @@ def _main(argv: list[str] | None = None) -> int:
                 result = transition(
                     session, args.run_id, args.state, read_text(args.evidence_file)
                 )
+            if command in {
+                "checking",
+                "agree",
+                "basis-revoke",
+                "review-prepare",
+                "review-request",
+                "review-state",
+            }:
+                session.sync_progress()
         integration_failed = False
+        if command == "improvement-decide":
+            from .improvement_runtime import reconcile_stop
+
+            # The decision is durable before stopping; do not hold the source
+            # operation or registry lock while a runner terminates.
+            result["stop"] = reconcile_stop(
+                GitHub(gh.repo, store=store),
+                store,
+                parent,
+                nonempty(identity, "recorder identity"),
+                args.candidate,
+                args.dispatcher_state_dir,
+            )
+            integration_failed = result["stop"]["state"] == "stopping"
         if command in {
             "register",
             "summary",

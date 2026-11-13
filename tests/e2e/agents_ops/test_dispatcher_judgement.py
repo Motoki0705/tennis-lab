@@ -7,6 +7,7 @@ import hashlib
 import importlib
 import json
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -106,6 +107,7 @@ class FakeGitHub:
 
     def __init__(self) -> None:
         self._fresh = False
+        self._store = None
         self.issues = {1: issue(1)}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -126,6 +128,8 @@ class FakeGitHub:
             raise ValueError("injected API failure: " + endpoint)
         if endpoint == "user":
             return {"login": "operator"}
+        if endpoint == "repos/o/r/labels/parent-evidence":
+            return {"name": "parent-evidence"}
         if endpoint == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
             if self.enabled_since is None:
                 raise importlib.import_module("issues.cli").GitHubHTTPError(
@@ -144,7 +148,11 @@ class FakeGitHub:
 
         if path == "repos/o/r/issues":
             return paged(
-                [v for _, v in sorted(self.issues.items()) if v["state"] == "open"]
+                [
+                    v
+                    for _, v in sorted(self.issues.items())
+                    if params.get("state") == ["all"] or v["state"] == "open"
+                ]
             )
         if path == "repos/o/r/pulls":
             return paged(self.prs)
@@ -199,6 +207,46 @@ class FakeGitHub:
     def comments(self, n: int) -> list[dict[str, Any]]:
         return self.rows(f"repos/o/r/issues/{n}/comments")
 
+    def evidence_issues(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.evidence_issues(self)
+
+    def history_read_scope(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.history_read_scope(self)
+
+    def evidence_rows(self) -> list[dict[str, Any]]:
+        return cast(
+            list[dict[str, Any]],
+            importlib.import_module("parent.github").GitHub.evidence_rows(self),
+        )
+
+    def record_history(self, n: int, login: str | None = None, **kwargs: Any) -> Any:
+        return importlib.import_module("parent.github").GitHub.record_history(
+            self, n, login, **kwargs
+        )
+
+    def parent_comments(self, n: int, login: str | None = None) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self.record_history(n, login).comments)
+
+    def record_rows(self, parent: int) -> list[dict[str, Any]]:
+        """Raw fixture rows in both physical media, including deliberate damage."""
+        numbers = [parent] + [
+            n
+            for n, row in self.issues.items()
+            if row["body"].startswith("<!-- parent-evidence:v1 ")
+            and json.loads(
+                row["body"].splitlines()[0][len("<!-- parent-evidence:v1 ") : -4]
+            )["parent"]
+            == parent
+        ]
+        return sorted(
+            [c for n in numbers for c in self.comment_rows.get(n, [])],
+            key=lambda c: c["id"],
+        )
+
+    @property
+    def record_writes(self) -> list[dict[str, Any]]:
+        return [w for w in self.writes if "/comments" in w["endpoint"]]
+
     def pulls(self, issues: set[int] | None = None) -> list[dict[str, Any]]:
         rows = self.rows("repos/o/r/pulls?state=all")
         closing_issues = importlib.import_module("parent.policy").closing_issues
@@ -212,10 +260,25 @@ class FakeGitHub:
     def write(
         self, method: str, endpoint: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
-        if self.on_write:
+        if self.on_write and "/comments" in endpoint:
             self.on_write()
         self.writes.append({"method": method, "endpoint": endpoint, "payload": payload})
+        self._history_rows = None
+        if method == "POST" and endpoint == "repos/o/r/issues":
+            n = max([9000, *self.issues]) + 1
+            row = {
+                **issue(n),
+                **payload,
+                "labels": [{"name": v} for v in payload["labels"]],
+                "user": {"login": "operator"},
+            }
+            self.issues[n] = row
+            return copy.deepcopy(row)
         if method == "PATCH":
+            if re.fullmatch(r"repos/o/r/issues/[0-9]+", endpoint):
+                row = self.issues[int(endpoint.rsplit("/", 1)[1])]
+                row.update(payload)
+                return copy.deepcopy(row)
             cid = int(endpoint.rsplit("/", 1)[1])
             row = next(
                 c for rows in self.comment_rows.values() for c in rows if c["id"] == cid
@@ -420,7 +483,12 @@ def test_unagreed_standalone_and_existing_family_route_without_new_hierarchy(
     )
     assert {d["issue"]: d["target_parent"] for d in result["decisions"]}[3] == 4
     assert not (h.store.directory / "registry.json").exists()
-    assert all("/comments" in w["endpoint"] for w in h.gh.writes)
+    assert all(
+        "parent-evidence" in w["payload"].get("labels", [])
+        or "/comments" in w["endpoint"]
+        for w in h.gh.writes
+    )
+    assert not any(n < 9000 for n in h.gh.comment_rows)
     assert 10 not in h.gh.comment_rows
     published = json.dumps(h.gh.comment_rows, ensure_ascii=False)
     assert '"event": "agreed"' not in published
@@ -908,8 +976,10 @@ def test_same_inputs_still_run_agent_and_update_only_changed_comment(
     assert third["result"] == "recorded", third
     assert third["input_sha256"] == first["input_sha256"]
     assert len(h.gh.writes) == writes + 1
-    assert h.gh.writes[-1]["method"] == "PATCH"
-    assert len(h.gh.comment_rows[2]) == 1
+    assert h.gh.writes[-1]["method"] == "POST"
+    rows = h.gh.record_rows(2)
+    assert len(rows) == 2 and rows[0]["body"] != rows[1]["body"]
+    assert not h.gh.comment_rows.get(2)
 
 
 @pytest.mark.parametrize(
@@ -1015,7 +1085,8 @@ def test_other_subject_changes_do_not_discard_fresh_judgements(
     assert [d["issue"] for d in result["deferred"]] == [2]
     assert [c["parent"] for c in result["candidates"]] == ([1] if apply else [])
     assert [p["issue"] for p in result["publications"]] == ([1] if apply else [])
-    assert all(w["endpoint"] == "repos/o/r/issues/1/comments" for w in h.gh.writes)
+    assert not h.gh.comment_rows.get(1)
+    assert not apply or h.gh.record_rows(1)
     assert json.loads((h.run_dir / "result.json").read_text()) == result
     assert len(h.calls.read_text().splitlines()) == 1
 
@@ -1180,9 +1251,9 @@ def test_change_during_comment_write_cannot_record_a_basis(h: Harness) -> None:
     assert result["result"] == "deferred" and result["candidates"] == []
     assert result["decisions"] == []
     assert result["deferred"][0]["stage"] == "publication"
-    assert len(h.gh.writes) == 1
+    assert len(h.gh.record_writes) == 1
     assert not any(
-        '"event": "execution_basis"' in c["body"] for c in h.gh.comment_rows[1]
+        '"event": "execution_basis"' in c["body"] for c in h.gh.record_rows(1)
     )
 
 
@@ -1195,7 +1266,7 @@ def test_subject_changes_during_writes_preserve_other_candidates(
     h.response(decision(1), decision(2))
 
     def edit() -> None:
-        if len(h.gh.writes) + 1 == write_number:
+        if len(h.gh.record_writes) + 1 == write_number:
             h.gh.on_write = None
             h.gh.issues[changed_subject]["body"] += "\n新しい要件"
 
@@ -1212,7 +1283,7 @@ def test_subject_changes_during_writes_preserve_other_candidates(
         assert 2 not in h.gh.comment_rows
     else:
         bases = [
-            c for c in h.gh.comment_rows[1] if '"event": "execution_basis"' in c["body"]
+            c for c in h.gh.record_rows(1) if '"event": "execution_basis"' in c["body"]
         ]
         assert len(bases) == write_number - 1
 
@@ -1227,7 +1298,7 @@ def test_dependency_change_during_basis_write_is_caught_after_publication(
     h.response(decision(1, deps=(200,)), decision(2))
 
     def edit() -> None:
-        if len(h.gh.writes) == 1:
+        if len(h.gh.record_writes) == 1:
             h.gh.on_write = None
             h.gh.issues[200]["state_reason"] = "not_planned"
 
@@ -1236,7 +1307,7 @@ def test_dependency_change_during_basis_write_is_caught_after_publication(
     assert result["result"] == "recorded", result
     assert [c["parent"] for c in result["candidates"]] == [2]
     assert [d["issue"] for d in result["deferred"]] == [1]
-    assert len(h.gh.comment_rows[1]) == 2
+    assert len(h.gh.record_rows(1)) == 2
 
 
 def test_final_subject_checks_remove_only_candidates_changed_by_later_writes(
@@ -1246,7 +1317,7 @@ def test_final_subject_checks_remove_only_candidates_changed_by_later_writes(
     h.response(decision(1), decision(2))
 
     def edit() -> None:
-        if len(h.gh.writes) == 2:
+        if len(h.gh.record_writes) == 2:
             h.gh.on_write = None
             h.gh.issues[1]["body"] += "\n記録後の変更"
 
@@ -1259,7 +1330,7 @@ def test_final_subject_checks_remove_only_candidates_changed_by_later_writes(
         (1, "final_check")
     ]
     assert [p["issue"] for p in result["publications"]] == [1, 2]
-    assert len(h.gh.writes) == 4
+    assert len(h.gh.record_writes) == 4
 
 
 def test_collection_failure_after_judgement_is_fatal_and_not_a_deferral(
@@ -1384,6 +1455,7 @@ def test_parent_record_error_without_input_changes_is_fatal(
         ("cancelled_dependency", "dependency_wait", "not_planned"),
         ("closed_unmerged_pr", "existing_owner", "PR #100"),
         ("needs_human", "human_hold", "needs-human"),
+        ("improvement", "human_hold", "I-200-result-access"),
         ("supplement_pending", "human_hold", "supplementはpending"),
         ("checking", "human_hold", "phaseはchecking"),
         ("revoked", "human_hold", "phaseはchecking"),
@@ -1418,6 +1490,35 @@ def test_mechanical_guard_is_exposed_and_enforced(
         ]
     elif blocker == "needs_human":
         h.gh.issues[1]["labels"] = [{"name": "needs-human"}]
+    elif blocker == "improvement":
+        from tests.support.agents_ops.improvements import candidate_spec
+
+        api = importlib.import_module("issues.improvement")
+        source = api.ImprovementSource(200, "result-access")
+        h.gh.issues[200] = issue(200, state="closed", reason="completed")
+        h.gh.issues[1]["body"] = source.marker() + "\n\n" + h.gh.issues[1]["body"]
+        candidate = api.event(
+            source,
+            "candidate",
+            1,
+            None,
+            {"source_issue": 200, "spec": candidate_spec(), "legacy": False},
+        )
+        linked = api.event(
+            source,
+            "published",
+            1,
+            candidate["id"],
+            {"issue": 1, "mode": "created", "draft_sha256": "a" * 64},
+        )
+        h.gh.comment_rows[200] = [
+            {
+                "id": 100 + i,
+                "user": {"login": "operator"},
+                "body": api.render_event(value),
+            }
+            for i, value in enumerate([candidate, linked])
+        ]
     elif blocker == "supplement_pending":
         h.gh.issues[1]["labels"] = [{"name": "issue:parent"}]
         h.gh.enabled_since = "2026-10-30T00:00:00Z"
@@ -1621,7 +1722,7 @@ def test_ended_owner_with_agreement_and_work_under_another_parent_is_recorded(
     assert held["rationale"] in recorded["rationale"]
     assert recorded["facts"][:2] == held["facts"]
     assert json.loads((h.run_dir / "result.json").read_text()) == result
-    comment = h.gh.comment_rows[10][-1]
+    comment = h.gh.record_rows(10)[-1]
     assert "判定: human_hold" in comment["body"]
     assert "agentの分類: existing_owner" in comment["body"]
     assert held["rationale"] in comment["body"]
@@ -1700,8 +1801,10 @@ def test_own_comment_is_not_an_instruction_but_same_marker_by_other_author_is(
     h.response(decision(1))
     first = h.run()
     assert first["result"] == "recorded", first
-    hold = h.gh.comment_rows[1][0]
-    h.gh.comment_rows[1].append({**hold, "id": 500, "user": {"login": "human"}})
+    hold = h.gh.record_rows(1)[0]
+    h.gh.comment_rows.setdefault(1, []).append(
+        {**hold, "id": 500, "user": {"login": "human"}}
+    )
     second = h.run()
     assert second["result"] == "recorded", second
     assert first["input_sha256"] != second["input_sha256"]
@@ -1709,7 +1812,7 @@ def test_own_comment_is_not_an_instruction_but_same_marker_by_other_author_is(
         len(
             [
                 c
-                for c in h.gh.comment_rows[1]
+                for c in h.gh.record_rows(1)
                 if c["body"].startswith("<!-- issue-start-judgement:")
             ]
         )
@@ -1782,7 +1885,7 @@ def test_current_own_display_is_never_an_independent_source(h: Harness) -> None:
     h.response(decision(1))
     assert h.run()["result"] == "recorded"
     d = decision(1)
-    d["sources"].append(f"comment:1:{h.gh.comment_rows[1][0]['id']}")
+    d["sources"].append(f"comment:1:{h.gh.record_rows(1)[0]['id']}")
     h.response(d)
     writes = len(h.gh.writes)
     result = h.run()
@@ -1807,7 +1910,7 @@ def test_human_explicit_stop_is_returned_with_facts_and_resume_condition(
     h.response(held)
     result = h.run()
     assert result["result"] == "recorded" and result["candidates"] == []
-    body = h.gh.comment_rows[1][-1]["body"]
+    body = h.gh.record_rows(1)[-1]["body"]
     assert "人間が素材決定まで見送りを明示した。" in body
     assert "再開条件:" in body and "次の対応:" in body and "確認事実:" in body
     assert "#issuecomment-999" in body

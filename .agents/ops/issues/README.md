@@ -35,7 +35,7 @@
 | 作業種別（`work-type`） | バグ修正・機能改善・調査研究・文書・追補 | テンプレート、起票者・親CLIの明示指定、issue-labelerのタイトル先頭prefix |
 | 起票元（`origin`） | `ai-proposed` は運用レポートの採用提案からの起票、`agent:*` は起票agent | 前者はレポートtriage、後者は起票agent。通常のAI作業・親CLIの子起票には `ai-proposed` を付けない |
 | 対象領域（`area`） | 対象モジュール・CI・テスト・依存・外部コード・Python・知見 | issueは起票者・親CLIの明示指定だけ。PRは `.github/labeler.yml` が変更ファイルから付け、Dependabotは設定で指定する |
-| 状態（`status`） | `needs-human` は人間の承認待ち、`ops-report` は運用レポートの容器、`supplement:*` は[本文補足追加の確定状態](#親issueの補足追加状態) | 承認を必要とする仕組み・担当者、レポート生成CLI、補足追加workflow（skipは人間） |
+| 状態（`status`） | `needs-human` は人間の承認待ち、`ops-report` と `parent-evidence` は記録容器、`supplement:*` は[本文補足追加の確定状態](#親issueの補足追加状態) | 承認を必要とする仕組み・担当者、各記録CLI、補足追加workflow（skipは人間） |
 
 issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml) のタイトル先頭prefixから
 作業種別だけを付け、本文を読まない。対象領域をタイトルからも推測しない。
@@ -56,6 +56,28 @@ issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml)
 人間・agentによる付与は残し、イベント・actorを特定できないものも理由を表示して残す。
 全対象の取得に成功してから書き込みを始め、解除直前にもissueの状態と全イベントを再確認する。
 取得失敗を空結果へ置き換えず、非ゼロで終了する。
+
+## 証拠用Issueの除外
+
+`issues.evidence.is_evidence_issue` は `parent-evidence` ラベルまたは本文先頭の
+`parent-evidence` マーカーで保存容器を識別する。open/closed、親子ラベルの誤付与、
+未知versionでも作業候補にしない。`require_work_issue` は明示対象や正式関係に混入した容器を拒否する。
+結び付きの認証・作成・履歴の契約は [parent reader](../parent/README.md#機械証拠の保存共通reader) が正本。
+
+| 経路 | 除外境界 |
+|---|---|
+| issues API・親CLI | `family` のroot/子、`GitHub.issue` の明示対象を拒否。`issue_rows` は列挙から除外。作業draftのラベルとしても指定不可 |
+| dispatcher・提案整理 | 全open/all列挙から除外。`is_container`/guardも拒否し、正式関係・依存への混入はエラー |
+| 補足追加・issue-labeler workflow | 自動イベントのjob条件で除外。手動入口は最新Issueを再取得し、書込/agent起動より前に除外 |
+| ops-reportの履歴・triage・採否収集 | `shell.gh_list` がラベルと本文を取得して除外。organizationは上の共通列挙を使用 |
+| project_progress | 正式treeの読取・Projectへの登録/同期対象で拒否。別Project itemは成果の分母に入れない |
+| worker_status・board | GitHub snapshot/担当同期は共通 `GitHub.issue/family` から読む。ローカル表示はその入口で登録された親registryだけを使用 |
+| herdr_labels | GitHub Issue列挙を行わず、共通の親CLIが検証して担当登録したregistryを使用 |
+| ラベル整理CLI | open Issueの列挙から除外 |
+
+旧 `weekly-report` のunit/コードは撤去済み。現行はops-reportであり、再導入を防ぐ検査と移行手順も
+[ops-report](../ops-report/README.md) にある。
+証拠コメントや既存permalinkを明示的に読む汎用の資料取得APIは、作業候補化せず閲覧できる。
 
 ## 親issueの補足追加状態
 
@@ -169,6 +191,7 @@ open/closedとも1件1行で載せる。タスク名は子タイトルから親p
 ```
 
 未分割の場合は、一覧節の最初の非空行を `未分割（子issue未作成）` で始める。
+この状態でも親Issue自身を実行できる。分割と委任は別判断で、[parent CLIの単独実行](../parent/README.md#issue自身を実行する)へ進める。
 直後の句点「。」は任意で、同じ行の説明文や後続の分割候補の段落も記入できる。
 この欄は子が0件の一覧として扱い、説明中のissue参照を子として抽出しない。
 子issueのチェック行（書式が崩れた行を含む）との混在は拒否する。
@@ -259,6 +282,24 @@ parent_body = render_parent_body(
    戻り値は `(report_number, proposal_id) -> issue_number`。タイトルやprefixから検索・重複判定しない。
    同じキーの複数issue、不正・重複メタデータはエラー。`parse_proposal_source(body)` で現在の選択肢まで
    比較し、一致しない既存issueを再利用しない。タイトル改名・親付替えで重複起票しないことをテスト済み。
+
+## 終了時改善の独立親
+
+`issues.improvement.ImprovementSource(parent, key)` は `I-<元親>-<key>` の候補を表す。
+`render` specの `improvement_source: {parent: N, key: KEY}` はrole=parent・正式親なしのときだけ使え、
+本文1行目に `<!-- parent-improvement-source:v1 parent=N key=KEY -->` を置く。
+`parse_source` / `index_sources` は全open/closedの本文から出典を照合し、重複・不正な出典を拒否する。
+`contract` は出典マーカーを除く前文も比較する。通常文章の空白・改行を正規化し、fence内の文字列を保持する。
+前文の保存キー `_preamble` は予約済みで、同名の見出しによる契約の上書きを拒否する。
+`execution_terms(requirements)` は承認snapshotから実行合意の4欄を生成する。必須節と追加節の扱いは
+[人間判断と実行](../parent/improvements.md#人間判断と実行)を参照する。
+これは `ProposalSource` / `index_proposals`・`ai-proposed`・`parent-task:v1` とは独立した出典である。
+
+`issues.creation.create_issue_once` は固定draft・送信前receipt・出典に一致する候補の照合を共有する。
+呼出側は一致条件と永続化・排他を提供する。応答不明で一致先も未観測なら再POSTせず、明示的な再送時に照合する。
+終了時改善のcallerは最初のPOSTに `issue:parent` / `needs-human` を含め、元親の子・依存に追加しない。
+候補の正本・人間判断・既存issueへの集約・導入順は [parentの終了時改善](../parent/improvements.md)を参照する。
+候補の受入と元親の全体受入を混ぜず、子テンプレートの改善欄は元親の正本コメントへの参照に使う。
 
 ## triageによる出典と復旧契約
 

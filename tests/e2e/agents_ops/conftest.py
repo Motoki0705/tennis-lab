@@ -96,6 +96,7 @@ elif args[0] == "api" and "--method" in args:
         sys.exit(0 if code < 300 else 1)
     def api_issue(row):
         return {**gh_issue(row), "id": row["number"] + 10000, "state": row["state"].lower(),
+                "user": row.get("author", {"login": "bot"}),
                 "created_at": row["createdAt"],
                 "state_reason": row.get("state_reason"), "assignees": row.get("assignees", []),
                 "repository_url": "https://api.github.com/repos/o/r"}
@@ -122,6 +123,8 @@ elif args[0] == "api" and "--method" in args:
         sys.exit(1)
     if api_path == "user":
         api_emit({"login": "bot"})
+    if api_path == "repos/o/r/labels/parent-evidence":
+        api_emit({"name": "parent-evidence"})
     if api_path == "repos/o/r/actions/variables/ISSUE_SUPPLEMENT_ENABLED_SINCE":
         api_emit({"message": "Not Found"}, 404)
     if api_path == "repos/o/r/pulls":
@@ -141,8 +144,12 @@ elif args[0] == "api" and "--method" in args:
     if n is None:
         if method == "GET":
             api_emit(page([api_issue(i) for i in state["issues"]]))
-        number = state["next_number"]
-        state["next_number"] += 1
+        if payload.get("labels") == ["parent-evidence"]:
+            number = state.get("next_evidence", 9000)
+            state["next_evidence"] = number + 1
+        else:
+            number = state["next_number"]
+            state["next_number"] += 1
         row = {"number": number, **payload, "state": "OPEN", "state_reason": None,
                "createdAt": "2026-10-12T00:00:00Z", "updatedAt": "2026-10-12T00:00:00Z",
                "url": f"https://github.com/o/r/issues/{number}"}

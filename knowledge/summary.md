@@ -22,10 +22,10 @@
 ## Court Detection
 
 - **現行**: `multiscale_depth3` のcheckpointと、画像だけによる領域探索を組み合わせ、各カメラの先頭frameだけを推論します。[Meiji 3cameraの校正が通った](nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)ことが採用の根拠です。このcheckpointを学習したrunのノードはなく、独立したheld-out testでの精度も未確立です。
-- **合成データのscene数**（#1343、2026-10-30に完了）: [固定5500枚の1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)では、4sceneが実画像valの集計5指標で最良でした（KP平均 53.95→23.61 px）。2sceneでは悪化しており、単調な改善ではありません。seed42の単一試行で追加順も固定のため、scene数だけの効果は確定していません。画像数スケーリングの本実験と追加seedは行わない判断です。
+- **合成データのscene組合せ**（#1581）: [全6ペアと共通4scene評価](nodes/court_detection/000067-group-court-scene-pair-s42.md)が完了しました。固定5,500枚・33,160更新・seed42では、同群2ペアの実画像KP中央値平均57.36 pxに対し、異群4ペアは4.57 px（δ=+52.80 px）で、全5指標が同群側で悪い向きでした。P03（B00+B03）が実画像KP中央値で最良（2.97 px）、共通合成の4scene平均ではscene-4が最良です。単一seed・再開・会場とsurface等の交絡があり、一般的な因果効果や採用変更にはしません。旧[1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)は当時の4条件の証拠として保持します。
 - **backbone**（#983）: [凍結DINOv3 S/S+/B/Lの比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)では、出力ごとに最良のサイズが異なり、サイズによる一様な改善は見られませんでした（1 seed）。
 - **後処理**: KP・LINEの共同推定やPROSACは保存予測での診断までで、人手GTのある会場分離benchmarkはありません。Meijiの全frame処理ではCPUの幾何後処理が重く、並列化・batch化の余地があります（[時間分解](nodes/court_detection/000033-run-court-meiji-hybrid-cpu-profile-20260923.md)）。
-- **次の実験**: 収録を分けた実画像testで、従来のhomography推定・PROSAC・共同推定のKP距離、geometry valid率、失敗率、処理時間、下流E2Eを比べます。シーン組合せの比較は[manifest作成](nodes/synthetic_data_generation/000029-run-court-scene-pair-manifests-v1.md)まで済み、学習と評価は親#1581で行います。B/Lの複数seedも残っています。
+- **次の比較候補**: 収録を分けた実画像testで、従来のhomography推定・PROSAC・共同推定のKP距離、geometry valid率、失敗率、処理時間、下流E2Eを比べます。scene組合せは追加seed、3sceneから1つずつ抜く配置、会場を固定したsurface対照が候補ですが、今回追加実行はしていません。画像数スケーリングは実施しない判断を維持し、B/Lの複数seedも残っています。
 
 ## Ball Detection
 
@@ -33,7 +33,10 @@
 - **採否の原則**: offline F1の最高値だけでは採用しません。[scratch版](nodes/ball_detection/000010-run-i618-convnext-v2-scratch.md)はF1が高い一方、実clipのcoverage低下とteleportを起こしたため採用しませんでした。[#934の混合FT](nodes/ball_detection/000022-run-i934-meiji-holdout-e0-r7.md)でも、Meiji holdoutのrecallは上がりましたが採用検出のp95が悪化し、欠損の低減と誤検出の抑制は両立していません。
 - **長系列モデル**（親#1367）: 教師は入力Tの全frame、文脈はclip内・上限128と[決めました](nodes/ball_detection/000063-run-ball-all-frame-protocol-20261022.md)。配布storeの可搬化と、Colabでの逐次保存・新VMからの再開も確認済みです。[共通DPTからの逐次T64学習](nodes/ball_detection/000068-run-ball-sequential-length-20261025.md)では、query T64の平均/P95誤差（28.20/116.89 px）がDPT T64（36.56/183.20 px）より小さい一方、20 px以内の率は低くなりました（76.29%対86.58%）。追加の更新数と方式の差が交絡しており、seed42・validationだけの結果です。
 - **事前学習＋事後学習**: [ConvNeXt V2＋DPTとquery事後学習](nodes/ball_detection/000060-run-i1049-convnext-query-posttrain-s42.md)は通常評価で親より改善しましたが、camera stress（特に1/4 FPSで41.11 px）で大きく悪化しました。頑健性の要件は満たしていません。
-- **次の実験**: 更新数をそろえたT比較、query T32の残差とoverlayの確認、#1476・PR #1489を前提とした独立testでの評価。
+- **mHC queryの容量と構成**（#1675・#1899）: X3D/CSN＋4query/mHCの7容量条件は[12k学習](nodes/ball_detection/000088-group-i1675-capacity-12k-s42.md)でmean32.48〜35.38 pxとなり、最良のd512・8層でも旧query基準28.20 pxに届きません。[旧基準から1要素ずつ変更した4条件比較](nodes/ball_detection/000094-group-i1899-controlled-query-ablation-s42.md)も完了しました。4query＋mHCへの変更、事前学習込みのCNN置換はいずれも主指標を悪化させ、[前半からT64にした③](nodes/ball_detection/000093-run-i1899-convnext-1query-t64-t64-s42-12k.md)はmean28.53 px（基準比+0.33）で優位を確認できませんでした。③は途中でL4→RTX5060Tiへ移管したため、小差から系列長単独の効果や同等性は判定しません。全条件seed42・同じvalidationのみで、mHC単独・交互作用・seed分散と独立testは未確定です。12層・24層は保留です。
+- **構成の効率**（#1859）: [L4の未学習計測](nodes/ball_detection/000079-run-ball-arch-efficiency-s42-20261111.md)では、CNN段の配置で推論時間が最大22%減り、MSDAを含むquery（T1/T2）は全層cross-attentionの約2倍の更新時間でした。本学習5条件はT1の[前半6k](nodes/ball_detection/000091-run-i1859-t1-front-t64-s42-6k.md)（mean 43.17 px）と後半5,500更新の保存で止まり、精度比較は未完です。
+- **独立test**（#1476）: [評価契約](nodes/ball_detection/000080-run-ball-separate-test-contract-20261024.md)は記録しましたが、test配布は同名の3 folderに4 payloadが分かれたままでmanifestがなく、実モデルのtest評価は未実施です。評価・転送の実装はPR #1489をクローズしてbranchに残しています。
+- **次の実験**: #1859の本学習の再開、test配布の復旧と独立testでの評価。
 
 ## 3D Ball Refiner（ball_refiner_3d）
 

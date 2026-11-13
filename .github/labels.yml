@@ -80,6 +80,9 @@ area:
     description: ""
 
 status:
+  - name: parent-evidence
+    color: "EDEDED"
+    description: "親ごとの機械証拠専用容器。作業対象から除外（.agents/ops/parent/README.md）"
   - name: "supplement:done"
     color: "0E8A16"
     description: "親issue本文の補足追加が完了"

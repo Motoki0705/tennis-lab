@@ -7,6 +7,8 @@ import hashlib
 import os
 import signal
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -27,7 +29,13 @@ from worker_logs import service as worker_logs
 from worker_logs import sources as log_sources
 
 from . import judgement
-from .collect import assert_material_fresh, collect, material, source_references
+from .collect import (
+    assert_material_fresh,
+    collect,
+    history_owner,
+    material,
+    source_references,
+)
 from .outcomes import read_result
 from .runtime import Runtime, alive, gate, load, process_identity
 from .schedule import Schedule, latest_slot, next_slot
@@ -238,9 +246,16 @@ class Supervisor:
         ]
         task = row["tasks"].get(str(session.parent), {})
         if not implementations:
-            raise ValueError(
-                "closed parent has no implementation delegation to reconcile"
-            )
+            if task.get("delegated"):
+                raise ValueError(
+                    "closed parent has no implementation delegation to reconcile"
+                )
+            # Direct implementation has no worker runtime to invent. The same
+            # gate journal, review, close and acceptance checks still apply.
+            from parent.development import verify_completion
+
+            verify_completion(session)
+            return
         previous = max(implementations, key=lambda j: j["sequence"])
         if (
             not task.get("delegated")
@@ -367,7 +382,7 @@ class Supervisor:
             self.gh,
             self.store,
             Path(self.schedule.read()["config"]["cwd"]),
-            [session.parent, *cited_issues],
+            [session.parent, *(history_owner(snapshot, n) for n in cited_issues)],
         )
         # The dispatcher itself changes this row while binding/finishing jobs.
         # Its authorization and the current delegation were checked above;
@@ -410,6 +425,52 @@ class Supervisor:
             event(dispatch, "runtime_starting", job_id=job_id)
             self.store.save()
             return job
+
+    @contextmanager
+    def launch_admission(self, key: str, job_id: str) -> Iterator[None]:
+        """Recheck a claimed job immediately around Popen, not around its wait."""
+        from parent.improvements import lock_key, require
+
+        with self.store.operation(lock_key(self.gh.repo)), self.store.locked():
+            row = self.store.parents[key]
+            dispatch = row["dispatch"]
+            job = dispatch["jobs"][job_id]
+            try:
+                if (
+                    dispatch["phase"] in {"stopped", "recovery_required"}
+                    or job["phase"] != "starting"
+                ):
+                    raise ValueError("claimed runtime stopped before launch")
+                session = self._session(key, row)
+                binding = require(session, fresh=True)
+                current_auth = authorization(session)
+                if binding is not None and current_auth != job["authorization"]:
+                    raise ValueError("human improvement approval changed after claim")
+                if job["child"] is not None:
+                    require(session, job["child"], fresh=True)
+                    task = row["tasks"][str(job["child"])]
+                    if (
+                        task.get("stopped")
+                        or task.get("delegation_id") != job["delegation_id"]
+                    ):
+                        raise ValueError("claimed implementation stopped before launch")
+            except ValueError as exc:
+                # This worker owns its lifetime lock and has not reached Popen.
+                # Do not use this path to clear evidence of an actual runner.
+                if (Path(job["directory"]) / "runtime").exists():
+                    raise
+                job["worker"] = None
+                self.cancel_reservation(row, job, str(exc))
+                if job["phase"] == "ended" and job["role"] == "parent":
+                    dispatch.update(phase="failed", reason=str(exc))
+                    if (
+                        row["session"]
+                        == f"dispatcher-reservation:{job['assignment_id']}"
+                    ):
+                        row["status"] = "released"
+                self.store.save()
+                raise
+            yield
 
     def resume_source(
         self, row: dict[str, Any], previous: dict[str, Any]
@@ -522,9 +583,14 @@ class Supervisor:
             )
             snapshot = load(Path(run["directory"]) / "input.json")
         else:
+            previous = dispatch["jobs"][dispatch["active_job"]]
+            snapshot = load(Path(previous["directory"]) / "start-input.json")
             cited_issues, _, _ = source_references(self.gh.repo.casefold(), sources)
             snapshot = collect(
-                self.gh, self.store, Path(config["cwd"]), [parent, *cited_issues]
+                self.gh,
+                self.store,
+                Path(config["cwd"]),
+                [parent, *(history_owner(snapshot, n) for n in cited_issues)],
             )
         job_id = uuid.uuid4().hex
         directory = (
@@ -1048,6 +1114,13 @@ class Supervisor:
                 raise ValueError("invalid parent event schema")
             nonempty(response["reason"], "parent event reason")
             nonempty(response["resume_condition"], "parent resume condition")
+            if response["state"] == "completed":
+                from parent.completion import require_report_receipt
+
+                self._authorized(key, row)
+                require_report_receipt(
+                    row, job, response, authorization(self._session(key, row))
+                )
             dispatch.update(
                 phase=response["state"],
                 reason=response["reason"],

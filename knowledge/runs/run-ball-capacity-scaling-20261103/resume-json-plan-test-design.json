@@ -1,0 +1,22 @@
+{
+  "schema": "ball_capacity_json_resume_test_design.v1",
+  "contract": "Resume the restored campaign only when the unchanged controller accepts the same JSON-valued plan, benchmark, source, manifests and completed stages. Convert only the controller module's dataclass metadata representation; preserve real dataclass objects and every original rejection guard.",
+  "faults_to_detect": [
+    "Original saved JSON arrays are rejected against in-memory tuples",
+    "Adapter bypasses budget, model, source or frozen-controller identity checks",
+    "Adapter changes real model configurations, training serialization or stdlib bindings",
+    "Adapter admits benchmark mode, a new run, an implicit benchmark or nonfinite metadata"
+  ],
+  "layer": "Small experiment-local CPU integration checks against the actual restored plan and original controller.train; stop before training with a BaseException sentinel so the controller cannot catch it and write failure state.",
+  "existing_tests_considered": [
+    "tests/unit/tasks/ball_detection/training/test_sequential_recovery.py::test_campaign_resumes_without_lost_benchmark_and_keeps_stage_budgets",
+    "tests/integration/tasks/ball_detection/test_sequential_temporal_training.py::test_mhc_direct_t32_dpt_to_t64_freeze_inheritance_and_exact_runner_resume"
+  ],
+  "new_checks_reason": "Existing tests cover another campaign controller and the training runner, but do not exercise this frozen controller's restored JSON plan comparison. No unrelated training suite or GPU preflight is repeated.",
+  "budget": {
+    "test_methods": 10,
+    "maximum_case_seconds_target": 5,
+    "shared_setup": "Import the real frozen modules once; no model construction, forward, GPU initialization, dataset preparation or remote writes. The acceptance path reads existing CPU checkpoints to retain completed-stage guards.",
+    "measurement": "unittest result records each method duration, subtest results and shared setup duration; any over-target time is reported with its asset-read/import reason. Relevant ruff and bytecode compilation checks are recorded separately."
+  }
+}

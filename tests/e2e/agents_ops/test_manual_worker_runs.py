@@ -667,9 +667,38 @@ def test_runner_failure_preserves_record_and_exit_code(
         assert task(p)["worker_runs"] == []
         assert output["launch_state"] == "rejected_before_start"
         assert len(task(p)["launch_failures"]) == 1
+        assert task(p)["preflight"]["turns"][-1]["cancelled"]
     else:
         assert len(task(p)["worker_runs"]) == 1 and "worker_ended" in task(p)
         assert output["final_file"] == str(latest(p) / "final.md")
+
+
+def test_record_result_rejects_cancelled_only_history(reserved: ParentEnv) -> None:
+    p = reserved
+    run(p)
+    gh = p.state()
+    gh["prs"] = [p.pr(100, 10, branch="codex/worker")]
+    p.save(gh)
+    # A retained runtime must not act as a silent fallback when its instruction
+    # is absent from the non-cancelled history.
+    with store(p).locked() as registry:
+        registry.parents["o/r#1"]["tasks"]["10"]["preflight"]["turns"][0][
+            "cancelled"
+        ] = True
+        registry.save()
+    before = store(p).read_data()
+    body = issue_body(p, 10)
+    rejected = manual(
+        p,
+        "record-result",
+        "--child",
+        "10",
+        "--evidence-file",
+        p.note("保存済みの古いruntimeを成果に流用しない。"),
+        ok=False,
+    )
+    assert "no non-cancelled worker turn" in rejected.stderr
+    assert store(p).read_data() == before and issue_body(p, 10) == body
 
 
 @pytest.mark.parametrize(

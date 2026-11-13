@@ -27,10 +27,10 @@ from issues import (
     render_standalone_body,
 )
 from parent.github import GitHub
+from parent.history import from_projection
 from parent.policy import (
     child_stopped,
     digest,
-    events,
     nonempty,
     number,
     object_value,
@@ -139,7 +139,12 @@ def occupied(
             in {label["name"] for label in snapshot["issues"][str(k)]["labels"]}
             or child_stopped(snapshot["issues"][str(k)]["body"])
             or phase(
-                events(snapshot["issues"][str(k)]["comments"], snapshot["publisher"], k)
+                from_projection(
+                    snapshot["repo"],
+                    k,
+                    snapshot["publisher"],
+                    snapshot["issues"][str(k)]["comments"],
+                ).session_events()
             )
             in {"checking", "agreed"}
             for k in family

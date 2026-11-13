@@ -6,6 +6,13 @@ PR open/push/CI完了・時間経過から起動するpoll、hook、timerはな�
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
 review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
+親側の要求・公開結果・followupは [共通reader](../parent/README.md#機械証拠の保存共通reader) から取得する。
+旧親コメントと証拠用Issueの両方を検証し、`parent_run_url` は実際の保存先のcomment permalinkと照合する。
+各PRのprojection・followupコピーは従来どおりそのPRから読む。保存済みpayloadやdigestを媒体変更で書き換えない。
+新規の親側記録は証拠用Issueへ保存し、各PRの投影はPRへ残す。親へのレビュー操作通知は作らない。
+公開途中の既存pendingは、元のcomment ID/媒体で同じ公開を完了させる。旧親側pendingも同じURLを保ち、
+新しいコピーを証拠用Issueへ作らない。この継続以外に親へ機械記録を新規POSTする経路はない。
+
 | ファイル | 責務 |
 |---|---|
 | `parent_review.py` | 明示runの受理、収集、Codex実行、記録公開、親による修正確認 |
@@ -146,7 +153,7 @@ executionのstatusは `preparation_failed` / `running` / `published` / `publicat
 | `agent` | 起動前/実行中/終了、runtimeのdigest・終了コード、runtimeとworkspaceのcleanup完了 |
 | `output` | 保存finalの形式・schema・対象・判定整合の検証結果、finalと解析結果のdigest |
 | `postcheck` | 対象と担当権限の再取得・照合結果 |
-| `publication` | pending → projections（完了したPR）→ result → published、親コメントID、失敗理由 |
+| `publication` | pending → projections（完了したPR）→ result → published、親側記録のcomment ID、失敗理由 |
 
 完了イベントと対応しschemaを満たすfinalはruntime非ゼロ終了後も解析し、`output.json` に結果候補を保存する。
 通常runの `result.json` はruntime・出力・事後照合を通過した結果、または失敗結果であり、候補とは区別する。
@@ -343,7 +350,7 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 人間向け本文もHTMLコメントを無害化する。本文中の引用、他login、旧PR単位review markerは証拠にしない。
 `records(comments, trusted_login)` は認証中publisherの先頭行だけを読み、不正な記録は例外で拒否する。
 
-`kind=result` の親コメントとローカル `result.json` が同じ内容の正本。キーは以下のみ。
+`kind=result` の証拠用Issueのコメント（旧親コメントも読取）とローカル `result.json` が同じ内容の正本。キーは以下のみ。
 
 | キー | 内容 |
 |---|---|
@@ -377,13 +384,16 @@ PRとclosing対象・対象コードの同一性は機械的に照合し、過�
 result_sha256,snapshot,coverage,findings,parent_run_url}`。
 `result_sha256` は親result全体のdigest、snapshotはprepareの当該PR、findingsは個別＋当該PRに関係する横断指摘。
 結果に `evidence_waits` があるPRはprojectionにも同じ配列を含む。旧projectionは省略したまま照合する。
-親コメントへのpermalinkからrun全体を読める。
+保存先の実permalinkからrun全体を読める。
 
-公開は「親に `kind=pending`（schema_version/run ID/request digestだけ）を作る →
-全PRへprojectionを投稿 → 親コメントをresultへ更新」の順。pendingやPRコメント単独は成功の証拠ではない。
+公開は「証拠用Issueに `kind=pending`（schema_version/run ID/request digestだけ）を作る →
+全PRへprojectionを投稿 → 同じpendingをresultへ更新」の順。pendingやPRコメント単独は成功の証拠ではない。
 途中失敗では工程の失敗をローカルへ保存する。`resume-publication` は認証loginの先頭行recordを再取得し、
 一致するpending/projection/resultを再利用して欠けた書込みだけを行う。投稿の応答喪失も同じ照合で復旧し、
 同runの別内容・重複・先行failed記録があれば停止する。公開済みコメントは上書きせず、pendingだけを正式結果へ更新する。
+PRへのprojection・resolution・evidenceも共通comment journalに保存し、pendingの更新には更新前後のWALを使う。
+読取時の完全性検査・保証範囲は [親履歴の共通reader](../parent/README.md#機械証拠の保存共通reader) が正本。
+送信済みのpending/PR投影がremoteに見えない場合は `resume-publication` も拒否し、再POSTしない。
 gateは成功resultと全PRのprojection/digest、
 ローカルexecutionのpublishedを照合し、同runの失敗記録・公開不整合があれば停止する。
 投稿応答喪失も自動再レビューの理由にしない。
@@ -527,7 +537,8 @@ merge直前にflock下で `merges/<repo digest>/pr-<N>-<head>.json` をprivate s
 同repo/PR/headへの試行済み記録はrunをまたいで保持する。異常終了・応答喪失後も同headを再試行しない。
 remoteがmerge済みなら二重mergeせず、対象issueのclosing完了を確認する。
 収集・割当照合・完了確認の対象はreview-prepare/collectと同じで、直属子があれば子、
-子のない単独issueではそのissue自身を閉じるPRを扱い、不要な親子関係を作らない。
+子のない単独issueでは親ラベル付きでもそのissue自身を閉じるPRを扱い、不要な親子関係を作らない。
+対象の正本は [parentの共通対象解決](../parent/README.md#issue自身を実行する)。自身の停止・branch・重複PRも同じgateで検査する。
 merge直後もremoteのmergeと対象issueのclosed/completedを確認する。子のある親だけ既存の
 `reconcile` / `sync_progress` へ接続し、単独issueの本文を親用進捗へ書き換えない。
 未close・確認不能は `merge_unconfirmed` として残す。親がGitHubとjournalを照合して復旧する。

@@ -16,7 +16,12 @@ from tests.e2e.agents_ops.test_execution_basis import (
 )
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, review_setup
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    evidence_number,
+    review_setup,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -41,8 +46,9 @@ def test_owner_note_is_idempotent_and_preserves_state(
     assert json.loads(result.stdout) == {
         "parent": 1,
         "body_sha256": policy.digest(text),
+        "url": f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-{evidence_comments(p.state())[-1]['id']}",
     }
-    comment = p.state()["comments"]["1"][-1]
+    comment = evidence_comments(p.state())[-1]
     event = json.loads(comment["body"].splitlines()[0][len(policy.PREFIX) : -4])
     assert event == {
         "parent": 1,
@@ -129,7 +135,7 @@ def test_note_character_limit_accepts_multibyte_text(parent_env: ParentEnv) -> N
     p.cli("register")
     text = "進" * 60_000
     p.cli("note", "--body-file", p.note(text))
-    assert p.state()["comments"]["1"][-1]["body"].endswith("\n\n" + text)
+    assert evidence_comments(p.state())[-1]["body"].endswith("\n\n" + text)
     p.cli("status")
 
 
@@ -244,7 +250,7 @@ def test_corrupt_note_marker_is_rejected(parent_env: ParentEnv, change: str) -> 
     p.cli("note", "--body-file", p.note("進捗だけの連絡。"))
     policy = importlib.import_module("parent.policy")
     state = p.state()
-    comment = state["comments"]["1"][-1]
+    comment = evidence_comments(state)[-1]
     event = json.loads(comment["body"].splitlines()[0][len(policy.PREFIX) : -4])
     text = "進捗だけの連絡。"
     if change == "body":

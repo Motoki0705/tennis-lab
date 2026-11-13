@@ -42,6 +42,10 @@ from parent.policy import (  # noqa: E402
 from parent.session import ParentSession  # noqa: E402
 from parent.snapshot import snapshot  # noqa: E402
 from parent.state import Store, session_identity, state_directory  # noqa: E402
+from parent.work_targets import (  # noqa: E402
+    dependency_graph,
+    require_separate_self_prs,
+)
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
     load_json,
@@ -99,7 +103,7 @@ def check_adoptions(
     pr: dict[str, Any],
     family: tuple[Issue, dict[int, Issue]] | None = None,
 ) -> None:
-    parent, children = family if family is not None else session.family()
+    parent, children = family if family is not None else session.work_items()
     check_task_adoptions(session.gh, parent.body)
     for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
         check_task_adoptions(session.gh, children[n].body)
@@ -111,13 +115,20 @@ def collect(session: ParentSession, request: dict[str, Any] | None) -> Collectio
 
 
 def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
-    parent, children = session.family()
+    parent, children = session.work_items()
+    policy_children, external_deps = dependency_graph(parent, children)
+    dependency_errors = []
+    for dep in external_deps:
+        raw = session.gh.issue(dep)
+        if raw["state"] != "closed" or raw.get("state_reason") != "completed":
+            dependency_errors.append(f"dependency_{dep}_not_completed")
     default_branch = repository_default_branch(session)
     pulls = session.gh.pulls()
+    require_separate_self_prs(parent, pulls, session.gh.repo)
     if len({p["number"] for p in pulls}) != len(pulls):
         raise ValueError("duplicate PR records from GitHub")
     targets = {p["number"]: p for p in request["prs"]} if request else {}
-    issue_targets = set(children) or {parent.number}
+    issue_targets = set(children)
     candidates = sorted(
         set(targets)
         | {
@@ -133,7 +144,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
         if raw.get("number") != n:
             raise ValueError("GitHub PR identity mismatch")
-        errors[n] = []
+        errors[n] = list(dependency_errors)
         try:
             check_adoptions(session, raw, (parent, children))
         except ValueError:
@@ -209,7 +220,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
     pulls = [details.get(p["number"], p) for p in pulls]
     return Collection(
         parent,
-        children,
+        policy_children,
         default_branch,
         pulls,
         candidates,
@@ -279,7 +290,7 @@ def load_evidence(
         ):
             if n in view.errors:
                 view.errors[n].append("adoption_source_superseded")
-    parent_comments = session.gh.comments(session.parent)
+    parent_comments = session.gh.parent_comments(session.parent, session.login)
     pr_comments = {n: session.gh.comments(n) for n in view.candidates}
     errors = list(
         publication_errors(
@@ -369,8 +380,8 @@ def completion(
         return ("merge_not_confirmed",)
     if pr["base"]["ref"] != repository_default_branch(session):
         return ("base_not_default_branch",)
-    parent, children = session.family()
-    issue_targets = set(children) or {parent.number}
+    parent, children = session.work_items()
+    issue_targets = set(children)
     linked = closing_issues(pr.get("body") or "", session.gh.repo) & issue_targets
     if not linked:
         return ("merged_pr_child_missing",)
@@ -378,7 +389,7 @@ def completion(
         raw = session.gh.issue(child)
         if raw["state"] != "closed" or raw.get("state_reason") != "completed":
             return (f"child_{child}_close_not_confirmed",)
-    if write and children:
+    if write and parent.children:
         # Parent progress is derived from GitHub, never from the merge command's exit.
         session.reconcile()
         session.sync_progress()

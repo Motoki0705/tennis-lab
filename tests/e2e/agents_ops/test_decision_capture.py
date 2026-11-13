@@ -19,11 +19,16 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import (
     reserved as reserved,
 )
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, ReviewEnv
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    ReviewEnv,
+    evidence_number,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_parent_session import (
     single_review_env as single_review_env,
 )
+from tests.e2e.agents_ops.test_review_recovery import inject_lost_response
 from tests.support.agents_ops.decision_logs import graph
 
 C = importlib.import_module("decision_logs.capture")
@@ -261,7 +266,7 @@ def test_note_reference_stop_resume_handoff_and_release_are_captured(
     rows = captured(state_dir(p))
     decision = next(r for r in rows if r["id"] == value["decision_id"])
     assert decision["data"]["source"]["evidence"][0]["url"].startswith(
-        "https://github.com/o/r/issues/1#issuecomment-"
+        f"https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-"
     )
     p.cli("resume", "--child", "10", "--spec", p.detail())
     p.cli("handoff", "--note-file", p.note())
@@ -511,11 +516,8 @@ def test_review_publication_failure_keeps_observed_result_and_new_run_predecesso
     single_review_env: ReviewEnv,
 ) -> None:
     r = single_review_env
-    failed = json.loads(
-        r.run(
-            ok=False, extra={"PARENT_FAIL_PATH": "repos/o/r/issues/1/comments"}
-        ).stdout
-    )
+    inject_lost_response(r, target="repos/o/r/issues/100/comments", method="POST")
+    failed = json.loads(r.run(ok=False).stdout)
     assert failed["publication"] == "publication_failed"
     rows = captured(state_dir(r.p))
     assert any(

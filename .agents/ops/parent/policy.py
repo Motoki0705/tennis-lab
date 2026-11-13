@@ -10,6 +10,8 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from issues import Issue, parse_sections, task_status
+from issues.format import raw_section as raw_section
+from issues.format import section_span as section_span
 from issues.format import visible_lines
 
 PREFIX = "<!-- parent-session:v1 "
@@ -125,6 +127,42 @@ def events(
                 note_body(body[len(first) + 2 :])
             ):
                 raise ValueError("note marker body digest mismatch")
+        if event.get("event") == "notification_record":
+            from .notifications import render, validate
+
+            if set(event) != {
+                "parent",
+                "event",
+                "key",
+                "notification_sha256",
+                "notification",
+            }:
+                raise ValueError("malformed notification record")
+            spec = validate(object_value(event["notification"]))
+            if (
+                event["key"] != spec["key"]
+                or event["notification_sha256"] != digest(spec)
+                or body != first + "\n\n" + render(spec)
+            ):
+                raise ValueError("notification record digest/body mismatch")
+        if event.get("event") == "notification":
+            from .execution import sha256
+
+            if set(event) != {
+                "parent",
+                "event",
+                "key",
+                "notification_sha256",
+                "record_url",
+                "body_sha256",
+            }:
+                raise ValueError("malformed notification marker")
+            sha256(event["notification_sha256"])
+            nonempty(event["record_url"], "notification record URL")
+            if not body.startswith(first + "\n\n") or event["body_sha256"] != digest(
+                body[len(first) + 2 :]
+            ):
+                raise ValueError("notification marker body digest mismatch")
         if event.get("event") in {"agreed", "proposal_agreed"}:
             agreement = object_value(event.get("agreement"))
             if set(agreement) != {
@@ -348,35 +386,6 @@ def select_prs(
         if pr["head"]["repo"]["full_name"].casefold() != repo.casefold():
             raise ValueError(f"PR #{n}: fork is not supported")
     return [by_number[n] for n in sorted(selected)]
-
-
-def section_span(body: str, heading: str) -> tuple[int, int] | None:
-    """Use the shared Markdown parser as authority; refuse ambiguous raw editing."""
-    sections = parse_sections(body)
-    if heading not in sections:
-        return None
-    headings: list[tuple[str, re.Match[str]]] = []
-    for match in re.finditer(r"(?m)^## (\S.*?)[ \t]*$", body):
-        try:
-            prefix = parse_sections(body[: match.end()])
-        except ValueError as exc:
-            if str(exc) in {"unclosed code fence", "unclosed HTML comment"}:
-                continue  # Examples/comments do not define an editable section.
-            raise
-        name = next(reversed(prefix), None)
-        if name and (not headings or headings[-1][0] != name):
-            headings.append((name, match))
-    if [name for name, _ in headings] != list(sections):
-        raise ValueError("ambiguous raw Markdown section boundaries")
-    index = list(sections).index(heading)
-    return headings[index][1].end(), headings[index + 1][1].start() if index + 1 < len(
-        headings
-    ) else len(body)
-
-
-def raw_section(body: str, heading: str) -> str:
-    span = section_span(body, heading)
-    return body[span[0] : span[1]].strip() if span else ""
 
 
 def replace_section(body: str, heading: str, content: str) -> str:

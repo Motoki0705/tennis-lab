@@ -14,6 +14,7 @@ from typing import Any
 from parent.execution import POLICY_VERSION, execution_input, record_autonomous, sha256
 from parent.github import GitHub
 from parent.policy import digest, nonempty, number, object_value
+from parent.record_writer import write_record
 from parent.session import ParentSession
 from parent.state import Store, state_directory
 
@@ -25,11 +26,12 @@ from .collect import (
     assert_fresh,
     assert_material_fresh,
     collect,
+    history_owner,
     is_container,
     material,
     source_references,
 )
-from .records import DETAIL_KEYS, comment_body, owned_comment
+from .records import DETAIL_KEYS, comment_body, owned_comment, read_json
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
 
 RESULT_VERSION = 2
@@ -66,26 +68,25 @@ def publish_decision(
 ) -> str:
     detail = {k: decision[k] for k in DETAIL_KEYS}
     detail["sources"] = [source_url(snapshot, s) for s in decision["sources"]]
-    body = comment_body(session.gh.repo, session.parent, detail)
-    session.public(body)
     existing = [
         c
-        for c in session.gh.comments(session.parent)
+        for c in session.gh.parent_comments(session.parent, session.login)
         if owned_comment(c, session.login, session.gh.repo, session.parent)
     ]
-    if len(existing) > 1:
-        raise ValueError("multiple owned judgement comments; reconcile them explicitly")
-    if existing and existing[0]["body"] == body:
-        return "unchanged"
-    if existing:
-        session.gh.write(
-            "PATCH",
-            f"repos/{session.gh.repo}/issues/comments/{number(existing[0]['id'])}",
-            {"body": body},
+    payloads = [
+        object_value(
+            read_json(
+                c["body"].splitlines()[0][len("<!-- issue-start-judgement:v1 ") : -4]
+            )
         )
-        return "updated"
-    session.gh.write("POST", session.endpoint + "/comments", {"body": body})
-    return "created"
+        for c in existing
+    ]
+    if payloads and payloads[-1]["detail"] == detail:
+        return "unchanged"
+    revision = 1 + max((p.get("revision", 0) for p in payloads), default=0)
+    body = comment_body(session.gh.repo, session.parent, detail, revision=revision)
+    write_record(session, body)
+    return "updated" if existing else "created"
 
 
 def assert_candidate_fresh(
@@ -193,7 +194,10 @@ def retain_fresh_decisions(
         return
     seeds = {d["issue"] for d in decisions}
     for decision in decisions:
-        seeds.update(source_references(snapshot["repo"], decision["sources"])[0])
+        seeds.update(
+            history_owner(snapshot, n)
+            for n in source_references(snapshot["repo"], decision["sources"])[0]
+        )
     current = collect(gh, store, root, seeds)
     for decision in decisions:
         n = decision["issue"]

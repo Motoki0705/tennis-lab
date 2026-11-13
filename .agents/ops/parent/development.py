@@ -26,7 +26,7 @@ from lib.agent_settings import implementation_model
 from worker_logs import service as worker_logs
 from worker_logs.sources import original, read_original
 
-from . import worker_preflight
+from . import work_targets, worker_preflight
 from .adopted_tasks import check_task_adoptions
 from .execution import (
     authorization,
@@ -191,7 +191,7 @@ def start_worker(
                 "additional instructions require an undelivered planning decision"
             )
     with session.store.locked():
-        session.owner()
+        session.agreed()
         control = controller(session, directory)
     control.reconcile(parent=session.parent)
     with session.store.locked():
@@ -353,9 +353,11 @@ def stop_worker(
     dispatch = managed(session.owner())
     if not dispatch:
         raise ValueError("worker stop requires a managed parent")
-    session.stop_or_resume(child, detail, False)
-    plan = session.launch_plan()
-    targets = {child} | {t["child"] for t in plan["tasks"] if t["state"] == "held"}
+    stopped = session.stop_or_resume(child, detail, False)
+    plan = None if stopped.get("target_conflict") else session.launch_plan()
+    targets = {child} | (
+        {t["child"] for t in plan["tasks"] if t["state"] == "held"} if plan else set()
+    )
     for job in dispatch["jobs"].values():
         if job["role"] != "implementation" or job["child"] not in targets:
             continue
@@ -375,7 +377,8 @@ def stop_worker(
     return {
         "child": child,
         "result": "stop_requested",
-        "launch_plan": session.launch_plan(),
+        "launch_plan": session.launch_plan() if plan is not None else None,
+        **({"target_conflict": stopped["target_conflict"]} if plan is None else {}),
     }
 
 
@@ -490,18 +493,29 @@ def verify_completion(session: ParentSession) -> list[int]:
     merge_gate = importlib.import_module("merge_gate")
     merged: set[int] = set()
     pulls = session.gh.pulls()
+    work_targets.require_separate_self_prs(parent, pulls, session.gh.repo)
     for n, item in items.items():
         if task_status(item) == "cancelled":
             verify_cancellation(session, item, auth)
             continue
         task = session.row["tasks"].get(str(n), {})
         verification = task.get("verification", {})
+        preflight = task.get("preflight", {})
+        latest_turn = (
+            worker_preflight.result_turn(task) if task.get("delegated") else None
+        )
         if (
             task_status(item) != "completed"
             or task.get("stopped")
             or "needs-human" in item.labels
             or task_errors(task, auth, item.body)
             or not verification.get("evidence")
+            or (
+                task.get("delegated")
+                and latest_turn is not None
+                and preflight.get("accepted_turn_id")
+                != latest_turn["snapshot"]["turn_id"]
+            )
         ):
             raise ValueError(
                 f"#{n}: close, acceptance evidence or current result verification missing"
@@ -573,24 +587,54 @@ def verify_completion(session: ParentSession) -> list[int]:
 
 
 def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
+    completed = spec.get("state") == "completed"
     if (
         set(spec)
         != {"schema_version", "state", "reason", "resume_condition", "evidence"}
+        | ({"finish"} if completed else set())
         or type(spec["schema_version"]) is not int
-        or spec["schema_version"] != 1
+        or spec["schema_version"] != (2 if completed else 1)
         or spec["state"] not in {"waiting", "completed", "failed"}
     ):
-        raise ValueError("invalid workflow report schema")
+        raise ValueError(
+            "invalid workflow report schema; completed requires version 2 and structured finish"
+        )
     session.owner()
     for key in ("reason", "resume_condition", "evidence"):
         nonempty(spec[key], key)
     # Validate public text before any result/state mutation.
     session.public(spec)
     prs = verify_completion(session) if spec["state"] == "completed" else []
-    session.note(
-        f"開発workflow: {spec['state']}\n\n理由: {spec['reason']}\n\n"
-        f"再開条件: {spec['resume_condition']}\n\n受入・検証の証拠:\n{spec['evidence']}"
-    )
+    completion = None
+    if completed:
+        from .completion import record
+        from .notifications import completion as published_completion
+
+        notice = published_completion(session)
+        if notice is None:
+            raise ValueError(
+                "completed requires an explicit completion notification; use notify with key=completion and verified achievements/remaining/artifacts"
+            )
+        if spec["finish"].get("state") != "completed":
+            raise ValueError("completed report requires a completed finish")
+        completion = record(session, spec["finish"], prs=prs)
+        session.post(
+            {
+                "event": "workflow_completed",
+                "completion_ref": notice.url,
+                "report_sha256": digest(spec),
+            },
+            f"開発workflow: completed\n\n全体の成果・未達・残件: {notice.url}\n検証記録: {digest(spec)}",
+        )
+    else:
+        session.note(
+            f"開発workflow: {spec['state']}\n\n理由: {spec['reason']}\n\n"
+            f"再開条件: {spec['resume_condition']}\n\n受入・検証の証拠:\n{spec['evidence']}"
+        )
+    response = {
+        "schema_version": 1,
+        **{k: spec[k] for k in ("state", "reason", "resume_condition")},
+    }
     session.row["development_result"] = {
         "schema_version": 1,
         "report_sha256": digest(spec),
@@ -603,10 +647,18 @@ def report(session: ParentSession, spec: dict[str, Any]) -> dict[str, Any]:
         if spec["state"] == "completed"
         else [],
     }
+    if completion is not None:
+        dispatch = managed(session.row)
+        session.row["development_result"]["completion_receipt"] = {
+            "job": dispatch["active_job"] if dispatch else None,
+            "generation": session.row["generation"],
+            "authorization": authorization(session),
+            "response_sha256": digest(response),
+            "finish_sha256": completion["finish_sha256"],
+        }
     session.store.save()
-    return {
-        k: spec[k] for k in ("schema_version", "state", "reason", "resume_condition")
-    }
+    session.sync_progress()
+    return response
 
 
 def refresh_worker_plan(

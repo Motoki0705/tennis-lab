@@ -101,7 +101,7 @@ from runtime exit status.
 
 Each result's evidence identifies `capture_source`, artifact and the fingerprint
 of the observed snapshot. Private evidence stays explicitly unavailable publicly;
-a fingerprint alone is not a content archive. Canonical parent comments and
+a fingerprint alone is not a content archive. Parent evidence issues (including legacy parent comments) and
 published review/worker-log artifacts also retain fixed public evidence where
 available. Outboxes keep private delivery inputs; they are never publication units.
 Parent response summaries project public fields instead of copying assignments
@@ -116,6 +116,8 @@ the complete response and error details remain private evidence.
 | `record-worker-run` / `record-worker-ended` | Explicit registration of existing runner evidence / the parent's explicit termination confirmation |
 | `record-result` | Saved verification and its PR/evidence fields; explicit verification references captured results. Combined `review-request --prs` uses this same method |
 | `note` / `decide-worker-plan` | Canonical comment reference / saved planning-answer outcome. They do not invent a common decision; `decide` can reference the original reason |
+| `improvement` / `improvement-publish` | Observations and explicit splitting decisions reference the canonical candidate, then link to publication requests/results. Capture only while the source parent owns the work |
+| `agree` / `basis-record` / `create-child` / `workflow-report` | Existing basis, creation and acceptance results. A successor's agree observes human approval through its source comment; approval does not imply execution |
 | `delegate`, `stop` / `resume` / `stop-worker`, `handoff` / `release` | Parent command outcomes and canonical comments; dispatcher cancellation and runner stop/recovery writes are separate facts |
 | `review-prepare` / `review-request` / `review-state` | Fixed request and explicit instruction/state outcomes. Only explicit receipt/verification operations set parent verification |
 | Review `run` | Existing execution/output/result/publication states, including valid output from a failed runtime, exception and public predecessor review keys. Publication preserves the original result. Reusing a consumed run is a fetch, not another AI review |
@@ -198,11 +200,17 @@ Instead of `reason`, use exactly one `reason_ref`:
 | `worker_plan` | `child` and the planning command's `decision_id` |
 | `model_reason` | `child`; the currently saved model-selection reason |
 | `review_reason` | `run_id`; the fixed review request's reason |
+| `improvement` | `key` and candidate `event_id`; the splitting judgment in the source parent's canonical comment |
 
+`note` and `improvement` references use the [shared parent reader](../parent/README.md#機械証拠の保存共通reader) and the comment URL on the actual medium.
 The decision retains a reference/fingerprint, not another copy of the public
 reason. Parent actor keys are random private-session mappings; handoff does not
 relabel earlier decisions. Pass the returned decision ID on the next supported
 command (or review/merge command); its later results reference the linked action.
+
+`improvement-decide` records human judgment in the canonical candidate without extending publication authority over an ended source journal.
+The successor captures approval when importing it through agree. Cross-parent references use the source comment URL, not a foreign graph record ID.
+See [end-of-task improvements](../parent/improvements.md) for the operation and human-confirmation trust boundary.
 
 ## Capture failure and recovery
 

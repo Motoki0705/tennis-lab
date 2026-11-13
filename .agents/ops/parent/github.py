@@ -8,14 +8,18 @@ import subprocess
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues.cli import GitHub as IssueGitHub
+from issues.evidence import is_evidence_issue, require_work_issue
 
 from . import metrics
 from .policy import closing_issues, object_value
 
 if TYPE_CHECKING:
+    from .evidence import EvidenceIssues
+    from .history import History
     from .state import Store
 
 
@@ -27,6 +31,11 @@ class GitHub(IssueGitHub):
         self._cache: dict[tuple[str, bool], object] = {}
         self._fresh = False
         self._cache_epoch = -1
+        self._history_rows: list[dict[str, Any]] | None = None
+        self._history_scope = False
+        self.evidence_directory: Path | None = (
+            store.directory / "evidence-issues" if store else None
+        )
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         if (
@@ -76,6 +85,7 @@ class GitHub(IssueGitHub):
 
     def invalidate(self, endpoint: str) -> None:
         # Writes invalidate the issue and its relations, retaining unrelated reads.
+        self._history_rows = None
         root = endpoint.split("/comments")[0].split("/sub_issues")[0]
         self._cache = {
             key: value
@@ -187,14 +197,69 @@ class GitHub(IssueGitHub):
         row = object_value(self.get(f"repos/{self.repo}/issues/{number}"))
         if self.identity(row) != number:
             raise ValueError("GitHub issue identity mismatch")
+        require_work_issue(row)
         return row
 
     def issue_rows(self) -> list[dict[str, Any]]:
         return [
             row
             for row in self.rows(f"repos/{self.repo}/issues?state=all")
-            if "pull_request" not in row
+            if "pull_request" not in row and not is_evidence_issue(row)
         ]
+
+    @contextmanager
+    def history_read_scope(self) -> Iterator[None]:
+        """One complete discovery index per read-only collection, never across observations."""
+        previous = getattr(self, "_history_rows", None)
+        active = getattr(self, "_history_scope", False)
+        self._history_rows = None
+        self._history_scope = True
+        try:
+            yield
+        finally:
+            self._history_rows, self._history_scope = previous, active
+
+    def evidence_rows(self) -> list[dict[str, Any]]:
+        if not getattr(self, "_history_scope", False) or self._fresh:
+            return self.rows(f"repos/{self.repo}/issues?state=all")
+        if self._history_rows is None:
+            self._history_rows = self.rows(f"repos/{self.repo}/issues?state=all")
+        return self._history_rows
+
+    def evidence_issues(self) -> EvidenceIssues:
+        from .evidence import EvidenceIssues
+        from .state import state_directory
+
+        directory = getattr(self, "evidence_directory", None)
+        if directory is None:
+            directory = (
+                self._store.directory if self._store else state_directory()
+            ) / "evidence-issues"
+        return EvidenceIssues(self, directory)
+
+    def record_history(
+        self, parent: int, login: str | None = None, **kwargs: Any
+    ) -> History:
+        from .history import read_history
+
+        publisher = login or object_value(self.get("user"))["login"]
+        return read_history(self, parent, publisher, **kwargs)
+
+    def parent_comments(
+        self, parent: int, login: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Validated compatibility projection; raw comments() remains a single medium."""
+        return self.record_history(parent, login).comments
+
+    def review_comments(
+        self, issue: int, parent: int, login: str
+    ) -> list[dict[str, Any]]:
+        """PR projections stay on the PR; parent-side evidence uses the shared history."""
+        return (
+            self.parent_comments(parent, login)
+            if issue == parent
+            else self.comments(issue)
+        )
 
     def comments(self, parent: int) -> list[dict[str, Any]]:
         return self.rows(f"repos/{self.repo}/issues/{parent}/comments")

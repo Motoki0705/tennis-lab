@@ -12,16 +12,19 @@ import pytest
 from tests.e2e.agents_ops.test_execution_basis import registry
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, review_setup
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    review_setup,
+    untracked_legacy_fixture,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
 def agreements(p: ParentEnv) -> list[dict[str, Any]]:
     policy = importlib.import_module("parent.policy")
     return [
-        e
-        for e in policy.events(p.state()["comments"]["1"], "operator", 1)
-        if e["event"] == "agreed"
+        e for e in policy.events(p.comments(), "operator", 1) if e["event"] == "agreed"
     ]
 
 
@@ -116,10 +119,11 @@ def test_legacy_human_agreement_is_usable_without_fabricating_history(
     event.pop("requirements_sha256", None)
     if not comment_snapshot:
         event.pop("comment_inputs")
-    next(c for c in state["comments"]["1"] if c["body"] == original)["body"] = (
+    next(c for c in evidence_comments(state) if c["body"] == original)["body"] = (
         policy.marker(event)
     )
     p.save(state)
+    untracked_legacy_fixture(p)
     before = p.state(), registry(p).read_bytes()
     status = json.loads(p.cli("status").stdout)
     assert status["execution_basis"]["kind"] == "human_agreement"
@@ -142,7 +146,7 @@ def test_malformed_human_body_digest_is_rejected_on_read(
     original = event.pop("body")
     event["requirements_sha256"] = value
     state = p.state()
-    next(c for c in state["comments"]["1"] if c["body"] == original)["body"] = (
+    next(c for c in evidence_comments(state) if c["body"] == original)["body"] = (
         policy.marker(event)
     )
     p.save(state)
@@ -166,10 +170,12 @@ def test_human_body_observation_preserves_review_evidence(
         event = agreements(p)[-1]
         original = event.pop("body")
         event.pop("requirements_sha256", None)
-        next(c for c in state["comments"]["1"] if c["body"] == original)["body"] = (
+        next(c for c in evidence_comments(state) if c["body"] == original)["body"] = (
             policy.marker(event)
         )
     p.save(state)
+    if change == "legacy":
+        untracked_legacy_fixture(p)
     saved = {path.name: path.read_bytes() for path in g.review.run_dir.glob("*.json")}
     rows = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))
     assert all(row["decision"] == "merge" for row in rows.values())
@@ -221,7 +227,7 @@ def test_same_human_reagreement_after_revocation_resumes_delegation_idempotently
     assert len({json.dumps(auth, sort_keys=True) for auth in authorizations}) == 3
     assert len({e["revision"] for e in agreements(p)}) == 3
     policy = importlib.import_module("parent.policy")
-    history = policy.events(p.state()["comments"]["1"], "operator", 1)
+    history = policy.events(p.comments(), "operator", 1)
     assert [e["revision"] for e in history if e["event"] == "basis_revoked"] == [1, 2]
     assert all(e["agreement"] == agreement for e in agreements(p))
     assert len({json.dumps(e["comment_inputs"]) for e in agreements(p)}) == 1

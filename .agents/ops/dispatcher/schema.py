@@ -6,17 +6,17 @@ from collections.abc import Sequence
 from typing import Any, TypedDict
 
 from issues.supplement_state import supplement_state
+from parent.history import comment_url, from_projection
 from parent.policy import (
     child_stopped,
     digest,
-    events,
     nonempty,
     number,
     object_value,
     phase,
 )
 
-from .collect import is_container, require_current_snapshot, route
+from .collect import history_owner, is_container, require_current_snapshot, route
 from .records import owned_comment
 
 DISPOSITIONS = {
@@ -72,13 +72,14 @@ def source_url(snapshot: dict[str, Any], source: str) -> str:
         parts = source.split(":")
         if len(parts) == 3:
             n, cid = number(int(parts[1])), number(int(parts[2]))
-            for c in snapshot["issues"].get(str(n), {}).get("comments", []):
+            owner = history_owner(snapshot, n)
+            for c in snapshot["issues"].get(str(owner), {}).get("comments", []):
                 if source == f"comment:{n}:{cid}" and c["id"] == cid:
-                    if owned_comment(c, snapshot["publisher"], snapshot["repo"], n):
+                    if owned_comment(c, snapshot["publisher"], snapshot["repo"], owner):
                         raise ValueError(
                             "controller display cannot serve as independent judgment evidence"
                         )
-                    return f"{base}/issues/{n}#issuecomment-{cid}"
+                    return comment_url(snapshot["repo"], owner, c)
     elif source.startswith("pr:"):
         n = number(int(source.removeprefix("pr:")))
         if source == f"pr:{n}" and any(p["number"] == n for p in snapshot["pulls"]):
@@ -121,10 +122,33 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
             "disposition": "human_hold",
             "facts": [f"#{n} はissue:childラベルがあるが正式な親関係がない。"],
         }
-    history = events(raw["comments"], snapshot["publisher"], n)
+    history = from_projection(
+        snapshot["repo"], n, snapshot["publisher"], raw["comments"]
+    ).session_events()
     facts = []
+    from issues.improvement import approved, parse_source, read_candidates
+
+    improvement = parse_source(raw["body"])
+    if improvement is not None:
+        source = issues.get(str(improvement.parent))
+        if source is None:
+            raise ValueError(
+                "improvement source missing from dispatcher snapshot; recollect"
+            )
+        candidates = read_candidates(
+            source["comments"], improvement.parent, snapshot["publisher"]
+        )
+        candidate = candidates.get(improvement.key)
+        if candidate is None:
+            raise ValueError("improvement source candidate is unavailable")
+        try:
+            approved(candidate, improvement, n, raw["body"])
+        except ValueError as exc:
+            facts.append(str(exc))
     if (
-        supplement_state(labels, raw["created_at"], snapshot["supplement_enabled_since"])
+        supplement_state(
+            labels, raw["created_at"], snapshot["supplement_enabled_since"]
+        )
         == "pending"
     ):
         facts.append(

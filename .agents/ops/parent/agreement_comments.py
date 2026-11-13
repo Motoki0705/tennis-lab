@@ -12,8 +12,9 @@ from .execution import (
     instruction_comments,
     sha256,
 )
+from .history import from_projection
 from .judgement_comments import owned_comment
-from .policy import digest, events, nonempty, number, object_value
+from .policy import digest, nonempty, number, object_value
 
 if TYPE_CHECKING:
     from .session import ParentSession
@@ -35,7 +36,11 @@ def validate_inputs(value: Any) -> list[dict[str, Any]]:
 
 
 def snapshot(session: ParentSession) -> list[dict[str, Any]]:
-    return _inputs(instruction_comments(session, session.gh.comments(session.parent)))
+    return _inputs(
+        instruction_comments(
+            session, session.gh.parent_comments(session.parent, session.login)
+        )
+    )
 
 
 def _inputs(comments: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -48,9 +53,11 @@ def _inputs(comments: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _observations(
     session: ParentSession, agreement: Mapping[str, Any]
 ) -> tuple[list[dict[str, Any]], dict[int, str]]:
-    raw = session.gh.comments(session.parent)
+    raw = session.gh.parent_comments(session.parent, session.login)
     comments = _inputs(instruction_comments(session, raw))
-    history = events(raw, session.login, session.parent)
+    history = from_projection(
+        session.gh.repo, session.parent, session.login, raw
+    ).session_events()
     latest = next(
         (
             e

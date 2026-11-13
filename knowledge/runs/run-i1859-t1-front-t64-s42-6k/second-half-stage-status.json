@@ -1,0 +1,27 @@
+{
+  "stage": "T1-q06000-q12000",
+  "event": "checkpoint",
+  "update": 5500,
+  "receipt": {
+    "schema": "verified_artifact_snapshot.v1",
+    "generation": "checkpoint-00005500-cddcef20",
+    "remote": "mounted_drive:outputs/ball_detection/train/arch_efficiency/s42-20261111/T1-q06000-q12000/checkpoint-00005500-cddcef20",
+    "manifest_sha256": "66a2bb02b0f78fc6ef0bc127f5c495d486aadfb2f82e6cff8c3afbdfd373cee4",
+    "manifest_md5": "ef23d9d8245fab5a69d706c853fb57f3",
+    "files": 7,
+    "size_bytes": 476334429,
+    "marker_id": null,
+    "seconds": 55.61753214299824,
+    "status": "verified"
+  },
+  "readback": {
+    "schema": "verified_artifact_snapshot.v1",
+    "generation": "checkpoint-00005500-cddcef20",
+    "status": "verified",
+    "files": 7,
+    "manifest_sha256": "66a2bb02b0f78fc6ef0bc127f5c495d486aadfb2f82e6cff8c3afbdfd373cee4",
+    "seconds": 30.2743259830022
+  },
+  "updated_at": "2026-11-11T20:39:09Z",
+  "execution_commit": "fae715ad752b2da41607d139ce6387d8d3f79823"
+}

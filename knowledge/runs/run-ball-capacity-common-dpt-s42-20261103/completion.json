@@ -1,0 +1,54 @@
+{
+  "schema": "ball_capacity_pretrain_completion_recovery.v1",
+  "verified_at": "2026-11-04",
+  "stage": "common-dpt-T32",
+  "updates_completed": 10000,
+  "physical_input_frames": 1280000,
+  "snapshot_receipt": {
+    "files": 10,
+    "generation": "completed-00010000-dc030faf",
+    "manifest_md5": "29958290723acda22c48cfb7f5ea0886",
+    "manifest_sha256": "e5292807bcd7140b043ba9ccfd692625e407ea2d1c54fa2c06e1f8ab60d3ecee",
+    "marker_id": null,
+    "remote": "mounted_drive:outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf",
+    "schema": "verified_artifact_snapshot.v1",
+    "seconds": 21.243707293004263,
+    "size_bytes": 183933839,
+    "status": "verified"
+  },
+  "checkpoint_sha256": "8a10a5a856703946d36df4a9490a62f68e05522b96bde0730f648f3e7c9b053e",
+  "checkpoint_validation_json_values_match_report": true,
+  "metadata_representation_note": "model_config tuples in the Torch checkpoint serialize to arrays in JSON; all JSON values match",
+  "model_source_sha256_matches": true,
+  "training_manifest_sha256": "a5fac8828f2a5c67064f39216ea24a47e0f9d7bdfaa45bb40611698da8a6b107",
+  "evaluation_manifest_sha256": "fb0ef368e1535bccb5ca1997b39c2e32871fd1f72cb9bb077d4ffe10ac41653d",
+  "validation": {
+    "split": "val",
+    "metrics": {
+      "mean_error_px": 34.43154376927215,
+      "median_error_px": 8.872786521911621,
+      "p95_error_px": 170.75442199706973,
+      "within_distance_rate": 0.8614065260374622,
+      "distance_threshold_source_px": 20.0,
+      "support": {
+        "frames": 128668,
+        "masked": 11310,
+        "observed": 85473,
+        "out_of_frame": 2712,
+        "reviewed_empty": 29173,
+        "scored_frames": 117358
+      }
+    },
+    "identities": {
+      "scored_frame_sha256": "2501f696c973523858469339d859a8b9315cc74a1aafb69afe0e652b78e5f74e",
+      "target_identity_sha256": "17610b38f67f3cc1fed95359c9a17e639c03ee05687389a8b13721369875315e",
+      "teacher_identity_sha256": "3f817fc3778cfa12cfbfe3d9bc634f3f16d90648a102298e47c30c6e26f1d9ec"
+    },
+    "predictions": {
+      "file": "validation-update-00010000.frames.jsonl",
+      "frames": 128668,
+      "sha256": "c121d00dde82506c5dcfe25e812b7c706ca6a91a4d3e0db71434ce8137875307"
+    }
+  },
+  "scope": "Completed common pretraining and original fixed validation, not completion of the seven-query study."
+}

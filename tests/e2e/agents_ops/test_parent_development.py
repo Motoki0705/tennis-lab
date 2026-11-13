@@ -31,6 +31,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     review_policy_module,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.improvements import finish_for
 from tests.support.agents_ops.worker_preflight import completed_implementation
 
 
@@ -156,8 +157,9 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
                 mod.report(
                     session,
                     {
-                        "schema_version": 1,
+                        "schema_version": 2,
                         "state": "completed",
+                        "finish": {},
                         "reason": "子が成功を報告",
                         "resume_condition": "完了",
                         "evidence": "exit 0",
@@ -279,6 +281,11 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
                 "cancelled_before_start"
             ]
             assert not (Path(cancelled["directory"]) / "runtime").exists()
+            with (
+                session.store.locked(),
+                pytest.raises(ValueError, match="cancelled reservation"),
+            ):
+                session.record_result(10, "未起動の取消予約を成果にしない。")
             corrupted = d.row()
             corrupted["dispatch"]["jobs"][cancelled["id"]]["resume_from"] = None
             d.update(corrupted)
@@ -323,6 +330,12 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
             for line in (d.h.root / "runtime-calls.jsonl").read_text().splitlines()
         ]
         assert "resume" in calls[1]["args"]
+        with session.store.locked():
+            session.record_result(10, "同じworkerの修正差分と実結果を確認した。")
+        assert (
+            d.row()["tasks"]["10"]["preflight"]["accepted_turn_id"]
+            == current["preflight"]["turn_id"]
+        )
     finally:
         d.control.reconcile(stop=True)
 
@@ -1115,13 +1128,16 @@ def test_completed_parent_distinguishes_confirmed_cancellation_from_success(
             delegated=True, delegation_id="unfinished-cancelled-worker"
         )
         registry.write_text(json.dumps(data))
+    if change == "none":
+        p.announce_completion()
     result = p.cli(
         "workflow-report",
         "--spec",
         p.spec(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": finish_for(p),
                 "reason": "全体受入を確認した。",
                 "resume_condition": "完了。追加要件は別途判断。",
                 "evidence": "実merge/closeと取消理由・引継ぎ先を照合した。",
@@ -1185,8 +1201,9 @@ def test_cancellation_confirmation_never_hides_unresolved_work(
             "--spec",
             p.spec(
                 {
-                    "schema_version": 1,
+                    "schema_version": 2,
                     "state": "completed",
+                    "finish": {},
                     "reason": "取消だけ。",
                     "resume_condition": "要件を再判断する。",
                     "evidence": "実装完了はない。",
@@ -1234,7 +1251,7 @@ def test_explicit_state_path_and_report_keep_owner_and_use_note(
     row = json.loads((alternate / "registry.json").read_text())["parents"]["o/r#1"]
     assert row["status"] == "active" and row["development_result"]["prs"] == []
     marker = importlib.import_module("parent.policy").events(
-        p.state()["comments"]["1"], "operator", 1
+        p.comments(), "operator", 1
     )[-1]
     assert marker["event"] == "note"
     assert "human_confirmation" not in json.dumps(marker)
@@ -1307,8 +1324,9 @@ def test_workflow_report_rejects_duplicate_json_and_empty_parent_completion(
         "--spec",
         p.spec(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": {},
                 "reason": "完了",
                 "resume_condition": "なし",
                 "evidence": "全体確認した",
@@ -1316,7 +1334,7 @@ def test_workflow_report_rejects_duplicate_json_and_empty_parent_completion(
         ),
         ok=False,
     )
-    assert "no implementation targets" in rejected.stderr
+    assert "acceptance evidence" in rejected.stderr
 
 
 @pytest.mark.parametrize("gate_env", ["standalone"], indirect=True)
@@ -1352,13 +1370,16 @@ def test_completed_report_requires_gate_real_merge_close_and_parent_verification
         state = p.state()
         state["prs"][0]["head"]["sha"] = "f" * 40
         p.save(state)
+    if remote in {"success", "lost_response"}:
+        p.announce_completion()
     completed = p.cli(
         "workflow-report",
         "--spec",
         p.spec(
             {
-                "schema_version": 1,
+                "schema_version": 2,
                 "state": "completed",
+                "finish": finish_for(p),
                 "reason": "受入と実merge/closeを確認した。",
                 "resume_condition": "完了。追加要件は別途判断。",
                 "evidence": "全体の受入条件をdiffとテストで確認。PR #100 の実mergeとissue closeを照合。",

@@ -19,7 +19,11 @@ from tests.e2e.agents_ops.test_execution_basis import (
 from tests.e2e.agents_ops.test_human_agreement import agreements, delegation_args
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
-from tests.e2e.agents_ops.test_parent_session import ParentEnv
+from tests.e2e.agents_ops.test_parent_session import (
+    ParentEnv,
+    evidence_comments,
+    untracked_legacy_fixture,
+)
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 
 
@@ -99,7 +103,7 @@ def test_judgement_update_preserves_autonomous_delegation(
 ) -> None:
     p = parent_env
     assert publish(p, monkeypatch, 1, "startable") == "created"
-    display = p.state()["comments"]["1"][0]
+    display = p.comments()[0]
     ignored = [ignored_comment(display)] if legacy_ignored else []
     value = spec(p, ignored)
     recorded = record(p, value)  # Record before assignment, as the dispatcher does.
@@ -118,7 +122,7 @@ def test_judgement_update_preserves_autonomous_delegation(
     policy = importlib.import_module("parent.policy")
     basis_events = [
         e
-        for e in policy.events(p.state()["comments"]["1"], "operator", 1)
+        for e in policy.events(p.comments(), "operator", 1)
         if e["event"] == "execution_basis"
     ]
     assert len(basis_events) == 1
@@ -130,7 +134,7 @@ def test_legacy_human_snapshot_with_judgement_remains_executable(
 ) -> None:
     p = parent_env
     publish(p, monkeypatch, 1, "information_needed")
-    display = p.state()["comments"]["1"][0]
+    display = p.comments()[0]
     p.agreed()
     policy = importlib.import_module("parent.policy")
     execution = importlib.import_module("parent.execution")
@@ -145,10 +149,11 @@ def test_legacy_human_snapshot_with_judgement_remains_executable(
         }
     )
     state = p.state()
-    next(c for c in state["comments"]["1"] if c["body"] == body)["body"] = (
+    next(c for c in evidence_comments(state) if c["body"] == body)["body"] = (
         policy.marker(event)
     )
     p.save(state)
+    untracked_legacy_fixture(p)
     publish(p, monkeypatch, 1, "human_hold")
     p.child("legacy")
     launch = json.loads(p.cli(*delegation_args(p.worktree("legacy"))).stdout)
@@ -175,7 +180,7 @@ def test_judgement_validation_and_parent_control_of_instructions(
     g, p = gate_env, gate_env.review.p
     publish(p, monkeypatch, 1, "human_hold")
     state = p.state()
-    display = state["comments"]["1"][-1]
+    display = evidence_comments(state)[-1]
     body = display["body"]
     login = "operator"
     if change == "plain":

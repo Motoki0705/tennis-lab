@@ -1,0 +1,12 @@
+{
+  "schema": "verified_artifact_snapshot.v1",
+  "generation": "completed-1794387620214366621",
+  "remote": "mounted_drive:outputs/ball_detection/train/arch_efficiency/s42-20261111/benchmarks/completed-1794387620214366621",
+  "manifest_sha256": "8252ab39d864cdb7e7f03dee03145c3c164d69dc63b62d620548d4fa60a87744",
+  "manifest_md5": "c3cc3c741a4295335e49cea59226f8f4",
+  "files": 455,
+  "size_bytes": 460977693,
+  "marker_id": null,
+  "seconds": 74.22304973800055,
+  "status": "verified"
+}

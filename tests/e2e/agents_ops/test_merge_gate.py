@@ -18,10 +18,12 @@ from tests.e2e.agents_ops.test_parent_session import (
     OPS,
     ParentEnv,
     ReviewEnv,
+    evidence_number,
     make_review_env,
     peer_board_request,
     review_policy_module,
     run_git,
+    untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import (
     parent_env as parent_env,
@@ -141,6 +143,31 @@ class GateEnv:
                     record["findings"] = self.policy.pr_findings(result, n)
                 comment["body"] = self.policy.marker(record)
         p.save(state)
+        self.attest_fixture_comments()
+
+    def attest_fixture_comments(self) -> None:
+        # This helper constructs an alternate published fixture, including its
+        # transport attestations; direct remote tampering never uses it.
+        p = self.review.p
+        state = p.state()
+        directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+        comments = {
+            (int(n), c["id"]): c for n, rows in state["comments"].items() for c in rows
+        }
+        atomic = importlib.import_module("worker_logs.journal").atomic
+        updates = {}
+        for path in (directory / "comment-updates").glob("*.json"):
+            row = json.loads(path.read_text())
+            key = (row["issue"], row["comment_id"])
+            updates[key] = row["from_sha256"]
+            row["to_sha256"] = self.policy.digest(comments[key]["body"])
+            atomic(path, row)
+        for path in (directory / "comment-outbox").glob("*.json"):
+            row = json.loads(path.read_text())
+            key = (row["issue"], row["comment_id"])
+            if row["body_sha256"] != updates.get(key):
+                row["body_sha256"] = self.policy.digest(comments[key]["body"])
+                atomic(path, row)
 
 
 @dataclass(frozen=True)
@@ -209,6 +236,10 @@ def gate_env(
     # Only private copies reach tests; case-level sharding remains independent.
     seeds: dict[str | None, GateSeed] = request.config.stash.setdefault(SEEDS, {})
     variant = getattr(request, "param", None)
+    if variant in {"parent_self_worker", "parent_self_worker_rejected_resume"}:
+        # A saved worker binds hashes to its absolute worktree/contract. Reusing
+        # that runtime in another temporary root would alter its identity.
+        return make_gate_env(parent_env, monkeypatch, variant)
     if variant not in seeds:
         gate = make_gate_env(parent_env, monkeypatch, variant)
         cache = request.getfixturevalue("tmp_path_factory").mktemp("merge-gate-seed")
@@ -286,6 +317,64 @@ def make_gate_env(
                     sha=run_git(tree, "rev-parse", "HEAD"), ref=f"codex/pr-{index}"
                 )
         p.save(state)
+        if variant in {
+            "parent_self",
+            "parent_self_worker",
+            "parent_self_worker_rejected_resume",
+        }:
+            if variant != "parent_self":
+                from tests.e2e.agents_ops.test_manual_worker_runs import manual
+
+                prs = state["prs"]
+                prs[0]["head"]["ref"] = "codex/pr-0"
+                state["prs"] = []
+                p.save(state)
+                p.cli(
+                    "delegate",
+                    "--child",
+                    "1",
+                    "--agent",
+                    "codex",
+                    "--branch",
+                    "codex/pr-0",
+                    "--worktree",
+                    str(p.repo / ".claude/worktrees/pr-0"),
+                )
+                manual(
+                    p,
+                    "run-worker",
+                    "--child",
+                    "1",
+                    "--prompt-file",
+                    p.note("実装・検証する。"),
+                )
+                if variant == "parent_self_worker_rejected_resume":
+                    rejected = manual(
+                        p,
+                        "run-worker",
+                        "--child",
+                        "1",
+                        "--resume",
+                        "--prompt-file",
+                        p.note("同じworkerで追加確認する。"),
+                        ok=False,
+                        MANUAL_PREFLIGHT_FAILURE="1",
+                    )
+                    assert rejected.returncode == 2
+                    assert (
+                        json.loads(rejected.stdout)["launch_state"]
+                        == "rejected_before_start"
+                    )
+                state = p.state()
+                state["prs"] = prs
+                p.save(state)
+            p.cli(
+                "record-result",
+                "--child",
+                "1",
+                "--evidence-file",
+                p.note("自身の受入条件・差分・テストを確認した。"),
+            )
         if variant == "preflight_dependency":
             # Reserve before publishing the PRs, then provide terminal offline
             # worker records. Review/merge still use their real public CLIs.
@@ -327,6 +416,8 @@ def make_gate_env(
             "publication_paths",
         },
         standalone=variant == "standalone",
+        parent_self=variant
+        in {"parent_self", "parent_self_worker", "parent_self_worker_rejected_resume"},
         pr_count=3
         if variant
         in {
@@ -559,14 +650,13 @@ def test_review_authorization_survives_only_unrelated_agreement_records(
     state = p.state()
     policy = importlib.import_module("parent.policy")
     agreed = next(
-        e
-        for e in policy.events(state["comments"]["1"], "operator", 1)
-        if e["event"] == "agreed"
+        e for e in policy.events(p.comments(), "operator", 1) if e["event"] == "agreed"
     )
     agreed.pop("body")
     if change == "changed_agreement":
         agreed["agreement"]["scope"] = "独立した作業を追加。既存対象の受入条件は維持。"
         agreed["agreement_sha256"] = policy.digest(agreed["agreement"])
+        agreed["revision"] += 1  # A changed payload is a new logical agreement.
     elif change == "checking":
         p.agreed()  # Explicit checking revokes old evidence even with the same digest.
         state = p.state()
@@ -578,7 +668,7 @@ def test_review_authorization_survives_only_unrelated_agreement_records(
         data = json.loads(registry.read_text())
         data["parents"]["o/r#1"]["generation"] += 1
         registry.write_text(json.dumps(data))
-    state["comments"]["1"].append(
+    state["comments"][str(evidence_number(state))].append(
         {"id": 9999, "user": {"login": "operator"}, "body": policy.marker(agreed)}
     )
     p.save(state)
@@ -1122,9 +1212,9 @@ def test_rejections_never_merge_or_launch_agent(
         remove = {"fixes_verified"} | (
             {"result_received"} if case == "not_received" else set()
         )
-        state["comments"]["1"] = [
+        state["comments"][str(evidence_number(state))] = [
             c
-            for c in state["comments"]["1"]
+            for c in state["comments"][str(evidence_number(state))]
             if not any(f'"state": "{s}"' in c["body"] for s in remove)
         ]
     elif case == "interrupted":
@@ -1174,7 +1264,7 @@ def test_rejections_never_merge_or_launch_agent(
     elif case in {"parent_missing", "foreign_result", "quoted_result", "failed_record"}:
         comment = next(
             c
-            for c in state["comments"]["1"]
+            for c in state["comments"][str(evidence_number(state))]
             if g.policy.records([c], "operator")
             and g.policy.records([c], "operator")[0]["kind"] == "result"
         )
@@ -1183,12 +1273,12 @@ def test_rejections_never_merge_or_launch_agent(
         elif case == "quoted_result":
             comment["body"] = "引用\n" + comment["body"]
         elif case == "parent_missing":
-            comment["body"] = "<!-- agent-cross-review:v4 approve -->"
+            state["comments"][str(evidence_number(state))].remove(comment)
         else:
             failed = json.loads((r.run_dir / "result.json").read_text())
             failed.update(status="failed", verdict="incomplete", error="公開失敗")
             failed["prs"][0]["coverage"] = "not_reviewed"
-            state["comments"]["1"].append(
+            state["comments"][str(evidence_number(state))].append(
                 {
                     "id": 9999,
                     "user": {"login": "operator"},
@@ -1202,6 +1292,9 @@ def test_rejections_never_merge_or_launch_agent(
         record["result_sha256"] = "f" * 64
         state["comments"]["100"][0]["body"] = g.policy.marker(record)
     p.save(state)
+    if case in {"not_received", "fixing"}:
+        # These acknowledgement events have never been posted in this fixture.
+        untracked_legacy_fixture(p)
     # Successful CI cannot mask the rejection. Other PRs stay unmergeable.
     state = p.state()
     for pr in state["prs"]:
@@ -1210,9 +1303,24 @@ def test_rejections_never_merge_or_launch_agent(
             pr["mergeable"] = None
     p.save(state)
     result = g.cli("merge")
-    assert result.returncode == 1, result.stderr
-    rows = g.results(result)
-    assert reason in rows[103 if case == "outside" else 100]["reasons"]
+    if case == "failed_record":
+        assert result.returncode == 2
+        assert (
+            "conflicting parent evidence record" in json.loads(result.stderr)["error"]
+        )
+    elif case in {
+        "parent_missing",
+        "projection_missing",
+        "projection_digest",
+        "foreign_result",
+        "quoted_result",
+    }:
+        assert result.returncode == 2
+        assert "comment journal" in json.loads(result.stderr)["error"]
+    else:
+        assert result.returncode == 1, result.stderr
+        rows = g.results(result)
+        assert reason in rows[103 if case == "outside" else 100]["reasons"]
     assert g.merge_calls() == []
 
 
@@ -1788,9 +1896,9 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
         p.save(state)
     elif resolution == "unpublished":
         state = p.state()
-        state["comments"]["1"] = [
+        state["comments"][str(evidence_number(state))] = [
             c
-            for c in state["comments"]["1"]
+            for c in state["comments"][str(evidence_number(state))]
             if not any(
                 rec["kind"] == "resolution" for rec in g.policy.records([c], "operator")
             )
@@ -1815,7 +1923,13 @@ def test_fix_push_requires_current_published_resolution_and_actual_diff(
                 if g.policy.records([comment], "operator") == [old]:
                     comment["body"] = g.policy.marker(replacement)
         p.save(state)
-    rows = g.results(g.cli("merge"))
+        g.attest_fixture_comments()
+    result = g.cli("merge")
+    if resolution == "unpublished":
+        assert result.returncode == 2 and "comment journal" in result.stderr
+        assert not g.merge_calls()
+        return
+    rows = g.results(result)
     if resolution == "valid":
         assert [c[2] for c in g.merge_calls()] == ["100"]
         assert rows[100]["action"] == "merged"
@@ -1850,6 +1964,7 @@ def test_missing_parent_run_cannot_use_old_pr_approval(gate_env: GateEnv) -> Non
         }
     ]
     p.save(state)
+    untracked_legacy_fixture(p)
     result = g.cli("merge")
     assert result.returncode == 1, result.stderr
     assert all(

@@ -1,0 +1,135 @@
+{
+  "schema": "court_scene_pair_curve_sources_v1",
+  "conditions": {
+    "P02": {
+      "resume_update": null,
+      "sources": [
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P02-s42/logs/version_0/events.out.tfevents.1793607827.9e608dd7db57.133256.0",
+          "bytes": 1885336,
+          "sha256": "0800aff8d2cb6186cb6b8b23bbd94fca61ce3bea300070f6c379d37c828da68c"
+        }
+      ],
+      "discarded_train_loss_points": 0,
+      "accepted_validation_updates": [
+        3316,
+        6632,
+        9948,
+        13264,
+        16580,
+        19896,
+        23212,
+        26528,
+        29844,
+        33160
+      ]
+    },
+    "P03": {
+      "resume_update": 19896,
+      "sources": [
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P03-s42/logs/version_0/events.out.tfevents.1793646490.9e608dd7db57.331099.0",
+          "bytes": 1251904,
+          "sha256": "f64ec0e5911cca2d997137a49bec937ecbfbf503dc3e60bd256d5ccd3ade05cb"
+        },
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P03-s42/logs/version_1/events.out.tfevents.1793708460.8ccd9855f0f5.113185.0",
+          "bytes": 864345,
+          "sha256": "29ea53c5da11a085e643a73d58f2c665aaf1834bcf28f203fc1d964896ef8cb3"
+        }
+      ],
+      "discarded_train_loss_points": 24,
+      "accepted_validation_updates": [
+        3316,
+        6632,
+        9948,
+        13264,
+        16580,
+        19896,
+        23212,
+        26528,
+        29844,
+        33160
+      ]
+    },
+    "P12": {
+      "resume_update": null,
+      "sources": [
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P12-s42/logs/version_0/events.out.tfevents.1793722988.8ccd9855f0f5.200476.0",
+          "bytes": 1885336,
+          "sha256": "e98d591ff14202891d85a6bb4769802b2d038d7a2ba30cbc8f07e61fed2e2f88"
+        }
+      ],
+      "discarded_train_loss_points": 0,
+      "accepted_validation_updates": [
+        3316,
+        6632,
+        9948,
+        13264,
+        16580,
+        19896,
+        23212,
+        26528,
+        29844,
+        33160
+      ]
+    },
+    "P13": {
+      "resume_update": 6632,
+      "sources": [
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P13-s42/logs/version_0/events.out.tfevents.1793755082.8ccd9855f0f5.381523.0",
+          "bytes": 519602,
+          "sha256": "0b79795a54a2c05b12fad80559fdf16b75e3df4143b01b8d155845811f2b3936"
+        },
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P13-s42/logs/version_1/events.out.tfevents.1793771644.c48af171bb77.138782.0",
+          "bytes": 1547256,
+          "sha256": "9ae2c87538659a6260003644273a0d6a89743b3a821b802be815d7f9895a02db"
+        }
+      ],
+      "discarded_train_loss_points": 5,
+      "accepted_validation_updates": [
+        3316,
+        6632,
+        9948,
+        13264,
+        16580,
+        19896,
+        23212,
+        26528,
+        29844,
+        33160
+      ]
+    },
+    "P23": {
+      "resume_update": 29844,
+      "sources": [
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P23-s42/logs/version_0/events.out.tfevents.1794213646.938e4f694edf.1024482.0",
+          "bytes": 1865198,
+          "sha256": "28f4927d9af18414d983a9585aaa2513fd7181a0be45b644eb9cb8c7138218e3"
+        },
+        {
+          "drive_path": "outputs/court_detection/train/scene-pair-5500-s384-colab/P23-s42/logs/version_1/events.out.tfevents.1794278265.eb546a225ea9.391707.0",
+          "bytes": 345018,
+          "sha256": "d52aa8f7b761650d3a6ca783bbf27c679855aedbae007721074211899c71da5b"
+        }
+      ],
+      "discarded_train_loss_points": 61,
+      "accepted_validation_updates": [
+        3316,
+        6632,
+        9948,
+        13264,
+        16580,
+        19896,
+        23212,
+        26528,
+        29844,
+        33160
+      ]
+    }
+  }
+}

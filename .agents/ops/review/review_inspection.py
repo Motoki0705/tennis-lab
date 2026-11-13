@@ -502,12 +502,12 @@ def inspect_reviews(
         raise ValueError("duplicate review run IDs")
     session = ParentSession(gh, store, parent, None)
     root_errors: list[dict[str, str]] = []
-    gh.issue(parent)
-    children = {
-        r["number"] for r in gh.rows(f"repos/{gh.repo}/issues/{parent}/sub_issues")
-    }
+    _, items = session.work_items()
+    children = set(items)
     parent_comments = attempt(
-        root_errors, "parent_comments", lambda: gh.comments(parent)
+        root_errors,
+        "parent_comments",
+        lambda: gh.parent_comments(parent, session.login),
     )
     comment_cache: dict[int, list[dict[str, Any]]] = {}
     if parent_comments is not None:
@@ -546,9 +546,7 @@ def inspect_reviews(
             errors.append({"scope": "pr", "error_type": "IdentityMismatch"})
             raw = None
         if raw is not None:
-            linked = closing_issues(raw.get("body") or "", gh.repo) & (
-                children or {parent}
-            )
+            linked = closing_issues(raw.get("body") or "", gh.repo) & children
             pr["identity"] = {
                 "head_repo": raw["head"]["repo"]["full_name"],
                 "base_repo": raw["base"]["repo"]["full_name"],

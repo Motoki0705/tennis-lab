@@ -41,6 +41,7 @@ def main() -> int:
         if job is None:
             return 0
         runtime = Runtime(Path(job["runner"]))
+        runtime.launch_context = lambda: supervisor.launch_admission(args.key, args.job)
 
         def stop(signum: int, frame: object) -> None:
             # Also covers TERM before the runner has written its first record.
@@ -48,7 +49,16 @@ def main() -> int:
 
         signal.signal(signal.SIGTERM, stop)
         signal.signal(signal.SIGINT, stop)
-        status = runtime.execute(job, fd)
+        try:
+            status = runtime.execute(job, fd)
+        except ValueError:
+            # launch_admission records a known rejection before Popen. A
+            # different execution failure must retain its ambiguous state.
+            with store.locked():
+                rejected = store.parents[args.key]["dispatch"]["jobs"][args.job]
+                if not rejected.get("cancelled_before_start"):
+                    raise
+            status = 2
         with store.locked():
             dispatch = managed(store.parents[args.key])
             if dispatch is None:

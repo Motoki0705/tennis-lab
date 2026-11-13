@@ -1,0 +1,40 @@
+{
+  "schema": "court_recovery3_gate3_new_checkpoint_validation_real_Drive_v1",
+  "at": "2026-11-10T03:47:56.162513+00:00",
+  "verified": true,
+  "resume_update": 29844,
+  "first_new_original_periodic_update": 33160,
+  "new_effective_updates": 3316,
+  "checkpoint": "outputs/court_detection/train/scene-pair-5500-s384-colab/P23-s42/logs/version_1/checkpoints/update-00033160.ckpt",
+  "checkpoint_sha256": "681a8dca1201727377163d52c517ae974ba43227eb3fefb92cd40300d1ff768f",
+  "checkpoint_bytes": 536530037,
+  "checkpoint_MD5": "d6ff2a803aa08dc3a1262b7d561c6d0e",
+  "scheduled_validation": {
+    "tensorboard_step": 33159,
+    "completed_optimizer_updates": 33160,
+    "value": 4.684573650360107,
+    "wall_time": 1794281885.919472
+  },
+  "all_observed_training_and_validation_losses_finite": true,
+  "fixed_config_and_data_and_original_full_payload_guards_passed": true,
+  "real_Drive_saved_marker_progress_bytes_hash_global_step_agree": true,
+  "evidence": [
+    {
+      "file": "bounded-p23-local.json",
+      "sha256": "a2ebd6c5a821f90db81072ee4290656cb4a84f9c3bc0e9e066e6cec83f879fbb"
+    },
+    {
+      "file": "bounded-p23-drive-member.json",
+      "sha256": "469b5094b804a705609df6dc9fda3b075d37e313550bf5a965afddaceaa87a9d"
+    },
+    {
+      "file": "bounded-p23-drive.json",
+      "sha256": "26443cfc7975a8bfb0efa91082c981469061d79422c1042c2e9a4c02013b6470"
+    },
+    {
+      "file": "bounded-state-drive.json",
+      "sha256": "fdd23857a2d7188caa29cfc0994bf11319a9cfed01f4c18bada9c6b86630c224"
+    }
+  ],
+  "source_record": "operations/colab/court-scene-pair-20261110-recovery5/control/gate5-durable-proof-and-final-runtime.json"
+}

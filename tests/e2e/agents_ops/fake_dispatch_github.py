@@ -31,6 +31,8 @@ def main() -> None:
         result, code = {"message": "Not Found"}, 404
     elif path == "repos/o/r/pulls":
         result = paged(state["prs"])
+    elif path == "repos/o/r/issues":
+        result = paged(list(state["issues"].values()))
     elif path.startswith("repos/o/r/pulls/"):
         result = next(
             pr for pr in state["prs"] if pr["number"] == int(path.rsplit("/", 1)[1])
