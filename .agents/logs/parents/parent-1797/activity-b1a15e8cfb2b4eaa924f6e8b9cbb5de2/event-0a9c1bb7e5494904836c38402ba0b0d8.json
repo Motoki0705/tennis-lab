@@ -1,0 +1,86 @@
+{
+  "record": {
+    "data": {
+      "basis": [],
+      "evaluation": "adopt",
+      "inputs": [
+        "508f5199237441189a44ee5f6f01e18b",
+        "564b30d17a934763922c43a31c7a2461"
+      ],
+      "next_actions": [
+        {
+          "actor": "parent",
+          "conditions": "対象headが 8d67b26e3 のまま",
+          "expected_result": "公開review状態が fixes_verified になる",
+          "id": "e7d54a7cb7b9453e9c7705ee29663cc6",
+          "instruction": "review-state --state fixes_verified に、指摘0件・対象headのCI成功・関連テスト337件成功を証拠として記録する",
+          "operation": "verify",
+          "summary": "レビュー結果の確認を fixes_verified として記録する",
+          "target": "PR #1907 / run [private identifier]"
+        },
+        {
+          "actor": "parent",
+          "conditions": "gate dry-runが証拠待ち以外で止まらないこと、判断ログREADMEで結果→判断→行動を追えること",
+          "expected_result": "証拠待ちが解消される",
+          "id": "f1df71056f924bd6919635a6d24b8a39",
+          "instruction": "gate dry-runと判断ログの公開を確認し、complete-evidence --wait 1 で4キー証拠を記録する",
+          "operation": "verify",
+          "summary": "証拠待ち1（実機受入）を親の確認で完了する",
+          "target": "PR #1907 の evidence wait 1"
+        },
+        {
+          "actor": "parent",
+          "conditions": "gateの全条件（最新Python CI、coverage、fixes_verified、証拠待ち完了、依存）を満たす",
+          "expected_result": "PR #1907 がmergeされ #1863 がclosed/completedになる",
+          "id": "fffe0517d87147d0b2188693f990d9a7",
+          "instruction": "merge_gate.py --parent 1797 merge を実行する",
+          "operation": "merge",
+          "summary": "merge gateでPR #1907をmergeする",
+          "target": "PR #1907"
+        }
+      ],
+      "reason": "PR #1907 の正式レビュー（Astra/xhigh固定、head 8d67b26e3）はapprove、阻害指摘なし。前回major 4件の解消と競合解消の整合が確認された。残る証拠待ち1件（#1863の実機受入）は、このrun自体を代表runとして、取得→結果保存→runtime終了→親の確認→gate dry-run→判断ログ公開の一連を親が確かめて完了を記録する。",
+      "recheck_scope": [],
+      "resume_conditions": [],
+      "reuse_scope": [],
+      "source": {
+        "actor_key": "2a303c5213064b559dbbb7112c55b218",
+        "evidence": [
+          {
+            "kind": "unavailable",
+            "reason": "capture_source=parent.decide; artifact=decision spec; content_sha256=dfb476e645f893446788e22261db5dcd828ca1e7a3542c06824ee7ce07b931e6; private evidence"
+          }
+        ],
+        "kind": "parent_choice"
+      },
+      "unresolved": []
+    },
+    "id": "0a9c1bb7e5494904836c38402ba0b0d8",
+    "kind": "decision",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b1a15e8cfb2b4eaa924f6e8b9cbb5de2",
+      "delegation": null,
+      "issue": null,
+      "parent": 1797,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-13T02:45:15.429425+00:00"
+      },
+      "recorded_at": "2026-11-13T02:45:15.429500+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 1,
+    "version": 2
+  }
+}
