@@ -42,10 +42,10 @@ metrics:
   t1_query12000_val_within20px_rate: 0.7419068009780867
 artifacts:
   run_dir: knowledge/runs/run-ball-arch-desktop-20261113
-  output_dir: outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3
+  output_dir: outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4
   drive_outputs: outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1
 repro:
-  commit: 2cb49a907241bdfecd718c71a14c1da93965c57f
+  commit: 15cdc684ff60a210cb1d8209f393e60490ca8f44
   branch: codex/ball-arch-desktop-20261113
 parents: []
 relations: []
@@ -77,7 +77,7 @@ attempt 2はpush済み`cb3243ed4`、systemd user serviceと共有queue resource=
 
 # 判断と残る評価
 
-このノードは移管・数値・メモリ資格確認の記録で、精度改善の根拠にはしない。モデル採用、独立test未評価、#1859の5条件完走後に精度を比較するというsummaryの判断は変わらない（summary_impact: none）。実データprobe・起動確認の結果は同run bundleへ保存する。学習曲線とper-frame予測はDriveに保持し、Gitには小さな受入要約・再現手順を残す。T1の12k評価は検証済みとなり、T2の500保存と600解除、残条件の完了を親が監視する。workerの終了を本学習完了とは扱わない。
+このノードは移管・数値・メモリ資格確認の記録で、精度改善の根拠にはしない。モデル採用、独立test未評価、#1859の5条件完走後に精度を比較するというsummaryの判断は変わらない（summary_impact: none）。実データprobe・起動確認の結果は同run bundleへ保存する。学習曲線とper-frame予測はDriveに保持し、Gitには小さな受入要約・再現手順を残す。T1の12k評価、T2初回500保存と600解除は検証済みとなり、残条件の完了を親が監視する。workerの終了を本学習完了とは扱わない。
 
 # 6,000保存停止からの復旧
 
@@ -87,4 +87,14 @@ Driveの`checkpoint-00006000-8586c177`をmarker SHA固定で独立復元し、�
 
 旧attemptの重複tensorとreadback cacheだけをexactなDrive世代・SHA・削除前HEAD・公開ledger付きで整理し、WSL allocated blocksを1,476,173,824 bytes解放した。専用env/native build/compile cacheを保持し、他issueには触れていない。詳しい再開点の根拠は`attempt-2-storage-recovery.json`、整理記録は`attempt-3-local-cleanup.json`。実行は新しいsystemd unit/queue attempt 3とし、監視の正本は更新した`monitoring-handoff.json`とする。
 
-attempt 3ではT1をupdate6,000・sample22,000で実runnerへ復元し、追加更新なしで完了snapshotとvalidation/per-frame予測を保存・独立照合した。続くT2の1〜11更新・sample10,001〜10,011が連続し、loss/gradient norm/LRは有限だった。compile初回後10更新の中央値1.8348秒、allocated最大7,147,210,752 / reserved最大9,737,076,736 bytes。CNNはこのprefixでは凍結中で、解除後の本番peakはまだ監視対象である。host available最小17,030,041,600 / D: available最小33,458,446,336 bytesは各下限内。`attempt-3-startup-acceptance.json`と更新した監視handoffを根拠に子の見届けを終え、以降の節目は親へ引き継ぐ。
+attempt 3ではT1をupdate6,000・sample22,000で実runnerへ復元し、追加更新なしで完了snapshotとvalidation/per-frame予測を保存・独立照合した。続くT2の1〜11更新・sample10,001〜10,011が連続し、loss/gradient norm/LRは有限だった。compile初回後10更新の中央値1.8348秒、allocated最大7,147,210,752 / reserved最大9,737,076,736 bytes。CNNはこの歴史的prefixでは凍結中。host available最小17,030,041,600 / D: available最小33,458,446,336 bytesは当時の下限内だった。根拠は`attempt-3-startup-acceptance.json`に保持する。
+
+# RAM待機への変更とattempt 4
+
+attempt 3はT2 backwardの1,283更新付近でhost availableが旧4GiB下限を下回り停止した。数値は有限・連続で、Drive上の検証済み最新世代は1,000更新だった。並行pytestやduは親が観測したが、当時は学習プロセスのRSS履歴がなく、原因を外部要因だけに帰属できない。
+
+親の復旧指示で、次の更新前にavailableが6GiB未満なら無期限に待ち、6GiB以上で再開する。30分超の通知は1回だけ残し、更新途中を含む2GiB未満は緊急停止する。D:10GiBとallocator80%、checkpointing範囲・recipeは変えない。待機時間を更新秒から除外し、sampler/RNGを進めない。各更新に学習親と再帰的な子のRSS合計を記録し、待機開始・再開・30分超・中断を`ram-waits.jsonl`へ残す。RSSには共有pageの重複を含む。guard/adapter/実model比較36件が20.66秒で成功し、6GiBを4GiBへ下げる誤りと待機を計測内へ移す誤りをmutationで検出した。実行commitのCI Pythonも成功した。
+
+attempt 4は検証済み`checkpoint-00001000-e2f35d3f`を独立readbackし、model381 key・AdamW375 state・RNG・LR位置・sample11,000・1,000行logを完全復元した。既存state keyの追加はない。明示許可したrunner observerのsource差分だけをbyte固定で移管し、未commitの1,001〜1,283更新は採用していない。systemd user serviceと共有queue resource=allで、push済みsourceから1,001〜1,011更新・sample11,001〜11,011が有限・連続に進んだ。data draw/augmentation/LRは同じattempt-3 prefixと一致した。CNN解除済みでallocated最大10,803,609,600 / reserved最大12,763,267,072 bytes、compile初回37.7527秒・後続10更新中央値3.4532秒だった。host available最小8,412,168,192、admission最小8,616,722,432、D:最小16,144,359,424 bytesは各下限内。親子RSS合計の最大は13,527,920,640 bytes。受入prefixではRAM待機は発生していない。
+
+現在の実行・保存先・unit/queue/PID/PGID・終了event・待機logのキーと新attempt復旧コマンドは`monitoring-handoff.json`、受入根拠は`attempt-4-startup-acceptance.json`。実行checkoutは固定し、報告commitを別に残す。T2完了や以降の条件は待たず、監視を親へ返す。定期follow-upは登録しない。

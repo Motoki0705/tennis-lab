@@ -2,8 +2,9 @@
 
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
 supersedes the original prohibition on checkpointing for T1/T2. The initial desktop migration started
-T1 from tail update 5,500 (query cumulative 11,500). The current recovery adopts
-its fully verified update 6,000, then continues T2, C1, C2 and C3.
+T1 from tail update 5,500 (query cumulative 11,500). T1 has since completed with
+verified validation and predictions. Attempt 4 resumes the verified T2 first-stage
+update 1,000, then continues its remaining stages, C1, C2 and C3.
 No completed stage is repeated. C1/C2/C3 retain their original recipe and do not
 checkpoint activations. A different GPU cannot promise bitwise continuation.
 Its timing/memory must not be compared with the historical untrained L4 benchmark.
@@ -133,7 +134,7 @@ removed after durable verification, keeping local storage bounded. The ledger
 size and source commit for each evicted tensor. Diagnostic snapshots and their
 `probe-receipts/` are also read back before local probe tensors are evicted.
 
-Inspect `production-registration-a3.json`, `serial-status.json`,
+Inspect `production-registration-a4.json`, `serial-status.json`,
 `production-status.json`, `stage-status/*/state.json`, `persistence/`, logs,
 and the recorded service/queue identities. The systemd terminal event is written
 once when the queue exits; no periodic follow-up or post-acceptance progress
@@ -214,7 +215,8 @@ recovery commands are in the handoff and [recovery.md](recovery.md).
 The historical attempt-2 startup prefix is retained in `startup-acceptance.json`
 (update 5511 / sample 21511, execution `cb3243ed4`). Its later storage failure
 is recorded in [attempt-2-storage-recovery.json](attempt-2-storage-recovery.json).
-The attempt-3 identities and acceptance prefix are in the current handoff.
+The historical attempt-3 acceptance prefix remains in
+`attempt-3-startup-acceptance.json`; the current handoff identifies attempt 4.
 
 ## Interrupted 6,000 checkpoint recovery
 
@@ -264,10 +266,11 @@ inside the 4 GiB / 10 GiB lower bounds. See
 [attempt-3-startup-acceptance.json](attempt-3-startup-acceptance.json).
 
 The historical attempt-3 unit was `tennis-ball-arch-desktop-production-20261113-a3.service`; it later failed at the old RAM floor.
-The handoff contains the actual queue identity, PID/PGID, terminal-event path
-and fresh-root attempt-4 recovery commands. T2 500 persistence, 600→601 unfreeze
-and remaining completions belong to the parent. No periodic follow-up or
-further live progress polling is registered by this worker.
+The historical prefix precedes its later RAM failure. The current handoff records
+attempt 4, its terminal-event path and fresh-root attempt-5 recovery commands.
+T2's first checkpoint and unfreeze were verified in attempt 3; remaining stage
+completions belong to the parent. No periodic follow-up or further live progress
+polling is registered by this worker.
 
 ## RAM admission after attempt 3
 
@@ -299,3 +302,48 @@ strict resume reader is retained. Only the pinned old/new runner source pair in
 `resource-observer-migration.json` may be adapted during explicit recovery; every
 other unexpected source change is rejected, and model/AdamW/RNG/schedule/sampler
 and committed logs are compared completely before adoption.
+
+## Attempt-4 acceptance
+
+The verified T2 generation `checkpoint-00001000-e2f35d3f` was independently
+restored. All model/AdamW/RNG/schedule/sampler state and the committed 1,000-row
+log prefix matched exactly. The real runner restored 381 model keys and 375
+optimizer states, sample position 11,000, with no new state keys. Only the
+approved observer source transition was adapted. Attempt 3's uncommitted
+1,001–1,283 suffix was discarded. T1's completed stage and validation were
+retained without replay. See [attempt-3-ram-recovery.json](attempt-3-ram-recovery.json).
+
+The pushed execution source is `15cdc684ff60a210cb1d8209f393e60490ca8f44`;
+CI Python succeeded in run
+[43392201904](https://github.com/Motoki0705/tennis-lab/actions/runs/43392201904).
+The detached unit is `tennis-ball-arch-desktop-production-20261113-a4.service`,
+with one shared-queue `resource=all` serial command. Actual unit/job/PID/PGID and
+terminal-event paths are in [monitoring-handoff.json](monitoring-handoff.json).
+The frozen runtime checkout stays at this execution source while reporting
+commits advance in the implementation worktree.
+
+Updates 1,001–1,011 and sample positions 11,001–11,011 were continuous, with finite
+loss, gradient norm and learning rates. The CNN was unfrozen. Data draws,
+augmentation and learning rates matched the same attempt-3 prefix. The first
+update took 37.7527 seconds including compilation; the following ten had median
+3.4532 seconds. Peak allocated/reserved was 10,803,609,600 / 12,763,267,072 bytes,
+below the 13,682,291,507-byte allocator cap. Host available minimum was
+8,412,168,192 bytes, admission minimum 8,616,722,432, and D: available minimum
+16,144,359,424. All stayed within the 2 GiB emergency, 6 GiB admission and 10 GiB
+disk bounds. Maximum parent-plus-child RSS sum was 13,527,920,640 bytes, including
+shared-page duplication. There were no RAM wait events in this prefix; indefinite
+waiting, one long-wait notice, and emergency interruption were checked in CPU
+tests. The acceptance evidence is [attempt-4-startup-acceptance.json](attempt-4-startup-acceptance.json).
+
+The selected guard/adapter/real-model resume suite passed 36 cases in 20.66
+seconds. Twelve added cases cover admission/RSS, pinned source migration and
+real-model observer behavior. Mutations that lower admission to 4 GiB or include
+waiting in update timing failed the intended assertions; sources were restored
+before the passing suite. Normal pre-commit and CI passed. The initial observation
+helper ran before launch registration existed and failed; only that read-only
+helper was restarted after registration. Its original failure log is retained.
+The production job was never duplicated or restarted for this helper race.
+
+Worker observation ends at this accepted prefix. The parent owns future RAM waits,
+T2 validation and all remaining condition completions. Wait events and every new
+update's RSS are exposed in the handoff. No periodic follow-up is registered.

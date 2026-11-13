@@ -33,6 +33,22 @@
       "passed": 10,
       "seconds": 9.89,
       "source_log": "desktop-recovery-20261113-a3/guard-ci-reproduction.log"
+    },
+    {
+      "command": "pytest tests/unit/tasks/ball_detection/training/test_desktop_guard.py knowledge/runs/run-ball-arch-desktop-20261113/test_state.py knowledge/runs/run-ball-arch-desktop-20261113/test_serial.py tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py::test_update_observer_waits_outside_timing_without_changing_scientific_state tests/integration/tasks/ball_detection/test_sequential_temporal_training.py::test_mhc_direct_t32_dpt_to_t64_freeze_inheritance_and_exact_runner_resume -n 0 -q --durations=8",
+      "passed": 36,
+      "seconds": 20.66,
+      "new_guard_cases": 6,
+      "new_source_migration_cases": 5,
+      "new_real_model_integration_cases": 1,
+      "source_log": "desktop-recovery-20261113-a4/resource-tests-final.log"
+    },
+    {
+      "command": "pytest tests/unit/tasks/ball_detection/training/test_desktop_guard.py::test_wait_has_no_deadline_and_logs_one_thirty_minute_notice -n 0 -q",
+      "passed": 1,
+      "seconds": 13.85,
+      "source_log": "desktop-recovery-20261113-a4/admission-metric-test.log",
+      "note": "Overlaps the suite above; verifies added admission metadata assertion."
     }
   ],
   "native": {
@@ -199,12 +215,12 @@
     "evidence": "archive-metadata/inventory-before-production.json"
   },
   "execution_commit_ci": {
-    "commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
-    "run_id": 43374423329,
+    "commit": "15cdc684ff60a210cb1d8209f393e60490ca8f44",
+    "run_id": 43392201904,
     "python": "success",
-    "python_job_id": 131720871642,
-    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43374423329",
-    "confirmation": "gh run watch --exit-status returned 0 and GitHub Python job completed successfully"
+    "python_job_id": 131779036171,
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43392201904",
+    "confirmation": "gh run watch returned 0; GitHub Python completed successfully"
   },
   "previous_execution_commit_ci": {
     "conclusion": "success",
@@ -220,6 +236,94 @@
     "status": "completed"
   },
   "actual_full_state_recovery": {
+    "complete": true,
+    "stages": [
+      {
+        "stage": "T1-q06000-q12000",
+        "update": 6000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00006000-f95d9b90",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/completed-00006000-f95d9b90",
+          "manifest_sha256": "87f7b0fe576eb81a3354eb645a7f0683e5e5634407e8034684a5d47bc7203727",
+          "manifest_md5": "d856b48746aeeacd69d8476198528557",
+          "files": 12,
+          "size_bytes": 550949797,
+          "marker_id": "1HA30gpWwNEyU9tGev-1Vkuz3Q5RqvkVI",
+          "seconds": 100.26304868899751,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "a5e25941814bc5d69b9ccf702c68dfa050607b1a290c2fd3b1b0318c3ae33547",
+        "tensor_cache_retired": true
+      },
+      {
+        "stage": "T2-q00000-q06000",
+        "update": 1000,
+        "completed": false,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "checkpoint-00001000-e2f35d3f",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T2-q00000-q06000/checkpoint-00001000-e2f35d3f",
+          "manifest_sha256": "3efed597eaa05ccb627d470febebd07049d41014efc6a3d9b0c7cdb3a2b5250a",
+          "manifest_md5": "e58baf666bb2692418eda500a9ef3c07",
+          "files": 7,
+          "size_bytes": 478649569,
+          "marker_id": "1CPTda2eORAnxdDzb0vJEDuzDa1zX8KT5",
+          "seconds": 99.67406478799967,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "f35f9b9526546990aee7ad587c64e6e1e500eb353e433d0b30a02094a9faab4d",
+        "tensor_cache_retired": false
+      }
+    ],
+    "policy": {
+      "schema_version": 1,
+      "confirmed": true,
+      "scope": "encoder_msda",
+      "t1_t2_identical": true,
+      "production_mutable": false,
+      "selected_by": "minimum summed warm median update seconds among common passing scopes",
+      "allocator_fraction": 0.8,
+      "scientific_shape_unchanged": true,
+      "cnn_cases_checkpointing": false,
+      "evidence": "probe-matrix.json"
+    },
+    "old_writer_confirmed_stopped": true,
+    "scientific_state_exact": true,
+    "finished_at": 1794558295.9732559
+  },
+  "historical_execution_commit_ci": {
+    "headSha": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+    "run_id": 43363864266,
+    "check": "Python",
+    "conclusion": "success"
+  },
+  "mutation_checks": [
+    {
+      "mutation": "admission_4_instead_of_6",
+      "node": "tests/unit/tasks/ball_detection/training/test_desktop_guard.py::test_wait_has_no_deadline_and_logs_one_thirty_minute_notice",
+      "returncode": 1,
+      "detected": true,
+      "detected_contract": "Below-6-GiB admission incorrectly returned immediately; expected waiting/start-notice-resume events were absent."
+    },
+    {
+      "mutation": "wait_inside_update_timer",
+      "node": "tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py::test_update_observer_waits_outside_timing_without_changing_scientific_state",
+      "returncode": 1,
+      "detected": true,
+      "detected_contract": "Wait counted inside update timer; recorded update seconds exceeded 3600 and violated the timing assertion after scientific-state equality passed."
+    }
+  ],
+  "attempt_3_execution_commit_ci": {
+    "commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+    "run_id": 43374423329,
+    "python": "success",
+    "python_job_id": 131720871642,
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43374423329",
+    "confirmation": "gh run watch --exit-status returned 0 and GitHub Python job completed successfully"
+  },
+  "attempt_2_full_state_recovery": {
     "complete": true,
     "stages": [
       {
@@ -258,10 +362,19 @@
     "scientific_state_exact": true,
     "finished_at": 1794543375.2520573
   },
-  "historical_execution_commit_ci": {
-    "headSha": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
-    "run_id": 43363864266,
-    "check": "Python",
-    "conclusion": "success"
+  "current_startup_acceptance": {
+    "source_commit": "15cdc684ff60a210cb1d8209f393e60490ca8f44",
+    "resume_update": 1000,
+    "first_new_update": 1001,
+    "last_accepted_update": 1011,
+    "new_updates": 11,
+    "post_first_compile_updates": 10,
+    "finite_loss_grad_lr": true,
+    "peak_allocated_bytes": 10803609600,
+    "peak_reserved_bytes": 12763267072,
+    "minimum_admitted_host_available_bytes": 8616722432,
+    "maximum_process_tree_rss_bytes": 13527920640,
+    "wait_events_count": 0,
+    "source": "attempt-4-startup-acceptance.json"
   }
 }
