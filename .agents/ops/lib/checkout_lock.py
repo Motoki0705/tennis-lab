@@ -17,15 +17,7 @@ def state_root() -> Path:
     return base / "tennis-lab-agents"
 
 
-@contextmanager
-def checkout_lock(
-    root: Path,
-    *,
-    name: str = "ops-code",
-    exclusive: bool = False,
-    blocking: bool = True,
-) -> Iterator[int | None]:
-    """Never unlink these files: all checkouts must refer to the same inode."""
+def common_directory(root: Path) -> Path:
     common = subprocess.check_output(
         [
             "git",
@@ -37,7 +29,25 @@ def checkout_lock(
         ],
         text=True,
     ).strip()
-    with (Path(common) / f"{name}.lock").open("a", encoding="utf-8") as stream:
+    return Path(common)
+
+
+def checkout_barrier(root: Path) -> Path:
+    return common_directory(root) / "ops-code.blocked"
+
+
+@contextmanager
+def checkout_lock(
+    root: Path,
+    *,
+    name: str = "ops-code",
+    exclusive: bool = False,
+    blocking: bool = True,
+) -> Iterator[int | None]:
+    """Never unlink these files: all checkouts must refer to the same inode."""
+    with (common_directory(root) / f"{name}.lock").open(
+        "a", encoding="utf-8"
+    ) as stream:
         mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
         try:
             fcntl.flock(stream, mode | (0 if blocking else fcntl.LOCK_NB))

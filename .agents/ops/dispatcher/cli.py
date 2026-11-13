@@ -13,7 +13,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from lib.checkout_lock import checkout_lock
+from lib.checkout_lock import checkout_barrier, checkout_lock
 from parent.github import GitHub
 from parent.policy import nonempty
 from parent.state import state_directory
@@ -167,6 +167,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
         signal.signal(signal.SIGHUP, pause)
+        barrier = checkout_barrier(Path(state["config"]["cwd"]))
         with gate(schedule.directory / "supervisor.lock") as fd:
             if fd is None:
                 return {"result": "busy"}
@@ -174,7 +175,7 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
                 with checkout_lock(
                     Path(state["config"]["cwd"]), blocking=False
                 ) as code_fd:
-                    if code_fd is not None:
+                    if code_fd is not None and not barrier.exists():
                         supervisor.reconcile()
                         supervisor.assign()
                         supervisor.launch_reserved()

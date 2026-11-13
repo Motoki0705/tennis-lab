@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lib.checkout_lock import checkout_lock  # noqa: E402
+from lib.checkout_lock import checkout_barrier, checkout_lock  # noqa: E402
 
 
 def main() -> int:
@@ -27,6 +27,12 @@ def main() -> int:
     if args.board_web_port is not None and not 1 <= args.board_web_port <= 65535:
         parser.error("board web port must be between 1 and 65535")
     with checkout_lock(args.repo) as fd:
+        if checkout_barrier(args.repo).exists():
+            print(
+                "checkout_job: checkout recovery pending; inspect spin ops status git-sync",
+                file=sys.stderr,
+            )
+            return 75
         if args.supervisor:
             from dispatcher.cli import main as supervise
         elif args.board_web_port is not None:

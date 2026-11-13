@@ -41,6 +41,11 @@ board webは `checkout_job.py --repo <main> --board-web-port 8790` でimportを�
 state rootは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents`。
 共通lockはstate rootを変更しても変わらず、同じGit共通ディレクトリへ集約される。
 
+更新中は同じGit共通ディレクトリの `ops-code.blocked` も保持する。更新processが失われても
+launcherはマーカーが残る間、コードをimportせず75で拒否し、supervisorも新規処理を始めない。
+マーカーを手動で消さず、mainの追跡ファイルとGit操作を修復してからgit-syncを再実行する。
+更新側が整合性を確認してマーカーを解除する。
+
 `opsproc.run_process_group()` の任意引数 `cancel` は `threading.Event`。
 set済みなら起動せず、実行中のsetはprocess groupを停止・回収して `ProcessCancelled(CommandError)`
 を送出する。timeout・通常終了の回収と、cancelを指定しない既存呼出の動作は保持する。

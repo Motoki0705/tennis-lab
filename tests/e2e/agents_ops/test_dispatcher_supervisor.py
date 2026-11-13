@@ -1669,6 +1669,11 @@ def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(
     with lock(d.h.work, exclusive=True):
         assert cli.execute(args)["result"] == "supervise"
     assert calls == []
+    barrier = importlib.import_module("lib.checkout_lock").checkout_barrier(d.h.work)
+    barrier.touch()
+    assert cli.execute(args)["result"] == "supervise"
+    assert calls == []
+    barrier.unlink()
     assert cli.execute(args)["result"] == "supervise"
     assert calls == ["reconcile", "assign", "launch_reserved"]
 
