@@ -527,7 +527,7 @@ def test_fresh_validate_reserve_order_and_manual_registration_share_lock(
         session = importlib.import_module("parent.session").ParentSession(
             d.h.gh, d.h.store, 1, "claude:manual"
         )
-        session.register()
+        session.register("手動担当の表示")
 
 
 @pytest.mark.parametrize("change", ["body", "comment", "code", "owner", "basis"])

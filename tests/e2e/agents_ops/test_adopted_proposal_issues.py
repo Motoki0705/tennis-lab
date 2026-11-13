@@ -1538,7 +1538,7 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
         auth = execution.validate_candidate(
             session, candidate["basis_sha256"], candidate["generation"]
         )
-        session.register()
+        session.register("採用提案の担当表示")
         session.note("採用出典と実行根拠を照合し、既存の子へ委任する。")
         assert execution.authorization(session) == auth
         for n in (101, 102):

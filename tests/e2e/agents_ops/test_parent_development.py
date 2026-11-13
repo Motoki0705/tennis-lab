@@ -1721,7 +1721,9 @@ def test_handoff_continues_original_worker_session(
             new_session = session
         with new_session.store.locked():
             if change == "generation":
-                new_session.accept("既存worktreeと元workerを引き継ぐ。")
+                new_session.accept(
+                    "既存worktreeと元workerを引き継ぐ。", summary="既存workerの引継ぎ"
+                )
                 # A crashed old supervisor may have missed a terminal run.
                 # Cleanup is real; only the dispatcher's end marker is absent.
                 missed = new_session.row["dispatch"]["jobs"][first["job_id"]]
@@ -1973,7 +1975,7 @@ def test_handoff_transfers_control_before_publication_and_old_parent_completion(
 
     monkeypatch.setattr(successor, "post", completion_during_publication)
     with successor.store.locked():
-        successor.accept("保存済み作業を引き継ぐ。")
+        successor.accept("保存済み作業を引き継ぐ。", summary="保存済み作業の引継ぎ")
         assert successor.owner()["status"] == "active"
         with pytest.raises(ValueError, match="別セッション"):
             session.owner()

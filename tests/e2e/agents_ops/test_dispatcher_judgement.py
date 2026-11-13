@@ -1804,7 +1804,7 @@ def test_rejudgement_after_assignment_updates_display_without_revoking_basis(
             candidate["generation"],
         )
         owner = session_class(h.gh, h.store, 1, "claude:private-owner")
-        owner.register()
+        owner.register("判定後の担当表示")
     h.response(decision(1, "existing_owner"))
     second = h.run(runner=h.fake_runner)
     assert second["result"] == "recorded", second

@@ -198,13 +198,23 @@ class ParentSession:
 
         return {"parent": self.parent, "body_sha256": sha, "url": url(self, response)}
 
+    def _assignment_summary(self, summary: str | None) -> str:
+        """Reject missing/invalid display input before any assignment is saved."""
+        from herdr_labels.service import validate_summary
+
+        if summary is None:
+            summary = self.row.get("display_summary")
+        if summary is None:
+            raise ValueError(
+                f"parent #{self.parent} has no sidebar summary; "
+                "specify --summary <summary> when registering or accepting a handoff"
+            )
+        return validate_summary(summary)
+
     def register(self, summary: str | None = None) -> dict[str, Any]:
         if self.session is None:
             raise ValueError("session identity missing")
-        if summary is not None:
-            from herdr_labels.service import validate_summary
-
-            validate_summary(summary)
+        summary = self._assignment_summary(summary)
         registration(self.store.parents, self.key, self.session)
         if self.gh.issue(self.parent)["state"] != "open":
             raise ValueError("cannot assign a closed parent issue")
@@ -217,12 +227,13 @@ class ParentSession:
                 "generation": previous.get("generation", 0) + 1,
                 "tasks": previous.get("tasks", {}),
                 "reviews": previous.get("reviews", []),
+                "display_summary": summary,
             }
             self.row.pop("owner_runtime", None)
             self.store.save()
         if self.capture_owner_runtime():
             self.store.save()
-        if summary is not None and self.row.get("display_summary") != summary:
+        if self.row.get("display_summary") != summary:
             self.row["display_summary"] = summary
             self.store.save()
         self.post(
@@ -356,9 +367,12 @@ class ParentSession:
         self.sync_progress()
         return self.status()
 
-    def accept(self, note: str, recover: bool = False) -> dict[str, Any]:
+    def accept(
+        self, note: str, recover: bool = False, *, summary: str | None = None
+    ) -> dict[str, Any]:
         if self.session is None:
             raise ValueError("session identity missing")
+        summary = self._assignment_summary(summary)
         row = self.row
         same_retry = (
             row
@@ -367,6 +381,9 @@ class ParentSession:
             and row.get("handoff_note_sha256") == digest(note)
         )
         if same_retry:
+            if row.get("display_summary") != summary:
+                row["display_summary"] = summary
+                self.store.save()
             self.post(
                 {
                     "event": "handoff",
@@ -413,6 +430,7 @@ class ParentSession:
             generation=row["generation"] + 1,
             handoff_note_sha256=digest(note),
             handoff_recovery=recover,
+            display_summary=summary,
         )
         self.capture_owner_runtime()
         if row.get("dispatch") is not None:

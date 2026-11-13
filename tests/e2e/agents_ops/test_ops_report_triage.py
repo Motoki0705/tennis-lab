@@ -35,6 +35,8 @@ def _parent(
     ok: bool = True,
     extra: dict[str, str] | None = None,
 ) -> Any:
+    if args == ("register",):
+        args = (*args, "--summary", "採用提案の確認")
     clean = {
         k: v
         for k, v in ops.env.items()
