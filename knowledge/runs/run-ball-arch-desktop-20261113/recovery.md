@@ -16,8 +16,8 @@ configuration. Choose a fresh root suffix, never delete or reuse a failed root.
 ```bash
 cd "$SOURCE"
 export RCLONE_CONFIG=/home/kamimura/.config/tennis-lab/rclone-drive.conf
-OLD_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113
-NEW_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2
+OLD_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2
+NEW_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3
 ADAPTER="$SOURCE/knowledge/runs/run-ball-arch-desktop-20261113"
 PY="$OLD_ROOT/env-original/bin/python"
 "$PY" "$ADAPTER/bootstrap_recovery.py" --from-root "$OLD_ROOT" --root "$NEW_ROOT"

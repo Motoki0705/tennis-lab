@@ -13,7 +13,7 @@ qualification, lifecycle and evidence; it does not replace historical generation
 
 ## Inputs and safety
 
-`$ROOT` is the run output `outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113`
+`$ROOT` is the active run output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a2`
 below the implementation worktree. `$SOURCE` is the immutable pushed runtime checkout.
 `$ADAPTER` is this directory in that checkout. `$PY` is `$ROOT/env-original/bin/python`.
 `$QUEUE` is the main repository's shared `.training_queue`; set `$RCLONE_CONFIG`
@@ -105,8 +105,10 @@ re-enqueued. A user systemd unit owns foreground queue `serve`; agent descendant
 cleanup cannot stop it. The serial command uses a writer lock, invokes each
 stage in a separate process, waits for validation and verified completion,
 and fails immediately on OOM, nonfinite gradients or persistence errors.
-The runtime checkout is additionally git-worktree-locked while its service uses
-it. The parent may unlock/remove it only after the terminal event and acceptance.
+The runtime checkout and the implementation/output worktree are git-worktree-locked
+while the service uses them. Retain the initial `desktop-resume-20261113` root too:
+the active root reuses its private environment, native binary and compiler cache.
+The parent may unlock/remove these only after the terminal event and acceptance.
 
 ## State, persistence and continuation
 
@@ -121,7 +123,7 @@ removed after durable verification, keeping local storage bounded. The ledger
 size and source commit for each evicted tensor. Diagnostic snapshots and their
 `probe-receipts/` are also read back before local probe tensors are evicted.
 
-Inspect `production-registration-a1.json`, `serial-status.json`,
+Inspect `production-registration-a2.json`, `serial-status.json`,
 `production-status.json`, `stage-status/*/state.json`, `persistence/`, logs,
 and the recorded service/queue identities. The systemd terminal event is written
 once when the queue exits; no periodic follow-up or post-acceptance progress
@@ -138,3 +140,63 @@ T2's 500 checkpoint and 600-to-601 unfreeze, and every condition's completion.
 No periodic follow-up is registered by this worker.
 An interrupted process or an existing output directory never proves completion.
 Do not repeat `prepare` or delete a failed attempt. See [recovery](recovery.md).
+
+## Desktop qualification and attempt history
+
+The selected scope is `encoder_msda`: replay each CNN stage and each official
+MSDA frame chunk. Ordinary CA, temporal attention and FFN are not checkpointed.
+T1/T2 use the same policy; C1/C2/C3 keep checkpointing off. See
+[probe-summary.json](probe-summary.json) for exact bytes, all samples and OOMs.
+
+| Exact-shape probe | Allocated / reserved GB | Cold first update (s) | Following-two median (s) |
+| --- | ---: | ---: | ---: |
+| T1, encoder + MSDA | 10.804 / 12.595 | 234.39 | 3.77 |
+| T2, encoder + MSDA, CNN unfrozen | 10.804 / 12.533 | 93.61 | 3.16 |
+| C1, no checkpointing | 9.397 / 10.475 | 130.11 | 1.81 |
+
+GB means 1,000,000,000 bytes. Allocator cap is 13,682,291,507 bytes.
+The MSDA-only candidates OOM'd (T1 allocated/reserved 13.534/13.652 GB;
+T2 13.509/13.590 GB). These are three-update qualifications, not an untrained
+benchmark or a comparison with L4. C2/C3 have not been probed on this GPU.
+
+Attempt 1 stopped during the initial 5,500 checkpoint readback, before a new
+optimizer update. The whole-filesystem growth guard observed 19.20 GB (stop
+threshold 19 GB); host available was 19.76 GB. Three interrupted private-env
+wheel download directories were identified by timestamp, checked for absent
+process descriptors and single links, then removed, reclaiming 1.54 GB. Its
+failed job and uploaded terminal event remain intact. The initial full state was
+independently reverified, restored to the fresh active root, and compared exactly
+before attempt 2. Obsolete local attempt-1 tensors were evicted only after the
+verified Drive snapshot and recovery. No optimizer reset, scientific update
+replay, scope change or reduction of shape/precision was used. Evidence is in
+[attempt-1-storage-recovery.json](attempt-1-storage-recovery.json) and
+[local-tensor-retirement.json](local-tensor-retirement.json).
+
+## Parent monitoring
+
+The committed [monitoring-handoff.json](monitoring-handoff.json) is the current
+identity/path/acceptance record. Its output root is the active attempt; the old
+root is retained input/environment/failure evidence. The execution checkout is
+fixed at the pushed commit recorded there, while this README and handoff JSON
+belong to the reporting branch. The Drive handoff receipt locates an independently
+verified copy of these reporting files.
+
+| Parent milestone | Authoritative evidence |
+| --- | --- |
+| T1 tail 6,000 / query 12k | `stage-status/T1-q06000-q12000/state.json`: event completed, update 6000, receipt/readback verified, checkpoint_state_equal true. `validation-update-00006000.json`: observed 85473 and matching target/teacher/frame identities; its `.frames.jsonl` must be in that verified snapshot. |
+| T2 first 500 checkpoint | Retained `persistence/T2-q00000-q06000/*.json` entry: event checkpoint, update 500, verified receipt/readback and checkpoint_state_equal true. The mutable latest pointer may already be later. |
+| T2 CNN unfreeze | Its `train.jsonl` row 600 has encoder_frozen true, row 601 false, subsequent updates/samples continuous with finite loss/gradient/LR. |
+| Each condition completed | Matching stage completed pointer and local COMPLETED marker, exact budget (T 6000 per stage, C 10000), fixed validation/prediction readback; controller moves on only afterward. |
+| Whole serial process ended | Root COMPLETED.json plus every completed stage, queue done, and the recorded terminal event state done / returncode 0. A service exit alone does not prove completion. |
+
+For source coordinates, report `metrics.mean_error_px`, `median_error_px`,
+`p95_error_px`, `within_distance_rate` with `distance_threshold_source_px=20`.
+The parent owns these future milestones; the worker does not wait for them or
+register periodic follow-ups. The terminal event is written locally by service
+exit/ExecStopPost, then uploaded and SHA-read back. A missing event alongside an
+inactive unit needs investigation. Failure paths and the precise fresh-root
+recovery commands are in the handoff and [recovery.md](recovery.md).
+
+Startup acceptance was captured after update 5511 (sample 21511), with ten updates
+after the first compile update. Execution commit: `cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee`.
+Active service: `tennis-ball-arch-desktop-production-20261113-a2.service`. Identities and exact commands are in the handoff.

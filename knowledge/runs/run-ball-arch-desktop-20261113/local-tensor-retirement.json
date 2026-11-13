@@ -101,6 +101,26 @@
       "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/diagnostics/encoder_msda/T2-q00000-q06000/probe-1794541356767719737",
       "manifest_sha256": "6e4c6f186c07245de4525324f801f3ac2f0ffe81125cefc2610b9343c1b1c625",
       "reason": "discarded diagnostic updates; immutable verified Drive copy retained"
+    },
+    {
+      "path": "production/T1-q06000-q12000/checkpoint-update-00005500.pt",
+      "sha256": "f06a128ced1b7116fc1d40c9ee3a69620d8ca5a4cb448e04ebd2c175f2364c0d",
+      "size_bytes": 346647057,
+      "protected_generation": "initialized-00005500-72fa971d",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/initialized-00005500-72fa971d",
+      "execution_commit": "7b7aed4f02d0c813d07261fea73e99f9381b57e3",
+      "reason": "verified redundant local cache; Drive generation retained",
+      "pre_deletion_head": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee"
+    },
+    {
+      "path": "production/T1-q06000-q12000/weights-update-00005500.pt",
+      "sha256": "a7c7e55ced30dc6303300c44d974315012ce6b49ade3f15c8005e56e51d1f8be",
+      "size_bytes": 116301749,
+      "protected_generation": "initialized-00005500-72fa971d",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/initialized-00005500-72fa971d",
+      "execution_commit": "7b7aed4f02d0c813d07261fea73e99f9381b57e3",
+      "reason": "verified redundant local cache; Drive generation retained",
+      "pre_deletion_head": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee"
     }
   ],
   "scientific_artifacts_deleted": false,

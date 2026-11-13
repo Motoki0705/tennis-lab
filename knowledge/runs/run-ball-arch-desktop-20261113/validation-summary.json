@@ -18,8 +18,8 @@
     {
       "command": "pytest knowledge/runs/run-ball-arch-desktop-20261113/test_state.py knowledge/runs/run-ball-arch-desktop-20261113/test_serial.py -n 0 -q",
       "passed": 13,
-      "seconds": 5.07,
-      "source_log": "adapter-cpu-entrypoint.log"
+      "seconds": 4.69,
+      "source_log": "adapter-cpu-recovery-final.log"
     }
   ],
   "native": {
@@ -186,6 +186,12 @@
     "evidence": "archive-metadata/inventory-before-production.json"
   },
   "execution_commit_ci": {
+    "headSha": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+    "run_id": 43363864266,
+    "check": "Python",
+    "conclusion": "success"
+  },
+  "previous_execution_commit_ci": {
     "conclusion": "success",
     "headSha": "7b7aed4f02d0c813d07261fea73e99f9381b57e3",
     "python": [
@@ -197,5 +203,44 @@
       }
     ],
     "status": "completed"
+  },
+  "actual_full_state_recovery": {
+    "complete": true,
+    "stages": [
+      {
+        "stage": "T1-q06000-q12000",
+        "update": 5500,
+        "completed": false,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "initialized-00005500-72fa971d",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/initialized-00005500-72fa971d",
+          "manifest_sha256": "65f622facdc7c1dedb6cf321159006bcdb6b77311e377b1a2f473e4ff03def8f",
+          "manifest_md5": "15241eab1c0361900437a009da465725",
+          "files": 9,
+          "size_bytes": 484845537,
+          "marker_id": "1lkB8dot6yhvG6tSgyqbhGvGc5o3nzQX1",
+          "seconds": 95.0720082659991,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "7a670fca4b3e07947788493c42a8a8aae875a550cab1cffad1d20c3d1c6c44f7",
+        "tensor_cache_retired": false
+      }
+    ],
+    "policy": {
+      "schema_version": 1,
+      "confirmed": true,
+      "scope": "encoder_msda",
+      "t1_t2_identical": true,
+      "production_mutable": false,
+      "selected_by": "minimum summed warm median update seconds among common passing scopes",
+      "allocator_fraction": 0.8,
+      "scientific_shape_unchanged": true,
+      "cnn_cases_checkpointing": false,
+      "evidence": "probe-matrix.json"
+    },
+    "old_writer_confirmed_stopped": true,
+    "scientific_state_exact": true,
+    "finished_at": 1794543375.2520573
   }
 }

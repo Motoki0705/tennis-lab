@@ -130,5 +130,53 @@
   "scientific_optimizer_updates_applied": 0,
   "failed_attempt_preserved": true,
   "whole_filesystem_growth_is_conservative_including_other_writers": true,
-  "recovery": "fresh root desktop-recovery-20261113-a2; exact full state at 5500, same policy and source, shared private environment/native/compiler cache"
+  "recovery": "fresh root desktop-recovery-20261113-a2; exact full state at 5500, same policy and source, shared private environment/native/compiler cache",
+  "completed_recovery": {
+    "complete": true,
+    "stages": [
+      {
+        "stage": "T1-q06000-q12000",
+        "update": 5500,
+        "completed": false,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "initialized-00005500-72fa971d",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/initialized-00005500-72fa971d",
+          "manifest_sha256": "65f622facdc7c1dedb6cf321159006bcdb6b77311e377b1a2f473e4ff03def8f",
+          "manifest_md5": "15241eab1c0361900437a009da465725",
+          "files": 9,
+          "size_bytes": 484845537,
+          "marker_id": "1lkB8dot6yhvG6tSgyqbhGvGc5o3nzQX1",
+          "seconds": 95.0720082659991,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "7a670fca4b3e07947788493c42a8a8aae875a550cab1cffad1d20c3d1c6c44f7",
+        "tensor_cache_retired": false
+      }
+    ],
+    "policy": {
+      "schema_version": 1,
+      "confirmed": true,
+      "scope": "encoder_msda",
+      "t1_t2_identical": true,
+      "production_mutable": false,
+      "selected_by": "minimum summed warm median update seconds among common passing scopes",
+      "allocator_fraction": 0.8,
+      "scientific_shape_unchanged": true,
+      "cnn_cases_checkpointing": false,
+      "evidence": "probe-matrix.json"
+    },
+    "old_writer_confirmed_stopped": true,
+    "scientific_state_exact": true,
+    "finished_at": 1794543375.2520573
+  },
+  "environment_after_recovery": {
+    "complete": true,
+    "torch": "2.14.1+cu130",
+    "triton": "3.8.0",
+    "torchvision": "0.29.1+cu130",
+    "private_environment": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/env-original",
+    "compiler_cache": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/cache",
+    "environment_intact_after_temporary_download_cleanup": true
+  }
 }
