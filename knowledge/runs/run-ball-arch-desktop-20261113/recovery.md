@@ -54,6 +54,18 @@ On a new host without these local immutable inputs/private environment, first
 repeat verified input acquisition, fixed-snapshot reconstruction and original
 runtime/native qualification. `recover.py` then performs the same desktop-state
 restoration. Stop on failed full-state reproduction, nonfinite numbers, an
-unfit allocator policy, old remote writes, or projected storage growth above
-20 GB. No weights-only restart, smaller batch, alternative scope or eager
+unfit allocator policy, old remote writes, or `/mnt/d` statvfs available space
+below 10 GiB. Keep at least 4 GiB host available RAM and the 80% CUDA allocator
+cap. WSL filesystem growth is telemetry only. No weights-only restart, smaller batch, alternative scope or eager
 fallback is automatic. The parent owns monitoring after worker handoff.
+
+If publication was interrupted after the immutable snapshot marker appeared,
+its existence alone is insufficient. Pin the downloaded marker SHA-256, use
+`RcloneSnapshotStore.restore` into a new directory, verify the exact file set,
+sizes and every MD5/SHA-256, then compare the full checkpoint to the stopped
+local state. Verify the weights artifact, committed log, schedule/sample and
+fixed-validation identities/per-frame predictions. Only then publish a recovered
+checkpoint receipt and independently read back the updated pointer. Leave its
+event as `checkpoint`; the normal runner must publish `completed`. A terminal
+6,000 checkpoint runs an empty update range and preserves the existing evaluation.
+If full verification fails, retain the old verified pointer and recover 5,500.

@@ -168,7 +168,7 @@ def main(root, stopped):
             )
         )
         # The immutable generation is still on Drive. Only one downloaded
-        # recovery cache is retained at a time under the shared 20 GB budget.
+        # recovery cache is retained at a time to preserve physical D: headroom.
         shutil.rmtree(selected)
     if not restored:
         raise ValueError(

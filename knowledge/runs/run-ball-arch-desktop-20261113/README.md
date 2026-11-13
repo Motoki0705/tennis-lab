@@ -45,8 +45,10 @@ to the authenticated private config. Never print its contents.
   preserve this failed candidate and the passing correction.
 - Every GPU workload is a shared-queue `resource=all` job. `guard.py` caps the
   CUDA allocator at 80%, requires at least 4 GiB host available RAM, and stops
-  before filesystem growth reaches the 20 GB allowance. systemd also bounds
-  host memory. Shapes, batch, microbatch, precision, three MSDA levels, chunk
+  when `/mnt/d` statvfs available space falls below 10 GiB. WSL filesystem
+  growth is recorded as telemetry; it is not a stopping condition. This replaces
+  the earlier 20 GB proxy by the parent's 2026-11-13 recovery instruction. systemd
+  also bounds host memory. Shapes, batch, microbatch, precision, three MSDA levels, chunk
   four and compilation policy stay fixed.
 - The original Drive tree is completely archived to E using tennis-drive
   `download-tree`, a precomputed trusted expected manifest and progress file.
@@ -138,6 +140,10 @@ with the actual unit, job, process identities and authoritative evidence paths.
 The parent then monitors T1 tail 6,000/12k validation and prediction readback,
 T2's 500 checkpoint and 600-to-601 unfreeze, and every condition's completion.
 No periodic follow-up is registered by this worker.
+If recovery selects a fully verified terminal T1 checkpoint at update 6,000,
+the normal runner publishes its completion without repeating T1 updates; the
+worker then verifies the first ten post-compile T2 updates. The same allocator,
+RAM and D: available-space limits apply.
 An interrupted process or an existing output directory never proves completion.
 Do not repeat `prepare` or delete a failed attempt. See [recovery](recovery.md).
 
