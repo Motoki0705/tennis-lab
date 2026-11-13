@@ -72,6 +72,26 @@ receipt_ref = BallPublisher(layout).publish(request)
 snapshotは元v3全体を内包するため学習時にlive注釈を必要とせず、来歴参照は公開保護へ登録する。
 専用学習readerと出力maskは[data README](../../../data/README.md#active_ballの学習reader)を参照。
 
+## 保存済みv2の移行公開
+
+`BallPublisher.publish(MigrationPublishRequest(...))` は、固定した移行対象集合を
+同じintent・staging・rename・receipt・registry経路で公開する。
+新規注釈campaign、worker、実行資源の予算、学習jobを作らない。
+`output` は上記と同じactive_ballの新version・明示split・native Q90方針を指定する。
+
+各 `MigratedVideoAnnotation` は、保存した独立 `expected_input`、元v2 `original`、
+変換したv3 `annotation`、taskの `MigrationRecord`、prepared画像の `manifest`、
+保持した元動画 `source_media` のhash付き参照を必須にする。
+requestの全入力はexpected_inputのdigest順で一度ずつ列挙する。
+公開時には元v2からconverterを再実行してv3/移行記録を照合し、元動画bytesと実復号PTS、
+画像manifestのcamera・収録group・frame/PTS・寸法・Q90 archiveを検証する。
+元版・移行記録・入力参照はsnapshotの由来と公開保護に残す。
+
+旧storeの汎用教師はbaseへ混ぜない。移行の呼出側は、旧snapshotの元収録group/splitを
+独立に照合して同じsplitを指定し、変換できない対象と理由を別に保存する。
+公開要求自体が選択集合であり、未列挙の旧データまで移行済みとは扱わない。
+同一要求の再送・中断復旧・既存frame区間の追加拒否は通常のv3公開と同じ。
+
 ## 入力と教師
 
 - 旧レビューrequestは不変campaign plan、product名、digest順の採用receiptを固定する。

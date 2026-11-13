@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Literal, Self
+from collections.abc import Callable
+from typing import Literal, Protocol, Self, TypeVar, cast
 
 from pydantic import Field, SerializerFunctionWrapHandler
 
@@ -18,6 +19,19 @@ from src.tasks.base.annotation.contracts import (
 from src.tasks.base.annotation.plan import ProductPlan
 
 Split = Literal["train", "val", "test"]
+_M = TypeVar("_M")
+
+
+class _Validator(Protocol):
+    def __call__(self, function: Callable[[_M], _M]) -> Callable[[_M], _M]: ...
+
+
+class _Serializer(Protocol):
+    def __call__(self, function: Callable[[_M, SerializerFunctionWrapHandler], dict[str, object]]) -> Callable[[_M, SerializerFunctionWrapHandler], dict[str, object]]: ...
+
+
+_after = cast(_Validator, after_validator)
+_serialize = cast(_Serializer, manifest_serializer)
 
 
 class SourceSplit(Document):
@@ -46,7 +60,7 @@ class BallPublicationPolicy(Document):
         "uniform_observed_and_estimated"
     )
 
-    @manifest_serializer
+    @_serialize
     def serialize_policy(self, handler: SerializerFunctionWrapHandler) -> dict[str, object]:
         result: dict[str, object] = handler(self)
         if self.target_semantics == "legacy_ball":
@@ -54,7 +68,7 @@ class BallPublicationPolicy(Document):
             result.pop("position_weighting", None)
         return result
 
-    @after_validator
+    @_after
     def unique_sources(self) -> Self:
         if self.source_partition is not None and self.source_splits:
             raise ValueError("Choose explicit source splits or a source partition recipe")
@@ -103,7 +117,7 @@ class BallSnapshot(Document):
     request: ArtifactRef | None
     legacy_groups: tuple[LegacySourceGroup, ...]
 
-    @after_validator
+    @_after
     def identities(self) -> Self:
         if (
             self.index.role != "data"
@@ -135,7 +149,7 @@ class PublishRequest(Document):
     product: Identifier
     adoptions: tuple[ArtifactRef, ...] = Field(min_length=1)
 
-    @after_validator
+    @_after
     def unique_adoptions(self) -> Self:
         digests = [a.digest for a in self.adoptions]
         if digests != sorted(set(digests)):
@@ -173,9 +187,49 @@ class VideoPublishRequest(Document):
         # Completed v3 judgments are trusted directly, without a legacy QA seal.
         return ()
 
-    @after_validator
+    @_after
     def unique_annotations(self) -> Self:
         keys = [a.context.digest for a in self.annotations]
         if keys != sorted(set(keys)):
             raise ValueError("video annotation contexts must be unique and digest sorted")
+        return self
+
+
+class MigratedVideoAnnotation(Document):
+    """A converter result, pinned decoder input, original v2, and native images."""
+
+    expected_input: ArtifactRef
+    annotation: ArtifactRef
+    original: ArtifactRef
+    migration: ArtifactRef
+    manifest: ArtifactRef
+    source_media: ArtifactRef
+
+
+class MigrationPublishRequest(Document):
+    """Publish the exact selected migration set without creating annotation work.
+
+    The immutable request is the complete input selection. It has no worker,
+    execution/resource budget, or implicit collection of unrelated inputs.
+    """
+
+    schema_version: Literal["ball.migration-publication-request.v1"] = (
+        "ball.migration-publication-request.v1"
+    )
+    output: ProductPlan
+    annotations: tuple[MigratedVideoAnnotation, ...] = Field(min_length=1)
+
+    @property
+    def product(self) -> str:
+        return str(self.output.product)
+
+    @property
+    def adoptions(self) -> tuple[ArtifactRef, ...]:
+        return ()
+
+    @_after
+    def unique_annotations(self) -> Self:
+        keys = [a.expected_input.digest for a in self.annotations]
+        if keys != sorted(set(keys)):
+            raise ValueError("migration inputs must be unique and digest sorted")
         return self

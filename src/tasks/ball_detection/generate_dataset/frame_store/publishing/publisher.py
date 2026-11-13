@@ -60,15 +60,17 @@ from .adopted import PublicationClip, load_adopted
 from .contracts import (
     BallPublicationPolicy,
     BallSnapshot,
+    MigrationPublishRequest,
     PublishRequest,
     SnapshotClip,
     VideoPublishRequest,
 )
+from .migration import load_migrated_annotations
 from .partition import publication_splits
 from .snapshot import load_snapshot, validate_snapshot
 from .videos import load_video_annotations
 
-PublicationRequest = PublishRequest | VideoPublishRequest
+PublicationRequest = PublishRequest | VideoPublishRequest | MigrationPublishRequest
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS ball_publications (
@@ -173,19 +175,20 @@ class BallPublisher:
         self.catalog = StorageCatalog(layout)
 
     def _inputs(self, request: PublicationRequest) -> Inputs:
-        plan = (
+        video_input = isinstance(request, (VideoPublishRequest, MigrationPublishRequest))
+        plan = None if isinstance(request, MigrationPublishRequest) else (
             read_document(self.layout, request.plan, LocalAnnotationPlan)
             if isinstance(request, VideoPublishRequest)
             else load_plan(verify_reference(self.layout, request.plan))
         )
-        if plan.annotation_root != str(self.layout.root) or plan.phase != "production":
+        if plan is not None and (plan.annotation_root != str(self.layout.root) or plan.phase != "production"):
             raise ValueError(
                 "ball publication requires a production plan at the fixed root"
             )
-        if isinstance(request, VideoPublishRequest):
+        if isinstance(request, (VideoPublishRequest, MigrationPublishRequest)):
             product = request.output
         else:
-            assert not isinstance(plan, LocalAnnotationPlan)
+            assert plan is not None and not isinstance(plan, LocalAnnotationPlan)
             task = next((t for t in plan.tasks if t.task == "ball"), None)
             product = next((p for p in task.products if p.product == request.product), None) if task else None
         if product is None or (product.dataset_task, product.component) != (
@@ -198,7 +201,7 @@ class BallPublisher:
         policy = read_document(
             self.layout, product.generation_policy, BallPublicationPolicy
         )
-        if policy.target_semantics != ("active_ball" if isinstance(request, VideoPublishRequest) else "legacy_ball"):
+        if policy.target_semantics != ("active_ball" if video_input else "legacy_ball"):
             raise ValueError("publication input and policy target_semantics mismatch")
         base, store = (
             load_snapshot(self.layout, product.base_snapshot)
@@ -207,7 +210,9 @@ class BallPublisher:
         )
         if store is not None:
             store.require_target_semantics(policy.target_semantics)
-        if isinstance(request, VideoPublishRequest):
+        if isinstance(request, MigrationPublishRequest):
+            additions = load_migrated_annotations(self.layout, request)
+        elif isinstance(request, VideoPublishRequest):
             assert isinstance(plan, LocalAnnotationPlan)
             additions = load_video_annotations(self.layout, request, plan)
         else:
@@ -225,7 +230,7 @@ class BallPublisher:
             set(added_ids) & (existing_ids | existing_names | canonical_ids)
         ):
             raise ValueError("publication cannot duplicate or change an existing clip")
-        if isinstance(request, VideoPublishRequest):
+        if video_input:
             originals = list(store.video_annotations.values()) if store else []
             for added in additions:
                 assert added.annotation is not None
@@ -239,8 +244,11 @@ class BallPublisher:
                 originals.append(annotation)
         existing_splits = {c.source_id: c.split for c in base.clips} if base else {}
         added_sources = {a.source_id for a in additions}
-        expected_new_sources = (len(added_sources - existing_splits.keys())
-                                if isinstance(plan, LocalAnnotationPlan) else plan.counts.videos)
+        if video_input:
+            expected_new_sources = len(added_sources - existing_splits.keys())
+        else:
+            assert plan is not None and not isinstance(plan, LocalAnnotationPlan)
+            expected_new_sources = plan.counts.videos
         splits = publication_splits(
             policy,
             existing_splits,
@@ -662,7 +670,7 @@ class BallPublisher:
                 reused_clips=tuple(c.clip_id for c in inputs.base.clips)
                 if inputs.base
                 else (),
-                annotations=tuple(a.annotation for a in request.annotations) if isinstance(request, VideoPublishRequest) else (),
+                annotations=tuple(a.annotation for a in request.annotations) if isinstance(request, (VideoPublishRequest, MigrationPublishRequest)) else (),
             )
             reference = write_document(
                 self.layout,
