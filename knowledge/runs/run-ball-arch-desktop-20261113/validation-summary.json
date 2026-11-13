@@ -17,9 +17,9 @@
     },
     {
       "command": "pytest knowledge/runs/run-ball-arch-desktop-20261113/test_state.py knowledge/runs/run-ball-arch-desktop-20261113/test_serial.py -n 0 -q",
-      "passed": 12,
-      "seconds": 4.69,
-      "source_log": "adapter-cpu-final.log"
+      "passed": 13,
+      "seconds": 5.07,
+      "source_log": "adapter-cpu-entrypoint.log"
     }
   ],
   "native": {

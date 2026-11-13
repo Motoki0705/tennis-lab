@@ -4,8 +4,10 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path.cwd()))
 from rebuild_dataset import rebuild, write
 from state import prepare
 

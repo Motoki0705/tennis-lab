@@ -1,5 +1,7 @@
 """Durable completion, rather than process return, permits the next condition."""
 import json
+import os
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -127,3 +129,39 @@ def test_completed_recovery_keeps_validation_and_generation_proof_without_duplic
     assert record["protected_generation"] == "immutable-completed"
     with pytest.raises(ValueError,match="full-state-equal"):
         completed_metadata(tmp_path,selected,tmp_path/"unverified",dict(status,checkpoint_state_equal=False))
+
+
+def test_production_terminal_entrypoint_imports_its_checkout_and_readbacks_the_event(tmp_path):
+    source=tmp_path/"source"
+    package=source/"src/utils/artifact_store"
+    package.mkdir(parents=True)
+    (source/"src/__init__.py").write_text("")
+    (source/"src/utils/__init__.py").write_text("")
+    (package/"__init__.py").write_text(
+        "import shutil\n"
+        "class RcloneArtifactStore:\n"
+        " def __init__(self, root, **kwargs): self.root=root\n"
+        " def publish_file(self, path): shutil.copyfile(path,self.root/'fake-remote.json')\n"
+    )
+    executable=tmp_path/"bin/rclone"
+    executable.parent.mkdir()
+    executable.write_text(
+        "#!/usr/bin/env python3\nimport os,shutil,sys\n"
+        "shutil.copyfile(os.environ['FAKE_REMOTE'],sys.argv[-1])\n"
+    )
+    executable.chmod(0o755)
+    root,queue=tmp_path/"run",tmp_path/"queue"
+    (queue/"done").mkdir(parents=True)
+    (queue/"done/job.job").write_text("done")
+    environment=dict(os.environ,PATH=str(executable.parent)+os.pathsep+os.environ["PATH"],
+                     RCLONE_CONFIG=str(tmp_path/"private.conf"),FAKE_REMOTE=str(root/"fake-remote.json"))
+    environment.pop("PYTHONPATH",None)
+    # -S excludes editable installs/site packages: only the selected checkout
+    # can provide src. The fake transport is local and needs no GPU or network.
+    result=subprocess.run([sys.executable,"-S",str(Path(__file__).with_name("service.py")),
+                           "--root",str(root),"--queue",str(queue),"--job","job", "--kind","production","--notify-only"],
+                           cwd=source,env=environment,capture_output=True,text=True)
+    assert result.returncode == 0,result.stderr
+    assert json.loads((root/"notifications/job.json").read_text())["state"] == "done"
+    receipt=json.loads((root/"notifications/job-upload.json").read_text())
+    assert receipt["verified"] and receipt["sha256"] == sha(root/"notifications/job.json")

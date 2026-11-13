@@ -8,6 +8,7 @@ import tempfile
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path.cwd()))
 from rebuild_dataset import sha, write
 
 REMOTE = "tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1"
