@@ -259,6 +259,7 @@ def test_intermediate_prs_and_later_main_turn_stay_distinct() -> None:
     for sequence, number in ((2, 1884), (3, 1889)):
         obs = worker_observation("ended", "present", "public_pr")
         obs["publication"]["pr_url"] = f"https://github.com/o/r/pull/{number}"
+        obs["publication"]["main_revision"] = "e" * 40
         row = observation_record(obs)
         row["scope"]["delegation"]["turn"] = sequence
         rows.append(row)
@@ -272,6 +273,9 @@ def test_intermediate_prs_and_later_main_turn_stay_distinct() -> None:
             f"https://github.com/o/r/pull/{number}" in page
             and "観測時点の公開PR" in page
         )
+        assert "https://github.com/o/r/commit/" + "d" * 40 in page
+        assert "https://github.com/o/r/commit/" + "e" * 40 in page
+        assert "PR HEAD" in page and "照合先main" in page
         assert not any(f"/{sequence:04d}-resume/" in p for p in inputs)
     fourth = next(v.decode() for p, v in generated.items() if "/turn-0004/" in p)
     assert all("../0004-resume/" + n in fourth for n in worker_schema.FILENAMES)

@@ -41,7 +41,21 @@ def url_link(url: str, label: str) -> str:
 
 
 def proofs(values: list[dict[str, Any]], limit: int = 4) -> str:
-    return "<br>".join(evidence_link(e) for e in values[:limit])
+    lines = [evidence_link(e) for e in values[:limit]]
+    if len(values) > limit:
+        lines.append(f"ほか{len(values) - limit}件の根拠は記録本文を参照")
+    return "<br>".join(lines)
+
+
+def publication_revisions(value: dict[str, Any], repo: str) -> list[str]:
+    return [
+        url_link(f"https://github.com/{repo}/commit/{value[key]}", label)
+        for key, label in (
+            ("pr_head", "PR HEAD"),
+            ("main_revision", "照合先main（観測時点）"),
+        )
+        if value[key] is not None
+    ]
 
 
 def turn_summary(items: list[Turn]) -> str:
@@ -71,6 +85,8 @@ def turn_fields(item: Turn) -> tuple[str, str, str, str]:
     if detail:
         if detail["pr_url"]:
             public += "<br>" + url_link(detail["pr_url"], "公開PR")
+        for revision in publication_revisions(detail, item.key[0]):
+            public += "<br>" + revision
         if item.directory is None:
             for key, label in (("stage", "段階"), ("error", "理由")):
                 if detail[key]:
@@ -94,6 +110,7 @@ def observation_view(value: dict[str, Any], repo: str, *, brief: bool = False) -
         ]
         if value["publication"]["pr_url"]:
             lines.append(url_link(value["publication"]["pr_url"], "公開PR"))
+        lines.extend(publication_revisions(value["publication"], repo))
         return " / ".join(lines)
     lines = [
         TERMINATION[value["event"]]
@@ -102,6 +119,13 @@ def observation_view(value: dict[str, Any], repo: str, *, brief: bool = False) -
     ]
     if brief:
         return "<br>".join(lines)
+    if value["main_revision"]:
+        lines.append(
+            url_link(
+                f"https://github.com/{repo}/commit/{value['main_revision']}",
+                "終了時の照合先main",
+            )
+        )
     lines += [
         proofs(value["acceptance"]["evidence"]),
         "終了・引継ぎの根拠: " + proofs(value["evidence"]),
