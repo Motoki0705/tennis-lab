@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import checkout_barrier, checkout_lock, require_checkout_job
 from parent.github import GitHub
 from parent.policy import nonempty
 from parent.state import state_directory
@@ -152,31 +153,51 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         supervisor.reconcile(stop=True)
     elif args.command == "supervise":
         stopping = False
+        pausing = False
 
         def stop(signum: int, frame: object) -> None:
             nonlocal stopping
             stopping = True
 
+        def pause(signum: int, frame: object) -> None:
+            # Maintenance holds ops-code exclusively and has verified no jobs.
+            nonlocal stopping, pausing
+            pausing = stopping = True
+
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGHUP, pause)
+        barrier = checkout_barrier(Path(state["config"]["cwd"]))
         with gate(schedule.directory / "supervisor.lock") as fd:
             if fd is None:
                 return {"result": "busy"}
             while not stopping:
-                supervisor.reconcile()
-                supervisor.assign()
-                supervisor.launch_reserved()
+                with checkout_lock(
+                    Path(state["config"]["cwd"]), blocking=False
+                ) as code_fd:
+                    if code_fd is not None and not barrier.exists():
+                        supervisor.reconcile()
+                        supervisor.assign()
+                        supervisor.launch_reserved()
                 if args.once:
                     break
                 time.sleep(1)
-            if stopping:
+            if stopping and not pausing:
                 stop_judgement(store, schedule)
                 supervisor.reconcile(stop=True)
     return {"result": args.command}
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, *, _supervisor_launcher: bool = False) -> int:
     args = parser().parse_args(argv)
+    if args.command == "run":
+        require_checkout_job()
+    if args.command == "supervise" and not _supervisor_launcher:
+        print(
+            "dispatcher supervise: use checkout_job.py --repo <main> --supervisor",
+            file=sys.stderr,
+        )
+        return 75
     os.umask(0o077)
     try:
         result = execute(args)

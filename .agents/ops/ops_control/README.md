@@ -34,6 +34,7 @@ user managerが停止していても、過去のjournalは読める。
 | `agents` | dispatcher・report・triageの集合。同じ個別操作を順番に行う |
 | `proposal-expiry` | 改善提案の[期限切れclose](../parent/improvements.md#期限切れcloseとunit導入)を日次実行するtimer/service。agentsに含めない |
 | `cleanup` | 既存のmerge済みbranch整理timer/service。agentsに含めない。worktreeの期限削除とは別 |
+| `git-sync` | [メインcheckoutの30分周期fast-forward](../git_sync/README.md)。agentsに含めない |
 
 `on` は `enable --now` を実行し、永続的な `enabled` と `active` を照合する。
 dispatcherは先に既存CLIの `enable` を実行する。初回だけ [dispatcherの導入手順](../dispatcher/README.md#systemdへの導入有効化停止)
@@ -82,6 +83,8 @@ user managerへの接続を操作前に確認する。bus接続不能・manager�
 | `next_elapse_realtime` / `next_elapse_monotonic` | timerの次回予定。それぞれの時計系を保持 |
 | `last_trigger` | timerの最終発火 |
 | `fragment_path` | user managerが読んだunitソース |
+| `main_pid` | 現在のservice main process。常駐supervisorの保守signal対応を照合する |
+| `exec_start` | managerが保持する実行入口。checkout更新時に共通launcherの利用を照合する |
 
 適用されない値・空の値はnull。必須propertyの欠落をinactive/disabledで補わない。
 reportのtimer予定は予定確認の時刻で、実際のレポート生成slotは
@@ -95,6 +98,11 @@ timer＋oneshotは `TARGETS` に `timer_target("対象名", "unitのstem")` を1
 停止順序と残存確認対象の全unitを表に持たせ、CLIに対象名の分岐を追加しない。
 集合は `kind="group"` と `members` で定義する。保守ジョブを `agents` へ追加しない。
 unitを追加する担当はserviceの停止時に子プロセスも終了する契約を定める。
+
+有限の運用jobは [checkout_job.py](../checkout_job.py) を経由し、対象コードを読む前から
+終了まで [checkout lock](../lib/README.md#メインcheckoutと運用jobの排他) を保持する。
+`Target.status_file` を指定すると、state rootからの相対パスにあるjob固有JSONを
+`last_run` として状態に含める。未実行はnull、読込失敗はエラーとなる。
 
 ## 検証
 

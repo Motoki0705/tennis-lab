@@ -71,9 +71,22 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
         base = tmp_path / name
         repo = base / "repo"
         ops = repo / ".agents/ops"
-        shutil.copytree(ROOT / ".agents/ops/ops_control", ops / "ops_control")
+        shutil.copytree(
+            ROOT / ".agents/ops/ops_control",
+            ops / "ops_control",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
+        (ops / "lib").mkdir()
+        shutil.copy(ROOT / ".agents/ops/lib/checkout_lock.py", ops / "lib")
         shutil.copy(ROOT / ".agents/ops/install_units.sh", ops)
-        for job in ("dispatcher", "ops-report", "cleanup", "board", "parent"):
+        for job in (
+            "dispatcher",
+            "ops-report",
+            "cleanup",
+            "board",
+            "parent",
+            "git_sync",
+        ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
         spin.mkdir()
@@ -110,6 +123,14 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             timer = path.suffix == ".timer"
             units[path.name] = {
                 "FragmentPath": str(path),
+                "ExecStart": next(
+                    (
+                        line.removeprefix("ExecStart=")
+                        for line in path.read_text().splitlines()
+                        if line.startswith("ExecStart=")
+                    ),
+                    "",
+                ).replace("%h/projects/tennis-lab", str(repo)),
                 "LoadState": "loaded",
                 "UnitFileState": "disabled"
                 if timer or path.name == SUPERVISOR
@@ -208,6 +229,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "triage",
         "cleanup",
         "proposal-expiry",
+        "git-sync",
     }
     report = next(row for row in data["targets"] if row["target"] == "report")
     units = {unit["unit"]: unit for unit in report["units"]}
@@ -452,7 +474,7 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
     assert json.loads(result.stdout)["targets"][0]["units"] == []
 
 
-@pytest.mark.parametrize("target", ["report", "triage", "cleanup"])
+@pytest.mark.parametrize("target", ["report", "triage", "cleanup", "git-sync"])
 def test_run_starts_only_oneshot_without_enabling_timer(
     control: ControlEnv, target: str
 ) -> None:
@@ -461,6 +483,7 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "report": "tennis-lab-ops-report",
         "triage": "tennis-lab-ops-triage",
         "cleanup": "tennis-lab-cleanup",
+        "git-sync": "tennis-lab-git-sync",
     }[target]
     assert ["systemctl", "--user", "start", prefix + ".service"] in control.calls()
     assert control.read()["units"][prefix + ".timer"]["UnitFileState"] == "disabled"
@@ -482,6 +505,28 @@ def test_invalid_actions_have_no_side_effects(
 ) -> None:
     assert control.run(*args).returncode == 2
     assert control.calls() == []
+
+
+def test_git_sync_controls_real_registered_timer_and_stops_running_service(
+    control: ControlEnv,
+) -> None:
+    timer, service = "tennis-lab-git-sync.timer", "tennis-lab-git-sync.service"
+    checked(control, "on", "git-sync")
+    state = control.read()
+    assert state["units"][timer]["UnitFileState"] == "enabled"
+    assert state["units"][timer]["ActiveState"] == "active"
+    state["units"][service]["ActiveState"] = "active"
+    control.write(state)
+    checked(control, "off", "git-sync")
+    state = control.read()
+    assert state["units"][timer]["UnitFileState"] == "linked"
+    assert state["units"][service]["ActiveState"] == "inactive"
+    assert all(
+        state["units"][name]["UnitFileState"] != "enabled" for name in AGENT_UNITS
+    )
+    source = control.repo / ".agents/ops/git_sync/systemd" / timer
+    assert "OnCalendar=*-*-* *:00,30:00 Asia/Tokyo" in source.read_text()
+    assert "Persistent=true" in source.read_text()
 
 
 def test_install_preview_and_update_never_enable_or_start(control: ControlEnv) -> None:
@@ -516,7 +561,11 @@ def test_targeted_install_expands_agents_without_maintenance(
 
 @pytest.mark.parametrize(
     "target,expected",
-    [("agents", AGENT_UNITS), ("dispatcher", {SUPERVISOR, JUDGEMENT_TIMER, JUDGEMENT})],
+    [
+        ("agents", AGENT_UNITS),
+        ("dispatcher", {SUPERVISOR, JUDGEMENT_TIMER, JUDGEMENT}),
+        ("git-sync", {"tennis-lab-git-sync.timer", "tennis-lab-git-sync.service"}),
+    ],
 )
 def test_logs_selects_exact_user_units_even_without_manager(
     control: ControlEnv,
@@ -585,4 +634,6 @@ def test_proposal_expiry_timer_is_installed_without_automatic_extraction(
     assert "OnCalendar=daily" in timer and "Persistent=true" in timer
     assert "Type=oneshot" in service and "improvement-expire" in service
     assert "improvement-extract" not in service and "PYTHONPATH=.agents/ops" in service
-    assert [call for call in control.calls() if call[2] != "show"] == [["systemctl", "--user", "daemon-reload"]]
+    assert [call for call in control.calls() if call[2] != "show"] == [
+        ["systemctl", "--user", "daemon-reload"]
+    ]

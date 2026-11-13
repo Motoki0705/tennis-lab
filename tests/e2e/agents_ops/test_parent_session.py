@@ -392,8 +392,20 @@ class ParentEnv:
         ok: bool | None = True,
         extra: dict[str, str] | None = None,
     ) -> subprocess.CompletedProcess[str]:
+        launcher = (
+            [
+                sys.executable,
+                str(OPS / "checkout_job.py"),
+                "--repo",
+                str(self.repo),
+                "--",
+            ]
+            if args and args[0] == "improvement-expire"
+            else []
+        )
         result = subprocess.run(
             [
+                *launcher,
                 sys.executable,
                 "-m",
                 "parent",

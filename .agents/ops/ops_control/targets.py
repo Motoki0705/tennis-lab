@@ -23,6 +23,7 @@ class Target:
     verify_dispatcher: bool = False
     run_unit: str | None = None
     members: tuple[str, ...] = ()
+    status_file: str | None = None
 
 
 def service_target(name: str, stem: str) -> Target:
@@ -36,7 +37,7 @@ def service_target(name: str, stem: str) -> Target:
     )
 
 
-def timer_target(name: str, stem: str) -> Target:
+def timer_target(name: str, stem: str, *, status_file: str | None = None) -> Target:
     timer, service = f"{stem}.timer", f"{stem}.service"
     return Target(
         name=name,
@@ -48,6 +49,7 @@ def timer_target(name: str, stem: str) -> Target:
             Step("systemctl", ("stop", service)),
         ),
         run_unit=service,
+        status_file=status_file,
     )
 
 
@@ -85,6 +87,9 @@ TARGETS = {
     "cleanup": timer_target("cleanup", "tennis-lab-cleanup"),
     "agents": Target(
         name="agents", kind="group", members=("dispatcher", "report", "triage")
+    ),
+    "git-sync": timer_target(
+        "git-sync", "tennis-lab-git-sync", status_file="git-sync/status.json"
     ),
 }
 

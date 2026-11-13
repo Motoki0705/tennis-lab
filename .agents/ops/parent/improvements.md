@@ -141,9 +141,11 @@ agree・create-child・delegate・run-worker（resume含む）・start/continue-
 
 ```bash
 # 担当登録・session identityは不要。repo全体の提案を走査する
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo Motoki0705/tennis-lab improvement-expire --dry-run
+PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python -m parent --repo Motoki0705/tennis-lab improvement-expire --dry-run
 # テスト・再現用の固定時刻
-PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo Motoki0705/tennis-lab improvement-expire --now 2026-11-21T00:00:00Z
+PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- \
+  .venv/bin/python -m parent --repo Motoki0705/tennis-lab improvement-expire --now 2026-11-21T00:00:00Z
 ```
 
 作成から7日経過した、取り出されていないopenな提案をnot_plannedでcloseする。
@@ -160,6 +162,7 @@ spin ops install proposal-expiry
 spin ops on proposal-expiry
 ```
 
+unitと手動実行は [共通launcher](../lib/README.md#メインcheckoutと運用jobの排他) でcheckout lockを保持し、更新との競合を防ぐ。
 unitはmain checkoutと既存unitと同じPATH、通常のgh認証設定を使う。`~/.bashrc` は読まない。
 カスタムの認証環境が必要なら既存unitと同様にsystemdのuser環境へ明示設定する。
 実ホストの導入・有効化・ラベル同期・代表フローの実GitHub受入は担当親が行う。

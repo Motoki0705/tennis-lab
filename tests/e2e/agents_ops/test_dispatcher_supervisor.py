@@ -42,7 +42,7 @@ class DispatchGitHub(FakeGitHub):
             row = self.issues[int(endpoint.rsplit("/", 1)[1])]
             row.update(payload)
             return copy.deepcopy(row)
-        return cast(dict[str, Any], super().write(method, endpoint, payload))
+        return super().write(method, endpoint, payload)
 
 
 class DispatchHarness:
@@ -1594,16 +1594,40 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
     parent = d.h.root / "cli-registry"
 
     def cli(*args: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            [
+        command = [
+            sys.executable,
+            str(ROOT / ".agents/ops/dispatcher/dispatch.py"),
+            "--state-dir",
+            str(schedule),
+            "--parent-state-dir",
+            str(parent),
+            *args,
+        ]
+        if args[0] == "run":
+            command = [
                 sys.executable,
-                str(ROOT / ".agents/ops/dispatcher/dispatch.py"),
+                str(ROOT / ".agents/ops/checkout_job.py"),
+                "--repo",
+                str(d.h.work),
+                "--",
+                *command,
+            ]
+        elif args[0] == "supervise":
+            command = [
+                sys.executable,
+                str(ROOT / ".agents/ops/checkout_job.py"),
+                "--repo",
+                str(d.h.work),
+                "--supervisor",
                 "--state-dir",
                 str(schedule),
                 "--parent-state-dir",
                 str(parent),
-                *args,
-            ],
+                "--",
+                *args[1:],
+            ]
+        return subprocess.run(
+            command,
             capture_output=True,
             text=True,
             check=False,
@@ -1643,6 +1667,74 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
         assert "registry" in error.stderr and "README" in error.stderr
         assert not (parent / "registry.json").exists()
         assert (schedule / "schedule.json").read_bytes() == before
+
+
+def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cli = importlib.import_module("dispatcher.cli")
+    lock = importlib.import_module("lib.checkout_lock").checkout_lock
+    calls = []
+    for name in ("reconcile", "assign", "launch_reserved"):
+        monkeypatch.setattr(
+            cli.Supervisor, name, lambda self, _name=name: calls.append(_name)
+        )
+    monkeypatch.setattr(cli.signal, "signal", lambda *args: None)
+    args = cli.parser().parse_args(
+        [
+            "--state-dir",
+            str(d.schedule.directory),
+            "--parent-state-dir",
+            str(d.h.store.directory),
+            "supervise",
+            "--once",
+        ]
+    )
+    with lock(d.h.work, exclusive=True):
+        assert cli.execute(args)["result"] == "supervise"
+    assert calls == []
+    barrier = importlib.import_module("lib.checkout_lock").checkout_barrier(d.h.work)
+    barrier.touch()
+    assert cli.execute(args)["result"] == "supervise"
+    assert calls == []
+    barrier.unlink()
+    assert cli.execute(args)["result"] == "supervise"
+    assert calls == ["reconcile", "assign", "launch_reserved"]
+
+
+@pytest.mark.parametrize("maintenance", [True, False])
+def test_supervisor_maintenance_pause_preserves_enabled_but_normal_stop_shuts_down(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, maintenance: bool
+) -> None:
+    cli = importlib.import_module("dispatcher.cli")
+    handlers = {}
+    calls = []
+    monkeypatch.setattr(
+        cli.signal, "signal", lambda signum, handler: handlers.update({signum: handler})
+    )
+    monkeypatch.setattr(
+        cli.Supervisor, "reconcile", lambda self, **kw: calls.append(kw)
+    )
+    monkeypatch.setattr(cli.Supervisor, "assign", lambda self: None)
+    monkeypatch.setattr(cli.Supervisor, "launch_reserved", lambda self: None)
+
+    def stop(_seconds: float) -> None:
+        signum = cli.signal.SIGHUP if maintenance else cli.signal.SIGTERM
+        handlers[signum](signum, None)
+
+    monkeypatch.setattr(cli.time, "sleep", stop)
+    args = cli.parser().parse_args(
+        [
+            "--state-dir",
+            str(d.schedule.directory),
+            "--parent-state-dir",
+            str(d.h.store.directory),
+            "supervise",
+        ]
+    )
+    assert cli.execute(args)["result"] == "supervise"
+    assert d.state()["enabled"] == maintenance
+    assert ({"stop": True} in calls) != maintenance
 
 
 def test_stop_during_popen_stops_launcher_before_runtime_record(

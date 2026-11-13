@@ -872,6 +872,11 @@ def test_expiry_needs_neither_assignment_nor_session_identity(
     result = subprocess.run(
         [
             sys.executable,
+            str(Path(__file__).resolve().parents[3] / ".agents/ops/checkout_job.py"),
+            "--repo",
+            str(p.repo),
+            "--",
+            sys.executable,
             "-m",
             "parent",
             "--repo",

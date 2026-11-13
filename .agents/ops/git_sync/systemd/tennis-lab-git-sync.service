@@ -1,0 +1,13 @@
+[Unit]
+Description=Fast-forward the tennis-lab main checkout to a pinned origin/main
+Documentation=file://%h/projects/tennis-lab/.agents/ops/git_sync/README.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
+UMask=0077
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/git_sync/sync.py --repo %h/projects/tennis-lab
+TimeoutStartSec=5min
+TimeoutStopSec=30
+KillMode=control-group
