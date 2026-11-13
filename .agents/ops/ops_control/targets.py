@@ -87,6 +87,9 @@ TARGETS = {
     "agents": Target(
         name="agents", kind="group", members=("dispatcher", "report", "triage")
     ),
+    "git-sync": timer_target(
+        "git-sync", "tennis-lab-git-sync", status_file="git-sync/status.json"
+    ),
 }
 
 

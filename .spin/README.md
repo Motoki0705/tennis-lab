@@ -98,3 +98,5 @@ GPU環境へ戻す場合は`uv sync --locked`を実行する。
 新しい横断的な開発コマンドは `.spin/cmds.py` に追加する。学習や推論のように
 Hydra config が正規のインターフェースである処理は、各 task の `scripts/` と README
 に残し、ここで設定を二重管理しない。
+
+`git-sync` の定期更新・拒否理由・共通lockと状態の確認は [git-sync README](../.agents/ops/git_sync/README.md) を参照する。

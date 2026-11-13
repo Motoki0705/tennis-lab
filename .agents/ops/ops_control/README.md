@@ -33,6 +33,7 @@ user managerが停止していても、過去のjournalは読める。
 | `triage` | 採用提案のissue化timer/service |
 | `agents` | dispatcher・report・triageの集合。同じ個別操作を順番に行う |
 | `cleanup` | 既存のmerge済みbranch整理timer/service。agentsに含めない。worktreeの期限削除とは別 |
+| `git-sync` | [メインcheckoutの30分周期fast-forward](../git_sync/README.md)。agentsに含めない |
 
 `on` は `enable --now` を実行し、永続的な `enabled` と `active` を照合する。
 dispatcherは先に既存CLIの `enable` を実行する。初回だけ [dispatcherの導入手順](../dispatcher/README.md#systemdへの導入有効化停止)
