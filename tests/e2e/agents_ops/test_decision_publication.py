@@ -546,10 +546,25 @@ def test_last_boundary_main_advance_has_explicit_readme_only_recovery(
     )
     assert len(env.github.rows) == 1 and env.github.rows[100]["merged"]
     assert publisher.publish()["stage"] == "readme_refresh_required"
+    before_repair = env.upstream_files()
     recovered = env.decision_publisher(log).publish(retry=True)
     assert recovered["saved_to_main"] and len(env.github.rows) == 2, recovered
-    assert env.github.rows[101]["changed_files"] == 1  # Exact index regeneration only.
     saved = env.upstream_files()
+    delegation = directory.rsplit("/", 1)[0]
+    expected_readmes = {
+        ".agents/logs/parents/README.md",
+        ".agents/logs/parents/parent-2/README.md",
+        ".agents/logs/parents/parent-2/child-20/README.md",
+        delegation + "/README.md",
+        delegation + "/turn-0001/README.md",
+        directory + "/README.md",
+    }
+    assert env.github.rows[101]["changed_files"] == len(expected_readmes)
+    assert {
+        name
+        for name in before_repair.keys() | saved.keys()
+        if before_repair.get(name) != saved.get(name)
+    } == expected_readmes
     assert all(saved[n] == raw for n, raw in addition.items())
     assert all(saved[n] == raw for n, raw in navigation.generate(saved).items())
     assert len(navigation.records(saved)) == 6
