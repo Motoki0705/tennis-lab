@@ -74,7 +74,30 @@ def run(root: Path, directory: Path) -> dict[str, Any]:
     def resume() -> None:
         if maintenance.ticket.exists() or (barrier is not None and barrier.exists()):
             try:
-                repo.preflight()
+                current = repo.preflight()
+                if barrier is not None and barrier.exists():
+                    marker = json.loads(barrier.read_text())
+                    if (
+                        not isinstance(marker, dict)
+                        or set(marker) != {"schema_version", "before", "target"}
+                        or type(marker.get("schema_version")) is not int
+                        or marker["schema_version"] != 1
+                        or any(
+                            not isinstance(marker[key], str)
+                            or len(marker[key]) not in {40, 64}
+                            or any(
+                                char not in "0123456789abcdef" for char in marker[key]
+                            )
+                            for key in ("before", "target")
+                        )
+                    ):
+                        raise ControlError("invalid checkout update marker")
+                    if current not in {marker["before"], marker["target"]}:
+                        raise Skip("interrupted_update_head_changed", head=current)
+                    if current == marker["before"]:
+                        # A failed checkout may have added untracked source
+                        # files without changing any previously tracked file.
+                        repo.check_target(current, marker["target"])
             except Skip as exc:
                 journal.data["resume_blocked_reason"] = exc.reason
                 journal.event(
@@ -120,7 +143,10 @@ def run(root: Path, directory: Path) -> dict[str, Any]:
                             raise Skip("head_changed_during_preflight")
                         repo.check_target(head, target)
                         with barrier.open("x", encoding="utf-8") as marker:
-                            json.dump({"before": head, "target": target}, marker)
+                            json.dump(
+                                {"schema_version": 1, "before": head, "target": target},
+                                marker,
+                            )
                         journal.event("fast_forward", target=target)
                         repo.merge(target)
                         if repo.git("rev-parse", "HEAD^{commit}").strip() != target:

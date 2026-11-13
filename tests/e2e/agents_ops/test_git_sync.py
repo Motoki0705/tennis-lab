@@ -692,8 +692,13 @@ sys.exit(subprocess.call([real, *args]))
 def test_abandoned_update_blocks_imports_until_clean_main_is_revalidated(
     sync: SyncEnv,
 ) -> None:
+    before = git(sync.repo, "rev-parse", "HEAD")
+    target = sync.publish({"app.py": "new\n"})
     barrier = sync.repo / ".git/ops-code.blocked"
-    barrier.write_text("interrupted update\n")
+    barrier.write_text(
+        json.dumps({"schema_version": 1, "before": before, "target": target})
+    )
+    git(sync.repo, "fetch", "-q", "origin")
     blocked = subprocess.run(
         [sys.executable, str(LAUNCHER), "--repo", str(sync.repo), "--supervisor"],
         text=True,
@@ -703,9 +708,37 @@ def test_abandoned_update_blocks_imports_until_clean_main_is_revalidated(
     )
     assert blocked.returncode == 75
     assert "checkout recovery pending" in blocked.stderr
-    result = sync.run("already_current")
+    result = sync.run("fast_forwarded")
     assert result["checkout_blocked"] is False
     assert not barrier.exists()
+
+
+def test_partial_checkout_with_only_added_source_keeps_new_jobs_blocked(
+    sync: SyncEnv,
+) -> None:
+    sync.publish({"new_code.py": "complete module\n"})
+    install_git_hook(
+        sync,
+        """
+if 'merge' in args:
+    Path('new_code.py').write_text('partial module\\n')
+    sys.exit(11)
+sys.exit(subprocess.call([real, *args]))
+""",
+    )
+    result = sync.run("operation_failed", 2)
+    assert result["checkout_blocked"] is True
+    assert result["resume_blocked_reason"] == "untracked_collision"
+    assert (sync.repo / "new_code.py").read_text() == "partial module\n"
+
+
+def test_corrupt_checkout_marker_is_not_silently_cleared(sync: SyncEnv) -> None:
+    barrier = sync.repo / ".git/ops-code.blocked"
+    barrier.write_text('{"schema_version": 99}')
+    result = sync.run("operation_failed", 2)
+    assert result["checkout_blocked"] is True
+    assert "invalid checkout update marker" in result["error"]
+    assert barrier.read_text() == '{"schema_version": 99}'
 
 
 def test_fetch_error_is_not_reported_as_a_skip_or_success(sync: SyncEnv) -> None:
