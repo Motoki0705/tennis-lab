@@ -21,6 +21,7 @@ JUDGEMENT = "tennis-lab-dispatch-judgement.service"
 REPORT_TIMER = "tennis-lab-ops-report.timer"
 REPORT = "tennis-lab-ops-report.service"
 TRIAGE_TIMER = "tennis-lab-ops-triage.timer"
+TRIAGE = "tennis-lab-ops-triage.service"
 CLEANUP_TIMER = "tennis-lab-cleanup.timer"
 AGENT_UNITS = {
     SUPERVISOR,
@@ -29,7 +30,7 @@ AGENT_UNITS = {
     REPORT_TIMER,
     REPORT,
     TRIAGE_TIMER,
-    "tennis-lab-ops-triage.service",
+    TRIAGE,
 }
 
 
@@ -350,14 +351,85 @@ def test_dispatcher_enable_failure_does_not_start_its_units_but_continues_group(
     assert control.read()["units"][REPORT_TIMER]["UnitFileState"] == "enabled"
 
 
-def test_manager_loss_during_mutation_stays_unavailable(control: ControlEnv) -> None:
+@pytest.mark.parametrize("target", ["triage", "agents"])
+def test_manager_loss_during_mutation_stays_unavailable(
+    control: ControlEnv, target: str
+) -> None:
     state = control.read()
     state["lose_bus_after_mutation"] = True
     control.write(state)
-    result = control.run("on", "triage")
+    result = control.run("on", target)
     assert result.returncode != 0
-    assert json.loads(result.stdout)["manager"] == "unavailable"
-    assert control.read()["units"][TRIAGE_TIMER]["UnitFileState"] == "enabled"
+    data = json.loads(result.stdout)
+    assert data["manager"] == data["outcome"] == "unavailable"
+    assert "loginctl enable-linger" in data["error"]
+    if target == "triage":
+        assert control.read()["units"][TRIAGE_TIMER]["UnitFileState"] == "enabled"
+    else:
+        assert control.read()["units"][SUPERVISOR]["UnitFileState"] == "enabled"
+        for timer in (REPORT_TIMER, TRIAGE_TIMER):
+            assert ["systemctl", "--user", "enable", "--now", timer] not in control.calls()
+            assert control.read()["units"][timer]["UnitFileState"] == "disabled"
+
+
+@pytest.mark.parametrize("loss_point", ["verification", "shutdown", "source"])
+@pytest.mark.parametrize("reconnect", [True, False], ids=["transient", "persistent"])
+def test_off_manager_loss_keeps_reports_and_attempts_all_stops(
+    control: ControlEnv, loss_point: str, reconnect: bool
+) -> None:
+    state = control.read()
+    for unit in AGENT_UNITS:
+        state["units"][unit]["ActiveState"] = "active"
+    for unit in (SUPERVISOR, JUDGEMENT_TIMER, REPORT_TIMER, TRIAGE_TIMER):
+        state["units"][unit]["UnitFileState"] = "enabled"
+    state["dispatcher"]["enabled"] = True
+    if loss_point == "verification":
+        trigger = [
+            "systemctl",
+            "--user",
+            "link",
+            str(control.repo / ".agents/ops/dispatcher/systemd" / SUPERVISOR),
+        ]
+    elif loss_point == "shutdown":
+        trigger = ["dispatcher", "shutdown"]
+    else:
+        trigger = ["systemctl", "--user", "stop", JUDGEMENT]
+    state["lose_bus_after_call"] = trigger
+    if reconnect:
+        # Fail the unit operation/read and its manager probe, then reconnect.
+        state["bus_failures_remaining"] = 2
+    control.write(state)
+    result = control.run("off", "agents")
+    calls = control.calls()
+    cut = calls.index(trigger)
+    for timer, service in ((REPORT_TIMER, REPORT), (TRIAGE_TIMER, TRIAGE)):
+        assert calls.index(["systemctl", "--user", "disable", "--now", timer]) > cut
+        assert calls.index(["systemctl", "--user", "stop", service]) > cut
+    assert ["systemctl", "--user", "disable", "--now", SUPERVISOR] in calls
+    assert ["systemctl", "--user", "stop", JUDGEMENT] in calls
+    assert result.returncode != 0, result.stdout + result.stderr
+    data = json.loads(result.stdout)
+    assert data["manager"] == data["outcome"] == "unavailable"
+    assert "loginctl enable-linger" in data["error"]
+    assert [report["target"] for report in data["targets"]] == [
+        "dispatcher",
+        "report",
+        "triage",
+    ]
+    dispatcher, *others = data["targets"]
+    assert dispatcher["outcome"] == "unavailable"
+    assert any("loginctl enable-linger" in error for error in dispatcher["errors"])
+    assert dispatcher["dispatcher"]["enabled"] is False
+    if reconnect:
+        assert dispatcher["units"]  # Keep the evidence obtained after reconnection.
+        assert [report["outcome"] for report in others] == ["ok", "ok"]
+        for timer, service in ((REPORT_TIMER, REPORT), (TRIAGE_TIMER, TRIAGE)):
+            assert control.read()["units"][timer]["UnitFileState"] != "enabled"
+            assert control.read()["units"][service]["ActiveState"] == "inactive"
+    else:
+        assert [report["outcome"] for report in others] == ["unavailable", "unavailable"]
+        assert all(report["errors"] for report in others)
+        assert control.read()["units"][REPORT]["ActiveState"] == "active"
 
 
 def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) -> None:

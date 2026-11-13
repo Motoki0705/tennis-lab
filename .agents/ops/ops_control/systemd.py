@@ -70,7 +70,7 @@ class Systemd:
         # installed from this repo. Preserve the resolved source before removal
         # and relink it without any wants/enable links, so on/status still work.
         sources = []
-        errors = []
+        errors: list[ControlError | OSError] = []
         for unit in args:
             if unit.endswith((".service", ".timer")):
                 try:
@@ -78,25 +78,26 @@ class Systemd:
                     if not fragment or not Path(fragment).is_absolute():
                         raise ControlError(f"{unit}: missing absolute FragmentPath")
                     sources.append(str(Path(fragment).resolve(strict=True)))
-                except ManagerUnavailable:
-                    raise
                 except (ControlError, OSError) as exc:
-                    errors.append(str(exc))
+                    errors.append(exc)
+        # Even failed source discovery must not skip the stop request. Keep
+        # manager loss distinct if the bus reconnects before later operations.
         try:
             self.run("disable", *args)
-        except ManagerUnavailable:
-            raise
         except (ControlError, OSError) as exc:
-            errors.append(str(exc))
+            errors.append(exc)
         for source in sources:
             try:
                 self.run("link", source)
-            except ManagerUnavailable:
-                raise
             except (ControlError, OSError) as exc:
-                errors.append(str(exc))
+                errors.append(exc)
         if errors:
-            raise ControlError("; ".join(errors))
+            error_type = (
+                ManagerUnavailable
+                if any(isinstance(error, ManagerUnavailable) for error in errors)
+                else ControlError
+            )
+            raise error_type("; ".join(str(error) for error in errors))
 
     def status(self, unit: str) -> dict[str, str | None]:
         result = self.invoke(

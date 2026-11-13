@@ -61,12 +61,21 @@ class Controller:
         else:
             self.dispatcher(*step.args)
 
-    def inspect(self, target: Target, report: dict[str, Any]) -> None:
+    def inspect(
+        self,
+        target: Target,
+        report: dict[str, Any],
+        *,
+        continue_on_unavailable: bool = False,
+    ) -> None:
         for unit in target.units:
             try:
                 report["units"].append(self.systemd.status(unit))
-            except ManagerUnavailable:
-                raise
+            except ManagerUnavailable as exc:
+                if not continue_on_unavailable:
+                    raise
+                report["outcome"] = "unavailable"
+                report["errors"].append(f"{unit}: {exc}")
             except (ControlError, OSError, ValueError) as exc:
                 report["errors"].append(str(exc))
         if target.verify_dispatcher:
@@ -126,6 +135,7 @@ class Controller:
             "kind": target.kind,
             "units": [],
             "errors": [],
+            "outcome": "ok",
         }
         if action == "off":
             # A failed shutdown must not skip disabling the supervisor, or
@@ -134,6 +144,8 @@ class Controller:
                 try:
                     self.step(step)
                 except (ControlError, OSError, ValueError) as exc:
+                    if isinstance(exc, ManagerUnavailable):
+                        report["outcome"] = "unavailable"
                     report["errors"].append(str(exc))
         else:
             try:
@@ -148,7 +160,7 @@ class Controller:
                 raise
             except (ControlError, OSError, ValueError) as exc:
                 report["errors"].append(str(exc))
-        self.inspect(target, report)
+        self.inspect(target, report, continue_on_unavailable=action == "off")
         try:
             if action == "off":
                 self.verify_off(report)
@@ -169,7 +181,8 @@ class Controller:
                     report["errors"].append("dispatcher enable not confirmed")
         except ControlError as exc:
             report["errors"].append(str(exc))
-        report["outcome"] = "partial_failure" if report["errors"] else "ok"
+        if report["outcome"] != "unavailable":
+            report["outcome"] = "partial_failure" if report["errors"] else "ok"
         return report
 
     def install(self, targets: tuple[Target, ...], *, dry_run: bool) -> int:

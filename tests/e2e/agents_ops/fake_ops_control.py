@@ -13,11 +13,15 @@ tool = Path(sys.argv[0]).name
 if tool == "__main__.py":
     tool = "dispatcher"
 args = sys.argv[1:]
+call = [tool, *args]
 with Path(os.environ["FAKE_OPS_CALLS"]).open("a") as stream:
-    stream.write(json.dumps([tool, *args]) + "\n")
+    stream.write(json.dumps(call) + "\n")
 
 
 def finish(code: int = 0) -> None:
+    if code == 0 and call == state.get("lose_bus_after_call"):
+        state["bus_lost"] = True
+        del state["lose_bus_after_call"]
     state_file.write_text(json.dumps(state))
     raise SystemExit(code)
 
@@ -54,6 +58,9 @@ if tool == "dispatcher":
 
 assert tool == "systemctl" and args.pop(0) == "--user", (tool, args)
 if state.get("manager") == "bus_unreachable" or state.get("bus_lost"):
+    if state.get("bus_lost") and "bus_failures_remaining" in state:
+        state["bus_failures_remaining"] -= 1
+        state["bus_lost"] = state["bus_failures_remaining"] > 0
     print("Failed to connect to bus: No medium found", file=sys.stderr)
     finish(1)
 if state.get("manager") == "manager_missing":

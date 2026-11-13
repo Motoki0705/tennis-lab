@@ -76,19 +76,25 @@ def main(argv: list[str] | None = None) -> int:
         print(f"ops: {exc}", file=sys.stderr)
         return 1
     failed = any(report["errors"] for report in reports)
-    print(
-        json.dumps(
-            {
-                "manager": "available",
-                "action": args.action,
-                "outcome": "partial_failure" if failed else "ok",
-                "targets": reports,
-            },
-            ensure_ascii=False,
-            indent=2,
+    unavailable = any(report["outcome"] == "unavailable" for report in reports)
+    result = {
+        "manager": "unavailable" if unavailable else "available",
+        "action": args.action,
+        "outcome": "unavailable" if unavailable else "partial_failure" if failed else "ok",
+        "targets": reports,
+    }
+    if unavailable:
+        result["requested_target"] = args.target
+        result["error"] = "; ".join(
+            dict.fromkeys(
+                error
+                for report in reports
+                if report["outcome"] == "unavailable"
+                for error in report["errors"]
+            )
         )
-    )
-    return int(failed)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    return int(failed or unavailable)
 
 
 if __name__ == "__main__":

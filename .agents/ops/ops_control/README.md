@@ -47,6 +47,9 @@ dispatcherは先に既存CLIの `enable` を実行する。初回だけ [dispatc
 停止後は全unitの有効化・稼働状態と、dispatcher statusの `enabled`、`active_judgement`、
 各親の `children_pending` / jobの `phase` / `occupies_slot` を照合する。
 残存・回復待ち・照合不能は `partial_failure` と非0。`shutdown` の成功コードだけでは終了を認めない。
+ただしuser managerの接続喪失は対象の `outcome: "unavailable"` とエラーを保持し、後続の停止・照合を続ける。
+再リンク元の取得に失敗しても `disable --now` と後続のservice停止を試みる。
+接続が復帰して後続対象を停止できても、全体の `manager` / `outcome` は `unavailable`、終了コードは非0とする。
 回復待ちの判定や子については [dispatcher README](../dispatcher/README.md) の既存の復旧契約に従う。
 終了を確認できない記録を削除・初期化しない。状態が `failed` のserviceは終了済みとして扱い、最終失敗をstatusに残す。
 
@@ -58,6 +61,8 @@ merge後にメインcheckoutから導入する。unitはメインcheckoutを参�
 
 user managerへの接続を操作前に確認する。bus接続不能・manager未起動・manager情報欠落は
 `manager: "unavailable"` と非0で返し、unitのOFF状態を推測しない。操作途中で接続が失われた場合も同じ。
+`on` / `run` は接続喪失後に新たな対象を起動しないため、`status` は状態一覧を確定できないため、その時点で中断する。
+`install` は導入処理1回とdaemon-reloadの失敗を返し、後続対象の操作ループは持たない。
 ログイン状態と `XDG_RUNTIME_DIR` / `DBUS_SESSION_BUS_ADDRESS` を確認し、ログインなしの継続運用には
 管理者が `sudo loginctl enable-linger <user>` を実施する。CLI自身はlingerやホスト設定を変更しない。
 `install --dry-run` はbusなしでリンク予定を確認できる。
