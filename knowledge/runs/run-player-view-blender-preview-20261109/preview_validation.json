@@ -1,0 +1,91 @@
+{
+  "agent_visual_review": "passed_for_full_render",
+  "human_acceptance": "pending",
+  "players": {
+    "0": {
+      "source_frames": [
+        16,
+        17,
+        19,
+        193,
+        389,
+        500,
+        730,
+        731,
+        732,
+        734,
+        735,
+        736
+      ],
+      "camera_missing": [
+        731
+      ],
+      "gpu": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "materials": {
+        "OpaqueGrayPlayer": {
+          "alpha": 1.0,
+          "emission_strength": 0.0
+        },
+        "OpaqueGreenBall": {
+          "alpha": 1.0,
+          "emission_strength": 0.0
+        }
+      },
+      "max_pc2_error_m": 0.0,
+      "contact_sheet": "outputs/tennis_scene/visualize/player_view/blender-acceptance/preview_player_0.png"
+    },
+    "1": {
+      "source_frames": [
+        16,
+        17,
+        19,
+        193,
+        389,
+        500,
+        730,
+        731,
+        732,
+        734,
+        735,
+        736
+      ],
+      "camera_missing": [
+        735
+      ],
+      "gpu": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "materials": {
+        "OpaqueGrayPlayer": {
+          "alpha": 1.0,
+          "emission_strength": 0.0
+        },
+        "OpaqueGreenBall": {
+          "alpha": 1.0,
+          "emission_strength": 0.0
+        }
+      },
+      "max_pc2_error_m": 0.0,
+      "contact_sheet": "outputs/tennis_scene/visualize/player_view/blender-acceptance/preview_player_1.png"
+    }
+  },
+  "observations": [
+    "Both views show opaque gray opponent meshes and green balls over the simple court/net.",
+    "Viewer meshes never obstruct the head camera.",
+    "Source 16/17/19 shows ball visibility changes; ID0 730/731/732 and ID1 734/735/736 preserve camera-missing slots.",
+    "Opponent-only mesh gaps remain hidden while a valid camera continues rendering.",
+    "Raw saved head roll/pitch can aim outside the court; no camera correction is applied."
+  ],
+  "limitations": [
+    "12 selected nonconsecutive source frames per player; this is not full-video human acceptance.",
+    "Preview used default Blender dithering; full render disables it, and publication permits the measured four-LSB maximum blank-frame variation."
+  ]
+}

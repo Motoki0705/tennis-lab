@@ -1,0 +1,10 @@
+{
+  "rendered_frames": 10.0,
+  "mean_frame_interval_id0_s": 4.200463,
+  "mean_frame_interval_id1_s": 4.212464,
+  "max_evaluated_pc2_error_m": 0.0,
+  "remaining_frames": 1632.0,
+  "green_mask_iou_all_frames": 1.0,
+  "pixels_different_by_more_than_8_lsb": 0.0,
+  "throughput_gate_passed": 0.0
+}

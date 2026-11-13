@@ -26,6 +26,9 @@ EXTERNAL_RUNTIME_MODULES: Mapping[str, str] = {
         "Copied stdlib-only client in a Landlock-isolated worker, without repo imports; "
         "the parent validates camera/input paths and owns all artifact writes."
     ),
+    "src.tennis_scene.visualization.blender.shots.player_view": (
+        "Standalone Blender Python; saved shot inputs are validated before rendering."
+    ),
     "src.tennis_scene.visualization.blender.shots.ball_diffusion": (
         "Blender bundled Python; displays an exported schematic concept without repo imports."
     ),
@@ -536,6 +539,14 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.player_view_head_cameras",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.scripts.prepare_player_view_blender": (
+        "tennis_scene.player_view_blender",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tennis_scene.scripts.publish_player_views": (
+        "tennis_scene.player_view_videos",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.court_side.scripts.benchmark_synthetic": (
         "court_side.benchmark_synthetic",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -766,6 +777,18 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.tennis_scene.scripts.export_player_view_cameras",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.prepare_player_view_blender",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.publish_player_views",
         "main",
         domain="tennis_scene",
         executable_module=True,

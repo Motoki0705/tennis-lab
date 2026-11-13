@@ -1,0 +1,68 @@
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=1 failed=0 cancelled=0
+executing=0 waiting=0
+completed (latest 10):
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+C3_FULL_BUDGET {"at": "2026-11-08T17:27:52.090643+00:00", "gpu_deadline": "2026-11-08T20:19:37.670427+00:00", "gpu_remaining_seconds_at_registration": 10305, "command_timeout_seconds": 9345, "reserve_seconds": 960, "command": "timeout --foreground --signal=TERM --kill-after=30s 9345 .venv/bin/python outputs/tennis_scene/visualize/player_view/blender-acceptance/render_full.py --blender /content/blender/blender-5.2.1-linux-x64/blender --package outputs/tennis_scene/visualize/player_view/blender-acceptance/package --output outputs/tennis_scene/visualize/player_view/blender-acceptance/full"}
+queued: 0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job
+[worker] 2026-11-08T17:27:52+00:00 running: 0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all (log: /content/tennis-lab/.training_queue/logs/0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.log)
+[worker] 2026-11-08T18:00:46+00:00 cancelled: 0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all
+[worker] queue empty for 1s; exiting.
+[worker] 2026-11-08T18:00:47+00:00 worker exited.
+worker: stopped
+gpu-capacity: slots=2 mode=logical-only mig=unchanged vram-hard-cap=none
+queued=0 running=0 done=1 failed=0 cancelled=1
+executing=0 waiting=0
+completed (latest 10):
+  0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+cancelled (latest 10):
+  0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+0-8205842755436412952_2026-11-08T17-00-44-563587047Z_13141_i1727-c3-preview-24.job resource=all slot=all pid=13231 pgid=13231 state=done wait=none
+0-8205841127735835654_2026-11-08T17-27-52-264164345Z_25197_i1727-c3-full-2020.job resource=all slot=all pid=25280 pgid=25280 state=cancelled wait=none
+29:18.871  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00345.png'
+29:23.987  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00346.png'
+29:29.081  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00347.png'
+29:34.154  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00348.png'
+29:39.256  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00349.png'
+29:44.320  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00350.png'
+29:49.419  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00351.png'
+29:54.526  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00352.png'
+29:59.594  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00353.png'
+30:04.710  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00354.png'
+30:09.814  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00355.png'
+30:14.896  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00356.png'
+30:20.023  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00357.png'
+30:25.119  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00358.png'
+30:30.208  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00359.png'
+30:35.316  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00360.png'
+30:40.396  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00361.png'
+30:45.480  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00362.png'
+30:50.601  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00363.png'
+30:55.720  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00364.png'
+31:00.854  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00365.png'
+31:05.946  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00366.png'
+31:11.087  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00367.png'
+31:16.201  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00368.png'
+31:21.316  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00369.png'
+31:26.444  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00370.png'
+31:31.532  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00371.png'
+31:36.664  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00372.png'
+31:41.795  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00373.png'
+31:46.876  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00374.png'
+31:52.003  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00375.png'
+31:57.114  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00376.png'
+32:02.194  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00377.png'
+32:07.308  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00378.png'
+32:12.396  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00379.png'
+32:17.515  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00380.png'
+32:22.609  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00381.png'
+32:27.673  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00382.png'
+32:32.817  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00383.png'
+32:37.908  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00384.png'
+C3_CHECKPOINT_READY {"player_id": 0, "path": "player_0_00256_00383.tar", "output_indices": [256, 384], "source_frames": [256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 290, 291, 292, 293, 294, 295, 296, 297, 298, 299, 300, 301, 302, 303, 304, 305, 306, 307, 308, 309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331, 332, 333, 334, 335, 336, 337, 338, 339, 340, 341, 342, 343, 344, 345, 346, 347, 348, 349, 350, 351, 352, 353, 354, 355, 356, 357, 358, 359, 360, 361, 362, 363, 364, 365, 366, 367, 368, 369, 370, 371, 372, 373, 374, 375, 376, 377, 378, 379, 380, 381, 382, 383]}
+32:42.995  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00385.png'
+32:48.122  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00386.png'
+32:53.202  render           | Saved: '/content/tennis-lab/outputs/tennis_scene/visualize/player_view/blender-acceptance/full/work/renders/player_0/frames/00387.png'
+exit_code=143

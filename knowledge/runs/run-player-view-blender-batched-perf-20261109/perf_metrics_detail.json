@@ -1,0 +1,470 @@
+{
+  "git_ref": "caca7e69b71da55b8a4430b52d587e4c81992380",
+  "package_sha256": "708affe5b630ba50014bf9f3f7a5ff4a730440906c1b1a4f99e920bfe5247280",
+  "source_frames": [
+    16,
+    17,
+    18,
+    19,
+    730,
+    731,
+    732,
+    733,
+    734,
+    735,
+    736,
+    737
+  ],
+  "players": [
+    {
+      "player_id": 0,
+      "intervals_seconds": [
+        4.2054643630981445,
+        4.192462682723999,
+        4.188462495803833,
+        4.168460130691528,
+        4.248469114303589,
+        4.190462589263916,
+        4.18546199798584,
+        4.243468523025513,
+        4.2374677658081055,
+        4.211464881896973
+      ],
+      "mean_interval_seconds": 4.207164454460144,
+      "max_interval_seconds": 4.248469114303589,
+      "worst_valid_interval_seconds": 4.248469114303589,
+      "contiguous_source_gaps": [
+        {
+          "source_from": 16,
+          "source_to": 17,
+          "seconds": 4.2054643630981445,
+          "camera_valid": true
+        },
+        {
+          "source_from": 17,
+          "source_to": 18,
+          "seconds": 4.192462682723999,
+          "camera_valid": true
+        },
+        {
+          "source_from": 18,
+          "source_to": 19,
+          "seconds": 4.188462495803833,
+          "camera_valid": true
+        },
+        {
+          "source_from": 730,
+          "source_to": 731,
+          "seconds": 4.168460130691528,
+          "camera_valid": false
+        },
+        {
+          "source_from": 731,
+          "source_to": 732,
+          "seconds": 4.248469114303589,
+          "camera_valid": true
+        },
+        {
+          "source_from": 732,
+          "source_to": 733,
+          "seconds": 4.190462589263916,
+          "camera_valid": true
+        },
+        {
+          "source_from": 733,
+          "source_to": 734,
+          "seconds": 4.18546199798584,
+          "camera_valid": true
+        },
+        {
+          "source_from": 734,
+          "source_to": 735,
+          "seconds": 4.243468523025513,
+          "camera_valid": true
+        },
+        {
+          "source_from": 735,
+          "source_to": 736,
+          "seconds": 4.2374677658081055,
+          "camera_valid": true
+        },
+        {
+          "source_from": 736,
+          "source_to": 737,
+          "seconds": 4.211464881896973,
+          "camera_valid": true
+        }
+      ],
+      "persistent_data": true,
+      "gpu_devices": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "image_reference_match": true,
+      "images": [
+        {
+          "source_frame": 16,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.2728982204861111,
+          "pixel_span": 182
+        },
+        {
+          "source_frame": 17,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.2728396267361111,
+          "pixel_span": 173
+        },
+        {
+          "source_frame": 18,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": null,
+          "pixel_span": 173
+        },
+        {
+          "source_frame": 19,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.2718670428240741,
+          "pixel_span": 182
+        },
+        {
+          "source_frame": 730,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.27451750578703704,
+          "pixel_span": 172
+        },
+        {
+          "source_frame": 731,
+          "camera_valid": false,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.45642505787037035,
+          "pixel_span": 2
+        },
+        {
+          "source_frame": 732,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.2754278790509259,
+          "pixel_span": 176
+        },
+        {
+          "source_frame": 733,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": null,
+          "pixel_span": 173
+        },
+        {
+          "source_frame": 734,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.27530996817129627,
+          "pixel_span": 172
+        },
+        {
+          "source_frame": 735,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2755504918981482,
+          "pixel_span": 176
+        },
+        {
+          "source_frame": 736,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": 0.27573097511574074,
+          "pixel_span": 170
+        },
+        {
+          "source_frame": 737,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            false
+          ],
+          "reference_mean_abs_difference": null,
+          "pixel_span": 172
+        }
+      ]
+    },
+    {
+      "player_id": 1,
+      "intervals_seconds": [
+        4.282472848892212,
+        4.2394678592681885,
+        4.2024641036987305,
+        4.191462755203247,
+        4.182461738586426,
+        4.18546199798584,
+        4.199463844299316,
+        4.188462257385254,
+        4.188462257385254,
+        4.168460369110107
+      ],
+      "mean_interval_seconds": 4.202864003181458,
+      "max_interval_seconds": 4.282472848892212,
+      "worst_valid_interval_seconds": 4.282472848892212,
+      "contiguous_source_gaps": [
+        {
+          "source_from": 16,
+          "source_to": 17,
+          "seconds": 4.282472848892212,
+          "camera_valid": true
+        },
+        {
+          "source_from": 17,
+          "source_to": 18,
+          "seconds": 4.2394678592681885,
+          "camera_valid": true
+        },
+        {
+          "source_from": 18,
+          "source_to": 19,
+          "seconds": 4.2024641036987305,
+          "camera_valid": true
+        },
+        {
+          "source_from": 730,
+          "source_to": 731,
+          "seconds": 4.191462755203247,
+          "camera_valid": true
+        },
+        {
+          "source_from": 731,
+          "source_to": 732,
+          "seconds": 4.182461738586426,
+          "camera_valid": true
+        },
+        {
+          "source_from": 732,
+          "source_to": 733,
+          "seconds": 4.18546199798584,
+          "camera_valid": true
+        },
+        {
+          "source_from": 733,
+          "source_to": 734,
+          "seconds": 4.199463844299316,
+          "camera_valid": true
+        },
+        {
+          "source_from": 734,
+          "source_to": 735,
+          "seconds": 4.188462257385254,
+          "camera_valid": false
+        },
+        {
+          "source_from": 735,
+          "source_to": 736,
+          "seconds": 4.188462257385254,
+          "camera_valid": true
+        },
+        {
+          "source_from": 736,
+          "source_to": 737,
+          "seconds": 4.168460369110107,
+          "camera_valid": true
+        }
+      ],
+      "persistent_data": true,
+      "gpu_devices": [
+        {
+          "name": "NVIDIA L4",
+          "type": "OPTIX"
+        }
+      ],
+      "image_reference_match": true,
+      "images": [
+        {
+          "source_frame": 16,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2755450665509259,
+          "pixel_span": 183
+        },
+        {
+          "source_frame": 17,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2757392939814815,
+          "pixel_span": 178
+        },
+        {
+          "source_frame": 18,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": null,
+          "pixel_span": 177
+        },
+        {
+          "source_frame": 19,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27607819733796296,
+          "pixel_span": 184
+        },
+        {
+          "source_frame": 730,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27496274594907405,
+          "pixel_span": 187
+        },
+        {
+          "source_frame": 731,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27501410590277775,
+          "pixel_span": 175
+        },
+        {
+          "source_frame": 732,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.275257884837963,
+          "pixel_span": 176
+        },
+        {
+          "source_frame": 733,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": null,
+          "pixel_span": 176
+        },
+        {
+          "source_frame": 734,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.2749309172453704,
+          "pixel_span": 176
+        },
+        {
+          "source_frame": 735,
+          "camera_valid": false,
+          "ball_hidden": true,
+          "player_hidden": [
+            true,
+            true
+          ],
+          "reference_mean_abs_difference": 0.45642505787037035,
+          "pixel_span": 2
+        },
+        {
+          "source_frame": 736,
+          "camera_valid": true,
+          "ball_hidden": false,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": 0.27467339409722225,
+          "pixel_span": 176
+        },
+        {
+          "source_frame": 737,
+          "camera_valid": true,
+          "ball_hidden": true,
+          "player_hidden": [
+            false,
+            true
+          ],
+          "reference_mean_abs_difference": null,
+          "pixel_span": 142
+        }
+      ]
+    }
+  ],
+  "prefix_counts": [
+    388,
+    0
+  ],
+  "metadata_and_crc_passed": true,
+  "image_reference_match": true
+}

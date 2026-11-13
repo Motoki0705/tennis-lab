@@ -1,0 +1,8 @@
+{
+  "audited_frames": 388.0,
+  "fully_rendered_views": 0.0,
+  "target_frames": 2020.0,
+  "max_reported_pc2_error_m": 0.0,
+  "preview_mean_frame_interval_s": 5.114,
+  "full_command_timeout_s": 9345.0
+}
