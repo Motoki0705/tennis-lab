@@ -15,6 +15,7 @@
 - 注釈workerは gpt-6.1-sol / max。テスト用の値を本番planの実行条件に流用しない。
 - 公開向けの文書は英語版を既定にし、日本語版を `.ja.md`、簡体字中国語版を `.zh-CN.md` に分け、3言語を維持する。文書にハッシュ値を書かない。
 - CI短縮を受け、PRへのpushごとにCIを実行し、対象HEADの `Python` 成功をmergeの必須条件とする。コミットに `[skip ci]` を付けない。
+- 長時間の学習は、子に起動直後の確認までさせて終える。以後のprocess監視と節目の確認は親が行う。
 
 ## [environment](environment/index.md) — 環境の癖
 
