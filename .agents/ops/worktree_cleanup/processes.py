@@ -96,7 +96,7 @@ def run_directories(root: Path) -> set[Path]:
             continue
         try:
             if entry.stat().st_uid != os.getuid() or not within(
-                os.readlink(entry / "cwd"), root
+                os.readlink(entry / "cwd").removesuffix(" (deleted)"), root
             ):
                 continue
             environment = (entry / "environ").read_bytes().split(b"\0")

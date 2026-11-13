@@ -889,3 +889,39 @@ def test_worktree_move_preserves_original_creation_and_deadline(lab: Lab) -> Non
     assert after["id"] == before["id"]
     assert after["deadline"] == before["deadline"]
     assert not moved.exists()
+
+
+def test_explicit_runner_directory_is_discovered_for_deleted_cwd(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    external = lab.repo.parent / "explicit-run"
+    real_iter, real_stat, real_bytes = Path.iterdir, Path.stat, Path.read_bytes
+    entry = Path("/proc/777")
+    monkeypatch.setattr(
+        Path,
+        "iterdir",
+        lambda directory: (
+            iter([entry]) if directory == Path("/proc") else real_iter(directory)
+        ),
+    )
+    monkeypatch.setattr(
+        Path,
+        "stat",
+        lambda candidate, *a, **kw: (
+            SimpleNamespace(st_uid=os.getuid())
+            if candidate == entry
+            else real_stat(candidate, *a, **kw)
+        ),
+    )
+    monkeypatch.setattr(
+        Path,
+        "read_bytes",
+        lambda candidate: (
+            os.fsencode(f"AGENT_RUNTIME_RUN_DIR={external}\0")
+            if candidate == entry / "environ"
+            else real_bytes(candidate)
+        ),
+    )
+    monkeypatch.setattr(os, "readlink", lambda candidate: str(path) + " (deleted)")
+    assert lab.lifecycle.processes.run_directories(path) == {external}
