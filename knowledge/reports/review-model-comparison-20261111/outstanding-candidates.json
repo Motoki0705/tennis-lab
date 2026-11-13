@@ -1,0 +1,26 @@
+{
+  "candidates": [
+    {
+      "case_id": "pr-1699",
+      "condition": "小文字化したrepoとGitHubの正規表記html_urlの組合せ。",
+      "current_main_evidence": "identityはrepo比較をcasefoldするがhtml_urlはrepo文字列と完全一致で比較する。",
+      "finding_id": "pr-1699-2",
+      "path": ".agents/ops/worker_logs/schema.py",
+      "verification": "static_only",
+      "within_parent_scope": false
+    },
+    {
+      "case_id": "pr-1766",
+      "condition": "全frame保存後のtimeoutでholdを保存し、その後ファイルを修復する。",
+      "current_main_evidence": "既存holdを再利用し、RetryWorkerは全frame処理済みのtimed_outを拒否する。",
+      "finding_id": "pr-1766-2",
+      "path": "src/tasks/annotation/recovery.py",
+      "verification": "static_only",
+      "within_parent_scope": false
+    }
+  ],
+  "issues_created": false,
+  "observed_main_commit": "2ac198a07793475bd892b4d56d9140ffd8ec83e5",
+  "schema_version": 1,
+  "source": "親のvalid_new判定と現在mainの静的確認。起票・修正は本タスクの範囲外。"
+}

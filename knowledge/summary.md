@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-05
+更新日: 2026-11-11
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -76,6 +76,10 @@
 
 - **annotation**（#1088）: production campaignは現在、ball・framesだけをレビューから累積公開・追加学習・固定評価まで接続しています（[module README](../src/tasks/annotation/README.md)）。新規clipの[ball予測](nodes/annotation/000001-run-i1088-ball-prediction-pilot-20261015.md)は完走し、[player予測](nodes/annotation/000002-run-i1088-player-prediction-pilot-20261015.md)はDINOのCUDA拡張を読めずに停止しました。2サイクルの追加学習と、修正bboxから追跡・pose・累積公開への接続が残っています。
 - **player_pose_annotation**（#988）: ボール検出の学習データ用に選手のposeを蓄積するcampaignです。[1,300 clipsの拡張campaign](nodes/player_pose_annotation/000003-run-i988-pose-after-review-20261005.md)は実行中として記録されたままです。次は公開・保留・失敗のcoverageとID切替の実例を監査し、下流の効果を独立した実験で確かめます。
+
+## レビュー評価（review_evaluation）
+
+既定はfixed（Astra・xhigh）を維持します。[固定7ケースの親判定](nodes/review_evaluation/000015-group-i1863-review-model-comparison-20261111.md)では、select投影が時間・使用量の20%以上改善を満たさず、selectを採用しません。両モデルの正解major見逃しは同数でしたが、Astraだけが正解表外の妥当な指摘を出しており、1反復ではSolを通常レビューに使う根拠が不足しています。反復を増やすかは人間の判断待ちです。正式レビューの実機受入と、[結果レポート](reports/review-model-comparison-20261111/README.md)に残した範囲外の別issue候補は未完了です。
 
 ## 結果を解釈するための規則
 

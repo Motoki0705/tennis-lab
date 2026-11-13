@@ -1,0 +1,31 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "静的確認: あるPRがreviewed、別PRがnot_reviewedの場合、全体はfailed/incompleteとなるため、この条件でruntime検証を省略します。しかしevaluate_coverageとmerge gateはreviewedのPRを独立して承認できます。そのため、保存後のruntimeに選択モデルとの不一致や証拠欠損が生じても、公開再開・gateはruntimeやそのdigestを照合せず、当該PRを採用できます。全体の成功状態だけでなく、利用可能なcoverageを持つ部分結果にも同じ検証が必要です。",
+          "id": "pr-1888-1",
+          "line": 347,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "reviewed のPRを含む部分結果にもruntime検証を適用する",
+          "severity": "major"
+        },
+        {
+          "detail": "静的確認: --review-model-source human_instruction と --review-model gpt-6-astra に --human-review-effort max を添え、理由と参照を指定すると、--human-review-modelがないため、この代入がhuman_effortを通常のeffort引数（省略時はNone）で上書きします。その結果、拒否すべきmax指定が消え、既定のxhighを人間指定として記録・実行できます。明示されたhuman_effortを保持して矛盾・許可リストを検査するか、この引数の組合せを起動前に拒否してください。",
+          "id": "pr-1888-2",
+          "line": 210,
+          "path": ".agents/ops/lib/review_settings.py",
+          "rule": "明示された人間のeffort拘束を上書きしない",
+          "severity": "major"
+        }
+      ],
+      "number": 1888,
+      "summary": "部分結果での実効設定の検証抜けと、人間指定effortの上書きを修正する必要があります。"
+    }
+  ],
+  "summary": "静的レビューを完了し、major 2件を確認しました。CPU実行による検証は行っていません。",
+  "verdict": "request_changes"
+}

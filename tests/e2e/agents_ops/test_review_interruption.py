@@ -49,6 +49,86 @@ def close(r: ReviewEnv, *, ok: bool = True, confirmation: Path | None = None) ->
     )
 
 
+def test_closure_links_parent_decision_without_accepting_review_results(
+    single_review_env: ReviewEnv,
+) -> None:
+    from tests.e2e.agents_ops.test_decision_capture import captured, sourced
+    from tests.e2e.agents_ops.test_manual_worker_runs import state_dir
+    from tests.support.agents_ops.decision_logs import graph, navigation_snapshot
+
+    r = single_review_env
+    r.run()
+    rows = captured(state_dir(r.p))
+    source = [
+        row
+        for row in sourced(rows, "review.run")
+        if "review.result.json:" in row["data"]["summary"]
+    ][-1]
+    interrupted(r)
+    for name in (
+        "result.json",
+        "output.json",
+        "agent_output.md",
+        "agent-runtime/final.md",
+    ):
+        (r.run_dir / name).unlink()
+    decision = json.loads(
+        r.p.cli(
+            "decide",
+            "--spec",
+            r.p.spec(
+                {
+                    "inputs": [source["id"]],
+                    "evaluation": "stop",
+                    "reason": "Confirm cleanup, without accepting the old review",
+                    "resume_conditions": ["A separate review requires a fresh request"],
+                    "next_actions": [
+                        {
+                            "operation": "verify",
+                            "summary": "Confirm interrupted execution exit",
+                            "actor": "parent",
+                            "target": "PR 100",
+                            "instruction": "Verify cleanup before closing",
+                            "conditions": "Runner and descendants have ended",
+                            "expected_result": "Closure without review coverage",
+                        }
+                    ],
+                }
+            ),
+        ).stdout
+    )
+    public_before = r.p.state()
+    response = r.cli(
+        "close-interrupted",
+        "--run",
+        r.request["review_run_id"],
+        "--reason-file",
+        r.p.note("Cleanup was verified; the review itself remains unaccepted"),
+        "--decision-id",
+        decision["decision_id"],
+        "--retry-of",
+        source["id"],
+    )
+    assert json.loads(response.stdout)["status"] == "interrupted_closed"
+    assert r.p.state() == public_before and len(r.calls()) == 1
+    assert not (r.run_dir / "result.json").exists()
+    rows = captured(state_dir(r.p))
+    closure = sourced(rows, "review.close-interrupted")[-1]
+    assert closure["data"]["status"] == "success"
+    assert closure["data"]["previous_result_id"] == source["id"]
+    assert closure["data"]["verifies"] == []
+    action = next(row for row in rows if row["id"] == closure["data"]["action_id"])
+    assert action["data"]["decision_id"] == decision["decision_id"]
+    assert action["data"]["operation"] == "verify"
+    assert graph.states(rows)[source["id"]]["parent_confirmation"] == "unrecorded"
+    view = navigation_snapshot(state_dir(r.p))
+    assert all(
+        f"#record-{identifier}" in view
+        for identifier in (source["id"], decision["decision_id"], closure["id"])
+    )
+    assert "close-interrupted" in view and r.request["review_run_id"] not in view
+
+
 @pytest.mark.parametrize("missing", [False, True], ids=["unclean", "missing-runtime"])
 def test_close_interrupted_requires_runtime_cleanup(
     single_review_env: ReviewEnv, missing: bool
@@ -234,7 +314,10 @@ def test_close_cannot_revoke_published_review_or_use_empty_reason(
     assert (r.run_dir / "result.json").read_bytes() == result_before
     assert r.p.state() == public_before
     gate_after = g.results(g.cli("merge", AGENT_AUTO_MERGE="0"))[100]
-    assert (gate_after["decision"], gate_after["reasons"]) == (before["decision"], before["reasons"])
+    assert (gate_after["decision"], gate_after["reasons"]) == (
+        before["decision"],
+        before["reasons"],
+    )
     interrupted(r)
     response = r.cli(
         "close-interrupted",

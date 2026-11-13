@@ -106,6 +106,7 @@ outboxは非公開の配送入力であり、公開単位ではない。
 | `review-prepare` / `review-request` / `review-state` | 固定要求、明示指示・状態の結果。親の受領/検証は明示操作でだけ記録する |
 | review `run` | 既存execution・output・result・公開状態。runtime失敗時の有効な出力、exceptionと先行reviewの公開キーも保持。公開で元resultを変えず、消費済みrunの取得は新しいAIレビューにしない |
 | review `recover` / `resume-publication` / `complete-evidence` / `resolve` | 既存の保存済み根拠の復旧、公開だけの再試行、親の明示検証。前回結果を保持し、新しいAI起動にしない |
+| review `close-interrupted` | final/result欠落時も既存の終了とcleanupを `verify` で捕捉。coverageと指摘を受理せず、元レビュー結果を検証済みにしない |
 | reviewの取得tool | CI取得失敗を含む既存の取得receipt。同じreview対応・tool・引数の再試行を `retry_fetch` にする。変更なしと分かるのは取得指示であり、通信条件等を補完しない |
 | merge gate `merge` | PR別の判定、保存済みmerge試行/結果、全体結果。dry-runの合格と実mergeを分ける |
 | workerログの受信/公開、`worker-log-status` / `publish-worker-log` | 既存journalの状態、final/公開失敗、main保存確認。公開だけの再試行は `retry_publication` とし、前回結果を参照する |
@@ -123,6 +124,28 @@ commitが同じだけで作業中コードも同じとは認定せず、未観�
 親対応のないrunner、親namespaceが定まる前の引数parse・identity・repo解決失敗。
 過去の会話や任意の過去runは復元しない。reviewの修正確認・復旧・モデル選択方針を変えず、
 捕捉のための定期poll・AI再起動・Git公開は追加しない。
+
+## レビューの因果リンク
+
+既存の `decide`、journal、公開処理、README生成を使う。
+`decision-log-status` で元レビューの捕捉済み結果ID `R` を確認する。
+handoffの親判断は `decide.inputs` に `R` を含め、再利用と追加確認の範囲、
+`review` のnext-action planを指定する。
+`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`
+で準備し、`review-request --run-id NEXT --instruction-file instruction.txt
+--decision-id D --retry-of R` で指示する。planが1件なら `--plan-id` は不要。
+prepareはfetchなので、review planは後続runと結びつくreview-requestに渡す。
+明示したhandoffの結果IDは、その元runの操作が捕捉した結果であり、判断のinputsにも含む必要がある。
+別runの結果や関連しない判断は拒否する。判断metadataのない既存handoffは、判断未記録のまま使える。
+
+`close-interrupted` もほかのcontrolと同じ判断ID、plan、前回結果、比較引数を受理する。
+`verify` planで終了とcleanupを確認しても、結果の `verifies` は空にし、元レビューを受入済みにしない。
+final/resultファイルのない中断も終結でき、正式レビューを公開しない。
+recoverは `retry_fetch`、公開だけの再試行は `retry_publication` とし、
+モデルの選択値と実効値は既存runnerの観測経路で保持する。
+元の結果、判断、行動、次の結果は、既存の公開envelopeと階層READMEのリンクにつながる。
+captureから自動公開しない。[非公開比較](../review/evaluation/README.ja.md)の人工結果と
+歴史的な観測を正式parent journalへ混ぜない。
 
 ## 親の判断を明示記録する
 

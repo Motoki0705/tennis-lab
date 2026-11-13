@@ -1,0 +1,64 @@
+{
+  "basis": "Recomputed from the frozen protocol, historical usage and collected pilot observations.",
+  "schema_version": 1,
+  "stages": [
+    {
+      "forecast": {
+        "hard_token_limit": false,
+        "missing_models": [
+          "gpt-6-astra",
+          "gpt-6.1-sol"
+        ],
+        "projected_totals_including_reserve": {
+          "input_tokens": 49770230,
+          "output_tokens": 185376
+        },
+        "reason": null,
+        "remaining_extra_slots": 2,
+        "remaining_pairs": 14,
+        "status": "pilot_required"
+      },
+      "observed_runs": [],
+      "stage": "before_pilot"
+    },
+    {
+      "forecast": {
+        "hard_token_limit": false,
+        "missing_models": [
+          "gpt-6.1-sol"
+        ],
+        "projected_totals_including_reserve": {
+          "input_tokens": 49421190,
+          "output_tokens": 193298
+        },
+        "reason": null,
+        "remaining_extra_slots": 2,
+        "remaining_pairs": 13,
+        "status": "pilot_required"
+      },
+      "observed_runs": [
+        "d98730fdac794b4b965c34601dcbb26b"
+      ],
+      "stage": "after_astra"
+    },
+    {
+      "forecast": {
+        "hard_token_limit": false,
+        "missing_models": [],
+        "projected_totals_including_reserve": {
+          "input_tokens": 34837048,
+          "output_tokens": 172993
+        },
+        "reason": null,
+        "remaining_extra_slots": 2,
+        "remaining_pairs": 12,
+        "status": "within_estimate"
+      },
+      "observed_runs": [
+        "d98730fdac794b4b965c34601dcbb26b",
+        "b94b85e4d71f4b08a40b78bba2cef85d"
+      ],
+      "stage": "after_both_pilots"
+    }
+  ]
+}

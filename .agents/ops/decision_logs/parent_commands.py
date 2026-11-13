@@ -172,6 +172,10 @@ def _begin(
     # input error; storage failures without supplied links remain best effort.
     journal = Journal(store.directory, repo, parent)
     previous = args.retry_of
+    if args.command in {"review-prepare", "review-request"}:
+        from .review_capture import validate_handoff_link
+
+        validate_handoff_link(args, store, repo, parent)
     request_context = None
     decision_id = args.decision_id
     plan_id = args.plan_id

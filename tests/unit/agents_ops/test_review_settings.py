@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import copy
 import importlib
 from pathlib import Path
@@ -87,6 +88,77 @@ def test_human_constraint_cannot_be_overridden_by_parent(settings: Any) -> None:
     assert chosen["specified_by"] == "human_instruction"
     with pytest.raises(ValueError, match="human"):
         settings.choose(policy, model="gpt-6.1-sol", **args)
+
+
+def test_human_source_preserves_effort_when_model_is_inferred(settings: Any) -> None:
+    chosen = settings.choose(
+        settings.policy_from_pins(pins()),
+        model="gpt-6-astra",
+        specified_by="human_instruction",
+        human_effort="xhigh",
+        human_reference="人間の明示effortを確認済み",
+        reason="人間の指定",
+    )
+    # Matching the fixed choice must not erase the explicit human constraint.
+    assert chosen["human"] == {
+        "model": "gpt-6-astra",
+        "effort": "xhigh",
+        "reference": "人間の明示effortを確認済み",
+    }
+    assert chosen["selected"]["effort"] == "xhigh"
+
+
+def test_human_source_rejects_parent_effort_conflict(settings: Any) -> None:
+    with pytest.raises(ValueError, match="parent effort contradicts"):
+        settings.choose(
+            settings.policy_from_pins(pins()),
+            model="gpt-6-astra",
+            effort="xhigh",
+            specified_by="human_instruction",
+            human_effort="max",
+            human_reference="人間の元指定はmax",
+            reason="親による上書きは認めない",
+        )
+
+
+def test_human_source_rejects_disallowed_effort(settings: Any) -> None:
+    with pytest.raises(ValueError, match="allowed pair"):
+        settings.choose(
+            settings.policy_from_pins(pins()),
+            model="gpt-6-astra",
+            specified_by="human_instruction",
+            human_effort="max",
+            human_reference="人間の元指定はmax",
+            reason="不許可の指定は拒否する",
+        )
+
+
+def test_parent_arguments_preserve_human_review_effort(
+    settings: Any, tmp_path: Path
+) -> None:
+    choice = importlib.import_module("parent.review_choice")
+    reason = tmp_path / "reason.md"
+    reason.write_text("人間の明示指定を優先する")
+    parser = argparse.ArgumentParser()
+    choice.add_arguments(parser)
+    args = parser.parse_args(
+        [
+            "--review-model-source",
+            "human_instruction",
+            "--review-model",
+            "gpt-6-astra",
+            "--human-review-effort",
+            "max",
+            "--human-model-reference",
+            "人間の元指示を確認済み",
+            "--model-reason-file",
+            str(reason),
+        ]
+    )
+    # This path reads policy/reason and binds CLI arguments only; it creates no
+    # parent request, runtime or GitHub operation.
+    with pytest.raises(ValueError, match="allowed pair"):
+        choice.selection(None, args)
 
 
 @pytest.mark.parametrize("bad", ["missing", "coverage", "approval", "duplicate"])

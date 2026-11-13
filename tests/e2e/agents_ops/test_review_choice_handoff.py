@@ -261,6 +261,173 @@ def test_handoff_records_source_but_partial_review_stays_blocked(
     assert g.cli("merge", AGENT_AUTO_MERGE="0").returncode != 0
 
 
+def test_handoff_links_explicit_decision_and_previous_result(
+    single_review_env: ReviewEnv,
+) -> None:
+    from tests.e2e.agents_ops.test_decision_capture import captured, sourced
+    from tests.e2e.agents_ops.test_manual_worker_runs import state_dir
+    from tests.support.agents_ops.decision_logs import graph, navigation_snapshot
+
+    r = single_review_env
+    r.run()
+    source = [
+        row
+        for row in sourced(captured(state_dir(r.p)), "review.run")
+        if "review.result.json:" in row["data"]["summary"]
+    ][-1]
+    source_bytes = (r.run_dir / "result.json").read_bytes()
+    decision = json.loads(
+        r.p.cli(
+            "decide",
+            "--spec",
+            r.p.spec(
+                {
+                    "inputs": [source["id"]],
+                    "evaluation": "investigate",
+                    "reason": "Additional boundary evidence is needed",
+                    "reuse_scope": [
+                        "Retain the original findings and runtime evidence"
+                    ],
+                    "recheck_scope": ["Only the unresolved boundary"],
+                    "next_actions": [
+                        {
+                            "operation": "review",
+                            "summary": "Request scoped follow-up review",
+                            "actor": "external",
+                            "target": "PR 100",
+                            "instruction": "Carry source findings into follow-up",
+                            "conditions": "Parent explicitly requested the new run",
+                            "expected_result": "A separately checked review result",
+                        }
+                    ],
+                }
+            ),
+        ).stdout
+    )
+    unrelated = sourced(captured(state_dir(r.p)), "parent.decide")[-1]
+    public_before = r.p.state()
+    rejected = r.p.cli(
+        "review-prepare",
+        "--prs",
+        "100",
+        "--reason-file",
+        r.p.note("Additional boundary check"),
+        "--handoff-from-run",
+        r.request["review_run_id"],
+        "--handoff-scope-file",
+        r.p.note("Check the unresolved boundary"),
+        "--retry-of",
+        unrelated["id"],
+        ok=False,
+    )
+    assert "handoff_requires_matching_source_result" in rejected.stderr
+    assert r.p.state() == public_before
+    manifest = json.loads(
+        r.p.cli(
+            "review-prepare",
+            "--prs",
+            "100",
+            "--reason-file",
+            r.p.note("Additional boundary check"),
+            "--handoff-from-run",
+            r.request["review_run_id"],
+            "--handoff-scope-file",
+            r.p.note("Check the unresolved boundary"),
+            "--retry-of",
+            source["id"],
+        ).stdout
+    )
+    unrelated_decision = json.loads(
+        r.p.cli(
+            "decide",
+            "--spec",
+            r.p.spec(
+                {
+                    "inputs": [unrelated["id"]],
+                    "evaluation": "investigate",
+                    "reason": "This decision did not consider the source review",
+                    "next_actions": [
+                        {
+                            "operation": "review",
+                            "summary": "Unrelated plan",
+                            "actor": "external",
+                            "target": "PR 100",
+                            "instruction": "Check another result",
+                            "conditions": "Explicit instruction",
+                            "expected_result": "A separate result",
+                        }
+                    ],
+                }
+            ),
+        ).stdout
+    )
+    public_before_request = r.p.state()
+    denied = r.p.cli(
+        "review-request",
+        "--run-id",
+        manifest["review_run_id"],
+        "--instruction-file",
+        r.p.note("Scoped follow-up"),
+        "--decision-id",
+        unrelated_decision["decision_id"],
+        "--retry-of",
+        source["id"],
+        ok=False,
+    )
+    assert "handoff_decision_must_reference_source_result" in denied.stderr
+    assert r.p.state() == public_before_request
+    following = json.loads(
+        r.p.cli(
+            "review-request",
+            "--run-id",
+            manifest["review_run_id"],
+            "--instruction-file",
+            r.p.note("Inspect the retained source and scope"),
+            "--decision-id",
+            decision["decision_id"],
+            "--retry-of",
+            source["id"],
+        ).stdout
+    )
+    path = r.p.root / "follow-up-request.json"
+    path.write_text(json.dumps(following))
+    followup = replace(r, request=following, request_path=path)
+    followup.run()
+    assert len(r.calls()) == 2
+    assert (r.run_dir / "result.json").read_bytes() == source_bytes
+    assert (
+        following["review_selection"]["handoff"]["source_run"]
+        == r.request["review_run_id"]
+    )
+    rows = captured(state_dir(r.p))
+    actions = {
+        row["id"]
+        for row in rows
+        if row["kind"] == "action"
+        and row["data"]["decision_id"] == decision["decision_id"]
+    }
+    results = [
+        row
+        for row in sourced(rows, "review.run")
+        if row["data"]["action_id"] in actions
+    ]
+    linked_results = [
+        row
+        for row in rows
+        if row["kind"] == "result" and row["data"]["action_id"] in actions
+    ]
+    assert results and any(
+        row["data"]["previous_result_id"] == source["id"] for row in linked_results
+    )
+    graph.validate_graph(rows)
+    view = navigation_snapshot(state_dir(r.p))
+    assert all(
+        f"#record-{identifier}" in view
+        for identifier in (source["id"], decision["decision_id"], results[-1]["id"])
+    )
+    assert "review" in view and r.request["review_run_id"] not in view
+
+
 def test_all_consumers_reject_selected_model_changed_in_saved_runtime(
     single_review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:

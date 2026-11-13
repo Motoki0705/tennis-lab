@@ -1,0 +1,31 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "静的推論: recoverは指定元runの証拠と現在のsnapshotだけを確認し、その後のrunを照合しません。同じsnapshotでAに有効なapproveのfinalが残り、後続Bが重大指摘を公開した後でも、新規CでAを採用できます。merge_gate.mergeはPRごとの最新runであるCを選ぶため、通常の親確認・CI条件を満たせば、Bの指摘をresolveせずgateを通れます。採用元以後の対象PRのrunを照合し、後続の未解決指摘や失敗を隠す採用を拒否する必要があります。",
+          "id": "pr-1867-1",
+          "line": 769,
+          "path": ".agents/ops/review/parent_review.py",
+          "rule": "採用元より後のレビュー結果を照合する",
+          "severity": "major"
+        },
+        {
+          "detail": "静的推論: runtimeが非ゼロ終了して有効なfinalを保存した場合、output.jsonは検証済み候補、result.jsonは失敗結果になります。その後の公開中にSIGKILLされると、終了・cleanup・出力検証が完了していてもexecution.statusはrunningのままです。recoverはこの条件で拒否し、resume-publicationもparent_review.py:883のoutput.jsonとresult.jsonの一致要求で拒否します。保存済み成果をAI起動0回で復旧する入口がなくなるため、終了証拠を検証できるこの状態の採用、または失敗結果の公開再開を可能にする必要があります。",
+          "id": "pr-1867-2",
+          "line": 109,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "公開中断した失敗runにも復旧経路を残す",
+          "severity": "major"
+        }
+      ],
+      "number": 1867,
+      "summary": "古い結果の採用による後続指摘の見落としと、公開中断時に復旧できなくなる経路があります。"
+    }
+  ],
+  "summary": "重大な欠陥を2件確認しました。指定リビジョンの差分・関連コード・テストを静的にレビュー済みです。CPUテストは実行していません。",
+  "verdict": "request_changes"
+}

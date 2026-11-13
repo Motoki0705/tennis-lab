@@ -1,0 +1,31 @@
+{
+  "cross_findings": [],
+  "prs": [
+    {
+      "coverage": "reviewed",
+      "evidence_waits": [],
+      "findings": [
+        {
+          "detail": "この検査はrunning以外を通しますが、_run_review()はruntime終了・cleanupを確認できずagent工程がunconfirmedになっても、publish_result()でexecutionをpublishedまたはpublication_failedにします。共通runnerだけが強制終了した場合、別セッションで起動されたCLIが残り得るため、lease解放後に同じPRの別runが新しいagentを起動できます。公開状態にかかわらず、起動済みruntimeの終了とcleanupを確認する必要があります。静的な経路確認による指摘です。",
+          "id": "pr-1872-1",
+          "line": 78,
+          "path": ".agents/ops/review/review_locks.py",
+          "rule": "公開状態と独立したruntime終了・cleanup確認",
+          "severity": "major"
+        },
+        {
+          "detail": "recover()が作るadoptionはagent_invocations=0、agent工程がnot_invokedで、当該runのagent-runtimeを作りません。しかし、この判定はnot_invokedも起動済みと扱うため、公開途中で中断したadoptionのclose-interruptedは存在しないruntime記録を要求して失敗します。その間にhead/baseが進むと公開再開とrecover再送も固定snapshot照合で拒否され、残ったrunningによって同じPRの新runが永久に阻止されます。adoptionの非起動状態を検証して終結できる処理が必要です。静的確認による指摘です。",
+          "id": "pr-1872-2",
+          "line": 23,
+          "path": ".agents/ops/review/review_interruption.py",
+          "rule": "AIを起動しない復旧runの中断終結",
+          "severity": "major"
+        }
+      ],
+      "number": 1872,
+      "summary": "照合表示、PR排他、中断終結、gate共通化と関連テストを静的に確認しました。"
+    }
+  ],
+  "summary": "指定されたhead/baseの静的レビューを完了し、majorの欠陥を2件確認しました。CPU実行検証は行っていません。",
+  "verdict": "request_changes"
+}

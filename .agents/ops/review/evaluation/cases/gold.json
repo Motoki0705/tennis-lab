@@ -1,0 +1,355 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "pr-1699",
+      "findings": [
+        {
+          "detail": "静的推論です。URL正規表現が大小文字を区別するため、本文に `HTTPS://user:pass@example.com/path` があるとuserinfoの拒否処理を通りません。一方、ABSOLUTE_PATHのHTTP除外は大小文字を区別しないため、後段でも拒否されません。資格情報が既知のprivate値に含まれなければ、そのまま公開・自動mergeできます。スキームを大小文字非依存で検査し、既存の小文字URLのテストにこの境界を追加してください。レビュー環境でのテスト実行はしていません。",
+          "id": "pr-1699-1",
+          "line": 21,
+          "path": ".agents/ops/worker_logs/safety.py",
+          "rule": "URLの資格情報検査をスキームの大小文字で回避できないこと",
+          "severity": "major"
+        },
+        {
+          "detail": "静的推論です。`!/.agents/logs/` はディレクトリ全体の除外を解除し、配下を再除外していないため、`.agents/logs/raw.md` や `parents/.../stderr.log` も追跡可能になります。後続のmeta.json例外は他のファイルを制限しません。通常の `git add .` で未検査の原文ログを取り込めるため、ディレクトリ探索とファイル許可を分け、公開対象3ファイル以外の除外を維持してください。この境界を検証する既存テストは差分内になく、レビュー環境でのテスト実行はしていません。",
+          "id": "pr-1699-2",
+          "line": 87,
+          "path": ".gitignore",
+          "rule": "追跡例外を公開対象のログファイルへ限定すること",
+          "severity": "major"
+        }
+      ],
+      "verification_links": [
+        {
+          "kind": "pr",
+          "finding": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1699#issuecomment-6699937849"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1699-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1699#issuecomment-6700364417"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1699-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1699#issuecomment-6700368731"
+        }
+      ],
+      "negative_review": null,
+      "verification": [
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1699-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1699#issuecomment-6700364417",
+          "fixed_head": "97fba8601bf54f3a664c985bcea20159c44125f8",
+          "regression_tests": "親が再実行した結果: tests/unit/agents_ops、tests/e2e/agents_ops/test_worker_log_publication.py、tests/e2e/development/test_ci_test_lanes.py で 767 passed。",
+          "confirmation": "safety.py の URL 正規表現に re.IGNORECASE を付けた。あわせて、sources.py の秘密値を収集する環境変数名の検査も、大文字小文字を区別しないようにした。再現テスト test_publication_safety_preserves_or_blocks[url_credentials] は修正前に DID NOT RAISE で失敗し、修正後は成功した（worker の報告）。テストは HTTPS・Http・percent-decoding 後の大文字・file/FTP を確認している。",
+          "reexecuted_in_this_preparation": false
+        },
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1699-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1699#issuecomment-6700368731",
+          "fixed_head": "97fba8601bf54f3a664c985bcea20159c44125f8",
+          "regression_tests": "親が再実行した結果: tests/unit/agents_ops、tests/e2e/agents_ops/test_worker_log_publication.py、tests/e2e/development/test_ci_test_lanes.py で 767 passed。",
+          "confirmation": ".gitignore で /.agents/logs/** をいったんすべて除外し、parents 配下のディレクトリと3ファイルだけを例外にした。親が git check-ignore --no-index で確認した: .agents/logs/raw.md と parents 配下の stderr.log は除外され、instruction.md・final.md・meta.json は追跡される。再現テスト test_gitignore_tracks_only_public_worker_log_files は修正前に失敗し、修正後は成功した（worker の報告）。",
+          "reexecuted_in_this_preparation": false
+        }
+      ]
+    },
+    {
+      "case_id": "pr-1766",
+      "findings": [
+        {
+          "detail": "静的推論による指摘です（実行による再現なし）。継続判断を保存したwork/service lockを解放してからauthorize_retryを呼ぶため、timeout回収と並行していたstop()が、その間に同じattemptをcancelledへ確定できます。authorize_retryはcancelledもRETRYABLE_STATESとして受理するため、取消をreadyへ上書きし、次tickで自動再起動します。自動経路では同じロック内でattemptとtimed_out状態を条件に許可を確定し、保存済み判断の再適用時も現在の停止状態を照合してください。既存の別attemptへの交代テストでは検出できず、判断保存と許可の間にstopが取消を確定する回帰ケースが必要です。",
+          "id": "pr-1766-1",
+          "line": 80,
+          "path": "src/tasks/annotation/recovery.py",
+          "rule": "自動継続はtimed_outに限定し、取消は明示retryまで保持する",
+          "severity": "major"
+        }
+      ],
+      "verification_links": [
+        {
+          "kind": "pr",
+          "finding": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1766#issuecomment-6727638297"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1766-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1766#issuecomment-6727917767"
+        }
+      ],
+      "negative_review": null,
+      "verification": [
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1766-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1766#issuecomment-6727917767",
+          "fixed_head": "5f0931a04d907e94fba516c567a8e487be3bb30d",
+          "regression_tests": "親がローカルで .venv/bin/python -m pytest -n 0 tests/unit/tasks/annotation/test_local_controller.py::test_cancellation_after_automatic_decision_requires_explicit_retry を実行し、1 passed（4.91秒）。workerは修正前のコードでこのテストが失敗することを再現したと報告している。test_workers.py に accepted_states の検証テストも追加されている。",
+          "confirmation": "WorkerPool.authorize_retry に accepted_states を追加し、状態の照合と ready への条件付きUPDATEを同じwork・service lock内で行う。自動継続の recover_annotation は accepted_states={timed_out} だけを渡すので、判断保存と許可の間に stop が cancelled を確定すると許可は拒否され、inspect_annotation で現状を返す。保存済み判断の再適用時も現在状態が timed_out でなければ許可せず、判断ファイルは書き換えない。手動の RetryWorker は従来どおり全 RETRYABLE_STATES を受理する。親は全変更パスの差分を読んだ。",
+          "reexecuted_in_this_preparation": false
+        }
+      ]
+    },
+    {
+      "case_id": "pr-1867",
+      "findings": [
+        {
+          "detail": "静的推論（テスト未実行）。同じsnapshotで、run Aにapproveの保存final、後続run Bに未解決majorがある場合でも、新しいrun CからAをrecoverできます。ここではAの登録・証拠だけを確認し、Bを照合しません。merge_gate.mergeは最新requestのCだけを選ぶため、Cの公開と親の確認が済むと、Bの指摘をresolveせずgateを通せます。採用時とgateで元run以後の関連runを照合し、未解決指摘・失敗を古い結果で隠せないようにしてください。追加テストにも、このA→B→Cのケースはありません。",
+          "id": "pr-1867-1",
+          "line": 769,
+          "path": ".agents/ops/review/parent_review.py",
+          "rule": "古い採用元で後続runの未解決指摘を隠さない",
+          "severity": "major"
+        },
+        {
+          "detail": "静的推論（テスト未実行）。共通ランナーはfinal.mdと完了イベントの本文が異なるとinvalid_outputで失敗し、agent_output.mdへコピーしません。しかしruntime_evidenceは失敗理由・イベントを照合せず、saved_finalはfinal.md単独を受理します。そのため完了イベントがrequest_changes、final.mdがschema上有効なapproveの場合も、output.jsonの候補保存→recover→gateでapproveを採用できます。保存イベントとfinalの対応を再検証し、内容不一致を拒否してください。実効設定・実行先の不一致によるmetadata_errorも同様に区別が必要です。復旧テストのfake runtimeはこれらの不一致を表現していません。",
+          "id": "pr-1867-2",
+          "line": 50,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "実行証拠の内容不一致を復旧で承認へ変換しない",
+          "severity": "major"
+        }
+      ],
+      "verification_links": [
+        {
+          "kind": "pr",
+          "finding": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1867#issuecomment-6766611865"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1867-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1867#issuecomment-6767712600"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1867-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1867#issuecomment-6767715093"
+        }
+      ],
+      "negative_review": null,
+      "verification": [
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1867-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1867#issuecomment-6767712600",
+          "fixed_head": "71a1e0644dd3967ece6dd67a03f3d136bc96e526",
+          "regression_tests": "担当親がworktreeで `-n 0` 実行: tests/e2e/agents_ops/test_review_runtime_evidence.py と test_parent_review_policy.py で111 passed（6.16秒）、test_review_recovery.py の -k \"later_findings or inconsistent_runner or event_final or laundered\" で6 passed（39.04秒）。workerは関連8ファイル397ケースの `-n 0` 成功と、指摘ごとの故障注入2件の検出を報告（PR #1867 本文）。",
+          "confirmation": "parent_review_policy.superseding_reviews が、registry順で元runより後に同じPRを含むrequest（状態を問わず、採用先自身を除く）を列挙する。recover と resume_publication はそれがあれば拒否し、merge_gate.load_evidence は公開済み採用にも adoption_source_superseded を付けて当該PRだけを停止する。A承認→B major→CでAを採用する経路が閉じ、Bの指摘はBの採用とresolveでしか扱えないことを、コードと test_recover_cannot_skip_later_findings で確認した。別PRだけの後続requestが他PRを止めないこともpolicyテストで確認。",
+          "reexecuted_in_this_preparation": false
+        },
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1867-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1867#issuecomment-6767715093",
+          "fixed_head": "71a1e0644dd3967ece6dd67a03f3d136bc96e526",
+          "regression_tests": "担当親がworktreeで `-n 0` 実行: tests/e2e/agents_ops/test_review_runtime_evidence.py と test_parent_review_policy.py で111 passed（6.16秒）、test_review_recovery.py の -k \"later_findings or inconsistent_runner or event_final or laundered\" で6 passed（39.04秒）。workerは関連8ファイル397ケースの `-n 0` 成功と、指摘ごとの故障注入2件の検出を報告（PR #1867 本文）。",
+          "confirmation": "review_recovery.completion_evidence が、共通ランナーと同じイベントparser（agent_events.Events）でevents.jsonlを再生し、完了イベントの最終メッセージとfinal.mdの一致、session/turn、実効設定と選択値、記録済みruntime_errors、出力schemaを照合する。turn_end_reasonは completed / runtime_error / cli_error のみ許可し、終了コード・イベントの失敗と整合する場合だけ受理する。invalid_output・metadata_error・timeout・停止は有効なfinalがあっても拒否する。採用記録に events_sha256 を追加し、旧採用はgateで受理しない。test_recover_refuses_inconsistent_runner_evidence[event_mismatch/invalid_output/metadata_error] と test_review_runtime_evidence.py で確認した。",
+          "reexecuted_in_this_preparation": false
+        }
+      ]
+    },
+    {
+      "case_id": "pr-1872",
+      "findings": [
+        {
+          "detail": "静的推論（再現テスト未実行）。agent_runtimeだけがSIGKILL等で終了すると、別sessionで起動されたCLIが残る可能性があります。parent_review._run_reviewはruntime_evidenceの失敗を捕捉してagentをunconfirmedにしても、最後にpublish_resultを呼び、executionをpublishedまたはpublication_failedへ進めます。この判定はrunningだけを拒否するため、lease解放後に同PRの別runが起動できます。公開状態から終了を推定せず、runtime終了・cleanup未確認も排他の阻害条件にしてください。追加テストはpublished/publication_failedを無条件に許容しており、この経路を検出しません。",
+          "id": "pr-1872-1",
+          "line": 78,
+          "path": ".agents/ops/review/review_locks.py",
+          "rule": "終了・cleanup未確認のレビューは公開状態にかかわらず同PRの起動を止める",
+          "severity": "major"
+        },
+        {
+          "detail": "静的推論（再現テスト未実行）。parent_review.pyはagent_invocations=1とagent.status=runningを保存してからrunnerを起動します。この保存後、agent-runtime/result.jsonの初回保存前に本体が停止すると、終了とworkspace撤去を確認してもここで終結できません。案内されるagent_exec.sh stopも、cleanup-confirmationを処理する前に同じresult.jsonを必須読取するため復旧不能です。resultもないのでrecover・resume-publicationは使えず、新runは保存runningによって永久に拒否されます。欠落を安全と推定するのではなく、この起動境界にもsupervisorの確認証拠を受け取れる終結経路が必要です。既存テストはruntime欠落時の拒否だけを確認しています。",
+          "id": "pr-1872-2",
+          "line": 98,
+          "path": ".agents/ops/review/review_interruption.py",
+          "rule": "runtime記録作成前の中断にも検証付き終結経路を用意する",
+          "severity": "major"
+        }
+      ],
+      "verification_links": [
+        {
+          "kind": "pr",
+          "finding": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1872#issuecomment-6772041725"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1872-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1872#issuecomment-6773515966"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1872-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1872#issuecomment-6773519361"
+        }
+      ],
+      "negative_review": null,
+      "verification": [
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1872-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1872#issuecomment-6773515966",
+          "fixed_head": "f09c906cbdec0b43b8feaa59beac1dcaae9955b7",
+          "regression_tests": "親がPR headで `pytest -n 0 tests/e2e/agents_ops/test_review_start_boundary.py tests/e2e/agents_ops/test_review_interruption.py tests/e2e/agents_ops/test_review_concurrency.py` を実行し、27件が成功（151.93秒）。workerは関連99ケースの成功と、各指摘の新しい検査を外す故障注入2件の検出を報告している。",
+          "confirmation": "排他の判定を、statusから confirmed_exit に置き換えた（review_locks.py）。published・publication_failed でも、agentの終了とcleanup、workspaceの撤去が揃わないrunは同じPRの新runを阻害する。解除は close-interrupted が追記する exit_confirmation で行う。これは公開済みの正式結果を変えず、gate・coverage・resolveは参照しない。親は差分と、未確認の公開済みrunで拒否するテストを確認した。",
+          "reexecuted_in_this_preparation": false
+        },
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1872-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1872#issuecomment-6773519361",
+          "fixed_head": "f09c906cbdec0b43b8feaa59beac1dcaae9955b7",
+          "regression_tests": "親がPR headで `pytest -n 0 tests/e2e/agents_ops/test_review_start_boundary.py tests/e2e/agents_ops/test_review_interruption.py tests/e2e/agents_ops/test_review_concurrency.py` を実行し、27件が成功（151.93秒）。workerは関連99ケースの成功と、各指摘の新しい検査を外す故障注入2件の検出を報告している。",
+          "confirmation": "runtime記録が無い起動境界の中断について、close-interrupted --cleanup-confirmation を追加した。review IDに束縛し、共通ランナーと同じ6キー形式のsupervisor証拠を受け取る。共通ランナーの session.lock を非待機で取得できる場合だけ終結する。証拠なしでは拒否し、native runtimeがある場合は agent_exec.sh stop へ誘導する。親は差分と、実wrapperで窓を再現するテスト（test_review_start_boundary.py）の成功を確認した。",
+          "reexecuted_in_this_preparation": false
+        }
+      ]
+    },
+    {
+      "case_id": "pr-1888",
+      "findings": [
+        {
+          "detail": "静的推論（テスト未実行）: 一方のPRがreviewed、他方がnot_reviewedなら、run全体はfailed/incompleteですが、evaluate_coverageはreviewed側のmergeを許します。しかし、この分岐はfailed結果のruntime照合を省略するため、保存runtimeの実効model・effort不一致やdigest変更をgateと公開再開で検出できません。全体statusではなく、採用可能なreviewed結果がある場合にも同じ証拠検証を必須にしてください。追加された改変検出テストはsucceeded結果だけを扱い、この境界を検出しません。",
+          "id": "pr-1888-1",
+          "line": 347,
+          "path": ".agents/ops/review/review_recovery.py",
+          "rule": "PR単位で採用可能な結果にも実効モデル検証を適用する",
+          "severity": "major"
+        },
+        {
+          "detail": "静的推論（テスト未実行）: 有効finalの保存後に通信障害や事後照合失敗が起きると、major指摘はoutput.jsonに保持され、result.jsonは指摘なしのfailed結果になります。source()はresult.jsonだけを読み、次runのreview_handoffにもそれだけを渡すため、保存された指摘が引継ぎ資料から消えます。後続runがapproveすればgateは最新runを採用し、元の指摘を照合しません。候補の指摘も正式coverageと区別して固定・引継ぎしてください。既存の復旧テストが扱う「指摘付きfinal＋障害」をhandoffにも適用する必要があります。",
+          "id": "pr-1888-2",
+          "line": 59,
+          "path": ".agents/ops/parent/review_choice.py",
+          "rule": "handoffで保存済み候補の指摘を脱落させない",
+          "severity": "major"
+        }
+      ],
+      "verification_links": [
+        {
+          "kind": "pr",
+          "finding": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1888#issuecomment-6784863824"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1888-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1888#issuecomment-6785950914"
+        },
+        {
+          "kind": "resolution",
+          "finding": "pr-1888-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1888#issuecomment-6785954205"
+        }
+      ],
+      "negative_review": null,
+      "verification": [
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1888-1",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1888#issuecomment-6785950914",
+          "fixed_head": "2525629750d22fed69b9b6d4d09308f0daf8cf2c",
+          "regression_tests": "親がPR headで `pytest -n 0 tests/unit/agents_ops/test_review_settings.py tests/e2e/agents_ops/test_review_choice_handoff.py tests/e2e/agents_ops/test_review_model_selection.py` を実行し、60件が成功した（207.28秒）。workerは追加15ケース（unit 7、E2E 8）の成功と、故障注入3件の検出を報告している。",
+          "confirmation": "採用されうるreviewed結果があれば、run全体がfailed・incompleteでも、選択値・実効値・runtime digestの検証を必須にした（review_recovery.py、parent_review_policy.py、review_settings.py）。runtime_settingsは、reviewedを1PRでも含む結果では必須で、nullを許すのは全PRが未確認の失敗だけ。親は差分とREADMEの契約、2PRの一部reviewedの結果で実効値の不一致を拒否するテストを確認した。",
+          "reexecuted_in_this_preparation": false
+        },
+        {
+          "method": "recorded_parent_confirmation_with_regression_tests",
+          "finding_id": "pr-1888-2",
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1888#issuecomment-6785954205",
+          "fixed_head": "2525629750d22fed69b9b6d4d09308f0daf8cf2c",
+          "regression_tests": "親がPR headで `pytest -n 0 tests/unit/agents_ops/test_review_settings.py tests/e2e/agents_ops/test_review_choice_handoff.py tests/e2e/agents_ops/test_review_model_selection.py` を実行し、60件が成功した（207.28秒）。workerは追加15ケース（unit 7、E2E 8）の成功と、故障注入3件の検出を報告している。",
+          "confirmation": "handoff元runの検証済み保存候補（output.json）を、candidate_onlyとしてrequestの review_selection.handoff.candidates へ固定するようにした。固定した候補はdigestに含め、contextとプロンプトにも渡す。継承した候補はrecoverでも保持する。候補の指摘や証拠待ちが影響するPRは、後続runがapproveでもgateを止める。止めたgateは、親の明示確認（resolve --finding handoff-candidates）でだけ解除できる。候補を正式coverageや承認へ自動昇格しない。親は差分とREADMEの契約、指摘付きfinalと障害を含む元runからhandoffするテストを確認した。",
+          "reexecuted_in_this_preparation": false
+        }
+      ]
+    },
+    {
+      "case_id": "pr-1686",
+      "findings": [],
+      "verification_links": [
+        {
+          "kind": "pr",
+          "finding": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1686#issuecomment-6674729665"
+        }
+      ],
+      "negative_review": {
+        "reviewed_at": "2026-11-11",
+        "observer": "implementation_worker",
+        "method": "independent_static_code_inspection",
+        "decision": "retain_provisional_negative",
+        "scope": [
+          ".agents/README.md",
+          ".agents/skills/memory/SKILL.md",
+          ".agents/skills/parent-session/SKILL.md",
+          ".agents/ops/parent/README.md"
+        ],
+        "checks": [
+          "Read the complete two-file diff at the frozen head. No executable/runtime code or memory entries are changed.",
+          "The human-only attribution rule explicitly excludes delegated instructions, reviewer claims and parent inferences; it requires the original human statement as evidence.",
+          "Checked the linked parent-session section at the frozen head: the Japanese anchor exists there. Checked the parent README explanation of shared GitHub login.",
+          "The no-extra-approval clause is restricted to the existing writing conditions and attribution check. It does not grant implementation, publication or model-selection authority."
+        ],
+        "limitations": [
+          "Static inspection only; no pytest executed for this documentation change.",
+          "A provisional negative describes no known blocker/major within this reviewed scope, not absence of all defects."
+        ]
+      }
+    },
+    {
+      "case_id": "pr-1744",
+      "findings": [],
+      "verification_links": [
+        {
+          "kind": "pr",
+          "finding": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/pull/1744#issuecomment-6722826641"
+        }
+      ],
+      "negative_review": {
+        "reviewed_at": "2026-11-11",
+        "observer": "implementation_worker",
+        "method": "independent_static_code_inspection",
+        "decision": "retain_provisional_negative",
+        "scope": [
+          "src/tennis_scene/visualization/player_view/bundle.py",
+          "src/tennis_scene/visualization/player_view/assets.py",
+          "src/tennis_scene/visualization/player_view/__main__.py",
+          "src/tennis_scene/visualization/player_view/README.md",
+          "src/tennis_scene/visualization/rendering/smpl_court.py",
+          "tests/unit/tennis_scene/visualization/player_view/test_bundle.py",
+          "tests/integration/tennis_scene/test_player_view_bundle.py"
+        ],
+        "checks": [
+          "Traced explicit player ID order and the half-open source-frame interval through indices, player arrays, ball arrays, source_frames and source_time_seconds.",
+          "Compared _write_player rotation with the existing smpl_vertices_to_court implementation: Rz(yaw) @ axis-conversion @ Rodrigues(global_orient).T, with the regressed root subtracted and no second scale multiplication.",
+          "Checked mesh masking and zeroed invalid PC2/root/rotation samples separately from player root validity. Existing integration assertions use selected IDs, missing frames and concrete transformed coordinates.",
+          "Checked numeric NPZ loading with allow_pickle=False, dimensions, finite values, regressor normalization, joint ordering and the named skeleton parent set.",
+          "Traced store input through indexed_scene_path with no search fallback, explicit assets through NonHydraPathBoundary, pre-write validation, refusal of an existing output and cleanup on writer failure."
+        ],
+        "existing_test_nodes": [
+          "tests/integration/tennis_scene/test_player_view_bundle.py::test_saved_scene_bundle_preserves_ids_frames_masks_and_placed_geometry",
+          "tests/integration/tennis_scene/test_player_view_bundle.py::test_cli_resolves_only_adopted_scene_and_selects_ids",
+          "tests/integration/tennis_scene/test_player_view_bundle.py::test_store_does_not_search_for_another_export",
+          "tests/integration/tennis_scene/test_player_view_bundle.py::test_failed_writer_never_publishes_and_removes_staging"
+        ],
+        "limitations": [
+          "Static inspection of the frozen implementation and its existing tests; the tests were not executed in this turn.",
+          "No real scene assets, GPU, Blender rendering or head-camera quality acceptance was performed.",
+          "A provisional negative describes no known blocker/major within this reviewed scope, not absence of all defects."
+        ]
+      }
+    }
+  ]
+}

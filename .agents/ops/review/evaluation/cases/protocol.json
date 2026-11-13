@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "approval_url": "https://github.com/Motoki0705/tennis-lab/issues/1797#issuecomment-6786941605",
+  "cases": [
+    1699,
+    1766,
+    1867,
+    1872,
+    1888,
+    1686,
+    1744
+  ],
+  "models": [
+    "gpt-6-astra",
+    "gpt-6.1-sol"
+  ],
+  "effort": "xhigh",
+  "repeats": 1,
+  "paired_calls": 14,
+  "max_calls": 16,
+  "timeout_seconds": 1800,
+  "input_token_envelope": 55000000,
+  "output_token_envelope": 220000,
+  "pilot_case": 1699,
+  "minimum_improvement": 0.2,
+  "adjudicator": "parent",
+  "default_policy_change_authorized": false,
+  "execution_requires_separate_parent_instruction": true,
+  "limited_selection_criteria": {
+    "no_additional_gold_major_misses_against_astra": true,
+    "no_worse_false_findings_confirmation_failures_or_runtime_format_failures": true,
+    "selected_and_observed_effective_settings_must_match": true,
+    "improvement_metrics": [
+      "processed_input_plus_output",
+      "agent_seconds"
+    ],
+    "include_all_actual_additional_calls": true,
+    "formal_acceptance_required": true,
+    "astra_first_boundaries": [
+      "publication",
+      "authorization",
+      "gate",
+      "cancellation",
+      "concurrency",
+      "serious_data_identity"
+    ],
+    "parent_decision_required": true
+  }
+}
