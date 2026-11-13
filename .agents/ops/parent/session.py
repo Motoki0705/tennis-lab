@@ -902,6 +902,9 @@ class ParentSession:
                 self.endpoint + "/sub_issues",
                 {"sub_issue_id": number(child["id"])},
             )
+            # The relation write invalidates the parent. Also discard the
+            # child's cached "no parent" when no label PATCH was needed.
+            self.gh.invalidate(base)
         task = self.row["tasks"].setdefault(str(n), {})
         task["dependencies"] = deps
         task["title"] = parse_title(child["title"]).summary

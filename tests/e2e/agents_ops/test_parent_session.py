@@ -1292,27 +1292,31 @@ def test_child_creation_only_adds_role_to_explicit_work_type_and_area_labels(
 ) -> None:
     p = parent_env
     p.agreed()
+    # Parent #1 and child #20 must not share a cache-key prefix.
+    state = p.state()
+    state["next"] = 20
+    p.save(state)
     p.child("explicit-labels")
-    labels = {x["name"] for x in p.state()["issues"]["10"]["labels"]}
+    labels = {x["name"] for x in p.state()["issues"]["20"]["labels"]}
     assert labels == {"enhancement", "ci", "tests", "issue:child"}
 
     def label_patches() -> int:
         return sum(
-            "PATCH" in call and "repos/o/r/issues/10" in call for call in p.calls()
+            "PATCH" in call and "repos/o/r/issues/20" in call for call in p.calls()
         )
 
     assert label_patches() == 0
     state = p.state()
-    state["issues"]["10"]["labels"].extend(
+    state["issues"]["20"]["labels"].extend(
         [{"name": p.formats.STANDALONE_LABEL}, {"name": "agent:codex"}]
     )
     p.save(state)
     p.child("explicit-labels")
     labels.add("agent:codex")
-    assert {x["name"] for x in p.state()["issues"]["10"]["labels"]} == labels
+    assert {x["name"] for x in p.state()["issues"]["20"]["labels"]} == labels
     assert label_patches() == 1
     p.child("explicit-labels")
-    assert {x["name"] for x in p.state()["issues"]["10"]["labels"]} == labels
+    assert {x["name"] for x in p.state()["issues"]["20"]["labels"]} == labels
     assert label_patches() == 1
     assert (
         sum(
