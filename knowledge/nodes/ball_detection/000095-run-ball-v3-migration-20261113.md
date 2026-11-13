@@ -14,13 +14,13 @@ config:
   source_schema: video_ball_annotation.v2
   target_schema: video_ball_annotation.v3
   target_semantics: active_ball
-  selection: knowledge/runs/run-ball-v3-migration-20261113/selection.json
+  selection: knowledge/runs/run-ball-v3-migration-20261113/selection-reviewed.json
 metrics:
   inventoried_cameras: 171
   inventoried_frames: 88872
-  selected_cameras: 132
-  selected_frames: 46212
-  held_cameras: 39
+  selected_cameras: 123
+  selected_frames: 63540
+  held_cameras: 48
   dry_run_cameras: 3
   dry_run_frames: 3030
 artifacts:
@@ -32,15 +32,21 @@ papers: []
 tags: [annotation, migration, active-ball]
 ---
 
-元v2のMeiji 57clip・171camera入力と旧store 3版を棚卸しし、132本の初回移行対象を
-[固定一覧](../../runs/run-ball-v3-migration-20261113/selection.json)へ保存した。
-対象定義が手持ち球を含む3本と、処理完了に関する別reportの解釈が必要な39本（前者を含む）は
-初回集合から保留した。falseの目視網羅性をunprocessedへ読み替える判断はしていない。
+元v2のMeiji 57clip・171camera入力と旧store 3版を棚卸しした。初回一覧を保持し、
+注記の対象定義と処理完了の根拠を読んだ[本実行集合](../../runs/run-ball-v3-migration-20261113/selection-reviewed.json)は
+123本・63,540frameへ固定した。手持ち・プレー前後の対象相違39本と、処理完了の確認に必要な
+reportが欠ける15本（6本重複）、計48本を保留した。目視網羅性falseだけを処理未完了と
+読み替えず、全frame処理の明記がある入力は採用する。
 
-少数dry-runではvideo_000/clip_000の全3camera・3,030frameを実動画のbytes・復号PTSと
-照合してconverterを通した。observed 2,767、interpolated 105、occlusion_estimated 10、
-最終unknown 148を保持した。新しい不在・未処理・座標なし遮蔽は生成していない。
-この段階では本実行・snapshot公開の完了を主張しない。
+少数dry-runではvideo_000/clip_000の全3camera・3,030frameを実動画bytes・復号PTSと
+照合した。observed 2,767、interpolated 105、occlusion_estimated 10、最終unknown 148を保持。
+同じ集合を実publisher、学習reader、scene importで読み、同一要求の再送が同じreceiptへ
+戻ることを確認した。目視非網羅だが処理完了の根拠がある別clipの3,051frameもdry-runした。
+この段階では本集合の公開は未実施であり、runはrunning。
+
+Driveの旧archiveを検証付きで取得し、99注釈すべてがローカル現行版と同一内容であることを
+確認した。欠けるreview/reportはarchiveにも含まれない。Drive配布storeの108 Meiji参照は
+ローカルの元版・媒体・group/splitと一致し、別の移行対象版は見つからなかった。
 
 [実行記録と検証設計](../../runs/run-ball-v3-migration-20261113/README.md)に
 対応表・旧版の保持・再現入口を残す。実GPT、モデル認識品質の比較、追加学習は対象外。

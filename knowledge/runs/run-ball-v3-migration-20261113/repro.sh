@@ -9,13 +9,13 @@ export CUDA_VISIBLE_DEVICES=''
 export OMP_NUM_THREADS=1
 report_root="$source_root/outputs/ball_detection/migrate/video-v3/20261113"
 .venv/bin/python "$script_dir/migrate.py" \
-  --source-root "$source_root" --selection "$script_dir/selection.json" \
+  --source-root "$source_root" --selection "$script_dir/selection-reviewed.json" \
   --only-clip video_000/clip_000 --output "$report_root/dry-run.json"
 .venv/bin/python "$script_dir/migrate.py" \
-  --source-root "$source_root" --selection "$script_dir/selection.json" \
+  --source-root "$source_root" --selection "$script_dir/selection-reviewed.json" \
   --only-clip video_000/clip_000 --apply --version meiji-active-ball-v3-dry-20261113 \
-  --code-commit "$code_commit" --output "$report_root/small-publication.json"
+  --code-commit "$code_commit" --output "$report_root/small-reviewed-publication.json"
 .venv/bin/python "$script_dir/migrate.py" \
-  --source-root "$source_root" --selection "$script_dir/selection.json" \
+  --source-root "$source_root" --selection "$script_dir/selection-reviewed.json" \
   --apply --version meiji-active-ball-v3-20261113 --code-commit "$code_commit" \
   --output "$report_root/full-publication.json"

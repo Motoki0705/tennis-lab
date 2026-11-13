@@ -208,7 +208,7 @@ def main():
         path, expected, timeline = pinned_input(args.source_root, selection, entry)
         evidence = MigrationEvidence(original_sha256=entry["original_sha256"], target_semantics="active_ball",
                                      target_evidence="retained original #/target: main-court rally ball; adjacent balls excluded",
-                                     processing_complete=True, processing_evidence="retained original #/summary/all_frames_reviewed=true")
+                                     processing_complete=True, processing_evidence=entry["processing_evidence"])
         annotation, record = convert_v2_annotation(original_path, expected_input=expected, evidence=evidence)
         examples = check_conversion(original, annotation)
         result = dict(key=entry["key"], summary=asdict(summarize_annotation(annotation)), examples=examples)

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "drive_root": "gdrive:tennis_lab",
+  "observed_at": "2026-11-13T08:21:00.479289+00:00",
+  "distribution": "data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1",
+  "metadata_sha256": "7a804cc4e3b3006d0128fbd953b0696712d45acee9dcef8a96c02ec46379037c",
+  "matching_meiji_references": 108,
+  "matching_splits": [
+    "video_000:val",
+    "video_002:train"
+  ],
+  "annotation_inventory_files": 1379,
+  "ambiguous_annotation_paths": [],
+  "copied_meiji_v2_payloads": 0,
+  "annotation_payload_scope": "portable annotation folder contains chat annotations; Meiji references remain in metadata",
+  "retained_media_archive": "data/meiji_3cam.tar",
+  "archive_content_inspected": true,
+  "test_distribution": "same-name shard folders remain ambiguous; no selection or mutation performed",
+  "local_capacity": {
+    "total_bytes": 1081101176832,
+    "free_bytes": 126561980416,
+    "observed_at": "2026-11-13T08:40:14.433837+00:00"
+  },
+  "drive_account_free_bytes_at_initial_probe": 4385410410296,
+  "readers": [
+    "src.tasks.ball_detection.generate_dataset.frame_store.sources.meiji.read_camera",
+    "src.tasks.ball_detection.dataset_statistics.inputs.annotation_details",
+    "src.tennis_scene.pipeline.imports.ball_annotations.import_ball_annotations",
+    "src.tasks.ball_detection.annotation.video.read_annotation",
+    "src.tennis_scene.pipeline.imports.video_ball_annotations.BallAnnotationImporter",
+    "src.tasks.ball_detection.generate_dataset.frame_store.publishing.publisher.BallPublisher",
+    "src.tasks.ball_detection.data.windows.active_ball.ActiveBallWindowDataset"
+  ],
+  "native_jpeg_estimate": {
+    "sample_frames": 3030,
+    "sample_total_bytes": 990029197,
+    "sample_max_frame_bytes": 412895,
+    "mean_based_full_bytes": 20761206329,
+    "sample_max_based_full_bytes": 26235348300,
+    "guaranteed_upper_bound": false,
+    "publication_uses_hardlinks": true
+  }
+}

@@ -1,7 +1,7 @@
 # v2実データ移行の実行記録
 
-対象issueは #1714。実行対象と入力版は `selection.json`、実測は実行後の
-`results.json`、一度きりの実行入口はこのディレクトリのscriptに固定する。
+対象issueは #1714。実行対象と入力版の初回観測は `selection.json`、注記を読んだ本実行集合は
+`selection-reviewed.json`、実測は実行後の `results-summary.json`、一度きりの実行入口はこのディレクトリのscriptに固定する。
 旧JSON、review、動画、既存frame storeは上書きしない。
 
 ## 実装前の検証設計
@@ -30,3 +30,17 @@ Meijiは57clip・171camera動画・88,872frame。元動画は約1.56GB。
 
 `all_frames_reviewed=false` は独立した目視の網羅性の申告であり、直ちに処理未完了と
 解釈しない。処理完了の別根拠がない入力と、手持ち球を含む明示的な対象相違は保留する。
+
+
+初回の132本選択は `selection.json` に保持する。注記を全件読んだ
+`selection-reviewed.json` が本実行の123本・63,540frameを指定する。
+手持ち・プレー前後の球を含む39本と、処理完了を確認するreportがない15本（6本重複）は
+全cameraをまとめて保留した。全frame自動処理・decodeの明記がある入力は、個別目視の
+非網羅性と分けて採用した。判断に使ったJSON pointerと原文は同一覧に保持する。
+`review_selection.py` はこの具体的な原文にだけ適用し、一般の文章分類器にはしない。
+
+Driveの場所・容量・旧/新readerは `storage-and-readers.json`、旧archiveの99件と
+現行版との内容一致は `archive-inspection.json` にある。旧archiveにはreview/reportがなく、
+保留対象の処理完了を補える新しい証拠は得られなかった。
+少数公開は `meiji-active-ball-v3-dry-20261113`、本集合は `meiji-active-ball-v3-20261113`
+という独立の新versionへ保存する。native JPEGはsnapshotへhardlinkする。
