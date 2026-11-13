@@ -233,7 +233,7 @@ def markdown(plan: dict[str, Any]) -> str:
         f"Scope: **{plan['scope']}**.",
         "Reasons: " + "; ".join(plan["reasons"]),
         f"Requested path suites: {', '.join(plan['requested_suites']) or '(none)'}.",
-        "Unregistered tests always run.",
+        "Unregistered tests and system_deps cases always run. Runtime markers override file deferral for those cases only.",
         "",
         "| Deferred suite | Owner | Reason | Last verified full main success |",
         "|---|---|---|---|",

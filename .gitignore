@@ -67,6 +67,7 @@ annotations/
 !/.claude/settings.json
 !/tests/support/development/ci_attempts.json
 !/scripts/ci_metrics/lanes.json
+!/scripts/ci_metrics/system-deps.json
 *.xml
 
 # Model files and checkpoints
@@ -234,5 +235,7 @@ paper/reference/
 .ci-plan/
 .ci-dino-cpu/
 .ci-browser/
+.ci-system-deps/
+.ci-system-deps-cache/
 .ci-acceptance/
 /scripts/ci_metrics/node_modules/

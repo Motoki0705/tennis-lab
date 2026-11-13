@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import pytest
 from numpy.typing import NDArray
 
 from src.tennis_scene.evaluation.ball3d.baseline import PipelineBaseline
@@ -23,6 +24,7 @@ from tests.support.ball3d_evaluation import (
 )
 
 
+@pytest.mark.system_deps
 def test_synchronized_two_method_video_full_decode_and_portable_reference_report(
     tmp_path,
 ):

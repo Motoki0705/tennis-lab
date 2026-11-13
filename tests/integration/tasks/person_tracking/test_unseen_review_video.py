@@ -35,6 +35,7 @@ def test_colors_distinguish_identity_mismatch_missing_and_ambiguous(review: Any)
         review.saved_mapping({'tracking':{'associated':{'mapping':rows}}},'test')
 
 
+@pytest.mark.system_deps
 def test_all_review_frames_and_raw_reference_contract(review: Any, tmp_path: Path) -> None:
     videos, arrays, cameras = [], {}, {}
     for camera in ['cam0','cam1','cam2']:

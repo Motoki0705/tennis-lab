@@ -16,7 +16,7 @@ pytest的stdout/stderr实时转发到job日志，并保存到`pytest.log`，保�
 每个suite必须包含 `id`（唯一标识）、`files`（存在的明确测试路径）、
 `paths`（依赖项的仓库相对shell pattern）、`reason` 和 `owner`（非空字符串）。文件重复、不存在、
 未知字段、缺少负责人/理由或非法pattern都会使plan失败。文件发现遵循 `pyproject.toml` 的pytest设置。
-未注册文件始终执行；已注册文件的全部收集用例，包括新增用例，都属于该例外。
+未注册文件始终执行；已注册文件的普通收集用例，包括新增用例，都属于该例外。`system_deps`仅对标记case覆盖推迟策略（见下文）。
 `paths` 非空时，修改suite自身的测试文件也会要求执行。
 空的 `paths` 数组明确表示在普通按路径选择的PR中延后执行，包括修改自身测试文件的PR。
 这用于用户批准的全仓库architecture巡查。下述完整执行要求仍包含所有suite。
@@ -59,6 +59,41 @@ Court dataset的fake render集成和使用临时根目录的typed config契约�
 
 GPU和 `local_data and not cuda` 手动验收参见
 [本地runner说明](../github_actions/README.md#使い方)。
+
+## 固定的系统运行环境
+
+执行真实ffmpeg/rclone的测试声明 `system_deps`。每个PR、main push和manual运行都必须执行
+一个独立的 **System dependency tests** job，并保留普通CPU分片。
+标记case始终执行，即使同文件的普通case被路径策略推迟。只移动标记case；
+不需要这些程序的相邻case仍遵守文件注册表策略。Drive的两个配置拒绝case使用本地配置fixture，
+不再依赖rclone。独立job纳入必需的 `Python` 聚合。准备失败、证据缺失/重复、错误路由、
+skip和xfail都不能算成功。完整分区和artifact契约见[分片说明](sharding.zh-CN.md#证据与失败语义)。
+
+普通CPU分片不调用system installer或apt。需要browser的plan执行 `npm ci` 和
+`playwright install chromium --only-shell`，不使用 `--with-deps`，依赖hosted runner现有共享库。
+下载或启动失败会明确失败（`CI_REQUIRE_BROWSER=1`），不会回退到package manager。
+Ubuntu镜像不可达不会阻塞准备；GitHub/PyPI/npm和Playwright CDN仍是外部依赖。
+独立job无需准备browser/DINO。
+
+版本、URL和预期SHA-256只在 [`system-deps.json`](system-deps.json) 中定义。
+即使host已有其他版本，installer也使用固定版本。
+
+- ffmpeg: [FFmpeg-Builds月末GPL静态Linux x86-64版本](https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/tag/autobuild-2026-10-31-12-59)，n8.1.3，包含libx264。原BtbN项目现重定向至FFmpeg-Builds。月末asset保留两年，须在2028年10月前更新。
+- rclone: [官方v1.76.0](https://downloads.rclone.org/v1.76.0/)，签名SHA256SUMS和release公钥与manifest一起保存。每次准备在隔离的GPG keyring中核对签名和固定fingerprint，再将archive pin与已签名entry核对。不使用keyserver或运行时checksum发现；参见[上游签名说明](https://rclone.org/release_signing/)。
+
+下载限制为连接15秒、curl总计180秒、不retry。解包和执行前检查SHA-256，
+包括 `.ci-system-deps-cache` 中已有的archive。CI从cold archive directory开始，本地可选择复用。
+cache损坏时明确失败，不改用其他下载。只提取指定binary member；验证版本和libx264后才向
+`GITHUB_PATH` 发布bin。不使用sudo/apt、其他供应源或host binary回退。Actions准备step限制为8分钟。
+
+更新负责人为 `Motoki0705`。更新pin时检查上游release/digest、rclone签名/fingerprint，
+必要时更新签名sums，并重新执行所有真实binary case、获取/路由故障注入和CI。
+checksum不符时不得自动改写。 本地准备：
+
+```bash
+bash scripts/ci_metrics/install_system_deps.sh
+export PATH="$PWD/.ci-system-deps/bin:$PATH"
+```
 
 ## 测试增减与成本警告
 

@@ -19,7 +19,8 @@ def inspect_artifacts(
         raise ValueError("shard count must be between 1 and 32")
     plan_name = f"cpu-lane-plan-{run_id}"
     shard_prefix = f"cpu-test-measurements-{run_id}-shard-"
-    expected = [plan_name, *(f"{shard_prefix}{i}" for i in range(count))]
+    # Indices 0..count-1 are ordinary CPU jobs; count is the mandatory runtime job.
+    expected = [plan_name, *(f"{shard_prefix}{i}" for i in range(count + 1))]
     selected: list[dict[str, Any]] = []
     issues: list[str] = []
     for artifact in artifacts:

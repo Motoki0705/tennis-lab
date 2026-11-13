@@ -78,7 +78,12 @@ def pytest_sessionstart(session: pytest.Session) -> None:
 def record_cpu_universe(items: list[pytest.Item]) -> None:
     """Called by the shard hook after marker selection, before lane selection."""
     _emit(
-        "cpu_universe", nodeids=[item.nodeid for item in items], details=_details(items)
+        "cpu_universe",
+        nodeids=[item.nodeid for item in items],
+        details=_details(items),
+        system_deps_nodeids=[
+            item.nodeid for item in items if item.get_closest_marker("system_deps")
+        ],
     )
 
 
