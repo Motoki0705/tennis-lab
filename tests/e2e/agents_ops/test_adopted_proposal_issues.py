@@ -543,7 +543,16 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
     h = harness
     assert not h.run().errors
     task = h.gh.issues[101]
-    assert {label["name"] for label in task["labels"]} == {"ai-proposed"}
+    assert {label["name"] for label in task["labels"]} == {
+        "ai-proposed",
+        fmt.STANDALONE_LABEL,
+    }
+    assert h.gh.issues[100]["labels"] == [{"name": "ops-report"}]
+    assert next(
+        set(payload["labels"])
+        for method, endpoint, payload in h.gh.writes
+        if method == "POST" and endpoint == "repos/o/r/issues"
+    ) == {"ai-proposed", fmt.STANDALONE_LABEL}
     assert h.gh.parents == {}
     source = fmt.parse_proposal_source(task["body"])
     assert source == fmt.ProposalSource("R-20261019-01", 100)
@@ -587,6 +596,16 @@ def test_multiple_proposals_share_parent_and_keep_distinct_index_anchors(
     result = h.run()
     assert not result.errors
     assert h.gh.parents == {102: 101, 103: 101}
+    assert {label["name"] for label in h.gh.issues[101]["labels"]} == {
+        "ai-proposed",
+        fmt.PARENT_LABEL,
+    }
+    for n in (102, 103):
+        assert {label["name"] for label in h.gh.issues[n]["labels"]} == {
+            "ai-proposed",
+            fmt.CHILD_LABEL,
+        }
+    assert h.gh.issues[100]["labels"] == [{"name": "ops-report"}]
     assert not fmt.check_consistency(h.gh.family(101))
     assert fmt.index_proposals((n, r["body"]) for n, r in h.gh.issues.items()) == {
         (100, "R-20261019-01"): 102,
@@ -709,19 +728,30 @@ def test_dry_run_validates_plan_without_writing_issues_or_journal(
     )
 
 
+@pytest.mark.parametrize("standalone", [False, True])
 def test_adds_child_to_unowned_existing_parent_and_preserves_old_requirements(
     harness: Harness,
+    standalone: bool,
 ) -> None:
     h = harness
     parent = parent_node()
     body = fmt.render_parent_body(parent["sections"])
     h.gh.issues[1] = raw_issue(
-        1, title="[保守性改善] 既存の親", body=body, labels=[{"name": "issue:parent"}]
+        1,
+        title="[保守性改善] 既存の親",
+        body=body,
+        labels=[{"name": "issue:parent"}]
+        + ([{"name": fmt.STANDALONE_LABEL}] if standalone else []),
     )
     h.gh.issues[100]["body"] = h.gh.issues[100]["body"].replace(
         "関連親issue: 未指定", "関連親issue: #1"
     )
     h.response(plan([task_node(role="child", parent=1)]))
+    if standalone:
+        with pytest.raises(ValueError, match="label.standalone"):
+            h.run()
+        assert not h.gh.writes
+        return
     assert not h.run().errors
     assert h.gh.parents == {101: 1}
     assert not fmt.check_consistency(h.gh.family(1))
@@ -915,6 +945,7 @@ def test_reuses_existing_work_without_reopening_renaming_or_reparenting(
         state="closed" if closed else "open",
         state_reason="completed" if closed else None,
         assignees=[{"login": "historical-owner"}] if closed else [],
+        labels=[{"name": fmt.STANDALONE_LABEL}, {"name": "research"}] if closed else [],
     )
     node = task_node(role="reuse")
     node.update(issue=20, summary="", sections={})
@@ -923,7 +954,9 @@ def test_reuses_existing_work_without_reopening_renaming_or_reparenting(
     assert len(h.gh.issues) == 2
     assert h.gh.issues[20]["title"] == "既存の具体的な作業"
     assert h.gh.issues[20]["state"] == ("closed" if closed else "open")
-    assert h.gh.issues[20]["labels"] == []
+    assert h.gh.issues[20]["labels"] == (
+        [{"name": fmt.STANDALONE_LABEL}, {"name": "research"}] if closed else []
+    )
     assert h.gh.issues[20]["assignees"] == (
         [{"login": "historical-owner"}] if closed else []
     )
@@ -961,6 +994,52 @@ def test_completed_reuse_still_preserves_active_pr_and_explicit_hold_boundaries(
     with pytest.raises(ValueError, match="conflict"):
         h.run()
     assert not h.gh.writes
+
+
+@pytest.mark.parametrize("stage", ["saved", "created", "unknown"])
+def test_legacy_standalone_draft_is_preserved_across_resume(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    h = harness
+    render = org.render_node
+
+    def legacy_render(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        draft: dict[str, Any] = render(*args, **kwargs)
+        draft["labels"] = ["ai-proposed"]
+        return draft
+
+    def interrupt_before_post(
+        gh: Any, *, draft: Any, receipt: Any, save: Any, **kwargs: Any
+    ) -> None:
+        receipt["draft"] = copy.deepcopy(draft)
+        save()
+        raise ValueError("injected interruption before POST")
+
+    with monkeypatch.context() as old_runtime:
+        old_runtime.setattr(org, "render_node", legacy_render)
+        if stage == "saved":
+            old_runtime.setattr(apply, "create_issue_once", interrupt_before_post)
+        else:
+            h.gh.fail_after = "repos/o/r/issues"
+        assert h.run().errors
+
+    saved = json.loads(h.tmp.joinpath("triage.json").read_text())
+    draft = saved["transactions"][0]["drafts"]["split-module"]
+    assert draft["labels"] == ["ai-proposed"]
+    if stage == "unknown":
+        created = h.gh.issues.pop(101)
+        assert any("outcome is unknown" in error for error in h.run().errors)
+        h.gh.issues[101] = created
+    assert not h.run().errors
+    assert h.gh.issues[101]["labels"] == [{"name": "ai-proposed"}]
+    assert [
+        payload
+        for method, endpoint, payload in h.gh.writes
+        if method == "POST" and endpoint == "repos/o/r/issues"
+    ] == [draft]
+    assert len(h.calls()) == 1
+    before = len(h.gh.writes)
+    assert not h.run().errors and len(h.gh.writes) == before
 
 
 def test_created_issue_renamed_and_completed_after_lost_response_is_recovered(
@@ -1106,7 +1185,10 @@ def test_all_pages_and_api_failures_are_not_replaced_by_empty_inputs(
     h.run()
     fixed = json.loads(h.tmp.joinpath("run-1/organization-input.json").read_text())
     assert len(fixed["snapshot"]["issues"]) == 204
-    assert h.gh.issues[205]["labels"] == [{"name": "ai-proposed"}]
+    assert {label["name"] for label in h.gh.issues[205]["labels"]} == {
+        "ai-proposed",
+        fmt.STANDALONE_LABEL,
+    }
     writes = len(h.gh.writes)
     h.gh.fail = "/dependencies/blocked_by"
     assert any("GET failure" in error for error in h.run().errors)

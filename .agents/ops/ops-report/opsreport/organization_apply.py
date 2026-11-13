@@ -424,27 +424,32 @@ def _apply(
                 continue
             current = _guard(gh, store, root, tx)
             bound = org.bindings(tx["plan"], tx["fixed"]["proposals"], name)
-            if node["role"] == "reuse":
-                n = node["issue"]
-                raw = current["issues"][str(n)]
-                draft = {
-                    "title": raw["title"],
-                    "body": raw["body"],
-                    "labels": [label["name"] for label in raw["labels"]],
-                }
+            if node["role"] != "reuse" and name in tx["drafts"]:
+                # A saved POST is fixed even when the renderer changes. Keep
+                # its original labels/body and the ambiguous-outcome policy.
+                draft = deepcopy(tx["drafts"][name])
             else:
-                draft = org.render_node(node, numbers, tx["fixed"], tx["plan"])
-            draft["body"] = bind_task(
-                replace_section(
-                    draft["body"],
-                    "採用提案の出典",
-                    org.source_section(tx["fixed"]["proposals"], bound, gh.repo),
-                ),
-                plan=tx["plan_sha256"],
-                node=name,
-                bindings=bound,
-                source=_source(tx, name),
-            )
+                if node["role"] == "reuse":
+                    n = node["issue"]
+                    raw = current["issues"][str(n)]
+                    draft = {
+                        "title": raw["title"],
+                        "body": raw["body"],
+                        "labels": [label["name"] for label in raw["labels"]],
+                    }
+                else:
+                    draft = org.render_node(node, numbers, tx["fixed"], tx["plan"])
+                draft["body"] = bind_task(
+                    replace_section(
+                        draft["body"],
+                        "採用提案の出典",
+                        org.source_section(tx["fixed"]["proposals"], bound, gh.repo),
+                    ),
+                    plan=tx["plan_sha256"],
+                    node=name,
+                    bindings=bound,
+                    source=_source(tx, name),
+                )
             errors = validate_body(
                 draft["body"],
                 is_parent="issue:parent" in draft["labels"],

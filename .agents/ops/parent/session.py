@@ -12,6 +12,7 @@ from typing import Any
 from issues import (
     CHILD_LABEL,
     PARENT_LABEL,
+    STANDALONE_LABEL,
     TASKS_HEADING,
     ChildTask,
     Issue,
@@ -767,6 +768,10 @@ class ParentSession:
             raise work_targets.WorkTargetsChanged(
                 "cannot split an issue with an existing self-work PR; reconcile it first"
             )
+        if STANDALONE_LABEL in parent.labels:
+            raise ValueError(
+                f"migrate the parent using issues and remove {STANDALONE_LABEL} before splitting"
+            )
         own = parse_title(parent.title)
         if spec.get("role") != "child" or spec.get("parent") != {
             "identifier": own.identifier,
@@ -887,14 +892,19 @@ class ParentSession:
             and self.gh.identity(current_parent) != self.parent
         ):
             raise ValueError("existing child belongs to another parent")
-        labels = {label["name"] for label in child["labels"]} | set(draft["labels"])
-        self.gh.write("PATCH", base, {"labels": sorted(labels)})
+        current_labels = {label["name"] for label in child["labels"]}
+        labels = (current_labels | set(draft["labels"])) - {STANDALONE_LABEL}
+        if labels != current_labels:
+            self.gh.write("PATCH", base, {"labels": sorted(labels)})
         if current_parent is None:
             self.gh.write(
                 "POST",
                 self.endpoint + "/sub_issues",
                 {"sub_issue_id": number(child["id"])},
             )
+            # The relation write invalidates the parent. Also discard the
+            # child's cached "no parent" when no label PATCH was needed.
+            self.gh.invalidate(base)
         task = self.row["tasks"].setdefault(str(n), {})
         task["dependencies"] = deps
         task["title"] = parse_title(child["title"]).summary
