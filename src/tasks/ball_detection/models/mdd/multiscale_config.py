@@ -17,6 +17,7 @@ class MDDMultiScaleQueryConfig(MDDMHCQueryConfig):
     msda_points: int
     msda_chunk_size: int
     msda_im2col_step: int
+    checkpoint_scope: str = "encoder_msda"
 
     def __post_init__(self) -> None:
         MDDMHCQueryConfig.__post_init__(self)
@@ -28,12 +29,13 @@ class MDDMultiScaleQueryConfig(MDDMHCQueryConfig):
             raise ValueError("MSDA points, chunk size and im2col_step must be positive integers")
         if self.msda_chunk_size > self.msda_im2col_step and self.msda_chunk_size % self.msda_im2col_step:
             raise ValueError("MSDA chunk size must satisfy the official batch/im2col_step condition")
-        if self.activation_checkpointing:
-            raise ValueError("Multi-scale query uses explicit frame chunks; activation checkpointing is unsupported")
+        if self.checkpoint_scope not in {"msda", "encoder_msda"}:
+            raise ValueError("checkpoint_scope must be msda or encoder_msda")
 
     @classmethod
     def load(cls, path: Path) -> MDDMultiScaleQueryConfig:
-        raw = _temporal_config_fields(path, "mdd_multiscale_query", cls)
+        raw = _temporal_config_fields(path, "mdd_multiscale_query", cls,
+                                      optional_defaults={"checkpoint_scope": "encoder_msda"})
         for key in ("spatial_layers", "msda_levels"):
             raw[key] = tuple(raw[key])
         return cls(**raw)

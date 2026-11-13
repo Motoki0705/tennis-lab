@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from typing import Any, TypeAlias
+from typing import Any, TypeAlias, cast
 
 from torch import Tensor
 
@@ -76,7 +76,7 @@ def temporal_model_payload(model: TemporalModel) -> dict[str, Any]:
             input_contract=model.mdd.input_contract(),
             state_dict=model.state_dict(),
         )
-    return heatmap_model_payload(model)
+    return cast(dict[str, Any], heatmap_model_payload(model))
 
 
 def restore_temporal_model(saved: dict[str, Any]) -> TemporalModel:
@@ -90,6 +90,10 @@ def restore_temporal_model(saved: dict[str, Any]) -> TemporalModel:
         return restore_heatmap_model(saved)
     kind, config_type = kinds[schema]
     raw = saved.get("model_config")
+    if schema == MULTISCALE_QUERY_SCHEMA and isinstance(raw, dict):
+        # This parameter-free execution option did not exist in original MSDA artifacts.
+        # Copy rather than mutating the caller's historical checkpoint metadata.
+        raw = {"checkpoint_scope": "encoder_msda", **raw}
     if saved.get("model_kind") != kind or not isinstance(raw, dict) or set(raw) != set(config_type.__dataclass_fields__):
         raise ValueError("Invalid explicit temporal coordinate artifact")
     config = config_type(**raw)

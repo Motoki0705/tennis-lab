@@ -244,10 +244,13 @@ class MDDMHCQueryConfig(MDDTemporalQueryConfig):
         return cls(**_temporal_config_fields(path, "mdd_mhc_query", cls))
 
 
-def _temporal_config_fields(path: Path, name: str, config_type: type[MDDPretrainConfig]) -> dict[str, Any]:
+def _temporal_config_fields(path: Path, name: str, config_type: type[MDDPretrainConfig], *,
+                            optional_defaults: dict[str, Any] | None = None) -> dict[str, Any]:
     raw = yaml.safe_load(path.read_text())
     if not isinstance(raw, dict) or raw.pop("name", None) != name:
         raise ValueError(f"Expected {name} model config")
+    for key, value in (optional_defaults or {}).items():
+        raw.setdefault(key, value)
     if set(raw) != set(config_type.__dataclass_fields__):
         raise ValueError("Temporal model configuration must declare every field exactly")
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):

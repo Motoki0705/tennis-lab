@@ -8,6 +8,7 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.ball_detection.models.mdd.config import MDDPretrainConfig
+from src.tasks.ball_detection.models.mdd.execution import checkpoint_call
 from src.tasks.ball_detection.models.mdd.mhc_query import (
     DeepMDDMHCQueryDetector,
     MHCQueryBlock,
@@ -47,6 +48,20 @@ class DeformableMHCQueryBlock(nn.Module):
         nn.init.xavier_uniform_(self.reference_points.weight)
         nn.init.zeros_(self.reference_points.bias)
         self.chunk_size = config.msda_chunk_size
+        self.activation_checkpointing = config.activation_checkpointing
+
+    def _spatial_chunk(self, query: Tensor, reference: Tensor, values: Tensor,
+                       shapes: Tensor, starts: Tensor, mask: Tensor) -> Tensor:
+        return self.cross(query, reference, self.path.norms[1](values), shapes, starts, mask)
+
+    @torch.compiler.disable  # type: ignore[untyped-decorator]
+    def _checkpointed_spatial_chunk(self, query: Tensor, reference: Tensor, values: Tensor,
+                                    shapes: Tensor, starts: Tensor, mask: Tensor) -> Tensor:
+        # Keep the checkpoint outside Dynamo's higher-order graph: the official
+        # custom op deliberately graph-breaks. Recompute normalization, FP32 casts,
+        # value projection and native sampling together, one fixed frame chunk.
+        return checkpoint_call(self._spatial_chunk, query, reference, values, shapes, starts, mask,
+                               enabled=True)
 
     def forward(self, streams: Tensor, memory: PyramidMemory, times: Tensor) -> Tensor:
         b, t, count, dim = streams.shape
@@ -61,9 +76,14 @@ class DeformableMHCQueryBlock(nn.Module):
         chunks = []
         for first in range(0, b*t, self.chunk_size):
             last = min(first+self.chunk_size, b*t)
-            image = self.path.norms[1](values[first:last])
-            chunks.append(self.cross(queries[first:last], references[first:last], image,
-                                     memory.shapes, memory.starts, memory.mask[first:last]))
+            if self.activation_checkpointing and self.training and torch.is_grad_enabled():
+                chunks.append(self._checkpointed_spatial_chunk(
+                    queries[first:last], references[first:last], values[first:last],
+                    memory.shapes, memory.starts, memory.mask[first:last]))
+            else:
+                image = self.path.norms[1](values[first:last])
+                chunks.append(self.cross(queries[first:last], references[first:last], image,
+                                         memory.shapes, memory.starts, memory.mask[first:last]))
         residual = streams + torch.cat(chunks, dim=0).reshape_as(streams)
         return self.path.temporal_span(residual, times)
 
@@ -74,6 +94,7 @@ class DeepMDDMultiScaleQueryDetector(DeepMDDMHCQueryDetector):
     def _build_query_modules(self, config: MDDPretrainConfig) -> None:
         if not isinstance(config, MDDMultiScaleQueryConfig):
             raise ValueError("Multi-scale query requires its explicit configuration")
+        self.encoder.activation_checkpointing = config.activation_checkpointing and config.checkpoint_scope != "msda"
         self.ball_query = nn.Parameter(torch.randn(config.num_streams, config.dim) * .02)
         # Per-kind ordinal seeds pair the initial M/C/temporal/mHC weights across
         # layouts: changing order does not consume a different RNG stream.
