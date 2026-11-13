@@ -241,6 +241,16 @@ there is no padding or batch correction. Per-kind/ordinal initialization uses
 seed-derived independent RNG scopes, pairing M and C weights across reordered
 layouts without changing data/augmentation seeds.
 
+Activation checkpointing remains opt-in through `activation_checkpointing: false`.
+When enabled, `checkpoint_scope` selects `msda` (each native frame chunk including
+normalization, FP32 casts, projections and sampling) or `encoder_msda` (also every
+CNN stage). The default scope is `encoder_msda`; historical configs/artifacts lacking that field use
+this default with their saved disabled flag. Parameter and buffer names do not
+change. Non-reentrant replay preserves dropout RNG and autocast; native chunk
+replay is explicitly outside Dynamo because the official op graph-breaks.
+The scope is part of the saved model/recipe, so ordinary full-state resume rejects
+changing it. Evaluation and inference do not checkpoint.
+
 The [official MSDA boundary](../../../../utils/models/components/ops/msda/README.md)
 executes its complete official projection/sampling/output module in FP32 under
 BF16 autocast. Its explicit compiler-disabled boundary permits graph breaks in
