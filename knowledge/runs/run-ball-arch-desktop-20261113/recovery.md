@@ -1,7 +1,7 @@
 # Resume a stopped desktop attempt
 
 First inspect the unit/job in `monitoring-handoff.json`, queue state, GPU processes,
-`production-FAILED.json`, stage `FAILED.json` and the terminal event. Diagnose the
+`production-FAILED.json`, `production-FAILED-<case>-encoder_msda.json` and the terminal event. Diagnose the
 cause and confirm the old writer is stopped. A second writer is forbidden.
 The original tail 5,500 is the migration input only; once desktop checkpoints
 exist, recover the newest independently verified desktop generation. Completed
@@ -16,8 +16,8 @@ configuration. Choose a fresh root suffix, never delete or reuse a failed root.
 ```bash
 cd "$SOURCE"
 export RCLONE_CONFIG=/home/kamimura/.config/tennis-lab/rclone-drive.conf
-OLD_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3
-NEW_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4
+OLD_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4
+NEW_ROOT=/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a5
 ADAPTER="$SOURCE/knowledge/runs/run-ball-arch-desktop-20261113"
 PY="$OLD_ROOT/env-original/bin/python"
 "$PY" "$ADAPTER/bootstrap_recovery.py" --from-root "$OLD_ROOT" --root "$NEW_ROOT"
@@ -55,8 +55,9 @@ repeat verified input acquisition, fixed-snapshot reconstruction and original
 runtime/native qualification. `recover.py` then performs the same desktop-state
 restoration. Stop on failed full-state reproduction, nonfinite numbers, an
 unfit allocator policy, old remote writes, or `/mnt/d` statvfs available space
-below 10 GiB. Keep at least 4 GiB host available RAM and the 80% CUDA allocator
-cap. WSL filesystem growth is telemetry only. No weights-only restart, smaller batch, alternative scope or eager
+below 10 GiB or host available below the 2 GiB emergency floor. Before an
+update, available below 6 GiB waits without a deadline. Keep the 80% CUDA allocator
+cap. Inspect the stage ram-waits.jsonl and train.jsonl resources fields. WSL filesystem growth is telemetry only. No weights-only restart, smaller batch, alternative scope or eager
 fallback is automatic. The parent owns monitoring after worker handoff.
 
 If publication was interrupted after the immutable snapshot marker appeared,
@@ -69,3 +70,10 @@ checkpoint receipt and independently read back the updated pointer. Leave its
 event as `checkpoint`; the normal runner must publish `completed`. A terminal
 6,000 checkpoint runs an empty update range and preserves the existing evaluation.
 If full verification fails, retain the old verified pointer and recover 5,500.
+
+For the attempt-3 to attempt-4 transition, the exact verified T2 update-1,000
+snapshot is selected; the uncommitted 1,001–1,283 suffix is not adopted. The
+approved runner-source observer transition is byte-pinned, and all scientific
+state remains exact. Later checkpoints already using this observer require no
+source adaptation. Existing wait logs are restored and appended without
+rewriting historical train rows.

@@ -218,3 +218,49 @@ def test_train_and_validation_must_pin_the_same_rgb_contents(prepared: Path, tmp
     with pytest.raises(ValueError, match="RGB shard identities differ"):
         train(prepared, tmp_path / "bad-rgb", "dpt", evaluation_manifest=changed)
     assert not (tmp_path / "bad-rgb").exists()
+
+
+def test_update_observer_waits_outside_timing_without_changing_scientific_state(
+    prepared: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from src.tasks.ball_detection.training.temporal import runner
+
+    reference, observed, interrupted = (tmp_path / name for name in ('reference', 'observed', 'interrupted'))
+    train(prepared, reference, 'hybrid')
+    original_counter = runner.time.perf_counter
+    clock = SimpleNamespace(wait_seconds=0.)
+    monkeypatch.setattr(runner, 'time', SimpleNamespace(perf_counter=lambda: original_counter() + clock.wait_seconds))
+
+    class Observer:
+        def __init__(self, output, fail_at=None):
+            self.output, self.fail_at, self.updates = output, fail_at, []
+
+        def before_update(self, update):
+            rows = logs(self.output)
+            assert [row['update'] for row in rows] == list(range(1, update))
+            self.updates.append(update)
+            if update == self.fail_at:
+                raise MemoryError('Admission test interruption')
+            clock.wait_seconds += 3600.
+
+        def metrics(self):
+            return dict(process_tree_rss_bytes=123456, ram_wait_seconds=3600.)
+
+    observer = Observer(observed)
+    train(prepared, observed, 'hybrid', update_observer=observer)
+    assert observer.updates == [1, 2, 3]
+    first, second = checkpoint(reference), checkpoint(observed)
+    for key in ('optimizer', 'optimizer_parameter_names', 'rng', 'schedule', 'sample_position', 'updates_completed'):
+        assert_state_equal(first[key], second[key])
+    assert_state_equal(first['model_artifact']['state_dict'], second['model_artifact']['state_dict'])
+    assert first['recipe'] == second['recipe']
+    assert all('resources' not in row for row in logs(reference))
+    assert all(row['resources']['process_tree_rss_bytes'] == 123456 and 0 < row['seconds'] < 100
+               for row in logs(observed))
+    with pytest.raises(MemoryError, match='Admission test interruption'):
+        train(prepared, interrupted, 'hybrid', update_observer=Observer(interrupted, fail_at=2))
+    assert [row['update'] for row in logs(interrupted)] == [1]
+    assert checkpoint(interrupted)['updates_completed'] == 1
+    assert not (interrupted / 'COMPLETED.json').exists()

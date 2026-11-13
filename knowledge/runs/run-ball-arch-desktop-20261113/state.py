@@ -4,10 +4,35 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from pathlib import Path
 
 from rebuild_dataset import sha, write
 
 HISTORICAL_STORE = "/content/tennis-lab/data/ball_detection/ball-mix1800-720p-all-frame-train-val-v1"
+OBSERVER_RUNNER = "src/tasks/ball_detection/training/temporal/runner.py"
+
+
+def validate_source_changes(old_source, new_source, *, initial_policy_migration=False, observer_migration=False):
+    changed = {key for key, value in old_source.items() if new_source.get(key) != value}
+    allowed = {
+        "src/tasks/ball_detection/models/mdd/config.py",
+        "src/tasks/ball_detection/models/mdd/multiscale_config.py",
+        "src/tasks/ball_detection/models/mdd/multiscale_query.py",
+        "src/tasks/ball_detection/model_io/mdd_temporal.py",
+        "src/tasks/ball_detection/training/temporal/configuration.py",
+    } if initial_policy_migration else set()
+    transition = None
+    if observer_migration and OBSERVER_RUNNER in changed:
+        transition = json.loads((Path(__file__).parent / "resource-observer-migration.json").read_text())
+        expected = transition["files"].get(OBSERVER_RUNNER, {})
+        if (transition["schema_version"] != 1 or set(transition["files"]) != {OBSERVER_RUNNER}
+                or old_source[OBSERVER_RUNNER] != expected.get("from_sha256")
+                or new_source.get(OBSERVER_RUNNER) != expected.get("to_sha256")):
+            raise ValueError("Unapproved observer source transition")
+        allowed.add(OBSERVER_RUNNER)
+    if changed - allowed or set(new_source) != set(old_source):
+        raise ValueError("Unexpected training source change: " + str(changed))
+    return changed, transition
 
 
 def same(a, b):
@@ -108,11 +133,12 @@ def prepare(root):
 def migrate_t1(root, output, config):
     original = root / "original/T1-q06000-q12000/checkpoint-00005500-cddcef20"
     return migrate_resume(root, original, output, config, expected_update=5500,
-                          expected_sample_position=21500, initial_policy_migration=True)
+                          expected_sample_position=21500, initial_policy_migration=True,
+                          observer_migration=True)
 
 
 def migrate_resume(root, original, output, config, *, expected_update,
-                   expected_sample_position=None, initial_policy_migration=False):
+                   expected_sample_position=None, initial_policy_migration=False, observer_migration=False):
     from dataclasses import asdict
 
     import torch
@@ -157,16 +183,9 @@ def migrate_resume(root, original, output, config, *, expected_update,
         (output / (name + "_manifest.json")).write_bytes(localized.read_bytes())
     code = source_identity()
     old_source = saved["code"]["source_sha256"]
-    changed_source = {k for k, v in old_source.items() if code["source_sha256"].get(k) != v}
-    allowed_source = {
-        "src/tasks/ball_detection/models/mdd/config.py",
-        "src/tasks/ball_detection/models/mdd/multiscale_config.py",
-        "src/tasks/ball_detection/models/mdd/multiscale_query.py",
-        "src/tasks/ball_detection/model_io/mdd_temporal.py",
-        "src/tasks/ball_detection/training/temporal/configuration.py",
-    } if initial_policy_migration else set()
-    if changed_source - allowed_source or set(code["source_sha256"]) != set(old_source):
-        raise ValueError("Unexpected training source change: " + str(changed_source))
+    changed_source, observer_transition = validate_source_changes(
+        old_source, code["source_sha256"], initial_policy_migration=initial_policy_migration,
+        observer_migration=observer_migration)
     if code["torch_version"] != saved["code"]["torch_version"]:
         raise ValueError("Torch version must match the original checkpoint")
     changed["code"] = code
@@ -202,6 +221,7 @@ def migrate_resume(root, original, output, config, *, expected_update,
           exact_fields=list(exact), model_state_keys=len(model.state_dict()), new_state_keys=[],
           weights_exact=True, checkpoint_scope=getattr(config, "checkpoint_scope", None), source_changes=sorted(changed_source),
           initial_policy_migration=initial_policy_migration,
+          observer_source_transition=observer_transition,
           metadata_changes=["recipe.model.activation_checkpointing", "recipe.model.checkpoint_scope",
                             "recipe.data.snapshot.directory", "recipe.manifest_sha256", "recipe.evaluation_manifest_sha256",
                             "code", "model_artifact.model_config", "model_artifact.training.data.snapshot.directory",

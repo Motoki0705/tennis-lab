@@ -118,3 +118,25 @@ def test_migrated_checkpoint_preserves_model_adamw_rng_sampler_and_committed_log
     assert same(actual["optimizer"], recovered_state["optimizer"])
     assert same(actual["rng"], recovered_state["rng"])
     assert same(actual["model_artifact"]["state_dict"], recovered_state["model_artifact"]["state_dict"])
+
+
+@pytest.mark.parametrize('change,approved', [('runner', True), ('runner', False), ('unknown-runner', True), ('other', True), ('new-file', True)])
+def test_observer_migration_requires_the_exact_approved_source_pair(change, approved):
+    from state import OBSERVER_RUNNER, validate_source_changes
+
+    transition = json.loads((HERE / 'resource-observer-migration.json').read_text())['files'][OBSERVER_RUNNER]
+    assert transition['to_sha256'] == sha(Path(OBSERVER_RUNNER))
+    old = {OBSERVER_RUNNER: transition['from_sha256'], 'unrelated.py': 'unchanged'}
+    new = {OBSERVER_RUNNER: transition['to_sha256'], 'unrelated.py': 'unchanged'}
+    if change == 'unknown-runner':
+        old[OBSERVER_RUNNER] = '0' * 64
+    elif change == 'other':
+        new['unrelated.py'] = 'changed'
+    elif change == 'new-file':
+        new['new.py'] = 'added'
+    if change == 'runner' and approved:
+        changed, proof = validate_source_changes(old, new, observer_migration=True)
+        assert changed == {OBSERVER_RUNNER} and proof['schema_version'] == 1
+    else:
+        with pytest.raises(ValueError, match='source (change|transition)'):
+            validate_source_changes(old, new, observer_migration=approved)

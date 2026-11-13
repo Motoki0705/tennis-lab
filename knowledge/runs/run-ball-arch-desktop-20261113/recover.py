@@ -150,11 +150,12 @@ def main(root, stopped):
             digest=json.loads((target/"latest.json").read_text())["sha256"]
         else:
             checkpoint = migrate_resume(
-                root, selected, target, configuration, expected_update=status["update"]
+                root, selected, target, configuration, expected_update=status["update"],
+                observer_migration=True,
             )
             digest=sha(checkpoint)
             for source in selected.iterdir():
-                if source.name.startswith("validation-") or source.name in {"COMPLETED.json", "STOPPED.json"}:
+                if source.name.startswith("validation-") or source.name in {"COMPLETED.json", "STOPPED.json", "ram-waits.jsonl"}:
                     shutil.copyfile(source, target / source.name)
         write(root / "stage-status" / name / "state.json", status)
         restored.append(

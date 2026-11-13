@@ -14,7 +14,7 @@ qualification, lifecycle and evidence; it does not replace historical generation
 
 ## Inputs and safety
 
-`$ROOT` is the active run output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3`
+`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4`
 below the implementation worktree. `$SOURCE` is the immutable pushed runtime checkout.
 `$ADAPTER` is this directory in that checkout. `$PY` is `$ROOT/env-original/bin/python`.
 `$QUEUE` is the main repository's shared `.training_queue`; set `$RCLONE_CONFIG`
@@ -45,8 +45,10 @@ to the authenticated private config. Never print its contents.
   double backward gradcheck. Compiler resource reports and both build manifests
   preserve this failed candidate and the passing correction.
 - Every GPU workload is a shared-queue `resource=all` job. `guard.py` caps the
-  CUDA allocator at 80%, requires at least 4 GiB host available RAM, and stops
-  when `/mnt/d` statvfs available space falls below 10 GiB. WSL filesystem
+  CUDA allocator at 80%. Before each optimizer update it waits while host
+  available RAM is below 6 GiB, without a wait deadline. The emergency observer
+  stops strictly below 2 GiB (including during setup, persistence or waiting),
+  or when `/mnt/d` statvfs available space falls below 10 GiB. WSL filesystem
   growth is recorded as telemetry; it is not a stopping condition. This replaces
   the earlier 20 GB proxy by the parent's 2026-11-13 recovery instruction. systemd
   also bounds host memory. Shapes, batch, microbatch, precision, three MSDA levels, chunk
@@ -140,8 +142,8 @@ metadata; versioned summaries link the evidence.
 
 Worker acceptance is at least ten finite continuous post-compile updates in
 the first running stage after recovery. Allocated and reserved VRAM must remain
-below the allocator cap, host available RAM at least 4 GiB and D: available
-space at least 10 GiB. The worker leaves a committed `monitoring-handoff.json`
+below the allocator cap, host available RAM at least the 2 GiB emergency floor
+(with at least 6 GiB at each admission), and D: available space at least 10 GiB. The worker leaves a committed `monitoring-handoff.json`
 with the actual unit, job, process identities and authoritative evidence paths.
 The parent then monitors T1 tail 6,000/12k validation and prediction readback,
 T2's 500 checkpoint and 600-to-601 unfreeze, and every condition's completion.
@@ -261,8 +263,39 @@ minimum was 17,030,041,600 bytes and D: available minimum 33,458,446,336 bytes,
 inside the 4 GiB / 10 GiB lower bounds. See
 [attempt-3-startup-acceptance.json](attempt-3-startup-acceptance.json).
 
-The active unit is `tennis-ball-arch-desktop-production-20261113-a3.service`.
+The historical attempt-3 unit was `tennis-ball-arch-desktop-production-20261113-a3.service`; it later failed at the old RAM floor.
 The handoff contains the actual queue identity, PID/PGID, terminal-event path
 and fresh-root attempt-4 recovery commands. T2 500 persistence, 600→601 unfreeze
 and remaining completions belong to the parent. No periodic follow-up or
 further live progress polling is registered by this worker.
+
+## RAM admission after attempt 3
+
+Attempt 3 stopped in T2 backward near update 1,283 when global host available
+RAM fell below its old 4 GiB floor. Numerical training was finite; the latest
+verified full checkpoint is `checkpoint-00001000-e2f35d3f`. Parent observations
+include concurrent pytest workers and filesystem inventory activity. Without
+training-process RSS history the cause cannot be fully attributed.
+
+The revised policy waits before each optimizer update below 6 GiB, resumes at
+6 GiB or more, and retains a strict 2 GiB emergency stop plus the unchanged
+D: 10 GiB stop. Waits do not consume updates, sampler draws or RNG and are outside
+the measured update seconds. More than 30 minutes produces one notice; there
+is no maximum wait duration.
+
+Each stage writes `production/<stage>/ram-waits.jsonl`. Events are
+`ram_wait_started`, `ram_wait_resumed`, `ram_wait_over_30_minutes` and
+`ram_wait_interrupted`; keys include `update`, `timestamp`, `started_at`,
+`elapsed_seconds`, `host_available_bytes`, `process_tree_rss_bytes`,
+`parent_rss_bytes`, `children_rss_bytes` and `process_tree_pids`. The sum includes
+shared pages and is RSS, not PSS. Every new train.jsonl row contains `resources`
+with the same memory fields, `ram_wait_seconds`, `admitted_host_available_bytes`
+and `admitted_at`. Historical rows stay unchanged. The wait log joins checkpoint
+snapshots when present; later wait events remain local until the next snapshot.
+
+A generic optional `UpdateObserver` in the temporal runner supplies admission
+and telemetry. The default performs no callbacks and changes no recipe. The
+strict resume reader is retained. Only the pinned old/new runner source pair in
+`resource-observer-migration.json` may be adapted during explicit recovery; every
+other unexpected source change is rejected, and model/AdamW/RNG/schedule/sampler
+and committed logs are compared completely before adoption.

@@ -49,9 +49,9 @@ def test_statvfs_uses_d_drive_available_blocks(guard, monkeypatch):
 
 
 @pytest.mark.parametrize("ram,disk,reason", [
-    (4 * GIB, 10 * GIB, None),
-    (4 * GIB, 10 * GIB - 1, "d_drive_available_space"),
-    (4 * GIB - 1, 40 * GIB, "host_available_ram"),
+    (2 * GIB, 10 * GIB, None),
+    (2 * GIB, 10 * GIB - 1, "d_drive_available_space"),
+    (2 * GIB - 1, 40 * GIB, "host_available_ram"),
 ])
 def test_exact_lower_bounds_and_one_byte_below(guard, ram, disk, reason):
     assert guard.violation(ram, disk) == reason
@@ -123,7 +123,7 @@ def test_observer_persists_reason_then_terminates_on_runtime_failure(guard, monk
 
     readings(guard, monkeypatch, tmp_path, disk)
     if failure == "ram":
-        ram = iter([5 * GIB, 4 * GIB - 1])
+        ram = iter([5 * GIB, 2 * GIB - 1])
         monkeypatch.setattr(guard, "available_ram", lambda: next(ram))
 
     def terminate(pid, sig):
@@ -138,3 +138,93 @@ def test_observer_persists_reason_then_terminates_on_runtime_failure(guard, monk
     assert status["minimum_d_drive_available_bytes"] >= 0
     if failure == "statvfs":
         assert "D: probe unavailable" in status["error"]
+
+
+def test_process_tree_includes_every_thread_child_and_grandchildren(guard, tmp_path):
+    def process(pid, parent, pages, children):
+        folder = tmp_path / str(pid)
+        folder.mkdir()
+        fields = ['S'] + ['0'] * 21
+        fields[1], fields[21] = str(parent), str(pages)
+        (folder / 'stat').write_text(f'{pid} (train (worker)) ' + ' '.join(fields))
+        for tid, values in children.items():
+            task = folder / 'task' / str(tid)
+            task.mkdir(parents=True)
+            (task / 'children').write_text(values)
+
+    process(10, 1, 10, {10: '20 999', 11: '20 40'})
+    process(20, 10, 20, {20: '30'})
+    process(30, 20, 30, {30: ''})
+    process(40, 99, 1000, {40: ''})
+    metrics = guard.process_tree_memory(proc=tmp_path, root_pid=10, page_size=4096)
+    assert metrics['process_tree_rss_bytes'] == 60 * 4096
+    assert metrics['parent_rss_bytes'] == 10 * 4096
+    assert metrics['children_rss_bytes'] == 50 * 4096
+    assert metrics['process_tree_pids'] == [10, 20, 30]
+    assert metrics['process_tree_process_count'] == 3
+
+
+def test_missing_training_parent_does_not_report_zero_rss(guard, tmp_path):
+    with pytest.raises(FileNotFoundError):
+        guard.process_tree_memory(proc=tmp_path, root_pid=99, page_size=4096)
+
+
+def resource_sample(ram, disk=20 * GIB):
+    return dict(host_available_bytes=ram, d_drive_available_bytes=disk,
+                process_tree_rss_bytes=3000, parent_rss_bytes=1000, children_rss_bytes=2000,
+                process_tree_process_count=3, process_tree_pids=[10, 20, 30])
+
+
+def test_six_gib_admits_without_sleep_or_wait_event(guard, tmp_path):
+    def unexpected_sleep(_):
+        pytest.fail('Exactly 6 GiB must admit the update')
+
+    path = tmp_path / 'waits.jsonl'
+    observer = guard.RamAdmission(path, sample=lambda: resource_sample(6 * GIB), sleep=unexpected_sleep)
+    observer.before_update(1001)
+    assert path.read_text() == ''
+    assert observer.metrics()['ram_wait_seconds'] == 0
+    assert observer.metrics()['process_tree_rss_bytes'] == 3000
+    assert observer.metrics()['admitted_host_available_bytes'] == 6 * GIB
+
+
+def test_wait_has_no_deadline_and_logs_one_thirty_minute_notice(guard, tmp_path, capsys):
+    clock = SimpleNamespace(now=0.)
+    readings = iter([6 * GIB - 1, 5 * GIB, 5 * GIB, 5 * GIB, 6 * GIB])
+
+    def sleep(seconds):
+        assert seconds == 1.
+        clock.now += 1000.
+
+    path = tmp_path / 'waits.jsonl'
+    observer = guard.RamAdmission(path, sample=lambda: resource_sample(next(readings)),
+                                  sleep=sleep, clock=lambda: clock.now, wall=lambda: 10000 + clock.now)
+    observer.before_update(1001)
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    assert [row['event'] for row in rows] == ['ram_wait_started', 'ram_wait_over_30_minutes', 'ram_wait_resumed']
+    assert all(row['update'] == 1001 and row['started_at'] == 10000 for row in rows)
+    assert rows[0]['host_available_bytes'] == 6 * GIB - 1
+    assert rows[-1]['host_available_bytes'] == 6 * GIB
+    assert rows[-1]['elapsed_seconds'] == observer.last_wait_seconds == 4000.
+    assert rows[-1]['process_tree_rss_bytes'] == 3000
+    notices = [json.loads(line)['event'] for line in capsys.readouterr().out.splitlines()]
+    assert notices.count('ram_wait_over_30_minutes') == 1
+
+
+@pytest.mark.parametrize('failure', ['ram', 'disk'])
+def test_emergency_threshold_still_interrupts_an_admission_wait(guard, tmp_path, failure):
+    clock = SimpleNamespace(now=0.)
+    bad = resource_sample(2 * GIB - 1) if failure == 'ram' else resource_sample(5 * GIB, 10 * GIB - 1)
+    samples = iter([resource_sample(5 * GIB), bad])
+
+    def sleep(_):
+        clock.now += 1
+
+    path = tmp_path / 'waits.jsonl'
+    observer = guard.RamAdmission(path, sample=lambda: next(samples), sleep=sleep,
+                                  clock=lambda: clock.now, wall=lambda: clock.now)
+    with pytest.raises(MemoryError, match='host_available_ram' if failure == 'ram' else 'd_drive_available_space'):
+        observer.before_update(1001)
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    assert [row['event'] for row in rows] == ['ram_wait_started', 'ram_wait_interrupted']
+    assert rows[-1]['elapsed_seconds'] == 1

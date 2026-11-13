@@ -18,7 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd()))
 from audit import audit_resume, validate_evaluation, validate_log
-from guard import configure, host_guard
+from guard import RamAdmission, configure, host_guard
 from rebuild_dataset import sha, write
 from state import migrate_t1, model_config, prepare, same
 
@@ -204,7 +204,7 @@ def persistence(root, output, case, number, mode, config, actual_budget=None):
                       update=update, rows=len(rows), updated_at=time.time(), mode=mode,
                       execution_commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip())
         names = [name for name in ("run.json", "train_manifest.json", "evaluation_manifest.json", "train.jsonl",
-                    "migration.json", "actual-resume.json", "COMPLETED.json", "STOPPED.json", "FAILED.json") if (directory / name).exists()]
+                    "migration.json", "actual-resume.json", "ram-waits.jsonl", "COMPLETED.json", "STOPPED.json", "FAILED.json") if (directory / name).exists()]
         if update:
             latest = read(latest_path)
             status.update(checkpoint_file=latest["checkpoint"], checkpoint_sha256=latest["sha256"],
@@ -289,7 +289,8 @@ def run_stage(root, mode, case, number, scope, stop=None, joint=False):
     origin_dir = root / "original/T1-q06000-q12000/checkpoint-00005500-cddcef20" if case.startswith("T") else root / "inputs/common-dpt-T32"
     origin = read(origin_dir / "run.json")["recipe"]
     metadata = dict(guard, model=asdict(config), budget=bud.payload(), diagnostic_joint_unfrozen=joint,
-                    mode=mode, case=case, stage=number, pid=os.getpid(), started_at=time.time())
+                    mode=mode, case=case, stage=number, pid=os.getpid(), started_at=time.time(),
+                    ram_wait_log=str(output / "ram-waits.jsonl"), update_resource_key="resources")
     path = root / (mode + "-environment-" + case + "-" + str(number) + "-" + scope + ".json")
     write(path, metadata)
     audit = audit_resume(options["resume"], output / "actual-resume.json") if "resume" in options else nullcontext()
@@ -300,7 +301,8 @@ def run_stage(root, mode, case, number, scope, stop=None, joint=False):
             evaluation_manifest=root / "prepared" / f"evaluation_T{64 if case.startswith('T') else 32}.json",
             model_config=config, output=output, budget=bud, runtime=CoordinateRuntime(**origin["runtime"]),
             device=torch.device("cuda"), augmentation=AugmentationConfig(**origin["augmentation"]), distance_px=20.,
-            persist=persistence(root, output, case, number, mode, Path(os.environ["RCLONE_CONFIG"]), bud), **options)
+            persist=persistence(root, output, case, number, mode, Path(os.environ["RCLONE_CONFIG"]), bud),
+            update_observer=RamAdmission(output / "ram-waits.jsonl"), **options)
     rows = validate_log(output, bud)
     relevant = [row for row in rows if row["update"] > (5500 if case == "T1" else 0)]
     summary = dict(metadata, result=result, status="passed", samples=relevant,

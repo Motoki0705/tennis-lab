@@ -11,7 +11,7 @@ import time
 from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 import numpy as np
 import torch
@@ -96,6 +96,14 @@ IDENTITY_KEYS = (
 )
 
 
+class UpdateObserver(Protocol):
+    """Optional admission and resource telemetry, outside the numerical update."""
+
+    def before_update(self, update: int) -> None: ...
+
+    def metrics(self) -> dict[str, Any]: ...
+
+
 def _data_recipe(
     train: FrozenBallWindowDataset, validation: FrozenBallWindowDataset
 ) -> dict[str, Any]:
@@ -161,6 +169,7 @@ def train_temporal_model(
     resume: Path | None = None,
     stop_after_update: int | None = None,
     persist: Callable[[Path, str], None] | None = None,
+    update_observer: UpdateObserver | None = None,
 ) -> dict[str, Any]:
     expected_types = dict(
         dpt=(MDDHeatmapConfig, MDDStageHeatmapConfig),
@@ -386,6 +395,8 @@ def train_temporal_model(
         # stream. Encoder-only transfers intentionally keep fresh query RNG.
         restore_rng(inherited_rng, device)
     for update in range(completed + 1, target + 1):
+        if update_observer is not None:
+            update_observer.before_update(update)
         if device.type == "cuda":
             torch.cuda.synchronize(device)
             torch.cuda.reset_peak_memory_stats(device)
@@ -504,6 +515,8 @@ def train_temporal_model(
             if device.type == "cuda"
             else None,
         )
+        if update_observer is not None:
+            record["resources"] = update_observer.metrics()
         with log.open("ab") as stream:
             stream.write(json_bytes(record))
             stream.flush()
