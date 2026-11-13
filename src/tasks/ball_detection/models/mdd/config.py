@@ -249,8 +249,10 @@ def _temporal_config_fields(path: Path, name: str, config_type: type[MDDPretrain
     raw = yaml.safe_load(path.read_text())
     if not isinstance(raw, dict) or raw.pop("name", None) != name:
         raise ValueError(f"Expected {name} model config")
-    for key, value in (optional_defaults or {}).items():
-        raw.setdefault(key, value)
+    if optional_defaults is not None:
+        for key, value in optional_defaults.items():
+            if key not in raw:
+                raw[key] = value
     if set(raw) != set(config_type.__dataclass_fields__):
         raise ValueError("Temporal model configuration must declare every field exactly")
     for key in ("stem_channels", "mixed_channels", "residual_blocks"):
