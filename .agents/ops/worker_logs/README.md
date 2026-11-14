@@ -196,6 +196,7 @@ worker公開の最終入口は `service.publish(owner_check=...)`。
 `ownership.publication_owner` は開始時の担当session・generationを固定した照合を作り、
 `ownership.require_owner` が各公開の直前に検査する。引継ぎ後の世代へ照合対象を取り直さない。
 拒否は `log_owner_mismatch` で返し、未公開journalをblockedへ書き換えず後任から続行できる状態で残す。
+明示公開後の共通続行も当初の世代に固定し、同じsessionでの再登録を旧操作への新しい公開権限に読み替えない。
 運用入口はすべて照合を渡す。低層のPublisherは親registryの所有者を決めず、既存の公開安全検査を担当する。
 
 | worker公開を開始する入口 | 固定する担当と照合箇所 |

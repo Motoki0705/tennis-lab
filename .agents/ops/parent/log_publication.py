@@ -100,6 +100,13 @@ class Continuation:
             self.initial_owner = self._owner_snapshot()
         except (ValueError, OSError, KeyError, TypeError, AttributeError):
             self.initial_owner = {}
+        if (
+            args.command in {"publish-worker-log", "publish-decision-log"}
+            and self.initial_owner.get("session") == identity
+        ):
+            # Explicit publication and its postlude share one admission. A
+            # same-session registration must not grant that old operation a new epoch.
+            self.generation = self.initial_owner.get("generation")
 
     def _owner_snapshot(self) -> dict[str, Any]:
         with self.store.snapshot():

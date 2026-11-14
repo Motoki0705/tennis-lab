@@ -496,6 +496,7 @@ def test_bulk_recovery_records_generation_change_without_overwriting_successor(
         "bulk",
         "orphan",
         "explicit",
+        "explicit_generation",
         "orphan_adopt",
         "supervisor_active",
     ],
@@ -510,7 +511,7 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
     lifecycle = importlib.import_module("worker_logs.lifecycle")
     state = importlib.import_module("parent.state")
     first = logs.ready(child=10)
-    if entry == "explicit":
+    if entry.startswith("explicit"):
         source = journal.read(first)["source"]
         session = logs.sessions[-1]
         phase = session.row["tasks"]["10"]["preflight"]
@@ -549,6 +550,7 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
         )
     else:
         second = logs.ready(child=11)
+    later = logs.ready(child=11) if entry == "explicit_generation" else None
     actor = 1900 if entry in {"bulk", "orphan", "orphan_adopt"} else 1
     owner: dict[str, Any] = {
         "session": "codex:previous",
@@ -601,7 +603,13 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
     def transfer_after_merge(number: int, head: str) -> None:
         merge(number, head)
         owner.update(store.read_data()["parents"][key])
-        owner.update(session="codex:successor", generation=2, status="active")
+        owner.update(
+            session="codex:previous"
+            if entry == "explicit_generation"
+            else "codex:successor",
+            generation=2,
+            status="active",
+        )
         journal.atomic(logs.state / "registry.json", document)
 
     monkeypatch.setattr(merging, "merge", transfer_after_merge)
@@ -624,7 +632,7 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
             ),
         )
         assert checkpoint["error"] == "log_owner_mismatch"
-    elif entry == "explicit":
+    elif entry.startswith("explicit"):
         cli = importlib.import_module("parent.cli")
         monkeypatch.setattr(cli, "GitHub", lambda *a, **kw: SimpleNamespace(repo="o/r"))
         monkeypatch.setattr(cli, "session_identity", lambda env: "codex:previous")
@@ -705,10 +713,75 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
         assert journal.read(second)["state"] == (
             "pending" if entry == "orphan" else "ready"
         ), "the former owner started another journal after handoff"
+    if later is not None:
+        assert journal.read(later)["state"] == "ready", (
+            "the former CLI operation resumed publication in its successor generation"
+        )
     assert merging.calls.count("merge") == 1
     assert store.read_data()["parents"][key] == owner
-    if entry == "explicit":
+    if entry.startswith("explicit"):
         assert code == 2 and value["logs"][-1]["error"] == "log_owner_mismatch"
+
+
+def test_decision_publication_postlude_keeps_its_original_generation(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cli = importlib.import_module("parent.cli")
+    decisions = importlib.import_module("decision_logs.publication")
+    path = logs.ready()
+    owner = {
+        "session": "codex:previous",
+        "status": "active",
+        "generation": 1,
+        "tasks": {},
+        "reviews": [],
+    }
+    document = {"version": 1, "parents": {"o/r#1": owner}}
+    journal.atomic(logs.state / "registry.json", document)
+
+    def published_before_registration(**kwargs: Any) -> dict[str, Any]:
+        owner["generation"] = 2
+        journal.atomic(logs.state / "registry.json", document)
+        return {
+            "state": "merged",
+            "error": None,
+            "blocked": False,
+            "saved_to_main": True,
+        }
+
+    # The decision publisher's byte/merge contracts are exercised separately.
+    # Its completed publication must not authorize the old worker-log postlude.
+    monkeypatch.setattr(
+        decisions,
+        "Publisher",
+        lambda *a, **kw: SimpleNamespace(publish=published_before_registration),
+    )
+    monkeypatch.setattr(
+        service, "Publisher", lambda root, target: logs.publisher(target)
+    )
+    monkeypatch.setattr(cli, "GitHub", lambda *a, **kw: SimpleNamespace(repo="o/r"))
+    monkeypatch.setattr(cli, "session_identity", lambda env: "codex:previous")
+    monkeypatch.chdir(logs.root)
+    assert (
+        cli._main(
+            [
+                "--repo",
+                "o/r",
+                "--parent",
+                "1",
+                "--state-dir",
+                str(logs.state),
+                "publish-decision-log",
+            ]
+        )
+        == 0
+    )
+    assert journal.read(path)["state"] == "ready", (
+        "the old decision-publication postlude adopted a successor generation"
+    )
+    assert not logs.github.calls
+    state = importlib.import_module("parent.state")
+    assert state.Store(logs.state).read_data()["parents"]["o/r#1"] == owner
 
 
 def test_existing_journal_merge_refusal_reaches_orphan_cli_exit(
