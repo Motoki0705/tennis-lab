@@ -45,3 +45,20 @@ if (
             return spec
 
     sys.meta_path.insert(0, TransportFinder())
+
+    # Preserve an explicit startup hook used by another fixture. Python loads
+    # only one sitecustomize, so install our lazy transport hook and then run
+    # the customization that would otherwise have been selected.
+    directory = Path(__file__).resolve().parent
+    search = [
+        entry for entry in sys.path if Path(entry or os.getcwd()).resolve() != directory
+    ]
+    existing = importlib.machinery.PathFinder.find_spec("sitecustomize", search)
+    if existing is not None and existing.origin is not None:
+        spec = importlib.util.spec_from_file_location(
+            "_agents_existing_sitecustomize", existing.origin
+        )
+        assert spec is not None and spec.loader is not None
+        customization = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = customization
+        spec.loader.exec_module(customization)
