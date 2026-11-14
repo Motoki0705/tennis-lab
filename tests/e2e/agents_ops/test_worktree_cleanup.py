@@ -1052,9 +1052,10 @@ def test_unrelated_process_exits_after_snapshot_without_poisoning_scope(
     assert {102, 103} <= forest.nodes.keys() and not forest.signals
 
 
+@pytest.mark.parametrize("version", [2, 3])
 @pytest.mark.parametrize("recorded_survivor", [False, True])
-def test_replay_v2_unscoped_proof_requires_captured_identities_to_end(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch, recorded_survivor: bool
+def test_replay_unscoped_proof_requires_captured_identities_to_end(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, recorded_survivor: bool, version: int
 ) -> None:
     path = lab.add()
     forest = NativeForest(lab, monkeypatch)
@@ -1064,7 +1065,7 @@ def test_replay_v2_unscoped_proof_requires_captured_identities_to_end(
         forest.snapshot(), [], None, capture_completed=True
     )
     original.update(
-        schema_version=2,
+        schema_version=version,
         ancestors=[forest.nodes[1]["identity"]],
         unconfirmed=[forest.nodes[101]["identity"], forest.nodes[102]["identity"]],
     )
@@ -1078,7 +1079,7 @@ def test_replay_v2_unscoped_proof_requires_captured_identities_to_end(
     assert dry_code == int(recorded_survivor)
     assert (
         bool(dry_report["stop_preflight"][0]["legacy_proof_recovery"])
-        is not recorded_survivor
+        is (version == 2 and not recorded_survivor)
     )
     assert json.loads(proof.read_text()) == original
     assert not proof.with_suffix(".unscoped-v2.json").exists()
@@ -1092,7 +1093,86 @@ def test_replay_v2_unscoped_proof_requires_captured_identities_to_end(
         lab.run(cleanup=True)
         assert not path.exists()
     archived = proof.with_suffix(".unscoped-v2.json")
-    assert json.loads(archived.read_text())["proof"] == original
+    assert archived.exists() is (version == 2)
+    if version == 2:
+        assert json.loads(archived.read_text())["proof"] == original
+
+
+@pytest.mark.parametrize("job", ["main_shell", "other_worktree_runner", "root_service"])
+def test_unscoped_v3_proof_does_not_claim_an_independent_process_lineage(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, job: str
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    proof = lab.cleaner().stopper.native_proof(path)
+    original = forest.proc.prepare_stop(
+        forest.snapshot(),
+        [],
+        None,
+        capture_completed=True,
+        uncertain_roots=[forest.nodes[101]["identity"]],
+    )
+    # An unobserved ancestor in the old discovery widened this set to the
+    # entire host baseline. No process was ever attributed to the target.
+    original["ancestors"] = original["baseline"]
+    lab.storage.write_json(proof, original)
+    forest.nodes.pop(101)
+    forest.nodes.pop(102)
+    forest.add(103, 1 if job == "root_service" else 900)
+    forest.nodes[103].update(
+        uid=os.getuid() if job != "root_service" else os.getuid() + 1,
+        cwd=str(lab.repo if job == "main_shell" else lab.repo / "other-worktree")
+        if job != "root_service"
+        else None,
+    )
+    lab.now += LIFETIME
+    report = lab.run(cleanup=True, dry_run=True)
+    assert report["stop_preflight"][0]["errors"] == []
+    assert json.loads(proof.read_text()) == original
+    lab.run(cleanup=True)
+    assert not path.exists()
+    assert 103 in forest.nodes and not forest.signals
+
+
+def test_foreign_service_is_not_a_new_orphan_of_a_known_worktree_root(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    forest = NativeForest(lab, monkeypatch, newborn="orphan")
+    snapshot = forest.snapshot
+
+    def with_service() -> dict[int, Any]:
+        view = snapshot()
+        if 103 in forest.nodes:
+            forest.nodes[103].update(uid=os.getuid() + 1, cwd=None)
+        return view
+
+    monkeypatch.setattr(forest.proc, "snapshot", with_service)
+    forest.proc.stop_tree(forest.nodes[101]["identity"])
+    assert set(forest.nodes) == {1, 900, 103}
+    assert not any(pid == 103 for pid, _ in forest.signals)
+
+
+def test_an_unscoped_lost_pid_does_not_widen_a_known_roots_possible_reapers(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    forest.add(104, 777)  # An unrelated transient whose parent was not observed.
+    parent = forest.nodes[101]["identity"]
+
+    def discovery(root: Path) -> list[dict[str, Any]]:
+        if 104 in forest.nodes:
+            forest.nodes.pop(104)
+            forest.add(103, 900)  # Another job under its independent baseline parent.
+        return [{"identity": parent, "sessions": []}] if 101 in forest.nodes else []
+
+    monkeypatch.setattr(forest.proc, "agents", discovery)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert not path.exists()
+    assert set(forest.nodes) == {1, 900, 103}
+    assert not any(pid in {900, 103, 104} for pid, _ in forest.signals)
 
 
 def test_legacy_parent_session_is_linked_by_existing_herdr_process_stamp(

@@ -191,6 +191,12 @@ def discovery_uncertainty(
                 node["identity"]["start_ticks"]
             ) < int(item["start_ticks"]):
                 continue
+            if (
+                node.get("uid") is not None
+                and node["uid"] != os.getuid()
+                and not node.get("scope_uncertain")
+            ):
+                continue  # An independent foreign service is not a native cwd root.
             parent, seen = node["parent"], {pid}
             while parent in view and parent not in seen:
                 if parent == item["pid"]:
@@ -198,8 +204,16 @@ def discovery_uncertainty(
                 if parent in ancestors:
                     result[identity_key(node["identity"])] = node["identity"]
                     break
-                if order[parent] < order[item["pid"]] and not incomplete:
-                    break  # An independently observed branch owns this child.
+                if (
+                    int(view[parent]["identity"]["start_ticks"])
+                    < int(item["start_ticks"])
+                    and not view[parent].get("identity_lost")
+                    and not incomplete
+                ):
+                    # /proc enumeration order is not birth order. This older
+                    # independent branch cannot be a child of the lost root,
+                    # even if its stat happened to be read afterwards.
+                    break
                 seen.add(parent)
                 parent = view[parent]["parent"]
             else:
@@ -392,7 +406,7 @@ def uncertain_processes(
     outside: dict[str, Any],
     unconfirmed: dict[str, Any],
 ) -> list[dict[str, Any]]:
-    """Classify unresolved provenance without signals or proof writes."""
+    """Keep observed ambiguity; attribute new orphans only to worktree roots."""
     result = []
     for node in view.values():
         key = identity_key(node["identity"])
@@ -402,6 +416,18 @@ def uncertain_processes(
             result.append(node["identity"])
             continue
         if key in baseline:
+            continue
+        if not tracked:
+            # An unscoped disappearing host PID does not establish that this
+            # worktree owned any processes. Retain its captured uncertain
+            # children above, but do not use its ancestors to claim future
+            # independent jobs. This also bounds existing v3 stop proofs.
+            continue
+        if (
+            node.get("uid") is not None
+            and node["uid"] != os.getuid()
+            and not node.get("scope_uncertain")
+        ):
             continue
         parent, seen, unattributed = node["parent"], set(), True
         while parent in view and parent not in seen:
@@ -464,7 +490,10 @@ def prepare_stop(
         identity_key(item): item
         for item in (saved["ancestors"] if saved and not capture_completed else [])
     }
-    for item in [*seeds, *(uncertain_roots or [])]:
+    # Only observed worktree roots establish possible reapers for new orphans.
+    # An unscoped lost PID still retains its captured children below; missing
+    # ancestry for that PID cannot widen a known root's scope to the whole host.
+    for item in seeds:
         node = old_view.get(item["pid"])
         if (
             node is None
