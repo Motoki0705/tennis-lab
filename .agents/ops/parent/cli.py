@@ -199,7 +199,13 @@ def parser() -> argparse.ArgumentParser:
         help="task/fix instructions; pending planning answers are sent automatically",
     )
     manual.add_argument("--additional-instruction-file")
-    manual.add_argument("--resume", action="store_true")
+    continuation = manual.add_mutually_exclusive_group()
+    continuation.add_argument("--resume", action="store_true")
+    continuation.add_argument(
+        "--replace-session",
+        action="store_true",
+        help="start a new session with explicit evidence that the saved session cannot resume",
+    )
     manual.add_argument(
         "--planning",
         action="store_true",
@@ -445,6 +451,7 @@ def _main(argv: list[str] | None = None) -> int:
                 child=number(args.child),
                 prompt=args.prompt_file,
                 resume=args.resume,
+                replace_session=args.replace_session,
                 planning=args.planning,
                 model=args.model,
                 model_reason=read_text(args.model_reason_file)

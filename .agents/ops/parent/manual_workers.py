@@ -12,14 +12,19 @@ from pathlib import Path
 from typing import Any
 
 from dispatcher.runtime import Runtime, load
-from lib.agent_settings import implementation_model
+from lib.agent_settings import (
+    DEFAULT_CONFIG,
+    execution_contract,
+    implementation_model,
+    resolve,
+)
 from worker_logs import service as worker_logs
 from worker_logs.sources import read_original
 
 from . import worker_preflight
 from .execution import authorization
 from .github import GitHub
-from .policy import closing_issues, nonempty, object_value
+from .policy import closing_issues, digest, nonempty, object_value
 from .session import ParentSession
 from .snapshot import git, validate_worktree
 from .state import Store, unique_object
@@ -77,7 +82,7 @@ def worker_runs(task: dict[str, Any]) -> list[dict[str, Any]]:
             or not re.fullmatch(r"[0-9a-f]{32}", run["delegation_id"])
             or not isinstance(run["run_dir"], str)
             or not run["run_dir"]
-            or run["kind"] not in {"initial", "resume", "registered"}
+            or run["kind"] not in {"initial", "resume", "registered", "replacement"}
             or not isinstance(run["recorded_at"], str)
             or (
                 "model" in run
@@ -240,6 +245,180 @@ def record_worker_run(
     }
 
 
+def saved_session(record: dict[str, Any]) -> dict[str, Any]:
+    """Read the runner's own latest-run/session receipt without repairing it."""
+    try:
+        root = Path(nonempty(record.get("session_root"), "session root"))
+        if not root.is_absolute():
+            raise ValueError("relative session root")
+        value: dict[str, Any] = load(root / "session.json")
+        if (
+            type(value.get("schema_version")) is not int
+            or value["schema_version"] != 1
+            or "session_id" not in value
+            or (
+                value["session_id"] is not None
+                and (
+                    not isinstance(value["session_id"], str)
+                    or not value["session_id"].strip()
+                )
+            )
+            or not Path(nonempty(value.get("latest_run"), "latest run")).is_absolute()
+        ):
+            raise ValueError("invalid session receipt")
+        return value
+    except (OSError, ValueError, TypeError):
+        raise ValueError(
+            "saved worker session metadata is unavailable or malformed"
+        ) from None
+
+
+def termination_reference(directory: Path, record: dict[str, Any]) -> dict[str, Any]:
+    raw = (directory / "result.json").read_bytes()
+    if json.loads(raw, object_pairs_hook=unique_object) != record:
+        raise ValueError("worker termination evidence changed during inspection")
+    return {
+        "directory": str(directory),
+        "run_id": record["run_id"],
+        "result_sha256": hashlib.sha256(raw).hexdigest(),
+        "termination": {
+            key: record.get(key)
+            for key in (
+                "result",
+                "turn_end_reason",
+                "cleanup_complete",
+                "finished_at",
+                "runner_lost",
+                "recovery_error",
+                "cleanup_confirmation",
+            )
+        },
+    }
+
+
+def replacement_evidence(
+    session: ParentSession, task: dict[str, Any], evidence: str | None
+) -> dict[str, Any]:
+    """Authorize a new session from terminal, unrecoverable lineage evidence.
+
+    A separately registered takeover is retained as historical work. It cannot
+    supply the saved instruction or make a resumable lineage replaceable.
+    """
+    evidence = nonempty(evidence, "session replacement restart evidence")
+    entries = [
+        r for r in worker_runs(task) if r["delegation_id"] == task["delegation_id"]
+    ]
+    directories = current_runs(session, task)
+    value = worker_preflight.state(task)
+    turn = worker_preflight.result_turn(task)
+    source = Path(turn["source"]) if turn is not None else directories[-1]
+    if source not in directories:
+        raise ValueError("saved worker turn has no registered run for replacement")
+    source_index = directories.index(source)
+    if any(
+        r["kind"] != "registered" or "preflight" in r
+        for r in entries[source_index + 1 :]
+    ):
+        raise ValueError("replacement source is not the latest saved worker turn")
+    runtime = Runtime(RUNNER)
+    records = []
+    for directory in directories:
+        validate_run(task, directory)
+        proof = runtime.inspect(directory)
+        if not runtime.ended(proof):
+            raise ValueError(
+                "worker termination and cleanup must be confirmed before session replacement"
+            )
+        records.append(proof["record"])
+    record = records[source_index]
+    saved = saved_session(record)
+    if Path(saved["latest_run"]).resolve() != source:
+        raise ValueError("replacement source is not the latest session run")
+    if record.get("runner_lost"):
+        from lib.agent_runtime import validate_cleanup_confirmation
+
+        confirmation = record.get("cleanup_confirmation")
+        if not isinstance(confirmation, dict):
+            raise ValueError("saved worker cleanup confirmation is missing")
+        validate_cleanup_confirmation(confirmation, record)
+    session_id = object_value(record.get("runtime")).get("session_id")
+    if session_id is not None:
+        session_id = nonempty(session_id, "saved worker session")
+    if session_id is not None and saved["session_id"] not in (None, session_id):
+        raise ValueError("saved worker session metadata conflicts with its runtime")
+    binding = {
+        "contract_sha256": digest(execution_contract(record["contract"])),
+        "session_id": session_id or saved["session_id"],
+    }
+    if binding["session_id"] is None and value["runtime"] is not None:
+        binding["session_id"] = value["runtime"]["session_id"]
+    legacy = {**binding, "contract_sha256": digest(record["contract"])}
+    if value["runtime"] is not None and value["runtime"] not in (binding, legacy):
+        raise ValueError("replacement source differs from the planning lineage")
+    if turn is not None and record.get("prompt_sha256") != turn.get("prompt_sha256"):
+        raise ValueError("replacement source does not match the saved worker turn")
+    recovery_error = record.get("recovery_error")
+    if recovery_error is not None:
+        nonempty(recovery_error, "saved recovery error")
+    if recovery_error:
+        reason = "recovery_error"
+    elif saved["session_id"] is None:
+        reason = "missing_session_id"
+    else:
+        raise ValueError(
+            "no saved non-resumable session evidence; inspect recovery or use --resume"
+        )
+    for registered in records[source_index + 1 :]:
+        registered_session = saved_session(registered)
+        latest = Path(registered_session["latest_run"]).resolve()
+        if latest not in directories[source_index + 1 :]:
+            raise ValueError("registered takeover is not the latest session run")
+        last_record = records[directories.index(latest)]
+        if (
+            Path(last_record["session_root"]).resolve()
+            != Path(registered["session_root"]).resolve()
+        ):
+            raise ValueError(
+                "registered takeover session metadata conflicts with its latest run"
+            )
+        registered_id = object_value(registered.get("runtime")).get("session_id")
+        if (
+            registered_id is not None
+            and registered_id != registered_session["session_id"]
+        ):
+            raise ValueError(
+                "registered takeover session metadata conflicts with its runtime"
+            )
+        if execution_contract(registered["contract"]) != execution_contract(
+            record["contract"]
+        ):
+            raise ValueError(
+                "registered takeover contract differs from the planning lineage"
+            )
+        if binding["session_id"] is not None and registered_id == binding["session_id"]:
+            raise ValueError(
+                "registered continuation belongs to the old session; inspect its latest run"
+            )
+    return {
+        "replacement_id": uuid.uuid4().hex,
+        "recorded_at": datetime.now(UTC).isoformat(),
+        "reason": reason,
+        "restart_evidence": evidence,
+        "from_run": termination_reference(source, record),
+        "from_runtime": binding,
+        "previous_runtime": copy.deepcopy(value["runtime"]),
+        "registered_runs": [
+            termination_reference(directory, registered)
+            for directory, registered in zip(
+                directories[source_index + 1 :],
+                records[source_index + 1 :],
+                strict=True,
+            )
+        ],
+        "to_runtime": None,
+    }
+
+
 def prepare_run(
     session: ParentSession,
     child: int,
@@ -250,8 +429,16 @@ def prepare_run(
     model_reason: str | None = None,
     additional: str | None = None,
     planning: bool = False,
+    replace_session: bool = False,
 ) -> tuple[list[str], str, str]:
     task = current_task(session, child)
+    if replace_session and resume:
+        raise ValueError("--replace-session and --resume are mutually exclusive")
+    if replace_session:
+        nonempty(restart_evidence, "session replacement restart evidence")
+        if prompt is None:
+            raise ValueError("session replacement requires --prompt-file")
+    continuation = resume or replace_session
     worker_preflight.observe(session, child, persist=True)
     session.agreed()
     parent, items = session.work_items()
@@ -271,7 +458,7 @@ def prepare_run(
     retry_unstarted = bool(task.get("launch_failures")) and not any(
         r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)
     )
-    if ended and not resume and not retry_unstarted:
+    if ended and not continuation and not retry_unstarted:
         raise ValueError(
             "ended delegation requires an explicit resume with restart evidence"
         )
@@ -284,13 +471,15 @@ def prepare_run(
     reasons = [
         r
         for r in planned["reasons"]
-        if not (resume and r["code"] in {"existing_pr", "completed", "parent_closed"})
+        if not (
+            continuation and r["code"] in {"existing_pr", "completed", "parent_closed"}
+        )
     ]
     if reasons:
         raise ValueError(
             "manual worker is blocked: " + "; ".join(r["message"] for r in reasons)
         )
-    if resume:
+    if continuation:
         prs = [
             p
             for p in session.gh.pulls()
@@ -315,13 +504,14 @@ def prepare_run(
         )
     previous: Path | None = None
     previous_record = None
+    replacement = None
     runner_model: str | None
     unstarted_migration = bool(
         worker_preflight.state(task).get("migration_unstarted")
     ) and not any(
         r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)
     )
-    if not resume or unstarted_migration:
+    if not continuation or (unstarted_migration and not replace_session):
         if any(r["delegation_id"] == task["delegation_id"] for r in worker_runs(task)):
             raise ValueError("worker already has a run; inspect it and use --resume")
         if restart_evidence is not None and not resume:
@@ -349,6 +539,19 @@ def prepare_run(
             raise ValueError(
                 "worker termination and cleanup must be confirmed before resume"
             )
+        if replace_session:
+            replacement = replacement_evidence(session, task, restart_evidence)
+            current_settings = resolve(
+                DEFAULT_CONFIG, "codex", None, runner_model, None, "write"
+            )
+            if execution_contract({"settings": current_settings}) != execution_contract(
+                {"settings": settings}
+            ):
+                raise ValueError(
+                    "current worker settings differ from the saved replacement contract"
+                )
+            previous = None
+            previous_record = None
     directory = (
         session.store.directory
         / "worker-runs"
@@ -379,14 +582,18 @@ def prepare_run(
         command += ["--model", runner_model]
     if model_reason is not None:
         model_reason = nonempty(model_reason, "model selection reason")
+    if replacement is not None:
+        replacement["to_run"] = str(directory.resolve())
     phase, instruction = worker_preflight.prepare_turn(
         session,
         child,
         instruction,
-        resume=resume,
+        resume=continuation,
         additional=additional,
         previous_record=previous_record,
         planning=planning,
+        replacement=replacement,
+        previous_directory=previous,
     )
     turn = worker_preflight.commit_turn(task, phase, directory)
     prepared_instruction = prepare_instruction(
@@ -399,7 +606,10 @@ def prepare_run(
         turn,
     )
     text = prepared_instruction.text
+    old_turns = copy.deepcopy(phase["turns"][:-1]) if replace_session else None
     worker_logs.capture(session, child, items[child].body, prepared_instruction)
+    if old_turns is not None:
+        phase["turns"][:-1] = old_turns
     task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
         text.encode("utf-8")
     ).hexdigest()
@@ -416,7 +626,11 @@ def prepare_run(
         session,
         task,
         directory,
-        "resume" if previous is not None else "initial",
+        "replacement"
+        if replace_session
+        else "resume"
+        if previous is not None
+        else "initial",
         model,
         model_reason,
         turn,
@@ -438,6 +652,7 @@ def run_worker(
     model_reason: str | None = None,
     additional: str | None = None,
     planning: bool = False,
+    replace_session: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
@@ -453,6 +668,7 @@ def run_worker(
             model_reason,
             additional,
             planning,
+            replace_session,
         )
         log_path = (
             session.row["tasks"][str(child)]["preflight"]["turns"][-1]
@@ -493,6 +709,11 @@ def run_worker(
             attempted = copy.deepcopy(current["preflight"])
             attempted_turn = attempted["turns"][-1]
             attempted_turn["cancelled"] = True
+            if replace_session:
+                attempted["session_replacements"][-1]["cancelled"] = True
+                attempted["runtime"] = copy.deepcopy(
+                    previous_task.get("preflight", {}).get("runtime")
+                )
             for decision in attempted["decisions"]:
                 if (
                     decision["delivered_turn_id"]
@@ -557,6 +778,12 @@ def run_worker(
             ):
                 raise ValueError("worker reservation changed during execution")
             runner_ended(session, child)
+            if replace_session:
+                proof = Runtime(RUNNER).inspect(directory)
+                if proof["record"].get("runtime", {}).get("session_id"):
+                    worker_preflight.bind_runtime(
+                        current["preflight"], proof["record"], directory=directory
+                    )
             current.pop("manual_launcher", None)
             store.save()
     log_result = worker_logs.finish_manual(

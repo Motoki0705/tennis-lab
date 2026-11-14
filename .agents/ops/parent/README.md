@@ -644,6 +644,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 # 同じ委任・sessionの修正ターン。終了枠を解放済みなら再開証拠も渡す
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --resume --prompt-file tmp/fix.md --restart-evidence-file tmp/restart.md
+# 保存記録から同じsessionへの再開不能を確認した場合の明示付替え
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  run-worker --child 1217 --replace-session --prompt-file tmp/replacement.md --restart-evidence-file tmp/restart.md
 # この入口の導入前に共通ランナーで起動したrunを、稼働中・終了済みとも登録できる
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   record-worker-run --child 1217 --run-dir "$existing_run"
@@ -682,6 +685,34 @@ model省略時は直前runの保存contractから継承し、同値の再指定�
 終了未記録なら予約枠を保持したまま継続する。既存PRがある修正も同じbranch・worktreeを使う。
 `launch_plan` の停止・依存・上限判定は省略しない。再開証拠はprivateな `restart_evidence` に残す。
 
+`--replace-session` は `--resume` と排他で、非空の `--prompt-file` と `--restart-evidence-file` を必須にする。
+同じ委任ID・worktree・branch・保存model/max effortを使い、通常の指示組立て・preflight・runの事前登録・
+ログ捕捉・起動直前の権限照合を経て、共通ランナーで新しいsessionを起動する。既存PRの継続も同じ入口を使う。
+現在の委任の全登録runについて、契約・終了・`cleanup_complete=true` とrunner/agent/groupの非生存を照合する。
+付替え元は最新の非取消ターンに保存したrunを使い、ターン記録がない旧委任では最新の登録runを使う。
+そのrunがrunnerの `session.json.latest_run` と一致し、次のどちらかの保存証拠を持つ場合に受理する。
+
+- `result.json.recovery_error` に非空の復旧エラーが記録されている。
+- `session.json.session_id` がnullで、共通ランナーが同じsessionへ戻るためのIDを持たない。
+
+runner喪失時は保存済みcleanup confirmationも照合する。`metadata_error` という終了理由だけでは受理しない。
+再開可能・生存中・cleanup未確認・証拠欠落・session metadataの欠落や不整合は、起動・予約変更前に診断して拒否する。
+経過時間、PIDの不在、最終文の有無を再開不能の根拠にしない。
+
+保存ターンの後ろに `record-worker-run` で別sessionが登録されている場合、その後続がすべて `registered` で、
+保存ターンとの実行契約が一致し、終了・回収と最新session runを確認できる場合に同じ入口を受理する。
+付替え元には保存ターンを使い、後続登録runへの参照も付替えの証拠へ保存する。
+後続登録runの成果は、そのrun自身の来歴として保持する。次の成果照合にはこの入口が作成した新しいターンを使う。
+
+付替え時のtaskの `preflight` はversion=3にし、`session_replacements` へ記録を追記する。
+旧runtimeと新runtime、元runの終了記録の場所・run ID・内容digest・終了/回収のsnapshot、理由、再開証拠、
+後続登録runへの参照、対応する新しいターンIDとrunを保持する。新runtimeは起動時に予約したrunから確認できた時点で結び付ける。
+旧runと旧ターンを保持し、以後の `--resume`・`record-result`・`review-request` は新runtimeを同じ系列として照合する。
+起動前の明確な拒否では新しいターンと付替え試行へ `cancelled=true` を記録し、元のruntime・run・予約を復元する。
+同じ付替え操作で再試行できる。起動有無やsessionが未確認なら予約したrunを保持し、親が保存記録を確認する。
+`status` の `worker_phase.session_replacement` は試行件数・最新試行の `reserved/bound/cancelled`・理由を返す。
+session ID・runの場所・証拠原文はprivate registryへ保存する。
+
 `record-worker-run` は存在する `result.json` / `invocation.json` のすべてでschemaと
 `contract.task_id`・`contract.cwd`・`contract.branch` と実装子のmodel/max effort・profile・modeを現在の委任と照合する。
 複数の保存記録間でmodel設定が異なる場合や、modelを特定できない場合も拒否する。
@@ -702,7 +733,7 @@ model省略時は直前runの保存contractから継承し、同値の再指定�
 [{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00","model":"gpt-6.1-sol","model_reason":"通常の実装として既定を選択。"}]
 ```
 
-`kind` は `initial` / `resume` / `registered`。`run_dir` は親state dir基準の相対パスで、
+`kind` は `initial` / `resume` / `registered` / `replacement`。`run_dir` は親state dir基準の相対パスで、
 state外の登録runは絶対パス。`recorded_at` はUTC ISO8601。
 version 1/2とも既存フィールドと過去の委任のrunを保持し、新しいrunだけ追記する。
 `status`・`reconcile`・委任応答からこのフィールドを除外し、issue本文・コメントにもrun dirを出さない。
@@ -723,6 +754,7 @@ planningの報告は任意の書式でよく、親は直接 `--resume --prompt-f
 
 `preflight` はターン・指示・回答・runtimeの来歴。本文・担当世代・依存の状態変化で自動失効させない。
 新しいtask記録はversion=2。旧version=1も読み、次の明示操作で新しい来歴を追記する。run/jobのsnapshotはversion=1のまま保持する。
+session付替えを記録したtaskとその継続はversion=3を使う。
 旧CLIは新しいtask versionを扱えないため、呼出元を新CLIへ更新してから利用する。稼働中の記録を一括変換しない。
 statusの `inputs_changed` は親が意味と影響を確認するための通知であり、再調査の強制ではない。
 旧委任にphase記録がなくても、通常のrun・session・終了照合を経て継続できる。過去の承認を生成しない。

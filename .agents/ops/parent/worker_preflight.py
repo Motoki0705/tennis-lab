@@ -28,6 +28,19 @@ SNAPSHOT_KEYS = {
     "decision_id",
     "context_sha256",
 }
+REPLACEMENT_KEYS = {
+    "replacement_id",
+    "recorded_at",
+    "reason",
+    "restart_evidence",
+    "from_run",
+    "from_runtime",
+    "previous_runtime",
+    "registered_runs",
+    "to_run",
+    "to_runtime",
+    "turn_id",
+}
 
 
 def new(delegation: str) -> dict[str, Any]:
@@ -55,7 +68,7 @@ def state(task: dict[str, Any]) -> dict[str, Any]:
     if (
         not isinstance(value, dict)
         or type(value.get("schema_version")) is not int
-        or value["schema_version"] not in {1, 2}
+        or value["schema_version"] not in {1, 2, 3}
         or value.get("phase") not in {"planning", "implementing"}
         or value.get("delegation_id") != task.get("delegation_id")
         or not isinstance(value.get("lineage_id"), str)
@@ -71,6 +84,47 @@ def state(task: dict[str, Any]) -> dict[str, Any]:
         validate_snapshot(turn.get("snapshot"))
         if turn["snapshot"]["lineage_id"] != value["lineage_id"]:
             raise ValueError("turn belongs to another worker lineage")
+    if value["schema_version"] == 3:
+        replacements = value.get("session_replacements")
+        if not isinstance(replacements, list) or not replacements:
+            raise ValueError("malformed worker session replacement history")
+        for replacement in replacements:
+            if (
+                not isinstance(replacement, dict)
+                or set(replacement)
+                not in (REPLACEMENT_KEYS, REPLACEMENT_KEYS | {"cancelled"})
+                or replacement.get("reason")
+                not in {"recovery_error", "missing_session_id"}
+                or not isinstance(replacement.get("from_run"), dict)
+                or not isinstance(replacement.get("from_runtime"), dict)
+                or not isinstance(replacement.get("registered_runs"), list)
+                or (
+                    replacement["to_runtime"] is not None
+                    and not isinstance(replacement["to_runtime"], dict)
+                )
+                or (
+                    "cancelled" in replacement
+                    and type(replacement["cancelled"]) is not bool
+                )
+                or any(
+                    not isinstance(replacement.get(key), str)
+                    or not replacement[key].strip()
+                    for key in (
+                        "replacement_id",
+                        "turn_id",
+                        "to_run",
+                        "restart_evidence",
+                        "recorded_at",
+                    )
+                )
+                or not any(
+                    t["snapshot"]["turn_id"] == replacement["turn_id"]
+                    and t.get("source") == replacement["to_run"]
+                    and bool(t.get("cancelled")) == bool(replacement.get("cancelled"))
+                    for t in value["turns"]
+                )
+            ):
+                raise ValueError("malformed worker session replacement history")
     return value
 
 
@@ -211,13 +265,26 @@ def summary(task: dict[str, Any], *, stale: bool = False) -> dict[str, Any]:
             "refresh_required": False,
         }
     value = state(task)
-    return {
+    result: dict[str, Any] = {
         "phase": value["phase"],
         "status": value["phase"],
         "next_action": "parent_judgement",
         "refresh_required": False,
         "legacy_result_migrated": "legacy_result" in value,
     }
+    replacements = value.get("session_replacements", [])
+    if replacements:
+        latest = replacements[-1]
+        result["session_replacement"] = {
+            "count": len(replacements),
+            "state": "cancelled"
+            if latest.get("cancelled")
+            else "bound"
+            if latest["to_runtime"] is not None
+            else "reserved",
+            "reason": latest["reason"],
+        }
+    return result
 
 
 def runtime_binding(record: dict[str, Any]) -> dict[str, str]:
@@ -230,8 +297,34 @@ def runtime_binding(record: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def bind_runtime(value: dict[str, Any], record: dict[str, Any]) -> None:
+def bind_runtime(
+    value: dict[str, Any], record: dict[str, Any], *, directory: Path | None = None
+) -> None:
     observed = runtime_binding(record)
+    replacement = next(
+        (
+            r
+            for r in reversed(value.get("session_replacements", []))
+            if not r.get("cancelled")
+        ),
+        None,
+    )
+    if replacement is not None and replacement["to_runtime"] is None:
+        location = (
+            str(directory.resolve()) if directory is not None else record.get("run_dir")
+        )
+        if (
+            location != replacement["to_run"]
+            or observed["contract_sha256"]
+            != replacement["from_runtime"]["contract_sha256"]
+            or observed["session_id"] == replacement["from_runtime"]["session_id"]
+        ):
+            raise ValueError(
+                "runtime does not match the explicit worker session replacement"
+            )
+        replacement["to_runtime"] = copy.deepcopy(observed)
+        value["runtime"] = observed
+        return
     legacy = {**observed, "contract_sha256": digest(record["contract"])}
     if value["runtime"] is not None and value["runtime"] not in (observed, legacy):
         raise ValueError("worker session/contract differs from the planning lineage")
@@ -296,7 +389,7 @@ def decide(
         and record.get("prompt_sha256") != turn["prompt_sha256"]
     ):
         raise ValueError("saved planning instruction does not match the runtime")
-    bind_runtime(value, record)
+    bind_runtime(value, record, directory=directory)
     raw = (directory / "final.md").read_bytes()
     text = raw.decode("utf-8")
     nonempty(text, "planning final")
@@ -355,12 +448,14 @@ def prepare_turn(
     additional: str | None = None,
     previous_record: dict[str, Any] | None = None,
     planning: bool = False,
+    replacement: dict[str, Any] | None = None,
+    previous_directory: Path | None = None,
 ) -> tuple[dict[str, Any], str]:
     task = session.row["tasks"][str(child)]
     value = copy.deepcopy(state(task))
     fresh = context(session, child)
     if previous_record is not None:
-        bind_runtime(value, previous_record)
+        bind_runtime(value, previous_record, directory=previous_directory)
     pending = [
         d
         for d in value["decisions"]
@@ -394,7 +489,7 @@ def prepare_turn(
     if additional is not None:
         text += "\n\n## 親の追加指示\n\n" + original_text(additional)
     value.update(
-        schema_version=2,
+        schema_version=max(2, value["schema_version"]),
         context=fresh,
         refresh_required=False,
         phase=selected_phase,
@@ -433,6 +528,12 @@ def prepare_turn(
             },
         }
     )
+    if replacement is not None:
+        value["schema_version"] = 3
+        value.setdefault("session_replacements", []).append(
+            {**copy.deepcopy(replacement), "turn_id": turn_id}
+        )
+        value["runtime"] = None
     return value, text
 
 
@@ -493,5 +594,5 @@ def require_implementation(session: ParentSession, child: int) -> str | None:
         or record.get("prompt_sha256") != turn.get("prompt_sha256")
     ):
         raise ValueError("worker result does not match the saved instruction")
-    bind_runtime(value, record)
+    bind_runtime(value, record, directory=directory)
     return turn["snapshot"]["turn_id"] if turn is not None else None
