@@ -198,7 +198,13 @@ def parser() -> argparse.ArgumentParser:
         help="task/fix instructions; pending planning answers are sent automatically",
     )
     manual.add_argument("--additional-instruction-file")
-    manual.add_argument("--resume", action="store_true")
+    continuation = manual.add_mutually_exclusive_group()
+    continuation.add_argument("--resume", action="store_true")
+    continuation.add_argument(
+        "--replace-session",
+        action="store_true",
+        help="start a new session with explicit evidence that the saved session cannot resume",
+    )
     manual.add_argument(
         "--planning",
         action="store_true",
@@ -463,6 +469,7 @@ def _main(argv: list[str] | None = None) -> int:
                 child=number(args.child),
                 prompt=args.prompt_file,
                 resume=args.resume,
+                replace_session=args.replace_session,
                 planning=args.planning,
                 model=args.model,
                 model_reason=read_text(args.model_reason_file)
@@ -494,6 +501,10 @@ def _main(argv: list[str] | None = None) -> int:
             else nullcontext()
         )
         transaction = nullcontext() if args.command in workers else store.locked()
+        # Worker commands own several transactions; do not share discovery across them.
+        history_reads = (
+            nullcontext() if args.command in workers else gh.history_read_scope()
+        )
         from .improvements import lock_key
 
         improvement_operation = (
@@ -507,7 +518,13 @@ def _main(argv: list[str] | None = None) -> int:
             }
             else nullcontext()
         )
-        with improvement_operation, operation, project_operation, transaction:
+        with (
+            improvement_operation,
+            operation,
+            project_operation,
+            transaction,
+            history_reads,
+        ):
             if args.command in workers:
                 from .development import worker_command
 

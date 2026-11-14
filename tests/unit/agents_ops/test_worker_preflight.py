@@ -266,3 +266,44 @@ def test_runtime_binding_compares_execution_inputs_and_session(
     relocated["contract"]["settings"]["selected"]["model"] = "other-model"
     with pytest.raises(ValueError, match="session/contract"):
         module.bind_runtime(value, relocated)
+
+
+@pytest.mark.parametrize("mutation", ["none", "old_session", "other_run", "contract"])
+def test_replacement_binding_requires_reserved_run_contract_and_new_session(
+    planning: tuple[Any, Any, dict[str, Any]], mutation: str, tmp_path: Path
+) -> None:
+    module, _, _ = planning
+    old_record: dict[str, Any] = {
+        "runtime": {"session_id": "old-session"},
+        "contract": {
+            "task_id": "same-delegation",
+            "settings": {"selected": {"model": "model-a"}},
+        },
+    }
+    value = module.new("same-delegation")
+    value["session_replacements"] = [
+        {
+            "from_runtime": module.runtime_binding(old_record),
+            "to_run": str(tmp_path / "replacement"),
+            "to_runtime": None,
+        }
+    ]
+    record = copy.deepcopy(old_record)
+    record.update(
+        run_dir=str(tmp_path / "replacement"), runtime={"session_id": "new-session"}
+    )
+    if mutation == "old_session":
+        record["runtime"]["session_id"] = "old-session"
+    elif mutation == "other_run":
+        record["run_dir"] = str(tmp_path / "unreserved-run")
+    elif mutation == "contract":
+        record["contract"]["settings"]["selected"]["model"] = "model-b"
+    before = copy.deepcopy(value)
+    if mutation == "none":
+        module.bind_runtime(value, record)
+        assert value["runtime"]["session_id"] == "new-session"
+        assert value["session_replacements"][0]["to_runtime"] == value["runtime"]
+    else:
+        with pytest.raises(ValueError, match="explicit worker session replacement"):
+            module.bind_runtime(value, record)
+        assert value == before

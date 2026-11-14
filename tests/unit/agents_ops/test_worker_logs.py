@@ -430,6 +430,100 @@ def test_publication_safety_preserves_or_blocks(case: str) -> None:
             journal.view(bad)
 
 
+@pytest.fixture
+def log_pr_identity() -> tuple[dict[str, Any], dict[str, Any]]:
+    row = {
+        "source": {"repo": "o/r"},
+        "branch": "worker-log/d-abc/0001",
+        "head": "a" * 40,
+        "pr_body": "marker",
+    }
+    pr = {
+        "number": 7,
+        "html_url": "https://github.com/o/r/pull/7",
+        "draft": False,
+        "body": "marker",
+        "head": {
+            "ref": row["branch"],
+            "sha": row["head"],
+            "repo": {"full_name": "o/r"},
+        },
+        "base": {"ref": "main", "repo": {"full_name": "o/r"}},
+    }
+    return row, pr
+
+
+@pytest.mark.parametrize(
+    ("repo", "base_repo", "head_repo", "source_repo", "url_repo"),
+    [
+        ("motoki0705/tennis-lab",) * 5,
+        (
+            "motoki0705/tennis-lab",
+            "Motoki0705/tennis-lab",
+            "Motoki0705/tennis-lab",
+            "motoki0705/tennis-lab",
+            "Motoki0705/tennis-lab",
+        ),
+        (
+            "Motoki0705/Tennis-Lab",
+            "motoki0705/TENNIS-LAB",
+            "MOTOKI0705/tennis-lab",
+            "Motoki0705/TENNIS-LAB",
+            "motoki0705/tennis-lab",
+        ),
+    ],
+    ids=["lowercase", "dispatcher", "mixed-case"],
+)
+def test_pr_identity_accepts_repo_casing(
+    log_pr_identity: tuple[dict[str, Any], dict[str, Any]],
+    repo: str,
+    base_repo: str,
+    head_repo: str,
+    source_repo: str,
+    url_repo: str,
+) -> None:
+    row, pr = log_pr_identity
+    row["source"]["repo"] = source_repo
+    pr["base"]["repo"]["full_name"] = base_repo
+    pr["head"]["repo"]["full_name"] = head_repo
+    pr["html_url"] = f"https://github.com/{url_repo}/pull/7"
+    schema.identity(pr, row, repo)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://github.com/o/r/pull/8",
+        "https://github.com/other/r/pull/7",
+        "https://github.com/o/other/pull/7",
+        "https://gitlab.com/o/r/pull/7",
+        "https://github.com.example.invalid/o/r/pull/7",
+        "https://github.com@other.example/o/r/pull/7",
+        "https://github.com:443/o/r/pull/7",
+        "http://github.com/o/r/pull/7",
+        "HTTPS://github.com/o/r/pull/7",
+        "https://github.com/o/r/Pull/7",
+        "https://github.com/o/r/issues/7",
+        "https://github.com/o/r/pull/7/files",
+        "https://github.com/o/r/pull/7/",
+        "https://github.com/o/r/pull/07",
+        "https://github.com/o/r/pull/7?other=8",
+        "https://github.com/o/r/pull/7#discussion",
+        "https://github.com/%6f/r/pull/7",
+        "https://github.com/o/r/pull/7\n",
+        None,
+    ],
+)
+def test_pr_identity_rejects_changed_url(
+    log_pr_identity: tuple[dict[str, Any], dict[str, Any]], url: str | None
+) -> None:
+    row, pr = log_pr_identity
+    pr["html_url"] = url
+    with pytest.raises(journal.PublicationError, match="pr_identity_changed") as exc:
+        schema.identity(pr, row, "o/r")
+    assert exc.value.detail == "PR identity mismatch: html_url"
+
+
 @pytest.mark.parametrize(
     "case",
     [
@@ -441,20 +535,32 @@ def test_publication_safety_preserves_or_blocks(case: str) -> None:
         "executable",
         "gitlink",
         "repository",
+        "base.repo",
+        "source.repo",
         "base",
         "head",
         "head.ref",
         "body",
     ],
 )
-def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
+def test_merge_policy_rejects_unsafe_diff_or_identity(
+    case: str, log_pr_identity: tuple[dict[str, Any], dict[str, Any]]
+) -> None:
     expected = {"logs/instruction.md", "logs/final.md", "logs/meta.json"}
     raw = b"".join(
         f":000000 100644 {'0' * 40} {'a' * 40} A\0{p}\0".encode()
         for p in sorted(expected)
     )
     schema.additions(raw, expected)
-    if case in {"repository", "base", "head", "head.ref", "body"}:
+    if case in {
+        "repository",
+        "base.repo",
+        "source.repo",
+        "base",
+        "head",
+        "head.ref",
+        "body",
+    }:
         if case == "repository":
             normalize = importlib.import_module(
                 "worker_logs.publication"
@@ -471,28 +577,15 @@ def test_merge_policy_rejects_unsafe_diff_or_identity(case: str) -> None:
             assert normalize("https://user:pass@github.com/o/r.git") != normalize(
                 "https://github.com/o/r"
             )
-        row = {
-            "source": {"repo": "o/r"},
-            "branch": "worker-log/d-abc/0001",
-            "head": "a" * 40,
-            "pr_body": "marker",
-        }
-        pr: dict[str, Any] = {
-            "number": 7,
-            "html_url": "https://github.com/o/r/pull/7",
-            "draft": False,
-            "body": "marker",
-            "head": {
-                "ref": row["branch"],
-                "sha": row["head"],
-                "repo": {"full_name": "o/r"},
-            },
-            "base": {"ref": "main", "repo": {"full_name": "o/r"}},
-        }
+        row, pr = log_pr_identity
         schema.identity(pr, row, "o/r")
         bad = copy.deepcopy(pr)
         if case == "repository":
             bad["head"]["repo"]["full_name"] = "other/r"
+        elif case == "base.repo":
+            bad["base"]["repo"]["full_name"] = "other/r"
+        elif case == "source.repo":
+            row["source"]["repo"] = "other/r"
         elif case == "base":
             bad["base"]["ref"] = "release"
         elif case == "head":

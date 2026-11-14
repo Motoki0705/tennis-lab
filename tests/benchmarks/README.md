@@ -161,7 +161,7 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.
   bash tests/benchmarks/build_dino_extension.sh $R $OUT/dino_extension && \
   PYTHONPATH=.:$OUT/dino_extension/lib TENNIS_LAB_DINO_EXTENSION=$OUT/dino_extension/lib/MultiScaleDeformableAttention.so \
   .venv/bin/python tests/benchmarks/component_pipeline.py \
-      --repo $R --clip $R/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report $OUT
+      --repo $R --clip $R/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000 --report $OUT
   ```
 
   `--dataset <dataset>`を付けると、clipのstoreを`<clip>/annotations/tennis_scene`に作り、
@@ -178,7 +178,7 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.
   ```bash
   R=/home/kamimura/projects/tennis-lab; OUT=$R/outputs/court_side/evaluate/meiji_clips/<run-id>
   PYTHONPATH=. .venv/bin/python tests/benchmarks/court_side_clips.py --repo $R \
-      --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT
+      --dataset $R/data/tennis_multiview/processed/meiji_3cam/dataset --report $OUT
   ```
 - `player_detection_clips.py`: 標準pipelineのcourt ROI付き人物検出を、既定の選手重みと明示したCOCO重みで比較する（GPU、共有training queue経由）。
   `--repo`・`--dataset`・`--report`を必須とし、両variantのcomponent storeと`comparison.json`を出力する。
@@ -200,7 +200,7 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.
   bash tests/benchmarks/build_dino_extension.sh $R $OUT/dino_extension && \
   PYTHONPATH=.:$OUT/dino_extension/lib TENNIS_LAB_DINO_EXTENSION=$OUT/dino_extension/lib/MultiScaleDeformableAttention.so \
   .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R \
-      --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --report $OUT --clip video_000/clip_000
+      --dataset $R/data/tennis_multiview/processed/meiji_3cam/dataset --report $OUT --clip video_000/clip_000
   ```
 
   `--phase calibrate`（CPU）は、ラベルの無い観測済みclipの擬似ラベル（camera間のtrackの組を足元距離で分ける）から、
@@ -213,7 +213,7 @@ PYTHONPATH=. .venv/bin/python tests/benchmarks/ball_detection/detection_holdout.
   R=/home/kamimura/projects/tennis-lab; OBS=$R/outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927
   SIDES=$R/outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json
   PYTHONPATH=. .venv/bin/python tests/benchmarks/player_association_clips.py --repo $R --phase evaluate \
-      --dataset $R/data/tennis_multivew/processed/meiji_3cam/dataset --observe $OBS --sides $SIDES \
+      --dataset $R/data/tennis_multiview/processed/meiji_3cam/dataset --observe $OBS --sides $SIDES \
       --device cpu \
       --report $R/outputs/player_association/evaluate/meiji_association/<run-id>
   ```

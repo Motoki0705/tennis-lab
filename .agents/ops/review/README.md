@@ -3,6 +3,8 @@
 親が確定・指示したPR群を、Codexの実行1回で統合レビューする。
 PR open/push/CI完了・時間経過から起動するpoll、hook、timerはない。
 入力の正本は [parentのreview-request契約](../parent/README.md#レビュー要求契約schema-version-3version-1と2の読取互換)。
+通常設定selectでは親が `review-prepare` / `review-request --prs` に `--review-model` と `--model-reason-file` を渡す。
+具体例・Astraへの引継ぎ・使用量確認・fixedへの復帰は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)を参照。
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
 review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
@@ -226,7 +228,8 @@ final・候補・結果・公開コメントは保持し、正式なfailed結果
 `superseding_reviews` でも通常の後続requestとして残り、より古い証拠の採用を許可しない。
 終結runを採用元やcoverageに使わず、他runの未解決指摘・証拠待ち・解消記録も変更しない。
 
-追加AIレビューは `parent review-prepare --reason-file` → `review-request` の新しい明示指示だけで受理する。
+追加AIレビューは `parent review-prepare --reason-file FILE --review-model MODEL --model-reason-file FILE`
+→ `review-request --run-id ID` の新しい明示指示だけで受理する。
 後続runは結果の `exception` と人間向けコメントに、通常1回の予算を超える例外として理由・先行runを表示する。
 
 ### 保存候補を含む別runへの引継ぎ

@@ -100,6 +100,8 @@ merge後の確認が残れば同じworkerへ続けて依頼する。issueのclos
 初回も `publish-decision-log --dry-run` の内容を確認してから公開する。
 
 レビューは準備のできた対象を親が選び、`review-request --prs` で明示要求する。
+通常設定selectでは、[モデル選択手順](../../ops/parent/README.md#正式レビューのモデル選択)に従い
+`--review-model` と `--model-reason-file` を渡す。具体例・引継ぎ・使用量確認・fixedへの復帰は同節を正本とする。
 目的・確認点・利用可能な証拠を渡す。取得できない証拠はその事実と代替を示し、残る判断不能点を具体化させる。
 対象ごとの初回レビューに再実行理由は不要。同じ対象を再レビューする場合は、その必要性を判断して理由を付ける。
 指摘・修正・テストを親が確認し、`review-state --state fixes_verified` に確認結果を記録する。

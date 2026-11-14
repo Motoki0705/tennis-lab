@@ -3,7 +3,7 @@ Launch the local browser clip studio for one canonical raw dataset video.
 
 Usage:
     python -m src.tennis_scene.scripts.clip_studio \
-      source_directory=tennis_multivew/raw/example/video_000
+      source_directory=tennis_multiview/raw/example/video_000
 
 Notes:
     - The source directory is DATA-role relative and discovers cam<index>.mp4.

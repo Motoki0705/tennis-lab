@@ -246,6 +246,39 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
     assert units[REPORT]["next_elapse_realtime"] is None
 
 
+@pytest.mark.parametrize(
+    "exit_status,result,expected",
+    [
+        (75, "exit-code", "deferred"),
+        (75, "success", "deferred"),
+        (2, "exit-code", "failed"),
+        (75, "signal", "failed"),
+    ],
+)
+def test_git_sync_status_distinguishes_deferral_from_failure(
+    control: ControlEnv, exit_status: int, result: str, expected: str
+) -> None:
+    service = "tennis-lab-git-sync.service"
+    state = control.read()
+    state["units"][service].update(
+        ActiveState="failed",
+        SubState="failed",
+        Result=result,
+        ExecMainStatus=str(exit_status),
+    )
+    control.write(state)
+    data = checked(control, "status", "git-sync")
+    unit = next(u for u in data["targets"][0]["units"] if u["unit"] == service)
+    assert unit["last_outcome"] == expected
+    assert unit["active_state"] == "failed"  # Keep the manager's raw evidence.
+    source = control.repo / ".agents/ops/git_sync/systemd" / service
+    assert "75" in next(
+        line.partition("=")[2].split()
+        for line in source.read_text().splitlines()
+        if line.startswith("SuccessExitStatus=")
+    )
+
+
 @pytest.mark.parametrize("mode", ["bus_unreachable", "manager_missing"])
 @pytest.mark.parametrize("action", ["status", "on", "off", "install", "run"])
 def test_unavailable_manager_is_an_error_before_mutations(

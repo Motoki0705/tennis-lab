@@ -245,6 +245,11 @@ class Cleaner:
             self.stopper.stop(path, utc(now))
         if quarantine.exists():
             self.stopper.stop_moved(quarantine, path, utc(now))
+        # Legacy termination evidence follows the final stop in quarantine,
+        # including agents that acquired the old cwd during the first stop.
+        self.stopper.finish_legacy(
+            path, utc(now), physical=quarantine if quarantine.exists() else path
+        )
         live = self.current(row)
         if live is not None:
             # Only this registration is removed; prune --expire=now would also
@@ -293,7 +298,13 @@ class Cleaner:
                 raise CleanupError("clock must return nonnegative epoch nanoseconds")
             entries = self.observe(state, now)
             results = []
+            preflight = []
             for entry in entries:
+                if cleanup and dry_run and entry["selected"]:
+                    try:
+                        preflight.append(self.stopper.preflight(Path(entry["path"])))
+                    except (OSError, ValueError, CleanupError) as exc:
+                        preflight.append({"path": entry["path"], "errors": [str(exc)]})
                 unsafe_target = (
                     entry["expired"]
                     and entry["scope_error"]
@@ -340,6 +351,11 @@ class Cleaner:
                 if cleanup and not dry_run
                 else []
             )
+            errors.extend(
+                f"{check['path']}: {error}"
+                for check in preflight
+                for error in check["errors"]
+            )
             failed = any(not r["deleted"] for r in results) or bool(errors)
             report = {
                 "schema_version": 1,
@@ -352,5 +368,9 @@ class Cleaner:
                 "results": results,
                 "errors": errors,
             }
+            if getattr(self.stopper, "diagnostics", None):
+                report["stop_diagnostics"] = self.stopper.diagnostics
+            if cleanup and dry_run:
+                report["stop_preflight"] = preflight
             write_json(self.directory / "report-latest.json", report)
             return (1 if failed else 0), report

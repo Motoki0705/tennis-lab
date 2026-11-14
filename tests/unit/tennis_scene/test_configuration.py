@@ -69,7 +69,7 @@ def _visualize_tasks_config(root: Path, *overrides: str) -> DictConfig:
 
 
 def _clip_studio_config(root: Path) -> dict[str, object]:
-    source = root / "data/tennis_multivew/raw/match01/video_000"
+    source = root / "data/tennis_multiview/raw/match01/video_000"
     source.mkdir(parents=True, exist_ok=True)
     (source / "cam0.mp4").touch()
     (source / "cam1.mp4").touch()
@@ -83,7 +83,7 @@ def _clip_studio_config(root: Path) -> dict[str, object]:
             "cache_root": ".cache",
             "external_asset_root": "third_party",
         },
-        "source_directory": "tennis_multivew/raw/match01/video_000",
+        "source_directory": "tennis_multiview/raw/match01/video_000",
         "gui": {
             "canvas_width": 1600,
             "tile_width": 640,
@@ -115,15 +115,15 @@ def test_clip_studio_config_resolves_each_path_from_its_declared_root(
 
     assert (
         runtime.export.projects_path
-        == (tmp_path / "data/tennis_multivew/processed/match01/projects.json").resolve()
+        == (tmp_path / "data/tennis_multiview/processed/match01/projects.json").resolve()
     )
     assert (
         runtime.export.output_dir
-        == (tmp_path / "data/tennis_multivew/processed/match01/dataset").resolve()
+        == (tmp_path / "data/tennis_multiview/processed/match01/dataset").resolve()
     )
     assert runtime.video_paths == (
-        (tmp_path / "data/tennis_multivew/raw/match01/video_000/cam0.mp4").resolve(),
-        (tmp_path / "data/tennis_multivew/raw/match01/video_000/cam1.mp4").resolve(),
+        (tmp_path / "data/tennis_multiview/raw/match01/video_000/cam0.mp4").resolve(),
+        (tmp_path / "data/tennis_multiview/raw/match01/video_000/cam1.mp4").resolve(),
     )
     assert runtime.camera_ids == ("cam0", "cam1")
     assert runtime.dataset_id == "match01"

@@ -19,6 +19,7 @@ from parent.manual_workers import run_directory, worker_runs
 
 from . import processes
 from .registry import ExpiryStore
+from .run_records import RunRecords
 from .storage import CleanupError, read_json, state_root
 
 OPS = Path(__file__).resolve().parents[1]
@@ -34,6 +35,7 @@ class Stopper:
         self.root = root or state_root()
         self.store = ExpiryStore(self.root / "parent-sessions")
         self.timeout = timeout
+        self.diagnostics: list[dict[str, Any]] = []
 
     def stop_run(
         self,
@@ -151,6 +153,7 @@ class Stopper:
                             "path": str(root),
                             "decided_at": stamp,
                             "result": "stop_requested",
+                            "delegation_id": row["tasks"][n].get("delegation_id"),
                         },
                     )
                 if selected or owner:
@@ -206,14 +209,14 @@ class Stopper:
                             for r in worker_runs(task)
                             if r["delegation_id"] == task.get("delegation_id")
                         ]
-                        if (
-                            not runs
-                            and "worker_ended" not in task
-                            and "worker_runs" not in task
-                        ):
-                            raise CleanupError(
-                                "delegated worker has no runner termination evidence"
+                        if not runs and "worker_runs" not in task:
+                            # This predates common-runner provenance. Do not
+                            # invent runner cleanup evidence or end it before
+                            # native descendants have actually been confirmed.
+                            task["worktree_expiry"]["result"] = (
+                                "awaiting_process_confirmation"
                             )
+                            continue
                         for run in runs:
                             self.stop_run(
                                 run_directory(self.store, run),
@@ -291,6 +294,105 @@ class Stopper:
         if errors:
             raise CleanupError("; ".join(errors))
 
+    def finish_legacy(self, root: Path, stamp: str, *, physical: Path) -> None:
+        """Certify local absence after all managed and native stops succeeded."""
+        if not self.store.path.exists():
+            return
+        view = processes.snapshot()
+        remaining, _ = processes.scoped_processes(physical, view)
+        if remaining:
+            raise CleanupError(
+                f"local processes remain before legacy termination: {remaining}"
+            )
+        with self.store.locked():
+            for row in self.store.parents.values():
+                for task in row["tasks"].values():
+                    expiry = task.get("worktree_expiry", {})
+                    if (
+                        expiry.get("path") != str(root)
+                        or expiry.get("result") != "awaiting_process_confirmation"
+                        or not task.get("stopped")
+                        or not task.get("delegated")
+                        or expiry.get("delegation_id") != task.get("delegation_id")
+                    ):
+                        continue
+                    # An expiring owner also stops tasks in other worktrees.
+                    # A legacy child outside this root cannot be ended merely
+                    # because the owner's cwd has become empty.
+                    task_root = Path(task["worktree"])
+                    if processes.within(str(task_root), root):
+                        task_root = physical / task_root.relative_to(root)
+                    remaining, _ = processes.scoped_processes(task_root, view)
+                    if remaining:
+                        raise CleanupError(
+                            f"legacy child still has local processes: {remaining}"
+                        )
+                    # No shared-runner result exists for this old delegation.
+                    # This is a forced local termination, never task success or
+                    # a claim about a remote machine's agent session.
+                    task["worker_ended"] = {
+                        "delegation_id": task.get("delegation_id", "legacy"),
+                        "evidence": "worktree expiry: legacy delegation without runner records; local cwd processes and captured native descendants confirmed absent",
+                    }
+                    expiry.update(
+                        result="stopped",
+                        termination={
+                            "source": "local_process_absence",
+                            "checked_at": stamp,
+                            "path": str(root),
+                            "verified_cwd": str(task_root),
+                            "runner_record": None,
+                        },
+                    )
+            self.store.save()
+
+    def preflight(self, root: Path) -> dict[str, Any]:
+        """Read-only stop planning; never invoke runner status/stop or repair."""
+        runs, diagnostics, errors = RunRecords(self.root, self.store).select(root)
+        view = processes.snapshot()
+        scoped, _ = processes.scoped_processes(root, view)
+        scoped.extend(agent["identity"] for agent in processes.agents(root))
+        saved = processes.read_stop_proof(self.native_proof(root))
+        recovery = processes.unscoped_recovery_evidence(view, scoped, saved, root)
+        if saved is not None and recovery is None:
+            if not saved.get("capture_complete", True):
+                errors.append(
+                    "native discovery was interrupted; original roots cannot be certified"
+                )
+            tracked = {processes.identity_key(item): item for item in saved["tracked"]}
+            unconfirmed = {
+                processes.identity_key(item): item
+                for item in saved.get("unconfirmed", [])
+            }
+            processes.expand_tracked(tracked, view)
+            processes.expand_tracked(unconfirmed, view)
+            unknown = processes.uncertain_processes(
+                view,
+                tracked,
+                {processes.identity_key(item): item for item in saved["baseline"]},
+                {processes.identity_key(item): item for item in saved["ancestors"]},
+                unconfirmed,
+            )
+            if unknown:
+                errors.append(f"unconfirmed native process provenance: {unknown}")
+        legacy = [
+            n
+            for row in self.store.read_data()["parents"].values()
+            for n, task in row["tasks"].items()
+            if task.get("delegated")
+            and "worker_runs" not in task
+            and processes.within(task.get("worktree", ""), root)
+        ]
+        return {
+            "path": str(root),
+            "runner_runs": len(runs),
+            "native_scope": scoped,
+            "legacy_delegations": legacy,
+            "legacy_proof_recovery": recovery,
+            "diagnostics": diagnostics,
+            "errors": errors,
+        }
+
     def queue(self, root: Path) -> None:
         # Reuse the existing shell-word decoder, including printf %q paths.
         sys.path.insert(0, str(OPS / "cleanup"))
@@ -349,26 +451,17 @@ class Stopper:
         contract_root: Path | None = None,
         discovered_only: bool = False,
     ) -> None:
-        directories = set()
-        for directory, subdirs, files in (
-            os.walk(self.root, followlinks=False) if not discovered_only else ()
-        ):
-            subdirs[:] = [
-                name for name in subdirs if not (Path(directory) / name).is_symlink()
-            ]
-            if "result.json" not in files:
-                continue
-            directories.add(Path(directory))
-        # Explicit --run-dir locations need not be below the default state root.
-        directories.update(processes.run_directories(root))
-        for runtime_directory in directories:
-            path = runtime_directory / "result.json"
-            record = read_json(path)
-            contract = record.get("contract")
-            if isinstance(contract, dict) and processes.within(
-                contract.get("cwd", ""), contract_root or root
-            ):
-                self.stop_run(path.parent, contract_root or root)
+        directories, diagnostics, errors = RunRecords(self.root, self.store).select(
+            root, contract_root=contract_root, discovered_only=discovered_only
+        )
+        self.diagnostics.extend(diagnostics)
+        for directory in directories:
+            try:
+                self.stop_run(directory, contract_root or root)
+            except (OSError, ValueError, CleanupError) as exc:
+                errors.append(f"related runner stop failed: {directory}: {exc}")
+        if errors:
+            raise CleanupError("; ".join(errors))
 
     def stop_moved(self, root: Path, original: Path, stamp: str) -> None:
         # Only processes physically in quarantine are selected. Replaying an
@@ -395,15 +488,25 @@ class Stopper:
         native = processes.agents(root)
         seeds, excluded = processes.scoped_processes(root, view)
         seeds.extend(agent["identity"] for agent in native)
+        recovery = processes.recover_unscoped_stop(view, seeds, proof, root)
+        if recovery is not None:
+            self.diagnostics.append(recovery)
         after = processes.snapshot()
         lost = [
             node["identity"]
             for pid, node in view.items()
-            if after.get(pid, {}).get("identity") != node["identity"]
+            if (
+                node.get("identity_lost")
+                or after.get(pid, {}).get("identity") != node["identity"]
+            )
             and processes.identity_key(node["identity"]) not in excluded
         ]
         processes.prepare_stop(
-            view, seeds, proof, capture_completed=fresh, uncertain_roots=lost
+            view,
+            seeds,
+            proof,
+            capture_completed=fresh,
+            uncertain_roots=processes.discovery_uncertainty(view, lost),
         )
         return view, native
 

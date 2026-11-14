@@ -426,9 +426,11 @@ effortはmaxを必須とする。親effortは設定または `--effort` で変�
 
 ### レビュー専用の選択入力
 
-`agents.conf`の`REVIEW_SELECTION_MODE`は`fixed`（既定）または`select`。
+`agents.conf`の`REVIEW_SELECTION_MODE`は`select`（通常設定）または`fixed`。
 `REVIEW_SELECTION_POLICY_VERSION`と`REVIEW_CODEX_ALLOWED_PAIRS`は方針の版と許可するmodel:effortの組を定義する。
 固定値・tierは既存の`REVIEW_CODEX_*`を使い、固定値自身も許可された組であることを必須とする。
+select時の実行model/effortは明示選択を使い、`REVIEW_CODEX_MODEL`を省略時の振替先にしない。
+親の選択手順・使用量確認・Astra固定への復帰は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)を参照。
 同名の環境変数を読まず、設定欠落・未知の版・不正な組・重複を拒否する。
 
 正式レビューは親CLIが固定した選択を`--review-selection-file FILE`で渡す。

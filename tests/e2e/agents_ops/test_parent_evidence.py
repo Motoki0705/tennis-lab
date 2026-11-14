@@ -148,7 +148,8 @@ def test_creation_releases_registry_before_waiting_for_another_creator(
 
 
 @pytest.mark.parametrize(
-    "tamper", ["duplicate", "label", "publisher", "parent", "repo", "number"]
+    "tamper",
+    ["duplicate", "label", "extra-label", "publisher", "parent", "repo", "number"],
 )
 def test_binding_is_revalidated_instead_of_trusting_the_local_number(
     parent_env: ParentEnv, tamper: str
@@ -163,6 +164,8 @@ def test_binding_is_revalidated_instead_of_trusting_the_local_number(
         state["issues"]["10"] = evidence_issue(env, 10)
     elif tamper == "label":
         state["issues"]["9"]["labels"] = []
+    elif tamper == "extra-label":
+        state["issues"]["9"]["labels"].append({"name": "issue:parent"})
     elif tamper == "publisher":
         state["issues"]["9"]["user"]["login"] = "other"
     elif tamper == "number":
@@ -351,7 +354,8 @@ def test_listings_and_explicit_work_consumers_exclude_evidence(
         snapshot = collector.collect(gh, store, p.repo)
     assert (
         sum(
-            "repos/o/r/issues?state=all&per_page=100&page=1" in call
+            "repos/o/r/issues?state=all&labels=parent-evidence&per_page=100&page=1"
+            in call
             for call in p.calls()[before:]
         )
         == 1

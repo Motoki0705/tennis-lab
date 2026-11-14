@@ -414,6 +414,7 @@ def auto_gate(
         manifest = json.loads(
             p.cli(
                 "review-prepare",
+                *p.review_flags(),
                 "--prs",
                 "100",
                 "101",
@@ -564,7 +565,7 @@ def test_stale_delegation_needs_explicit_parent_result_verification(
         data["parents"]["o/r#1"]["generation"] += 1
         registry(p).write_text(json.dumps(data))
         record(p)
-    p.cli("review-prepare", "--prs", "100", ok=False)
+    p.cli("review-prepare", *p.review_flags(), "--prs", "100", ok=False)
     assert (
         "no recorded run"
         in p.cli(
@@ -580,7 +581,9 @@ def test_stale_delegation_needs_explicit_parent_result_verification(
         p.note("現在の要件・差分・回帰テストを確認して既存成果を採用する。"),
     )
     assert (
-        json.loads(p.cli("review-prepare", "--prs", "100").stdout)["schema_version"]
+        json.loads(p.cli("review-prepare", *p.review_flags(), "--prs", "100").stdout)[
+            "schema_version"
+        ]
         == 3
     )
     p.cli(
@@ -1118,7 +1121,9 @@ def test_changed_closing_targets_require_new_review_before_instruction(
     state = p.state()
     state["prs"] = [p.pr(100, 10)]
     p.save(state)
-    frozen = json.loads(p.cli("review-prepare", "--prs", "100").stdout)
+    frozen = json.loads(
+        p.cli("review-prepare", *p.review_flags(), "--prs", "100").stdout
+    )
     state = p.state()
     state["prs"][0]["body"] = (
         "Closes #11" if change == "replace" else "Closes #10\nCloses #11"
@@ -1138,6 +1143,7 @@ def test_changed_closing_targets_require_new_review_before_instruction(
     new = json.loads(
         p.cli(
             "review-prepare",
+            *p.review_flags(),
             "--prs",
             "100",
             "--reason-file",
@@ -1222,6 +1228,7 @@ def test_closing_target_changes_during_snapshot_collection_are_rejected(
         before = registry(p).read_bytes()
         response = p.cli(
             "review-prepare",
+            *p.review_flags(),
             "--prs",
             "100",
             "101",
