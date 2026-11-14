@@ -13,12 +13,15 @@ from typing import Any, cast
 
 from dispatcher.runtime import Runtime, alive, gate, load
 from dispatcher.schedule import Schedule
-from dispatcher.state import DispatchStore
+from dispatcher.state import DispatchStore, require_client
 from dispatcher.supervisor import (
     Supervisor,
     check_handoff_capacity,
+    check_observation,
     children_pending,
+    current_job,
     managed,
+    observation_intent,
     unstarted,
 )
 from issues import Issue, task_status
@@ -183,6 +186,7 @@ def start_worker(
     The caller must not hold Store.locked(): the dispatcher takes the same lock.
     A failure between the two claims intentionally leaves the delegation intact.
     """
+    require_client(session.gh, session.store)
     implementation_model(model)
     if continuation is None:
         nonempty(prompt, "initial worker instruction")
@@ -194,7 +198,23 @@ def start_worker(
         session.agreed()
         control = controller(session, directory)
     control.reconcile(parent=session.parent)
+    previous_jobs = []
+    checkpoint = None
+    if continuation is not None:
+        with session.store.locked():
+            dispatch = accepted(session, env)
+            previous_jobs = [
+                observation_intent(session.store, session.row, job, "continue")
+                for job in worker_jobs(dispatch, child)
+            ]
+            checkpoint = session.store.checkpoint()
+        for previous in previous_jobs:
+            ended(previous["job"])
     with session.store.locked():
+        if checkpoint is not None:
+            session.store.revalidate(checkpoint)
+        for previous in previous_jobs:
+            current_job(session.store, session.key, previous)
         dispatch = accepted(session, env)
         session.agreed()
         control = controller(session, directory)
@@ -213,8 +233,6 @@ def start_worker(
                 raise ValueError(
                     "no existing worker session; never create a replacement"
                 )
-            for job in jobs:
-                ended(job)
             source = control.resume_source(session.row, jobs[-1])
             if source is None:
                 if any(not job.get("cancelled_before_start") for job in jobs):
@@ -284,7 +302,8 @@ def start_worker(
                 planning=planning,
                 additional=additional,
             )
-        turn = worker_preflight.commit_turn(task, prepared)
+        with session.gh.io_scope():
+            turn = worker_preflight.commit_turn(task, prepared)
         session.store.save()
         prepared_instruction = prepare_instruction(
             session.parent,
@@ -312,74 +331,113 @@ def start_worker(
 
 
 def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
-    dispatch = managed(session.owner())
-    if not dispatch:
-        raise ValueError("worker inspection requires a managed parent")
-    jobs = worker_jobs(dispatch, child)
-    if not jobs:
-        raise ValueError("no managed runtime for this issue")
-    job = jobs[-1]
-    directory = Path(job["directory"]) / "runtime"
-    result: dict[str, Any] = {
-        "child": child,
-        "job_id": job["id"],
-        "phase": job["phase"],
-        "delegation_id": job["delegation_id"],
-        "task_success": None,
-        "termination_confirmed": False,
-        "worker_phase": worker_preflight.observe(session, child),
-        "cancelled_before_start": bool(job.get("cancelled_before_start")),
-    }
-    if job.get("cancelled_before_start"):
-        ended(job)
-        result["termination_confirmed"] = True
-    elif (directory / "result.json").exists():
-        evidence = Runtime(Path(job["runner"])).inspect(directory)
-        record = evidence["record"]
-        result.update(
-            runtime_result=record["result"],
-            turn_end_reason=record["turn_end_reason"],
-            termination_confirmed=job["phase"] == "ended"
-            and Runtime(Path(job["runner"])).ended(evidence),
-            settings=record["contract"]["settings"],
-            final_file=str(directory / "final.md"),
-        )
-    return result
+    """Persist the observation target, wait unlocked, then check the current job."""
+    require_client(session.gh, session.store)
+    with session.store.locked():
+        dispatch = managed(session.owner())
+        if not dispatch:
+            raise ValueError("worker inspection requires a managed parent")
+        jobs = worker_jobs(dispatch, child)
+        if not jobs:
+            raise ValueError("no managed runtime for this issue")
+        worker_phase = worker_preflight.observe(session, child)
+        job = jobs[-1]
+        expected = observation_intent(session.store, session.row, job, "inspect")
+    saved = expected["job"]
+    directory = Path(saved["directory"]) / "runtime"
+    evidence = None
+    cancelled = bool(saved.get("cancelled_before_start"))
+    if cancelled:
+        ended(saved)
+    elif saved["observation"]["run_id"] is not None:
+        evidence = Runtime(Path(saved["runner"])).inspect(directory)
+        check_observation(saved, evidence)
+        Supervisor._check_contract(saved, evidence["record"])
+    with session.store.locked():
+        _, job = current_job(session.store, session.key, expected)
+        result: dict[str, Any] = {
+            "child": child,
+            "job_id": job["id"],
+            "phase": job["phase"],
+            "delegation_id": job["delegation_id"],
+            "task_success": None,
+            "termination_confirmed": cancelled,
+            "worker_phase": worker_phase,
+            "cancelled_before_start": cancelled,
+        }
+        if evidence is not None:
+            record = evidence["record"]
+            job["runtime_run_id"] = record["run_id"]
+            session.store.save()
+            result.update(
+                runtime_result=record["result"],
+                turn_end_reason=record["turn_end_reason"],
+                termination_confirmed=job["phase"] == "ended"
+                and Runtime(Path(job["runner"])).ended(evidence),
+                settings=record["contract"]["settings"],
+                final_file=str(directory / "final.md"),
+            )
+        return result
 
 
 def stop_worker(
     session: ParentSession, child: int, detail: dict[str, Any]
 ) -> dict[str, Any]:
-    dispatch = managed(session.owner())
-    if not dispatch:
-        raise ValueError("worker stop requires a managed parent")
-    stopped = session.stop_or_resume(child, detail, False)
-    plan = None if stopped.get("target_conflict") else session.launch_plan()
-    targets = {child} | (
-        {t["child"] for t in plan["tasks"] if t["state"] == "held"} if plan else set()
-    )
-    for job in dispatch["jobs"].values():
-        if job["role"] != "implementation" or job["child"] not in targets:
-            continue
-        if job["phase"] == "ended":
-            continue
-        if job["phase"] == "reserved":
-            Supervisor.cancel_reservation(
-                session.row, job, "cancelled by parent before launch"
+    require_client(session.gh, session.store)
+    with session.store.locked():
+        dispatch = managed(session.owner())
+        if not dispatch:
+            raise ValueError("worker stop requires a managed parent")
+        stopped = session.stop_or_resume(child, detail, False)
+        plan = None if stopped.get("target_conflict") else session.launch_plan()
+        targets = {child} | (
+            {t["child"] for t in plan["tasks"] if t["state"] == "held"}
+            if plan
+            else set()
+        )
+        jobs = []
+        for job in dispatch["jobs"].values():
+            if (
+                job["role"] != "implementation"
+                or job["child"] not in targets
+                or job["phase"] == "ended"
+            ):
+                continue
+            if job["phase"] == "reserved":
+                Supervisor.cancel_reservation(
+                    session.row, job, "cancelled by parent before launch"
+                )
+            else:
+                job["stop_requested"] = True
+                jobs.append(job)
+        session.store.save()
+        pending = [
+            observation_intent(session.store, session.row, job, "stop") for job in jobs
+        ]
+    for expected in pending:
+        saved = expected["job"]
+        proof = None
+        if saved["observation"]["run_id"] is not None:
+            proof = Runtime(Path(saved["runner"])).inspect(
+                Path(saved["directory"]) / "runtime", stop=True
             )
-        elif (Path(job["directory"]) / "runtime/result.json").exists():
-            Runtime(Path(job["runner"])).inspect(
-                Path(job["directory"]) / "runtime", stop=True
-            )
-        elif alive(job["worker"]):
-            os.kill(job["worker"]["pid"], signal.SIGTERM)
-    session.store.save()
-    return {
-        "child": child,
-        "result": "stop_requested",
-        "launch_plan": session.launch_plan() if plan is not None else None,
-        **({"target_conflict": stopped["target_conflict"]} if plan is None else {}),
-    }
+            check_observation(saved, proof)
+            Supervisor._check_contract(saved, proof["record"])
+        elif alive(saved["worker"]):
+            os.kill(saved["worker"]["pid"], signal.SIGTERM)
+        with session.store.locked():
+            _, job = current_job(session.store, session.key, expected)
+            if proof is not None:
+                job["runtime_run_id"] = proof["record"]["run_id"]
+                session.store.save()
+    with session.store.locked(), session.gh.fresh_reads():
+        session.owner()
+        return {
+            "child": child,
+            "result": "stop_requested",
+            "launch_plan": session.launch_plan() if plan is not None else None,
+            **({"target_conflict": stopped["target_conflict"]} if plan is None else {}),
+        }
 
 
 def cancellation_workers_ended(session: ParentSession, child: int) -> None:
@@ -388,7 +446,8 @@ def cancellation_workers_ended(session: ParentSession, child: int) -> None:
     dispatch = managed(session.row)
     if dispatch:
         for job in worker_jobs(dispatch, child):
-            ended(job)
+            with session.gh.io_scope():
+                ended(job)
 
 
 def record_cancellation(
@@ -487,7 +546,8 @@ def verify_completion(session: ParentSession) -> list[int]:
         check_dependencies(session, dispatch)
         for job in dispatch["jobs"].values():
             if job["role"] == "implementation":
-                ended(job)
+                with session.gh.io_scope():
+                    ended(job)
     check_task_adoptions(session.gh, parent.body)
     sys.path.insert(0, str(OPS / "review"))
     merge_gate = importlib.import_module("merge_gate")
@@ -682,12 +742,13 @@ def refresh_worker_plan(
 def worker_command(
     args: Any, gh: GitHub, parent: int, identity: str, store: Store
 ) -> dict[str, Any]:
+    require_client(gh, store)
     with store.locked():
         session = ParentSession(gh, store, parent, identity)
-        if args.command == "inspect-worker":
-            return inspect_worker(session, args.child)
-        if args.command == "stop-worker":
-            return stop_worker(session, args.child, load(Path(args.spec)))
+    if args.command == "inspect-worker":
+        return inspect_worker(session, args.child)
+    if args.command == "stop-worker":
+        return stop_worker(session, args.child, load(Path(args.spec)))
     return start_worker(
         session,
         args.dispatcher_state_dir,

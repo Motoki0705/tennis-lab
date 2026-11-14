@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from dispatcher import collect as inputs
+from dispatcher.state import client_for, repository_scope
 from issues import (
     CHILD_LABEL,
     PARENT_LABEL,
@@ -89,12 +90,14 @@ def proposal_input(report: int, prop: ParsedProposal) -> dict[str, Any]:
 
 
 def collect(gh: GitHub, store: Store, root: Path) -> dict[str, Any]:
-    rows = [row for row in gh.issue_rows() if not is_proposal_issue(row)]
-    seeds = inputs.unique_numbers(rows, "all issues")
-    snapshot = inputs.collect(gh, store, root, seeds=seeds)
+    gh = client_for(gh, store)
+    with repository_scope(store), gh.fresh_reads():
+        rows = [row for row in gh.issue_rows() if not is_proposal_issue(row)]
+        seeds = inputs.unique_numbers(rows, "all issues")
+        snapshot = inputs.collect(gh, store, root, seeds=seeds)
     if set(snapshot["issues"]) != {str(n) for n in seeds}:
         raise ValueError("all-issue listing changed during proposal collection")
-    return cast(dict[str, Any], snapshot)
+    return snapshot
 
 
 def material(snapshot: dict[str, Any]) -> dict[str, Any]:

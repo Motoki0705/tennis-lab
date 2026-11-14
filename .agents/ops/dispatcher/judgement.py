@@ -34,6 +34,7 @@ from .collect import (
 )
 from .records import DETAIL_KEYS, comment_body, owned_comment, read_json
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
+from .state import client_for, repository_scope, require_client
 
 RESULT_VERSION = 2
 CANDIDATE_KEYS = {
@@ -57,10 +58,11 @@ CANDIDATE_KEYS = {
 def inputs_for(
     snapshot: dict[str, Any], store: Store, n: int, sources: Sequence[str] = ()
 ) -> dict[str, Any]:
-    session = ParentSession(SnapshotGitHub(snapshot), store, n, None)
-    inputs: dict[str, Any] = execution_input(
-        session, context=execution_context(snapshot, n, sources)
-    )
+    with repository_scope(store):
+        session = ParentSession(SnapshotGitHub(snapshot), store, n, None)
+        inputs: dict[str, Any] = execution_input(
+            session, context=execution_context(snapshot, n, sources)
+        )
     return inputs
 
 
@@ -220,7 +222,7 @@ def record_decision(
     """Caller holds Store.locked(); surround each publication with target checks."""
     n = decision["issue"]
     sources = decision["sources"]
-    session = ParentSession(gh, store, n, None)
+    session = ParentSession(client_for(gh, store), store, n, None)
     assert_fresh(gh, store, root, snapshot, n, sources)
     action = publish_decision(session, decision, snapshot)
     result["publications"].append({"issue": n, "action": action})
@@ -283,6 +285,7 @@ def run(
 ) -> dict[str, Any]:
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be a finite positive number")
+    require_client(gh, store)
     root, run_dir = root.resolve(), run_dir.resolve()
     run_dir.mkdir(parents=True, mode=0o700, exist_ok=False)
     result: dict[str, Any] = {
@@ -316,7 +319,9 @@ def run(
         with store.locked():
             # Check public payloads before the first irreversible publication.
             for decision in decisions:
-                ParentSession(gh, store, decision["issue"], None).public(decision)
+                ParentSession(
+                    client_for(gh, store), store, decision["issue"], None
+                ).public(decision)
             retain_fresh_decisions(gh, store, root, snapshot, result, "preflight")
         if not apply:
             result["result"] = "preview"
@@ -382,9 +387,10 @@ def main(argv: list[str] | None = None) -> int:
     require_checkout_job()
     os.umask(0o077)
     try:
+        store = Store(args.parent_state_dir or state_directory())
         result = run(
-            GitHub(args.repo),
-            Store(args.parent_state_dir or state_directory()),
+            GitHub(args.repo, store=store),
+            store,
             args.cwd,
             args.run_dir,
             apply=args.apply,

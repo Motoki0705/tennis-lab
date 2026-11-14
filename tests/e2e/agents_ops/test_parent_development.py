@@ -9,6 +9,7 @@ import os
 import shutil
 import signal
 import subprocess
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Any, cast
 import pytest
 
 from tests.e2e.agents_ops.test_dispatcher_supervisor import (
+    DispatchGitHub,
     DispatchHarness,
     FixtureRuntime,
     fixture_runtime,
@@ -70,7 +72,7 @@ def workflow(
     mod = importlib.import_module("parent.development")
     session = importlib.import_module("parent.session").ParentSession(
         d.h.gh,
-        mod.workflow_store(d.h.store.directory, d.schedule.directory),
+        d.h.store,
         1,
         "claude:fixture-session",
     )
@@ -150,21 +152,23 @@ def test_bootstrap_delegates_standalone_sol_or_astra_and_does_not_trust_exit_zer
         assert "tests/README.md" in prompt
         assert "PYTEST_LOCK:" not in prompt
         assert "pytestは共有lockなし" in prompt
-        with session.store.locked():
-            state = mod.inspect_worker(session, target)
-            assert state["termination_confirmed"] and state["task_success"] is None
-            with pytest.raises(ValueError, match="close|verification"):
-                mod.report(
-                    session,
-                    {
-                        "schema_version": 2,
-                        "state": "completed",
-                        "finish": {},
-                        "reason": "子が成功を報告",
-                        "resume_condition": "完了",
-                        "evidence": "exit 0",
-                    },
-                )
+        state = mod.inspect_worker(session, target)
+        assert state["termination_confirmed"] and state["task_success"] is None
+        with (
+            session.store.locked(),
+            pytest.raises(ValueError, match="close|verification"),
+        ):
+            mod.report(
+                session,
+                {
+                    "schema_version": 2,
+                    "state": "completed",
+                    "finish": {},
+                    "reason": "子が成功を報告",
+                    "resume_condition": "完了",
+                    "evidence": "exit 0",
+                },
+            )
         assert d.row()["status"] == "active"
         capture = importlib.import_module("decision_logs.capture")
         observed = capture.status(d.h.store.directory, "o/r", 1)
@@ -274,8 +278,8 @@ def test_existing_pr_fix_continues_same_session_and_model_after_end_evidence(
             assert d.row()["dispatch"]["jobs"][second["job_id"]]["model"] is None
         if cancel_fix:
             cancelled = d.row()["dispatch"]["jobs"][second["job_id"]]
+            mod.stop_worker(session, 10, stop_detail())
             with session.store.locked():
-                mod.stop_worker(session, 10, stop_detail())
                 session.stop_or_resume(10, stop_detail(), True)
             assert d.row()["dispatch"]["jobs"][cancelled["id"]][
                 "cancelled_before_start"
@@ -362,11 +366,11 @@ def test_cancelled_initial_reservation_keeps_model_and_restarts_only_if_unstarte
         branch="codex/parser",
         worktree=child_tree(d),
     )
+    mod.stop_worker(session, 10, stop_detail())
+    state = mod.inspect_worker(session, 10)
+    assert state["cancelled_before_start"] and state["termination_confirmed"]
+    assert state["task_success"] is None and "runtime_result" not in state
     with session.store.locked():
-        mod.stop_worker(session, 10, stop_detail())
-        state = mod.inspect_worker(session, 10)
-        assert state["cancelled_before_start"] and state["termination_confirmed"]
-        assert state["task_success"] is None and "runtime_result" not in state
         session.stop_or_resume(10, stop_detail(), True)
     assert any(
         e["event"] == "runtime_cancelled" and e["job_id"] == first["job_id"]
@@ -408,8 +412,8 @@ def test_standalone_stop_resume_preserves_authorized_work(
         branch="codex/parser",
         worktree=child_tree(d),
     )
+    mod.stop_worker(session, 1, stop_detail())
     with session.store.locked():
-        mod.stop_worker(session, 1, stop_detail())
         session.stop_or_resume(1, stop_detail(), True)
     next_turn = mod.start_worker(
         session,
@@ -473,8 +477,7 @@ def test_lost_runner_holds_capacity_until_cleanup_confirmation_then_resumes(
                 not d.mod.alive(d.row()["dispatch"]["jobs"][first["job_id"]]["worker"])
             )
         )
-        with session.store.locked():
-            mod.stop_worker(session, 10, stop_detail())
+        mod.stop_worker(session, 10, stop_detail())
         d.control.reconcile()
         interrupted = json.loads((directory / "result.json").read_text())
         assert interrupted["runner_lost"] and not interrupted["cleanup_complete"]
@@ -558,8 +561,7 @@ def test_stop_does_not_release_a_reservation_with_launch_evidence(
     )
     job = d.row()["dispatch"]["jobs"][first["job_id"]]
     (Path(job["directory"]) / "runner.stdout").touch()
-    with session.store.locked():
-        mod.stop_worker(session, 1, stop_detail())
+    mod.stop_worker(session, 1, stop_detail())
     row = d.row()
     current = row["dispatch"]["jobs"][first["job_id"]]
     assert current["phase"] == row["dispatch"]["phase"] == "recovery_required"
@@ -618,7 +620,13 @@ def test_workflow_cli_never_recreates_registry_with_dispatcher_history(
 ) -> None:
     _, _, env = workflow(d, monkeypatch)
     cli = importlib.import_module("parent.cli")
-    monkeypatch.setattr(cli, "GitHub", lambda repo, **kwargs: d.h.gh)
+
+    def github(repo: str, *, store: Any) -> Any:
+        client = copy.copy(d.h.gh)
+        client._store = store
+        return client
+
+    monkeypatch.setattr(cli, "GitHub", github)
     for name in ("CODEX_SESSION_ID", "CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID"):
         monkeypatch.delenv(name, raising=False)
     for key, value in env.items():
@@ -729,13 +737,16 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
         with operation(store, key):
             yield
 
-    def bound_github(repo: str, *, store: Any) -> Any:
-        def get(endpoint: str, *, missing_parent: bool = False) -> object:
-            with store.unlocked_read():
+    class BoundGitHub(DispatchGitHub):
+        def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
+            with self.io_scope():
                 return original_get(endpoint, missing_parent=missing_parent)
 
-        monkeypatch.setattr(d.h.gh, "get", get)
-        return d.h.gh
+    def bound_github(repo: str, *, store: Any) -> Any:
+        client = BoundGitHub()
+        client.__dict__.update(d.h.gh.__dict__)
+        client._store = store
+        return client
 
     monkeypatch.setattr(cli, "GitHub", bound_github)
     monkeypatch.setattr(cli.Store, "operation", traced_operation)
@@ -775,9 +786,11 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     )
     result = json.loads(capsys.readouterr().out)
     assert result["result"] == "reserved"
-    assert operations == ["o/r#1"]
+    assert "o/r#1" in operations
+    assert set(operations) <= {"o/r#1", "dispatcher:o/r#1"}
     assert cli.main([*common, "inspect-worker", "--child", "1"]) == 0
-    assert operations == ["o/r#1"]
+    assert "o/r#1" in operations
+    assert set(operations) <= {"o/r#1", "dispatcher:o/r#1"}
     result = json.loads(capsys.readouterr().out)
     assert result["termination_confirmed"] is False and result["task_success"] is None
     spec = d.h.root / "stop.json"
@@ -796,7 +809,8 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
         )
     )
     assert cli.main([*common, "stop-worker", "--child", "1", "--spec", str(spec)]) == 0
-    assert operations == ["o/r#1", "o/r#1"]
+    assert [key for key in operations if key == "o/r#1"] == ["o/r#1", "o/r#1"]
+    assert set(operations) <= {"o/r#1", "dispatcher:o/r#1"}
     assert json.loads(capsys.readouterr().out)["result"] == "stop_requested"
     assert d.row()["tasks"]["1"]["worker_ended"]
     assert not (d.h.root / "unused-state").exists()
@@ -903,7 +917,9 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
     for name in ("PARENT_GH_STATE", "PARENT_GH_CALLS"):
         monkeypatch.setenv(name, p.env[name])
     directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
-    with state_mod.Store(directory).locked() as store:
+    store = state_mod.Store(directory)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
+    with store.locked():
         identity = store.parents["o/r#1"]["session"]
         session = session_mod.ParentSession(gh, store, 1, identity)
         authorization = importlib.import_module("parent.execution").authorization(
@@ -958,7 +974,9 @@ def test_stop_propagates_only_to_dependencies_and_reserved_worker_is_cancelled(
             key: "入力仕様の人間判断待ち。独立作業は継続。"
             for key in ("reason", "facts", "impact", "resume_condition", "next_action")
         }
-        response = mod.stop_worker(session, 10, detail)
+    response = mod.stop_worker(session, 10, detail)
+    with store.locked():
+        jobs = session.row["dispatch"]["jobs"]
         planned = {t["child"]: t for t in response["launch_plan"]["tasks"]}
         assert [planned[n]["state"] for n in (10, 11, 12)] == [
             "stopped",
@@ -1035,8 +1053,8 @@ def test_stop_terminates_running_dependency_but_keeps_independent_worker(
         # This is a hang limit, not a fixed wait or completion inference.
         wait_until(running, timeout=30)
         processes = {n: json.loads(p.read_text())["process"] for n, p in paths.items()}
+        result = mod.stop_worker(session, 10, stop_detail())
         with session.store.locked():
-            result = mod.stop_worker(session, 10, stop_detail())
             states = {t["child"]: t["state"] for t in result["launch_plan"]["tasks"]}
             assert states == {10: "stopped", 11: "held", 12: "continue"}
             # A stop request never manufactures end evidence or frees a slot.
@@ -1978,3 +1996,110 @@ def test_handoff_transfers_control_before_publication_and_old_parent_completion(
         with pytest.raises(ValueError, match="別セッション"):
             session.owner()
     assert observed
+
+
+@pytest.mark.parametrize("operation", ["inspect", "stop"])
+def test_worker_commands_wait_for_runner_outside_registry(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    from tests.support.agents_ops.registry_io import observations, status_runner
+
+    mod, session, env = workflow(d, monkeypatch, family=True)
+    reserved = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="実装する。",
+        model=None,
+        branch="codex/parser",
+        worktree=child_tree(d),
+    )
+    output = d.h.root / "parent-runner-probes.jsonl"
+    runner = status_runner(
+        d.h.root / "parent-status", d.h.store.directory / "registry.lock", output
+    )
+    row = d.row()
+    job = row["dispatch"]["jobs"][reserved["job_id"]]
+    job.update(phase="starting", runner=str(runner))
+    d.update(row)
+    d.runtime(job, live=True)
+    if operation == "inspect":
+        result = mod.inspect_worker(session, 10)
+        assert result["termination_confirmed"] is False
+    else:
+        assert mod.stop_worker(session, 10, stop_detail())["result"] == "stop_requested"
+        assert d.row()["tasks"]["10"]["stopped"] is True
+    observations(output)
+
+
+def test_worker_log_capture_and_receive_git_release_registry(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.support.agents_ops.registry_io import observations, probe_code
+
+    mod, session, env = workflow(d, monkeypatch, family=True)
+    tree = child_tree(d)
+    lock, output = (
+        d.h.store.directory / "registry.lock",
+        d.h.root / "log-git-probes.jsonl",
+    )
+    real_git = shutil.which("git")
+    assert real_git
+    git = d.h.root / "bin/git"
+    # Observe the parent-side git calls. A newly spawned runner may begin its
+    # own startup checks during the deliberately short final Popen fence.
+    code = "\n".join("    " + line for line in probe_code(lock, output).splitlines())
+    git.write_text(
+        f"#!{sys.executable}\nimport os as _os\nif _os.getppid() == {os.getpid()}:\n"
+        + code
+        + f"\nimport sys\n_os.execv({real_git!r}, [{real_git!r}, *sys.argv[1:]])\n"
+    )
+    git.chmod(0o700)
+    first = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="実装する。",
+        model=None,
+        branch="codex/parser",
+        worktree=tree,
+    )
+    job = d.row()["dispatch"]["jobs"][first["job_id"]]
+    path = Path(job["log_journal"])
+    captured = importlib.import_module("worker_logs.journal").read(path)
+    assert captured["state"] == "captured"
+    try:
+        launch(d, monkeypatch)
+        drain(d, first["job_id"], timeout=30)
+        received = importlib.import_module("worker_logs.journal").read(path)
+        assert received["receipt"]["head_at_finish"] == d.h.git("rev-parse", "HEAD")
+        observations(output)
+    finally:
+        d.control.reconcile(stop=True)
+
+
+@pytest.mark.parametrize("operation", ["start", "inspect", "stop"])
+def test_worker_entry_rejects_client_bound_to_another_store_instance(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    mod, session, _ = workflow(d, monkeypatch, family=True)
+    mismatched = copy.copy(session)
+    mismatched.store = mod.workflow_store(session.store.directory, d.schedule.directory)
+    calls = len(d.h.gh.calls)
+    with pytest.raises(ValueError, match="transaction's Store instance"):
+        if operation == "start":
+            mod.start_worker(
+                mismatched,
+                d.schedule.directory,
+                {},
+                child=10,
+                prompt="実装する。",
+                model=None,
+            )
+        elif operation == "inspect":
+            mod.inspect_worker(mismatched, 10)
+        else:
+            mod.stop_worker(mismatched, 10, stop_detail())
+    assert len(d.h.gh.calls) == calls

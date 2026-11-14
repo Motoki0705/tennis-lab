@@ -35,7 +35,7 @@ def main() -> int:
         if fd is None:
             return 0
         supervisor = Supervisor(
-            GitHub(args.key.rpartition("#")[0]), store, Schedule(args.state_dir)
+            GitHub(args.key.rpartition("#")[0], store=store), store, store.schedule
         )
         job = supervisor.claim(args.key, args.job)
         if job is None:
@@ -63,7 +63,20 @@ def main() -> int:
             dispatch = managed(store.parents[args.key])
             if dispatch is None:
                 raise ValueError("missing managed assignment")
-            dispatch["jobs"][args.job]["runner_exit"] = status
+            current = dispatch["jobs"][args.job]
+            if any(
+                current.get(k) != job.get(k)
+                for k in (
+                    "assignment_id",
+                    "delegation_id",
+                    "directory",
+                    "task_id",
+                    "authorization",
+                    "preflight",
+                )
+            ):
+                store.conflict("worker reservation changed before runner exit receipt")
+            current["runner_exit"] = status
             event(dispatch, "runner_returned", job_id=args.job, exit_code=status)
             store.save()
         # A separate supervisor observes our lifetime lock released and our

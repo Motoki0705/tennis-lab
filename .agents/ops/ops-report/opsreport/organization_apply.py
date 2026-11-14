@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
+from dispatcher.state import require_client
 from issues import (
     NO_CHILDREN,
     SUPPLEMENT_FINAL_LABELS,
@@ -28,7 +29,7 @@ from issues import (
 from issues.creation import create_issue_once
 from parent.github import GitHub
 from parent.policy import digest, replace_section
-from parent.state import Store
+from parent.state import RegistryConflict, Store
 
 from . import organization as org
 from . import schedule
@@ -204,7 +205,7 @@ def _guard(gh: GitHub, store: Store, root: Path, tx: dict[str, Any]) -> dict[str
         raise ValueError(
             "organization inputs/ownership/code changed; retry with current evidence"
         )
-    return cast(dict[str, Any], current)
+    return current
 
 
 def _status(
@@ -550,6 +551,34 @@ def _apply(
     return links
 
 
+def _observe(gh: GitHub, store: Store, root: Path) -> dict[str, Any]:
+    with store.locked():
+        return org.collect(gh, store, root)
+
+
+def _apply_transaction(
+    gh: GitHub,
+    store: Store,
+    root: Path,
+    journal: Journal,
+    tx: dict[str, Any],
+    checklist_events: list[dict[str, Any]],
+) -> dict[str, int]:
+    with store.locked(), gh.fresh_reads():
+        return _apply(gh, store, root, journal, tx, checklist_events)
+
+
+def _update_status(
+    gh: GitHub,
+    store: Store,
+    proposals: dict[str, Any],
+    statuses: dict[str, str],
+    links: dict[str, int],
+) -> None:
+    with store.locked(), gh.fresh_reads():
+        _status(gh, proposals, statuses, links)
+
+
 def run(
     *,
     gh: GitHub,
@@ -561,11 +590,15 @@ def run(
     result: Any,
     journal_path: Path | None = None,
 ) -> None:
-    """Caller holds the shared triage lock and the existing registry lock."""
+    """Caller holds only the shared triage lock; each registry phase is explicit."""
+    require_client(gh, store)
+    store.require_unlocked()
     journal = Journal(gh.repo, journal_path)
     work_dir.chmod(0o700)
     try:
-        snapshot = org.collect(gh, store, root)
+        snapshot = _observe(gh, store, root)
+    except RegistryConflict:
+        raise
     except ValueError as exc:
         result.errors.append(str(exc))
         return
@@ -586,15 +619,19 @@ def run(
         try:
             if dry_run:
                 continue
-            links = _apply(gh, store, root, journal, tx, result.checklist_updates)
+            links = _apply_transaction(
+                gh, store, root, journal, tx, result.checklist_updates
+            )
             statuses = {
                 k: f"作業issue #{n}。着手判断・親割当は次の08:00・20:00 JST予定回。"
                 for k, n in links.items()
             }
-            _status(gh, tx["fixed"]["proposals"], statuses, links)
+            _update_status(gh, store, tx["fixed"]["proposals"], statuses, links)
             result.linked_existing.extend(
                 (k.split("/", 1)[1], n) for k, n in links.items()
             )
+        except RegistryConflict:
+            raise
         except ValueError as exc:
             result.errors.append(str(exc))
             statuses = {
@@ -602,7 +639,7 @@ def run(
                 for k in active
             }
             if not dry_run:
-                _status(gh, tx["fixed"]["proposals"], statuses, {})
+                _update_status(gh, store, tx["fixed"]["proposals"], statuses, {})
     pending = {}
     for n, prop in candidates:
         name = org.key(n, prop.pid)
@@ -613,7 +650,7 @@ def run(
             pending[name] = org.proposal_input(n, prop)
     if not pending:
         return
-    snapshot = org.collect(gh, store, root)
+    snapshot = _observe(gh, store, root)
     journal.check_tasks(snapshot)
     index = index_proposals(
         (int(n), raw["body"]) for n, raw in snapshot["issues"].items()
@@ -639,9 +676,19 @@ def run(
     )
     if cached is None:
         org.save_json(work_dir / "organization-input.json", fixed)
+        # The pinned input is the durable intent. Runner execution and its
+        # termination checks happen with no registry transaction alive.
+        org.save_json(
+            work_dir / "organization-intent.json",
+            {
+                "schema_version": 1,
+                "input_sha256": fixed["input_sha256"],
+                "state": "requested",
+            },
+        )
         plan = org.validate(org.execute(root, work_dir), fixed)
         org.save_json(work_dir / "organization-plan.json", plan)
-        fresh = org.collect(gh, store, root)
+        fresh = _observe(gh, store, root)
         if org.material(fresh) != org.material(snapshot):
             raise ValueError("proposal organization inputs changed before publication")
         if dry_run:
@@ -652,11 +699,16 @@ def run(
     if dry_run:
         return
     try:
-        links = _apply(gh, store, root, journal, tx, result.checklist_updates)
+        links = _apply_transaction(
+            gh, store, root, journal, tx, result.checklist_updates
+        )
+    except RegistryConflict:
+        raise
     except ValueError as exc:
         result.errors.append(str(exc))
-        _status(
+        _update_status(
             gh,
+            store,
             pending,
             {
                 name: f"保留: {exc}。根拠: Issue整理入力・出典・担当の再照合。再開条件: 現在の採用と既存issueの相違を解消する。次の対応: 保存済み計画から不足分を再開する。既存issueは保持。"
@@ -678,4 +730,4 @@ def run(
                 f"作業issue #{links[name]}。着手判断・親割当は次の08:00・20:00 JST予定回。"
             )
             result.linked_existing.append((name.split("/", 1)[1], links[name]))
-    _status(gh, pending, statuses, links)
+    _update_status(gh, store, pending, statuses, links)

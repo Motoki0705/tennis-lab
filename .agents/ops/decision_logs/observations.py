@@ -393,47 +393,46 @@ def job_environment(job: dict[str, Any]) -> dict[str, str]:
         return dict(os.environ)
 
 
-def saved_jobs(parents: dict[str, Any]) -> None:
+def saved_jobs(jobs: list[dict[str, Any]]) -> None:
     """Observe durable cancellation/runner-return facts, including no result.json."""
-    for row in parents.values():
-        for job in (row.get("dispatch") or {}).get("jobs", {}).values():
-            reference = job.get("decision_capture")
-            if not reference:
-                continue
-            op = None
-            try:
-                op = Operation.load(Path(reference))
-                runtime_path = Path(job["directory"]) / "runtime/result.json"
-                if runtime_path.exists():
-                    runtime_record(
-                        runtime_path,
-                        decode(runtime_path.read_bytes()),
-                        operation=op,
-                    )
-                elif job.get("cancelled_before_start") or job.get("runner_exit") in {
-                    2,
-                    127,
-                }:
-                    with op.transaction():
-                        if not op.row["closed"]:
-                            op.finish(
-                                {
-                                    "cancelled_before_start": bool(
-                                        job.get("cancelled_before_start")
-                                    ),
-                                    "runner_exit": job.get("runner_exit"),
-                                    "diagnostic": job.get("diagnostic"),
-                                },
-                                state="rejected_before_start",
-                                status="rejected",
-                                summary="dispatcher: rejected before start; no runtime result or parent verification",
-                                artifact="saved dispatcher job",
-                            )
-            except Exception:
-                if op is not None:
-                    op.mark_failed(lost_source="dispatcher.job")
-                else:
-                    warn()
+    for job in jobs:
+        reference = job.get("decision_capture")
+        if not reference:
+            continue
+        op = None
+        try:
+            op = Operation.load(Path(reference))
+            runtime_path = Path(job["directory"]) / "runtime/result.json"
+            if runtime_path.exists():
+                runtime_record(
+                    runtime_path,
+                    decode(runtime_path.read_bytes()),
+                    operation=op,
+                )
+            elif job.get("cancelled_before_start") or job.get("runner_exit") in {
+                2,
+                127,
+            }:
+                with op.transaction():
+                    if not op.row["closed"]:
+                        op.finish(
+                            {
+                                "cancelled_before_start": bool(
+                                    job.get("cancelled_before_start")
+                                ),
+                                "runner_exit": job.get("runner_exit"),
+                                "diagnostic": job.get("diagnostic"),
+                            },
+                            state="rejected_before_start",
+                            status="rejected",
+                            summary="dispatcher: rejected before start; no runtime result or parent verification",
+                            artifact="saved dispatcher job",
+                        )
+        except Exception:
+            if op is not None:
+                op.mark_failed(lost_source="dispatcher.job")
+            else:
+                warn()
 
 
 def worker_log(

@@ -343,6 +343,7 @@ class Harness:
             root / "private-state"
         )
         self.gh = FakeGitHub()
+        self.gh._store = self.store
         self.output = root / "response.json"
         self.calls = root / "agent-calls.jsonl"
         bin_dir = root / "bin"
@@ -1812,7 +1813,8 @@ def test_rejudgement_after_assignment_updates_display_without_revoking_basis(
     assert second["publications"] == [{"issue": 1, "action": "updated"}]
     with h.store.locked():
         assert execution.authorization(owner) == expected
-    [basis] = [e for e in owner.history() if e["event"] == "execution_basis"]
+    with h.store.locked():
+        [basis] = [e for e in owner.history() if e["event"] == "execution_basis"]
     assert basis["ignored_comments"] == []
     assert basis["basis_sha256"] == candidate["basis_sha256"]
 
@@ -1980,7 +1982,13 @@ def test_preview_and_cli_print_no_candidates_or_local_private_information(
     changed: bool,
 ) -> None:
     h.response(decision(1))
-    monkeypatch.setattr(h.mod, "GitHub", lambda repo: h.gh)
+
+    def github(repo: str, *, store: Any) -> Any:
+        client = copy.copy(h.gh)
+        client._store = store
+        return client
+
+    monkeypatch.setattr(h.mod, "GitHub", github)
 
     def concurrent_edit(endpoint: str) -> None:
         if changed and h.calls.exists():
@@ -2034,3 +2042,43 @@ def test_dirty_code_and_broken_registry_fail_before_agent(h: Harness) -> None:
     result = h.run()
     assert result["result"] == "failed" and not h.calls.exists()
     assert h.gh.writes == []
+
+
+def test_shared_transaction_clients_keep_parent_pr_scope_and_refresh_comments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.e2e.agents_ops.test_dispatcher_supervisor import DispatchHarness
+
+    d = DispatchHarness(tmp_path, monkeypatch)
+    d.h.gh.issues[2] = issue(2)
+    d.h.gh.prs = [
+        {
+            "number": n + 100,
+            "body": f"Closes #{n}",
+            "state": "open",
+            "merged_at": None,
+            "head": {"ref": f"codex/parent-{n}", "sha": str(n) * 40},
+        }
+        for n in (1, 2)
+    ]
+    d.publish_github(monkeypatch)
+    mod = importlib.import_module("parent.github")
+    clients = importlib.import_module("dispatcher.state")
+    session = importlib.import_module("parent.session").ParentSession
+    gh = mod.GitHub("o/r", store=d.h.store)
+    remote = tmp_path / "github.json"
+    with d.h.store.locked():
+        first = session(clients.client_for(gh, d.h.store), d.h.store, 1, None)
+        second = session(clients.client_for(gh, d.h.store), d.h.store, 2, None)
+        assert [p["number"] for p in first.gh.pulls()] == [101]
+        assert [p["number"] for p in second.gh.pulls()] == [102]
+        before = d.h.collector.collect(first.gh, d.h.store, d.h.work, [1, 2])
+        state = json.loads(remote.read_text())
+        state["comments"]["1"] = [
+            {"id": 99, "user": {"login": "human"}, "body": "fresh requirement"}
+        ]
+        remote.write_text(json.dumps(state))
+        after = d.h.collector.collect(first.gh, d.h.store, d.h.work, [1, 2])
+        assert before["issues"]["1"]["comments"] == []
+        assert after["issues"]["1"]["comments"][0]["body"] == "fresh requirement"
+        assert [p["number"] for p in after["pulls"]] == [101, 102]

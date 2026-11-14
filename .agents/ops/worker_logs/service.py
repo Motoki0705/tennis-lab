@@ -8,6 +8,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from parent.state import RegistryConflict
+
 from . import journal, schema, sources
 from .journal import PublicationError, require
 from .publication import Publisher
@@ -17,7 +19,10 @@ def capture(session: Any, child: int, issue_body: str, prepared: Any) -> None:
     turn = session.row["tasks"][str(child)]["preflight"]["turns"][-1]
     turn["instruction_source"]["issue_sha256"] = schema.sha(issue_body.encode("utf-8"))
     try:
-        sources.freeze(session, child, prepared.text, prepared.standard)
+        with session.unlocked() as external:
+            sources.freeze(external, child, prepared.text, prepared.standard)
+    except RegistryConflict:
+        raise
     except (
         ValueError,
         OSError,
