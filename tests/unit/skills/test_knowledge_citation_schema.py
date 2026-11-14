@@ -180,6 +180,25 @@ def test_papers_join_rejects_aliases_that_bridge_multiple_documents(api: ModuleT
     assert any("duplicate literature through Papers" in e for e in api.validate_library(library, registered))
 
 
+def test_missing_store_is_empty_but_a_dangling_symlink_is_rejected(api: ModuleType, tmp_path: Path) -> None:
+    root = tmp_path / "citation_map"
+    assert api.load_citations(root).papers == {}
+    root.symlink_to(tmp_path / "missing", target_is_directory=True)
+    with pytest.raises(ValueError, match="symlinks"):
+        api.load_citations(root)
+
+
+def test_writer_rejects_symlink_before_creating_directories(api: ModuleType, tmp_path: Path) -> None:
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    root = tmp_path / "citation_map"
+    root.symlink_to(outside, target_is_directory=True)
+    paper = next(iter(api.load_citations(FIXTURE).papers.values()))
+    with pytest.raises(ValueError, match="symlinks"):
+        api.write_document(paper, root)
+    assert list(outside.iterdir()) == []
+
+
 @pytest.mark.parametrize("mutation", ["target", "aliases", "generation", "expanded", "depth", "missing-generation", "issues", "unread-expanded", "root", "duplicate-id"])
 def test_library_rejects_cross_document_inconsistency(api: ModuleType, mutation: str) -> None:
     library = api.load_citations(FIXTURE)

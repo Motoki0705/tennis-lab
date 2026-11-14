@@ -259,10 +259,10 @@ def write_document(document: Document, directory: Path | None = None) -> Path:
     text = serialize_document(document)
     directory = directory if directory is not None else nodes_dir().parent / "citation_map"
     folder = directory / ("papers" if isinstance(document, CitationPaper) else "searches")
-    folder.mkdir(parents=True, exist_ok=True)
     path = folder / f"{document.id}.md"
     if directory.is_symlink() or folder.is_symlink() or path.is_symlink():
         raise ValueError("symlinks are not allowed in citation storage")
+    folder.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
 
@@ -270,9 +270,11 @@ def write_document(document: Document, directory: Path | None = None) -> Path:
 def load_citations(directory: Path | None = None) -> CitationLibrary:
     directory = directory if directory is not None else nodes_dir().parent / "citation_map"
     library = CitationLibrary()
+    if directory.is_symlink():
+        raise ValueError(f"{directory}: symlinks are not allowed in citation storage")
     if not directory.exists():
         return library
-    if directory.is_symlink() or not directory.is_dir():
+    if not directory.is_dir():
         raise ValueError(f"{directory}: expected citation_map directory")
     for item in directory.iterdir():
         if item.name == "README.md" and item.is_file() and not item.is_symlink():
