@@ -35,6 +35,7 @@ class AssetRequirement:
     sha256: str | None = None
     path_error: str | None = None
     error_status: str = "invalid_path"
+    size_bytes: int | None = None
 
 
 @dataclass(frozen=True)
@@ -60,19 +61,19 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
     def section(name: str) -> Mapping[str, object]:
         return cast(Mapping[str, object], value[name])
 
-    def add(name: str, role: PathRole, *parts: str | Path, digest: str | None = None) -> None:
+    def add(name: str, role: PathRole, *parts: str | Path, digest: str | None = None, size_bytes: int | None = None) -> None:
         # Keep the configured entry for diagnostics; only the resolver's accepted
         # result may reach check_assets' file inspection or hashing.
         entry = roots.root(role).joinpath(*parts)
         try:
             path = resolver.resolve(role, *parts)
         except (PathContractError, OSError, RuntimeError, ValueError) as error:
-            requirements.append(AssetRequirement(name, entry, digest, str(error)))
+            requirements.append(AssetRequirement(name, entry, digest, str(error), size_bytes=size_bytes))
         else:
-            requirements.append(AssetRequirement(name, path, digest))
+            requirements.append(AssetRequirement(name, path, digest, size_bytes=size_bytes))
 
     def checkpoint(name: str, path: object) -> None:
-        add(name, PathRole.CHECKPOINT, cast(str, path), digest=pins[name].sha256)
+        add(name, PathRole.CHECKPOINT, cast(str, path), digest=pins[name].sha256, size_bytes=pins[name].size_bytes)
 
     models = section("people_models")
     checkpoint("court", section("court_kp")["checkpoint"])
@@ -145,7 +146,7 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
     """
     pins = {asset.name: asset for asset in INSTALLATION_ASSETS}
     pins["association_encoder"] = pins["tracking_encoder"]
-    requirements = [AssetRequirement(name, path, pins[name].sha256)
+    requirements = [AssetRequirement(name, path, pins[name].sha256, size_bytes=pins[name].size_bytes)
                     for name, path in enabled_model_assets(cfg).items()]
     for name in ("dinov3", "smpl_faces"):
         asset = pins[name]
@@ -193,6 +194,12 @@ def check_assets(
             if not path.is_file():
                 checks.append(AssetCheck(name, str(path), "missing", "Required file is absent"))
                 continue
+            if requirement.size_bytes is not None:
+                actual_size = path.stat().st_size
+                if actual_size != requirement.size_bytes:
+                    checks.append(AssetCheck(name, str(path), "mismatch",
+                        f"Expected {requirement.size_bytes} bytes, got {actual_size}"))
+                    continue
             if expected is None:
                 checks.append(AssetCheck(name, str(path), "ok", "File exists; no byte pin for source/custom input"))
                 continue
