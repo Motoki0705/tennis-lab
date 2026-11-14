@@ -192,8 +192,10 @@ def expiry(sync: SyncEnv, monkeypatch: pytest.MonkeyPatch) -> ExpiryWorld:
             }
         )
     )
-    # The import sentinel and input handshake instrument only this test's
-    # copied code. All coordination, stopping, and deletion remain real APIs.
+    # This coordination fixture has a fake runner and no native target process.
+    # Isolate host/other-worker process churn, as the dedicated expiry tests do.
+    # Native stop/ancestry contracts live in test_worktree_cleanup and
+    # test_worktree_generation_races; checkout coordination/deletion stay real.
     source = ops / "worktree_cleanup/cleanup.py"
     text = source.read_text().replace(
         "from __future__ import annotations\n",
@@ -205,6 +207,8 @@ def expiry(sync: SyncEnv, monkeypatch: pytest.MonkeyPatch) -> ExpiryWorld:
         text
         + f"""
 _test_remove = Cleaner.remove
+from worktree_cleanup import processes as _test_processes
+_test_processes.snapshot = lambda: {{}}
 def _test_blocked_remove(self, *args, **kwargs):
     if _TestPath({str(world.hold)!r}).exists():
         import sys
