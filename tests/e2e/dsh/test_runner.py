@@ -452,6 +452,8 @@ def test_rejected_invocations_do_not_launch_task(
         (fixture["worktree"] / ".gitignore").write_text("")
     elif failure == "public-records":
         (fixture["worktree"] / ".dsh-runs").mkdir(mode=0o755)
+        # mkdir's mode is filtered by the caller's umask; force the unsafe input.
+        (fixture["worktree"] / ".dsh-runs").chmod(0o755)
     elif failure == "key-in-repo":
         options["key-file"] = fixture["worktree"] / "key"
     elif failure == "home-in-repo":
