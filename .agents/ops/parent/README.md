@@ -10,8 +10,10 @@
 
 Herdrでの担当表示は[herdr_labels](../herdr_labels/README.md)へ連携する。
 担当開始・再開・引継ぎ・終了後の`display_sync`で反映結果を確認できる。
-表示する要約（`display_summary`）は親ごとの記録に保存し、`register --summary`と`summary --text`で設定する。
-幅・検証・要約がない場合の扱いはherdr_labelsの[要約](../herdr_labels/README.md#要約)が正本。
+表示する要約（`display_summary`）は親ごとの記録に保存し、`register --summary`・
+`handoff --accept --summary`・`summary --text`で設定する。
+担当を引き受ける前の検査は[下記](#担当を引き受ける前の要約)、
+幅・表示同期時の検証はherdr_labelsの[要約](../herdr_labels/README.md#要約)が正本。
 同じ位置で[board](../board/README.md)の名前も同期し、結果を`board_sync`へ返す。
 
 ## 判断と機械的な検査
@@ -160,6 +162,27 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 会話に実際の合意があるかを判断する責任は親agentにあり、CLIは人間の確認を捏造しない。
 既存issueにマーカーなしの人間との合意がある場合は、その発言と合意内容を読み、
 `agree` で同じ内容を記録する。記録形式を移すためだけの再承認は求めない。
+
+### 担当を引き受ける前の要約
+
+`register` / `handoff --accept` は、指定された `--summary`、省略時は親ごとの記録に保存済みの
+`display_summary` を検査する。要約がなければ終了値2で `--summary` の指定を求め、
+担当・要約・GitHubコメント・Herdr表示を書き込まない。新規登録・再登録・引継ぎ・
+`--recover`・受領の再送に同じ検査を適用し、Herdr未設定でも省略しない。
+保存済みの有効な要約があれば `--summary` は省略できる。指定値が不正な場合も書込み前に拒否する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 register --summary 親担当の要約表示
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 handoff --accept --summary 引継ぎ後の要約表示 --note-file tmp/handoff.md
+```
+
+`handoff --summary` は `--accept` と組み合わせる。引継ぎ待ちにする操作では要約を変更しない。
+要約以外の原因（Herdr接続失敗など）で担当適用後の表示同期に失敗した場合は、担当を保持し、
+終了値1・`parent_action_applied: true`・`display_sync.status: error` と
+`display_sync.repair` に表示の修復手順を返す。原因を解消してから、同じ親セッションで
+`PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync` を実行する。
+初回接続失敗で表示先が未確認の場合は、先に[明示bind手順](../herdr_labels/README.md#herdr環境変数が届かない実行基盤)で
+自分のpaneを確認・設定する。
 
 ### 補足追加の確定待ち
 

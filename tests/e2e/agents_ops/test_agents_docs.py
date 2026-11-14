@@ -8,6 +8,7 @@ silently drifting, and keep the always-read files small.
 from __future__ import annotations
 
 import datetime as dt
+import importlib
 import re
 import shlex
 from pathlib import Path
@@ -48,6 +49,7 @@ DOCS = [
     ROOT / ".agents/ops/board/README.md",
     ROOT / ".agents/ops/herdr_labels/README.md",
     ROOT / ".agents/skills/parent-session/SKILL.md",
+    ROOT / ".agents/skills/herdr-session-label/SKILL.md",
     ROOT / ".agents/skills/explain-html/SKILL.md",
     ROOT / ".agents/skills/explain-html/references/authoring.md",
     ROOT / ".agents/skills/explain-html/references/claim-review.md",
@@ -204,6 +206,27 @@ def test_new_review_examples_include_explicit_selection(relative: str) -> None:
             assert tokens.index(flag) + 1 < len(tokens)
         checked.append(example)
     assert checked, f"{relative}: no concrete review example was checked"
+
+
+def test_parent_assignment_summary_examples_use_supported_cli(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    cli = importlib.import_module("parent.cli")
+    service = importlib.import_module("herdr_labels.service")
+    readme = (ROOT / ".agents/ops/parent/README.md").read_text()
+    operations = set()
+    for block in re.findall(r"```bash\n(.*?)\n```", readme, re.DOTALL):
+        for line in block.replace("\\\n", " ").splitlines():
+            if "-m parent " not in line or "--summary" not in line:
+                continue
+            words = shlex.split(line)
+            args = cli.parser().parse_args(words[words.index("parent") + 1 :])
+            assert service.validate_summary(args.summary) == args.summary
+            if args.command == "handoff":
+                assert args.accept
+            operations.add(args.command)
+    assert operations == {"register", "handoff"}
 
 
 def test_entry_chain_from_agents_md_to_memory_summary() -> None:

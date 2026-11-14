@@ -28,7 +28,18 @@ def test_register_keeps_native_runtime_private(parent_env: ParentEnv) -> None:
         + "; raise SystemExit(main())"
     )
     proc = subprocess.run(
-        [sys.executable, "-c", source, "--repo", "o/r", "--parent", "1", "register"],
+        [
+            sys.executable,
+            "-c",
+            source,
+            "--repo",
+            "o/r",
+            "--parent",
+            "1",
+            "register",
+            "--summary",
+            "担当来歴の検証",
+        ],
         cwd=env.repo,
         env=env.env,
         capture_output=True,
@@ -119,7 +130,7 @@ def test_handoff_rebinds_or_invalidates_owner_runtime(
         )
         assert proc.returncode == 0, proc.stderr
 
-    cli("register", native=runtime)
+    cli("register", "--summary", "引継ぎ来歴の検証", native=runtime)
     env.cli("handoff", "--note-file", env.note())
     new_runtime = (
         {

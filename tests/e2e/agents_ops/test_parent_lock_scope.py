@@ -156,7 +156,8 @@ def test_github_reads_do_not_hold_registry_lock(
     if command != "register":
         p.cli("register")
     instrument(p)
-    result, elapsed = traced_cli(p, command, extra={"PARENT_GET_DELAY": "0.05"})
+    args = ("--summary", "ロック検査の担当") if command == "register" else ()
+    result, elapsed = traced_cli(p, command, *args, extra={"PARENT_GET_DELAY": "0.05"})
     assert result.returncode == 0, result.stderr + result.stdout
     spans = intervals(p)
     held_seconds = sum(end - start for start, end in spans)

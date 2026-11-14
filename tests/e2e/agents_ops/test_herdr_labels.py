@@ -985,24 +985,192 @@ def test_summary_is_read_from_the_matching_v2_parent_record(
     assert "disagrees with its index" in result.stderr
 
 
-def test_parent_summary_command_updates_status_and_display(
-    parent_env: ParentEnv, labels: Labels
-) -> None:
+@pytest.fixture
+def parent_store(parent_env: ParentEnv) -> Any:
+    state = importlib.import_module("parent.state")
+    return state.Store(
+        Path(parent_env.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    )
+
+
+@pytest.fixture
+def parent_display(parent_env: ParentEnv, labels: Labels) -> dict[str, str]:
     target = Path(parent_env.env["PATH"].split(os.pathsep)[0]) / "herdr"
     target.write_text(f"#!{sys.executable}\n{FAKE_HERDR}")
     target.chmod(0o755)
-    extra = {
+    return {
         "HERDR_ENV": "1",
         "HERDR_PANE_ID": "w1:p1",
         "LABEL_FAKE_STATE": str(labels.state),
     }
-    missing = parent_env.cli("register", ok=None, extra=extra)
-    assert missing.returncode == 1
-    response = json.loads(missing.stdout)
-    assert response["assignment"] == "active"
-    assert response["display_summary"] is None
-    assert "no sidebar summary" in response["display_sync"]["error"]
-    assert "display_agent" not in labels.read()["panes"]["w1:p1"]
+
+
+@pytest.mark.parametrize("configured", [False, True])
+def test_new_parent_requires_summary_without_creating_a_registry(
+    parent_env: ParentEnv,
+    labels: Labels,
+    parent_display: dict[str, str],
+    configured: bool,
+) -> None:
+    p = parent_env
+    registry = (
+        Path(p.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.json"
+    )
+    github, display = p.state(), labels.read()
+    rejected = p.cli(
+        "register", summary=None, ok=None, extra=parent_display if configured else None
+    )
+    assert rejected.returncode == 2, rejected.stdout + rejected.stderr
+    assert "--summary" in rejected.stderr
+    assert not rejected.stdout
+    assert not registry.exists()
+    assert p.state() == github
+    assert labels.read() == display
+
+
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("transition", ["register", "accept", "recover", "retry"])
+def test_parent_assignment_requires_summary_before_writes(
+    parent_env: ParentEnv,
+    labels: Labels,
+    parent_display: dict[str, str],
+    parent_store: Any,
+    version: int,
+    transition: str,
+) -> None:
+    p = parent_env
+    store = parent_store
+    note = p.note("引継ぎの内容を確認した。")
+    command = (
+        ("register",)
+        if transition == "register"
+        else ("handoff", "--accept", "--note-file", note)
+    )
+    if transition == "recover":
+        command = (*command, "--recover")
+    row: dict[str, Any] = {
+        "session": "claude:private-session-a-unique"
+        if transition == "register"
+        else "claude:old-parent",
+        "status": "released" if transition == "register" else "handoff_pending",
+        "generation": 3,
+        "tasks": {},
+        "reviews": [],
+    }
+    if transition in {"recover", "retry"}:
+        row["status"] = "active"
+    if transition == "retry":
+        row.update(
+            session="claude:private-session-a-unique",
+            handoff_note_sha256=importlib.import_module("parent.policy").digest(
+                Path(note).read_text()
+            ),
+        )
+    with store.locked():
+        store.parents["o/r#1"] = row
+        store.save()
+        if version == 2:
+            store.migrate()
+
+    def snapshot() -> dict[Path, bytes]:
+        paths = [
+            *store.directory.glob("*.json"),
+            *(store.directory / "parents").glob("*.json"),
+        ]
+        return {path: path.read_bytes() for path in paths}
+
+    saved, github, display = snapshot(), p.state(), labels.read()
+    before_calls = len(p.calls())
+    for suffix in [(), ("--summary", "改行\nを含む")]:
+        rejected = p.cli(*command, *suffix, summary=None, ok=None, extra=parent_display)
+        assert rejected.returncode == 2, rejected.stdout + rejected.stderr
+        assert ("--summary" if not suffix else "control characters") in rejected.stderr
+        assert not rejected.stdout
+        assert snapshot() == saved
+        assert p.state() == github
+        assert labels.read() == display
+    assert not any(
+        method in call
+        for call in p.calls()[before_calls:]
+        for method in ("POST", "PATCH")
+    )
+
+    accepted = p.cli(*command, "--summary", "担当と表示の確認", extra=parent_display)
+    response = json.loads(accepted.stdout)
+    assert response["parent_action_applied"] is True
+    assert response["display_sync"]["status"] == "updated"
+    with store.locked():
+        assert store.data["version"] == version
+        assert store.parents["o/r#1"]["status"] == "active"
+        assert store.parents["o/r#1"]["session"] == "claude:private-session-a-unique"
+        assert store.parents["o/r#1"]["display_summary"] == "担当と表示の確認"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"].endswith(
+        " · 担当と表示の確認"
+    )
+
+
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("transition", ["register", "accept"])
+def test_parent_assignment_reuses_saved_summary(
+    parent_env: ParentEnv,
+    labels: Labels,
+    parent_display: dict[str, str],
+    parent_store: Any,
+    version: int,
+    transition: str,
+) -> None:
+    p, store = parent_env, parent_store
+    with store.locked():
+        store.parents["o/r#1"] = {
+            "session": "claude:private-session-a-unique"
+            if transition == "register"
+            else "claude:old-parent",
+            "status": "released" if transition == "register" else "handoff_pending",
+            "generation": 3,
+            "tasks": {},
+            "reviews": [],
+            "display_summary": "保存済みの要約",
+        }
+        store.save()
+        if version == 2:
+            store.migrate()
+    command = (
+        ("register",)
+        if transition == "register"
+        else ("handoff", "--accept", "--note-file", p.note())
+    )
+    result = p.cli(*command, summary=None, extra=parent_display)
+    assert json.loads(result.stdout)["display_sync"]["status"] == "updated"
+    row = store.read_data()["parents"]["o/r#1"]
+    assert row["status"] == "active"
+    assert row["session"] == "claude:private-session-a-unique"
+    assert row["display_summary"] == "保存済みの要約"
+    assert labels.read()["panes"]["w1:p1"]["display_agent"].endswith(
+        " · 保存済みの要約"
+    )
+
+
+def test_handoff_summary_requires_accept_before_writes(
+    parent_env: ParentEnv, parent_store: Any
+) -> None:
+    p, store = parent_env, parent_store
+    p.cli("register")
+    registry, github = store.path.read_bytes(), p.state()
+    result = p.cli(
+        "handoff", "--summary", "引継ぎ後の要約", "--note-file", p.note(), ok=None
+    )
+    assert result.returncode == 2
+    assert "--accept" in result.stderr
+    assert store.path.read_bytes() == registry
+    assert p.state() == github
+
+
+def test_parent_summary_command_updates_status_and_display(
+    parent_env: ParentEnv, labels: Labels, parent_display: dict[str, str]
+) -> None:
+    extra = parent_display
+    parent_env.cli("register", "--summary", "最初の要約", extra=extra)
 
     too_long = parent_env.cli(
         "summary", "--text", "一二三四五六七八九十一二三", ok=None, extra=extra
@@ -1010,7 +1178,7 @@ def test_parent_summary_command_updates_status_and_display(
     assert too_long.returncode == 2
     assert "display columns" in too_long.stderr
     status = json.loads(parent_env.cli("status").stdout)
-    assert status["display_summary"] is None
+    assert status["display_summary"] == "最初の要約"
 
     updated = json.loads(
         parent_env.cli("summary", "--text", "要約の表示", extra=extra).stdout
@@ -1526,21 +1694,16 @@ def test_parent_fixture_blocks_inherited_host_herdr(
     assert not marker.exists()
 
 
+@pytest.mark.parametrize("failure", ["reject", "fail_call"])
 def test_parent_success_and_display_failure_are_distinguished(
     parent_env: ParentEnv,
     labels: Labels,
+    parent_display: dict[str, str],
+    failure: str,
 ) -> None:
-    # Reuse the real parent CLI's fake GitHub, with a separate fake Herdr executable.
-    target = Path(parent_env.env["PATH"].split(os.pathsep)[0]) / "herdr"
-    target.write_text(f"#!{sys.executable}\n{FAKE_HERDR}")
-    target.chmod(0o755)
-    extra = {
-        "HERDR_ENV": "1",
-        "HERDR_PANE_ID": "w1:p1",
-        "LABEL_FAKE_STATE": str(labels.state),
-    }
+    extra = parent_display
     state = labels.read()
-    state["reject"] = True
+    state[failure] = "pane get" if failure == "fail_call" else True
     labels.write(state)
     result = parent_env.cli("register", "--summary", "表示の要約", ok=None, extra=extra)
     assert result.returncode == 1, result.stderr
@@ -1548,10 +1711,26 @@ def test_parent_success_and_display_failure_are_distinguished(
     assert response["assignment"] == "active"
     assert response["parent_action_applied"] is True
     assert response["display_sync"]["status"] == "error"
+    assert "herdr_labels sync" in response["display_sync"]["repair"]
+    assert json.loads(parent_env.cli("status").stdout)["assignment"] == "active"
     state = labels.read()
-    state["reject"] = False
+    del state[failure]
     labels.write(state)
     env = {**parent_env.env, **extra}
+    if failure == "fail_call":
+        # The first connection failed before a display destination was confirmed.
+        assert "herdr_labels bind" in response["display_sync"]["repair"]
+        bound = labels.run(
+            "bind",
+            "--herdr-session",
+            "default",
+            "--pane",
+            "w1:p1",
+            "--terminal",
+            "term-a",
+            env=env,
+        )
+        assert bound.returncode == 0, bound.stderr
     result = labels.run("sync", env=env)
     assert result.returncode == 0, result.stderr
     expected_owner = hashlib.sha256(b"claude:private-session-a-unique").hexdigest()

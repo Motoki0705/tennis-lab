@@ -327,7 +327,10 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
         current = parent.ParentSession(
             d.h.gh, d.h.store, 1, "codex:new-discussion-owner"
         )
-        current.accept("保存済みworkerを引き継ぎ、実装は承認まで再開しない。")
+        current.accept(
+            "保存済みworkerを引き継ぎ、実装は承認まで再開しない。",
+            summary="未承認改善の引継ぎ",
+        )
         assert current.row["status"] == "active"
         assert current.row["generation"] == before["generation"] + 1
         assert (

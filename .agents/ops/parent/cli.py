@@ -59,7 +59,8 @@ def parser() -> argparse.ArgumentParser:
     )
     commands = root.add_subparsers(dest="command", required=True)
     commands.add_parser("register").add_argument(
-        "--summary", help="sidebar summary (<= 24 display columns)"
+        "--summary",
+        help="sidebar summary (<= 24 display columns); required unless already saved",
     )
     commands.add_parser("summary").add_argument("--text", required=True)
     for command in (
@@ -155,6 +156,10 @@ def parser() -> argparse.ArgumentParser:
     )
     handoff = commands.add_parser("handoff")
     handoff.add_argument("--accept", action="store_true")
+    handoff.add_argument(
+        "--summary",
+        help="sidebar summary for --accept; required unless already saved",
+    )
     handoff.add_argument(
         "--recover",
         action="store_true",
@@ -653,9 +658,11 @@ def _main(argv: list[str] | None = None) -> int:
                         "ended" if args.ended else "released", read_text(args.note_file)
                     )
             elif command == "handoff":
+                if args.summary is not None and not args.accept:
+                    raise ValueError("handoff --summary requires --accept")
                 note = read_text(args.note_file)
                 result = (
-                    session.accept(note, args.recover)
+                    session.accept(note, args.recover, summary=args.summary)
                     if args.accept
                     else session.lifecycle("handoff_pending", note)
                 )
@@ -895,7 +902,17 @@ def _main(argv: list[str] | None = None) -> int:
                 TypeError,
                 subprocess.SubprocessError,
             ) as exc:
-                display = {"status": "error", "error": str(exc)}
+                display = {
+                    "status": "error",
+                    "error": str(exc),
+                    "repair": (
+                        "担当操作は適用済みです。表示同期の失敗原因を解消してください。"
+                        "表示先が未確認の場合は .agents/ops/herdr_labels/README.md の手順で "
+                        "自分のpaneを確認して herdr_labels bind を行ってから、"
+                        "PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync "
+                        "で表示だけを再試行してください。"
+                    ),
+                }
                 integration_failed = True
             result = {**result, "display_sync": display}
             if name_sync.get("name") and (

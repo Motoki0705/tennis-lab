@@ -410,6 +410,7 @@ class ParentEnv:
         repo: str = "o/r",
         ok: bool | None = True,
         extra: dict[str, str] | None = None,
+        summary: str | None = "テスト親の要約",
     ) -> subprocess.CompletedProcess[str]:
         launcher = (
             [
@@ -422,6 +423,14 @@ class ParentEnv:
             if args and args[0] == "improvement-expire"
             else []
         )
+        # Most callers exercise other parent contracts. Tests of missing/saved
+        # summaries pass summary=None to send the command exactly as written.
+        if (
+            args[:1] == ("register",)
+            and "--summary" not in args
+            and summary is not None
+        ):
+            args = (*args, "--summary", summary)
         result = subprocess.run(
             [
                 *launcher,

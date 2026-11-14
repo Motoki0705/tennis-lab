@@ -13,6 +13,9 @@ description: 親issueの担当・実装・調査・引継ぎを進める。親AI
 
 最新のAGENTS.md・共有memory・対象READMEを読み、現在のissue・コメント・PR・既存workerを確認する。
 `status` で担当を調べ、新規担当は `register --summary`、引継ぎは `handoff --accept` を使う。
+保存済みの要約がない場合、両操作は担当を書き込む前に拒否される。
+`register --summary` または `handoff --accept --summary` で要約を指定してやり直す。
+保存済みなら省略できる。接続失敗など担当適用後の表示エラーは `display_sync.repair` に従って修復する。
 要約はHerdrのAgent一覧で名前の隣に出す、親issueで今何をしているかの短い説明。
 issueと会話から自分で作り、全角12文字（24桁）以内に収める。題名の切り詰めではなく内容を要約する。
 作業の焦点が変わったら `summary --text` で更新する。`status.display_summary` で現在の値を確認できる。
