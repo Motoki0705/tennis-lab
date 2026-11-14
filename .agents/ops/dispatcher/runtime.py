@@ -57,8 +57,9 @@ class Runtime:
         return self.stopping
 
     def inspect(
-        self, directory: Path, *, stop: bool = False, timeout: float | None = None
+        self, directory: Path, *, stop: bool = False, timeout: float | None = 60
     ) -> dict[str, Any]:
+        before = load(directory / "result.json")
         proc = subprocess.run(
             [
                 str(self.runner),
@@ -80,8 +81,10 @@ class Runtime:
         if (
             summary.get("schema_version") != 1
             or record.get("schema_version") != 1
+            or not isinstance(summary.get("run_id"), str)
             or not summary.get("run_id")
             or summary["run_id"] != record.get("run_id")
+            or before.get("run_id") != record.get("run_id")
             or any(
                 type(summary.get(k)) is not bool
                 for k in ("runner_alive", "agent_alive", "agent_group_alive")

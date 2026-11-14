@@ -293,6 +293,18 @@ schedule/runの正本は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/di
 scheduleもregistryと同じ `Store.locked()` 内で保存し、長い判定の重複は別の `judgement.lock`、
 supervisorの重複は `supervisor.lock` で防ぐ。JSON破損・未知version・不正設定は停止し、初期化し直さない。
 
+GitHub clientは実際にtransactionを持つ同一の `DispatchStore` へ結び付ける。入口で別Storeへの
+結び付けを拒否し、内部でStoreを作り直さない。親ごとのclientはPRの範囲を共有せず、複数親の収集は
+repo全体を明示して毎回freshに読む。gitによるコード取得もregistryを解放して行う。
+dispatcherの観測は全担当を競合検査し、I/O前後でscheduleも照合する。disable・configure・capacity・
+担当変更を検出したtransactionでは予約もscheduleも保存しない。再実行は新しいtransactionから行う。
+
+runnerのstatus/stopは対象job/runのintentを保存してregistryを解放し、応答後に新しいtransactionで
+同じ担当・assignment・job・run・委任を照合する。停止intentは待機前に保存し、応答不明でも保持する。
+dispatcherからのrunner待機は1呼出し60秒を上限とし、timeout・runの置換・回収未確認を終了成功にしない。
+起動検査と監視の競合は親ごとのoperation lockで直列化し、最終Popenの短いadmissionだけregistry内に残す。
+workerログの受領・公開と、保存時に変わったjobの判断記録捕捉はregistry外で行う。
+
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init \
   --repo Motoki0705/tennis-lab --cwd "$PWD" --max-parents 1 --max-children 2

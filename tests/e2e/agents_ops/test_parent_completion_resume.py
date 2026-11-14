@@ -192,7 +192,7 @@ def completion_workflow(
         Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions",
         schedule.directory,
     )
-    gh = importlib.import_module("parent.github").GitHub("o/r")
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
     control = mod.Supervisor(gh, store, schedule)
     with store.locked():
         schedule.initialize(

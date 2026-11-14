@@ -513,12 +513,17 @@ issueの作成時刻へ境界をずらさず、初回はanchorの3日前とす�
 正式親が変わった後もcontextだけを持つ親・分割子の出典を対象閉包に含め、採用変更を検出する。
 目的・範囲・受入条件・選択肢・元の提案内容とdigestはスクリプトが出典節へ引き継ぐ。
 
-既存のホスト共通triage lockとparent registry lock内で、計画をstate dirの `triage-<repo digest>.json` へ
-0600のatomic replaceで保存してから起票する。これは担当台帳ではなく、Issue反映のjournalである。
+ホスト共通triage lockは処理全体で保持する。parent registry lockは収集・照合・予約のtransactionに限定し、
+GitHub通信・git取得の間は解放する。親ごとのclientとrepo全体の収集範囲を分け、観測ごとにfreshに読む。
+整理runnerは固定入力と `organization-intent.json` を保存した後、registry transactionの外で実行する。
+終了後は新しいtransactionで全入力・担当を再取得し、変更があれば古い計画を公開しない。
+計画はstate dirの `triage-<repo digest>.json` へ0600のatomic replaceで保存してから起票する。
+これは担当台帳ではなく、Issue反映のjournalである。
 各書込前後に採用・選択肢・提案本文・全入力・担当を照合し、自分の正確な書込みだけを差し引く。
 親一覧やレポートの `引渡し` / `→ #N` は自分の表示として区別し、人間の本文・通常コメントを無視しない。
 作成応答を失っても、本文の計画digestとnode識別子から全open/closed issueを探し、不足する正式関係・親一覧・リンクだけを揃える。
-既存issueのstate・担当・親を戻さない。同一ホストの同時実行・手動親CLIとの競合は同じlockで直列化する。
+既存issueのstate・担当・親を戻さない。同一ホストのtriage同士は共通lockで直列化し、
+手動親CLIとの担当・委任の競合はregistryの再照合で拒否する。
 POST試行前もjournalへ記録する。応答が曖昧で全ページにも同じissueが見つからない場合は再POSTせず停止する。
 作成されていないことをGitHub・runログで明示確認できた場合だけ、そのnodeのattempted記録を退避付きで修復する。
 
