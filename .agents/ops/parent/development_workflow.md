@@ -81,6 +81,9 @@ dispatcherが前の最新runから同じsessionをresumeする。モデル省略
 runner喪失後は [共通ランナーの回収確認](../lib/README.md#状態確認停止中断からの復旧) に従い、
 全子孫の回収根拠を `stop --cleanup-confirmation` へ渡してからsupervisorで終了を照合する。
 `stop-worker` の停止要求やPID/CLI groupの不在だけでは `cleanup_complete` を補わず、予約枠を保持する。
+復旧後も `recovery_error` やsession ID欠落で同じsessionへ戻れない場合は、診断と保存記録を親へ返す。
+手動親の [`run-worker --replace-session`](README.md#手動workerの起動継続とrun記録) は手動委任に限定する。
+自律側の `start-worker` / `continue-worker` にはsession付替え入口がなく、dispatcherのjob・resume元を保持して親の判断を待つ。
 
 `stop-worker --child N --spec tmp/stop.json` はparentのstopと同じ5項目specを使い、子への詳細・親進捗を記録してから、
 停止した子へruntimeの停止を要求する。親全体を止めず、依存子への保留と独立子の起動可能性を `launch_plan` で確認する。

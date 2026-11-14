@@ -125,7 +125,7 @@ github.launch_plan）、`fields`（判断に使った入力フィールド名）
 | `title` | タスク名の秘匿済みtext object（上限200字）と取得元`source`。親CLIがtaskへ記録した名前（`parent_registry.task`）を優先し、記録がなくGitHubを取得した場合だけ子`github.issue.title`（`github.issue`）を使う。どちらもなければunavailable・source null |
 | `worker` | `agent`（codex/claude、なければnull）・`source`と、`model`・`effort`の`{value,basis}`。basisは`effective`（CLIが報告した実効値）、`selected`（runの契約の選択値。実効値が未報告）、`not_started`（runなし。既定値から推測しない）、`unavailable`（runはあるが記録を検証できない）。runの記録を検証できない場合も、契約が一致したinvocationがあればその選択値を`runner.invocation`として返す。実効値の取得元パスは返さない |
 | `run` | 最新runの公開記録。未取得ならnull |
-| `run.{alias,kind,recorded_at,source}` | 表示別名、initial/resume/registered、registry記録時刻、対応の取得元。dispatcherのrecorded_atは未取得null |
+| `run.{alias,kind,recorded_at,source}` | 表示別名、initial/resume/registered/replacement、registry記録時刻、対応の取得元。dispatcherのrecorded_atは未取得null |
 | `run.{result,turn_end_reason}` | ランナーのrunning/completed/failedと終了理由。task_successを推定しない |
 | `run.identity_verified` / `identity_status` | 保存したrunner identityとの生存照合結果。statusはidentity_verified / identity_unavailable / runner_absent / identity_mismatch。PIDや識別情報そのものは含まない |
 | `run.{started_at,finished_at}` | ランナーの開始・終了時刻。保存値なしはnull |

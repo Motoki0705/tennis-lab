@@ -55,14 +55,15 @@ def update(p: ParentEnv, **values: Any) -> None:
 
 
 def manual(
-    p: ParentEnv, *args: str, ok: bool = True, **extra: str
+    p: ParentEnv, *args: str, ok: bool = True, runner: Path | None = None, **extra: str
 ) -> subprocess.CompletedProcess[str]:
-    runner = p.root / "fake-runner"
-    runner.write_text(
-        f"#!{sys.executable}\n"
-        + Path(__file__).with_name("fake_manual_worker_runner.py").read_text()
-    )
-    runner.chmod(0o700)
+    if runner is None:
+        runner = p.root / "fake-runner"
+        runner.write_text(
+            f"#!{sys.executable}\n"
+            + Path(__file__).with_name("fake_manual_worker_runner.py").read_text()
+        )
+        runner.chmod(0o700)
     response = subprocess.run(
         [
             sys.executable,
@@ -104,6 +105,7 @@ def run(
         p.note(),
         *extra,
         ok=ok,
+        runner=None,
         **env,
     )
 
@@ -548,11 +550,21 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
                     "contract": contract,
                     "result": "running" if mode == "running" else "completed",
                     "run_id": path.name,
+                    "session_root": str(path),
                     "turn_end_reason": "completed",
                     "exit_code": 0,
                     "task_success": None,
                     "cleanup_complete": True,
                     "runtime": {"session_id": "offline-private-session"},
+                }
+            )
+        )
+        (path / "session.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "session_id": "offline-private-session",
+                    "latest_run": str(path),
                 }
             )
         )
