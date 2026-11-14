@@ -21,10 +21,9 @@ issueと会話から自分で作り、全角12文字（24桁）以内に収め�
 表示や連絡が必要な場面では [herdr-session-label](../herdr-session-label/SKILL.md)・[parent-board](../parent-board/SKILL.md)へ進む。
 
 合意には目的・範囲・期待する動作・受入条件と、人間の元の確認発言を残す。明確な既存の指示はそのまま根拠に使う。
-`agree` はその根拠を記録する操作。`checking` は確認中の表示で、合意済みの独立作業を一律停止しない。
+`agree` 前・本文更新時は[合意と計画の変更](#合意と計画の変更)を確認する。`checking` は確認中の表示で、独立作業を一律停止しない。
 人間の判断が必要な不足だけを質問し、実行権限を起票・担当指定・自律根拠から捏造しない。
-dispatcherから起動した親は、予約を `accept` して[開発workflow](../../ops/parent/development_workflow.md)を使う。
-人間合意と自律判断は、それぞれ元の出典を保持する。
+dispatcherから起動した親は、予約を `accept` して[開発workflow](../../ops/parent/development_workflow.md)を使い、出典を人間合意と分けて保持する。
 終了時改善から作られた親は、専用の人間判断を `agree --improvement-approval` へ取り込む。
 担当登録は議論のために可能だが、元親の合意・ラベル削除・自己採用・自律根拠を実行承認の代わりにしない。
 判断記録・承認の保証範囲と再送手順は [終了時改善](../../ops/parent/improvements.md#人間判断と実行)を参照する。
@@ -33,7 +32,6 @@ dispatcherから起動した親は、予約を `accept` して[開発workflow](.
 
 | 判断 | 考え方 |
 |---|---|
-| 合意と計画の変更 | 目的・範囲・受入条件・権限が実質的に変わる場合だけ、変更点について人間と認識を合わせる。分割・順序・担当・調査方法は合意内で変更できる。 |
 | 入力の変化 | `status.input_changes` や最新の本文・コメントを読み、意味と影響先を判断する。文章の差分は変更の通知であり、要件変更や承認取消の証明ではない。 |
 | 証拠の再利用 | 何を、どのコード・条件で確かめた証拠かを照合する。担当交代や記録revisionだけで捨てず、影響を受ける部分だけ再検証する。 |
 | 調査を挟むか | 未確定の方式や高い変更コストがあれば先に調査させる。明確な修正は直接実装へ進めてよい。 |
@@ -45,9 +43,17 @@ dispatcherから起動した親は、予約を `accept` して[開発workflow](.
 [判断記録の仕様](../../ops/decision_logs/README.ja.md#親の判断を明示記録する)を参照する。
 CLIが取得できる終了・run・PRの事実はCLIに取得させる。
 Issue分割とworker委任は別の判断。工程・ファイル・機能名の違いやworkerを使うことだけを理由に子を作らない。
-分割する利点は既存の計画や `note` へ短く残し、分割しないための追加承認・調査・判断書は設けない。
+分割しないための追加承認・調査・判断書は設けない。
 親全体の実行根拠を取り消すときだけ `basis-revoke` を使う。`stop` は対象作業の保留を記録する。
 実行中の自律workerを中断する場合は `stop-worker`、手動workerは共通ランナーのstopを使い、終了・回収を照合する。
+
+### 合意と計画の変更
+
+目的・範囲・受入条件・権限の実質変更だけを人間と確認して `agree` へ記録する。
+合意内の順序変更・確認用の子追加・担当・調査方法は親が判断し、理由・影響を既存計画か `note` に残す。
+人間が固定した順序・子構成の変更は確認を取る。
+mergeの事前承認は対象・条件・原発言を保存し、権限変更は `agree` へ反映する。有効な承認は聞き直さない。
+古い計画に差分と原記録の参照を反映し、過去の合意・記録は保持する。
 
 ## 親Issueへ伝えること
 
@@ -73,7 +79,7 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 直接実装では委任とworker終了記録を作らず、同じIssueへ成果を登録する。
 最短例と対象変更時の扱いは [parent CLI](../../ops/parent/README.md#issue自身を実行する)を参照する。
 子を作る場合は [issues API](../../ops/issues/README.md#共通apiと下流の契約)を使い、対象範囲・受入条件・依存を具体化する。
-依存は作業上必要なものを明示する。`launch_plan` は現在の依存・予約・枠の情報として使い、並列数やstacked branchの採否を親が判断する。
+委任前は[依存・参照PR](../../ops/parent/README.md#子の作成委任再開)と `launch_plan` を確認し、並列数・stacked branchを選ぶ。
 コード変更は専用worktreeへ置き、共通ランナー・モデル選択はAGENTS.mdに従う。
 
 | 目的 | 入口 |
@@ -82,7 +88,7 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 | 同じworkerへ修正・質問の回答・merge後の確認を依頼 | `run-worker --resume --prompt-file`。前回の終了・回収はCLIが照合する。 |
 | 手動workerの終了通知を待つ | `wait-worker --child N --timeout 秒` を会話の背景実行で待つ。[起動から終了通知までの手順](../../ops/parent/README.md#会話の背景実行で終了を待つ)を使う。 |
 | 今回は調査して報告させる | 起動・継続に `--planning` を指定し、判断してほしい点を指示する。 |
-| 調査報告への回答を保存して送る | 必要なら `decide-worker-plan` を使う。直接の継続指示でもよい。 |
+| 調査報告を受けて次を指示 | [回答の保存・同じworkerの継続](../../ops/parent/README.md#workerの調査親判断実装フェーズ) |
 | 自律親から起動・継続 | `start-worker` / `continue-worker`。実行の予約と同一sessionの照合は開発workflowを参照する。 |
 | 実行や公開の状況を調べる | `status`・[worker_status](../../ops/worker_status/README.md)・`worker-log-status` |
 
@@ -96,23 +102,19 @@ workerへの具体指示は、担当範囲・成果・受入条件・確認し�
 ## 成果とレビュー
 
 workerの終了、実装の完了、PRのmerge、受入確認、ログの公開を別々に確認する。
-exit 0だけで成果を認定せず、差分・受入条件の証拠・実PRを確かめて `record-result` へ記録する。
+成果は[照合して記録](../../ops/parent/README.md#成果の記録)し、各ターンのログは[`saved_to_main` と公開の再開](../../ops/worker_logs/README.md#状態と復旧cli)を確認する。
 子なしの場合も自身の成果・必要なCI・受入確認を照合し、空の子一覧から完了を判断しない。
-merge後の確認が残れば同じworkerへ続けて依頼する。issueのcloseを作業終了の代わりにしない。
 まとまった結果と判断は [Git公開と閲覧](../../ops/decision_logs/README.ja.md#git公開と閲覧)に従い、
 初回も `publish-decision-log --dry-run` の内容を確認してから公開する。
 
-レビューは準備のできた対象を親が選び、`review-request --prs` で明示要求する。
 通常設定selectでは、[モデル選択手順](../../ops/parent/README.md#正式レビューのモデル選択)に従い
 `--review-model` と `--model-reason-file` を渡す。具体例・引継ぎ・使用量確認・fixedへの復帰は同節を正本とする。
-目的・確認点・利用可能な証拠を渡す。取得できない証拠はその事実と代替を示し、残る判断不能点を具体化させる。
-対象ごとの初回レビューに再実行理由は不要。同じ対象を再レビューする場合は、その必要性を判断して理由を付ける。
-指摘・修正・テストを親が確認し、`review-state --state fixes_verified` に確認結果を記録する。
-受領と確認が同時なら、`result_received` を別操作で先に記録する必要はない。
-具体的な起動・結果・指摘解消の契約は [review README](../../ops/review/README.md)を参照する。
 
-mergeは有効な権限と [merge gate](../../ops/review/README.md#merge-gate)の条件が揃った対象から行う。
-対象コード・CI・レビューの照合を省略しない。条件不足ならそのmergeを保留し、独立作業を進める。
+- 要求前: `review-request --prs` の[再実行理由](../../ops/parent/README.md#レビュー要求の記録と再実行)と[証拠の指示文例](../../ops/parent/README.md#レビュー指示へ渡す証拠)。
+- 結果受領後: 指摘なしでも[親の確認を記録](../../ops/parent/README.md#レビュー結果の受領と確認)する。
+- merge前: [dry-run・実mergeの条件](../../ops/review/README.md#merge-gate)、[merge後の受入確認](../../ops/parent/README.md#workerの調査親判断実装フェーズ)。条件不足のmergeだけを保留する。
+- CLI変更のmerge後: [呼出元と既存worker](../../ops/parent/README.md#cli更新後の既存worker)。
+
 merge後のCIと全体の受入条件を確認する。今回の受入結果と次回改善を分け、
 [構造化finish](../../ops/parent/improvements.md#今回の受入と候補整理)を手動の `release --ended --spec` または自律の `workflow-report` へ渡す。
 未達の受入条件を改善へ移してcompletedにしない。候補なしも明示し、noteだけの担当終了を受入済みと報告しない。
@@ -127,6 +129,5 @@ merge後のCIと全体の受入条件を確認する。今回の受入結果と�
 - 通常の再開では、保存済みrunの終了・回収をCLIが照合する。生存不明やcleanup失敗の場合は
   [共通ランナーの復旧](../../ops/lib/README.md#状態確認停止中断からの復旧)で事実を確かめる。
 - 起動前の拒否は、診断を確認して同じ操作を再実行する。起動済みか不明なときは、別workerを起動して埋め合わせない。
-- ログ公開だけが保留なら `publish-worker-log` で公開を続ける。詳細は [workerログ保存](../../ops/worker_logs/README.md)。
 - 途中失敗の後は、済んだ結果を照合して不足分を続ける。成功の捏造、記録の消去、別sessionへの付替えで不整合を隠さない。
 - CLIに同じ修復を何度も要求される場合は、制約の目的と責務を見直す改善候補にする。注意事項をskillへ足すだけで済ませない。

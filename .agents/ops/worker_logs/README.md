@@ -133,6 +133,11 @@ mainにGitHub側の必須checkが導入された場合は、Pendingを無視せ�
 
 ## 状態と復旧CLI
 
+各ターンの終了後、手動応答の `log_publication` または次のCLIで `saved_to_main` を確認する。
+workerの終了値はrunnerの結果であり、公開CLIも保留なら0を返すため、終了値だけで保存成功とはしない。
+`pending` なら同じturnの `publish-worker-log` で公開を続ける。他の作業を一律停止せず、未保存の事実を残す。
+公開エラーの終了値は2。状態ごとの原因と次の操作は下の表で照合する。
+
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
   worker-log-status --child 124
@@ -175,8 +180,6 @@ commit直後のjournal中断は期待した親・内容からcommitを再利用�
 PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致はその項目を診断に残して拒否する。
 診断原文は通常出力には含めない。
 
-自動hookのworker終了値は従来どおりrunnerの終了値で、手動応答の `log_publication` とこのCLIの状態が保存結果。
-公開CLIはエラーがあれば終了値2。保留の0も保存成功を意味せず、`saved_to_main` を確認する。
 定期poll、新しいtimer、追加agent、通常gateの変更は導入しない。
 
 ## 検証
