@@ -58,11 +58,20 @@ birth timeが既知ならその日時を再利用する。不明な旧記録は�
 変更確認の失敗で期限を免除しない。`results` と追記型 `results.jsonl` はpath・HEAD・判定UTC・
 削除成否・エラーを残す。作業ファイルのバックアップは作らない。
 
+`cleanup --dry-run` の `stop_preflight` はrunner記録・registry・現在のprocessと保存済み停止証拠を
+読み取り、対象run、記録なし委任、停止準備の問題、旧証拠の復旧予定を表示する。
+関係する破損・来歴不明・探索中断は非0で返す。runnerのstatus/stop・signal・停止証拠の修復・registry更新は行わない。
+実際の停止・削除の成功はdry-runでは確定できず、非dry-runの結果で確認する。
+
 ## 停止と再実行
 
 [lifecycle.py](lifecycle.py) がローカルの親registry・共通ランナー・training queueを連携する。
 対象の委任は `stopped` にして新規起動を止め、共通ランナーのstop/statusで
 terminal result・`cleanup_complete`・runner/CLI/groupの消滅を確認してから `worker_ended` を記録する。
+共通ランナー導入前など、`worker_runs` 自体がない旧委任は新規起動を止めたうえで、
+管理job・native子孫の停止と、その委任のworktree内のローカルprocess不在を確認してから終了扱いにする。
+`worktree_expiry.termination.source=local_process_absence` と確認UTCを残す。runner証拠や別マシンの
+session終了、task成功を推測した記録にはしない。停止失敗中は終了根拠を新たに書かず、次回に再確認する。
 dispatcherの未起動予約は既存cancel APIを使い、起動済jobは停止確認後に `phase=ended` とする。
 期限削除は担当とjobの状態を更新し、常駐supervisorのunit有効化や内部enabled、git-syncのresume記録は変更しない。
 git-syncの保守停止・再開は排他lock内で実行されるため、この停止処理と並行しない。
@@ -71,19 +80,40 @@ git-syncの保守停止・再開は排他lock内で実行されるため、こ�
 handoff時は来歴を移管先へ更新し、移管先のnativeプロセスが確認できない場合は旧来歴を失効させる。
 停止未確認は `recovery_required` / `stop_failed` を保持し、削除成功として返さない。
 
-共通ランナーのprivate state配下のrunと、同じユーザーのnative Codex/Claudeプロセスも確認する。
+runnerの探索先は [run_records.py](run_records.py) の浅い正規配置（defaultの `logs/*`、
+parent CLIの `worker-runs/*/*`、reviewの `agent-runtime`、dispatcher判定、ops-reportのrunner）と、
+registryに明示登録されたrun-dir、および対象processの `AGENT_RUNTIME_RUN_DIR` に限定する。
+state root全体の再帰走査や、workflow自身の `result.json` の読み込みは行わない。
+破損したrunner記録は、registryと独立した `invocation.json` のcwdから対象との関係を分類し、
+`stop_diagnostics` に場所・理由・根拠を表示する。対象外と確認できた記録はそのworktreeの削除を止めず、
+関係する記録と関係不明の記録は明示失敗にする。processが継承した環境変数だけでrunnerの所属を決めない。
+置換済みの旧委任でローカルrun-dirが存在しない参照は `retired_reference` として報告する。
+その場所を参照するprocessが対象cwdにいれば再び検査対象にし、記録欠落を失敗として扱う。
+
+同じユーザーのnative Codex/Claudeプロセスも確認する。
 停止準備の最初のbaselineを対象探索より前に保存し、親子関係とPID identityを保持する。
+baseline取得時にUID・cwdも観測し、探索中に終了した対象外processを来歴不明へ読み替えない。
+snapshot内ではPID・start ticks・親PIDを先に採取し、その後にUID・cwdと現在のidentityを調べる。
+後段で消滅・読取不能になっても採取済みstatとcwdを捨てない。PIDが別世代なら元のidentityと親子関係を
+保持し、後段のUID/cwdは新世代の値かもしれないため所属未確定とする。
+親のstat採取後、子のstat読取前に親が消え、子が既に外側の祖先へreparentされる窓も扱う。
+消えた親より後に観測し、誕生時刻と祖先から独立性を証明できない候補は、baseline所属だけで除外せず
+不明PIDとして保存する。推測で停止せず、その候補の終了を確認できるまで削除を失敗にする。
 同じユーザーで対象cwdを確認できるPython/shell等も対象に含める。registry・queue・runnerの停止前に
 捕捉を完了し、後段も再実行も最初のbaselineを引き継ぐ。親PIDの消滅だけでは成功にしない。
 探索中にcwdを観測できず消えたPIDは、最初の一覧に含まれた子孫も確認不能として保持する。
 探索の中断で捕捉が未完了なら、再実行でも失敗を維持する。元の対象を確認できない証拠を自動で捨てず、
 プロセスの終了と保存証拠を人間が確認・修復してから再実行する。
+旧v2証拠で対象PIDが一度も捕捉されず、探索完了済みで、記録済みの不明PID・その捕捉済み子孫が
+すべて終了し、再探索も空なら、その証拠を `.unscoped-v2.json` に理由付きで保存して新しいbaselineへ進む。
+対象PIDを捕捉済みの証拠・不明PIDの残存・探索中断には適用しない。新しい証拠はv3として区別する。
 native agentはPID・boot ID・start ticksを照合し、pidfdで親子をSIGSTOPする。
 全threadの停止後にも一覧を取り直し、新規の子を含む閉包が停止状態に固定されたことを確認してSIGKILLする。
 TERM handlerやSIGCONTを実行させず、確認済みPIDは親が変わっても消滅まで追跡する。
 新しく現れたPIDが旧親の外側の祖先に引き取られ、元の子か独立した新規jobかを確認できない場合は、
 推測して停止せず非0を返す。`native-stops/` に保存した観測・PID identityは再実行でも引き継ぎ、
 当該PIDとその後継候補が消滅するまで削除成功にしない。既存の別processから生まれた子は対象に含めない。
+停止失敗には `live` / `uncertain` のPID identityを含め、読み取り診断で残存と来歴不明を区別できる。
 既存の手動親はHerdrのprivateなsession/process対応も照合する。
 自分のagent祖先は停止できないため、該当する直接呼出しは明示失敗し、mainのserviceから再実行する。
 任意の外部daemonや他ユーザーのプロセスを制御可能とはみなさない。

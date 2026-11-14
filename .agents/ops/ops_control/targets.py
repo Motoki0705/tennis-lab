@@ -24,6 +24,7 @@ class Target:
     run_unit: str | None = None
     members: tuple[str, ...] = ()
     status_file: str | None = None
+    deferred_exit_statuses: tuple[str, ...] = ()
 
 
 def service_target(name: str, stem: str) -> Target:
@@ -37,7 +38,13 @@ def service_target(name: str, stem: str) -> Target:
     )
 
 
-def timer_target(name: str, stem: str, *, status_file: str | None = None) -> Target:
+def timer_target(
+    name: str,
+    stem: str,
+    *,
+    status_file: str | None = None,
+    deferred_exit_statuses: tuple[str, ...] = (),
+) -> Target:
     timer, service = f"{stem}.timer", f"{stem}.service"
     return Target(
         name=name,
@@ -50,6 +57,7 @@ def timer_target(name: str, stem: str, *, status_file: str | None = None) -> Tar
         ),
         run_unit=service,
         status_file=status_file,
+        deferred_exit_statuses=deferred_exit_statuses,
     )
 
 
@@ -89,7 +97,10 @@ TARGETS = {
         name="agents", kind="group", members=("dispatcher", "report", "triage")
     ),
     "git-sync": timer_target(
-        "git-sync", "tennis-lab-git-sync", status_file="git-sync/status.json"
+        "git-sync",
+        "tennis-lab-git-sync",
+        status_file="git-sync/status.json",
+        deferred_exit_statuses=("75",),
     ),
     "worktree-cleanup": timer_target("worktree-cleanup", "tennis-lab-worktree-cleanup"),
 }
