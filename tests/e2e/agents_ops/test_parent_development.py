@@ -620,7 +620,13 @@ def test_workflow_cli_never_recreates_registry_with_dispatcher_history(
 ) -> None:
     _, _, env = workflow(d, monkeypatch)
     cli = importlib.import_module("parent.cli")
-    monkeypatch.setattr(cli, "GitHub", lambda repo, **kwargs: d.h.gh)
+
+    def github(repo: str, *, store: Any) -> Any:
+        client = copy.copy(d.h.gh)
+        client._store = store
+        return client
+
+    monkeypatch.setattr(cli, "GitHub", github)
     for name in ("CODEX_SESSION_ID", "CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID"):
         monkeypatch.delenv(name, raising=False)
     for key, value in env.items():
