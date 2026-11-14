@@ -8,6 +8,7 @@ import json
 import multiprocessing
 import os
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -23,6 +24,7 @@ from tests.e2e.agents_ops.test_parent_session import (
     untracked_legacy_fixture,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.github_http import install
 
 
 def evidence_issue(env: ParentEnv, n: int = 9, *, state: str = "open") -> dict:
@@ -81,29 +83,38 @@ def _ensure_in_process(
 ) -> None:
     for key in ("PATH", "PARENT_GH_STATE", "PARENT_GH_CALLS", "XDG_STATE_HOME"):
         os.environ[key] = p.env[key]
-    store = importlib.import_module("parent.state").Store(directory)
-    gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
-    original_get = gh.get
-    synchronized = False
+    # A fork has its own fake-gh environment; use a server in that process
+    # instead of inheriting the parent pytest server and its environment.
+    with closing(install(importlib.import_module("issues.transport"))):
+        store = importlib.import_module("parent.state").Store(directory)
+        gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
+        original_get = gh.get
+        synchronized = False
 
-    def get(endpoint: str, *, missing_parent: bool = False) -> Any:
-        nonlocal synchronized
-        if role == "first" and endpoint == "repos/o/r/issues/1" and not synchronized:
-            synchronized = True
-            with store.unlocked_read():
-                ready.set()
-                assert contender.wait(10), "second process never entered its registry"
-        return original_get(endpoint, missing_parent=missing_parent)
+        def get(endpoint: str, *, missing_parent: bool = False) -> Any:
+            nonlocal synchronized
+            if (
+                role == "first"
+                and endpoint == "repos/o/r/issues/1"
+                and not synchronized
+            ):
+                synchronized = True
+                with store.unlocked_read():
+                    ready.set()
+                    assert contender.wait(10), (
+                        "second process never entered its registry"
+                    )
+            return original_get(endpoint, missing_parent=missing_parent)
 
-    gh.get = get
+        gh.get = get
 
-    if role == "second":
-        assert ready.wait(10), "first process never reached GitHub I/O"
-    with store.locked():
-        store.focus("o/r#1")
         if role == "second":
-            contender.set()
-        results.put(gh.evidence_issues().ensure(1, "operator").number)
+            assert ready.wait(10), "first process never reached GitHub I/O"
+        with store.locked():
+            store.focus("o/r#1")
+            if role == "second":
+                contender.set()
+            results.put(gh.evidence_issues().ensure(1, "operator").number)
 
 
 def test_creation_releases_registry_before_waiting_for_another_creator(

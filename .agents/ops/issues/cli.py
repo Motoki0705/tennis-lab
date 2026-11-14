@@ -303,9 +303,7 @@ class GitHub:
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         result, attempts = self._get_response(endpoint)
-        headers, separator, body = (
-            self._http.redact(result.stdout).replace("\r\n", "\n").partition("\n\n")
-        )
+        headers, separator, body = result.stdout.replace("\r\n", "\n").partition("\n\n")
         status = _HTTP_STATUS.match(headers)
         assert status is not None  # _get_response requires an HTTP status.
         if status[1] == "404" and result.returncode != 0 and missing_parent:
