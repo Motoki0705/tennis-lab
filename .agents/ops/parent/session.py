@@ -205,6 +205,9 @@ class ParentSession:
                 "tasks": previous.get("tasks", {}),
                 "reviews": previous.get("reviews", []),
             }
+            self.row.pop("owner_runtime", None)
+            self.store.save()
+        if self.capture_owner_runtime():
             self.store.save()
         if summary is not None and self.row.get("display_summary") != summary:
             self.row["display_summary"] = summary
@@ -214,6 +217,24 @@ class ParentSession:
             "担当開始。担当指定と要件合意は別段階です。要件を確認してから分割・委任します。",
         )
         return self.status()
+
+    def capture_owner_runtime(self) -> bool:
+        from lib.identity import native_runtime
+
+        runtime = native_runtime()
+        bound = (
+            None
+            if runtime is None
+            else {
+                **runtime,
+                "session": self.row["session"],
+                "generation": self.row["generation"],
+            }
+        )
+        previous = self.row.pop("owner_runtime", None)
+        if bound is not None:
+            self.row["owner_runtime"] = bound
+        return previous != bound
 
     def set_summary(self, text: str) -> dict[str, Any]:
         """Save the parent's own sidebar summary; display sync projects it."""
@@ -380,6 +401,7 @@ class ParentSession:
             handoff_note_sha256=digest(note),
             handoff_recovery=recover,
         )
+        self.capture_owner_runtime()
         if row.get("dispatch") is not None:
             from .development import transfer_controller
 

@@ -1,22 +1,23 @@
 # cleanup: branch・worktree の掃除（#1060）
 
-ローカルbranchとgit worktreeを **自動削除 / 承認待ち / 保護** に分類する。日次 timer（`apply-auto`）が
-消すのは **worktree を持たない merge 済みのローカルbranch の ref だけ** で、worktree は決して消さない。
-worktree は人間が承認した `delete worktree:<path>` でのみ、しかも **完全に clean なときだけ** 消す。
-承認待ちは `--report-json` に理由つきで出力し、運用レポート（#1057）が掲載する。
+ローカルbranchとgit worktreeを **自動削除 / 承認待ち / 保護** に分類する。この `apply-auto` が
+消すのは **worktree を持たない merge 済みのローカルbranch の ref だけ**。
+メインcheckout配下 `.claude/worktrees/` の登録worktreeは、別の
+[worktree-cleanup](../worktree_cleanup/README.md) が作成から336時間で強制削除する。
+期限削除はdirty・使用中・lock等を免除せず、個別承認も求めない。
+以下のclean・承認・保護条件は、この旧手動 `delete worktree:<path>` の契約に限る。
+分類レポートを期限削除の保持根拠として使わない。
 
-## なぜこの範囲か
+## branch整理と期限前の手動削除
 
 当初は worktree も自動削除し、未commit変更は `--discard-changes` で patch に退避する設計だった。
-しかし PR #1065 のクロスレビューで、使用中の worktree を見落とす経路が毎回新たに見つかった
-（rebase 中の branch、`printf %q` された queue job、相対パスの argv、`bash -c` 内の symlink、
-シンボリック参照、削除途中の内容変更など）。複数の Claude/Codex セッションが同じ repo で並行稼働する
-環境では「使用中か」を外から完全に判定する手段がなく、worktree の自動削除の攻撃面は際限がない。
-そこでユーザー判断により、構造的に安全な範囲へ絞った。
+PR #1065 で手動削除をclean・承認制に限定した。#1893 / #1917 の人間の判断により、
+対象範囲内の期限到達後は使用中や作業物があっても強制削除する方式へ変更した。
+作成時刻・停止連携・期限削除の安全性と復旧契約は上記worktree-cleanupを正本とする。
 
-- 自動で消すのは branch ref だけ。worktree を持たない branch には作業ファイルが無く、消しても
+- このtoolが自動で消すのは branch ref だけ。worktree を持たない branch には作業ファイルが無く、消しても
   `deleted.jsonl` の tip から `git branch <name> <tip>` で完全に戻せる。
-- worktree の削除は承認制で、tool は作業物を **一切破棄しない**。`git status --ignored` に
+- このtoolでの手動worktree削除は承認制で、作業物を **一切破棄しない**。`git status --ignored` に
   `.venv` symlink 以外が1つでも出る worktree は消さず、理由を出すだけにする（掃除は人間が行う）。
   使用中判定（プロセス・queue・lock など）は追加の防壁として残す。
 

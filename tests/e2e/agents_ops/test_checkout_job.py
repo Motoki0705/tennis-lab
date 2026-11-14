@@ -23,6 +23,9 @@ OPS = ROOT / ".agents/ops"
         "judgement",
         "supervisor",
         "board-web",
+        "worktree-scan",
+        "worktree-dry-run",
+        "worktree-cleanup",
     ],
 )
 def test_direct_operational_entry_requires_its_launcher(
@@ -43,6 +46,9 @@ def test_direct_operational_entry_requires_its_launcher(
         ],
         "supervisor": ["-m", "dispatcher", "supervise", "--once"],
         "board-web": ["-m", "board", "web", "--port", "8799"],
+        "worktree-scan": ["-m", "worktree_cleanup", "scan"],
+        "worktree-dry-run": ["-m", "worktree_cleanup", "cleanup", "--dry-run"],
+        "worktree-cleanup": ["-m", "worktree_cleanup", "cleanup"],
     }
     env = {
         key: value
@@ -94,3 +100,35 @@ def test_environment_flag_without_an_inherited_lock_descriptor_is_refused(
     )
     assert result.returncode == 75
     assert "not the checkout lock descriptor" in result.stderr
+
+
+def test_worktree_target_must_share_the_launcher_repository(tmp_path: Path) -> None:
+    launcher_root, target = tmp_path / "launcher", tmp_path / "target"
+    for repo in (launcher_root, target):
+        subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    state = tmp_path / "expiry-state"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(OPS / "checkout_job.py"),
+            "--repo",
+            str(launcher_root),
+            "--",
+            sys.executable,
+            "-m",
+            "worktree_cleanup",
+            "cleanup",
+            "--repo",
+            str(target),
+            "--state-dir",
+            str(state),
+        ],
+        env={**os.environ, "PYTHONPATH": str(OPS)},
+        text=True,
+        capture_output=True,
+        timeout=10,
+        check=False,
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "must share the launcher repository" in result.stderr
+    assert not state.exists()

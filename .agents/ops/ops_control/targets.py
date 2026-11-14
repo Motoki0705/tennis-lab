@@ -90,6 +90,7 @@ TARGETS = {
     "git-sync": timer_target(
         "git-sync", "tennis-lab-git-sync", status_file="git-sync/status.json"
     ),
+    "worktree-cleanup": timer_target("worktree-cleanup", "tennis-lab-worktree-cleanup"),
 }
 
 

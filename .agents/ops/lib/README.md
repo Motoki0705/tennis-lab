@@ -41,12 +41,13 @@ repo rootを子へ渡し、入口の `require_checkout_job()` が実FDのinode�
 |---|---|
 | `ops-report/ops_report.py` の全subcommand | 有限launcher。直接file実行は拒否 |
 | `cleanup/cleanup.py` のscan/apply-auto/delete | 有限launcher。直接file実行は拒否 |
+| `worktree_cleanup` のscan/cleanup（dry-run含む） | 有限launcher。直接module実行は拒否 |
 | `dispatcher run` / `dispatcher.judgement` | 有限launcher。直接の判定起動は拒否 |
 | `dispatcher supervise` | `--supervisor` 専用launcher。直接CLIや有限launcherからは拒否 |
 | `board web` | `--board-web-port PORT` 専用launcher。直接CLIからは拒否 |
 | dispatcherのinit/status/enable/disable/shutdown等、boardの投稿・状態CLI | 判定agentや常駐jobを起動しない管理入口。直接利用可能 |
 
-新しい有限job（worktree-cleanup等）はCLIのproject importより前に次を置き、serviceと手動例を
+新しい有限jobはCLIのproject importより前に次を置き、serviceと手動例を
 上の有限launcherへ接続する。CLIを呼ばない内部Python APIのテストは、必要な依存を直接渡してよい。
 
 ```python

@@ -415,6 +415,7 @@ package = "src"
     ".spin/cmds.py:setup_nht",
     ".spin/cmds.py:doctor",
     ".spin/cmds.py:ops",
+    ".spin/cmds.py:worktrees",
 ]
 "Quality" = [
     ".spin/cmds.py:lint",
