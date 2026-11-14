@@ -606,7 +606,12 @@ def prepare_run(
         turn,
     )
     text = prepared_instruction.text
-    old_turns = copy.deepcopy(phase["turns"][:-1]) if replace_session else None
+    # Log capture annotates legacy turns. Preserve replaced lineages on every turn.
+    old_turns = (
+        copy.deepcopy(phase["turns"][:-1])
+        if phase.get("session_replacements")
+        else None
+    )
     worker_logs.capture(session, child, items[child].body, prepared_instruction)
     if old_turns is not None:
         phase["turns"][:-1] = old_turns

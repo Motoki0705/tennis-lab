@@ -252,6 +252,8 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     assert availability == "recorded" and observed["kind"] == "replacement"
     run(p, "--resume")
     assert task(p)["preflight"]["runtime"]["session_id"] == new_session
+    old_turns = before.get("preflight", {}).get("turns", [])
+    assert task(p)["preflight"]["turns"][: len(old_turns)] == old_turns
 
 
 def test_rejected_session_replacement_can_be_retried_explicitly(
