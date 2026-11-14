@@ -7,6 +7,7 @@ from dataclasses import replace
 from typing import Any
 
 from issues import Issue
+from issues.evidence import require_work_issue
 
 from .policy import closing_issues, dependencies, replace_section
 
@@ -46,6 +47,8 @@ def resolve(
     managed: bool,
     reviewed_targets: set[int] | None = None,
 ) -> dict[int, Issue]:
+    for item in [parent, *children.values()]:
+        require_work_issue({"labels": item.labels, "body": item.body})
     if set(children) != set(parent.children) or any(
         n == parent.number or child.number != n or child.parent != parent.number
         for n, child in children.items()

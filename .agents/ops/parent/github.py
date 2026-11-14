@@ -24,6 +24,11 @@ if TYPE_CHECKING:
 
 
 class GitHub(IssueGitHub):
+    def improvement_extractions(self, store: Store) -> dict[str, Any]:
+        from .improvement_receipts import extraction_index
+
+        return extraction_index(store.directory, self.repo)
+
     def __init__(self, repo: str | None, *, store: Store | None = None) -> None:
         super().__init__(repo)
         self._store = store
@@ -193,11 +198,11 @@ class GitHub(IssueGitHub):
         data: dict[str, Any] = object_value(response.get("data"))
         return data
 
-    def issue(self, number: int) -> dict[str, Any]:
+    def issue(self, number: int, *, allow_proposal: bool = False) -> dict[str, Any]:
         row = object_value(self.get(f"repos/{self.repo}/issues/{number}"))
         if self.identity(row) != number:
             raise ValueError("GitHub issue identity mismatch")
-        require_work_issue(row)
+        require_work_issue(row, allow_proposal=allow_proposal)
         return row
 
     def issue_rows(self) -> list[dict[str, Any]]:

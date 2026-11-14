@@ -28,7 +28,9 @@ from .schema import new_id, validate_record
 
 COMMANDS = {
     "improvement": "record",
-    "improvement-publish": "publish",
+    "improvement-propose": "publish",
+    "improvement-extract": "publish",
+    "improvement-decide": "record",
     "workflow-report": "verify",
     "agree": "record",
     "create-child": "record",
@@ -101,7 +103,7 @@ def begin(
     args: argparse.Namespace, store: Any, repo: str, parent: int
 ) -> Operation | None:
     try:
-        if args.command == "improvement-publish":
+        if args.command == "improvement-propose":
             from parent.improvements import lock_key
 
             # Serialize receipt selection as well as the business POST. Concurrent
@@ -122,7 +124,7 @@ def publication_retry(journal: Journal, request: dict[str, Any]) -> str | None:
     for path in (journal.path.parent / "captures").glob("*.json"):
         op = Operation.load(path)
         if (
-            op.row["entrypoint"] == "parent.improvement-publish"
+            op.row["entrypoint"] == "parent.improvement-propose"
             and op.row.get("request_context") == request
         ):
             matches.append(op)
@@ -180,15 +182,12 @@ def _begin(
     decision_id = args.decision_id
     plan_id = args.plan_id
     if (
-        args.command == "improvement-publish"
+        args.command == "improvement-propose"
         and decision_id is not None
         and previous is None
     ):
-        from issues.improvement import candidate_key
-
         request_context = {
-            "candidate": candidate_key(args.candidate, parent),
-            "existing": args.existing,
+            "parent": parent,
             "decision_id": decision_id,
             "plan_id": args.plan_id,
         }

@@ -84,6 +84,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "ops-report",
             "cleanup",
             "board",
+            "parent",
             "git_sync",
             "worktree_cleanup",
             "storage_tier",
@@ -229,6 +230,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "report",
         "triage",
         "cleanup",
+        "proposal-expiry",
         "git-sync",
         "worktree-cleanup",
         "storage-tier",
@@ -478,7 +480,15 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
 
 @pytest.mark.parametrize(
     "target",
-    ["report", "triage", "cleanup", "git-sync", "worktree-cleanup", "storage-tier"],
+    [
+        "report",
+        "triage",
+        "cleanup",
+        "proposal-expiry",
+        "git-sync",
+        "worktree-cleanup",
+        "storage-tier",
+    ],
 )
 def test_run_starts_only_oneshot_without_enabling_timer(
     control: ControlEnv, target: str
@@ -488,6 +498,7 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "report": "tennis-lab-ops-report",
         "triage": "tennis-lab-ops-triage",
         "cleanup": "tennis-lab-cleanup",
+        "proposal-expiry": "tennis-lab-improvement-expire",
         "git-sync": "tennis-lab-git-sync",
         "worktree-cleanup": "tennis-lab-worktree-cleanup",
         "storage-tier": "tennis-lab-storage-tier",
@@ -624,6 +635,26 @@ def test_new_target_only_needs_registry_entry_and_unit_files(
     for source in (ops / "future/systemd").iterdir():
         assert (config / source.name).is_symlink()
         assert (config / source.name).resolve() == source
+
+
+def test_proposal_expiry_timer_is_installed_without_automatic_extraction(
+    control: ControlEnv,
+) -> None:
+    result = control.run("install", "proposal-expiry")
+    assert result.returncode == 0, result.stderr
+    config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
+    assert {p.name for p in config.iterdir()} == {
+        "tennis-lab-improvement-expire.service",
+        "tennis-lab-improvement-expire.timer",
+    }
+    timer = (config / "tennis-lab-improvement-expire.timer").read_text()
+    service = (config / "tennis-lab-improvement-expire.service").read_text()
+    assert "OnCalendar=daily" in timer and "Persistent=true" in timer
+    assert "Type=oneshot" in service and "improvement-expire" in service
+    assert "improvement-extract" not in service and "PYTHONPATH=.agents/ops" in service
+    assert [call for call in control.calls() if call[2] != "show"] == [
+        ["systemctl", "--user", "daemon-reload"]
+    ]
 
 
 def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(

@@ -119,15 +119,18 @@ def status(session: ParentSession) -> dict[str, Any]:
     if applies:
         from .improvements import completion_applies, observe
 
-        current = observe(session.gh, session.parent, session.login)
+        current = observe(session.gh, session.parent, session.login, session.store)
         saved = session.row["completion"]
         if current is not None:
-            applies = completion_applies(
-                saved,
-                current["source"],
-                current["candidate"],
-                session.parent,
-                current["issue"].get("body") or "",
+            applies = all(
+                completion_applies(
+                    saved,
+                    source,
+                    candidate,
+                    session.parent,
+                    current["issue"].get("body") or "",
+                )
+                for source, candidate in current["approvals"]
             )
         elif saved.get("improvement_approval"):
             applies = False

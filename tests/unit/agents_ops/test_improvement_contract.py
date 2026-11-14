@@ -381,3 +381,40 @@ def test_approved_execution_retains_preamble_extra_rules_and_stop_conditions(
     assert "表示だけの進捗。" not in terms["behavior"]
     # Canonical comments sort object keys; mapping insertion order is not consent.
     assert api.execution_terms(dict(reversed(list(requirements.items())))) == terms
+
+
+@pytest.mark.parametrize(
+    "fault", ["unsorted", "duplicate", "foreign", "version", "misplaced"]
+)
+def test_grouped_extraction_provenance_rejects_ambiguous_candidates(
+    api: Any, fault: str
+) -> None:
+    proposals = importlib.import_module("issues.improvement_proposals")
+    marker = proposals.Extraction(12, 30, ("first", "second")).marker()
+    assert proposals.parse_extraction(marker).keys == ("first", "second")
+    if fault == "unsorted":
+        marker = marker.replace("I-12-first,I-12-second", "I-12-second,I-12-first")
+    elif fault == "duplicate":
+        marker = marker.replace("I-12-second", "I-12-first")
+    elif fault == "foreign":
+        marker = marker.replace("I-12-second", "I-13-second")
+    elif fault == "version":
+        marker = marker.replace("extraction:v1", "extraction:v2")
+    else:
+        marker = "前文\n" + marker
+    with pytest.raises(ValueError):
+        proposals.parse_extraction(marker)
+
+
+def test_legacy_reference_publication_is_readable_without_granting_execution(
+    api: Any,
+) -> None:
+    source, rows, body = chain(api)
+    rows[1] = api.event(
+        source, "published", 1, rows[0]["id"], {**rows[1]["data"], "mode": "reference"}
+    )
+    rows[2] = api.event(source, "decision", 1, rows[1]["id"], rows[2]["data"])
+    candidate = api.read_candidates(comments(api, rows), 12, "owner")[source.key]
+    assert candidate["publication"]["data"]["mode"] == "reference"
+    with pytest.raises(ValueError, match="different issue"):
+        api.approved(candidate, source, 20, body)

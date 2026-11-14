@@ -167,12 +167,12 @@ def improvement_candidate(
                 else [
                     {
                         "operation": "publish",
-                        "summary": "独立した親として人間判断へ渡す",
+                        "summary": "改善提案Issueへ列挙して人間判断へ渡す",
                         "actor": "parent",
                         "target": candidate_id,
-                        "instruction": "記録済み候補を起票・既存issueへ集約する。実装は起動しない。",
+                        "instruction": "記録済み候補を改善提案Issueへ列挙する。",
                         "conditions": "元親の必須作業ではないことを確認する。",
-                        "expected_result": "人間判断待ちの親または既存参照。",
+                        "expected_result": "人間判断待ちの改善提案Issue。",
                     }
                 ],
                 "source_kind": "parent_choice",
@@ -192,22 +192,27 @@ def improvement_approval(session: Any, binding: dict[str, Any]) -> None:
         from issues.improvement import render_event
         from parent.improvements import candidates, comment_url
 
-        candidate = candidates(session, binding["parent"])[binding["key"]]
-        decision = candidate["decisions"][-1]
-        comment_id = candidate["comments"][decision["id"]]
-        evidence = {
-            "kind": "public",
-            "url": comment_url(session, binding["parent"], comment_id),
-            "revision": None,
-            "content_sha256": sha(render_event(decision).encode()),
-        }
+        recorded = candidates(session, binding["parent"])
+        evidence = []
+        for approval in binding.get("approvals", [binding]):
+            candidate = recorded[approval["key"]]
+            decision = candidate["decisions"][-1]
+            comment_id = candidate["comments"][decision["id"]]
+            evidence.append(
+                {
+                    "kind": "public",
+                    "url": comment_url(session, binding["parent"], comment_id),
+                    "revision": None,
+                    "content_sha256": sha(render_event(decision).encode()),
+                }
+            )
         with op.transaction():
             op.result(
                 binding,
                 artifact="observed human improvement approval",
                 status="success",
-                summary=f"Human approval observed for I-{binding['parent']}-{binding['key']} revision {binding['revision']}; execution not started",
-                evidence=[evidence],
+                summary=f"Human approval observed for source #{binding['parent']} ({len(evidence)} candidates); execution not started",
+                evidence=evidence,
             )
     except Exception:
         op.mark_failed(lost_source="parent.improvement-approval")

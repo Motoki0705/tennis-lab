@@ -99,7 +99,7 @@ outbox只保存私有投递输入，不是发布单元。
 | `record-worker-run` / `record-worker-ended` | 显式登记已有runner证据 / 父级显式确认终止 |
 | `record-result` | 已保存的验证与PR/证据字段；显式验证引用已捕获结果。组合命令 `review-request --prs` 使用相同方法 |
 | `note` / `decide-worker-plan` | 原始评论引用 / 保存的计划回答结果。不会自动虚构通用判断，`decide` 可引用原始理由 |
-| `improvement` / `improvement-publish` | 候选观察和明确的拆分判断引用原始评论，再连接起票请求/结果。仅捕获原父级仍负责期间的操作 |
+| `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | 候选观察和明确的拆分判断引用原始评论，再连接提案发布、会话决策和批量提取的请求/结果。仅捕获原父级仍负责期间的操作 |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | 现有依据、创建和验收结果。后继父级的agree通过来源评论记录观察到的人类批准，不将批准视为已执行 |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI结果和原始评论；dispatcher取消、runner停止/恢复是独立事实 |
 | `review-prepare` / `review-request` / `review-state` | 固定请求及显式指示/状态结果；只有显式接收/验证才记录父级确认 |

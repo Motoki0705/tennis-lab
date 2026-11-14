@@ -116,7 +116,7 @@ the complete response and error details remain private evidence.
 | `record-worker-run` / `record-worker-ended` | Explicit registration of existing runner evidence / the parent's explicit termination confirmation |
 | `record-result` | Saved verification and its PR/evidence fields; explicit verification references captured results. Combined `review-request --prs` uses this same method |
 | `note` / `decide-worker-plan` | Canonical comment reference / saved planning-answer outcome. They do not invent a common decision; `decide` can reference the original reason |
-| `improvement` / `improvement-publish` | Observations and explicit splitting decisions reference the canonical candidate, then link to publication requests/results. Capture only while the source parent owns the work |
+| `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | Observations and explicit splitting decisions reference the canonical candidate, then link to proposal publication, conversation decisions and grouped extraction requests/results. Capture only while the source parent owns the work |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | Existing basis, creation and acceptance results. A successor's agree observes human approval through its source comment; approval does not imply execution |
 | `delegate`, `stop` / `resume` / `stop-worker`, `handoff` / `release` | Parent command outcomes and canonical comments; dispatcher cancellation and runner stop/recovery writes are separate facts |
 | `review-prepare` / `review-request` / `review-state` | Fixed request and explicit instruction/state outcomes. Only explicit receipt/verification operations set parent verification |
