@@ -13,5 +13,11 @@
     "frames": 3030,
     "native_frames_loaded": 3
   },
-  "registry_quick_check": "ok"
+  "registry_quick_check": "ok",
+  "completion": {
+    "observed_at": "2026-11-14T08:06:34.265093+00:00",
+    "filesystem_free_bytes": 3852218834944,
+    "published_native_jpeg_bytes": 20690065319,
+    "hardlinked_native_archives": 123
+  }
 }

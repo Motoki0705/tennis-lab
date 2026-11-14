@@ -49,5 +49,16 @@
     "reason": "repeated local validation competed for filesystem IO with the real migration; prioritize migration after completed focused regression tests",
     "io_pressure_full_avg60_observed_percent": 64.5,
     "new_replay_case_call_seconds_under_contention": 220.0
+  },
+  "initial_pr_head_ci": {
+    "head_commit": "f03e151a3abb22e285194b7b53f4afd6f8bdfe6a",
+    "source_and_test_trees_match_execution_commit": true,
+    "ci_run_id": 43569266460,
+    "conclusion": "success",
+    "python_job_id": 132373696182,
+    "python_conclusion": "success",
+    "knowledge_run_id": 43569266289,
+    "knowledge_conclusion": "success",
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43569266460"
   }
 }

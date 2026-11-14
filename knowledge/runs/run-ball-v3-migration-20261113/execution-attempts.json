@@ -39,6 +39,24 @@
       "wall_seconds": 1078.83,
       "max_rss_kib": 1598472,
       "reason": "resolve six type-check errors in changed files observed when imported dependency types are visible; preserve existing preparations"
+    },
+    {
+      "code_commit": "64f61a41879713169151530c09c8df9fbd2aa4f7",
+      "selected_cameras": 123,
+      "state": "completed",
+      "exit_code": 0,
+      "reused_verified_preparations": 89,
+      "new_preparations": 34,
+      "elapsed_hms": "1:43:19",
+      "wall_seconds_from_reported_hms": 6199,
+      "user_cpu_seconds": 2710.65,
+      "system_cpu_seconds": 310.16,
+      "max_rss_kib": 3012596,
+      "published_frames": 63540,
+      "scene_clips": 41,
+      "replay_equal": true,
+      "report": "outputs/ball_detection/migrate/video-v3/20261113/full-publication.json",
+      "resource_log": "outputs/ball_detection/migrate/video-v3/20261113/full-attempt04-time.txt"
     }
   ]
 }

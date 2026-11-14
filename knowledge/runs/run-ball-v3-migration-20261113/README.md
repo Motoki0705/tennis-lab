@@ -1,23 +1,23 @@
 # v2実データ移行の実行記録
 
 対象issueは #1714。実行対象と入力版の初回観測は `selection.json`、注記を読んだ本実行集合は
-`selection-reviewed.json`、実測は実行後の `results-summary.json`、一度きりの実行入口はこのディレクトリのscriptに固定する。
-旧JSON、review、動画、既存frame storeは上書きしない。
+`selection-reviewed.json`、実測は `results-summary.json`、一度きりの実行入口はこのディレクトリのscriptに固定する。
+旧JSON、review、動画、既存frame storeは保持した。
 
 ## 実装前の検証設計
 
-- 契約: 独立して固定した元動画identity・camera・収録group・実frame/PTSを照合し、
+- **守る契約** 独立して固定した元動画identity・camera・収録group・実frame/PTSを照合し、
   v2の観測・補間・遮蔽推定・unresolvedを、v3の元座標と由来へ明示的に移す。
   targetと処理完了の根拠を必須にする。未知から不在や遮蔽を生成しない。
-- 故障: 正規化の分母変更、推定の観測化、support欠落、同数frameのPTS差替え、
+- **検出する故障** 正規化の分母変更、推定の観測化、support欠落、同数frameのPTS差替え、
   全ボール教師のプレー球化、旧holdoutのtrain移動、再送の二重追加を検出する。
-- 層: converterの異常分類はunit。移行済みJSON・prepared画像と既存publisher・snapshot・
+- **テストの層** converterの異常分類はunit。移行済みJSON・prepared画像と既存publisher・snapshot・
   学習readerの接続はintegration。実データは少数dry-run後に固定集合だけを実行する。
-- 再利用: `tests/unit/tasks/ball_detection/annotation/video/test_io.py::test_v2_correspondence_preserves_known_information_without_inventing_states`、
+- **再利用するnode** `tests/unit/tasks/ball_detection/annotation/video/test_io.py::test_v2_correspondence_preserves_known_information_without_inventing_states`、
   `tests/integration/tasks/ball_detection/test_video_publication.py::test_publication_preserves_base_bytes_rows_and_sealed_review_masks`、
   `tests/integration/tennis_scene/test_ball_annotation_imports.py`。
   既存テストは削除せず、移行専用の入力根拠と拒否を追加する。
-- コスト: 新規unitは30case以下、integrationは5case以下を目安にし、1case5秒・setup1秒を
+- **実行コストの設計** 新規unitは30case以下、integrationは5case以下を目安にし、1case5秒・setup1秒を
   超える場合は実測と理由を記録する。小さなCPU合成動画を使い、実GPT・GPU・学習は行わない。
   指定の `pytest_locked.sh`（-n 4）で対象nodeだけを実行し、収集件数とdurationsを保存する。
 
@@ -92,7 +92,7 @@ filesystem一致を検査し、hardlinkで再利用する。
 公開・新しい画像生成は開始していない。全ファイルmypyでは変更箇所にも6件あり、
 decoratorの型付き代入、productのOptional型、テストのmask/metadataの型確認で修正した。
 変換内容と公開要求の仕様は維持する。全repoのmypyに残る指摘と、変更ファイルだけの
-pre-commit結果は最終検証記録へ記載する。
+pre-commit結果は `validation-summary.json` に記載した。
 
 
 ## 復旧後の少数公開
@@ -103,7 +103,7 @@ pre-commit結果は最終検証記録へ記載する。
 scene importの再読込と同じ要求の再送も成功した。receiptと全検証結果はデータディスクの
 `small-relocated-publication.json`、少数の対応例は `relocated-dry-run.json` に残す。
 旧注釈171件、snapshotのmetadata/index計6件、旧画像513件の内容照合も成功した。
-本集合123本の公開結果は、完了後にこの記録と対応表へ追記する。
+本集合の実測と対応表は次節にまとめた。
 
 変更ファイルのpre-commitと新規28件の検証は成功した。新規caseの最大時間は丸め済み
 pytest実測の合計1.52秒、setup最大0.72秒だった。全ファイルpre-commitのmypyには
@@ -117,4 +117,63 @@ journal待ちを観測した。新規のreceipt再送caseもcall 220.00秒まで
 専用28件の実行では同caseのsetup 0.72秒・call 0.80秒だった。4つのintegration caseは
 動画・画像・registryを書き換えるためcaseごとの分離を維持し、入力を各2camera×5frameへ
 抑えた。完走した関連152件・scene unit 19件と修正後の新規28件を成功記録として残す。
-171件の中断分を全件成功とは数えない。CIで対象HEADの結果を確認する。
+この再実行の結果は155/171件成功・中断として記録した。PR HEADのCI結果は後述する。
+
+
+初回PR HEADではPythonとKnowledge libraryのCIが成功した。実行commitとこのHEADの
+src/testsのGit treeは一致する。対象HEADとrun/job番号は `validation-summary.json` に残す。
+既定の `AnnotationLayout.production()` は移設後のoutputs symlinkを拒否する。
+本実行ではEドライブ上の物理rootを公開constructorへ明示し、reader/import/publisherを検証した。
+
+
+## 本集合の実測
+
+実行commitは少数公開と同じ `64f61a41879713169151530c09c8df9fbd2aa4f7`。
+123camera・41clip・63,540frameを `meiji-active-ball-v3-20261113` へ公開した。
+元v2の座標・status・由来・support・notes・break・frame/PTSを全件照合した。
+観測53,141、補間840、遮蔽推定353、最終unknown 9,206を保持し、位置利用可は54,334だった。
+新しい負例候補と未処理はともに0件である。
+
+| 元収録group | split | frame数 |
+|---|---|---:|
+| video_000 | val | 26,961 |
+| video_001 | test | 18,453 |
+| video_002 | train | 18,126 |
+
+新readerでsnapshot全体を検証し、全splitで各由来の学習windowを読み込んだ。
+41clip・123cameraのscene importを再読込し、ロード専用runnerのstatusを確認した。
+BallAnnotationOutputの再読込契約で座標・重み・mask・由来も照合する。
+同一要求の再送は同じreceiptを返した。native JPEG 123archive・20,690,065,319 bytesは
+準備済みarchiveと全件同じinodeで、123件すべてに公開保護が存在する。
+元動画171本も固定したサイズと内容SHAへ照合した。旧注釈171件、metadata/index 6件、
+旧画像513件は固定した各基準に一致した。旧画像内容の比較基準時点は復旧時である。
+
+`results-summary.json` にreceipt/snapshotと件数を固定した。`correspondence.csv` の123行は
+元版・保持コピー・v3・入力・変換記録・画像manifest・元動画・scene artifactを対応付ける。
+annotation/input/migration/manifest/source_media/original_copyのpath列は
+`outputs/chat_annotation` 基準、original/sceneのpath列は元repo基準である。
+`held-inputs.csv` の48行は保留理由と原文、元版と媒体の内容SHAを保持する。
+対象相違39本、処理完了の根拠不足15本、重複6本の扱いは親の統合レビューへ返す。
+
+実データの保存先は元repoの `data/ball_detection/meiji-active-ball-v3-20261113/frames`、
+注釈と元v2保持コピーは `outputs/chat_annotation/migration/archive/ball-v2-v3`、
+実行reportとscene storeは `outputs/ball_detection/migrate/video-v3/20261113` 配下である。
+同じ相対pathのworktree outputsにはテスト・資源計測のlogを保持する。
+実行は少数dry-run、少数公開、本集合公開を含め1時間43分19秒、最大RSS 3,012,596 KiB、
+終了コード0だった。各中断を含む履歴は `execution-attempts.json` に残す。
+
+## 再現
+
+次のコマンドをこのbranchのworktree rootで実行する。固定したcode・入力・画像内容を
+照合し、少数と本集合の既存要求を再送して、最後に対応表と集計を再作成する。
+
+```bash
+MIGRATION_CODE_COMMIT=64f61a41879713169151530c09c8df9fbd2aa4f7 \
+  bash knowledge/runs/run-ball-v3-migration-20261113/repro.sh \
+  /home/kamimura/projects/tennis-lab \
+  /mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab
+```
+
+raw reportは元repo側の `small-relocated-publication.json` と `full-publication.json` に
+保持した。これらは全frameの集計・各由来の例・元版/v3の参照・sceneの参照を含む。
+実行後に追加した `summarize.py` の媒体照合・hardlink照合・公開保護照合も実データで成功した。
