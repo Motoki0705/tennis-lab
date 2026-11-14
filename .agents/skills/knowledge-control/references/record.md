@@ -144,6 +144,8 @@ for the user-settings guard. Use a dedicated authenticated agy user profile with
 the supported keys. A normal interactive profile with broader permissions fails
 explicitly; the CLI does not rewrite it. Raw agy evidence goes outside knowledge
 under `$XDG_STATE_HOME/tennis-lab-citations/<search-id>` (or `--run-dir`).
+When selecting a dedicated HOME, pass the original executable's absolute path
+with `--agy`; its default is evaluated in the selected user profile.
 
 Public article HTML is preferred for arXiv. A landing/abstract page alone is not
 full text. PDF downloads and extracted input exist only in temporary directories;

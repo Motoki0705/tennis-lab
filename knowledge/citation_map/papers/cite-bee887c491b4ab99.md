@@ -17,8 +17,9 @@ external_ids:
   doi: 10.1109/icpai51961.2020.00023
 source: https://doi.org/10.1109/icpai51961.2020.00023
 summary: ''
-text_status: not_requested
-text_reason: ''
+text_status: failed
+text_reason: 'https://doi.org/10.1109/icpai51961.2020.00023: landing/abstract HTML,
+  not full text'
 references: []
 schema_version: 1
 ---

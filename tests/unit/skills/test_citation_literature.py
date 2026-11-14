@@ -84,6 +84,31 @@ def test_html_preserves_locations_links_and_rejects_abstract_only(api: Any) -> N
         literature.full_text(api.Bibliography("A", {"url": "https://example.org/a"}, "https://example.org/a"))
 
 
+def test_public_lookup_failure_keeps_status_without_environment_contact(api: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OPENALEX_EMAIL", "private-contact@example.invalid")
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        assert "mailto=private-contact%40example.invalid" in url
+        raise HTTPError(url, 403, "forbidden", Message(), None)
+
+    found, reason = api.Literature(fetch).identify({"citation": "Author. Exact Title.", "title": "Exact Title", "year": None, "authors": [], "links": []})
+    assert found is None and "HTTP 403" in reason
+    assert "private-contact" not in reason and "mailto" not in reason and "?" not in reason
+
+
+def test_conflicting_provider_locations_are_unresolved_instead_of_last_wins(api: Any) -> None:
+    work = {"id": "https://openalex.org/W123", "display_name": "Exact Title", "publication_year": 2023,
+            "doi": "https://doi.org/10.5555/exact", "authorships": [],
+            "locations": [{"landing_page_url": "https://arxiv.org/abs/2204.01899"},
+                          {"landing_page_url": "https://arxiv.org/abs/1902.07304"}]}
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        return json.dumps({"results": [work]} if "/works?" in url else work).encode()
+
+    found, reason = api.Literature(fetch).identify({"citation": "Author. Exact Title.", "title": "Exact Title", "year": 2023, "authors": [], "links": []})
+    assert found is None and "MetadataConflict" in reason
+
+
 def test_pdf_fallback_uses_pages_and_removes_temporary_file(api: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     captured: list[Path] = []
 

@@ -51,6 +51,10 @@ class TextUnavailable(RuntimeError):
     pass
 
 
+class MetadataConflict(ValueError):
+    """A provider assigned contradictory identifiers to one work."""
+
+
 def input_identifiers(value: str) -> dict[str, str]:
     """Accept external IDs and primary URLs, including arXiv HTML URLs."""
     value = value.strip()
@@ -173,6 +177,8 @@ class Literature:
                     target.append(loc[key])
                     extracted = input_identifiers(loc[key])
                     if "arxiv" in extracted:
+                        if "arxiv" in ids and ids["arxiv"] != extracted["arxiv"]:
+                            raise MetadataConflict("conflicting arXiv locations in OpenAlex metadata")
                         ids["arxiv"] = extracted["arxiv"]
         source = primary_url(ids) if "arxiv" in ids or "doi" in ids else next(iter(landings), primary_url(ids))
         return Bibliography(work["display_name"], ids, source, work.get("publication_year"),
@@ -191,8 +197,13 @@ class Literature:
             if len(exact) == 1:
                 return self.openalex(exact[0].id), "unique exact title/year match in OpenAlex"
             return None, f"OpenAlex exact title/year matches: {len(exact)}; identity left unresolved"
-        except (LitSearchError, KeyError, TypeError, json.JSONDecodeError) as exc:
-            return None, f"reference lookup failed: {exc}"
+        except (LitSearchError, KeyError, TypeError, ValueError) as exc:
+            # lit_search includes request URLs, including optional mailto from
+            # the caller's environment. Public documents need the failure class,
+            # not private contact/configuration query parameters.
+            status = re.search(r"\bHTTP ([0-9]{3})\b", str(exc))
+            detail = f"HTTP {status[1]}" if status else type(exc).__name__
+            return None, f"reference lookup failed: OpenAlex {detail}"
 
     def full_text(self, bibliography: Bibliography) -> FullText:
         ids = bibliography.external_ids
