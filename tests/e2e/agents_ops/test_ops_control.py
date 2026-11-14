@@ -86,6 +86,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "board",
             "parent",
             "git_sync",
+            "worktree_cleanup",
         ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
@@ -93,7 +94,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
         shutil.copy(ROOT / ".spin/cmds.py", spin)
         (repo / "pyproject.toml").write_text(
             '[tool.spin]\npackage = "src"\n[tool.spin.commands]\n'
-            'Ops = [".spin/cmds.py:ops"]\n'
+            'Ops = [".spin/cmds.py:ops", ".spin/cmds.py:worktrees"]\n'
         )
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
         fake = Path(__file__).with_name("fake_ops_control.py").read_text()
@@ -230,6 +231,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "cleanup",
         "proposal-expiry",
         "git-sync",
+        "worktree-cleanup",
     }
     report = next(row for row in data["targets"] if row["target"] == "report")
     units = {unit["unit"]: unit for unit in report["units"]}
@@ -474,7 +476,10 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
     assert json.loads(result.stdout)["targets"][0]["units"] == []
 
 
-@pytest.mark.parametrize("target", ["report", "triage", "cleanup", "git-sync"])
+@pytest.mark.parametrize(
+    "target",
+    ["report", "triage", "cleanup", "proposal-expiry", "git-sync", "worktree-cleanup"],
+)
 def test_run_starts_only_oneshot_without_enabling_timer(
     control: ControlEnv, target: str
 ) -> None:
@@ -483,7 +488,9 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "report": "tennis-lab-ops-report",
         "triage": "tennis-lab-ops-triage",
         "cleanup": "tennis-lab-cleanup",
+        "proposal-expiry": "tennis-lab-improvement-expire",
         "git-sync": "tennis-lab-git-sync",
+        "worktree-cleanup": "tennis-lab-worktree-cleanup",
     }[target]
     assert ["systemctl", "--user", "start", prefix + ".service"] in control.calls()
     assert control.read()["units"][prefix + ".timer"]["UnitFileState"] == "disabled"
@@ -637,3 +644,28 @@ def test_proposal_expiry_timer_is_installed_without_automatic_extraction(
     assert [call for call in control.calls() if call[2] != "show"] == [
         ["systemctl", "--user", "daemon-reload"]
     ]
+
+
+def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(
+    control: ControlEnv,
+) -> None:
+    target = "worktree-cleanup"
+    stem = "tennis-lab-worktree-cleanup"
+    assert control.run("install", target).returncode == 0
+    checked(control, "on", target)
+    data = checked(control, "status", target)
+    assert {unit["unit"] for unit in data["targets"][0]["units"]} == {
+        stem + ".timer",
+        stem + ".service",
+    }
+    assert control.run("logs", target).returncode == 0
+    checked(control, "off", target)
+    assert ["systemctl", "--user", "stop", stem + ".service"] in control.calls()
+    source = control.repo / ".agents/ops/worktree_cleanup/systemd"
+    timer = (source / (stem + ".timer")).read_text()
+    assert "OnCalendar=*-*-* 04:30:00 Asia/Tokyo" in timer
+    assert "RandomizedDelaySec" not in timer
+    assert "Persistent=true" in timer
+    service = (source / (stem + ".service")).read_text()
+    assert "-m worktree_cleanup cleanup" in service
+    assert "KillMode=control-group" in service

@@ -104,6 +104,11 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 
 1セッションのactive/引継ぎ待ち親は1件。同じ親の別セッションによる登録も拒否する。
 終了をプロセス一覧などから推測せず、親自身の `release --ended` で記録する。
+登録時には管理可能なnative agent祖先のcwd・PID/boot ID/start ticksをprivateな `owner_runtime` に保存する。
+来歴は現在のsession/generationへ結び付け、`handoff --accept` 時に移管先の来歴へ更新する。
+移管先のnativeプロセスを確認できない場合は旧来歴を失効させる。
+例外として [worktreeの期限削除](../worktree_cleanup/README.md) は対象の親・委任を強制停止し、
+担当を `released` にする。これは成功終了ではなく、停止失敗も期限削除の状態とエラーに残す。
 別セッションへの移管は `handoff --accept` による明示操作だけを許可する。
 マシンをまたぐ分散排他やセッションの自動選定は範囲外。
 
