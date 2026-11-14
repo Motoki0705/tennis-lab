@@ -6,6 +6,8 @@ import re
 from collections.abc import Iterable, Mapping
 from urllib.parse import unquote, urlsplit, urlunsplit
 
+from kg_schema import http_url
+
 NAMESPACES = ("doi", "arxiv", "openalex", "url")
 
 
@@ -14,24 +16,25 @@ def normalize_identifier(namespace: str, value: str) -> str:
         raise ValueError(f"invalid external ID: {namespace}:{value}")
     value = value.strip()
     if namespace == "doi":
-        value = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", value, flags=re.I)
-        value = re.sub(r"^doi:\s*", "", value, flags=re.I)
+        value = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", value, flags=re.I | re.ASCII)
+        # Keep Unicode whitespace outside the ASCII-only prefix comparison.
+        value = re.sub(r"^(?ai:doi:)\s*", "", value)
         value = unquote(value).lower()
         valid = bool(re.fullmatch(r"10\.[0-9]{4,9}/[^\s?#]+", value))
     elif namespace == "arxiv":
-        value = re.sub(r"^https?://(?:www\.)?arxiv\.org/(?:abs|pdf)/", "", value, flags=re.I)
-        value = re.sub(r"^arxiv:\s*", "", value, flags=re.I).lower()
+        value = re.sub(r"^https?://(?:www\.)?arxiv\.org/(?:abs|pdf)/", "", value, flags=re.I | re.ASCII)
+        value = re.sub(r"^(?ai:arxiv:)\s*", "", value).lower()
         value = re.sub(r"\.pdf$", "", value)
         value = re.sub(r"v[1-9][0-9]*$", "", value)
         valid = bool(re.fullmatch(r"(?:[0-9]{4}\.[0-9]{4,5}|[a-z][a-z0-9.-]*/[0-9]{7})", value))
     elif namespace == "openalex":
-        value = re.sub(r"^https?://(?:api\.)?openalex\.org/(?:works/)?", "", value, flags=re.I).upper()
+        value = re.sub(r"^https?://(?:api\.)?openalex\.org/(?:works/)?", "", value, flags=re.I | re.ASCII).upper()
         valid = bool(re.fullmatch(r"W[1-9][0-9]*", value))
     else:
         try:
+            if not http_url(value):
+                raise ValueError("expected an absolute HTTP(S) URL without repairs, credentials or whitespace")
             url = urlsplit(value)
-            if url.scheme.lower() not in {"http", "https"} or not url.hostname or url.username or url.password or re.search(r"\s", value):
-                raise ValueError("expected an HTTP(S) URL without credentials or whitespace")
             value = urlunsplit((url.scheme.lower(), url.netloc.lower(), url.path or "/", url.query, ""))
         except ValueError as exc:
             raise ValueError(f"invalid url external ID: {value}") from exc

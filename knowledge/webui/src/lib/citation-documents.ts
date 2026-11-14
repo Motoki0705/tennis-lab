@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
+import { isIP } from "node:net";
 import path from "node:path";
 import { isAlias, isScalar, parseDocument, visit } from "yaml";
 import { KNOWLEDGE_DIR } from "./content";
@@ -91,19 +92,99 @@ function refId(value: unknown): string {
 }
 function httpUrl(value: unknown): string {
   const source = text(value, "source");
-  const url = new URL(source);
+  const parts = /^(https?):\/\/([^/?#]+)([^?#]*)(\?[^#]*)?(?:#.*)?$/i.exec(
+    source,
+  );
   requireValue(
-    ["http:", "https:"].includes(url.protocol) &&
-      url.hostname &&
-      !url.username &&
-      !url.password &&
-      !/\s/.test(source),
-    "expected HTTP(S) URL without credentials or whitespace",
+    parts &&
+      !/[\x00-\x20\x7f-\x9f\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff\\]/.test(
+        source,
+      ),
+    "expected absolute HTTP(S) URL without repairs, credentials or whitespace",
+  );
+  const authority = parts[2];
+  let hostPort: RegExpExecArray | null;
+  if (authority.startsWith("[")) {
+    hostPort = /^\[([0-9a-fA-F:.]+)\](?::([0-9]{1,5}))?$/.exec(authority);
+    requireValue(hostPort && isIP(hostPort[1]) === 6, "invalid IPv6 URL host");
+  } else {
+    hostPort = /^([a-zA-Z0-9.-]+)(?::([0-9]{1,5}))?$/.exec(authority);
+    requireValue(hostPort, "invalid URL authority");
+    const host = hostPort[1];
+    const dnsName = host.replace(/\.$/, "");
+    const labels = dnsName.split(".");
+    requireValue(
+      dnsName.length <= 253 &&
+        labels.every((label) =>
+          /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/.test(label),
+        ),
+      "invalid DNS URL host",
+    );
+    if (/^(?:[0-9]+|0[xX][0-9a-fA-F]+)$/.test(labels[labels.length - 1])) {
+      requireValue(isIP(host) === 4, "expected standard IPv4 URL host");
+    }
+  }
+  requireValue(
+    hostPort[2] === undefined || Number(hostPort[2]) <= 65535,
+    "invalid URL port",
   );
   return source;
 }
 
-/** The saved values must already be canonical, as required by kg_identifiers.py. */
+// Match Python's str.strip()/Unicode whitespace; a BOM is not whitespace there.
+const ID_SPACE =
+  "[\\u0009-\\u000d\\u001c-\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]";
+
+export function normalizeIdentifier(namespace: string, value: string): string {
+  const v = text(value, "external_ids").replace(
+    new RegExp(`^${ID_SPACE}+|${ID_SPACE}+$`, "g"),
+    "",
+  );
+  let normalized: string;
+  if (namespace === "doi") {
+    normalized = v
+      .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "")
+      .replace(new RegExp(`^doi:${ID_SPACE}*`, "i"), "")
+      .replace(/(?:%[0-9a-f]{2})+/gi, (part) =>
+        Buffer.from(part.replaceAll("%", ""), "hex").toString("utf8"),
+      )
+      .toLowerCase();
+    requireValue(
+      /^10\.[0-9]{4,9}\/[^?#]+$/.test(normalized) &&
+        !new RegExp(ID_SPACE).test(normalized),
+      "invalid doi external ID",
+    );
+  } else if (namespace === "arxiv") {
+    normalized = v
+      .replace(/^https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\//i, "")
+      .replace(new RegExp(`^arxiv:${ID_SPACE}*`, "i"), "")
+      .toLowerCase()
+      .replace(/\.pdf$/, "")
+      .replace(/v[1-9][0-9]*$/, "");
+    requireValue(
+      /^(?:[0-9]{4}\.[0-9]{4,5}|[a-z][a-z0-9.-]*\/[0-9]{7})$/.test(normalized),
+      "invalid arxiv external ID",
+    );
+  } else if (namespace === "openalex") {
+    normalized = v
+      .replace(/^https?:\/\/(?:api\.)?openalex\.org\/(?:works\/)?/i, "")
+      .toUpperCase();
+    requireValue(
+      /^W[1-9][0-9]*$/.test(normalized),
+      "invalid openalex external ID",
+    );
+  } else if (namespace === "url") {
+    httpUrl(v);
+    const parts = /^(https?):\/\/([^/?#]+)([^?#]*)(\?[^#]*)?(?:#.*)?$/i.exec(
+      v,
+    )!;
+    requireValue(parts, "invalid url external ID");
+    normalized = `${parts[1].toLowerCase()}://${parts[2].toLowerCase()}${parts[3] || "/"}${parts[4] === "?" ? "" : (parts[4] ?? "")}`;
+  } else throw new Error(`unknown external ID namespace: ${namespace}`);
+  return normalized;
+}
+
+/** Saved values must already be canonical, as required by kg_identifiers.py. */
 export function externalIds(
   value: unknown,
   allowEmpty = false,
@@ -116,51 +197,7 @@ export function externalIds(
   const ids: Record<string, string> = {};
   for (const [namespace, raw] of Object.entries(data)) {
     const v = text(raw, "external_ids");
-    let normalized: string;
-    if (namespace === "doi") {
-      normalized = v
-        .trim()
-        .replace(/^https?:\/\/(?:dx\.)?doi\.org\//i, "")
-        .replace(/^doi:\s*/i, "")
-        .replace(/(?:%[0-9a-f]{2})+/gi, (part) =>
-          Buffer.from(part.replaceAll("%", ""), "hex").toString("utf8"),
-        )
-        .toLowerCase();
-      requireValue(
-        /^10\.[0-9]{4,9}\/[^\s?#]+$/.test(normalized),
-        "invalid doi external ID",
-      );
-    } else if (namespace === "arxiv") {
-      normalized = v
-        .trim()
-        .replace(/^https?:\/\/(?:www\.)?arxiv\.org\/(?:abs|pdf)\//i, "")
-        .replace(/^arxiv:\s*/i, "")
-        .toLowerCase()
-        .replace(/\.pdf$/, "")
-        .replace(/v[1-9][0-9]*$/, "");
-      requireValue(
-        /^(?:[0-9]{4}\.[0-9]{4,5}|[a-z][a-z0-9.-]*\/[0-9]{7})$/.test(
-          normalized,
-        ),
-        "invalid arxiv external ID",
-      );
-    } else if (namespace === "openalex") {
-      normalized = v
-        .trim()
-        .replace(/^https?:\/\/(?:api\.)?openalex\.org\/(?:works\/)?/i, "")
-        .toUpperCase();
-      requireValue(
-        /^W[1-9][0-9]*$/.test(normalized),
-        "invalid openalex external ID",
-      );
-    } else if (namespace === "url") {
-      httpUrl(v);
-      const parts = /^(https?):\/\/([^/?#]+)([^?#]*)(\?[^#]*)?(?:#.*)?$/i.exec(
-        v,
-      )!;
-      requireValue(parts, "invalid url external ID");
-      normalized = `${parts[1].toLowerCase()}://${parts[2].toLowerCase()}${parts[3] || "/"}${parts[4] === "?" ? "" : (parts[4] ?? "")}`;
-    } else throw new Error(`unknown external ID namespace: ${namespace}`);
+    const normalized = normalizeIdentifier(namespace, v);
     requireValue(
       normalized === v,
       `external_ids.${namespace}: value must be normalized`,
@@ -168,6 +205,30 @@ export function externalIds(
     ids[namespace] = v;
   }
   return ids;
+}
+
+function timestamp(value: unknown): string {
+  const created = text(value, "created_at");
+  const match =
+    /^([0-9]{4})-([0-9]{2})-([0-9]{2})T(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9](?:\.[0-9]{1,6})?)?(?:Z|[+-](?:[01][0-9]|2[0-3]):?[0-5][0-9])$/.exec(
+      created,
+    );
+  requireValue(
+    match && match[0] === created,
+    "created_at must be ISO 8601 with timezone",
+  );
+  const [year, month, day] = match.slice(1).map(Number);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  requireValue(
+    year >= 1 &&
+      month >= 1 &&
+      month <= 12 &&
+      day >= 1 &&
+      day <= days[month - 1],
+    "created_at has an invalid calendar date",
+  );
+  return created;
 }
 
 function reference(value: unknown): CitationReference {
@@ -327,18 +388,7 @@ export function parseCitationDocument(
     /^search-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id),
     "search id must be search-kebab-slug",
   );
-  const created = text(d.created_at, "created_at");
-  requireValue(
-    /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:\d\d)$/.test(
-      created,
-    ) && Number.isFinite(Date.parse(created)),
-    "created_at must be ISO 8601 with timezone",
-  );
-  requireValue(
-    new Date(`${created.slice(0, 10)}T00:00:00Z`).toISOString().slice(0, 10) ===
-      created.slice(0, 10) && Number(created.slice(11, 13)) < 24,
-    "created_at has an invalid calendar date or hour",
-  );
+  const created = timestamp(d.created_at);
   const generations = list(d.generations, "generations").map((value) => {
     const g = mapping(value, ["depth", "paper_ids", "expanded_ids"]);
     return {

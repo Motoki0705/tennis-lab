@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { promises as fs } from "node:fs";
 import os from "node:os";
@@ -6,6 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { stringify } from "yaml";
 import {
+  normalizeIdentifier,
   joinRegisteredPapers,
   loadCitations,
   parseCitationDocument,
@@ -25,11 +27,88 @@ const fixture = fileURLToPath(
 const library = await loadCitations(fixture);
 const byTitle = (name: string) =>
   library.papers.find((p) => p.title === `Fixture ${name}`)!;
-const document = (data: unknown) => `---\n${stringify(data)}---\n`;
+const document = (data: unknown) =>
+  `---\n${stringify(data, { version: "1.1" })}---\n`;
 const root = byTitle("A");
 const mixed = library.searches.find(
   (s) => s.id === "search-fixture-mixed-depth2",
 )!;
+const boundaries: {
+  timestamps: { name: string; value: string; accept: boolean }[];
+  source_urls: { name: string; value: string; accept: boolean }[];
+  external_ids: {
+    name: string;
+    namespace: string;
+    value: string;
+    normalized: string | null;
+  }[];
+} = JSON.parse(
+  await fs.readFile(
+    path.join(fixture, "..", "citation-boundaries.json"),
+    "utf8",
+  ),
+);
+
+for (const row of boundaries.timestamps)
+  test(`shared boundary timestamp: ${row.name}`, () => {
+    const raw = document({ ...mixed, created_at: row.value });
+    if (!row.accept) return assert.throws(() => parseCitationDocument(raw));
+    const parsed = parseCitationDocument(raw) as CitationSearch;
+    assert.equal(parsed.created_at, row.value);
+    validateCitationLibrary({ ...library, searches: [parsed] });
+  });
+
+for (const row of boundaries.source_urls)
+  test(`shared boundary source URL: ${row.name}`, () => {
+    const raw = document({ ...root, source: row.value });
+    if (!row.accept) return assert.throws(() => parseCitationDocument(raw));
+    const parsed = parseCitationDocument(raw) as CitationPaper;
+    assert.equal(parsed.source, row.value);
+    validateCitationLibrary({
+      ...library,
+      papers: library.papers.map((p) => (p.id === parsed.id ? parsed : p)),
+    });
+  });
+
+for (const row of boundaries.external_ids)
+  test(`shared boundary external ID: ${row.name}`, () => {
+    if (row.normalized === null)
+      assert.throws(() => normalizeIdentifier(row.namespace, row.value));
+    else
+      assert.equal(
+        normalizeIdentifier(row.namespace, row.value),
+        row.normalized,
+      );
+    function parsed(value: string): CitationPaper {
+      const identity_key = `${row.namespace}:${value}`;
+      return parseCitationDocument(
+        document({
+          ...root,
+          references: [],
+          identity_key,
+          id: `cite-${createHash("sha256").update(identity_key).digest("hex").slice(0, 16)}`,
+          external_ids: { [row.namespace]: value },
+        }),
+      ) as CitationPaper;
+    }
+    if (row.normalized !== null) {
+      const canonical = parsed(row.normalized);
+      assert.deepEqual(canonical.external_ids, {
+        [row.namespace]: row.normalized,
+      });
+      validateCitationLibrary({
+        papers: [canonical],
+        searches: [],
+        registeredIds: {},
+      });
+    }
+    if (row.normalized === null || row.normalized !== row.value)
+      assert.throws(() => parsed(row.value));
+    else
+      assert.deepEqual(parsed(row.value).external_ids, {
+        [row.namespace]: row.value,
+      });
+  });
 
 test("shared documents join canonical target metadata and preserve all converging evidence", () => {
   assert.equal(library.papers.length, 5);

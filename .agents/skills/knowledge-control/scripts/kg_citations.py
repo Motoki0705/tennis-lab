@@ -33,6 +33,11 @@ IDENTIFICATION_STATUSES = {"resolved", "unresolved"}
 DECISION_STATUSES = {"classified", "unclassifiable", "pending"}
 CITATION_RE = re.compile(r"^cite-[0-9a-f]{16}$")
 SEARCH_RE = re.compile(r"^search-[a-z0-9]+(?:-[a-z0-9]+)*$")
+TIMESTAMP_RE = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T(?:[01][0-9]|2[0-3]):[0-5][0-9]"
+    r"(?::[0-5][0-9](?:\.[0-9]{1,6})?)?"
+    r"(?:Z|[+-](?:[01][0-9]|2[0-3]):?[0-5][0-9])"
+)
 DOCUMENT_RE = re.compile(r"^---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)(.*)$", re.DOTALL)
 
 
@@ -207,6 +212,8 @@ def _search(d: dict[str, Any], body: str) -> CitationSearch:
         raise ValueError("search id must be search-kebab-slug")
     created = _text(d["created_at"], "created_at")
     try:
+        if not TIMESTAMP_RE.fullmatch(created):
+            raise ValueError("expected calendar date, T, clock time and Z/HH:MM/HHMM offset")
         stamp = datetime.fromisoformat(created.replace("Z", "+00:00"))
         if stamp.tzinfo is None:
             raise ValueError("timezone required")
