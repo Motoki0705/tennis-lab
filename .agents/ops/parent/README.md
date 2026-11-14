@@ -101,7 +101,10 @@ transactionを終了して長時間処理を行う場合は `store.checkpoint()`
 自分が保存した変更の後でcheckpointを取り直し、他の親だけの変更は保持する。
 reviewのruntime/events/final等はregistry外で固定入力として検証し、読取中の変更も拒否する。
 
+通信・認証・repo解決は [共通HTTP client](../issues/README.md#github通信認証repo解決) を使う。
 親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
+launch plan内では、検証したfamilyの同じ観測をPR探索にも渡し、再走査を省く。
+委任直前のfresh照合ではfamilyとtimelineを改めて取得する。
 親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
 sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
 ページ内・ページ間の重複は最大3回取り直し、解消しなければ失敗する。空結果への変換はしない。

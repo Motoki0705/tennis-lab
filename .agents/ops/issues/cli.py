@@ -1,4 +1,4 @@
-"""Read-only gh adapter and local draft renderer. No GitHub mutation commands."""
+"""Read-only GitHub adapter and local draft renderer. No GitHub mutation commands."""
 
 from __future__ import annotations
 
@@ -30,6 +30,7 @@ from .format import (
     render_child_body,
     render_parent_body,
 )
+from .transport import HTTPClient
 
 _HTTP_STATUS = re.compile(r"HTTP/\S+ ([0-9]{3})(?:\s|$)")
 _GET_RETRY_DELAYS = (1.0, 2.0)
@@ -166,8 +167,52 @@ def _repo_name(value: str) -> str:
     return value
 
 
+def local_repository() -> str:
+    """Resolve all configured fetch/push URLs without contacting GitHub."""
+    result = subprocess.run(
+        ["git", "config", "--get-regexp", r"^remote\..*\.(url|pushurl)$"],
+        text=True,
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    if result.returncode or not result.stdout.strip():
+        raise ValueError("cannot resolve a GitHub remote; specify --repo owner/repo")
+    repos: dict[str, str] = {}
+    for line in result.stdout.splitlines():
+        fields = line.split(None, 1)
+        if len(fields) != 2:
+            raise ValueError("invalid git remote; specify --repo owner/repo")
+        url = fields[1]
+        scp = re.fullmatch(r"git@github\.com:([^?#]+)", url, re.IGNORECASE)
+        if scp:
+            path = scp[1]
+        else:
+            try:
+                parsed = urlsplit(url)
+                github = (
+                    parsed.scheme in {"https", "ssh"}
+                    and parsed.hostname is not None
+                    and parsed.hostname.casefold() == "github.com"
+                    and parsed.port in {None, 22 if parsed.scheme == "ssh" else 443}
+                    and not parsed.query
+                    and not parsed.fragment
+                    and not parsed.password
+                )
+            except ValueError:
+                github = False
+            if not github:
+                raise ValueError("non-GitHub git remote; specify --repo owner/repo")
+            path = parsed.path.removeprefix("/")
+        name = _repo_name(path.removesuffix(".git"))
+        repos.setdefault(name.casefold(), name)
+    if len(repos) != 1:
+        raise ValueError("ambiguous GitHub remotes; specify --repo owner/repo")
+    return next(iter(repos.values()))
+
+
 class GitHubHTTPError(ValueError):
-    """A failed gh api response with its actual HTTP status preserved."""
+    """A failed GET response with its actual HTTP status preserved."""
 
     def __init__(
         self, endpoint: str, status: int, detail: str, *, attempts: int = 1
@@ -197,21 +242,15 @@ class GitHubTransportError(ValueError):
 
 class GitHub:
     def __init__(self, repo: str | None) -> None:
-        if repo is None:
-            result = self._run("repo", "view", "--json", "nameWithOwner")
-            if result.returncode:
-                raise ValueError(f"gh repo view failed: {result.stderr.strip()}")
-            repo = _string(
-                _object(json.loads(result.stdout), "repository").get("nameWithOwner"),
-                "nameWithOwner",
-            )
-        self.repo = _repo_name(repo)
+        self.repo = _repo_name(repo) if repo is not None else local_repository()
+        self._http = HTTPClient()
 
-    @staticmethod
-    def _run(*args: str) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
-            ["gh", *args], text=True, capture_output=True, timeout=60, check=False
-        )
+    def close(self) -> None:
+        self._http.close()
+
+    def _run(self, *args: str) -> subprocess.CompletedProcess[str]:
+        """Scripted GET injection boundary retained for existing callers/tests."""
+        return self._http.request("GET", args[-1], include=True)
 
     def _get_response(
         self, endpoint: str
@@ -240,7 +279,7 @@ class GitHub:
                 status = _HTTP_STATUS.match(partial)
                 if status:
                     raise GitHubHTTPError(
-                        endpoint,
+                        self._http.redact(endpoint),
                         int(status[1]),
                         f"timeout after {exc.timeout}s after HTTP response status",
                         attempts=attempt,
@@ -252,17 +291,21 @@ class GitHub:
                     return result, attempt
                 if result.returncode == 0:
                     raise ValueError(
-                        f"gh api GET {endpoint}: attempts={attempt}; "
+                        f"gh api GET {self._http.redact(endpoint)}: attempts={attempt}; "
                         "last_error_kind=invalid_http_response "
                         "(gh exited successfully without HTTP response status)"
                     )
                 error_kind = "missing_http_response_status"
                 detail = f"missing HTTP response status ({result.stderr.strip()})"
-        raise GitHubTransportError(endpoint, attempt, error_kind, detail)
+        raise GitHubTransportError(
+            self._http.redact(endpoint), attempt, error_kind, self._http.redact(detail)
+        )
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         result, attempts = self._get_response(endpoint)
-        headers, separator, body = result.stdout.replace("\r\n", "\n").partition("\n\n")
+        headers, separator, body = (
+            self._http.redact(result.stdout).replace("\r\n", "\n").partition("\n\n")
+        )
         status = _HTTP_STATUS.match(headers)
         assert status is not None  # _get_response requires an HTTP status.
         if status[1] == "404" and result.returncode != 0 and missing_parent:
@@ -277,13 +320,16 @@ class GitHub:
                 return None
         if result.returncode or status[1] != "200":
             raise GitHubHTTPError(
-                endpoint, int(status[1]), result.stderr.strip(), attempts=attempts
+                self._http.redact(endpoint),
+                int(status[1]),
+                self._http.redact(result.stderr.strip()),
+                attempts=attempts,
             )
-        context = f"gh api GET {endpoint}: attempts={attempts};"
+        context = f"gh api GET {self._http.redact(endpoint)}: attempts={attempts};"
         if not separator:
             raise ValueError(f"{context} last_error_kind=missing_http_body_separator")
         try:
-            payload: object = json.loads(body)
+            payload: object = json.loads(self._http.redact_json(body))
         except json.JSONDecodeError as exc:
             raise ValueError(
                 f"{context} last_error_kind=invalid_json_response ({exc})"
@@ -372,7 +418,7 @@ def main(argv: list[str] | None = None) -> int:
         "check", help="read the entire related issue family and report inconsistencies"
     )
     check.add_argument("--issue", type=int, required=True)
-    check.add_argument("--repo", help="owner/repo (default: gh repo view)")
+    check.add_argument("--repo", help="owner/repo (default: unique GitHub remote)")
     render = commands.add_parser(
         "render", help="print a local draft as JSON; never write to GitHub"
     )

@@ -623,8 +623,10 @@ class ParentSession:
             capture_approval(self, binding)
         return self.status()
 
-    def family(self) -> tuple[Issue, dict[int, Issue]]:
-        family = self.gh.family(self.parent)
+    def family(
+        self, snapshot: dict[int, Issue] | None = None
+    ) -> tuple[Issue, dict[int, Issue]]:
+        family = self.gh.family(self.parent) if snapshot is None else snapshot
         from issues.evidence import require_work_issue
 
         for item in family.values():
@@ -640,8 +642,10 @@ class ParentSession:
                 reviewed_targets.update(requirements - {self.parent} or {self.parent})
         return reviewed_targets
 
-    def work_items(self) -> tuple[Issue, dict[int, Issue]]:
-        parent, children = self.family()
+    def work_items(
+        self, snapshot: dict[int, Issue] | None = None
+    ) -> tuple[Issue, dict[int, Issue]]:
+        parent, children = self.family(snapshot)
         items = work_targets.resolve(
             parent,
             children,
@@ -959,7 +963,11 @@ class ParentSession:
         overrides: dict[int, list[int]] | None = None,
         restart_child: int | None = None,
     ) -> dict[str, Any]:
-        parent, items = self.work_items()
+        # Family validation and PR discovery use one observation. In a fresh
+        # admission check, re-traversing the same family here used to bypass the
+        # GET cache a second time without establishing a new freshness boundary.
+        family = self.gh.family(self.parent)
+        parent, items = self.work_items(family)
         children, external_deps = work_targets.dependency_graph(parent, items)
         standalone_deps: list[int] | None = None
         blockers = []
@@ -990,7 +998,7 @@ class ParentSession:
             blockers.append(
                 reason("execution_basis_required", "親の有効な実行根拠を記録する。")
             )
-        pulls = self.gh.pulls()
+        pulls = self.gh.pulls(set(family))
         work_targets.require_separate_self_prs(parent, pulls, self.gh.repo)
         plan = plan_launches(
             children,
