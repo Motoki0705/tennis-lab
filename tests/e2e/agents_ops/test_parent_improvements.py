@@ -938,6 +938,113 @@ def test_lost_propose_response_includes_candidates_recorded_before_recovery(
     assert post_count(p) == 1
 
 
+def test_partial_proposal_membership_recovers_after_published_candidate_revision(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    record(p)
+    record(p, fixed_key="second")
+    p.env["PARENT_FAIL_AFTER_COMMENT_CONTAINING"] = '"event": "proposed"'
+    publish(p, ok=False)
+    del p.env["PARENT_FAIL_AFTER_COMMENT_CONTAINING"]
+    assert sum('"event": "proposed"' in c["body"] for c in p.comments()) == 1
+    approval = json.loads(decide(p, "approve").stdout)["decision_id"]
+
+    revised = candidate_spec()
+    revised["scope"] += " 一覧からの取得も対象にする。"
+    p.cli("improvement", "--key", "result-access", "--spec", p.spec(revised))
+    recovered = json.loads(publish(p).stdout)
+    assert recovered["issue"] == 10
+    assert set(recovered["candidates"]) == {"I-1-result-access", "I-1-second"}
+    body = p.state()["issues"]["10"]["body"]
+    assert revised["scope"] in body and "revision 2" in body
+    assert "状態: 承認" not in body
+    assert (
+        "different candidate revision"
+        in decide(
+            p,
+            "approve",
+            decision_spec(previous=approval, request="stale-revision"),
+            ok=False,
+        ).stderr
+    )
+    decide(
+        p,
+        "approve",
+        decision_spec(
+            previous=approval,
+            revision=2,
+            request="revised-approval",
+            quote="一覧からの取得を含む更新後の候補を承認する。",
+        ),
+    )
+    assert "状態: 承認" in p.state()["issues"]["10"]["body"]
+    publish(p)
+    assert post_count(p) == 1
+    assert sum('"event": "proposed"' in c["body"] for c in p.comments()) == 2
+
+
+def test_removed_extraction_marker_before_first_agreement_cannot_unbind_approval(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    p.agreed()
+    record(p)
+    publish(p)
+    approval = json.loads(decide(p, "approve").stdout)["decision_id"]
+    extract(p)
+    decide(
+        p,
+        "revoke",
+        decision_spec(
+            previous=approval, request="human-stop", quote="取り出した改善を撤回する。"
+        ),
+    )
+    source_finished(p)
+    p.cli("register", parent="11")
+    inputs = json.loads(p.cli("basis-input", parent="11").stdout)
+    state = p.state()
+    state["issues"]["11"]["body"] = state["issues"]["11"]["body"].split("\n", 1)[1]
+    p.save(state)
+    # Supply the valid input a body-only caller could obtain after the edit.
+    # The missing marker must veto the basis independently of input freshness.
+    inputs["issue"].pop("improvement")
+    inputs["issue"]["body_sha256"] = importlib.import_module("parent.policy").digest(
+        importlib.import_module("parent.execution").requirement_body(
+            state["issues"]["11"]["body"]
+        )
+    )
+    basis = {
+        "schema_version": 1,
+        "kind": "autonomous_decision",
+        "purpose": "未担当の具体的な作業を進める",
+        "scope": "issueに記載した変更範囲を守る",
+        "behavior": "共通APIから委任とレビューを要求する",
+        "acceptance": "fake CLIで境界を確認する",
+        "rationale": "元の承認を本文から削除している。",
+        "sources": ["https://github.com/o/r/issues/11"],
+        "input_sha256": importlib.import_module("parent.policy").digest(inputs),
+        "policy_version": "autonomous-start/v1",
+    }
+    for command, spec in (
+        ("basis-record", {"basis": basis, "inputs": inputs, "ignored_comments": []}),
+        (
+            "agree",
+            {
+                **{k: basis[k] for k in ("purpose", "scope", "behavior", "acceptance")},
+                "human_confirmation": "本文に記載した通常parentの範囲で進めてください。",
+            },
+        ),
+    ):
+        denied = p.cli(command, "--spec", p.spec(spec), parent="11", ok=False)
+        assert "extraction" in denied.stderr and "provenance" in denied.stderr
+    assert not any(
+        '"event": "execution_basis"' in c["body"] or '"event": "agreed"' in c["body"]
+        for c in p.comments(11)
+    )
+
+
 def test_reopened_proposal_does_not_restore_its_candidates(
     parent_env: ParentEnv,
 ) -> None:

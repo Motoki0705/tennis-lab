@@ -12,11 +12,11 @@ from typing import Any
 from issues import parse_proposal_source, parse_sections, parse_task_metadata
 from issues.evidence import is_evidence_issue, is_proposal_issue, require_work_issue
 from issues.improvement import parse_source as improvement_source
-from issues.improvement_proposals import parse_extraction
 from issues.supplement_state import read_enabled_since, supplement_state
 from parent.execution import comment_snapshot, requirement_body
 from parent.github import GitHub
 from parent.history import History, from_projection, instruction_comments
+from parent.improvement_receipts import bound_extraction
 from parent.policy import closing_issues, digest, nonempty, number, object_value
 from parent.state import Store
 
@@ -101,6 +101,7 @@ def _collect(
 ) -> dict[str, Any]:
     """Caller holds Store.locked(). Every page/failure is significant."""
     login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+    extractions = gh.improvement_extractions(store)
     with gh.fresh_reads():
         enabled_since = read_enabled_since(gh)
     if seeds is None:
@@ -209,9 +210,8 @@ def _collect(
                 }
             )
         source_reports: set[int] = set()
-        improvement = improvement_source(raw.get("body") or "") or parse_extraction(
-            raw.get("body") or ""
-        )
+        extraction = bound_extraction(raw.get("body") or "", n, extractions)
+        improvement = extraction or improvement_source(raw.get("body") or "")
         improvement_sources = [improvement.parent] if improvement is not None else []
         if not is_container({"labels": labels, "body": raw.get("body") or ""}):
             source = parse_proposal_source(raw.get("body") or "")
@@ -304,6 +304,7 @@ def _collect(
         "issues": issues,
         "pulls": sorted(prs, key=lambda x: x["number"]),
         "owners": owners,
+        "improvement_extractions": extractions,
     }
 
 
@@ -384,6 +385,10 @@ def require_current_snapshot(snapshot: Mapping[str, Any]) -> None:
             "unsupported dispatcher activation key; recollect the judgement input "
             "with supplement_enabled_since before resuming"
         )
+    if not isinstance(snapshot.get("improvement_extractions"), dict):
+        raise ValueError(
+            "dispatcher extraction index is missing; recollect the judgement input"
+        )
 
 
 def history_owner(snapshot: Mapping[str, Any], issue: int) -> int:
@@ -459,6 +464,11 @@ def material(
             for n, r in snapshot["owners"].items()
             if int(n) in selected or set(r["tasks"]) & {str(s) for s in selected}
         },
+        "improvement_extractions": {
+            n: r
+            for n, r in snapshot["improvement_extractions"].items()
+            if int(n) in selected
+        },
     }
     if cited_comments:
         # Explicit citations remain evidence even when the usual projection
@@ -484,6 +494,9 @@ class SnapshotGitHub(GitHub):
         if endpoint == "user":
             return {"login": self.snapshot["publisher"]}
         raise ValueError(f"unexpected snapshot request: {endpoint}")
+
+    def improvement_extractions(self, store: Store) -> dict[str, Any]:
+        return deepcopy(object_value(self.snapshot["improvement_extractions"]))
 
     def issue(self, number: int) -> dict[str, Any]:
         return deepcopy(object_value(self.snapshot["issues"][str(number)]))

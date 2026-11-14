@@ -25,10 +25,12 @@ from issues.improvement import (
 )
 from issues.improvement_proposals import parse_extraction
 
+from .improvement_receipts import bound_extraction
 from .policy import raw_section, replace_section
 
 if TYPE_CHECKING:
     from .session import ParentSession
+    from .state import Store
 
 
 def lock_key(repo: str) -> str:
@@ -362,13 +364,16 @@ def stage_stop(
     session.store.focus(session.key)
 
 
-def observe(gh: Any, parent: int, publisher: str) -> dict[str, Any] | None:
+def observe(
+    gh: Any, parent: int, publisher: str, store: Store
+) -> dict[str, Any] | None:
     raw = gh.issue(parent)
     from issues.evidence import require_work_issue
 
     require_work_issue(raw)
     source = parse_source(raw.get("body") or "")
-    extraction = parse_extraction(raw.get("body") or "")
+    index = gh.improvement_extractions(store)
+    extraction = bound_extraction(raw.get("body") or "", parent, index)
     if source is None and extraction is None:
         return None
     if source is not None:
@@ -391,6 +396,7 @@ def observe(gh: Any, parent: int, publisher: str) -> dict[str, Any] | None:
         "issue": raw,
         "approvals": entries,
         "extraction": extraction,
+        "receipt": index.get(str(parent)),
     }
 
 
@@ -400,11 +406,12 @@ def require(
     from .execution import ExecutionBasisStale
 
     n = target or session.parent
+    index = session.gh.improvement_extractions(session.store)
     if not fresh:
         raw = session.gh.issue(n)
         if (
             parse_source(raw.get("body") or "") is None
-            and parse_extraction(raw.get("body") or "") is None
+            and bound_extraction(raw.get("body") or "", n, index) is None
         ):
             if n == session.parent and any(
                 e.get("improvement_approval") for e in session.history()
@@ -414,10 +421,10 @@ def require(
                 )
             return None
     with session.gh.fresh_reads():
-        observed = observe(session.gh, n, session.login)
+        observed = observe(session.gh, n, session.login, session.store)
         if observed is None:
-            # Removing a protected source marker does not unbind an existing
-            # agreement. Initial proposals remain identifiable by their marker.
+            # Legacy publications also retain an existing agreement's binding.
+            # Extracted parents have already been checked against the receipt index.
             if n == session.parent and any(
                 e.get("improvement_approval") for e in session.history()
             ):
@@ -447,6 +454,7 @@ def require(
                     any(e["data"] != data for e in extraction_rows)
                     or data["proposal"] != extraction.proposal
                     or set(data["decision_ids"]) != set(extraction.keys)
+                    or data["decision_ids"] != observed["receipt"]["decision_ids"]
                 ):
                     raise ValueError(
                         "extraction provenance differs from canonical approvals"
@@ -505,8 +513,10 @@ def require(
         }
 
 
-def input_state(gh: Any, parent: int, publisher: str) -> dict[str, Any] | None:
-    observed = observe(gh, parent, publisher)
+def input_state(
+    gh: Any, parent: int, publisher: str, store: Store
+) -> dict[str, Any] | None:
+    observed = observe(gh, parent, publisher, store)
     if observed is None:
         return None
     source, candidate = observed["source"], observed["candidate"]
@@ -668,7 +678,7 @@ def status(session: ParentSession) -> list[dict[str, Any]]:
             )
         )
         if accepted and extraction is not None and target is not None:
-            observed = observe(session.gh, target, session.login)
+            observed = observe(session.gh, target, session.login, session.store)
             accepted = observed is not None and all(
                 completion_applies(
                     completion, item, c, target, observed["issue"].get("body") or ""

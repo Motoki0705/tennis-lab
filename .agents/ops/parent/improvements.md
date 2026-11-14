@@ -124,6 +124,11 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1300 agree --improvem
 取り出しeventを記録して提案本文を更新し、completedでcloseする。残った候補は「提案終了」として残す。
 
 propose/extractは共有private stateへ固定draft・送信前receiptを永続化し、repo単位の改善操作ロックで直列化する。
+取り出しreceiptから「取り出し先parent番号→候補・承認decision_id群」の索引を読み、初回合意前も含めて全実行入口と
+dispatcher/supervisorで本文の出典目印と照合する。目印の削除・改変、索引の取得失敗は実行を止める。
+応答喪失で取り出し先番号が未確定の場合は、同じ取り出し操作を復旧するまでそのrepoの実行承認を行わない。
+掲載記録が一部だけ成功したproposeの再送では、未掲載候補のrevisionだけを固定する。掲載済み候補の更新は
+現在のrevisionで本文へ再投影し、更新前の承認は引き継がない。
 既存の `create_issue_once` と全open/closedの出典索引を使い、応答喪失後も同じIssueで不足分だけを復旧する。
 POST成功の可能性があり、索引で未観測なら `outcome_unknown` として停止し、再POSTしない。
 同じ引数で再送する。receipt削除・key変更・タイトル検索では復旧しない。別ホストの独立state間の排他は提供しない。

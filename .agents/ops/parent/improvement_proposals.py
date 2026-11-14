@@ -7,7 +7,6 @@ receipts only recover uncertain writes and never grant execution permission.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 
 from issues.cli import render_spec
@@ -18,10 +17,8 @@ from issues.improvement import (
     candidate_key,
     contract,
     event,
-    fields,
     fingerprint,
     human_state,
-    key,
     positive,
 )
 from issues.improvement_proposals import (
@@ -31,78 +28,12 @@ from issues.improvement_proposals import (
     parse_proposal,
 )
 from issues.supplement_state import _utc_timestamp
-from worker_logs.journal import atomic, decode
 
+from .improvement_receipts import load_receipt, save_receipt
 from .improvements import append, candidates, comment_url
 
 if TYPE_CHECKING:
     from .session import ParentSession
-
-
-def receipt_path(session: ParentSession, name: str) -> Path:
-    return (
-        Path(session.store.directory)
-        / "improvement-proposals"
-        / fingerprint(session.gh.repo.casefold())
-        / f"{name}.json"
-    )
-
-
-def load_receipt(session: ParentSession, name: str) -> dict[str, Any] | None:
-    path = receipt_path(session, name)
-    if path.is_symlink():
-        raise ValueError("improvement receipt must not be a symlink")
-    if not path.exists():
-        return None
-    value = decode(path.read_bytes())
-    if not isinstance(value, dict) or value.get("repo") != session.gh.repo.casefold():
-        raise ValueError("improvement receipt identity mismatch")
-    positive(value.get("parent"))
-    creation = fields(value.get("creation"), {"draft", "attempted", "number"})
-    if type(creation["attempted"]) is not bool:
-        raise ValueError("invalid improvement creation attempt")
-    if creation["number"] is not None:
-        positive(creation["number"])
-    if creation["draft"] is not None:
-        fields(creation["draft"], {"title", "body", "labels"})
-    if name.startswith("proposal-"):
-        fields(value, {"repo", "parent", "generation", "members", "creation"})
-        source = Proposal(value["parent"], value["generation"])
-        if (
-            name != f"proposal-{source.parent}"
-            or not isinstance(value["members"], dict)
-            or not value["members"]
-        ):
-            raise ValueError("invalid proposal receipt membership")
-        for k, revision in value["members"].items():
-            key(k)
-            positive(revision)
-        if (
-            creation["draft"] is not None
-            and parse_proposal(creation["draft"]["body"]) != source
-        ):
-            raise ValueError("proposal receipt provenance mismatch")
-    else:
-        fields(
-            value, {"repo", "parent", "keys", "proposal", "decision_ids", "creation"}
-        )
-        extracted_source = Extraction(
-            value["parent"], value["proposal"], tuple(value["keys"])
-        )
-        if name != f"extraction-{extracted_source.proposal}" or set(
-            value["decision_ids"]
-        ) != set(extracted_source.keys):
-            raise ValueError("invalid extraction receipt approvals")
-        if (
-            creation["draft"] is None
-            or parse_extraction(creation["draft"]["body"]) != extracted_source
-        ):
-            raise ValueError("extraction receipt provenance mismatch")
-    return dict(value)
-
-
-def save_receipt(session: ParentSession, name: str, receipt: dict[str, Any]) -> None:
-    atomic(receipt_path(session, name), receipt)
 
 
 def index_proposals(
@@ -340,7 +271,9 @@ def propose(session: ParentSession) -> dict[str, Any]:
         ):
             raise ValueError("proposal receipt identity mismatch")
         for k, revision in receipt["members"].items():
-            if recorded[k]["revision"] != revision:
+            # A recorded membership binds the Issue/generation, not later revisions.
+            # Only members still awaiting their event depend on the fixed request.
+            if recorded[k]["proposal"] is None and recorded[k]["revision"] != revision:
                 raise ValueError(
                     "candidate changed during proposal publication; recover the fixed request"
                 )

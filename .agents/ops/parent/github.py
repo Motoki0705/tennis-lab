@@ -24,6 +24,11 @@ if TYPE_CHECKING:
 
 
 class GitHub(IssueGitHub):
+    def improvement_extractions(self, store: Store) -> dict[str, Any]:
+        from .improvement_receipts import extraction_index
+
+        return extraction_index(store.directory, self.repo)
+
     def __init__(self, repo: str | None, *, store: Store | None = None) -> None:
         super().__init__(repo)
         self._store = store

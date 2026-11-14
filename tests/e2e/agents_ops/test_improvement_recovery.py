@@ -371,6 +371,17 @@ def approved_gate(
             for i, row in enumerate(rows)
         ]
         p.save(state)
+        from tests.e2e.agents_ops.test_manual_worker_runs import state_dir
+        from tests.support.agents_ops.improvements import extraction_receipt
+
+        extraction_receipt(
+            state_dir(p),
+            parent=2,
+            proposal=3,
+            target=1,
+            body=state["issues"]["1"]["body"],
+            decisions=decisions,
+        )
         first_approval.append(decisions["first"])
         p.cli("agree", "--improvement-approval", decisions["first"])
 

@@ -127,9 +127,10 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
     ).session_events()
     facts = []
     from issues.improvement import approved, parse_source, read_candidates
-    from issues.improvement_proposals import parse_extraction
+    from parent.improvement_receipts import bound_extraction
 
-    improvement = parse_source(raw["body"]) or parse_extraction(raw["body"])
+    extraction = bound_extraction(raw["body"], n, snapshot["improvement_extractions"])
+    improvement = extraction or parse_source(raw["body"])
     if improvement is not None:
         source = issues.get(str(improvement.parent))
         if source is None:
@@ -153,6 +154,8 @@ def guard(snapshot: dict[str, Any], n: int) -> MechanicalGuard | None:
                         data is None
                         or data["data"]["proposal"] != improvement.proposal
                         or set(data["data"]["decision_ids"]) != set(keys)
+                        or data["data"]["decision_ids"]
+                        != snapshot["improvement_extractions"][str(n)]["decision_ids"]
                     ):
                         raise ValueError("extraction approval records are incomplete")
                 approved(

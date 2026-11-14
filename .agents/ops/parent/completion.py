@@ -119,7 +119,7 @@ def status(session: ParentSession) -> dict[str, Any]:
     if applies:
         from .improvements import completion_applies, observe
 
-        current = observe(session.gh, session.parent, session.login)
+        current = observe(session.gh, session.parent, session.login, session.store)
         saved = session.row["completion"]
         if current is not None:
             applies = all(
