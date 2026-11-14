@@ -534,6 +534,7 @@ def test_review_publication_failure_keeps_observed_result_and_new_run_predecesso
     manifest = json.loads(
         r.p.cli(
             "review-prepare",
+            *r.p.review_flags(),
             "--prs",
             "100",
             "--reason-file",

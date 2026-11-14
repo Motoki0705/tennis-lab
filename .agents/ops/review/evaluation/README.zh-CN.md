@@ -171,19 +171,18 @@ repo-root ignore 规则按文档例验证，不豁免真实服务的凭证 URL�
 ```
 
 最小方案没有 gold blocker，且仅重复一次。暂定负例不证明不存在缺陷；缓存、顺序和工具差异仍有不确定性。
-默认保持 fixed。限定 select 需父任务确认 major 漏检相对 Astra 不增加，误报、未知和失败不恶化，
-有效设置可验证，并且计入升级成本后达到批准的改善幅度。发布、权限、gate、取消、竞争及重大数据身份问题
-继续优先 Astra。
+历史比较报告保留当时的策略和证据。当前正式审查策略、示例、用量查询及 fixed 回退以
+[父级模型选择步骤](../../parent/README.md#正式レビューのモデル選択)为准。
+此 harness 在部署设置为 fixed 或 select 时都显式选择比较模型，
+保留已批准的 Astra/xhigh 参考设置和不可变证据。
 
 另行授权后，父任务选正式 PR，核查 prepare/request、固定检索凭据、final/event、runtime 设置、
 结果发布、父任务显式接收和 gate dry-run。确认未接收或缺少 CI 时 gate 阻止；适用时不重启代码审查完成证据。
 在获授权且适用的 run 上确认复用、恢复和 Astra handoff，保留原问题及
 [判断记录](../../decision_logs/README.zh-CN.md) 因果链接。
-把实际 PR、CI、gate 证据和部署决定记录在父 issue。这些验收工作未由离线 fixture 完成。
+把实际 PR、CI、gate 证据及新的部署决定记录在父 issue。离线 fixture 不证明真实模型的质量或费用。
 
-限定选择只用于点名的低风险 request 和专用 config，其他保持 fixed。
-出现额外严重漏检、设置无法解释、因果链接丢失或预计超量时停止扩大。
-回退只影响后续 request，恢复原 Astra/xhigh fixed。不要修改已固定或已消费的 request；
+不要修改已固定或已消费的 request；
 先核对活动 run、保留问题，再按显式指令创建替代 request 或 handoff。不加入自动重试和策略切换。
 
 ## 离线验证

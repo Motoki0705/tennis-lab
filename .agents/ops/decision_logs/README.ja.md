@@ -131,10 +131,12 @@ commitが同じだけで作業中コードも同じとは認定せず、未観�
 `decision-log-status` で元レビューの捕捉済み結果ID `R` を確認する。
 handoffの親判断は `decide.inputs` に `R` を含め、再利用と追加確認の範囲、
 `review` のnext-action planを指定する。
-`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`
+`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
+--review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`
 で準備し、`review-request --run-id NEXT --instruction-file instruction.txt
 --decision-id D --retry-of R` で指示する。planが1件なら `--plan-id` は不要。
 prepareはfetchなので、review planは後続runと結びつくreview-requestに渡す。
+通常設定selectで必須のモデルと1文の理由は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)に従う。
 明示したhandoffの結果IDは、その元runの操作が捕捉した結果であり、判断のinputsにも含む必要がある。
 別runの結果や関連しない判断は拒否する。判断metadataのない既存handoffは、判断未記録のまま使える。
 

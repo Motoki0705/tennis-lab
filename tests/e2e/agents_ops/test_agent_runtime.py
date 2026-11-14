@@ -717,9 +717,15 @@ def test_resume_refuses_changed_read_dirs_before_launch(
 
 @pytest.mark.parametrize("profile", ["review", "ops_scout"])
 def test_read_dirs_do_not_change_codex_profile_arguments(
-    h: Harness, profile: str
+    h: Harness, profile: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    initial = h.run(extra=("--profile", profile))
+    extra: tuple[str, ...] = ("--profile", profile)
+    if profile == "review":
+        from tests.e2e.agents_ops.test_review_model_selection import choice_files
+
+        _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+        extra += ("--review-selection-file", str(path))
+    initial = h.run(extra=extra)
     assert initial.returncode == 0, initial.stderr
     assert h.result()["contract"]["read_dirs"] == []
     expected = h.args()
@@ -727,7 +733,7 @@ def test_read_dirs_do_not_change_codex_profile_arguments(
     assert "json_schema_sha256" not in h.result()["contract"]
     proc = h.run(
         "with-input",
-        extra=("--profile", profile, "--read-dir", str(h.root)),
+        extra=(*extra, "--read-dir", str(h.root)),
     )
     assert proc.returncode == 0, proc.stderr
     expected[expected.index("--output-last-message") + 1] = str(
@@ -818,9 +824,14 @@ def test_failed_turns_preserve_evidence_and_never_claim_task_success(
 
 @pytest.mark.parametrize("profile", [None, "review"])
 def test_web_search_completes_and_resumes_without_losing_raw_events(
-    h: Harness, profile: str | None
+    h: Harness, profile: str | None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    extra = ("--profile", profile) if profile else ()
+    extra: tuple[str, ...] = ("--profile", profile) if profile else ()
+    if profile == "review":
+        from tests.e2e.agents_ops.test_review_model_selection import choice_files
+
+        _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+        extra += ("--review-selection-file", str(path))
     proc = h.run(scenario="web_search", extra=extra)
     assert proc.returncode == 0, proc.stderr
     initial = h.result()

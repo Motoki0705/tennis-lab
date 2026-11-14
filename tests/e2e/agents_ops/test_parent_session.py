@@ -342,6 +342,19 @@ class ParentEnv:
         path.write_text(text)
         return str(path)
 
+    def review_flags(self) -> tuple[str, ...]:
+        """Explicit parent choice for workflow fixtures that cross state/gate boundaries."""
+        path = self.root / "review-model-reason.md"
+        path.write_text("永続状態・復旧・merge gateの境界を確認するためAstraを選ぶ。")
+        return (
+            "--review-model",
+            "gpt-6-astra",
+            "--review-effort",
+            "xhigh",
+            "--model-reason-file",
+            str(path),
+        )
+
     def announce_completion(self) -> dict[str, Any]:
         """Act as the parent: explicitly select and record the verified overall outcome."""
         source = json.loads(
@@ -1030,7 +1043,9 @@ def test_board_review_marker_and_ack_cannot_instruct_fixed_review(
 ) -> None:
     p = parent_env
     selected = review_setup(p, standalone=True)
-    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    request = json.loads(
+        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
+    )
     policy = importlib.import_module("parent.policy")
     fixed = next(
         event
@@ -1803,7 +1818,13 @@ def test_invalid_review_set_has_no_public_request(
     else:
         state["prs"][0]["head"]["repo"]["full_name"] = "other/r"
     p.save(state)
-    p.cli("review-prepare", "--prs", *map(str, selected), ok=case == "missing")
+    p.cli(
+        "review-prepare",
+        *p.review_flags(),
+        "--prs",
+        *map(str, selected),
+        ok=case == "missing",
+    )
     if case == "missing":
         return
     assert not any(
@@ -1817,11 +1838,17 @@ def test_review_snapshot_explicit_once_handoff_and_states(
     p = parent_env
     selected = review_setup(p)
     assert json.loads(p.cli("status").stdout)["review"] == "未指示"
-    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    request = json.loads(
+        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
+    )
     assert request["parent_issue"] == 1 and len(request["prs"]) == 3
     assert "private-session" not in json.dumps(request)
     assert (
-        json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+        json.loads(
+            p.cli(
+                "review-prepare", *p.review_flags(), "--prs", *map(str, selected)
+            ).stdout
+        )
         == request
     )
     for pr in request["prs"]:
@@ -1860,7 +1887,7 @@ def test_review_snapshot_explicit_once_handoff_and_states(
     assert (
         sum('"state": "instructed"' in c["body"].splitlines()[0] for c in comments) == 1
     )
-    p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
+    p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected), ok=False)
     p.cli(
         "review-state",
         "--run-id",
@@ -1888,7 +1915,9 @@ def test_review_snapshot_explicit_once_handoff_and_states(
 def test_changed_review_target_refuses_instruction(parent_env: ParentEnv) -> None:
     p = parent_env
     selected = review_setup(p, pr_count=2)
-    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    request = json.loads(
+        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
+    )
     state = p.state()
     state["prs"][0]["head"]["sha"] = state["prs"][1]["head"]["sha"]
     p.save(state)
@@ -1912,7 +1941,7 @@ def test_snapshot_collection_window_update_is_not_published(
     p = parent_env
     selected = review_setup(p, pr_count=2)
     p.env["PARENT_CHANGE_PULLS_ON_READ"] = "1"
-    p.cli("review-prepare", "--prs", *map(str, selected), ok=False)
+    p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected), ok=False)
     assert not any(
         '"event": "review"' in c["body"] for c in evidence_comments(p.state())
     )
@@ -1923,7 +1952,9 @@ def test_instruction_recovers_from_public_post_then_local_save_failure(
 ) -> None:
     p = parent_env
     selected = review_setup(p, pr_count=1)
-    request = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    request = json.loads(
+        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
+    )
     run_id = request["review_run_id"]
     temporary = (
         Path(p.env["XDG_STATE_HOME"])
@@ -2339,7 +2370,9 @@ def make_review_env(
     )
     if before_review is not None:
         before_review(p)
-    manifest = json.loads(p.cli("review-prepare", "--prs", *map(str, selected)).stdout)
+    manifest = json.loads(
+        p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected)).stdout
+    )
     request = json.loads(
         p.cli(
             "review-request",
@@ -2741,10 +2774,13 @@ def test_new_explicit_run_requires_reason_and_is_visible_as_exception(
 ) -> None:
     r = review_env
     r.run()
-    r.p.cli("review-prepare", "--prs", "100", "101", "102", ok=False)
+    r.p.cli(
+        "review-prepare", *r.p.review_flags(), "--prs", "100", "101", "102", ok=False
+    )
     manifest = json.loads(
         r.p.cli(
             "review-prepare",
+            *r.p.review_flags(),
             "--prs",
             "100",
             "101",
@@ -3260,6 +3296,7 @@ def test_combined_handoff_registers_results_and_instructs_subset(
     requested = json.loads(
         p.cli(
             "review-request",
+            *p.review_flags(),
             "--prs",
             "100",
             "--instruction-file",

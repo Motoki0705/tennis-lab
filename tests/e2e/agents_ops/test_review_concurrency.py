@@ -26,6 +26,7 @@ def subset_request(r: ReviewEnv, n: int) -> ReviewEnv:
     manifest = json.loads(
         r.p.cli(
             "review-prepare",
+            *r.p.review_flags(),
             "--prs",
             str(n),
             "--reason-file",

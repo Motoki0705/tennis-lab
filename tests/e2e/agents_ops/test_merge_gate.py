@@ -2062,6 +2062,7 @@ def test_later_partial_run_preserves_other_prs_and_merges_each_once(
     prepared = json.loads(
         p.cli(
             "review-prepare",
+            *p.review_flags(),
             "--prs",
             "102",
             "--reason-file",
