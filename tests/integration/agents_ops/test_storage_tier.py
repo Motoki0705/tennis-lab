@@ -249,8 +249,9 @@ def test_queue_records_do_not_protect_idle_units(lab: Lab, state: str) -> None:
     assert not (lab.config.repo / unit.path).exists()
 
 
+@pytest.mark.parametrize("open_kind", ["read", "O_PATH"])
 def test_real_open_descriptor_reached_through_external_hardlink_blocks(
-    lab: Lab, tmp_path: Path
+    lab: Lab, tmp_path: Path, open_kind: str
 ) -> None:
     unit = lab.unit()
     alias = tmp_path / "another-name.bin"
@@ -261,8 +262,9 @@ def test_real_open_descriptor_reached_through_external_hardlink_blocks(
             sys.executable,
             "-u",
             "-c",
-            "import sys; f=open(sys.argv[1], 'rb'); print('ready', flush=True); sys.stdin.readline()",
+            "import os,sys; fd=os.open(sys.argv[1], os.O_PATH if sys.argv[2]=='O_PATH' else os.O_RDONLY); print('ready', flush=True); sys.stdin.readline(); os.close(fd)",
             str(alias),
+            open_kind,
         ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
@@ -296,6 +298,7 @@ def test_mapping_without_fd_and_uninspectable_process_fail_closed(
     (process / "maps").write_text(
         f"00001000-00002000 r--p 00000000 {os.major(info.st_dev):02x}:{os.minor(info.st_dev):02x} {info.st_ino} /external/alias.bin\n"
     )
+    (process / "mountinfo").write_text("")
     code, report = lab.run("evict", unit)
     assert code == 0 and "open-mmap" in report["results"][0]["reason"]
     original = lab.usage.read_bytes
@@ -368,6 +371,7 @@ def private_process(lab: Lab, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]
     process.mkdir()
     (process / "fd").mkdir()
     (process / "maps").write_text("")
+    (process / "mountinfo").write_text("")
     (process / "cwd").symlink_to(lab.config.repo)
     (process / "root").symlink_to("/")
     uid = 12345
@@ -1785,14 +1789,20 @@ def test_unavailable_lease_never_falls_back_to_unlocked_deletion(
     assert failed["phase"] == "lease_acquire" and not failed["unlinked"]
 
 
-@pytest.mark.parametrize("when", ["before-unlink", "after-final-check"])
+@pytest.mark.parametrize(
+    "when", ["before-unlink", "after-final-check", "after-unlink-check"]
+)
 def test_blocked_writer_is_released_and_lease_break_is_audited(
     lab: Lab, monkeypatch: pytest.MonkeyPatch, when: str
 ) -> None:
     unit = lab.unit()
+    alias = lab.config.repo / "outside-lease-alias.bin"
+    if when == "after-unlink-check":
+        os.link(lab.config.repo / unit.path / "a.bin", alias)
     lab.mirror(unit)
     removal = importlib.import_module("storage_tier.removal")
     original_hash, original_unlink = removal.hashlib.file_digest, os.unlink
+    original_append = lab.module.append_json
     child: subprocess.Popen[str] | None = None
     script = r"""
 import os, sys
@@ -1840,8 +1850,19 @@ print('written', flush=True)
                 start_writer(retained / path)
         return original_unlink(path, *args, **kwargs)
 
+    def after_post_unlink_check(path: Path, value: dict[str, Any]) -> None:
+        original_append(path, value)
+        if (
+            child is None
+            and when == "after-unlink-check"
+            and value.get("event") == "removed"
+            and value.get("entry") == "a.bin"
+        ):
+            start_writer(alias)
+
     monkeypatch.setattr(removal.hashlib, "file_digest", after_hash)
     monkeypatch.setattr(os, "unlink", at_unlink)
+    monkeypatch.setattr(lab.module, "append_json", after_post_unlink_check)
     try:
         code, report = lab.run("evict", unit)
     finally:
@@ -1867,7 +1888,7 @@ print('written', flush=True)
     assert failed["phase"] == (
         "before_unlink" if when == "before-unlink" else "after_unlink"
     )
-    assert failed["unlinked"] == (when == "after-final-check")
+    assert failed["unlinked"] == (when != "before-unlink")
     assert interrupted["removal_failures"][0]["phase"] == failed["phase"]
     assert interrupted["removal_failures"][0]["unlinked"] == failed["unlinked"]
     assert interrupted["removed_entries"] == (
@@ -2061,3 +2082,214 @@ def test_verified_stage_cleanup_failure_keeps_payload_and_has_recovery(
     assert tree.is_relative_to(base / ".storage-tier/recovered-trees")
     assert lab.filesystem.read_bytes(tree / "a.bin") == b"stage-only late payload\n"
     assert not result["recovery_required"]
+
+
+@pytest.mark.parametrize(
+    "operation,timing",
+    [
+        ("evict", "after-unlink-check"),
+        ("evict", "during-unlock"),
+        ("mirror", "after-unlink-check"),
+        ("mirror", "during-unlock"),
+    ],
+)
+def test_late_nonblocking_break_cannot_complete_a_removal_transaction(
+    lab: Lab,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    operation: str,
+    timing: str,
+) -> None:
+    unit = lab.unit()
+    alias = tmp_path / "external-lease-alias.bin"
+    original_copy = lab.module.copy_tree
+    if operation == "evict":
+        os.link(lab.config.repo / unit.path / "a.bin", alias)
+    else:
+
+        def link_old_mirror(
+            source: Path, target: Path, expected: Any, **kwargs: Any
+        ) -> None:
+            original_copy(source, target, expected, **kwargs)
+            if not alias.exists():
+                os.link(target / "a.bin", alias)
+
+        monkeypatch.setattr(lab.module, "copy_tree", link_old_mirror)
+    lab.mirror(unit)
+    if operation == "mirror":
+        (lab.config.repo / unit.path / "a.bin").write_bytes(b"new output\n")
+        lab.age(unit, 1)
+    original_append, original_fcntl = lab.module.append_json, fcntl.fcntl
+    broken = False
+    script = r"""
+import os, sys
+try:
+    fd = os.open(sys.argv[1], os.O_WRONLY | os.O_NONBLOCK | os.O_NOATIME)
+except BlockingIOError:
+    sys.exit(75)
+os.close(fd)
+sys.exit(76)
+"""
+
+    def request_break() -> None:
+        nonlocal broken
+        broken = True
+        child = subprocess.run(
+            [sys.executable, "-c", script, str(alias)],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert child.returncode == 75, child.stderr
+
+    def after_check(path: Path, value: dict[str, Any]) -> None:
+        original_append(path, value)
+        if (
+            not broken
+            and timing == "after-unlink-check"
+            and value.get("event") == "removed"
+            and value.get("entry") == "a.bin"
+        ):
+            request_break()
+
+    def during_unlock(fd: int, command: int, *args: Any) -> Any:
+        if (
+            not broken
+            and timing == "during-unlock"
+            and command == fcntl.F_SETLEASE
+            and args == (fcntl.F_UNLCK,)
+        ):
+            info, external = os.fstat(fd), alias.stat()
+            if (info.st_dev, info.st_ino) == (external.st_dev, external.st_ino):
+                request_break()
+        return original_fcntl(fd, command, *args)
+
+    monkeypatch.setattr(lab.module, "append_json", after_check)
+    monkeypatch.setattr(fcntl, "fcntl", during_unlock)
+    code, report = lab.run(operation, unit)
+    assert broken and code == 1, report
+    event = (
+        "deletion_interrupted" if operation == "evict" else "stage_removal_interrupted"
+    )
+    audit = next(r for r in lab.records() if r["event"] == event)
+    failed = audit["removal_failures"][0]
+    assert failed["phase"] == "after_unlink" and failed["unlinked"]
+    assert audit["removed_entries"] == ["a.bin"]
+    assert lab.filesystem.read_bytes(alias) == b"apple\n"
+    assert not any(r["event"] in {"deleted", "mirror_retired"} for r in lab.records())
+    assert lab.filesystem.names(lab.config.state / "transactions")
+
+
+def test_opath_reference_is_busy_and_can_reopen_an_unlinked_inode(lab: Lab) -> None:
+    unit = lab.unit()
+    source = lab.config.repo / unit.path
+    payload = source / "a.bin"
+    tree = lab.filesystem.snapshot(source)
+    process = lab.proc / str(os.getpid())
+    process.symlink_to(f"/proc/{os.getpid()}", target_is_directory=True)
+    before_reference = lab.usage.Inspector(lab.proc).inspect((source,), tree)
+    opath = os.open(payload, os.O_PATH)
+    lease_fd = -1
+    reopened = -1
+    try:
+        usage = lab.usage.Inspector(lab.proc).inspect((source,), tree)
+        matched = any(f"fd={opath}" == row.split()[-1] for row in usage.busy)
+        initial_nlink = os.fstat(opath).st_nlink
+        lease_fd = os.open(payload, os.O_RDONLY | os.O_NOATIME)
+        leases = importlib.import_module("storage_tier.leases")
+        with leases.write_lease(lease_fd):
+            before = fcntl.fcntl(lease_fd, fcntl.F_GETLEASE)
+            os.unlink(payload)
+            after = fcntl.fcntl(lease_fd, fcntl.F_GETLEASE)
+        reopened = os.open(f"/proc/self/fd/{opath}", os.O_RDWR | os.O_NOATIME)
+        os.pwrite(reopened, b"pear!\n", 0)
+        observed = {
+            "kernel": os.uname().release,
+            "reference": "O_PATH",
+            "before_reference_busy": bool(before_reference.busy),
+            "initial_nlink": initial_nlink,
+            "existing_reference_busy": matched,
+            "unknown": usage.unknown,
+            "lease_before_unlink": before,
+            "lease_after_unlink": after,
+            "reopened_nlink": os.fstat(reopened).st_nlink,
+            "reopened_payload": os.pread(reopened, 6, 0).decode(),
+            "source_exists": payload.exists(),
+        }
+        print(json.dumps(observed, sort_keys=True))
+        assert not before_reference.busy and not before_reference.unknown, observed
+        assert matched and not usage.unknown, observed
+        assert initial_nlink == 1 and before == after == fcntl.F_WRLCK, observed
+        assert (
+            observed["reopened_nlink"] == 0
+            and observed["reopened_payload"] == "pear!\n"
+        ), observed
+        assert not payload.exists()
+    finally:
+        for fd in (reopened, lease_fd, opath):
+            if fd >= 0:
+                os.close(fd)
+
+
+@pytest.mark.parametrize(
+    "condition",
+    ["match", "other-inode", "other-device", "malformed", "denied", "missing"],
+)
+def test_mount_reference_inspection_uses_identity_and_fails_closed(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    condition: str,
+) -> None:
+    unit = lab.unit()
+    private_process["denied"] = set()
+    process = private_process["path"]
+    namespace_root = tmp_path / "namespace-root"
+    namespace_root.mkdir()
+    alias = namespace_root / "outside alias\\tail.bin"
+    if condition == "match":
+        os.link(lab.config.repo / unit.path / "a.bin", alias)
+    else:
+        alias.write_bytes(b"unrelated namespace file\n")
+    (process / "root").unlink()
+    (process / "root").symlink_to(namespace_root, target_is_directory=True)
+    lab.mirror(unit)
+    info = (lab.config.repo / unit.path / "a.bin").stat()
+    device = f"{os.major(info.st_dev)}:{os.minor(info.st_dev)}"
+    if condition == "other-device":
+        device = "0:99999" if info.st_dev != os.makedev(0, 99999) else "0:99998"
+        alias.unlink()  # Unrelated devices must not trigger a namespace path stat.
+    if condition == "missing":
+        alias.unlink()
+    text = f"55 1 {device} /source /outside\\040alias\\134tail.bin rw - ext4 /dev/fake rw\n"
+    if condition == "malformed":
+        text = "55 incomplete mount record\n"
+    (process / "mountinfo").write_text(text)
+    if condition == "denied":
+        original = lab.usage.read_bytes
+
+        def denied(path: Path) -> bytes:
+            if path == process / "mountinfo":
+                raise PermissionError(
+                    errno.EACCES, "injected mountinfo denial", str(path)
+                )
+            return cast(bytes, original(path))
+
+        monkeypatch.setattr(lab.usage, "read_bytes", denied)
+    code, report = lab.run("evict", unit)
+    result = report["results"][0]
+    if condition == "match":
+        assert (
+            code == 0
+            and result["action"] == "kept"
+            and "mount-reference" in result["reason"]
+        ), report
+        assert lab.filesystem.read_bytes(alias) == b"apple\n"
+    elif condition in {"other-inode", "other-device"}:
+        assert code == 0 and result["action"] == "evicted", report
+    else:
+        assert code == 1 and "usage cannot be verified" in result["error"], report
+    assert (lab.config.repo / unit.path).exists() == (
+        condition not in {"other-inode", "other-device"}
+    )

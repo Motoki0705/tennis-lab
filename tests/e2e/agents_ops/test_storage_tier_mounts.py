@@ -136,3 +136,118 @@ def test_checkpoint_bind_alias_is_rejected_before_certification(
         "checkpoint directory alias" if guard == "identity-only" else "mount"
     )
     assert expected_reason in json.dumps(observed["report"]), observed
+
+
+def test_external_file_bind_reference_is_inspected_and_survives_unlink(
+    tmp_path: Path, private_mount_namespace: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import fcntl
+    import importlib
+    import select
+
+    monkeypatch.syspath_prepend(str(OPS))
+    filesystem = importlib.import_module("storage_tier.filesystem")
+    leases = importlib.import_module("storage_tier.leases")
+    usage = importlib.import_module("storage_tier.usage")
+    unit, proc = tmp_path / "unit", tmp_path / "proc"
+    unit.mkdir()
+    proc.mkdir()
+    source, alias = unit / "payload.bin", tmp_path / "external alias.bin"
+    source.write_bytes(b"apple\n")
+    alias.touch()
+    tree = filesystem.snapshot(unit)
+    script = r"""
+import json, os, subprocess, sys
+from pathlib import Path
+source, alias = Path(sys.argv[1]), Path(sys.argv[2])
+print('waiting-before-bind', flush=True)
+sys.stdin.readline()
+subprocess.run(['mount','--bind',str(source),str(alias)], check=True)
+info = alias.stat()
+point = str(alias).replace('\\','\\134').replace(' ','\\040')
+line = next(line for line in Path('/proc/self/mountinfo').read_text().splitlines() if line.split()[4] == point)
+print(json.dumps({'pid':os.getpid(),'dev':info.st_dev,'ino':info.st_ino,'nlink':info.st_nlink,'mountinfo':line}), flush=True)
+sys.stdin.readline()
+fd = os.open(alias, os.O_RDWR | os.O_NOATIME)
+os.pwrite(fd,b'pear!\n',0)
+print(json.dumps({'nlink':os.fstat(fd).st_nlink,'payload':os.pread(fd,6,0).decode()}), flush=True)
+os.close(fd)
+"""
+    child = subprocess.Popen(
+        [
+            "unshare",
+            "--user",
+            "--map-root-user",
+            "--mount",
+            "--propagation",
+            "private",
+            sys.executable,
+            "-c",
+            script,
+            str(source),
+            str(alias),
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    fd = -1
+    try:
+        assert child.stdout is not None and select.select([child.stdout], [], [], 10)[0]
+        assert child.stdout.readline().strip() == "waiting-before-bind"
+        (proc / str(child.pid)).symlink_to(
+            f"/proc/{child.pid}", target_is_directory=True
+        )
+        before_reference = usage.Inspector(proc).inspect((unit,), tree)
+        assert child.stdin is not None
+        child.stdin.write("bind\n")
+        child.stdin.flush()
+        assert select.select([child.stdout], [], [], 10)[0]
+        ready = json.loads(child.stdout.readline())
+        inspected = usage.Inspector(proc).inspect((unit,), tree)
+        target = Path(f"/proc/{child.pid}/root") / str(alias).lstrip("/")
+        visible = target.stat()
+        fd = os.open(source, os.O_RDONLY | os.O_NOATIME)
+        with leases.write_lease(fd):
+            before = fcntl.fcntl(fd, fcntl.F_GETLEASE)
+            source.unlink()
+            after = fcntl.fcntl(fd, fcntl.F_GETLEASE)
+        stdout, stderr = child.communicate("write\n", timeout=10)
+        assert child.returncode == 0, stderr
+        written = json.loads(stdout)
+        observed = {
+            "kernel": os.uname().release,
+            "reference": "private-file-bind",
+            "before_reference_busy": bool(before_reference.busy),
+            "initial_nlink": ready["nlink"],
+            "same_inode_through_proc_root": (visible.st_dev, visible.st_ino)
+            == (ready["dev"], ready["ino"]),
+            "existing_reference_busy": bool(inspected.busy),
+            "busy": inspected.busy,
+            "unknown": inspected.unknown,
+            "lease_before_unlink": before,
+            "lease_after_unlink": after,
+            "reopened_nlink": written["nlink"],
+            "reopened_payload": written["payload"],
+            "source_exists": source.exists(),
+            "mountinfo": ready["mountinfo"],
+        }
+        print(json.dumps(observed, sort_keys=True))
+        assert not before_reference.busy and not before_reference.unknown, observed
+        assert observed["same_inode_through_proc_root"] and not inspected.unknown, (
+            observed
+        )
+        assert ready["nlink"] == 1 and before == after == fcntl.F_WRLCK, observed
+        assert written == {"nlink": 0, "payload": "pear!\n"} and not source.exists(), (
+            observed
+        )
+        assert inspected.busy and any("mount" in reason for reason in inspected.busy), (
+            observed
+        )
+    finally:
+        if fd >= 0:
+            os.close(fd)
+        if child.poll() is None:
+            child.kill()
+        child.communicate(timeout=10)

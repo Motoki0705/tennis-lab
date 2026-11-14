@@ -114,14 +114,27 @@ E:`<mirror-repo>/.storage-tier/manifests/`，保存两边的 SHA-256、size/mtim
 每个 regular file 在 claim 后，必须先通过只读 FD 获取 Linux `F_SETLEASE(F_WRLCK)`，再做最终身份、metadata、SHA-256 校验。
 已有 open FD、所有者/权限错误、不支持 lease 或 `/proc/sys/fs/leases-enable` 禁用时，保留对象并失败，绝不降级为无锁删除。
 lease 按 inode 生效，也覆盖外部 hardlink 别名；新的 open 请求 break，在持有期间不能写入。
-unlink 前必须满足 `F_GETLEASE == F_WRLCK`，unlink 后、释放前再次检查。之前的 break 会恢复/保留 entry 并失败；
+unlink 前必须满足 `F_GETLEASE == F_WRLCK`，unlink 后及完成 fsync/journal 等操作的 `F_UNLCK` 紧前再次检查。
+之前的 break 会恢复/保留 entry 并失败；
 之后发现 break 则按事故处理，将阶段与确认删除记录写入 journal/audit，操作失败。
-SIGIO 通过 Linux `F_SETOWN_EX` 定向到调用 thread，在该 thread 阻塞，释放后 drain 并恢复原 signal mask。
+SIGIO 通过 Linux `F_SETOWN_EX` 定向到调用 thread，在该 thread 阻塞，释放后回收并恢复原 signal mask。
+最后 `F_GETLEASE` 至 `F_UNLCK` 间收到的通知也传播为失败，绝不读取后丢弃并宣称成功。
 CLI 在持有 lease 期间专用该 thread 的 SIGIO。
 
-lease 检查与 unlink 是不同 syscall。前提是 consumer 不枚举、操作专用保留区的随机 token 名称。
-在最后检查至 unlink 的窗口打开 token，可能在 lease 释放后向已 unlink 的 inode 写入；若最后名称已删除，无法按名称恢复这些写入。
-检测到的 break 记录为事故，不宣称删除成功。`nlink > 1` 时其他别名通常保留 payload，除非该名称也被外部删除。
+使用中检查按 FD 的 device/inode 匹配，也检测已有 `O_PATH` FD。对可检查的同 UID 进程还读取 mountinfo，
+按 device 过滤，再通过 `/proc/<pid>/root` stat 该进程视图内的 mountpoint；匹配单位 inode 即判为使用中。
+这包括仅在其他 mount namespace 可见的单一 file bind。读取/权限错误不作为空列表；观测到的 mountpoint
+无法经该 root 到达时也使检查失败。原有进程排除规则仍适用；没有可检查成员进程的 namespace 无法枚举。
+
+在 WSL2 Linux 6.6 实测，O_PATH 和 private file bind 均可在 `nlink=1` 时获取 write lease；
+unlink、释放后，通过 `/proc/self/fd/N` 或 bind alias 可以重新打开同一 `nlink=0` inode 并写入。
+因此已有参照会事先检测，但前提是 consumer **不在使用中检查后新建 O_PATH/proc-FD/bind 参照**，也不枚举、
+操作专用保留区的随机 token 名称。检查、lease 检查和 unlink 不是原子操作，竞争区间包含校验/fsync，不保证仅几微秒。
+新持有的参照可在释放后向已 unlink 的 inode 写入；若最后名称已删除，这些写入无法按名称恢复。
+检测到的 break 记录为事故，不宣称删除成功。复现实测是 storage 测试中的
+`test_opath_reference_is_busy_and_can_reopen_an_unlinked_inode` 和
+`test_external_file_bind_reference_is_inspected_and_survives_unlink`。
+`nlink > 1` 时其他别名通常保留 payload，除非该名称也被外部删除。
 lease 不排他保护同 UID 的目录 entry 操作；身份/link 数检查拒绝检测到的替换，不保证抵抗恶意 namespace 控制。
 这会增加 D:/E: 读取和逐 entry 的 journal/directory fsync；完整数据集删除耗时留到第二阶段实测。实现位于 `removal.py`。
 隔离目录被替换时不删除或冒充原单位恢复，保留错误供人工检查。

@@ -129,14 +129,27 @@ payloadは再hashする。regular fileはclaim後の読取専用FDでLinux `F_SE
 最終identity・metadata・SHA-256を照合する。既存のopen FD、所有者・権限エラー、lease未対応、
 `/proc/sys/fs/leases-enable` 無効の場合は消さずに失敗し、leaseなしへ切り替えない。
 leaseはinode単位で外部hardlinkの別名にも効く。新しいopenはbreakを要求し、保持中の書込みはブロックされる。
-unlink直前に `F_GETLEASE == F_WRLCK` を要求し、unlink直後・解除前にも確認する。
+unlink直前に `F_GETLEASE == F_WRLCK` を要求し、unlink直後、およびfsync/journal等を終えた `F_UNLCK` 直前にも確認する。
 直前のbreakはentryを保持・復元して失敗、直後のbreakは削除済みの可能性がある事故としてphaseと確定削除を
 journal/auditへ残して失敗する。SIGIOはLinux `F_SETOWN_EX` で呼出threadへ向け、そのthreadでblockし、
-解除後にdrainして元のsignal maskへ戻す。CLIはlease中、そのthreadのSIGIOを専用に使う。
+解除後に回収して元のsignal maskへ戻す。最後の `F_GETLEASE`〜`F_UNLCK` 間の通知も失敗へ伝播し、
+読み捨てて成功扱いしない。CLIはlease中、そのthreadのSIGIOを専用に使う。
 
-lease確認とunlinkは別syscallである。consumerが専用領域のランダムtoken名を探索・操作しないことを前提とする。
-最後の確認〜unlinkの窓でtokenを開くと、lease解除後に削除済みinodeへ書き込む可能性があり、
-最後の名前を消していればその書込みを復旧できない。検出したbreakは削除成功とせず事故として記録する。
+使用中検査はFDのdevice/inodeを照合し、既存の `O_PATH` FDも検出する。
+検査可能な同UIDプロセスはmountinfoも読み、deviceを絞って `/proc/<pid>/root` 経由でそのプロセスの
+mountpointをstatし、単位内inodeと一致すれば使用中とする。別mount namespaceだけに見える単一file bindも対象。
+読取・権限エラーを空の一覧にはせず、観測したmountpointがそのrootから辿れない場合も検査を失敗にする。
+既存のプロセス除外規則は適用し、検査可能な所属プロセスがいないnamespaceの一覧までは取得できない。
+
+WSL2 Linux 6.6で、O_PATH・private file bindのどちらも `nlink=1` でwrite leaseを取得でき、
+unlink・解除後に `/proc/self/fd/N` またはbind aliasから同じ `nlink=0` のinodeへ再openして書けることを実測した。
+既存参照は事前検査で検出するが、consumerが**使用中検査後にO_PATH/proc-FD/bind参照を新規取得せず**、
+専用領域のランダムtoken名も探索・操作しないことを前提とする。検査・lease確認・unlinkは別操作で、
+競合区間には照合やfsyncも含むため、数マイクロ秒以内とは保証しない。
+新しく保持した参照から解除後に削除済みinodeへ書ける場合、最後の名前がなければその書込みを復旧できない。
+検出したbreakは削除成功とせず事故として記録する。再現probeはstorageテストの
+`test_opath_reference_is_busy_and_can_reopen_an_unlinked_inode` と
+`test_external_file_bind_reference_is_inspected_and_survives_unlink`。
 `nlink > 1` なら通常は別名側にpayloadが残るが、外部からその名前も消された場合は残らない。
 leaseは同UIDによるディレクトリentry操作の排他ではない。個体・link数照合で検出した置換は拒否するが、
 悪意ある名前空間操作まで保証しない。D:/E:の追加読取りとentryごとのjournal/directory fsyncが増える。

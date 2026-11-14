@@ -39,15 +39,32 @@ def write_lease(fd: int) -> Iterator[None]:
         acquired = True
         yield
     finally:
+        final_state: int | None = None
+        notifications = 0
         try:
             if acquired:
-                fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_UNLCK)
+                try:
+                    # Nothing that can block on fsync/journaling belongs between
+                    # this last state observation and the unlock syscall.
+                    final_state = fcntl.fcntl(fd, fcntl.F_GETLEASE)
+                finally:
+                    fcntl.fcntl(fd, fcntl.F_SETLEASE, fcntl.F_UNLCK)
         finally:
             # Our thread owns these notifications. Consume them before restoring
-            # its signal mask, including exceptions and a pending lease break.
-            while signal.sigtimedwait(signals, 0) is not None:
-                pass
-            signal.pthread_sigmask(signal.SIG_SETMASK, previous)
+            # its mask, but never discard evidence from the last check/unlock gap.
+            try:
+                while signal.sigtimedwait(signals, 0) is not None:
+                    notifications += 1
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, previous)
+            if acquired and (
+                (final_state is not None and final_state != fcntl.F_WRLCK)
+                or notifications
+            ):
+                raise StorageError(
+                    "exclusive file lease break during release: "
+                    f"state={final_state}, SIGIO={notifications}"
+                )
 
 
 def require_write_lease(fd: int) -> int:

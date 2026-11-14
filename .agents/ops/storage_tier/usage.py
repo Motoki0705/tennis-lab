@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import errno
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -291,6 +292,49 @@ class Inspector:
                     f"{nondumpable_error}; {capability_error}"
                 ) from capability_error
 
+    def mount_references(
+        self, process: Path, inodes: set[tuple[int, int]]
+    ) -> list[str]:
+        """Resolve matching-device mountpoints in the target's own namespace."""
+        if not inodes:
+            return []
+        devices = {device for device, _ in inodes}
+        result = []
+        for line in (
+            self.metadata(process, "mountinfo")
+            .decode(errors="surrogateescape")
+            .splitlines()
+        ):
+            columns = line.split()
+            try:
+                separator = columns.index("-")
+                if separator < 6 or len(columns) < separator + 4:
+                    raise ValueError("missing mountinfo fields")
+                mount_id, parent_id = int(columns[0]), int(columns[1])
+                major, minor = (int(value) for value in columns[2].split(":"))
+                if min(mount_id, parent_id, major, minor) < 0:
+                    raise ValueError("negative mount identity")
+                device = os.makedev(major, minor)
+            except (ValueError, OverflowError) as exc:
+                raise StorageError(f"malformed mountinfo: {process}") from exc
+            if device not in devices:
+                continue
+            raw = columns[4]
+            if re.search(r"\\(?!040|011|012|134)", raw):
+                raise StorageError(f"malformed mountinfo path: {process}")
+            point = Path(re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), raw))
+            if not point.is_absolute() or ".." in point.parts:
+                raise StorageError(f"invalid mountinfo path: {process}")
+            # /proc/<pid>/root exposes that process's mounts, including a file
+            # bind visible only in a different mount namespace. stat is metadata
+            # only; opening the payload would itself count as use/break a lease.
+            info = (process / "root" / point.relative_to("/")).stat()
+            if (info.st_dev, info.st_ino) in inodes:
+                result.append(
+                    f"mount-reference: pid={process.name} mount-id={mount_id}"
+                )
+        return result
+
     def inspect(self, paths: tuple[Path, ...], tree: Snapshot) -> Usage:
         result = Usage(uid=self.uid)
         inodes = tree.inodes
@@ -348,6 +392,7 @@ class Inspector:
                     key = (os.makedev(int(major, 16), int(minor, 16)), int(columns[4]))
                     if key in inodes:
                         result.busy.append(f"open-mmap: pid={process.name}")
+                result.busy.extend(self.mount_references(process, inodes))
             except (FileNotFoundError, ProcessLookupError) as exc:
                 if process.exists():
                     result.unknown.append(

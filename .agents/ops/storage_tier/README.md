@@ -166,16 +166,36 @@ ownership/permission errors, unsupported leases, or disabled `/proc/sys/fs/lease
 stop removal without an unlocked fallback. The lease covers the inode, including
 external hardlink names. New opens request a break and cannot write while the lease
 holds. `F_GETLEASE == F_WRLCK` is required immediately before unlink and checked again
-after unlink, before release. A pending break before unlink restores/retains the entry;
+after unlink and immediately before `F_UNLCK`, after all fsync/journal work.
+A pending break before unlink restores/retains the entry;
 a break observed after unlink is an incident: journal/audit record the phase and the
 confirmed removal and the operation fails. SIGIO is blocked, directed to the calling
-thread with Linux `F_SETOWN_EX`, and drained before restoring that thread's signal mask.
+thread with Linux `F_SETOWN_EX`, and collected before restoring that thread's signal mask.
+Any collected break notification also fails the operation, including a break between
+the final `F_GETLEASE` and `F_UNLCK`; it is never silently drained as success.
 The CLI reserves that thread's SIGIO while holding a lease.
 
-Lease checks and unlink are separate syscalls. Consumers must not enumerate/manipulate
-the private random token names. A process opening a token in the last check/unlink
-window can receive an already-unlinked inode after lease release; its later writes
-may have no recoverable name. Detected breaks are incidents, not successful eviction.
+Usage inspection matches FD device/inode identities, including existing `O_PATH` FDs.
+For inspectable same-UID processes, it also reads `mountinfo`, filters by device, and
+stats mountpoints through `/proc/<pid>/root` in that process's filesystem view. A
+matching mountpoint inode is busy, including a file bind visible only in another
+mount namespace. Metadata/read permission failures do not become an empty inventory;
+the existing process-exclusion rules still apply. An observed mountpoint that cannot
+be resolved through the process root fails inspection. Namespaces without an
+inspectable member process cannot be inventoried and remain outside this coverage.
+
+Qualification on WSL2 Linux 6.6 confirmed that both an `O_PATH` reference and a private
+file bind allow a write lease at `nlink=1`. After unlink and lease release, reopening
+through `/proc/self/fd/N` or the bind alias can write the same inode at `nlink=0`.
+Existing references are therefore detected before removal, but a consumer must not
+acquire **new O_PATH/proc-FD/bind references after usage inspection**, or enumerate or
+manipulate private random token names. Inspection, lease checks and unlink are separate
+operations; this race interval includes verification/fsync work and has no microsecond
+bound. A newly retained reference can receive an already-unlinked inode after release;
+its later writes may have no recoverable name. Detected breaks are incidents, not
+successful eviction. The reproducible probes are
+`test_opath_reference_is_busy_and_can_reopen_an_unlinked_inode` and
+`test_external_file_bind_reference_is_inspected_and_survives_unlink` in the storage tests.
 With `nlink > 1`, another hardlink normally retains the payload, unless that name is
 also removed externally. Leases do not lock directory entries against same-UID changes;
 identity/link-count checks reject detected replacements, not hostile namespace control.
