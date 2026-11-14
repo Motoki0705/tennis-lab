@@ -152,8 +152,10 @@ def main() -> None:
                 sys.stdout.close()
                 os.close(1)
             time.sleep(60)
-    if scenario == "malformed":
+    if scenario in {"malformed", "malformed_and_wait"}:
         print("not JSON", flush=True)
+        if scenario == "malformed_and_wait":
+            signal.pause()
         return
     if scenario == "duplicate_keys":
         print('{"type":"turn.completed","type":"turn.failed"}', flush=True)

@@ -793,6 +793,7 @@ def test_configuration_is_literal_complete_and_validated_before_overrides(
     ("scenario", "reason", "code"),
     [
         ("malformed", "invalid_output", 1),
+        ("malformed_and_wait", "invalid_output", 1),
         ("duplicate_keys", "invalid_output", 1),
         ("missing_completion", "invalid_output", 1),
         ("different_final", "invalid_output", 1),
@@ -815,7 +816,13 @@ def test_failed_turns_preserve_evidence_and_never_claim_task_success(
     result = h.result()
     assert result["turn_end_reason"] == reason
     assert result["result"] == "failed" and result["task_success"] is None
-    assert result["cli_exit_signal"] is None
+    if scenario == "malformed_and_wait":
+        # The runner sent this signal after a parser failure. It is cleanup,
+        # rather than a CLI signal that caused the turn to fail.
+        assert result["cli_exit_signal"] == signal.SIGTERM
+        assert result["cli_exit_code"] == -signal.SIGTERM
+    elif scenario == "exit_error":
+        assert result["cli_exit_signal"] is None
     assert (h.root / "initial/events.jsonl").exists()
     assert (h.root / "initial/stderr.log").exists()
     assert result["runtime"]["session_id"]

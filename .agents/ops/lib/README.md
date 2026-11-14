@@ -637,6 +637,7 @@ Claudeイベント・保存JSON・Codex transcript・最終構造化出力の重
   `cli_exit_code` はCLIの実終了、`exit_code` はwrapperの終了、`terminated_pids` は回収対象。
   `cli_exit_signal` はCLIがシグナル終了したときの正の番号で、それ以外はnull（旧記録にはキーがない）。
   stop/timeoutの回収でCLIへ送ったシグナルもこの値へ記録するが、終了理由は `stopped` / `timeout` を維持する。
+  出力検査のエラーでrunnerがCLIを回収した場合も、元の検査エラーを終了理由に保つ。
   `cleanup_complete` が未確認、または前のCLI/groupが残る場合は再開を拒否する。
   session IDはイベント受信時に保存する。強制終了直前の未保存情報は推定しない。
 - `transcript_before`: Codex継続の起動前transcriptのパス・byte数・SHA-256・turn ID。
@@ -656,7 +657,7 @@ stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, 
 | `invalid_output` / `metadata_error` | 1 | 空・破損・未完了イベント、最終文不一致、実効値取得失敗 |
 | `runtime_error` / `usage_limit` | 非0（CLIが0なら1） | runtime失敗。枠不足の識別は構造化errorの文言による補助分類 |
 | `cli_error` / `startup_failed` | CLI終了値 / 127 | 起動・認証・モデル利用不能など。詳細はローカルstderr |
-| `cli_signal` | 128 + シグナル番号 | runnerのstop/timeout以外でCLIがシグナル終了。`cli_exit_code` は負の番号、`cli_exit_signal` は正の番号。出力の有無やruntimeのエラー分類より優先し、最終文を採用しない |
+| `cli_signal` | 128 + シグナル番号 | runnerが停止・回収を始める前にCLIがシグナル終了。`cli_exit_code` は負の番号、`cli_exit_signal` は正の番号。出力の有無やruntimeのエラー分類より優先し、最終文を採用しない |
 | `timeout` | 124 | 呼出元が明示した有限正数の `--timeout` 到達。既定は上限なし |
 | `stopped` | 130 / 143 | SIGINT / SIGTERM、またはstopで中断を照合 |
 | `descendants_reaped` | 1 | CLI終了後も残ったtoolsを回収。タスク完了にはしない |
