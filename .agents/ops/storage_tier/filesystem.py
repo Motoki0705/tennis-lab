@@ -40,6 +40,73 @@ def names(path: Path) -> list[str]:
         os.close(fd)
 
 
+def fd_mount_id(fd: int) -> int:
+    """Device IDs alone cannot distinguish a bind mount of the same filesystem."""
+    for line in read_bytes(Path(f"/proc/self/fdinfo/{fd}")).decode().splitlines():
+        if line.startswith("mnt_id:"):
+            return int(line.split()[1])
+    raise StorageError("kernel did not provide a mount ID for the opened directory")
+
+
+def remove_tree(path: Path, expected: dict[str, Any]) -> None:
+    """Delete through the verified root FD, preserving any path replacement."""
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NOATIME
+    parent = os.open(path.parent, flags)
+    root = -1
+    expected_id = (expected["dev"], expected["ino"])
+
+    def directory_id(fd: int) -> tuple[int, int]:
+        info = os.fstat(fd)
+        return info.st_dev, info.st_ino
+
+    def still_named(fd: int, name: str, identity: tuple[int, int]) -> bool:
+        info = os.stat(name, dir_fd=fd, follow_symlinks=False)
+        return stat.S_ISDIR(info.st_mode) and (info.st_dev, info.st_ino) == identity
+
+    def clear(fd: int, mount_id: int) -> None:
+        with os.scandir(fd) as entries:
+            children = sorted(entry.name for entry in entries)
+        for name in children:
+            info = os.stat(name, dir_fd=fd, follow_symlinks=False)
+            if stat.S_ISDIR(info.st_mode):
+                child = os.open(name, flags, dir_fd=fd)
+                try:
+                    identity = (info.st_dev, info.st_ino)
+                    if directory_id(child) != identity:
+                        raise StorageError("directory identity changed during removal")
+                    if fd_mount_id(child) != mount_id:
+                        raise StorageError("nested mount appeared during removal")
+                    clear(child, mount_id)
+                    if not still_named(fd, name, identity):
+                        raise StorageError("directory identity changed during removal")
+                    os.rmdir(name, dir_fd=fd)
+                finally:
+                    os.close(child)
+            else:
+                os.unlink(name, dir_fd=fd)
+        os.fsync(fd)
+        with os.scandir(fd) as entries:
+            if next(entries, None) is not None:
+                raise StorageError("directory is still being written during removal")
+
+    try:
+        root = os.open(path.name, flags, dir_fd=parent)
+        if directory_id(root) != expected_id or not still_named(
+            parent, path.name, expected_id
+        ):
+            raise StorageError("quarantine identity changed before removal")
+        clear(root, fd_mount_id(root))
+        if not still_named(parent, path.name, expected_id):
+            raise StorageError("quarantine identity changed during removal")
+        # rmdir can remove only an empty entry, never a successor's contents.
+        os.rmdir(path.name, dir_fd=parent)
+        os.fsync(parent)
+    finally:
+        if root >= 0:
+            os.close(root)
+        os.close(parent)
+
+
 def sync_dir(path: Path) -> None:
     fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW)
     try:
@@ -210,6 +277,7 @@ def snapshot(path: Path, *, hashes: bool = False) -> Snapshot:
     inode_hashes: dict[tuple[int, int], tuple[tuple[Any, ...], str]] = {}
     root = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW)
     device = os.fstat(root).st_dev
+    mount_id = fd_mount_id(root)
 
     def visit(fd: int, relative: str) -> None:
         before = stamp(os.fstat(fd))
@@ -236,6 +304,8 @@ def snapshot(path: Path, *, hashes: bool = False) -> Snapshot:
                         raise StorageError(
                             f"directory changed while opening: {path / label}"
                         )
+                    if fd_mount_id(child) != mount_id:
+                        raise StorageError(f"nested mount in unit: {path / label}")
                     visit(child, label)
                 finally:
                     os.close(child)

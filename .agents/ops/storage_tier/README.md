@@ -28,7 +28,7 @@ are reported as `unmanaged`, without recursive guesses. Output discovery uses th
 standard four-component run hierarchy and known purposes. An experiment directory
 containing files is treated as ambiguous legacy output, not as a collection of runs.
 E: worktree output directories remain discoverable after their Git registrations disappear.
-Directory symlinks in managed root paths, nested mounts, special files and all
+Directory symlinks in managed root paths, nested directory mounts, special files and all
 symlinks inside a unit are rejected. Linux readlink updates old symlink atimes even
 with an O_PATH descriptor; rejecting them before readlink keeps dry-runs read-only.
 Use ordinary files/hardlinks for managed payloads; this tool never rewrites existing links.
@@ -108,6 +108,10 @@ Eviction requires every regular file's atime to be at least 14 days old. Empty
 units remain. D: is rehashed against the manifest; E:'s full file/directory set and
 recorded metadata must remain unchanged. The D: directory is quarantined under a
 temporary sibling name, then checked again before removal. `ckpt/` is never evicted.
+Removal pins the verified root FD and checks its device/inode before deleting its
+contents through that FD. A replaced quarantine is neither deleted nor moved back
+as our unit; its identity mismatch remains a manual recovery condition. Mount IDs
+also reject a nested directory bind mount even when its device ID is unchanged.
 An expired unit with existing evidence is verified **before** the daily cycle can
 refresh it, so a hash mismatch cannot be hidden by remirroring it first.
 Hydration rejects existing D: destinations, hashes E:, copies and hashes D:, then

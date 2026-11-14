@@ -604,14 +604,14 @@ def test_interrupted_eviction_restores_then_requires_recovery(
 ) -> None:
     unit = lab.unit()
     lab.mirror(unit)
-    original = lab.module.shutil.rmtree
+    original = lab.module.remove_tree
 
     def interrupted(path: Path, *args: Any, **kwargs: Any) -> None:
         if Path(path).name.startswith(".storage-tier-trash-"):
             raise OSError("injected deletion interruption")
         original(path, *args, **kwargs)
 
-    monkeypatch.setattr(lab.module.shutil, "rmtree", interrupted)
+    monkeypatch.setattr(lab.module, "remove_tree", interrupted)
     code, report = lab.run("evict", unit)
     assert code == 1 and "interruption" in report["results"][0]["error"]
     assert (lab.config.repo / unit.path / "a.bin").exists()
@@ -619,7 +619,7 @@ def test_interrupted_eviction_restores_then_requires_recovery(
         lab.run("evict", unit)
     code, report = lab.engine.run("recover", [], dry_run=False)
     assert code == 0 and report["results"][0]["partial_deletion_possible"]
-    monkeypatch.setattr(lab.module.shutil, "rmtree", original)
+    monkeypatch.setattr(lab.module, "remove_tree", original)
     assert lab.run("evict", unit)[0] == 0
 
 
@@ -681,6 +681,61 @@ def test_discovery_uses_explicit_dataset_boundaries_and_complete_run_layout(
     inventory = lab.layout.discover(lab.config, lab.config.repo)
     assert inventory.errors and version not in inventory.units
     assert (lab.config.repo / "data").lstat() == link_before
+
+
+def test_same_device_bind_mount_is_rejected_before_copying(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    original = lab.filesystem.fd_mount_id
+    nested = lab.config.repo / unit.path / "nested"
+
+    def other_mount(fd: int) -> int:
+        value = cast(int, original(fd))
+        return (
+            value + 1 if Path(os.readlink(f"/proc/self/fd/{fd}")) == nested else value
+        )
+
+    monkeypatch.setattr(lab.filesystem, "fd_mount_id", other_mount)
+    code, report = lab.run("mirror", unit)
+    assert code == 1 and "nested mount" in report["results"][0]["error"]
+    assert not (lab.config.mirror / unit.path).exists()
+    assert lab.filesystem.read_bytes(nested / "b.bin") == b"\x00\x01\x04\x09"
+
+
+def test_replacement_after_final_inspection_is_never_deleted_or_restored_as_ours(
+    lab: Lab,
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    saved = source.with_name("saved-verified-root")
+    replacements: list[Path] = []
+    calls = 0
+
+    def replace_after_inspection(config: Any) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 4:
+            (quarantine,) = source.parent.glob(".storage-tier-trash-*")
+            quarantine.rename(saved)
+            quarantine.mkdir()
+            (quarantine / "successor.bin").write_bytes(b"new data without a mirror")
+            replacements.append(quarantine)
+
+    lab.engine.mount_check = replace_after_inspection
+    code, report = lab.run("evict", unit)
+    assert calls == 4 and code == 1, report
+    assert "identity" in report["results"][0]["error"]
+    assert (
+        lab.filesystem.read_bytes(replacements[0] / "successor.bin")
+        == b"new data without a mirror"
+    )
+    assert lab.filesystem.read_bytes(saved / "a.bin") == b"apple\n"
+    with pytest.raises(lab.filesystem.StorageError, match="identity"):
+        lab.engine.run("recover", [], dry_run=False)
+    assert (replacements[0] / "successor.bin").exists()
+    assert not any(record["event"] == "deleted" for record in lab.records())
 
 
 def test_o_noatime_failure_never_retries_with_an_ordinary_open(

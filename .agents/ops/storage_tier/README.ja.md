@@ -24,7 +24,7 @@ E:は `/mnt/wsl/tennis-data` のHDD上ext4（`noatime`）で正本のミラー�
 重なる宣言は拒否し、新しいtaskのnamespaceは設定へ追加する。素材・旧配置の曖昧なものは
 `unmanaged` として報告し、再帰的に境界を推測しない。outputsは標準の4階層と既知のpurposeから発見する。
 experiment直下にファイルがあれば旧runと区別できないため、その配下をrunとして扱わない。
-E:のworktree outputsはGit登録がなくなっても発見する。管理root途中のsymlink、入れ子mount、特殊ファイル、
+E:のworktree outputsはGit登録がなくなっても発見する。管理root途中のsymlink、入れ子のdirectory mount、特殊ファイル、
 単位内のすべてのsymlinkを拒否する。LinuxのreadlinkはO_PATHのfdを使っても古いsymlinkのatimeを更新するため、
 読取専用dry-runを守るためにreadlink前に拒否する。管理payloadは実ファイル/hardlinkを使い、既存リンクは書き換えない。
 
@@ -88,6 +88,8 @@ atomic JSONを置く。両側のSHA-256、size/mtime/ctime/device/inodeを記録
 削除は全regular fileのatimeが14日以上古い場合だけ。空の単位は保持する。
 D:を再hashしてmanifestと照合し、E:の全entryと記録したmetadataが不変であることを確認する。
 D:を同じ親の一時名へ隔離して再確認してから消す。`ckpt/` は消さない。
+照合したroot FDを固定しdevice/inodeを確認して、そのFD相対で削除する。隔離先が別個体へ差し替わったら
+削除も元pathへの復旧も行わず、個体不一致を残して手動確認を求める。deviceが同じbind mountも、directoryのmount IDで拒否する。
 期限到達済みで証拠がある単位は、日次ミラーで証拠を更新する**前**に削除の照合を行う。
 不一致を先に再ミラーして隠さない。取得は既存D:を拒否し、E:のhash、コピー、D:のhashを通して公開する。
 取得したファイルのatimeは現在に更新する。

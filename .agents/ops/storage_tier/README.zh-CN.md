@@ -23,7 +23,7 @@ E: 是挂载到 `/mnt/wsl/tennis-data` 的 HDD ext4（`noatime`），保存权�
 [config.toml](config.toml) 声明数据集 **container**（其直接子目录为版本）与例外的**单位根目录**。
 重叠声明被拒绝；新增任务的命名空间必须先声明。素材与边界模糊的旧目录列为 `unmanaged`，不递归猜测。
 输出依据标准四层 run 路径及已知 purpose 发现。experiment 直接包含文件时视为旧 run，不将其子目录当作 run。
-E: 上的 worktree 输出在 Git 注册删除后仍可发现。拒绝管理根路径中的符号链接、嵌套挂载、特殊文件与单位内所有符号链接。
+E: 上的 worktree 输出在 Git 注册删除后仍可发现。拒绝管理根路径中的符号链接、嵌套目录挂载、特殊文件与单位内所有符号链接。
 Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必须在 readlink 前拒绝，以保持 dry-run 只读。
 管理 payload 应使用实际文件或硬链接；本工具不改写已有链接。
 
@@ -82,6 +82,8 @@ E:`<mirror-repo>/.storage-tier/manifests/`，保存两边的 SHA-256、size/mtim
 只有全部 regular file 的 atime 至少 14 天未更新才可清理，空单位保留。删除前重新哈希 D:，
 确认 E: 全部 entry 及记录的 metadata 不变，将 D: 改为同父目录的隔离名，再检查后才删除。
 `ckpt/` 永不删除。已过期且有证据的单位在日常镜像更新证据**之前**校验，不能用重新镜像掩盖不一致。
+删除时固定已校验 root 的 FD，核对 device/inode 后按 FD 相对删除。隔离目录被替换时，不删除或将其作为
+原单位恢复，而保留身份错误供人工检查。即使 device 相同，也按目录 mount ID 拒绝嵌套 bind mount。
 hydrate 拒绝已存在的 D: 目标，完成 E: 哈希、复制、D: 哈希后才发布，并将文件 atime 更新为当前时间。
 
 ## 审计与恢复

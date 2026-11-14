@@ -24,6 +24,7 @@ from .filesystem import (
     names,
     read_json,
     real_directory,
+    remove_tree,
     rename,
     snapshot,
     sync_dir,
@@ -494,8 +495,13 @@ class Engine:
         }
         write_json(transaction, record)
         free_before = os.statvfs(source).f_bavail * os.statvfs(source).f_frsize
+        moved_identity: tuple[int, int] | None = None
         try:
             rename(source, quarantine)
+            moved_info = quarantine.lstat()
+            moved_identity = (moved_info.st_dev, moved_info.st_ino)
+            record["moved"] = {"dev": moved_identity[0], "ino": moved_identity[1]}
+            write_json(transaction, record)
             moved = snapshot(quarantine)
             if not final.same_metadata(moved, moved=True):
                 raise StorageError("D: unit was replaced or changed during quarantine")
@@ -505,7 +511,7 @@ class Engine:
             record["phase"] = "verified"
             write_json(transaction, record)
             self.audit("deletion_verified", unit, transaction=transaction_id, **detail)
-            shutil.rmtree(quarantine)
+            remove_tree(quarantine, moved.entries["."])
             sync_dir(quarantine.parent)
             free_after = (
                 os.statvfs(self.config.repo).f_bavail
@@ -525,9 +531,11 @@ class Engine:
         except BaseException:
             # Restore only our pinned unit. A successor at the original name is
             # preserved, and an occupied origin leaves a recoverable quarantine.
-            if quarantine.exists():
+            if moved_identity is not None and os.path.lexists(quarantine):
                 with suppress(OSError):
-                    rename(quarantine, source)
+                    current = quarantine.lstat()
+                    if (current.st_dev, current.st_ino) == moved_identity:
+                        rename(quarantine, source)
             raise
 
     def recover(self) -> list[dict[str, Any]]:
@@ -557,8 +565,15 @@ class Engine:
                 ".storage-tier-trash-"
             ):
                 raise StorageError("invalid transaction quarantine")
-            if quarantine.exists():
+            if os.path.lexists(quarantine):
                 info = quarantine.lstat()
+                moved = value.get("moved", {"dev": value["dev"], "ino": value["ino"]})
+                if not isinstance(moved, dict) or set(moved) != {"dev", "ino"}:
+                    raise StorageError("invalid moved quarantine identity")
+                if (info.st_dev, info.st_ino) != (moved["dev"], moved["ino"]):
+                    raise StorageError(
+                        "quarantine identity changed; manual inspection required"
+                    )
                 if (info.st_dev, info.st_ino) != (value["dev"], value["ino"]):
                     rename(quarantine, source)
                     self.audit("successor_restored", unit, transaction=name)
