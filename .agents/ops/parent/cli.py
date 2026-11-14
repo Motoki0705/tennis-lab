@@ -501,6 +501,10 @@ def _main(argv: list[str] | None = None) -> int:
             else nullcontext()
         )
         transaction = nullcontext() if args.command in workers else store.locked()
+        # Worker commands own several transactions; do not share discovery across them.
+        history_reads = (
+            nullcontext() if args.command in workers else gh.history_read_scope()
+        )
         from .improvements import lock_key
 
         improvement_operation = (
@@ -514,7 +518,13 @@ def _main(argv: list[str] | None = None) -> int:
             }
             else nullcontext()
         )
-        with improvement_operation, operation, project_operation, transaction:
+        with (
+            improvement_operation,
+            operation,
+            project_operation,
+            transaction,
+            history_reads,
+        ):
             if args.command in workers:
                 from .development import worker_command
 

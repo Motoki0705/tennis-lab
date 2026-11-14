@@ -101,7 +101,11 @@ class EvidenceIssues:
         )
 
     def find(self, parent: int, login: str) -> EvidenceIssue | None:
-        """Scan all states without the search index. Never create or repair on read."""
+        """Inspect labelled issues in all states; never create or repair on read.
+
+        Unlabelled marker-only issues are outside discovery. A saved binding is
+        still fetched and checked even when it disappears from the listing.
+        """
         number(parent)
         saved = self._saved(parent, login)
         matches = []

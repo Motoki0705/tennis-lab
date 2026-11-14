@@ -37,6 +37,7 @@ def untracked_legacy_fixture(p: ParentEnv) -> None:
 
 FAKE_GH = r"""
 import json, os, re, sys
+from urllib.parse import parse_qs
 args = sys.argv[1:]
 with open(os.environ["PARENT_GH_CALLS"], "a") as f:
     f.write(json.dumps(args) + "\n")
@@ -207,7 +208,12 @@ assert match, endpoint
 n, tail = match.groups()
 if n is None:
     if method == "GET":
-        response(paged(list(state["issues"].values())))
+        rows = list(state["issues"].values())
+        params = parse_qs(query)
+        if "labels" in params:
+            labels = set(params["labels"][0].split(","))
+            rows = [r for r in rows if labels <= {label["name"] for label in r["labels"]}]
+        response(paged(rows))
     assert method == "POST", method
     if payload["labels"] == ["parent-evidence"]:
         n = str(state.get("next_evidence", 9000))
