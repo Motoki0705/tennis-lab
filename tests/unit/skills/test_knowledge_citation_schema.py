@@ -100,7 +100,12 @@ def test_fixture_has_independent_failure_states_and_all_roles(api: ModuleType, t
     library = api.load_citations(FIXTURE)
     assert api.validate_library(library) == []
     papers = {p.title[-1]: p for p in library.papers.values()}
-    assert set(papers) == set("ABCDE")
+    assert set(papers) == set("ABCDEP")
+    pending = papers["P"].references[0]
+    assert pending.identification_status == "pending" and pending.target_id is None
+    assert pending.lookup.title == "A Pending Target"
+    assert pending.roles == ["comparison", "foundation"]
+    assert library.searches["search-fixture-pending-identification"].generations[0].expanded_ids == []
     assert papers["D"].text_status == "not_requested" and papers["D"].summary == ""
     assert papers["E"].text_status == "failed" and "403" in papers["E"].text_reason
     a = papers["A"]
@@ -266,3 +271,86 @@ def test_library_rejects_cross_document_inconsistency(api: ModuleType, mutation:
     else:
         by_name["C"].id = by_name["B"].id
     assert api.validate_library(library), mutation
+
+
+@pytest.mark.parametrize("mutation", ["none", "empty-reason", "invalid-status", "early-partial", "unselected", "wrong-issues", "false-complete"])
+def test_interrupted_fixture_allows_only_the_last_generation_to_be_partial(api: ModuleType, mutation: str) -> None:
+    library = api.load_citations(FIXTURE)
+    search = library.searches["search-fixture-interrupted-depth2"]
+    if mutation == "empty-reason":
+        search.stop_reason = ""
+    elif mutation == "invalid-status":
+        search.status = "running"
+    elif mutation == "early-partial":
+        search.generations[0].expanded_ids = []
+    elif mutation == "unselected":
+        c = next(p for p in library.papers.values() if p.title == "Fixture C")
+        search.generations[1].paper_ids.append(c.id)
+    elif mutation == "wrong-issues":
+        search.issues = []
+    elif mutation == "false-complete":
+        search.status, search.stop_reason = "complete", ""
+    errors = api.validate_library(library)
+    assert bool(errors) == (mutation != "none")
+    if mutation == "none":
+        data = yaml.safe_load(api.serialize_document(search).split("---", 2)[1])
+        assert data["status"] == "interrupted"
+        assert data["generations"][1]["expanded_ids"] == ["cite-15ff6ca63fce212e"]
+
+
+def test_failed_atomic_replace_preserves_the_previous_document(api: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    paper = next(iter(api.load_citations(FIXTURE).papers.values()))
+    path = api.write_document(paper, tmp_path / "citation_map")
+    before = path.read_bytes()
+    paper.body = "Replacement that must not leak into a failed write."
+
+    def fail_replace(source: str, target: Path) -> None:
+        raise OSError("injected replace failure")
+
+    monkeypatch.setattr(api.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="injected"):
+        api.write_document(paper, tmp_path / "citation_map")
+    assert path.read_bytes() == before
+    assert list(tmp_path.glob(".citation-*")) == []
+
+
+def test_pending_identification_preserves_roles_and_blocks_expansion(api: ModuleType) -> None:
+    library = api.load_citations(FIXTURE)
+    a = next(p for p in library.papers.values() if p.title == "Fixture A")
+    ref = a.references[0]
+    ref.target_id, ref.identification_status = None, "pending"
+    ref.reason = "Comparison and foundation evidence.\nIdentification: pending"
+    assert ref.roles == ["comparison", "foundation"]
+    assert api.validate_library(library)
+    for search in library.searches.values():
+        api.rebuild_search(search, library.papers)
+    assert not api.validate_library(library)
+    assert all(search.status == "interrupted" for search in library.searches.values())
+    parsed = api.parse_document(api.serialize_document(a))
+    assert parsed.references[0].identification_status == "pending"
+    assert parsed.references[0].roles == ["comparison", "foundation"]
+
+
+@pytest.mark.parametrize("field,value", [("year", True), ("year", 99), ("authors", ["Alice", "Alice"]),
+                                         ("links", ["file:///private"]), ("extra", "ignored?")])
+def test_reference_lookup_inputs_are_strictly_validated(api: ModuleType, field: str, value: Any) -> None:
+    library = api.load_citations(FIXTURE)
+    pending = next(p for p in library.papers.values() if p.title == "Fixture P")
+    data = yaml.safe_load(api.serialize_document(pending).split("---", 2)[1])
+    data["references"][0]["lookup"][field] = value
+    with pytest.raises(ValueError):
+        api.parse_document(markdown(data))
+
+
+def test_unverified_identity_is_distinct_from_pending_and_cannot_expand(api: ModuleType) -> None:
+    library = api.load_citations(FIXTURE)
+    p = next(p for p in library.papers.values() if p.title == "Fixture P")
+    data = yaml.safe_load(api.serialize_document(p).split("---", 2)[1])
+    assert [r["identification_status"] for r in data["references"]] == ["pending", "unverified"]
+    assert data["references"][1]["target_id"] is None
+    assert data["references"][1]["roles"] == ["related"]
+    search = library.searches["search-fixture-pending-identification"]
+    assert search.status == "interrupted" and search.generations[0].expanded_ids == []
+    data["references"][1]["target_id"] = next(x.id for x in library.papers.values() if x.title == "Fixture B")
+    with pytest.raises(ValueError, match="disagree"):
+        api.parse_document(markdown(data))
