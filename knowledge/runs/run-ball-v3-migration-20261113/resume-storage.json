@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-11-14T05:53:30.758773+00:00",
+  "storage_layout": "physical repository data/output root supplied through --storage-root",
+  "same_filesystem": true,
+  "filesystem_free_bytes": 3862984536064,
+  "host_E_free_bytes": 5408193593344,
+  "host_D_free_bytes": 482126286848,
+  "parent_authorized_relocation_date": "2026-11-14",
+  "source_inputs": "retained logical repository paths",
+  "prior_small_snapshot_readback": {
+    "clips": 3,
+    "frames": 3030,
+    "native_frames_loaded": 3
+  },
+  "registry_quick_check": "ok"
+}

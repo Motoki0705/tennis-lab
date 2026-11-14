@@ -50,3 +50,39 @@ Driveの場所・容量・旧/新readerは `storage-and-readers.json`、旧archi
 SIGINTで停止した（終了コード130）。v3や旧ファイルを上書きせず、準備済み成果物を再利用する。
 追加したGC回帰は修正前に参照数0で失敗した。既存receiptの不変な保護記録を変更せず、
 manifest内の画像archiveへ追加の公開保護を作る修正を実装した。
+
+
+frame/PTSとnative画素は、旧v2が基準にした切出し済みMP4の軸を維持する。
+cam0の一部には切出し時に焼き込まれたletterboxがあるが、これを逆変換してraw camera座標と
+主張しない。収録全体との対応は、固定した旧 `clip.json`（raw動画のframe区間・letterbox等）を
+保持し、その場所と内容digestを選択一覧で参照する。
+3cameraのframe 0について元座標の実画像overlayも確認した。診断画像はGitへ入れず、
+`outputs/ball_detection/migrate/video-v3/20261113/representative-frames.png` に残す。
+
+
+## WSL停止からの復旧
+
+2026-11-13 18:20 JSTにDドライブの容量不足でWSLが停止した。親が実行プロセスの
+回収と、data・outputsのEドライブext4への移設を確認した。旧成果物の場所は従来の
+symlink経由で保持される。大きな出力と新snapshotは物理的なデータディスク上へ作る。
+`--storage-root` に `/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab` を渡し、
+AnnotationLayoutの公開constructorで同じ物理rootを指定する。dataと画像archiveの
+filesystem一致を検査し、hardlinkで再利用する。
+
+親の最後の観測は61本だったが、復旧したlogには88本の完了行、実ファイルには89本の
+準備済み入力があった。`verify_resume.py` で全89本の元v2、変換再現、動画bytes、
+復号PTS、manifest、archive全体と各frameの内容・画像decodeを照合した。
+不整合は0本、未準備は34本だった。registryのquick_checkも成功した。
+結果は `resume-audit-20261114.json`、保存容量は `resume-storage.json` に固定する。
+
+旧画像513件は移設前のサイズと一致する。移設前の記録には内容hashがなく、inodeとmtimeは
+移設で変わるため、復旧時の全内容SHAを `relocated-legacy-baseline.json` に新しく固定した。
+移設前後の画像内容の同一性は、このhashだけでは証明できない。本再開の前後では全内容を
+再計算して比較する。旧注釈・clip.json・dataset.json・snapshotのmetadata/indexは
+中断前から固定された内容hashと照合する。
+
+再開時の少数公開は `meiji-active-ball-v3-resume-check-20261114` に作る。
+旧少数snapshotを保持し、保存先の絶対参照を現在の物理配置へ固定する。
+対象一覧は中断前の123本をそのまま使う。実行commitを固定後、repo rootから
+`MIGRATION_CODE_COMMIT=<実行commit> bash knowledge/runs/run-ball-v3-migration-20261113/repro.sh <元repo root> <物理データroot>`
+で少数dry-run・少数公開・全対象公開を順に再現する。

@@ -47,7 +47,7 @@ class NoExecution:
         raise RuntimeError("migration scene import must remain load-only")
 
 
-def check_legacy(root, selection, image_inventory):
+def check_legacy(root, selection, image_inventory, image_baseline):
     base = root / selection["legacy_root"]
     assert digest(base / "dataset.json") == selection["dataset_sha256"]
     for snapshot in selection["snapshots"]:
@@ -58,9 +58,17 @@ def check_legacy(root, selection, image_inventory):
         directory = base / entry["clip"]
         assert digest(directory / "clip.json") == entry["clip_manifest_sha256"]
         assert digest(directory / "outsource" / f"{entry['camera']}_annotations.json") == entry["original_sha256"]
+    hashes = {image["path"]: image for image in image_baseline["files"]}
+    assert len(hashes) == len(image_inventory)
+    checked = {}
     for image in image_inventory:
-        stat = (root / image["path"]).stat()
-        assert (stat.st_size, stat.st_mtime_ns, stat.st_ino) == (image["size"], image["mtime_ns"], image["inode"])
+        path = root / image["path"]
+        stat = path.stat()
+        assert stat.st_size == image["size"] == hashes[image["path"]]["size_bytes"]
+        identity = (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns)
+        if identity not in checked:
+            checked[identity] = digest(path)
+        assert checked[identity] == hashes[image["path"]]["sha256"]
 
 
 def pinned_input(root, selection, entry):
@@ -182,6 +190,8 @@ def verify_snapshot(layout, receipt_ref, prepared):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--source-root", type=Path, required=True)
+    parser.add_argument("--storage-root", type=Path, required=True)
+    parser.add_argument("--legacy-image-baseline", type=Path, required=True)
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--only-clip")
@@ -191,15 +201,21 @@ def main():
     args = parser.parse_args()
     selection = json.loads(args.selection.read_bytes())
     images = json.loads(args.selection.with_name("legacy-images.json").read_bytes())
+    image_baseline = json.loads(args.legacy_image_baseline.read_bytes())
+    assert image_baseline["schema_version"] == "ball.relocated-legacy-images.v1"
+    assert image_baseline["previous_image_inventory_sha256"] == digest(args.selection.with_name("legacy-images.json"))
     assert selection["schema_version"] == "ball.v3-migration-selection.v1"
     if args.apply:
         if not args.version or not args.code_commit:
             parser.error("apply requires a new dataset version and fixed code commit")
         subprocess.run(["git", "diff", "--exit-code", args.code_commit, "--", "src", "tests", str(Path(__file__).resolve().relative_to(Path.cwd()))], check=True)
-    check_legacy(args.source_root, selection, images)
+    check_legacy(args.source_root, selection, images, image_baseline)
     selected = [e for e in selection["entries"] if e["decision"] == "convert" and (args.only_clip is None or e["key"].rsplit("/", 1)[0] == args.only_clip)]
     assert selected and len(selected) % 3 == 0
-    layout = AnnotationLayout.production()
+    storage = args.storage_root.resolve()
+    layout = AnnotationLayout(storage, storage / "outputs/chat_annotation", "production")
+    if (storage / "data").stat().st_dev != layout.root.stat().st_dev:
+        raise ValueError("annotation images and publication destination must share a filesystem")
     prepared, results = [], []
     for number, entry in enumerate(selected, 1):
         directory = args.source_root / selection["legacy_root"] / entry["clip"]
@@ -248,13 +264,14 @@ def main():
         publication = verify_snapshot(layout, reference, prepared)
         publication.update(receipt=reference.model_dump(mode="json"), request=request_ref.model_dump(mode="json"), replay_equal=True)
         print("importing saved annotations into scene stores", flush=True)
-        scenes = scene_import(layout, prepared, args.source_root / "outputs/ball_detection/migrate/video-v3/20261113" / args.version / "scene-imports")
-    check_legacy(args.source_root, selection, images)
+        scenes = scene_import(layout, prepared, storage / "outputs/ball_detection/migrate/video-v3/20261113" / args.version / "scene-imports")
+    check_legacy(args.source_root, selection, images, image_baseline)
     report = dict(schema_version="ball.v3-migration-result.v1", code_commit=args.code_commit,
                   selection_sha256=digest(args.selection), selected=len(selected), entries=results,
                   publication=publication, scene_imports=scenes,
                   legacy_unchanged=dict(annotation_files=len(selection["entries"]), metadata_and_indexes=2 * len(selection["snapshots"]),
-                                        image_stats_checked=len(images), image_payload_hashes_recomputed=False))
+                                        image_stats_checked=len(images), image_payload_hashes_recomputed=True,
+                                        image_baseline_sha256=digest(args.legacy_image_baseline)))
     write_once(args.output, report)
     print(json.dumps(dict(report=str(args.output), cameras=len(selected), frames=sum(e["frames"] for e in selected),
                           publication=publication, scene_clips=len(scenes))), flush=True)

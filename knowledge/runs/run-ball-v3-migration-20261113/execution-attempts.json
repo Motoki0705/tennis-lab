@@ -11,6 +11,21 @@
       "reason": "prepared JPEG archives were not in migration publication protection; stop before publication to fix retention and reuse immutable preparations",
       "wall_seconds": 338.02,
       "max_rss_kib": 2180524
+    },
+    {
+      "code_commit": "7c2c58ee60114ef937a4bfb4dbb0011ebe8652ec",
+      "selected_cameras": 123,
+      "state": "host_interrupted",
+      "parent_reported_stop": "2026-11-13 18:20 JST",
+      "parent_last_observed_preparations": 61,
+      "retained_log_completed_lines": 88,
+      "verified_preparations_after_recovery": 89,
+      "remaining_preparations": 34,
+      "invalid_preparations_after_recovery": 0,
+      "reason": "WSL stopped when the host D drive ran out of space; process reaping confirmed by parent",
+      "recovery_audit": "resume-audit-20261114.json",
+      "exit_code": null,
+      "wall_seconds": null
     }
   ]
 }
