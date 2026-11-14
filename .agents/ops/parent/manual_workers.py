@@ -27,7 +27,7 @@ from .github import GitHub
 from .policy import closing_issues, digest, nonempty, object_value
 from .session import ParentSession
 from .snapshot import git, validate_worktree
-from .state import Store, unique_object
+from .state import RegistryConflict, Store, unique_object
 from .worker_instruction import prepare_instruction
 
 RUNNER = Path(__file__).resolve().parents[1] / "lib/agent_exec.sh"
@@ -44,10 +44,16 @@ MODEL_KEYS = {"model", "model_reason"}
 
 
 def current_task(session: ParentSession, child: int) -> dict[str, Any]:
-    row = session.owner()
+    return reserved_task(session.owner(), child)
+
+
+def reserved_task(row: dict[str, Any], child: int) -> dict[str, Any]:
+    """Validate a manual reservation, also for readers without ownership."""
     if row.get("dispatch") is not None:
         raise ValueError("manual worker commands cannot change dispatcher workers")
-    task: dict[str, Any] = object_value(row["tasks"].get(str(child), {}))
+    task: dict[str, Any] = object_value(
+        object_value(row.get("tasks", {})).get(str(child), {})
+    )
     if (
         not task.get("delegated")
         or task.get("agent") != "codex"
@@ -509,15 +515,16 @@ def prepare_run(
             raise ValueError(
                 "worker continuation requires a unique open or merged PR on the reserved branch"
             )
-    validate_worktree(Path(task["worktree"]), task["branch"])
-    for base in planned["stacked_on"]:
-        git(
-            "merge-base",
-            "--is-ancestor",
-            base["head_sha"],
-            "HEAD",
-            cwd=Path(task["worktree"]),
-        )
+    with session.gh.io_scope():
+        validate_worktree(Path(task["worktree"]), task["branch"])
+        for base in planned["stacked_on"]:
+            git(
+                "merge-base",
+                "--is-ancestor",
+                base["head_sha"],
+                "HEAD",
+                cwd=Path(task["worktree"]),
+            )
     previous: Path | None = None
     previous_record = None
     replacement = None
@@ -540,14 +547,16 @@ def prepare_run(
         runner_model = model
     else:
         previous = latest_run(session, task)
-        settings = validate_run(task, previous)
+        with session.gh.io_scope():
+            settings = validate_run(task, previous)
         model = implementation_model(model, previous=settings["selected"]["model"])
         # A legacy default run has no model override. Adding one would change
         # the runner's frozen selection_sources/overrides even for the same model.
         runner_model = settings["overrides"].get("model")
         if model_reason is None:
             model_reason = task.get("model_reason")
-        proof = Runtime(RUNNER).inspect(previous)
+        with session.gh.io_scope():
+            proof = Runtime(RUNNER).inspect(previous)
         previous_record = proof["record"]
         if model_settings(task, proof["record"]) != settings:
             raise ValueError("saved model settings changed during inspection")
@@ -555,8 +564,13 @@ def prepare_run(
             raise ValueError(
                 "worker termination and cleanup must be confirmed before resume"
             )
+        if resume and previous_record.get("recovery_error"):
+            raise ValueError(
+                "previous turn evidence is unconfirmed; inspect stop recovery or use --replace-session"
+            )
         if replace_session:
-            replacement = replacement_evidence(session, task, restart_evidence)
+            with session.gh.io_scope():
+                replacement = replacement_evidence(session, task, restart_evidence)
             current_settings = resolve(
                 DEFAULT_CONFIG, "codex", None, runner_model, None, "write"
             )
@@ -611,7 +625,8 @@ def prepare_run(
         replacement=replacement,
         previous_directory=previous,
     )
-    turn = worker_preflight.commit_turn(task, phase, directory)
+    with session.gh.io_scope():
+        turn = worker_preflight.commit_turn(task, phase, directory)
     prepared_instruction = prepare_instruction(
         session.parent,
         child,
@@ -628,7 +643,8 @@ def prepare_run(
         if phase.get("session_replacements")
         else None
     )
-    worker_logs.capture(session, child, items[child].body, prepared_instruction)
+    with session.unlocked() as external:
+        worker_logs.capture(external, child, items[child].body, prepared_instruction)
     if old_turns is not None:
         phase["turns"][:-1] = old_turns
     task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
@@ -678,7 +694,10 @@ def run_worker(
     with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
         session = ParentSession(gh, store, parent, identity)
         session.agreed()
-        previous_task = copy.deepcopy(current_task(session, child))
+        previous_ended = copy.deepcopy(current_task(session, child).get("worker_ended"))
+        previous_runtime = copy.deepcopy(
+            current_task(session, child).get("preflight", {}).get("runtime")
+        )
         command, delegation, instruction = prepare_run(
             session,
             child,
@@ -699,58 +718,93 @@ def run_worker(
         from decision_logs.observations import bind_worker_task
 
         bind_worker_task(session.row["tasks"][str(child)])
+        reserved_owner = {
+            k: session.row[k] for k in ("session", "status", "generation")
+        }
+        reserved_task = session.row["tasks"][str(child)]
+        reserved_run = copy.deepcopy(worker_runs(reserved_task)[-1])
+        reserved_turn = copy.deepcopy(reserved_task["preflight"]["turns"][-1])
+        reserved_replacement = (
+            copy.deepcopy(reserved_task["preflight"]["session_replacements"][-1])
+            if replace_session
+            else None
+        )
     # A foreground runner must not hold a registry or parent operation lock.
     # Bytes in both directions: the runner reads UTF-8 and the locale may not be.
     from .improvement_runtime import execute_manual
 
-    proc = execute_manual(
-        gh, store, parent, identity, child, command, instruction, delegation
+    admission = execute_manual(
+        gh,
+        store,
+        parent,
+        identity,
+        child,
+        command,
+        instruction,
+        delegation,
+        generation=reserved_owner["generation"],
+        reserved_run=reserved_run,
+        reserved_turn=reserved_turn,
     )
+    proc = admission.completed
     code = proc.returncode if proc.returncode >= 0 else 128 - proc.returncode
     directory = Path(command[command.index("--run-dir") + 1])
-    if code in {2, 127} and not directory.exists():
+    if not admission.spawned:
+        failure = directory.parent / "rejected" / directory.name
         with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
-            session = ParentSession(gh, store, parent, identity)
-            current = current_task(session, child)
+            # Roll back locally even when every GitHub request is failing. Never
+            # construct ParentSession here: its login lookup is network I/O.
+            store.focus(session.key)
+            row = store.parents.get(session.key, {})
+            current = row.get("tasks", {}).get(str(child), {})
+            runs = worker_runs(current)
+            turns = current.get("preflight", {}).get("turns", [])
             if (
-                current["delegation_id"] != delegation
-                or latest_run(session, current) != directory
+                any(row.get(k) != reserved_owner[k] for k in reserved_owner)
+                or current.get("delegation_id") != delegation
+                or not runs
+                or runs[-1] != reserved_run
+                or not turns
+                or turns[-1] != reserved_turn
+                or (
+                    replace_session
+                    and (
+                        current["preflight"]["session_replacements"][-1]
+                        != reserved_replacement
+                        or current["preflight"]["runtime"] is not None
+                    )
+                )
             ):
-                raise ValueError("worker reservation changed after rejected launch")
-            failure = directory.parent / "rejected" / directory.name
-            failure.mkdir(parents=True, mode=0o700)
-            (failure / "stderr.txt").write_bytes(proc.stderr)
-            previous_task.setdefault("launch_failures", []).append(
+                raise RegistryConflict(
+                    "worker reservation changed after rejected launch"
+                )
+            current["worker_runs"] = runs[:-1]
+            current.setdefault("launch_failures", []).append(
                 {
                     "attempt": directory.name,
                     "exit_code": code,
                     "stderr_file": str(failure / "stderr.txt"),
                 }
             )
-            attempted = copy.deepcopy(current["preflight"])
-            attempted_turn = attempted["turns"][-1]
+            attempted_turn = turns[-1]
             attempted_turn["cancelled"] = True
             if replace_session:
-                attempted["session_replacements"][-1]["cancelled"] = True
-                attempted["runtime"] = copy.deepcopy(
-                    previous_task.get("preflight", {}).get("runtime")
-                )
-            for decision in attempted["decisions"]:
+                current["preflight"]["session_replacements"][-1]["cancelled"] = True
+                current["preflight"]["runtime"] = previous_runtime
+            for decision in current["preflight"]["decisions"]:
                 if (
                     decision["delivered_turn_id"]
                     == attempted_turn["snapshot"]["turn_id"]
                 ):
                     decision["delivered_turn_id"] = None
-            previous_task["preflight"] = attempted
-            previous_task["worker_ended"] = {
-                "delegation_id": delegation,
-                "evidence": "Common runner rejected this attempt before creating a runtime; no worker started.",
-            }
-            for field in ("stopped", "last_status", "last_operation"):
-                if field in current:
-                    previous_task[field] = current[field]
-            session.row["tasks"][str(child)] = previous_task
+            if not current.get("worker_ended"):
+                current["worker_ended"] = previous_ended or {
+                    "delegation_id": delegation,
+                    "evidence": "Runtime admission rejected this attempt before Popen; no worker started.",
+                }
             store.save()
+        failure.mkdir(parents=True, mode=0o700)
+        (failure / "stderr.txt").write_bytes(proc.stderr)
         log_result = worker_logs.reject_unstarted(log_path)
         return code, {
             "child": child,
@@ -760,6 +814,18 @@ def run_worker(
             "launch_state": "rejected_before_start",
             "next_action": "retry_same_operation",
             "log_publication": log_result,
+        }
+    if not directory.exists():
+        # Popen happened. An exit code and absent directory are not proof that
+        # the runner/agent was never started; retain the reservation for recovery.
+        code = code or 2
+        return code, {
+            "child": child,
+            "delegation_id": delegation,
+            "exit_code": code,
+            "runner_summary": None,
+            "launch_state": "runtime_unconfirmed",
+            "next_action": "inspect_runtime_and_cleanup",
         }
     summary = None
     if proc.stdout.strip():

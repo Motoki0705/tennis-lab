@@ -24,6 +24,7 @@ from parent_review_policy import (
     request_manifest,
     validate_result,
 )
+from review_inputs import fixed_files, fixed_run
 from review_interruption import require_not_closed
 
 RECOVERABLE_RUNTIME_REASONS = frozenset({"completed", "runtime_error", "cli_error"})
@@ -34,7 +35,7 @@ def read_json(path: Path) -> dict[str, Any]:
 
 
 def file_digest(path: Path) -> str:
-    with path.open("rb") as stream:
+    with fixed_files([path]), path.open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
@@ -52,6 +53,7 @@ def saved_final(run_dir: Path) -> Path:
     return paths[0]
 
 
+@fixed_run
 def runtime_evidence(
     run_dir: Path, request: dict[str, Any] | None = None
 ) -> dict[str, Any]:
@@ -196,6 +198,7 @@ def completion_evidence(run_dir: Path, runtime: dict[str, Any]) -> Events:
     return events
 
 
+@fixed_run
 def parse_final(run_dir: Path, request: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
     """Validate the exact saved schema as well as the semantic review contract."""
     runtime = read_json(run_dir / "agent-runtime/result.json")
@@ -211,6 +214,13 @@ def source_evidence(state_dir: Path, run: str) -> tuple[dict[str, Any], dict[str
     if not re.fullmatch(r"parent-[1-9][0-9]*-[0-9a-f]{32}", run):
         raise ValueError("invalid source run ID")
     directory = state_dir / "reviews" / run
+    return _source_evidence(directory, run)
+
+
+@fixed_run
+def _source_evidence(
+    directory: Path, run: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
     request = request_manifest(read_json(directory / "request.json"), instructed=False)
     execution = read_json(directory / "execution.json")
     verify_execution(request, execution)
@@ -341,11 +351,20 @@ def verify_adoption(state_dir: Path, adoption: dict[str, Any]) -> None:
             raise ValueError("adoption contradicts the verified final")
 
 
+@fixed_run
 def verify_result_runtime(
     run_dir: Path, result: dict[str, Any], execution: dict[str, Any]
 ) -> None:
     """The same v3 proof is required at publication, inspection and merge."""
     request = result["request"]
+    if (
+        read_json(run_dir / "request.json") != request
+        or read_json(run_dir / "execution.json") != execution
+        or read_json(run_dir / "result.json") != result
+    ):
+        from parent.state import RegistryConflict
+
+        raise RegistryConflict("frozen review records changed before verification")
     verify_execution(request, execution)
     if request["schema_version"] == 3 and result["kind"] == "adoption":
         verify_adoption(run_dir.parent.parent, result)

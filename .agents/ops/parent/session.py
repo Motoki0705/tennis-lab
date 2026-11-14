@@ -6,6 +6,8 @@ import copy
 import json
 import re
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -118,6 +120,17 @@ class ParentSession:
         self.gh.evidence_directory = store.directory / "evidence-issues"
         self.store.focus(self.key)
         self.login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+
+    def detached(self) -> ParentSession:
+        """Retain frozen local context with an explicit registry-external client."""
+        session = copy.copy(self)
+        session.gh = self.gh.detached()
+        return session
+
+    @contextmanager
+    def unlocked(self) -> Iterator[ParentSession]:
+        with self.gh.io_scope():
+            yield self.detached()
 
     @property
     def row(self) -> dict[str, Any]:
@@ -1104,8 +1117,7 @@ class ParentSession:
             "review": self.review_status(self.history()),
         }
 
-    @staticmethod
-    def _planning_commits(task: dict[str, Any]) -> bool | None:
+    def _planning_commits(self, task: dict[str, Any]) -> bool | None:
         value = task.get("preflight", {})
         turns = value.get("turns", [])
         if not turns or not task.get("worktree"):
@@ -1113,12 +1125,13 @@ class ParentSession:
         from .snapshot import git
 
         start = turns[-1].get("head_at_start")
-        return (
-            git("rev-parse", "HEAD", cwd=Path(task["worktree"])).decode().strip()
-            != start
-            if start
-            else None
-        )
+        with self.gh.io_scope():
+            return (
+                git("rev-parse", "HEAD", cwd=Path(task["worktree"])).decode().strip()
+                != start
+                if start
+                else None
+            )
 
     def delegate(
         self,
@@ -1211,9 +1224,16 @@ class ParentSession:
             raise ValueError("agent/branch prefix mismatch")
         from .snapshot import git, validate_worktree
 
-        validate_worktree(worktree, branch)
-        for base in planned["stacked_on"]:
-            git("merge-base", "--is-ancestor", base["head_sha"], "HEAD", cwd=worktree)
+        with self.gh.io_scope():
+            validate_worktree(worktree, branch)
+            for base in planned["stacked_on"]:
+                git(
+                    "merge-base",
+                    "--is-ancestor",
+                    base["head_sha"],
+                    "HEAD",
+                    cwd=worktree,
+                )
         for n, task in self.row["tasks"].items():
             if n != str(child) and (
                 task.get("branch") == branch

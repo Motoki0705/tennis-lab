@@ -527,6 +527,190 @@ def test_manual_worker_stop_requires_runner_cleanup_proof(
         assert task["worker_ended"]["delegation_id"] == "a" * 32
 
 
+def test_unrelated_broken_fixture_does_not_block_expired_worktree(lab: Lab) -> None:
+    path = lab.add()
+    fixture = lab.state_root / "parent-other-tmp/pytest-1/runner/result.json"
+    fixture.parent.mkdir(parents=True)
+    fixture.write_text('{"contract": {}, "contract": {}}')
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert not path.exists()
+    assert fixture.read_text() == '{"contract": {}, "contract": {}}'
+
+
+@pytest.mark.parametrize(
+    "location",
+    [
+        "parent-sessions/worker-runs/delegation/turn",
+        "parent-sessions/reviews/review/agent-runtime",
+        "review/runs/review/agent-runtime",
+    ],
+)
+def test_unregistered_runner_in_canonical_location_is_stopped(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, location: str
+) -> None:
+    path = lab.add()
+    original, calls = fake_run(lab, path, monkeypatch)
+    directory = lab.state_root / location
+    directory.parent.mkdir(parents=True, exist_ok=True)
+    shutil.move(str(original), directory)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert str(directory) in calls.read_text().splitlines()
+    assert not path.exists()
+
+
+@pytest.mark.parametrize("relation", ["related", "unrelated", "unknown"])
+def test_corrupt_canonical_runner_is_classified_by_independent_contract(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, relation: str
+) -> None:
+    path = lab.add()
+    directory, calls = fake_run(lab, path, monkeypatch)
+    contract = json.loads((directory / "result.json").read_text())["contract"]
+    if relation == "unrelated":
+        contract["cwd"] = str(lab.repo / ".claude/worktrees/other")
+    if relation != "unknown":
+        (directory / "invocation.json").write_text(json.dumps({"contract": contract}))
+    (directory / "result.json").write_text('{"result": 1, "result": 2}')
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True)
+    assert code == (0 if relation == "unrelated" else 1)
+    assert path.exists() is (relation != "unrelated")
+    evidence = json.dumps(report)
+    assert relation in evidence and str(directory) in evidence
+    assert "duplicate keys" in evidence
+    assert not calls.exists()
+
+
+def test_registered_external_corruption_only_blocks_its_worktree(lab: Lab) -> None:
+    damaged, healthy = lab.add("damaged"), lab.add("healthy")
+    directory = lab.repo.parent / "external-run"
+    directory.mkdir()
+    (directory / "result.json").write_text('{"result": 1, "result": 2}')
+    row = parent_row()
+    row["tasks"]["2"] = {
+        "delegated": True,
+        "delegation_id": "a" * 32,
+        "worktree": str(damaged),
+        "worker_runs": [
+            {
+                "delegation_id": "a" * 32,
+                "run_dir": str(directory),
+                "kind": "registered",
+                "recorded_at": "2026-09-21T00:00:00Z",
+            }
+        ],
+    }
+    save_registry(lab, row)
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True)
+    assert code == 1
+    assert damaged.exists() and not healthy.exists()
+    assert {r["path"]: r["deleted"] for r in report["results"]} == {
+        str(damaged): False,
+        str(healthy): True,
+    }
+
+
+@pytest.mark.parametrize("local_record", [False, True])
+def test_superseded_run_uses_its_own_contract_and_missing_reservation_is_reported(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, local_record: bool
+) -> None:
+    path = lab.add()
+    directory = lab.repo.parent / "old-run"
+    calls = None
+    if local_record:
+        original, calls = fake_run(lab, path, monkeypatch)
+        shutil.move(str(original), directory)
+    row = parent_row()
+    row["tasks"]["2"] = {
+        "delegated": True,
+        "delegation_id": "b" * 32,
+        "worktree": str(lab.repo / "new-worktree"),
+        "worker_runs": [
+            {
+                "delegation_id": "a" * 32,
+                "run_dir": str(directory),
+                "kind": "initial",
+                "recorded_at": "2026-09-21T00:00:00Z",
+            }
+        ],
+    }
+    save_registry(lab, row)
+    lab.now += LIFETIME
+    report = lab.run(cleanup=True)
+    assert not path.exists()
+    if local_record:
+        assert calls is not None and str(directory) in calls.read_text().splitlines()
+    else:
+        assert any(
+            d["relation"] == "retired_reference" for d in report["stop_diagnostics"]
+        )
+
+
+@pytest.mark.parametrize("point", ["initial", "quarantine"])
+def test_legacy_delegation_waits_for_process_confirmation_and_retries(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, point: str
+) -> None:
+    path = lab.add()
+    row = parent_row()
+    row["tasks"]["2"] = {
+        "delegated": True,
+        "delegation_id": "a" * 32,
+        "worktree": str(path),
+    }
+    registry = save_registry(lab, row)
+    cleaner = lab.cleaner()
+    lab.now += LIFETIME
+    with monkeypatch.context() as patch:
+
+        def failed(*args: Any) -> None:
+            raise lab.storage.CleanupError("native process still live")
+
+        patch.setattr(
+            cleaner.stopper,
+            "stop_native" if point == "initial" else "stop_moved",
+            failed,
+        )
+        code, report = cleaner.run(cleanup=True)
+    assert code == 1 and not report["results"][0]["deleted"]
+    task = json.loads(registry.read_text())["parents"]["o/r#1"]["tasks"]["2"]
+    assert task["stopped"] and "worker_ended" not in task
+    assert next(iter(lab.records().values()))["phase"] == (
+        "stopping" if point == "initial" else "quarantined"
+    )
+    assert path.exists() is (point == "initial")
+    lab.run(cleanup=True)
+    task = json.loads(registry.read_text())["parents"]["o/r#1"]["tasks"]["2"]
+    assert task["worker_ended"]["delegation_id"] == "a" * 32
+    assert task["worktree_expiry"]["termination"]["source"] == "local_process_absence"
+    assert "runner" in task["worker_ended"]["evidence"]
+    assert not path.exists()
+
+
+def test_dry_run_reports_related_corruption_without_stopping_or_repairing(
+    lab: Lab,
+) -> None:
+    path = lab.add()
+    directory = lab.state_root / "parent-sessions/worker-runs/delegation/run"
+    directory.mkdir(parents=True)
+    (directory / "result.json").write_text('{"contract": 1, "contract": 2}')
+    (directory / "invocation.json").write_text(
+        json.dumps({"contract": {"cwd": str(path)}})
+    )
+    row = parent_row()
+    row["tasks"]["2"] = {"delegated": True, "worktree": str(path)}
+    registry = save_registry(lab, row)
+    original = registry.read_bytes()
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True, dry_run=True)
+    assert code == 1 and report["results"] == [] and path.exists()
+    assert registry.read_bytes() == original
+    assert "related runner record" in report["stop_preflight"][0]["errors"][0]
+    assert report["stop_preflight"][0]["legacy_delegations"] == ["2"]
+    assert "duplicate keys" in report["errors"][0]
+
+
 def test_parent_ownership_is_released_and_native_process_is_stopped(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -773,7 +957,11 @@ class NativeForest:
         else:
             if sig == self.proc.signal.SIGKILL:
                 owned = {101, 102, 103} if self.newborn == "child" else {101, 102}
-                assert all(p in self.frozen for p in self.nodes if p in owned)
+                assert all(
+                    p in self.frozen
+                    for p, node in self.nodes.items()
+                    if p in owned and node.get("state") != "Z"
+                )
             self.nodes.pop(pid, None)
             for child in self.nodes.values():
                 if child["parent"] == pid:
@@ -838,6 +1026,73 @@ def test_unattributed_new_orphan_blocks_cleanup_and_replay_until_it_exits(
     forest.nodes.pop(103)
     lab.run(cleanup=True)
     assert not path.exists()
+
+
+def test_unrelated_process_exits_after_snapshot_without_poisoning_scope(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    scope = lab.lifecycle.processes.scoped_processes
+    forest = NativeForest(lab, monkeypatch)
+    for node in forest.nodes.values():
+        node.update(uid=os.getuid(), cwd=str(lab.repo / "other"))
+    monkeypatch.setattr(forest.proc, "scoped_processes", scope)
+
+    def unrelated_exit(root: Path) -> list[dict[str, Any]]:
+        if 101 in forest.nodes:
+            forest.nodes.pop(101)
+            forest.nodes[102]["parent"] = 900
+            forest.add(103, 900)
+        return []
+
+    monkeypatch.setattr(forest.proc, "agents", unrelated_exit)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert not path.exists()
+    assert {102, 103} <= forest.nodes.keys() and not forest.signals
+
+
+@pytest.mark.parametrize("recorded_survivor", [False, True])
+def test_replay_v2_unscoped_proof_requires_captured_identities_to_end(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, recorded_survivor: bool
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    proof = lab.cleaner().stopper.native_proof(path)
+    original = forest.proc.prepare_stop(
+        forest.snapshot(), [], None, capture_completed=True
+    )
+    original.update(
+        schema_version=2,
+        ancestors=[forest.nodes[1]["identity"]],
+        unconfirmed=[forest.nodes[101]["identity"], forest.nodes[102]["identity"]],
+    )
+    lab.storage.write_json(proof, original)
+    forest.nodes.pop(101)
+    if not recorded_survivor:
+        forest.nodes.pop(102)
+    forest.add(103, 1)  # A different job launched long after the old attempt.
+    lab.now += LIFETIME
+    dry_code, dry_report = lab.cleaner().run(cleanup=True, dry_run=True)
+    assert dry_code == int(recorded_survivor)
+    assert (
+        bool(dry_report["stop_preflight"][0]["legacy_proof_recovery"])
+        is not recorded_survivor
+    )
+    assert json.loads(proof.read_text()) == original
+    assert not proof.with_suffix(".unscoped-v2.json").exists()
+    code, report = lab.cleaner().run(cleanup=True)
+    assert code == int(recorded_survivor)
+    assert path.exists() is recorded_survivor
+    assert 103 in forest.nodes and not forest.signals
+    if recorded_survivor:
+        assert not report["results"][0]["deleted"]
+        forest.nodes.pop(102)
+        lab.run(cleanup=True)
+        assert not path.exists()
+    archived = proof.with_suffix(".unscoped-v2.json")
+    assert json.loads(archived.read_text())["proof"] == original
 
 
 def test_legacy_parent_session_is_linked_by_existing_herdr_process_stamp(

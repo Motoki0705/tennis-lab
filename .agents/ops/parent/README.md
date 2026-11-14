@@ -83,6 +83,27 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 
 ### 取得範囲と計測
 
+`GitHub(repo, store=store)` は、そのStoreのactiveなtransaction専用client。
+GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
+`fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
+入口で探索索引を失効させ、scope内ではendpoint GETのcacheを迂回する。
+同じfresh照合内の複数の履歴読取は、取り直した探索索引を共有する。
+`history_read_scope()` はtransactionのGET cacheを捨て、独立した履歴の観測を開始する。
+`GitHub(repo)` はregistry外のclientで、通常はGET cacheを持たない。
+読取りCLIの明示的な再利用は1回のCLI内に限定し、`detached()` では引き継がない。
+履歴の探索索引はロック外でも明示した `history_read_scope()` の1観測内だけ再利用する。
+次の観測・fresh照合・書込みでは索引を失効させる。
+既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
+transaction用clientがlock不在を検出して自動的にregistry外clientへ切り替わることはない。
+
+transaction内でgit・runner・証拠ファイルを検証するときは `gh.io_scope()` でregistryを解放する。
+GitHub取得も含む読取処理には `session.unlocked()` が返す独立client付きsessionを使う。
+どちらも復帰時に対象親の永続行を再照合し、競合は `RegistryConflict`（終了値2）で返す。
+transactionを終了して長時間処理を行う場合は `store.checkpoint()` を保存し、
+次のtransactionで `store.revalidate(checkpoint)` を実行してから保存・公開・agent起動へ進む。
+自分が保存した変更の後でcheckpointを取り直し、他の親だけの変更は保持する。
+reviewのruntime/events/final等はregistry外で固定入力として検証し、読取中の変更も拒否する。
+
 親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
 親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
 sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
@@ -209,8 +230,7 @@ triageの履歴検査と再適用は [ops-report README](../ops-report/README.md
 ラベル付きの候補が複数あれば選ばずエラーにする。ラベルのないmarker付きIssueや、
 別番号でラベルを外した重複・不正な容器を毎回検出する保証はない。
 既知のbindingは一覧との照合に加えて保存番号を個別取得するため、既知の容器のラベル外れは引き続き拒否する。
-親CLI・review CLIの同じコマンド・読み取り範囲と、dispatcherの1回のread-only収集では発見用の一覧を共有する。
-書込みで一覧を失効し、明示的な鮮度確認・次の読み取り範囲では再取得する。
+親CLI・review CLI・dispatcherでは、[各観測のclient契約](#取得範囲と計測)に従って発見用の一覧を共有・再取得する。
 通常はopenのまま保持する。終了による完了数の増加や再開時の状態変更を避け、追記する保存容器であることを示すため。
 closedにしても履歴は読め、作業対象への除外は状態に依存しない。
 作業Issueへの誤用を防ぐ共通判定と経路は [issues API](../issues/README.md#証拠用issueの除外) を参照する。
@@ -641,7 +661,7 @@ dispatcher/親workflowはその実行枠内でこの計画を使い、必要な�
 ### 手動workerの起動・継続とrun記録
 
 activeな担当本人が `delegate` の予約を確認して次を呼ぶ。共通引数のstateは予約時と同じものを使う。
-会話ではこの前景コマンドをバックグラウンド実行し、独立した子を続けて起動できる。
+長時間の手動workerは、下の[会話で終了を待つ手順](#会話の背景実行で終了を待つ)に従って切り離す。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
@@ -680,7 +700,10 @@ runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ラ�
 実行中はregistry・親の操作ロックを保持しない。終了値は共通ランナーの値を返し、stdoutは
 `{child, delegation_id, exit_code, runner_summary}`。`runner_summary` はランナーの公開要約JSONであり、
 起動前拒否等で要約が無い非ゼロ終了ではnullとする。最終文のprivateな参照先は `final_file` へ返す。
-起動前の明確な拒否は診断を残して予約を復元し、起動有無が不明な中断は予約とrunを保持する。別sessionを自動起動しない。
+Popen前の失敗は例外型によらず、診断を残し、GitHub通信なしの新transactionで
+session/status/generation/delegation/最新run/turnを照合して当該runだけを取り消す。
+並行した停止・証拠は保持する。Popen後の保存失敗・受理不明（run dir無しを含む）は
+予約とrunを保持し、runtimeとcleanupの照合を要求する。別sessionを自動起動しない。
 
 `--resume` は現在の委任で最後に記録したrunの契約と終了・cleanupを検査し、
 共通ランナーの `resume --resume-from` で同じsessionへ戻す。委任IDは共通ランナーのtask IDなので保持する。
@@ -755,6 +778,63 @@ version 1/2とも既存フィールドと過去の委任のrunを保持し、新
 親・子issueは題名の書式から取り出した要約、それ以外のissueは題名全体を保存する。
 `sync` は既存の子taskの名前をGitHubの現在の題名へ更新する。ローカルtaskのない正式な子へは追加しない。
 
+#### 手動runの終了待機
+
+`wait-worker --child N [--timeout 秒]` は、呼び出した時点の委任の最新runを固定して終了を待つ読み取り専用の入口。
+初回・`--resume`・`--planning`、`record-worker-run` で登録した手動runを同じ方法で待てる。
+担当identity・操作ロック・registryロックは不要で、終了済みなら待機せず返す。
+`--repo owner/repo` を明示すればGitHub取得も行わない。
+`worker_runs` の現在の委任・記録順からrun dirを選び、保存contractと `agent_exec.sh status` の
+runner/CLI/groupの生存、`result.json` の終了と `cleanup_complete` を照合する。
+PIDの同一性確認は共通ランナーが行い、コマンド行やプロセス名の検索は使わない。
+待機中に現在の委任・最新run・worktree・branch・modelが変われば、対象を切り替えずエラーにする。
+
+stdoutのJSONには次を返す。run dirや最終文はローカルのprivateな参照なので、そのまま公開しない。
+
+| フィールド | 意味 |
+|---|---|
+| `child` / `delegation_id` / `run_id` | 待った対象。runner記録を読めなければ `run_id` はnull |
+| `wait_state` | `ended` / `liveness_unknown` / `cleanup_unconfirmed` / `timeout` |
+| `runner_summary` | 保存結果の公開6フィールドと `runner_alive` / `agent_alive` / `agent_group_alive`。未取得ならnull |
+| `final_file` | 存在する `final.md` の絶対パス。未作成・欠落ならnull |
+| `termination_recorded` | `result.json` に検証済みの `completed` / `failed` があるか |
+| `cleanup_complete` | 保存された回収確認。記録未取得ならnull |
+| `worker_ended_recorded` | registryに現在の委任の終了記録があるか |
+| `error` / `recovery` | 待機失敗の区分と、共通ランナーの復旧手順への参照。失敗時のみ |
+
+終了値0は終了と回収を確認できたことを意味する。worker自身の成否は
+`runner_summary.result`・`turn_end_reason`・`exit_code` で区別する（例: `completed`、`runtime_error`、`stopped`）。
+成果の受入や予約枠の解放、終了記録の追記、ログ公開は行わない。
+run未登録・起動の証拠が未作成・保存記録の不整合は終了値2。
+runnerが消えたのにrunが `running` のままなら、待機開始前・開始後とも `liveness_unknown` と終了値2を返す。
+CLIがまだ生きていても正常終了とは扱わず、[共通ランナーの復旧](../lib/README.md#状態確認停止中断からの復旧)で終了と回収を照合する。
+`--timeout` は有限の正数で、既定は上限なし。上限到達は終了値124・`wait_state: timeout`。
+statusの実行にも残り時間を適用し、workerの停止や記録の修復は行わない。
+
+#### 会話の背景実行で終了を待つ
+
+1. `delegate` 済みのworkerを、会話の背景回収から切り離して起動する。指示と出力の保存先は事前に用意する。
+   修正・調査のターンは同じ `run-worker` に `--resume` / `--planning` を加える。
+
+   ```bash
+   setsid env PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+     run-worker --child 1217 --prompt-file tmp/task.md \
+     </dev/null >tmp/worker-1217.log 2>&1 &
+   ```
+
+2. [worker_status](../worker_status/README.md) で現在のrunが記録され、実行中または終了済みであることを確認する。
+   未登録・起動不明なら起動側のログを確認する。証拠のない起動を待って成功扱いにしない。
+3. 次の前景コマンドを**会話のシェルtoolの背景実行**へ渡し、その終了通知を待つ。
+   `wait-worker` 自体は `setsid` やシェルの `&` で切り離さない。親は通知まで独立した作業を進められる。
+
+   ```bash
+   PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+     wait-worker --child 1217 --timeout 18000
+   ```
+
+4. 終了通知のJSONで `wait_state`・runnerの結果・終了記録を確認し、返された `final_file` を読んで次を判断する。
+   会話を再開した場合も同じ入口を再実行できる。親ごとの待機ループやプロセス名検索は作らない。
+
 ### workerの調査・親判断・実装フェーズ
 
 各ターンの作業は親の具体指示で決める。既定は `implementing`、調査だけを依頼するときは
@@ -782,8 +862,6 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 通常再開の終了・cleanup・同一sessionは保存済みrunner記録から照合する。`--restart-evidence-file` は補足任意。
 PRがmerge済み、issueがclosed/completedでも、同じworkerへ残る受入確認を依頼できる。
 取消・明示停止・生存不明・worktree/branchの取り違えは別に検査する。
-`run-worker` は最新runの `final_file` を返す。起動前拒否でrun dirが作られていない場合は
-失敗の診断をprivateな履歴へ保存し、実行runと予約を元に戻す。起動有無が不明な場合は予約を維持する。
 
 ログ保存と公開は [workerログ保存](../worker_logs/README.md) の独立した結果。
 `pending` は `publish-worker-log` で再開し、workerの終了や他の作業の可否へ読み替えない。
@@ -1154,11 +1232,12 @@ PR open/push/CI完了ではこの入口もレビューも起動しない。
 判定agent・timerはこのCLIから起動しない。手動実装子の明示起動だけは `run-worker` が共通ランナーへ渡す。
 
 CLIはJSONをstdout、エラーをstderrへ出し、成功0・設定/取得/整合エラー2で終了する。`run-worker` の実行後はランナーの終了値を返す。
+`wait-worker` の状態不明・回収未確認・timeoutはstdoutのJSONにも区分を返し、timeoutは終了値124とする。
 ghは現在認証中のアカウント、GitHub書込みにはIssuesのwrite権限が必要。
 親子ラベルの作成やsystemd操作は行わない。GitHubとローカルstateは単一トランザクションではないため、
 非ゼロ終了後は同じ入力で照合・不足更新を行う。未完了を成功や新規起票に置換しない。
 atomic write中にプロセスを強制終了して `.tmp` が残った場合は、稼働中プロセスが無いことと
 registryの内容を確認して、その一時ファイルだけを人間の管理下で退避してから再試行する。
 
-テスト: `bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_parent_launch.py tests/e2e/agents_ops/test_manual_worker_runs.py tests/e2e/agents_ops/test_review_handoff.py tests/e2e/agents_ops/test_pytest_lock.py -q`。
+テスト: `bash .agents/ops/pytest_locked.sh tests/e2e/agents_ops/test_parent_session.py tests/e2e/agents_ops/test_parent_launch.py tests/e2e/agents_ops/test_manual_worker_runs.py tests/e2e/agents_ops/test_wait_worker.py tests/unit/agents_ops/test_worker_wait.py tests/e2e/agents_ops/test_review_handoff.py tests/e2e/agents_ops/test_pytest_lock.py -q`。
 fake gh・一時state・使い捨てgitを使い、本物のCodex/Claude/GitHub書込みは起動しない。

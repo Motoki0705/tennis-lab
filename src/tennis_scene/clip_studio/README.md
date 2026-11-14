@@ -6,14 +6,14 @@
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.clip_studio \
-  source_directory=tennis_multivew/raw/meiji_3cam/video_000 gui.port=8765
+  source_directory=tennis_multiview/raw/meiji_3cam/video_000 gui.port=8765
 ```
 
 画面は既定で `http://127.0.0.1:8765`、ポートは `gui.port` で指定します。
 
-入力はDATA root相対の`tennis_multivew/raw/<dataset_id>/video_<3桁以上>/cam<index>.mp4`。
+入力はDATA root相対の`tennis_multiview/raw/<dataset_id>/video_<3桁以上>/cam<index>.mp4`。
 cameraはcam0から連番で、指定videoだけを開きます。保存先は
-`tennis_multivew/processed/<dataset_id>/projects.json`（v1）、出力先はその隣の
+`tennis_multiview/processed/<dataset_id>/projects.json`（v1）、出力先はその隣の
 `dataset/videos/<video_id>/clips/<clip_name>/`です。dataset/clip v2のスキーマとreaderは
 [generate_dataset/manifest.py](../generate_dataset/manifest.py)が所有します。
 旧raw直下の`cam0.mp4`や旧`dataset/clips/...`配置を自動探索・移行しません。
@@ -26,7 +26,7 @@ cameraはcam0から連番で、指定videoだけを開きます。保存先は
 # 既存projectだけを読み、編集・同期計算・書き出しをAPIでも拒否する。
 .venv/bin/python -m src.tennis_scene.clip_studio \
   --data-root /absolute/path/to/data \
-  --source-directory tennis_multivew/raw/meiji_3cam/video_000 --port 8904
+  --source-directory tennis_multiview/raw/meiji_3cam/video_000 --port 8904
 ```
 
 `projects.json`・指定videoが無ければ停止します。rawと保存camera/pathの一致も必要です。
@@ -55,6 +55,17 @@ offsetの推定方法は既存project JSONからは分かりません。
 出力のfps・解像度は保存manifestを使って照合し、現在のexport既定設定とは区別します。
 レビューは全動画の再decode、media内容の同一性、教師品質を検証しません。
 同期・切出後の3D推定や教師採用の確認は各下流reviewの担当です。
+
+### 旧ディレクトリ名からの移行
+
+1. データセットを使用する編集・書き出しを停止し、移行前のメタデータをバックアップします。
+2. 旧綴りのディレクトリを DATA root 直下の `tennis_multiview` に改名します。
+   旧ディレクトリが DATA root 外を指すシンボリックリンクの場合は、実体を DATA root 内の
+   `tennis_multiview` へコピーし、参照先まで DATA root に収まるようにします。
+3. `projects.json` の `sources[].path`、`clip.json` の `cameras[].source_path` など、
+   保存済み JSON のパスに含まれる旧ディレクトリ名を更新します。
+   `sources[].path` は DATA root 相対のまま、絶対パスは移行先を指すようにします。
+4. 上記の読取専用 CLI で対象 video を開き、元動画と保存済みクリップの登録状態を確認します。
 
 ## 編集の流れ
 

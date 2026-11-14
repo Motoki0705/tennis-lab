@@ -8,7 +8,7 @@
     "fps": 59.94006,
     "height": 1080,
     "num_frames": 1010,
-    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
+    "path": "/home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/media/cam1.mp4",
     "sha256": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
     "width": 1920
   },

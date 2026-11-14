@@ -113,6 +113,30 @@ def snapshot(pr: dict[str, Any]) -> tuple[dict[str, Any], bytes]:
     }, diff
 
 
+def require_current_pr(session: ParentSession, original: dict[str, Any]) -> None:
+    """Recheck mutable PR identity after processing its fixed commit inputs."""
+    with session.gh.fresh_reads():
+        current = object_value(
+            session.gh.get(f"repos/{session.gh.repo}/pulls/{original['number']}")
+        )
+    if any(
+        current.get(key) != original.get(key)
+        for key in (
+            "number",
+            "head",
+            "base",
+            "body",
+            "state",
+            "draft",
+            "merged_at",
+            "labels",
+        )
+    ):
+        session.store.conflict(
+            "PR changed during snapshot verification; retry the command"
+        )
+
+
 def prepare(
     session: ParentSession,
     selected: list[int],
@@ -144,10 +168,11 @@ def prepare(
         ):
             require_implementation(session, child)
     entries, diffs = [], {}
-    for item in prs:
-        entry, diff = snapshot(dict(item))
-        entries.append(entry)
-        diffs[item["number"]] = diff
+    with session.gh.io_scope():
+        for item in prs:
+            entry, diff = snapshot(dict(item))
+            entries.append(entry)
+            diffs[item["number"]] = diff
     # Protect the collection window: changes during git I/O are not covered.
     with session.gh.fresh_reads():
         if set(session.work_items()[1]) != child_numbers:
@@ -310,7 +335,17 @@ def transition(
             },
             exact=True,
         )
-        entries = [snapshot(dict(pr))[0] for pr in prs]
+        with session.gh.io_scope():
+            entries = [snapshot(dict(pr))[0] for pr in prs]
+        with session.gh.fresh_reads():
+            fresh = select_prs(
+                [p["number"] for p in request["prs"]],
+                session.gh.pulls(),
+                set(children),
+                session.gh.repo,
+            )
+        if fresh != prs:
+            raise ValueError("review targets changed while checking the instruction")
         if entries != request["prs"]:
             raise ValueError(
                 "review target changed since snapshot; prepare a new run with reason"

@@ -16,7 +16,7 @@ from src.tennis_scene.configuration import parse_clip_studio_config
 
 @pytest.fixture
 def web_client(tmp_path):
-    source = tmp_path / "data/tennis_multivew/raw/test/video_000"
+    source = tmp_path / "data/tennis_multiview/raw/test/video_000"
     source.mkdir(parents=True)
     videos = []
     for camera in range(2):
@@ -46,7 +46,7 @@ def web_client(tmp_path):
     cfg.export.fps = 10.0
     cfg.export.width = 64
     cfg.export.height = 48
-    cfg.source_directory = "tennis_multivew/raw/test/video_000"
+    cfg.source_directory = "tennis_multiview/raw/test/video_000"
     runtime = parse_clip_studio_config(cfg)
     project = ClipStudioProject(
         dataset_id="test",
@@ -194,7 +194,7 @@ def test_review_package_cli_opens_saved_project_read_only(web_client, monkeypatc
             "--data-root",
             str(runtime.export.resolver.roots.data_root),
             "--source-directory",
-            "tennis_multivew/raw/test/video_000",
+            "tennis_multiview/raw/test/video_000",
             "--port",
             "8904",
         ]
@@ -219,7 +219,7 @@ def test_review_package_cli_does_not_initialize_missing_project(web_client, monk
                 "--data-root",
                 str(runtime.export.resolver.roots.data_root),
                 "--source-directory",
-                "tennis_multivew/raw/test/video_000",
+                "tennis_multiview/raw/test/video_000",
             ]
         )
     assert not runtime.export.projects_path.exists()

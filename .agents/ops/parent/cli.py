@@ -232,6 +232,13 @@ def parser() -> argparse.ArgumentParser:
     run_record = commands.add_parser("record-worker-run")
     run_record.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
     run_record.add_argument("--run-dir", type=Path, required=True)
+    wait = commands.add_parser(
+        "wait-worker", help="read-only wait for the latest recorded manual worker run"
+    )
+    wait.add_argument("--child", type=int, required=True, help=WORK_ITEM_HELP)
+    wait.add_argument(
+        "--timeout", type=float, help="finite positive seconds; default: no limit"
+    )
     decision = commands.add_parser(
         "decide-worker-plan",
         help="bind a parent answer to the latest completed planning final",
@@ -341,6 +348,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "basis-record",
                 "basis-check",
                 "wait-supplement",
+                "wait-worker",
                 "worker-log-status",
                 "review-inspect",
                 "decision-log-status",
@@ -367,6 +375,7 @@ def _main(argv: list[str] | None = None) -> int:
         gh._read_only_cache = read_only(args) and args.command not in {
             "review-inspect",
             "wait-supplement",
+            "wait-worker",
         }
         if args.command == "improvement-expire":
             from .improvement_proposals import expire
@@ -382,6 +391,17 @@ def _main(argv: list[str] | None = None) -> int:
         if args.parent is None:
             raise ValueError("--parent is required for this command")
         parent = issue_number(args.parent, gh.repo)
+        if args.command == "wait-worker":
+            from .worker_wait import wait_worker
+
+            code, value = wait_worker(
+                store,
+                f"{gh.repo.casefold()}#{parent}",
+                number(args.child),
+                timeout=args.timeout,
+            )
+            print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
+            return code
         continuation = Continuation(args, store, gh.repo, parent, identity)
         if args.command == "publish-worker-log" and (
             args.all_parents or args.adopt_orphan_prs

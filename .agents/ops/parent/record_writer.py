@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import subprocess
-from contextlib import ExitStack, nullcontext
+from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any
 
 from worker_logs.journal import atomic, locked
@@ -11,6 +11,7 @@ from worker_logs.journal import atomic, locked
 from . import comment_journal
 from .history import comment_url, parse_history
 from .policy import digest, number
+from .state import RegistryConflict
 
 if TYPE_CHECKING:
     from .session import ParentSession
@@ -42,7 +43,7 @@ def post_once(
         "key": key,
     }
     with ExitStack() as locks, gh.fresh_reads():
-        with session.store.unlocked_read() if session.store._lock else nullcontext():
+        with gh.io_scope():
             locks.enter_context(locked(path))
         saved = (
             comment_journal.load(path) if path.exists() or path.is_symlink() else None
@@ -85,6 +86,8 @@ def post_once(
                 gh.write(
                     "POST", f"repos/{gh.repo}/issues/{issue}/comments", {"body": body}
                 )
+            except RegistryConflict:
+                raise
             except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
                 raise ValueError(
                     "comment publication uncertain; retry only to reconcile"
@@ -112,6 +115,11 @@ def post_once(
 
 def write_record(session: ParentSession, body: str) -> dict[str, Any]:
     """Legacy bytes are reused, never copied. Validate the prospective full history."""
+    with session.gh.fresh_reads():
+        return _write_record(session, body)
+
+
+def _write_record(session: ParentSession, body: str) -> dict[str, Any]:
     history = session.gh.record_history(session.parent, session.login)
     for comment in history.comments:
         if (
@@ -126,7 +134,7 @@ def write_record(session: ParentSession, body: str) -> dict[str, Any]:
     issue = session.gh.evidence_issues().ensure(
         session.parent,
         session.login,
-        store=session.store if session.store._lock else None,
+        store=session.gh._store,
     )
     rows = session.gh.comments(issue.number)
     cid = 1 + max((c["id"] for c in history.comments + rows), default=0)
@@ -179,7 +187,7 @@ def replace_pending(session: ParentSession, comment: dict[str, Any], body: str) 
         / f"{digest([row['repo'], issue, cid])}.json"
     )
     with ExitStack() as locks, session.gh.fresh_reads():
-        with session.store.unlocked_read() if session.store._lock else nullcontext():
+        with session.gh.io_scope():
             locks.enter_context(locked(path))
         saved = (
             comment_journal.load(path, update=True)

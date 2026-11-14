@@ -81,6 +81,7 @@ user managerへの接続を操作前に確認する。bus接続不能・manager�
 | `unit_file_state` | 次回起動の有効化状態。`enabled`、`disabled`、`linked`、`static`などをそのまま区別 |
 | `active_state` / `sub_state` | 現在の稼働状態 |
 | `last_result` / `exec_main_status` | serviceの最終結果と終了status |
+| `last_outcome` | 延期の終了statusを宣言した対象の判定。git-syncの75は `deferred`、通常終了は `success`、他の異常終了は `failed`。生のsystemd状態も保持する |
 | `next_elapse_realtime` / `next_elapse_monotonic` | timerの次回予定。それぞれの時計系を保持 |
 | `last_trigger` | timerの最終発火 |
 | `fragment_path` | user managerが読んだunitソース |

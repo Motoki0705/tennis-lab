@@ -431,6 +431,8 @@ def _complete(args: argparse.Namespace, value: Any, *, exit_code: int = 0) -> An
             status = "partial"
     if isinstance(value, dict) and value.get("launch_state") == "rejected_before_start":
         state, status = "rejected_before_start", "rejected"
+    elif isinstance(value, dict) and value.get("launch_state") == "runtime_unconfirmed":
+        state, status = "unknown", "unknown"
     elif args.command in {"start-worker", "continue-worker", "review-request"}:
         state, status = None, "unknown"
     elif op.records("action")[-1]["data"]["state"] == "rejected_before_start":

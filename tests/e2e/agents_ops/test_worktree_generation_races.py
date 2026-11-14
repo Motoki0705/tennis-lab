@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 import os
@@ -59,6 +60,7 @@ class RenameRace:
         stopper = SimpleNamespace(
             stop=stop,
             stop_moved=lambda root, original, stamp: self.moved_stops.append(root),
+            finish_legacy=lambda *args, **kwargs: None,
         )
         self.cleaner = lab.module.Cleaner(
             lab.repo, directory=lab.state, clock=lambda: lab.now, stopper=stopper
@@ -198,6 +200,214 @@ def test_empty_target_scope_preserves_an_unrelated_new_orphan(
     assert not path.exists()
     assert set(forest.nodes) == {1, 900, 103}
     assert not forest.signals
+
+
+class SnapshotRace:
+    """Run the production snapshot against /proc reads with a scheduled exit."""
+
+    def __init__(
+        self,
+        lab: Lab,
+        monkeypatch: pytest.MonkeyPatch,
+        path: Path,
+        point: str,
+        child_first: bool = False,
+    ) -> None:
+        self.point = point
+        self.fired = False
+        self.reads: dict[int, int] = {}
+        self.first_view: dict[int, Any] | None = None
+        proc = lab.lifecycle.processes
+        scope, identity = proc.scoped_processes, proc.process_identity
+        self.forest = NativeForest(lab, monkeypatch)
+        for node in self.forest.nodes.values():
+            node["cwd"] = "/tmp/outside-worktree"
+        if point != "outside":
+            self.forest.nodes[101]["cwd"] = str(path)
+        self.original = copy.deepcopy(self.forest.nodes)
+        if point == "new_child":
+            self.forest.nodes.pop(102)
+        order = [1, 900, 102, 101] if child_first else [1, 900, 101, 102]
+        read_text, stat, iterdir, readlink = (
+            Path.read_text,
+            Path.stat,
+            Path.iterdir,
+            os.readlink,
+        )
+        monkeypatch.setattr(proc, "snapshot", lab.real_snapshot)
+
+        def observe_scope(root: Path, view: dict[int, Any]) -> Any:
+            if self.first_view is None:
+                self.first_view = copy.deepcopy(view)
+            return scope(root, view)
+
+        monkeypatch.setattr(proc, "scoped_processes", observe_scope)
+        monkeypatch.setattr(proc, "process_identity", identity)
+        monkeypatch.setattr(proc, "agents", lambda root: [])
+
+        def proc_pid(candidate: Any, name: str | None = None) -> int | None:
+            parts = Path(candidate).parts
+            if (
+                len(parts) == (3 if name is None else 4)
+                and parts[:2] == ("/", "proc")
+                and parts[2].isdecimal()
+                and (name is None or parts[3] == name)
+            ):
+                return int(parts[2])
+            return None
+
+        def raw(pid: int) -> str:
+            node = self.forest.nodes.get(pid)
+            if node is None:
+                raise FileNotFoundError(str(pid))
+            fields = [
+                node.get("state", "R"),
+                str(node["parent"]),
+                *(["0"] * 17),
+                node["identity"]["start_ticks"],
+            ]
+            return f"{pid} (native worker) " + " ".join(fields)
+
+        def text(candidate: Path, *args: Any, **kwargs: Any) -> str:
+            if candidate == Path("/proc/sys/kernel/random/boot_id"):
+                return "boot"
+            pid = proc_pid(candidate, "stat")
+            if pid is None:
+                return read_text(candidate, *args, **kwargs)
+            self.reads[pid] = self.reads.get(pid, 0) + 1
+            value = raw(pid)
+            if pid == 101 and not self.fired:
+                if point == "stat" and self.reads[pid] == 1:
+                    self.exit()
+                elif (
+                    point
+                    in {"identity", "reuse", "zombie", "outside", "identity_permission"}
+                    and self.reads[pid] == 2
+                ):
+                    self.exit()
+                    if point == "identity_permission":
+                        raise PermissionError(str(pid))
+                    return raw(pid)  # None/ENOENT or a different PID generation.
+            return value
+
+        def info(candidate: Path, *args: Any, **kwargs: Any) -> Any:
+            pid = proc_pid(candidate)
+            if pid is None:
+                return stat(candidate, *args, **kwargs)
+            if pid == 101 and point == "uid" and not self.fired:
+                self.exit()
+            if pid not in self.forest.nodes:
+                raise FileNotFoundError(str(pid))
+            return SimpleNamespace(st_uid=os.getuid())
+
+        def cwd(candidate: Any, *args: Any, **kwargs: Any) -> Any:
+            pid = proc_pid(candidate, "cwd")
+            if pid is None:
+                return readlink(candidate, *args, **kwargs)
+            if pid not in self.forest.nodes:
+                raise FileNotFoundError(str(pid))
+            value = str(self.forest.nodes[pid]["cwd"])
+            if pid == 101 and point in {"cwd", "new_child"} and not self.fired:
+                self.exit()
+                if point == "cwd":
+                    raise FileNotFoundError(str(pid))
+            return value
+
+        monkeypatch.setattr(Path, "read_text", text)
+        monkeypatch.setattr(Path, "stat", info)
+        monkeypatch.setattr(
+            Path,
+            "iterdir",
+            lambda candidate: (
+                iter(
+                    [Path(f"/proc/{pid}") for pid in order if pid in self.forest.nodes]
+                )
+                if candidate == Path("/proc")
+                else iterdir(candidate)
+            ),
+        )
+        monkeypatch.setattr(os, "readlink", cwd)
+
+    def exit(self) -> None:
+        self.fired = True
+        if self.point == "new_child":
+            self.forest.add(102, 101)
+            self.forest.nodes[102]["cwd"] = "/tmp/outside-worktree"
+        if self.point == "zombie":
+            self.forest.nodes[101]["state"] = "Z"
+        else:
+            self.forest.nodes.pop(101)
+        for node in self.forest.nodes.values():
+            if node["parent"] == 101:
+                node["parent"] = 1
+        if self.point == "reuse":
+            self.forest.add(101, 1)
+            self.forest.nodes[101].update(cwd="/tmp/replacement")
+            self.forest.nodes[101]["identity"]["start_ticks"] = "10001"
+
+
+@pytest.mark.parametrize(
+    "point,child_first",
+    [
+        ("identity", False),
+        ("cwd", False),
+        ("uid", False),
+        ("stat", False),
+        ("stat", True),
+        ("new_child", False),
+        ("reuse", False),
+        ("zombie", False),
+        ("identity_permission", False),
+    ],
+)
+def test_snapshot_exit_boundaries_never_leave_a_live_child_after_deletion(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, point: str, child_first: bool
+) -> None:
+    path = lab.add()
+    race = SnapshotRace(lab, monkeypatch, path, point, child_first)
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True)
+    assert race.fired, "the scheduled exit must occur inside snapshot's /proc reads"
+    assert race.first_view is not None
+    assert 101 in race.first_view, "the observed parent stat must survive its exit"
+    assert race.first_view[101]["identity"] == race.original[101]["identity"]
+    assert race.first_view[101]["parent"] == 1
+    if point in {"identity", "zombie", "new_child", "reuse", "identity_permission"}:
+        assert race.first_view[101]["cwd"] == str(path)
+    if point in {"identity", "zombie"}:
+        assert 102 not in race.forest.nodes, (
+            "observed child of the target must be stopped"
+        )
+        assert code == 0 and not path.exists()
+        assert (102, race.forest.proc.signal.SIGKILL) in race.forest.signals
+    else:
+        assert code == 1 and not report["results"][0]["deleted"]
+        assert path.is_dir() and 102 in race.forest.nodes
+        assert not race.forest.signals, (
+            "unconfirmed provenance must never select a process by guess"
+        )
+        proof = lab.cleaner().stopper.native_proof(path)
+        saved = race.forest.proc.read_stop_proof(proof)
+        assert race.original[101]["identity"] in saved["unconfirmed"]
+        assert lab.cleaner().run(cleanup=True)[0] == 1
+        race.forest.nodes.pop(102)
+        if point == "reuse":
+            race.forest.nodes.pop(101)
+        lab.run(cleanup=True)
+        assert not path.exists()
+    assert 900 in race.forest.nodes
+
+
+def test_snapshot_exit_of_other_worktree_does_not_block_cleanup(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    race = SnapshotRace(lab, monkeypatch, path, "outside")
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert race.fired and not path.exists()
+    assert 102 in race.forest.nodes and 900 in race.forest.nodes
+    assert not race.forest.signals
 
 
 @pytest.mark.parametrize("published", [False, True])

@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -21,6 +22,12 @@ if TYPE_CHECKING:
     from .state import Store
 
 
+@dataclass(frozen=True)
+class ManualExecution:
+    completed: subprocess.CompletedProcess[bytes]
+    spawned: bool
+
+
 def execute_manual(
     gh: GitHub,
     store: Store,
@@ -30,8 +37,12 @@ def execute_manual(
     command: list[str],
     instruction: str,
     delegation: str,
-) -> subprocess.CompletedProcess[bytes]:
-    from .manual_workers import current_task, latest_run
+    *,
+    generation: int,
+    reserved_run: dict[str, Any],
+    reserved_turn: dict[str, Any],
+) -> ManualExecution:
+    from .manual_workers import current_task, latest_run, worker_runs
 
     directory = Path(command[command.index("--run-dir") + 1])
     process: subprocess.Popen[bytes] | None = None
@@ -48,6 +59,12 @@ def execute_manual(
             require(session, child, fresh=True)
             if (
                 task["delegation_id"] != delegation
+                or session.row["generation"] != generation
+                or worker_runs(task)[-1] != reserved_run
+                or task["preflight"]["turns"][-1] != reserved_turn
+                or task["worktree"] != command[command.index("--cwd") + 1]
+                or task["branch"] != command[command.index("--branch") + 1]
+                or task.get("model") != reserved_run["model"]
                 or latest_run(session, task) != directory
                 or task.get("worker_ended")
                 or task.get("stopped")
@@ -75,8 +92,11 @@ def execute_manual(
             session.row.pop("improvement_stop", None)
             store.save()
         stdout, stderr = process.communicate(instruction.encode("utf-8"))
-        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
-    except (ValueError, OSError) as exc:
+        return ManualExecution(
+            subprocess.CompletedProcess(command, process.returncode, stdout, stderr),
+            True,
+        )
+    except (Exception, KeyboardInterrupt) as exc:
         if process is not None:
             # A failed post-spawn persistence is not a pre-start rejection.
             if process.poll() is None:
@@ -85,8 +105,11 @@ def execute_manual(
             raise ValueError(
                 "manual launcher started but admission persistence failed; inspect its runtime and cleanup before retrying"
             ) from exc
-        return subprocess.CompletedProcess(
-            command, 2 if isinstance(exc, ValueError) else 127, b"", str(exc).encode()
+        return ManualExecution(
+            subprocess.CompletedProcess(
+                command, 127 if isinstance(exc, OSError) else 2, b"", str(exc).encode()
+            ),
+            False,
         )
 
 

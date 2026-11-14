@@ -22,6 +22,7 @@ READ_ONLY = {
     "basis-input",
     "basis-check",
     "wait-supplement",
+    "wait-worker",
     "state-migrate",
 }
 BEFORE_WORKER = {"run-worker", "start-worker", "continue-worker"}

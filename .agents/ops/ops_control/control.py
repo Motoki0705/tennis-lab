@@ -80,7 +80,19 @@ class Controller:
                 report["errors"].append(f"job status: {exc}")
         for unit in target.units:
             try:
-                report["units"].append(self.systemd.status(unit))
+                status = self.systemd.status(unit)
+                if unit == target.run_unit and target.deferred_exit_statuses:
+                    status["last_outcome"] = (
+                        "deferred"
+                        if status["exec_main_status"] in target.deferred_exit_statuses
+                        and status["last_result"] in {"success", "exit-code"}
+                        else "success"
+                        if status["last_result"] == "success"
+                        else "failed"
+                        if status["last_result"]
+                        else None
+                    )
+                report["units"].append(status)
             except ManagerUnavailable as exc:
                 if not continue_on_unavailable:
                     raise
