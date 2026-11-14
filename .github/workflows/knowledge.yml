@@ -6,6 +6,10 @@ on:
       - '.agents/skills/knowledge-control/**'
       - 'tests/e2e/skills/test_knowledge*.py'
       - 'tests/unit/skills/test_knowledge_citation_schema.py'
+      - 'tests/unit/skills/test_citation_literature.py'
+      - 'tests/integration/skills/test_citation_explore.py'
+      - '.agents/ops/lib/agy_headless.py'
+      - '.agents/ops/lib/agents.conf'
       - 'tests/fixtures/knowledge/**'
       - '.github/workflows/knowledge.yml'
       - '.github/workflows/ci.yml'
@@ -19,6 +23,10 @@ on:
       - '.agents/skills/knowledge-control/**'
       - 'tests/e2e/skills/test_knowledge*.py'
       - 'tests/unit/skills/test_knowledge_citation_schema.py'
+      - 'tests/unit/skills/test_citation_literature.py'
+      - 'tests/integration/skills/test_citation_explore.py'
+      - '.agents/ops/lib/agy_headless.py'
+      - '.agents/ops/lib/agents.conf'
       - 'tests/fixtures/knowledge/**'
       - '.github/workflows/knowledge.yml'
       - '.github/workflows/ci.yml'
@@ -45,7 +53,7 @@ jobs:
       - name: Install CPU validation tools
         run: |
           python -m venv .venv
-          .venv/bin/python -m pip install PyYAML pytest
+          .venv/bin/python -m pip install PyYAML pytest jsonschema==4.26.0
       - name: Validate graph, run sizes and types, deletion records, references and history
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
@@ -60,7 +68,9 @@ jobs:
       - name: Test storage boundaries, pinned exceptions, deletion integrity and registration
         run: .venv/bin/python -m pytest --confcutdir=tests/e2e/skills -o addopts='' tests/e2e/skills/test_knowledge*.py
       - name: Test citation document schema and identity contracts
-        run: .venv/bin/python -m pytest --confcutdir=tests/unit/skills -o addopts='' tests/unit/skills/test_knowledge_citation_schema.py
+        run: .venv/bin/python -m pytest --confcutdir=tests/unit/skills -o addopts='' tests/unit/skills/test_knowledge_citation_schema.py tests/unit/skills/test_citation_literature.py
+      - name: Test citation traversal and read-only fake agy
+        run: .venv/bin/python -m pytest --confcutdir=tests/integration/skills -o addopts='' tests/integration/skills/test_citation_explore.py
   knowledge-webui:
     runs-on: ubuntu-latest
     timeout-minutes: 10
