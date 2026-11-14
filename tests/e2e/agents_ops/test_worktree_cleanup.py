@@ -41,6 +41,11 @@ class Lab:
         self.inventory = importlib.import_module("worktree_cleanup.inventory")
         self.lifecycle = importlib.import_module("worktree_cleanup.lifecycle")
         self.storage = importlib.import_module("worktree_cleanup.storage")
+        self.real_snapshot = self.lifecycle.processes.snapshot
+        # Only the explicit process tests supply a forest. A host-wide view
+        # would mix unrelated concurrent pytest/agent processes into the
+        # deliberately conservative orphan-provenance checks.
+        monkeypatch.setattr(self.lifecycle.processes, "snapshot", lambda: {})
         self.now = BORN
         monkeypatch.setattr(self.inventory, "birth_time", lambda fd: BORN)
         self.git("init", "-q", "-b", "main")
@@ -540,7 +545,7 @@ def test_parent_ownership_is_released_and_native_process_is_stopped(
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: stopped.append(identity),
+        lambda identity, **kwargs: stopped.extend([identity] if identity else []),
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -717,6 +722,9 @@ class NativeForest:
         for pid, parent in ((1, 0), (101, 1), (102, 101), (900, 1)):
             self.add(pid, parent)
         monkeypatch.setattr(self.proc, "snapshot", self.snapshot)
+        monkeypatch.setattr(
+            self.proc, "scoped_processes", lambda root, view: ([], set())
+        )
         monkeypatch.setattr(
             self.proc,
             "process_identity",
@@ -1067,8 +1075,9 @@ def test_unregistration_keeps_replacement_created_in_the_last_gap(
     assert str(path) in lab.git("worktree", "list", "--porcelain")
 
 
+@pytest.mark.parametrize("observe_missing", [False, True])
 def test_external_removal_observation_retires_fallback_identity(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, observe_missing: bool
 ) -> None:
     real = lab.inventory.opened_identity
     monkeypatch.setattr(
@@ -1081,14 +1090,14 @@ def test_external_removal_observation_retires_fallback_identity(
     path = lab.add()
     first = lab.run()["entries"][0]
     lab.git("worktree", "remove", str(path))
-    assert lab.run()["entries"] == []
-    retired_phase = lab.records()[first["id"]]["phase"]
+    if observe_missing:
+        assert lab.run()["entries"] == []
     lab.now += LIFETIME
     lab.add("replacement", path=path)
     report = lab.run(cleanup=True)
     current = report["entries"][0]
     assert path.is_dir(), "reused administration inode inherited the old deadline"
-    assert retired_phase == "absent"
+    assert lab.records()[first["id"]]["phase"] == "absent"
     assert current["id"] != first["id"]
     assert current["created_at"] == lab.storage.utc(lab.now)
     assert current["source"] == "first_observed"
@@ -1145,7 +1154,7 @@ def test_stale_parent_runtime_does_not_release_new_owner_or_children(
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: stopped.append(identity),
+        lambda identity, **kwargs: stopped.extend([identity] if identity else []),
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)

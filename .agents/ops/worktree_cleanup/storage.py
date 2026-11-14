@@ -120,7 +120,18 @@ class State:
                 or not isinstance(row.get("admin"), str)
                 or not {"admin_identity", "directory_identity", "head"} <= row.keys()
                 or not isinstance(row.get("admin_identity"), dict)
-                or set(row["admin_identity"]) != {"device", "inode", "birth_time_ns"}
+                or set(row["admin_identity"])
+                not in (
+                    {"device", "inode", "birth_time_ns"},
+                    {"device", "inode", "birth_time_ns", "token"},
+                )
+                or (
+                    row["admin_identity"].get("token") is not None
+                    and re.fullmatch(
+                        r"[0-9a-f]{32}", str(row["admin_identity"]["token"])
+                    )
+                    is None
+                )
                 or any(
                     type(row["admin_identity"].get(k)) is not int
                     for k in ("device", "inode")
@@ -137,6 +148,8 @@ class State:
                     "unregistered",
                     "deleted",
                     "absent",
+                    "superseded",
+                    "quarantine_conflict",
                 }
             ):
                 raise CleanupError(f"malformed worktree record: {key}")

@@ -373,24 +373,55 @@ class Stopper:
     def stop_moved(self, root: Path, original: Path, stamp: str) -> None:
         # Only processes physically in quarantine are selected. Replaying an
         # old deletion must not stop a replacement's jobs at the original path.
+        view, native = self.prepare_native(root)
         self.loose_runs(root, contract_root=original, discovered_only=True)
-        self.stop_native(root, processes.agents(root))
+        self.stop_native(root, native, view)
         if processes.agents(root):
             raise CleanupError("native agents remain in quarantined worktree")
 
-    def stop_native(self, root: Path, native: list[dict[str, Any]]) -> None:
-        proof = (
+    def native_proof(self, root: Path) -> Path:
+        return (
             self.root
             / "native-stops"
             / (hashlib.sha256(os.fsencode(root)).hexdigest() + ".json")
         )
-        if proof.exists():
+
+    def prepare_native(self, root: Path) -> tuple[dict[int, Any], list[dict[str, Any]]]:
+        # Take the baseline before even enumerating agents. Retain it across
+        # registry/queue/runner calls which can make a parent exit and orphan a child.
+        view = processes.snapshot()
+        proof = self.native_proof(root)
+        fresh = processes.begin_stop(view, proof)
+        native = processes.agents(root)
+        seeds, excluded = processes.scoped_processes(root, view)
+        seeds.extend(agent["identity"] for agent in native)
+        after = processes.snapshot()
+        lost = [
+            node["identity"]
+            for pid, node in view.items()
+            if after.get(pid, {}).get("identity") != node["identity"]
+            and processes.identity_key(node["identity"]) not in excluded
+        ]
+        processes.prepare_stop(
+            view, seeds, proof, capture_completed=fresh, uncertain_roots=lost
+        )
+        return view, native
+
+    def stop_native(
+        self, root: Path, native: list[dict[str, Any]], view: dict[int, Any]
+    ) -> None:
+        proof = self.native_proof(root)
+        # registry() may add a saved owner identity. Resolve it against the
+        # original ancestry, not a snapshot taken after stopping that owner.
+        processes.prepare_stop(view, [agent["identity"] for agent in native], proof)
+        if native:
+            for agent in native:
+                processes.stop_tree(agent["identity"], proof=proof)
+        else:
             processes.stop_tree(None, proof=proof)
-        for agent in native:
-            processes.stop_tree(agent["identity"], proof=proof)
 
     def stop(self, root: Path, stamp: str) -> None:
-        native = processes.agents(root)
+        view, native = self.prepare_native(root)
         errors = []
         for action in (
             lambda: self.registry(root, native, stamp),
@@ -402,7 +433,7 @@ class Stopper:
             except (OSError, ValueError, CleanupError) as exc:
                 errors.append(str(exc))
         try:
-            self.stop_native(root, native)
+            self.stop_native(root, native, view)
         except (OSError, ValueError, CleanupError) as exc:
             errors.append(str(exc))
         if processes.agents(root):

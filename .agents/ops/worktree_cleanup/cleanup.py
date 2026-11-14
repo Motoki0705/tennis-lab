@@ -50,7 +50,7 @@ class Cleaner:
                 (
                     r
                     for r in state.records.values()
-                    if r["phase"] not in {"deleted", "absent"}
+                    if r["phase"] not in {"deleted", "absent", "superseded"}
                     and not r.get("registration_lost_at")
                     and r["admin"] == row["admin"]
                     and inventory.same_registration(
@@ -65,12 +65,19 @@ class Cleaner:
             if state.records.get(key, {}).get("phase") in {
                 "deleted",
                 "absent",
+                "superseded",
             } or state.records.get(key, {}).get("registration_lost_at"):
                 # An inode can be recycled after a completed removal on a
                 # filesystem without btime; a live registration is a new one.
                 row["id"] = key = uuid.uuid4().hex + uuid.uuid4().hex
             live_ids.add(key)
             if key not in state.records:
+                unsealed = any(
+                    old["admin"] == row["admin"]
+                    and old["phase"] == "observed"
+                    and not old["admin_identity"].get("token")
+                    for old in state.records.values()
+                )
                 born = row["admin_identity"]["birth_time_ns"]
                 created = now if born is None else born
                 state.records[key] = {
@@ -80,6 +87,11 @@ class Cleaner:
                     "source": "first_observed" if born is None else "birth_time",
                     "first_observed_at": utc(now),
                     "phase": "observed",
+                    **(
+                        {"identity_migration": "unsealed_generation"}
+                        if unsealed
+                        else {}
+                    ),
                 }
             record = state.records[key]
             if (
@@ -99,6 +111,7 @@ class Cleaner:
                 "stopping",
                 "quarantined",
                 "unregistered",
+                "quarantine_conflict",
             }:
                 row.setdefault("registration_lost_at", utc(now))
                 entries.append(
@@ -127,6 +140,11 @@ class Cleaner:
             "selected": target and now >= deadline,
             "scope_error": error,
             "phase": row["phase"],
+            **(
+                {"identity_migration": row["identity_migration"]}
+                if "identity_migration" in row
+                else {}
+            ),
             **inventory.changes(Path(row.get("quarantine") or row["path"]), error),
         }
 
@@ -155,8 +173,10 @@ class Cleaner:
         quarantine = self.repo / ".claude/worktrees" / (".expired-" + row["id"])
         if row.get("quarantine") not in {None, str(quarantine)}:
             raise CleanupError("invalid persisted quarantine path")
-        if quarantine.is_symlink():
+        if quarantine.is_symlink() and row["phase"] == "observed":
             raise CleanupError("quarantine path is a symlink")
+        if row["phase"] == "observed" and os.path.lexists(quarantine):
+            raise CleanupError("quarantine path exists before this deletion intent")
         if row["phase"] == "observed":
             live = self.current(row)
             if live is None:
@@ -168,9 +188,28 @@ class Cleaner:
             )
             state.save()
             state.log(row, decided_at=utc(now), phase="intent", deleted=False)
+        # Recovery precedes all job selection/signals. The persisted intent also
+        # catches interruption between rename and its postcondition check.
+        if os.path.lexists(quarantine):
+            try:
+                inventory.require_directory(quarantine, row["directory_identity"])
+            except (OSError, CleanupError):
+                if row["phase"] not in {"stopping", "quarantine_conflict"}:
+                    raise CleanupError(
+                        "verified quarantine was replaced; refuse stopping or relocating successor"
+                    ) from None
+                self.restore_replacement(state, row, path, quarantine, now)
+        elif row["phase"] == "quarantine_conflict":
+            if self.current(row) is None and os.path.lexists(path):
+                self.superseded(state, row, now)
+            raise CleanupError(
+                "replacement recovery target disappeared; inspect saved intent"
+            )
         # Stop attempts are replayed after interruption; stopped is never success.
         live = self.current(row)
         replacement = live is None and (path.exists() or path.is_symlink())
+        if replacement and not os.path.lexists(quarantine):
+            self.superseded(state, row, now)
         if not replacement:
             self.stopper.stop(path, utc(now))
         if live is not None and live["path"] != str(path):
@@ -192,7 +231,12 @@ class Cleaner:
                     for r in inventory.registrations(self.repo, self.common)
                 ):
                     raise CleanupError("worktree contains another registered worktree")
-                inventory.quarantine_tree(path, quarantine, row["directory_identity"])
+                try:
+                    inventory.quarantine_tree(
+                        path, quarantine, row["directory_identity"]
+                    )
+                except inventory.QuarantineConflict:
+                    self.restore_replacement(state, row, path, quarantine, now)
             row["phase"] = "quarantined"
             state.save()
         # Catch agents which claimed the old cwd while the first stop ran. Once
@@ -222,6 +266,22 @@ class Cleaner:
         state.log(row, decided_at=utc(now), phase="done", deleted=True)
         row.update(phase="deleted", deleted_at=utc(now))
         state.save()
+
+    @staticmethod
+    def superseded(state: State, row: dict[str, Any], now: int) -> None:
+        row.update(phase="superseded", superseded_at=utc(now))
+        state.save()
+        raise CleanupError(
+            "expired instance disappeared; replacement preserved, deletion refused"
+        )
+
+    def restore_replacement(
+        self, state: State, row: dict[str, Any], path: Path, quarantine: Path, now: int
+    ) -> None:
+        row["phase"] = "quarantine_conflict"
+        state.save()  # Survives interruption before/during the compensation.
+        inventory.restore_quarantine(path, quarantine)
+        self.superseded(state, row, now)
 
     def run(
         self, *, cleanup: bool = False, dry_run: bool = False

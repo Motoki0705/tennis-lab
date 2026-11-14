@@ -39,12 +39,18 @@ birth timeを取得する。既存worktreeも同じ方法で移行する。取�
 
 状態は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/worktree-cleanup/<repo-key>/`。
 repo-keyはGit common directoryから算出し、別cloneの状態を分離する。
-`worktrees.json` にUTCの作成時刻、根拠、管理ディレクトリのdevice/inode/birth time、
+`worktrees.json` にUTCの作成時刻、根拠、管理ディレクトリのdevice/inode/birth time/UUID、
 パス、HEAD、削除phaseをfsync＋atomic renameで保存する。同パスでも管理ディレクトリが別個体なら
-新しい記録にする。birth timeが取れない環境ではdevice/inodeで同一性を照合する。
+新しい記録にする。対象の管理ディレクトリにはwrite-onceの `tennis-lab-expiry-id` をFD相対で
+atomicに作り、birth timeが取れずinodeが再利用されてもUUIDの不一致で再作成を識別する。
+UUIDは個体の識別だけに使い、作成日時の根拠にはしない。管理ディレクトリと実体のFDを保持し、
+gitdirの対応とパスの個体も再照合する。symlink・不正なUUIDは推測で置き換えず失敗とする。
 scanで登録消失を観測した記録は再利用せず、同じ管理名・inodeが現れても新しい初観測として扱う。
 削除途中の実体の復旧記録は残し、消失した登録への操作権限だけを失効させる。
-scan/dry-runも初観測記録とレポートを更新するが、repo・worktree・稼働jobを変更しない。
+scan/dry-runは初観測記録・レポートと対象のGit管理UUIDを永続化する。作業内容・Git参照・稼働jobは変更しない。
+対象外のworktreeにはUUIDを作らない。UUID導入前の記録は `identity_migration=unsealed_generation` で示す。
+birth timeが既知ならその日時を再利用する。不明な旧記録は再作成と区別できないため、UUID付き個体の初観測から
+14日とし、旧inodeだけを根拠に早期削除しない。UUID導入後は欠落scanの有無に依存しない。
 
 `report-latest.json` と標準出力のJSONは、`created_at` / `source` / `deadline` / `decided_at`、
 `target`（安全な対象範囲）/ `expired` / `selected`、`discarded_changes` を持つ。
@@ -66,6 +72,12 @@ handoff時は来歴を移管先へ更新し、移管先のnativeプロセスが�
 停止未確認は `recovery_required` / `stop_failed` を保持し、削除成功として返さない。
 
 共通ランナーのprivate state配下のrunと、同じユーザーのnative Codex/Claudeプロセスも確認する。
+停止準備の最初のbaselineを対象探索より前に保存し、親子関係とPID identityを保持する。
+同じユーザーで対象cwdを確認できるPython/shell等も対象に含める。registry・queue・runnerの停止前に
+捕捉を完了し、後段も再実行も最初のbaselineを引き継ぐ。親PIDの消滅だけでは成功にしない。
+探索中にcwdを観測できず消えたPIDは、最初の一覧に含まれた子孫も確認不能として保持する。
+探索の中断で捕捉が未完了なら、再実行でも失敗を維持する。元の対象を確認できない証拠を自動で捨てず、
+プロセスの終了と保存証拠を人間が確認・修復してから再実行する。
 native agentはPID・boot ID・start ticksを照合し、pidfdで親子をSIGSTOPする。
 全threadの停止後にも一覧を取り直し、新規の子を含む閉包が停止状態に固定されたことを確認してSIGKILLする。
 TERM handlerやSIGCONTを実行させず、確認済みPIDは親が変わっても消滅まで追跡する。
@@ -83,8 +95,13 @@ training queueは既存のシェル単語decoderで参照を探し、既存cance
 分割registryの担当行と索引の間で停止した場合は専用intentを照合して次回に更新を完了する。
 intentの保存後に別の更新があれば上書きせず明示失敗する。
 期限到達後の削除intentと元のdirectory identityを先に保存し、実体を同じ `.claude/worktrees/` 内の
-`.expired-<id>` へrenameする。新規起動を遮断して停止を再確認した後、
-開いてidentityを確認した旧Git管理ディレクトリの内容だけをfd相対で削除して登録を解除し、
+`.expired-<id>` へrenameする。移動元leafのFDも保持してrename直後の個体を照合する。
+別個体なら停止・登録解除をせず、
+NOREPLACEで元へ戻す。復旧先が占有されていれば上書きせず `quarantine_conflict` を残し、
+再実行は停止より先に復旧する。rename直後の中断も同じ照合で検出する。
+後継を復旧して旧個体の消失が確認されたintentは `superseded` とし、削除成功とは記録しない。
+正常に隔離した旧個体は、元のパスからの新規起動を遮断して停止を再確認する。
+続いて、開いてidentityを確認した旧Git管理ディレクトリの内容だけをfd相対で削除して登録を解除し、
 fdベースのrmtreeで隔離実体を削除する。パスから登録を選び直す `git worktree remove` は使用しない。
 管理名が同時に再作成されても新登録に触れないよう、空の旧管理ディレクトリ自体は残す。
 空ディレクトリは登録worktreeとして列挙されず、Gitの通常のprune/GCで整理される。
@@ -104,7 +121,7 @@ worktree削除ではbranchを消さない。merge済branchの整理は既存 [cl
 ## 検証
 
 ```bash
-.venv/bin/python -m pytest -n 4 tests/e2e/agents_ops/test_worktree_cleanup.py tests/e2e/agents_ops/test_ops_control.py tests/e2e/agents_ops/test_cleanup.py
+.venv/bin/python -m pytest -n 4 tests/e2e/agents_ops/test_worktree_cleanup.py tests/e2e/agents_ops/test_worktree_generation_races.py tests/e2e/agents_ops/test_ops_control.py tests/e2e/agents_ops/test_cleanup.py
 ```
 
 一時repo・worktree、注入時計、隔離registry、fake runner/queue/processを使用する。
