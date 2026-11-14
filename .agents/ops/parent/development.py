@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import fcntl
 import hashlib
 import importlib
 import os
@@ -20,6 +21,7 @@ from dispatcher.supervisor import (
     check_observation,
     children_pending,
     current_job,
+    job_snapshot,
     managed,
     observation_intent,
     unstarted,
@@ -46,7 +48,7 @@ from .policy import (
     replace_section,
 )
 from .session import ParentSession
-from .state import Store
+from .state import RegistryConflict, Store
 from .worker_instruction import prepare_instruction
 
 OPS = Path(__file__).resolve().parents[1]
@@ -183,8 +185,7 @@ def start_worker(
 ) -> dict[str, Any]:
     """Reserve via parent.delegate, then use the dispatcher start-child contract.
 
-    The caller must not hold Store.locked(): the dispatcher takes the same lock.
-    Supervisor reconciliation precedes the parent operation lock because it
+    The caller must hold neither a registry nor a parent operation lock. Reconcile
     may publish logs; only the reservation below owns the operation lock. A
     failure between the two claims intentionally leaves the delegation intact.
     """
@@ -335,31 +336,64 @@ def start_worker(
         }
 
 
+def _inspection_target(
+    session: ParentSession, child: int
+) -> tuple[dict[str, Any], str | None]:
+    """Read one snapshot's owner/job/delegation and runtime identity without writes."""
+    row = session.owner()
+    dispatch = managed(row)
+    if not dispatch:
+        raise ValueError("worker inspection requires a managed parent")
+    jobs = worker_jobs(dispatch, child)
+    if not jobs:
+        raise ValueError("no managed runtime for this issue")
+    job = jobs[-1]
+    path = Path(job["directory"]) / "runtime/result.json"
+    run_id = (
+        nonempty(load(path).get("run_id"), "runtime run ID") if path.exists() else None
+    )
+    if job.get("runtime_run_id") is not None and job["runtime_run_id"] != run_id:
+        raise RegistryConflict("saved runtime run identity changed")
+    if job.get("cancelled_before_start"):
+        if job["phase"] != "ended" or not unstarted(job):
+            raise RegistryConflict("cancelled job acquired launch evidence")
+        lifetime = Path(job["directory"]) / "lifetime.lock"
+        if lifetime.exists():
+            with lifetime.open("r", encoding="utf-8") as lock:
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError as exc:
+                    raise RegistryConflict(
+                        "cancelled job still has a live launcher"
+                    ) from exc
+    return job_snapshot(row, job), run_id
+
+
 def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
-    """Persist the observation target, wait unlocked, then check the current job."""
-    require_client(session.gh, session.store)
-    with session.store.locked():
-        dispatch = managed(session.owner())
-        if not dispatch:
-            raise ValueError("worker inspection requires a managed parent")
-        jobs = worker_jobs(dispatch, child)
-        if not jobs:
-            raise ValueError("no managed runtime for this issue")
+    """Observe a frozen job unlocked, then recheck it in a new read-only snapshot."""
+    if session.gh._store is not None:
+        require_client(session.gh, session.store)
+    session.store.require_unlocked()
+    session = session.detached()
+    with session.store.snapshot(), session.gh.fresh_reads():
+        expected, run_id = _inspection_target(session, child)
         worker_phase = worker_preflight.observe(session, child)
-        job = jobs[-1]
-        expected = observation_intent(session.store, session.row, job, "inspect")
     saved = expected["job"]
     directory = Path(saved["directory"]) / "runtime"
     evidence = None
     cancelled = bool(saved.get("cancelled_before_start"))
-    if cancelled:
-        ended(saved)
-    elif saved["observation"]["run_id"] is not None:
+    if not cancelled and run_id is not None:
         evidence = Runtime(Path(saved["runner"])).inspect(directory)
-        check_observation(saved, evidence)
+        if evidence["record"]["run_id"] != run_id:
+            raise RegistryConflict("runtime run changed during inspection")
         Supervisor._check_contract(saved, evidence["record"])
-    with session.store.locked():
-        _, job = current_job(session.store, session.key, expected)
+    with session.store.snapshot():
+        actual, current_run = _inspection_target(session, child)
+        if actual != expected or current_run != run_id:
+            raise RegistryConflict(
+                "worker job/run/delegation or generation changed during inspection"
+            )
+        job = actual["job"]
         result: dict[str, Any] = {
             "child": child,
             "job_id": job["id"],
@@ -372,8 +406,6 @@ def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
         }
         if evidence is not None:
             record = evidence["record"]
-            job["runtime_run_id"] = record["run_id"]
-            session.store.save()
             result.update(
                 runtime_result=record["result"],
                 turn_end_reason=record["turn_end_reason"],
@@ -747,7 +779,13 @@ def refresh_worker_plan(
 def worker_command(
     args: Any, gh: GitHub, parent: int, identity: str, store: Store
 ) -> dict[str, Any]:
-    require_client(gh, store)
+    if args.command == "inspect-worker":
+        if gh._store is not None:
+            require_client(gh, store)
+        store.require_unlocked()
+        gh = gh.detached()
+    else:
+        require_client(gh, store)
     with store.snapshot() if args.command == "inspect-worker" else store.locked():
         session = ParentSession(gh, store, parent, identity)
     if args.command == "inspect-worker":

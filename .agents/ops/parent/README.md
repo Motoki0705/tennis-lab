@@ -1254,9 +1254,11 @@ PR open/push/CI完了ではこの入口もレビューも起動しない。
 同じrepo・親番号/URL・環境由来ID・state・競合エラーを使い、子作成・実装・レビューの検査を飛ばさない。
 判定agent・timerはこのCLIから起動しない。手動実装子の明示起動だけは `run-worker` が共通ランナーへ渡す。
 
-start/continue-workerの終了待ち、inspect-worker、stop-workerは対象job/runを保存してregistry外でrunnerへ問い合わせ、
+start/continue-workerの終了待ちとstop-workerは対象job/runを保存してregistry外でrunnerへ問い合わせ、
 新しいtransactionで担当・委任・runを照合する。stop-workerは停止intentを先に保存する。
-Python APIの `inspect_worker` / `stop_worker` は自身でtransactionを開くため、呼出元はregistry lockを持たない。
+inspect-workerは読み取り専用とし、snapshotで対象job/runを固定してrunnerへ問い合わせ、新しいsnapshotで
+job/run・委任・generationを照合する。intentやruntime_run_idを保存せず、registry lockファイルも作らない。
+Python APIの `inspect_worker` / `stop_worker` は自身でsnapshotまたはtransactionを開くため、呼出元はregistry lockを持たない。
 変更された対象の古い応答を現在のworkerへ適用しない。
 
 CLIはJSONをstdout、エラーをstderrへ出し、成功0・設定/取得/整合エラー2で終了する。`run-worker` の実行後はランナーの終了値を返す。

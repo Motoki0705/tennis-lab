@@ -367,6 +367,11 @@ def test_cancelled_initial_reservation_keeps_model_and_restarts_only_if_unstarte
         worktree=child_tree(d),
     )
     mod.stop_worker(session, 10, stop_detail())
+    cancelled = d.row()["dispatch"]["jobs"][first["job_id"]]
+    with mod.gate(Path(cancelled["directory"]) / "lifetime.lock") as fd:
+        assert fd is not None
+        with pytest.raises(ValueError, match="live launcher"):
+            mod.inspect_worker(session, 10)
     state = mod.inspect_worker(session, 10)
     assert state["cancelled_before_start"] and state["termination_confirmed"]
     assert state["task_success"] is None and "runtime_result" not in state
@@ -819,8 +824,21 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     assert "o/r#1" in operations
     assert set(operations) <= {"o/r#1", "dispatcher:o/r#1"}
     before_inspection = list(operations)
+    registry_lock = d.h.store.directory / "registry.lock"
+    registry_lock.unlink()
+    before_state = {
+        path.relative_to(d.h.store.directory): path.read_bytes()
+        for path in d.h.store.directory.rglob("*")
+        if path.is_file()
+    }
     assert cli.main([*common, "inspect-worker", "--child", "1"]) == 0
     assert operations == before_inspection
+    assert not registry_lock.exists()
+    assert before_state == {
+        path.relative_to(d.h.store.directory): path.read_bytes()
+        for path in d.h.store.directory.rglob("*")
+        if path.is_file()
+    }
     result = json.loads(capsys.readouterr().out)
     assert result["termination_confirmed"] is False and result["task_success"] is None
     spec = d.h.root / "stop.json"
@@ -840,7 +858,6 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     )
     assert cli.main([*common, "stop-worker", "--child", "1", "--spec", str(spec)]) == 0
     assert writes == ["reserve", "stop"]
-    assert [key for key in operations if key == "o/r#1"] == ["o/r#1", "o/r#1"]
     assert set(operations) <= {"o/r#1", "dispatcher:o/r#1"}
     assert json.loads(capsys.readouterr().out)["result"] == "stop_requested"
     assert d.row()["tasks"]["1"]["worker_ended"]
@@ -2064,6 +2081,103 @@ def test_worker_commands_wait_for_runner_outside_registry(
         assert mod.stop_worker(session, 10, stop_detail())["result"] == "stop_requested"
         assert d.row()["tasks"]["10"]["stopped"] is True
     observations(output)
+
+
+@pytest.mark.parametrize("cancelled", [False, True])
+def test_inspect_worker_preserves_state_without_creating_registry_lock(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, cancelled: bool
+) -> None:
+    mod, session, env = workflow(d, monkeypatch, family=True)
+    reserved = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="実装する。",
+        model=None,
+        branch="codex/parser",
+        worktree=child_tree(d),
+    )
+    if cancelled:
+        mod.stop_worker(session, 10, stop_detail())
+    else:
+        row = d.row()
+        job = row["dispatch"]["jobs"][reserved["job_id"]]
+        job["phase"] = "starting"
+        d.update(row)
+        d.runtime(job, live=True)
+    monkeypatch.setattr(mod, "Runtime", FixtureRuntime)
+    registry_lock = d.h.store.directory / "registry.lock"
+    registry_lock.unlink()
+
+    def state_files() -> dict[Path, tuple[bytes, int, int]]:
+        return {
+            path.relative_to(d.h.store.directory): (
+                path.read_bytes(),
+                path.stat().st_mtime_ns,
+                path.stat().st_mode,
+            )
+            for path in d.h.store.directory.rglob("*")
+            if path.is_file()
+        }
+
+    before = state_files()
+    result = mod.inspect_worker(session, 10)
+    assert result["job_id"] == reserved["job_id"]
+    assert result["termination_confirmed"] is cancelled
+    assert result["cancelled_before_start"] is cancelled
+    assert not registry_lock.exists()
+    assert state_files() == before
+
+
+@pytest.mark.parametrize("change", ["job", "run", "delegation", "generation"])
+def test_inspect_worker_rejects_changed_snapshot(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    mod, session, env = workflow(d, monkeypatch, family=True)
+    reserved = mod.start_worker(
+        session,
+        d.schedule.directory,
+        env,
+        child=10,
+        prompt="実装する。",
+        model=None,
+        branch="codex/parser",
+        worktree=child_tree(d),
+    )
+    row = d.row()
+    job = row["dispatch"]["jobs"][reserved["job_id"]]
+    job["phase"] = "starting"
+    d.update(row)
+    d.runtime(job, live=True)
+    peer_registry = []
+
+    class ConcurrentRuntime(FixtureRuntime):
+        def inspect(self, directory: Path, *, stop: bool = False) -> dict[str, Any]:
+            assert not stop
+            proof: dict[str, Any] = super().inspect(directory, stop=stop)
+            if change == "run":
+                replacement = copy.deepcopy(proof["record"])
+                replacement["run_id"] = "replacement-run"
+                (directory / "result.json").write_text(json.dumps(replacement))
+            else:
+                peer = d.row()
+                if change == "job":
+                    replaced = peer["dispatch"]["jobs"].pop(reserved["job_id"])
+                    replaced["id"] = "replacement-job"
+                    peer["dispatch"]["jobs"][replaced["id"]] = replaced
+                elif change == "delegation":
+                    peer["tasks"]["10"]["delegation_id"] = "replacement-delegation"
+                else:
+                    peer["generation"] += 1
+                d.update(peer)
+            peer_registry.append(d.h.store.path.read_bytes())
+            return proof
+
+    monkeypatch.setattr(mod, "Runtime", ConcurrentRuntime)
+    with pytest.raises(ValueError, match="changed|照合"):
+        mod.inspect_worker(session, 10)
+    assert peer_registry == [d.h.store.path.read_bytes()]
 
 
 def test_worker_log_capture_and_receive_git_release_registry(
