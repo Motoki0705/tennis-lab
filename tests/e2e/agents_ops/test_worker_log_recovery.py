@@ -8,6 +8,8 @@ import fcntl
 import importlib
 import json
 import subprocess
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -16,7 +18,13 @@ import pytest
 
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
-from tests.support.agents_ops.worker_logs import FakeGitHub, LogEnv, git, journal
+from tests.support.agents_ops.worker_logs import (
+    FakeGitHub,
+    LogEnv,
+    git,
+    journal,
+    sources,
+)
 
 recovery: Any = importlib.import_module("worker_logs.reconciliation")
 orphans: Any = importlib.import_module("worker_logs.orphans")
@@ -480,15 +488,68 @@ def test_bulk_recovery_records_generation_change_without_overwriting_successor(
     assert state.Store(logs.state).read_data()["parents"]["o/r#1900"] == owner
 
 
-@pytest.mark.parametrize("entry", ["continuation", "supervisor", "bulk", "orphan"])
+@pytest.mark.parametrize(
+    "entry",
+    [
+        "continuation",
+        "supervisor",
+        "bulk",
+        "orphan",
+        "explicit",
+        "orphan_adopt",
+        "supervisor_active",
+    ],
+)
 def test_handoff_during_first_worker_merge_stops_later_journals(
-    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, entry: str
+    logs: LogEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    entry: str,
 ) -> None:
     module = importlib.import_module("parent.log_publication")
     lifecycle = importlib.import_module("worker_logs.lifecycle")
     state = importlib.import_module("parent.state")
-    first, second = logs.ready(child=10), logs.ready(child=11)
-    actor = 1900 if entry in {"bulk", "orphan"} else 1
+    first = logs.ready(child=10)
+    if entry == "explicit":
+        source = journal.read(first)["source"]
+        session = logs.sessions[-1]
+        phase = session.row["tasks"]["10"]["preflight"]
+        turn = copy.deepcopy(phase["turns"][-1])
+        turn["snapshot"].update(
+            turn_id="private-resume-turn", previous_turn_id=source["turn_id"]
+        )
+        directory = logs.state / "runner-resume"
+        directory.mkdir()
+        for name in ("prompt.md", "final.md", "result.json"):
+            (directory / name).write_bytes(
+                (Path(source["run_directory"]) / name).read_bytes()
+            )
+        record = json.loads((directory / "result.json").read_text())
+        record["run_id"] = directory.name
+        (directory / "result.json").write_text(json.dumps(record))
+        turn["source"] = str(directory)
+        phase["turns"].append(turn)
+        second = sources.freeze(
+            session,
+            10,
+            (directory / "prompt.md").read_bytes().decode("utf-8"),
+            logs.standard,
+        )
+        assert (
+            sources.receive(
+                second,
+                {
+                    "record": record,
+                    "summary": dict.fromkeys(
+                        ("runner_alive", "agent_alive", "agent_group_alive"), False
+                    ),
+                },
+            )["state"]
+            == "ready"
+        )
+    else:
+        second = logs.ready(child=11)
+    actor = 1900 if entry in {"bulk", "orphan", "orphan_adopt"} else 1
     owner: dict[str, Any] = {
         "session": "codex:previous",
         "status": "ended" if entry == "supervisor" else "active",
@@ -499,22 +560,51 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
     key = f"o/r#{actor}"
     document = {"version": 1, "parents": {key: owner}}
     journal.atomic(logs.state / "registry.json", document)
-    if entry == "orphan":
+    if entry in {"orphan", "orphan_adopt"}:
         logs.github.pause_reads = True
         for path in (first, second):
             assert logs.publisher(path).publish()["state"] == "pending"
         logs.github.pause_reads = False
         github = PublicGitHub(logs)
         monkeypatch.setattr(orphans, "GitHub", lambda *a, **kw: github)
+        if entry == "orphan_adopt":
+            first.unlink()
+            second.unlink()
+            held_turns: set[Path] = set()
+            original_locked = journal.locked
+            original_operation = state.Store.operation
+
+            @contextmanager
+            def turn_locked(path: Path) -> Iterator[None]:
+                with original_locked(path):
+                    if path in {first, second}:
+                        held_turns.add(path)
+                    try:
+                        yield
+                    finally:
+                        held_turns.discard(path)
+
+            @contextmanager
+            def owner_operation(current: Any, key: str) -> Iterator[None]:
+                assert not held_turns, (
+                    "publication ownership must be checked before the turn lock"
+                )
+                with original_operation(current, key):
+                    yield
+
+            monkeypatch.setattr(journal, "locked", turn_locked)
+            monkeypatch.setattr(state.Store, "operation", owner_operation)
     monkeypatch.setattr(service, "Publisher", lambda root, path: logs.publisher(path))
-    merge = logs.github.merge
+    merging = github if entry == "orphan_adopt" else logs.github
+    merge = merging.merge
 
     def transfer_after_merge(number: int, head: str) -> None:
         merge(number, head)
+        owner.update(store.read_data()["parents"][key])
         owner.update(session="codex:successor", generation=2, status="active")
         journal.atomic(logs.state / "registry.json", document)
 
-    monkeypatch.setattr(logs.github, "merge", transfer_after_merge)
+    monkeypatch.setattr(merging, "merge", transfer_after_merge)
     store = state.Store(logs.state)
     if entry == "continuation":
         args = SimpleNamespace(command="note", dry_run=False)
@@ -534,11 +624,69 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
             ),
         )
         assert checkpoint["error"] == "log_owner_mismatch"
+    elif entry == "explicit":
+        cli = importlib.import_module("parent.cli")
+        monkeypatch.setattr(cli, "GitHub", lambda *a, **kw: SimpleNamespace(repo="o/r"))
+        monkeypatch.setattr(cli, "session_identity", lambda env: "codex:previous")
+        monkeypatch.chdir(logs.root)
+        code = cli._main(
+            [
+                "--repo",
+                "o/r",
+                "--parent",
+                "1",
+                "--state-dir",
+                str(logs.state),
+                "publish-worker-log",
+                "--child",
+                "10",
+            ]
+        )
+        value = json.loads(capsys.readouterr().out)
+    elif entry == "supervisor_active":
+        supervisor = importlib.import_module("dispatcher.supervisor")
+        jobs = {}
+        for n, path in enumerate((first, second)):
+            directory = logs.state / f"job-{n}"
+            (directory / "runtime").mkdir(parents=True)
+            (directory / "runtime/result.json").write_text("{}")
+            jobs[str(n)] = {
+                "phase": "starting",
+                "directory": str(directory),
+                "runner": "unused",
+                "worker": None,
+                "log_journal": str(path),
+            }
+        owner["dispatch"] = {"phase": "waiting", "jobs": jobs}
+        journal.atomic(logs.state / "registry.json", document)
+        control = supervisor.Supervisor(
+            SimpleNamespace(repo="o/r"),
+            store,
+            SimpleNamespace(
+                read=lambda: {"enabled": False},
+                directory=logs.state / "schedule",
+                path=logs.state / "schedule/schedule.json",
+            ),
+        )
+        # Admission/end-evidence have their own tests. Here both jobs have ended;
+        # the real reconcile loop must freeze ownership before releasing its lock.
+        monkeypatch.setattr(supervisor, "managed", lambda row: row.get("dispatch"))
+        monkeypatch.setattr(
+            supervisor,
+            "Runtime",
+            lambda runner: SimpleNamespace(
+                inspect=lambda *a, **kw: {}, ended=lambda _: True
+            ),
+        )
+        monkeypatch.setattr(
+            control, "_finish", lambda key, row, job, proof: job.update(phase="ended")
+        )
+        control.reconcile()
     else:
         args = SimpleNamespace(
-            source_parent=[] if entry == "orphan" else [1],
-            pr=[100, 101] if entry == "orphan" else None,
-            adopt_orphan_prs=entry == "orphan",
+            source_parent=[] if entry in {"orphan", "orphan_adopt"} else [1],
+            pr=[100, 101] if entry in {"orphan", "orphan_adopt"} else None,
+            adopt_orphan_prs=entry in {"orphan", "orphan_adopt"},
             turn=None,
             delegation_key=None,
             dry_run=False,
@@ -547,12 +695,20 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
             "o/r", actor, "codex:previous", store=store, args=args, root=logs.root
         )
         assert value["error"] == "log_owner_mismatch"
-    assert journal.read(first)["state"] == "merged"
-    assert journal.read(second)["state"] == (
-        "pending" if entry == "orphan" else "ready"
-    ), "the former owner started another journal after handoff"
-    assert logs.github.calls.count("merge") == 1
+    if entry == "orphan_adopt":
+        assert github.rows[100]["merged"] and not github.rows[101]["merged"], (
+            "the former owner started another orphan after handoff"
+        )
+        assert not first.exists() and not second.exists()
+    else:
+        assert journal.read(first)["state"] == "merged"
+        assert journal.read(second)["state"] == (
+            "pending" if entry == "orphan" else "ready"
+        ), "the former owner started another journal after handoff"
+    assert merging.calls.count("merge") == 1
     assert store.read_data()["parents"][key] == owner
+    if entry == "explicit":
+        assert code == 2 and value["logs"][-1]["error"] == "log_owner_mismatch"
 
 
 def test_existing_journal_merge_refusal_reaches_orphan_cli_exit(

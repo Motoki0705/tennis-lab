@@ -16,6 +16,7 @@ from typing import Any, cast
 
 from . import journal, schema
 from .journal import PublicationError, require
+from .ownership import require_owner
 from .publication import (
     GitHub,
     GitHubHTTPError,
@@ -430,7 +431,7 @@ class OrphanRecovery:
             )
             validated = True
             if not dry_run:
-                require(owner_check is None or owner_check(), "log_owner_mismatch")
+                require_owner(owner_check)
             if row.get("journal_present"):
                 s = row["source"]
                 logs = continue_workers(
@@ -594,7 +595,7 @@ def recover_orphans(
         )
         try:
             if not dry_run:
-                require(owner_check is None or owner_check(), "log_owner_mismatch")
+                require_owner(owner_check)
             safe_private(path)
             with nullcontext() if dry_run else journal.locked(path):
                 value = recovery.recover(

@@ -10,6 +10,7 @@ from typing import Any, Literal, TypedDict
 
 from . import journal, schema
 from .journal import PublicationError, require
+from .ownership import publication_owner, require_owner
 
 
 class RemainingPublication(TypedDict):
@@ -238,15 +239,14 @@ def continue_workers(
                 )
             )
             if not dry_run:
-                require(owner_check is None or owner_check(), "log_owner_mismatch")
+                require_owner(owner_check)
                 if row["state"] == "captured" and src.get("run_directory"):
                     runtime = Runtime(RUNNER)
                     proof = runtime.inspect(Path(src["run_directory"]))
                     if runtime.ended(proof):
                         value = service.finish(path, proof, publish_now=False)
                 if value["state"] in {"ready", "pending"} or retry:
-                    require(owner_check is None or owner_check(), "log_owner_mismatch")
-                    value = service.publish(path, retry=retry)
+                    value = service.publish(path, retry=retry, owner_check=owner_check)
             results.append(
                 {
                     "parent": src["parent"],
@@ -256,6 +256,8 @@ def continue_workers(
                     "dry_run": dry_run,
                 }
             )
+            if value.get("error") == "log_owner_mismatch":
+                break
         except (
             ValueError,
             OSError,
@@ -301,13 +303,7 @@ def bulk_command(
             )
             generation = owner["generation"]
 
-    def owner_is_current() -> bool:
-        with store.operation(f"{repo.casefold()}#{parent}"), store.locked():
-            current = store.parents.get(f"{repo.casefold()}#{parent}", {})
-            return bool(
-                current.get("generation") == generation
-                and current.get("session") == identity
-            )
+    owner_is_current = publication_owner(store, repo, parent, identity, generation)
 
     if args.adopt_orphan_prs:
         from .orphans import recover_orphans

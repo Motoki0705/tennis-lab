@@ -27,6 +27,7 @@ from parent.state import Store, session_identity
 from parent.worker_instruction import prepare_instruction
 from worker_logs import service as worker_logs
 from worker_logs import sources as log_sources
+from worker_logs.ownership import publication_owner
 
 from . import judgement
 from .collect import (
@@ -1200,7 +1201,17 @@ class Supervisor:
                         self._finish(key, row, job, evidence)
                         if job.get("log_journal"):
                             publications.append(
-                                (int(key.rpartition("#")[2]), Path(job["log_journal"]))
+                                (
+                                    key,
+                                    Path(job["log_journal"]),
+                                    publication_owner(
+                                        self.store,
+                                        key.rpartition("#")[0],
+                                        int(key.rpartition("#")[2]),
+                                        row["session"],
+                                        row["generation"],
+                                    ),
+                                )
                             )
                 if (
                     not stop
@@ -1235,16 +1246,19 @@ class Supervisor:
                     exits.append((key, dict(row["publication_exit_pending"])))
             self.store.save()
         # GitHub/Git publication must not hold a registry/parent-operation lock.
-        exiting = {int(key.rpartition("#")[2]) for key, _ in exits}
-        for source_parent, path in publications:
-            if source_parent not in exiting:
-                worker_logs.publish(path)
+        exiting = {key for key, _ in exits}
+        transferred: set[str] = set()
+        for key, path, owner_check in publications:
+            if key not in exiting | transferred:
+                result = worker_logs.publish(path, owner_check=owner_check)
+                if result.get("error") == "log_owner_mismatch":
+                    transferred.add(key)
         for key, pending in exits:
             from worker_logs.lifecycle import finish_supervised
 
             _, _, number = key.rpartition("#")
 
-            def publication_owner(
+            def exit_publication_owner(
                 owner_key: str = key,
                 marker: dict[str, Any] = pending,
                 source_parent: int = int(number),
@@ -1267,7 +1281,7 @@ class Supervisor:
                 pending["generation"],
                 state_dir=self.store.directory,
                 root=Path(pending["root"]),
-                owner_check=publication_owner,
+                owner_check=exit_publication_owner,
             )
             with self.store.locked():
                 row = self.store.parents.get(key, {})

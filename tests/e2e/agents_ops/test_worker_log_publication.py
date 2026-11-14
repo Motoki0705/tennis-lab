@@ -552,14 +552,7 @@ def test_standalone_worker_uses_same_log_entry(
     path = logs.ready(parent=7, child=7, instruction=instruction)
     service: Any = importlib.import_module("worker_logs.service")
     session = logs.sessions[0]
-    store = type(
-        "Store",
-        (),
-        {
-            "directory": logs.state,
-            "read_data": lambda self: {"parents": {"o/r#7": session.row}},
-        },
-    )()
+    store = importlib.import_module("parent.state").Store(logs.state)
     github = type("GitHub", (), {"repo": "o/r"})()
     monkeypatch.setattr(
         service, "Publisher", lambda root, target: logs.publisher(target)

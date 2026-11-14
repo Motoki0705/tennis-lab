@@ -264,6 +264,9 @@ class LogEnv:
         session = SimpleNamespace(
             row={
                 "session": "codex:private-parent-session",
+                "status": "active",
+                "generation": 1,
+                "reviews": [],
                 "tasks": {str(child): task},
             },
             store=SimpleNamespace(directory=self.state),

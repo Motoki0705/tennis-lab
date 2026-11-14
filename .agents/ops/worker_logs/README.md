@@ -186,11 +186,28 @@ PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致
 `run-worker` / `start-worker` / `continue-worker` は新turnの予約前に処理する。
 対象は同モジュールの `MUTATIONS` と、`evidence --create`、Projectの `--apply`。
 通常の担当・合意・記録・レビュー・停止/再開・同期・公開・終了/引継ぎの書込みを含む。
-status各種、inspect-worker、basis-input/check、wait-supplement、全dry-run、state-migrateは除外する。
+status各種、inspect-worker、basis-input/check、wait-supplement、wait-worker、全dry-run、state-migrateは除外する。
 所有確認は親operation lock→registry lockで行い、公開中は両方を解放する。
 各journalの公開開始直前にも担当・generationを照合し、引継ぎ後は以降のjournalを開始しない。
 同じ照合をsupervisorと明示的な一括回収にも渡し、orphan PRの巡回も世代変更で停止する。
 結果の記録時にgenerationを照合し、後任のregistryを上書きしない。公開失敗は元操作やworkerの終了値を変えない。
+
+worker公開の最終入口は `service.publish(owner_check=...)`。
+`ownership.publication_owner` は開始時の担当session・generationを固定した照合を作り、
+`ownership.require_owner` が各公開の直前に検査する。引継ぎ後の世代へ照合対象を取り直さない。
+拒否は `log_owner_mismatch` で返し、未公開journalをblockedへ書き換えず後任から続行できる状態で残す。
+運用入口はすべて照合を渡す。低層のPublisherは親registryの所有者を決めず、既存の公開安全検査を担当する。
+
+| worker公開を開始する入口 | 固定する担当と照合箇所 |
+|---|---|
+| `publish-worker-log --child N`（`--turn` 省略を含む） | `service._command` が開始時の世代を保持し、各journalと `service.publish` で照合。不一致で巡回を停止 |
+| 親CLIの共通続行・release・handoff | `Continuation.sweep` → `continue_workers` → `service.publish`。終了・引継ぎの処理結果は保持 |
+| supervisorの親終了 | markerの世代・終了statusを固定し、`finish_supervised` → `continue_workers` → `service.publish` |
+| 明示的な `--all-parents` | 回収親の担当・世代を固定し、元の親を変更せず `continue_workers` → `service.publish` |
+| `--adopt-orphan-prs`（元journalあり） | 回収親の照合を通常の `continue_workers` → `service.publish` へ渡す |
+| `--adopt-orphan-prs`（元journalなし） | `recover_orphans` の各PRと `OrphanRecovery.recover` の検査後・merge処理開始前で照合。元turnのlock取得前に行い、registryとturnのlock順序を反転させない |
+| 通常の `run-worker` 終了後 | 起動予約時の世代を `finish_manual` → `finish` → `service.publish` へ渡す。workerの終了値は保持 |
+| supervisorの通常の子終了 | registry内で担当・世代を固定し、lock解放後の各 `service.publish` で照合。不一致の親の残りを停止 |
 
 worker/decisionの公開はいずれもmergeable=nullなら固定HEADのmerge要求へ進み、falseなら拒否する。
 HTTP応答があったmergeはjournalとCLIのmerge_http_statusへ保存する。原文の診断はprivateに留める。

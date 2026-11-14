@@ -19,6 +19,7 @@ from lib.agent_settings import (
     resolve,
 )
 from worker_logs import service as worker_logs
+from worker_logs.ownership import publication_owner
 from worker_logs.sources import read_original
 
 from . import worker_preflight
@@ -874,7 +875,12 @@ def run_worker(
             current.pop("manual_launcher", None)
             store.save()
     log_result = worker_logs.finish_manual(
-        log_path, Path(command[command.index("--run-dir") + 1]), RUNNER
+        log_path,
+        Path(command[command.index("--run-dir") + 1]),
+        RUNNER,
+        owner_check=publication_owner(
+            store, gh.repo, parent, identity, reserved_owner["generation"]
+        ),
     )
     return code, {
         "child": child,

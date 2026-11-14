@@ -9,6 +9,7 @@ from typing import Any
 
 from worker_logs.journal import PublicationError
 from worker_logs.lifecycle import publish_decisions, record_exit, unavailable_exit
+from worker_logs.ownership import publication_owner
 from worker_logs.reconciliation import continue_workers
 
 from .state import Store
@@ -180,7 +181,9 @@ class Continuation:
                 self.parent,
                 state_dir=self.store.directory,
                 exclude=exclude,
-                owner_check=lambda: self._same_owner(self._publication_owner()),
+                owner_check=publication_owner(
+                    self.store, self.repo, self.parent, self.identity, self.generation
+                ),
             )
             with self.store.operation(self.key), self.store.locked():
                 owner = self.store.parents.get(self.key, {})
