@@ -58,6 +58,8 @@ def test_native_clear_fences_old_session_and_binds_new_daemon_tools(
     )
     assert bound.returncode == 0, bound.stderr
     assert labels.run("sync", env=env).returncode == 0
+    synced = labels.read()["panes"]["w1:p1"]["tokens"]
+    assert (synced["tl_engine"], synced["tl_issue"]) == ("codex", "#42")
     registry = labels.registry.read_bytes()
     other = labels.read()["panes"]["w1:p2"]
 
