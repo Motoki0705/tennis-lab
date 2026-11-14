@@ -710,6 +710,9 @@ runner喪失時は保存済みcleanup confirmationも照合する。`metadata_er
 旧runと旧ターンを保持し、以後の `--resume`・`record-result`・`review-request` は新runtimeを同じ系列として照合する。
 起動前の明確な拒否では新しいターンと付替え試行へ `cancelled=true` を記録し、元のruntime・run・予約を復元する。
 同じ付替え操作で再試行できる。起動有無やsessionが未確認なら予約したrunを保持し、親が保存記録を確認する。
+旧委任に取消ターンだけが残った場合も、取消済み付替え記録に保存した元runを選び、
+終了記録の内容digest・契約・終了とcleanup・再開不能の根拠を再照合して再試行する。
+成果照合には新しい非取消ターンを必要とする。
 `status` の `worker_phase.session_replacement` は試行件数・最新試行の `reserved/bound/cancelled`・理由を返す。
 session ID・runの場所・証拠原文はprivate registryへ保存する。
 

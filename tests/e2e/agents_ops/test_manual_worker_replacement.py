@@ -275,6 +275,106 @@ def test_rejected_session_replacement_can_be_retried_explicitly(
     assert len(task(p)["preflight"]["session_replacements"]) == 2
 
 
+@pytest.fixture
+def legacy_worker(reserved: ParentEnv) -> ParentEnv:
+    p = reserved
+    run(p)
+    corrupt_record(p)
+    with store(p).locked() as registry:
+        saved = registry.parents["o/r#1"]["tasks"]["10"]
+        saved.pop("preflight")
+        saved["worker_runs"][-1].pop("preflight")
+        saved["worker_runs"][-1]["kind"] = "registered"
+        registry.save()
+    return p
+
+
+def test_legacy_session_replacement_retries_rejected_launch_and_requests_review(
+    legacy_worker: ParentEnv,
+) -> None:
+    p = legacy_worker
+    directory = latest(p)
+    old_files = files(directory)
+    before = copy.deepcopy(task(p))
+    tree = Path(before["worktree"])
+    (tree / "feature.txt").write_text("implemented\n")
+    run_git(tree, "add", "feature.txt")
+    run_git(tree, "commit", "-m", "legacy worker implementation")
+    gh = p.state()
+    gh["prs"] = [p.pr(100, 10, run_git(tree, "rev-parse", "HEAD"), before["branch"])]
+    p.save(gh)
+
+    rejected = replacement(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    assert json.loads(rejected.stdout)["launch_state"] == "rejected_before_start"
+    saved = copy.deepcopy(task(p))
+    assert saved["worker_runs"] == before["worker_runs"]
+    assert saved["preflight"]["runtime"] is None
+    [cancelled] = saved["preflight"]["turns"]
+    assert cancelled["cancelled"] is True
+    [attempt] = saved["preflight"]["session_replacements"]
+    assert attempt["cancelled"] is True
+    assert attempt["from_run"]["directory"] == str(directory)
+
+    registry_before = store(p).read_data()
+    refused = manual(
+        p,
+        "review-request",
+        "--prs",
+        "100",
+        "--instruction-file",
+        p.note(),
+        "--evidence-file",
+        p.note(),
+        ok=False,
+    )
+    assert "no non-cancelled worker turn" in refused.stderr
+    assert store(p).read_data() == registry_before
+
+    replacement(p)
+    current = task(p)
+    assert current["worker_runs"][:-1] == before["worker_runs"]
+    assert current["preflight"]["turns"][:-1] == saved["preflight"]["turns"]
+    assert current["preflight"]["session_replacements"][:-1] == [attempt]
+    assert (
+        current["preflight"]["session_replacements"][-1]["from_run"]
+        == attempt["from_run"]
+    )
+    assert files(directory) == old_files
+    review = manual(
+        p,
+        "review-request",
+        "--prs",
+        "100",
+        "--instruction-file",
+        p.note(),
+        "--evidence-file",
+        p.note(),
+    )
+    assert json.loads(review.stdout)["review_state"] == "instructed"
+    phase = task(p)["preflight"]
+    assert phase["accepted_turn_id"] == phase["turns"][-1]["snapshot"]["turn_id"]
+    assert phase["accepted_turn_id"] != cancelled["snapshot"]["turn_id"]
+    assert files(directory) == old_files
+
+
+def test_legacy_session_replacement_retry_rejects_changed_source(
+    legacy_worker: ParentEnv,
+) -> None:
+    p = legacy_worker
+    directory = latest(p)
+    replacement(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    result = directory / "result.json"
+    record = json.loads(result.read_text())
+    record["finished_at"] += 1
+    result.write_text(json.dumps(record))
+    before = store(p).read_data()
+    calls = (p.root / "runner-calls.jsonl").read_bytes()
+    refused = replacement(p, ok=False)
+    assert "saved replacement source changed" in refused.stderr
+    assert store(p).read_data() == before
+    assert (p.root / "runner-calls.jsonl").read_bytes() == calls
+
+
 @pytest.mark.parametrize("registered", [False, True])
 def test_corrupt_events_stop_replace_resume_and_review_request(
     reserved: ParentEnv, registered: bool

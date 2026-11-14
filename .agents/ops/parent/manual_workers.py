@@ -310,8 +310,21 @@ def replacement_evidence(
     ]
     directories = current_runs(session, task)
     value = worker_preflight.state(task)
-    turn = worker_preflight.result_turn(task)
-    source = Path(turn["source"]) if turn is not None else directories[-1]
+    retry = None
+    if (
+        value["schema_version"] == 3
+        and value["turns"]
+        and all(t.get("cancelled") for t in value["turns"])
+        and value["session_replacements"][-1].get("cancelled")
+    ):
+        retry = value["session_replacements"][-1]
+        turn = None
+        source = Path(
+            nonempty(retry["from_run"].get("directory"), "saved replacement source")
+        )
+    else:
+        turn = worker_preflight.result_turn(task)
+        source = Path(turn["source"]) if turn is not None else directories[-1]
     if source not in directories:
         raise ValueError("saved worker turn has no registered run for replacement")
     source_index = directories.index(source)
@@ -331,6 +344,9 @@ def replacement_evidence(
             )
         records.append(proof["record"])
     record = records[source_index]
+    source_reference = termination_reference(source, record)
+    if retry is not None and source_reference != retry["from_run"]:
+        raise ValueError("saved replacement source changed after rejected launch")
     saved = saved_session(record)
     if Path(saved["latest_run"]).resolve() != source:
         raise ValueError("replacement source is not the latest session run")
@@ -404,7 +420,7 @@ def replacement_evidence(
         "recorded_at": datetime.now(UTC).isoformat(),
         "reason": reason,
         "restart_evidence": evidence,
-        "from_run": termination_reference(source, record),
+        "from_run": source_reference,
         "from_runtime": binding,
         "previous_runtime": copy.deepcopy(value["runtime"]),
         "registered_runs": [
