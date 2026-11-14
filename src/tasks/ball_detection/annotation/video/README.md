@@ -150,10 +150,21 @@ v3の利用判定を旧readerへ付け替える変更はここでは行わない
 | 旧snapshotのgroup/split | 将来の移行/公開時に照合・維持 | 注釈schemaだけから既存の評価用groupをtrainへ移さない |
 | out_of_frame / no_active_ball / unprocessed、座標なし遮蔽 | v3で新たに表現可能 | v2の4statusから自動復元できない。再注釈/外部の確かな記録が必要 |
 
-この実装にはv2自動変換APIも既存データ変換の実行も含めない。
-v3 readerへv2を渡すと拒否する。既存v2 JSON・snapshot・readerはそのまま残す。
-移行は後続 #1714 で元artifactを保存したまま別のv3 artifactを作り、保持情報と再確認情報、
-座標/PTS・由来・group/splitを照合する。scene接続は #1711、dataset公開は #1712 が担当する。
+v3 readerへv2を渡すと拒否する。明示的な変換は
+[`migration.py`](migration.py) の `convert_v2_annotation` を使う。
+元bytesのdigestに結んだ `MigrationEvidence`（active_ballの対象根拠・処理完了の根拠）と、
+元動画/登録資料から独立して固定した `VideoAnnotationInput` を必須にする。
+変換はファイルを書かず、v3と `MigrationRecord` を返す。座標/正規化・状態/visibility・
+support・全frame/実PTS・元動画metadata・集計の矛盾は拒否する。
+補間の遮蔽はunknown、処理済みunresolvedは最終unknownとし、不在を推測しない。
+`all_frames_reviewed=false` だけでは処理未完了とも完了とも判定しない。
+
+旧JSON全体を不変artifactとして保持し、元版参照と移行記録を新しいv3に付随させる。
+旧review・image_score・segment_id等のv3にない情報は旧JSONで参照する。
+元動画bytes/復号PTSの検証と、対象・完了・group/splitの意味の確認は呼出側が行う。
+全ボール教師、手持ち球を含む対象、根拠のない未処理/最終unknownの区別は自動復元しない。
+新しいsnapshotへの移行公開は[既存publisherの移行入力](../../generate_dataset/frame_store/publishing/README.md#保存済みv2の移行公開)、
+実データの固定集合・実行手順・結果は[実行記録](../../../../../knowledge/runs/run-ball-v3-migration-20261113/README.md)を参照する。
 
 ## 検証
 
