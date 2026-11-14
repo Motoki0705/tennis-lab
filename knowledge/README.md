@@ -198,7 +198,7 @@ mkdir -p tmp
 | `id` / `type` | ディレクトリID / `paper` |
 | `title` / `year` / `authors` | 正式題名 / 発表年 / 著者名の配列 |
 | `tasks` | 関係するタスクの配列（未実験のタスクも可） |
-| `source` | 参照した版の一次資料URL（arXivのabsページなど） |
+| `source` | 参照した版の一次資料URL（arXivのabsページなど）。[入力値の境界条件](#入力値の境界条件)に従う |
 | `summary` | 研究内容の短い要約（非空文字列） |
 | `reason` | 採録理由。研究上の問い、または探索・引用元・役割・根拠を含む発見経路（非空文字列） |
 | `external_ids` | 正規化した外部IDの辞書。ID未確認の通常登録では空辞書も可 |
@@ -212,16 +212,31 @@ mkdir -p tmp
 `citation_map/papers/<id>.md` と `citation_map/searches/<id>.md` にYAML frontmatter付きMarkdownを置く。各ディレクトリは通常の `.md` 文書だけを許可し、PDFやsymlinkは拒否する。frontmatterの未知のキー、YAML重複キー・aliasも拒否する。本文は任意の補足で、機械処理はfrontmatterのみを読む。
 探索CLI用の型・parse/serialize・入出力・検証APIは `kg_citations.py`、外部IDの共通処理は `kg_identifiers.py`（いずれもknowledge-controlの `scripts/`）。Web UIは同じfrontmatterを読む。
 
+### 入力値の境界条件
+
+`created_at` は文字列で、`YYYY-MM-DDTHH:MM[:SS[.小数秒]]` に `Z`・`±HH:MM`・`±HHMM` のいずれかを付ける。
+例えば `'2026-11-14T22:00:00+09:00'` と `'2026-11-14T22:00:00+0900'` はともに受理する。
+年は0001〜9999、日付は実在する暦日、時は00〜23、分・秒は00〜59、offsetの時は00〜23・分は00〜59とする。小数秒は秒の後の1〜6桁に限る。
+timezoneなし、空白による日付/時刻の区切り、基本形式・週日付、offsetの秒、うるう秒、範囲外の値は拒否する。入力文字列は補正・切り詰め・UTC変換せず保持する。
+
+Papersと引用論文の `source`、および `url` 外部IDは、入力そのものが `http://` または `https://` から始まる絶対URLとする（schemeの大文字も可）。
+hostはASCIIのDNS名（各labelは英数字で始まり終わる1〜63文字、中間は英数字・ハイフン、全体253文字以内、末尾のdotは可）、標準の10進4区切りIPv4、またはbracket付きIPv6を使う。IDNはpunycode表記にする。
+portを付ける場合は1〜5桁の10進数、0〜65535。credentials、空白・制御文字・BOM、backslash、空host、空port、不正なIP/DNS表記を拒否する。数値・16進数で終わるhostを省略形IPv4へ補正しない。
+path/query/fragmentはUnicodeやURLエンコードも保持する。`source` は大文字小文字や明示portを含め入力をそのまま保持し、URL parserによる欠けたslashの補完などはしない。`https:example.org/paper` は拒否する。
+
+受理/拒否と外部IDの入力正規化の共有例は [citation-boundaries.json](../tests/fixtures/knowledge/citation-boundaries.json)。PythonとTypeScriptのunit testはこの1ファイルを読み、同じ期待値を照合する。
+
 ### 外部ID・同一視・結合
 
 `external_ids` は次のnamespaceから文字列への辞書。未知のnamespaceは拒否する。登録時に正規化し、保存済みの非正規形は検証エラーにする。
+prefix・URL内の固定部分の大文字小文字はASCIIで照合し、Unicodeの類似文字を同一視しない。
 
 | namespace | 正規形と入力の扱い |
 |---|---|
 | `doi` | `10.<4〜9桁>/<suffix>` を小文字化。`doi:` / `https://doi.org/` / `https://dx.doi.org/` を除去しURLエンコードを復号 |
 | `arxiv` | `YYMM.NNNN[N]` または旧 `archive/NNNNNNN`。`arXiv:` / abs・pdf URL / `.pdf` / `vN` を除き小文字化。版は `source` に残す |
 | `openalex` | `W<数字>`。OpenAlex URL・大文字小文字の差を正規化 |
-| `url` | 他のIDが判らない場合の一次資料URL。scheme/hostを小文字化しfragmentを除去。path/queryは保持。HTTPとHTTPSを推測で同一視しない |
+| `url` | 他のIDが判らない場合の一次資料URL。上のURL条件を検証し、scheme/hostを小文字化、fragmentを除去、空pathを `/` にし空queryの `?` を省く。path/query・明示portは保持。HTTPとHTTPSを推測で同一視しない |
 
 同じnamespace/valueを1つでも共有する文献を同一視の候補にする。候補が1件でも、両側にある全namespaceの正規化した値を照合し、1つでも異なれば結合・別名の集約をエラーにする。例えばarXivが一致してもDOIが異なる場合は拒否し、誤ったIDを明示的に訂正してから再検証する。片側にしかないnamespaceは矛盾とせず、別名として追加できる。この規則はPapers↔探索の結合と、探索文書どうしの同一視に共通で、役割や題名で矛盾を推測修正しない。
 
@@ -267,7 +282,7 @@ Papersとの対応も外部ID集合の共通要素から導出する。探索文
 | キー | 内容 |
 |---|---|
 | `id` | `search-<小文字英数字のkebab slug>`。実行ごとに一意。呼出側が時刻や実行名を含めて割り当てる |
-| `created_at` | timezone付きISO 8601日時の文字列 |
+| `created_at` | [入力値の境界条件](#入力値の境界条件)に従うtimezone付きISO 8601日時の文字列 |
 | `root_id` | 起点論文の文書ID。入力URL/IDは起点文書のsource/external_idsから解決 |
 | `roles` / `max_depth` | 展開に使う役割（非空、複数可、重複不可） / 0以上の整数。起点は深さ0 |
 | `generations` | `depth`、`paper_ids`（到達した文献ID）、`expanded_ids`（その世代で本文取得・判定を試みたID）の辞書配列 |

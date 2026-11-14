@@ -26,3 +26,9 @@ Across the whole fixture, distinct comparison citing-paper counts are B=1,
 D=2, E=1. Foundation counts are B=1, C=1, D=1. Within the comparison-depth2
 search's expanded sources, D's comparison count is 1 (B); C is outside that
 search's expanded sources. Keep the intended aggregation scope explicit.
+
+`citation-boundaries.json` is the shared acceptance and normalization matrix for
+timestamps, source URLs, and external IDs. The Python schema tests and TypeScript
+unit tests both read the same cases and expected results. It is a sibling of the
+store because `citation_map/` itself only permits citation Markdown documents.
+The value contract is defined in [knowledge/README.md](../../../knowledge/README.md#入力値の境界条件).

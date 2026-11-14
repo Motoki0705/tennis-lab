@@ -8,6 +8,7 @@ const nextConfig = {
       "/*": [
         "../nodes/**/*.md",
         "../Papers/**/*",
+        "../citation_map/**/*.md",
         "../summary.md",
         "../runs/**/curves.png",
         "../runs/**/*.png",

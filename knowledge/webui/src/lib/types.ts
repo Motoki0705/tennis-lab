@@ -1,5 +1,11 @@
 export type NodeType = "run" | "group";
-export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
 
 export type Relation = { to: string; rel?: string };
 
@@ -45,6 +51,7 @@ export interface KnowledgeGraph {
   edges: KnowledgeEdge[];
   papers: Paper[];
   summaryHtml: string;
+  citations: import("./citation-types").CitationLoadResult;
 }
 
 export interface Paper {

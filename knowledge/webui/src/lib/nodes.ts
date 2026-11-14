@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import matter from "gray-matter";
+import { readCitations } from "./citation-documents";
 import {
   KNOWLEDGE_DIR,
   NODES_DIR,
@@ -190,5 +191,11 @@ export async function getGraph(): Promise<KnowledgeGraph> {
     summaryFile,
     targets,
   );
-  return { nodes, edges: buildEdges(nodes), papers, summaryHtml };
+  return {
+    nodes,
+    edges: buildEdges(nodes),
+    papers,
+    summaryHtml,
+    citations: await readCitations(papers),
+  };
 }
