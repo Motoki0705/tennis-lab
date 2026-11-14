@@ -85,6 +85,8 @@ Synchronize the videos beforehand and use matching FPS, resolution and frame cou
 
 Some assets require registration, acceptance of terms or an application to the upstream provider. Follow the [asset acquisition guide](docs/installation/README.md#required-assets). The acquisition CLIs (`src.utils.model_weights` and `src.utils.sample_dataset`) verify downloaded files; [preflight](docs/installation/README.md#preflight) checks the required assets and CUDA extension before execution.
 
+If the official GVHMR Drive reports a download quota error for ViTPose-H or HMR2, follow the [quota diagnosis and verified recovery steps](docs/installation/README.md#drive-quota).
+
 <a id="run-locally"></a>
 
 ## 3. How to Run Locally

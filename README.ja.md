@@ -85,6 +85,8 @@
 
 配布元への登録・条件への同意・申請が必要な資産もあります。[資産の取得案内](docs/installation/README.ja.md#required-assets)に従って揃えてください。取得CLI（`src.utils.model_weights`・`src.utils.sample_dataset`）は取得ファイルを検査し、[preflight](docs/installation/README.ja.md#preflight)は実行前に必要資産とCUDA拡張を検査します。
 
+ViTPose-H・HMR2の公式GVHMR Driveが上限超過した場合は、[診断と検証付きの復旧手順](docs/installation/README.ja.md#drive-quota)を参照してください。
+
 <a id="run-locally"></a>
 
 ## 3. ローカルでの実行

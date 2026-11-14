@@ -85,6 +85,8 @@
 
 部分资产需要在上游注册、同意条款或提交申请。请按照[资产获取说明](docs/installation/README.zh-CN.md#required-assets)获取。下载 CLI（`src.utils.model_weights` 和 `src.utils.sample_dataset`）会验证下载的文件；[运行前预检](docs/installation/README.zh-CN.md#preflight)会在执行前检查所需资产和 CUDA 扩展。
 
+如果 ViTPose-H 或 HMR2 的官方 GVHMR Drive 报告下载配额超限，请按照[配额诊断与验证恢复步骤](docs/installation/README.zh-CN.md#drive-quota)操作。
+
 <a id="run-locally"></a>
 
 ## 3. 在本地运行

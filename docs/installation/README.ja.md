@@ -182,6 +182,123 @@ preflightが既知の重みとサンプルを固定したSHA-256で検査し、�
 Google Driveのfolderは中の該当ファイルだけをダウンロードして表の名前へ配置してください。
 登録・申請が必要なモデルをこのrepoから再配布したり、別のミラーで補ったりしません。
 
+<a id="drive-quota"></a>
+
+### GVHMRのDriveが上限超過した場合の診断と復旧
+
+まず公式のViTPose-HとHMR2を取得します。検証が済むまで、ダウンロード先は `ckpt/` の外にします。
+
+```bash
+export GVHMR_WEIGHTS="$PWD/outputs/gvhmr-weights"
+mkdir -p "$GVHMR_WEIGHTS/vitpose" "$GVHMR_WEIGHTS/hmr2"
+.venv/bin/python -m gdown 1sR8xZD9wrZczdDVo6zKscNLwvarIRhP5 -O "$GVHMR_WEIGHTS/vitpose/vitpose-h-multi-coco.pth"
+.venv/bin/python -m gdown 1X5hvVqvqI9tvjUCb2oAlZxtgIKD9kvsc -O "$GVHMR_WEIGHTS/hmr2/epoch=10-step=25000.ckpt"
+```
+
+**2026-11-02 UTC** の新規インストールでは、両コマンドが
+`Too many users have viewed or downloaded this file recently` で失敗しました。直接ダウンロードでも、
+checkpointのbytesではなく、タイトルが `Google Drive - Quota exceeded` のHTMLがHTTP 200で返りました。
+これは対象ファイルの上流のダウンロード制限を示し、恒久的なリンク切れやpipelineのモデル不具合とは断定できません。
+HTTP 200だけでは取得成功と判断できません。次の確認は各応答の先頭8 KiBまでを読み、ファイルを配置しません。
+
+```bash
+.venv/bin/python - <<'PY'
+from urllib.error import HTTPError
+from urllib.request import urlopen
+
+for name, file_id in (
+    ("vitpose", "1sR8xZD9wrZczdDVo6zKscNLwvarIRhP5"),
+    ("hmr2", "1X5hvVqvqI9tvjUCb2oAlZxtgIKD9kvsc"),
+):
+    url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
+    try:
+        response = urlopen(url, timeout=30)
+    except HTTPError as error:
+        response = error
+    with response:
+        prefix = response.read(8192).decode("utf-8", errors="replace")
+        print(name, response.status, response.headers.get("Content-Type"))
+        print("quota_exceeded:", "Google Drive - Quota exceeded" in prefix)
+PY
+```
+
+`quota_exceeded: True` が出たら診断を保存し、同じダウンロードの繰り返しを止めてください。
+公式配布の一時制限が解除された後に再試行するか、上流の条件に従って取得済みの同一ファイルを使います。
+取得済みファイルのrootを `GVHMR_WEIGHTS` に設定し、表の `vitpose/` と `hmr2/` の相対パスを保って
+[検証と配置](#verify-gvhmr-weights)へ進んでください。
+例: `export GVHMR_WEIGHTS=/absolute/path/to/user-acquired/ckpt`。
+
+利用者が**明示的に選択する**取得先として、[camenduru/GVHMR](https://huggingface.co/camenduru/GVHMR/tree/main)があります。
+**2026-11-14 UTC** に、対象2ファイルのGit LFSオブジェクトのSHA-256が
+[installation_assets.py](../../src/tennis_scene/installation_assets.py)の既存の固定値と一致することを確認しました。
+サイズも検証済みのローカルファイルと一致し、同じコードに固定しています。メタデータの一致は取得後のbytes検証を代替しません。
+このミラーにはモデルカードやライセンス表示がなく、権利者が当該checkpointの再配布を許可しているかは確認できていません。
+上流のViTPoseコードはApache-2.0、HMR2コードはMITですが、それだけで重み・学習データ・SMPLに関する全権利は判断できません。
+[上流の利用条件と帰属表示](../../LICENSES.ja.md#third-party-weights)を確認し、取得・利用が認められると利用者自身で判断した場合だけ選んでください。
+判断できなければ、適法に取得済みのファイルか公式配布を使ってください。許可を確認できた長期的な代替配布元は確立していません。
+ミラーの存在は、公式Driveの安定性やミラーの将来の継続性を示しません。
+この取得先を選ぶ場合は、対象2ファイルだけを一時保存先へ取得し、必ず次の検証へ進みます。
+
+```bash
+.venv/bin/python - <<'PY'
+import os
+from huggingface_hub import hf_hub_download
+from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
+
+for asset in INSTALLATION_ASSETS:
+    if asset.name in {"vitpose", "hmr2"}:
+        hf_hub_download("camenduru/GVHMR", asset.filename, revision="main",
+                        local_dir=os.environ["GVHMR_WEIGHTS"])
+PY
+```
+
+<a id="verify-gvhmr-weights"></a>
+
+### 取得済みViTPose-HとHMR2の検証と配置
+
+既存のローカルコピー、取得に成功したDrive、任意のミラーを含む**すべての取得元**で実行してください。
+コピー前に両ファイルのサイズとSHA-256をコードの固定値で検証し、配置後にもう一度検証します。
+既存の異なるファイルは上書きしません。HTMLのエラーページ、Git LFSポインタ、途中までのダウンロード、
+同名の別checkpointは失敗しなければなりません。失敗したら取得を明示的に修復して再実行してください。
+固定値の変更・ファイル変換・別モデルへの置換はしないでください。一時保存分と配置分の両方のディスク容量を確保します。
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python - <<'PY'
+import os
+import shutil
+from pathlib import Path
+from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
+from src.utils.checksum import dual_sha256
+
+assets = [asset for asset in INSTALLATION_ASSETS if asset.name in {"vitpose", "hmr2"}]
+source_root = Path(os.environ["GVHMR_WEIGHTS"])
+checkpoint_root = Path("ckpt").resolve()
+
+def verify(asset, path):
+    if asset.size_bytes is None or path.stat().st_size != asset.size_bytes:
+        raise SystemExit(f"Size mismatch: {path}")
+    if dual_sha256(path) != asset.sha256:
+        raise SystemExit(f"SHA-256 mismatch: {path}")
+    print(f"{asset.name}: ok ({path})")
+
+for asset in assets:
+    verify(asset, source_root / asset.filename)
+for asset in assets:
+    destination = (checkpoint_root / asset.filename).resolve()
+    if not destination.is_relative_to(checkpoint_root):
+        raise SystemExit(f"Path escapes checkpoint root: {destination}")
+    if not destination.exists():
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with (source_root / asset.filename).open("rb") as source, destination.open("xb") as target:
+            shutil.copyfileobj(source, target)
+    verify(asset, destination)
+PY
+```
+
+配置先の両ファイルが `ok` となってから、同じ固定値に加えて他の資産とDINO拡張も確認する
+[全体のpreflight](#preflight)へ進んでください。この2ファイルの検証だけでインストール全体の合格とはなりません。
+body modelとDINOv3は引き続き上記の公式登録・申請経路で取得し、このミラーから入手しないでください。
+
 <a id="preflight"></a>
 
 ## 一括確認
@@ -270,7 +387,7 @@ stepごとの時間・ログ・コピー元・検査結果・ディスク使用�
 登録・申請やDriveから利用者が取得した第三者資産は、**このローカル検証に限り**明示したcheckpoint rootから
 検査後にコピーし、コピー後にも再検査します。自作重みとサンプルはHubから取得します。
 既存venv・data・ckptへのリンクや、重みの無検査コピーは行いません。
-利用者自身の導入では、上記公式配布元から取得してください。
+利用者自身の導入では、上記の取得・検証手順に従ってください。
 
 ```bash
 python3 scripts/prepare_clean_install.py \
