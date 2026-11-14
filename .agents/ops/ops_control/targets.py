@@ -103,6 +103,7 @@ TARGETS = {
         deferred_exit_statuses=("75",),
     ),
     "worktree-cleanup": timer_target("worktree-cleanup", "tennis-lab-worktree-cleanup"),
+    "storage-tier": timer_target("storage-tier", "tennis-lab-storage-tier"),
 }
 
 
