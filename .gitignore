@@ -60,6 +60,7 @@ annotations/
 *.csv
 *.json
 !/.agents/ops/issue_supplement/schemas/*.schema.json
+!/.agents/skills/knowledge-control/scripts/kg_citation_reading.schema.json
 !/.agents/ops/review/evaluation/cases/*.json
 !/.agents/ops/review/evaluation/cases/inputs/*.json
 !scripts/ci_metrics/package.json

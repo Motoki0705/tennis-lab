@@ -94,7 +94,7 @@ set済みなら起動せず、実行中のsetはprocess groupを停止・回収�
 
 ## agyの共通呼び出し部品
 
-`agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加の writer/verifier 用の同期Python API。
+`agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加と引用読解用の同期Python API。
 導入・ログイン・更新・手動疎通は [runner README](../../../scripts/github_actions/README.md#agyの導入と疎通) にある。
 `sys.path` にこの `lib/` を加え、次の公開APIを使う。`jsonschema` が必要で、schemaの方言と
 外部参照の拒否は既存の `OutputSchema` に従う。
@@ -121,7 +121,7 @@ else:
 
 `run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
 log_file: Path, timeout: float = DEFAULT_TIMEOUT, model: str | None = None,
-config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契約。
+config_file: Path = DEFAULT_CONFIG, profile: str = "issue_supplement") -> AgyResult` が公開する呼び出し契約。
 相対パスは呼出元のcwdを基準に解決する。prompt/schemaはUTF-8ファイル。
 `cwd` は呼出元が用意し片付ける使い捨てworkspace、`log_file` はその外側の非公開領域を必須とする。
 controller checkout内で直接呼び出さず、smokeもテンプレートのコピーを使い捨てworkspaceへ置く。
@@ -138,6 +138,13 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
   4キーは `AGY_VERSION`, `AGY_URL`, `AGY_SHA256`, `ISSUE_SUPPLEMENT_AGY_MODEL`。
   導入テスト用の明示configでは `file://` のtarballも使える。通常は公式GitHub Releaseの版付きasset URLと
   release APIが返したSHA-256 digestを固定する。
+  引用読解は `profile="citation"` を明示し、`CITATION_AGY_VERSION` / `CITATION_AGY_URL` /
+  `CITATION_AGY_SHA256` / `CITATION_AGY_MODEL` の別pinを使う。`load_config(..., profile="citation")`
+  でも同じ設定を取得する。実行APIのmodel引数は選んだprofileのpinと一致する値だけを許可する。
+  citationは1.5.9 / `gemini-4-hydrogen-high`、issue_supplementの既定は従来の1.4.11 /
+  `gemini-3.8-flash-high`。モデルの実効log labelもprofileごとに照合し、別モデルへfallbackしない。
+  `DEFAULT_AGY` のCI用パスは維持する。ローカル呼出側は `agy=Path.home() / ".local/bin/agy"`
+  を渡す。共有の読み取り権限・user settings guard・JSON検証は同じものを使う。
 - `model` の省略時は `ISSUE_SUPPLEMENT_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
   `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
   logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。

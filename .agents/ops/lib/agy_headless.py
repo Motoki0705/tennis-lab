@@ -29,7 +29,10 @@ DEFAULT_CONFIG = Path(__file__).with_name("agents.conf")
 DEFAULT_AGY = Path("/var/lib/tennis-lab-actions/home/.local/bin/agy")
 DEFAULT_TIMEOUT = 600
 INLINE_PROMPT_BYTES = 96 * 1024
-MODEL_LABELS = {"gemini-3.8-flash-high": "Gemini 3.8 Flash (High)"}
+MODEL_LABELS = {
+    "gemini-3.8-flash-high": "Gemini 3.8 Flash (High)",
+    "gemini-4-hydrogen-high": "Gemini 4 Hydrogen (High)",
+}
 _READONLY_MODE = {
     "toolPermission": "request-review",
     "agentMode": "plan",
@@ -75,15 +78,19 @@ class AgyError(RuntimeError):
         self.command_summary = {} if command_summary is None else command_summary
 
 
-def load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig:
+def load_config(config_file: Path = DEFAULT_CONFIG, *, profile: str = "issue_supplement") -> AgyConfig:
     """Use only literal agents.conf pins, never same-named environment variables."""
     try:
         pins = read_pins(config_file)
+        if profile not in {"issue_supplement", "citation"}:
+            raise ValueError("unknown agy profile")
+        prefix = "CITATION_" if profile == "citation" else ""
+        model_key = "CITATION_AGY_MODEL" if profile == "citation" else "ISSUE_SUPPLEMENT_AGY_MODEL"
         config = AgyConfig(
-            version=pins["AGY_VERSION"],
-            url=pins["AGY_URL"],
-            sha256=pins["AGY_SHA256"],
-            model=pins["ISSUE_SUPPLEMENT_AGY_MODEL"],
+            version=pins[prefix + "AGY_VERSION"],
+            url=pins[prefix + "AGY_URL"],
+            sha256=pins[prefix + "AGY_SHA256"],
+            model=pins[model_key],
         )
         if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", config.version):
             raise ValueError("invalid AGY_VERSION")
@@ -96,7 +103,7 @@ def load_config(config_file: Path = DEFAULT_CONFIG) -> AgyConfig:
                 "AGY_URL requires an HTTPS URL (file:// for local fixtures)"
             )
         if config.model not in MODEL_LABELS:
-            raise ValueError("ISSUE_SUPPLEMENT_AGY_MODEL needs a known log label")
+            raise ValueError(f"{model_key} needs a known log label")
         return config
     except (OSError, UnicodeError, KeyError, ValueError) as exc:
         raise AgyError("invalid_input", f"invalid agy config: {exc}") from exc
@@ -239,7 +246,7 @@ def _capture_evidence(log: Path, stream: Path, hooks: Path) -> dict[str, Any]:
             decoding_errors.append("invalid UTF-8 in private evidence")
             return raw.decode("utf-8", errors="replace")
 
-    capture = capture_stream(
+    capture: dict[str, Any] = capture_stream(
         read(stream),
         read(log),
         strict=False,
@@ -332,12 +339,13 @@ def run_headless(
     timeout: float = DEFAULT_TIMEOUT,
     model: str | None = None,
     config_file: Path = DEFAULT_CONFIG,
+    profile: str = "issue_supplement",
 ) -> AgyResult:
     """Run one turn in a caller-owned disposable workspace, retaining private evidence."""
-    config = load_config(config_file)
+    config = load_config(config_file, profile=profile)
     selected_model = config.model if model is None else model
     if selected_model != config.model:
-        raise AgyError("invalid_input", "model differs from ISSUE_SUPPLEMENT_AGY_MODEL")
+        raise AgyError("invalid_input", "model differs from the pinned agy profile")
     if not math.isfinite(timeout) or timeout <= 0:
         raise AgyError("invalid_input", "timeout must be finite and positive")
     _check_user_settings(cwd)

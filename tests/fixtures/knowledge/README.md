@@ -19,6 +19,9 @@ The documents themselves are the canonical metadata; no Papers entries exist.
 `search-fixture-comparison-depth2` reaches `[A], [B,E], [D]` and expands A/B/E.
 `search-fixture-comparison-depth1` reaches `[A], [B,E]` and expands only A.
 `search-fixture-mixed-depth2` reaches `[A], [B,C,E], [D]` and expands A/B/C/E.
+`search-fixture-interrupted-depth2` records A/B as expanded and E as pending,
+with an explicit interruption reason. Existing searches omit status/stop_reason
+and therefore retain their completed-run semantics.
 Only matching classified/resolved edges expand. C's edges remain available for
 display but C is not expanded by the comparison-only search.
 

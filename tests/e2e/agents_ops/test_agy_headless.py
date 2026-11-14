@@ -613,6 +613,19 @@ def test_model_override_cannot_bypass_the_pin(fake_agy: dict[str, Path]) -> None
     assert not (fake_agy["agy"].parent / "invocations.jsonl").exists()
 
 
+def test_citation_profile_pins_local_version_and_hydrogen_without_changing_default(
+    fake_agy: dict[str, Path], monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_agy.pop("config_file")
+    monkeypatch.setenv("FAKE_AGY_VERSION", "1.5.9")
+    result = agy.run_headless(**fake_agy, profile="citation", model="gemini-4-hydrogen-high", timeout=60)
+    assert result.observed_version == "1.5.9"
+    assert result.observed_model == "Gemini 4 Hydrogen (High)"
+    assert agy.load_config().model == "gemini-3.8-flash-high"
+    assert agy.load_config().version == "1.4.11"
+    assert Path("/var/lib/tennis-lab-actions/home/.local/bin/agy") == agy.DEFAULT_AGY
+
+
 @pytest.mark.parametrize(
     "scenario", ["success", "no_structured", "wrong_headings", "cli_error"]
 )

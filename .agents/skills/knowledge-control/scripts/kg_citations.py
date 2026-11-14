@@ -6,7 +6,9 @@ or network access is used here.
 """
 from __future__ import annotations
 
+import os
 import re
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -91,6 +93,8 @@ class CitationSearch:
     body: str = ""
     schema_version: int = 1
     type: Literal["citation_search"] = "citation_search"
+    status: Literal["complete", "interrupted"] = "complete"
+    stop_reason: str = ""
 
 
 Document = CitationPaper | CitationSearch
@@ -201,7 +205,8 @@ def _paper(d: dict[str, Any], body: str) -> CitationPaper:
 
 
 def _search(d: dict[str, Any], body: str) -> CitationSearch:
-    _mapping(d, {"schema_version", "type", "id", "created_at", "root_id", "roles", "max_depth", "generations", "issues"}, "citation_search")
+    d = {"status": "complete", "stop_reason": "", **d}
+    _mapping(d, {"schema_version", "type", "id", "created_at", "root_id", "roles", "max_depth", "generations", "issues", "status", "stop_reason"}, "citation_search")
     search_id = _text(d["id"], "id")
     if not SEARCH_RE.fullmatch(search_id):
         raise ValueError("search id must be search-kebab-slug")
@@ -226,7 +231,11 @@ def _search(d: dict[str, Any], body: str) -> CitationSearch:
         issues.append(IssuePointer(_paper_id(p["paper_id"]), None if p["ref_id"] is None else _ref_id(p["ref_id"])))
     if len(set(issues)) != len(issues):
         raise ValueError("duplicate issue pointer")
-    return CitationSearch(search_id, created, _paper_id(d["root_id"]), _roles(d["roles"], empty=False), _integer(d["max_depth"], "max_depth"), generations, issues, body)
+    status = cast(Literal["complete", "interrupted"], _choice(d["status"], {"complete", "interrupted"}, "search status"))
+    stop_reason = _text(d["stop_reason"], "stop_reason", empty=status == "complete")
+    if status == "complete" and stop_reason:
+        raise ValueError("complete search must have an empty stop_reason")
+    return CitationSearch(search_id, created, _paper_id(d["root_id"]), _roles(d["roles"], empty=False), _integer(d["max_depth"], "max_depth"), generations, issues, body, status=status, stop_reason=stop_reason)
 
 
 def parse_document(text: str) -> Document:
@@ -248,6 +257,8 @@ def parse_document(text: str) -> Document:
 
 def serialize_document(document: Document) -> str:
     data = asdict(document)
+    if isinstance(document, CitationSearch) and document.status == "complete":
+        del data["status"], data["stop_reason"]
     body = data.pop("body")
     text = f"---\n{dump_frontmatter(data)}---\n{body}"
     parse_document(text)  # Dataclass callers get the same validation as readers.
@@ -263,7 +274,16 @@ def write_document(document: Document, directory: Path | None = None) -> Path:
     if directory.is_symlink() or folder.is_symlink() or path.is_symlink():
         raise ValueError("symlinks are not allowed in citation storage")
     folder.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    # A killed reader must leave either the previous document or its replacement.
+    fd, temporary = tempfile.mkstemp(prefix=".citation-", dir=directory.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as output:
+            output.write(text)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+    finally:
+        Path(temporary).unlink(missing_ok=True)
     return path
 
 
@@ -325,7 +345,8 @@ def _validate_search(search: CitationSearch, papers: dict[str, CitationPaper]) -
             errors.append("generations must have consecutive depths within max_depth")
         if reached != expected or seen & reached:
             errors.append(f"generation {depth}: paper_ids disagree with selected-role traversal")
-        if expanded != (reached if depth < search.max_depth else set()):
+        partial_last = search.status == "interrupted" and depth == len(search.generations) - 1 and depth < search.max_depth
+        if (partial_last and not expanded <= reached) or (not partial_last and expanded != (reached if depth < search.max_depth else set())):
             errors.append(f"generation {depth}: expanded_ids disagree with max_depth")
         missing = (reached | expanded) - papers.keys()
         if missing:
@@ -339,7 +360,7 @@ def _validate_search(search: CitationSearch, papers: dict[str, CitationPaper]) -
                 errors.append(f"expanded paper {paper_id} has text_status not_requested")
             expected.update(ref.target_id for ref in paper.references if ref.target_id is not None and ref.decision_status == "classified" and set(ref.roles) & set(search.roles))
         expected -= seen
-    if expected:
+    if expected and search.status == "complete":
         errors.append("search is missing a selected-role generation")
     if set(search.issues) != search_issues(expanded_all, papers):
         errors.append("search issues disagree with expanded paper/reference states")

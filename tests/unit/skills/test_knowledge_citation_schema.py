@@ -266,3 +266,44 @@ def test_library_rejects_cross_document_inconsistency(api: ModuleType, mutation:
     else:
         by_name["C"].id = by_name["B"].id
     assert api.validate_library(library), mutation
+
+
+@pytest.mark.parametrize("mutation", ["none", "empty-reason", "invalid-status", "early-partial", "unselected", "wrong-issues", "false-complete"])
+def test_interrupted_fixture_allows_only_the_last_generation_to_be_partial(api: ModuleType, mutation: str) -> None:
+    library = api.load_citations(FIXTURE)
+    search = library.searches["search-fixture-interrupted-depth2"]
+    if mutation == "empty-reason":
+        search.stop_reason = ""
+    elif mutation == "invalid-status":
+        search.status = "running"
+    elif mutation == "early-partial":
+        search.generations[0].expanded_ids = []
+    elif mutation == "unselected":
+        c = next(p for p in library.papers.values() if p.title == "Fixture C")
+        search.generations[1].paper_ids.append(c.id)
+    elif mutation == "wrong-issues":
+        search.issues = []
+    elif mutation == "false-complete":
+        search.status, search.stop_reason = "complete", ""
+    errors = api.validate_library(library)
+    assert bool(errors) == (mutation != "none")
+    if mutation == "none":
+        data = yaml.safe_load(api.serialize_document(search).split("---", 2)[1])
+        assert data["status"] == "interrupted"
+        assert data["generations"][1]["expanded_ids"] == ["cite-15ff6ca63fce212e"]
+
+
+def test_failed_atomic_replace_preserves_the_previous_document(api: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    paper = next(iter(api.load_citations(FIXTURE).papers.values()))
+    path = api.write_document(paper, tmp_path / "citation_map")
+    before = path.read_bytes()
+    paper.body = "Replacement that must not leak into a failed write."
+
+    def fail_replace(source: str, target: Path) -> None:
+        raise OSError("injected replace failure")
+
+    monkeypatch.setattr(api.os, "replace", fail_replace)
+    with pytest.raises(OSError, match="injected"):
+        api.write_document(paper, tmp_path / "citation_map")
+    assert path.read_bytes() == before
+    assert list(tmp_path.glob(".citation-*")) == []

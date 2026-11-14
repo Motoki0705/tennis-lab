@@ -272,14 +272,19 @@ Papersとの対応も外部ID集合の共通要素から導出する。探索文
 | `roles` / `max_depth` | 展開に使う役割（非空、複数可、重複不可） / 0以上の整数。起点は深さ0 |
 | `generations` | `depth`、`paper_ids`（到達した文献ID）、`expanded_ids`（その世代で本文取得・判定を試みたID）の辞書配列 |
 | `issues` | `paper_id` と `ref_id`（文献全体の問題はnull）からなる問題箇所への参照配列 |
+| `status` / `stop_reason` | 省略時は `complete` / 空文字列。`interrupted` は中断した実行で、非空の停止理由を必須とする。`complete` の停止理由は空文字列のみ |
 
 世代は0から連続し、指定役割の `classified` かつ `resolved` な辺だけをたどる。既出文献は再度世代へ入れないが、論文文書の全ての辺は残す。各 `paper_ids` は重複不可。最大深さでは `expanded_ids: []`、それより浅い全到達文献は取得を試み、`not_requested` のままにしない。次世代の集合は前世代のexpanded_idsから得られる未出の引用先と一致させる。文献が尽きた時点で止め、空世代は作らない。最大深さを超える世代・参照切れ・不足/余分な展開はエラー。
+
+中断した探索だけは、最後の世代の `expanded_ids` が `paper_ids` の部分集合でよく、未記録の次世代を許可する。それ以前の世代、選択役割による到達集合、参照先、issuesの規則は完了探索と同じ。中断理由は本文取得状態と分ける。例えばagyの失敗は `stop_reason: agy:cli_error` とし、その論文を取得失敗や読解成功へ書き換えない。再開時は同じ起点・役割・深さ・search IDを照合し、保存済みの読解結果から世代を組み直す。
 
 `issues` はexpanded_ids内の `failed` 文献と、`unresolved` または `unclassifiable` / `pending` な行を漏れなく指す。状態・理由・根拠は論文文書から求め、探索側へ複写しない。これにより探索ごとの取得失敗・未同定・判定不能を読める。未展開の末端文献は取得失敗に数えない。保存済み文献を再利用し、同じ引用元の再読・再実行で辺の数を増やさない。論文文書を訂正した場合は、影響する探索文書の世代・issuesも同じ変更で更新する。
 
 Papersへの採録対象は起点と、その探索の各 `expanded_ids` が記録した **全ての `resolved` 引用先**。指定役割・判定状態・`generations.paper_ids` への収録は採録の条件にしない。比較探索でも、基盤として表示された未展開の引用先を人間が採録できる。発見経路には、探索内で展開した全ての引用元についてref_id・役割・判定状態・判断理由・根拠を記入する。判定不能や根拠の空欄もその状態を明示する。未展開論文のcached参考文献にしかない引用先や、探索範囲外の文献は拒否する。
 
 固定例は `tests/fixtures/knowledge/citation_map/`。A→B→D（比較）、A→C（基盤）、B/C→Dの合流、A→Bの比較・基盤兼用、本文取得失敗E、未同定行と役割判定不能行を含む。テスト用の架空文献で、本番のPapersや探索一覧には入れない。
+
+探索の入口・再開・実行条件は [knowledge-controlの手順](../.agents/skills/knowledge-control/references/record.md#citation-exploration) を参照する。
 
 ## summaryと履歴
 

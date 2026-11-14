@@ -122,6 +122,57 @@ Add the paper ID to relevant nodes' `papers`; backlinks are derived. A
 retrospective citation does not imply that a historical run reproduced the
 paper. Keep temporary full-text downloads outside the versioned library.
 
+## Citation exploration
+
+Run the independent exploration CLI with one or more roles and a maximum depth.
+It reuses the [storage contract](../../../../knowledge/README.md#引用探索文書の仕様)
+and never registers Papers automatically. Depth 0 records only the root; depth 1
+reads the root's bibliography; depth 2 also reads its selected-role targets.
+
+```bash
+$PY "$SKILL/kg_explore.py" https://arxiv.org/abs/2311.05237v1 --role comparison --max-depth 1 --search-id search-wasb-comparison-depth1
+$PY "$SKILL/kg_explore.py" https://arxiv.org/abs/2311.05237v1 --role comparison --max-depth 2 --search-id search-wasb-comparison-depth2
+```
+
+Each paper is read serially by `gemini-4-hydrogen-high` through `agy_headless.py`.
+The citation profile's version/model pins are in `agents.conf`; issue supplement
+defaults are independent. `--agy` defaults to `~/.local/bin/agy`. Its version and
+effective model must match the citation profile. See the
+[read-only execution contract](../../../ops/lib/README.md#agyの共通呼び出し部品)
+for the user-settings guard. Use a dedicated authenticated agy user profile with
+`toolPermission: request-review`, no allow rules or trusted workspace, and only
+the supported keys. A normal interactive profile with broader permissions fails
+explicitly; the CLI does not rewrite it. Raw agy evidence goes outside knowledge
+under `$XDG_STATE_HOME/tennis-lab-citations/<search-id>` (or `--run-dir`).
+
+Public article HTML is preferred for arXiv. A landing/abstract page alone is not
+full text. PDF downloads and extracted input exist only in temporary directories;
+PDF reading requires Poppler's `pdftotext` on PATH. A PDF without extractable text
+fails explicitly; no implicit OCR is attempted. Reference identities use explicit
+IDs or unique exact title/year matches from the existing OpenAlex lookup helper.
+Unavailable or ambiguous matches stay unresolved, with the reason in the row.
+
+Completed papers are checkpointed and reused for later runs. A validated model
+result is also checkpointed privately before identity lookup; interruption during
+that lookup can resume without another model call. Its key includes the exact
+input, model/version, instructions, and schema. Repeating the same
+`--search-id` resumes an interrupted run only when its conditions match; omitting
+it creates a new search document while reusing the paper cache. Unselected edges
+and every bibliography row remain available for display and adoption. Full-text
+failures are cached as failures. Model errors, unavailable models, quota/rate
+limits, invalid JSON, and mismatched model/version stop the command with a nonzero
+exit and an interrupted search; they never select another model.
+
+`--agy-timeout` defaults to 1800 seconds per paper. `--time-limit` is the wall-time
+budget for this invocation, defaults to 28800 seconds, and cannot exceed 8 hours.
+For a multi-attempt campaign, subtract elapsed attempts from the agreed campaign
+budget and pass the remainder. There is no paper-count limit or parallel option.
+The JSON report and search body record time, actual model calls, new/cached reads,
+unique read papers, fetch failures, unresolved/unclassifiable rows, and the known
+pending count (a lower bound until all intermediate bibliographies are read).
+The same store rejects concurrent CLI writers. Validate the resulting library
+with `kg_validate.py` before committing it.
+
 ## Finish the draft
 
 Replace scaffold comments with findings; record actual config/metrics and attach
