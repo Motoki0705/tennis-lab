@@ -1,1 +1,5 @@
 background_terminal_max_timeout = 18000000
+
+# 512k = 512,000 tokens; applies to trusted project checkouts and worktrees.
+# Automatic compaction is configured separately with model_auto_compact_token_limit.
+model_context_window = 512000
