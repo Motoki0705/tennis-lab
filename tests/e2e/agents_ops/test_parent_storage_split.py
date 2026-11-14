@@ -223,3 +223,188 @@ def test_new_transaction_never_reuses_old_github_facts(
         assert gh.get("user") == {"revision": 1}
     with store.locked():
         assert gh.get("user") == {"revision": 2}
+
+
+@pytest.mark.parametrize("read_only_command", [False, True])
+def test_unbound_reader_observes_changes_unless_a_single_cli_opts_into_caching(
+    parent_env: ParentEnv, monkeypatch: pytest.MonkeyPatch, read_only_command: bool
+) -> None:
+    module = importlib.import_module("parent.github")
+    gh = module.GitHub("o/r")
+    gh.parent = 1
+    gh._read_only_cache = read_only_command
+    remote = {"revision": 1}
+
+    def fetch(self: object, endpoint: str, **kwargs: object) -> object:
+        return dict(remote)
+
+    monkeypatch.setattr(module.IssueGitHub, "get", fetch)
+    assert gh.get("repos/o/r/issues/1") == {"revision": 1}
+    remote["revision"] = 2
+    assert gh.get("repos/o/r/issues/1") == {"revision": 1 if read_only_command else 2}
+    with gh.fresh_reads():
+        assert gh.get("repos/o/r/issues/1") == {"revision": 2}
+    detached = gh.detached()
+    assert detached.get("repos/o/r/issues/1") == {"revision": 2}
+    remote["revision"] = 3
+    assert detached.get("repos/o/r/issues/1") == {"revision": 3}
+
+
+def test_transaction_client_rejects_cache_hits_and_writes_outside_lock(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = importlib.import_module("parent.github")
+    store = importlib.import_module("parent.state").Store(
+        parent_env.root / "client-scope"
+    )
+    gh = module.GitHub("o/r", store=store)
+    gh.parent = 1
+    calls: list[str] = []
+
+    def fetch(self: object, endpoint: str, **kwargs: object) -> object:
+        calls.append(endpoint)
+        return {"revision": len(calls)}
+
+    monkeypatch.setattr(module.IssueGitHub, "get", fetch)
+    external = gh.detached()
+    with store.locked():
+        assert gh.get("user") == {"revision": 1}
+        with pytest.raises(ValueError, match="lock to be released"):
+            external.get("user")
+        with gh.io_scope():
+            with pytest.raises(ValueError, match="active registry transaction"):
+                gh.get("user")
+            with pytest.raises(ValueError, match="active registry transaction"):
+                gh.evidence_rows()
+            with pytest.raises(ValueError, match="active registry transaction"):
+                store.save()
+            assert external.get("user") == {"revision": 2}
+    for method in (
+        lambda: gh.get("user"),
+        lambda: gh.evidence_rows(),
+        lambda: gh.write("POST", "endpoint", {}),
+        lambda: gh.graphql("query {}", {}),
+    ):
+        with pytest.raises(ValueError, match="active registry transaction"):
+            method()
+    assert calls == ["user", "user"]
+    assert external.get("user") == {"revision": 3}
+    assert external.get("user") == {"revision": 4}
+
+
+def test_each_observation_and_fresh_read_retrieves_new_facts(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = importlib.import_module("parent.github")
+    store = importlib.import_module("parent.state").Store(
+        parent_env.root / "observations"
+    )
+    gh = module.GitHub("o/r", store=store)
+    gh.parent = 1
+    revision = [1]
+    calls: list[int] = []
+
+    def fetch(self: object, endpoint: str, **kwargs: object) -> object:
+        calls.append(revision[0])
+        return {"revision": revision[0]}
+
+    monkeypatch.setattr(module.IssueGitHub, "get", fetch)
+    with store.locked():
+        with gh.history_read_scope():
+            assert gh.get("user") == {"revision": 1}
+            revision[0] = 2
+            assert gh.get("user") == {"revision": 1}
+        with gh.history_read_scope():
+            assert gh.get("user") == {"revision": 2}
+        revision[0] = 3
+        with gh.fresh_reads():
+            assert gh.get("user") == {"revision": 3}
+            revision[0] = 4
+            assert gh.get("user") == {"revision": 4}
+    assert calls == [1, 2, 3, 4]
+
+
+def test_external_collection_reuses_discovery_only_within_one_observation(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = importlib.import_module("parent.github")
+    gh = module.GitHub("o/r")
+    revision = [1]
+    calls: list[int] = []
+
+    def fetch(self: object, endpoint: str, **kwargs: object) -> object:
+        calls.append(revision[0])
+        return [{"id": revision[0], "number": revision[0]}]
+
+    monkeypatch.setattr(module.IssueGitHub, "get", fetch)
+    with gh.history_read_scope():
+        assert gh.evidence_rows() == [{"id": 1, "number": 1}]
+        revision[0] = 2
+        assert gh.evidence_rows() == [{"id": 1, "number": 1}]
+    assert gh.evidence_rows() == [{"id": 2, "number": 2}]
+    with gh.history_read_scope():
+        assert gh.evidence_rows() == [{"id": 2, "number": 2}]
+        revision[0] = 3
+        with gh.fresh_reads():
+            assert gh.evidence_rows() == [{"id": 3, "number": 3}]
+            revision[0] = 4
+            assert gh.evidence_rows() == [{"id": 3, "number": 3}]
+        with gh.fresh_reads():
+            assert gh.evidence_rows() == [{"id": 4, "number": 4}]
+    assert calls == [1, 2, 2, 3, 4]
+
+
+@pytest.mark.parametrize(
+    "field", ["session", "status", "generation", "tasks", "reviews"]
+)
+def test_checkpoint_rejects_changes_across_transactions(
+    parent_env: ParentEnv, field: str
+) -> None:
+    state = importlib.import_module("parent.state")
+    store = state.Store(parent_env.root / "checkpoint")
+    with store.locked():
+        store.focus("o/r#1")
+        store.parents["o/r#1"] = record("claude:one")
+        store.save()
+        checkpoint = store.checkpoint()
+    with state.Store(store.directory).locked() as peer:
+        row = peer.parents["o/r#1"]
+        row[field] = {
+            "session": "claude:two",
+            "status": "released",
+            "generation": 2,
+            "tasks": {},
+            "reviews": [],
+        }[field]
+        peer.save()
+    with store.locked():
+        with pytest.raises(state.RegistryConflict):
+            store.revalidate(checkpoint)
+        with pytest.raises(state.RegistryConflict):
+            store.save()
+
+
+def test_checkpoint_accepts_own_save_and_preserves_peer_updates(
+    parent_env: ParentEnv,
+) -> None:
+    state = importlib.import_module("parent.state")
+    store = state.Store(parent_env.root / "checkpoint-peers")
+    with store.locked():
+        store.focus("o/r#1")
+        store.parents["o/r#1"] = record("claude:one")
+        store.save()
+        checkpoint = store.checkpoint()
+    with state.Store(store.directory).locked() as peer:
+        peer.parents["o/r#2"] = record("claude:two")
+        peer.save()
+    with store.locked():
+        store.revalidate(checkpoint)
+        store.parents["o/r#1"]["tasks"]["10"]["evidence"] = "own change"
+        store.save()
+        checkpoint = store.checkpoint()
+    with store.locked():
+        store.revalidate(checkpoint)
+        assert store.parents["o/r#2"] == record("claude:two")

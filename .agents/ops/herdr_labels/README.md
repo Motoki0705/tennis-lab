@@ -11,21 +11,24 @@ Agent行は`Alice · 親Issueの要約表示`のように、名前と親AIが書
 名前のない親（`name_status: unassigned`）は要約だけを表示し、名前を推測・割当しない。
 DBの破損や未知schemaはエラーにし、未割当として隠さない。
 `display_agent`は表示名だけを変更し、実際のagent種別と稼働状態には触れない。
-source `tennis-parent`で`tl_name` / `tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`を管理する。
+source `tennis-parent`で`tl_name` / `tl_parent` / `tl_issue` / `tl_topic` / `tl_engine` / `tl_owner`を管理する。
 `tl_name`は有効な名前だけを持ち、未割当では削除する。
 `tl_owner`はセッション識別子のSHA-256で、サイドバーには表示しない。
-`tl_topic`は要約、`tl_parent`は親registryキーで、どちらもサイドバーの既定行には出さない。
+`tl_topic`は要約、`tl_parent`は親registryキー（`owner/repo#番号`）で、どちらもサイドバーの既定行には出さない。
+`tl_issue`は同じregistryキーの番号を`#番号`の形で持ち、サイドバーでモデル名（`tl_engine`）の右に出す。
 
 ### 要約
 
-要約は担当親が親issueの作業内容から作り、`parent register --summary`または
+要約は担当親が親issueの作業内容から作り、`parent register --summary`・`parent handoff --accept --summary`・
 `parent summary --text`でparent stateの親ごとの記録（`display_summary`）へ保存する。
 手順は[parent-session skill](../../skills/parent-session/SKILL.md#担当と実行根拠)。
 親ごとの記録なので、同じ会話の再開・新しいpaneでの復元・引継ぎ後も同じ値を表示する。
 表示幅は全角2・半角1で数えて24桁（全角12文字）以内。超過・空・前後の空白・制御文字は
 切り詰めず拒否し、保存済みの値を変えない。
-要約のない担当は表示同期をエラーにして登録を促し、issueタイトルや古い表示で代替しない。
-担当操作は成功のまま`display_sync.status: error`を返すので、要約を登録すれば表示が直る。
+`register` / `handoff --accept` は要約不足を担当の書込み前に拒否する
+（[parentの事前検査](../parent/README.md#担当を引き受ける前の要約)）。
+既存の要約のない担当を同期するときもエラーにし、issueタイトルや古い表示で代替しない。
+この場合は `parent summary --text` で要約を保存すれば表示が直る。
 version 2のregistryでは索引と親ごとの記録の`session` / `status` / `generation`が
 一致する場合だけ要約を読み、不一致なら再試行を求める。
 
@@ -37,7 +40,7 @@ register・handoffの受領時に、担当sessionと確認済みterminalの対�
 owner記録がない場合、通常のsyncや起動hookは表示先を確認せず、明示bindを求める。
 確認済み記録だけは、[ClaudeのSessionStart](#claudeのsessionstartによる表示先の移動)で条件付きで移せる。
 担当操作が成功して表示だけ失敗したときは終了値1、`parent_action_applied: true`と
-`display_sync.status: error`を返す。担当操作を取り消さず、表示CLIで修復する。
+`display_sync.status: error`と`display_sync.repair`の修復手順を返す。担当操作を取り消さず、表示CLIで修復する。
 Herdr環境・bindのないheadless実行は`not_configured`を明示し、担当操作自体は成功を返す。
 表示CLIでの`not_configured`は終了値1。設定・API・読み戻しの不一致は終了値2。
 
@@ -167,12 +170,16 @@ sidebar_width = 36
 [ui.sidebar.agents]
 rows = [
   ["state_icon", "agent"],
-  ["$tl_engine"],
+  ["$tl_engine", "$tl_issue"],
   ["$tl_inbox_label"],
 ]
 ```
 
 名前と要約は`agent`の表示名に含まれるため、`$tl_name` / `$tl_topic`を重ねて配置しない。
+2行目はHerdrが同じ行の値を`·`で区切り、`claude · #2012`のように表示する。
+表示解除・担当のないagentでは両方のトークンがなく、2行目ごと消える。
+`tl_issue`導入前に同期された表示は、次の担当操作か`herdr_labels sync`で番号が付く。
+それまでのboardの改名は表示を更新せず、担当表示の同期を求めるエラーを返す。
 Herdrは1つの値を折り返さず、行の幅を超えた分を`…`で切る。既定幅26では要約が入らないので、
 幅36を使う。サイドバーをドラッグで狭めると要約の末尾が切れる。
 未読は専用行にし、0件ではラベルがなく行も消える。

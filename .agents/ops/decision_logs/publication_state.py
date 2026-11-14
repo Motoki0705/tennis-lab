@@ -72,8 +72,15 @@ def read(path: Path, repo: str, parent: int) -> dict[str, Any]:
                 "diagnostic",
                 "merge_commit",
                 "superseded_prs",
-            },
+            }
+            | ({"merge_http_status"} if "merge_http_status" in batch else set()),
         )
+        if "merge_http_status" in batch:
+            require(
+                type(batch["merge_http_status"]) is int
+                and 100 <= batch["merge_http_status"] <= 599,
+                "journal_invalid",
+            )
         public_id(batch["key"])
         require(
             batch["key"] not in keys

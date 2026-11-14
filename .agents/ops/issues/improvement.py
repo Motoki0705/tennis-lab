@@ -179,7 +179,9 @@ def contract(body: str) -> dict[str, str]:
         if heading not in PROGRESS
     }
     preamble = raw_preamble(body)
-    if parse_source(body) is not None:
+    from .improvement_proposals import parse_extraction
+
+    if parse_source(body) is not None or parse_extraction(body) is not None:
         # Only the source marker is metadata. Other text, including supplement
         # details and fenced examples, remains part of the approved requirements.
         preamble = preamble.partition("\n")[2]
@@ -298,7 +300,34 @@ def validate_event(value: Any) -> dict[str, Any]:
         if data["mode"] not in ("created", "reference"):
             raise ValueError("invalid improvement publication mode")
         _sha(data["draft_sha256"])
+    elif row["event"] == "proposed":
+        data = fields(row["data"], {"issue", "generation", "created_at"})
+        positive(data["issue"])
+        positive(data["generation"])
+        from .supplement_state import _utc_timestamp
+
+        _utc_timestamp(data["created_at"], "proposal created_at")
+    elif row["event"] == "extracted":
+        data = fields(
+            row["data"], {"issue", "proposal", "decision_ids", "requirements"}
+        )
+        positive(data["issue"])
+        positive(data["proposal"])
+        if not isinstance(data["decision_ids"], dict) or not data["decision_ids"]:
+            raise ValueError("extraction requires all approval decision IDs")
+        for k, v in data["decision_ids"].items():
+            key(k)
+            _sha(v)
+        if not isinstance(data["requirements"], dict) or not data["requirements"]:
+            raise ValueError("extraction requires a requirements snapshot")
+        for heading, content in data["requirements"].items():
+            text(heading)
+            text(content)
+        execution_terms(data["requirements"])
     elif row["event"] == "decision":
+        candidate_target = (
+            isinstance(row["data"], dict) and row["data"].get("target") == "candidate"
+        )
         data = fields(
             row["data"],
             {
@@ -310,7 +339,8 @@ def validate_event(value: Any) -> dict[str, Any]:
                 "reason",
                 "requirements",
                 "previous_decision",
-            },
+            }
+            | ({"target"} if candidate_target else set()),
         )
         key(data["request_key"])
         _sha(data["request_sha256"])
@@ -356,6 +386,8 @@ def render_event(row: dict[str, Any]) -> str:
             f"後継・集約先: #{data['issue']} ({data['mode']})",
             "起票・参照は実行開始ではありません。",
         ]
+    elif row["event"] in {"proposed", "extracted"}:
+        lines = [title, f"{row['event']}: #{data['issue']}"]
     else:
         lines = [
             title,
@@ -414,7 +446,15 @@ def read_candidates(
             ):
                 raise ValueError("candidate source issue changed")
             candidate = {
-                **(candidate or {"publication": None, "decisions": []}),
+                **(
+                    candidate
+                    or {
+                        "publication": None,
+                        "proposal": None,
+                        "extraction": None,
+                        "decisions": [],
+                    }
+                ),
                 "revision": row["revision"],
                 "candidate": row,
             }
@@ -426,8 +466,43 @@ def read_candidates(
                 if candidate["publication"] is not None:
                     raise ValueError("candidate cannot change its published target")
                 candidate["publication"] = row
+            elif row["event"] == "proposed":
+                if (
+                    candidate["proposal"] is not None
+                    or candidate["publication"] is not None
+                ):
+                    raise ValueError("candidate cannot change its proposal generation")
+                candidate["proposal"] = row
+            elif row["event"] == "extracted":
+                proposal = candidate["proposal"]
+                decisions = candidate["decisions"]
+                pinned = next(
+                    (
+                        d
+                        for d in decisions
+                        if d["id"] == row["data"]["decision_ids"].get(row["key"])
+                    ),
+                    None,
+                )
+                if (
+                    candidate["extraction"] is not None
+                    or proposal is None
+                    or row["data"]["proposal"] != proposal["data"]["issue"]
+                    or pinned is None
+                    or pinned["data"]["action"] != "approve"
+                    or pinned["data"].get("target") != "candidate"
+                    or pinned["data"]["issue"] != row["data"]["proposal"]
+                ):
+                    raise ValueError(
+                        "extraction has no matching pinned candidate approval"
+                    )
+                candidate["extraction"] = row
             else:
-                pub = candidate["publication"]
+                pub = (
+                    candidate["proposal"]
+                    if row["data"].get("target") == "candidate"
+                    else candidate["publication"]
+                )
                 decisions = candidate["decisions"]
                 if pub is None or row["data"]["issue"] != pub["data"]["issue"]:
                     raise ValueError("human decision has a different proposal target")
@@ -468,6 +543,20 @@ def approved(
             f"{source.candidate_id}: human execution approval is {human_state(candidate)}"
         )
     decision = candidate["decisions"][-1]
+    extraction = candidate.get("extraction")
+    if extraction is not None:
+        if (
+            extraction["data"]["issue"] != issue
+            or extraction["data"]["decision_ids"].get(source.key) != decision["id"]
+        ):
+            raise ValueError(
+                f"{source.candidate_id}: approval belongs to a different extraction"
+            )
+        if extraction["data"]["requirements"] != contract(body):
+            raise ValueError(
+                f"{source.candidate_id}: requirements changed; human decision required"
+            )
+        return dict(decision)
     if (
         publication is None
         or publication["data"]["issue"] != issue

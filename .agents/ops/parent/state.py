@@ -8,14 +8,27 @@ import json
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TextIO
+from threading import RLock
+from typing import Any, NoReturn, TextIO
 
 from lib.identity import session_identity as session_identity
 
 from . import metrics
 from .execution import validate_authorization
 from .policy import digest, object_value
+
+
+class RegistryConflict(ValueError):
+    """An observation no longer authorizes writes in this transaction."""
+
+
+@dataclass(frozen=True)
+class Checkpoint:
+    version: int
+    key: str | None
+    parents: dict[str, Any]
 
 
 def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -40,12 +53,48 @@ class Store:
         self._focus: str | None = None
         self._saved: dict[str, Any] = {}
         self._write_invalid = False
+        self._suspended = False
+        self._transaction_guard = RLock()
         self.transaction_epoch = 0
 
     def _require_current(self) -> None:
         if self._write_invalid:
-            raise ValueError(
+            raise RegistryConflict(
                 "parent registry changed or could not be revalidated; retry the command in a new transaction"
+            )
+
+    def require_transaction(self) -> None:
+        if self._lock is None or self._suspended:
+            raise ValueError("I/O requires an active registry transaction")
+        self._require_current()
+
+    def require_unlocked(self) -> None:
+        if self._lock is not None and not self._suspended:
+            raise ValueError(
+                "detached client requires the registry lock to be released"
+            )
+
+    def conflict(self, message: str) -> NoReturn:
+        self._write_invalid = True
+        metrics.count("conflicts")
+        raise RegistryConflict(message)
+
+    def checkpoint(self) -> Checkpoint:
+        self.require_transaction()
+        return Checkpoint(
+            self.data["version"], self._focus, copy.deepcopy(self.parents)
+        )
+
+    def revalidate(self, checkpoint: Checkpoint) -> None:
+        self.require_transaction()
+        key = checkpoint.key
+        if self.data["version"] != checkpoint.version or (
+            self.parents != checkpoint.parents
+            if key is None
+            else self.parents.get(key) != checkpoint.parents.get(key)
+        ):
+            self.conflict(
+                "parent registry changed between transactions; retry the command"
             )
 
     def focus(self, key: str) -> None:
@@ -62,73 +111,94 @@ class Store:
             metrics.flock(lock, fcntl.LOCK_EX)
             yield
 
+    def _validate_loaded(self) -> None:
+        if (
+            set(self.data) != {"version", "parents"}
+            or type(self.data["version"]) is not int
+            or self.data["version"] not in {1, 2}
+        ):
+            raise ValueError("unknown or malformed parent-session state")
+        parents: dict[str, Any] = {}
+        for key, row in object_value(self.data["parents"]).items():
+            canonical = key.casefold()
+            if canonical in parents:
+                raise ValueError(
+                    f"registry contains a repository alias collision: {canonical}"
+                )
+            parents[canonical] = row
+            if (
+                not isinstance(row, dict)
+                or not {"session", "status", "generation", "tasks", "reviews"}
+                <= row.keys()
+                or row["status"]
+                not in {"active", "released", "ended", "handoff_pending"}
+            ):
+                raise ValueError(f"invalid parent-session record: {key}")
+            if (
+                not isinstance(row["session"], str)
+                or not row["session"]
+                or not isinstance(row["tasks"], dict)
+                or not isinstance(row["reviews"], list)
+                or type(row["generation"]) is not int
+                or row["generation"] < 1
+            ):
+                raise ValueError(f"invalid parent-session data types: {key}")
+            for task in row["tasks"].values():
+                object_value(task)
+                if "authorization" in task:
+                    validate_authorization(task["authorization"])
+            for review in row["reviews"]:
+                object_value(review)
+                request = object_value(review.get("request"))
+                version = request.get("schema_version")
+                if type(version) is not int or version not in {1, 2, 3}:
+                    raise ValueError("unknown or malformed saved review request")
+                if version in {2, 3}:
+                    validate_authorization(request.get("authorization"))
+                if version == 3:
+                    from lib.review_settings import validate_selection
+
+                    validate_selection(request.get("review_selection"))
+        owners = [
+            r["session"]
+            for r in parents.values()
+            if r["status"] in {"active", "handoff_pending"}
+        ]
+        if len(owners) != len(set(owners)):
+            raise ValueError(
+                "registry contains multiple active parents for one session"
+            )
+        self.data["parents"] = parents
+
+    @contextmanager
+    def snapshot(self) -> Iterator[Store]:
+        """Read a validated ownership snapshot without creating locks or paths."""
+        self.data = self.read_data()
+        self._validate_loaded()
+        yield self
+
     @contextmanager
     def locked(self) -> Iterator[Store]:
+        # A Store owns live transaction objects. Threads sharing that instance
+        # must wait even while its flock is released for another process's I/O.
+        with self._transaction_guard:
+            if self._lock is not None:
+                raise ValueError("registry transaction is already active")
+            with self._locked() as store:
+                yield store
+
+    @contextmanager
+    def _locked(self) -> Iterator[Store]:
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         with (self.directory / "registry.lock").open("a", encoding="utf-8") as lock:
             os.chmod(lock.name, 0o600)
             metrics.flock(lock, fcntl.LOCK_EX)
             self.transaction_epoch += 1
             self._write_invalid = False
+            self._suspended = False
             self.data = self.read_data()
             self._saved = copy.deepcopy(self.data)
-            if (
-                set(self.data) != {"version", "parents"}
-                or type(self.data["version"]) is not int
-                or self.data["version"] not in {1, 2}
-            ):
-                raise ValueError("unknown or malformed parent-session state")
-            parents: dict[str, Any] = {}
-            for key, row in object_value(self.data["parents"]).items():
-                canonical = key.casefold()
-                if canonical in parents:
-                    raise ValueError(
-                        f"registry contains a repository alias collision: {canonical}"
-                    )
-                parents[canonical] = row
-                if (
-                    not isinstance(row, dict)
-                    or not {"session", "status", "generation", "tasks", "reviews"}
-                    <= row.keys()
-                    or row["status"]
-                    not in {"active", "released", "ended", "handoff_pending"}
-                ):
-                    raise ValueError(f"invalid parent-session record: {key}")
-                if (
-                    not isinstance(row["session"], str)
-                    or not row["session"]
-                    or not isinstance(row["tasks"], dict)
-                    or not isinstance(row["reviews"], list)
-                    or type(row["generation"]) is not int
-                    or row["generation"] < 1
-                ):
-                    raise ValueError(f"invalid parent-session data types: {key}")
-                for task in row["tasks"].values():
-                    object_value(task)
-                    if "authorization" in task:
-                        validate_authorization(task["authorization"])
-                for review in row["reviews"]:
-                    object_value(review)
-                    request = object_value(review.get("request"))
-                    version = request.get("schema_version")
-                    if type(version) is not int or version not in {1, 2, 3}:
-                        raise ValueError("unknown or malformed saved review request")
-                    if version in {2, 3}:
-                        validate_authorization(request.get("authorization"))
-                    if version == 3:
-                        from lib.review_settings import validate_selection
-
-                        validate_selection(request.get("review_selection"))
-            owners = [
-                r["session"]
-                for r in parents.values()
-                if r["status"] in {"active", "handoff_pending"}
-            ]
-            if len(owners) != len(set(owners)):
-                raise ValueError(
-                    "registry contains multiple active parents for one session"
-                )
-            self.data["parents"] = parents
+            self._validate_loaded()
             # Keep the envelope readable by active older CLIs. Versioned evidence
             # is additive inside tasks/reviews; never rewrite legacy evidence.
             self._lock = lock
@@ -136,6 +206,7 @@ class Store:
                 yield self
             finally:
                 self._lock = None
+                self._suspended = False
 
     @contextmanager
     def unlocked_read(self) -> Iterator[None]:
@@ -145,22 +216,32 @@ class Store:
         changes or hold references into it. Never reload over those references
         or merge stale reservations after another process has saved.
         """
+        self.require_transaction()
         lock = self._lock
-        if lock is None:
-            raise ValueError("GitHub read requires an active registry transaction")
-        self._require_current()
+        assert lock is not None
         self._write_invalid = True
         before = self.read_data()
         self._write_invalid = False
         metrics.flock(lock, fcntl.LOCK_UN)
+        self._suspended = True
+        input_conflict = False
         try:
             yield
+        except RegistryConflict:
+            input_conflict = True
+            raise
         finally:
             metrics.flock(lock, fcntl.LOCK_EX)
+            self._suspended = False
             # A caller may catch the retrieval exception to record a failed
             # launch. Never allow that stale in-memory transaction to save.
             self._write_invalid = True
-            after = self.read_data()
+            try:
+                after = self.read_data()
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                raise RegistryConflict(
+                    "parent registry could not be revalidated"
+                ) from exc
             if after != before:
                 key = self._focus
                 if (
@@ -169,7 +250,7 @@ class Store:
                     or before["parents"].get(key) != after["parents"].get(key)
                 ):
                     metrics.count("conflicts")
-                    raise ValueError(
+                    raise RegistryConflict(
                         "parent registry changed during GitHub retrieval; retry the command to fetch current state"
                     )
                 # Preserve this parent's live objects, including unsaved changes.
@@ -179,7 +260,9 @@ class Store:
                         continue
                     if before["parents"].get(peer) != after["parents"].get(peer):
                         if self.parents.get(peer) != before["parents"].get(peer):
-                            raise ValueError("concurrent changes to a peer parent")
+                            raise RegistryConflict(
+                                "concurrent changes to a peer parent"
+                            )
                         if peer in after["parents"]:
                             self.parents[peer] = copy.deepcopy(after["parents"][peer])
                             self._saved["parents"][peer] = copy.deepcopy(
@@ -194,8 +277,8 @@ class Store:
                     if r["status"] in {"active", "handoff_pending"}
                 ]
                 if len(owners) != len(set(owners)):
-                    raise ValueError("another parent claimed the same session")
-            self._write_invalid = False
+                    raise RegistryConflict("another parent claimed the same session")
+            self._write_invalid = input_conflict
 
     @property
     def parents(self) -> dict[str, Any]:
@@ -232,9 +315,7 @@ class Store:
 
     def migrate(self) -> None:
         """Explicit migration under the global lock; never discard old evidence."""
-        if self._lock is None:
-            raise ValueError("migration requires the registry lock")
-        self._require_current()
+        self.require_transaction()
         if self.data["version"] == 2:
             return
         backup = self.directory / "registry-v1.backup.json"
@@ -249,9 +330,7 @@ class Store:
         self.save()
 
     def save(self) -> None:
-        if self._lock is None:
-            raise ValueError("save requires an active registry transaction")
-        self._require_current()
+        self.require_transaction()
         owners = [
             row["session"]
             for row in self.parents.values()

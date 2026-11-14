@@ -631,7 +631,12 @@ def test_index_flags_cannot_hide_tracked_changes(sync: SyncEnv, flag: str) -> No
 
 
 @pytest.mark.parametrize(
-    "unit", ["tennis-lab-ops-report.service", "tennis-lab-board-web.service"]
+    "unit",
+    [
+        "tennis-lab-ops-report.service",
+        "tennis-lab-board-web.service",
+        "tennis-lab-worktree-cleanup.service",
+    ],
 )
 def test_cached_unguarded_units_block_update_even_when_their_source_was_replaced(
     sync: SyncEnv, unit: str

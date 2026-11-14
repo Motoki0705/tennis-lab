@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from issues import PROPOSAL_LABEL
+
 OWNER = "Motoki0705"
 PROJECT_NUMBER = 3
 STAGES = ("未着手", "着手可能", "作業中", "レビュー中", "受入待ち", "完了")
@@ -26,17 +28,17 @@ VIEWS = (
     {
         "name": "研究開発全体の一覧",
         "layout": "TABLE_LAYOUT",
-        "filter": 'is:issue has:"親の受入状態"',
+        "filter": f'is:issue -label:{PROPOSAL_LABEL} has:"親の受入状態"',
     },
     {
         "name": "子タスクのカンバン",
         "layout": "BOARD_LAYOUT",
-        "filter": 'is:issue label:issue:child -reason:"not planned"',
+        "filter": f'is:issue label:issue:child -label:{PROPOSAL_LABEL} -reason:"not planned"',
     },
     {
         "name": "判断/ブロック一覧",
         "layout": "TABLE_LAYOUT",
-        "filter": 'is:issue has:"待ち理由"',
+        "filter": f'is:issue -label:{PROPOSAL_LABEL} has:"待ち理由"',
     },
 )
 EVENTS = ("initial", "refresh", "start", "pr", "stop", "resume", "merge", "accept")

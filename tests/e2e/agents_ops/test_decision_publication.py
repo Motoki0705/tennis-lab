@@ -37,6 +37,54 @@ class Crash(BaseException):
     """Process death skips the publisher's ordinary error handler."""
 
 
+@pytest.mark.parametrize(
+    "damage", ["missing", "empty", "unrelated", "unprepared", "different_envelope"]
+)
+def test_pending_batch_requires_its_captured_prepared_payloads(
+    env: DecisionEnv, damage: str
+) -> None:
+    reconciliation = importlib.import_module("worker_logs.reconciliation")
+    lifecycle = importlib.import_module("worker_logs.lifecycle")
+    log = env.capture()
+    env.github.pause_reads = True
+    assert env.decision_publisher(log).publish()["state"] == "pending"
+    env.github.pause_reads = False
+    document = log.read()
+    if damage == "missing":
+        log.path.unlink()
+    elif damage == "different_envelope":
+        prepared = next(e for e in document["entries"] if e["event"] == "prepare")
+        prepared["payload"]["record"]["data"]["reason"] += " Different projection."
+        prepared["snapshot_sha256"] = importlib.import_module(
+            "decision_logs.journal"
+        ).preparation_sha(prepared)
+        worker_journal.atomic(log.path, document)
+        log.read()  # A valid journal with the same identity and different content.
+    else:
+        document["entries"] = (
+            [e for e in document["entries"] if e["event"] == "capture"]
+            if damage == "unprepared"
+            else []
+        )
+        worker_journal.atomic(log.path, document)
+        if damage == "unrelated":
+            log.capture("unrelated", result())
+    before = {str(p): p.read_bytes() for p in env.state.rglob("*") if p.is_file()}
+    with pytest.raises(PublicationError, match="input_capture_failed"):
+        reconciliation.remaining_publications("o/r", 1, state_dir=env.state)
+    assert before == {
+        str(p): p.read_bytes() for p in env.state.rglob("*") if p.is_file()
+    }
+    checkpoint = lifecycle.record_exit(
+        "o/r", 1, 1, "ended", state_dir=env.state, root=env.root
+    )
+    assert checkpoint["remaining_complete"] is False
+    assert checkpoint["error"] and checkpoint["resume_command"]
+    with pytest.raises(PublicationError, match="input_capture_failed"):
+        lifecycle.publish_decisions("o/r", 1, state_dir=env.state, root=env.root)
+    assert env.github.calls == ["create"]
+
+
 def test_batch_publication_replay_and_no_self_generated_publication_loop(
     env: DecisionEnv,
 ) -> None:
@@ -60,6 +108,143 @@ def test_batch_publication_replay_and_no_self_generated_publication_loop(
     assert env.github.calls == ["create", "merge"] and env.upstream_files() == saved
     assert "[skip ci]" not in git(env.upstream, "log", "-3", "--format=%s")
     assert publisher.path.stat().st_mode & 0o777 == 0o600
+
+
+@pytest.mark.parametrize("status", [405, 409, 403, 404, 422])
+def test_http_merge_rejection_is_durable_and_405_rechecks_before_retry(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    merge_rejected = importlib.import_module("worker_logs.publication").MergeRejected
+    log = env.capture()
+    worker = env.decision_publisher(log)
+    merge = env.github.merge
+
+    def refuse(number: int, head: str) -> None:
+        raise merge_rejected(
+            status, "merge_conflict" if status in {405, 409} else "merge_rejected"
+        )
+
+    monkeypatch.setattr(env.github, "merge", refuse)
+    result_value = worker.publish()
+    batch = json.loads(worker.path.read_text())["batches"][0]
+    assert result_value["state"] == "blocked" and not result_value["saved_to_main"]
+    assert batch["merge_http_status"] == status and batch["merge_attempted"] is False
+    assert batch["stage"] == "merge_rejected"
+    monkeypatch.setattr(env.github, "merge", merge)
+    retried = worker.publish()
+    assert retried["saved_to_main"] is (status == 405)
+    assert env.github.calls.count("create") == 1
+
+
+def test_null_mergeability_proceeds_but_explicit_conflict_stays_blocked(
+    env: DecisionEnv,
+) -> None:
+    first = env.capture(parent=1)
+    env.github.mergeable = None
+    assert env.decision_publisher(first).publish()["saved_to_main"]
+    second = env.capture(parent=2)
+    env.github.mergeable = False
+    refused = env.decision_publisher(second).publish()
+    assert refused["state"] == "blocked" and refused["error"] == "merge_conflict"
+    assert env.github.calls.count("merge") == 1
+
+
+@pytest.mark.parametrize("handoff_after_first_batch", [False, True])
+def test_exit_decision_publication_finishes_old_batch_and_fixed_capture_boundary(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    handoff_after_first_batch: bool,
+) -> None:
+    lifecycle = importlib.import_module("worker_logs.lifecycle")
+    reconciliation = importlib.import_module("worker_logs.reconciliation")
+    first, second, concurrent = result(), result(), result()
+    log = env.capture([first])
+    env.github.pause_reads = True
+    assert env.decision_publisher(log).publish()["state"] == "pending"
+    env.github.pause_reads = False
+    env.capture([second])
+    merge = env.github.merge
+    current_owner = True
+
+    def arriving_record(number: int, head: str) -> None:
+        nonlocal current_owner
+        merge(number, head)
+        if len([c for c in env.github.calls if c == "merge"]) == 1:
+            env.capture([concurrent])
+            current_owner = not handoff_after_first_batch
+
+    monkeypatch.setattr(env.github, "merge", arriving_record)
+    publisher = publication.Publisher
+    monkeypatch.setattr(
+        publication,
+        "Publisher",
+        lambda root, journal, record_ids: publisher(
+            root, journal, env.github, record_ids=record_ids
+        ),
+    )
+    saved = lifecycle.publish_decisions(
+        "o/r", 1, state_dir=env.state, root=env.root, owner_check=lambda: current_owner
+    )
+    assert (
+        saved["state"] == "merged"
+        and not saved["saved_to_main"]
+        and env.github.calls
+        == ["create", "merge"] * (1 if handoff_after_first_batch else 2)
+    ), saved
+    assert saved["error"] == (
+        "log_owner_mismatch" if handoff_after_first_batch else None
+    )
+    states = {s["id"]: s["publication_status"] for s in log.status()}
+    assert states[first["id"]] == "published"
+    assert (states[second["id"]] == "published") is (not handoff_after_first_batch)
+    assert states[concurrent["id"]] != "published"
+    remaining = reconciliation.remaining_publications("o/r", 1, state_dir=env.state)
+    assert len(remaining) == 1 and remaining[0]["kind"] == "decision_log"
+    assert remaining[0]["unpublished_count"] == (2 if handoff_after_first_batch else 1)
+    assert remaining[0]["batch_key"] is None
+
+
+@pytest.mark.parametrize("recoverable", [True, False])
+def test_exit_replays_frozen_capture_delivery_and_reports_unrecoverable_capture(
+    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch, recoverable: bool
+) -> None:
+    capture = importlib.import_module("decision_logs.capture")
+    lifecycle = importlib.import_module("worker_logs.lifecycle")
+    reconciliation = importlib.import_module("worker_logs.reconciliation")
+    log = reconciliation.decision_journal("o/r", 1, state_dir=env.state)
+    op = capture.Operation.begin(env.state, "o/r", 1, "parent.note", "record")
+    if recoverable:
+        # Drop only the destination journal. The original outbox still freezes
+        # IDs and bytes; replay must deliver those records without a new action.
+        assert log.path.is_relative_to(env.state) and env.state.is_relative_to(
+            env.root.parent
+        )
+        log.path.unlink()
+    else:
+        op.mark_failed(lost_source="parent.note.response")
+    before = {e["record"]["id"] for e in op.row["entries"]}
+    inventory = reconciliation.remaining_publications("o/r", 1, state_dir=env.state)
+    assert inventory[0]["unpublished_count"] is None
+    publisher = publication.Publisher
+    monkeypatch.setattr(
+        publication,
+        "Publisher",
+        lambda root, journal, record_ids: publisher(
+            root, journal, env.github, record_ids=record_ids
+        ),
+    )
+    value = lifecycle.publish_decisions("o/r", 1, state_dir=env.state, root=env.root)
+    assert value["saved_to_main"] is recoverable
+    assert value["error"] == (None if recoverable else "input_capture_failed")
+    assert {r["id"] for r in log.status()} == before
+    assert env.github.calls == ["create", "merge"]
+    remaining = reconciliation.remaining_publications("o/r", 1, state_dir=env.state)
+    assert bool(remaining) is (not recoverable)
+    if remaining:
+        assert (
+            remaining[0]["stage"] == "capture_incomplete"
+            and remaining[0]["unpublished_count"] is None
+        )
 
 
 @pytest.mark.parametrize(
@@ -132,9 +317,10 @@ def test_main_advance_regenerates_other_parents_and_reuses_open_pr(
     env: DecisionEnv,
 ) -> None:
     left, right = env.capture(parent=1), env.capture(parent=2)
-    env.github.mergeable = None
+    env.github.pause_reads = True
     a, b = env.decision_publisher(left), env.decision_publisher(right)
-    assert a.publish()["stage"] == b.publish()["stage"] == "mergeability_pending"
+    assert a.publish()["stage"] == b.publish()["stage"] == "pr_create"
+    env.github.pause_reads = False
     for pr in env.github.rows.values():
         pr["mergeable"] = True
     assert a.publish()["saved_to_main"]
@@ -167,9 +353,10 @@ def test_open_pr_recovers_interrupted_regeneration_without_losing_revisions(
 ) -> None:
     log = env.capture()
     publisher = env.decision_publisher(log)
-    env.github.mergeable = None
+    env.github.pause_reads = True
     first = publisher.publish()
-    assert first["stage"] == "mergeability_pending", first
+    assert first["stage"] == "pr_create", first
+    env.github.pause_reads = False
     original = json.loads(publisher.path.read_text())["batches"][0]
     records = copy.deepcopy(log.public_payloads())
     base = env.advance({"upstream-note.txt": b"Independent main advance\n"})
@@ -261,8 +448,9 @@ def test_new_captures_wait_for_active_batch_then_publish_together(
 ) -> None:
     initial = history()
     log = env.capture(initial)
-    env.github.mergeable = None
+    env.github.pause_reads = True
     first = env.decision_publisher(log).publish()
+    env.github.pause_reads = False
     later = [result(), result()]
     env.capture(later)
     for pr in env.github.rows.values():
@@ -358,9 +546,10 @@ def test_publication_gate_rejects_tampering_before_merge(
     env: DecisionEnv, monkeypatch: pytest.MonkeyPatch, fault: str
 ) -> None:
     log = env.capture()
-    env.github.mergeable = None
+    env.github.pause_reads = True
     publisher = env.decision_publisher(log)
     pending = publisher.publish()
+    env.github.pause_reads = False
     assert pending["state"] == "pending", pending
     document = json.loads(publisher.path.read_text())
     batch = document["batches"][0]
@@ -437,9 +626,10 @@ def test_existing_published_event_cannot_be_changed_in_a_later_batch(
     assert env.decision_publisher(log).publish()["saved_to_main"]
     original = env.upstream_files()[navigation.event_path(old)]
     env.capture([result()])
-    env.github.mergeable = None
+    env.github.pause_reads = True
     publisher = env.decision_publisher(log)
-    assert publisher.publish()["stage"] == "mergeability_pending"
+    assert publisher.publish()["stage"] == "pr_create"
+    env.github.pause_reads = False
     document = json.loads(publisher.path.read_text())
     batch = document["batches"][-1]
     tree = publisher.worktree(batch)
@@ -643,8 +833,9 @@ def test_reused_publisher_failure_cannot_overwrite_another_publishers_history(
 ) -> None:
     log = env.capture()
     stale = env.decision_publisher(log)
-    env.github.mergeable = None
-    assert stale.publish()["stage"] == "mergeability_pending"
+    env.github.pause_reads = True
+    assert stale.publish()["stage"] == "pr_create"
+    env.github.pause_reads = False
     for pr in env.github.rows.values():
         pr["mergeable"] = True
     assert env.decision_publisher(log).publish()["saved_to_main"]

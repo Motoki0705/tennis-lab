@@ -514,7 +514,7 @@ SQLiteや投稿の公開出力へruntimeの所在を保存しない。受信記�
 paneの会話・native参照・process世代を再照合する。対応がなければ`not_configured`を返す。
 sourceは`tennis-board`、管理するtokenは`tl_inbox`（数値）と`tl_inbox_label`（例`未読:2`）だけ。
 0件では数値0を保持しラベルを削除する。同じ内容は書き直さない。
-`tl_name` / `tl_parent` / `tl_topic` / `tl_engine` / `tl_owner`、表示名、他用途のtokenを保持し、読み戻しで検証する。
+`tl_name` / `tl_parent` / `tl_issue` / `tl_topic` / `tl_engine` / `tl_owner`、表示名、他用途のtokenを保持し、読み戻しで検証する。
 TTL・定期ポーリングは設けない。[Herdr metadata仕様](https://herdr.dev/docs/cli-reference/#panes)を参照。
 
 更新結果は操作の`inbox_display`へ返す。Herdrのエラーは呼び鈴の経路と分けて明示し、

@@ -3,13 +3,29 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
 from . import journal, schema
 from .journal import PublicationError, require
 from .sources import guard_for, render
+
+
+class GitHubHTTPError(PublicationError):
+    """A definite GitHub response, distinct from a lost transport response."""
+
+    def __init__(self, status: int, detail: str) -> None:
+        super().__init__("github_failed", detail)
+        self.status = status
+
+
+class MergeRejected(PublicationError):
+    def __init__(self, status: int, code: str, detail: str | None = None) -> None:
+        super().__init__(code, detail)
+        self.status = status
 
 
 def canonical_remote(value: str) -> str:
@@ -34,6 +50,9 @@ class GitHub:
             method,
             endpoint,
         ]
+        merge_request = method == "PUT" and endpoint.endswith("/merge")
+        if merge_request:
+            command.append("--include")
         if payload is not None:
             command += ["--input", "-"]
         result = subprocess.run(
@@ -43,13 +62,38 @@ class GitHub:
             check=False,
             timeout=60,
         )
+        raw = result.stdout
+        response_status = None
+        if merge_request:
+            # gh --include emits HTTP status/headers followed by a blank line.
+            match = re.match(rb"HTTP/\S+\s+(\d{3})[^\r\n]*\r?\n", raw)
+            if match:
+                status = int(match[1])
+                response_status = status
+                parts = re.split(rb"\r?\n\r?\n", raw, maxsplit=1)
+                require(len(parts) == 2, "github_invalid_response")
+                raw = parts[1]
+                if status != 200:
+                    raise GitHubHTTPError(
+                        status, raw.decode("utf-8", errors="replace")[:65536]
+                    )
+            elif not result.returncode:
+                raise PublicationError("github_invalid_response")
         if result.returncode:
+            if response_status is not None:
+                raise GitHubHTTPError(
+                    response_status, "gh failed after the HTTP response"
+                )
             raise PublicationError(
                 "github_failed", result.stderr.decode("utf-8", errors="replace")[:65536]
             )
         try:
-            return json.loads(result.stdout, object_pairs_hook=journal.unique)
+            return json.loads(raw, object_pairs_hook=journal.unique)
         except (ValueError, UnicodeError):
+            if response_status is not None:
+                raise GitHubHTTPError(
+                    response_status, "merge response is not valid JSON"
+                ) from None
             raise PublicationError("github_invalid_response") from None
 
     def repository(self) -> dict[str, Any]:
@@ -111,15 +155,31 @@ class GitHub:
         return dict(result)
 
     def merge(self, number: int, head: str) -> None:
-        result = self.request(
-            f"repos/{self.repo}/pulls/{number}/merge",
-            "PUT",
-            {"merge_method": "merge", "sha": head},
-        )
-        require(
-            isinstance(result, dict) and result.get("merged") is True,
-            "merge_unconfirmed",
-        )
+        try:
+            result = self.request(
+                f"repos/{self.repo}/pulls/{number}/merge",
+                "PUT",
+                {"merge_method": "merge", "sha": head},
+            )
+        except GitHubHTTPError as exc:
+            if not 400 <= exc.status < 500:
+                # A server/proxy failure may follow a committed merge. Only
+                # definite client refusals authorize clearing merge_attempted.
+                raise
+            code = "merge_conflict" if exc.status in {405, 409} else "merge_rejected"
+            if exc.status == 409:
+                try:
+                    observed = self.get(number)
+                except (ValueError, OSError, subprocess.SubprocessError):
+                    # The mutation was definitely refused even when the
+                    # follow-up read is unavailable. Never mark it ambiguous.
+                    pass
+                else:
+                    if (observed.get("head") or {}).get("sha") != head:
+                        code = "pr_identity_changed"
+            raise MergeRejected(exc.status, code, exc.detail) from None
+        if not isinstance(result, dict) or result.get("merged") is not True:
+            raise GitHubHTTPError(200, "merge response did not confirm merged=true")
 
 
 class Publisher:
@@ -303,11 +363,6 @@ class Publisher:
             "record_already_exists",
         )
 
-    def mergeability_pending(self, row: dict[str, Any]) -> dict[str, Any]:
-        row.update(state="pending", stage="mergeability_pending", error=None)
-        journal.atomic(self.path, row)
-        return journal.view(row)
-
     def confirm_main(
         self, row: dict[str, Any], files: dict[str, bytes], pr: dict[str, Any]
     ) -> None:
@@ -345,7 +400,7 @@ class Publisher:
             self.git("worktree", "remove", str(tree))
 
     def publish(self, *, dry_run: bool = False, retry: bool = False) -> dict[str, Any]:
-        with journal.locked(self.path):
+        with nullcontext() if dry_run else journal.locked(self.path):
             row = journal.read(self.path)
             try:
                 if (
@@ -477,9 +532,7 @@ class Publisher:
                 # Another parent's independent additions may have advanced main.
                 main = self.main()
                 self.verify_main(row, main)
-                if pr.get("mergeable") is None:
-                    return self.mergeability_pending(row)
-                require(pr.get("mergeable") is True, "merge_conflict")
+                require(pr.get("mergeable") is not False, "merge_conflict")
                 self.verify(row, files)
                 schema.pr_additions(
                     self.github.files(row["pr_number"]),
@@ -491,9 +544,7 @@ class Publisher:
                     "pr_identity_changed",
                     "PR identity mismatch: state",
                 )
-                if fresh.get("mergeable") is None:
-                    return self.mergeability_pending(row)
-                require(fresh.get("mergeable") is True, "merge_conflict")
+                require(fresh.get("mergeable") is not False, "merge_conflict")
                 # base.sha is GitHub's PR snapshot, not the current main ref.
                 # Revalidate old blocked records through every guard above;
                 # neither --retry nor a stale base SHA bypasses identity checks.
@@ -513,8 +564,10 @@ class Publisher:
                     merge_attempted=True,
                     stage="merge_attempted",
                 )
+                row.pop("merge_http_status", None)
                 journal.atomic(self.path, row)
                 self.github.merge(row["pr_number"], row["head"])
+                row["merge_http_status"] = 200
                 self.confirm_main(row, files, self.pr(row))
                 return journal.view(row)
             except (
@@ -529,15 +582,33 @@ class Publisher:
                 code = (
                     str(exc)
                     if isinstance(exc, PublicationError)
+                    else "merge_response_uncertain"
+                    if row.get("merge_attempted")
+                    and isinstance(exc, subprocess.SubprocessError)
+                    else "git_failed"
+                    if isinstance(exc, subprocess.SubprocessError)
                     else "publication_failed"
                 )
                 if dry_run:
                     return {**journal.view(row), "dry_run": True, "error": code}
                 if isinstance(exc, PublicationError) and exc.detail:
                     row["diagnostic"] = exc.detail
+                if isinstance(exc, GitHubHTTPError):
+                    row["merge_http_status"] = exc.status
+                if isinstance(exc, MergeRejected):
+                    row.update(
+                        merge_attempted=False,
+                        stage="merge_rejected",
+                        merge_http_status=exc.status,
+                    )
+                elif row.get("merge_attempted") and code in {
+                    "github_failed",
+                    "github_invalid_response",
+                }:
+                    code = "merge_response_uncertain"
                 # Transient transport errors remain retryable, but an ambiguous
                 # POST/merge is reconciled before ever issuing another mutation.
-                pending = code in {
+                pending = not isinstance(exc, MergeRejected) and code in {
                     "github_failed",
                     "git_failed",
                     "github_invalid_response",

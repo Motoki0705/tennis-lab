@@ -8,7 +8,7 @@ clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult 
 ```bash
 # GPU実行は共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.generate_dataset \
-  dataset_directory=tennis_multivew/processed/meiji_3cam/dataset \
+  dataset_directory=tennis_multiview/processed/meiji_3cam/dataset \
   'clip_ids=[video_000/clip_000]'
 ```
 

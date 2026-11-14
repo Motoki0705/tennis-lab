@@ -365,6 +365,9 @@ def test_labelled_parent_recovers_completion_with_or_without_a_worker(
                 "evidence": "対象HEADのCI・正式レビュー・merge journal・受入証拠と実行終了を確認した。",
             },
         )
+    # Display-only improvement information must not enter the runtime's
+    # strict completion protocol or its acceptance receipt.
+    assert set(result) == {"schema_version", "state", "reason", "resume_condition"}
     flow.finish(resumed, "completed", result)
     after = flow.row()
     assert after["status"] == "ended" and after["dispatch"]["phase"] == "completed"

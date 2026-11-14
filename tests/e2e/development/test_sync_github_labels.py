@@ -69,6 +69,7 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
         "issue:parent",
         "issue:child",
         "issue:standalone",
+        "issue:proposal",
         "supplement:done",
         "supplement:failed",
         "supplement:skipped",

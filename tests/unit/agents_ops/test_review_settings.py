@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import copy
 import importlib
+import re
 from pathlib import Path
 from typing import Any
 
@@ -30,8 +31,16 @@ def pins(mode: str = "fixed") -> dict[str, str]:
     }
 
 
-def test_fixed_default_and_matching_choice_preserve_astra(settings: Any) -> None:
-    policy = settings.policy_from_pins(pins())
+def test_fixed_rollback_and_matching_choice_preserve_astra(
+    settings: Any, tmp_path: Path
+) -> None:
+    config = tmp_path / "fixed.conf"
+    config.write_text(
+        (OPS / "lib/agents.conf")
+        .read_text()
+        .replace('REVIEW_SELECTION_MODE="select"', 'REVIEW_SELECTION_MODE="fixed"')
+    )
+    policy = settings.load_policy(config)
     implicit = settings.choose(policy)
     assert implicit["selected"] == {
         "model": "gpt-6-astra",
@@ -44,6 +53,16 @@ def test_fixed_default_and_matching_choice_preserve_astra(settings: Any) -> None
     assert explicit["specified_by"] == "parent_choice"
     with pytest.raises(ValueError, match="fixed"):
         settings.choose(policy, model="gpt-6.1-sol", reason="通常の確認")
+
+
+def test_repository_defaults_require_explicit_model_and_reason(settings: Any) -> None:
+    policy = settings.load_policy()
+    assert policy["mode"] == "select"
+    with pytest.raises(ValueError, match="--review-model.*--model-reason-file"):
+        settings.choose(policy)
+    for reason in (None, "", " \n"):
+        with pytest.raises(ValueError, match="--model-reason-file"):
+            settings.choose(policy, model="gpt-6.1-sol", reason=reason)
 
 
 def test_fixed_effort_stays_pinned_when_select_would_be_ambiguous(
@@ -358,8 +377,11 @@ def test_unrelated_profiles_ignore_review_policy_and_keep_argv_and_resume_contra
     base = runner.resolve(runner.DEFAULT_CONFIG, agent, profile, None, None, mode)
     config = tmp_path / "changed.conf"
     config.write_text(
-        runner.DEFAULT_CONFIG.read_text().replace(
-            'REVIEW_SELECTION_MODE="fixed"', 'REVIEW_SELECTION_MODE="invalid"'
+        re.sub(
+            r'^REVIEW_SELECTION_MODE="[^"]*"$',
+            'REVIEW_SELECTION_MODE="invalid"',
+            runner.DEFAULT_CONFIG.read_text(),
+            flags=re.MULTILINE,
         )
     )
     changed = runner.resolve(config, agent, profile, None, None, mode)
@@ -380,8 +402,11 @@ def test_agy_and_explanation_pins_do_not_depend_on_review_policy(
     runner = importlib.import_module("lib.agent_settings")
     config = tmp_path / "changed.conf"
     config.write_text(
-        runner.DEFAULT_CONFIG.read_text().replace(
-            'REVIEW_SELECTION_MODE="fixed"', 'REVIEW_SELECTION_MODE="invalid"'
+        re.sub(
+            r'^REVIEW_SELECTION_MODE="[^"]*"$',
+            'REVIEW_SELECTION_MODE="invalid"',
+            runner.DEFAULT_CONFIG.read_text(),
+            flags=re.MULTILINE,
         )
     )
     assert agy.load_config(config) == agy.load_config(runner.DEFAULT_CONFIG)

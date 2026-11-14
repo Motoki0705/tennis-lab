@@ -40,19 +40,20 @@ def runner_ended(session: ParentSession, child: int, *, persist: bool = True) ->
         runner = RUNNER
         expected_task = task["delegation_id"]
     runtime = Runtime(runner)
-    for directory in directories:
-        proof = runtime.inspect(directory)
-        contract = object_value(proof["record"].get("contract"))
-        if (
-            not runtime.ended(proof)
-            or contract.get("task_id") != expected_task
-            or Path(contract.get("cwd", "")).resolve()
-            != Path(task["worktree"]).resolve()
-            or contract.get("branch") != task["branch"]
-        ):
-            raise ValueError(
-                f"#{child}: runner completion does not match the current delegation"
-            )
+    with session.gh.io_scope():
+        for directory in directories:
+            proof = runtime.inspect(directory)
+            contract = object_value(proof["record"].get("contract"))
+            if (
+                not runtime.ended(proof)
+                or contract.get("task_id") != expected_task
+                or Path(contract.get("cwd", "")).resolve()
+                != Path(task["worktree"]).resolve()
+                or contract.get("branch") != task["branch"]
+            ):
+                raise ValueError(
+                    f"#{child}: runner completion does not match the current delegation"
+                )
     if task.get("worker_ended", {}).get("delegation_id") == task["delegation_id"]:
         return
     if not persist:

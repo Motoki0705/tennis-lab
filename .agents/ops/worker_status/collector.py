@@ -123,7 +123,7 @@ def latest_run(
             or not re.fullmatch(r"[0-9a-f]{32}", run["delegation_id"])
             or not isinstance(run["run_dir"], str)
             or not run["run_dir"]
-            or run["kind"] not in {"initial", "resume", "registered"}
+            or run["kind"] not in {"initial", "resume", "registered", "replacement"}
         ):
             raise ValueError("invalid worker run")
         if "preflight" in run:

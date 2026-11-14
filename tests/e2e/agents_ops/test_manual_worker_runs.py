@@ -19,10 +19,39 @@ from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.directory_seed import DirectorySeed
 
 ENTRY = """
-import sys
+import os, sys
 from pathlib import Path
 from parent import manual_workers
 manual_workers.RUNNER = Path(sys.argv[1])
+if os.environ.get("MANUAL_PUBLICATION_HANDOFF"):
+    from parent.state import Store
+    from worker_logs import service as logs
+    finish = logs.finish_manual
+    def finish_after_handoff(*args, **kwargs):
+        store = Store(Path(os.environ["MANUAL_STATE_DIR"]))
+        with store.operation("o/r#1"), store.locked():
+            owner = store.parents["o/r#1"]
+            owner.update(session="codex:successor", generation=owner["generation"] + 1)
+            store.save()
+        # Receipt verification has dedicated tests. Make it publication-ready
+        # here so only the final ownership admission can prevent publication.
+        logs.sources.receive = lambda *a, **kw: {"state": "ready"}
+        class UnsafePublisher:
+            def __init__(self, *a, **kw):
+                (store.directory / "unsafe-publication").touch()
+            def publish(self, **kw):
+                return {"state": "merged", "error": None, "saved_to_main": True}
+        logs.Publisher = UnsafePublisher
+        return finish(*args, **kwargs)
+    logs.finish_manual = finish_after_handoff
+if os.environ.get("MANUAL_ADMISSION_FAILURE"):
+    import subprocess
+    original_popen = subprocess.Popen
+    def rejected_popen(command, *args, **kwargs):
+        if command[0] == str(manual_workers.RUNNER) and "--prompt-file" in command:
+            raise ValueError("injected admission rejection before Popen")
+        return original_popen(command, *args, **kwargs)
+    subprocess.Popen = rejected_popen
 from parent.cli import main
 sys.exit(main(sys.argv[2:]))
 """
@@ -55,14 +84,15 @@ def update(p: ParentEnv, **values: Any) -> None:
 
 
 def manual(
-    p: ParentEnv, *args: str, ok: bool = True, **extra: str
+    p: ParentEnv, *args: str, ok: bool = True, runner: Path | None = None, **extra: str
 ) -> subprocess.CompletedProcess[str]:
-    runner = p.root / "fake-runner"
-    runner.write_text(
-        f"#!{sys.executable}\n"
-        + Path(__file__).with_name("fake_manual_worker_runner.py").read_text()
-    )
-    runner.chmod(0o700)
+    if runner is None:
+        runner = p.root / "fake-runner"
+        runner.write_text(
+            f"#!{sys.executable}\n"
+            + Path(__file__).with_name("fake_manual_worker_runner.py").read_text()
+        )
+        runner.chmod(0o700)
     response = subprocess.run(
         [
             sys.executable,
@@ -104,6 +134,7 @@ def run(
         p.note(),
         *extra,
         ok=ok,
+        runner=None,
         **env,
     )
 
@@ -170,6 +201,22 @@ def reserved(parent_env: ParentEnv, request: pytest.FixtureRequest) -> ParentEnv
         request.config.stash[MANUAL_SEED].restore(p.root)
         run_git(p.repo, "worktree", "repair")
     return p
+
+
+def test_manual_completion_preserves_worker_exit_after_publication_handoff(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    before = store(p).read_data()["parents"]["o/r#1"]
+    result = run(p, MANUAL_PUBLICATION_HANDOFF="1")
+    value = json.loads(result.stdout)
+    assert value["exit_code"] == 0 and value["runner_summary"]["result"] == "completed"
+    assert value["log_publication"]["error"] == "log_owner_mismatch"
+    assert not (state_dir(p) / "unsafe-publication").exists()
+    owner = store(p).read_data()["parents"]["o/r#1"]
+    assert owner["session"] == "codex:successor"
+    assert owner["generation"] == before["generation"] + 1
+    assert owner["tasks"]["10"]["worker_ended"]
 
 
 @pytest.mark.parametrize("version,model", [(1, None), (2, "gpt-6-astra")])
@@ -548,11 +595,21 @@ def test_register_existing_run_is_idempotent_and_keeps_external_paths_private(
                     "contract": contract,
                     "result": "running" if mode == "running" else "completed",
                     "run_id": path.name,
+                    "session_root": str(path),
                     "turn_end_reason": "completed",
                     "exit_code": 0,
                     "task_success": None,
                     "cleanup_complete": True,
                     "runtime": {"session_id": "offline-private-session"},
+                }
+            )
+        )
+        (path / "session.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "session_id": "offline-private-session",
+                    "latest_run": str(path),
                 }
             )
         )
@@ -664,13 +721,142 @@ def test_runner_failure_preserves_record_and_exit_code(
     assert output["exit_code"] == result.returncode == (2 if preflight else 7)
     assert (output["runner_summary"] is None) == preflight
     if preflight:
-        assert task(p)["worker_runs"] == []
-        assert output["launch_state"] == "rejected_before_start"
-        assert len(task(p)["launch_failures"]) == 1
-        assert task(p)["preflight"]["turns"][-1]["cancelled"]
+        # The launcher was spawned; its exit code and absent run dir do not
+        # prove that no descendant started. Keep the reservation for recovery.
+        assert len(task(p)["worker_runs"]) == 1
+        assert output["launch_state"] == "runtime_unconfirmed"
+        assert "worker_ended" not in task(p)
+        assert not task(p)["preflight"]["turns"][-1].get("cancelled")
     else:
         assert len(task(p)["worker_runs"]) == 1 and "worker_ended" in task(p)
         assert output["final_file"] == str(latest(p) / "final.md")
+
+
+@pytest.mark.parametrize("failure", ["command", "http403", "transport", "value", "os"])
+def test_admission_failure_cancels_only_reserved_run_without_github(
+    reserved: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    p = reserved
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    manual_api = importlib.import_module("parent.manual_workers")
+    admission = importlib.import_module("parent.improvement_runtime")
+    errors = importlib.import_module("issues.cli")
+    opsproc = importlib.import_module("opsproc")
+    failures = {
+        "command": opsproc.CommandError("admission command failed"),
+        "http403": errors.GitHubHTTPError("user", 403, "sustained rate limit"),
+        "transport": errors.GitHubTransportError(
+            "user", 3, "transport", "connection lost"
+        ),
+        "value": ValueError("invalid admission input"),
+        "os": OSError("admission input unavailable"),
+    }
+    runner = p.root / "never-start"
+    marker = p.root / "unexpected-runner"
+    runner.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\n"
+    )
+    runner.chmod(0o700)
+    monkeypatch.setattr(manual_api, "RUNNER", runner)
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    original = admission.execute_manual
+    requests: list[str] = []
+    reserved_path: list[Path] = []
+    calls_after_preparation: list[int] = []
+
+    def failed_admission(*args: Any, **kwargs: Any) -> Any:
+        command = args[5]
+        reserved_path.append(Path(command[command.index("--run-dir") + 1]))
+        calls_after_preparation.append(len(p.calls()))
+        # A concurrent stop/evidence update must survive targeted cancellation.
+        with registry.locked():
+            current = registry.parents["o/r#1"]["tasks"]["10"]
+            current.update(stopped=True, verification={"evidence": "concurrent proof"})
+            if failure == "command":
+                current["worker_ended"] = {
+                    "delegation_id": current["delegation_id"],
+                    "evidence": "concurrent end proof",
+                }
+            registry.save()
+
+        def unavailable(endpoint: str, **_kwargs: Any) -> Any:
+            requests.append(endpoint)
+            raise failures[failure]
+
+        monkeypatch.setattr(gh, "get", unavailable)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(admission, "execute_manual", failed_admission)
+    code, result = manual_api.run_worker(
+        gh,
+        registry,
+        1,
+        "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+        child=10,
+        prompt=Path(p.note()),
+        resume=False,
+        restart_evidence=None,
+    )
+    assert code == (127 if failure == "os" else 2)
+    assert result["launch_state"] == "rejected_before_start"
+    assert requests == ["user"] and len(p.calls()) == calls_after_preparation[0]
+    assert not marker.exists() and not reserved_path[0].exists()
+    current = task(p)
+    assert current["worker_runs"] == []
+    assert current["preflight"]["turns"][-1]["cancelled"]
+    assert (
+        current["stopped"] and current["verification"]["evidence"] == "concurrent proof"
+    )
+    assert len(current["launch_failures"]) == 1
+    if failure == "command":
+        assert current["worker_ended"]["evidence"] == "concurrent end proof"
+
+
+def test_post_spawn_persistence_failure_keeps_reservation(
+    reserved: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    p = reserved
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    manual_api = importlib.import_module("parent.manual_workers")
+    runner = p.root / "fake-launcher"
+    runner.write_text(f"#!{sys.executable}\nimport sys\nsys.stdin.buffer.read()\n")
+    runner.chmod(0o700)
+    monkeypatch.setattr(manual_api, "RUNNER", runner)
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    original_save = registry.save
+
+    def failed_save() -> None:
+        if registry.parents["o/r#1"]["tasks"]["10"].get("manual_launcher"):
+            raise OSError("post-spawn persistence unavailable")
+        original_save()
+
+    monkeypatch.setattr(registry, "save", failed_save)
+    with pytest.raises(
+        ValueError, match="launcher started but admission persistence failed"
+    ):
+        manual_api.run_worker(
+            gh,
+            registry,
+            1,
+            "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+            child=10,
+            prompt=Path(p.note()),
+            resume=False,
+            restart_evidence=None,
+        )
+    current = task(p)
+    assert len(current["worker_runs"]) == 1
+    assert "launch_failures" not in current and "worker_ended" not in current
+    assert not current["preflight"]["turns"][-1].get("cancelled")
 
 
 def test_record_result_rejects_cancelled_only_history(reserved: ParentEnv) -> None:
@@ -733,6 +919,7 @@ def test_review_request_uses_current_registry_run(
     response = manual(
         p,
         "review-request",
+        *p.review_flags(),
         "--prs",
         "100",
         "--instruction-file",
@@ -868,7 +1055,7 @@ def test_parent_can_verify_artifacts_independent_of_planning_phase(
         p.note("実差分とテストを親が確認した。"),
     )
     assert json.loads(p.cli("reconcile").stdout)["tasks"][0]["artifacts_accepted"]
-    manual(p, "review-prepare", "--prs", "100")
+    manual(p, "review-prepare", *p.review_flags(), "--prs", "100")
     assert len(task(p)["worker_runs"]) == 1
 
 

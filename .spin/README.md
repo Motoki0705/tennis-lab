@@ -46,6 +46,7 @@ shaderの両方をimportして検証する。
 | `spin typecheck [PATHS...]` | 既定では `origin/main` との差分だけを mypy で検査する。`--all` で全体を検査する |
 | `spin test [PYTEST_ARGS...]` | `local_data` / `cuda` marker を除外して pytest を実行する。`--all`, `--coverage`, `--serial` を利用できる |
 | `spin setup [--no-hooks]` | `uv sync --locked` と pre-commit hook の導入を行う |
+| `spin worktrees scan\|cleanup [--dry-run]` | 作成から336時間の登録worktree期限を確認・強制削除する。`spin ops` の `worktree-cleanup` で日次timerを制御する。[契約と状態](../.agents/ops/worktree_cleanup/README.md) |
 
 例:
 

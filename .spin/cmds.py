@@ -167,6 +167,31 @@ def ops(arguments: tuple[str, ...]) -> None:
     raise click.exceptions.Exit(result.returncode)
 
 
+@click.command(
+    context_settings={"ignore_unknown_options": True, "help_option_names": []}
+)
+@click.argument("arguments", nargs=-1, type=click.UNPROCESSED)
+def worktrees(arguments: tuple[str, ...]) -> None:
+    """Scan or forcibly expire worktrees: scan/cleanup [--dry-run]."""
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / ".agents/ops/checkout_job.py"),
+            "--repo",
+            str(REPO_ROOT),
+            "--",
+            sys.executable,
+            "-m",
+            "worktree_cleanup",
+            *arguments,
+        ],
+        cwd=REPO_ROOT,
+        env={**os.environ, "PYTHONPATH": str(REPO_ROOT / ".agents/ops")},
+        check=False,
+    )
+    raise click.exceptions.Exit(result.returncode)
+
+
 def _uv_tool_bin_directory() -> Path | None:
     result = subprocess.run(
         ["uv", "tool", "dir", "--bin"],

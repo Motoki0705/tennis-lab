@@ -3,6 +3,8 @@
 親が確定・指示したPR群を、Codexの実行1回で統合レビューする。
 PR open/push/CI完了・時間経過から起動するpoll、hook、timerはない。
 入力の正本は [parentのreview-request契約](../parent/README.md#レビュー要求契約schema-version-3version-1と2の読取互換)。
+通常設定selectでは親が `review-prepare` / `review-request --prs` に `--review-model` と `--model-reason-file` を渡す。
+具体例・Astraへの引継ぎ・使用量確認・fixedへの復帰は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)を参照。
 担当親自身が、同じ環境由来セッションID・ghアカウント・ローカルstateで実行する。
 review/resolve入口はmerge・ラベル操作・子への修正委任を行わない。
 
@@ -226,7 +228,8 @@ final・候補・結果・公開コメントは保持し、正式なfailed結果
 `superseding_reviews` でも通常の後続requestとして残り、より古い証拠の採用を許可しない。
 終結runを採用元やcoverageに使わず、他runの未解決指摘・証拠待ち・解消記録も変更しない。
 
-追加AIレビューは `parent review-prepare --reason-file` → `review-request` の新しい明示指示だけで受理する。
+追加AIレビューは `parent review-prepare --reason-file FILE --review-model MODEL --model-reason-file FILE`
+→ `review-request --run-id ID` の新しい明示指示だけで受理する。
 後続runは結果の `exception` と人間向けコメントに、通常1回の予算を超える例外として理由・先行runを表示する。
 
 ### 保存候補を含む別runへの引継ぎ
@@ -459,7 +462,10 @@ resolveは同run/result・元のレビューhead・最新fixed snapshotに結び
 ## merge gate
 
 担当親自身が、parent CLI・reviewと同じセッション環境、ghアカウント、private stateで明示実行する。
-GitHub API・CI取得・merge通信中はregistry lockを解放し、戻ると担当親の状態変更を照合する。
+GitHub API・CI取得・merge通信とgit・runtime/events/finalの検証中はregistry lockを解放し、
+戻ると担当親の状態変更と固定入力の同一性を照合する。
+review CLIの6入口も同じ[transaction/client契約](../parent/README.md#取得範囲と計測)を使う。
+受付・agent直前・postcheck・公開での競合は終了値2で停止し、通常の未完了へ変換しない。
 gateのGETは鮮度を優先して再取得し、通信待ちで他の親を止めない。
 timer・poll・hook・agent呼出はない。判定は `merge_gate_policy.evaluate_parent_gate(MergeInput)`、
 I/Oは `merge_gate.py` に分離する。共通引数はサブコマンドより前に置く。

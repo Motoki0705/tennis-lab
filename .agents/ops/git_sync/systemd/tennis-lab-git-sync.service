@@ -8,6 +8,7 @@ WorkingDirectory=%h/projects/tennis-lab
 Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 UMask=0077
 ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/git_sync/sync.py --repo %h/projects/tennis-lab
+SuccessExitStatus=75
 TimeoutStartSec=5min
 TimeoutStopSec=30
 KillMode=control-group

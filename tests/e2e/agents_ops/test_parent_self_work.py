@@ -275,7 +275,7 @@ def test_review_only_history_prevents_silent_target_switch(
     state = p.state()
     state["prs"] = [p.pr(100, 10, run_git(tree, "rev-parse", "HEAD"), "codex/reviewed")]
     p.save(state)
-    p.cli("review-prepare", "--prs", "100")
+    p.cli("review-prepare", *p.review_flags(), "--prs", "100")
     row = store(p).read_data()["parents"]["o/r#1"]
     assert row["tasks"] == {} and row["reviews"]
     state = p.state()
@@ -309,7 +309,7 @@ def test_unregistered_self_pr_blocks_new_child_execution_and_acceptance(
             str(tree),
         ),
         ("record-result", "--child", "10", "--evidence-file", p.note()),
-        ("review-prepare", "--prs", "100"),
+        ("review-prepare", *p.review_flags(), "--prs", "100"),
         ("workflow-report", "--spec", completion_spec(p)),
     ):
         denied = p.cli(*command, ok=False)
@@ -491,7 +491,7 @@ def test_postmerge_worker_check_requires_parent_acceptance(gate_env: GateEnv) ->
         "--prompt-file",
         p.note("merge後確認の補足を同じworkerに依頼する。"),
         ok=False,
-        MANUAL_PREFLIGHT_FAILURE="1",
+        MANUAL_ADMISSION_FAILURE="1",
     )
     assert json.loads(rejected.stdout)["launch_state"] == "rejected_before_start"
     current = store(p).read_data()["parents"]["o/r#1"]["tasks"]["1"]

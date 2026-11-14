@@ -41,12 +41,13 @@ repo rootを子へ渡し、入口の `require_checkout_job()` が実FDのinode�
 |---|---|
 | `ops-report/ops_report.py` の全subcommand | 有限launcher。直接file実行は拒否 |
 | `cleanup/cleanup.py` のscan/apply-auto/delete | 有限launcher。直接file実行は拒否 |
+| `worktree_cleanup` のscan/cleanup（dry-run含む） | 有限launcher。直接module実行は拒否 |
 | `dispatcher run` / `dispatcher.judgement` | 有限launcher。直接の判定起動は拒否 |
 | `dispatcher supervise` | `--supervisor` 専用launcher。直接CLIや有限launcherからは拒否 |
 | `board web` | `--board-web-port PORT` 専用launcher。直接CLIからは拒否 |
 | dispatcherのinit/status/enable/disable/shutdown等、boardの投稿・状態CLI | 判定agentや常駐jobを起動しない管理入口。直接利用可能 |
 
-新しい有限job（worktree-cleanup等）はCLIのproject importより前に次を置き、serviceと手動例を
+新しい有限jobはCLIのproject importより前に次を置き、serviceと手動例を
 上の有限launcherへ接続する。CLIを呼ばない内部Python APIのテストは、必要な依存を直接渡してよい。
 
 ```python
@@ -424,9 +425,11 @@ effortはmaxを必須とする。親effortは設定または `--effort` で変�
 
 ### レビュー専用の選択入力
 
-`agents.conf`の`REVIEW_SELECTION_MODE`は`fixed`（既定）または`select`。
+`agents.conf`の`REVIEW_SELECTION_MODE`は`select`（通常設定）または`fixed`。
 `REVIEW_SELECTION_POLICY_VERSION`と`REVIEW_CODEX_ALLOWED_PAIRS`は方針の版と許可するmodel:effortの組を定義する。
 固定値・tierは既存の`REVIEW_CODEX_*`を使い、固定値自身も許可された組であることを必須とする。
+select時の実行model/effortは明示選択を使い、`REVIEW_CODEX_MODEL`を省略時の振替先にしない。
+親の選択手順・使用量確認・Astra固定への復帰は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)を参照。
 同名の環境変数を読まず、設定欠落・未知の版・不正な組・重複を拒否する。
 
 正式レビューは親CLIが固定した選択を`--review-selection-file FILE`で渡す。
@@ -639,6 +642,18 @@ stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, 
 | `stopped` | 130 / 143 | SIGINT / SIGTERM、またはstopで中断を照合 |
 | `descendants_reaped` | 1 | CLI終了後も残ったtoolsを回収。タスク完了にはしない |
 | `cleanup_failed` | 1 | プロセス回収未確認。supervisorが照合するまで再開しない |
+
+Codexの `error` は原文を `runtime_errors` と `events.jsonl` に保持する。
+既知の `Reconnecting... n/m (workspace routing discovery timed out)`（正整数でn<=m）だけは、
+同じrunの開始後、最終応答と唯一のturn.completedより前にあり、全errorがこの形式の場合に回復候補とする。
+CLI終了値0、finalファイルとの一致、session/turnと実効設定、cleanup完了、残存プロセスなし、
+強制回収された子孫なしを従来どおり確認した後だけcompletedになる。
+未知error・turn.failed・完了後のerror・最終文不一致・未完了・停止・回収失敗は成功へ変えない。
+`lib.agent_events.runtime_errors_failed(record)` が保存イベント・final・終了証拠を再照合する共通分類関数で、
+worker公開・dispatcher判定・ops-reportも使う。非空のruntime_errorsだけで失敗へ戻さず、
+completedラベルだけでエラーを無視しない。既存のfailed resultを遡及変更する機能ではない。
+runtime.runtime_errorsは必須で、明示的な空配列だけがエラーなしを表す。キー欠落・null・不正型を
+空配列で補わず失敗として扱う。呼出元による契約・実効設定の検査も維持する。
 
 設定・入力・再開契約の事前拒否は終了値2でCLIを起動しない。run dir作成前の拒否は
 result.jsonを生成しないので、呼出元は終了値とJSONの有無を両方確認する。

@@ -79,14 +79,22 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
         (ops / "lib").mkdir()
         shutil.copy(ROOT / ".agents/ops/lib/checkout_lock.py", ops / "lib")
         shutil.copy(ROOT / ".agents/ops/install_units.sh", ops)
-        for job in ("dispatcher", "ops-report", "cleanup", "board", "git_sync"):
+        for job in (
+            "dispatcher",
+            "ops-report",
+            "cleanup",
+            "board",
+            "parent",
+            "git_sync",
+            "worktree_cleanup",
+        ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
         spin.mkdir()
         shutil.copy(ROOT / ".spin/cmds.py", spin)
         (repo / "pyproject.toml").write_text(
             '[tool.spin]\npackage = "src"\n[tool.spin.commands]\n'
-            'Ops = [".spin/cmds.py:ops"]\n'
+            'Ops = [".spin/cmds.py:ops", ".spin/cmds.py:worktrees"]\n'
         )
         subprocess.run(["git", "init", "-q", str(repo)], check=True)
         fake = Path(__file__).with_name("fake_ops_control.py").read_text()
@@ -221,7 +229,9 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "report",
         "triage",
         "cleanup",
+        "proposal-expiry",
         "git-sync",
+        "worktree-cleanup",
     }
     report = next(row for row in data["targets"] if row["target"] == "report")
     units = {unit["unit"]: unit for unit in report["units"]}
@@ -232,6 +242,39 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
     assert units[REPORT]["last_result"] == "exit-code"
     assert units[REPORT]["exec_main_status"] == "17"
     assert units[REPORT]["next_elapse_realtime"] is None
+
+
+@pytest.mark.parametrize(
+    "exit_status,result,expected",
+    [
+        (75, "exit-code", "deferred"),
+        (75, "success", "deferred"),
+        (2, "exit-code", "failed"),
+        (75, "signal", "failed"),
+    ],
+)
+def test_git_sync_status_distinguishes_deferral_from_failure(
+    control: ControlEnv, exit_status: int, result: str, expected: str
+) -> None:
+    service = "tennis-lab-git-sync.service"
+    state = control.read()
+    state["units"][service].update(
+        ActiveState="failed",
+        SubState="failed",
+        Result=result,
+        ExecMainStatus=str(exit_status),
+    )
+    control.write(state)
+    data = checked(control, "status", "git-sync")
+    unit = next(u for u in data["targets"][0]["units"] if u["unit"] == service)
+    assert unit["last_outcome"] == expected
+    assert unit["active_state"] == "failed"  # Keep the manager's raw evidence.
+    source = control.repo / ".agents/ops/git_sync/systemd" / service
+    assert "75" in next(
+        line.partition("=")[2].split()
+        for line in source.read_text().splitlines()
+        if line.startswith("SuccessExitStatus=")
+    )
 
 
 @pytest.mark.parametrize("mode", ["bus_unreachable", "manager_missing"])
@@ -383,7 +426,13 @@ def test_manager_loss_during_mutation_stays_unavailable(
     else:
         assert control.read()["units"][SUPERVISOR]["UnitFileState"] == "enabled"
         for timer in (REPORT_TIMER, TRIAGE_TIMER):
-            assert ["systemctl", "--user", "enable", "--now", timer] not in control.calls()
+            assert [
+                "systemctl",
+                "--user",
+                "enable",
+                "--now",
+                timer,
+            ] not in control.calls()
             assert control.read()["units"][timer]["UnitFileState"] == "disabled"
 
 
@@ -442,7 +491,10 @@ def test_off_manager_loss_keeps_reports_and_attempts_all_stops(
             assert control.read()["units"][timer]["UnitFileState"] != "enabled"
             assert control.read()["units"][service]["ActiveState"] == "inactive"
     else:
-        assert [report["outcome"] for report in others] == ["unavailable", "unavailable"]
+        assert [report["outcome"] for report in others] == [
+            "unavailable",
+            "unavailable",
+        ]
         assert all(report["errors"] for report in others)
         assert control.read()["units"][REPORT]["ActiveState"] == "active"
 
@@ -457,7 +509,10 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
     assert json.loads(result.stdout)["targets"][0]["units"] == []
 
 
-@pytest.mark.parametrize("target", ["report", "triage", "cleanup", "git-sync"])
+@pytest.mark.parametrize(
+    "target",
+    ["report", "triage", "cleanup", "proposal-expiry", "git-sync", "worktree-cleanup"],
+)
 def test_run_starts_only_oneshot_without_enabling_timer(
     control: ControlEnv, target: str
 ) -> None:
@@ -466,7 +521,9 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "report": "tennis-lab-ops-report",
         "triage": "tennis-lab-ops-triage",
         "cleanup": "tennis-lab-cleanup",
+        "proposal-expiry": "tennis-lab-improvement-expire",
         "git-sync": "tennis-lab-git-sync",
+        "worktree-cleanup": "tennis-lab-worktree-cleanup",
     }[target]
     assert ["systemctl", "--user", "start", prefix + ".service"] in control.calls()
     assert control.read()["units"][prefix + ".timer"]["UnitFileState"] == "disabled"
@@ -600,3 +657,48 @@ def test_new_target_only_needs_registry_entry_and_unit_files(
     for source in (ops / "future/systemd").iterdir():
         assert (config / source.name).is_symlink()
         assert (config / source.name).resolve() == source
+
+
+def test_proposal_expiry_timer_is_installed_without_automatic_extraction(
+    control: ControlEnv,
+) -> None:
+    result = control.run("install", "proposal-expiry")
+    assert result.returncode == 0, result.stderr
+    config = Path(control.environment["XDG_CONFIG_HOME"]) / "systemd/user"
+    assert {p.name for p in config.iterdir()} == {
+        "tennis-lab-improvement-expire.service",
+        "tennis-lab-improvement-expire.timer",
+    }
+    timer = (config / "tennis-lab-improvement-expire.timer").read_text()
+    service = (config / "tennis-lab-improvement-expire.service").read_text()
+    assert "OnCalendar=daily" in timer and "Persistent=true" in timer
+    assert "Type=oneshot" in service and "improvement-expire" in service
+    assert "improvement-extract" not in service and "PYTHONPATH=.agents/ops" in service
+    assert [call for call in control.calls() if call[2] != "show"] == [
+        ["systemctl", "--user", "daemon-reload"]
+    ]
+
+
+def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(
+    control: ControlEnv,
+) -> None:
+    target = "worktree-cleanup"
+    stem = "tennis-lab-worktree-cleanup"
+    assert control.run("install", target).returncode == 0
+    checked(control, "on", target)
+    data = checked(control, "status", target)
+    assert {unit["unit"] for unit in data["targets"][0]["units"]} == {
+        stem + ".timer",
+        stem + ".service",
+    }
+    assert control.run("logs", target).returncode == 0
+    checked(control, "off", target)
+    assert ["systemctl", "--user", "stop", stem + ".service"] in control.calls()
+    source = control.repo / ".agents/ops/worktree_cleanup/systemd"
+    timer = (source / (stem + ".timer")).read_text()
+    assert "OnCalendar=*-*-* 04:30:00 Asia/Tokyo" in timer
+    assert "RandomizedDelaySec" not in timer
+    assert "Persistent=true" in timer
+    service = (source / (stem + ".service")).read_text()
+    assert "-m worktree_cleanup cleanup" in service
+    assert "KillMode=control-group" in service

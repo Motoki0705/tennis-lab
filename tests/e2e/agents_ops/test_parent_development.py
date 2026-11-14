@@ -10,7 +10,7 @@ import shutil
 import signal
 import subprocess
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 from typing import Any, cast
 
@@ -716,22 +716,48 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    _, _, env = workflow(d, monkeypatch)
+    development, _, env = workflow(d, monkeypatch)
     tree = child_tree(d)
     cli = importlib.import_module("parent.cli")
     original_get = d.h.gh.get
     operations = []
+    held: list[str] = []
+    writes = []
     operation = cli.Store.operation
+    delegate = cli.ParentSession.delegate
+    stop = development.stop_worker
+
+    def reserve_with_operation(session: Any, *args: Any, **kwargs: Any) -> Any:
+        assert held == ["o/r#1"], "child reservation must hold the operation lock"
+        writes.append("reserve")
+        return delegate(session, *args, **kwargs)
+
+    def stop_with_operation(session: Any, *args: Any, **kwargs: Any) -> Any:
+        assert held == ["o/r#1"], "targeted stop must hold the operation lock"
+        writes.append("stop")
+        return stop(session, *args, **kwargs)
 
     @contextmanager
     def traced_operation(store: Any, key: str) -> Iterator[None]:
         operations.append(key)
         with operation(store, key):
-            yield
+            held.append(key)
+            try:
+                yield
+            finally:
+                held.pop()
+
+    reconcile = d.mod.Supervisor.reconcile
+
+    def reconcile_without_operation(control: Any, **kwargs: Any) -> None:
+        assert not held, (
+            "supervisor publication must not inherit the CLI operation lock"
+        )
+        reconcile(control, **kwargs)
 
     def bound_github(repo: str, *, store: Any) -> Any:
         def get(endpoint: str, *, missing_parent: bool = False) -> object:
-            with store.unlocked_read():
+            with store.unlocked_read() if store is not None else nullcontext():
                 return original_get(endpoint, missing_parent=missing_parent)
 
         monkeypatch.setattr(d.h.gh, "get", get)
@@ -739,6 +765,9 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
 
     monkeypatch.setattr(cli, "GitHub", bound_github)
     monkeypatch.setattr(cli.Store, "operation", traced_operation)
+    monkeypatch.setattr(cli.ParentSession, "delegate", reserve_with_operation)
+    monkeypatch.setattr(development, "stop_worker", stop_with_operation)
+    monkeypatch.setattr(d.mod.Supervisor, "reconcile", reconcile_without_operation)
     for key in ("CODEX_SESSION_ID", "CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID"):
         monkeypatch.delenv(key, raising=False)
     for key, value in env.items():
@@ -775,9 +804,10 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     )
     result = json.loads(capsys.readouterr().out)
     assert result["result"] == "reserved"
-    assert operations == ["o/r#1"]
+    assert writes == ["reserve"] and set(operations) == {"o/r#1"}
+    before_inspection = list(operations)
     assert cli.main([*common, "inspect-worker", "--child", "1"]) == 0
-    assert operations == ["o/r#1"]
+    assert operations == before_inspection
     result = json.loads(capsys.readouterr().out)
     assert result["termination_confirmed"] is False and result["task_success"] is None
     spec = d.h.root / "stop.json"
@@ -796,7 +826,7 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
         )
     )
     assert cli.main([*common, "stop-worker", "--child", "1", "--spec", str(spec)]) == 0
-    assert operations == ["o/r#1", "o/r#1"]
+    assert writes == ["reserve", "stop"] and set(operations) == {"o/r#1"}
     assert json.loads(capsys.readouterr().out)["result"] == "stop_requested"
     assert d.row()["tasks"]["1"]["worker_ended"]
     assert not (d.h.root / "unused-state").exists()
@@ -1721,7 +1751,9 @@ def test_handoff_continues_original_worker_session(
             new_session = session
         with new_session.store.locked():
             if change == "generation":
-                new_session.accept("既存worktreeと元workerを引き継ぐ。")
+                new_session.accept(
+                    "既存worktreeと元workerを引き継ぐ。", summary="既存workerの引継ぎ"
+                )
                 # A crashed old supervisor may have missed a terminal run.
                 # Cleanup is real; only the dispatcher's end marker is absent.
                 missed = new_session.row["dispatch"]["jobs"][first["job_id"]]
@@ -1973,7 +2005,7 @@ def test_handoff_transfers_control_before_publication_and_old_parent_completion(
 
     monkeypatch.setattr(successor, "post", completion_during_publication)
     with successor.store.locked():
-        successor.accept("保存済み作業を引き継ぐ。")
+        successor.accept("保存済み作業を引き継ぐ。", summary="保存済み作業の引継ぎ")
         assert successor.owner()["status"] == "active"
         with pytest.raises(ValueError, match="別セッション"):
             session.owner()

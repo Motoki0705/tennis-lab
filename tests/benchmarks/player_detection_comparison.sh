@@ -44,5 +44,5 @@ fi
     "evaluation.score_threshold=${detector[3]}"
 
 "$python" "$code_root/tests/benchmarks/player_detection_clips.py" \
-    --repo "$asset_root" --dataset "$asset_root/data/tennis_multivew/processed/meiji_3cam/dataset" \
+    --repo "$asset_root" --dataset "$asset_root/data/tennis_multiview/processed/meiji_3cam/dataset" \
     --report "$report/meiji"

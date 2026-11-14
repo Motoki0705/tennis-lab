@@ -105,9 +105,20 @@ def agreement_comment(n: int) -> dict[str, Any]:
 class FakeGitHub:
     repo = "o/r"
 
+    def improvement_extractions(self, store: Any) -> dict[str, Any]:
+        return cast(
+            dict[str, Any],
+            importlib.import_module("parent.github").GitHub.improvement_extractions(
+                self, store
+            ),
+        )
+
     def __init__(self) -> None:
         self._fresh = False
         self._store = None
+        self._outside_store = None
+        self._cache: dict[Any, Any] = {}
+        self.evidence_directory: Path | None = None
         self.issues = {1: issue(1)}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -186,6 +197,15 @@ class FakeGitHub:
 
     def fresh_reads(self) -> Any:
         return importlib.import_module("parent.github").GitHub.fresh_reads(self)
+
+    def _require_scope(self) -> None:
+        importlib.import_module("parent.github").GitHub._require_scope(self)
+
+    def io_scope(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.io_scope(self)
+
+    def detached(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.detached(self)
 
     def identity(self, raw: object) -> int:
         return cast(
@@ -955,6 +975,18 @@ def test_runtime_failure_is_not_task_success(
     result = h.run()
     assert result["result"] == "failed" and result["candidates"] == []
     assert h.gh.writes == []
+
+
+def test_recovered_routing_error_is_accepted_by_judgement_consumer(
+    h: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_JUDGEMENT_SCENARIO", "reconnect")
+    h.response(decision(1))
+    result = h.run()
+    assert result["result"] == "recorded", result
+    record = json.loads((h.run_dir / "agent-runtime/result.json").read_text())
+    assert record["runtime"]["runtime_errors"] and record["result"] == "completed"
 
 
 def test_same_inputs_still_run_agent_and_update_only_changed_comment(
@@ -1784,7 +1816,7 @@ def test_rejudgement_after_assignment_updates_display_without_revoking_basis(
             candidate["generation"],
         )
         owner = session_class(h.gh, h.store, 1, "claude:private-owner")
-        owner.register()
+        owner.register("判定後の担当表示")
     h.response(decision(1, "existing_owner"))
     second = h.run(runner=h.fake_runner)
     assert second["result"] == "recorded", second

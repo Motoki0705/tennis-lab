@@ -15,7 +15,7 @@ camera-local raw ID → 匿名人物ID、ラベル推移、足元、参照boxの
 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   /home/kamimura/projects/tennis-lab/.venv/bin/python \
   -m src.tasks.player_association.scripts.review_dataset \
-  --dataset-root /home/kamimura/projects/tennis-lab/data/tennis_multivew/processed/meiji_3cam/dataset \
+  --dataset-root /home/kamimura/projects/tennis-lab/data/tennis_multiview/processed/meiji_3cam/dataset \
   --artifact-root /home/kamimura/projects/tennis-lab/outputs \
   --sides court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json \
   --score-report player_association/evaluate/meiji_association/i933-evaluate-full-v4-20260927/evaluate.json \
@@ -44,7 +44,7 @@ OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 \
 [配列codec](../../../tennis_scene/pipeline/storage/codec.py)。main標準のschemaとraw/group IDの関係は
 [pipeline README](../../../tennis_scene/pipeline/README.md)に従う。
 
-現物は`data/tennis_multivew/processed/meiji_3cam/dataset/{dataset.json,videos/*/clips/*/clip.json}`、
+現物は`data/tennis_multiview/processed/meiji_3cam/dataset/{dataset.json,videos/*/clips/*/clip.json}`、
 clipごとの`annotations/player_association/{labels.json,review.yaml}`。
 各reviewの`observe_run`が指定する観測runだけを開き、候補directoryを探索して代替しない。
 初期runの`observe.json`は`stores/<clip>/scene.json`、追加参照の`person-execute.json`は

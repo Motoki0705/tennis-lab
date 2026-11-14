@@ -84,6 +84,7 @@ def test_judgement_publication_preserves_human_delegate_review_and_merge(
     prepared = json.loads(
         p.cli(
             "review-prepare",
+            *p.review_flags(),
             "--prs",
             "100",
             "101",
@@ -231,6 +232,7 @@ def test_judgement_validation_and_parent_control_of_instructions(
     assert all(row["decision"] == "merge" for row in rows.values())
     p.cli(
         "review-prepare",
+        *p.review_flags(),
         "--prs",
         "100",
         "101",
@@ -243,7 +245,9 @@ def test_judgement_validation_and_parent_control_of_instructions(
     before = p.state(), registry(p).read_bytes()
     responses = [
         p.cli(*delegation_args(p.worktree("blocked")), ok=False),
-        p.cli("review-prepare", "--prs", "100", "101", "102", ok=False),
+        p.cli(
+            "review-prepare", *p.review_flags(), "--prs", "100", "101", "102", ok=False
+        ),
         g.cli("merge"),
     ]
     assert all(response.returncode == 2 for response in responses)

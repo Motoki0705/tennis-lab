@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import json
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -41,6 +42,7 @@ def test_handoff_accepts_only_completed_current_worker(
     saved: list[bool] = []
     session = SimpleNamespace(
         row={"tasks": {"10": task}},
+        gh=SimpleNamespace(io_scope=nullcontext),
         store=SimpleNamespace(directory=tmp_path, save=lambda: saved.append(True)),
     )
     contract: dict[str, Any] = {

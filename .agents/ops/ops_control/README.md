@@ -32,8 +32,10 @@ user managerが停止していても、過去のjournalは読める。
 | `report` | 運用レポートの予定確認timer/service |
 | `triage` | 採用提案のissue化timer/service |
 | `agents` | dispatcher・report・triageの集合。同じ個別操作を順番に行う |
+| `proposal-expiry` | 改善提案の[期限切れclose](../parent/improvements.md#期限切れcloseとunit導入)を日次実行するtimer/service。agentsに含めない |
 | `cleanup` | 既存のmerge済みbranch整理timer/service。agentsに含めない。worktreeの期限削除とは別 |
 | `git-sync` | [メインcheckoutの30分周期fast-forward](../git_sync/README.md)。agentsに含めない |
+| `worktree-cleanup` | [作成から336時間のworktree強制削除](../worktree_cleanup/README.md)。毎日04:30 Asia/Tokyo。agentsに含めない |
 
 `on` は `enable --now` を実行し、永続的な `enabled` と `active` を照合する。
 dispatcherは先に既存CLIの `enable` を実行する。初回だけ [dispatcherの導入手順](../dispatcher/README.md#systemdへの導入有効化停止)
@@ -79,6 +81,7 @@ user managerへの接続を操作前に確認する。bus接続不能・manager�
 | `unit_file_state` | 次回起動の有効化状態。`enabled`、`disabled`、`linked`、`static`などをそのまま区別 |
 | `active_state` / `sub_state` | 現在の稼働状態 |
 | `last_result` / `exec_main_status` | serviceの最終結果と終了status |
+| `last_outcome` | 延期の終了statusを宣言した対象の判定。git-syncの75は `deferred`、通常終了は `success`、他の異常終了は `failed`。生のsystemd状態も保持する |
 | `next_elapse_realtime` / `next_elapse_monotonic` | timerの次回予定。それぞれの時計系を保持 |
 | `last_trigger` | timerの最終発火 |
 | `fragment_path` | user managerが読んだunitソース |

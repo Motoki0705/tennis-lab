@@ -1789,3 +1789,25 @@ def test_manual_validation_uses_production_repair_flow_without_github_writes(
     assert env.mutations() == []
     with pytest.raises(validation.agy.AgyError):
         validation.agy._check_user_settings(env.root)
+
+
+@pytest.mark.parametrize("kind", ["proposal", "extraction"])
+def test_improvement_projection_and_approved_extraction_are_not_supplemented(
+    supplement_env: SupplementEnv, kind: str
+) -> None:
+    env = supplement_env
+    state = env.state()
+    marker = (
+        "<!-- parent-improvement-proposal:v1 parent=2 generation=1 -->"
+        if kind == "proposal"
+        else "<!-- parent-improvement-extraction:v1 parent=2 proposal=3 candidates=I-2-first -->"
+    )
+    state["issue"]["body"] = marker + "\n\n" + env.original
+    if kind == "proposal":
+        state["issue"]["labels"].append({"name": "issue:proposal"})
+    env.save(state)
+    assert env.run("supplement") == 0
+    assert env.bundle()["status"] == "not_target"
+    assert env.calls("agy") == []
+    assert env.run("apply") == 0
+    assert env.state()["issue"]["body"] == state["issue"]["body"]

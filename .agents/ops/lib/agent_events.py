@@ -16,6 +16,68 @@ class EvidenceError(ValueError):
     """Runtime configuration evidence is missing or disagrees with the selection."""
 
 
+def reconnect_notice(event: Any) -> bool:
+    """Only the observed routing retry diagnostic is eligible for recovery."""
+    if not isinstance(event, dict) or set(event) != {"type", "message"}:
+        return False
+    if event["type"] != "error" or not isinstance(event["message"], str):
+        return False
+    match = re.fullmatch(
+        r"Reconnecting\.\.\. ([1-9][0-9]*)/([1-9][0-9]*) "
+        r"\(workspace routing discovery timed out\)",
+        event["message"],
+    )
+    return bool(match and int(match[1]) <= int(match[2]))
+
+
+def runtime_errors_failed(record: dict[str, Any]) -> bool:
+    """Recheck recovered diagnostics against the original, completed run.
+
+    Raw errors remain in result.json and events.jsonl. A completed label alone
+    never authorizes ignoring them, and this does not reclassify historical
+    failed results. Callers retain their contract/effective-setting checks.
+    """
+    try:
+        errors = record["runtime"]["runtime_errors"]
+        if not isinstance(errors, list):
+            return True
+        if not errors:
+            return False
+        settings = record["contract"]["settings"]
+        if (
+            settings["agent"] != "codex"
+            or record.get("result") != "completed"
+            or record.get("turn_end_reason") != "completed"
+            or record.get("exit_code") != 0
+            or record.get("cli_exit_code") != 0
+            or record.get("cleanup_complete") is not True
+            or record.get("terminated_pids") != []
+            or record.get("evidence_error")
+            or record.get("recovery_error")
+        ):
+            return True
+        directory = Path(record["run_dir"])
+        final = directory / "final.md"
+        raw = directory / "events.jsonl"
+        if final.is_symlink() or raw.is_symlink():
+            return True
+        info = record["runtime"]
+        identifier(info["session_id"])
+        identifier(info["turn_id"])
+        events = Events("codex", settings["selected"], info["session_id"])
+        for line in raw.read_bytes().splitlines():
+            if line.strip():
+                events.feed(line)
+        events.validate(final)
+        return (
+            events.failed
+            or events.errors != errors
+            or (events.turn is not None and events.turn != info["turn_id"])
+        )
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return True
+
+
 def _invalid_constant(value: str) -> Any:
     raise ValueError("non-finite value in runtime JSON")
 
@@ -230,6 +292,11 @@ class Events:
         self.completed = False
         self.failed = False
         self.errors: list[Any] = []
+        self._event_index = 0
+        self._message_index = -1
+        self._error_index = -1
+        self._turn_starts = 0
+        self._retry_order_valid = True
         self.final: str | None = None
         self.output_schema = output_schema
         self.structured_output: Any = None
@@ -272,28 +339,51 @@ class Events:
         if not isinstance(event, dict) or not isinstance(event.get("type"), str):
             raise ValueError("CLI output is not a structured event")
         kind = event["type"]
+        self._event_index += 1
         if self.agent == "codex":
             if kind == "thread.started":
                 if self.started:
                     raise ValueError("duplicate runtime session start")
                 self.session_id(event.get("thread_id"))
                 self.started = True
-            elif kind == "turn.started" and event.get("turn_id"):
-                self.turn = identifier(event["turn_id"])
+            elif kind == "turn.started":
+                self._turn_starts += 1
+                if self.completed or self._turn_starts > 1:
+                    raise ValueError("multiple turns in one CLI stream")
+                if event.get("turn_id"):
+                    self.turn = identifier(event["turn_id"])
             elif kind == "item.completed":
                 item = event.get("item")
                 if not isinstance(item, dict):
                     raise ValueError("invalid completed item")
                 if item.get("type") == "agent_message":
+                    if self.completed:
+                        raise ValueError("agent message after turn completion")
                     self.final = item.get("text")
+                    self._message_index = self._event_index
             elif kind == "turn.completed":
                 if self.completed:
                     raise ValueError("duplicate completed turn")
                 self.completed = True
                 self.token_usage(event.get("usage"), "turn.completed")
+                if (
+                    self.errors
+                    and self.started
+                    and self._turn_starts == 1
+                    and self._retry_order_valid
+                    and all(reconnect_notice(error) for error in self.errors)
+                    and self._error_index < self._message_index < self._event_index
+                    and isinstance(self.final, str)
+                    and self.final.strip()
+                ):
+                    self.failed = False
             elif kind in {"turn.failed", "error"}:
                 self.failed = True
                 self.errors.append(event)
+                self._error_index = self._event_index
+                self._retry_order_valid &= (
+                    self.started and self._turn_starts == 1 and not self.completed
+                )
         else:
             if kind == "system" and event.get("subtype") == "init":
                 if self.started:

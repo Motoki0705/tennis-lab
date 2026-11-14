@@ -86,9 +86,10 @@ def candidate_records(
             sys.path.insert(0, str(directory))
     from review.review_recovery import handoff_candidates
 
-    records: list[dict[str, Any]] = handoff_candidates(
-        session.store.directory, request, result, adopting=adopting
-    )
+    with session.gh.io_scope():
+        records: list[dict[str, Any]] = handoff_candidates(
+            session.store.directory, request, result, adopting=adopting
+        )
     return records
 
 

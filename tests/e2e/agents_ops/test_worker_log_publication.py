@@ -9,7 +9,7 @@ import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
@@ -36,7 +36,33 @@ def advance_main(logs: LogEnv, files: dict[str, str]) -> str:
     git(logs.root, "add", "--", *files)
     git(logs.root, "commit", "-qm", "independent main change")
     git(logs.root, "push", "origin", "main")
-    return cast(str, git(logs.root, "rev-parse", "HEAD"))
+    head: str = git(logs.root, "rev-parse", "HEAD")
+    return head
+
+
+def test_publication_accepts_canonical_repo_url(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = logs.ready()
+    create = logs.github.create
+
+    def canonical_pr(branch: str, title: str, body: str) -> dict[str, Any]:
+        pr: dict[str, Any] = create(branch, title, body)
+        pr["html_url"] = f"https://github.com/O/R/pull/{pr['number']}"
+        for side in ("base", "head"):
+            pr[side]["repo"]["full_name"] = "O/R"
+        logs.github.rows[pr["number"]] = pr
+        return pr
+
+    monkeypatch.setattr(logs.github, "create", canonical_pr)
+    result = logs.publisher(path).publish()
+    assert result["state"] == "merged" and result["saved_to_main"] is True, result
+    row = journal.read(path)
+    assert row["source"]["repo"] == logs.github.repo == "o/r"
+    assert logs.github.get(row["pr_number"])["html_url"] == (
+        "https://github.com/O/R/pull/100"
+    )
+    assert logs.github.calls == ["create", "merge"]
 
 
 def test_capture_adapter_failure_preserves_successful_log_publication(
@@ -206,11 +232,12 @@ def test_two_parents_append_and_merge_without_shared_index(logs: LogEnv) -> None
     before = set(logs.main_files())
     # Both PRs were created before either publication advanced main. GitHub
     # retains their original base.sha even after the first one merges.
-    logs.github.mergeable = None
+    logs.github.pause_reads = True
     for path in paths:
         assert logs.publisher(path).publish()["state"] == "pending"
     for pr in logs.github.rows.values():
         pr["mergeable"] = True
+    logs.github.pause_reads = False
     for path in paths:
         assert logs.publisher(path).publish()["state"] == "merged"
     added = set(logs.main_files()) - before
@@ -272,8 +299,9 @@ def test_stale_pr_base_merges_without_changing_pinned_record(
 ) -> None:
     path = logs.ready()
     publisher = logs.publisher(path)
-    logs.github.mergeable = None
+    logs.github.pause_reads = True
     pending = publisher.publish()
+    logs.github.pause_reads = False
     assert pending["state"] == "pending" and pending["saved_to_main"] is False
     original = journal.read(path)
     number = original["pr_number"]
@@ -281,13 +309,14 @@ def test_stale_pr_base_merges_without_changing_pinned_record(
     assert logs.github.get(number)["base"]["sha"] == original["base"] != advanced
     if previous_state == "blocked":
         # Old publishers did not leave a diagnostic for this base-SHA-only error.
+        original.pop("diagnostic", None)
         journal.fail(path, original, "pr_identity_changed")
         assert "diagnostic" not in journal.read(path)
         assert publisher.publish()["state"] == "blocked"
     logs.github.rows[number]["mergeable"] = True
     result = publisher.publish(retry=previous_state == "blocked")
     assert result["state"] == "merged" and result["saved_to_main"] is True, result
-    assert pending["stage"] == "mergeability_pending" and pending["error"] is None
+    assert pending["stage"] == "pr_open" and pending["error"] == "github_failed"
     row = journal.read(path)
     for key in ("source", "receipt", "files", "base", "head", "branch", "pr_number"):
         assert row[key] == original[key]
@@ -336,8 +365,9 @@ def test_blocked_retry_rechecks_identity_and_addition_only_policy(
         advance_main(logs, {"pinned-base.txt": "must remain an ancestor\n"})
     path = logs.ready()
     publisher = logs.publisher(path)
-    logs.github.mergeable = None
+    logs.github.pause_reads = True
     assert publisher.publish()["state"] == "pending"
+    logs.github.pause_reads = False
     row = journal.read(path)
     pr = logs.github.rows[row["pr_number"]]
     pr["mergeable"] = True
@@ -375,23 +405,28 @@ def test_blocked_retry_rechecks_identity_and_addition_only_policy(
     assert "diagnostic" not in result
 
 
-def test_mergeability_becoming_unknown_remains_explicitly_pending(
-    logs: LogEnv, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("unknown_at", ["created", "fresh"])
+def test_unknown_mergeability_still_merges_pinned_head(
+    logs: LogEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    unknown_at: str,
 ) -> None:
     path = logs.ready()
     get = logs.github.get
 
     def become_unknown(number: int) -> dict[str, Any]:
-        value = get(number)
-        if logs.github.gets == 2:
+        value: dict[str, Any] = get(number)
+        if logs.github.gets == 2 and unknown_at == "fresh":
             value["mergeable"] = None
-        return cast(dict[str, Any], value)
+        return value
 
     monkeypatch.setattr(logs.github, "get", become_unknown)
+    if unknown_at == "created":
+        logs.github.mergeable = None
     result = logs.publisher(path).publish()
-    assert result["state"] == "pending" and result["stage"] == "mergeability_pending"
-    assert result["error"] is None and result["saved_to_main"] is False
-    assert logs.github.calls == ["create"]
+    assert result["state"] == "merged" and result["saved_to_main"] is True
+    assert result["error"] is None
+    assert logs.github.calls == ["create", "merge"]
     assert logs.publisher(path).publish()["saved_to_main"] is True
 
 
@@ -452,8 +487,9 @@ def test_publication_gate_rechecks_git_and_remote(logs: LogEnv, change: str) -> 
     if change == "remote_head":
         logs.github.change_head_on_second_get = True
     else:
-        logs.github.mergeable = None
+        logs.github.pause_reads = True
         assert publisher.publish()["state"] == "pending"
+        logs.github.pause_reads = False
         row = journal.read(path)
         tree = publisher.worktree(row)
         (tree / "code.py").write_text("unexpected = 2\n")
@@ -516,14 +552,7 @@ def test_standalone_worker_uses_same_log_entry(
     path = logs.ready(parent=7, child=7, instruction=instruction)
     service: Any = importlib.import_module("worker_logs.service")
     session = logs.sessions[0]
-    store = type(
-        "Store",
-        (),
-        {
-            "directory": logs.state,
-            "read_data": lambda self: {"parents": {"o/r#7": session.row}},
-        },
-    )()
+    store = importlib.import_module("parent.state").Store(logs.state)
     github = type("GitHub", (), {"repo": "o/r"})()
     monkeypatch.setattr(
         service, "Publisher", lambda root, target: logs.publisher(target)

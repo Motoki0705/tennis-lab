@@ -86,24 +86,41 @@ $PY "$SKILL/kg_new.py" --type group --task "$TASK" --id "$GROUP_ID" --title "$GR
 
 ## Related paper
 
-Register every paper that a node uses as background, an adopted method, a
-comparison, or a future hypothesis. Set `PAPER_ID`, `PAPER_TITLE`, `AUTHOR`,
-`SOURCE_URL` (the version-specific primary source, such as the arXiv abs page)
-from that evidence; pass additional authors/tasks as separate arguments. Without
-`--pdf` the entry is metadata-only and redistributes nothing.
+Register only papers the human has selected as needed. Set `PAPER_ID`,
+`PAPER_TITLE`, `AUTHOR`, `SOURCE_URL`, `PAPER_SUMMARY` (research contribution),
+and `PAPER_REASON` (research question or adoption reason) from that evidence.
+Additional authors/tasks are separate arguments. The command writes a complete
+`paper.md`; use its body for additional reading notes and limitations.
 
 <!-- example:paper -->
 ```bash
-$PY "$SKILL/kg_papers.py" --id "$PAPER_ID" --title "$PAPER_TITLE" --authors "$AUTHOR" --tasks "$TASK" --source "$SOURCE_URL"
+$PY "$SKILL/kg_papers.py" --id "$PAPER_ID" --title "$PAPER_TITLE" --authors "$AUTHOR" --tasks "$TASK" --source "$SOURCE_URL" --summary "$PAPER_SUMMARY" --reason "$PAPER_REASON"
 ```
 
-Store the PDF only after checking its redistribution terms: add
-`--license "$LICENSE_URL" --pdf "$PDF_PATH"`, and record attribution, the license and
-whether the PDF was modified in the note. Fill the research note with its
-contribution, project relationship, and limitations. Add the paper ID to relevant
-nodes' `papers`; backlinks are derived. Explain whether it was background, an
-adopted method, a comparison, or a future hypothesis. A retrospective citation
-does not imply that the historical run used or reproduced the paper.
+Add known IDs with repeated `--external-id doi=10.1234/example` or
+`--external-id arxiv=2409.06662v1`; they are normalized before saving. No PDF or
+attachment is registered. Source URLs retain the read version. Identity rules
+and field/enumeration definitions live only in [the storage contract](../../../../knowledge/README.md#引用探索文書の仕様).
+
+To adopt a paper explicitly selected from a search:
+
+```bash
+$PY "$SKILL/kg_papers.py" --id "$PAPER_ID" --tasks "$TASK" --from-search "$SEARCH_ID" --citation-id "$CITATION_ID"
+```
+
+This takes bibliography, primary URL, summary and external IDs from the selected
+citation document and writes the discovery search, citing paper/reference,
+roles, evidence and decision into the adoption reason. Supply `--summary` or
+`--authors` when unread documents lack them; `--reason` adds the human's research
+question. Unknown metadata is never invented. Searches alone do not create
+Papers. The exploration CLI reuses `kg_citations.py` (`CitationPaper`,
+`Reference`, `CitationSearch`, `Generation`, `IssuePointer`, `parse_document`,
+`serialize_document`, `write_document`, `load_citations`, `validate_library`);
+`papers_join` computes existing Papers links through external IDs.
+
+Add the paper ID to relevant nodes' `papers`; backlinks are derived. A
+retrospective citation does not imply that a historical run reproduced the
+paper. Keep temporary full-text downloads outside the versioned library.
 
 ## Finish the draft
 

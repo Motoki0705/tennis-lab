@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues.cli import GitHub as IssueGitHub
-from issues.evidence import is_evidence_issue, require_work_issue
+from issues.evidence import EVIDENCE_LABEL, is_evidence_issue, require_work_issue
 
 from . import metrics
 from .policy import closing_issues, object_value
@@ -24,9 +24,17 @@ if TYPE_CHECKING:
 
 
 class GitHub(IssueGitHub):
+    _read_only_cache = False
+
+    def improvement_extractions(self, store: Store) -> dict[str, Any]:
+        from .improvement_receipts import extraction_index
+
+        return extraction_index(store.directory, self.repo)
+
     def __init__(self, repo: str | None, *, store: Store | None = None) -> None:
         super().__init__(repo)
         self._store = store
+        self._outside_store: Store | None = None
         self.parent: int | None = None
         self._cache: dict[tuple[str, bool], object] = {}
         self._fresh = False
@@ -38,22 +46,24 @@ class GitHub(IssueGitHub):
         )
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
+        self._require_scope()
         if (
             self._store is not None
             and self._cache_epoch != self._store.transaction_epoch
         ):
             self._cache.clear()
+            self._history_rows = None
             self._cache_epoch = self._store.transaction_epoch
         key = (endpoint, missing_parent)
         if (
-            self._store is not None
+            (self._store is not None or self._read_only_cache)
             and self.parent is not None
             and not self._fresh
             and key in self._cache
         ):
             metrics.count("cache_hits")
             return copy.deepcopy(self._cache[key])
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             if "page=" in endpoint:
@@ -62,8 +72,13 @@ class GitHub(IssueGitHub):
                 result = super().get(endpoint, missing_parent=missing_parent)
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
-        self._cache[key] = copy.deepcopy(result)
-        if "/sub_issues?" in endpoint and isinstance(result, list):
+        if self._store is not None or self._read_only_cache:
+            self._cache[key] = copy.deepcopy(result)
+        if (
+            (self._store is not None or self._read_only_cache)
+            and "/sub_issues?" in endpoint
+            and isinstance(result, list)
+        ):
             for issue in result:
                 if (
                     isinstance(issue, dict)
@@ -75,9 +90,38 @@ class GitHub(IssueGitHub):
                     ] = copy.deepcopy(issue)
         return result
 
+    def _require_scope(self) -> None:
+        if self._store is not None:
+            self._store.require_transaction()
+        elif self._outside_store is not None:
+            self._outside_store.require_unlocked()
+
+    @contextmanager
+    def io_scope(self) -> Iterator[None]:
+        """Release only this client's transaction, never infer a missing lock."""
+        self._require_scope()
+        with self._store.unlocked_read() if self._store else nullcontext():
+            yield
+
+    def detached(self) -> GitHub:
+        """Explicit registry-external client without an endpoint GET cache."""
+        client = copy.copy(self)
+        client._outside_store = self._store or self._outside_store
+        client._store = None
+        client._read_only_cache = False
+        client._cache = {}
+        client._cache_epoch = -1
+        client._history_rows = None
+        client._history_scope = False
+        client._fresh = False
+        return client
+
     @contextmanager
     def fresh_reads(self) -> Iterator[None]:
         previous, self._fresh = self._fresh, True
+        # Begin one new observation. Repeated history reads within this scope
+        # share its discovery index; endpoint GETs still bypass their cache.
+        self._history_rows = None
         try:
             yield
         finally:
@@ -138,8 +182,9 @@ class GitHub(IssueGitHub):
     def write(
         self, method: str, endpoint: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
+        self._require_scope()
         self.invalidate(endpoint)
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             try:
@@ -171,7 +216,7 @@ class GitHub(IssueGitHub):
 
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         """Read GraphQL without caching or holding the registry lock remotely."""
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             try:
@@ -193,11 +238,11 @@ class GitHub(IssueGitHub):
         data: dict[str, Any] = object_value(response.get("data"))
         return data
 
-    def issue(self, number: int) -> dict[str, Any]:
+    def issue(self, number: int, *, allow_proposal: bool = False) -> dict[str, Any]:
         row = object_value(self.get(f"repos/{self.repo}/issues/{number}"))
         if self.identity(row) != number:
             raise ValueError("GitHub issue identity mismatch")
-        require_work_issue(row)
+        require_work_issue(row, allow_proposal=allow_proposal)
         return row
 
     def issue_rows(self) -> list[dict[str, Any]]:
@@ -210,6 +255,8 @@ class GitHub(IssueGitHub):
     @contextmanager
     def history_read_scope(self) -> Iterator[None]:
         """One complete discovery index per read-only collection, never across observations."""
+        self._require_scope()
+        self._cache.clear()
         previous = getattr(self, "_history_rows", None)
         active = getattr(self, "_history_scope", False)
         self._history_rows = None
@@ -220,10 +267,15 @@ class GitHub(IssueGitHub):
             self._history_rows, self._history_scope = previous, active
 
     def evidence_rows(self) -> list[dict[str, Any]]:
-        if not getattr(self, "_history_scope", False) or self._fresh:
-            return self.rows(f"repos/{self.repo}/issues?state=all")
+        self._require_scope()
+        endpoint = f"repos/{self.repo}/issues?state=all&labels={EVIDENCE_LABEL}"
+        if not getattr(self, "_history_scope", False):
+            return self.rows(endpoint)
         if self._history_rows is None:
-            self._history_rows = self.rows(f"repos/{self.repo}/issues?state=all")
+            # A new scope, explicit freshness check or write invalidates discovery.
+            # Do not resurrect an older listing from the transaction GET cache.
+            with self.fresh_reads():
+                self._history_rows = self.rows(endpoint)
         return self._history_rows
 
     def evidence_issues(self) -> EvidenceIssues:

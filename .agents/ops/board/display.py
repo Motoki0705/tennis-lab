@@ -10,7 +10,7 @@ from typing import Any
 
 from herdr_labels.client import Herdr
 from herdr_labels.coordination import Guard, owner_token, read_record, state_root
-from herdr_labels.service import parent_summary
+from herdr_labels.service import issue_label, parent_summary
 
 from .access import as_parent, parent_state
 from .activity import summary
@@ -131,6 +131,7 @@ def _publish_name(
         if (
             tokens.get("tl_owner") != owner_token(identity)
             or tokens.get("tl_parent") != f"{repo}#{parent}"
+            or tokens.get("tl_issue") != issue_label(parent)
             or tokens.get("tl_engine") != pane["agent"]
             or tokens.get("tl_topic") != summary
         ):
@@ -145,7 +146,13 @@ def _publish_name(
                 "tl_name": name,
                 **{
                     key: tokens[key]
-                    for key in ("tl_owner", "tl_parent", "tl_topic", "tl_engine")
+                    for key in (
+                        "tl_owner",
+                        "tl_parent",
+                        "tl_issue",
+                        "tl_topic",
+                        "tl_engine",
+                    )
                 },
             },
             validate=guard.check,

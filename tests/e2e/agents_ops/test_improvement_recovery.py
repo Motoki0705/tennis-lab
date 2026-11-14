@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_improvements import (
@@ -22,9 +23,70 @@ from tests.e2e.agents_ops.test_parent_improvements import (
     record,
     source_finished,
 )
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, evidence_number
+from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.improvements import candidate_spec, finish_for
+
+
+def test_sustained_http403_during_manual_admission_rolls_back_without_requests(
+    reserved: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    p = reserved
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    manual = importlib.import_module("parent.manual_workers")
+    admission = importlib.import_module("parent.improvement_runtime")
+    state = importlib.import_module("parent.state")
+    registry = state.Store(
+        Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    )
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    fake = p.root / "bin/gh"
+    shebang, body = fake.read_text().split("\n", 1)
+    blocked = p.root / "admission-http403"
+    failed_requests = p.root / "http403-requests.jsonl"
+    fake.write_text(
+        shebang
+        + "\n"
+        + f"""
+import json, pathlib, sys
+if pathlib.Path({str(blocked)!r}).exists():
+    with open({str(failed_requests)!r}, "a") as stream:
+        stream.write(json.dumps(sys.argv[1:]) + "\\n")
+    print('HTTP/2.0 403 Forbidden\\n\\n{{"message":"API rate limit exceeded"}}')
+    print('gh: API rate limit exceeded (HTTP 403)', file=sys.stderr)
+    sys.exit(1)
+"""
+        + body
+    )
+    runner = p.root / "never-run"
+    runner.write_text(f"#!{sys.executable}\nraise RuntimeError('must not spawn')\n")
+    runner.chmod(0o700)
+    monkeypatch.setattr(manual, "RUNNER", runner)
+    original = admission.execute_manual
+
+    def rejected(*args: Any, **kwargs: Any) -> Any:
+        blocked.touch()
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(admission, "execute_manual", rejected)
+    code, result = manual.run_worker(
+        gh,
+        registry,
+        1,
+        "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+        child=10,
+        prompt=Path(p.note()),
+        resume=False,
+        restart_evidence=None,
+    )
+    assert code == 2 and result["launch_state"] == "rejected_before_start"
+    requests = [json.loads(line) for line in failed_requests.read_text().splitlines()]
+    assert len(requests) == 1 and "user" in requests[0]
+    task = registry.read_data()["parents"]["o/r#1"]["tasks"]["10"]
+    assert task["worker_runs"] == [] and task["preflight"]["turns"][-1]["cancelled"]
 
 
 def test_decision_response_loss_and_parallel_retry_preserve_one_event(
@@ -60,9 +122,7 @@ def test_publication_with_decision_link_recovers_after_response_loss_and_concurr
     p.agreed()
     candidate = record(p)
     args = (
-        "improvement-publish",
-        "--candidate",
-        candidate["candidate_id"],
+        "improvement-propose",
         "--decision-id",
         candidate["decision_id"],
     )
@@ -166,9 +226,9 @@ def test_manual_revocation_between_preparation_and_spawn_never_starts_runner(
     code, result = manual.run_worker(
         gh,
         store,
-        10,
+        11,
         "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
-        child=11,
+        child=12,
         prompt=Path(p.note()),
         resume=False,
         restart_evidence=None,
@@ -244,7 +304,6 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
             "identifier": "改善",
             "summary": "未承認の改善",
             "children": [],
-            "improvement_source": {"parent": 2, "key": "next"},
             "sections": {
                 h: "人間との議論待ち。"
                 for h in formats.PARENT_REQUIRED
@@ -254,7 +313,7 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
     )
     d.h.gh.issues[1].update(
         title=rendered["title"],
-        body=rendered["body"],
+        body=source.marker() + "\n\n" + rendered["body"],
         labels=[{"name": label} for label in rendered["labels"]],
     )
     d.h.gh.comment_rows[2] = [
@@ -268,7 +327,10 @@ def test_unapproved_managed_parent_can_handoff_without_granting_execution(
         current = parent.ParentSession(
             d.h.gh, d.h.store, 1, "codex:new-discussion-owner"
         )
-        current.accept("保存済みworkerを引き継ぎ、実装は承認まで再開しない。")
+        current.accept(
+            "保存済みworkerを引き継ぎ、実装は承認まで再開しない。",
+            summary="未承認改善の引継ぎ",
+        )
         assert current.row["status"] == "active"
         assert current.row["generation"] == before["generation"] + 1
         assert (
@@ -293,47 +355,100 @@ def approved_gate(
     def agreed_improvement() -> None:
         original_agree()
         api = importlib.import_module("issues.improvement")
-        source = api.ImprovementSource(2, "first")
-        candidate = api.event(
-            source,
-            "candidate",
-            1,
-            None,
-            {"source_issue": 2, "spec": candidate_spec(), "legacy": False},
-        )
-        published = api.event(
-            source,
-            "published",
-            1,
-            candidate["id"],
-            {"issue": 1, "mode": "created", "draft_sha256": "a" * 64},
-        )
+        provenance = importlib.import_module("issues.improvement_proposals")
+        snapshots = importlib.import_module("parent.improvement_proposals")
         state = p.state()
         state["issues"]["1"]["body"] = (
-            source.marker() + "\n\n" + state["issues"]["1"]["body"]
+            provenance.Extraction(2, 3, ("first", "second")).marker()
+            + "\n\n"
+            + state["issues"]["1"]["body"]
         )
+        state["issues"]["3"] = {
+            **state["issues"]["2"],
+            "id": 10003,
+            "number": 3,
+            "body": provenance.Proposal(2, 1).marker(),
+            "created_at": "2099-01-01T00:00:00Z",
+            "state": "closed",
+            "state_reason": "completed",
+            "labels": [{"name": "issue:proposal"}],
+        }
+        decisions = {}
+        chains = {}
+        for k in ("first", "second"):
+            source = api.ImprovementSource(2, k)
+            candidate = api.event(
+                source,
+                "candidate",
+                1,
+                None,
+                {"source_issue": 2, "spec": candidate_spec(), "legacy": False},
+            )
+            proposed = api.event(
+                source,
+                "proposed",
+                1,
+                candidate["id"],
+                {"issue": 3, "generation": 1, "created_at": "2099-01-01T00:00:00Z"},
+            )
+            decision = api.event(
+                source,
+                "decision",
+                1,
+                proposed["id"],
+                {
+                    "target": "candidate",
+                    "request_key": "human-1",
+                    "request_sha256": "b" * 64,
+                    "action": "approve",
+                    "issue": 3,
+                    "human_confirmation": decision_spec()["human_confirmation"],
+                    "reason": "会話の承認を記録。",
+                    "requirements": snapshots.candidate_requirements(candidate_spec()),
+                    "previous_decision": None,
+                },
+            )
+            decisions[k] = decision["id"]
+            chains[k] = [candidate, proposed, decision]
+        rows = []
+        for k, chain in chains.items():
+            chain.append(
+                api.event(
+                    api.ImprovementSource(2, k),
+                    "extracted",
+                    1,
+                    chain[-1]["id"],
+                    {
+                        "issue": 1,
+                        "proposal": 3,
+                        "decision_ids": decisions,
+                        "requirements": api.contract(state["issues"]["1"]["body"]),
+                    },
+                )
+            )
+            rows.extend(chain)
         state["comments"]["2"] = [
             {
                 "id": 9000 + i,
                 "user": {"login": "operator"},
                 "body": api.render_event(row),
             }
-            for i, row in enumerate((candidate, published))
+            for i, row in enumerate(rows)
         ]
         p.save(state)
-        response = p.cli(
-            "improvement-decide",
-            "--candidate",
-            "I-2-first",
-            "--action",
-            "approve",
-            "--spec",
-            p.spec(decision_spec()),
-            parent="2",
+        from tests.e2e.agents_ops.test_manual_worker_runs import state_dir
+        from tests.support.agents_ops.improvements import extraction_receipt
+
+        extraction_receipt(
+            state_dir(p),
+            parent=2,
+            proposal=3,
+            target=1,
+            body=state["issues"]["1"]["body"],
+            decisions=decisions,
         )
-        approval = json.loads(response.stdout)["decision_id"]
-        first_approval.append(approval)
-        p.cli("agree", "--improvement-approval", approval)
+        first_approval.append(decisions["first"])
+        p.cli("agree", "--improvement-approval", decisions["first"])
 
     monkeypatch.setattr(p, "agreed", agreed_improvement)
     g = make_gate_env(p, monkeypatch, variant)
@@ -381,11 +496,11 @@ def test_completed_first_generation_does_not_authorize_the_next(
     assert first["execution"] == "accepted"
     result = json.loads(publish(p).stdout)
     second = str(result["issue"])
-    p.cli("register", parent=second)
+    assert "proposal" in p.cli("register", parent=second, ok=False).stderr
     denied = p.cli(
         "agree", "--improvement-approval", first_approval, parent=second, ok=False
     )
-    assert "pending" in denied.stderr
+    assert "proposal" in denied.stderr or "担当" in denied.stderr
     status = json.loads(p.cli("status").stdout)
     assert (
         status["assignment"] == "ended"
@@ -395,7 +510,7 @@ def test_completed_first_generation_does_not_authorize_the_next(
     assert len(g.merge_calls()) == len(g.review.calls()) == 1
 
 
-def test_reapproved_requirements_do_not_inherit_previous_acceptance(
+def test_changed_extracted_parent_loses_acceptance_and_cannot_reapprove_closed_proposal(
     parent_env: ParentEnv,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -462,93 +577,16 @@ def test_reapproved_requirements_do_not_inherit_previous_acceptance(
             decision_spec(
                 previous=first_approval,
                 request="expanded-requirements",
-                quote="追加の受入条件を含めた範囲で実行してください。",
+                quote="追加した条件で承認。",
             )
         ),
         parent="2",
+        ok=False,
     )
-    renewed = json.loads(response.stdout)["decision_id"]
-    p.cli("agree", "--improvement-approval", renewed)
-    current = json.loads(p.cli("status", parent="2").stdout)["improvements"][0]
-    assert (
-        current["revision"] == 1 and current["decision_id"] == renewed != first_approval
-    )
-    assert current["execution"] == "not_started"
+    assert "closed" in response.stderr
     assert changed["execution"] != "accepted"
     target = json.loads(p.cli("status").stdout)["completion"]
     assert target["record"] == saved and target["acceptance"] == "unverified"
-    body = p.state()["issues"]["1"]["body"]
-    assert "現在の受入: 未確認" in body
-    assert "現在の段階: workflow完了照合済み" not in body
-    assert "未達・残件: なし" not in body
-    assert "過去の成果:" in body
-    assert "現在の未達・残件: 未確認" in body
-    assert "全体の受入条件と実merge/closeを照合した。" in body
-    prior_result = next(
-        line
-        for line in completed_body.splitlines()
-        if line.startswith("全体の結果・判断:")
-    )
-    assert prior_result.split(": ", 1)[1] in body
-    pending = finish_for(p)
-    pending["state"] = "incomplete"
-    pending["acceptance"][-1]["state"] = "unverified"
-    pending["remaining_required"] = ["追加した形式の結果取得は未確認。"]
-    p.cli("release", "--ended", "--spec", p.spec(pending))
-    body = p.state()["issues"]["1"]["body"]
-    assert "現在の受入: 未完了" in body
-    assert "現在の未達・残件: 未完了" in body
-    assert "現在の段階: workflow完了照合済み" not in body
-    assert "未達・残件: なし" not in body
-    assert (
-        f"現在の受入記録: https://github.com/o/r/issues/{evidence_number(p.state())}#issuecomment-"
-        in body
-    )
-    assert saved["finish_sha256"] in "\n".join(c["body"] for c in p.comments())
+    denied = p.cli("agree", "--improvement-approval", first_approval, ok=False)
+    assert "requirements changed" in denied.stderr
     assert len(g.merge_calls()) == len(g.review.calls()) == 1
-
-
-def test_declined_closed_proposal_is_reproposed_in_place_with_fresh_human_consent(
-    parent_env: ParentEnv,
-) -> None:
-    p = parent_env
-    p.agreed()
-    record(p)
-    publish(p)
-    declined = json.loads(decide(p, "decline").stdout)["decision_id"]
-    source_finished(p)
-    state = p.state()
-    state["issues"]["10"].update(state="closed", state_reason="not_planned")
-    p.save(state)
-    revised = candidate_spec()
-    revised["scope"] += " 読取専用の取得一覧を含む。"
-    response = p.cli("improvement", "--key", "result-access", "--spec", p.spec(revised))
-    assert json.loads(response.stdout)["revision"] == 2
-    assert json.loads(publish(p).stdout)["issue"] == 10 and post_count(p) == 1
-    assert p.state()["issues"]["10"]["state"] == "closed"
-    current = json.loads(p.cli("status").stdout)["improvements"][0]
-    assert current["human_decision"] == "pending"
-    state = p.state()
-    state["issues"]["10"]["body"] += "\n## 追加の境界\n\n読取専用の取得一覧を含む。\n"
-    p.save(state)
-    approved = json.loads(
-        decide(
-            p,
-            "approve",
-            decision_spec(
-                previous=declined,
-                request="reconsider-2",
-                revision=2,
-                quote="更新された境界でこの同じissueの実行を承認します。",
-            ),
-        ).stdout
-    )
-    assert "needs-human" in {v["name"] for v in p.state()["issues"]["10"]["labels"]}
-    p.cli("register", parent="10", ok=False)  # Consent does not reopen an issue.
-    state = p.state()
-    state["issues"]["10"].update(state="open", state_reason="reopened")
-    p.save(state)
-    p.cli("register", parent="10")
-    p.cli("agree", "--improvement-approval", approved["decision_id"], parent="10")
-    assert json.loads(p.cli("status").stdout)["assignment"] == "ended"
-    assert post_count(p) == 1

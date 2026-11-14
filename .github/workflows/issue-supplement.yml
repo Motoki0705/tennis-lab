@@ -21,7 +21,7 @@ env:
   ISSUE_SUPPLEMENT_ENABLED_SINCE: ${{ vars.ISSUE_SUPPLEMENT_ENABLED_SINCE }}
 jobs:
   prepare:
-    if: ${{ !contains(github.event.issue.labels.*.name, 'parent-evidence') && !startsWith(github.event.issue.body, '<!-- parent-evidence:') && github.actor == github.repository_owner && vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != '' && github.ref
+    if: ${{ !contains(github.event.issue.labels.*.name, 'issue:proposal') && !startsWith(github.event.issue.body, '<!-- parent-improvement-proposal:') && !contains(github.event.issue.labels.*.name, 'parent-evidence') && !startsWith(github.event.issue.body, '<!-- parent-evidence:') && github.actor == github.repository_owner && vars.ISSUE_SUPPLEMENT_ENABLED_SINCE != '' && github.ref
       == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' || (github.event.action == 'opened'
       && contains(github.event.issue.labels.*.name, 'issue:parent')) || (github.event.action == 'labeled' &&
       github.event.label.name == 'issue:parent')) }}

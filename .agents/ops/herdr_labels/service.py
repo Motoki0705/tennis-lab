@@ -16,8 +16,20 @@ from parent.state import Store
 from .client import Herdr
 from .coordination import Guard, owner_token, process_stamp, state_root
 
-TOKEN_KEYS = ("tl_name", "tl_parent", "tl_topic", "tl_engine", "tl_owner")
+TOKEN_KEYS = (
+    "tl_name",
+    "tl_parent",
+    "tl_issue",
+    "tl_topic",
+    "tl_engine",
+    "tl_owner",
+)
 INBOX_KEYS = ("tl_inbox", "tl_inbox_label")
+
+
+def issue_label(parent: int) -> str:
+    """Short sidebar cell; ``tl_parent`` keeps the full ``owner/repo#N`` key."""
+    return f"#{parent}"
 
 
 class VerifiedSessionStartError(ValueError):
@@ -370,6 +382,7 @@ def _sync(
         tokens={
             "tl_name": name or "",
             "tl_parent": key,
+            "tl_issue": issue_label(int(number)),
             "tl_topic": summary,
             "tl_engine": identity.split(":", 1)[0],
             "tl_owner": token,

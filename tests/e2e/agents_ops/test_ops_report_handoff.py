@@ -617,7 +617,18 @@ def test_ledger_report_uses_existing_triage_owner_receipt_without_agent_start(
         and not k.startswith("HERDR_")
     }
     registered = subprocess.run(
-        [sys.executable, "-m", "parent", "--repo", "o/r", "--parent", "1", "register"],
+        [
+            sys.executable,
+            "-m",
+            "parent",
+            "--repo",
+            "o/r",
+            "--parent",
+            "1",
+            "register",
+            "--summary",
+            "報告引継ぎの確認",
+        ],
         cwd=ops.repo,
         env={
             **clean_env,

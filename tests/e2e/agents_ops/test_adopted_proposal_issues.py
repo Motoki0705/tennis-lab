@@ -63,11 +63,17 @@ class FakeGitHub:
     identity = github.GitHub.identity
     family = github.GitHub.family
     fresh_reads = github.GitHub.fresh_reads
+    _require_scope = github.GitHub._require_scope
+    io_scope = github.GitHub.io_scope
+    detached = github.GitHub.detached
+    improvement_extractions = github.GitHub.improvement_extractions
 
     def __init__(self) -> None:
         self.parent: int | None = None
         self._fresh = False
         self._store = None
+        self._outside_store = None
+        self._cache: dict[Any, Any] = {}
         self.issues: dict[int, dict[str, Any]] = {}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -576,6 +582,20 @@ def test_parentless_adoption_creates_normal_standalone_once(harness: Harness) ->
         runtime["task_success"] is None
         and runtime["runtime"]["effective"]["model"]["status"] == "observed"
     )
+
+
+def test_organizer_accepts_completed_run_with_verified_reconnect_notice(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_ORGANIZATION_SCENARIO", "reconnect")
+    h = harness
+    assert not h.run().errors
+    record = json.loads(
+        h.tmp.joinpath("run-1/organization-runtime/result.json").read_text()
+    )
+    assert record["runtime"]["runtime_errors"] and record["result"] == "completed"
+    assert len(h.calls()) == 1
 
 
 def test_multiple_proposals_share_parent_and_keep_distinct_index_anchors(
@@ -1532,7 +1552,7 @@ def test_autonomous_parent_notes_preserve_adopted_task_delegation(
         auth = execution.validate_candidate(
             session, candidate["basis_sha256"], candidate["generation"]
         )
-        session.register()
+        session.register("採用提案の担当表示")
         session.note("採用出典と実行根拠を照合し、既存の子へ委任する。")
         assert execution.authorization(session) == auth
         for n in (101, 102):

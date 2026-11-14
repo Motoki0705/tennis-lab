@@ -110,8 +110,8 @@ def check_adoptions(
 
 
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
-    with session.gh.fresh_reads():
-        return _collect(session, request)
+    with session.unlocked() as external, external.gh.fresh_reads():
+        return _collect(external, request)
 
 
 def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
@@ -188,7 +188,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         raw["ci_head_sha"] = None
         raw["ci_check_runs"] = []
         if raw["state"] == "open":
-            with session.store.unlocked_read():
+            with session.gh.io_scope():
                 ci = subprocess.run(
                     [
                         "gh",
@@ -241,6 +241,13 @@ def load_evidence(
     str | None,
     tuple[str, ...],
 ]:
+    with session.unlocked() as external:
+        return _load_evidence(external, request, view)
+
+
+def _load_evidence(
+    session: ParentSession, request: dict[str, Any] | None, view: Collection
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]], str | None, tuple[str, ...]]:
     if request is None:
         return None, [], None, ("parent_review_missing",)
     run_dir = session.store.directory / "reviews" / request["review_run_id"]
@@ -321,6 +328,13 @@ def load_evidence(
 
 
 def evaluate(
+    session: ParentSession, request: dict[str, Any] | None, view: Collection
+) -> dict[int, MergeResult]:
+    with session.unlocked() as external:
+        return _evaluate(external, request, view)
+
+
+def _evaluate(
     session: ParentSession, request: dict[str, Any] | None, view: Collection
 ) -> dict[int, MergeResult]:
     result, resolutions, state, errors = load_evidence(session, request, view)

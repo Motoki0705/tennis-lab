@@ -13,6 +13,9 @@ description: 親issueの担当・実装・調査・引継ぎを進める。親AI
 
 最新のAGENTS.md・共有memory・対象READMEを読み、現在のissue・コメント・PR・既存workerを確認する。
 `status` で担当を調べ、新規担当は `register --summary`、引継ぎは `handoff --accept` を使う。
+保存済みの要約がない場合、両操作は担当を書き込む前に拒否される。
+`register --summary` または `handoff --accept --summary` で要約を指定してやり直す。
+保存済みなら省略できる。接続失敗など担当適用後の表示エラーは `display_sync.repair` に従って修復する。
 要約はHerdrのAgent一覧で名前の隣に出す、親issueで今何をしているかの短い説明。
 issueと会話から自分で作り、全角12文字（24桁）以内に収める。題名の切り詰めではなく内容を要約する。
 作業の焦点が変わったら `summary --text` で更新する。`status.display_summary` で現在の値を確認できる。
@@ -80,6 +83,7 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 |---|---|
 | 手動親から起動 | `delegate` → `run-worker --prompt-file` |
 | 同じworkerへ修正・質問の回答・merge後の確認を依頼 | `run-worker --resume --prompt-file`。前回の終了・回収はCLIが照合する。 |
+| 手動workerの終了通知を待つ | `wait-worker --child N --timeout 秒` を会話の背景実行で待つ。[起動から終了通知までの手順](../../ops/parent/README.md#会話の背景実行で終了を待つ)を使う。 |
 | 今回は調査して報告させる | 起動・継続に `--planning` を指定し、判断してほしい点を指示する。 |
 | 調査報告への回答を保存して送る | 必要なら `decide-worker-plan` を使う。直接の継続指示でもよい。 |
 | 自律親から起動・継続 | `start-worker` / `continue-worker`。実行の予約と同一sessionの照合は開発workflowを参照する。 |
@@ -88,7 +92,9 @@ event名や単語からCLIへ通知判断をさせず、通常コメントの人
 workerへの具体指示は、担当範囲・成果・受入条件・確認したい不具合・必要な資源と制約を中心にする。
 テスト設計は [tests README](../../../tests/README.md#テスト作成方針)に従い、既存テストで足りる部分を再利用する。
 共通規則は[標準worker指示](../../ops/parent/worker_prompt.md)から渡されるので複製しない。
-workerの最終文は返された `final_file` または `inspect-worker` の `final_file` から読む。
+手動workerは `wait-worker` のJSONで終了と回収・runnerの結果・終了記録を確認し、返された `final_file` を読む。
+生存不明・回収未確認・timeoutは終了成功に読み替えず、自前の待機ループは作らない。
+自律workerの最終文は `inspect-worker` の `final_file` から読む。
 
 ## 成果とレビュー
 
@@ -100,6 +106,8 @@ merge後の確認が残れば同じworkerへ続けて依頼する。issueのclos
 初回も `publish-decision-log --dry-run` の内容を確認してから公開する。
 
 レビューは準備のできた対象を親が選び、`review-request --prs` で明示要求する。
+通常設定selectでは、[モデル選択手順](../../ops/parent/README.md#正式レビューのモデル選択)に従い
+`--review-model` と `--model-reason-file` を渡す。具体例・引継ぎ・使用量確認・fixedへの復帰は同節を正本とする。
 目的・確認点・利用可能な証拠を渡す。取得できない証拠はその事実と代替を示し、残る判断不能点を具体化させる。
 対象ごとの初回レビューに再実行理由は不要。同じ対象を再レビューする場合は、その必要性を判断して理由を付ける。
 指摘・修正・テストを親が確認し、`review-state --state fixes_verified` に確認結果を記録する。
@@ -112,7 +120,9 @@ merge後のCIと全体の受入条件を確認する。今回の受入結果と�
 [構造化finish](../../ops/parent/improvements.md#今回の受入と候補整理)を手動の `release --ended --spec` または自律の `workflow-report` へ渡す。
 未達の受入条件を改善へ移してcompletedにしない。候補なしも明示し、noteだけの担当終了を受入済みと報告しない。
 次回改善は `improvement` に安定keyで記録し、子で発見した場合だけ `--child` を付ける。
-独立した新親の起票は `improvement-publish`、実行承認・保留・見送り・撤回は `improvement-decide` を明示する。
+候補を記録した後に `improvement-propose` で改善提案Issueへ列挙し、会話の判断を `improvement-decide` へ記録する。
+人間が取り出しを指示したら `improvement-extract` で承認分全件を1つのparentへまとめる。
+期限・復旧・取り出し後の合意は [終了時改善](../../ops/parent/improvements.md) を参照する。
 候補整理から再帰的に起票せず、次世代にも新たな人間判断を求める。元親の完了を改善の判断待ちへ戻さない。
 
 ## 保留・失敗から進める

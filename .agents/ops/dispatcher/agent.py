@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from lib.agent_events import runtime_errors_failed
 from parent.policy import object_value
 
 from .records import read_json
@@ -103,7 +104,7 @@ def judge(root: Path, run_dir: Path, timeout: float, runner: Path = RUNNER) -> A
         or selected != settings.get("defaults")
         or model.get("status") != "observed"
         or model.get("value") != selected["model"]
-        or runtime.get("runtime_errors")
+        or runtime_errors_failed(evidence)
         or evidence.get("cleanup_complete") is not True
     ):
         raise ValueError("judgement runtime contract/effective model/cleanup mismatch")

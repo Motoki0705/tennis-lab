@@ -102,7 +102,7 @@ outboxは非公開の配送入力であり、公開単位ではない。
 | `record-worker-run` / `record-worker-ended` | 既存runner根拠の明示登録 / 親による終了確認 |
 | `record-result` | 保存された検証とPR・証拠。明示検証が捕捉済み結果を参照する。`review-request --prs` 内も同じメソッドを使う |
 | `note` / `decide-worker-plan` | 正本コメントへの参照 / 保存済み計画回答の結果。共通判断を自動で作らず、`decide` から理由の正本を参照できる |
-| `improvement` / `improvement-publish` | 候補観測・明示的な切り出し判断を正本コメント参照で記録し、起票要求/結果へ接続。元親の担当中の操作だけを捕捉する |
+| `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | 候補観測・明示的な切り出し判断を正本コメント参照で記録し、提案公開・会話判断・まとめた取り出しの要求/結果へ接続。元親の担当中の操作だけを捕捉する |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | 根拠記録・子作成・全体受入の既存結果。改善親のagreeは人間承認を観測した結果として出典コメントを参照し、実行済みと扱わない |
 | `delegate`、`stop` / `resume` / `stop-worker`、`handoff` / `release` | CLI結果と正本コメント。dispatcherの取消とrunnerの停止/復旧は別の事実 |
 | `review-prepare` / `review-request` / `review-state` | 固定要求、明示指示・状態の結果。親の受領/検証は明示操作でだけ記録する |
@@ -133,10 +133,12 @@ commitが同じだけで作業中コードも同じとは認定せず、未観�
 `decision-log-status` で元レビューの捕捉済み結果ID `R` を確認する。
 handoffの親判断は `decide.inputs` に `R` を含め、再利用と追加確認の範囲、
 `review` のnext-action planを指定する。
-`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`
+`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
+--review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`
 で準備し、`review-request --run-id NEXT --instruction-file instruction.txt
 --decision-id D --retry-of R` で指示する。planが1件なら `--plan-id` は不要。
 prepareはfetchなので、review planは後続runと結びつくreview-requestに渡す。
+通常設定selectで必須のモデルと1文の理由は[モデル選択手順](../parent/README.md#正式レビューのモデル選択)に従う。
 明示したhandoffの結果IDは、その元runの操作が捕捉した結果であり、判断のinputsにも含む必要がある。
 別runの結果や関連しない判断は拒否する。判断metadataのない既存handoffは、判断未記録のまま使える。
 
@@ -274,6 +276,12 @@ issueのclose後の履歴公開も同じ本人確認を行う。新しい実装�
 未公開の全記録を親ごとの1 batchへ固定する。blockedは状態に残し、独立して安全な記録は公開できる。
 未完了batchを照合してから次を作る。batchの途中で増えた捕捉は、そのbatchのmerge後の
 次の明示呼出しでまとめる。
+
+release/handoffと自律親の終了時は、worker公開と今回の終了結果の捕捉後に同じ公開処理を呼ぶ。
+捕捉上限を固定し、既存batchと終了までの残件を最大2回で処理する。公開が未完了でも担当変更を拒否せず、
+残件・担当・再開先を [終了checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint) に残す。
+mergeableがnullでも全検査後にHEAD指定mergeを要求し、falseとHTTP拒否は失敗として残す。
+statusとdry-runはcaptureもlockも作成しない。
 
 既存workerファイルを維持した公開構成:
 

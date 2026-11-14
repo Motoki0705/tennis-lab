@@ -6,6 +6,8 @@ import copy
 import json
 import re
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -119,6 +121,17 @@ class ParentSession:
         self.store.focus(self.key)
         self.login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
 
+    def detached(self) -> ParentSession:
+        """Retain frozen local context with an explicit registry-external client."""
+        session = copy.copy(self)
+        session.gh = self.gh.detached()
+        return session
+
+    @contextmanager
+    def unlocked(self) -> Iterator[ParentSession]:
+        with self.gh.io_scope():
+            yield self.detached()
+
     @property
     def row(self) -> dict[str, Any]:
         return object_value(self.store.parents.get(self.key, {}))
@@ -185,13 +198,23 @@ class ParentSession:
 
         return {"parent": self.parent, "body_sha256": sha, "url": url(self, response)}
 
+    def _assignment_summary(self, summary: str | None) -> str:
+        """Reject missing/invalid display input before any assignment is saved."""
+        from herdr_labels.service import validate_summary
+
+        if summary is None:
+            summary = self.row.get("display_summary")
+        if summary is None:
+            raise ValueError(
+                f"parent #{self.parent} has no sidebar summary; "
+                "specify --summary <summary> when registering or accepting a handoff"
+            )
+        return validate_summary(summary)
+
     def register(self, summary: str | None = None) -> dict[str, Any]:
         if self.session is None:
             raise ValueError("session identity missing")
-        if summary is not None:
-            from herdr_labels.service import validate_summary
-
-            validate_summary(summary)
+        summary = self._assignment_summary(summary)
         registration(self.store.parents, self.key, self.session)
         if self.gh.issue(self.parent)["state"] != "open":
             raise ValueError("cannot assign a closed parent issue")
@@ -204,9 +227,13 @@ class ParentSession:
                 "generation": previous.get("generation", 0) + 1,
                 "tasks": previous.get("tasks", {}),
                 "reviews": previous.get("reviews", []),
+                "display_summary": summary,
             }
+            self.row.pop("owner_runtime", None)
             self.store.save()
-        if summary is not None and self.row.get("display_summary") != summary:
+        if self.capture_owner_runtime():
+            self.store.save()
+        if self.row.get("display_summary") != summary:
             self.row["display_summary"] = summary
             self.store.save()
         self.post(
@@ -214,6 +241,24 @@ class ParentSession:
             "担当開始。担当指定と要件合意は別段階です。要件を確認してから分割・委任します。",
         )
         return self.status()
+
+    def capture_owner_runtime(self) -> bool:
+        from lib.identity import native_runtime
+
+        runtime = native_runtime()
+        bound = (
+            None
+            if runtime is None
+            else {
+                **runtime,
+                "session": self.row["session"],
+                "generation": self.row["generation"],
+            }
+        )
+        previous = self.row.pop("owner_runtime", None)
+        if bound is not None:
+            self.row["owner_runtime"] = bound
+        return previous != bound
 
     def set_summary(self, text: str) -> dict[str, Any]:
         """Save the parent's own sidebar summary; display sync projects it."""
@@ -225,15 +270,27 @@ class ParentSession:
         return {"parent": self.parent, "display_summary": row["display_summary"]}
 
     def status(self) -> dict[str, Any]:
+        from worker_logs.reconciliation import remaining_publications
+
         from .notifications import publication_status
 
         row = self.row
         _, items = self.work_items()
         history = self.history()
         run_paths = self.run_paths()
+        try:
+            publications = remaining_publications(
+                self.gh.repo, self.parent, state_dir=self.store.directory
+            )
+            inventory_error = None
+        except (ValueError, OSError, KeyError, TypeError):
+            publications = None
+            inventory_error = "journal_unavailable"
         return {
             "repo": self.gh.repo,
             "parent": self.parent,
+            "remaining_publications": publications,
+            "publication_inventory_error": inventory_error,
             "assignment": row.get("status", "unassigned"),
             "display_summary": row.get("display_summary"),
             "current_session_is_owner": bool(row and row["session"] == self.session),
@@ -322,9 +379,12 @@ class ParentSession:
         self.sync_progress()
         return self.status()
 
-    def accept(self, note: str, recover: bool = False) -> dict[str, Any]:
+    def accept(
+        self, note: str, recover: bool = False, *, summary: str | None = None
+    ) -> dict[str, Any]:
         if self.session is None:
             raise ValueError("session identity missing")
+        summary = self._assignment_summary(summary)
         row = self.row
         same_retry = (
             row
@@ -333,6 +393,9 @@ class ParentSession:
             and row.get("handoff_note_sha256") == digest(note)
         )
         if same_retry:
+            if row.get("display_summary") != summary:
+                row["display_summary"] = summary
+                self.store.save()
             self.post(
                 {
                     "event": "handoff",
@@ -379,7 +442,9 @@ class ParentSession:
             generation=row["generation"] + 1,
             handoff_note_sha256=digest(note),
             handoff_recovery=recover,
+            display_summary=summary,
         )
+        self.capture_owner_runtime()
         if row.get("dispatch") is not None:
             from .development import transfer_controller
 
@@ -590,6 +655,10 @@ class ParentSession:
 
     def family(self) -> tuple[Issue, dict[int, Issue]]:
         family = self.gh.family(self.parent)
+        from issues.evidence import require_work_issue
+
+        for item in family.values():
+            require_work_issue({"labels": item.labels, "body": item.body})
         parent = family[self.parent]
         return parent, {n: family[n] for n in parent.children}
 
@@ -1066,8 +1135,7 @@ class ParentSession:
             "review": self.review_status(self.history()),
         }
 
-    @staticmethod
-    def _planning_commits(task: dict[str, Any]) -> bool | None:
+    def _planning_commits(self, task: dict[str, Any]) -> bool | None:
         value = task.get("preflight", {})
         turns = value.get("turns", [])
         if not turns or not task.get("worktree"):
@@ -1075,12 +1143,13 @@ class ParentSession:
         from .snapshot import git
 
         start = turns[-1].get("head_at_start")
-        return (
-            git("rev-parse", "HEAD", cwd=Path(task["worktree"])).decode().strip()
-            != start
-            if start
-            else None
-        )
+        with self.gh.io_scope():
+            return (
+                git("rev-parse", "HEAD", cwd=Path(task["worktree"])).decode().strip()
+                != start
+                if start
+                else None
+            )
 
     def delegate(
         self,
@@ -1173,9 +1242,16 @@ class ParentSession:
             raise ValueError("agent/branch prefix mismatch")
         from .snapshot import git, validate_worktree
 
-        validate_worktree(worktree, branch)
-        for base in planned["stacked_on"]:
-            git("merge-base", "--is-ancestor", base["head_sha"], "HEAD", cwd=worktree)
+        with self.gh.io_scope():
+            validate_worktree(worktree, branch)
+            for base in planned["stacked_on"]:
+                git(
+                    "merge-base",
+                    "--is-ancestor",
+                    base["head_sha"],
+                    "HEAD",
+                    cwd=worktree,
+                )
         for n, task in self.row["tasks"].items():
             if n != str(child) and (
                 task.get("branch") == branch

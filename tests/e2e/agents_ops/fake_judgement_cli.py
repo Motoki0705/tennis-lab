@@ -55,6 +55,13 @@ def main() -> None:
             log.write(json.dumps({"type": kind, "payload": payload}) + "\n")
     emit({"type": "thread.started", "thread_id": session})
     emit({"type": "turn.started"})
+    if scenario == "reconnect":
+        emit(
+            {
+                "type": "error",
+                "message": "Reconnecting... 2/5 (workspace routing discovery timed out)",
+            }
+        )
     if scenario == "cli_error":
         print("injected CLI failure", file=sys.stderr)
         raise SystemExit(1)

@@ -19,7 +19,11 @@ PYTHONPATH=.agents/ops .venv/bin/python -m herdr_labels sync
 ```
 
 表示する要約は親自身が作り、parent CLIで保存する（[parent-session](../parent-session/SKILL.md#担当と実行根拠)）。
-要約がないというエラーは、`parent summary --text`で登録すれば表示も同期される。
+保存済みの要約がない `register` / `handoff --accept` は、担当を書き込む前に拒否される。
+`register --summary` / `handoff --accept --summary` で指定して再実行する。
+既に担当中の親の表示同期で要約不足になった場合は、`parent summary --text` で保存・同期する。
+接続失敗などで `parent_action_applied: true` と表示エラーが返った場合は、
+`display_sync.repair` に従い、原因を解消してから表示だけを再試行する。
 
 自分の実行環境のセッション識別子とHerdr paneを使う。他セッションのIDを設定して実行しない。
 通常はHerdr環境変数が必要。欠落する実行基盤では、READMEの明示bind手順で

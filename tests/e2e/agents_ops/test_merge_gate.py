@@ -358,7 +358,7 @@ def make_gate_env(
                         "--prompt-file",
                         p.note("同じworkerで追加確認する。"),
                         ok=False,
-                        MANUAL_PREFLIGHT_FAILURE="1",
+                        MANUAL_ADMISSION_FAILURE="1",
                     )
                     assert rejected.returncode == 2
                     assert (
@@ -2062,6 +2062,7 @@ def test_later_partial_run_preserves_other_prs_and_merges_each_once(
     prepared = json.loads(
         p.cli(
             "review-prepare",
+            *p.review_flags(),
             "--prs",
             "102",
             "--reason-file",

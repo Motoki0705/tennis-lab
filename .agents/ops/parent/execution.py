@@ -223,7 +223,7 @@ def execution_input(
         raise ValueError("ignored comment missing from the current discussion")
     from .improvements import input_state
 
-    improvement = input_state(session.gh, session.parent, session.login)
+    improvement = input_state(session.gh, session.parent, session.login, session.store)
     return {
         "schema_version": 1,
         "repo": session.gh.repo.casefold(),

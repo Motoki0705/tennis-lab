@@ -61,7 +61,7 @@ def test_human_body_changes_are_parent_observations(
     assert registry(p).read_bytes() == before
     p.child("changed-body")
     p.cli(*delegation_args(p.worktree("changed-body"), child=13))
-    p.cli("review-prepare", "--prs", *map(str, selected))
+    p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected))
     assert len(agreements(p)) == 1
 
 
@@ -78,7 +78,7 @@ def test_human_progress_preserves_body_digest_authorization_and_review(
         )
     p.save(state)
     selected = review_setup(p)
-    args = ("review-prepare", "--prs", *map(str, selected))
+    args = ("review-prepare", *p.review_flags(), "--prs", *map(str, selected))
     prepared = p.cli(*args).stdout
     [agreement] = agreements(p)
     assert agreement["requirements_sha256"] == policy.digest(
@@ -130,7 +130,7 @@ def test_legacy_human_agreement_is_usable_without_fabricating_history(
     assert (p.state(), registry(p).read_bytes()) == before
     p.child("legacy")
     p.cli(*delegation_args(p.worktree("legacy"), child=13))
-    p.cli("review-prepare", "--prs", *map(str, selected))
+    p.cli("review-prepare", *p.review_flags(), "--prs", *map(str, selected))
     assert len(agreements(p)) == 1
     assert "requirements_sha256" not in agreements(p)[0]
 
