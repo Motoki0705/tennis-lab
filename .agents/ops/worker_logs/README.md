@@ -263,6 +263,9 @@ remaining_complete=falseを残す。判断ログの公開入口も、未公開�
 | unpublished_count / batch_key | 両方None | 未公開記録数、batch keyまたはNone |
 
 release/handoffは担当変更を確定後、worker続行→終了結果のcapture完了→判断ログ公開の順で処理する。
+typed終了観測は `record_exit(persist=False)` の公開直前snapshotを捕捉する。
+同世代の構造化completion・終了コメントへ結び、supervisorは既存の世代別終了結果も参照する。
+残件は観測時点の値で、公開後の最終checkpointは別に保存する。公開処理自身を再捕捉して次の公開を作らない。
 判断ログは捕捉上限を固定し、既存batchと今回の末尾を最大2回で処理する。pending/blockedなら止める。
 上限を固定する前に、既存capture outboxの凍結済み記録だけを一度再配送する。失われた原文は復元しない。
 配送未完・捕捉欠落が残るとinput_capture_failedとunpublished_count=Noneを返し、未公開ゼロとは扱わない。

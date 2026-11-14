@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -12,6 +13,7 @@ from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.support.agents_ops.decision_logs import navigation_snapshot
 from tests.support.agents_ops.improvements import candidate_spec, finish_for
 
 
@@ -83,6 +85,10 @@ def test_unsplit_manual_parent_finishes_with_no_candidate_and_retries_without_re
     assert set(response["tasks"]) == {"1"} and p.state()["parents"] == {}
     assert len(g.merge_calls()) == len(g.review.calls()) == 1
     assert "次回改善: なし。" in "\n".join(c["body"] for c in p.comments())
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    public = navigation_snapshot(directory)
+    assert "最後の親の受入（明示記録時点）: completed" in public
+    assert "担当終了" in public and "#issuecomment-" in public
 
 
 def test_unmet_acceptance_exported_to_candidate_cannot_finish(

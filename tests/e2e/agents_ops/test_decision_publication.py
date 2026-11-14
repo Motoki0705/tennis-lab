@@ -479,10 +479,39 @@ def test_existing_worker_files_are_immutable_and_legacy_turns_have_navigation(
         raw.decode()
         for name, raw in saved.items()
         if name.endswith("/0001-initial/README.md")
-        and "導入前・判断未記録" in raw.decode()
+        and "対応イベントなし" in raw.decode()
     ]
     assert legacy and all("instruction.md" in r and "final.md" in r for r in legacy)
     navigation.validate_links(saved, navigation.generate(saved))
+
+
+def test_typed_termination_after_prior_publication_recovers_without_rewriting_history(
+    env: DecisionEnv,
+) -> None:
+    from tests.support.agents_ops.traceability import (
+        observation_record,
+        termination_observation,
+        worker_observation,
+    )
+
+    first = env.capture([observation_record(worker_observation("ended", "absent"))])
+    assert env.decision_publisher(first).publish()["saved_to_main"]
+    original = env.upstream_files()
+    closing = observation_record(termination_observation(), issue=None, delegation=None)
+    log = env.capture([closing])
+    env.github.failure = "merge_response_lost"
+    result = env.decision_publisher(log).publish()
+    assert not result["saved_to_main"]
+    recovered = env.decision_publisher(log).publish(retry=True)
+    assert recovered["saved_to_main"], recovered
+    saved = env.upstream_files()
+    assert all(
+        saved[name] == value for name, value in original.items() if "/event-" in name
+    )
+    parent = saved[".agents/logs/parents/parent-1/README.md"].decode()
+    assert "担当終了" in parent and "最終報告なし" in parent
+    assert env.decision_publisher(log).publish()["saved_to_main"]
+    assert env.github.calls == ["create", "merge", "create", "merge"]
 
 
 @pytest.mark.parametrize("prepared", [False, True])
@@ -707,10 +736,25 @@ def test_last_boundary_main_advance_has_explicit_readme_only_recovery(
     )
     assert len(env.github.rows) == 1 and env.github.rows[100]["merged"]
     assert publisher.publish()["stage"] == "readme_refresh_required"
+    before_repair = env.upstream_files()
     recovered = env.decision_publisher(log).publish(retry=True)
     assert recovered["saved_to_main"] and len(env.github.rows) == 2, recovered
-    assert env.github.rows[101]["changed_files"] == 1  # Exact index regeneration only.
     saved = env.upstream_files()
+    delegation = directory.rsplit("/", 1)[0]
+    expected_readmes = {
+        ".agents/logs/parents/README.md",
+        ".agents/logs/parents/parent-2/README.md",
+        ".agents/logs/parents/parent-2/child-20/README.md",
+        delegation + "/README.md",
+        delegation + "/turn-0001/README.md",
+        directory + "/README.md",
+    }
+    assert env.github.rows[101]["changed_files"] == len(expected_readmes)
+    assert {
+        name
+        for name in before_repair.keys() | saved.keys()
+        if before_repair.get(name) != saved.get(name)
+    } == expected_readmes
     assert all(saved[n] == raw for n, raw in addition.items())
     assert all(saved[n] == raw for n, raw in navigation.generate(saved).items())
     assert len(navigation.records(saved)) == 6
