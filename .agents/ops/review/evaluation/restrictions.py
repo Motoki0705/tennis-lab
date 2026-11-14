@@ -1,4 +1,4 @@
-"""Evaluation-only Codex launcher. The shared review runner stays unchanged."""
+"""Evaluation-only Codex launcher with strict shared-runner argument checks."""
 
 from __future__ import annotations
 
@@ -97,6 +97,7 @@ def restricted_arguments(
     config_keys = {
         "model_reasoning_effort",
         "service_tier",
+        "web_search",
         "mcp_servers.review_evaluation.command",
         "mcp_servers.review_evaluation.args",
         "mcp_servers.review_evaluation.env.PYTHONPATH",
@@ -126,7 +127,13 @@ def restricted_arguments(
             raise ValueError("unregistered evaluation model")
         if (
             argument in {"-c", "--config"}
-            and value.partition("=")[0] not in config_keys
+            and (
+                value.partition("=")[0] not in config_keys
+                or (
+                    value.partition("=")[0] == "web_search"
+                    and value != 'web_search="disabled"'
+                )
+            )
         ):
             raise ValueError("unregistered evaluation CLI configuration override")
         if argument == "--disable" and value not in {
