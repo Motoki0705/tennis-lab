@@ -125,7 +125,22 @@ D:を同じ親の一時名へ隔離して再確認してから消す。`ckpt/` �
 root FDを固定し、hash・atimeを含む照合済み全entryの計画に従う。各entryを同じ親の専用退避領域へ
 原子的に移し、移した実体を照合してからunlink/rmdirする。元の名前に再作成されたentryは削除対象にしない。
 不一致のentryは上書きせず元へ戻し、戻せなければ退避領域へ保持する。単位内hardlinkのctime/link数の自前変更は追跡し、
-payloadは再hashする。D:の追加読取りとentryごとのjournal/directory fsyncが増える。全件削除の時間は第2段で測る。
+payloadは再hashする。regular fileはclaim後の読取専用FDでLinux `F_SETLEASE(F_WRLCK)` を取得してから、
+最終identity・metadata・SHA-256を照合する。既存のopen FD、所有者・権限エラー、lease未対応、
+`/proc/sys/fs/leases-enable` 無効の場合は消さずに失敗し、leaseなしへ切り替えない。
+leaseはinode単位で外部hardlinkの別名にも効く。新しいopenはbreakを要求し、保持中の書込みはブロックされる。
+unlink直前に `F_GETLEASE == F_WRLCK` を要求し、unlink直後・解除前にも確認する。
+直前のbreakはentryを保持・復元して失敗、直後のbreakは削除済みの可能性がある事故としてphaseと確定削除を
+journal/auditへ残して失敗する。SIGIOはLinux `F_SETOWN_EX` で呼出threadへ向け、そのthreadでblockし、
+解除後にdrainして元のsignal maskへ戻す。CLIはlease中、そのthreadのSIGIOを専用に使う。
+
+lease確認とunlinkは別syscallである。consumerが専用領域のランダムtoken名を探索・操作しないことを前提とする。
+最後の確認〜unlinkの窓でtokenを開くと、lease解除後に削除済みinodeへ書き込む可能性があり、
+最後の名前を消していればその書込みを復旧できない。検出したbreakは削除成功とせず事故として記録する。
+`nlink > 1` なら通常は別名側にpayloadが残るが、外部からその名前も消された場合は残らない。
+leaseは同UIDによるディレクトリentry操作の排他ではない。個体・link数照合で検出した置換は拒否するが、
+悪意ある名前空間操作まで保証しない。D:/E:の追加読取りとentryごとのjournal/directory fsyncが増える。
+全件削除の時間は第2段で測る。
 実装は `removal.py`。隔離先が別個体へ差し替わった場合も削除や元pathへの復旧はせず、手動確認を求める。
 repo/E:の基準mountから単位rootまで全成分をnofollow FDで開き、同一deviceのbind mountもmount IDで拒否する。
 さらにcheckpointディレクトリ群のdevice/inodeを照合し、dataset/runへの実体aliasを拒否する。
@@ -163,6 +178,15 @@ D:`<repo>/.storage-tier/audit.jsonl` に、照合・取得・失敗・削除前�
 未完了transactionがあれば復旧まで次の操作を止める。E:のexchange後にmanifest公開で止まった場合は
 旧ミラーをstage名で保持する。両treeを調べ、D:/E:全件一致の場合だけ明示的な `verify` で証拠を作り、
 確認までは旧コピーを保持する。stageの残骸を黙って消さない。
+
+`RENAME_EXCHANGE` 後の旧E:実体も、交換前のhash付きsnapshotを計画とし、同じclaim・lease・永続journalの経路でだけ消す。
+旧実体に更新・追加があれば保持してmirrorを失敗にする。recoverは旧treeとentryをE:内の
+`<mirror-repo>/.storage-tier/recovered-trees/`・`recovered-assets/` へ保存し、計画・journalはD:に残す。
+公開済みの新ミラーを巻き戻さない。旧実体の削除中断は復旧マーカーを作るため、E:だけの変更を保持・照合してから
+全件verify/hydrateを通す。archiveは自動削除しない。
+未公開のmirror/hydrate stageも、完全な照合済みsnapshotがある場合だけ同じ削除経路で片付ける。
+不完全・未照合のコピーはstage名で保持し、`stage_preserved` をauditへ残して手動確認を求める。
+payloadを未照合のまま再帰削除する経路は使わない。
 
 ## worktreeと常駐
 

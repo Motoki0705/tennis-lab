@@ -111,7 +111,19 @@ E:`<mirror-repo>/.storage-tier/manifests/`，保存两边的 SHA-256、size/mtim
 删除固定 root FD，并使用包含 hash/atime 的完整 entry 计划。每个 entry 先原子移入同父目录的专用保留区，
 再校验实际移入对象后 unlink/rmdir。原名称被重新创建时，新 entry 不会成为 unlink 目标。
 不匹配对象无覆盖恢复，无法恢复则保留。跟踪内部 hardlink 因自身操作产生的 ctime/link 数变化，仍重新哈希 payload。
-这会增加 D: 读取和逐 entry 的 journal/directory fsync；完整数据集删除耗时留到第二阶段实测。实现位于 `removal.py`。
+每个 regular file 在 claim 后，必须先通过只读 FD 获取 Linux `F_SETLEASE(F_WRLCK)`，再做最终身份、metadata、SHA-256 校验。
+已有 open FD、所有者/权限错误、不支持 lease 或 `/proc/sys/fs/leases-enable` 禁用时，保留对象并失败，绝不降级为无锁删除。
+lease 按 inode 生效，也覆盖外部 hardlink 别名；新的 open 请求 break，在持有期间不能写入。
+unlink 前必须满足 `F_GETLEASE == F_WRLCK`，unlink 后、释放前再次检查。之前的 break 会恢复/保留 entry 并失败；
+之后发现 break 则按事故处理，将阶段与确认删除记录写入 journal/audit，操作失败。
+SIGIO 通过 Linux `F_SETOWN_EX` 定向到调用 thread，在该 thread 阻塞，释放后 drain 并恢复原 signal mask。
+CLI 在持有 lease 期间专用该 thread 的 SIGIO。
+
+lease 检查与 unlink 是不同 syscall。前提是 consumer 不枚举、操作专用保留区的随机 token 名称。
+在最后检查至 unlink 的窗口打开 token，可能在 lease 释放后向已 unlink 的 inode 写入；若最后名称已删除，无法按名称恢复这些写入。
+检测到的 break 记录为事故，不宣称删除成功。`nlink > 1` 时其他别名通常保留 payload，除非该名称也被外部删除。
+lease 不排他保护同 UID 的目录 entry 操作；身份/link 数检查拒绝检测到的替换，不保证抵抗恶意 namespace 控制。
+这会增加 D:/E: 读取和逐 entry 的 journal/directory fsync；完整数据集删除耗时留到第二阶段实测。实现位于 `removal.py`。
 隔离目录被替换时不删除或冒充原单位恢复，保留错误供人工检查。
 从 repo/E: 基准 mount 到单位 root 的每个路径成分都通过 nofollow FD 与 mount ID 校验，拒绝同 device 的 bind mount。
 另按 checkpoint 目录的 device/inode 拒绝 dataset/run 的实际别名。普通文件 hardlink 的 dataset 名称删除不会删除 ckpt 名称。
@@ -143,6 +155,14 @@ mirror/evict/cycle，避免用不完整 D: 覆盖完整 E: 副本。
 若崩溃前已删除，则记录事实，
 不宣称已实测容量收益。未完成 transaction 阻止后续操作。若 E: exchange 后 manifest 发布中断，旧镜像保留在 staging 名下。
 检查两个 tree；只有 D:/E: 全量一致时才显式 `verify`，在证据落盘前保留旧副本。不静默清理 staging 残留。
+
+`RENAME_EXCHANGE` 后的旧 E: tree 也只按交换前带 hash 的 snapshot，通过相同 claim、lease、持久 journal 路径删除。
+旧对象被更新或增加 payload 时保留并使 mirror 失败。recover 将旧 tree/entry 保存在 E: 内的
+`<mirror-repo>/.storage-tier/recovered-trees/`、`recovered-assets/`，计划/journal 留在 D:，绝不回滚新发布的镜像。
+旧副本删除中断会建立恢复标记；先保存、核对 E: 独有修改，再全量 verify/hydrate。archive 不自动删除。
+未发布的 mirror/hydrate stage 也仅在具有完整已校验 snapshot 时通过同一删除路径清理。
+不完整/未校验副本保留 staging 名称，并写入 `stage_preserved` 审计记录供人工检查。
+任何 payload 清理都不使用未经校验的递归删除。
 
 ## worktree 与常驻服务
 

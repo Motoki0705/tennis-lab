@@ -160,7 +160,26 @@ directory, then checked through that namespace before unlink/rmdir. A stale writ
 recreating the original name cannot make that new entry the unlink target. Mismatched
 claims are restored without overwrite or retained for recovery. Internal hardlink
 ctime/link-count changes caused by our own claims are tracked; bytes are still hashed.
-This adds D: reads and per-entry journal/directory fsyncs; full-dataset removal timing
+Every regular file must acquire a Linux `F_SETLEASE(F_WRLCK)` lease on its claimed
+read-only FD before final identity/metadata/SHA-256 verification. Existing open FDs,
+ownership/permission errors, unsupported leases, or disabled `/proc/sys/fs/leases-enable`
+stop removal without an unlocked fallback. The lease covers the inode, including
+external hardlink names. New opens request a break and cannot write while the lease
+holds. `F_GETLEASE == F_WRLCK` is required immediately before unlink and checked again
+after unlink, before release. A pending break before unlink restores/retains the entry;
+a break observed after unlink is an incident: journal/audit record the phase and the
+confirmed removal and the operation fails. SIGIO is blocked, directed to the calling
+thread with Linux `F_SETOWN_EX`, and drained before restoring that thread's signal mask.
+The CLI reserves that thread's SIGIO while holding a lease.
+
+Lease checks and unlink are separate syscalls. Consumers must not enumerate/manipulate
+the private random token names. A process opening a token in the last check/unlink
+window can receive an already-unlinked inode after lease release; its later writes
+may have no recoverable name. Detected breaks are incidents, not successful eviction.
+With `nlink > 1`, another hardlink normally retains the payload, unless that name is
+also removed externally. Leases do not lock directory entries against same-UID changes;
+identity/link-count checks reject detected replacements, not hostile namespace control.
+This adds D:/E: reads and per-entry journal/directory fsyncs; full-dataset removal timing
 remains a stage-two measurement. The implementation is in `removal.py`.
 A replaced quarantine is neither deleted nor moved back as our unit.
 Every component from the repository/E: mount anchor through the unit root is opened
@@ -213,6 +232,18 @@ further operations until recovery. An interrupted E: exchange keeps the old mirr
 under its staging name if manifest publication failed; inspect both trees, use
 explicit `verify` only when the complete D:/E: contents match, and retain the old
 copy until that proof is recorded. Staging leftovers are reported, never silently swept.
+
+After `RENAME_EXCHANGE`, the old E: tree is removed only against its pre-exchange
+hashed snapshot through the same claimed-entry, lease and durable journal path.
+Changed/added old payload is retained and mirroring fails. Recovery archives old trees
+and claims under E:`<mirror-repo>/.storage-tier/recovered-trees/` and `recovered-assets/`;
+plans/journals remain on D:. It never replaces the newly published mirror. Interrupted
+retirement creates the unit's recovery marker; preserve/reconcile the archived E-only
+changes and run full `verify`/`hydrate` before continuing. Archives are never auto-deleted.
+Unpublished mirror/hydrate stages are cleaned only with a complete verified snapshot
+through that same removal path. Incomplete/unverified copies are retained at their
+staging name with a `stage_preserved` audit record for manual inspection. No payload
+cleanup uses recursive, unverified removal.
 
 ## Worktrees and service
 

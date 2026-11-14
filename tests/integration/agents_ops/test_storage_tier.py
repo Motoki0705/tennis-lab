@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import errno
+import fcntl
 import hashlib
 import importlib
 import json
 import os
+import select
 import subprocess
 import sys
 import time
@@ -827,6 +829,59 @@ def test_mirror_can_update_a_recorded_quiescent_warm_unit(lab: Lab) -> None:
     )
 
 
+@pytest.mark.parametrize("change", ["write", "add"])
+def test_exchanged_old_mirror_is_not_blindly_removed(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    local, mirror = lab.config.repo / unit.path, lab.config.mirror / unit.path
+    (local / "a.bin").write_bytes(b"new output\n")
+    lab.age(unit, 1)
+    original = lab.module.rename
+    changed = False
+    old_path: Path | None = None
+
+    def writer(source: Path, target: Path, *, exchange: bool = False) -> None:
+        nonlocal changed, old_path
+        directory = os.open(target, os.O_RDONLY | os.O_DIRECTORY) if exchange else -1
+        try:
+            original(source, target, exchange=exchange)
+            if exchange and target == mirror:
+                changed, old_path = True, source
+                name = "a.bin" if change == "write" else "unmirrored.bin"
+                fd = os.open(
+                    name, os.O_WRONLY | os.O_TRUNC | os.O_CREAT, 0o600, dir_fd=directory
+                )
+                try:
+                    os.write(fd, b"E-only generation\n")
+                finally:
+                    os.close(fd)
+        finally:
+            if directory >= 0:
+                os.close(directory)
+
+    monkeypatch.setattr(lab.module, "rename", writer)
+    code, report = lab.run("mirror", unit)
+    assert changed and code == 1, report
+    assert old_path is not None
+    name = "a.bin" if change == "write" else "unmirrored.bin"
+    assert lab.filesystem.read_bytes(old_path / name) == b"E-only generation\n"
+    assert lab.filesystem.read_bytes(mirror / "a.bin") == b"new output\n"
+    assert not any(r["event"] == "mirror_retired" for r in lab.records())
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0, recovered
+    result = recovered["results"][0]
+    assert result["recovery_required"]
+    archive = Path(result["tree_archive"])
+    assert archive.is_relative_to(lab.config.mirror / ".storage-tier/recovered-trees")
+    assert lab.filesystem.read_bytes(archive / name) == b"E-only generation\n"
+    assert lab.run("mirror", unit)[0] == 1
+    assert lab.run("verify", unit)[0] == 0
+    assert not lab.engine.recovery_path(unit).exists()
+    assert lab.filesystem.read_bytes(archive / name) == b"E-only generation\n"
+
+
 def test_cross_unit_hardlinks_keep_other_reference_and_report_unreclaimed_bytes(
     lab: Lab, tmp_path: Path
 ) -> None:
@@ -1547,3 +1602,462 @@ def test_o_noatime_failure_never_retries_with_an_ordinary_open(
     assert (lab.config.repo / unit.path).exists() and not (
         lab.config.mirror / unit.path
     ).exists()
+
+
+def test_existing_write_fd_prevents_final_payload_removal(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    original_append, original_unlink = lab.module.append_json, os.unlink
+    writer = -1
+    opened = False
+
+    def hold_writer(path: Path, value: dict[str, Any]) -> None:
+        nonlocal writer, opened
+        original_append(path, value)
+        if value.get("event") == "claimed" and value.get("entry") == "a.bin":
+            (retained,) = (lab.config.repo / unit.path).parent.glob(
+                ".storage-tier-retained-*"
+            )
+            writer = os.open(
+                retained / value["retained_name"], os.O_WRONLY | os.O_NOATIME
+            )
+            opened = True
+
+    def write_after_final_check(path: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal writer
+        if writer >= 0 and kwargs.get("dir_fd") is not None:
+            os.pwrite(writer, b"pear!\n", 0)
+            os.close(writer)
+            writer = -1
+        return original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(lab.module, "append_json", hold_writer)
+    monkeypatch.setattr(os, "unlink", write_after_final_check)
+    try:
+        code, report = lab.run("evict", unit)
+    finally:
+        if writer >= 0:
+            os.close(writer)
+    assert opened and code == 1, report
+    assert (
+        lab.filesystem.read_bytes(lab.config.repo / unit.path / "a.bin") == b"apple\n"
+    )
+    assert not any(r["event"] == "deleted" for r in lab.records())
+
+
+@pytest.mark.parametrize("entry_path", ["token", "external-hardlink"])
+def test_late_open_breaks_lease_instead_of_losing_unmirrored_payload(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, entry_path: str
+) -> None:
+    unit = lab.unit()
+    source = lab.config.repo / unit.path
+    alias = tmp_path / "outside.bin"
+    if entry_path == "external-hardlink":
+        os.link(source / "a.bin", alias)
+    lab.mirror(unit)
+    original = os.unlink
+    attempted = False
+    child_code: int | None = None
+    script = r"""
+import os, sys
+try:
+    fd = os.open(sys.argv[1], os.O_WRONLY | os.O_NONBLOCK | os.O_NOATIME)
+except BlockingIOError:
+    sys.exit(75)
+os.pwrite(fd, b'pear!\n', 0)
+os.close(fd)
+if sys.argv[2] == 'external-hardlink':
+    os.unlink(sys.argv[1])
+"""
+
+    def open_after_final_check(path: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal attempted, child_code
+        fd = kwargs.get("dir_fd")
+        if fd is not None and not attempted:
+            retained = Path(os.readlink(f"/proc/self/fd/{fd}"))
+            if retained.name.startswith(".storage-tier-retained-"):
+                attempted = True
+                target = alias if entry_path == "external-hardlink" else retained / path
+                child = subprocess.run(
+                    [sys.executable, "-c", script, str(target), entry_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                child_code = child.returncode
+                assert child_code in {0, 75}, child.stderr
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "unlink", open_after_final_check)
+    code, report = lab.run("evict", unit)
+    assert attempted and code == 1, report
+    assert child_code == 75
+    if entry_path == "external-hardlink":
+        assert lab.filesystem.read_bytes(alias) == b"apple\n"
+    assert not any(r["event"] == "deleted" for r in lab.records())
+
+
+def test_token_replacement_after_final_stat_is_not_successfully_deleted(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    removal = importlib.import_module("storage_tier.removal")
+    original_hash, original_stat = removal.hashlib.file_digest, os.stat
+    armed = False
+    replaced = False
+
+    def arm_after_hash(*args: Any, **kwargs: Any) -> Any:
+        nonlocal armed
+        result = original_hash(*args, **kwargs)
+        opened = Path(os.readlink(f"/proc/self/fd/{args[0].fileno()}"))
+        armed = opened.parent.name.startswith(".storage-tier-retained-")
+        return result
+
+    def replace_after_stat(path: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal replaced
+        result = original_stat(path, *args, **kwargs)
+        fd = kwargs.get("dir_fd")
+        if armed and not replaced and fd is not None:
+            retained = Path(os.readlink(f"/proc/self/fd/{fd}"))
+            if retained.name.startswith(".storage-tier-retained-"):
+                replaced = True
+                os.unlink(path, dir_fd=fd)
+                writer = os.open(
+                    path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=fd
+                )
+                try:
+                    os.write(writer, b"unverified token replacement\n")
+                finally:
+                    os.close(writer)
+        return result
+
+    monkeypatch.setattr(removal.hashlib, "file_digest", arm_after_hash)
+    monkeypatch.setattr(os, "stat", replace_after_stat)
+    code, report = lab.run("evict", unit)
+    assert replaced and code == 1, report
+    assert (
+        lab.filesystem.read_bytes(lab.config.repo / unit.path / "a.bin")
+        == b"unverified token replacement\n"
+    )
+    assert not any(r["event"] == "deleted" for r in lab.records())
+
+
+@pytest.mark.parametrize("failure", ["disabled", "permission", "unsupported"])
+def test_unavailable_lease_never_falls_back_to_unlocked_deletion(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    original_fcntl, original_read = fcntl.fcntl, Path.read_text
+
+    def rejected(fd: int, command: int, *args: Any) -> Any:
+        if command == fcntl.F_SETLEASE and args == (fcntl.F_WRLCK,):
+            code = errno.EACCES if failure == "permission" else errno.EOPNOTSUPP
+            raise OSError(code, os.strerror(code))
+        return original_fcntl(fd, command, *args)
+
+    def disabled(path: Path, *args: Any, **kwargs: Any) -> str:
+        if str(path) == "/proc/sys/fs/leases-enable":
+            return "0\n"
+        return original_read(path, *args, **kwargs)
+
+    if failure == "disabled":
+        monkeypatch.setattr(Path, "read_text", disabled)
+    else:
+        monkeypatch.setattr(fcntl, "fcntl", rejected)
+    code, report = lab.run("evict", unit)
+    assert code == 1 and "lease" in report["results"][0]["error"], report
+    source = lab.config.repo / unit.path
+    assert lab.filesystem.read_bytes(source / "a.bin") == b"apple\n"
+    assert lab.filesystem.read_bytes(source / "nested/b.bin") == b"\x00\x01\x04\x09"
+    interrupted = next(r for r in lab.records() if r["event"] == "deletion_interrupted")
+    assert interrupted["removed_entries"] == []
+    journal = [
+        json.loads(row)
+        for row in lab.filesystem.read_bytes(
+            Path(interrupted["removal_journal"])
+        ).splitlines()
+    ]
+    failed = next(r for r in journal if r["event"] == "file_removal_failed")
+    assert failed["phase"] == "lease_acquire" and not failed["unlinked"]
+
+
+@pytest.mark.parametrize("when", ["before-unlink", "after-final-check"])
+def test_blocked_writer_is_released_and_lease_break_is_audited(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, when: str
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    removal = importlib.import_module("storage_tier.removal")
+    original_hash, original_unlink = removal.hashlib.file_digest, os.unlink
+    child: subprocess.Popen[str] | None = None
+    script = r"""
+import os, sys
+try:
+    fd = os.open(sys.argv[1], os.O_WRONLY | os.O_NONBLOCK | os.O_NOATIME)
+except BlockingIOError:
+    print('blocked', flush=True)
+else:
+    os.close(fd)
+    sys.exit(76)
+fd = os.open(sys.argv[1], os.O_WRONLY | os.O_NOATIME)
+os.pwrite(fd, b'pear!\n', 0)
+os.close(fd)
+print('written', flush=True)
+"""
+
+    def start_writer(target: Path) -> None:
+        nonlocal child
+        child = subprocess.Popen(
+            [sys.executable, "-c", script, str(target)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        assert child.stdout is not None
+        assert select.select([child.stdout], [], [], 10)[0]
+        assert child.stdout.readline().strip() == "blocked"
+
+    def after_hash(*args: Any, **kwargs: Any) -> Any:
+        result = original_hash(*args, **kwargs)
+        opened = Path(os.readlink(f"/proc/self/fd/{args[0].fileno()}"))
+        if (
+            child is None
+            and when == "before-unlink"
+            and opened.parent.name.startswith(".storage-tier-retained-")
+        ):
+            start_writer(opened)
+        return result
+
+    def at_unlink(path: Any, *args: Any, **kwargs: Any) -> Any:
+        fd = kwargs.get("dir_fd")
+        if child is None and when == "after-final-check" and fd is not None:
+            retained = Path(os.readlink(f"/proc/self/fd/{fd}"))
+            if retained.name.startswith(".storage-tier-retained-"):
+                start_writer(retained / path)
+        return original_unlink(path, *args, **kwargs)
+
+    monkeypatch.setattr(removal.hashlib, "file_digest", after_hash)
+    monkeypatch.setattr(os, "unlink", at_unlink)
+    try:
+        code, report = lab.run("evict", unit)
+    finally:
+        if child is not None:
+            try:
+                stdout, stderr = child.communicate(timeout=10)
+                assert child.returncode == 0, stderr
+                assert "written" in stdout
+            finally:
+                if child.poll() is None:
+                    child.kill()
+                    child.wait(timeout=10)
+    assert child is not None and code == 1, report
+    interrupted = next(r for r in lab.records() if r["event"] == "deletion_interrupted")
+    journal = [
+        json.loads(row)
+        for row in lab.filesystem.read_bytes(
+            Path(interrupted["removal_journal"])
+        ).splitlines()
+    ]
+    failed = next(r for r in journal if r["event"] == "file_removal_failed")
+    assert "lease break" in failed["error"]
+    assert failed["phase"] == (
+        "before_unlink" if when == "before-unlink" else "after_unlink"
+    )
+    assert failed["unlinked"] == (when == "after-final-check")
+    assert interrupted["removal_failures"][0]["phase"] == failed["phase"]
+    assert interrupted["removal_failures"][0]["unlinked"] == failed["unlinked"]
+    assert interrupted["removed_entries"] == (
+        [] if when == "before-unlink" else ["a.bin"]
+    )
+    if when == "before-unlink":
+        assert (
+            lab.filesystem.read_bytes(lab.config.repo / unit.path / "a.bin")
+            == b"pear!\n"
+        )
+    assert not any(r["event"] == "deleted" for r in lab.records())
+
+
+@pytest.mark.parametrize("operation", ["mirror", "hydrate"])
+def test_unverified_failed_stage_is_preserved_instead_of_recursively_deleted(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    unit = lab.unit()
+    if operation == "hydrate":
+        lab.mirror(unit)
+        assert lab.run("evict", unit)[0] == 0
+    original = lab.module.copy_tree
+    stage: Path | None = None
+
+    def fail_after_new_payload(
+        source: Path, target: Path, expected: Any, **kwargs: Any
+    ) -> None:
+        nonlocal stage
+        original(source, target, expected, **kwargs)
+        stage = target
+        (target / "unmirrored.bin").write_bytes(b"keep failed copy payload\n")
+        raise OSError(errno.EIO, "injected copy interruption")
+
+    monkeypatch.setattr(lab.module, "copy_tree", fail_after_new_payload)
+    code, report = lab.run(operation, unit)
+    assert code == 1 and stage is not None, report
+    assert (
+        lab.filesystem.read_bytes(stage / "unmirrored.bin")
+        == b"keep failed copy payload\n"
+    )
+    event = next(r for r in lab.records() if r["event"] == "stage_preserved")
+    assert event["stage"] == str(stage)
+    assert not any(r["event"] == "stage_discarded" for r in lab.records())
+
+
+def test_partial_old_mirror_removal_recovers_on_e_without_replacing_new_mirror(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    mirror = lab.config.mirror / unit.path
+    (source / "a.bin").write_bytes(b"new output\n")
+    lab.age(unit, 1)
+    original = os.unlink
+    changed = False
+
+    def write_remaining(path: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal changed
+        result = original(path, *args, **kwargs)
+        fd = kwargs.get("dir_fd")
+        if not changed and fd is not None:
+            directory = Path(os.readlink(f"/proc/self/fd/{fd}"))
+            if directory.name.startswith(
+                ".storage-tier-retained-"
+            ) and directory.is_relative_to(lab.config.mirror):
+                changed = True
+                (stage,) = mirror.parent.glob(".storage-tier-stage-*")
+                (stage / "nested/b.bin").write_bytes(b"E-only late payload\n")
+        return result
+
+    monkeypatch.setattr(os, "unlink", write_remaining)
+    code, report = lab.run("mirror", unit)
+    assert changed and code == 1, report
+    interrupted = next(
+        r for r in lab.records() if r["event"] == "stage_removal_interrupted"
+    )
+    assert interrupted["operation"] == "retire-mirror"
+    assert interrupted["removed_entries"] == ["a.bin"]
+    assert interrupted["partial_deletion_possible"]
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0, recovered
+    result = recovered["results"][0]
+    assert result["recovery_required"]
+    tree = Path(result["tree_archive"])
+    assert tree.is_relative_to(lab.config.mirror)
+    assert not (tree / "a.bin").exists()
+    assert lab.filesystem.read_bytes(tree / "nested/b.bin") == b"E-only late payload\n"
+    assert lab.filesystem.read_bytes(mirror / "a.bin") == b"new output\n"
+    assert lab.run("verify", unit)[0] == 0
+    assert lab.filesystem.read_bytes(tree / "nested/b.bin") == b"E-only late payload\n"
+
+
+def test_process_exit_during_old_mirror_claim_archives_e_payload_on_recovery(
+    lab: Lab,
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    (source / "a.bin").write_bytes(b"new output\n")
+    lab.age(unit, 1)
+    script = r"""
+import os, sys
+from pathlib import Path
+import storage_tier.engine as module
+from storage_tier.layout import Config
+from storage_tier.usage import Inspector
+original = module.append_json
+def crash_after_claim(path, value):
+    original(path, value)
+    if value.get('event') == 'claimed':
+        os._exit(94)
+module.append_json = crash_after_claim
+config = Config(Path(sys.argv[1]), Path(sys.argv[2]), ('data/task',))
+engine = module.Engine(config, inspector=Inspector(Path(sys.argv[3])), mount_check=lambda config: None)
+engine.run('mirror', ['data/task/v1'], dry_run=False)
+"""
+    child = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(lab.config.repo),
+            str(lab.config.mount),
+            str(lab.proc),
+        ],
+        env=dict(os.environ, PYTHONPATH=str(OPS)),
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert child.returncode == 94, child.stderr
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0, recovered
+    result = recovered["results"][0]
+    assets = Path(result["retained_assets"])
+    assert assets.is_relative_to(lab.config.mirror / ".storage-tier/recovered-assets")
+    (token,) = lab.filesystem.names(assets)
+    assert lab.filesystem.read_bytes(assets / token) == b"apple\n"
+    assert (
+        lab.filesystem.read_bytes(lab.config.mirror / unit.path / "a.bin")
+        == b"new output\n"
+    )
+    assert result["recovery_required"]
+    assert lab.run("verify", unit)[0] == 0
+    assert lab.filesystem.read_bytes(assets / token) == b"apple\n"
+
+
+@pytest.mark.parametrize("operation", ["mirror", "hydrate"])
+def test_verified_stage_cleanup_failure_keeps_payload_and_has_recovery(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    unit = lab.unit()
+    if operation == "hydrate":
+        lab.mirror(unit)
+        assert lab.run("evict", unit)[0] == 0
+    original_copy, original_append = lab.module.copy_tree, lab.module.append_json
+    stage: Path | None = None
+    changed = False
+
+    def change_source_after_copy(
+        source: Path, target: Path, expected: Any, **kwargs: Any
+    ) -> None:
+        nonlocal stage
+        original_copy(source, target, expected, **kwargs)
+        stage = target
+        (source / "a.bin").write_bytes(b"source changed during copy\n")
+
+    def change_claim(path: Path, event: dict[str, Any]) -> None:
+        nonlocal changed
+        original_append(path, event)
+        if event.get("event") == "claimed" and event.get("entry") == "a.bin":
+            assert stage is not None
+            (retained,) = stage.parent.glob(".storage-tier-retained-*")
+            (retained / event["retained_name"]).write_bytes(
+                b"stage-only late payload\n"
+            )
+            changed = True
+
+    monkeypatch.setattr(lab.module, "copy_tree", change_source_after_copy)
+    monkeypatch.setattr(lab.module, "append_json", change_claim)
+    code, report = lab.run(operation, unit)
+    assert changed and code == 1, report
+    assert stage is not None
+    assert lab.filesystem.read_bytes(stage / "a.bin") == b"stage-only late payload\n"
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0, recovered
+    result = recovered["results"][0]
+    tree = Path(result["tree_archive"])
+    base = lab.config.mirror if operation == "mirror" else lab.config.repo
+    assert tree.is_relative_to(base / ".storage-tier/recovered-trees")
+    assert lab.filesystem.read_bytes(tree / "a.bin") == b"stage-only late payload\n"
+    assert not result["recovery_required"]

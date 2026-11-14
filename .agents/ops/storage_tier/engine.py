@@ -6,7 +6,6 @@ import fcntl
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import time
 import uuid
@@ -359,6 +358,7 @@ class Engine:
             mirror = snapshot(destination, hashes=True)
             if not old.same_metadata(mirror):
                 raise StorageError("E: changed while mirroring")
+            old = mirror  # Keep the old mirror's verified hashes for retirement.
             if local.content() == mirror.content():
                 self.quiet(unit, source, snapshot(source))
                 self.quiet(unit, destination, mirror)
@@ -384,6 +384,7 @@ class Engine:
         self.ensure_parent(destination.parent, self.config.mirror)
         stage = destination.with_name(f".storage-tier-stage-{uuid.uuid4().hex}")
         published = False
+        copied: Snapshot | None = None
         try:
             copy_tree(source, stage, local)
             copied = snapshot(stage, hashes=True)
@@ -411,14 +412,125 @@ class Engine:
                     entry["sha256"] = copied.entries[name]["sha256"]
             manifest = self.record(unit, local, final, dry_run=False)
             if old is not None:
-                shutil.rmtree(stage)
-                sync_dir(stage.parent)
+                self.remove_stage(unit, stage, old)
             return {"action": "mirrored", "bytes": local.bytes, "manifest": manifest}
         finally:
             # After an exchange, preserve the old mirror if manifest publication
             # failed; its named staging path is reported by discovery on retry.
             if not published and stage.exists():
-                shutil.rmtree(stage)
+                if copied is not None and copied.content() == local.content():
+                    self.remove_stage(
+                        unit, stage, copied, purpose="discard-mirror-stage"
+                    )
+                else:
+                    self.audit(
+                        "stage_preserved",
+                        unit,
+                        stage=str(stage),
+                        operation="mirror",
+                        reason="unpublished copy has no complete verified removal plan",
+                    )
+
+    def remove_stage(
+        self,
+        unit: Unit,
+        stage: Path,
+        expected: Snapshot,
+        *,
+        purpose: str = "retire-mirror",
+        mirror: bool = True,
+    ) -> None:
+        """Remove only a verified stage, with the eviction safety path."""
+        base = self.config.mirror if mirror else self.config.repo
+        anchor = self.config.mount if mirror else base
+        transaction_id = uuid.uuid4().hex
+        retained = stage.with_name(f".storage-tier-retained-{transaction_id}")
+        transaction = self.config.state / "transactions" / f"{transaction_id}.json"
+        journal = self.config.state / "removals" / f"{transaction_id}.jsonl"
+        removed: list[str] = []
+        incidents: list[dict[str, Any]] = []
+
+        def progress(event: dict[str, Any]) -> None:
+            append_json(journal, {"time": self.timestamp(), **event})
+            if event["event"] == "removed":
+                removed.append(event["entry"])
+            elif event["event"] == "file_removal_failed":
+                incidents.append(event)
+
+        record = {
+            "schema_version": 1,
+            "operation": purpose,
+            "storage": "E" if mirror else "D",
+            "unit": unit.path,
+            "kind": unit.kind,
+            "quarantine": str(stage.relative_to(base)),
+            "retained": str(retained.relative_to(base)),
+            "dev": expected.entries["."]["dev"],
+            "ino": expected.entries["."]["ino"],
+            "phase": "prepared",
+            "removal_plan": expected.entries,
+            "removal_journal": str(journal.relative_to(self.config.state)),
+        }
+        write_json(transaction, record)
+        try:
+            self.check_mount()
+            real_directory(stage, anchor)
+            moved = snapshot(stage)
+            if not expected.same_metadata(moved, moved=True) or any(
+                entry["kind"] == "file"
+                and entry["atime_ns"] != moved.entries[name]["atime_ns"]
+                for name, entry in expected.entries.items()
+            ):
+                raise StorageError(
+                    "verified stage changed before removal; preserving it"
+                )
+            for name, entry in moved.entries.items():
+                if entry["kind"] == "file":
+                    entry["sha256"] = expected.entries[name]["sha256"]
+            self.quiet(unit, stage, moved)
+            retained.mkdir(mode=0o700)
+            sync_dir(retained.parent)
+            info = retained.lstat()
+            record["retained_identity"] = {"dev": info.st_dev, "ino": info.st_ino}
+            record["phase"], record["removal_plan"] = "verified", moved.entries
+            write_json(transaction, record)
+            remove_tree(
+                stage,
+                moved,
+                retained=retained,
+                retained_identity=(info.st_dev, info.st_ino),
+                progress=progress,
+            )
+            self.audit(
+                "mirror_retired" if purpose == "retire-mirror" else "stage_discarded",
+                unit,
+                transaction=transaction_id,
+                operation=purpose,
+                removed_entries=removed,
+                removal_journal=str(journal),
+            )
+            record["phase"] = "complete"
+            write_json(transaction, record)
+            transaction.unlink()
+            sync_dir(transaction.parent)
+        except BaseException as exc:
+            self.audit(
+                "stage_removal_interrupted",
+                unit,
+                transaction=transaction_id,
+                operation=purpose,
+                stage=str(stage),
+                error=str(exc),
+                removed_entries=removed,
+                removal_failures=incidents,
+                partial_deletion_possible=record["phase"] == "verified",
+                removal_journal=str(journal),
+            )
+            if isinstance(exc, BusyUnit):
+                raise StorageError(
+                    f"stage removal is in use after publication: {exc}"
+                ) from exc
+            raise
 
     def hydrate(self, unit: Unit, *, dry_run: bool) -> dict[str, Any]:
         destination = self.config.repo / unit.path
@@ -447,6 +559,7 @@ class Engine:
         self.check_mount()
         self.ensure_parent(destination.parent, self.config.repo)
         stage = destination.with_name(f".storage-tier-hydrate-{uuid.uuid4().hex}")
+        local: Snapshot | None = None
         try:
             copy_tree(source, stage, mirror, now_ns=self.now_ns)
             local = snapshot(stage, hashes=True)
@@ -473,7 +586,22 @@ class Engine:
             return {"action": "hydrated", "bytes": mirror.bytes}
         finally:
             if stage.exists():
-                shutil.rmtree(stage)
+                if local is not None and local.content() == mirror.content():
+                    self.remove_stage(
+                        unit,
+                        stage,
+                        local,
+                        purpose="discard-hydrate-stage",
+                        mirror=False,
+                    )
+                else:
+                    self.audit(
+                        "stage_preserved",
+                        unit,
+                        stage=str(stage),
+                        operation="hydrate",
+                        reason="unpublished copy has no complete verified removal plan",
+                    )
 
     def evict(
         self, unit: Unit, *, dry_run: bool, evidence: dict[str, Any] | None = None
@@ -521,11 +649,14 @@ class Engine:
         transaction = self.config.state / "transactions" / f"{transaction_id}.json"
         removal_journal = self.config.state / "removals" / f"{transaction_id}.jsonl"
         removed_entries: list[str] = []
+        incidents: list[dict[str, Any]] = []
 
         def removal_progress(event: dict[str, Any]) -> None:
             append_json(removal_journal, {"time": self.timestamp(), **event})
             if event["event"] == "removed":
                 removed_entries.append(event["entry"])
+            elif event["event"] == "file_removal_failed":
+                incidents.append(event)
 
         record = {
             "schema_version": 1,
@@ -616,23 +747,30 @@ class Engine:
                 removal_journal=str(removal_journal),
                 removed_entries=removed_entries,
                 partial_deletion_possible=record["phase"] == "verified",
+                removal_failures=incidents,
             )
             raise
 
     def archive_retained(
-        self, value: dict[str, Any], name: str, source: Path
+        self,
+        value: dict[str, Any],
+        name: str,
+        source: Path,
+        *,
+        base: Path | None = None,
     ) -> Path | None:
+        base = self.config.repo if base is None else base
         raw = value.get("retained")
         if raw is None:
             return None
         if not isinstance(raw, str):
             raise StorageError("invalid retained-entry path")
-        retained = self.config.repo / raw
+        retained = base / raw
         if retained.parent != source.parent or not retained.name.startswith(
             ".storage-tier-retained-"
         ):
             raise StorageError("invalid retained-entry path in transaction")
-        assets = self.config.state / "recovered-assets" / Path(name).stem
+        assets = base / ".storage-tier/recovered-assets" / Path(name).stem
         if not os.path.lexists(retained) and not os.path.lexists(assets):
             return None
         expected = value.get("retained_identity")
@@ -641,7 +779,8 @@ class Engine:
                 "retained directory identity is unproven; manual inspection required"
             )
         current = retained if os.path.lexists(retained) else assets
-        real_directory(current, self.config.repo)
+        anchor = self.config.mount if base == self.config.mirror else self.config.repo
+        real_directory(current, anchor)
         info = current.lstat()
         if (info.st_dev, info.st_ino) != (expected["dev"], expected["ino"]):
             raise StorageError(
@@ -649,10 +788,79 @@ class Engine:
             )
         if current == retained:
             assets.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            real_directory(assets.parent, self.config.repo)
+            real_directory(assets.parent, anchor)
             rename(retained, assets)
         value["retained_archive"] = str(assets)
         return assets
+
+    def recover_stage_removal(
+        self, unit: Unit, value: dict[str, Any], name: str
+    ) -> dict[str, Any]:
+        """Archive remnants on their own tier, never roll back publication."""
+        purpose = value.get("operation")
+        mirror = purpose in {"retire-mirror", "discard-mirror-stage"}
+        if value.get("storage") != ("E" if mirror else "D"):
+            raise StorageError("invalid stage removal storage")
+        base = self.config.mirror if mirror else self.config.repo
+        anchor = self.config.mount if mirror else base
+        source = base / unit.path
+        stage = base / value["quarantine"]
+        prefix = ".storage-tier-stage-" if mirror else ".storage-tier-hydrate-"
+        if stage.parent != source.parent or not stage.name.startswith(prefix):
+            raise StorageError("invalid removal stage path")
+        archive_tree = base / ".storage-tier/recovered-trees" / Path(name).stem
+        current = stage if os.path.lexists(stage) else archive_tree
+        tree: str | None = None
+        if os.path.lexists(current):
+            real_directory(current, anchor)
+            info = current.lstat()
+            if (info.st_dev, info.st_ino) != (value["dev"], value["ino"]):
+                raise StorageError("stage identity changed; manual inspection required")
+            if current == stage:
+                self.ensure_parent(archive_tree.parent, base)
+                rename(stage, archive_tree)
+            tree = str(archive_tree)
+        elif value["phase"] == "prepared":
+            raise StorageError("prepared stage is missing; manual inspection required")
+        assets = self.archive_retained(value, name, source, base=base)
+        archive = self.config.state / "recovered-transactions" / name
+        value["tree_archive"] = tree
+        write_json(archive, value)
+        required = purpose == "retire-mirror" and value["phase"] != "complete"
+        if required:
+            write_json(
+                self.recovery_path(unit),
+                {
+                    "unit": unit.path,
+                    "transaction": name,
+                    "recovery_plan": str(archive),
+                    "tree_archive": tree,
+                    "retained_assets": str(assets) if assets else None,
+                    "removal_journal": value.get("removal_journal"),
+                },
+            )
+        self.audit(
+            "stage_removal_recovery",
+            unit,
+            transaction=name,
+            tree_archive=tree,
+            operation=purpose,
+            retained_assets=str(assets) if assets else None,
+            recovery_required=required,
+        )
+        transaction = self.config.state / "transactions" / name
+        transaction.unlink()
+        sync_dir(transaction.parent)
+        return {
+            "unit": unit.path,
+            "action": "stage_archived",
+            "operation": purpose,
+            "tree_archive": tree,
+            "retained_assets": str(assets) if assets else None,
+            "recovery_plan": str(archive),
+            "recovery_required": required,
+            "partial_deletion_possible": value["phase"] == "verified",
+        }
 
     def recover(self) -> list[dict[str, Any]]:
         directory = self.config.state / "transactions"
@@ -670,6 +878,20 @@ class Engine:
                     "invalid deletion transaction; manual inspection required"
                 )
             unit = Unit(value["unit"], value["kind"])
+            if value.get("operation") in {
+                "retire-mirror",
+                "discard-mirror-stage",
+                "discard-hydrate-stage",
+            }:
+                if unit not in (
+                    discover(self.config, self.config.repo).units
+                    + discover(self.config, self.config.mirror).units
+                ):
+                    raise StorageError(
+                        "stage transaction unit is not independently discovered"
+                    )
+                results.append(self.recover_stage_removal(unit, value, name))
+                continue
             if unit not in discover(self.config, self.config.mirror).units:
                 raise StorageError(
                     "transaction unit is not an independently discovered E: unit"

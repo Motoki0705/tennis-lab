@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from . import filesystem as fs
+from .leases import require_write_lease, write_lease
 
 
 def remove_verified_tree(
@@ -205,34 +206,77 @@ def remove_verified_tree(
                         token, os.O_RDONLY | os.O_NOATIME | os.O_NOFOLLOW, dir_fd=vault
                     )
                     with os.fdopen(child, "rb") as stream:
-                        if fs.fd_mount_id(child) != mount_id or not matching(
-                            entry, fs.stamp(os.fstat(child))
-                        ):
-                            raise fs.StorageError(
-                                f"claimed file identity/mount changed: {child_label}"
+                        phase, unlinked = "lease_acquire", False
+                        try:
+                            with write_lease(child):
+                                phase = "leased_verification"
+                                if fs.fd_mount_id(child) != mount_id or not matching(
+                                    entry, fs.stamp(os.fstat(child))
+                                ):
+                                    raise fs.StorageError(
+                                        f"claimed file identity/mount changed: {child_label}"
+                                    )
+                                report(
+                                    "remove_intent", child_label, retained_name=token
+                                )
+                                digest = hashlib.file_digest(
+                                    stream, "sha256"
+                                ).hexdigest()
+                                if digest != entry.get("sha256") or not matching(
+                                    entry, fs.stamp(os.fstat(child))
+                                ):
+                                    raise fs.StorageError(
+                                        f"verified file changed before unlink: {child_label}"
+                                    )
+                                check_directory(fd, label, remaining)
+                                check_entry(vault, token, child_label)
+                                # Bind the leased descriptor to the last pathname
+                                # check too: replacing that name can unlink the
+                                # original inode and invalidate its metadata.
+                                if not matching(entry, fs.stamp(os.fstat(child))):
+                                    raise fs.StorageError(
+                                        "leased inode changed before unlink"
+                                    )
+                                phase = "before_unlink"
+                                require_write_lease(child)
+                                os.unlink(token, dir_fd=vault)
+                                unlinked = True
+                                phase = "after_unlink"
+                                try:
+                                    require_write_lease(child)
+                                finally:
+                                    os.fsync(vault)
+                                    report("removed", child_label, retained_name=token)
+                                after = fs.stamp(os.fstat(child))
+                                if after["nlink"] != entry["nlink"] - 1 or any(
+                                    after[key] != entry[key]
+                                    for key in (
+                                        "kind",
+                                        "dev",
+                                        "ino",
+                                        "mode",
+                                        "size",
+                                        "mtime_ns",
+                                        "atime_ns",
+                                    )
+                                ):
+                                    raise fs.StorageError(
+                                        f"leased inode/link count changed during removal: {child_label}"
+                                    )
+                                inode_state[(entry["dev"], entry["ino"])] = {
+                                    "nlink": after["nlink"],
+                                    "ctime_ns": after["ctime_ns"],
+                                }
+                        except (OSError, fs.StorageError) as exc:
+                            report(
+                                "file_removal_failed",
+                                child_label,
+                                retained_name=token,
+                                phase=phase,
+                                unlinked=unlinked,
+                                error=str(exc),
                             )
-                        report("remove_intent", child_label, retained_name=token)
-                        digest = hashlib.file_digest(stream, "sha256").hexdigest()
-                        if digest != entry.get("sha256") or not matching(
-                            entry, fs.stamp(os.fstat(child))
-                        ):
-                            raise fs.StorageError(
-                                f"verified file changed before unlink: {child_label}"
-                            )
-                        check_directory(fd, label, remaining)
-                        check_entry(vault, token, child_label)
-                        os.unlink(token, dir_fd=vault)
-                        os.fsync(vault)
-                        report("removed", child_label, retained_name=token)
-                        after = fs.stamp(os.fstat(child))
-                        if after["nlink"] != entry["nlink"] - 1:
-                            raise fs.StorageError(
-                                f"hardlink count changed during removal: {child_label}"
-                            )
-                        inode_state[(entry["dev"], entry["ino"])] = {
-                            "nlink": after["nlink"],
-                            "ctime_ns": after["ctime_ns"],
-                        }
+                            raise
             else:
                 raise fs.StorageError(
                     f"unverified entry type during removal: {child_label}"
