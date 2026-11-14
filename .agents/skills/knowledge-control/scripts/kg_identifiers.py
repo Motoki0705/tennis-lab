@@ -62,22 +62,34 @@ def citation_id(identity_key: str) -> str:
 
 
 def external_id_index(entries: Iterable[tuple[str, Mapping[str, str]]]) -> dict[str, str]:
-    """Reject aliases that connect multiple documents instead of choosing one."""
+    """Reject duplicate documents and inconsistent aliases in the same store."""
     index: dict[str, str] = {}
     seen: set[str] = set()
     for document_id, values in entries:
         if document_id in seen:
             raise ValueError(f"duplicate document id: {document_id}")
         seen.add(document_id)
+        match = resolve_identity(values, index)
+        if match is not None:
+            raise ValueError(f"duplicate literature: external IDs belong to {match} and {document_id}")
         for key in identity_keys(values):
-            if key in index and index[key] != document_id:
-                raise ValueError(f"duplicate literature: {key} belongs to {index[key]} and {document_id}")
             index[key] = document_id
     return index
 
 
 def resolve_identity(values: Mapping[str, str], index: Mapping[str, str]) -> str | None:
-    matches = {index[key] for key in identity_keys(values) if key in index}
+    """Match an alias only when every shared namespace agrees after normalization."""
+    normalized = normalize_external_ids(values)
+    matches = {index[key] for key in identity_keys(normalized) if key in index}
     if len(matches) > 1:
         raise ValueError(f"ambiguous literature aliases: {sorted(matches)}; consolidate documents and rewrite references")
-    return next(iter(matches), None)
+    if not matches:
+        return None
+    match = next(iter(matches))
+    for key, owner in index.items():
+        if owner != match:
+            continue
+        namespace, _, known = key.partition(":")
+        if namespace in normalized and normalized[namespace] != known:
+            raise ValueError(f"conflicting external IDs for {match}: {namespace}={known} versus {normalized[namespace]}; resolve the conflict before joining or merging aliases")
+    return match

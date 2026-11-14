@@ -67,13 +67,69 @@ def test_explicit_search_adoption_records_path_and_joins_by_external_id(tmp_path
 
 def test_adoption_rejects_unreached_and_unknown_evidence_before_writing(tmp_path: Path) -> None:
     ids = seed(tmp_path)
-    for citation in (ids["C"], "cite-0000000000000000"):
-        result = command(tmp_path, "kg_papers.py", "--id", "paper-2024-unreached", "--tasks", "plcs", "--from-search", "search-fixture-comparison-depth2", "--citation-id", citation, check=False)
-        assert result.returncode == 2 and "was not reached" in result.stderr
+    # Cached references of a paper that this search did not expand are outside
+    # its evidence, even though the target is known in the global store.
+    search = metadata(tmp_path / "citation_map/searches/search-fixture-comparison-depth1.md")
+    search.update(id="search-unexpanded-root", max_depth=0, generations=[{"depth": 0, "paper_ids": [ids["A"]], "expanded_ids": []}], issues=[])
+    (tmp_path / "citation_map/searches/search-unexpanded-root.md").write_text("---\n" + yaml.safe_dump(search) + "---\n")
+    for search_id, citation in (("search-unexpanded-root", ids["C"]), ("search-fixture-comparison-depth2", "cite-0000000000000000")):
+        result = command(tmp_path, "kg_papers.py", "--id", "paper-2024-unreached", "--tasks", "plcs", "--from-search", search_id, "--citation-id", citation, check=False)
+        assert result.returncode == 2 and "not recorded by" in result.stderr
     # An unread leaf has known bibliography but no invented research summary.
     result = command(tmp_path, "kg_papers.py", "--id", "paper-2024-unread", "--tasks", "plcs", "--from-search", "search-fixture-comparison-depth2", "--citation-id", ids["D"], check=False)
     assert result.returncode == 2 and "nonempty summary" in result.stderr
     assert not (tmp_path / "Papers").exists()
+
+
+def test_comparison_search_adopts_an_unexpanded_foundation_with_all_decisions(tmp_path: Path) -> None:
+    ids = seed(tmp_path)
+    command(tmp_path, "kg_papers.py", "--id", "paper-2024-selected-c", "--tasks", "plcs", "--from-search", "search-fixture-comparison-depth2", "--citation-id", ids["C"])
+    data = metadata(tmp_path / "Papers/paper-2024-selected-c/paper.md")
+    assert data["title"] == "Fixture C" and data["external_ids"] == {"doi": "10.5555/fixture-c"}
+    paths = data["reason"].splitlines()[1:]
+    assert len(paths) == 2
+    assert f"Fixture A ({ids['A']}) / ref-2" in paths[0]
+    assert "役割 foundation" in paths[0] and "判定状態 classified" in paths[0]
+    assert "Section 3, paragraph 2; Table 1" in paths[0]
+    assert f"Fixture A ({ids['A']}) / ref-5" in paths[1]
+    assert "判定状態 unclassifiable" in paths[1] and "根拠 記載なし" in paths[1]
+    command(tmp_path, "kg_validate.py")
+
+
+@pytest.mark.parametrize(("search_suffix", "sources"), [("comparison-depth2", ["A", "B"]), ("mixed-depth2", ["A", "B", "C"])])
+def test_adoption_records_every_citing_paper_within_the_search(tmp_path: Path, search_suffix: str, sources: list[str]) -> None:
+    ids = seed(tmp_path)
+    command(tmp_path, "kg_papers.py", "--id", "paper-2024-selected-d", "--tasks", "plcs", "--from-search", f"search-fixture-{search_suffix}", "--citation-id", ids["D"], "--summary", "Human-provided summary of the unread fixture D.")
+    paths = metadata(tmp_path / "Papers/paper-2024-selected-d/paper.md")["reason"].splitlines()[1:]
+    assert len(paths) == len(sources)
+    for source, line in zip(sources, paths, strict=True):
+        assert f"Fixture {source} ({ids[source]})" in line
+        assert f"/ ref-{7 if source == 'A' else 1};" in line
+        assert "判定状態 classified" in line and "Section 3, paragraph" in line
+    assert "役割 component, related" in paths[0]  # Outside the selected traversal roles.
+    assert "役割 comparison" in paths[1]
+    if "C" in sources:
+        assert "役割 comparison, foundation" in paths[2]
+    command(tmp_path, "kg_validate.py")
+
+
+def test_conflicting_external_ids_fail_registration_and_the_knowledge_gate(tmp_path: Path) -> None:
+    ids = seed(tmp_path)
+    args = ("--id", "paper-2024-conflicting-b", "--tasks", "plcs", "--title", "Fixture B", "--authors", "Fixture Author", "--source", "https://example.org/conflicting-b", "--summary", "Conflicting record", "--reason", "Research question", "--external-id", "doi=10.5555/conflicting-b", "--external-id", "arxiv=2401.00002")
+    result = command(tmp_path, "kg_papers.py", *args, check=False)
+    assert result.returncode == 2 and "conflicting external IDs" in result.stderr
+    assert not (tmp_path / "Papers").exists()
+    # Preexisting hand-edited Papers metadata must be rejected by the same rule.
+    data = metadata(tmp_path / f"citation_map/papers/{ids['B']}.md")
+    note = tmp_path / "Papers/paper-2024-conflicting-b/paper.md"
+    note.parent.mkdir(parents=True)
+    registered = {key: data[key] for key in ("title", "year", "authors", "source", "summary", "external_ids")}
+    registered.update(id="paper-2024-conflicting-b", type="paper", tasks=["plcs"], reason="Research question")
+    registered["external_ids"]["doi"] = "10.5555/conflicting-b"
+    note.write_text("---\n" + yaml.safe_dump(registered) + "---\n")
+    result = command(tmp_path, "kg_validate.py", check=False)
+    assert result.returncode == 1 and "conflicting external IDs" in result.stdout
+    assert "Traceback" not in result.stderr
 
 
 def test_knowledge_gate_validates_citation_documents_and_storage_paths(tmp_path: Path) -> None:

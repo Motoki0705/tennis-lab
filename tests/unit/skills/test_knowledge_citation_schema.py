@@ -144,6 +144,34 @@ def test_alias_addition_keeps_id_and_ambiguous_union_is_rejected(api: ModuleType
         identifiers.resolve_identity({"arxiv": "2401.00002", "doi": "10.5555/fixture-c"}, index)
 
 
+@pytest.mark.parametrize(("namespace", "conflicting", "matching"), [
+    ("doi", "10.5555/conflicting-b", {"arxiv": "2401.00002v3"}),
+    ("arxiv", "2401.99999", {"doi": "10.5555/FIXTURE-B"}),
+    ("openalex", "W99999", {"doi": "10.5555/fixture-b"}),
+    ("url", "https://example.org/conflicting-b", {"doi": "10.5555/fixture-b"}),
+])
+def test_single_identity_match_rejects_conflicting_namespace(identifiers: ModuleType, namespace: str, conflicting: str, matching: dict[str, str]) -> None:
+    known = {"doi": "10.5555/fixture-b", "arxiv": "2401.00002", "openalex": "W1000002", "url": "https://example.org/fixture-b"}
+    incoming = {**matching, namespace: conflicting}
+    index = identifiers.external_id_index([("existing-b", known)])
+    with pytest.raises(ValueError, match="conflicting external IDs") as error:
+        identifiers.resolve_identity(incoming, index)
+    assert namespace in str(error.value) and conflicting in str(error.value)
+    # The same rule applies when building an exploration index, in either order.
+    for entries in ([('existing-b', known), ('incoming-b', incoming)], [('incoming-b', incoming), ('existing-b', known)]):
+        with pytest.raises(ValueError, match="conflicting external IDs"):
+            identifiers.external_id_index(entries)
+
+
+def test_papers_join_rejects_one_shared_id_with_a_conflicting_doi(api: ModuleType) -> None:
+    node = importlib.import_module("kg_lib").Node
+    library = api.load_citations(FIXTURE)
+    registered = [node("paper-2024-conflicting-b", "paper", {"external_ids": {"doi": "10.5555/conflicting-b", "arxiv": "2401.00002"}}, "", Path())]
+    with pytest.raises(ValueError, match="conflicting external IDs"):
+        api.papers_join(library, registered)
+    assert any("conflicting external IDs" in e for e in api.validate_library(library, registered))
+
+
 @pytest.mark.parametrize(("key", "value", "message"), [
     ("roles", ["baseline"], "roles"),
     ("roles", [], "nonempty"),
@@ -176,7 +204,20 @@ def test_papers_join_rejects_aliases_that_bridge_multiple_documents(api: ModuleT
     registered = [node("paper-2024-one", "paper", {"external_ids": {"doi": "10.5555/fixture-b"}}, "", Path()),
                   node("paper-2024-two", "paper", {"external_ids": {"arxiv": "2401.00002"}}, "", Path())]
     assert any("ambiguous literature aliases" in e for e in api.validate_library(library, registered))
-    registered = [node("paper-2024-one", "paper", {"external_ids": {"doi": "10.5555/fixture-c", "arxiv": "2401.00002"}}, "", Path())]
+    # Disjoint namespace sets can also be bridged by Papers; retain coverage of
+    # duplicate citation documents even when no shared namespace conflicts.
+    identifiers = importlib.import_module("kg_identifiers")
+    b = next(p for p in library.papers.values() if p.title == "Fixture B")
+    b.references = []
+    library = api.CitationLibrary(papers={b.id: b})
+    c = deepcopy(b)
+    c.external_ids = {"url": "https://example.org/fixture-c"}
+    c.identity_key = "url:https://example.org/fixture-c"
+    c.id = identifiers.citation_id(c.identity_key)
+    c.title = "Fixture C"
+    c.source = "https://example.org/fixture-c"
+    library.papers[c.id] = c
+    registered = [node("paper-2024-one", "paper", {"external_ids": {"doi": "10.5555/fixture-b", "url": "https://example.org/fixture-c"}}, "", Path())]
     assert any("duplicate literature through Papers" in e for e in api.validate_library(library, registered))
 
 

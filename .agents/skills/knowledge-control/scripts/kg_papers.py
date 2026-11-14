@@ -109,16 +109,15 @@ def discovery_reason(library: CitationLibrary, search_id: str, paper_id: str) ->
     if search_id not in library.searches:
         raise ValueError(f"unknown citation search: {search_id}")
     search = library.searches[search_id]
-    reached = {p for g in search.generations for p in g.paper_ids}
-    if paper_id not in reached:
-        raise ValueError(f"{paper_id} was not reached by {search_id}")
     paths = []
     for generation in search.generations:
         for source_id in generation.expanded_ids:
             source = library.papers[source_id]
             for ref in source.references:
-                if ref.target_id == paper_id:
-                    paths.append(f"引用元 {source.title} ({source_id}) / {ref.ref_id}; 役割 {', '.join(ref.roles) or ref.decision_status}; 根拠 {'; '.join(ref.evidence) or '記載なし'}; 判断 {ref.reason}")
+                if ref.target_id == paper_id and ref.identification_status == "resolved":
+                    paths.append(f"引用元 {source.title} ({source_id}) / {ref.ref_id}; 役割 {', '.join(ref.roles) or 'なし'}; 判定状態 {ref.decision_status}; 根拠 {'; '.join(ref.evidence) or '記載なし'}; 判断 {ref.reason}")
+    if paper_id != search.root_id and not paths:
+        raise ValueError(f"{paper_id} is not recorded by {search_id} from expanded papers")
     prefix = f"探索 {search_id}（起点 {search.root_id}、指定役割 {', '.join(search.roles)}、最大深さ {search.max_depth}）から採録。"
     return prefix + ("\n" + "\n".join(paths) if paths else " 起点論文として指定された一次資料を確認。")
 
