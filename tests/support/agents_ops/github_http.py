@@ -90,27 +90,46 @@ class Handler(BaseHTTPRequestHandler):
 
 class Bridge:
     def __init__(self) -> None:
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-        self.thread = threading.Thread(
-            target=self.server.serve_forever,
-            kwargs={"poll_interval": 0.01},
-            daemon=True,
-        )
-        self.thread.start()
+        self.server: ThreadingHTTPServer | None = None
+        self.thread: threading.Thread | None = None
+        self.lock = threading.Lock()
 
     @property
     def url(self) -> str:
-        return f"http://127.0.0.1:{self.server.server_port}/"
+        with self.lock:
+            if self.server is None:
+                self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+                self.thread = threading.Thread(
+                    target=self.server.serve_forever,
+                    kwargs={"poll_interval": 0.01},
+                    daemon=True,
+                )
+                self.thread.start()
+            return f"http://127.0.0.1:{self.server.server_port}/"
 
     def close(self) -> None:
-        self.server.shutdown()
-        self.server.server_close()
-        self.thread.join(timeout=5)
+        if self.server is not None:
+            self.server.shutdown()
+            self.server.server_close()
+            assert self.thread is not None
+            self.thread.join(timeout=5)
 
 
 def install(module: Any) -> Bridge:
     bridge = Bridge()
-    module._API_URL = bridge.url
+    # Importing a client is common in non-GitHub commands too. Start the server
+    # only for actual I/O, so process-lifecycle tests don't acquire extra threads.
+    original = getattr(
+        module.HTTPClient.request, "_http_bridge_original", module.HTTPClient.request
+    )
+
+    def request(self: Any, *args: Any, **kwargs: Any) -> Any:
+        module._API_URL = bridge.url
+        return original(self, *args, **kwargs)
+
+    wrapper: Any = request
+    wrapper._http_bridge_original = original
+    module.HTTPClient.request = wrapper
     module._token = lambda: "test-github-http-token"
     # localhost fixtures must not use a proxy configured on the runner.
     os.environ["NO_PROXY"] = ",".join(

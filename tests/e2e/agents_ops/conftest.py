@@ -715,6 +715,7 @@ def _github_http_bridge(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
     transport = importlib.import_module("issues.transport")
     monkeypatch.setattr(transport, "_API_URL", transport._API_URL)
     monkeypatch.setattr(transport, "_token", transport._token)
+    monkeypatch.setattr(transport.HTTPClient, "request", transport.HTTPClient.request)
     monkeypatch.setenv("NO_PROXY", os.environ.get("NO_PROXY", ""))
     bridge = helper.install(transport)
     original = subprocess.Popen.__init__
