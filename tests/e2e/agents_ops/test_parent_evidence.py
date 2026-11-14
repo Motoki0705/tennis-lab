@@ -349,9 +349,10 @@ def test_listings_and_explicit_work_consumers_exclude_evidence(
         gh.family(9)
     store = importlib.import_module("parent.state").Store(p.root / "collection")
     collector = importlib.import_module("dispatcher.collect")
+    transaction_gh = importlib.import_module("parent.github").GitHub("o/r", store=store)
     before = len(p.calls())
     with store.locked():
-        snapshot = collector.collect(gh, store, p.repo)
+        snapshot = collector.collect(transaction_gh, store, p.repo)
     assert (
         sum(
             "repos/o/r/issues?state=all&labels=parent-evidence&per_page=100&page=1"

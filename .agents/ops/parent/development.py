@@ -13,7 +13,7 @@ from typing import Any, cast
 
 from dispatcher.runtime import Runtime, alive, gate, load
 from dispatcher.schedule import Schedule
-from dispatcher.state import DispatchStore
+from dispatcher.state import DispatchStore, require_client
 from dispatcher.supervisor import (
     Supervisor,
     check_handoff_capacity,
@@ -188,6 +188,7 @@ def start_worker(
     may publish logs; only the reservation below owns the operation lock. A
     failure between the two claims intentionally leaves the delegation intact.
     """
+    require_client(session.gh, session.store)
     implementation_model(model)
     if continuation is None:
         nonempty(prompt, "initial worker instruction")
@@ -336,6 +337,7 @@ def start_worker(
 
 def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
     """Persist the observation target, wait unlocked, then check the current job."""
+    require_client(session.gh, session.store)
     with session.store.locked():
         dispatch = managed(session.owner())
         if not dispatch:
@@ -386,6 +388,7 @@ def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
 def stop_worker(
     session: ParentSession, child: int, detail: dict[str, Any]
 ) -> dict[str, Any]:
+    require_client(session.gh, session.store)
     with session.store.locked():
         dispatch = managed(session.owner())
         if not dispatch:
@@ -744,6 +747,7 @@ def refresh_worker_plan(
 def worker_command(
     args: Any, gh: GitHub, parent: int, identity: str, store: Store
 ) -> dict[str, Any]:
+    require_client(gh, store)
     with store.snapshot() if args.command == "inspect-worker" else store.locked():
         session = ParentSession(gh, store, parent, identity)
     if args.command == "inspect-worker":
