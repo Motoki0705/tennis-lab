@@ -72,12 +72,21 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 ## 校验与排除条件
 
 `mountpoint`、`findmnt` 必须确认两个不同的 ext4 与指定 atime 选项。E: 缺失绝不解释为空镜像。
-数据、目录、manifest 都用 `O_NOATIME` 读取；失败时不退回普通 open。虚拟 `/proc` 根目录和 kernel 生成的 status
+数据、目录、manifest 都用 `O_NOATIME` 读取；失败时不退回普通 open。虚拟 `/proc` 根目录和 kernel 生成的 metadata
 不包含数据集访问历史，使用普通读取。注入的真实测试目录仍用 O_NOATIME。
 
 镜像与认证前按 device/inode 检查 fd、cwd、mmap，覆盖单位外的硬链接别名。仅检查 `/proc/<pid>/status` 中
 有效 UID 与执行用户有效 UID 相同的进程。root、CI 等其他 UID 不在范围内；JSON 和审计的 `process_scope` 按 UID 记录排除数。
-UID 无法读取/识别，或同 UID 的 fd/maps 无法读取时仍明确失败。其他用户的 consumer 不受保护，应让 storage 与数据 consumer
+同 UID 仅在具备独立证据时排除：四个 UID 均等于非 root 调用用户，fd/maps/cwd 为 root:root 所有，
+三项读取都返回 EACCES/EPERM，且前后 PID 启动时间、UID、Name、所有者均不变。
+显式 `Dumpable: 1` 否定排除；`CoreDumping: 0` 不作为依据。所有者规则见
+[proc_pid(5)](https://man7.org/linux/man-pages/man5/proc_pid.5.html)。其他所有者/namespace 映射无法证明时仍失败。
+在 `process_scope.excluded_nondumpable` 记录数量、可读 comm（status Name）、PID 和证据。
+Z/X 视为已退出并单独计数，不忽略仍存活 PID 的 metadata 缺失。
+不检查同 UID 的非 dumpable 进程，例如 Codex CLI 本体、sshd、gpg-agent；读取数据的训练和脚本必须以 dumpable 进程运行。
+UID 无法识别、意外 I/O 错误、部分拒绝，以及 dumpable 但不可读的进程仍明确失败。
+例如带 capability 的 systemd，即使 fd 目标/maps/cwd 拒绝读取，普通所有者也不能证明非 dumpable。
+其他用户的 consumer 不受保护，应让 storage 与数据 consumer
 以同一用户运行。完全不读取 training queue；等待或计划任务的输入也可能在 14 天后删除并需要手动 hydrate。
 不设置 mtime/ctime 静止时间，仅按 atime 和打开的引用判断；哈希与发布前后 snapshot 继续检查内容稳定性。
 发布后 metadata 必须与已哈希的 staging tree 一致，才能将其 digest 写入 manifest。
@@ -144,8 +153,9 @@ user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。失败仅�
 
 ## 迁移与验证
 
-1. 协调暂停 producer、queue 新任务与持有旧路径的 consumer。启用前确认 user unit 能读取自身 UID 的 fd/maps。
-   同 UID 的 systemd、sshd、nondumpable process 也可能阻止检查；不能忽略，也不隐式改变权限或停止其他 session。
+1. 协调暂停 producer、queue 新任务与持有旧路径的 consumer。启用前确认自身 UID 的 dumpable consumer 可检查，
+   并核对非 dumpable 的排除证据与记录。带 capability 的 systemd 等无法证明的读取失败仍为错误；
+   不能忽略，也不隐式改变权限或停止其他 session。
 2. 清点 E:、活动与等待任务引用、配置间接引用、硬链接别名、E: 绝对路径和已有 D: 副本。
    只取回完整 `ckpt/` 与确定需要的版本、run 单位。
 3. 将主 outputs alias 归为主 outputs 的引用。独立的旧 E:`.claude/worktrees/<name>/outputs` 在 consumer 暂停时

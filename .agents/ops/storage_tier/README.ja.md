@@ -80,13 +80,24 @@ repo外の任意rootや共通境界を通らないconsumerは従来のmissing-fi
 
 `mountpoint`・`findmnt` で異なるext4と所定のatime optionを確認する。E:不在を空のミラーと解釈しない。
 データ・ディレクトリ・manifestは `O_NOATIME` で読み、失敗時に通常openへ切り替えない。
-仮想 `/proc` 直下とkernel生成statusはdatasetのアクセス履歴ではないため通常の読取りを使う。
+仮想 `/proc` 直下とkernel生成metadataはdatasetのアクセス履歴ではないため通常の読取りを使う。
 注入した実ディレクトリのテストinventoryはO_NOATIMEで読む。
 
 ミラー・照合前に、fd・cwd・mmapをdevice/inodeで確認する。単位外のhardlink別名も検出する。
 `/proc/<pid>/status` の実効UIDが実行ユーザーの実効UIDと同じプロセスだけを検査する。
 root・CI等の他UIDは対象外とし、UID別の除外数をJSON出力・監査記録の `process_scope` に残す。
-UID不明・読取不能、または同UIDのfd/maps読取不能は失敗として止める。他UIDのconsumerは保護されないため、
+同UIDでも、非rootの実行ユーザーに4つのUID値が一致し、fd/maps/cwdがroot:root所有で、3つともEACCES/EPERM、
+観測前後のPID開始時刻・UID・Name・所有者が不変のときだけ、非dumpableの根拠として除外する。
+明示的な `Dumpable: 1` は除外を否定し、`CoreDumping: 0` は根拠にしない。
+所有者の規則は [proc_pid(5)](https://man7.org/linux/man-pages/man5/proc_pid.5.html) に基づく。
+別の所有者・namespaceの対応で根拠が立たなければ失敗する。
+件数・読めるcomm（status Name）・PID・根拠を `process_scope.excluded_nondumpable` に残す。
+Z/Xは終了済みとして別に数え、生存中のPIDのmetadata欠落は無視しない。
+非dumpableな同UIDプロセス（Codex CLI本体、sshd、gpg-agent等）は検査しない。
+データを読む学習・スクリプトはdumpableなプロセスで動くことを前提とする。
+UID不明、想定外のI/Oエラー、部分的な拒否、dumpableなのに読めない場合は失敗として止める。
+capabilityを持つsystemd等で通常の所有者のままfd先/maps/cwdが拒否されても、非dumpableとは判定しない。
+他UIDのconsumerは保護されないため、
 storage処理とデータconsumerは同じユーザーで動かす。training queueの記録は一切読まない。
 待機・予定jobの入力でも14日未使用なら消え、手動hydrateが必要になり得る。
 mtime/ctimeの静止待ちは設けず、atimeと開いている参照で判定する。hash・公開の前後のsnapshotで内容の変化を検出する。
@@ -161,8 +172,9 @@ systemのmount unitへの順序依存は張らず、毎回mountを確認する�
 ## 移行と検証
 
 1. producer・queueの新規起動・旧pathを保持するconsumerの停止時間を親同士で調整する。
-   自動削除の前にuser unitが自分のUIDのfd/mapsを読めることを確認する。同UIDのsystemd・sshd・nondumpable process等でも
-   読めず停止する場合がある。それらを無視せず、権限変更や他session停止を暗黙に実行しない。
+   自動削除の前に、同UIDのdumpableなconsumerを検査できることと、非dumpable除外の根拠・記録を確認する。
+   capabilityを持つsystemd等、非dumpableと証明できない読取不能は失敗のままとする。
+   それらを無視せず、権限変更や他session停止を暗黙に実行しない。
 2. E:、使用中・queue参照、設定の間接参照、hardlink別名、E:絶対pathのコマンド、既存D:コピーを一覧にする。
    必要な版/runを選び、`ckpt/` 全体とその単位だけをD:へ戻す。
 3. メインoutputs aliasはメインへの参照として分類する。独立した旧E:`.claude/worktrees/<name>/outputs` はconsumer停止中に

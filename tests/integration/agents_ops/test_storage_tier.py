@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib
 import json
@@ -356,6 +357,178 @@ def test_other_uid_is_excluded_before_fd_maps_and_is_audited(lab: Lab) -> None:
     assert scope["excluded_uids"] == {str(other_uid): 1}
     deletion = next(row for row in lab.records() if row["event"] == "deleted")
     assert deletion["process_scope"] == scope
+
+
+@pytest.fixture
+def private_process(lab: Lab, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
+    """Synthetic kernel metadata; filesystem ownership/errors are independent inputs."""
+    process = lab.proc / "123456789"
+    process.mkdir()
+    (process / "fd").mkdir()
+    (process / "maps").write_text("")
+    (process / "cwd").symlink_to(lab.config.repo)
+    (process / "root").symlink_to("/")
+    uid = 12345
+    lab.engine.inspector = lab.usage.Inspector(lab.proc, uid=uid)
+    (process / "status").write_text(
+        f"Name:\tprivate-agent\nState:\tS (sleeping)\nUid:\t{uid}\t{uid}\t{uid}\t{uid}\nCoreDumping:\t0\n"
+    )
+    fields = ["S", *("0" for _ in range(18)), "314159"]
+    (process / "stat").write_text(f"{process.name} (private agent) " + " ".join(fields))
+    options: dict[str, Any] = {
+        "path": process,
+        "uid": uid,
+        "owner": 0,
+        "denied": {"fd", "maps", "cwd"},
+        "errno": errno.EACCES,
+        "reuse": False,
+    }
+    original_names, original_read = lab.usage.names, lab.usage.read_bytes
+    original_link, original_stat = os.readlink, Path.lstat
+    stat_reads = 0
+
+    def check(path: Path, name: str) -> None:
+        if path == process / name and name in options["denied"]:
+            raise OSError(options["errno"], "injected kernel read denial", str(path))
+
+    def directory(path: Path) -> list[str]:
+        check(path, "fd")
+        return cast(list[str], original_names(path))
+
+    def read(path: Path) -> bytes:
+        nonlocal stat_reads
+        check(path, "maps")
+        value = cast(bytes, original_read(path))
+        if path == process / "stat":
+            stat_reads += 1
+            if options["reuse"]:
+                return value.replace(b"314159", str(314159 + stat_reads).encode())
+        return value
+
+    def link(path: Any, *args: Any, **kwargs: Any) -> Any:
+        check(Path(path), "cwd")
+        return original_link(path, *args, **kwargs)
+
+    def lstat(path: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+        info = original_stat(path, *args, **kwargs)
+        if path.parent == process and path.name in {"fd", "maps", "cwd"}:
+            values = list(info)
+            values[4:6] = [options["owner"], options["owner"]]
+            return os.stat_result(values)
+        return info
+
+    monkeypatch.setattr(lab.usage, "names", directory)
+    monkeypatch.setattr(lab.usage, "read_bytes", read)
+    monkeypatch.setattr(os, "readlink", link)
+    monkeypatch.setattr(Path, "lstat", lstat)
+    return options
+
+
+def test_nondumpable_same_uid_is_excluded_with_proof_and_audit(
+    lab: Lab, private_process: dict[str, Any]
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    code, report = lab.run("cycle", unit, dry_run=True)
+    assert code == 0 and report["usage"]["unknown"] == [], report
+    code, report = lab.run("evict", unit)
+    assert code == 0 and report["results"][0]["action"] == "evicted", report
+    scope = report["process_scope"]
+    assert scope["excluded_nondumpable_count"] == 1
+    (excluded,) = scope["excluded_nondumpable"]
+    assert excluded["comm"] == "private-agent" and excluded["pid"] == 123456789
+    assert excluded["denied"] == {"fd": "EACCES", "maps": "EACCES", "cwd": "EACCES"}
+    assert excluded["starttime_ticks"] == 314159
+    assert (
+        next(row for row in lab.records() if row["event"] == "deleted")["process_scope"]
+        == scope
+    )
+
+
+@pytest.mark.parametrize(
+    "failure", ["dumpable", "user-owned", "partial", "io-error", "pid-reused"]
+)
+def test_denied_same_uid_without_nondumpable_evidence_fails_closed(
+    lab: Lab, private_process: dict[str, Any], failure: str
+) -> None:
+    process = private_process["path"]
+    unit = lab.unit()
+    # Establish the mirror before introducing an inspection failure.
+    private_process["denied"] = set()
+    lab.mirror(unit)
+    private_process["denied"] = {"fd", "maps", "cwd"}
+    if failure == "dumpable":
+        with (process / "status").open("a") as stream:
+            stream.write("Dumpable:\t1\n")
+    elif failure == "user-owned":
+        private_process["owner"] = private_process["uid"]
+    elif failure == "partial":
+        private_process["denied"] = {"maps", "cwd"}
+    elif failure == "io-error":
+        private_process["errno"] = errno.EIO
+    else:
+        private_process["reuse"] = True
+    code, report = lab.run("evict", unit)
+    assert code == 1 and report["results"][0]["action"] == "failed", report
+    assert report["process_scope"]["excluded_nondumpable_count"] == 0
+    assert (lab.config.repo / unit.path / "a.bin").exists()
+
+
+def test_known_zombie_is_counted_as_exited_without_inspecting_resources(
+    lab: Lab,
+) -> None:
+    process = lab.proc / "123456789"
+    process.mkdir()
+    (process / "status").write_text(
+        f"Name:\tfinished\nState:\tZ (zombie)\nUid:\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\n"
+    )
+    unit = lab.unit()
+    code, report = lab.run("cycle", unit, dry_run=True)
+    assert code == 0 and report["usage"]["unknown"] == [], report
+    assert report["process_scope"]["exited_processes"] == 1
+    assert report["process_scope"]["excluded_nondumpable_count"] == 0
+
+
+@pytest.mark.parametrize("dumpable", [0, 1])
+def test_native_prctl_dumpability_is_distinguished_by_kernel_evidence(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, dumpable: int
+) -> None:
+    child = subprocess.Popen(
+        [
+            sys.executable,
+            "-u",
+            "-c",
+            "import ctypes,sys; c=ctypes.CDLL(None); assert c.prctl(15,b'storage-probe',0,0,0)==0; assert c.prctl(4,int(sys.argv[1]),0,0,0)==0; print('ready:'+str(c.prctl(3)),flush=True); sys.stdin.readline()",
+            str(dumpable),
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert (
+            child.stdout is not None
+            and child.stdout.readline().strip() == f"ready:{dumpable}"
+        )
+        try:
+            (Path("/proc") / str(child.pid) / "maps").read_bytes()
+            independently_readable = True
+        except PermissionError:
+            independently_readable = False
+        inspector = lab.usage.Inspector()
+        monkeypatch.setattr(inspector, "process_names", lambda: [str(child.pid)])
+        result = inspector.inspect((), lab.filesystem.Snapshot({}))
+        assert result.unknown == []
+        assert result.scope()["excluded_nondumpable_count"] == int(
+            not independently_readable
+        )
+        if not independently_readable:
+            assert result.scope()["excluded_nondumpable"][0]["comm"] == "storage-probe"
+        else:
+            assert result.scope()["inspected_processes"] == 1
+    finally:
+        assert child.stdin is not None
+        child.communicate("done\n", timeout=5)
 
 
 @pytest.mark.parametrize("failure", ["unreadable", "malformed", "missing"])

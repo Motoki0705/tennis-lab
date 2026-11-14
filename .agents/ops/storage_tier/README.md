@@ -97,7 +97,7 @@ new OUTPUT paths remains possible. No training entrypoints or queue commands are
 `mountpoint` and `findmnt` must confirm separate ext4 filesystems and the prescribed
 atime options. A missing mount is never interpreted as an empty mirror. All data,
 directory and manifest reads use `O_NOATIME`; a failed open is not retried normally.
-The synthetic `/proc` root and kernel-generated status are read normally because
+The synthetic `/proc` root and kernel-generated metadata are read normally because
 they do not hold dataset access history. Injected real test directories still use
 `O_NOATIME`.
 
@@ -106,7 +106,21 @@ mappings by device/inode, including external hardlink aliases. Only processes
 whose effective UID in `/proc/<pid>/status` matches the execution user's effective
 UID are inspected. Other UIDs, including root and CI, are explicitly excluded;
 their counts by UID appear in `process_scope` in JSON output and audit records.
-Unreadable/unknown UID or unreadable own-process fd/maps still fails closed.
+Denied same-UID processes are excluded only with independent nondumpability
+evidence: all four UIDs match the non-root caller, fd/maps/cwd are root:root-owned,
+all three reads fail with EACCES/EPERM, and PID starttime/UID/name/ownership remain
+stable across the probes. An explicit `Dumpable: 1` contradicts exclusion;
+`CoreDumping: 0` is not evidence. The ownership rule comes from
+[proc_pid(5)](https://man7.org/linux/man-pages/man5/proc_pid.5.html).
+This inference remains conservative for other ownership/namespace mappings.
+Excluded count, readable comm (status Name), PID and evidence appear in
+`process_scope.excluded_nondumpable`. Known Z/X states are already exited and
+count separately; missing metadata for a still-live process is not ignored.
+Non-dumpable same-UID processes such as the Codex CLI core, sshd and gpg-agent
+are outside inspection. Training/data-reading scripts must run dumpable.
+Unknown UID, unexpected I/O failures, partial denials and unreadable dumpable
+processes still fail closed. Capability-bearing systemd can be such an error:
+ordinary ownership with denied fd targets/maps/cwd does not establish nondumpability.
 Other-user consumers are therefore not protected: run storage and data consumers
 as the same user. Training queue records are never read, and queued/planned jobs
 may lose a 14-day-old input and need manual hydration. There is no mtime/ctime
@@ -203,9 +217,10 @@ the mount itself. Installation only links units. Enablement is a separate deploy
 ## Migration and validation
 
 1. Coordinate a pause in producers, queue admissions and consumers holding old paths.
-   Confirm the user unit can inspect its own UID's fd/maps before enabling deletion.
-   Same-UID systemd, sshd or nondumpable processes may still prevent this; do not
-   ignore them or change permissions/stop sessions implicitly.
+   Confirm the user unit can inspect its own UID's dumpable consumers before
+   enabling deletion. Confirm nondumpable exclusions and their recorded evidence.
+   Unreadable capability-bearing systemd or another unproven case remains an
+   error; do not ignore it or change permissions/stop sessions implicitly.
 2. Inventory E: units and active/queued references, including indirect config defaults,
    old hardlink aliases, E:-absolute command paths and pre-existing D: copies. Decide
    the needed version/run units. Hydrate all `ckpt/` and those units only.
