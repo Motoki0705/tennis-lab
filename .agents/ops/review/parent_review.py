@@ -519,7 +519,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
     identity = session_identity(dict(os.environ))
     store = Store(args.state_dir)
     run_dir = store.directory / "reviews" / request["review_run_id"]
-    with store.locked():
+    with store.locked(), gh.history_read_scope():
         session = ParentSession(gh, store, request["parent_issue"], identity)
         auth = authorized(session, request)
         require_finished_overlaps(
@@ -925,13 +925,14 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except BlockingIOError as exc:
                 raise ValueError("review run is active; cannot recover") from exc
-        with store.locked():
+        with store.locked(), ExitStack() as reads:
             session = ParentSession(
                 GitHub(request["repo"]),
                 store,
                 request["parent_issue"],
                 session_identity(dict(os.environ)),
             )
+            reads.enter_context(session.gh.history_read_scope())
             auth = authorized(session, request)
             require_finished_overlaps(
                 store.directory,
@@ -1068,13 +1069,14 @@ def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
             raise ValueError("review run is active; cannot close interruption") from exc
-        with runtime_lock(run_dir), store.locked():
+        with runtime_lock(run_dir), store.locked(), ExitStack() as reads:
             session = ParentSession(
                 GitHub(request["repo"]),
                 store,
                 request["parent_issue"],
                 session_identity(dict(os.environ)),
             )
+            reads.enter_context(session.gh.history_read_scope())
             auth = authorized(session, request)
             if read_json(run_dir / "request.json") != request:
                 raise ValueError("local interrupted request changed")
@@ -1165,13 +1167,14 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
         require_not_closed(read_json(run_dir / "execution.json"), request)
         result = validate_result(read_json(run_dir / "result.json"))
         request = result["request"]
-        with store.locked():
+        with store.locked(), ExitStack() as reads:
             session = ParentSession(
                 GitHub(request["repo"]),
                 store,
                 request["parent_issue"],
                 session_identity(dict(os.environ)),
             )
+            reads.enter_context(session.gh.history_read_scope())
             authorized(session, request)
             require_finished_overlaps(
                 store.directory,
@@ -1233,13 +1236,14 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
     run_dir = store.directory / "reviews" / args.run
     result = validate_result(read_json(run_dir / "result.json"))
     request = result["request"]
-    with store.locked():
+    with store.locked(), ExitStack() as reads:
         session = ParentSession(
             GitHub(request["repo"]),
             store,
             request["parent_issue"],
             session_identity(dict(os.environ)),
         )
+        reads.enter_context(session.gh.history_read_scope())
         entry = next((p for p in result["prs"] if p["number"] == args.pr), None)
         if entry is None or not 1 <= args.wait <= len(entry.get("evidence_waits", [])):
             raise ValueError("unknown evidence wait for this PR")
@@ -1342,13 +1346,14 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
     run_dir = store.directory / "reviews" / args.run
     result = validate_result(read_json(run_dir / "result.json"))
     request = request_manifest(result["request"], instructed=False)
-    with store.locked():
+    with store.locked(), ExitStack() as reads:
         session = ParentSession(
             GitHub(request["repo"]),
             store,
             request["parent_issue"],
             session_identity(dict(os.environ)),
         )
+        reads.enter_context(session.gh.history_read_scope())
         child_issues = next(
             (set(p["child_issues"]) for p in result["prs"] if p["number"] == args.pr),
             set(),

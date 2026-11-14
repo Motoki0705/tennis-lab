@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from issues.cli import GitHub as IssueGitHub
-from issues.evidence import is_evidence_issue, require_work_issue
+from issues.evidence import EVIDENCE_LABEL, is_evidence_issue, require_work_issue
 
 from . import metrics
 from .policy import closing_issues, object_value
@@ -225,10 +225,16 @@ class GitHub(IssueGitHub):
             self._history_rows, self._history_scope = previous, active
 
     def evidence_rows(self) -> list[dict[str, Any]]:
-        if not getattr(self, "_history_scope", False) or self._fresh:
-            return self.rows(f"repos/{self.repo}/issues?state=all")
+        endpoint = f"repos/{self.repo}/issues?state=all&labels={EVIDENCE_LABEL}"
+        if not getattr(self, "_history_scope", False):
+            return self.rows(endpoint)
+        if self._fresh:
+            self._history_rows = None
         if self._history_rows is None:
-            self._history_rows = self.rows(f"repos/{self.repo}/issues?state=all")
+            # A new scope, explicit freshness check or write invalidates discovery.
+            # Do not resurrect an older listing from the transaction GET cache.
+            with self.fresh_reads():
+                self._history_rows = self.rows(endpoint)
         return self._history_rows
 
     def evidence_issues(self) -> EvidenceIssues:
