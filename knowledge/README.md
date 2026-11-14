@@ -311,4 +311,4 @@ PRの番号衝突・既存identityの変更は、マージ先commitを比較元�
 
 CI `Knowledge library` は関連ファイル（標準pipelineのconfigと `LICENSES.md` を含む）のPR・main push・手動実行で動く。上記検証、CPUのみのstorage/登録/曲線テスト、SKILLの例を実行して成果物を検証するテスト、Web UIのlint/test/build/E2Eを行う。PRはbase commit、main pushは直前commitと比較する。手動実行は現在の構造を検証する。
 
-ERRORは修正必須。WARNは追加したrunのissue未記録だけで、任意の追跡情報の不足としてCI失敗にしない。科学的な妥当性・実験間の公平性・本文と数値の意味的一致・PDF転載条件は機械検証の範囲外。
+ERRORは修正必須。WARNは追加したrunのissue未記録だけで、任意の追跡情報の不足としてCI失敗にしない。科学的な妥当性・実験間の公平性・本文と数値の意味的一致は機械検証の範囲外。

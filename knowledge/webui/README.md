@@ -5,6 +5,8 @@
 
 ![研究ライブラリの実験一覧](assets/library.png)
 
+![Papersの一次資料リンク・要約・採録理由](assets/papers.png)
+
 ```bash
 cd knowledge/webui
 npm ci
@@ -17,7 +19,7 @@ npm run build && npm start      # production
 - グラフ: 前提から後続への有向線、グループの囲み、任意の関連線、zoom/minimap。
 - 詳細: 考察、実測metrics、config、曲線、再現bundleのパス、前提・後続・関連実験、論文参照。Escapeで閉じる。
 - 実験比較: 最大4件の条件・metricsを並置しCSV出力。異なる評価条件に自動の優劣を付けない。
-- Papers: 論文情報・読解ノート・PDF閲覧（PDFを保存した論文のみ）・参照実験への逆引き。
+- Papers: 論文情報・要約・採録理由・読解ノート・一次資料URL・参照実験への逆引き。
 - 研究サマリー: `summary.md` を表示し、根拠ノードへ遷移。
 - URLにタスク・検索・フィルタ・表示・選択ノードを保持。`/?node=<id>`、`/?paper=<id>` で直接開ける。実験の論文絞り込みには別キー `paperFilter` を使う。
 - モバイル対応、キーボード操作、MarkdownのHTMLサニタイズ。
@@ -26,7 +28,7 @@ npm run build && npm start      # production
 `KNOWLEDGE_NODES_DIR` / `KNOWLEDGE_RUNS_DIR` もサブディレクトリ指定に使える。
 リクエストごとに正本Markdownを読むため、編集後の再読み込みで反映される。
 読み込み失敗や不正なID・連番を空のライブラリに置き換えず、エラーとして表示する。
-PDFバイナリは一覧に含めず個別routeから配信する。
+Papersは文書だけを保持し、本文は一次資料URLから閲覧する。
 
 ## 検証・コードの入口
 
@@ -42,7 +44,7 @@ npm run test:e2e                 # 専用dev serverを起動
 - `src/lib/explorer.ts`: 絞り込み・並び順・CSV。
 - `src/components/ResearchExplorer.tsx`: ライブラリの状態と各ビュー。
 - `src/components/{GraphView,DetailPanel}.tsx`: グラフとノード詳細。
-- `src/app/api/{curves,papers}/[id]/route.ts`: 曲線・PDF。
+- `src/app/api/curves/[id]/route.ts`: 曲線。
 
 一覧のDOMはページ単位、グラフは可視範囲だけを描画する。現在の200ノード規模では
 サーバがMarkdownを読み、検索用本文もclientへ渡す。数千〜数万ノードに拡大する際は
