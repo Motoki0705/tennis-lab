@@ -1,6 +1,8 @@
 node_modules/
 .next/
 .next-e2e/
+.next-e2e-citations/
+.citation-e2e/
 test-results/
 playwright-report/
 *.tsbuildinfo

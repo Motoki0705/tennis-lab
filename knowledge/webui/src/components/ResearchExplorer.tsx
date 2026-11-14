@@ -10,12 +10,20 @@ import {
 } from "@/lib/explorer";
 import { DetailPanel } from "./DetailPanel";
 import { GraphView } from "./GraphView";
+import { CitationExplorer, CitationSearchList } from "./CitationExplorer";
 
-type View = "timeline" | "graph" | "papers" | "summary" | "compare";
+type View =
+  | "timeline"
+  | "graph"
+  | "papers"
+  | "citations"
+  | "summary"
+  | "compare";
 const VIEWS: [View, string][] = [
   ["timeline", "実験一覧"],
   ["graph", "知識グラフ"],
   ["papers", "Papers"],
+  ["citations", "引用探索"],
   ["summary", "研究サマリー"],
   ["compare", "実験比較"],
 ];
@@ -25,6 +33,10 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
   const [view, setView] = useState<View>("timeline");
   const [selected, setSelected] = useState<string | null>(null);
   const [paperId, setPaperId] = useState("");
+  const [citationSearch, setCitationSearch] = useState("");
+  const [citationRole, setCitationRole] = useState("");
+  const [citationPaper, setCitationPaper] = useState("");
+  const [citationView, setCitationView] = useState("map");
   const [compare, setCompare] = useState<string[]>([]);
   const [page, setPage] = useState(0);
   const [ready, setReady] = useState(false);
@@ -43,12 +55,18 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
       setView(
         VIEWS.some(([key]) => key === requested)
           ? (requested as View)
-          : params.has("paper")
-            ? "papers"
-            : "timeline",
+          : params.has("citationSearch")
+            ? "citations"
+            : params.has("paper")
+              ? "papers"
+              : "timeline",
       );
       setSelected(params.get("node"));
       setPaperId(params.get("paper") ?? "");
+      setCitationSearch(params.get("citationSearch") ?? "");
+      setCitationRole(params.get("citationRole") ?? "");
+      setCitationPaper(params.get("citationPaper") ?? "");
+      setCitationView(params.get("citationView") ?? "map");
       setReady(true);
     }
     restore();
@@ -65,8 +83,22 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
     params.set("view", view);
     if (selected) params.set("node", selected);
     if (paperId && view === "papers") params.set("paper", paperId);
+    if (citationSearch) params.set("citationSearch", citationSearch);
+    if (citationRole) params.set("citationRole", citationRole);
+    if (citationPaper) params.set("citationPaper", citationPaper);
+    if (citationView !== "map") params.set("citationView", citationView);
     history.replaceState(null, "", `?${params}`);
-  }, [filters, view, selected, paperId, ready]);
+  }, [
+    filters,
+    view,
+    selected,
+    paperId,
+    citationSearch,
+    citationRole,
+    citationPaper,
+    citationView,
+    ready,
+  ]);
   const tasks = useMemo(
     () =>
       Array.from(
@@ -102,6 +134,14 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
     setPaperId(id);
     setView("papers");
     setSelected(null);
+  }
+  function openCitationSearch(id: string) {
+    setCitationSearch(id);
+    setCitationRole("");
+    setCitationPaper("");
+    setCitationView("map");
+    setSelected(null);
+    setView("citations");
   }
   function exportCsv() {
     const url = URL.createObjectURL(
@@ -201,7 +241,7 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
             </button>
           ))}
         </nav>
-        {!["summary", "compare"].includes(view) && (
+        {!["summary", "compare", "citations"].includes(view) && (
           <div className="search-toolbar">
             <input
               className="search-input"
@@ -397,6 +437,10 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
           )}
           {view === "papers" && (
             <div className="paper-library">
+              <CitationSearchList
+                result={graph.citations}
+                onOpen={openCitationSearch}
+              />
               <div className="section-caption">
                 <span>RELATED RESEARCH</span>
                 <span>{papers.length} papers</span>
@@ -460,6 +504,20 @@ export function ResearchExplorer({ graph }: { graph: KnowledgeGraph }) {
                 </article>
               )}
             </div>
+          )}
+          {view === "citations" && (
+            <CitationExplorer
+              result={graph.citations}
+              searchId={citationSearch}
+              roleValue={citationRole}
+              selected={citationPaper}
+              mode={citationView}
+              onSearch={openCitationSearch}
+              onRole={setCitationRole}
+              onSelect={setCitationPaper}
+              onMode={setCitationView}
+              onPaper={openPaper}
+            />
           )}
           {view === "compare" && (
             <div className="comparison">
