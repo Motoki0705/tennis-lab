@@ -826,7 +826,7 @@ Project表示は明示的な `project-setup` / `project-sync` を使う。既存
 
 改善候補の正本は元親の構造化コメント。`--child` は発見元で、省略時は親自身を表す。
 子の欄には候補への参照を残す。既存の `purpose` / `evidence` / `scope` だけのspecは未整理の発見記録として受け付ける。
-新親の起票には同じkeyで境界を補い、`improvement-publish` を明示する。人間の判断は `improvement-decide` で記録する。
+公開・判断・取り出しの手順は [終了時改善](improvements.md#提案issueへの列挙) を参照する。
 候補・起票・判断・実行は `status.improvements`、今回の受入は `status.completion` に分けて表示する。
 schema・冪等な再送・承認の保証範囲・導入順は [終了時改善と全体受入](improvements.md) を正本とする。
 

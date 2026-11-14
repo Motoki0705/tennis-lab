@@ -55,7 +55,6 @@ def parser() -> argparse.ArgumentParser:
     root.add_argument("--dispatcher-state-dir", type=Path)
     root.add_argument(
         "--parent",
-        required=True,
         help="issue number or https://github.com/owner/repo/issues/N",
     )
     commands = root.add_subparsers(dest="command", required=True)
@@ -241,11 +240,14 @@ def parser() -> argparse.ArgumentParser:
     improvement.add_argument("--child", type=int)
     improvement.add_argument("--key")
     improvement.add_argument("--spec", required=True)
-    publish = commands.add_parser("improvement-publish")
-    publish.add_argument("--candidate", required=True)
-    publish.add_argument("--existing", type=int)
+    commands.add_parser("improvement-propose")
+    extract = commands.add_parser("improvement-extract")
+    extract.add_argument("--candidates", nargs="+", required=True)
+    expire = commands.add_parser("improvement-expire")
+    expire.add_argument("--now")
+    expire.add_argument("--dry-run", action="store_true")
     decide = commands.add_parser("improvement-decide")
-    decide.add_argument("--candidate", required=True)
+    decide.add_argument("--candidate", action="append", required=True)
     decide.add_argument(
         "--action", choices=("approve", "hold", "decline", "revoke"), required=True
     )
@@ -310,6 +312,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "review-inspect",
                 "decision-log-status",
                 "evidence",
+                "improvement-expire",
             }
             else session_identity(dict(os.environ))
         )
@@ -328,6 +331,16 @@ def _main(argv: list[str] | None = None) -> int:
             if args.command in {"wait-supplement", "review-inspect"}
             else store,
         )
+        if args.command == "improvement-expire":
+            from .improvement_proposals import expire
+            from .improvements import lock_key
+
+            with store.operation(lock_key(gh.repo)), store.locked():
+                outcome = expire(gh, store, now=args.now, dry_run=args.dry_run)
+            print(json.dumps(outcome, ensure_ascii=False, sort_keys=True))
+            return 2 if outcome["errors"] else 0
+        if args.parent is None:
+            raise ValueError("--parent is required for this command")
         parent = issue_number(args.parent, gh.repo)
         if args.command == "publish-decision-log":
             from decision_logs.journal import Journal
@@ -386,7 +399,12 @@ def _main(argv: list[str] | None = None) -> int:
             print(json.dumps(value, ensure_ascii=False, sort_keys=True))
             return 0 if value["status"] == "captured" else 2
         capture_source = True
-        if args.command in {"improvement", "improvement-publish"}:
+        if args.command in {
+            "improvement",
+            "improvement-propose",
+            "improvement-extract",
+            "improvement-decide",
+        }:
             owner = (
                 store.read_data()
                 .get("parents", {})
@@ -481,7 +499,12 @@ def _main(argv: list[str] | None = None) -> int:
         improvement_operation = (
             store.operation(lock_key(gh.repo))
             if args.command
-            in {"improvement", "improvement-publish", "improvement-decide"}
+            in {
+                "improvement",
+                "improvement-propose",
+                "improvement-extract",
+                "improvement-decide",
+            }
             else nullcontext()
         )
         with improvement_operation, operation, project_operation, transaction:
@@ -656,10 +679,14 @@ def _main(argv: list[str] | None = None) -> int:
                     read_object(args.spec),
                     args.key,
                 )
-            elif command == "improvement-publish":
-                from .improvements import publish
+            elif command == "improvement-propose":
+                from .improvement_proposals import propose
 
-                result = publish(session, args.candidate, args.existing)
+                result = propose(session)
+            elif command == "improvement-extract":
+                from .improvement_proposals import extract
+
+                result = extract(session, args.candidates)
             elif command == "improvement-decide":
                 from .improvements import decide
 
@@ -747,15 +774,40 @@ def _main(argv: list[str] | None = None) -> int:
 
             # The decision is durable before stopping; do not hold the source
             # operation or registry lock while a runner terminates.
-            result["stop"] = reconcile_stop(
-                GitHub(gh.repo, store=store),
-                store,
-                parent,
-                nonempty(identity, "recorder identity"),
-                args.candidate,
-                args.dispatcher_state_dir,
+            stops = [
+                reconcile_stop(
+                    GitHub(gh.repo, store=store),
+                    store,
+                    parent,
+                    nonempty(identity, "recorder identity"),
+                    candidate,
+                    args.dispatcher_state_dir,
+                )
+                for candidate in args.candidate
+            ]
+            result["stop"] = (
+                stops[0]
+                if len(stops) == 1
+                else {
+                    "state": "stopping"
+                    if any(s["state"] == "stopping" for s in stops)
+                    else "stopped"
+                    if any(s["state"] == "stopped" for s in stops)
+                    else "not_requested",
+                    "candidates": dict(zip(args.candidate, stops, strict=True)),
+                }
             )
             integration_failed = result["stop"]["state"] == "stopping"
+        if command == "release" and args.ended:
+            from .improvements import candidates
+
+            with store.locked():
+                source_session = ParentSession(gh, store, parent, identity)
+                result["unpublished_improvements"] = [
+                    f"I-{parent}-{k}"
+                    for k, r in candidates(source_session).items()
+                    if r["proposal"] is None and r["publication"] is None
+                ]
         if command in {
             "register",
             "summary",

@@ -30,6 +30,7 @@ def _current_issue_state(
         [label["name"] for label in raw["labels"]],
         raw["created_at"],
         enabled_since,
+        body=raw.get("body") or "",
     )
 
 

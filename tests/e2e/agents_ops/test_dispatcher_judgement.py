@@ -105,6 +105,14 @@ def agreement_comment(n: int) -> dict[str, Any]:
 class FakeGitHub:
     repo = "o/r"
 
+    def improvement_extractions(self, store: Any) -> dict[str, Any]:
+        return cast(
+            dict[str, Any],
+            importlib.import_module("parent.github").GitHub.improvement_extractions(
+                self, store
+            ),
+        )
+
     def __init__(self) -> None:
         self._fresh = False
         self._store = None

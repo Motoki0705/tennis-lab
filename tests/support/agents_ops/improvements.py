@@ -1,7 +1,47 @@
 """Small author-supplied contracts, shared by improvement unit and CLI tests."""
 
+import hashlib
 import json
+from pathlib import Path
 from typing import Any
+
+
+def extraction_receipt(
+    directory: Path,
+    *,
+    parent: int,
+    proposal: int,
+    target: int | None,
+    body: str,
+    decisions: dict[str, str],
+) -> Path:
+    """Seed the durable send receipt when a fixture supplies canonical events."""
+    repo_hash = hashlib.sha256(b'"o/r"').hexdigest()
+    path = (
+        directory / "improvement-proposals" / repo_hash / f"extraction-{proposal}.json"
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "repo": "o/r",
+                "parent": parent,
+                "keys": sorted(decisions),
+                "proposal": proposal,
+                "decision_ids": decisions,
+                "creation": {
+                    "draft": {
+                        "title": "改善parent",
+                        "body": body,
+                        "labels": ["issue:parent"],
+                    },
+                    "attempted": True,
+                    "number": target,
+                },
+            }
+        )
+    )
+    return path
 
 
 def candidate_spec() -> dict[str, Any]:
