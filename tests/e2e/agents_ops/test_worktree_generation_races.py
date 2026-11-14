@@ -212,6 +212,7 @@ class SnapshotRace:
         path: Path,
         point: str,
         child_first: bool = False,
+        order: list[int] | None = None,
     ) -> None:
         self.point = point
         self.fired = False
@@ -227,7 +228,7 @@ class SnapshotRace:
         self.original = copy.deepcopy(self.forest.nodes)
         if point == "new_child":
             self.forest.nodes.pop(102)
-        order = [1, 900, 102, 101] if child_first else [1, 900, 101, 102]
+        order = order or ([1, 900, 102, 101] if child_first else [1, 900, 101, 102])
         read_text, stat, iterdir, readlink = (
             Path.read_text,
             Path.stat,
@@ -298,7 +299,7 @@ class SnapshotRace:
                 self.exit()
             if pid not in self.forest.nodes:
                 raise FileNotFoundError(str(pid))
-            return SimpleNamespace(st_uid=os.getuid())
+            return SimpleNamespace(st_uid=self.forest.nodes[pid].get("uid", os.getuid()))
 
         def cwd(candidate: Any, *args: Any, **kwargs: Any) -> Any:
             pid = proc_pid(candidate, "cwd")
@@ -408,6 +409,55 @@ def test_snapshot_exit_of_other_worktree_does_not_block_cleanup(
     assert race.fired and not path.exists()
     assert 102 in race.forest.nodes and 900 in race.forest.nodes
     assert not race.forest.signals
+
+
+@pytest.mark.parametrize("job", ["older_branch", "foreign_service", "reused_branch"])
+def test_discovery_preserves_an_independent_branch_enumerated_after_a_lost_root(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, job: str
+) -> None:
+    path = lab.add()
+    race = SnapshotRace(lab, monkeypatch, path, "stat", order=[1, 101, 900, 103, 102])
+    race.forest.nodes[900]["identity"]["start_ticks"] = "50"
+    race.forest.add(103, 900)
+    race.forest.nodes[103]["cwd"] = str(lab.repo)
+    if job == "foreign_service":
+        race.forest.nodes[103].update(parent=1, uid=os.getuid() + 1, cwd=None)
+    view = lab.real_snapshot()
+    if job == "reused_branch":
+        # The child's parent PID can name a replacement rather than this
+        # older process. Its observed start time cannot prove independence.
+        view[900].update(identity_lost=True, scope_uncertain=True)
+    unknown = race.forest.proc.discovery_uncertainty(
+        view, [race.original[101]["identity"]]
+    )
+    assert race.fired and view[101]["identity_lost"]
+    assert {item["pid"] for item in unknown} == (
+        {101, 102, 103} if job == "reused_branch" else {101, 102}
+    )
+
+
+@pytest.mark.parametrize("state", ["Z", "X"])
+def test_snapshot_ignores_other_worktree_zombies_without_reading_their_cwd(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, state: str
+) -> None:
+    path = lab.add()
+    race = SnapshotRace(lab, monkeypatch, path, "already_dead")
+    for pid in (101, 102):
+        race.forest.nodes[pid].update(state=state, cwd="/tmp/other-worktree")
+    readlink = os.readlink
+
+    def cwd(candidate: Any, *args: Any, **kwargs: Any) -> Any:
+        if str(candidate) in {"/proc/101/cwd", "/proc/102/cwd"}:
+            pytest.fail("an already terminated zombie has no cwd to classify")
+        return readlink(candidate, *args, **kwargs)
+
+    monkeypatch.setattr(os, "readlink", cwd)
+    assert set(lab.real_snapshot()) == {1, 900}
+    monkeypatch.setattr(os, "readlink", readlink)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert not path.exists() and not race.forest.signals
+    assert {101, 102} <= race.forest.nodes.keys()
 
 
 @pytest.mark.parametrize("published", [False, True])
