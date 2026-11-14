@@ -2072,3 +2072,28 @@ def test_worker_log_capture_and_receive_git_release_registry(
         observations(output)
     finally:
         d.control.reconcile(stop=True)
+
+
+@pytest.mark.parametrize("operation", ["start", "inspect", "stop"])
+def test_worker_entry_rejects_client_bound_to_another_store_instance(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    mod, session, _ = workflow(d, monkeypatch, family=True)
+    mismatched = copy.copy(session)
+    mismatched.store = mod.workflow_store(session.store.directory, d.schedule.directory)
+    calls = len(d.h.gh.calls)
+    with pytest.raises(ValueError, match="transaction's Store instance"):
+        if operation == "start":
+            mod.start_worker(
+                mismatched,
+                d.schedule.directory,
+                {},
+                child=10,
+                prompt="実装する。",
+                model=None,
+            )
+        elif operation == "inspect":
+            mod.inspect_worker(mismatched, 10)
+        else:
+            mod.stop_worker(mismatched, 10, stop_detail())
+    assert len(d.h.gh.calls) == calls
