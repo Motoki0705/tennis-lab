@@ -64,7 +64,7 @@ Extend bootstrap with explicit canonical-source/hot-root arguments, so input
 hardlinks remain on E and dataset payloads are never hardlinked across devices.
 Existing checkpoint relocation must change only the resolved data path/digests.
 
-Add about seven small CPU copy cases in `test_desktop_hot_dataset.py`; use real
+Add nine small CPU copy/bootstrap cases in `test_desktop_hot_dataset.py`; use real
 files and injected volume/capacity facts without GPU/model initialization. Reuse
 the 42 existing guard/state/lifecycle cases. Record collection/durations and an
 intentional omitted-copy-hash mutation, then restore and run the selected suite.

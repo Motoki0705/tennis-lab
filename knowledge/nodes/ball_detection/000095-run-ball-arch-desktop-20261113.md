@@ -3,12 +3,12 @@ id: run-ball-arch-desktop-20261113
 type: run
 task: ball_detection
 sequence: 95
-recorded_at: '2026-11-13'
+recorded_at: '2026-11-14'
 title: RTX 5060 Tiへの本学習移管とactivation checkpointing検証
 issue: 1859
 provider: codex
 date: '2026-11-13'
-status: failed
+status: running
 summary_impact: none
 config:
   seed: 42
@@ -20,6 +20,8 @@ config:
   msda_chunk_size: 4
   frames: 64
   compile_mode: default
+  dataset_storage: nvme_work_copy
+  hot_dataset: /home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1
 metrics:
   official_msda_gradcheck_widths_passed: 7
   full_shape_query_parameters_compared: 242
@@ -40,12 +42,19 @@ metrics:
   t1_query12000_val_median_error_source_px: 8.93928050994873
   t1_query12000_val_p95_error_source_px: 176.73656311035154
   t1_query12000_val_within20px_rate: 0.7419068009780867
+  dataset_copy_payload_bytes: 157028755547
+  dataset_copy_and_verification_seconds: 2730.807013038
+  dataset_reverification_seconds: 246.35731027899965
+  attempt5_warm_median_update_seconds: 3.2804110710003442
+  attempt5_warm_median_data_wait_seconds: 0.0010126064998985385
+  attempt5_peak_allocated_bytes: 10803609600
+  attempt5_peak_reserved_bytes: 12763267072
 artifacts:
   run_dir: knowledge/runs/run-ball-arch-desktop-20261113
-  output_dir: outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4
+  output_dir: outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme
   drive_outputs: outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1
 repro:
-  commit: 15cdc684ff60a210cb1d8209f393e60490ca8f44
+  commit: 7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0
   branch: codex/ball-arch-desktop-20261113
 parents: []
 relations: []
@@ -101,4 +110,16 @@ attempt 4は検証済み`checkpoint-00001000-e2f35d3f`を独立readbackし、mod
 
 その後、報告HEADのCI待機中にattempt 4がD: availableの10GiB下限で停止した。guard実測10,708,541,440 bytesは閾値10,737,418,240未満で、RAMが停止原因ではない。serviceはfailed・MainPID0、queueもfailed、terminal eventはDrive保存・独立SHA readback済み。T2の1,001〜1,313更新・sample11,001〜11,313は有限・連続だったが、次のcheckpointには到達せず、検証済み最新pointerは1,000更新の`initialized-00001000-120a3ef2`のまま。未commitの更新は再開に採用しない。実行commitと最初の報告HEADのCI Python成功を、現在の本番成功とは扱わない。
 
-停止調査時のD:空きは6,279,356,416 bytesへさらに減っており、親が許可した容量停止条件に従い、追加起動や他issueの整理は行わない。D:消費を特定のwriterへ帰属する証拠はない。`attempt-4-storage-stop.json`と現在のhandoffを根拠に容量回復と新attempt5の判断を親へ返す。ノードはfailedだが、科学上の比較・scene採用の判断は変えずsummary_impactはnoneのままとする。
+停止調査時のD:空きは6,279,356,416 bytesへさらに減っており、親が許可した容量停止条件に従い、追加起動や他issueの整理は行わない。D:消費を特定のwriterへ帰属する証拠はない。`attempt-4-storage-stop.json`と現在のhandoffを根拠に容量回復と新attempt5の判断を親へ返す。この停止時はstatusをfailedと記録した。科学上の比較・scene採用の判断は変えずsummary_impactはnoneのままとする。
+
+# NVMe作業コピーでのattempt 5
+
+WSL復旧で正本データ・outputs・私有env/native/cacheがE側ext4へ移った後、親の追加指示で固定datasetをDのWSL root上へ独立コピーした。場所は`/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1`。2,925 payload・157,028,755,547 bytesの全サイズ/SHAと独立inodeを確認し、コピー＋照合は2,730.807秒（約45分31秒）だった。D側で再度全件を検証して246.357秒、追加コピー0。D hot rootのdevice2112は`/`と同じで、Eのdevice2096と異なる。E正本は変更していない。一般的なE→D管理は別案件とし、このrunに閉じる。
+
+出力・env・native/cacheはEのまま、dataset aliasだけをDへ向けた。167 packageの版、native binary SHA/import、cache、C0 checkpointとcapacity入力18件のpinned SHAが一致した。両ディスクに10GiBの停止guardを設け、6GiB RAM admission待機・2GiB緊急停止・allocator80%とcheckpointing/科学上recipeは保持した。guard24、copy/bootstrap9、state8、lifecycle10の計51件が20.29秒で成功。E容量やコピーSHAの省略mutationも検出した。
+
+検証済み`initialized-00001000-120a3ef2`からT2 update1,000・sample11,000を完全復元し、未commitの1,001〜1,313を採用しなかった。新root`desktop-recovery-20261114-a5-nvme`で、push済みCI成功commitからsystemd user service＋共有queue resource=allを起動した。T1完了段は再実行しない。実runnerのmodel381 key・AdamW375 state・RNG・sampler復元、新規state keyなし、既存1,000行logの完全一致を確認した。1,001〜1,011更新・sample11,001〜11,011が連続してloss/勾配/LRが有限だった。recipe/manifestと21個のowned-process FDがD hot rootを参照した。
+
+初回更新は63.164秒（compile込み）、data_wait1.785秒。後続10更新の中央値はupdate3.280411秒、data_wait0.0010126065秒、data_wait最大0.001477583秒で、wait/update比の中央値は0.03065%。a4同prefixの中央値はupdate3.453193秒、data_wait0.0008668925秒だった。a4当時は移設前のD上で学習しており、E-only stagingでは学習未起動だったため、HDD学習baselineは存在しない。この差をHDD→NVMeの効果へ帰属せず、復旧前後の短い参考prefixとして扱う。新prefixでデータ待ちは更新時間の小部分だった。
+
+allocated最大10,803,609,600 / reserved最大12,763,267,072 bytesは上限13,682,291,507以内。host available最小12,376,064,000、admission最小12,575,571,968、D最小319,722,835,968、E最小3,851,784,626,176 bytesで、各下限内。親子RSS合計最大11,845,734,400 bytes、RAM waitとguard発火は0。起動prefixの根拠は`attempt-5-startup-acceptance.json`、コピー・復元は`attempt-5-recovery.json`、現在のunit/job/PID/PGID・terminal event・待機/容量logと未使用attempt6の復旧手順は更新した`monitoring-handoff.json`。workerの進捗観測はこのprefixで終え、T2/C1〜C3の完走と評価は親へ返す。定期follow-upは登録しない。モデル採用やsummaryの判断は変わらない。

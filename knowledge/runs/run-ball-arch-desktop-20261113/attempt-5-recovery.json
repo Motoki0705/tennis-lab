@@ -1,0 +1,735 @@
+{
+  "schema_version": 1,
+  "issue": 1859,
+  "attempt": 5,
+  "previous_attempt": 4,
+  "execution_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+  "state": "running_startup_accepted",
+  "copied_dataset": {
+    "schema_version": 1,
+    "complete": true,
+    "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/dataset",
+    "destination": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+    "verified_files": 2925,
+    "verified_bytes": 157028755547,
+    "copied_files": 2925,
+    "copied_bytes": 157028755547,
+    "reused_files": 0,
+    "root_device": 2112,
+    "canonical_device": 2096,
+    "hardlinks_only": false,
+    "elapsed_seconds": 2730.807013038,
+    "all_sha256_verified": true,
+    "independent_copy": true,
+    "additional_payload_bytes": 157028755547,
+    "finished_at": 1794639608.6152246
+  },
+  "bootstrap_dataset_reverification": {
+    "schema_version": 1,
+    "complete": true,
+    "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/dataset",
+    "destination": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+    "verified_files": 2925,
+    "verified_bytes": 157028755547,
+    "copied_files": 0,
+    "copied_bytes": 0,
+    "reused_files": 2925,
+    "root_device": 2112,
+    "canonical_device": 2096,
+    "hardlinks_only": false,
+    "elapsed_seconds": 246.35731027899965,
+    "all_sha256_verified": true,
+    "independent_copy": true,
+    "additional_payload_bytes": 0,
+    "finished_at": 1794639858.8450174
+  },
+  "relocation": {
+    "complete": true,
+    "root": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme",
+    "previous": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4",
+    "checked_at": 1794639892.0950441,
+    "dataset": {
+      "schema_version": 1,
+      "complete": true,
+      "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/dataset",
+      "destination": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+      "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+      "verified_files": 2925,
+      "verified_bytes": 157028755547,
+      "copied_files": 0,
+      "copied_bytes": 0,
+      "reused_files": 2925,
+      "root_device": 2112,
+      "canonical_device": 2096,
+      "hardlinks_only": false,
+      "elapsed_seconds": 246.35731027899965,
+      "all_sha256_verified": true,
+      "independent_copy": true,
+      "additional_payload_bytes": 0,
+      "finished_at": 1794639858.8450174
+    },
+    "dataset_hardlinks_verified": 0,
+    "dataset_hot_copies_verified": 2925,
+    "hot_dataset": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "dataset_payload_copy_bytes": 0,
+    "data_volume_device": 2096,
+    "python": "3.13.16 (main, Oct 14 2026, 01:04:01) [Clang 23.1.3 ]",
+    "private_prefix": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme/env-original",
+    "torch": "2.14.1+cu130",
+    "numpy": "2.5.4",
+    "cv2": "5.0.0",
+    "av": "19.0.2",
+    "recorded_packages_verified": 167,
+    "package_differences": {},
+    "native_binary_sha256": "f92765489d767bf604d0ad0bcf3c9017f23af499cd62271ae5a982d40a920b3a",
+    "native_binary_imported": true,
+    "native_kernel_test": "actual queued production acceptance; previous qualification retained",
+    "compile_caches": {
+      "inductor": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/cache/inductor",
+      "triton": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-resume-20261113/cache/triton"
+    },
+    "input_assets": [
+      {
+        "path": "original/plan.json",
+        "size_bytes": 34781,
+        "sha256": "ce4954e0d9e3263e58a92d2cfe7d93d35971b73a9dd3fa9b227e3cd3e895c793"
+      },
+      {
+        "path": "original/level-decision.json",
+        "size_bytes": 511,
+        "sha256": "e10da4815c6706543890a03f60a277eb143220b53f43f6253e3c52ffc918d0b6"
+      },
+      {
+        "path": "original/data-verified.json",
+        "size_bytes": 266,
+        "sha256": "dddae7de9b355a2833de5d0ef65c911e0d453f0cfa8093a03e5e092998451c51"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/run.json",
+        "size_bytes": 1049096,
+        "sha256": "50b566b983bed81073c41f2913f86f748ac420c44c460625645a004bd4e117ad"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/_SNAPSHOT.json",
+        "size_bytes": 1226,
+        "sha256": "66a2bb02b0f78fc6ef0bc127f5c495d486aadfb2f82e6cff8c3afbdfd373cee4"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/evaluation_manifest.json",
+        "size_bytes": 3317433,
+        "sha256": "84d7714369a882f983e0e58bf48ff3d367ad6656af76ca4890416785733e2cea"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/latest.json",
+        "size_bytes": 137,
+        "sha256": "4b3416a149efa71376f5091ee1e3a07c7c2fac30a7bf683d289785cd8859d9ba"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/train_manifest.json",
+        "size_bytes": 3156689,
+        "sha256": "4efd2d30a928ed53dc9289d759cfeacd9a0bac7f65749634717258d0c973113c"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/train.jsonl",
+        "size_bytes": 5904778,
+        "sha256": "8513e863abf9af82316312bb3a5bb480b77b9b391a5700589003c0cd598b0a2a"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/weights-update-00005500.pt",
+        "size_bytes": 116300101,
+        "sha256": "64619e19aeea8ede8fb96568a0c24a8eead3465f221da3f238a7b9a31f2840cf"
+      },
+      {
+        "path": "original/T1-q06000-q12000/checkpoint-00005500-cddcef20/checkpoint-update-00005500.pt",
+        "size_bytes": 346606195,
+        "sha256": "df50a4a73025be6dbc6bd2f5c65df0c7a88f8b764af20e6ec318e18aa9b4c535"
+      },
+      {
+        "path": "original-preparation/_SNAPSHOT.json",
+        "size_bytes": 4038,
+        "sha256": "5716be813c8b88c2a21e52e765aac5021222d10a997923d5a02870b6fe0d355b"
+      },
+      {
+        "path": "original-preparation/port-equivalence.json",
+        "size_bytes": 383,
+        "sha256": "5a61fa48b2a5574d6f4762bed5fabd7a10a4faf247159c0555833a1b39624f9b"
+      },
+      {
+        "path": "original-preparation/msda-compatibility.patch",
+        "size_bytes": 3985,
+        "sha256": "254ad340a3204ef87bedb350a23acdfdadde9af831f013240b42f82d7e2ae625"
+      },
+      {
+        "path": "original-preparation/msda-build-manifest.json",
+        "size_bytes": 3500,
+        "sha256": "c4ea3ed554eea489a23fd5a22c2d4b96ec7e1eb3c07463166d71c70946065cd2"
+      },
+      {
+        "path": "original-preparation/level-decision.json",
+        "size_bytes": 511,
+        "sha256": "e10da4815c6706543890a03f60a277eb143220b53f43f6253e3c52ffc918d0b6"
+      },
+      {
+        "path": "original-preparation/download-progress.json",
+        "size_bytes": 266,
+        "sha256": "181ee2ca454169da260f0eff3b9ce2d7e796c09dc1a2d5439f8163305042ae67"
+      },
+      {
+        "path": "original-preparation/data-verified.json",
+        "size_bytes": 305,
+        "sha256": "b23eb6ba3d8b6e1387f12086a442a5aed93eb7c0e7ffff33d26c574831fe54c5"
+      },
+      {
+        "path": "original-preparation/variants-compatibility.json",
+        "size_bytes": 140,
+        "sha256": "3c619a4d1e43e74bb920ecde136a6b8b4c0b37731bc85e0ccde1e9ded9e0514a"
+      },
+      {
+        "path": "original-preparation/msda-numerical-check.json",
+        "size_bytes": 947,
+        "sha256": "108713687fb4031a2e8aa88583017dbc4f7eb076ab4468b20bbdf9be00f859a4"
+      },
+      {
+        "path": "original-preparation/qualification/memory-T1-4-chunk1.json",
+        "size_bytes": 1127,
+        "sha256": "d3b5a3ac7de62996d162046cadc2dfe1931651d7d8070f7d844df1228810c167"
+      },
+      {
+        "path": "original-preparation/qualification/memory-T2-3-chunk4.json",
+        "size_bytes": 1775,
+        "sha256": "0205819149b546f5ede39a19989b2b0f3de935705ae6a213fe1d4f075a26601a"
+      },
+      {
+        "path": "original-preparation/qualification/memory-T1-4.json",
+        "size_bytes": 1129,
+        "sha256": "73c6ca825e8937d40ecdf15f0c6b53b9e15b5652e965bd60b28942e2641a4719"
+      },
+      {
+        "path": "original-preparation/qualification/memory-T1-3-chunk4.json",
+        "size_bytes": 1771,
+        "sha256": "0842063bfd68bdc75065f13698352b2c5d3f1e6994114ab3c7fb5a3ba0562eeb"
+      },
+      {
+        "path": "original-preparation/qualification/memory-T2-4-chunk1.json",
+        "size_bytes": 1127,
+        "sha256": "bd31d1bdb5c7d78801f59c437b1e7088b8f227139c213e8490732022d0384f28"
+      },
+      {
+        "path": "original-preparation/msda-build/build.json",
+        "size_bytes": 1512,
+        "sha256": "28c9cd6fe2a69833c750e5115ddf6a320da4fe78696d31469890eb31a510e543"
+      },
+      {
+        "path": "inputs/capacity12k/plan.json",
+        "size_bytes": 61122,
+        "sha256": "e4c504f1e4d84bdac9a9db13ac0c4baace715f40c972b6caeb9568c5c4581ab3"
+      },
+      {
+        "path": "inputs/capacity12k/source-provenance.json",
+        "size_bytes": 880,
+        "sha256": "05521a27da2709192d0c543bfcf6f6de17bc425cd8edde1787cce33e3d735958"
+      },
+      {
+        "path": "inputs/capacity12k/parents-verified.json",
+        "size_bytes": 9053,
+        "sha256": "721b162cd27b3b01c34b273d13e9315692fe566385e8293f3dcd6d091ddad4ae"
+      },
+      {
+        "path": "inputs/capacity12k/requirements-comment.json",
+        "size_bytes": 13621,
+        "sha256": "bd2dfe47d73a9d9741c17c4bbaaaaea65f2fabc9d6451be2c3cbf6f8e98d37d3"
+      },
+      {
+        "path": "inputs/common-dpt-T32/run.json",
+        "size_bytes": 341352,
+        "sha256": "d0ba4f3717a0b55882e895a5f1fddc772e9c0c96f2a79d9216e291981fdcf183"
+      },
+      {
+        "path": "inputs/common-dpt-T32/validation-update-00010000.frames.jsonl",
+        "size_bytes": 69614438,
+        "sha256": "c121d00dde82506c5dcfe25e812b7c706ca6a91a4d3e0db71434ce8137875307"
+      },
+      {
+        "path": "inputs/common-dpt-T32/_SNAPSHOT.json",
+        "size_bytes": 1732,
+        "sha256": "e5292807bcd7140b043ba9ccfd692625e407ea2d1c54fa2c06e1f8ab60d3ecee"
+      },
+      {
+        "path": "inputs/common-dpt-T32/validation-update-00010000.json",
+        "size_bytes": 247353,
+        "sha256": "c06a221762b27b8a9c528d2240f49b1dd1657d46b6f4fc74d3c036616507132a"
+      },
+      {
+        "path": "inputs/common-dpt-T32/evaluation_manifest.json",
+        "size_bytes": 4704058,
+        "sha256": "fb0ef368e1535bccb5ca1997b39c2e32871fd1f72cb9bb077d4ffe10ac41653d"
+      },
+      {
+        "path": "inputs/common-dpt-T32/latest.json",
+        "size_bytes": 138,
+        "sha256": "455aa5ca6725233cca332ee2db81e41804901494b456cc654c35dbc7e72bdef4"
+      },
+      {
+        "path": "inputs/common-dpt-T32/weights-update-00010000.pt",
+        "size_bytes": 24490005,
+        "sha256": "8b06768307e4451396e91f4baa5023b8ef9aa97d053b7088dd17b61a81c27c2c"
+      },
+      {
+        "path": "inputs/common-dpt-T32/checkpoint-update-00010000.pt",
+        "size_bytes": 70625387,
+        "sha256": "8a10a5a856703946d36df4a9490a62f68e05522b96bde0730f648f3e7c9b053e"
+      },
+      {
+        "path": "inputs/common-dpt-T32/train_manifest.json",
+        "size_bytes": 3156690,
+        "sha256": "a5fac8828f2a5c67064f39216ea24a47e0f9d7bdfaa45bb40611698da8a6b107"
+      },
+      {
+        "path": "inputs/common-dpt-T32/train.jsonl",
+        "size_bytes": 10754299,
+        "sha256": "49ad0b8d8466eeff3dec19e0edce54fdd49a4d3a6c3330bddb3bb6588a070ed5"
+      },
+      {
+        "path": "inputs/common-dpt-T32/COMPLETED.json",
+        "size_bytes": 119,
+        "sha256": "42c776153b73d15f4c73cfe61856a065665bfb90510b1686490a7ce656b9e65f"
+      },
+      {
+        "path": "inputs/capacity12k/prepared/audit.json",
+        "size_bytes": 29513,
+        "sha256": "3a7142d7d916c50cc787f13a4773e215b3f7dc8a867a6582bd9720130633fbb2"
+      },
+      {
+        "path": "inputs/capacity12k/prepared/experiments.json",
+        "size_bytes": 34138,
+        "sha256": "66b20dda048f1f43874dae2dcb9590714053fa8b94feab15726a298fb4c77b68"
+      },
+      {
+        "path": "inputs/capacity12k/prepared/evaluation_T64.json",
+        "size_bytes": 3317433,
+        "sha256": "84d7714369a882f983e0e58bf48ff3d367ad6656af76ca4890416785733e2cea"
+      },
+      {
+        "path": "inputs/capacity12k/prepared/train_T64.json",
+        "size_bytes": 3156689,
+        "sha256": "4efd2d30a928ed53dc9289d759cfeacd9a0bac7f65749634717258d0c973113c"
+      },
+      {
+        "path": "inputs/capacity12k/prepared/train_T32.json",
+        "size_bytes": 3156690,
+        "sha256": "a5fac8828f2a5c67064f39216ea24a47e0f9d7bdfaa45bb40611698da8a6b107"
+      },
+      {
+        "path": "inputs/capacity12k/prepared/evaluation_T32.json",
+        "size_bytes": 4704058,
+        "sha256": "fb0ef368e1535bccb5ca1997b39c2e32871fd1f72cb9bb077d4ffe10ac41653d"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/query-d384-l4-T64.json",
+        "size_bytes": 880,
+        "sha256": "a7890cf44fd239b0cbe9217148ec11d4153a9e46ac744d3f85601b771bf79bbf"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/query-d512-l8-T64.json",
+        "size_bytes": 912,
+        "sha256": "c8fbc3f9b5bc49819c0bc2d6dacac12008f1839010f5bffa8d7f7bd85261a696"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/query-d256-l4-T64.json",
+        "size_bytes": 881,
+        "sha256": "3b0fd505117bc4666ab9d52553265895576a11bd893e9e81256880f779b70d09"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/query-d768-l4-T64.json",
+        "size_bytes": 911,
+        "sha256": "a5e1797d092f4f69f61b9b9ba1180af5e6cf5fbaff1fe351cb602340cf5fe714"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/query-d512-l4-T64.json",
+        "size_bytes": 911,
+        "sha256": "be050ef7b4d20f9417d475e4eb292b4cee842f51ba51a6d7791ae0cd09c0e0df"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/query-d512-l6-T64.json",
+        "size_bytes": 912,
+        "sha256": "be001b66c71fe83b0351f73422149d18dc19b6177f8065574f61fc87e5cee143"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/common-dpt-T32.json",
+        "size_bytes": 873,
+        "sha256": "b78d179faa0440bb80ed2809358c7d1dae0159ec043d8b1a6bc847342704319e"
+      },
+      {
+        "path": "inputs/capacity12k/parent-receipts/query-d1024-l4-T64.json",
+        "size_bytes": 915,
+        "sha256": "a5284de6dd6b1d303912018cfb675f1adb4c39b810248f5fec0f42885785c40c"
+      }
+    ],
+    "d_drive_path": "/mnt/d",
+    "d_drive_available_bytes": 323078279168,
+    "e_drive_path": "/mnt/wsl/tennis-data",
+    "e_drive_available_bytes": 3857556037632,
+    "legacy_filesystem_growth_not_comparable_after_volume_move": true,
+    "seconds": 4.909420995999426
+  },
+  "full_state_recovery": {
+    "complete": true,
+    "stages": [
+      {
+        "stage": "T1-q06000-q12000",
+        "update": 6000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00006000-f95d9b90",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/completed-00006000-f95d9b90",
+          "manifest_sha256": "87f7b0fe576eb81a3354eb645a7f0683e5e5634407e8034684a5d47bc7203727",
+          "manifest_md5": "d856b48746aeeacd69d8476198528557",
+          "files": 12,
+          "size_bytes": 550949797,
+          "marker_id": "1HA30gpWwNEyU9tGev-1Vkuz3Q5RqvkVI",
+          "seconds": 100.26304868899751,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "a5e25941814bc5d69b9ccf702c68dfa050607b1a290c2fd3b1b0318c3ae33547",
+        "tensor_cache_retired": true
+      },
+      {
+        "stage": "T2-q00000-q06000",
+        "update": 1000,
+        "completed": false,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "initialized-00001000-120a3ef2",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T2-q00000-q06000/initialized-00001000-120a3ef2",
+          "manifest_sha256": "57ab45dd1b56c1115e4790f3035eec0f68411e643227aa22e3f286965dabb5c0",
+          "manifest_md5": "067a85292a67a8d1113fae0b2a24f9c3",
+          "files": 8,
+          "size_bytes": 478777130,
+          "marker_id": "1SZJOZ2gsQBkLvHCQtphY_1JVgNLftza3",
+          "seconds": 95.4486304100028,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "7b9204f52ae2279833b2b45880d8a120c7f20c5b956bbf3c78c759528c9eb33d",
+        "tensor_cache_retired": false
+      }
+    ],
+    "policy": {
+      "schema_version": 1,
+      "confirmed": true,
+      "scope": "encoder_msda",
+      "t1_t2_identical": true,
+      "production_mutable": false,
+      "selected_by": "minimum summed warm median update seconds among common passing scopes",
+      "allocator_fraction": 0.8,
+      "scientific_shape_unchanged": true,
+      "cnn_cases_checkpointing": false,
+      "evidence": "probe-matrix.json"
+    },
+    "old_writer_confirmed_stopped": true,
+    "scientific_state_exact": true,
+    "finished_at": 1794640244.7626028
+  },
+  "migration": {
+    "complete": true,
+    "original_sha256": "f35f9b9526546990aee7ad587c64e6e1e500eb353e433d0b30a02094a9faab4d",
+    "local_sha256": "7b9204f52ae2279833b2b45880d8a120c7f20c5b956bbf3c78c759528c9eb33d",
+    "exact_fields": [
+      "optimizer",
+      "optimizer_parameter_names",
+      "rng",
+      "schedule",
+      "sample_position",
+      "updates_completed",
+      "train_log"
+    ],
+    "model_state_keys": 381,
+    "new_state_keys": [],
+    "weights_exact": true,
+    "checkpoint_scope": "encoder_msda",
+    "source_changes": [],
+    "initial_policy_migration": false,
+    "observer_source_transition": null,
+    "metadata_changes": [
+      "recipe.model.activation_checkpointing",
+      "recipe.model.checkpoint_scope",
+      "recipe.data.snapshot.directory",
+      "recipe.manifest_sha256",
+      "recipe.evaluation_manifest_sha256",
+      "code",
+      "model_artifact.model_config",
+      "model_artifact.training.data.snapshot.directory",
+      "model_artifact.training.recipe_sha256",
+      "artifact_sha256"
+    ],
+    "original_gpu": "NVIDIA L4",
+    "local_gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "bitwise_gpu_continuation_guaranteed": false
+  },
+  "source_ci": {
+    "commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+    "run_id": 43565812493,
+    "python": "success",
+    "python_job_id": 132361546922,
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43565812493",
+    "confirmation": "gh run watch exit0; Python and all CPU lanes successful",
+    "confirmed_at": 1794638029.011826
+  },
+  "cpu_validation": {
+    "passed": 51,
+    "seconds": 20.29,
+    "new_guard_cases": 8,
+    "new_copy_bootstrap_cases": 9
+  },
+  "mutations": [
+    {
+      "mutation": "ignore E available-space violation",
+      "returncode": 1,
+      "detected": true,
+      "source_restored_sha256": "6ce35f80c55c82bed03058613c20ac24ff216a4850a2720bfdbf74440b988a3f"
+    },
+    {
+      "mutation": "omit destination SHA check for same-size corruption",
+      "detected": true,
+      "returncode": 1,
+      "isolated_copy": true,
+      "production_source_unchanged_sha256": "3024744eb7f3270280385fceee009e799cf06e15cde8b210d45b0770efc6094b"
+    }
+  ],
+  "prior_e_only_staging": {
+    "root": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5",
+    "production_registered": false,
+    "interrupted_during_readonly_recovery": true,
+    "adopted": false
+  },
+  "reference_timing": {
+    "reference_attempt": 4,
+    "updates": [
+      1001,
+      1011
+    ],
+    "cold_update_seconds": 37.752692859998206,
+    "cold_data_wait_seconds": 1.125980183998763,
+    "warm_ten_median_update_seconds": 3.453193093000664,
+    "warm_ten_median_data_wait_seconds": 0.0008668925001984462,
+    "warm_ten_max_data_wait_seconds": 0.00561828599893488,
+    "reference_storage_provenance": "Attempt 4 ran before the 2026-11-14 relocation, with the original dataset on the D-backed WSL root. The E-only attempt-5 staging never launched training. No HDD training baseline was collected. Compare attempt 4 only as a previous-run reference; do not attribute a difference to HDD-to-NVMe migration.",
+    "samples": [
+      {
+        "update": 1001,
+        "sample_position": 11001,
+        "seconds": 37.752692859998206,
+        "data_wait_seconds": 1.125980183998763
+      },
+      {
+        "update": 1002,
+        "sample_position": 11002,
+        "seconds": 3.515564548000839,
+        "data_wait_seconds": 0.00561828599893488
+      },
+      {
+        "update": 1003,
+        "sample_position": 11003,
+        "seconds": 3.5890255400008755,
+        "data_wait_seconds": 0.00108742600059486
+      },
+      {
+        "update": 1004,
+        "sample_position": 11004,
+        "seconds": 3.3876371779988403,
+        "data_wait_seconds": 0.00025575899780960754
+      },
+      {
+        "update": 1005,
+        "sample_position": 11005,
+        "seconds": 3.3789186560024973,
+        "data_wait_seconds": 0.00023752600100124255
+      },
+      {
+        "update": 1006,
+        "sample_position": 11006,
+        "seconds": 3.422933259000274,
+        "data_wait_seconds": 0.0003431939985603094
+      },
+      {
+        "update": 1007,
+        "sample_position": 11007,
+        "seconds": 3.508532389998436,
+        "data_wait_seconds": 0.000226415999350138
+      },
+      {
+        "update": 1008,
+        "sample_position": 11008,
+        "seconds": 3.492998237001302,
+        "data_wait_seconds": 0.0015868590016907547
+      },
+      {
+        "update": 1009,
+        "sample_position": 11009,
+        "seconds": 3.4633977449993836,
+        "data_wait_seconds": 0.001610483002878027
+      },
+      {
+        "update": 1010,
+        "sample_position": 11010,
+        "seconds": 3.442988441001944,
+        "data_wait_seconds": 0.0006463589998020325
+      },
+      {
+        "update": 1011,
+        "sample_position": 11011,
+        "seconds": 3.379479915001866,
+        "data_wait_seconds": 0.0012656330000027083
+      }
+    ]
+  },
+  "old_writer_stopped": true,
+  "scientific_recipe_changed": false,
+  "prepared_at": 1794640392.10663,
+  "startup_evidence": "attempt-5-startup-acceptance.json",
+  "actual_full_state_restore": {
+    "complete": true,
+    "restored_model": true,
+    "restored_optimizer": true,
+    "restored_rng": true,
+    "restored_sampler": true,
+    "new_state_keys": [],
+    "model_keys": 381,
+    "optimizer_states": 375,
+    "sample_position": 11000
+  },
+  "actual_data_root": {
+    "directory": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "device": 2112,
+    "root_filesystem_device": 2112,
+    "run_recipe_and_manifest_match": true
+  },
+  "runtime": {
+    "systemd_unit": "tennis-ball-arch-desktop-production-20261113-a5.service",
+    "queue_job_id": "0-8205359605821449085_2026-11-14T07-13-14-178550914Z_1105362_ball-arch-desktop-production-a5",
+    "active_output_root": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme",
+    "processes_at_capture": {
+      "service": {
+        "pid": 1107087,
+        "ppid": 544,
+        "pgid": 1107087,
+        "sid": 1107087,
+        "proc_starttime_ticks": 840056
+      },
+      "serial": {
+        "pid": 1107770,
+        "ppid": 1107498,
+        "pgid": 1107498,
+        "sid": 1107498,
+        "proc_starttime_ticks": 840108
+      },
+      "T2": {
+        "pid": 1240740,
+        "ppid": 1107770,
+        "pgid": 1107498,
+        "sid": 1107498,
+        "proc_starttime_ticks": 862702
+      }
+    },
+    "terminal_event": {
+      "local": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme/notifications/0-8205359605821449085_2026-11-14T07-13-14-178550914Z_1105362_ball-arch-desktop-production-a5.json",
+      "remote": "outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/notifications/0-8205359605821449085_2026-11-14T07-13-14-178550914Z_1105362_ball-arch-desktop-production-a5.json",
+      "upload_readback_receipt": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme/notifications/0-8205359605821449085_2026-11-14T07-13-14-178550914Z_1105362_ball-arch-desktop-production-a5-upload.json",
+      "trigger": "service.py on queue exit and systemd ExecStopPost; local record precedes upload",
+      "success": "state == done AND returncode == 0, root COMPLETED.json true, all stage predicates satisfied",
+      "failure": "failed/cancelled/process_ended_without_terminal_receipt; queue serve returncode alone is insufficient"
+    }
+  },
+  "io_timing": {
+    "cold_data_wait_seconds": 1.7851651220007625,
+    "warm_ten_median_data_wait_seconds": 0.0010126064998985385,
+    "warm_ten_max_data_wait_seconds": 0.0014775830004509771,
+    "warm_ten_median_data_wait_fraction": 0.0003064546870364666,
+    "interpretation": "Short resumed prefix on the verified NVMe work copy; cache state and compiler cold start limit comparison. Attempt 4 predates relocation and is a previous-run reference, not an HDD training baseline.",
+    "reference_attempt4": {
+      "reference_attempt": 4,
+      "updates": [
+        1001,
+        1011
+      ],
+      "cold_update_seconds": 37.752692859998206,
+      "cold_data_wait_seconds": 1.125980183998763,
+      "warm_ten_median_update_seconds": 3.453193093000664,
+      "warm_ten_median_data_wait_seconds": 0.0008668925001984462,
+      "warm_ten_max_data_wait_seconds": 0.00561828599893488,
+      "reference_storage_provenance": "Attempt 4 ran before the 2026-11-14 relocation, with the original dataset on the D-backed WSL root. The E-only attempt-5 staging never launched training. No HDD training baseline was collected. Compare attempt 4 only as a previous-run reference; do not attribute a difference to HDD-to-NVMe migration.",
+      "samples": [
+        {
+          "update": 1001,
+          "sample_position": 11001,
+          "seconds": 37.752692859998206,
+          "data_wait_seconds": 1.125980183998763
+        },
+        {
+          "update": 1002,
+          "sample_position": 11002,
+          "seconds": 3.515564548000839,
+          "data_wait_seconds": 0.00561828599893488
+        },
+        {
+          "update": 1003,
+          "sample_position": 11003,
+          "seconds": 3.5890255400008755,
+          "data_wait_seconds": 0.00108742600059486
+        },
+        {
+          "update": 1004,
+          "sample_position": 11004,
+          "seconds": 3.3876371779988403,
+          "data_wait_seconds": 0.00025575899780960754
+        },
+        {
+          "update": 1005,
+          "sample_position": 11005,
+          "seconds": 3.3789186560024973,
+          "data_wait_seconds": 0.00023752600100124255
+        },
+        {
+          "update": 1006,
+          "sample_position": 11006,
+          "seconds": 3.422933259000274,
+          "data_wait_seconds": 0.0003431939985603094
+        },
+        {
+          "update": 1007,
+          "sample_position": 11007,
+          "seconds": 3.508532389998436,
+          "data_wait_seconds": 0.000226415999350138
+        },
+        {
+          "update": 1008,
+          "sample_position": 11008,
+          "seconds": 3.492998237001302,
+          "data_wait_seconds": 0.0015868590016907547
+        },
+        {
+          "update": 1009,
+          "sample_position": 11009,
+          "seconds": 3.4633977449993836,
+          "data_wait_seconds": 0.001610483002878027
+        },
+        {
+          "update": 1010,
+          "sample_position": 11010,
+          "seconds": 3.442988441001944,
+          "data_wait_seconds": 0.0006463589998020325
+        },
+        {
+          "update": 1011,
+          "sample_position": 11011,
+          "seconds": 3.379479915001866,
+          "data_wait_seconds": 0.0012656330000027083
+        }
+      ]
+    }
+  },
+  "worker_acceptance_complete": true,
+  "periodic_followup_registered": false
+}

@@ -1,7 +1,7 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
-Current state: preparing attempt 5 with a verified NVMe dataset work copy after
-the parent's 2026-11-14 additional instruction.
+Current state: **attempt 5 is running from verified T2 update 1,000** with the
+NVMe dataset work copy. Updates 1,001–1,011 passed the startup acceptance below.
 Attempt 4's closed failure remains in [attempt-4-storage-stop.json](attempt-4-storage-stop.json).
 Canonical data, outputs, private environment and caches reside on the mounted
 ext4 data volume at `/mnt/wsl/tennis-data`; original output aliases are symlinks.
@@ -9,8 +9,8 @@ The hot dataset is an independent copy at
 `/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1` on the WSL root/NVMe
 filesystem. The E source is unchanged. The earlier E-only attempt-5 staging and
 its interrupted recovery are retained; no production registration used that root.
-The prior [monitoring-handoff.json](monitoring-handoff.json) still
-describes the stopped attempt until the new startup acceptance is committed.
+The current [monitoring-handoff.json](monitoring-handoff.json) identifies its
+live unit/queue/processes, terminal event and future recovery commands.
 
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
 supersedes the original prohibition on checkpointing for T1/T2. The initial desktop migration started
@@ -159,7 +159,7 @@ removed after durable verification, keeping local storage bounded. The ledger
 size and source commit for each evicted tensor. Diagnostic snapshots and their
 `probe-receipts/` are also read back before local probe tensors are evicted.
 
-Inspect `production-registration-a4.json`, `serial-status.json`,
+Inspect `production-registration-a5.json`, `serial-status.json`,
 `production-status.json`, `stage-status/*/state.json`, `persistence/`, logs,
 and the recorded service/queue identities. The systemd terminal event is written
 once when the queue exits; no periodic follow-up or post-acceptance progress
@@ -169,7 +169,8 @@ metadata; versioned summaries link the evidence.
 Worker acceptance is at least ten finite continuous post-compile updates in
 the first running stage after recovery. Allocated and reserved VRAM must remain
 below the allocator cap, host available RAM at least the 2 GiB emergency floor
-(with at least 6 GiB at each admission), and D: available space at least 10 GiB. The worker leaves a committed `monitoring-handoff.json`
+(with at least 6 GiB at each admission), and both D: and data-volume available
+space at least 10 GiB. The worker leaves a committed `monitoring-handoff.json`
 with the actual unit, job, process identities and authoritative evidence paths.
 The parent then monitors T1 tail 6,000/12k validation and prediction readback,
 T2's 500 checkpoint and 600-to-601 unfreeze, and every condition's completion.
@@ -396,3 +397,71 @@ the limit. No additional cleanup or restart was performed. The evidence does
 not attribute D: consumption to a particular writer. Restore adequate capacity
 before following the fresh-root/unused-attempt-5 recovery commands. Original
 private environment/native/cache and stopped-attempt evidence remain intact.
+
+## Attempt-5 NVMe continuation
+
+The parent's added 2026-11-14 instruction selected an independent D work copy.
+All 2,925 payloads / 157,028,755,547 bytes were copied and size/SHA-verified in
+2,730.8070 seconds (45 minutes 31 seconds). The resolved hot root is on device
+2112, the same filesystem as `/`, while the E canonical source is device 2096;
+its payloads have independent inodes and link count one. The original E dataset
+was unchanged. Bootstrap's second complete D verification took 246.3573 seconds,
+reused all payloads and copied zero additional bytes.
+
+The fresh output is `desktop-recovery-20261114-a5-nvme` on the mounted E ext4
+volume. Inputs still use E hardlinks, and the original private environment,
+native binary and compiler caches are reused. All 167 recorded package versions,
+the native binary digest/import and C0's original checkpoint digest matched.
+The earlier E-only staging and its interrupted read-only recovery are retained;
+no production job was registered there. General E-to-D cache management is outside
+this run. Keep the canonical E source, D hot root and private dependencies for
+later stages and recovery.
+
+The verified `initialized-00001000-120a3ef2` source restored T2 update 1,000 /
+sample 11,000, all model/AdamW/RNG/schedule/sampler state, and its exact committed
+log. T1's completed 12k validation was reused. The real runner restored 381 model
+keys and 375 optimizer states with no added keys. The source is pushed commit
+`7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0`, with
+[CI Python success](https://github.com/Motoki0705/tennis-lab/actions/runs/43565812493)
+confirmed before launch. D:/E: below 10 GiB each, RAM admission below 6 GiB,
+emergency RAM below 2 GiB, allocator 80% and encoder+MSDA checkpoint scope apply.
+Guard JSON schema 4 exposes both capacities and explicit failure reasons.
+
+The detached unit `tennis-ball-arch-desktop-production-20261113-a5.service`
+recorded updates 1,001–1,011 / samples 11,001–11,011 with finite loss/gradient/LR
+and an unfrozen CNN. Recipe/manifest and 21 owned-process file descriptors point
+to the D hot root. The warm ten updates had median 3.280411 seconds, median data
+wait 0.0010126065 seconds, maximum data wait 0.0014775830 seconds and median
+wait/update fraction 0.03065%. The first update took 63.163880 seconds including
+compilation, with data wait 1.785165 seconds. These are a short startup prefix,
+not a general throughput benchmark.
+
+For comparison, attempt 4's same warm prefix had median update 3.453193 seconds
+and data wait 0.0008668925 seconds. Attempt 4 predates the storage move and used
+the original D-backed WSL dataset. The E-only staging never trained, so no HDD
+training baseline exists. These two prefixes describe recovery before/after;
+their differences cannot identify an HDD-to-NVMe speedup or separate cache effects.
+The new prefix's data waiting was a small fraction of update time.
+
+Peak allocated/reserved was 10,803,609,600 / 12,763,267,072 bytes, below the
+13,682,291,507-byte cap. Minimum host available was 12,376,064,000 bytes,
+minimum admission RAM 12,575,571,968, minimum D: available 319,722,835,968 and
+minimum E available 3,851,784,626,176. Parent-plus-child RSS sum peaked at
+11,845,734,400 bytes, including shared pages. No wait event or guard trigger
+occurred in the prefix. Evidence: [attempt-5-startup-acceptance.json](attempt-5-startup-acceptance.json)
+and [attempt-5-recovery.json](attempt-5-recovery.json).
+
+The selected suite passed 51 cases in 20.29 seconds: guard 24, copy/bootstrap 9,
+state 8 and lifecycle 10. Seventeen added cases cover the second volume and the
+independent work-copy contract. Mutations ignoring E capacity or copied SHA
+verification failed the intended assertions; the copy mutation used an isolated
+source copy while the live copier remained untouched. Pre-commit and source CI
+passed. No additional CUDA numerical qualification was needed for a file relocation;
+the same binary/environment were verified and real queued forward/backward/compile
+ran in the accepted prefix. Existing native qualification remains retained.
+
+Current identities, terminal event, stage/receipt/wait/guard paths, milestones and
+fresh unused attempt-6 commands are in the committed handoff. The frozen runtime
+checkout stays fixed while reporting commits advance. Worker progress observation
+ends at this prefix; T2/C1/C2/C3 completion and final analysis belong to the parent.
+No periodic follow-up is registered.
