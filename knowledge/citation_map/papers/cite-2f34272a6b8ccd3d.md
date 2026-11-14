@@ -14,23 +14,33 @@ external_ids:
 source: https://arxiv.org/html/2204.01899
 summary: 本研究は、単眼のバドミントン試合動画からコート検出・選手姿勢推定・シャトル2D追跡を統合し、人手介入なしでショット分割と3Dシャトル軌道再構成を行う初のエンドツーエンドシステム「MonoTrack」を提案する。グラフベースのコート検出、残差接続と重み付きDice＋BCE損失を用いた軽量U-Netによるシャトル検出、GRUベースのヒット検出ネットワーク（HitNet）と制約付き動的計画法によるショット分割を組み合わせ、空気抵抗モデルに基づく非線形最適化で3D軌道を推定する。拡張TrackNetV2データセットおよび10kの合成軌道データセットでの評価により、コート検出、2Dシャトル追跡、ヒット認識で従来手法を上回る性能を示し、3D軌道再構成の有効性と誤差要因を明らかにした。
 text_status: available
-text_reason: ''
+text_reason: 'Identity verified: arXiv ID 2204.01899 and exact HTML title match stored
+  reading (review audit; no agy rereading).'
 references:
 - ref_id: ref-1
   citation: '[1] Yousset I Abdel-Aziz, HM Karara, and Michael Hauck. Direct linear
     transformation from comparator coordinates into object space coordinates in close-range
     photogrammetry. Photogrammetric engineering & remote sensing, 81(2):103–107, 2015.'
-  target_id: cite-ee694b10d11ddffa
-  identification_status: resolved
+  target_id: null
+  identification_status: unverified
   roles:
   - component
   decision_status: classified
   reason: '3D軌道再構成において、推定した3D軌道を画像空間の2D軌道へ投影しカメラパラメータを得るためのDirect Linear Transform（DLT）手法として採用されている。
 
-    Identification: unique exact title/year match in OpenAlex'
+    Identification: uniqueness unverified; legacy top-5 search; previous target=cite-ee694b10d11ddffa'
   evidence:
   - Section 4.5 (Estimating the initial conditions), anchor S4.SS5.SSS0.Px2.p1.1
   - bib [1] (anchor bib.bib1)
+  lookup:
+    title: Direct linear transformation from comparator coordinates into object space
+      coordinates in close-range photogrammetry
+    year: 2015
+    authors:
+    - Yousset I Abdel-Aziz
+    - HM Karara
+    - Michael Hauck
+    links: []
 - ref_id: ref-2
   citation: '[2] Hua-Tsung Chen, Wen-Jiin Tsai, Suh-Yin Lee, and Jen-Yu Yu. Ball tracking
     and 3d trajectory approximation with applications to tactics analysis from single-camera
@@ -896,3 +906,5 @@ schema_version: 1
 Reader: agy 1.5.9, gemini-4-hydrogen-high (observed: Gemini 4 Hydrogen (High)). Reading elapsed: 127.620 seconds. Input: html, https://arxiv.org/html/2204.01899.
 
 Legacy identification results invalidated; original reading and classifications retained.
+
+Legacy top-5 search identities invalidated; reading, citations and classifications retained.

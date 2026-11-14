@@ -14,7 +14,7 @@ generations:
   expanded_ids: []
 issues: []
 schema_version: 1
-stop_reason: OpenAlex query_cooldown; retry_after_exceeds_limit (32484s); paper=cite-baef928f0aefd5a6
+stop_reason: 'Paper processing incomplete: cite-baef928f0aefd5a6'
 ---
 
 Historical reports below preserve the original measurements. Their earlier
@@ -188,3 +188,36 @@ Repair evidence (2026-11-14 UTC):
   excludes provider waiting and lacks a successful-search timing measurement.
   Resume with the same CLI arguments and private run directory. The recorded
   cooldown conservatively ends after 2026-11-15 00:00:58 UTC.
+
+Integration-review correction (2026-11-14 UTC):
+
+The preceding 181 resolved / 36 pending counts predate complete-search
+verification. They are superseded by this audit, not by a new exploration run.
+The five saved reading sources were fetched as HTML and checked against their
+stored arXiv IDs and exact titles. All five match; no PDF-anchor fallback was
+used by these readings, and no reading or classification was replaced.
+
+The old top-five global search did not establish uniqueness. Its 78 formerly
+resolved rows were reverted to unverified: WASB 77, MonoTrack 1. Their prior
+target IDs remain in the reasons, and original lookup inputs were recovered from
+the matching private readings. Reference strings, roles, decision states,
+evidence locations, summaries and external IDs were preserved. The other
+103 resolved rows use explicit identifiers (53) or the source's complete
+referenced-work candidate set (50), and were retained. Both searches were rebuilt.
+
+| Measure | Before review correction | After offline correction |
+|---|---:|---:|
+| Completed readings / full-text failures | 5 / 2 | 5 / 2 |
+| Resolved / confirmed unresolved rows | 181 / 38 | 103 / 38 |
+| Pending / uniqueness-unverified rows | 36 / 0 | 36 / 78 |
+| Unclassifiable role rows | 38 | 38 |
+| Bibliography rows / paper documents | 255 / 157 | 255 / 157 |
+
+Confirmed unresolved reasons remain year mismatch/missing (27), no title match
+(9), author mismatch/missing (2). The correction made zero OpenAlex requests and
+zero agy calls. It is an offline cache invalidation, not a timed WASB rerun.
+The provider's retry time is still in the future for this correction, so the
+exploration was not resumed. There are now 114 identity rows to recheck rather
+than 36. New comparison identities may require further readings; the required
+count is unknown until those rows are reidentified. The five existing readings
+remain reusable. Unverified and pending rows prevent completed expansion.

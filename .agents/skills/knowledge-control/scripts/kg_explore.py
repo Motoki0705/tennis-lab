@@ -33,6 +33,7 @@ from kg_citations import (
     Role,
     identification_pending,
     legacy_lookup_failure,
+    legacy_search_result,
     load_citations,
     rebuild_search,
     serialize_document,
@@ -55,7 +56,7 @@ from kg_literature import (
     primary_url,
     reference_identifiers,
 )
-from kg_openalex import LookupUnavailable, OpenAlexClient
+from kg_openalex import IncompleteSearch, LookupUnavailable, OpenAlexClient
 
 
 class BudgetExceeded(RuntimeError):
@@ -76,6 +77,7 @@ class ExplorationResult:
     known_pending: int
     status: str
     pending_references: int
+    unverified_references: int
     identified_papers: list[str]
     refreshed_fetch_failures: list[str]
 
@@ -104,6 +106,17 @@ class Explorer:
         previous = copy.deepcopy(self.library.papers)
         migrate = False
         for paper in self.library.papers.values():
+            legacy_search = [r for r in paper.references if legacy_search_result(r)]
+            if legacy_search:
+                recovered = self.reader.recovered_lookups(paper)
+                for ref in legacy_search:
+                    old_target = ref.target_id
+                    ref.target_id, ref.identification_status = None, "unverified"
+                    ref.reason = ref.reason.split("\nIdentification:", 1)[0] + f"\nIdentification: uniqueness unverified; legacy top-5 search; previous target={old_target}"
+                    if ref.lookup is None and ref.ref_id in recovered:
+                        ref.lookup = ReferenceLookup(**recovered[ref.ref_id])
+                paper.body += "\nLegacy top-5 search identities invalidated; reading, citations and classifications retained.\n"
+                migrate = True
             if any(legacy_lookup_failure(ref) for ref in paper.references):
                 self.legacy_identifications.add(paper.id)
                 recovered = self.reader.recovered_lookups(paper)
@@ -115,7 +128,7 @@ class Explorer:
                             ref.lookup = ReferenceLookup(**recovered[ref.ref_id])
                 paper.body += "\nLegacy identification results invalidated; original reading and classifications retained.\n"
                 migrate = True
-            if paper.text_status == "failed" and "Attempted full-text candidate:" not in paper.text_reason:
+            if paper.text_status == "failed" and not any(marker in paper.text_reason for marker in ("Attempted full-text candidate:", "Rejected full-text candidate:")):
                 self.legacy_failed.add(paper.id)
                 paper.text_status = "not_requested"
                 paper.text_reason = "Refreshing legacy full-text candidate diagnostics."
@@ -168,7 +181,7 @@ class Explorer:
         except TextUnavailable as exc:
             paper.text_status = "failed"
             paper.text_reason = str(exc)
-            if "Attempted full-text candidate:" not in paper.text_reason:
+            if not any(marker in paper.text_reason for marker in ("Attempted full-text candidate:", "Rejected full-text candidate:")):
                 paper.text_reason = f"Attempted full-text candidate: {bibliography.source}; {exc}"
             if paper.id in self.legacy_failed:
                 self.refreshed.add(paper.id)
@@ -207,7 +220,7 @@ class Explorer:
         try:
             # Explicit bibliography IDs do not require an available index/search.
             for ref in paper.references:
-                if ref.identification_status != "pending":
+                if ref.identification_status not in {"pending", "unverified"}:
                     continue
                 links = ref.lookup.links if ref.lookup else []
                 if reference_identifiers(ref.citation, links):
@@ -224,7 +237,7 @@ class Explorer:
                 return
             candidates = self.literature.reference_candidates(bibliography)
             for ref in paper.references:
-                if ref.identification_status != "pending":
+                if ref.identification_status not in {"pending", "unverified"}:
                     continue
                 if self.clock() >= deadline:
                     raise BudgetExceeded("execution reached its time limit during reference identification")
@@ -232,7 +245,16 @@ class Explorer:
                 # restart. Candidate titles/years/author names are matched to it.
                 query = asdict(ref.lookup) if ref.lookup else {"title": "", "year": None, "authors": [], "links": []}
                 item: dict[str, Any] = {"citation": ref.citation, **query}
-                target, reason = self.literature.identify(item, candidates=candidates)
+                try:
+                    target, reason = self.literature.identify(item, candidates=candidates)
+                except IncompleteSearch as exc:
+                    ref.target_id, ref.identification_status = None, "unverified"
+                    ref.reason = ref.reason.split("\nIdentification:", 1)[0] + "\nIdentification: " + str(exc)
+                    raise
+                except LookupUnavailable as exc:
+                    ref.target_id, ref.identification_status = None, "pending"
+                    ref.reason = ref.reason.split("\nIdentification:", 1)[0] + "\nIdentification: pending; " + str(exc)
+                    raise
                 ref.target_id = self._upsert(target).id if target is not None else None
                 ref.identification_status = "resolved" if target is not None else "unresolved"
                 ref.reason = ref.reason.split("\nIdentification:", 1)[0] + "\nIdentification: " + reason
@@ -293,6 +315,7 @@ class Explorer:
                                        sum(r.decision_status == "unclassifiable" for p in selected for r in p.references),
                                        len(pending), search.status,
                                        sum(r.identification_status == "pending" for p in selected for r in p.references),
+                                       sum(r.identification_status == "unverified" for p in selected for r in p.references),
                                        sorted(self.identified), sorted(self.refreshed))
             report = asdict(result)
             search.body = history + "\nAttempt report (seconds are for this invocation):\n\n```json\n" + json.dumps(report, ensure_ascii=False, indent=2) + "\n```\n"

@@ -57,7 +57,7 @@ def test_title_lookup_resolves_only_unique_exact_title_and_year(api: Any, varian
     def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
         if "/works?" in url:
             works = [work, {**work, "id": "https://openalex.org/W124"}] if variant == "ambiguous" else [work]
-            return json.dumps({"results": works}).encode()
+            return json.dumps({"meta": {"count": len(works), "next_cursor": None}, "results": works}).encode()
         return json.dumps(work).encode()
 
     found, reason = api.Literature(fetch).identify({"citation": "Alice Smith. An Exact Title. 2023.", "title": "An Exact Title", "authors": ["Alice Smith"], "year": 2023, "links": []})
@@ -69,10 +69,10 @@ def test_title_lookup_resolves_only_unique_exact_title_and_year(api: Any, varian
 
 
 def test_html_preserves_locations_links_and_rejects_abstract_only(api: Any) -> None:
-    full = '<article><h2 id="sec3">3 Experiments</h2><p>' + "Full paper body. " * 120 + '</p><h2>References</h2><li id="bib1" class="ltx_bibitem"><a href="https://doi.org/10.5555/example">Example</a></li></article>'
+    full = '<article><h1>A</h1><h2 id="sec3">3 Experiments</h2><p>' + "Full paper body. " * 120 + '</p><h2>References</h2><li id="bib1" class="ltx_bibitem"><a href="https://doi.org/10.5555/example">Example</a></li></article>'
 
     def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
-        return full.encode() if "/html/" in url else b"<html><h1>Abstract</h1>Not the full text</html>"
+        return full.encode() if "/html/" in url else b"<html><h1>A</h1><h2>Abstract</h2>Not the full text</html>"
 
     literature = api.Literature(fetch)
     text = literature.full_text(api.Bibliography("A", {"arxiv": "2311.05237"}, "https://arxiv.org/abs/2311.05237v2"))
@@ -105,7 +105,7 @@ def test_conflicting_provider_locations_are_unresolved_instead_of_last_wins(api:
                           {"landing_page_url": "https://arxiv.org/abs/1902.07304"}]}
 
     def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
-        return json.dumps({"results": [work]} if "/works?" in url else work).encode()
+        return json.dumps({"meta": {"count": 1, "next_cursor": None}, "results": [work]} if "/works?" in url else work).encode()
 
     found, reason = api.Literature(fetch).identify({"citation": "Alice Smith. Exact Title.", "title": "Exact Title", "year": 2023, "authors": ["Alice Smith"], "links": []})
     assert found is None and "MetadataConflict" in reason
@@ -118,7 +118,7 @@ def test_pdf_fallback_uses_pages_and_removes_temporary_file(api: Any, monkeypatc
         pdf = Path(argv[2])
         assert pdf.read_bytes().startswith(b"%PDF-")
         captured.append(pdf)
-        return subprocess.CompletedProcess(argv, 0, ("First page. " * 60 + "\fSecond page. " * 40).encode(), b"")
+        return subprocess.CompletedProcess(argv, 0, ("A\nAbstract\n" + "First page. " * 60 + "\fSecond page. " * 40).encode(), b"")
 
     def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
         if "/html/" in url:
@@ -155,3 +155,82 @@ def test_failed_fetch_records_all_oa_locations_and_attempted_candidates(api: Any
     if with_pdf:
         assert "https://example.org/closed.pdf" in fetched
         assert "Attempted full-text candidate: https://example.org/closed.pdf" in reason and "HTTP 404" in reason
+
+
+def test_landing_page_pdf_anchors_cannot_substitute_another_paper(api: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    fetched: list[str] = []
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        fetched.append(url)
+        if url.endswith(".pdf"):
+            return b"%PDF-1.5 another paper"
+        return b'<meta name="citation_title" content="Target paper with unique title"><h1>Abstract</h1><a href="reference-b.pdf">Reference B</a><a href="related-b.pdf">Related paper</a><a href="supplement.pdf">Supplementary material</a>'
+
+    monkeypatch.setattr(api.Literature, "_pdf_text", staticmethod(lambda raw: "Unrelated paper B\n" + "Body of B. " * 100))
+    lib = api.Literature(fetch)
+    with pytest.raises(api.TextUnavailable, match="unverified PDF anchors ignored"):
+        lib.full_text(api.Bibliography("Target paper with unique title", {"url": "https://example.org/a"}, "https://example.org/a"))
+    assert fetched == ["https://example.org/a"]
+
+
+@pytest.mark.parametrize("variant", ["correct", "wrong_title", "short_title", "supplement_text", "supplement_url", "non_http"])
+def test_citation_pdf_metadata_requires_the_target_title(api: Any, monkeypatch: pytest.MonkeyPatch, variant: str) -> None:
+    fetched: list[str] = []
+    pdf_url = "supplement.pdf" if variant == "supplement_url" else "paper.pdf"
+    if variant == "non_http":
+        pdf_url = "file:///private/paper.pdf"
+    target_title = "Paper A" if variant == "short_title" else "Target paper with unique title"
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        fetched.append(url)
+        if url.endswith(".pdf"):
+            return b"%PDF-1.5 payload"
+        return f'<meta name="citation_title" content="{target_title}"><meta name="citation_pdf_url" content="{pdf_url}">'.encode()
+
+    title = "Another paper with a different title" if variant == "wrong_title" else "Target paper with\nunique title"
+    if variant == "short_title":
+        title = "Paper B"
+    if variant == "supplement_text":
+        title = "Supplemental material\n" + title
+    monkeypatch.setattr(api.Literature, "_pdf_text", staticmethod(lambda raw: "[Page 1]\n" + title + "\nAuthors\nAbstract\n" + "Body. " * 100))
+    lib = api.Literature(fetch)
+    bib = api.Bibliography("https://example.org/a", {"url": "https://example.org/a"}, "https://example.org/a")
+    if variant == "correct":
+        text = lib.full_text(bib)
+        assert text.source == "https://example.org/paper.pdf"
+        assert "Identity verified: citation_pdf_url" in " ".join(text.attempts)
+    else:
+        with pytest.raises(api.TextUnavailable, match="identity unverified|candidate rejected"):
+            lib.full_text(bib)
+    if variant in {"supplement_url", "non_http"}:
+        assert fetched == ["https://example.org/a"]
+
+
+def test_article_heading_mismatch_is_not_hidden_by_page_metadata(api: Any) -> None:
+    html = '<meta name="citation_title" content="Target paper with unique title"><article><h1>Another paper title</h1><p>' + "Other paper body. " * 120 + '</p><h2>References</h2></article>'
+    lib = api.Literature(lambda url, headers, timeout: html.encode())
+    with pytest.raises(api.TextUnavailable, match="article heading differs"):
+        lib.full_text(api.Bibliography("Target paper with unique title", {"url": "https://example.org/a"}, "https://example.org/a"))
+
+
+def test_primary_source_cannot_override_a_different_external_id(api: Any) -> None:
+    def forbidden(*args: Any) -> bytes:
+        raise AssertionError("conflicting source must not be fetched")
+
+    with pytest.raises(api.TextUnavailable, match="primary URL external ID conflicts"):
+        api.Literature(forbidden).full_text(api.Bibliography("A target", {"arxiv": "2311.05237"}, "https://arxiv.org/html/1902.07304"))
+
+
+@pytest.mark.parametrize("doi", ["10.5555/b", "not-a-doi"])
+def test_landing_metadata_for_another_doi_cannot_supply_the_pdf(api: Any, monkeypatch: pytest.MonkeyPatch, doi: str) -> None:
+    fetched: list[str] = []
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        fetched.append(url)
+        return f'<meta name="citation_title" content="Another paper"><meta name="citation_doi" content="{doi}"><meta name="citation_pdf_url" content="b.pdf">'.encode()
+
+    lib = api.Literature(fetch)
+    monkeypatch.setattr(lib.client, "work", lambda identifier: None)
+    with pytest.raises(api.TextUnavailable, match="citation_doi"):
+        lib.full_text(api.Bibliography("doi:10.5555/a", {"doi": "10.5555/a"}, "https://example.org/a"))
+    assert fetched == ["https://example.org/a"]

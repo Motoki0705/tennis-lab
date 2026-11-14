@@ -220,3 +220,64 @@ def test_empty_source_reference_index_uses_search_and_propagates_quota(api: Any)
     with pytest.raises(api.LookupUnavailable, match="HTTP_429"):
         lib.identify(reference, candidates=lib.reference_candidates(source))
     assert len(urls) == 2 and "/works?" in urls[-1]
+
+
+@pytest.mark.parametrize("ambiguous", [False, True])
+def test_search_checks_matches_beyond_the_first_page(api: Any, ambiguous: bool) -> None:
+    from urllib.parse import parse_qs, urlsplit
+
+    literature = importlib.import_module("kg_literature")
+    clock = Clock()
+    seen: list[str] = []
+    first = [work("W1", title="An Exact Title" if ambiguous else "Other title")]
+    first += [work(f"W{i}", title="Other title") for i in range(2, 6)]
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        params = parse_qs(urlsplit(url).query)
+        assert params["search.title"] == ["an exact title"] and params["per_page"] == ["100"]
+        cursor = params["cursor"][0]
+        seen.append(cursor)
+        rows, next_cursor = {"*": (first, "later"), "later": ([work("W6")], "end"), "end": ([], None)}[cursor]
+        return json.dumps({"meta": {"count": 6, "next_cursor": next_cursor}, "results": rows}).encode()
+
+    lib = literature.Literature(client=api.OpenAlexClient(fetch, clock=clock.time, sleep=clock.sleep))
+    found, reason = lib.identify({"citation": "Alice Smith. An Exact Title. 2023.", "title": "An Exact Title", "year": 2023, "authors": ["Alice Smith"], "links": []})
+    if ambiguous:
+        assert found is None and "ambiguous (2 matches)" in reason
+    else:
+        assert found is not None and found.external_ids["openalex"] == "W6" and "cursor_complete" in reason
+    assert seen == ["*", "later", "end"] and clock.now == 2
+
+
+@pytest.mark.parametrize("broken", ["missing_meta", "count_mismatch", "count_changed", "cycle", "duplicate", "empty_progress", "rate_limit"])
+def test_incomplete_search_never_returns_a_partial_candidate_set(api: Any, broken: str) -> None:
+    clock = Clock()
+    calls = 0
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            if broken == "missing_meta":
+                return json.dumps({"results": [work("W1")]}).encode()
+            return json.dumps({"results": [work("W1")], "meta": {"count": 2, "next_cursor": "later"}}).encode()
+        if broken == "rate_limit":
+            raise HTTPError(url, 429, "limited", Message(), None)
+        payload: dict[str, Any] = {"results": [work("W2")], "meta": {"count": 2, "next_cursor": None}}
+        if broken == "count_mismatch":
+            payload["results"] = []
+        elif broken == "count_changed":
+            payload["meta"]["count"] = 3
+        elif broken == "cycle":
+            payload["meta"]["next_cursor"] = "*"
+        elif broken == "duplicate":
+            payload["results"] = [work("W1")]
+        elif broken == "empty_progress":
+            payload.update(results=[], meta={"count": 2, "next_cursor": "third"})
+        return json.dumps(payload).encode()
+
+    client = api.OpenAlexClient(fetch, attempts=1, clock=clock.time, sleep=clock.sleep)
+    expected = api.LookupUnavailable if broken == "rate_limit" else api.IncompleteSearch
+    with pytest.raises(expected):
+        client.search("An Exact Title")
+    assert calls == (1 if broken == "missing_meta" else 2)

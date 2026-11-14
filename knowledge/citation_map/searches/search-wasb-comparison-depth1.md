@@ -40,3 +40,8 @@ Attempt report (seconds are for this invocation):
   "status": "complete"
 }
 ```
+
+Integration-review correction: WASB's 77 old top-five global-search identities
+are now unverified, in addition to its 36 pending rows. Its arXiv source ID and
+exact HTML title were checked and the reading was preserved. This search remains
+interrupted; see the depth-2 document's correction audit for current totals.

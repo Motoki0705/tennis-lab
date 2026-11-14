@@ -9,6 +9,8 @@ Look up A–E by titles `Fixture A`–`Fixture E` or DOI `10.5555/fixture-a`–`
 The documents themselves are the canonical metadata; no Papers entries exist.
 An independent `Fixture P` demonstrates a successful reading with reference
 identification still pending, including the original lookup input and dual roles.
+Its second reference is separately unverified because candidate coverage is
+incomplete; both states prevent expansion and retain the original role evidence.
 
 - A → B: comparison + foundation; A → C: foundation.
 - B → D: comparison; C → D: comparison + foundation (converging branches).

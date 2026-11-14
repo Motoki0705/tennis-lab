@@ -340,3 +340,17 @@ def test_reference_lookup_inputs_are_strictly_validated(api: ModuleType, field: 
     data["references"][0]["lookup"][field] = value
     with pytest.raises(ValueError):
         api.parse_document(markdown(data))
+
+
+def test_unverified_identity_is_distinct_from_pending_and_cannot_expand(api: ModuleType) -> None:
+    library = api.load_citations(FIXTURE)
+    p = next(p for p in library.papers.values() if p.title == "Fixture P")
+    data = yaml.safe_load(api.serialize_document(p).split("---", 2)[1])
+    assert [r["identification_status"] for r in data["references"]] == ["pending", "unverified"]
+    assert data["references"][1]["target_id"] is None
+    assert data["references"][1]["roles"] == ["related"]
+    search = library.searches["search-fixture-pending-identification"]
+    assert search.status == "interrupted" and search.generations[0].expanded_ids == []
+    data["references"][1]["target_id"] = next(x.id for x in library.papers.values() if x.title == "Fixture B")
+    with pytest.raises(ValueError, match="disagree"):
+        api.parse_document(markdown(data))

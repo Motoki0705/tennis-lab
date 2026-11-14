@@ -27,11 +27,11 @@ from kg_schema import http_url
 
 Role = Literal["foundation", "component", "comparison", "related", "benchmark"]
 TextStatus = Literal["available", "failed", "not_requested"]
-IdentificationStatus = Literal["resolved", "unresolved", "pending"]
+IdentificationStatus = Literal["resolved", "unresolved", "pending", "unverified"]
 DecisionStatus = Literal["classified", "unclassifiable", "pending"]
 ROLES = {"foundation", "component", "comparison", "related", "benchmark"}
 TEXT_STATUSES = {"available", "failed", "not_requested"}
-IDENTIFICATION_STATUSES = {"resolved", "unresolved", "pending"}
+IDENTIFICATION_STATUSES = {"resolved", "unresolved", "pending", "unverified"}
 DECISION_STATUSES = {"classified", "unclassifiable", "pending"}
 CITATION_RE = re.compile(r"^cite-[0-9a-f]{16}$")
 SEARCH_RE = re.compile(r"^search-[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -365,8 +365,14 @@ def legacy_lookup_failure(ref: Reference) -> bool:
     return ref.identification_status == "unresolved" and "Identification: reference lookup failed:" in ref.reason
 
 
+def legacy_search_result(ref: Reference) -> bool:
+    return ref.identification_status in {"resolved", "unresolved"} and (
+        "Identification: unique exact title/year match in OpenAlex" in ref.reason
+        or "Identification: OpenAlex global_search" in ref.reason and "cursor_complete" not in ref.reason)
+
+
 def identification_pending(paper: CitationPaper) -> bool:
-    return any(ref.identification_status == "pending" or legacy_lookup_failure(ref) for ref in paper.references)
+    return any(ref.identification_status in {"pending", "unverified"} or legacy_lookup_failure(ref) for ref in paper.references)
 
 
 def rebuild_search(search: CitationSearch, papers: dict[str, CitationPaper]) -> None:
@@ -471,6 +477,8 @@ def validate_library(library: CitationLibrary, registered: list[Node] | None = N
         for ref in paper.references:
             if legacy_lookup_failure(ref):
                 errors.append(f"{paper.id}/{ref.ref_id}: transient lookup failure must be pending, not unresolved")
+            if legacy_search_result(ref):
+                errors.append(f"{paper.id}/{ref.ref_id}: legacy partial search must be unverified until rechecked")
             if ref.target_id is not None and ref.target_id not in library.papers:
                 errors.append(f"{paper.id}/{ref.ref_id}: unknown target_id {ref.target_id}")
     for search in library.searches.values():

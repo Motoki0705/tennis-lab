@@ -152,11 +152,25 @@ full text. PDF downloads and extracted input exist only in temporary directories
 PDF reading requires Poppler's `pdftotext` on PATH. A PDF without extractable text
 fails explicitly; no implicit OCR is attempted. Failure reasons record attempted
 URLs and OpenAlex's best OA/other location PDFs, including absent PDF locations.
+Only primary locators, arXiv ID URLs, OpenAlex work locations and a primary
+page's citation_pdf_url metadata are download candidates. Ordinary PDF anchors
+(references, related papers and supplements) are ignored. Known titles must match
+HTML title metadata/headings or the PDF title block before its abstract/body;
+supplementary/appendix documents are rejected. Unconfirmed identity is a full-text
+failure, never an alternative paper read under the original ID.
 Reference identities use printed external IDs first. Otherwise, the source's
 OpenAlex `referenced_works` supply candidates, compared by normalized title,
 publication year and first-author surname. Multiple matches, missing corroboration
 or a mismatch stay unresolved with a specific reason. An unindexed source or empty
 reference index uses global search, under the same conservative matching rules.
+That lookup searches the title field when a parsed title exists. It follows
+[cursor paging](https://help.openalex.org/api/paging/) to the end, checking total
+count consistency, unique work IDs and cursor progress before returning any
+candidate set. A failed later request remains pending. Incomplete/inconsistent
+coverage is separately recorded as unverified and stops expansion; it is retried
+on resume. Old results from the top-five search are invalidated to unverified,
+including formerly resolved rows, with their prior target in the reason. Their
+original reading is preserved, and archived lookup inputs can be recovered.
 
 OpenAlex calls are serial, paced at least one second apart, and reuse successful
 responses within an invocation. HTTP 429/5xx, communication failures and invalid
@@ -198,7 +212,8 @@ budget and pass the remainder. There is no paper-count limit or parallel option.
 The JSON report and search body record time, actual model calls, new/cached reads,
 unique read papers, fetch failures, unresolved/unclassifiable rows, pending
 references, repaired document IDs, and the known pending-paper count (a lower
-bound until all intermediate bibliographies are read). Counts follow all known
+bound until all intermediate bibliographies are read). Unverified-reference counts
+are separate from pending and confirmed unresolved counts. Counts follow all known
 selected-role edges within the depth limit, including cached sources beyond an
 incomplete root. Counting those sources does not expand or read them ahead.
 The same store rejects concurrent CLI writers. Validate the resulting library

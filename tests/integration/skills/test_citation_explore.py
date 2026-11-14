@@ -335,3 +335,75 @@ def test_legacy_sources_are_repaired_before_an_independent_root_quota(campaign: 
     assert (report["read_papers"], report["fetch_failed"], report["pending_references"]) == (2, 1, 1)
     assert resumed.papers == before_papers and campaign.reader.calls == before_calls
     assert not campaign.api.validate_library(repaired)
+
+
+def test_incomplete_candidate_coverage_is_unverified_and_resumes_without_ai(campaign: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    identify = campaign.literature.identify
+
+    def truncated(reference: dict[str, Any], **kwargs: Any) -> Any:
+        if "Fixture C" in reference["citation"]:
+            raise campaign.api.IncompleteSearch("OpenAlex incomplete_search: count_mismatch")
+        return identify(reference, **kwargs)
+
+    monkeypatch.setattr(campaign.literature, "identify", truncated)
+    with pytest.raises(campaign.api.IncompleteSearch):
+        campaign.run(1)
+    library = campaign.api.load_citations(campaign.directory)
+    a = library.papers[campaign.papers["Fixture A"].id]
+    ref = a.references[1]
+    assert ref.identification_status == "unverified" and ref.target_id is None
+    assert ref.roles == ["foundation"] and ref.evidence
+    assert "incomplete_search" in ref.reason and a.text_status == "available"
+    assert not campaign.api.validate_library(library)
+    monkeypatch.setattr(campaign.literature, "identify", identify)
+    result = campaign.run(1)
+    assert result.agy_calls == 0 and result.status == "complete"
+    assert result.unverified_references == 0
+
+
+def test_legacy_top_five_identity_is_revoked_before_rechecking(campaign: Any) -> None:
+    campaign.run(2)
+    calls = campaign.reader.calls
+    library = campaign.api.load_citations(campaign.directory)
+    b = library.papers[campaign.papers["Fixture B"].id]
+    ref = b.references[0]
+    expected = (ref.citation, ref.roles, ref.evidence)
+    ref.lookup = None
+    ref.reason = "Comparison evidence.\nIdentification: unique exact title/year match in OpenAlex"
+    campaign.api.write_document(b, campaign.directory)
+    assert campaign.api.validate_library(library)
+    explorer = campaign.api.Explorer(campaign.directory, campaign.literature, campaign.reader)
+    migrated = explorer.library.papers[b.id].references[0]
+    assert migrated.identification_status == "unverified" and migrated.target_id is None
+    assert migrated.lookup.title == "Fixture D"
+    assert not campaign.api.validate_library(explorer.library)
+    result = explorer.explore("doi:10.5555/fixture-a", ["comparison"], 2, "search-test-depth2")
+    actual = campaign.api.load_citations(campaign.directory).papers[b.id].references[0]
+    assert actual.target_id == campaign.papers["Fixture D"].id
+    assert (actual.citation, actual.roles, actual.evidence) == expected
+    assert result.agy_calls == 0 and campaign.reader.calls == calls
+
+
+def test_rejected_text_identity_never_reaches_ai_or_becomes_a_reading(campaign: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    literature = importlib.import_module("kg_literature")
+    attempts = 0
+
+    def forbidden(*args: Any) -> bytes:
+        raise AssertionError("conflicting paper source must not be fetched")
+
+    def bad_source(bibliography: Any) -> Any:
+        nonlocal attempts
+        attempts += 1
+        bad = literature.Bibliography("A target", {"arxiv": "2311.05237"}, "https://arxiv.org/html/1902.07304")
+        return literature.Literature(forbidden).full_text(bad)
+
+    monkeypatch.setattr(campaign.literature, "full_text", bad_source)
+    first = campaign.run(1)
+    second = campaign.run(1)
+    library = campaign.api.load_citations(campaign.directory)
+    a = library.papers[campaign.papers["Fixture A"].id]
+    assert a.text_status == "failed" and a.summary == "" and a.references == []
+    assert "Rejected full-text candidate:" in a.text_reason
+    assert "Attempted full-text candidate:" not in a.text_reason
+    assert attempts == 1 and campaign.reader.calls == first.agy_calls == second.agy_calls == 0
+    assert not campaign.api.validate_library(library)

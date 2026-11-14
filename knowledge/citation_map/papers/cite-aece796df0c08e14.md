@@ -17,7 +17,8 @@ summary: 本論文は、サッカーの長距離撮影映像からボールを�
   Soccer Datasetを用いた評価実験では、既存のニューラルネットワーク手法（SpeckらおよびRenoら）を上回るAP 0.877・精度0.951を達成し、パラメータ数を抑えつつ190
   FPSでのリアルタイム処理を実現した。
 text_status: available
-text_reason: ''
+text_reason: 'Identity verified: arXiv ID 1902.07304 and exact HTML title match stored
+  reading (review audit; no agy rereading).'
 references:
 - ref_id: ref-1
   citation: Ali, M. N., Abdullah-Al-Wadud, M., and Lee, S.-L. (2012). An efficient

@@ -16,6 +16,8 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from kg_reference_match import words
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "research-loop/scripts"))
 from lit_search import Fetch, urllib_fetch  # noqa: E402
 
@@ -30,6 +32,10 @@ class LookupUnavailable(RuntimeError):
 
 class WorkNotFound(LookupUnavailable):
     pass
+
+
+class IncompleteSearch(ValueError):
+    """A successful response did not establish complete candidate coverage."""
 
 
 class OpenAlexClient:
@@ -168,10 +174,35 @@ class OpenAlexClient:
             raise LookupUnavailable("invalid_work_response")
         return result
 
-    def search(self, query: str) -> list[dict[str, Any]]:
-        url = "https://api.openalex.org/works?" + urlencode({"search": query, "per_page": 5})
-        payload = json.loads(self.fetch(url, {}, 30.0))
-        results = payload.get("results")
-        if not isinstance(results, list) or any(not isinstance(w, dict) or not isinstance(w.get("id"), str) for w in results):
-            raise LookupUnavailable("invalid_search_response")
-        return results
+    def search(self, query: str, *, title_only: bool = True) -> list[dict[str, Any]]:
+        """Exhaust the cursor; no subset is returned as a complete search."""
+        cursor = "*"
+        visited: set[str] = set()
+        found: dict[str, dict[str, Any]] = {}
+        total: int | None = None
+        while True:
+            visited.add(cursor)
+            # Bibliographic text is data, not OpenAlex Boolean/field syntax.
+            params = {"search.title" if title_only else "search": " ".join(words(query)), "per_page": 100, "cursor": cursor}
+            url = "https://api.openalex.org/works?" + urlencode(params)
+            payload = json.loads(self.fetch(url, {}, 30.0))
+            results, meta = payload.get("results"), payload.get("meta")
+            if not isinstance(results, list) or any(not isinstance(w, dict) or not isinstance(w.get("id"), str) for w in results):
+                raise IncompleteSearch("OpenAlex incomplete_search: invalid_results")
+            if not isinstance(meta, dict) or type(meta.get("count")) is not int or meta["count"] < 0 or "next_cursor" not in meta:
+                raise IncompleteSearch("OpenAlex incomplete_search: missing_pagination_metadata")
+            if total is not None and total != meta["count"]:
+                raise IncompleteSearch("OpenAlex incomplete_search: count_changed")
+            total = meta["count"]
+            for work in results:
+                if work["id"] in found:
+                    raise IncompleteSearch("OpenAlex incomplete_search: repeated_work")
+                found[work["id"]] = work
+            following = meta["next_cursor"]
+            if following is None:
+                if len(found) != total:
+                    raise IncompleteSearch("OpenAlex incomplete_search: count_mismatch")
+                return list(found.values())
+            if not isinstance(following, str) or not following or following in visited or not results or len(found) > total:
+                raise IncompleteSearch("OpenAlex incomplete_search: cursor_did_not_progress")
+            cursor = following

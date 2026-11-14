@@ -17,7 +17,7 @@ from urllib.parse import urljoin, urlsplit
 
 from kg_identifiers import normalize_identifier
 from kg_openalex import LookupUnavailable, OpenAlexClient
-from kg_reference_match import authors, select_reference
+from kg_reference_match import authors, select_reference, words
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "research-loop/scripts"))
 from lit_search import (  # noqa: E402
@@ -92,6 +92,8 @@ class PaperHTML(HTMLParser):
         self.skip = 0
         self.has_article = False
         self.bibliography_ids: list[str] = []
+        self.heading: list[str] = []
+        self.in_heading = False
         self.feed(raw)
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -104,6 +106,8 @@ class PaperHTML(HTMLParser):
                 self.meta.setdefault(name.lower(), []).append(str(a["content"]))
         if tag == "article":
             self.has_article = True
+        if tag == "h1":
+            self.in_heading = True
         if tag == "li" and "ltx_bibitem" in (a.get("class") or "").split() and a.get("id"):
             self.bibliography_ids.append(str(a["id"]))
         if self.skip:
@@ -119,6 +123,8 @@ class PaperHTML(HTMLParser):
                 self.parts.append(f" [link:{link}] ")
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "h1":
+            self.in_heading = False
         if tag in {"script", "style", "nav", "footer"} and self.skip:
             self.skip -= 1
         if not self.skip and tag in {"p", "li", "tr", "section", "h1", "h2", "h3", "h4"}:
@@ -127,6 +133,8 @@ class PaperHTML(HTMLParser):
     def handle_data(self, data: str) -> None:
         if not self.skip:
             self.parts.append(data)
+            if self.in_heading:
+                self.heading.append(data)
 
     @property
     def text(self) -> str:
@@ -227,8 +235,8 @@ class Literature:
             return Bibliography(reference.get("title") or primary_url(ids), ids, primary_url(ids), reference.get("year"), reference.get("authors", [])), "explicit external ID in reference"
         scope = "referenced_works"
         if not candidates:
-            scope = "global_search"
-            candidates = self.client.search(reference.get("title") or reference["citation"])
+            scope = "global_search cursor_complete"
+            candidates = self.client.search(reference.get("title") or reference["citation"], title_only=bool(reference.get("title")))
         match, reason = select_reference(reference, candidates)
         if match is None:
             return None, f"OpenAlex {scope} ({len(candidates)} candidates): {reason}"
@@ -240,13 +248,17 @@ class Literature:
 
     def full_text(self, bibliography: Bibliography) -> FullText:
         ids = bibliography.external_ids
-        candidates: list[str] = []
+        source_ids = input_identifiers(bibliography.source)
+        if any(ns in ids and ids[ns] != value for ns, value in source_ids.items() if ns != "url"):
+            raise TextUnavailable("Rejected full-text candidate: identity mismatch: primary URL external ID conflicts with target paper")
+        candidates: list[tuple[str, str]] = []
         attempts: list[str] = []
         if "arxiv" in ids:
             version = re.search(r"(?:abs|pdf|html)/([^?#]+)", bibliography.source)
             arxiv = version[1].removesuffix(".pdf") if version and "arxiv.org/" in bibliography.source else ids["arxiv"]
-            candidates += [f"https://arxiv.org/html/{arxiv}", f"https://arxiv.org/pdf/{arxiv}"]
-        candidates += bibliography.pdf_urls + [bibliography.source]
+            candidates += [(f"https://arxiv.org/html/{arxiv}", "arXiv ID"), (f"https://arxiv.org/pdf/{arxiv}", "arXiv ID")]
+        candidates += [(url, "OpenAlex location") for url in bibliography.pdf_urls]
+        candidates.append((bibliography.source, "primary source"))
         attempts += bibliography.location_notes
         metadata_done = False
         visited: set[str] = set()
@@ -261,41 +273,100 @@ class Literature:
                     attempts.append("OpenAlex source record: not indexed (HTTP 404)")
                     continue
                 enriched = self._bibliography(work)
+                if not self._known_title(bibliography):
+                    bibliography.title = enriched.title
                 attempts.extend(enriched.location_notes)
                 for namespace, value in enriched.external_ids.items():
                     if namespace in ids and ids[namespace] != value:
                         raise MetadataConflict(f"conflicting {namespace} in OpenAlex full-text metadata")
                 bibliography.external_ids = {**ids, **enriched.external_ids}
-                candidates.extend(enriched.pdf_urls)
+                candidates.extend((url, "OpenAlex location") for url in enriched.pdf_urls)
                 if "arxiv" in enriched.external_ids:
                     arxiv = enriched.external_ids["arxiv"]
-                    candidates += [f"https://arxiv.org/html/{arxiv}", f"https://arxiv.org/pdf/{arxiv}"]
-                candidates.append(enriched.source)
+                    candidates += [(f"https://arxiv.org/html/{arxiv}", "arXiv ID"), (f"https://arxiv.org/pdf/{arxiv}", "arXiv ID")]
+                candidates.append((enriched.source, "OpenAlex primary source"))
                 continue
-            url = candidates.pop(0)
+            url, provenance = candidates.pop(0)
             if url in visited:
                 continue
             visited.add(url)
+            try:
+                normalize_identifier("url", url)
+            except ValueError:
+                attempts.append("non-HTTP(S) or credential-bearing candidate rejected")
+                continue
+            if re.search(r"(?:^|[-_/.])(?:supp|suppl|supplement(?:ary|al)?|appendix)(?:[-_/.]|$)", urlsplit(url).path, re.I):
+                attempts.append(f"{url}: supplementary/appendix candidate rejected")
+                continue
             if urlsplit(url).hostname in {"openalex.org", "www.openalex.org", "api.openalex.org"}:
                 attempts.append(f"{url}: metadata record, not full text")
                 continue
             try:
-                attempts.append(f"Attempted full-text candidate: {url}")
+                attempts.append(f"Attempted full-text candidate: {url} ({provenance})")
                 raw = self._get(url)
                 if b"%PDF-" in raw[:1024]:
                     text = self._pdf_text(raw)
+                    self._verify_pdf_title(bibliography, text)
+                    attempts.append(f"Identity verified: {provenance}; title checked when known")
                     return FullText(text, url, "pdf", attempts)
                 html = PaperHTML(raw.decode("utf-8"), url)
+                for field, namespace in (("citation_doi", "doi"), ("citation_arxiv_id", "arxiv")):
+                    if namespace in ids:
+                        try:
+                            mismatch = any(normalize_identifier(namespace, value) != ids[namespace] for value in html.meta.get(field, []))
+                        except ValueError:
+                            raise TextUnavailable(f"identity unverified: invalid {field}") from None
+                        if mismatch:
+                            raise TextUnavailable(f"identity mismatch: {field} differs from target paper")
+                titles = html.meta.get("citation_title", []) or ["".join(html.heading)]
+                if not self._known_title(bibliography) and len(html.meta.get("citation_title", [])) == 1:
+                    bibliography.title = html.meta["citation_title"][0]
+                known = self._known_title(bibliography)
+                if known and any(titles) and not any(self._title_key(t) == known for t in titles):
+                    raise TextUnavailable("identity mismatch: page title differs from target paper")
                 # Abstract/catalogue pages must never masquerade as full text.
                 if html.has_article and re.search(r"\b(references|bibliography)\b", html.text, re.I) and len(html.text) > 1500:
+                    if known and not any(titles):
+                        raise TextUnavailable("identity unverified: article has no target title metadata/heading")
+                    if known and html.heading and self._title_key("".join(html.heading)) != known:
+                        raise TextUnavailable("identity mismatch: article heading differs from target paper")
+                    attempts.append(f"Identity verified: {provenance}; title checked when known")
                     return FullText(html.text, url, "html", attempts, len(html.bibliography_ids) or None)
                 pdfs = html.meta.get("citation_pdf_url", [])
-                pdfs += [link for link in html.links if urlsplit(link).path.lower().endswith(".pdf")]
-                candidates.extend(urljoin(url, link) for link in pdfs)
+                candidates.extend((urljoin(url, link), "citation_pdf_url") for link in pdfs)
+                if any(urlsplit(link).path.lower().endswith(".pdf") for link in html.links):
+                    attempts.append(f"{url}: unverified PDF anchors ignored (references/related/supplementary links are not full-text metadata)")
                 attempts.append(f"{url}: landing/abstract HTML, not full text")
             except (LitSearchError, UnicodeError, TextUnavailable) as exc:
                 attempts.append(f"{url}: {exc}")
         raise TextUnavailable("; ".join(attempts) or "no public full-text location")
+
+    @staticmethod
+    def _title_key(title: str) -> str:
+        return "".join(words(title))
+
+    @classmethod
+    def _known_title(cls, bibliography: Bibliography) -> str:
+        try:
+            input_identifiers(bibliography.title)
+            return ""  # A root URL/ID is a locator, not a known paper title.
+        except ValueError:
+            title = cls._title_key(bibliography.title)
+            return title
+
+    @classmethod
+    def _verify_pdf_title(cls, bibliography: Bibliography, text: str) -> None:
+        known = cls._known_title(bibliography)
+        header: list[str] = []
+        for line in text.split("[Page 2]", 1)[0].splitlines()[:70]:
+            if re.match(r"\s*(?:\d+[.\s]+)?(?:abstract|introduction|references|bibliography)\b", line, re.I):
+                break
+            if re.match(r"\s*(?:supplement(?:ary|al)? (?:material|information)|supporting information|appendix)\b", line, re.I):
+                raise TextUnavailable("identity unverified: supplementary/appendix document")
+            if line.strip() and not re.fullmatch(r"\[Page \d+\]", line.strip()):
+                header.append(line.strip())
+        if known and not any(cls._title_key(" ".join(header[i:j])) == known for i in range(len(header)) for j in range(i + 1, min(len(header), i + 8) + 1)):
+            raise TextUnavailable("identity unverified: PDF title does not match target paper")
 
     @staticmethod
     def _pdf_text(raw: bytes) -> str:
