@@ -10,6 +10,7 @@ import tempfile
 import time
 from collections.abc import Callable
 from email.utils import parsedate_to_datetime
+from http.client import HTTPException
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -144,7 +145,7 @@ class OpenAlexClient:
                 retry_after = self._retry_after(exc.headers.get("Retry-After"))
                 if retry_after:
                     self.remember_retry(scope, retry_after)
-            except (URLError, TimeoutError, OSError):
+            except (URLError, TimeoutError, OSError, HTTPException):
                 reason = "transport_error"
             except (ValueError, UnicodeError):
                 reason = "invalid_response"

@@ -5,6 +5,7 @@ import importlib
 import json
 from email.message import Message
 from email.utils import formatdate
+from http.client import IncompleteRead
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError, URLError
@@ -52,7 +53,7 @@ def test_retry_after_pacing_backoff_and_success_cache(api: Any, retry_after: str
     assert starts == [0, 4, 8, 9]  # Cache hit is free; a different request is paced.
 
 
-@pytest.mark.parametrize("failure", [429, 500, 503, "network", "json"])
+@pytest.mark.parametrize("failure", [429, 500, 503, "network", "incomplete", "json"])
 def test_exhaustion_is_an_error_without_contacts_or_credentials(api: Any, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str], failure: int | str) -> None:
     clock = Clock()
     starts: list[float] = []
@@ -65,6 +66,8 @@ def test_exhaustion_is_an_error_without_contacts_or_credentials(api: Any, monkey
         starts.append(clock.now)
         if failure == "network":
             raise URLError("private-contact@example.invalid")
+        if failure == "incomplete":
+            raise IncompleteRead(b"private-key", 100)
         if failure == "json":
             return b"private-contact@example.invalid private-key"
         assert isinstance(failure, int)
