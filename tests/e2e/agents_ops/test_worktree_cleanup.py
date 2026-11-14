@@ -957,7 +957,11 @@ class NativeForest:
         else:
             if sig == self.proc.signal.SIGKILL:
                 owned = {101, 102, 103} if self.newborn == "child" else {101, 102}
-                assert all(p in self.frozen for p in self.nodes if p in owned)
+                assert all(
+                    p in self.frozen
+                    for p, node in self.nodes.items()
+                    if p in owned and node.get("state") != "Z"
+                )
             self.nodes.pop(pid, None)
             for child in self.nodes.values():
                 if child["parent"] == pid:

@@ -495,11 +495,18 @@ class Stopper:
         lost = [
             node["identity"]
             for pid, node in view.items()
-            if after.get(pid, {}).get("identity") != node["identity"]
+            if (
+                node.get("identity_lost")
+                or after.get(pid, {}).get("identity") != node["identity"]
+            )
             and processes.identity_key(node["identity"]) not in excluded
         ]
         processes.prepare_stop(
-            view, seeds, proof, capture_completed=fresh, uncertain_roots=lost
+            view,
+            seeds,
+            proof,
+            capture_completed=fresh,
+            uncertain_roots=processes.discovery_uncertainty(view, lost),
         )
         return view, native
 

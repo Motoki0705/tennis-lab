@@ -93,6 +93,12 @@ state root全体の再帰走査や、workflow自身の `result.json` の読み�
 同じユーザーのnative Codex/Claudeプロセスも確認する。
 停止準備の最初のbaselineを対象探索より前に保存し、親子関係とPID identityを保持する。
 baseline取得時にUID・cwdも観測し、探索中に終了した対象外processを来歴不明へ読み替えない。
+snapshot内ではPID・start ticks・親PIDを先に採取し、その後にUID・cwdと現在のidentityを調べる。
+後段で消滅・読取不能になっても採取済みstatとcwdを捨てない。PIDが別世代なら元のidentityと親子関係を
+保持し、後段のUID/cwdは新世代の値かもしれないため所属未確定とする。
+親のstat採取後、子のstat読取前に親が消え、子が既に外側の祖先へreparentされる窓も扱う。
+消えた親より後に観測し、誕生時刻と祖先から独立性を証明できない候補は、baseline所属だけで除外せず
+不明PIDとして保存する。推測で停止せず、その候補の終了を確認できるまで削除を失敗にする。
 同じユーザーで対象cwdを確認できるPython/shell等も対象に含める。registry・queue・runnerの停止前に
 捕捉を完了し、後段も再実行も最初のbaselineを引き継ぐ。親PIDの消滅だけでは成功にしない。
 探索中にcwdを観測できず消えたPIDは、最初の一覧に含まれた子孫も確認不能として保持する。

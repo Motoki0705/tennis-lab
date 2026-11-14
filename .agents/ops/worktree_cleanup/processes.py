@@ -112,35 +112,100 @@ def run_directories(root: Path) -> set[Path]:
 
 
 def snapshot() -> dict[int, dict[str, Any]]:
-    found = {}
+    found: dict[int, dict[str, Any]] = {}
+    boot = Path("/proc/sys/kernel/random/boot_id").read_text().strip()
+    # Capture ancestry before slower scope probes. Never make retention of an
+    # observed stat depend on a second read of a process that may already exit.
     for entry in Path("/proc").iterdir():
         if entry.name.isdecimal():
             try:
                 raw = (entry / "stat").read_text()
                 fields = raw[raw.rindex(")") + 2 :].split()
-                # Observe path scope alongside the baseline, before the later
-                # agent/registry discovery. A short-lived unrelated process
-                # can exit between these two passes on a busy host.
-                uid = entry.stat().st_uid
-                try:
-                    cwd = (
-                        os.readlink(entry / "cwd").removesuffix(" (deleted)")
-                        if uid == os.getuid()
-                        else None
-                    )
-                except PermissionError:
-                    cwd = None  # Lineage still covers known descendants.
-                ident = process_identity(int(entry.name))
-                if ident is not None and ident["start_ticks"] == fields[19]:
-                    found[int(entry.name)] = {
-                        "identity": ident,
-                        "parent": int(fields[1]),
-                        "uid": uid,
-                        "cwd": cwd,
-                    }
+                if fields[0] in {"Z", "X"}:
+                    continue  # Already dead before this snapshot observed it.
+                pid = int(entry.name)
+                found[pid] = {
+                    "identity": {
+                        "pid": pid,
+                        "boot_id": boot,
+                        "start_ticks": fields[19],
+                    },
+                    "parent": int(fields[1]),
+                    "uid": None,
+                    "cwd": None,
+                    "identity_lost": False,
+                    "scope_uncertain": False,
+                }
             except (FileNotFoundError, ProcessLookupError):
                 continue
+    for pid, node in found.items():
+        entry = Path(f"/proc/{pid}")
+        try:
+            node["uid"] = entry.stat().st_uid
+            if node["uid"] == os.getuid():
+                node["cwd"] = os.readlink(entry / "cwd").removesuffix(" (deleted)")
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            pass  # Keep the original identity/ancestry and any observed cwd.
+        try:
+            current = process_identity(pid)
+        except PermissionError:
+            # Losing inspection rights must not discard earlier observations
+            # or let a retry certify their children as an unrelated baseline.
+            current = None
+            node["scope_uncertain"] = True
+        if current != node["identity"]:
+            node["identity_lost"] = True
+            if current is not None:
+                # Scope could belong to the replacement; its identity must not
+                # replace the original stat or authorize signalling the new PID.
+                node["scope_uncertain"] = True
     return found
+
+
+def discovery_uncertainty(
+    view: dict[int, dict[str, Any]],
+    lost: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Retain possible orphans read after a parent vanished within snapshot.
+
+    A child can reparent before its stat is read and thus enter the baseline
+    under an outside ancestor. Baseline membership alone is then insufficient
+    proof of independence. Earlier observations and branches of an already
+    observed independent process remain outside this ambiguity.
+    """
+    result = {identity_key(item): item for item in lost}
+    order = {pid: index for index, pid in enumerate(view)}
+    for item in lost:
+        root = view.get(item["pid"], {})
+        if not root.get("identity_lost"):
+            continue
+        ancestors, seen = set(), {item["pid"]}
+        parent = root["parent"]
+        while parent in view and parent not in seen:
+            ancestors.add(parent)
+            seen.add(parent)
+            parent = view[parent]["parent"]
+        incomplete = bool(parent)
+        for pid, node in view.items():
+            if order[pid] <= order[item["pid"]] or int(
+                node["identity"]["start_ticks"]
+            ) < int(item["start_ticks"]):
+                continue
+            parent, seen = node["parent"], {pid}
+            while parent in view and parent not in seen:
+                if parent == item["pid"]:
+                    break  # The original parent edge was actually captured.
+                if parent in ancestors:
+                    result[identity_key(node["identity"])] = node["identity"]
+                    break
+                if order[parent] < order[item["pid"]] and not incomplete:
+                    break  # An independently observed branch owns this child.
+                seen.add(parent)
+                parent = view[parent]["parent"]
+            else:
+                if incomplete or parent:
+                    result[identity_key(node["identity"])] = node["identity"]
+    return list(result.values())
 
 
 def threads_stopped(ident: dict[str, Any]) -> bool:
@@ -172,9 +237,11 @@ def scoped_processes(
     excluded = set()
     for pid, node in view.items():
         if "uid" in node and "cwd" in node:
+            if node.get("scope_uncertain"):
+                continue  # Retain observations without trusting another generation's scope.
             # This evidence belongs to the pinned baseline identity, including
             # after it exits. A later PID owner must not replace its cwd.
-            if node["uid"] != os.getuid() or (
+            if (node["uid"] is not None and node["uid"] != os.getuid()) or (
                 node["cwd"] is not None and not within(node["cwd"], root)
             ):
                 excluded.add(identity_key(node["identity"]))
