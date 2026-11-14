@@ -40,7 +40,7 @@ def files(directory: Path) -> dict[str, bytes]:
 
 def corrupt_record(p: ParentEnv) -> Path:
     """Saved post-stop evidence; the real stop path is exercised below."""
-    directory = latest(p)
+    directory: Path = latest(p)
     path = directory / "result.json"
     record = json.loads(path.read_text())
     record.update(
@@ -170,9 +170,11 @@ def test_session_replacement_rejects_without_changing_reservation(
     assert (p.root / "runner-calls.jsonl").read_bytes() == calls
 
 
-@pytest.mark.parametrize("missing_session", [False, True])
+@pytest.mark.parametrize(
+    "missing_session,legacy_phase", [(False, False), (True, False), (False, True)]
+)
 def test_session_replacement_preserves_history_and_binds_new_runtime(
-    reserved: ParentEnv, missing_session: bool
+    reserved: ParentEnv, missing_session: bool, legacy_phase: bool
 ) -> None:
     p = reserved
     run(p, "--model", "gpt-6-astra", "--model-reason-file", p.note("幾何の設計。"))
@@ -194,6 +196,12 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
             else:
                 record["session_id"] = None
             path.write_text(json.dumps(record))
+    if legacy_phase:
+        with store(p).locked() as registry:
+            saved_task = registry.parents["o/r#1"]["tasks"]["10"]
+            saved_task.pop("preflight")
+            saved_task["worker_runs"][-1].pop("preflight")
+            registry.save()
     before = copy.deepcopy(task(p))
     old_files = files(directory)
     replacement(p)
@@ -202,8 +210,14 @@ def test_session_replacement_preserves_history_and_binds_new_runtime(
     assert saved["model"] == "gpt-6-astra"
     assert saved["model_reason"] == before["model_reason"]
     assert saved["worker_runs"][:-1] == before["worker_runs"]
-    assert saved["preflight"]["turns"][:-1] == before["preflight"]["turns"]
-    assert saved["preflight"]["lineage_id"] == before["preflight"]["lineage_id"]
+    assert saved["preflight"]["turns"][:-1] == before.get("preflight", {}).get(
+        "turns", []
+    )
+    if legacy_phase:
+        assert saved["preflight"]["decisions"] == []
+        assert saved["preflight"]["turns"][0]["snapshot"]["previous_turn_id"] is None
+    else:
+        assert saved["preflight"]["lineage_id"] == before["preflight"]["lineage_id"]
     assert saved["worker_runs"][-1]["kind"] == "replacement"
     assert saved["preflight"]["turns"][-1]["log"]["state"] == "captured"
     event = saved["preflight"]["session_replacements"][-1]
