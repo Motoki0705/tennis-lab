@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md)
 
-本包提供结果、父级判断、行动和更正的共享版本1契约，保存私有快照并生成安全的公开单元。
+本包提供结果、父级判断、行动和更正的共享v1契约及v2类型化结果观察，保存私有快照并生成安全的公开单元。
 捕获适配器观察现有parent、runner和review操作，并提供按父issue批量Git发布和确定性分层README。
 记录本身不授予执行权限，也不判断成果是否通过验收。
 
@@ -20,6 +20,8 @@
 | [projection.py](projection.py) | `render()`、`validate_public()`；公开单元 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`；保留所有原始记录引用的显示分组 |
 | [navigation.py](navigation.py) | `generate()`、`validate_links()`；确定性分层生成与链接检查 |
+| [turns.py](turns.py)、[trace_schema.py](trace_schema.py)、[trace_presentation.py](trace_presentation.py) | 公开轮次清单、严格观察契约、有上限的轮次与结束显示 |
+| [trace_capture.py](trace_capture.py)、[historical.py](historical.py) | 私有事实适配器与历史公开来源的限定显式导入 |
 | [presentation.py](presentation.py) | 将正文、旧summary中的结构值、变化和辅助观察转换为安全且有上限的显示字段 |
 | [publication_policy.py](publication_policy.py) | 独立的仅追加例外、生成字节完全一致和PR身份检查 |
 | [publication.py](publication.py)、[publication_state.py](publication_state.py) | 显式发布、私有批次和响应丢失后的核对 |
@@ -303,12 +305,63 @@ README仅从该HEAD的公开记录和现有worker文件生成，不读取私有�
 worker文件稍后到达时，与原文件夹README双向链接；启动前拒绝后的initial重试也保留
 先前公开的轮次地址。只链接指示和最终报告，不复制正文。
 
-只为已有新记录的父issue生成历史轮次导航，链接现有指示和最终报告；没有对应记录时显示
-**導入前・判断未記録**。只有旧worker日志的其他父issue仍链接原目录，不批量转换所有历史。
-公开快照无法区分引入时间、待发布和捕获缺失时，明确保留为未确认。
-失败轮次可以有README，但不能假装worker final已经发布。
-公开快照无法统计私有待发布记录或证明自己已进入main，因此每页的 **公開待ち** 提示指向
-`decision-log-status` 进行核对。merge后的发布事实本身不触发README重写。
+所有worker父issue均生成导航，包括完全没有event的输入。
+轮次键为 `(repo.casefold(), parent, issue, delegation_key, sequence)`，不以activity、phase或
+initial/resume为键。清单是经过验证的worker三个文件与event轮次的并集；分别显示公开worker
+分母、对应/未对应event、仅event和并集数量。有event不等于父级判断或捕获完整。
+没有对应时显示 **対応イベントなし**，引入时间、未捕获、捕获失败和未发布的区别仍未确认。
+[审计manifest](../../../tests/support/agents_ops/decision_log_audit.json) 选定的输入包含公开51轮、
+对应4、未对应47、仅event 2轮、并集53轮。
+
+失败轮次可以有README，但不假装final已发布。私有发布残项只有通过已公开的类型化观察才能显示；
+否则 **公開待ち** 提示指向 `decision-log-status`。公开PR标注为观察时点的状态，后到达的main文件
+经过验证后更新所在位置。刷新使用既有 `publish-decision-log --retry` 后到文件修复，不增加timer或轮询。
+
+### 轮次与担当结束的类型化观察
+
+既有v1 envelope字节不变。仅v2结果新增 `data.observation`。
+worker_turn与capture_gap使用观察version 1，termination使用观察version 2；
+既有观察version 1仍可读取，无需改写原文。必需字段和拒绝条件以
+[trace_schema.py](trace_schema.py) 为准。执行、final有无与发布分开记录；发布保留main/公开PR/
+保留/未确认、stage/error、PR URL/HEAD与核对main revision。PR文件是外部依据，不混入main输入。
+
+| 显示状态 | 必需事实 |
+| --- | --- |
+| 有依据的最终报告缺失 | 同一轮次的结束/中断与明确的final缺失 |
+| 运行中 | 已记录runtime观察，并标注快照时点 |
+| 结束未确认 | 缺少worker结束依据；awaiting_final或状态查询命令结束均不足 |
+| final存在但发布保留 | 非空final/固定receipt与独立的保留/PR观察，runtime失败也须区分 |
+
+按轮次键去重。仅结束不证明final缺失；旧缺失/非报告数量标注为结果event单位。
+独立final事实相互矛盾时要求核对，不把任意summary或literal字典提升为类型化依据。
+
+`trace_capture.capture_termination(operation, receipt, evidence=..., acceptance=...)` 是唯一的
+`worker_logs.lifecycle.record_exit()` 私有checkpoint适配器。字段为 `repo`、`parent`、`generation`、`event`
+（ended/handoff_pending/handoff_accepted）、`observed_at`、`main_revision`、`remaining`、
+`remaining_complete`、`publication_actor`、`resume_command`、`decision_resume_command`、`error`。
+producer为 `worker_logs.reconciliation.remaining_publications(repo, parent, *, state_dir)`。
+完整保留RemainingPublication的kind/parent/issue/public_key/sequence/state/stage/error/
+pr_number/pr_head/unpublished_count/batch_key，包括缺测的None。
+worker公开键有既有d-前缀；decision公开键等于batch_key或为None。
+未公开件数None显示未确认；即使清单不完整，也保留已知残项，不把不完整空清单当作零残项。
+担当接受active父issue编号或unassigned等公开字符串；显示worker与判断日志各自的恢复指令和核对错误。
+checkpoint保存在private state的 `publication-exits/` 下。
+release、handoff pending/accepted与supervisor结束在判断日志发布前调用
+[lifecycle.capture_checkpoint()](lifecycle.py)。顺序为保存担当变更→worker发布→结束捕获→判断日志发布→最终checkpoint。
+`record_exit(persist=False)` 提供发布前快照，残项可能在后续发布中解决；发布后的结果保存到最终private checkpoint。
+发布过程本身不再捕获，避免产生新batch的循环。捕获或发布失败不拒绝担当结束或交接。
+验收来自同代结构化completion评论的固定receipt，不从任意summary或runtime结束推断。
+直接链接结束评论；supervisor通过因果链接指向既有代次结束结果。
+公开担当与恢复指令也通过Guard，不把私有ID或路径作为显示名称。
+验收默认未确认，与担当结束分开；显示原始验收/结束依据、剩余发布、担当和恢复入口。
+相同观察的重放保持幂等；即使结束receipt不变，后到的明确验收依据也追加为新观察。
+历史导入时未核对的残项标为未确认，不把空数组当作发布完成。
+
+[historical_observations.json](historical_observations.json) 仅包含已同意事例的来源观察：
+#1816轮次2/3、#1796/#1864完成/结束声明、#1814冲突报告和#1862中间PR。
+`historical.records()` 读取，`historical.capture(Journal(...))` 显式且幂等地追加相同repo/父级记录。
+不发布、fetch、恢复担当或重建私有会话；常规显式发布是独立操作。
+#1814以 `capture_gap` 保留两个原始来源，轮次对应仍须核对。
 
 ### 概览布局与页面上限
 

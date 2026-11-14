@@ -10,7 +10,6 @@ from pathlib import PurePosixPath
 from typing import Any
 from urllib.parse import urlsplit
 
-from worker_logs import schema as worker_schema
 from worker_logs.journal import decode, require
 from worker_logs.safety import Guard
 
@@ -28,16 +27,17 @@ from .presentation import (
 )
 from .projection import validate_public
 from .schema import timestamp
+from .trace_presentation import (
+    latest_termination,
+    observation_view,
+    turn_fields,
+    turn_summary,
+)
+from .turns import ROOT, Turn, by_prefix, inventory, turn_key
 
-ROOT = ".agents/logs/parents"
 EVENT = re.compile(
     rf"{re.escape(ROOT)}/parent-([1-9][0-9]*)/activity-([a-f0-9]{{32}})"
     r"/event-([a-f0-9]{32})\.json"
-)
-WORKER = re.compile(
-    rf"{re.escape(ROOT)}/parent-([1-9][0-9]*)/child-([1-9][0-9]*)"
-    r"/(d-[a-f0-9]{32})/([0-9]{4,}-(?:initial|resume))"
-    r"/(instruction\.md|final\.md|meta\.json)"
 )
 KIND = {"result": "結果", "decision": "判断", "action": "行動", "correction": "訂正"}
 STATE = {
@@ -126,11 +126,12 @@ def link(source: str, target: str, label: str, anchor: str = "") -> str:
 def generate(files: dict[str, bytes]) -> dict[str, bytes]:
     """Return every required README. No clock, private state, Git, or LLM calls.
 
-    Legacy navigation is generated only for parents represented by new records.
-    Other worker-only parents remain linked at their existing directories.
+    Worker-only parents and event-only turns share the same logical inventory.
     """
     rows = records(files)
-    if not rows:
+    turn_inventory = inventory(files, rows)
+    turn_groups = by_prefix(turn_inventory)
+    if not rows and not turn_inventory:
         return {}
     by_id = {r["id"]: r for r in rows}
     labels = {r["id"]: f"{KIND[r['kind']]} {i}" for i, r in enumerate(rows, 1)}
@@ -151,35 +152,23 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         elif row["kind"] == "result" and row["data"]["action_id"]:
             action_results[row["data"]["action_id"]].append(row["id"])
 
-    parents = sorted({r["scope"]["parent"] for r in rows})
+    parents = sorted(
+        {r["scope"]["parent"] for r in rows} | {key[1] for key in turn_inventory}
+    )
     views: dict[str, list[dict[str, Any]]] = {f"{ROOT}/README.md": rows}
     titles = {f"{ROOT}/README.md": "親の結果・判断記録"}
-    turns: dict[tuple[int, int, str, int], str] = {}
-    scoped_turns: dict[tuple[int, int, str, int], list[dict[str, Any]]] = defaultdict(
-        list
-    )
+    turns = {
+        key: item.directory
+        for key, item in turn_inventory.items()
+        if item.directory is not None
+    }
+    scoped_turns = {key: item.records for key, item in turn_inventory.items()}
     record_turns: dict[str, str] = {}
     artifact_directories: dict[str, str] = {}
     related_turns: dict[str, tuple[str, str]] = {}
     logical_turns: set[str] = set()
     legacy: dict[str, list[str]] = defaultdict(list)
-    worker_parents = set()
-    for name in sorted(files):
-        match = WORKER.fullmatch(name)
-        if match is None:
-            continue
-        parent, child = int(match[1]), int(match[2])
-        worker_parents.add(parent)
-        if parent not in parents or match[5] != "meta.json":
-            continue
-        directory = name.rsplit("/", 1)[0]
-        meta = worker_schema.validate(
-            {n: files.get(f"{directory}/{n}", b"") for n in worker_schema.FILENAMES}
-        )
-        require(directory == worker_schema.path(meta), "record_source")
-        key = (parent, child, match[3], meta["turn"]["sequence"])
-        require(key not in turns, "record_turn")
-        turns[key] = directory
+    worker_parents = {key[1] for key in turns}
 
     def add(path: str, title: str, row: dict[str, Any] | None = None) -> None:
         views.setdefault(path + "/README.md", [])
@@ -187,6 +176,8 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         if row is not None:
             views[path + "/README.md"].append(row)
 
+    for parent in parents:
+        add(f"{ROOT}/parent-{parent}", f"親issue #{parent}")
     for row in rows:
         scope = row["scope"]
         parent = scope["parent"]
@@ -197,11 +188,10 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
             add(f"{base}/child-{scope['issue']}", f"担当issue #{scope['issue']}", row)
         if scope["delegation"] is not None:
             d = scope["delegation"]
-            key = (parent, scope["issue"], d["key"], d["turn"])
+            key = turn_key(scope)
             # Sequence does not determine initial/resume. A pre-start refusal
             # can be followed by a new initial attempt in the same lineage.
             directory = f"{base}/child-{scope['issue']}/{d['key']}/turn-{d['turn']:04d}"
-            scoped_turns[key].append(row)
             record_turns[row["id"]] = directory + "/README.md"
             logical_turns.add(directory + "/README.md")
             # Child row was already added above.
@@ -212,7 +202,7 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
             )
             add(directory, f"担当issue #{scope['issue']} のターン {d['turn']}", row)
     for key, directory in turns.items():
-        parent, child, delegation_key, sequence = key
+        _, parent, child, delegation_key, sequence = key
         base = f"{ROOT}/parent-{parent}/child-{child}"
         add(base, f"担当issue #{child}")
         add(f"{base}/{delegation_key}", f"担当issue #{child} の委任")
@@ -389,6 +379,8 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
             if state["parent_confirmation"] == "unrecorded":
                 result += "<br>親の確認未記録"
             result += "<br>" + final_report(data)
+            if "observation" in data:
+                result += "<br>" + observation_view(data["observation"], scope["repo"])
             result += "<br>前回との差: " + change_fields(data["changes"])
             ds = decisions[key]
             decision = (
@@ -504,8 +496,8 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
             f"{len(selected)} 記録 / 判断 {sum(r['kind'] == 'decision' for r in selected)} 件。"
             f"失敗・拒否の結果: {failed} 件。"
             f"未判断の結果: {undecided} 件。親の確認未記録: {unverified} 件。"
-            f"判断済み未実行の計画: {pending} 件。記録不足の最終報告: {missing} 件。"
-            f"最終報告の観測対象外: {excluded} 件。"
+            f"判断済み未実行の計画: {pending} 件。記録不足の最終報告: {missing} 件（結果イベント単位）。"
+            f"最終報告の観測対象外: {excluded} 件（結果イベント単位）。"
         )
 
     def period(selected: list[dict[str, Any]]) -> str:
@@ -537,7 +529,54 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 "",
             ]
         lines += [counts(selected), ""]
+        items = selected_turns(path, selected)
+        if items or path == f"{ROOT}/README.md":
+            lines += [
+                turn_summary(items),
+                "",
+                "対応数は公開worker3ファイルのあるターンを分母にしたものです。イベントのみのターンを加えた和集合とは分けます。対応イベントの存在は、親判断の記録・受入・網羅性を保証しません。",
+                "",
+            ]
+        if path == f"{ROOT}/README.md":
+            lines += [
+                "対応イベントなし。導入時期・未捕捉・捕捉失敗・未公開の区別は未確認。記録の不在だけで導入前と断定せず、失われた親判断の数へ読み替えません。",
+                "",
+            ]
+        if re.fullmatch(rf"{re.escape(ROOT)}/parent-[1-9][0-9]*/README.md", path):
+            closing = latest_termination(selected)
+            if closing:
+                lines += [
+                    "最後の受入・担当終了／引継ぎ: " + ref(path, closing["id"]),
+                    "",
+                    observation_view(
+                        closing["data"]["observation"], closing["scope"]["repo"]
+                    ),
+                    "",
+                ]
+            else:
+                lines += [
+                    "最後の受入・担当終了／引継ぎ: この公開snapshotでは未確認。",
+                    "",
+                ]
+            for gap in [
+                r
+                for r in selected
+                if r["kind"] == "result"
+                and r["data"].get("observation", {}).get("kind") == "capture_gap"
+            ][-RECENT:]:
+                lines += [
+                    observation_view(gap["data"]["observation"], gap["scope"]["repo"])
+                    + " / "
+                    + ref(path, gap["id"]),
+                    "",
+                ]
         return lines
+
+    def selected_turns(path: str, selected: list[dict[str, Any]]) -> list[Turn]:
+        if path in turn_groups:
+            return turn_groups[path]
+        keys = {key for r in selected if (key := turn_key(r["scope"])) is not None}
+        return [turn_inventory[key] for key in sorted(keys)]
 
     def save(path: str, lines: list[str]) -> None:
         raw = ("\n".join(lines) + "\n").encode("utf-8")
@@ -569,6 +608,15 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         result = next((r for r in reversed(selected) if r["kind"] == "result"), None)
         action = next((r for r in reversed(selected) if r["kind"] == "action"), None)
         output = []
+        closing = latest_termination(selected)
+        if closing:
+            output.append(
+                observation_view(
+                    closing["data"]["observation"], closing["scope"]["repo"], brief=True
+                )
+                + " "
+                + ref(source, closing["id"])
+            )
         if result:
             output += [result_brief(source, result["id"])]
         if action:
@@ -613,6 +661,8 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                     + period(selected)
                     + " | "
                     + counts(selected)
+                    + "<br>"
+                    + turn_summary(selected_turns(target, selected))
                     + " | "
                     + latest(source, selected)
                     + " |"
@@ -750,6 +800,15 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                 "workerログ3ファイルはこのHEADに未収録。公開待ち・記録不足・ターン種別は未確認。",
                 "",
             ]
+        if path in logical_turns:
+            item = turn_groups[path][0]
+            execution, final, public, proof = turn_fields(item)
+            lines += [
+                "| 実行（観測時点） | 最終報告 | 公開の所在 | 根拠 |",
+                "| --- | --- | --- | --- |",
+                f"| {execution} | {final} | {public} | {proof or 'このHEADの公開workerファイルと記録本文を参照'} |",
+                "",
+            ]
         if path in detail_pages:
             lines += ["## 全記録の詳細", "", *detail_table(path, selected)]
         elif path in activity_groups:
@@ -765,16 +824,16 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
         if directories and path in logical_turns | set(artifact_directories):
             for directory in directories:
                 lines += [
-                    "導入前・判断未記録: "
+                    "対応イベントなし: "
                     + link(path, directory + "/instruction.md", "既存の指示")
                     + " · "
                     + link(path, directory + "/final.md", "既存の最終報告"),
-                    "このHEADに新形式の対応記録なし。導入時期・公開待ち・捕捉不足の区別は未確認。",
+                    "このHEADに新形式の対応記録なし。導入時期・未捕捉・捕捉失敗・未公開の区別は未確認。",
                     "",
                 ]
         elif directories:
             lines += [
-                f"導入前・判断未記録: {len(directories)} ターン。下の階層で既存の指示と最終報告を参照。",
+                f"対応イベントなし: {len(directories)} ターン。下の階層で既存の指示と最終報告を参照。",
                 "",
             ]
         if path == f"{ROOT}/README.md":
@@ -785,7 +844,9 @@ def generate(files: dict[str, bytes]) -> dict[str, bytes]:
                     else f"{ROOT}/parent-{p}",
                     f"親 #{p} の既存workerログ"
                     + (
-                        "（判断記録あり）" if p in parents else "（導入前・判断未記録）"
+                        "（対応イベントあり）"
+                        if any(r["scope"]["parent"] == p for r in rows)
+                        else "（対応イベント未確認）"
                     ),
                     views.get(f"{ROOT}/parent-{p}/README.md", []),
                 )

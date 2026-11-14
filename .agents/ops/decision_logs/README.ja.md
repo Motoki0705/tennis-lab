@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-結果・親の判断・行動・訂正を表す共通契約version 1、非公開snapshotの保存、
+結果・親の判断・行動・訂正を表す共通契約v1と結果の型付き観測v2、非公開snapshotの保存、
 公開用への変換と既存parent・runner・review操作の捕捉を提供する。
 親ごとのGit公開と階層READMEの決定的生成も提供する。記録は実行権限や成果受入の判断を与えない。
 
@@ -20,6 +20,8 @@
 | [projection.py](projection.py) | `render()`・`validate_public()`。公開単位 `{record, sanitization}` |
 | [aggregation.py](aggregation.py) | `aggregate()`。すべての原記録を参照する表示用の集約 |
 | [navigation.py](navigation.py) | `generate()`・`validate_links()`。階層の決定的生成とリンク検査 |
+| [turns.py](turns.py)・[trace_schema.py](trace_schema.py)・[trace_presentation.py](trace_presentation.py) | 公開ターンの列挙、厳密な観測契約、上限付きのターン・終了表示 |
+| [trace_capture.py](trace_capture.py)・[historical.py](historical.py) | 非公開の事実を変換するadapter、過去の公開正本の限定・明示取り込み |
 | [presentation.py](presentation.py) | 文章・旧summaryの構造値・変更点・補助観測を、安全で上限付きの表示項目へ変換 |
 | [publication_policy.py](publication_policy.py) | 独立した追加専用例外、再生成バイト列・PR同一性の検査 |
 | [publication.py](publication.py)・[publication_state.py](publication_state.py) | 明示公開、非公開batch、応答喪失からの照合 |
@@ -314,13 +316,71 @@ MarkdownリンクやHTMLとして挿入しない。各階層に上下・活動�
 workerファイルが後着したら既存フォルダーのREADMEと相互にリンクし、起動前拒否後の
 initial再試行でも先に公開したターンのアドレスを保つ。指示・最終報告の本文は複製しない。
 
-新しい記録を持つ親について、既存ターンに指示・最終報告への導線を生成し、対応記録がなければ
-**導入前・判断未記録** を表示する。新形式の記録がない親は既存ディレクトリへのリンクを維持し、
-公開snapshotから区別できない導入時期・公開待ち・捕捉不足は未確認と明記する。
-過去全ログを一括移行しない。失敗ターンには、公開finalがあると装わずREADMEを置ける。
-公開snapshotだけでは非公開の待機件数や自身のmain反映を判定できないため、各ページの
-**公開待ち** 表示は `decision-log-status` での照合へ案内する。merge後の公開事実だけを理由に
-READMEを再更新しない。
+イベントのない親も含め、入力の全workerに導線を生成する。イベントが一切ない入力も扱う。
+ターンのキーは `(repo.casefold(), parent, issue, delegation_key, sequence)`。
+activity、phase、initial/resumeはキーにしない。検証済みworker3ファイルとイベントのターンの
+和集合を列挙し、公開workerターンを分母とする対応あり・なし、イベントのみ、和集合の数を分ける。
+対応イベントがあることは親判断や捕捉の網羅性を保証しない。未対応は **対応イベントなし** とし、
+導入時期・未捕捉・捕捉失敗・未公開の区別は未確認と表示する。
+[監査manifest](../../../tests/support/agents_ops/decision_log_audit.json) が選ぶ固定入力は、
+公開51ターン、対応4・未対応47、イベントのみ2、和集合53である。
+
+失敗ターンにも、公開finalがあると装わずREADMEを置ける。非公開の待機件数は公開された型付き
+観測がある場合だけ表示し、それ以外の **公開待ち** は `decision-log-status` での照合へ案内する。
+公開PRは観測時点の表示とし、後からmainの3ファイルが入力へ届けば検証して所在を更新する。
+再生成は既存の `publish-decision-log --retry` による後着ファイル修復を使い、timer・pollを追加しない。
+
+### ターンと担当終了の型付き観測
+
+既存v1 envelopeのバイト列は変えない。v2の結果だけが `data.observation` を追加する。
+worker_turn・capture_gapは観測version 1、terminationは観測version 2を使う。
+既存の観測version 1も原文を書き換えずに読める。
+必須フィールドと拒否条件の正本は [trace_schema.py](trace_schema.py)。実行、finalの有無、
+公開を分け、公開先main・公開PR・保留・未確認と、stage/error・PR URL/HEAD・照合先main revisionを保持する。
+PRのファイルは外部根拠であり、mainの入力へ混ぜない。
+
+| 表示 | 必要な事実 |
+| --- | --- |
+| 最終報告なし・根拠あり | 同じターンの終了・中断と、明示されたfinal欠落 |
+| 稼働中 | runtimeの観測。snapshotの時点を示す |
+| 終了未確認 | worker終了の根拠なし。awaiting_finalや状態取得コマンドの終了では足りない |
+| 最終報告あり・公開保留 | 非空final／固定receiptの観測と、別の公開保留・PR観測。runtime失敗でも区別する |
+
+ターンキーで重複を除き、終了だけから欠落と認定しない。従来の最終報告欠測・観測対象外の件数は
+結果イベント単位と明記する。独立したfinal観測の矛盾は要照合とし、任意のsummaryやliteral辞書を
+型付き根拠へ読み替えない。
+
+`trace_capture.capture_termination(operation, receipt, evidence=..., acceptance=...)` が
+`worker_logs.lifecycle.record_exit()` の非公開checkpointを受け取る唯一のadapterである。
+値は `repo`・`parent`・`generation`・
+`event`（ended/handoff_pending/handoff_accepted）・`observed_at`・`main_revision`・`remaining`・
+`remaining_complete`・`publication_actor`・`resume_command`・`decision_resume_command`・`error`。
+producerは `worker_logs.reconciliation.remaining_publications(repo, parent, *, state_dir)`。
+`RemainingPublication` の全フィールドkind/parent/issue/public_key/sequence/state/stage/error/
+pr_number/pr_head/unpublished_count/batch_keyを、欠測の `None` も含めそのまま保持する。
+workerの公開キーは既存のd-付き、decisionの公開キーはbatch_keyと同値またはNone。
+未公開件数のNoneは未確認と表示し、一覧が不完全でも判明した残件を残す。
+不完全な空一覧を残件ゼロの証拠にしない。担当はactiveな親番号またはunassigned等の公開文字列。
+worker・判断ログそれぞれの再開コマンドと照合エラーを表示する。
+checkpointはprivate stateの `publication-exits/` に保存される。
+release・handoff pending/accepted・supervisor終了は、判断ログ公開の前に
+[lifecycle.capture_checkpoint()](lifecycle.py) を呼ぶ。
+順序は担当変更の保存→worker公開→終了結果の捕捉→判断ログ公開→最終checkpoint保存。
+`record_exit(persist=False)` が公開直前のsnapshotを作り、その残件は後続の公開で解消される場合がある。
+公開後の結果は最終private checkpointへ保存する。公開処理自体は再捕捉せず、新しいbatchを作る循環を防ぐ。
+捕捉・公開の失敗で担当終了や引継ぎを拒否しない。
+受入は同世代の構造化completionコメントの固定receiptから取得し、任意summaryやruntime終了から推定しない。
+終了コメントへリンクし、supervisorでは既存の世代別終了結果へ因果リンクを持つ。
+公開用の担当・再開先もGuardを通し、私的IDやパスを表示名として公開しない。
+受入は既定で未確認とし、担当終了とは別に扱う。正本根拠、残る公開、担当、再開先を表示する。
+同一観測の再送は冪等に扱う。終了receiptが同じでも、後着の明示的な受入根拠は新しい観測として追記する。
+過去の取り込みで未照合の残件は未確認とし、空配列を公開完了へ読み替えない。
+
+[historical_observations.json](historical_observations.json) は、合意した事例に限定した出典付き観測である。
+#1816のターン2・3、#1796/#1864の完了・終了報告、#1814の矛盾する報告、#1862の途中PRを含む。
+`historical.records()` が読み、`historical.capture(Journal(...))` が同じrepo・親の記録だけを明示的・冪等に
+追記する。公開・fetch・担当の復活や非公開会話の復元は行わず、通常の明示公開は別操作である。
+#1814のターン対応は両方の原出典を保持する `capture_gap` とし、要照合のまま残す。
 
 ### 概要の配置とページ上限
 

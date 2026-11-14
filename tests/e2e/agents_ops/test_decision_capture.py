@@ -289,6 +289,18 @@ def test_note_reference_stop_resume_handoff_and_release_are_captured(
         "parent.release",
     ):
         assert sourced(rows, entrypoint)
+    exits = [
+        r["data"]["observation"]
+        for r in rows
+        if r["kind"] == "result"
+        and r["data"].get("observation", {}).get("kind") == "termination"
+    ]
+    assert [r["event"] for r in exits] == [
+        "handoff_pending",
+        "handoff_accepted",
+        "ended",
+    ]
+    assert all(r["acceptance"]["state"] == "unverified" for r in exits)
 
 
 def test_review_execution_publication_reuse_and_explicit_receipt(

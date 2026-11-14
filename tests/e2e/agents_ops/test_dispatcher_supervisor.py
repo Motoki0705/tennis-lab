@@ -1320,7 +1320,24 @@ def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_
         and checkpoint["remaining_complete"] is True
     )
     assert checkpoint["remaining"][0]["kind"] == "decision_log"
-    assert checkpoint["remaining"][0]["unpublished_count"] == 1
+    log = reconciliation.decision_journal("o/r", 1, state_dir=d.control.store.directory)
+    captured = [e["record"] for e in log.read()["entries"] if e["event"] == "capture"]
+    typed = [
+        r
+        for r in captured
+        if r["kind"] == "result"
+        and r["data"].get("observation", {}).get("kind") == "termination"
+    ]
+    assert len(typed) == 1 and typed[0]["data"]["observation"]["event"] == "ended"
+    ended_sources = [
+        e["record"]["id"]
+        for e in log.read()["entries"]
+        if e.get("key") == "supervisor-ended:1"
+    ]
+    assert len(ended_sources) == 1
+    assert typed[0]["data"]["previous_result_id"] == ended_sources[0]
+    assert checkpoint["remaining"][0]["unpublished_count"] == len(captured)
+    before_retry = {r["id"] for r in captured}
     assert checkpoint["resume_command"] and "publication_exit_pending" not in ended
     d.control.reconcile()
     lifecycle.capture_supervised_exit("o/r", 1, 1, state_dir=d.control.store.directory)
@@ -1331,14 +1348,7 @@ def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_
         if handoff_at == "worker"
         else ["workers", "decisions"]
     )
-    assert (
-        len(
-            reconciliation.decision_journal(
-                "o/r", 1, state_dir=d.control.store.directory
-            ).status()
-        )
-        == 1
-    )
+    assert {r["id"] for r in log.status()} == before_retry
 
 
 def test_bootstrap_does_not_bind_a_different_cli_session(
