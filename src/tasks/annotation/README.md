@@ -179,14 +179,21 @@ sceneの公開だけの再開は上記compositionの`direct_annotation.resume=pu
 |---|---|
 | 正常な時間切れ・有効な増分・未処理あり | 自動継続。手動のcontinue操作は不要 |
 | 時間切れ・増分なし | `timed_out` で保留。workerと原因を確認し、明示的にretry |
-| 保存欠損・hash/入力不一致・壊れたrevision | `invalid_saved_progress`。既存成果物を保持し、復元・修正後に明示的に復旧。別revisionへの自動fallbackやunknownへの置換はしない |
+| 保存欠損・hash/入力不一致・壊れたrevision | `invalid_saved_progress`。既存成果物とhold判断を保持し、保存物を復元・修正して下記の手順で復旧。別revisionへの自動fallbackやunknownへの置換はしない |
 | quota・rate limit | `quota`。campaign全体の新規受付を停止し、未起動予約を取消。利用枠を回復して `ResumeWorkers` と `RetryWorker` を明示 |
 | 外部サービス・workerの失敗 | `failed`。exit/eventsを確認して原因解消後に明示的にretry。期限前のerrorを通常timeoutで隠さない |
 | 取消 | `cancelled`。保存済み編集を保持し、明示的なretryまで起動しない |
 | 結果検証失敗・worker保留 | `validation_failed` / `deferred`。理由を確認して明示的に復旧 |
 | 資源の一時的な枠不足 | `waiting`。同じpending要求を通常受付で再確認し、attempt・予約を重複作成しない |
 
-明示復旧は `recover(controller, RecoveryInput(...))` に理由を渡す既存APIを使う。
+時間切れで `invalid_saved_progress` になったcameraは、保存物の修復後、同じruntimeで `tick` を実行する。
+全target frameの処理済み保存と入力・revision・attemptの検証が通れば、追加workerを起動せず完成receiptを確定する。
+元の `workflow/continuations/<work-id>/<attempt>.json` のhold（理由・attempt）は変更せず、
+再判定を `workflow/continuations/<work-id>/<attempt>/completion.json` に保存してから完成を確定する。
+判断保存後に中断しても、次のtickで同じ判断を回収する。修復前や検証失敗時は完成させない。
+修復後も未処理frameがある場合や、取消・quota等で止まった場合は、明示復旧を必要とする。
+
+完成回収以外の明示復旧は `recover(controller, RecoveryInput(...))` に理由を渡す既存APIを使う。
 `RetryWorker(request, after_attempt)` は現在のattemptを照合する。完成済みcameraのretryは拒否する。
 `blocked` でも `live=true` の間は他camera・サービス工程の処理と終了回収を続ける。
 完成時も、稼働中の資源stageが終了するまでcampaign全体を完了と報告しない。

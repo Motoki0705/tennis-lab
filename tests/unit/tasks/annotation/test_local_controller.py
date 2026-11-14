@@ -16,6 +16,7 @@ from src.tasks.base.annotation.artifacts import (
     read_document,
     write_document,
 )
+from src.tasks.base.annotation.contracts import ArtifactRef
 from src.tasks.base.annotation.editing.contracts import Revision
 from tests.support.tasks.blank_agent import BlankSession
 
@@ -157,6 +158,181 @@ def test_automatic_policy_distinguishes_completion_progress_and_abnormal_stops(
                     ),
                 ),
             )
+
+
+@pytest.mark.parametrize(
+    ("damage", "interrupt"), [("missing", False), ("corrupt", False), ("corrupt", True)]
+)
+def test_tick_finalizes_repaired_progress_without_losing_hold(
+    session: BlankSession,
+    monkeypatch: pytest.MonkeyPatch,
+    damage: str,
+    interrupt: bool,
+) -> None:
+    from src.tasks.annotation.contracts import RecoveryInput, RetryWorker
+    from src.tasks.annotation.recovery import recover
+
+    save(session, 3)
+    revision = session.store.current()[0]
+    payload = read_document(session.layout, revision, Revision).payload
+    path = session.layout.artifact_path(payload)
+    original = path.read_bytes()
+    if damage == "missing":
+        path.unlink()
+    else:
+        path.write_bytes(b"invalid annotation")
+    ended(session)
+    controller = controller_for(session)
+    after = session.launch.attempt
+    reference = session.receipt.registrations[0].request
+    decision_path = session.layout.path(
+        "campaigns",
+        session.plan.campaign_id,
+        "workflow",
+        "continuations",
+        session.request.work_id,
+        after + ".json",
+    )
+
+    for _ in range(2):
+        progress = controller.production.cycle()
+        (camera,) = [r for r in progress["reviews"] if r["current_attempt"] == after]
+        assert camera["state"] == "invalid_saved_progress"
+        assert camera.get("completion") is None
+        assert not (session.store.directory / "completion.json").exists()
+    hold_ref = annotation_reference(session.layout, decision_path)
+    hold = read_document(session.layout, hold_ref, AnnotationContinuation)
+    assert (hold.action, hold.state, hold.after_attempt) == (
+        "hold",
+        "invalid_saved_progress",
+        after,
+    )
+    assert "invalid saved progress" in hold.reason
+
+    path.write_bytes(original)
+    with pytest.raises(ValueError, match="already complete; run a tick"):
+        recover(
+            controller,
+            RecoveryInput(
+                plan=controller.runtime.plan,
+                reason="saved annotation has been repaired",
+                operation=RetryWorker(request=reference, after_attempt=after),
+            ),
+        )
+
+    restarted = controller_for(session)
+
+    def no_restart(request, **_kwargs):
+        assert request.work_id != session.request.work_id
+        # The other registered camera is outside this recovery contract.
+        return None
+
+    monkeypatch.setattr(restarted.pool, "start", no_restart)
+    if interrupt:
+        from src.tasks.ball_detection.annotation.video.agent.store import (
+            VideoRevisionStore,
+        )
+
+        def interrupted(*_args, **_kwargs):
+            raise RuntimeError("interrupted completion after saving the decision")
+
+        with monkeypatch.context() as patch:
+            patch.setattr(VideoRevisionStore, "complete", interrupted)
+            with pytest.raises(RuntimeError, match="interrupted completion"):
+                restarted.production.cycle()
+        assert session.store.current() == (revision, None)
+        saved = read_document(
+            session.layout,
+            annotation_reference(
+                session.layout, decision_path.with_suffix("") / "completion.json"
+            ),
+            AnnotationContinuation,
+        )
+        assert (saved.action, saved.after_attempt, saved.revision) == (
+            "complete",
+            after,
+            revision,
+        )
+        restarted = controller_for(session)
+        monkeypatch.setattr(restarted.pool, "start", no_restart)
+
+    progress = restarted.production.cycle()
+    (camera,) = [r for r in progress["reviews"] if r["current_attempt"] == after]
+    assert camera["state"] == "complete"
+    assert camera["worker_state"] == "timed_out"
+    assert camera["summary"]["final_unknown"] == 3
+    completion = ArtifactRef.model_validate(camera["completion"])
+    receipt = session.store.validate_completion(completion, revision)
+    assert (receipt.annotation, receipt.actor) == (payload, session.actor)
+    complete_ref = ArtifactRef.model_validate(camera["continuation"])
+    assert complete_ref != hold_ref
+    decision = read_document(session.layout, complete_ref, AnnotationContinuation)
+    assert (decision.action, decision.after_attempt, decision.revision) == (
+        "complete",
+        after,
+        revision,
+    )
+    assert session.store.current() == (revision, completion)
+    repeated = restarted.production.cycle()
+    (camera,) = [r for r in repeated["reviews"] if r["current_attempt"] == after]
+    assert (camera["state"], camera["completion"]) == (
+        "complete",
+        completion.model_dump(mode="json"),
+    )
+    assert session.store.current()[0] == revision
+    assert read_document(session.layout, hold_ref, AnnotationContinuation) == hold
+    assert len(restarted.pool.ledger.history(session.plan, session.request)) == 1
+    completed = next(
+        row for row in restarted.status()["reviews"] if row["current_attempt"] == after
+    )
+    assert completed["state"] == "complete"
+
+
+@pytest.mark.parametrize(("state", "count"), [("timed_out", 1), ("cancelled", 3)])
+def test_repaired_hold_does_not_automatically_retry_or_bypass_cancellation(
+    session: BlankSession,
+    monkeypatch: pytest.MonkeyPatch,
+    state: str,
+    count: int,
+) -> None:
+    save(session, count)
+    revision = session.store.current()[0]
+    payload = read_document(session.layout, revision, Revision).payload
+    path = session.layout.artifact_path(payload)
+    original = path.read_bytes()
+    path.write_bytes(b"invalid annotation")
+    ended(session, state)
+    controller = controller_for(session)
+    reference = session.receipt.registrations[0].request
+    result = recover_annotation(
+        session.layout, controller.production.policy, controller.pool, reference
+    )
+    assert result["state"] == "invalid_saved_progress"
+    (decision_path,) = session.layout.path(
+        "campaigns",
+        session.plan.campaign_id,
+        "workflow",
+        "continuations",
+        session.request.work_id,
+    ).glob("*.json")
+    hold_ref = annotation_reference(session.layout, decision_path)
+    path.write_bytes(original)
+    monkeypatch.setattr(
+        controller.pool,
+        "start",
+        lambda *_a, **_k: pytest.fail("repaired hold must not launch a worker"),
+    )
+    progress = controller.production.cycle()
+    (camera,) = [
+        r for r in progress["reviews"] if r["current_attempt"] == session.launch.attempt
+    ]
+    assert progress["state"] == "blocked"
+    assert camera["worker_state"] == state
+    assert camera["completion"] is None
+    assert session.store.current() == (revision, None)
+    assert annotation_reference(session.layout, decision_path) == hold_ref
+    assert not (decision_path.with_suffix("") / "completion.json").exists()
+    assert len(controller.pool.ledger.history(session.plan, session.request)) == 1
 
 
 @pytest.mark.parametrize("after_authorization", [False, True])
