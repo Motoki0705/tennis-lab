@@ -33,11 +33,9 @@ test("Papers opens a converging map, filters roles and links ranking counts to a
     .selectOption("comparison");
   await page.locator(".citation-relations summary").click();
   await expect(page.locator(".citation-relations article")).toHaveCount(4);
-  const convergence = page
-    .locator(".citation-relations article")
-    .filter({
-      has: page.getByRole("button", { name: "Fixture D", exact: true }),
-    });
+  const convergence = page.locator(".citation-relations article").filter({
+    has: page.getByRole("button", { name: "Fixture D", exact: true }),
+  });
   await expect(convergence).toHaveCount(2);
   await expect(convergence.filter({ hasText: "Fixture B" })).toHaveCount(1);
   await expect(convergence.filter({ hasText: "Fixture C" })).toHaveCount(1);
@@ -195,6 +193,40 @@ test("missing or empty storage displays no searches; malformed and conflicting d
     ).toContainText("conflicting external IDs");
   } finally {
     await fs.writeFile(paperPath, raw);
+  }
+  const searchPath = path.join(citationDir, "searches", `${mixed}.md`);
+  const sourcePath = path.join(citationDir, "papers", `${fixtureIds.A}.md`);
+  const searchRaw = await fs.readFile(searchPath, "utf8");
+  const sourceRaw = await fs.readFile(sourcePath, "utf8");
+  try {
+    await fs.writeFile(
+      searchPath,
+      searchRaw.replace(
+        /created_at:[^\r\n]*/,
+        "created_at: '2026-11-14T22:00:00+0900'",
+      ),
+    );
+    await page.goto(`/?citationSearch=${mixed}`);
+    await expect(page.getByLabel("保存済み探索", { exact: true })).toHaveValue(
+      mixed,
+    );
+    await expect(page.locator(".citation-header")).toContainText(
+      "2026-11-14T22:00:00+0900",
+    );
+    await fs.writeFile(
+      sourcePath,
+      sourceRaw.replace(
+        "source: https://example.org/fixture-a",
+        "source: https:example.org/paper",
+      ),
+    );
+    await page.reload();
+    await expect(
+      page.getByRole("alert", { name: "引用探索のエラー" }),
+    ).toContainText("absolute HTTP(S)");
+  } finally {
+    await fs.writeFile(searchPath, searchRaw);
+    await fs.writeFile(sourcePath, sourceRaw);
   }
   await page.goto("/?citationSearch=search-missing");
   await expect(

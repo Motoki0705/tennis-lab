@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 from copy import deepcopy
 from pathlib import Path
 from types import ModuleType
@@ -12,6 +13,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / "tests/fixtures/knowledge/citation_map"
+BOUNDARIES = json.loads((FIXTURE.parent / "citation-boundaries.json").read_text())
 
 
 @pytest.fixture(scope="module")
@@ -39,16 +41,63 @@ def markdown(data: dict[str, Any]) -> str:
     return "---\n" + yaml.safe_dump(data, allow_unicode=True) + "---\nAdditional reading note.\n"
 
 
-@pytest.mark.parametrize(("namespace", "value", "expected"), [
-    ("doi", " https://doi.org/10.5555/FiXtUrE%2DB ", "10.5555/fixture-b"),
-    ("doi", "DOI:10.5555/FIXTURE-B", "10.5555/fixture-b"),
-    ("arxiv", "https://arxiv.org/pdf/2401.00002v12.pdf", "2401.00002"),
-    ("arxiv", "arXiv:hep-th/9901001v2", "hep-th/9901001"),
-    ("openalex", "https://openalex.org/w1000002", "W1000002"),
-    ("url", "HTTPS://EXAMPLE.ORG/a?version=2#section", "https://example.org/a?version=2"),
-])
-def test_identifier_aliases_have_explicit_normal_forms(identifiers: ModuleType, namespace: str, value: str, expected: str) -> None:
-    assert identifiers.normalize_identifier(namespace, value) == expected
+@pytest.fixture(scope="module")
+def boundary_library(api: ModuleType) -> Any:
+    return api.load_citations(FIXTURE)
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["external_ids"], ids=lambda c: c["name"])
+def test_identifier_aliases_have_explicit_normal_forms(api: ModuleType, identifiers: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    namespace, value, expected = case["namespace"], case["value"], case["normalized"]
+    if expected is None:
+        with pytest.raises(ValueError):
+            identifiers.normalize_identifier(namespace, value)
+    else:
+        assert identifiers.normalize_identifier(namespace, value) == expected
+    paper = deepcopy(next(iter(boundary_library.papers.values())))
+    paper.references = []
+
+    def parsed(saved_value: str) -> Any:
+        paper.external_ids = {namespace: saved_value}
+        paper.identity_key = f"{namespace}:{saved_value}"
+        paper.id = identifiers.citation_id(paper.identity_key)
+        return api.parse_document(api.serialize_document(paper))
+
+    if expected is not None:
+        canonical = parsed(expected)
+        assert canonical.external_ids == {namespace: expected}
+        assert api.validate_library(api.CitationLibrary(papers={canonical.id: canonical})) == []
+    if expected is None or value != expected:
+        with pytest.raises(ValueError):
+            parsed(value)
+    else:
+        assert parsed(value).external_ids == {namespace: value}
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["timestamps"], ids=lambda c: c["name"])
+def test_shared_timestamp_boundaries(api: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    search = deepcopy(boundary_library.searches["search-fixture-mixed-depth2"])
+    search.created_at = case["value"]
+    if not case["accept"]:
+        with pytest.raises(ValueError):
+            api.serialize_document(search)
+        return
+    parsed = api.parse_document(api.serialize_document(search))
+    assert parsed.created_at == case["value"]
+    assert api.validate_library(api.CitationLibrary(papers=boundary_library.papers, searches={parsed.id: parsed})) == []
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["source_urls"], ids=lambda c: c["name"])
+def test_shared_source_url_boundaries(api: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    paper = deepcopy(next(iter(boundary_library.papers.values())))
+    paper.source = case["value"]
+    if not case["accept"]:
+        with pytest.raises(ValueError):
+            api.serialize_document(paper)
+        return
+    parsed = api.parse_document(api.serialize_document(paper))
+    assert parsed.source == case["value"]
+    assert api.validate_library(api.CitationLibrary(papers={**boundary_library.papers, parsed.id: parsed}, searches=boundary_library.searches)) == []
 
 
 @pytest.mark.parametrize(("field_path", "value", "message"), [
