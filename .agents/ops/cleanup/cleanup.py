@@ -8,8 +8,9 @@ Subcommands (see README.md for the policy and the report schema):
     cleanup.py delete ID [ID ...]                             # delete approved entries
 
 ``apply-auto`` only deletes branch refs that have no worktree; it never removes a
-worktree. A worktree is removed only by ``delete worktree:<path>[@<sha>]`` and
-only when it is completely clean (see README.md).
+worktree. This legacy command's worktree deletion requires explicit ``delete``
+and a completely clean tree. Creation-based forced expiry is handled separately
+by ``spin worktrees cleanup`` (see ../worktree_cleanup/README.md).
 
 Common options: --repo DIR (default: main checkout of the cwd's repository),
 --config FILE (default: config.toml next to this script), --state-dir DIR

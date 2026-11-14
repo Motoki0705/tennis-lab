@@ -56,7 +56,7 @@ def main() -> None:
             sys.exit(1)
     model = args[args.index("--model") + 1]
     prompt = sys.stdin.read()
-    session = "private-" + agent + "-session"
+    session = os.environ.get("FAKE_SESSION_ID", "private-" + agent + "-session")
     if scenario == "wrong_session":
         session = "other-private-session"
     if agent == "codex":

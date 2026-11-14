@@ -63,6 +63,7 @@ class FakeGitHub:
     identity = github.GitHub.identity
     family = github.GitHub.family
     fresh_reads = github.GitHub.fresh_reads
+    improvement_extractions = github.GitHub.improvement_extractions
 
     def __init__(self) -> None:
         self.parent: int | None = None

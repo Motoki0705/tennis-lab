@@ -107,6 +107,9 @@ description: Run tennis-lab annotation campaigns with pinned inputs, local image
 ## 停止から再開する
 
 - 失敗を自動で再試行しない。原因を確かめ、理由と元attemptを残す明示の操作で再開する。
+- **白紙注釈の時間切れ後の保存物修復**: 台帳や元のhold判断を書き換えず、同じruntimeで `tick` を実行して
+  完成回収を確認する。未処理が残る場合の明示retryは
+  [自動継続の復旧手順](../../../src/tasks/annotation/README.md#白紙注釈の自動継続)に従う。
 - **レビューの途中停止**: `review-progress` の `needs_decision` と各attemptの理由を読む。
   最新attemptが検証済みframeを増やしていれば、`continue-reviews --dry-run` で判定を確かめてから、
   `--reason` と、関門2の実測から決めた `--max-attempts` を付けて継続を記録する。

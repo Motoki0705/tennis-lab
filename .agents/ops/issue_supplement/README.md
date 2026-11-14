@@ -18,6 +18,7 @@ Variables APIの追加権限を持たないjobでは `read_enabled_since` を呼
 workflow以外の親CLI・dispatcherの取得契約は変更しない。
 有効化前のissue、親ラベルのないissue、処理済みの自動イベントには何も書き込まない。
 子も兼ねる親は親・子両方の本文書式を検査する。
+改善提案と、承認snapshotから[取り出したparent](../parent/improvements.md#承認分の取り出しと復旧)は対象外。起票後の背景追加で承認内容を変えない。
 
 同じissueのrunをconcurrencyで直列化し、実行中のrunは取り消さない。
 workflowファイル名 `issue-supplement.yml` と表示名 `issue-supplement #<番号>` は

@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from issues.evidence import is_evidence_issue
+from issues.evidence import is_evidence_issue, is_proposal_issue
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "lib"))
 
@@ -57,7 +57,15 @@ def gh_list(args: Sequence[str], *, limit: int, cwd: Path) -> list[dict[str, Any
         raise CommandError(
             f"gh {shlex.join(args)} hit --limit {limit}; results may be truncated"
         )
-    return [row for row in rows if not is_evidence_issue(row)] if work_issues else rows
+    return (
+        [
+            row
+            for row in rows
+            if not is_evidence_issue(row) and not is_proposal_issue(row)
+        ]
+        if work_issues
+        else rows
+    )
 
 
 def git(args: Sequence[str], *, cwd: Path, ok_codes: tuple[int, ...] = (0,)) -> str:

@@ -27,24 +27,39 @@ from tests.e2e.agents_ops.test_review_recovery import (
 CONFIG = Path(__file__).resolve().parents[3] / ".agents/ops/lib/agents.conf"
 
 
-def select_config(r: ReviewEnv) -> Path:
-    config = Path(r.p.root) / "select.conf"
-    config.write_text(
-        CONFIG.read_text().replace(
-            'REVIEW_SELECTION_MODE="fixed"', 'REVIEW_SELECTION_MODE="select"'
-        )
+def request(r: ReviewEnv, *flags: str, combined: bool = False) -> ReviewEnv:
+    reason = r.p.root / "additional-review-reason.md"
+    reason.write_text("親が必要な追加確認を判断した。")
+    instruction_path = r.p.root / "chosen-review-instruction.md"
+    instruction_path.write_text(
+        "固定した受入条件とPR単位のcoverageを確認する。部分確認はnot_reviewedとする。"
     )
-    return config
-
-
-def request(r: ReviewEnv, *flags: str) -> ReviewEnv:
+    instruction = str(instruction_path)
+    if combined:
+        instructed = json.loads(
+            r.p.cli(
+                "review-request",
+                "--prs",
+                "100",
+                "--reason-file",
+                str(reason),
+                "--instruction-file",
+                instruction,
+                "--evidence-file",
+                instruction,
+                *flags,
+            ).stdout
+        )
+        path = r.p.root / (instructed["review_run_id"] + ".json")
+        path.write_text(json.dumps(instructed))
+        return replace(r, request=instructed, request_path=path)
     manifest = json.loads(
         r.p.cli(
             "review-prepare",
             "--prs",
             "100",
             "--reason-file",
-            r.p.note("親が必要な追加確認を判断した。"),
+            str(reason),
             *flags,
         ).stdout
     )
@@ -54,9 +69,7 @@ def request(r: ReviewEnv, *flags: str) -> ReviewEnv:
             "--run-id",
             manifest["review_run_id"],
             "--instruction-file",
-            r.p.note(
-                "固定した受入条件とPR単位のcoverageを確認する。部分確認はnot_reviewedとする。"
-            ),
+            instruction,
         ).stdout
     )
     path = r.p.root / (manifest["review_run_id"] + ".json")
@@ -78,20 +91,53 @@ def run(r: ReviewEnv, config: Path, *, ok: bool = True, **extra: str) -> Any:
     )
 
 
-@pytest.mark.parametrize("human", [False, True])
+@pytest.mark.parametrize(
+    "model,reason,human,combined",
+    [
+        (
+            "gpt-6.1-sol",
+            "表示文言だけの修正で該当画面で確認できるためSolを選ぶ。",
+            False,
+            False,
+        ),
+        (
+            "gpt-6-astra",
+            "復旧後に採用する永続状態が変わるためAstraを選ぶ。",
+            False,
+            True,
+        ),
+        (
+            "gpt-6-astra",
+            "呼び出し元への影響範囲が不明なためAstraを選ぶ。",
+            False,
+            False,
+        ),
+        ("gpt-6-astra", "人間の明示指定に従いAstraを選ぶ。", True, True),
+    ],
+    ids=(
+        "local-sol-prepare",
+        "persistent-astra-combined",
+        "unknown-astra-prepare",
+        "human-astra-combined",
+    ),
+)
 def test_parent_choice_is_frozen_published_inspected_and_accepted_by_gate(
-    single_review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch, human: bool
+    single_review_env: ReviewEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    model: str,
+    reason: str,
+    human: bool,
+    combined: bool,
 ) -> None:
     r = single_review_env
-    config = select_config(r)
-    model = "gpt-6-astra" if human else "gpt-6.1-sol"
+    config = CONFIG
+    reason_file = r.p.root / "chosen-model-reason.md"
+    reason_file.write_text(reason)
     flags = [
-        "--review-config-file",
-        str(config),
         "--review-model",
         model,
         "--model-reason-file",
-        r.p.note("人間の指定を優先" if human else "定型的な確認"),
+        str(reason_file),
     ]
     if human:
         flags += [
@@ -100,7 +146,7 @@ def test_parent_choice_is_frozen_published_inspected_and_accepted_by_gate(
             "--human-model-reference",
             "親が人間の元指示を確認済み",
         ]
-    chosen = request(r, *flags)
+    chosen = request(r, *flags, combined=combined)
     result = json.loads(run(chosen, config).stdout)["result"]
     choice = result["request"]["review_selection"]
     argv = chosen.calls()[-1]["args"]
@@ -111,7 +157,27 @@ def test_parent_choice_is_frozen_published_inspected_and_accepted_by_gate(
     assert Path(argv[argv.index("--config-file") + 1]) == config.resolve()
     assert result["request"]["schema_version"] == 3
     assert choice["specified_by"] == ("human_instruction" if human else "parent_choice")
+    assert choice["reason"] == reason
+    assert choice["policy"]["mode"] == "select"
+    assert choice["selected"]["model"] == model
+    assert choice["selected"]["effort"] == "xhigh"
     assert result["runtime_settings"]["effective"]["model"]["value"] == model
+    assert result["runtime_settings"]["effective"]["effort"]["value"] == "xhigh"
+    runtime = json.loads((chosen.run_dir / "agent-runtime/result.json").read_text())
+    assert runtime["contract"]["review_selection"] == choice
+    reused = json.loads(
+        r.p.cli(
+            "review-request",
+            "--run-id",
+            chosen.request["review_run_id"],
+            "--instruction-file",
+            r.p.note(
+                "固定した受入条件とPR単位のcoverageを確認する。部分確認はnot_reviewedとする。"
+            ),
+        ).stdout
+    )
+    assert reused["review_selection"] == choice
+    assert len(chosen.calls()) == 1
     execution = json.loads((chosen.run_dir / "execution.json").read_text())
     assert execution["review_selection"] == choice
     state_dir = chosen.run_dir.parents[1]
@@ -150,12 +216,52 @@ def test_parent_choice_is_frozen_published_inspected_and_accepted_by_gate(
     assert model_observation["value"]["specified_by"] == choice["specified_by"]
 
 
+@pytest.mark.parametrize(
+    "entry,missing",
+    [
+        ("review-prepare", "model"),
+        ("review-prepare", "reason"),
+        ("review-request", "model"),
+        ("review-request", "empty-reason"),
+    ],
+)
+def test_default_select_missing_inputs_explain_flags_without_a_launch(
+    single_review_env: ReviewEnv, entry: str, missing: str
+) -> None:
+    r = single_review_env
+    flags = []
+    if missing != "model":
+        flags += ["--review-model", "gpt-6.1-sol"]
+    if missing == "empty-reason":
+        path = r.p.root / "empty-model-reason.md"
+        path.write_text(" \n")
+        flags += ["--model-reason-file", str(path)]
+    if entry == "review-request":
+        flags += ["--instruction-file", r.p.note(), "--evidence-file", r.p.note()]
+    before = r.p.state()
+    denied = r.p.cli(entry, "--prs", "100", *flags, ok=False)
+    assert denied.returncode == 2
+    assert "--model-reason-file" in denied.stderr
+    if missing == "model":
+        assert "--review-model" in denied.stderr
+    assert r.calls() == []
+    assert r.p.state() == before
+
+
 def test_fixed_and_post_prepare_changes_are_rejected_without_an_agent(
     single_review_env: ReviewEnv,
 ) -> None:
     r = single_review_env
+    config = r.p.root / "fixed.conf"
+    config.write_text(
+        CONFIG.read_text().replace(
+            'REVIEW_SELECTION_MODE="select"', 'REVIEW_SELECTION_MODE="fixed"'
+        )
+    )
     denied = r.p.cli(
         "review-prepare",
+        "--review-config-file",
+        str(config),
         "--prs",
         "100",
         "--review-model",
@@ -172,7 +278,7 @@ def test_fixed_and_post_prepare_changes_are_rejected_without_an_agent(
         "--instruction-file",
         r.p.note("再送"),
         "--review-config-file",
-        str(select_config(r)),
+        str(CONFIG),
         "--review-model",
         "gpt-6.1-sol",
         "--model-reason-file",
@@ -183,11 +289,11 @@ def test_fixed_and_post_prepare_changes_are_rejected_without_an_agent(
     assert r.calls() == []
 
 
-def test_sol_recovery_records_source_model_under_current_fixed_policy(
+def test_sol_recovery_records_source_model_without_new_selection(
     single_review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     r = single_review_env
-    config = select_config(r)
+    config = CONFIG
     chosen = request(
         r,
         "--review-config-file",
@@ -215,7 +321,7 @@ def test_handoff_records_source_but_partial_review_stays_blocked(
     single_review_env: ReviewEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     r = single_review_env
-    config = select_config(r)
+    config = CONFIG
     sol = request(
         r,
         "--review-config-file",
@@ -308,6 +414,7 @@ def test_handoff_links_explicit_decision_and_previous_result(
     public_before = r.p.state()
     rejected = r.p.cli(
         "review-prepare",
+        *r.p.review_flags(),
         "--prs",
         "100",
         "--reason-file",
@@ -325,6 +432,7 @@ def test_handoff_links_explicit_decision_and_previous_result(
     manifest = json.loads(
         r.p.cli(
             "review-prepare",
+            *r.p.review_flags(),
             "--prs",
             "100",
             "--reason-file",
@@ -490,7 +598,16 @@ def test_legacy_request_is_not_rewritten_or_given_an_invented_choice(
     path.write_text(json.dumps(manifest))
     untracked_legacy_fixture(r.p)
     before = path.read_bytes()
-    result = json.loads(r.run().stdout)["result"]
+    denied = r.run(ok=False)
+    assert "legacy" in denied.stderr and "fixed" in denied.stderr
+    assert r.calls() == [] and path.read_bytes() == before
+    config = r.p.root / "legacy-fixed.conf"
+    config.write_text(
+        CONFIG.read_text().replace(
+            'REVIEW_SELECTION_MODE="select"', 'REVIEW_SELECTION_MODE="fixed"'
+        )
+    )
+    result = json.loads(run(r, config).stdout)["result"]
     assert result["request_sha256"] == new_digest
     assert (
         "runtime_settings" not in result and "review_selection" not in result["request"]
@@ -676,6 +793,7 @@ def save_failed_candidate(r: ReviewEnv, failure: str) -> dict[str, Any]:
 def handoff(r: ReviewEnv) -> ReviewEnv:
     return request(
         r,
+        *r.p.review_flags(),
         "--handoff-from-run",
         r.request["review_run_id"],
         "--handoff-scope-file",
@@ -773,6 +891,7 @@ def test_handoff_rejects_invalid_candidate_before_publishing_targets(
     before = copy.deepcopy(r.p.state())
     denied = r.p.cli(
         "review-prepare",
+        *r.p.review_flags(),
         "--prs",
         "100",
         "--reason-file",
@@ -833,22 +952,27 @@ def test_autonomous_parent_uses_the_same_review_choice_path(
 
     monkeypatch.setattr(parent_env, "agreed", lambda: autonomous(parent_env))
     r = make_review_env(parent_env, pr_count=1)
-    config = select_config(r)
+    config = CONFIG
     chosen = request(
         r,
-        "--review-config-file",
-        str(config),
         "--review-model",
         "gpt-6.1-sol",
         "--model-reason-file",
-        r.p.note("通常の確認"),
+        r.p.note("表示文言だけの修正で該当画面で確認できるためSolを選ぶ。"),
+        combined=True,
     )
     assert (
         chosen.request["authorization"]["execution_basis_kind"] == "autonomous_decision"
     )
     result = json.loads(run(chosen, config).stdout)["result"]
     assert result["request"]["review_selection"]["specified_by"] == "parent_choice"
+    assert result["request"]["review_selection"]["policy"]["mode"] == "select"
+    assert (
+        result["request"]["review_selection"]["reason"]
+        == "表示文言だけの修正で該当画面で確認できるためSolを選ぶ。"
+    )
     assert result["runtime_settings"]["effective"]["model"]["value"] == "gpt-6.1-sol"
+    assert result["runtime_settings"]["effective"]["effort"]["value"] == "xhigh"
     g = gate_for(chosen, monkeypatch)
     g.confirm()
     assert g.cli("merge", AGENT_AUTO_MERGE="0").returncode == 0

@@ -110,7 +110,8 @@ def test_documented_workflow_passes_the_ci_gate(tmp_path: Path, route: str, stat
            'RUN_ID': f'run-{job_name.replace("_", "-")}', 'GROUP_ID': f'group-{route}',
            'TITLE': '隔離fixtureによる登録確認', 'GROUP_TITLE': '登録検証のまとめ',
            'PAPER_ID': 'paper-2024-fixture', 'PAPER_TITLE': 'Disposable Fixture', 'AUTHOR': 'Fixture Author',
-           'SOURCE_URL': 'https://example.org/fixture/v1'}
+           'SOURCE_URL': 'https://example.org/fixture/v1', 'PAPER_SUMMARY': 'Fictional research contribution',
+           'PAPER_REASON': 'Does this fixture preserve experiment-to-paper references?'}
     commands = examples()
 
     def run_example(name: str, check: bool = True) -> subprocess.CompletedProcess[str]:

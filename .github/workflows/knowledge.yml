@@ -5,6 +5,8 @@ on:
       - 'knowledge/**'
       - '.agents/skills/knowledge-control/**'
       - 'tests/e2e/skills/test_knowledge*.py'
+      - 'tests/unit/skills/test_knowledge_citation_schema.py'
+      - 'tests/fixtures/knowledge/**'
       - '.github/workflows/knowledge.yml'
       - '.github/workflows/ci.yml'
       # Configs tracked by knowledge/registry/deployments.yaml and its source documents.
@@ -16,6 +18,8 @@ on:
       - 'knowledge/**'
       - '.agents/skills/knowledge-control/**'
       - 'tests/e2e/skills/test_knowledge*.py'
+      - 'tests/unit/skills/test_knowledge_citation_schema.py'
+      - 'tests/fixtures/knowledge/**'
       - '.github/workflows/knowledge.yml'
       - '.github/workflows/ci.yml'
       # Configs tracked by knowledge/registry/deployments.yaml and its source documents.
@@ -55,6 +59,8 @@ jobs:
         run: .venv/bin/python .agents/skills/knowledge-control/scripts/kg_repro_paths.py
       - name: Test storage boundaries, pinned exceptions, deletion integrity and registration
         run: .venv/bin/python -m pytest --confcutdir=tests/e2e/skills -o addopts='' tests/e2e/skills/test_knowledge*.py
+      - name: Test citation document schema and identity contracts
+        run: .venv/bin/python -m pytest --confcutdir=tests/unit/skills -o addopts='' tests/unit/skills/test_knowledge_citation_schema.py
   knowledge-webui:
     runs-on: ubuntu-latest
     timeout-minutes: 10

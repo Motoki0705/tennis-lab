@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 
 from tests.e2e.agents_ops.test_agent_runtime import Harness
+from tests.e2e.agents_ops.test_review_model_selection import choice_files
 
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 
@@ -22,6 +23,7 @@ def runner_review(
         monkeypatch.syspath_prepend(str(path))
     recovery = importlib.import_module("review_recovery")
     h = Harness(tmp_path)
+    _, selection_path, _ = choice_files(h, monkeypatch, "gpt-6-astra")
     schema = tmp_path / "schema.json"
     schema.write_text(
         json.dumps(
@@ -40,6 +42,8 @@ def runner_review(
         extra=(
             "--profile",
             "review",
+            "--review-selection-file",
+            str(selection_path),
             "--mode",
             "read-only",
             "--json-schema",

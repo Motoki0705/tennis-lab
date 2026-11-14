@@ -10,6 +10,10 @@ hierarchy:
     color: "7DD3FC"
     description: "親にも子にも属さず、単独の作業単位として扱うIssue（.agents/ops/issues/README.md）"
 
+  - name: "issue:proposal"
+    color: "C4B5FD"
+    description: "未判断を含む改善候補を元親ごとに列挙する改善提案Issue。作業対象ではない（.agents/ops/parent/improvements.md）"
+
 work-type:
   - name: bug
     color: "D73A4A"

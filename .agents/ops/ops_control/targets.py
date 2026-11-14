@@ -82,6 +82,7 @@ TARGETS = {
     ),
     "report": timer_target("report", "tennis-lab-ops-report"),
     "triage": timer_target("triage", "tennis-lab-ops-triage"),
+    "proposal-expiry": timer_target("proposal-expiry", "tennis-lab-improvement-expire"),
     # Existing merged-branch pruning. This is separate from worktree expiration.
     "cleanup": timer_target("cleanup", "tennis-lab-cleanup"),
     "agents": Target(
@@ -90,6 +91,7 @@ TARGETS = {
     "git-sync": timer_target(
         "git-sync", "tennis-lab-git-sync", status_file="git-sync/status.json"
     ),
+    "worktree-cleanup": timer_target("worktree-cleanup", "tennis-lab-worktree-cleanup"),
 }
 
 

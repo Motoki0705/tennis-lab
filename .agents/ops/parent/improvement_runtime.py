@@ -107,8 +107,10 @@ def reconcile_stop(
     with store.operation(lock_key(gh.repo)), store.locked():
         source_session = ParentSession(gh, store, source_parent, identity)
         source, observed = get(source_session, candidate)
-        publication = observed["publication"]
-        if publication is None or publication["data"]["mode"] != "created":
+        publication = observed["extraction"] or observed["publication"]
+        if publication is None or (
+            observed["extraction"] is None and publication["data"]["mode"] != "created"
+        ):
             return {"state": "reference_only"}
         target = publication["data"]["issue"]
         target_key = f"{gh.repo.casefold()}#{target}"

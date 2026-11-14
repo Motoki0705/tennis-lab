@@ -36,7 +36,33 @@ def advance_main(logs: LogEnv, files: dict[str, str]) -> str:
     git(logs.root, "add", "--", *files)
     git(logs.root, "commit", "-qm", "independent main change")
     git(logs.root, "push", "origin", "main")
-    return git(logs.root, "rev-parse", "HEAD")
+    head: str = git(logs.root, "rev-parse", "HEAD")
+    return head
+
+
+def test_publication_accepts_canonical_repo_url(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = logs.ready()
+    create = logs.github.create
+
+    def canonical_pr(branch: str, title: str, body: str) -> dict[str, Any]:
+        pr: dict[str, Any] = create(branch, title, body)
+        pr["html_url"] = f"https://github.com/O/R/pull/{pr['number']}"
+        for side in ("base", "head"):
+            pr[side]["repo"]["full_name"] = "O/R"
+        logs.github.rows[pr["number"]] = pr
+        return pr
+
+    monkeypatch.setattr(logs.github, "create", canonical_pr)
+    result = logs.publisher(path).publish()
+    assert result["state"] == "merged" and result["saved_to_main"] is True, result
+    row = journal.read(path)
+    assert row["source"]["repo"] == logs.github.repo == "o/r"
+    assert logs.github.get(row["pr_number"])["html_url"] == (
+        "https://github.com/O/R/pull/100"
+    )
+    assert logs.github.calls == ["create", "merge"]
 
 
 def test_capture_adapter_failure_preserves_successful_log_publication(
@@ -389,7 +415,7 @@ def test_unknown_mergeability_still_merges_pinned_head(
     get = logs.github.get
 
     def become_unknown(number: int) -> dict[str, Any]:
-        value = get(number)
+        value: dict[str, Any] = get(number)
         if logs.github.gets == 2 and unknown_at == "fresh":
             value["mergeable"] = None
         return value

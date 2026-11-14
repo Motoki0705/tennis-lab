@@ -153,7 +153,7 @@ def test_note_keeps_frozen_review_requirements_and_request(
 ) -> None:
     p = parent_env
     selected = review_setup(p)
-    args = ("review-prepare", "--prs", *map(str, selected))
+    args = ("review-prepare", *p.review_flags(), "--prs", *map(str, selected))
     prepared = p.cli(*args).stdout
     p.cli("note", "--body-file", p.note("対象PR群の確認を完了した。"))
     assert p.cli(*args).stdout == prepared

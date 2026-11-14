@@ -90,6 +90,8 @@ GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#gi
 - `code`（commitとgit treeのpath/mode/kind/oid）。agentが必要なtracked blobを調べ、そのcommit/pathを出典にする。
   gitlinkの先にある未固定ファイルやuntrackedファイルを着手根拠にしない。
 - `input_sha256`、`execution_inputs`（報告容器以外について `parent.execution.execution_input()` で生成した実行根拠用の入力）。
+- `improvement_extractions`（共有receiptから読む取り出し先parent番号と候補・承認群の索引）。本文の出典目印と照合し、
+  対象の索引もdigestへ固定する。索引がない旧snapshotは再収集する。承認の正本と復旧は[改善手順](../parent/improvements.md)を参照。
 
 ページは100件ずつ末尾まで読み、重複・欠落した型・正式関係の不一致・親循環・HTTP失敗を拒否する。
 `/parent` の「親なし」以外の404を成功や空配列に変換しない。

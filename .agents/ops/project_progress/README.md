@@ -149,3 +149,5 @@ archived itemは勝手に再追加せず、UIで明示的にunarchiveしてか�
 
 fake gh・一時registryによる試験は `tests/e2e/agents_ops/test_project_progress.py`。
 この実装の試験は実GitHubへの書込みや本物のagentを必要としない。
+
+改善提案は[作業対象外の役割](../issues/README.md#役割とテンプレートの選択)として、階層取得・投影と各viewのfilterから除外する。

@@ -106,6 +106,11 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 
 1セッションのactive/引継ぎ待ち親は1件。同じ親の別セッションによる登録も拒否する。
 終了をプロセス一覧などから推測せず、親自身の `release --ended` で記録する。
+登録時には管理可能なnative agent祖先のcwd・PID/boot ID/start ticksをprivateな `owner_runtime` に保存する。
+来歴は現在のsession/generationへ結び付け、`handoff --accept` 時に移管先の来歴へ更新する。
+移管先のnativeプロセスを確認できない場合は旧来歴を失効させる。
+例外として [worktreeの期限削除](../worktree_cleanup/README.md) は対象の親・委任を強制停止し、
+担当を `released` にする。これは成功終了ではなく、停止失敗も期限削除の状態とエラーに残す。
 別セッションへの移管は `handoff --accept` による明示操作だけを許可する。
 マシンをまたぐ分散排他やセッションの自動選定は範囲外。
 
@@ -199,9 +204,13 @@ triageの履歴検査と再適用は [ops-report README](../ops-report/README.md
 ```
 
 `repo` はcasefold、`parent` は正整数。マーカーの追加キー・重複JSONキー・未知version・別publisher・
-ラベル不一致を拒否する。ローカル番号だけでは信用しない。検索indexを使わず、全状態のIssue一覧を
-全ページ取得して候補を検査し、複数候補があれば選ばずエラーにする。
-dispatcherの1回のread-only収集内では発見用の一覧を共有し、次の収集で再取得する。
+ラベル不一致を拒否する。ローカル番号だけでは信用しない。検索indexを使わず、
+`issues?state=all&labels=parent-evidence` の一覧を全ページ取得して候補を検査し、
+ラベル付きの候補が複数あれば選ばずエラーにする。ラベルのないmarker付きIssueや、
+別番号でラベルを外した重複・不正な容器を毎回検出する保証はない。
+既知のbindingは一覧との照合に加えて保存番号を個別取得するため、既知の容器のラベル外れは引き続き拒否する。
+親CLI・review CLIの同じコマンド・読み取り範囲と、dispatcherの1回のread-only収集では発見用の一覧を共有する。
+書込みで一覧を失効し、明示的な鮮度確認・次の読み取り範囲では再取得する。
 通常はopenのまま保持する。終了による完了数の増加や再開時の状態変更を避け、追記する保存容器であることを示すため。
 closedにしても履歴は読め、作業対象への除外は状態に依存しない。
 作業Issueへの誤用を防ぐ共通判定と経路は [issues API](../issues/README.md#証拠用issueの除外) を参照する。
@@ -493,7 +502,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp
 # 親が直接実装した後、差分・受入条件・対象HEADのテストを確認する
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 record-result --child 1216 --evidence-file tmp/tests.md
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
-  --prs 1250 --instruction-file tmp/review.md --evidence-file tmp/tests.md > tmp/review-request.json
+  --prs 1250 --instruction-file tmp/review.md --evidence-file tmp/tests.md \
+  --review-model gpt-6-astra --review-effort xhigh \
+  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
 ```
 
 直接実装にはdelegate・架空のworker・終了記録は不要。
@@ -641,6 +652,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 # 同じ委任・sessionの修正ターン。終了枠を解放済みなら再開証拠も渡す
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --resume --prompt-file tmp/fix.md --restart-evidence-file tmp/restart.md
+# 保存記録から同じsessionへの再開不能を確認した場合の明示付替え
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  run-worker --child 1217 --replace-session --prompt-file tmp/replacement.md --restart-evidence-file tmp/restart.md
 # この入口の導入前に共通ランナーで起動したrunを、稼働中・終了済みとも登録できる
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   record-worker-run --child 1217 --run-dir "$existing_run"
@@ -679,6 +693,37 @@ model省略時は直前runの保存contractから継承し、同値の再指定�
 終了未記録なら予約枠を保持したまま継続する。既存PRがある修正も同じbranch・worktreeを使う。
 `launch_plan` の停止・依存・上限判定は省略しない。再開証拠はprivateな `restart_evidence` に残す。
 
+`--replace-session` は `--resume` と排他で、非空の `--prompt-file` と `--restart-evidence-file` を必須にする。
+同じ委任ID・worktree・branch・保存model/max effortを使い、通常の指示組立て・preflight・runの事前登録・
+ログ捕捉・起動直前の権限照合を経て、共通ランナーで新しいsessionを起動する。既存PRの継続も同じ入口を使う。
+現在の委任の全登録runについて、契約・終了・`cleanup_complete=true` とrunner/agent/groupの非生存を照合する。
+付替え元は最新の非取消ターンに保存したrunを使い、ターン記録がない旧委任では最新の登録runを使う。
+そのrunがrunnerの `session.json.latest_run` と一致し、次のどちらかの保存証拠を持つ場合に受理する。
+
+- `result.json.recovery_error` に非空の復旧エラーが記録されている。
+- `session.json.session_id` がnullで、共通ランナーが同じsessionへ戻るためのIDを持たない。
+
+runner喪失時は保存済みcleanup confirmationも照合する。`metadata_error` という終了理由だけでは受理しない。
+再開可能・生存中・cleanup未確認・証拠欠落・session metadataの欠落や不整合は、起動・予約変更前に診断して拒否する。
+経過時間、PIDの不在、最終文の有無を再開不能の根拠にしない。
+
+保存ターンの後ろに `record-worker-run` で別sessionが登録されている場合、その後続がすべて `registered` で、
+保存ターンとの実行契約が一致し、終了・回収と最新session runを確認できる場合に同じ入口を受理する。
+付替え元には保存ターンを使い、後続登録runへの参照も付替えの証拠へ保存する。
+後続登録runの成果は、そのrun自身の来歴として保持する。次の成果照合にはこの入口が作成した新しいターンを使う。
+
+付替え時のtaskの `preflight` はversion=3にし、`session_replacements` へ記録を追記する。
+旧runtimeと新runtime、元runの終了記録の場所・run ID・内容digest・終了/回収のsnapshot、理由、再開証拠、
+後続登録runへの参照、対応する新しいターンIDとrunを保持する。新runtimeは起動時に予約したrunから確認できた時点で結び付ける。
+旧runと旧ターンを保持し、以後の `--resume`・`record-result`・`review-request` は新runtimeを同じ系列として照合する。
+起動前の明確な拒否では新しいターンと付替え試行へ `cancelled=true` を記録し、元のruntime・run・予約を復元する。
+同じ付替え操作で再試行できる。起動有無やsessionが未確認なら予約したrunを保持し、親が保存記録を確認する。
+旧委任に取消ターンだけが残った場合も、取消済み付替え記録に保存した元runを選び、
+終了記録の内容digest・契約・終了とcleanup・再開不能の根拠を再照合して再試行する。
+成果照合には新しい非取消ターンを必要とする。
+`status` の `worker_phase.session_replacement` は試行件数・最新試行の `reserved/bound/cancelled`・理由を返す。
+session ID・runの場所・証拠原文はprivate registryへ保存する。
+
 `record-worker-run` は存在する `result.json` / `invocation.json` のすべてでschemaと
 `contract.task_id`・`contract.cwd`・`contract.branch` と実装子のmodel/max effort・profile・modeを現在の委任と照合する。
 複数の保存記録間でmodel設定が異なる場合や、modelを特定できない場合も拒否する。
@@ -699,7 +744,7 @@ model省略時は直前runの保存contractから継承し、同値の再指定�
 [{"delegation_id":"32桁hex","run_dir":"worker-runs/委任ID/UUID","kind":"initial","recorded_at":"2026-10-30T00:00:00+00:00","model":"gpt-6.1-sol","model_reason":"通常の実装として既定を選択。"}]
 ```
 
-`kind` は `initial` / `resume` / `registered`。`run_dir` は親state dir基準の相対パスで、
+`kind` は `initial` / `resume` / `registered` / `replacement`。`run_dir` は親state dir基準の相対パスで、
 state外の登録runは絶対パス。`recorded_at` はUTC ISO8601。
 version 1/2とも既存フィールドと過去の委任のrunを保持し、新しいrunだけ追記する。
 `status`・`reconcile`・委任応答からこのフィールドを除外し、issue本文・コメントにもrun dirを出さない。
@@ -720,6 +765,7 @@ planningの報告は任意の書式でよく、親は直接 `--resume --prompt-f
 
 `preflight` はターン・指示・回答・runtimeの来歴。本文・担当世代・依存の状態変化で自動失効させない。
 新しいtask記録はversion=2。旧version=1も読み、次の明示操作で新しい来歴を追記する。run/jobのsnapshotはversion=1のまま保持する。
+session付替えを記録したtaskとその継続はversion=3を使う。
 旧CLIは新しいtask versionを扱えないため、呼出元を新CLIへ更新してから利用する。稼働中の記録を一括変換しない。
 statusの `inputs_changed` は親が意味と影響を確認するための通知であり、再調査の強制ではない。
 旧委任にphase記録がなくても、通常のrun・session・終了照合を経て継続できる。過去の承認を生成しない。
@@ -823,7 +869,7 @@ Project表示は明示的な `project-setup` / `project-sync` を使う。既存
 
 改善候補の正本は元親の構造化コメント。`--child` は発見元で、省略時は親自身を表す。
 子の欄には候補への参照を残す。既存の `purpose` / `evidence` / `scope` だけのspecは未整理の発見記録として受け付ける。
-新親の起票には同じkeyで境界を補い、`improvement-publish` を明示する。人間の判断は `improvement-decide` で記録する。
+公開・判断・取り出しの手順は [終了時改善](improvements.md#提案issueへの列挙) を参照する。
 候補・起票・判断・実行は `status.improvements`、今回の受入は `status.completion` に分けて表示する。
 schema・冪等な再送・承認の保証範囲・導入順は [終了時改善と全体受入](improvements.md) を正本とする。
 
@@ -867,12 +913,121 @@ requestやstate・GitHubを書き換えず、agentを起動しない。担当セ
 [reviewの照合表示契約](../review/README.md#既存証拠の照合表示) を参照する。
 意味の判断と次の行動は親が記録し、追加レビューが必要なPRだけを以下の入口へ渡す。
 
+## 正式レビューのモデル選択
+
+通常設定は [`agents.conf`](../lib/agents.conf) の `REVIEW_SELECTION_MODE="select"`。
+手動・自律の担当親が、差分・受入条件・呼び出し元やデータなどの影響先を確認して選ぶ。
+行数・パスによる自動選択は行わない。選択理由は1文のファイルに残す。
+
+| 確認した変更の性質 | 選ぶmodel / effort | 理由の例 |
+|---|---|---|
+| 影響が局所的で、期待する挙動と確認方法が明確 | `gpt-6.1-sol / xhigh` | 表示文言だけの修正で、呼び出し元や永続データへの影響がなく該当画面で確認できるためSolを選ぶ。 |
+| 公開範囲・権限・永続状態・並行処理・merge gate等に影響する、または影響範囲が不明 | `gpt-6-astra / xhigh` | 1行の条件変更でも復旧後に採用する結果が変わるためAstraを選ぶ。 |
+
+追加のAIレビューが必要な対象だけを、既存証拠の照合後に選ぶ。
+簡易な案件の例は次のとおり。Astraを選ぶ案件も理由とモデルを置き換えて同じ入口を使う。
+
+```bash
+printf '%s\n' '表示文言だけの修正で、呼び出し元や永続データへの影響がなく該当画面で確認できるためSolを選ぶ。' > tmp/review-model-reason.md
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
+  --prs 1250 --instruction-file tmp/instruction.md --evidence-file tmp/result.md \
+  --review-model gpt-6.1-sol --review-effort xhigh \
+  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
+```
+
+分離操作では同じ選択引数を `review-prepare` に渡し、`review-request --run-id` は保存選択を使う。
+指定漏れはエラーになり、モデル・理由を補って要求を作り直す。固定値への振替はしない。
+人間の明示指定を確認した場合は、同じモデル・理由に加えて
+`--review-model-source human_instruction --human-model-reference '元の人間の発言への参照'` を渡す。
+拘束・許可外の組・固定設定との矛盾は[レビュー要求契約](#レビュー要求契約schema-version-3version-1と2の読取互換)に従い解消する。
+
+Solで判断しきれない重大な論点が残ったら、親が追加レビューの必要性と範囲を判断する。
+`tmp/handoff-scope.md` に元runの未解決事項・再利用する証拠・追加確認範囲、
+`tmp/additional-review-reason.md` に追加レビューが必要な理由を記す。
+元runの結果を `decide` の入力へ結ぶ場合は[レビューの因果リンク](../decision_logs/README.ja.md#レビューの因果リンク)も使う。
+
+```bash
+printf '%s\n' 'Solで永続状態の復旧条件を判断しきれなかったためAstraを選ぶ。' > tmp/review-model-reason.md
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-prepare \
+  --prs 1250 --reason-file tmp/additional-review-reason.md \
+  --review-model gpt-6-astra --review-effort xhigh \
+  --model-reason-file tmp/review-model-reason.md \
+  --handoff-from-run "$source_run" --handoff-scope-file tmp/handoff-scope.md > tmp/prepared.json
+next_run=$(jq -r .review_run_id tmp/prepared.json)
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
+  --run-id "$next_run" --instruction-file tmp/instruction.md > tmp/review-request.json
+.venv/bin/python .agents/ops/review/parent_review.py run --request tmp/review-request.json
+```
+
+`source_run` は元Solレビューのrun ID。引継ぎは旧指摘の解消・coverageの合成ではなく、
+[保存候補の引継ぎ契約](../review/README.md#保存候補を含む別runへの引継ぎ)を維持する。
+部分確認だけなら `not_reviewed` を使い、正式なcoverageと親による解消確認を省略しない。
+
+### 使ったモデルと使用量を確認する
+
+`review-inspect --prs` で既存証拠の `review_selection` と `runtime_settings` を確認できる。
+ローカルでは保存manifestの選択と、runnerの要求値・実効値・使用量を照合する。
+`review-selection.json` はrunnerの `contract.review_selection` と同じ選択を保存したもの。
+
+```bash
+parent_state="${XDG_STATE_HOME:-$HOME/.local/state}/tennis-lab-agents/parent-sessions"
+review_dir="$parent_state/reviews/$review_run"
+jq '{review_selection}' "$review_dir/request.json"
+jq '{choice: .contract.review_selection, requested: .contract.settings.selected,
+     effective: .runtime.effective, usage: .runtime.usage,
+     agent_spawned, result, started_at, finished_at}' "$review_dir/agent-runtime/result.json"
+```
+
+`review_run` は確認するrun ID。要求モデル・理由・指定元は `review_selection`、
+実際のmodel/effortは `runtime.effective` の `status=observed` と `value` で確認する。
+select時の `REVIEW_CODEX_MODEL` は設定上の固定値として `policy.fixed` やrunnerの `defaults` に残るが、
+実行モデルは親が選んだ `selected`。select時の省略用モデルには使わない。
+`REVIEW_CODEX_EFFORT` はfixed時のeffort、`REVIEW_CODEX_SERVICE_TIER` は両モードで共通のtierを定める。
+
+モデル別の起動件数・トークン・実行秒数は、同じstate内の物理的なrunner記録を1つずつ集計する。
+失敗した起動も含め、起動前失敗・AIを起動しないrecover・公開再送は起動件数へ加えない。
+次の `jq` は要求モデルと実効モデル/effortごとに分け、未取得件数を併記する。
+
+```bash
+jq -s '
+  [.[] | select(.agent_spawned == true and .contract.settings.profile == "review")
+   | {requested: .contract.settings.selected.model,
+      effective: .runtime.effective.model.value,
+      effort: .runtime.effective.effort.value,
+      usage: .runtime.usage,
+      seconds: (if (.started_at != null and .finished_at != null)
+                then .finished_at - .started_at else null end)}]
+  | group_by([.requested, .effective, .effort])
+  | map({requested: .[0].requested, effective: .[0].effective, effort: .[0].effort,
+         launches: length,
+         input_tokens_observed_sum: ([.[] | select(.usage.status == "observed") | .usage.value.input_tokens] | add),
+         output_tokens_observed_sum: ([.[] | select(.usage.status == "observed") | .usage.value.output_tokens] | add),
+         usage_unavailable: ([.[] | select(.usage.status != "observed")] | length),
+         runtime_seconds_observed_sum: ([.[].seconds | select(. != null)] | add),
+         runtime_seconds_unavailable: ([.[] | select(.seconds == null)] | length)})
+' "$parent_state"/reviews/*/agent-runtime/result.json
+```
+
+トークンは `runtime.usage` の観測値、秒数はrunnerの `finished_at - started_at`（CLI準備・cleanupを含む経過時間）。
+未取得を0で補わず、全件未取得の合計はnullとする。モデル時間の厳密な内訳・請求額・利用枠の差は推定しない。
+この集計は記録が残る起動の範囲であり、欠落したrunを補作しない。
+過去の[比較レポート](../../../knowledge/reports/review-model-comparison-20261111/README.md)は当時の記録として保持する。
+
+### Astra固定へ戻す
+
+`agents.conf` の `REVIEW_SELECTION_MODE="fixed"` に戻す。
+`REVIEW_CODEX_MODEL="gpt-6-astra"`、`REVIEW_CODEX_EFFORT="xhigh"` を維持すれば、
+選択を省略した新規要求もAstra固定になる。Sol指定は明示エラーになる。
+保存済みrun/manifestは変更しない。設定変更前にprepareした未起動runは方針の不一致で拒否するため、
+現在の設定で新しい要求を作る。実行済み証拠の再利用・公開再開・recoverは元の契約で検証する。
+
 ## レビュー要求契約（schema version 3、version 1と2の読取互換）
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 review-request \
   --prs 1250 1251 --instruction-file tmp/instruction.md \
-  --evidence-file tmp/result.md > tmp/review-request.json
+  --evidence-file tmp/result.md --review-model gpt-6-astra --review-effort xhigh \
+  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
 ```
 
 `review-request --prs` は成果の登録・対象固定・明示指示を1コマンドで行う。
@@ -925,9 +1080,9 @@ git diff --no-ext-diff --no-textconv --binary --full-index --no-renames --no-col
 
 version 3は上のversion 2へ`review_selection`を追加してdigestに含める。
 選択JSONの定義は[共通ランナー](../lib/README.md#レビュー専用の選択入力)を参照。
-既定fixedでは引数を省略すると設定の固定値を使用する。明示指定は固定値と一致する場合だけ許可する。
-selectでは`--review-model`と`--model-reason-file`を必須とし、必要なら`--review-effort`も指定する。
-通常確認・高リスク確認などの意味判断は親が行う。CLIは行数やパスからモデルを決めない。
+通常設定selectでは`--review-model`と`--model-reason-file`を必須とし、必要なら`--review-effort`も指定する。
+選択手順・使用量の確認・fixedへの復帰は[正式レビューのモデル選択](#正式レビューのモデル選択)を参照。
+fixedでは引数を省略すると設定の固定値を使用する。明示指定は固定値と一致する場合だけ許可する。
 
 これらの引数は`review-prepare`と`review-request --prs`の両方で使える。
 `review-request --run-id`は保存選択を使用し、指定を加えた場合も完全一致を要求する。

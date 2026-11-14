@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from .format import (
     CHILD_LABEL,
     PARENT_LABEL,
+    PROPOSAL_LABEL,
     STANDALONE_LABEL,
     TASKS_HEADING,
     ParsedTitle,
@@ -102,6 +103,21 @@ def check_consistency(issues: Mapping[int, Issue]) -> tuple[Problem, ...]:
                 "label.standalone",
                 f"{STANDALONE_LABEL} conflicts with parent/child roles or relationships",
             )
+        if PROPOSAL_LABEL in issue.labels:
+            if {PARENT_LABEL, CHILD_LABEL, STANDALONE_LABEL} & issue.labels:
+                add("label.proposal", "proposal conflicts with another role label")
+            if (
+                issue.parent is not None
+                or issue.children
+                or has_checklist
+                or has_reference
+                or bool(title_hint and title_hint.parent)
+            ):
+                add(
+                    "relationship.proposal",
+                    "proposal cannot have parent/children or work-role hints",
+                )
+            is_parent = is_child = False
         if is_parent and PARENT_LABEL not in issue.labels:
             add("label.parent", f"missing {PARENT_LABEL}")
         if is_child and CHILD_LABEL not in issue.labels:

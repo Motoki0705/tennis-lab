@@ -274,7 +274,10 @@ def choose(
     elif human_effort is not None or human_reference is not None:
         raise ValueError("human review model is required")
     if policy["mode"] == "select" and model is None:
-        raise ValueError("select requires an explicit review model")
+        raise ValueError(
+            "select requires --review-model and --model-reason-file "
+            "(gpt-6.1-sol/xhigh or gpt-6-astra/xhigh; parent chooses the impact)"
+        )
     selected_model = model if model is not None else policy["fixed"]["model"]
     efforts = [
         p["effort"] for p in policy["allowed_pairs"] if p["model"] == selected_model
@@ -295,6 +298,10 @@ def choose(
     )
     if specified_by is not None and specified_by != source:
         raise ValueError("review selection source contradicts supplied choice")
+    if explicit and (not isinstance(reason, str) or not reason.strip()):
+        raise ValueError(
+            "explicit review model requires --model-reason-file with a nonempty reason"
+        )
     return validate_selection(
         {
             "kind": "run",

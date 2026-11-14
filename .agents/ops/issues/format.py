@@ -14,6 +14,7 @@ from urllib.parse import quote, unquote
 PARENT_LABEL = "issue:parent"
 CHILD_LABEL = "issue:child"
 STANDALONE_LABEL = "issue:standalone"
+PROPOSAL_LABEL = "issue:proposal"
 TASKS_HEADING = "子タスクのチェックリスト"
 NO_CHILDREN = "未分割（子issue未作成）"
 PARENT_REQUIRED = (

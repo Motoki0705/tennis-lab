@@ -116,7 +116,7 @@ the complete response and error details remain private evidence.
 | `record-worker-run` / `record-worker-ended` | Explicit registration of existing runner evidence / the parent's explicit termination confirmation |
 | `record-result` | Saved verification and its PR/evidence fields; explicit verification references captured results. Combined `review-request --prs` uses this same method |
 | `note` / `decide-worker-plan` | Canonical comment reference / saved planning-answer outcome. They do not invent a common decision; `decide` can reference the original reason |
-| `improvement` / `improvement-publish` | Observations and explicit splitting decisions reference the canonical candidate, then link to publication requests/results. Capture only while the source parent owns the work |
+| `improvement` / `improvement-propose` / `improvement-decide` / `improvement-extract` | Observations and explicit splitting decisions reference the canonical candidate, then link to proposal publication, conversation decisions and grouped extraction requests/results. Capture only while the source parent owns the work |
 | `agree` / `basis-record` / `create-child` / `workflow-report` | Existing basis, creation and acceptance results. A successor's agree observes human approval through its source comment; approval does not imply execution |
 | `delegate`, `stop` / `resume` / `stop-worker`, `handoff` / `release` | Parent command outcomes and canonical comments; dispatcher cancellation and runner stop/recovery writes are separate facts |
 | `review-prepare` / `review-request` / `review-state` | Fixed request and explicit instruction/state outcomes. Only explicit receipt/verification operations set parent verification |
@@ -154,11 +154,14 @@ Use the existing `decide`, journal, publication and navigation mechanisms. Find
 the captured source review result ID `R` in `decision-log-status`. A parent's
 handoff decision names `R` in `decide.inputs`, states retained/rechecked scopes,
 and includes a `review` next-action plan. Prepare with
-`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`,
+`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
+--review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`,
 then issue `review-request --run-id NEXT --instruction-file instruction.txt
 --decision-id D --retry-of R`. A single matching plan needs no `--plan-id`.
 Preparation is a fetch; attach the review plan to `review-request`, which binds
-the subsequent `run`. Explicit handoff metadata must reference a result from
+the subsequent `run`. Follow the [model selection procedure](../parent/README.md#正式レビューのモデル選択)
+for the model and one-sentence reason required by the usual select configuration.
+Explicit handoff metadata must reference a result from
 that exact source operation and include it in the decision inputs; an unrelated
 result or decision is rejected. Legacy handoffs without decision metadata remain
 usable with a visible missing decision, not an invented one.

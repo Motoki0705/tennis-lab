@@ -26,7 +26,8 @@ def main() -> int:
                 {
                     **{key: record[key] for key in SUMMARY_KEYS},
                     "runner_alive": False,
-                    "agent_alive": record["result"] == "running",
+                    "agent_alive": record["result"] == "running"
+                    or bool(os.environ.get("MANUAL_AGENT_ALIVE")),
                     "agent_group_alive": record["result"] == "running",
                 }
             )
@@ -82,11 +83,13 @@ def main() -> int:
         "mode": "write",
         "settings": settings,
     }
-    session_id = "offline-private-session"
+    session_id = "offline-private-session-" + directory.name
+    session_root = directory
     if args[0] == "resume":
         previous = json.loads((Path(opt("--resume-from")) / "result.json").read_text())
         assert previous["contract"] == contract
         session_id = previous["runtime"]["session_id"]
+        session_root = Path(previous["session_root"])
     summary = {
         "schema_version": 1,
         "run_id": directory.name,
@@ -101,6 +104,8 @@ def main() -> int:
         json.dumps(
             {
                 **summary,
+                "run_dir": str(directory),
+                "session_root": str(session_root),
                 "contract": contract,
                 "prompt_sha256": hashlib.sha256(raw).hexdigest(),
                 "cleanup_complete": True,
@@ -124,6 +129,16 @@ def main() -> int:
     )
     (directory / "invocation.json").write_text(
         json.dumps({"schema_version": 1, "contract": contract})
+    )
+    (session_root / "session.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "session_id": session_id,
+                "latest_run": str(directory),
+                "last_turn_id": None,
+            }
+        )
     )
     headings = (
         "確認した根拠",

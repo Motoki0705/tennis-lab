@@ -651,6 +651,9 @@ def test_read_only_completion_never_creates_or_changes_state(
         "start-worker",
         "continue-worker",
         "workflow-report",
+        "improvement-propose",
+        "improvement-extract",
+        "improvement-decide",
     ],
 )
 def test_common_continuation_visits_pending_turn_once_outside_operation_lock(
@@ -895,6 +898,7 @@ def test_ops_tests_cannot_write_default_state_outside_their_private_root(
         ["publish-worker-log", "--child", "11", "--dry-run"],
         ["publish-worker-log", "--all-parents", "--dry-run"],
         ["inspect-worker", "--child", "11"],
+        ["improvement-expire", "--dry-run"],
     ],
 )
 def test_status_and_dry_run_cli_preserve_every_state_file(

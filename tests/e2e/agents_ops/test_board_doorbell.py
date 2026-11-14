@@ -696,6 +696,7 @@ def confirm_parent_display(bells: Bells) -> dict[str, Any]:
     pane["display_agent"] = "Parent label"
     pane["tokens"].update(
         tl_parent="#1",
+        tl_issue="#1",
         tl_topic="topic",
         tl_engine="claude",
         tl_owner=owner_token("claude:board-owner-1"),
