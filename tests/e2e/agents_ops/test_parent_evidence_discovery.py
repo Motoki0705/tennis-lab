@@ -112,7 +112,9 @@ def test_commands_only_page_through_labelled_evidence(
         "state=all&labels=parent-evidence&per_page=100&page=1" in endpoint
         for endpoint in listings
     )
-    assert len(listings) == (1 if command == "status" else 3)
+    # Resolve has a separate write-time observation; a validated existing
+    # container no longer repeats discovery just to call ensure() again.
+    assert len(listings) == (1 if command == "status" else 2)
 
 
 @pytest.mark.parametrize("duplicate", [False, True])

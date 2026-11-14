@@ -87,6 +87,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 
 `GitHub(repo, store=store)` は、そのStoreのactiveなtransaction専用client。
 GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
+`authenticated_login()` のloginだけはAPI hostと認証ごとにprocess内で再利用する。
+これは認証principalの識別であり、Issueや履歴の観測を保持するcacheではない。
+通常の `get("user")` とscope検査は従来どおりで、異なるtokenやhostへloginを持ち越さない。
 `fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
 入口で探索索引を失効させ、scope内ではendpoint GETのcacheを迂回する。
 同じfresh照合内の複数の履歴読取は、取り直した探索索引を共有する。
@@ -109,6 +112,9 @@ reviewのruntime/events/final等はregistry外で固定入力として検証し�
 通信・認証・repo解決は [共通HTTP client](../issues/README.md#github通信認証repo解決) を使う。
 親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
 launch plan内では、検証したfamilyの同じ観測をPR探索にも渡し、再走査を省く。
+delegateの初期計画・reconcileは同じ `LaunchInputs` を使い、ローカルgit検証後の
+fresh照合は新しいfamily・履歴・PR一覧を各1回取得して同じ照合内だけで渡す。
+改善承認の照合が別のfresh観測を行う場合、実行根拠はその後に改めて読み、古い計画入力を使わない。
 委任直前のfresh照合ではfamilyとtimelineを改めて取得する。
 親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
 sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
@@ -143,7 +149,7 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 ## 入口と合意
 
 以下のコマンドは会話を受けたagentが実行する。人間に実行させる手順ではない。
-共通引数はサブコマンドの前に置く。`--repo` 省略時は `gh repo view` で特定する。
+共通引数はサブコマンドの前に置く。`--repo` 省略時は一意のGitHub remoteから特定する。
 `--parent` は番号、`#番号`、同じrepoのHTTPS issue URLを受け取る。
 `--state-dir` でdispatcher/review/mergeと同じregistryを明示できる。省略時は従来のXDG state。
 workerの起動・継続では `--dispatcher-state-dir` も同じscheduleへ向ける。
@@ -155,6 +161,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent https://github.com/Mo
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 checking
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp/agreement.json
 ```
+
+`register` はrepo・parent・assignment・display_summary・current_session_is_owner・phaseと
+表示連携の結果を返す。担当登録後にfamily/timeline/worker/completionを全収集し直さず、
+それらの独立した現状確認は `status` で行う。登録コメントの公開と検証は省略しない。
 
 `agreement.json` は `purpose` / `scope` / `behavior` / `acceptance` / `human_confirmation` の
 5キーだけを持つJSON object。値はすべて非空の文章とし、最後の値に人間の確認発言を引用する。

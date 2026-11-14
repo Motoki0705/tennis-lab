@@ -25,6 +25,7 @@ def api(monkeypatch: pytest.MonkeyPatch) -> Any:
     )
     transport = importlib.import_module("issues.transport")
     transport._auth_token.cache_clear()
+    monkeypatch.setattr(transport, "_logins", {})
     for name in ("GH_TOKEN", "GITHUB_TOKEN", "GH_HOST"):
         monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("NO_PROXY", "127.0.0.1")
@@ -136,6 +137,107 @@ def test_rest_graphql_and_detached_share_one_connection_and_token(
         c["headers"]["Authorization"] == "Bearer secret-primary-token" for c in calls
     )
     assert json.loads(calls[1]["body"]) == {"body": body}
+
+
+def test_login_is_reused_across_clients_transactions_and_detached_reads(
+    api: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    store = importlib.import_module("parent.state").Store(tmp_path / "registry")
+    with server(api, monkeypatch, [response({"login": "operator"})]) as calls:
+        gh = api.parent.GitHub("o/r", store=store)
+        other = api.parent.GitHub("other/repo")
+        try:
+            with store.locked():
+                assert gh.authenticated_login() == "operator"
+                with gh.io_scope():
+                    assert gh.detached().authenticated_login() == "operator"
+                with pytest.raises(ValueError, match="lock to be released"):
+                    gh.detached().authenticated_login()
+            with pytest.raises(ValueError, match="active registry transaction"):
+                gh.authenticated_login()
+            with store.locked():
+                assert gh.authenticated_login() == "operator"
+            assert other.authenticated_login() == "operator"
+        finally:
+            gh.close()
+            other.close()
+    assert len(calls) == 1 and calls[0]["path"] == "/user"
+
+
+def test_login_cache_separates_credentials_and_api_hosts(
+    api: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with server(
+        api,
+        monkeypatch,
+        [response({"login": "first"}), response({"login": "second"})],
+    ) as calls:
+        for token, login in (("first-token", "first"), ("second-token", "second")):
+            monkeypatch.setenv("GH_TOKEN", token)
+            gh = api.parent.GitHub("o/r")
+            try:
+                assert gh.authenticated_login() == login
+            finally:
+                gh.close()
+    with server(api, monkeypatch, [response({"login": "other-host"})]) as other:
+        gh = api.parent.GitHub("o/r")
+        try:
+            assert gh.authenticated_login() == "other-host"
+        finally:
+            gh.close()
+    assert len(calls) == 2 and len(other) == 1
+    assert "first-token" not in repr(api.transport._logins)
+    assert "second-token" not in repr(api.transport._logins)
+
+
+def test_failed_login_is_not_cached(api: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    with server(
+        api,
+        monkeypatch,
+        [response({"message": "unauthorized"}, 401), response({"login": "repaired"})],
+    ) as calls:
+        gh = api.parent.GitHub("o/r")
+        try:
+            with pytest.raises(api.reader.GitHubHTTPError):
+                gh.authenticated_login()
+            assert gh.authenticated_login() == "repaired"
+        finally:
+            gh.close()
+    assert len(calls) == 2
+
+
+def test_write_invalidates_target_relations_without_evicting_other_issue_numbers(
+    api: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    store = importlib.import_module("parent.state").Store(tmp_path / "registry")
+    with server(
+        api, monkeypatch, [response({"revision": n}) for n in range(8)]
+    ) as calls:
+        gh = api.parent.GitHub("o/r", store=store)
+        gh.parent = 1
+        try:
+            with store.locked():
+                for endpoint in (
+                    "issues/1",
+                    "issues/1/parent",
+                    "issues/10",
+                    "issues/10/parent",
+                ):
+                    gh.get(f"repos/o/r/{endpoint}")
+                gh.write("PATCH", "repos/o/r/issues/1", {"body": "updated"})
+                assert gh.get("repos/o/r/issues/10") == {"revision": 2}
+                assert gh.get("repos/o/r/issues/10/parent") == {"revision": 3}
+                assert gh.get("repos/o/r/issues/1") == {"revision": 5}
+                assert gh.get("repos/o/r/issues/1/parent") == {"revision": 6}
+                with gh.fresh_reads():
+                    assert gh.get("repos/o/r/issues/10") == {"revision": 7}
+        finally:
+            gh.close()
+    assert [c["path"] for c in calls[-3:]] == [
+        "/repos/o/r/issues/1",
+        "/repos/o/r/issues/1/parent",
+        "/repos/o/r/issues/10",
+    ]
 
 
 @pytest.mark.parametrize(

@@ -8,6 +8,7 @@ import re
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,15 @@ from .state import Store
 TASK_MARKER = re.compile(
     r"(?m)^<!-- parent-task:v1 parent=([1-9][0-9]*) key=([a-z0-9][a-z0-9-]{0,63}) spec=([0-9a-f]{64}) -->$"
 )
+
+
+@dataclass(frozen=True)
+class LaunchInputs:
+    """Explicit inputs from one observation; never retained on a client/session."""
+
+    family: dict[int, Issue]
+    history: list[dict[str, Any]]
+    pulls: list[dict[str, Any]]
 
 
 def task_title(issue: Issue) -> str:
@@ -119,7 +129,7 @@ class ParentSession:
         self.gh.parent = parent
         self.gh.evidence_directory = store.directory / "evidence-issues"
         self.store.focus(self.key)
-        self.login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+        self.login = gh.authenticated_login()
 
     def detached(self) -> ParentSession:
         """Retain frozen local context with an explicit registry-external client."""
@@ -240,7 +250,17 @@ class ParentSession:
             {"event": "assigned", "generation": self.row["generation"]},
             "担当開始。担当指定と要件合意は別段階です。要件を確認してから分割・委任します。",
         )
-        return self.status()
+        # Registration returns its assignment receipt. A full status collection
+        # also traverses family/timelines and worker/completion inputs unrelated
+        # to this mutation; callers request that independent observation via status.
+        return {
+            "repo": self.gh.repo,
+            "parent": self.parent,
+            "assignment": self.row["status"],
+            "display_summary": self.row.get("display_summary"),
+            "current_session_is_owner": self.row["session"] == self.session,
+            "phase": PHASES[phase(self.history())],
+        }
 
     def capture_owner_runtime(self) -> bool:
         from lib.identity import native_runtime
@@ -988,16 +1008,22 @@ class ParentSession:
             proposals.require_source(self, source)
         return {"child": n, "reused": bool(found), "progress": states}
 
+    def launch_inputs(self) -> LaunchInputs:
+        family = self.gh.family(self.parent)
+        return LaunchInputs(family, self.history(), self.gh.pulls(set(family)))
+
     def launch_plan(
         self,
         overrides: dict[int, list[int]] | None = None,
         restart_child: int | None = None,
+        *,
+        inputs: LaunchInputs | None = None,
     ) -> dict[str, Any]:
         # Family validation and PR discovery use one observation. In a fresh
         # admission check, re-traversing the same family here used to bypass the
         # GET cache a second time without establishing a new freshness boundary.
-        family = self.gh.family(self.parent)
-        parent, items = self.work_items(family)
+        inputs = self.launch_inputs() if inputs is None else inputs
+        parent, items = self.work_items(inputs.family)
         children, external_deps = work_targets.dependency_graph(parent, items)
         standalone_deps: list[int] | None = None
         blockers = []
@@ -1024,11 +1050,11 @@ class ParentSession:
             blockers.append(reason("parent_assignment", "親の担当がactiveでない。"))
         if parent.state != "open" and restart_child is None:
             blockers.append(reason("parent_closed", "親issueがopenでない。"))
-        if phase(self.history()) not in {"agreed", "autonomous"}:
+        if phase(inputs.history) not in {"agreed", "autonomous"}:
             blockers.append(
                 reason("execution_basis_required", "親の有効な実行根拠を記録する。")
             )
-        pulls = self.gh.pulls(set(family))
+        pulls = inputs.pulls
         work_targets.require_separate_self_prs(parent, pulls, self.gh.repo)
         plan = plan_launches(
             children,
@@ -1077,12 +1103,13 @@ class ParentSession:
         self.sync_progress()
         return {"child": child, "launch_plan": self.launch_plan()}
 
-    def reconcile(self) -> dict[str, Any]:
+    def reconcile(self, *, inputs: LaunchInputs | None = None) -> dict[str, Any]:
         self.owner()
-        _, children = self.work_items()
-        initial_plan = self.launch_plan()
+        inputs = self.launch_inputs() if inputs is None else inputs
+        _, children = self.work_items(inputs.family)
+        initial_plan = self.launch_plan(inputs=inputs)
         states = {t["child"]: t["state"] for t in initial_plan["tasks"]}
-        prs = self.gh.pulls()
+        prs = inputs.pulls
         run_paths = self.run_paths()
         from .policy import closing_issues
 
@@ -1130,17 +1157,17 @@ class ParentSession:
                     "commits_since_planning": self._planning_commits(task),
                 }
             )
-        plan = self.launch_plan()
+        plan = self.launch_plan(inputs=inputs)
         for task, planned in zip(result, plan["tasks"], strict=True):
             if task["child"] != planned["child"]:
                 raise ValueError("child set changed during reconciliation")
             task.update({k: planned[k] for k in ("action", "reasons", "stacked_on")})
         return {
             "parent": self.parent,
-            "phase": PHASES[phase(self.history())],
+            "phase": PHASES[phase(inputs.history)],
             "tasks": result,
             "launch_plan": plan,
-            "review": self.review_status(self.history()),
+            "review": self.review_status(inputs.history),
         }
 
     def _planning_commits(self, task: dict[str, Any]) -> bool | None:
@@ -1172,7 +1199,8 @@ class ParentSession:
     ) -> dict[str, Any]:
         self.agreed()
         auth = execution.authorization(self)
-        parent, children = self.work_items()
+        inputs = self.launch_inputs()
+        parent, children = self.work_items(inputs.family)
         if child not in children:
             raise ValueError("delegate requires a direct child or the standalone issue")
         from .improvements import require as require_improvement
@@ -1191,13 +1219,15 @@ class ParentSession:
             for dep in deps:
                 number(dep)
         override = {child: deps} if deps is not None else None
-        initial_plan = self.launch_plan(override)
+        initial_plan = self.launch_plan(override, inputs=inputs)
         states = {t["child"]: t["state"] for t in initial_plan["tasks"]}
         if states[child] != "continue" and not (
             continue_existing and states[child] == "completed"
         ):
             raise ValueError(f"#{child} cannot be delegated: {states[child]}")
-        reconciled = next(t for t in self.reconcile()["tasks"] if t["child"] == child)
+        reconciled = next(
+            t for t in self.reconcile(inputs=inputs)["tasks"] if t["child"] == child
+        )
         previous = self.row["tasks"].get(str(child), {})
         if reconciled["prs"] and not continue_existing:
             raise ValueError(
@@ -1225,11 +1255,13 @@ class ParentSession:
             nonempty(restart, "restart evidence")
         planned = next(
             t
-            for t in self.launch_plan(override, child if restart else None)["tasks"]
+            for t in self.launch_plan(
+                override, child if restart else None, inputs=inputs
+            )["tasks"]
             if t["child"] == child
         )
         if continue_existing:
-            plan = self.launch_plan(override, child)
+            plan = self.launch_plan(override, child, inputs=inputs)
             limit = plan["policy"]["max_parallel_children"]
             if limit is not None and len(plan["active_reservations"]) >= limit:
                 raise ValueError("implementation reservation limit reached")
@@ -1308,18 +1340,30 @@ class ParentSession:
         task.pop("model_reason", None)
         # The final admission check must observe edits made during local validation.
         with self.gh.fresh_reads():
+            # Local git validation separates two independent observations. Read
+            # each input again here, then pass that same response to consumers
+            # within this check instead of issuing duplicate fresh GETs.
+            fresh_inputs = self.launch_inputs()
+            fresh_parent, fresh_children = self.work_items(fresh_inputs.family)
             if source is not None:
                 proposals.require_source(self, source)
-            check_task_adoptions(self.gh, self.gh.issue(self.parent)["body"])
-            check_task_adoptions(self.gh, self.gh.issue(child)["body"])
-            if execution.authorization(self) != auth:
+            check_task_adoptions(self.gh, fresh_parent.body)
+            if child not in fresh_children:
+                raise ValueError("child launch inputs changed before delegation")
+            check_task_adoptions(self.gh, fresh_children[child].body)
+            if (
+                execution.authorization(
+                    self, history=fresh_inputs.history, parent=fresh_parent
+                )
+                != auth
+            ):
                 raise ValueError("execution basis changed before delegation")
             fresh = next(
                 (
                     t
-                    for t in self.launch_plan(override, child if restart else None)[
-                        "tasks"
-                    ]
+                    for t in self.launch_plan(
+                        override, child if restart else None, inputs=fresh_inputs
+                    )["tasks"]
                     if t["child"] == child
                 ),
                 None,

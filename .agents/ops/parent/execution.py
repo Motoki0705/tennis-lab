@@ -10,6 +10,8 @@ from .judgement_comments import owned_comment
 from .policy import digest, nonempty, number, object_value, phase, section_span
 
 if TYPE_CHECKING:
+    from issues import Issue
+
     from .session import ParentSession
 
 
@@ -277,16 +279,28 @@ def validate_event(event: Mapping[str, Any]) -> None:
         raise ValueError("execution observations missing")
 
 
-def _current_basis(session: ParentSession) -> dict[str, Any]:
+def _current_basis(
+    session: ParentSession,
+    *,
+    history: list[dict[str, Any]] | None = None,
+    parent: Issue | None = None,
+) -> dict[str, Any]:
     # A recorded agreement/decision is evidence of authority. Prose edits and
     # handoffs are observations for the parent, not revocations of that evidence.
     from .improvements import require as require_improvement
 
-    binding = require_improvement(session)
+    binding = require_improvement(
+        session, body=parent.body if parent is not None else None, history=history
+    )
+    if binding is not None:
+        # Improvement approval is an independent fresh observation. It may
+        # observe a newer revocation or needs-human label; never carry the
+        # earlier planning inputs across that boundary for authorization.
+        history, parent = None, None
     current = next(
         (
             e
-            for e in reversed(session.history())
+            for e in reversed(session.history() if history is None else history)
             if e["event"] in {"agreed", "execution_basis", "basis_revoked"}
         ),
         None,
@@ -302,9 +316,12 @@ def _current_basis(session: ParentSession) -> dict[str, Any]:
     if current["event"] == "agreed":
         return human_basis(current)
     validate_event(current)
-    if "needs-human" in {
-        label["name"] for label in session.gh.issue(session.parent)["labels"]
-    }:
+    labels = (
+        parent.labels
+        if parent is not None
+        else {label["name"] for label in session.gh.issue(session.parent)["labels"]}
+    )
+    if "needs-human" in labels:
         raise ExecutionBasisStale("explicit human decision is pending")
     return object_value(current["basis"])
 
@@ -392,10 +409,17 @@ def _basis_authorization(
 
 
 def authorization(
-    session: ParentSession, request: Mapping[str, Any] | None = None
+    session: ParentSession,
+    request: Mapping[str, Any] | None = None,
+    *,
+    history: list[dict[str, Any]] | None = None,
+    parent: Issue | None = None,
 ) -> dict[str, Any]:
+    session.owner()
     return _basis_authorization(
-        current_basis(session), session.owner()["generation"], request
+        _current_basis(session, history=history, parent=parent),
+        session.row["generation"],
+        request,
     )
 
 

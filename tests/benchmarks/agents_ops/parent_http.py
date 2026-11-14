@@ -39,6 +39,7 @@ def run(checkout: Path, output: Path, repeats: int) -> None:
     use_http = (checkout / ".agents/ops/issues/transport.py").exists()
     output.mkdir(parents=True, exist_ok=False)
     metric_file = output / "metrics.jsonl"
+    requests_file = output / "requests.jsonl"
     for repeat in range(repeats):
         directory = output / str(repeat)
         directory.mkdir()
@@ -53,9 +54,39 @@ def run(checkout: Path, output: Path, repeats: int) -> None:
                     )
                 return p
 
-            p = environment(directory)
             extra = {"PARENT_METRICS_FILE": str(metric_file)}
-            p.cli("register", extra=extra)
+
+            def measure(
+                p: Any, *args: str, extra: dict[str, str] = extra, repeat: int = repeat
+            ) -> Any:
+                offset = len(p.calls())
+                result = p.cli(*args, extra=extra)
+                calls = []
+                for call in p.calls()[offset:]:
+                    if call[0] != "api":
+                        continue
+                    endpoint = next(
+                        a
+                        for a in call
+                        if a in {"user", "graphql"} or a.startswith("repos/")
+                    )
+                    method = (
+                        call[call.index("--method") + 1]
+                        if "--method" in call
+                        else "POST"
+                    )
+                    calls.append({"method": method, "endpoint": endpoint})
+                with requests_file.open("a") as stream:
+                    stream.write(
+                        json.dumps(
+                            {"command": args[0], "repeat": repeat, "requests": calls}
+                        )
+                        + "\n"
+                    )
+                return result
+
+            p = environment(directory)
+            measure(p, "register", "--summary", "計測対象")
             p.cli("checking")
             p.cli(
                 "agree",
@@ -71,10 +102,11 @@ def run(checkout: Path, output: Path, repeats: int) -> None:
                 ),
             )
             p.child("first")
-            p.cli("status", extra=extra)
-            p.cli("note", "--body-file", p.note("比較用の固定メモ。"), extra=extra)
+            measure(p, "status")
+            measure(p, "note", "--body-file", p.note("比較用の固定メモ。"))
             worktree = p.worktree("benchmark")
-            p.cli(
+            measure(
+                p,
                 "delegate",
                 "--child",
                 "10",
@@ -84,7 +116,6 @@ def run(checkout: Path, output: Path, repeats: int) -> None:
                 "codex/benchmark",
                 "--worktree",
                 str(worktree),
-                extra=extra,
             )
             review_directory = directory / "review"
             review_directory.mkdir()
@@ -93,14 +124,14 @@ def run(checkout: Path, output: Path, repeats: int) -> None:
             prepared = json.loads(
                 p.cli("review-prepare", *p.review_flags(), "--prs", "100").stdout
             )
-            p.cli(
+            measure(
+                p,
                 "review-request",
                 *p.review_flags(),
                 "--run-id",
                 prepared["review_run_id"],
                 "--instruction-file",
                 p.note("変更の契約を確認する。"),
-                extra=extra,
             )
     print(metric_file.read_text(), end="")
 

@@ -14,7 +14,7 @@ from issues.cli import GitHub as IssueGitHub
 from issues.evidence import EVIDENCE_LABEL, is_evidence_issue, require_work_issue
 
 from . import metrics
-from .policy import closing_issues, object_value
+from .policy import closing_issues, nonempty, object_value
 
 if TYPE_CHECKING:
     from .evidence import EvidenceIssues
@@ -89,6 +89,12 @@ class GitHub(IssueGitHub):
                     ] = copy.deepcopy(issue)
         return result
 
+    def authenticated_login(self) -> str:
+        self._require_scope()
+        return self._http.authenticated_login(
+            lambda: nonempty(object_value(self.get("user")).get("login"), "gh login")
+        )
+
     def _require_scope(self) -> None:
         if self._store is not None:
             self._store.require_transaction()
@@ -133,7 +139,8 @@ class GitHub(IssueGitHub):
         self._cache = {
             key: value
             for key, value in self._cache.items()
-            if not key[0].split("?")[0].startswith(root)
+            if key[0].split("?")[0] != root
+            and not key[0].split("?")[0].startswith(root + "/")
         }
 
     def rows(self, endpoint: str) -> list[dict[str, Any]]:
@@ -273,7 +280,7 @@ class GitHub(IssueGitHub):
     ) -> History:
         from .history import read_history
 
-        publisher = login or object_value(self.get("user"))["login"]
+        publisher = login or self.authenticated_login()
         return read_history(self, parent, publisher, **kwargs)
 
     def parent_comments(

@@ -6,12 +6,14 @@ no API request is executed in a subprocess. Only credential lookup may use gh.
 
 from __future__ import annotations
 
+import hashlib
 import http.client
 import json
 import os
 import re
 import shutil
 import subprocess
+from collections.abc import Callable
 from contextvars import ContextVar
 from functools import lru_cache
 from typing import Any, cast
@@ -22,6 +24,7 @@ from urllib3 import connection, connectionpool
 
 _API_URL = "https://api.github.com/"
 _TIMEOUT = 60
+_logins: dict[tuple[str, str], str] = {}
 _received_status: ContextVar[int | None] = ContextVar(
     "github_http_status", default=None
 )
@@ -128,6 +131,16 @@ class HTTPClient:
     def __init__(self) -> None:
         self._session: requests.Session | None = None
         self._token: str | None = None
+
+    def authenticated_login(self, fetch: Callable[[], str]) -> str:
+        # Principal identity is stable for a credential, unlike issue facts.
+        # Keep only login, keyed by API host and an opaque credential digest;
+        # neither tokens nor complete /user responses enter the shared cache.
+        self._token = self._token or _token()
+        key = (_API_URL, hashlib.sha256(self._token.encode()).hexdigest())
+        if key not in _logins:
+            _logins[key] = fetch()
+        return _logins[key]
 
     def redact(self, text: str) -> str:
         secrets = {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Any
 
@@ -18,7 +19,13 @@ if TYPE_CHECKING:
 
 
 def post_once(
-    session: ParentSession, issue: int, body: str, key: str, *, projection: bool = False
+    session: ParentSession,
+    issue: int,
+    body: str,
+    key: str,
+    *,
+    projection: bool = False,
+    validate: Callable[[list[dict[str, Any]]], None] | None = None,
 ) -> dict[str, Any]:
     """A lost response is reconciled. Absence after a sent intent never causes POST."""
     session.public(body)
@@ -63,9 +70,10 @@ def post_once(
             raise ValueError("comment outbox conflict; inspect the original operation")
         if saved is not None and saved["state"] == "bound":
             number(saved["comment_id"])
+        rows = gh.comments(issue)
         matches = [
             c
-            for c in gh.comments(issue)
+            for c in rows
             if c.get("user", {}).get("login") == session.login and c.get("body") == body
         ]
         if len(matches) > 1:
@@ -81,6 +89,11 @@ def post_once(
                 raise ValueError(
                     "comment publication uncertain; reconcile before any new POST"
                 )
+            if validate is not None:
+                # Validate the same fresh rows used for duplicate detection,
+                # after acquiring the outbox lock, rather than fetching them
+                # once for preparation and again here without intervening I/O.
+                validate(rows)
             atomic(path, {**identity, "state": "sent", "comment_id": None})
             try:
                 gh.write(
@@ -131,22 +144,34 @@ def _write_record(session: ParentSession, body: str) -> dict[str, Any]:
                     session, number(comment["_parent_record_issue"]), body, digest(body)
                 )
             return post_once(session, session.parent, body, digest(body))
-    issue = session.gh.evidence_issues().ensure(
-        session.parent,
-        session.login,
-        store=session.gh._store,
-    )
-    rows = session.gh.comments(issue.number)
-    cid = 1 + max((c["id"] for c in history.comments + rows), default=0)
-    parse_history(
-        session.gh.repo,
-        session.parent,
-        session.login,
-        history.parent_comments,
-        [*rows, {"id": cid, "body": body, "user": {"login": session.login}}],
-        evidence_issue=issue.number,
-    ).require_valid()
-    return post_once(session, issue.number, body, digest(body))
+    manager = session.gh.evidence_issues()
+    destination = history.evidence_issue
+    if destination is None or manager.needs_binding(session.parent, session.login):
+        destination = manager.ensure(
+            session.parent, session.login, store=session.gh._store
+        ).number
+    else:
+        # Keep ensure's work-issue check even though container creation is not
+        # needed. A parent relabelled as evidence/proposal cannot receive a new
+        # machine record merely because its old container still exists.
+        session.gh.issue(session.parent)
+    # read_history has just validated the listing AND the saved binding remotely.
+    # An existing container requires no creation lock or second identical find.
+    # First binding and absent/uncertain creation still need ensure's independent
+    # locked observation and durable journal update.
+
+    def validate(rows: list[dict[str, Any]]) -> None:
+        cid = 1 + max((c["id"] for c in history.comments + rows), default=0)
+        parse_history(
+            session.gh.repo,
+            session.parent,
+            session.login,
+            history.parent_comments,
+            [*rows, {"id": cid, "body": body, "user": {"login": session.login}}],
+            evidence_issue=destination,
+        ).require_valid()
+
+    return post_once(session, destination, body, digest(body), validate=validate)
 
 
 def url(session: ParentSession, comment: dict[str, Any]) -> str:
