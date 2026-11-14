@@ -3262,9 +3262,10 @@ def test_parent_stopping_during_review_invalidates_the_result(
     single_review_env: ReviewEnv,
 ) -> None:
     r = single_review_env
-    value = json.loads(r.run(ok=False, extra={"REVIEW_STOP_PARENT": "1"}).stdout)
-    assert value["result"]["status"] == "failed"
-    assert all(p["coverage"] == "not_reviewed" for p in value["result"]["prs"])
+    response = r.run(ok=False, extra={"REVIEW_STOP_PARENT": "1"})
+    assert response.returncode == 2 and "registry changed" in response.stderr
+    assert not (r.run_dir / "result.json").exists()
+    assert json.loads((r.run_dir / "execution.json").read_text())["status"] == "running"
     r.run(ok=False)
     assert len(r.calls()) == 1
 

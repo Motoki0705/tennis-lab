@@ -263,7 +263,7 @@ def test_rejected_session_replacement_can_be_retried_explicitly(
     run(p)
     directory = corrupt_record(p)
     before = copy.deepcopy(task(p))
-    rejected = replacement(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    rejected = replacement(p, ok=False, MANUAL_ADMISSION_FAILURE="1")
     assert json.loads(rejected.stdout)["launch_state"] == "rejected_before_start"
     saved = task(p)
     assert saved["worker_runs"] == before["worker_runs"]
@@ -304,7 +304,7 @@ def test_legacy_session_replacement_retries_rejected_launch_and_requests_review(
     gh["prs"] = [p.pr(100, 10, run_git(tree, "rev-parse", "HEAD"), before["branch"])]
     p.save(gh)
 
-    rejected = replacement(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    rejected = replacement(p, ok=False, MANUAL_ADMISSION_FAILURE="1")
     assert json.loads(rejected.stdout)["launch_state"] == "rejected_before_start"
     saved = copy.deepcopy(task(p))
     assert saved["worker_runs"] == before["worker_runs"]
@@ -364,7 +364,7 @@ def test_legacy_session_replacement_retry_rejects_changed_source(
 ) -> None:
     p = legacy_worker
     directory = latest(p)
-    replacement(p, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    replacement(p, ok=False, MANUAL_ADMISSION_FAILURE="1")
     result = directory / "result.json"
     record = json.loads(result.read_text())
     record["finished_at"] += 1
@@ -465,8 +465,10 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
     assert recovered["cleanup_complete"] is True
     assert recovered["turn_end_reason"] == "metadata_error"
     assert "Expecting value" in recovered["recovery_error"]
+    previous_runs = copy.deepcopy(task(p)["worker_runs"])
     rejected = real("--resume", ok=False)
-    assert json.loads(rejected.stdout)["launch_state"] == "rejected_before_start"
+    assert "previous turn evidence is unconfirmed" in rejected.stderr
+    assert task(p)["worker_runs"] == previous_runs
     registered_path = p.root / "parent-launched-run"
     if registered:
         launched = subprocess.run(

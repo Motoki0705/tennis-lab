@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import importlib
 import re
+from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -148,6 +149,7 @@ def planning(
     }
     session = SimpleNamespace(
         row={"tasks": {"10": task}},
+        gh=SimpleNamespace(io_scope=nullcontext),
         store=SimpleNamespace(save=lambda: None),
         owner=lambda: None,
     )

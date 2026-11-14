@@ -118,7 +118,7 @@ def test_failed_prelaunch_can_be_retried_without_a_phantom_run(
         else ("run-worker", "--child", "10", "--prompt-file", p.note())
     )
     # A known prelaunch rejection is retained as an attempt, not a worker run.
-    failed = manual(p, *command, ok=False, MANUAL_PREFLIGHT_FAILURE="1")
+    failed = manual(p, *command, ok=False, MANUAL_ADMISSION_FAILURE="1")
     assert len(task(p)["worker_runs"]) == int(after_planning)
     assert json.loads(failed.stdout)["log_publication"]["stage"] == "not_started"
     resumed = manual(p, *command)

@@ -342,7 +342,8 @@ def latest_evidence(
         jobs = worker_jobs(session.row["dispatch"], child)
         if not jobs or jobs[-1]["delegation_id"] != task["delegation_id"]:
             raise ValueError("no runtime for the current worker delegation")
-        record = ended(jobs[-1])
+        with session.gh.io_scope():
+            record = ended(jobs[-1])
         if record is None:
             raise ValueError("cancelled reservation has no planning final")
         Supervisor._check_contract(jobs[-1], record)
@@ -361,8 +362,9 @@ def latest_evidence(
 
     runner_ended(session, child, persist=persist_ended)
     directory = latest_run(session, task)
-    validate_run(task, directory)
-    proof = Runtime(RUNNER).inspect(directory)
+    with session.gh.io_scope():
+        validate_run(task, directory)
+        proof = Runtime(RUNNER).inspect(directory)
     if not Runtime(RUNNER).ended(proof):
         raise ValueError("worker termination and cleanup must be confirmed")
     return directory, proof["record"]
@@ -390,10 +392,11 @@ def decide(
     ):
         raise ValueError("saved planning instruction does not match the runtime")
     bind_runtime(value, record, directory=directory)
-    raw = (directory / "final.md").read_bytes()
-    text = raw.decode("utf-8")
-    nonempty(text, "planning final")
-    final_sha = hashlib.sha256(raw).hexdigest()
+    with session.gh.io_scope():
+        raw = (directory / "final.md").read_bytes()
+        text = raw.decode("utf-8")
+        nonempty(text, "planning final")
+        final_sha = hashlib.sha256(raw).hexdigest()
     previous = [
         d
         for d in value["decisions"]
@@ -470,13 +473,14 @@ def prepare_turn(
         source = next(
             t for t in value["turns"] if t["snapshot"]["turn_id"] == decision["turn_id"]
         )
-        if (
-            hashlib.sha256(
-                (Path(source["source"]) / "final.md").read_bytes()
-            ).hexdigest()
-            != decision["final_sha256"]
-        ):
-            raise ValueError("planning final changed after the parent answer")
+        with session.gh.io_scope():
+            if (
+                hashlib.sha256(
+                    (Path(source["source"]) / "final.md").read_bytes()
+                ).hexdigest()
+                != decision["final_sha256"]
+            ):
+                raise ValueError("planning final changed after the parent answer")
         text = "## 親の判断\n\n" + decision["answer"]
         if instruction is not None:
             text += "\n\n" + original_text(instruction)

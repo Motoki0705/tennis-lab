@@ -81,6 +81,26 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 
 ### 取得範囲と計測
 
+`GitHub(repo, store=store)` は、そのStoreのactiveなtransaction専用client。
+GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
+`fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
+入口で探索索引を失効させ、scope内ではendpoint GETのcacheを迂回する。
+同じfresh照合内の複数の履歴読取は、取り直した探索索引を共有する。
+`history_read_scope()` はtransactionのGET cacheを捨て、独立した履歴の観測を開始する。
+`GitHub(repo)` はregistry外のclientで、GET cacheを持たない。
+履歴の探索索引はロック外でも明示した `history_read_scope()` の1観測内だけ再利用する。
+次の観測・fresh照合・書込みでは索引を失効させる。
+既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
+transaction用clientがlock不在を検出して自動的にregistry外clientへ切り替わることはない。
+
+transaction内でgit・runner・証拠ファイルを検証するときは `gh.io_scope()` でregistryを解放する。
+GitHub取得も含む読取処理には `session.unlocked()` が返す独立client付きsessionを使う。
+どちらも復帰時に対象親の永続行を再照合し、競合は `RegistryConflict`（終了値2）で返す。
+transactionを終了して長時間処理を行う場合は `store.checkpoint()` を保存し、
+次のtransactionで `store.revalidate(checkpoint)` を実行してから保存・公開・agent起動へ進む。
+自分が保存した変更の後でcheckpointを取り直し、他の親だけの変更は保持する。
+reviewのruntime/events/final等はregistry外で固定入力として検証し、読取中の変更も拒否する。
+
 親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
 親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
 sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
@@ -207,8 +227,7 @@ triageの履歴検査と再適用は [ops-report README](../ops-report/README.md
 ラベル付きの候補が複数あれば選ばずエラーにする。ラベルのないmarker付きIssueや、
 別番号でラベルを外した重複・不正な容器を毎回検出する保証はない。
 既知のbindingは一覧との照合に加えて保存番号を個別取得するため、既知の容器のラベル外れは引き続き拒否する。
-親CLI・review CLIの同じコマンド・読み取り範囲と、dispatcherの1回のread-only収集では発見用の一覧を共有する。
-書込みで一覧を失効し、明示的な鮮度確認・次の読み取り範囲では再取得する。
+親CLI・review CLI・dispatcherでは、[各観測のclient契約](#取得範囲と計測)に従って発見用の一覧を共有・再取得する。
 通常はopenのまま保持する。終了による完了数の増加や再開時の状態変更を避け、追記する保存容器であることを示すため。
 closedにしても履歴は読め、作業対象への除外は状態に依存しない。
 作業Issueへの誤用を防ぐ共通判定と経路は [issues API](../issues/README.md#証拠用issueの除外) を参照する。
@@ -678,7 +697,10 @@ runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ラ�
 実行中はregistry・親の操作ロックを保持しない。終了値は共通ランナーの値を返し、stdoutは
 `{child, delegation_id, exit_code, runner_summary}`。`runner_summary` はランナーの公開要約JSONであり、
 起動前拒否等で要約が無い非ゼロ終了ではnullとする。最終文のprivateな参照先は `final_file` へ返す。
-起動前の明確な拒否は診断を残して予約を復元し、起動有無が不明な中断は予約とrunを保持する。別sessionを自動起動しない。
+Popen前の失敗は例外型によらず、診断を残し、GitHub通信なしの新transactionで
+session/status/generation/delegation/最新run/turnを照合して当該runだけを取り消す。
+並行した停止・証拠は保持する。Popen後の保存失敗・受理不明（run dir無しを含む）は
+予約とrunを保持し、runtimeとcleanupの照合を要求する。別sessionを自動起動しない。
 
 `--resume` は現在の委任で最後に記録したrunの契約と終了・cleanupを検査し、
 共通ランナーの `resume --resume-from` で同じsessionへ戻す。委任IDは共通ランナーのtask IDなので保持する。
@@ -780,8 +802,6 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 通常再開の終了・cleanup・同一sessionは保存済みrunner記録から照合する。`--restart-evidence-file` は補足任意。
 PRがmerge済み、issueがclosed/completedでも、同じworkerへ残る受入確認を依頼できる。
 取消・明示停止・生存不明・worktree/branchの取り違えは別に検査する。
-`run-worker` は最新runの `final_file` を返す。起動前拒否でrun dirが作られていない場合は
-失敗の診断をprivateな履歴へ保存し、実行runと予約を元に戻す。起動有無が不明な場合は予約を維持する。
 
 ログ保存と公開は [workerログ保存](../worker_logs/README.md) の独立した結果。
 `pending` は `publish-worker-log` で再開し、workerの終了や他の作業の可否へ読み替えない。
