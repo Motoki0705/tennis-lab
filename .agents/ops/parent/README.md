@@ -595,8 +595,12 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 予約後の起動失敗・中断時は、既存workerが終了した証拠を確認し、必要なら停止・再開を記録して
 `delegate --restart-evidence-file tmp/evidence.md` で明示的に再予約する。既存PRがあれば再予約もしない。
 
+### 成果の記録
+
 `record-result --child N --evidence-file tmp/tests.md` はclosing指示とbranchを照合し、
-担当Issueの成果物欄へPRと検証結果を追記する。記録だけで完了扱いにせず、過去の検証記録も残す。
+担当Issueの成果物欄へPRと検証結果を追記する。証拠の各行はMarkdownの引用にして転記するため、
+証拠内の見出しはIssueの要件節にならない。見出しを手動で除去する必要はない。
+記録だけで完了扱いにせず、過去の検証記録も残す。
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
 根拠・担当・子の要件が変わったときは親が成果への影響を判断し、必要な部分を再確認してrecord-resultへ記録する。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
@@ -666,9 +670,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 # 高難度の委任で親が代替モデルを選ぶ場合。理由は証拠用Issueのnoteにも残す
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --prompt-file tmp/task.md --model gpt-6-astra --model-reason-file tmp/model-reason.md
-# 同じ委任・sessionの修正ターン。終了枠を解放済みなら再開証拠も渡す
+# 同じ委任・sessionの修正ターン。終了・回収は保存済みrunから照合する
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  run-worker --child 1217 --resume --prompt-file tmp/fix.md --restart-evidence-file tmp/restart.md
+  run-worker --child 1217 --resume --prompt-file tmp/fix.md
 # 保存記録から同じsessionへの再開不能を確認した場合の明示付替え
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --replace-session --prompt-file tmp/replacement.md --restart-evidence-file tmp/restart.md
@@ -841,11 +845,7 @@ planningの報告は任意の書式でよく、親は直接 `--resume --prompt-f
 保存済み回答は次の同session継続に送られ、具体指示や追加指示も併記できる。
 
 `preflight` はターン・指示・回答・runtimeの来歴。本文・担当世代・依存の状態変化で自動失効させない。
-新しいtask記録はversion=2。旧version=1も読み、次の明示操作で新しい来歴を追記する。run/jobのsnapshotはversion=1のまま保持する。
-session付替えを記録したtaskとその継続はversion=3を使う。
-旧CLIは新しいtask versionを扱えないため、呼出元を新CLIへ更新してから利用する。稼働中の記録を一括変換しない。
 statusの `inputs_changed` は親が意味と影響を確認するための通知であり、再調査の強制ではない。
-旧委任にphase記録がなくても、通常のrun・session・終了照合を経て継続できる。過去の承認を生成しない。
 過去のrunとレビューは作成時の対象を保持し、今の条件への適用可能性は親が判断する。
 
 ```bash
@@ -862,6 +862,16 @@ PRがmerge済み、issueがclosed/completedでも、同じworkerへ残る受入�
 
 ログ保存と公開は [workerログ保存](../worker_logs/README.md) の独立した結果。
 `pending` は `publish-worker-log` で再開し、workerの終了や他の作業の可否へ読み替えない。
+
+### CLI更新後の既存worker
+
+親CLI・共通ランナーを変えるPRのmerge後は、次の操作に使う呼出元を新CLIへ更新する。
+旧worktreeを更新できない場合の参照方法とregistryのversion変更は[状態の移行](#状態の移行)を参照する。
+新しいtaskのphase来歴はversion=2。旧version=1も読み、次の明示操作で来歴を追記する。run/jobのsnapshotはversion=1のまま保持する。
+session付替えを記録したtaskとその継続はversion=3を使う。
+旧CLIは新しいtask versionを扱えない。稼働中の記録を一括変換したり、過去の承認を生成したりしない。
+phase記録のない旧委任も、[通常の継続](#workerの調査親判断実装フェーズ)でrun・session・終了・回収を照合する。
+継続後の成果は[成果の記録](#成果の記録)で受理し、生存不明・回収未確認だけは[共通ランナーの復旧](../lib/README.md#状態確認停止中断からの復旧)で事実を確認する。
 
 ### stacked branchの確認とrebase
 
@@ -1179,6 +1189,8 @@ fixedでは引数を省略すると設定の固定値を使用する。明示指
 未起動の旧requestは従来のfixed設定でだけ起動でき、selectや固定値変更時は新版requestを要求する。
 手動親と自律親は同じ入口・検証を使う。選択元は判断記録の既存の3分類へ接続する。
 
+### レビュー要求の記録と再実行
+
 証拠用Issueの `event:review, state:targets_fixed` にrun ID・requestのcanonical JSON SHA-256を記録し、
 本文のJSONコードブロックにmanifest全体を載せる。この時点ではレビュー未指示。
 `review-request` は同じ対象が現在も有効なことを再検査して、親の明示指示を証拠用Issueへ記録する。
@@ -1196,12 +1208,37 @@ run IDごとの実行を一度だけ受理する責任を持つ。** prepareだ�
 既にレビュー対象となったPRの再レビューには `--reason-file` を付ける。別PRの初回レビューには不要。
 PR open/push/CI完了ではこの入口もレビューも起動しない。
 
+### レビュー指示へ渡す証拠
+
+`--instruction-file` に目的・確認点と利用可能な証拠を渡す。取得できない証拠がある場合は、確認した事実で次の文例を埋める。
+
+```text
+対象: PR <番号>、HEAD <commit>。確認点: <要件・境界・検出したい不具合>。
+利用できない証拠: <CIログ・隔離CPUテスト等と、確認した取得不能の理由>。
+代替の証拠: <対象HEADのCI結論へのリンク、親/workerが実行したテストのコマンド・結果と出典>。
+固定diffを確認できた範囲でcoverageを判断し、上記の取得不能だけでnot_reviewedにしない。
+判断に必須の証拠がなお不足する論点は、対象・不足・必要な確認をevidence_waitsへ具体化する。
+```
+
+親の検証とworkerの自己報告を区別し、未実施を成功として埋めない。
+coverage・verdictと証拠待ちの境界は[レビューの証拠待ち](../review/README.md#証拠待ちの完了)が正本。
+
+### レビュー結果の受領と確認
+
 未指示 → `targets_fixed`（対象確定）→ `instructed`（指示済み）→ `result_received`（結果受領）→
 `fixes_verified`（修正確認）→ `complete`（完了）の順。
 後半は `review-state --run-id ID --state 状態 --evidence-file tmp/evidence.md` で証拠を残す。
 受領と確認が同時なら `instructed` から `fixes_verified` へ直接進めてよい。指示前の確認や状態の後退は拒否する。
 結果受領は成功判定ではなく、失敗・阻害指摘も受領して記録する。親が指摘と修正を照合し、
-各PRのCIなどを確認した証拠が揃うまで完了へ進めない。CLIは#1219のmerge gateの代用ではない。
+各PRのCIなどを確認した証拠が揃うまで完了へ進めない。指摘なしのapproveでも、親が対象・差分・受入証拠を確認して記録する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  review-state --run-id "$review_run_id" --state fixes_verified --evidence-file tmp/parent-verification.md
+```
+
+指摘の解消は[reviewの実行・修正確認](../review/README.md#実行)に従う。
+この記録を揃えてから[merge gateのdry-run](../review/README.md#merge-gate)へ進む。CLIはgateの代用ではない。
 
 ## 結果捕捉と親の判断
 
