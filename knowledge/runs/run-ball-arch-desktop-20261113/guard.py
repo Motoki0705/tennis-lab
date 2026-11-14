@@ -1,4 +1,4 @@
-"""Wait between updates below 6 GiB RAM; stop below 2 GiB or 10 GiB D:."""
+"""Wait below 6 GiB RAM; stop below 2 GiB or 10 GiB on either storage volume."""
 import json
 import os
 import signal
@@ -17,6 +17,8 @@ RAM_ADMISSION_MIN_BYTES = 6 * 1024**3
 LONG_WAIT_SECONDS = 30 * 60
 D_DRIVE = Path("/mnt/d")
 D_AVAILABLE_MIN_BYTES = 10 * 1024**3
+E_DRIVE = Path("/mnt/wsl/tennis-data")
+E_AVAILABLE_MIN_BYTES = 10 * 1024**3
 
 
 def available_ram():
@@ -26,6 +28,13 @@ def available_ram():
 
 def d_drive_available():
     stat = os.statvfs(D_DRIVE)
+    return stat.f_bavail * stat.f_frsize
+
+
+def e_drive_available():
+    if not os.path.ismount(E_DRIVE):
+        raise OSError("Training data volume is not mounted: " + str(E_DRIVE))
+    stat = os.statvfs(E_DRIVE)
     return stat.f_bavail * stat.f_frsize
 
 
@@ -68,7 +77,8 @@ def process_tree_memory(*, proc=Path("/proc"), root_pid=None, page_size=None):
 
 def resource_snapshot():
     return dict(host_available_bytes=available_ram(),
-                d_drive_available_bytes=d_drive_available(), **process_tree_memory())
+                d_drive_available_bytes=d_drive_available(),
+                e_drive_available_bytes=e_drive_available(), **process_tree_memory())
 
 
 class RamAdmission:
@@ -104,7 +114,8 @@ class RamAdmission:
         try:
             while True:
                 sample = dict(self.sample(), sampled_at=self.wall())
-                reason = violation(sample["host_available_bytes"], sample["d_drive_available_bytes"])
+                reason = violation(sample["host_available_bytes"], sample["d_drive_available_bytes"],
+                                   sample["e_drive_available_bytes"])
                 if reason:
                     raise MemoryError("Resource guard before update: " + reason)
                 if sample["host_available_bytes"] >= RAM_ADMISSION_MIN_BYTES:
@@ -138,11 +149,13 @@ def filesystem_used(path):
     return (stat.f_blocks - stat.f_bfree) * stat.f_frsize
 
 
-def violation(ram_available, disk_available):
+def violation(ram_available, disk_available, data_available):
     if ram_available < HOST_AVAILABLE_MIN_BYTES:
         return "host_available_ram"
     if disk_available < D_AVAILABLE_MIN_BYTES:
         return "d_drive_available_space"
+    if data_available < E_AVAILABLE_MIN_BYTES:
+        return "e_drive_available_space"
     return None
 
 
@@ -157,8 +170,8 @@ def configure(root):
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     if os.environ.get("TENNIS_SOURCE_COMMIT") != commit:
         raise ValueError("Queue execution source commit changed")
-    ram, disk = available_ram(), d_drive_available()
-    reason = violation(ram, disk)
+    ram, disk, data = available_ram(), d_drive_available(), e_drive_available()
+    reason = violation(ram, disk, data)
     if reason:
         raise OSError("Resource guard failed before CUDA work: " + reason)
     if torch.cuda.device_count() != 1 or torch.cuda.get_device_name() != GPU:
@@ -170,6 +183,8 @@ def configure(root):
                 ram_admission_min_bytes=RAM_ADMISSION_MIN_BYTES,
                 d_drive_path=str(D_DRIVE), d_drive_available_bytes=disk,
                 d_drive_available_min_bytes=D_AVAILABLE_MIN_BYTES,
+                e_drive_path=str(E_DRIVE), e_drive_available_bytes=data,
+                e_drive_available_min_bytes=E_AVAILABLE_MIN_BYTES,
                 queue_id=os.environ["TENNIS_RUN_ID"], queue_directory=os.environ["TRAINING_QUEUE_DIR"],
                 pid=os.getpid(), pgid=os.getpgrp())
 
@@ -177,16 +192,19 @@ def configure(root):
 @contextmanager
 def host_guard(path, *, poll_interval=.25):
     stopped = threading.Event()
-    status = dict(schema_version=3, minimum_available_bytes=available_ram(),
+    status = dict(schema_version=4, minimum_available_bytes=available_ram(),
                   threshold_bytes=HOST_AVAILABLE_MIN_BYTES,
                   admission_threshold_bytes=RAM_ADMISSION_MIN_BYTES,
                   d_drive_path=str(D_DRIVE), minimum_d_drive_available_bytes=d_drive_available(),
                   d_drive_available_threshold_bytes=D_AVAILABLE_MIN_BYTES,
+                  e_drive_path=str(E_DRIVE), minimum_e_drive_available_bytes=e_drive_available(),
+                  e_drive_available_threshold_bytes=E_AVAILABLE_MIN_BYTES,
                   triggered=False, trigger_reason=None, filesystem_growth_is_telemetry_only=True)
     root = path.parent
     baseline = json.loads((root / "storage-baseline.json").read_text())["filesystem_used_bytes"]
     status["maximum_filesystem_growth_bytes"] = max(0, filesystem_used(root) - baseline)
-    reason = violation(status["minimum_available_bytes"], status["minimum_d_drive_available_bytes"])
+    reason = violation(status["minimum_available_bytes"], status["minimum_d_drive_available_bytes"],
+                       status["minimum_e_drive_available_bytes"])
     if reason:
         status.update(triggered=True, trigger_reason=reason, timestamp=time.time(), **process_tree_memory())
         write(path, status)
@@ -200,12 +218,13 @@ def host_guard(path, *, poll_interval=.25):
         last_write = 0.
         while not stopped.wait(poll_interval):
             try:
-                ram, disk = available_ram(), d_drive_available()
+                ram, disk, data = available_ram(), d_drive_available(), e_drive_available()
                 status["minimum_available_bytes"] = min(status["minimum_available_bytes"], ram)
                 status["minimum_d_drive_available_bytes"] = min(status["minimum_d_drive_available_bytes"], disk)
+                status["minimum_e_drive_available_bytes"] = min(status["minimum_e_drive_available_bytes"], data)
                 growth = filesystem_used(root) - baseline
                 status["maximum_filesystem_growth_bytes"] = max(status["maximum_filesystem_growth_bytes"], growth)
-                reason = violation(ram, disk)
+                reason = violation(ram, disk, data)
                 if reason:
                     status.update(triggered=True, trigger_reason=reason, timestamp=time.time(), **process_tree_memory())
                 if reason or time.monotonic() - last_write >= 1.:

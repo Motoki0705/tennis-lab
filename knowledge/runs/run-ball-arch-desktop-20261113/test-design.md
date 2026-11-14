@@ -27,3 +27,25 @@ Refs #1859; superseding agreement: issuecomment-6840801232. No validator evaluat
 - Reuse/extension: extend the existing CPU guard nodes for the new 2/6 GiB boundaries, deterministic injected clocks for unlimited wait and one 30-minute notice, exception paths and process-tree traversal including children started by non-main threads. Extend the existing actual temporal-training integration fixture to prove the optional hook preserves model/AdamW/RNG/schedule/sampler and excludes admission time from seconds. Exercise observer failure before update 2 to ensure no second update or false completion occurs.
 - Recovery: retain strict read_resume. Permit only a pinned old/new SHA-256 transition of training/temporal/runner.py for the explicit nonnumerical observer hooks, rejecting every unapproved source change. Extend migration tests and compare the actual independently restored update-1,000 full state before accepting it. Old rows without RSS stay unchanged; only new rows get telemetry.
 - Cost: about ten added CPU guard/migration cases plus one small real-model integration case (three-update fixture, no GPU test sweep). Run only the affected contracts with durations, then pre-commit and target-HEAD CI Python. GPU acceptance is 11 real resumed updates (10 after the compile update), followed by no progress polling or recurring follow-up.
+## Attempt 5: relocated ext4 data volume and independent capacity guard
+
+Parent instruction 2026-11-14 adds a second 10 GiB minimum for the mounted
+`/mnt/wsl/tennis-data` volume. Keep D:, RAM admission/emergency, allocator and
+the numerical training recipe fixed. Missing/unreadable E must stop explicitly.
+
+Extend `test_desktop_guard.py` existing statvfs, exact-boundary, pre-CUDA,
+background-termination and admission-wait cases for E. Distinguish D/E readings
+so reading D twice, ignoring E, using free instead of available blocks, accepting
+one byte below the limit, or continuing after an E measurement error fails.
+Add one missing-mount case; do not duplicate numerical-model tests for guard-only
+changes. Reuse `test_state.py` and `test_serial.py` for strict resume and lifecycle.
+Expected guard cases: 24 (8 additional); measure actual collection and durations.
+Use injected readings/Event synchronization, without real sleeps in tests.
+
+Full dataset integrity uses the existing hardlink rebuild: all 2,925 payloads,
+157,028,755,547 bytes, pinned distribution/SHA and source/destination inode pairs.
+Record mount identity, reused environment/native binary and compiler cache.
+The GPU acceptance is the actual restored update-1,000 production state, first
+compile update plus ten further finite continuous updates. Capture per-update
+data-wait and wall seconds, resource peaks/minima, full-state restore and exact
+committed log prefix. Do not compare GPU timing with the historical L4 benchmark.

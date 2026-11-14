@@ -1,4 +1,4 @@
-"""D: physical capacity, rather than WSL logical growth, bounds this campaign."""
+"""Independent D:/ext4 capacity bounds, RAM admission and emergency shutdown."""
 
 import importlib.util
 import json
@@ -33,10 +33,12 @@ def readings(guard, monkeypatch, tmp_path, disk):
     (tmp_path / "storage-baseline.json").write_text(json.dumps(dict(filesystem_used_bytes=0)))
     monkeypatch.setattr(guard, "available_ram", lambda: 5 * GIB)
     monkeypatch.setattr(guard, "d_drive_available", disk)
+    monkeypatch.setattr(guard, "e_drive_available", lambda: 20 * GIB)
     monkeypatch.setattr(guard, "filesystem_used", lambda _: 200 * GIB)
 
 
-def test_statvfs_uses_d_drive_available_blocks(guard, monkeypatch):
+@pytest.mark.parametrize("drive,path", [("d", "/mnt/d"), ("e", "/mnt/wsl/tennis-data")])
+def test_statvfs_uses_d_drive_available_blocks(guard, monkeypatch, drive, path):
     paths = []
 
     def stat(path):
@@ -44,21 +46,31 @@ def test_statvfs_uses_d_drive_available_blocks(guard, monkeypatch):
         return SimpleNamespace(f_bavail=3, f_bfree=1000, f_frsize=4096)
 
     monkeypatch.setattr(guard.os, "statvfs", stat)
-    assert guard.d_drive_available() == 3 * 4096
-    assert paths == [Path("/mnt/d")]
+    monkeypatch.setattr(guard.os.path, "ismount", lambda target: target == Path(path))
+    assert getattr(guard, drive + "_drive_available")() == 3 * 4096
+    assert paths == [Path(path)]
 
 
-@pytest.mark.parametrize("ram,disk,reason", [
-    (2 * GIB, 10 * GIB, None),
-    (2 * GIB, 10 * GIB - 1, "d_drive_available_space"),
-    (2 * GIB - 1, 40 * GIB, "host_available_ram"),
+def test_missing_data_mount_does_not_measure_the_root_volume(guard, monkeypatch):
+    monkeypatch.setattr(guard.os.path, "ismount", lambda _: False)
+    monkeypatch.setattr(guard.os, "statvfs", lambda _: pytest.fail("Must not measure an unmounted directory"))
+    with pytest.raises(OSError, match="not mounted"):
+        guard.e_drive_available()
+
+
+@pytest.mark.parametrize("ram,disk,data,reason", [
+    (2 * GIB, 10 * GIB, 10 * GIB, None),
+    (2 * GIB, 10 * GIB - 1, 40 * GIB, "d_drive_available_space"),
+    (2 * GIB, 40 * GIB, 10 * GIB - 1, "e_drive_available_space"),
+    (2 * GIB - 1, 40 * GIB, 40 * GIB, "host_available_ram"),
 ])
-def test_exact_lower_bounds_and_one_byte_below(guard, ram, disk, reason):
-    assert guard.violation(ram, disk) == reason
+def test_exact_lower_bounds_and_one_byte_below(guard, ram, disk, data, reason):
+    assert guard.violation(ram, disk, data) == reason
 
 
 @pytest.mark.parametrize("disk", [10 * GIB - 1, 10 * GIB])
-def test_preflight_refuses_low_d_space_before_cuda_calls(guard, monkeypatch, tmp_path, disk):
+@pytest.mark.parametrize("drive", ["d", "e"])
+def test_preflight_refuses_low_d_space_before_cuda_calls(guard, monkeypatch, tmp_path, disk, drive):
     calls = []
 
     def device_count():
@@ -74,14 +86,16 @@ def test_preflight_refuses_low_d_space_before_cuda_calls(guard, monkeypatch, tmp
     monkeypatch.setenv("TENNIS_SOURCE_COMMIT", "pushed")
     monkeypatch.setattr(guard.subprocess, "check_output", lambda args, **_: str(tmp_path / ".git") if args[-1] == "--git-common-dir" else "pushed")
     monkeypatch.setattr(guard, "available_ram", lambda: 5 * GIB)
-    monkeypatch.setattr(guard, "d_drive_available", lambda: disk)
+    monkeypatch.setattr(guard, "d_drive_available", lambda: disk if drive == "d" else 20 * GIB)
+    monkeypatch.setattr(guard, "e_drive_available", lambda: disk if drive == "e" else 20 * GIB)
     if disk < 10 * GIB:
-        with pytest.raises(OSError, match="d_drive_available_space"):
+        with pytest.raises(OSError, match=drive + "_drive_available_space"):
             guard.configure(tmp_path)
         assert calls == []
     else:
         result = guard.configure(tmp_path)
         assert result["d_drive_available_min_bytes"] == 10 * GIB
+        assert result["e_drive_available_min_bytes"] == 10 * GIB
         assert calls == ["device", .8]
 
 
@@ -108,7 +122,7 @@ def test_observer_records_large_wsl_growth_without_stopping(guard, monkeypatch, 
     assert signal.getsignal(signal.SIGTERM) == previous
 
 
-@pytest.mark.parametrize("failure", ["disk", "ram", "statvfs"])
+@pytest.mark.parametrize("failure", ["disk", "ram", "statvfs", "e_disk", "e_statvfs"])
 def test_observer_persists_reason_then_terminates_on_runtime_failure(guard, monkeypatch, tmp_path, failure):
     terminated = threading.Event()
     samples = 0
@@ -122,6 +136,19 @@ def test_observer_persists_reason_then_terminates_on_runtime_failure(guard, monk
         return 10 * GIB - 1 if samples > 1 and failure == "disk" else 20 * GIB
 
     readings(guard, monkeypatch, tmp_path, disk)
+    if failure.startswith("e_"):
+        data_samples = 0
+
+        def data():
+            nonlocal data_samples
+            data_samples += 1
+            if data_samples > 1:
+                if failure == "e_statvfs":
+                    raise OSError("E: probe unavailable")
+                return 10 * GIB - 1
+            return 20 * GIB
+
+        monkeypatch.setattr(guard, "e_drive_available", data)
     if failure == "ram":
         ram = iter([5 * GIB, 2 * GIB - 1])
         monkeypatch.setattr(guard, "available_ram", lambda: next(ram))
@@ -134,10 +161,13 @@ def test_observer_persists_reason_then_terminates_on_runtime_failure(guard, monk
     monkeypatch.setattr(guard.os, "kill", terminate)
     with guard.host_guard(path, poll_interval=.001) as status:
         assert terminated.wait(2)
-    assert status["trigger_reason"] == {"disk": "d_drive_available_space", "ram": "host_available_ram", "statvfs": "resource_measurement_failed"}[failure]
+    assert status["trigger_reason"] == {"disk": "d_drive_available_space", "ram": "host_available_ram", "statvfs": "resource_measurement_failed", "e_disk": "e_drive_available_space", "e_statvfs": "resource_measurement_failed"}[failure]
     assert status["minimum_d_drive_available_bytes"] >= 0
+    assert status["minimum_e_drive_available_bytes"] >= 0
     if failure == "statvfs":
         assert "D: probe unavailable" in status["error"]
+    if failure == "e_statvfs":
+        assert "E: probe unavailable" in status["error"]
 
 
 def test_process_tree_includes_every_thread_child_and_grandchildren(guard, tmp_path):
@@ -169,8 +199,8 @@ def test_missing_training_parent_does_not_report_zero_rss(guard, tmp_path):
         guard.process_tree_memory(proc=tmp_path, root_pid=99, page_size=4096)
 
 
-def resource_sample(ram, disk=20 * GIB):
-    return dict(host_available_bytes=ram, d_drive_available_bytes=disk,
+def resource_sample(ram, disk=20 * GIB, data=20 * GIB):
+    return dict(host_available_bytes=ram, d_drive_available_bytes=disk, e_drive_available_bytes=data,
                 process_tree_rss_bytes=3000, parent_rss_bytes=1000, children_rss_bytes=2000,
                 process_tree_process_count=3, process_tree_pids=[10, 20, 30])
 
@@ -211,10 +241,11 @@ def test_wait_has_no_deadline_and_logs_one_thirty_minute_notice(guard, tmp_path,
     assert notices.count('ram_wait_over_30_minutes') == 1
 
 
-@pytest.mark.parametrize('failure', ['ram', 'disk'])
+@pytest.mark.parametrize('failure', ['ram', 'disk', 'e_disk'])
 def test_emergency_threshold_still_interrupts_an_admission_wait(guard, tmp_path, failure):
     clock = SimpleNamespace(now=0.)
-    bad = resource_sample(2 * GIB - 1) if failure == 'ram' else resource_sample(5 * GIB, 10 * GIB - 1)
+    bad = {'ram': resource_sample(2 * GIB - 1), 'disk': resource_sample(5 * GIB, 10 * GIB - 1),
+           'e_disk': resource_sample(5 * GIB, data=10 * GIB - 1)}[failure]
     samples = iter([resource_sample(5 * GIB), bad])
 
     def sleep(_):
@@ -223,7 +254,7 @@ def test_emergency_threshold_still_interrupts_an_admission_wait(guard, tmp_path,
     path = tmp_path / 'waits.jsonl'
     observer = guard.RamAdmission(path, sample=lambda: next(samples), sleep=sleep,
                                   clock=lambda: clock.now, wall=lambda: clock.now)
-    with pytest.raises(MemoryError, match='host_available_ram' if failure == 'ram' else 'd_drive_available_space'):
+    with pytest.raises(MemoryError, match={'ram': 'host_available_ram', 'disk': 'd_drive_available_space', 'e_disk': 'e_drive_available_space'}[failure]):
         observer.before_update(1001)
     rows = [json.loads(line) for line in path.read_text().splitlines()]
     assert [row['event'] for row in rows] == ['ram_wait_started', 'ram_wait_interrupted']

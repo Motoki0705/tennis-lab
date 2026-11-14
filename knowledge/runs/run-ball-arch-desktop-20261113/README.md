@@ -1,9 +1,11 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
-Current state: **attempt 4 stopped on D: available space below 10 GiB** after
-its accepted startup prefix. It is no longer running. Do not restart until
-physical D: capacity is restored. See [attempt-4-storage-stop.json](attempt-4-storage-stop.json)
-and the corrected [monitoring-handoff.json](monitoring-handoff.json).
+Current state: preparing attempt 5 after the parent's 2026-11-14 storage recovery.
+Attempt 4's closed failure remains in [attempt-4-storage-stop.json](attempt-4-storage-stop.json).
+Active data, outputs, private environment and caches now reside on the mounted
+ext4 data volume at `/mnt/wsl/tennis-data`; the original output aliases are
+symlinks. The prior [monitoring-handoff.json](monitoring-handoff.json) still
+describes the stopped attempt until the new startup acceptance is committed.
 
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
 supersedes the original prohibition on checkpointing for T1/T2. The initial desktop migration started
@@ -20,7 +22,7 @@ qualification, lifecycle and evidence; it does not replace historical generation
 
 ## Inputs and safety
 
-`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4`
+`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5`
 below the implementation worktree. `$SOURCE` is the immutable pushed runtime checkout.
 `$ADAPTER` is this directory in that checkout. `$PY` is `$ROOT/env-original/bin/python`.
 `$QUEUE` is the main repository's shared `.training_queue`; set `$RCLONE_CONFIG`
@@ -54,7 +56,10 @@ to the authenticated private config. Never print its contents.
   CUDA allocator at 80%. Before each optimizer update it waits while host
   available RAM is below 6 GiB, without a wait deadline. The emergency observer
   stops strictly below 2 GiB (including during setup, persistence or waiting),
-  or when `/mnt/d` statvfs available space falls below 10 GiB. WSL filesystem
+  or when either `/mnt/d` or `/mnt/wsl/tennis-data` statvfs available space falls
+  below 10 GiB. The data volume must be mounted; failed measurements stop explicitly.
+  Each update's resources and the host-guard record expose both capacities.
+  Legacy filesystem
   growth is recorded as telemetry; it is not a stopping condition. This replaces
   the earlier 20 GB proxy by the parent's 2026-11-13 recovery instruction. systemd
   also bounds host memory. Shapes, batch, microbatch, precision, three MSDA levels, chunk
@@ -62,7 +67,9 @@ to the authenticated private config. Never print its contents.
 - The original Drive tree is completely archived to E using tennis-drive
   `download-tree`, a precomputed trusted expected manifest and progress file.
   No desktop publication may begin until its closed-tree readback completes.
-  E is storage only; training never reads/writes its tensors or data there.
+  The original `/mnt/e/tennis-lab-archive` remains storage only. From attempt 5,
+  training reads/writes the separate mounted ext4 data volume on E as explicitly
+  directed by the parent after WSL recovery.
 
 ## Qualification and startup
 
