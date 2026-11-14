@@ -251,10 +251,13 @@ def test_transaction_client_rejects_cache_hits_and_writes_outside_lock(
             with pytest.raises(ValueError, match="active registry transaction"):
                 gh.get("user")
             with pytest.raises(ValueError, match="active registry transaction"):
+                gh.evidence_rows()
+            with pytest.raises(ValueError, match="active registry transaction"):
                 store.save()
             assert external.get("user") == {"revision": 2}
     for method in (
         lambda: gh.get("user"),
+        lambda: gh.evidence_rows(),
         lambda: gh.write("POST", "endpoint", {}),
         lambda: gh.graphql("query {}", {}),
     ):
@@ -293,7 +296,9 @@ def test_each_observation_and_fresh_read_retrieves_new_facts(
         revision[0] = 3
         with gh.fresh_reads():
             assert gh.get("user") == {"revision": 3}
-    assert calls == [1, 2, 3]
+            revision[0] = 4
+            assert gh.get("user") == {"revision": 4}
+    assert calls == [1, 2, 3, 4]
 
 
 def test_external_collection_reuses_discovery_only_within_one_observation(
@@ -320,7 +325,11 @@ def test_external_collection_reuses_discovery_only_within_one_observation(
         revision[0] = 3
         with gh.fresh_reads():
             assert gh.evidence_rows() == [{"id": 3, "number": 3}]
-    assert calls == [1, 2, 2, 3]
+            revision[0] = 4
+            assert gh.evidence_rows() == [{"id": 3, "number": 3}]
+        with gh.fresh_reads():
+            assert gh.evidence_rows() == [{"id": 4, "number": 4}]
+    assert calls == [1, 2, 2, 3, 4]
 
 
 @pytest.mark.parametrize(

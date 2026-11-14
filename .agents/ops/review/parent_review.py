@@ -156,7 +156,7 @@ def _authorized(
 def collect(
     session: ParentSession, request: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[int, bytes]]:
-    with session.unlocked() as external:
+    with session.unlocked() as external, external.gh.history_read_scope():
         return _collect(external, request)
 
 
@@ -482,7 +482,7 @@ def publish_result(
     """Only publication state changes on failure; the immutable result survives."""
     decision_capture.result({"publication": "pending"}, artifact="publication")
     try:
-        with session.store.locked():
+        with session.store.locked(), session.gh.history_read_scope():
             session.store.revalidate(checkpoint)
             authorized(session, result["request"])
             url = publish(session, run_dir, result)
@@ -736,7 +736,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
 
         # Every accepted run reaches this call at most once. No per-PR agent loop.
         with workspace(root, request, context, diffs) as cwd:
-            with store.locked():
+            with store.locked(), gh.history_read_scope():
                 store.revalidate(checkpoint)
                 if authorized(session, request) != auth:
                     raise ValueError("parent authorization changed before review")
@@ -860,7 +860,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
             error = error or exc
         Store.write_json(execution_file, execution)
         try:
-            with store.locked():
+            with store.locked(), gh.history_read_scope():
                 store.revalidate(checkpoint)
                 if authorized(session, request) != auth:
                     raise ValueError("parent authorization changed during review")
@@ -1497,21 +1497,21 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
             session.public(body)
             # Parent record is committed only after the PR projection is posted.
             for n in (args.pr, session.parent):
-                if not any(
+                if n == session.parent:
+                    # The writer performs its own fresh history/deduplication.
+                    from parent.record_writer import write_record
+
+                    write_record(session, body)
+                elif not any(
                     c.get("body") == body
                     and c.get("user", {}).get("login") == session.login
                     for c in session.gh.review_comments(
                         n, session.parent, session.login
                     )
                 ):
-                    if n == session.parent:
-                        from parent.record_writer import write_record
+                    from parent.record_writer import post_once
 
-                        write_record(session, body)
-                    else:
-                        from parent.record_writer import post_once
-
-                        post_once(session, n, body, digest(body), projection=True)
+                    post_once(session, n, body, digest(body), projection=True)
             saved["published"] = True
             Store.write_json(record_path, saved)
         resolved = [

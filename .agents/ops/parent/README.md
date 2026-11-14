@@ -84,10 +84,12 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 `GitHub(repo, store=store)` は、そのStoreのactiveなtransaction専用client。
 GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
 `fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
+入口で探索索引を失効させ、scope内ではendpoint GETのcacheを迂回する。
+同じfresh照合内の複数の履歴読取は、取り直した探索索引を共有する。
 `history_read_scope()` はtransactionのGET cacheを捨て、独立した履歴の観測を開始する。
 `GitHub(repo)` はregistry外のclientで、GET cacheを持たない。
 履歴の探索索引はロック外でも明示した `history_read_scope()` の1観測内だけ再利用する。
-次の観測へは持ち越さず、fresh読取は常に再取得する。
+次の観測・fresh照合・書込みでは索引を失効させる。
 既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
 transaction用clientがlock不在を検出して自動的にregistry外clientへ切り替わることはない。
 
@@ -225,8 +227,7 @@ triageの履歴検査と再適用は [ops-report README](../ops-report/README.md
 ラベル付きの候補が複数あれば選ばずエラーにする。ラベルのないmarker付きIssueや、
 別番号でラベルを外した重複・不正な容器を毎回検出する保証はない。
 既知のbindingは一覧との照合に加えて保存番号を個別取得するため、既知の容器のラベル外れは引き続き拒否する。
-親CLI・review CLIの同じコマンド・読み取り範囲と、dispatcherの1回のread-only収集では発見用の一覧を共有する。
-書込みで一覧を失効し、明示的な鮮度確認・次の読み取り範囲では再取得する。
+親CLI・review CLI・dispatcherでは、[各観測のclient契約](#取得範囲と計測)に従って発見用の一覧を共有・再取得する。
 通常はopenのまま保持する。終了による完了数の増加や再開時の状態変更を避け、追記する保存容器であることを示すため。
 closedにしても履歴は読め、作業対象への除外は状態に依存しない。
 作業Issueへの誤用を防ぐ共通判定と経路は [issues API](../issues/README.md#証拠用issueの除外) を参照する。

@@ -116,6 +116,9 @@ class GitHub(IssueGitHub):
     @contextmanager
     def fresh_reads(self) -> Iterator[None]:
         previous, self._fresh = self._fresh, True
+        # Begin one new observation. Repeated history reads within this scope
+        # share its discovery index; endpoint GETs still bypass their cache.
+        self._history_rows = None
         try:
             yield
         finally:
@@ -261,11 +264,10 @@ class GitHub(IssueGitHub):
             self._history_rows, self._history_scope = previous, active
 
     def evidence_rows(self) -> list[dict[str, Any]]:
+        self._require_scope()
         endpoint = f"repos/{self.repo}/issues?state=all&labels={EVIDENCE_LABEL}"
         if not getattr(self, "_history_scope", False):
             return self.rows(endpoint)
-        if self._fresh:
-            self._history_rows = None
         if self._history_rows is None:
             # A new scope, explicit freshness check or write invalidates discovery.
             # Do not resurrect an older listing from the transaction GET cache.

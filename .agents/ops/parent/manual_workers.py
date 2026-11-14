@@ -558,8 +558,13 @@ def prepare_run(
             raise ValueError(
                 "worker termination and cleanup must be confirmed before resume"
             )
+        if resume and previous_record.get("recovery_error"):
+            raise ValueError(
+                "previous turn evidence is unconfirmed; inspect stop recovery or use --replace-session"
+            )
         if replace_session:
-            replacement = replacement_evidence(session, task, restart_evidence)
+            with session.gh.io_scope():
+                replacement = replacement_evidence(session, task, restart_evidence)
             current_settings = resolve(
                 DEFAULT_CONFIG, "codex", None, runner_model, None, "write"
             )
