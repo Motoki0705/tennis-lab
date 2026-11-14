@@ -9,7 +9,7 @@ import os
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -457,8 +457,6 @@ def test_write_or_read_during_verification_prevents_eviction(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     unit = lab.unit()
-    lab.now = time.time()
-    lab.engine.config = replace(lab.config, settle_seconds=0)
     lab.age(unit, 15)
     lab.mirror(unit)
     original = lab.module.snapshot
