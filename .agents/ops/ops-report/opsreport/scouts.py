@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from lib.agent_events import runtime_errors_failed
+
 from .memory_pr import _atomic_json
 from .retrieval import strict_json
 
@@ -100,7 +102,7 @@ def _scout(root: Path, path: Path, *, cwd: str, base: str) -> Scout:
                     result["turn_end_reason"] != "completed"
                     or result["exit_code"] != 0
                     or not result["runtime"]["session_id"]
-                    or result["runtime"]["runtime_errors"]
+                    or runtime_errors_failed(result)
                     or not _observed(result, "model", selected["model"])
                     or not _observed(result, "effort", selected["effort"])
                     or not final.read_text(encoding="utf-8").strip()
@@ -128,7 +130,7 @@ def inspect(runtime: Path, base: str, *, historical: bool) -> list[Scout]:
         if (
             parent["cleanup_complete"] is not True
             or not _observed(parent, "model", contract["settings"]["selected"]["model"])
-            or parent["runtime"]["runtime_errors"]
+            or runtime_errors_failed(parent)
         ):
             raise ValueError("Claude audit parent completion evidence mismatch")
     elif not historical or parent["cleanup_complete"] is not True:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import importlib
 import json
+from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
@@ -14,6 +15,36 @@ from tests.support.agents_ops.worker_logs import journal, record_source, schema,
 
 safety: Any = importlib.import_module("worker_logs.safety")
 board_safety: Any = importlib.import_module("board.safety")
+
+
+@pytest.mark.parametrize("changed", [None, "session", "generation"])
+def test_publication_admission_rechecks_its_frozen_owner(
+    tmp_path: Path, changed: str | None
+) -> None:
+    state = importlib.import_module("parent.state")
+    ownership = importlib.import_module("worker_logs.ownership")
+    store = state.Store(tmp_path / "state")
+    owner = {
+        "session": "codex:original",
+        "generation": 1,
+        "status": "active",
+        "tasks": {},
+        "reviews": [],
+    }
+    document = {"version": 1, "parents": {"o/r#1": owner}}
+    journal.atomic(store.path, document)
+    check = ownership.publication_owner(store, "O/R", 1, "codex:original", 1)
+    ownership.require_owner(check)
+    if changed is not None:
+        owner[changed] = "codex:successor" if changed == "session" else 2
+        journal.atomic(store.path, document)
+    before = store.path.read_bytes()
+    if changed is None:
+        ownership.require_owner(check)
+    else:
+        with pytest.raises(journal.PublicationError, match="log_owner_mismatch"):
+            ownership.require_owner(check)
+    assert store.path.read_bytes() == before
 
 
 @pytest.mark.parametrize(

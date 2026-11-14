@@ -1465,6 +1465,25 @@ def test_missing_executable_saves_a_failed_attempt(
     assert h.result()["result"] == "failed"
 
 
+@pytest.mark.parametrize(
+    "scenario,reason",
+    [
+        ("reconnect", "completed"),
+        ("reconnect_unfinished", "runtime_error"),
+        ("fatal_completed", "runtime_error"),
+        ("reconnect_late", "runtime_error"),
+    ],
+)
+def test_routing_retry_does_not_override_real_failure(
+    h: Harness, scenario: str, reason: str
+) -> None:
+    run = h.run(scenario=scenario)
+    record = h.result()
+    assert record["turn_end_reason"] == reason
+    assert (run.returncode == 0) is (reason == "completed")
+    assert record["runtime"]["runtime_errors"]
+
+
 @pytest.mark.parametrize("operation", ["resume", "stop_reused_pid"])
 def test_existing_or_reused_process_identity_prevents_unsafe_actions(
     h: Harness, operation: str

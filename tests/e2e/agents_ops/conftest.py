@@ -23,6 +23,19 @@ NOW = "2026-10-12T08:00:00+09:00"  # Monday of ISO week 2026-W42
 
 
 @pytest.fixture(autouse=True)
+def _isolate_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """No ops test may inherit the live parent's journal or capture namespace."""
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path / "xdg-state"))
+    for key in (
+        "DECISION_LOG_CAPTURE",
+        "DECISION_LOG_RETRIEVAL",
+        "AGENT_RUNTIME_RUN_DIR",
+        "AGENT_RUNTIME_TASK_ID",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
+@pytest.fixture(autouse=True)
 def _isolate_herdr_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Only explicit fake Herdr environments may reach an ops subprocess."""
     for key in tuple(os.environ):

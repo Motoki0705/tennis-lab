@@ -9,8 +9,8 @@ from typing import Any, cast
 
 from worker_logs.journal import PublicationError, atomic, require
 from worker_logs.publication import GitHub as WorkerGitHub
+from worker_logs.publication import GitHubHTTPError, MergeRejected, canonical_remote
 from worker_logs.publication import Publisher as GitTransport
-from worker_logs.publication import canonical_remote
 from worker_logs.safety import Guard
 from worker_logs.schema import digest, integer, json_bytes, sha
 
@@ -54,7 +54,12 @@ class GitHub(WorkerGitHub):
 
 class Publisher:
     def __init__(
-        self, root: Path, journal: Journal, github: GitHub | None = None
+        self,
+        root: Path,
+        journal: Journal,
+        github: GitHub | None = None,
+        *,
+        record_ids: set[str] | None = None,
     ) -> None:
         self.root, self.journal = root.resolve(), journal
         self.path = journal.path.with_name("publication.json")
@@ -64,6 +69,7 @@ class Publisher:
         self.transport = GitTransport(self.root, self.path)
         self.document: dict[str, Any] = {}
         self._snapshots: dict[str, dict[str, bytes]] = {}
+        self.record_ids = record_ids
 
     def git(self, *args: str, cwd: Path | None = None) -> bytes:
         return cast(bytes, self.transport.git(*args, cwd=cwd))
@@ -419,6 +425,11 @@ class Publisher:
             "unpublished": sum(r["publication_status"] != "published" for r in status),
             "blocked": sum(r["publication_status"] == "blocked" for r in status),
             "error": batch["error"] if batch else None,
+            **(
+                {"merge_http_status": batch["merge_http_status"]}
+                if batch and "merge_http_status" in batch
+                else {}
+            ),
             "pr": f"https://github.com/{batch['repo']}/pull/{batch['pr_number']}"
             if batch and batch["pr_number"]
             else None,
@@ -434,6 +445,8 @@ class Publisher:
         # Preparation reuses the shared transformation; capture insertion order
         # is dependency order. No ready projection is ever re-rendered.
         for state in self.journal.status():
+            if self.record_ids is not None and state["id"] not in self.record_ids:
+                continue
             if (
                 state["publication_status"] == "unprepared"
                 or retry
@@ -449,7 +462,14 @@ class Publisher:
         active = next(
             (b for b in self.document["batches"] if b["state"] != "merged"), None
         )
-        if active and active["state"] == "blocked" and not retry:
+        retry_merge = bool(
+            active
+            and active.get("stage") == "merge_rejected"
+            and active.get("merge_http_status") == 405
+            and active["error"] == "merge_conflict"
+            and active["merge_attempted"] is False
+        )
+        if active and active["state"] == "blocked" and not retry and not retry_merge:
             return self.view(active)
         repository = self.github.repository()
         require(
@@ -486,6 +506,7 @@ class Publisher:
                 p
                 for p in payloads
                 if status[p["record"]["id"]]["publication_status"] != "published"
+                and (self.record_ids is None or p["record"]["id"] in self.record_ids)
             ]
             if not pending:
                 last = (
@@ -580,11 +601,7 @@ class Publisher:
             if latest != main:
                 main = latest
                 continue
-            if pr.get("mergeable") is None:
-                active.update(stage="mergeability_pending", state="pending", error=None)
-                self.save()
-                return self.view(active)
-            require(pr.get("mergeable") is True, "merge_conflict")
+            require(pr.get("mergeable") is not False, "merge_conflict")
             self.verify(active, revision)
             policy.pr_changes(self.github.files(active["pr_number"]), diff)
             fresh = self.github.get(active["pr_number"])
@@ -596,14 +613,12 @@ class Publisher:
             if latest != main:
                 main = latest
                 continue
-            if fresh.get("mergeable") is None:
-                active.update(stage="mergeability_pending", state="pending", error=None)
-                self.save()
-                return self.view(active)
-            require(fresh.get("mergeable") is True, "merge_conflict")
+            require(fresh.get("mergeable") is not False, "merge_conflict")
             active.update(merge_attempted=True, stage="merge_attempted", error=None)
+            active.pop("merge_http_status", None)
             self.save()
             self.github.merge(active["pr_number"], revision["head"])
+            active["merge_http_status"] = 200
             return self.confirm(active, self.github.get(active["pr_number"]))
         active.update(stage="main_advanced", state="pending", error=None)
         self.save()
@@ -664,6 +679,8 @@ class Publisher:
                 code = (
                     str(exc)
                     if isinstance(exc, PublicationError)
+                    else "git_failed"
+                    if isinstance(exc, subprocess.SubprocessError)
                     else "publication_failed"
                 )
                 active = next(
@@ -675,7 +692,24 @@ class Publisher:
                     None,
                 )
                 if active:
-                    transient = code in {
+                    if active.get("merge_attempted") and isinstance(
+                        exc, subprocess.SubprocessError
+                    ):
+                        code = "merge_response_uncertain"
+                    if isinstance(exc, GitHubHTTPError):
+                        active["merge_http_status"] = exc.status
+                    if isinstance(exc, MergeRejected):
+                        active.update(
+                            merge_attempted=False,
+                            stage="merge_rejected",
+                            merge_http_status=exc.status,
+                        )
+                    elif active.get("merge_attempted") and code in {
+                        "github_failed",
+                        "github_invalid_response",
+                    }:
+                        code = "merge_response_uncertain"
+                    transient = not isinstance(exc, MergeRejected) and code in {
                         "github_failed",
                         "git_failed",
                         "github_invalid_response",

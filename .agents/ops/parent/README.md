@@ -54,7 +54,9 @@ registryロックで担当の衝突・二重予約を防ぐ。GitHub通信中は
 呼出元が例外を捕捉しても古いregistryを保存できず、新しいトランザクションで読み直す必要がある。
 他の親だけの変更は、その親の保存済み行を取り込み、自分の未保存の変更と参照を保持して続行する。
 `status` / `reconcile` / `basis-input` / `basis-check`は操作ロックを取らない。
-Project操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
+読取り入口とdry-runはStore.snapshotで検証し、registry lockのファイルも作らない。
+GitHub GETの再利用は1回の読取りCLI内に限定し、registryに束縛しない通常readerの鮮度検査は変えない。
+Project書込み操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
 途中まで保存・公開済みの操作は取り消さず、非ゼロ終了後は不足分だけ再実行する。
 
 状態のキーは小文字の `owner/repo#親番号`。version=1も読み書きできる。
@@ -89,7 +91,8 @@ GET cacheの命中時もtransactionを要求し、transactionを跨いで応答�
 入口で探索索引を失効させ、scope内ではendpoint GETのcacheを迂回する。
 同じfresh照合内の複数の履歴読取は、取り直した探索索引を共有する。
 `history_read_scope()` はtransactionのGET cacheを捨て、独立した履歴の観測を開始する。
-`GitHub(repo)` はregistry外のclientで、GET cacheを持たない。
+`GitHub(repo)` はregistry外のclientで、通常はGET cacheを持たない。
+読取りCLIの明示的な再利用は1回のCLI内に限定し、`detached()` では引き継がない。
 履歴の探索索引はロック外でも明示した `history_read_scope()` の1観測内だけ再利用する。
 次の観測・fresh照合・書込みでは索引を失効させる。
 既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
@@ -991,6 +994,13 @@ acceptは通常、解除/終了/引継ぎ待ちだけを受け取り、同時担
 ノートに旧workerの停止・既存worktree/PRを確認した証拠を残す。通常のregisterはactive担当を上書きしない。
 recoverも既存の委任予約を保持し、照合結果から自動再起動しない。stateを消して空き担当と扱わない。
 引継ぎノートには完了/未完了の子・PR、停止条件、次の作業、レビューrunを記載し、ローカルIDを書かない。
+
+終了・引継ぎを確定した後、CLIはworkerログの残件、今回の終了結果の捕捉、未公開の判断ログを順に照合する。
+公開の失敗は担当変更を取り消さず、`publication_exit` に残件・担当・再開コマンドを返す。
+自律親も既存supervisorの終了イベントから同じ照合を行う。通常の書込み操作は共通後処理から、
+workerの起動・継続は予約前に一度だけ保留公開を続ける。status系とdry-runはstateを書かない。
+対象入口、他親／journal不在PRの明示回収、読取りAPI `remaining_publications` と
+privateな終了checkpointの型・保存先は [workerログ契約](../worker_logs/README.md#続行一括回収終了checkpoint) を正本とする。
 
 ## レビュー証拠の照合表示
 

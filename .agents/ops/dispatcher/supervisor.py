@@ -27,6 +27,7 @@ from parent.state import Store, session_identity
 from parent.worker_instruction import prepare_instruction
 from worker_logs import service as worker_logs
 from worker_logs import sources as log_sources
+from worker_logs.ownership import publication_owner
 
 from . import judgement
 from .collect import (
@@ -1136,6 +1137,10 @@ class Supervisor:
                         "cannot finish a parent while child reservations/runtimes remain"
                     )
                 row["status"] = "ended"
+                row["publication_exit_pending"] = {
+                    "generation": row["generation"],
+                    "root": job["cwd"],
+                }
             event(
                 dispatch,
                 "parent_" + response["state"],
@@ -1147,6 +1152,7 @@ class Supervisor:
 
     def reconcile(self, *, stop: bool = False, parent: int | None = None) -> None:
         publications = []
+        exits = []
         with self.store.locked():
             state = self.schedule.read()
             for key, row in self.store.parents.items():
@@ -1194,7 +1200,19 @@ class Supervisor:
                     ):
                         self._finish(key, row, job, evidence)
                         if job.get("log_journal"):
-                            publications.append(Path(job["log_journal"]))
+                            publications.append(
+                                (
+                                    key,
+                                    Path(job["log_journal"]),
+                                    publication_owner(
+                                        self.store,
+                                        key.rpartition("#")[0],
+                                        int(key.rpartition("#")[2]),
+                                        row["session"],
+                                        row["generation"],
+                                    ),
+                                )
+                            )
                 if (
                     not stop
                     and state["enabled"]
@@ -1221,10 +1239,59 @@ class Supervisor:
                             )
                         except (ValueError, OSError) as exc:
                             dispatch.update(phase="failed", reason=str(exc))
+                if (
+                    row.get("publication_exit_pending")
+                    and key.rpartition("#")[0] == self.gh.repo.casefold()
+                ):
+                    exits.append((key, dict(row["publication_exit_pending"])))
             self.store.save()
         # GitHub/Git publication must not hold a registry/parent-operation lock.
-        for path in publications:
-            worker_logs.publish(path)
+        exiting = {key for key, _ in exits}
+        transferred: set[str] = set()
+        for key, path, owner_check in publications:
+            if key not in exiting | transferred:
+                result = worker_logs.publish(path, owner_check=owner_check)
+                if result.get("error") == "log_owner_mismatch":
+                    transferred.add(key)
+        for key, pending in exits:
+            from worker_logs.lifecycle import finish_supervised
+
+            _, _, number = key.rpartition("#")
+
+            def exit_publication_owner(
+                owner_key: str = key,
+                marker: dict[str, Any] = pending,
+                source_parent: int = int(number),
+            ) -> tuple[bool, int | str]:
+                with self.store.operation(owner_key), self.store.locked():
+                    current = self.store.parents.get(owner_key, {})
+                    return (
+                        current.get("generation") == marker["generation"]
+                        and current.get("status") == "ended"
+                        and current.get("publication_exit_pending") == marker,
+                        source_parent
+                        if current.get("status") == "active"
+                        else "unassigned",
+                    )
+
+            # The capture namespace retains the spelling frozen by its producer.
+            checkpoint = finish_supervised(
+                self.gh.repo,
+                int(number),
+                pending["generation"],
+                state_dir=self.store.directory,
+                root=Path(pending["root"]),
+                owner_check=exit_publication_owner,
+            )
+            with self.store.locked():
+                row = self.store.parents.get(key, {})
+                if row.get("publication_exit_pending") == pending:
+                    if row.get("generation") == pending["generation"]:
+                        row["publication_exit"] = checkpoint
+                    # This marker belongs to the old generation. Preserve the
+                    # private checkpoint without attaching it to a successor.
+                    row.pop("publication_exit_pending")
+                    self.store.save()
 
     def launch_reserved(self) -> None:
         with self.store.locked():
@@ -1263,6 +1330,7 @@ class Supervisor:
                             "children_pending": children_pending(row),
                             "max_implementation_children": dispatch["child_limit"],
                             "reason": dispatch["reason"],
+                            "publication_exit": row.get("publication_exit"),
                             "jobs": [
                                 {
                                     "id": j["id"],

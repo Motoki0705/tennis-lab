@@ -12,7 +12,7 @@ import os
 import re
 import sys
 from collections.abc import Iterator
-from contextlib import contextmanager, suppress
+from contextlib import contextmanager, nullcontext, suppress
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from pathlib import Path
@@ -662,7 +662,7 @@ def status(
     inputs = []
     for path in sorted((journal.path.parent / "captures").glob("*.json")):
         try:
-            with locked(path):
+            with locked(path) if retry else nullcontext():
                 op = Operation.load(path)
                 receipt = {
                     "source": op.row["entrypoint"],

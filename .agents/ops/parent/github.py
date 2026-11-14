@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 
 
 class GitHub(IssueGitHub):
+    _read_only_cache = False
+
     def improvement_extractions(self, store: Store) -> dict[str, Any]:
         from .improvement_receipts import extraction_index
 
@@ -54,7 +56,7 @@ class GitHub(IssueGitHub):
             self._cache_epoch = self._store.transaction_epoch
         key = (endpoint, missing_parent)
         if (
-            self._store is not None
+            (self._store is not None or self._read_only_cache)
             and self.parent is not None
             and not self._fresh
             and key in self._cache
@@ -70,10 +72,10 @@ class GitHub(IssueGitHub):
                 result = super().get(endpoint, missing_parent=missing_parent)
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
-        if self._store is not None:
+        if self._store is not None or self._read_only_cache:
             self._cache[key] = copy.deepcopy(result)
         if (
-            self._store is not None
+            (self._store is not None or self._read_only_cache)
             and "/sub_issues?" in endpoint
             and isinstance(result, list)
         ):
@@ -106,6 +108,7 @@ class GitHub(IssueGitHub):
         client = copy.copy(self)
         client._outside_store = self._store or self._outside_store
         client._store = None
+        client._read_only_cache = False
         client._cache = {}
         client._cache_epoch = -1
         client._history_rows = None

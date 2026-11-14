@@ -977,6 +977,18 @@ def test_runtime_failure_is_not_task_success(
     assert h.gh.writes == []
 
 
+def test_recovered_routing_error_is_accepted_by_judgement_consumer(
+    h: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FAKE_JUDGEMENT_SCENARIO", "reconnect")
+    h.response(decision(1))
+    result = h.run()
+    assert result["result"] == "recorded", result
+    record = json.loads((h.run_dir / "agent-runtime/result.json").read_text())
+    assert record["runtime"]["runtime_errors"] and record["result"] == "completed"
+
+
 def test_same_inputs_still_run_agent_and_update_only_changed_comment(
     h: Harness,
 ) -> None:

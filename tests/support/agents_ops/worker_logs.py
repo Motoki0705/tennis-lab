@@ -67,6 +67,7 @@ def record_source() -> tuple[dict[str, Any], dict[str, Any]]:
         "runtime": {
             "session_id": "private-session-value",
             "turn_id": "private-turn-value",
+            "runtime_errors": [],
             "effective": {
                 k: {"status": "observed", "value": v}
                 for k, v in {"model": "gpt-6.1-sol", "effort": "max"}.items()
@@ -91,6 +92,7 @@ class FakeGitHub:
         self.mergeable: bool | None = True
         self.change_head_on_second_get = False
         self.gets = 0
+        self.pause_reads = False
         self.lock = threading.RLock()
 
     def repository(self) -> dict[str, Any]:
@@ -105,6 +107,8 @@ class FakeGitHub:
 
     def get(self, number: int) -> dict[str, Any]:
         with self.lock:
+            if self.pause_reads:
+                raise journal.PublicationError("github_failed", "injected GET boundary")
             self.gets += 1
             pr = self.rows[number]
             if self.change_head_on_second_get and self.gets == 2:
@@ -260,6 +264,9 @@ class LogEnv:
         session = SimpleNamespace(
             row={
                 "session": "codex:private-parent-session",
+                "status": "active",
+                "generation": 1,
+                "reviews": [],
                 "tasks": {str(child): task},
             },
             store=SimpleNamespace(directory=self.state),

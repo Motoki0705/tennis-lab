@@ -180,8 +180,9 @@ def start_worker(
 ) -> dict[str, Any]:
     """Reserve via parent.delegate, then use the dispatcher start-child contract.
 
-    The caller must not hold Store.locked(): the dispatcher takes the same lock.
-    A failure between the two claims intentionally leaves the delegation intact.
+    The caller must hold neither a registry nor a parent operation lock. Reconcile
+    may publish logs; only the reservation below owns the operation lock. A
+    failure between the two claims intentionally leaves the delegation intact.
     """
     implementation_model(model)
     if continuation is None:
@@ -194,121 +195,124 @@ def start_worker(
         session.agreed()
         control = controller(session, directory)
     control.reconcile(parent=session.parent)
-    with session.store.locked():
-        dispatch = accepted(session, env)
-        session.agreed()
-        control = controller(session, directory)
-        if authorization(session) != dispatch["authorization"]:
-            raise ValueError("dispatcher execution basis changed")
-        check_dependencies(session, dispatch)
-        check_handoff_capacity(session.store.parents, control.schedule, session.key)
-        jobs = worker_jobs(dispatch, child)
-        previous_record = None
-        prepared = None
-        if continuation is not None:
-            worker_preflight.observe(session, child, persist=True)
-        if continuation is not None:
-            nonempty(continuation, "continuation evidence")
-            if not jobs:
+    with session.store.operation(session.key):
+        with session.store.locked():
+            dispatch = accepted(session, env)
+            session.agreed()
+            control = controller(session, directory)
+            if authorization(session) != dispatch["authorization"]:
+                raise ValueError("dispatcher execution basis changed")
+            check_dependencies(session, dispatch)
+            check_handoff_capacity(session.store.parents, control.schedule, session.key)
+            jobs = worker_jobs(dispatch, child)
+            previous_record = None
+            prepared = None
+            if continuation is not None:
+                worker_preflight.observe(session, child, persist=True)
+            if continuation is not None:
+                nonempty(continuation, "continuation evidence")
+                if not jobs:
+                    raise ValueError(
+                        "no existing worker session; never create a replacement"
+                    )
+                for job in jobs:
+                    ended(job)
+                source = control.resume_source(session.row, jobs[-1])
+                if source is None:
+                    if any(not job.get("cancelled_before_start") for job in jobs):
+                        raise ValueError(
+                            "cancelled reservation lost its saved resume source"
+                        )
+                    if any(
+                        child in closing_issues(p.get("body") or "", session.gh.repo)
+                        for p in session.gh.pulls()
+                    ):
+                        raise ValueError(
+                            "existing PR has no implementation session to resume"
+                        )
+                    implementation_model(
+                        model, previous=implementation_model(jobs[-1]["model"])
+                    )
+                    model = jobs[-1]["model"]
+                else:
+                    record = load(Path(source) / "result.json")
+                    previous_record = record
+                    settings = record["contract"]["settings"]
+                    implementation_model(model, previous=settings["selected"]["model"])
+                    # A same-value request must retain the original override provenance.
+                    model = settings["overrides"].get("model")
+                task = session.row["tasks"][str(child)]
+                branch, worktree = task["branch"], Path(task["worktree"])
+                # Admission precedes a new delegation/job reservation.
+                prepared, prompt = worker_preflight.prepare_turn(
+                    session,
+                    child,
+                    prompt,
+                    resume=True,
+                    additional=additional,
+                    previous_record=previous_record,
+                    planning=planning,
+                )
+            elif jobs:
+                raise ValueError("existing worker: inspect it and use continue-worker")
+            if branch is None or worktree is None:
+                raise ValueError("a dedicated branch and worktree are required")
+            if len(children_pending(session.row)) >= dispatch["child_limit"]:
                 raise ValueError(
-                    "no existing worker session; never create a replacement"
+                    "implementation slots are occupied; reconcile workers first"
                 )
-            for job in jobs:
-                ended(job)
-            source = control.resume_source(session.row, jobs[-1])
-            if source is None:
-                if any(not job.get("cancelled_before_start") for job in jobs):
-                    raise ValueError(
-                        "cancelled reservation lost its saved resume source"
-                    )
-                if any(
-                    child in closing_issues(p.get("body") or "", session.gh.repo)
-                    for p in session.gh.pulls()
-                ):
-                    raise ValueError(
-                        "existing PR has no implementation session to resume"
-                    )
-                implementation_model(
-                    model, previous=implementation_model(jobs[-1]["model"])
-                )
-                model = jobs[-1]["model"]
-            else:
-                record = load(Path(source) / "result.json")
-                previous_record = record
-                settings = record["contract"]["settings"]
-                implementation_model(model, previous=settings["selected"]["model"])
-                # A same-value request must retain the original override provenance.
-                model = settings["overrides"].get("model")
+            claim = session.delegate(
+                child,
+                "codex",
+                branch,
+                worktree,
+                None,
+                continuation,
+                continue_existing=continuation is not None,
+            )
+            parent, items = session.work_items()
+            check_task_adoptions(session.gh, parent.body)
+            check_task_adoptions(session.gh, items[child].body)
+            check_dependencies(session, dispatch)
+            if authorization(session) != dispatch["authorization"]:
+                raise ValueError("execution basis changed after delegation")
             task = session.row["tasks"][str(child)]
-            branch, worktree = task["branch"], Path(task["worktree"])
-            # Admission precedes a new delegation/job reservation.
-            prepared, prompt = worker_preflight.prepare_turn(
-                session,
+            if prepared is None:
+                prepared, prompt = worker_preflight.prepare_turn(
+                    session,
+                    child,
+                    prompt,
+                    resume=False,
+                    planning=planning,
+                    additional=additional,
+                )
+            turn = worker_preflight.commit_turn(task, prepared)
+            session.store.save()
+            prepared_instruction = prepare_instruction(
+                session.parent,
                 child,
-                prompt,
-                resume=True,
-                additional=additional,
-                previous_record=previous_record,
-                planning=planning,
+                worktree,
+                branch,
+                items[child].body,
+                original(prompt),
+                turn,
             )
-        elif jobs:
-            raise ValueError("existing worker: inspect it and use continue-worker")
-        if branch is None or worktree is None:
-            raise ValueError("a dedicated branch and worktree are required")
-        if len(children_pending(session.row)) >= dispatch["child_limit"]:
-            raise ValueError(
-                "implementation slots are occupied; reconcile workers first"
-            )
-        claim = session.delegate(
-            child,
-            "codex",
-            branch,
-            worktree,
-            None,
-            continuation,
-            continue_existing=continuation is not None,
+            text = prepared_instruction.text
+            worker_logs.capture(session, child, items[child].body, prepared_instruction)
+            task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
+                text.encode("utf-8")
+            ).hexdigest()
+            session.store.save()
+            delegation = claim["assignment"]["delegation_id"]
+        job_id = control.start_child(
+            session.parent, child, delegation, text, env, model
         )
-        parent, items = session.work_items()
-        check_task_adoptions(session.gh, parent.body)
-        check_task_adoptions(session.gh, items[child].body)
-        check_dependencies(session, dispatch)
-        if authorization(session) != dispatch["authorization"]:
-            raise ValueError("execution basis changed after delegation")
-        task = session.row["tasks"][str(child)]
-        if prepared is None:
-            prepared, prompt = worker_preflight.prepare_turn(
-                session,
-                child,
-                prompt,
-                resume=False,
-                planning=planning,
-                additional=additional,
-            )
-        turn = worker_preflight.commit_turn(task, prepared)
-        session.store.save()
-        prepared_instruction = prepare_instruction(
-            session.parent,
-            child,
-            worktree,
-            branch,
-            items[child].body,
-            original(prompt),
-            turn,
-        )
-        text = prepared_instruction.text
-        worker_logs.capture(session, child, items[child].body, prepared_instruction)
-        task["preflight"]["turns"][-1]["prompt_sha256"] = hashlib.sha256(
-            text.encode("utf-8")
-        ).hexdigest()
-        session.store.save()
-        delegation = claim["assignment"]["delegation_id"]
-    job_id = control.start_child(session.parent, child, delegation, text, env, model)
-    return {
-        "child": child,
-        "delegation_id": delegation,
-        "job_id": job_id,
-        "result": "reserved",
-    }
+        return {
+            "child": child,
+            "delegation_id": delegation,
+            "job_id": job_id,
+            "result": "reserved",
+        }
 
 
 def inspect_worker(session: ParentSession, child: int) -> dict[str, Any]:
@@ -682,7 +686,7 @@ def refresh_worker_plan(
 def worker_command(
     args: Any, gh: GitHub, parent: int, identity: str, store: Store
 ) -> dict[str, Any]:
-    with store.locked():
+    with store.snapshot() if args.command == "inspect-worker" else store.locked():
         session = ParentSession(gh, store, parent, identity)
         if args.command == "inspect-worker":
             return inspect_worker(session, args.child)

@@ -115,6 +115,7 @@ def main() -> int:
                 "finished_at": 1794013201,
                 "runtime": {
                     "session_id": session_id,
+                    "runtime_errors": [],
                     "effective": {
                         key: {
                             "status": "observed",

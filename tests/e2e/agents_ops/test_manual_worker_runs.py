@@ -23,6 +23,27 @@ import os, sys
 from pathlib import Path
 from parent import manual_workers
 manual_workers.RUNNER = Path(sys.argv[1])
+if os.environ.get("MANUAL_PUBLICATION_HANDOFF"):
+    from parent.state import Store
+    from worker_logs import service as logs
+    finish = logs.finish_manual
+    def finish_after_handoff(*args, **kwargs):
+        store = Store(Path(os.environ["MANUAL_STATE_DIR"]))
+        with store.operation("o/r#1"), store.locked():
+            owner = store.parents["o/r#1"]
+            owner.update(session="codex:successor", generation=owner["generation"] + 1)
+            store.save()
+        # Receipt verification has dedicated tests. Make it publication-ready
+        # here so only the final ownership admission can prevent publication.
+        logs.sources.receive = lambda *a, **kw: {"state": "ready"}
+        class UnsafePublisher:
+            def __init__(self, *a, **kw):
+                (store.directory / "unsafe-publication").touch()
+            def publish(self, **kw):
+                return {"state": "merged", "error": None, "saved_to_main": True}
+        logs.Publisher = UnsafePublisher
+        return finish(*args, **kwargs)
+    logs.finish_manual = finish_after_handoff
 if os.environ.get("MANUAL_ADMISSION_FAILURE"):
     import subprocess
     original_popen = subprocess.Popen
@@ -180,6 +201,22 @@ def reserved(parent_env: ParentEnv, request: pytest.FixtureRequest) -> ParentEnv
         request.config.stash[MANUAL_SEED].restore(p.root)
         run_git(p.repo, "worktree", "repair")
     return p
+
+
+def test_manual_completion_preserves_worker_exit_after_publication_handoff(
+    reserved: ParentEnv,
+) -> None:
+    p = reserved
+    before = store(p).read_data()["parents"]["o/r#1"]
+    result = run(p, MANUAL_PUBLICATION_HANDOFF="1")
+    value = json.loads(result.stdout)
+    assert value["exit_code"] == 0 and value["runner_summary"]["result"] == "completed"
+    assert value["log_publication"]["error"] == "log_owner_mismatch"
+    assert not (state_dir(p) / "unsafe-publication").exists()
+    owner = store(p).read_data()["parents"]["o/r#1"]
+    assert owner["session"] == "codex:successor"
+    assert owner["generation"] == before["generation"] + 1
+    assert owner["tasks"]["10"]["worker_ended"]
 
 
 @pytest.mark.parametrize("version,model", [(1, None), (2, "gpt-6-astra")])
