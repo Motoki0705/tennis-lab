@@ -984,6 +984,39 @@ def test_same_inputs_still_run_agent_and_update_only_changed_comment(
     assert not h.gh.comment_rows.get(2)
 
 
+def test_collection_keeps_related_prs_after_an_unrelated_parent_session(
+    h: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    h.gh.issues[2] = issue(2)
+    h.gh.prs = [
+        {
+            "number": 300,
+            "body": "Closes #1",
+            "state": "closed",
+            "merged_at": "2026-10-24T10:00:00Z",
+            "head": {"ref": "completed-work", "sha": "a" * 40},
+        }
+    ]
+    # Keep the production reader's parent-dependent PR routing. The fixture's
+    # usual pulls() deliberately bypasses that routing and concealed this bug.
+    gh = importlib.import_module("parent.github").GitHub("o/r")
+
+    def get(endpoint: str, *, missing_parent: bool = False) -> object:
+        if "/timeline?" in endpoint:
+            return []  # The unrelated parent has no cross-referenced PRs.
+        return h.gh.get(endpoint, missing_parent=missing_parent)
+
+    monkeypatch.setattr(gh, "get", get)
+    with h.store.locked():
+        before = h.collector.collect(gh, h.store, h.work)
+        importlib.import_module("parent.session").ParentSession(gh, h.store, 2, None)
+        after = h.collector.collect(gh, h.store, h.work)
+    assert [p["number"] for p in before["pulls"]] == [300]
+    assert after["pulls"] == before["pulls"]
+    h.collector.assert_material_fresh(before, after, 1)
+    assert gh.parent == 2
+
+
 @pytest.mark.parametrize(
     "change", ["requirements", "human_comment", "dependency", "new_pr", "owner"]
 )

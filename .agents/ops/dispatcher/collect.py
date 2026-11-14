@@ -116,7 +116,9 @@ def _collect(
                 raise ValueError("open issue listing returned a non-open issue")
     else:
         subjects = sorted(set(number(n) for n in seeds))
-    pulls = gh.pulls()
+    # ParentSession leaves gh.parent focused on its last subject. A dispatcher
+    # snapshot must keep repository-wide PRs across every freshness check.
+    pulls = gh.rows(f"repos/{gh.repo}/pulls?state=all")
     unique_numbers(pulls, "PRs")
     prs = []
     for p in pulls:
