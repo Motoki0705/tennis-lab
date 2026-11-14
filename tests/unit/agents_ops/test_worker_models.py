@@ -91,9 +91,15 @@ def test_implementation_choices_follow_runner_config_without_parser_defaults(
         "effort": "max",
         "service_tier": "default",
     }
-    assert settings.resolve(config, "codex", "review", None, None, "read-only")[
-        "selected"
-    ] == {
+    review = importlib.import_module("lib.review_settings")
+    choice = review.choose(
+        review.load_policy(config),
+        model="gpt-6-astra",
+        reason="実装workerのモデル設定とは独立した正式レビューの選択を確認する。",
+    )
+    assert settings.resolve(
+        config, "codex", "review", None, None, "read-only", review_selection=choice
+    )["selected"] == {
         "model": "gpt-6-astra",
         "effort": "xhigh",
         "service_tier": "default",

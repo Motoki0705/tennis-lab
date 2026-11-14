@@ -154,11 +154,14 @@ Use the existing `decide`, journal, publication and navigation mechanisms. Find
 the captured source review result ID `R` in `decision-log-status`. A parent's
 handoff decision names `R` in `decide.inputs`, states retained/rechecked scopes,
 and includes a `review` next-action plan. Prepare with
-`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`,
+`review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
+--review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`,
 then issue `review-request --run-id NEXT --instruction-file instruction.txt
 --decision-id D --retry-of R`. A single matching plan needs no `--plan-id`.
 Preparation is a fetch; attach the review plan to `review-request`, which binds
-the subsequent `run`. Explicit handoff metadata must reference a result from
+the subsequent `run`. Follow the [model selection procedure](../parent/README.md#正式レビューのモデル選択)
+for the model and one-sentence reason required by the usual select configuration.
+Explicit handoff metadata must reference a result from
 that exact source operation and include it in the decision inputs; an unrelated
 result or decision is rejected. Legacy handoffs without decision metadata remain
 usable with a visible missing decision, not an invented one.

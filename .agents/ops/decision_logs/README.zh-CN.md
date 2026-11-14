@@ -128,9 +128,11 @@ outbox只保存私有投递输入，不是发布单元。
 
 复用既有 `decide`、journal、发布与 README 生成。用 `decision-log-status` 找到源审查结果 ID `R`。
 父级 handoff 判断须把 `R` 放入 `decide.inputs`，说明复用及重查范围，并指定 `review` next-action plan。
-先 `review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R`，
+先 `review-prepare --handoff-from-run SOURCE --handoff-scope-file scope.txt --retry-of R
+--review-model gpt-6-astra --review-effort xhigh --model-reason-file model-reason.txt`，
 再 `review-request --run-id NEXT --instruction-file instruction.txt --decision-id D --retry-of R`。
 单个匹配 plan 无需 `--plan-id`。prepare 是 fetch，review plan 应绑定后续 run 的 review-request。
+通常 select 设置要求模型和一句话理由；按[模型选择步骤](../parent/README.md#正式レビューのモデル選択)填写。
 显式 handoff 元数据必须引用该源操作捕获的结果，且判断 inputs 包含它；拒绝其他 run 结果或无关判断。
 未提供判断元数据的旧 handoff 仍可使用，并明确标注判断未记录。
 

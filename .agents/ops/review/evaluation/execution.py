@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import shutil
 import sys
 import time
@@ -487,13 +488,13 @@ def execute(
         )
     pins = (OPS / "lib/agents.conf").read_text()
     baseline = load_policy(OPS / "lib/agents.conf")
-    if baseline["mode"] != "fixed" or baseline["fixed"] != {
+    if baseline["fixed"] != {
         "model": "gpt-6-astra",
         "effort": "xhigh",
         "service_tier": "default",
     }:
         raise ValueError(
-            "evaluation baseline requires the approved Astra fixed configuration"
+            "evaluation baseline requires the approved Astra reference settings"
         )
     binary = shutil.which("codex")
     if binary is None:
@@ -538,10 +539,14 @@ def execute(
     git(directory / "reviewer", "init", "-q")
     private_directory(directory / "bin")
     config = directory / "agents.conf"
-    if model == "gpt-6.1-sol":
-        pins = pins.replace(
-            'REVIEW_SELECTION_MODE="fixed"', 'REVIEW_SELECTION_MODE="select"'
-        )
+    # The comparison always requires explicit choices for both models, regardless
+    # of the deployment policy in the source checkout.
+    pins = re.sub(
+        r'^REVIEW_SELECTION_MODE="(?:fixed|select)"$',
+        'REVIEW_SELECTION_MODE="select"',
+        pins,
+        flags=re.MULTILINE,
+    )
     config.write_text(pins)
     selection = choose(
         load_policy(config),

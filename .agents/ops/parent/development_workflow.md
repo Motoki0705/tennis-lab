@@ -100,14 +100,17 @@ CI待ち・情報不足・権限不足はwaiting、runtime/検証の失敗はfai
 親が準備できたopen PRの部分集合を選び、明示要求する。自動レビューは作らない。
 同じprivate state、親のCLI identityとghアカウントで既存入口を呼ぶ。
 モデル選択も手動親と同じ[review-request契約](README.md#レビュー要求契約schema-version-3version-1と2の読取互換)を使う。
-既定fixedを維持し、select導入時は親が対象・未解決事項からモデルと理由を決める。
+通常設定selectでは[モデル選択手順](README.md#正式レビューのモデル選択)に従い、
+親が差分・受入条件・影響先からモデルを選び、1文の理由を `--model-reason-file` で渡す。
 人間の明示指定を優先し、情報不足をSolへの振替にしない。取得・設定の不整合時に別モデルを自動起動しない。
 保存finalの復旧は元run参照をprepareで固定し、新しいモデルへの引継ぎは別runの理由と対応を記録する。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
   --state-dir "$parent_state" review-request --prs 200 201 \
-  --instruction-file tmp/review.md --evidence-file tmp/result.md > tmp/review-request.json
+  --instruction-file tmp/review.md --evidence-file tmp/result.md \
+  --review-model gpt-6-astra --review-effort xhigh \
+  --model-reason-file tmp/review-model-reason.md > tmp/review-request.json
 .venv/bin/python .agents/ops/review/parent_review.py --state-dir "$parent_state" \
   run --request tmp/review-request.json
 ```

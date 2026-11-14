@@ -47,6 +47,7 @@ def next_request(r: ReviewEnv, *, source_run: str | None = None) -> ReviewEnv:
         p.cli(
             "review-prepare",
             *(["--recover-source-run", source_run] if source_run is not None else []),
+            *(p.review_flags() if source_run is None else ()),
             "--prs",
             *[str(pr["number"]) for pr in r.request["prs"]],
             "--reason-file",

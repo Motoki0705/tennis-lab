@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import re
+import shlex
 from pathlib import Path
 
 import pytest
@@ -41,6 +42,8 @@ DOCS = [
     ROOT / ".agents/ops/decision_logs/README.ja.md",
     ROOT / ".agents/ops/decision_logs/README.zh-CN.md",
     ROOT / ".agents/ops/lib/README.md",
+    ROOT / ".agents/ops/review/README.md",
+    ROOT / ".agents/ops/dispatcher/parent_bootstrap.md",
     ROOT / ".agents/ops/parent/development_workflow.md",
     ROOT / ".agents/ops/board/README.md",
     ROOT / ".agents/ops/herdr_labels/README.md",
@@ -166,6 +169,41 @@ def test_relative_links_resolve(doc: Path) -> None:
         if anchor and resolved.suffix == ".md" and anchor not in _anchors(resolved):
             broken.append(f"{target} (missing anchor)")
     assert not broken, f"{doc.relative_to(ROOT)}: broken links: {broken}"
+
+
+@pytest.mark.parametrize(
+    "relative",
+    [
+        ".agents/ops/parent/README.md",
+        ".agents/ops/parent/development_workflow.md",
+        ".agents/ops/decision_logs/README.md",
+        ".agents/ops/decision_logs/README.ja.md",
+        ".agents/ops/decision_logs/README.zh-CN.md",
+    ],
+)
+def test_new_review_examples_include_explicit_selection(relative: str) -> None:
+    """Executable examples must not stop at the new select policy's required flags."""
+    source = (ROOT / relative).read_text().replace("\\\n", " ")
+    shell = re.findall(r"```bash\n(.*?)```", source, re.DOTALL)
+    examples = [line for block in shell for line in block.splitlines()]
+    examples += re.findall(r"`([^`]+)`", "\n".join(_lines_outside_fences(source)))
+    checked = []
+    for example in examples:
+        if "review-prepare" not in example and "review-request" not in example:
+            continue
+        tokens = shlex.split(example)
+        has_targets = "--prs" in tokens and tokens.index("--prs") + 1 < len(tokens)
+        new_request = "review-request" in tokens and has_targets
+        new_prepare = "review-prepare" in tokens and (
+            "--prs" in tokens or "--handoff-from-run" in tokens
+        )
+        if not (new_request or new_prepare) or "--recover-source-run" in tokens:
+            continue
+        for flag in ("--review-model", "--model-reason-file"):
+            assert flag in tokens, f"{relative}: {example} requires {flag}"
+            assert tokens.index(flag) + 1 < len(tokens)
+        checked.append(example)
+    assert checked, f"{relative}: no concrete review example was checked"
 
 
 def test_entry_chain_from_agents_md_to_memory_summary() -> None:

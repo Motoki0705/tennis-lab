@@ -230,11 +230,12 @@ To regenerate from an explicitly supplied original parent state:
 
 The minimum sample has no gold blockers and only one repetition. Provisional
 negatives are not proof of defect absence, model caching/order can affect timings,
-and the restricted tool set differs from formal review. The default stays fixed.
-Limited selection requires parent-confirmed no extra major misses against Astra,
-no worse false/unknown/failure rates, verified effective settings and at least the
-approved improvement, including escalation cost. Publication/auth/gate,
-cancellation/concurrency and serious data-identity cases stay Astra-first.
+and the restricted tool set differs from formal review. Historical reports retain
+the policy and evidence recorded at the time. The current formal-review policy,
+examples, usage queries and fixed-mode rollback are defined in the
+[parent model-selection procedure](../../parent/README.md#正式レビューのモデル選択).
+This harness explicitly selects each comparison model under either deployment
+mode, keeping the approved Astra/xhigh reference settings and immutable evidence.
 
 After separate authorization, the parent chooses a representative formal PR and
 checks prepare/request, pinned retrieval receipts, saved final/events, runtime
@@ -244,14 +245,10 @@ without a new code-review call where possible. Exercise saved-result reuse,
 recovery and Astra handoff on applicable authorized runs, preserving source
 findings and the explicit causal chain described in
 [decision records](../../decision_logs/README.md). Record the real PR/CI/gate
-evidence and rollout decision in the parent issue. These are remaining acceptance
-tasks, not completed by offline fixtures.
+evidence and any new rollout decision in the parent issue. Offline fixtures do
+not establish live model quality or cost.
 
-Roll out approved selection only for named low-risk requests with a dedicated
-config; retain fixed for other requests. Stop expansion on any extra severe miss,
-unexplained setting, lost causal link or exceeded envelope. Roll back subsequent
-requests to the existing fixed Astra/xhigh configuration. Frozen or consumed
-requests are not edited: reconcile the active run, keep its findings, then create
+Frozen or consumed requests are not edited: reconcile the active run, keep its findings, then create
 an explicitly instructed replacement or handoff. No automatic retry or policy
 switch is introduced by this harness.
 

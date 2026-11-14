@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -21,20 +22,25 @@ def choice_files(
 ) -> tuple[Path, Path, dict[str, Any]]:
     monkeypatch.syspath_prepend(str(CONFIG.parents[1]))
     settings = importlib.import_module("lib.review_settings")
-    config = h.root / "review.conf"
-    config.write_text(
-        CONFIG.read_text().replace(
-            'REVIEW_SELECTION_MODE="fixed"', f'REVIEW_SELECTION_MODE="{mode}"'
+    config = CONFIG
+    if mode != "select":
+        config = h.root / "review.conf"
+        config.write_text(
+            re.sub(
+                r'^REVIEW_SELECTION_MODE="[^"]*"$',
+                f'REVIEW_SELECTION_MODE="{mode}"',
+                CONFIG.read_text(),
+                flags=re.MULTILINE,
+            )
         )
-    )
     choice = settings.choose(
         settings.load_policy(config),
         model=model,
         reason="人間の指定"
         if human
-        else "通常の確認"
+        else "表示文言だけの修正で該当画面で確認できるためSolを選ぶ。"
         if model == "gpt-6.1-sol"
-        else "広い統合境界を確認",
+        else "復旧後に採用する永続状態が変わるためAstraを選ぶ。",
         specified_by="human_instruction" if human else None,
         human_reference="親が元指示を確認済み" if human else None,
     )
@@ -135,6 +141,9 @@ def test_review_resume_preserves_choice_and_rejects_policy_change_before_launch(
 ) -> None:
     h = Harness(tmp_path)
     config, path, choice = choice_files(h, monkeypatch, "gpt-6.1-sol")
+    mutable_config = h.root / "mutable-review.conf"
+    mutable_config.write_bytes(config.read_bytes())
+    config = mutable_config
     initial = (
         "--profile",
         "review",
