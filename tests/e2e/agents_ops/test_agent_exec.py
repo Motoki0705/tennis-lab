@@ -579,7 +579,11 @@ def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
         f'model_reasoning_effort="{effort}"',
         "-c",
         'service_tier="default"',
-    ] + (["--disable", "multi_agent"] if profile == "review" else []) + ["-"]
+    ] + (
+        ["-c", 'web_search="disabled"', "--disable", "multi_agent"]
+        if profile == "review"
+        else []
+    ) + ["-"]
 
 
 def test_audit_mcp_arguments_are_after_exec_on_read_only_scout_profile(

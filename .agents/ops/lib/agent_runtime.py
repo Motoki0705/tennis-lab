@@ -255,6 +255,9 @@ def capture(
             if proc is not None:
                 result["terminated_pids"] = _terminate_group(proc, proc.pid, 1.0)
                 result["cli_exit_code"] = proc.returncode
+                result["cli_exit_signal"] = (
+                    -proc.returncode if proc.returncode < 0 else None
+                )
                 result["terminated_pids"].extend(terminate_descendants(1.0))
                 result["cleanup_complete"] = True
                 if proc.stdout is not None:
@@ -488,6 +491,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "exit_code": None,
             "task_success": None,
             "cli_exit_code": None,
+            "cli_exit_signal": None,
             "runner": process_identity(os.getpid()),
             "process": None,
             "agent_spawned": False,
@@ -561,6 +565,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             status, reason = capture(
                 cmd, cwd, env, run_dir, result, save, events, args.timeout
             )
+            if reason is None and status < 0:
+                reason = "cli_signal"
+                result["error"] = f"CLI terminated by signal {-status}"
             if reason is None:
                 reason = "cli_error" if status else "invalid_output"
                 if events.invalid_structured_output:

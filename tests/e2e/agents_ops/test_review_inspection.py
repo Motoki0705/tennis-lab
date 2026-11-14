@@ -94,6 +94,33 @@ def test_inspect_before_prepare_and_published_review_never_mutates_state(
     assert files(state_dir) == before and len(r.calls()) == invocations
 
 
+def test_inspect_reports_cli_signal_without_recovering_or_relaunching(
+    single_review_env: ReviewEnv,
+) -> None:
+    r = single_review_env
+    r.run(
+        ok=False,
+        extra={
+            "REVIEW_AGENT_FINAL_EXIT": "143",
+            "REVIEW_RUNTIME_REASON": "cli_signal",
+            "REVIEW_FINAL_ONLY": "1",
+        },
+    )
+    path = r.run_dir / "agent-runtime/result.json"
+    runtime = json.loads(path.read_text())
+    runtime.update(cli_exit_code=-15, cli_exit_signal=15)
+    path.write_text(json.dumps(runtime))
+    calls = len(r.calls())
+    response, value = inspect(r, 100)
+    assert response.returncode == 0, response.stdout + response.stderr
+    run = value["prs"][0]["history"][0]
+    assert run["runtime"]["turn_end_reason"] == "cli_signal"
+    assert run["runtime"]["cli_exit_code"] == -15
+    assert run["runtime"]["cli_exit_signal"] == 15
+    assert run["coverage_check"]["covered"] is False
+    assert value["agent_invocations"] == 0 and len(r.calls()) == calls
+
+
 def test_inspect_input_changes_and_legacy_missing_comment_baseline(
     single_review_env: ReviewEnv,
 ) -> None:

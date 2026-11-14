@@ -793,6 +793,7 @@ def test_configuration_is_literal_complete_and_validated_before_overrides(
     ("scenario", "reason", "code"),
     [
         ("malformed", "invalid_output", 1),
+        ("malformed_and_wait", "invalid_output", 1),
         ("duplicate_keys", "invalid_output", 1),
         ("missing_completion", "invalid_output", 1),
         ("different_final", "invalid_output", 1),
@@ -815,6 +816,13 @@ def test_failed_turns_preserve_evidence_and_never_claim_task_success(
     result = h.result()
     assert result["turn_end_reason"] == reason
     assert result["result"] == "failed" and result["task_success"] is None
+    if scenario == "malformed_and_wait":
+        # The runner sent this signal after a parser failure. It is cleanup,
+        # rather than a CLI signal that caused the turn to fail.
+        assert result["cli_exit_signal"] == signal.SIGTERM
+        assert result["cli_exit_code"] == -signal.SIGTERM
+    elif scenario == "exit_error":
+        assert result["cli_exit_signal"] is None
     assert (h.root / "initial/events.jsonl").exists()
     assert (h.root / "initial/stderr.log").exists()
     assert result["runtime"]["session_id"]
@@ -826,6 +834,8 @@ def test_failed_turns_preserve_evidence_and_never_claim_task_success(
 def test_web_search_completes_and_resumes_without_losing_raw_events(
     h: Harness, profile: str | None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The fake deliberately emits searches even when disabled, to retain support
+    # for historical/unexpected CLI events without weakening output validation.
     extra: tuple[str, ...] = ("--profile", profile) if profile else ()
     if profile == "review":
         from tests.e2e.agents_ops.test_review_model_selection import choice_files
@@ -850,6 +860,74 @@ def test_web_search_completes_and_resumes_without_losing_raw_events(
     assert resumed["runtime"]["session_id"] == initial["runtime"]["session_id"]
     assert resumed["runtime"]["turn_id"] != initial["runtime"]["turn_id"]
     assert resumed["runtime"]["effective"]["model"]["status"] == "observed"
+    for name in ("initial", "continued"):
+        argv = json.loads((h.root / name / "invocation.json").read_text())["argv"]
+        if profile == "review":
+            assert argv[argv.index('web_search="disabled"') - 1] == "-c"
+            assert h.result(name)["contract"]["settings"]["web_search"] == "disabled"
+        else:
+            assert not any(arg.startswith("web_search=") for arg in argv)
+
+
+@pytest.mark.parametrize("web_search", [None, "cached"])
+def test_review_resume_rejects_missing_or_changed_search_contract_before_launch(
+    h: Harness, web_search: str | None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.e2e.agents_ops.test_review_model_selection import choice_files
+
+    _, path, _ = choice_files(h, monkeypatch, "gpt-6.1-sol")
+    extra = ("--profile", "review", "--review-selection-file", str(path))
+    assert h.run(extra=extra).returncode == 0
+    previous = h.result()
+    if web_search is None:
+        del previous["contract"]["settings"]["web_search"]
+    else:
+        previous["contract"]["settings"]["web_search"] = web_search
+    (h.root / "initial/result.json").write_text(json.dumps(previous))
+    (h.root / "args.txt").unlink()
+    proc = h.run(
+        "rejected",
+        action="resume",
+        extra=(*extra, "--resume-from", str(h.root / "initial")),
+    )
+    assert proc.returncode == 2 and "saved contract" in proc.stderr
+    assert not (h.root / "rejected").exists() and not (h.root / "args.txt").exists()
+
+
+@pytest.mark.parametrize(
+    ("agent", "scenario", "signum"),
+    [
+        ("codex", "signal_before_session", signal.SIGTERM),
+        ("codex", "web_search_signal", signal.SIGTERM),
+        ("codex", "runtime_error_signal", signal.SIGTERM),
+        ("codex", "signal_after_completion", signal.SIGKILL),
+        ("claude", "schema_retries_signal", signal.SIGTERM),
+    ],
+)
+def test_cli_signal_takes_precedence_over_incomplete_failed_or_completed_output(
+    h: Harness, output_schema: Path, agent: str, scenario: str, signum: int
+) -> None:
+    out = h.root / "accepted.json"
+    proc = h.run(
+        agent=agent,
+        scenario=scenario,
+        extra=("--json-schema", str(output_schema), "--out", str(out)),
+    )
+    assert proc.returncode == 128 + signum, proc.stderr
+    result = h.result()
+    assert result["result"] == "failed" and result["task_success"] is None
+    assert result["turn_end_reason"] == "cli_signal"
+    assert result["cli_exit_code"] == -signum
+    assert result["cli_exit_signal"] == signum
+    assert result["cleanup_complete"] is True
+    assert f"signal {signum}" in result["error"]
+    assert not out.exists()
+    assert json.loads(proc.stdout)["turn_end_reason"] == "cli_signal"
+    raw = (h.root / "initial/events.jsonl").read_bytes()
+    if scenario == "web_search_signal":
+        assert b'"type":"web_search"' in raw
+    elif scenario == "signal_before_session":
+        assert raw == b"" and result["runtime"]["session_id"] is None
 
 
 @pytest.mark.parametrize("agent", ["codex", "claude"])
@@ -916,6 +994,7 @@ def test_timeout_reaps_uncooperative_descendants(h: Harness, scenario: str) -> N
     proc = h.run(scenario=scenario, extra=("--timeout", "1"))
     assert proc.returncode == 124, proc.stderr
     assert h.result()["turn_end_reason"] == "timeout"
+    assert h.result()["cli_exit_signal"] == signal.SIGKILL
     assert not process_alive(int((h.root / "child.pid").read_text()))
 
 
@@ -942,6 +1021,7 @@ def test_stop_and_signal_recovery(h: Harness, operation: str) -> None:
         assert not process_alive(child)
         result = h.result()
         assert result["turn_end_reason"] == "stopped" and result["result"] == "failed"
+        assert result["cli_exit_signal"] == signal.SIGKILL
         assert result["task_success"] is None
         resumed = h.run(
             "continued",

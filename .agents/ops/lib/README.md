@@ -494,6 +494,22 @@ Codexのread-only再開は `exec --sandbox read-only ... resume` の親引数で
 `--last`、fork、新sessionへの自動振替は使わない。
 JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.com/codex/noninteractive)。
 
+### レビューのWeb検索
+
+Codexのreview profileは、初回・再開とも `-c 'web_search="disabled"'` を渡し、
+ユーザーのCLI設定にかかわらず組込みWeb検索を無効にする。
+指定値は `contract.settings.web_search` と `invocation.json` の実引数に残す。
+この値がない旧review runや異なる値のrunは実行契約が異なるため、resumeで黙って設定を変えない。
+他profileと実装workerのWeb検索設定は変更しない。
+
+公式の[設定仕様](https://learn.chatgpt.com/docs/config-file/config-reference)では既定はcached検索であり、
+read-only sandboxの指定だけでは組込み検索を無効化しない。
+Codex CLI 0.168.0の `exec --help` / `exec resume --help` と
+`app-server --strict-config -c 'web_search="disabled"' --print-startup-config` で設定の受理を確認した。
+レビューは固定した要件・差分と[専用取得ツール](../review/README.md#取得と隔離cpuテスト)を使うため、
+設定を外部検索へ依存させない。必要な根拠を確認できなければ確認不能として返す。
+この設定は過去のSIGTERMの送り手やWeb検索との因果関係を特定するものではない。
+
 ### JSON Schemaによる構造化出力
 
 `--mcp-config FILE` はread-onlyのCodex `review` / `ops_scout` とClaude `ops_report` で使うホスト提供MCP接続。
@@ -619,6 +635,9 @@ Claudeイベント・保存JSON・Codex transcript・最終構造化出力の重
   usage/modelUsage/costは取得できたresultの値を保存し、請求確定額へ読み替えない。
 - `runner` / `process`: PID、boot ID、start ticks。生存確認はPIDだけで判定しない。
   `cli_exit_code` はCLIの実終了、`exit_code` はwrapperの終了、`terminated_pids` は回収対象。
+  `cli_exit_signal` はCLIがシグナル終了したときの正の番号で、それ以外はnull（旧記録にはキーがない）。
+  stop/timeoutの回収でCLIへ送ったシグナルもこの値へ記録するが、終了理由は `stopped` / `timeout` を維持する。
+  出力検査のエラーでrunnerがCLIを回収した場合も、元の検査エラーを終了理由に保つ。
   `cleanup_complete` が未確認、または前のCLI/groupが残る場合は再開を拒否する。
   session IDはイベント受信時に保存する。強制終了直前の未保存情報は推定しない。
 - `transcript_before`: Codex継続の起動前transcriptのパス・byte数・SHA-256・turn ID。
@@ -638,6 +657,7 @@ stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, 
 | `invalid_output` / `metadata_error` | 1 | 空・破損・未完了イベント、最終文不一致、実効値取得失敗 |
 | `runtime_error` / `usage_limit` | 非0（CLIが0なら1） | runtime失敗。枠不足の識別は構造化errorの文言による補助分類 |
 | `cli_error` / `startup_failed` | CLI終了値 / 127 | 起動・認証・モデル利用不能など。詳細はローカルstderr |
+| `cli_signal` | 128 + シグナル番号 | runnerが停止・回収を始める前にCLIがシグナル終了。`cli_exit_code` は負の番号、`cli_exit_signal` は正の番号。出力の有無やruntimeのエラー分類より優先し、最終文を採用しない |
 | `timeout` | 124 | 呼出元が明示した有限正数の `--timeout` 到達。既定は上限なし |
 | `stopped` | 130 / 143 | SIGINT / SIGTERM、またはstopで中断を照合 |
 | `descendants_reaped` | 1 | CLI終了後も残ったtoolsを回収。タスク完了にはしない |

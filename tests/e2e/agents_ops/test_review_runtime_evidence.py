@@ -137,6 +137,7 @@ def test_matching_completed_events_allow_only_verified_runtime_failures(
         "descendants_reaped",
         "cleanup_failed",
         "startup_failed",
+        "cli_signal",
         None,
         "unknown_reason",
     ],
