@@ -54,7 +54,7 @@ pipeline では `player_association` node がこれを実行する（[pipeline R
 ### Meiji 3cam のラベル（初期v1観測）
 
 review とラベルは各clipの `annotations/player_association/{review.yaml,labels.json}` に置く。
-Meijiのdatasetは `data/tennis_multivew/processed/meiji_3cam/dataset`。
+Meijiのdatasetは `data/tennis_multiview/processed/meiji_3cam/dataset`。
 [`evaluation/dataset_labels.py`](evaluation/dataset_labels.py)が保存先と探索を所有し、git内の旧ラベルへ戻る経路はない。
 観測 run は `outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927`（#933）。
 clip ごとの選定理由と人物の説明は review YAML の `selection`・`people` を正とする。

@@ -1,7 +1,7 @@
 """Browse an EXISTING Clip Studio project without edits, sync jobs or exports.
 
 python -m src.tennis_scene.clip_studio --data-root /path/to/data \
-    --source-directory tennis_multivew/raw/meiji_3cam/video_000 --port 8904
+    --source-directory tennis_multiview/raw/meiji_3cam/video_000 --port 8904
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ def main(argv: list[str] | None = None) -> None:
         "--data-root",
         type=Path,
         required=True,
-        help="既存data root（tennis_multivewを含む）",
+        help="既存data root（tennis_multiviewを含む）",
     )
     parser.add_argument(
         "--source-directory", required=True, help="DATA相対のraw/<dataset>/<video>経路"

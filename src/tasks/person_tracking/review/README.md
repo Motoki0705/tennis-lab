@@ -16,7 +16,7 @@ OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 "$ROOT/.venv/bin/python" \
   --campaign "$ROOT/outputs/chat_annotation/player_pose/ball-mix-v2-20261002" \
   --pose-dataset "$ROOT/data/ball_detection/ball-mix-v2-player-pose-v1" \
   --store "$ROOT/outputs/tennis_scene/evaluate/i964-qualification-r14-20261001/store" \
-  --reference "$ROOT/data/tennis_multivew/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association/labels.json" \
+  --reference "$ROOT/data/tennis_multiview/processed/meiji_3cam/dataset/videos/video_000/clips/clip_000/annotations/player_association/labels.json" \
   --port 8896
 ```
 
