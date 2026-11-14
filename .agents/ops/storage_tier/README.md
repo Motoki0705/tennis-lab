@@ -94,7 +94,8 @@ blocks **all units**: arbitrary Python/Hydra/shell code can resolve inputs indir
 so parsing command text cannot prove that other units are unused. Stale running
 records must be resolved through the queue workflow; this tool does not rewrite them.
 Recently written units wait for the configured settling interval (default one hour).
-Snapshots before/after hashing and before publication detect concurrent changes.
+Snapshots before/after hashing and publication detect concurrent changes. Published
+metadata must match the hashed staging tree before its digests can enter a manifest.
 
 Mirroring hashes all D: files, copies into a new E: staging tree, hashes all staged
 E: files and compares the complete tree. A pre-existing unrecorded E: tree must

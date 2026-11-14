@@ -77,7 +77,8 @@ root所有の仮想 `/proc` 直下だけは通常の列挙を使う。ここはd
 プロセスやqueue dirを読めなければ失敗。`jobs/*.job` または `running/*.job` があれば**全単位を保持**する。
 Python/Hydra/shellが設定から間接的にpathを決めるため、文字列解析だけで非参照を証明しない。
 古いrunning記録はqueue側の手順で解決し、このツールは書き換えない。
-最近書かれた単位は設定の静止待ち（既定1時間）を置く。hash前後・公開直前のsnapshotで変更も検出する。
+最近書かれた単位は設定の静止待ち（既定1時間）を置く。hash・公開の前後のsnapshotで変更も検出する。
+hashしたstageと公開後metadataの一致を確認するまで、そのhashをmanifestへ記録しない。
 
 ミラーはD:全件SHA-256→E:の新しいstageへコピー→stage全件SHA-256→tree一致確認。
 未記録の既存E:はD:と全件一致するときだけ採用する。記録済みE:の更新も旧metadataが不変の場合に限る。

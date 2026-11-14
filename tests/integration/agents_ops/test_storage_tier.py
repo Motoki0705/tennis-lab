@@ -547,6 +547,45 @@ def test_mount_loss_after_quarantine_restores_source_without_deletion(lab: Lab) 
     assert not any(record["event"] == "deleted" for record in lab.records())
 
 
+@pytest.mark.parametrize("operation", ["mirror", "hydrate"])
+def test_publication_writer_cannot_attach_stale_hashes_to_fresh_metadata(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    local, mirror = lab.config.repo / unit.path, lab.config.mirror / unit.path
+    if operation == "hydrate":
+        assert lab.run("evict", unit)[0] == 0
+        destination = local
+    else:
+        (local / "a.bin").write_bytes(b"peach\n")
+        lab.age(unit, 1)
+        destination = mirror
+    manifest_before = lab.filesystem.read_bytes(lab.engine.manifest_path(unit))
+    original = lab.module.rename
+    published = False
+
+    def writer(source: Path, target: Path, *, exchange: bool = False) -> None:
+        nonlocal published
+        original(source, target, exchange=exchange)
+        if target == destination:
+            published = True
+            (target / "a.bin").write_bytes(b"grape\n")
+
+    monkeypatch.setattr(lab.module, "rename", writer)
+    code, report = lab.run(operation, unit)
+    assert published and code == 1, report
+    assert "publication" in report["results"][0]["error"]
+    assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == manifest_before
+    if operation == "mirror":
+        assert lab.filesystem.read_bytes(local / "a.bin") == b"peach\n"
+        backups = list(mirror.parent.glob(".storage-tier-stage-*"))
+        assert len(backups) == 1
+        assert lab.filesystem.read_bytes(backups[0] / "a.bin") == b"apple\n"
+    else:
+        assert lab.filesystem.read_bytes(mirror / "a.bin") == b"apple\n"
+
+
 def test_recent_writer_and_empty_unit_are_retained(lab: Lab) -> None:
     unit = lab.unit()
     lab.mirror(unit)

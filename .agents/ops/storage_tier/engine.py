@@ -368,6 +368,10 @@ class Engine:
             rename(stage, destination, exchange=old is not None)
             published = True
             final = snapshot(destination)
+            if not copied.same_metadata(final, moved=True):
+                raise StorageError(
+                    "E: changed during publication; refusing to record stale hashes"
+                )
             for name, entry in final.entries.items():
                 if entry["kind"] == "file":
                     entry["sha256"] = copied.entries[name]["sha256"]
@@ -420,6 +424,10 @@ class Engine:
             self.check_mount()
             rename(stage, destination)
             final = snapshot(destination)
+            if not local.same_metadata(final, moved=True):
+                raise StorageError(
+                    "D: changed during hydrate publication; refusing to record stale hashes"
+                )
             for name, entry in final.entries.items():
                 if entry["kind"] == "file":
                     entry["sha256"] = local.entries[name]["sha256"]

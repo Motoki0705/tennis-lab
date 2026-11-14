@@ -71,7 +71,8 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 镜像与认证前按 device/inode 检查 fd、cwd、mmap，覆盖单位外的硬链接别名。无法读取进程或 queue 目录则失败。
 存在任何 `jobs/*.job` 或 `running/*.job` 时保留**所有单位**，因为 Python/Hydra/shell 能通过配置间接得到路径，
 命令字符串不能证明其他单位未被引用。旧 running 记录由 queue 流程处理，本工具不改写。
-近期写入需经过配置的静止时间（默认一小时）；哈希前后及发布前的 snapshot 也检测并发变更。
+近期写入需经过配置的静止时间（默认一小时）；哈希与发布前后的 snapshot 也检测并发变更。
+发布后 metadata 必须与已哈希的 staging tree 一致，才能将其 digest 写入 manifest。
 
 镜像先计算 D: 全量 SHA-256，复制到新的 E: staging，再计算 staging 全量 SHA-256 并比较整个 tree。
 未记录的现有 E: 只有与 D: 完全一致才可采用。更新已记录镜像前必须确认旧 E: metadata 未变。
