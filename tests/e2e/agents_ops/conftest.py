@@ -697,3 +697,39 @@ def ops_env(tmp_path: Path) -> Iterator[OpsEnv]:
     )
     assert init.returncode == 0, init.stderr
     yield ops
+
+
+@pytest.fixture(autouse=True)
+def _github_http_bridge(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """Route reader/parent HTTP to existing fake executable scenarios."""
+    import importlib.util
+
+    support = ROOT / "tests/support/agents_ops"
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    spec = importlib.util.spec_from_file_location(
+        "github_http", support / "github_http.py"
+    )
+    assert spec is not None and spec.loader is not None
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    transport = importlib.import_module("issues.transport")
+    monkeypatch.setattr(transport, "_API_URL", transport._API_URL)
+    monkeypatch.setattr(transport, "_token", transport._token)
+    monkeypatch.setattr(transport.HTTPClient, "request", transport.HTTPClient.request)
+    monkeypatch.setenv("NO_PROXY", os.environ.get("NO_PROXY", ""))
+    bridge = helper.install(transport)
+    original = subprocess.Popen.__init__
+
+    def launch(self: Any, *args: Any, **kwargs: Any) -> None:
+        env = dict(kwargs.get("env") or os.environ)
+        env["AGENTS_TEST_GITHUB_HTTP"] = "1"
+        paths = [str(support / "http_bootstrap")]
+        env["PYTHONPATH"] = os.pathsep.join([*paths, env.get("PYTHONPATH", "")])
+        kwargs["env"] = env
+        original(self, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess.Popen, "__init__", launch)
+    try:
+        yield
+    finally:
+        bridge.close()

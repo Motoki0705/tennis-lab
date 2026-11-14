@@ -713,6 +713,19 @@ def routes_for(snapshots: dict[int, Any]) -> dict[str, Any]:
 
 @pytest.fixture
 def issue_cli(tmp_path: Path, fmt: ModuleType) -> CliEnv:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(tmp_path),
+            "remote",
+            "add",
+            "origin",
+            "git@github.com:o/r.git",
+        ],
+        check=True,
+    )
     fake = tmp_path / "bin"
     fake.mkdir()
     gh = fake / "gh"
@@ -738,11 +751,7 @@ def test_cli_starting_from_a_child_checks_parent_and_siblings_without_writes(
         "issues": [10, 11, 12],
         "problems": [],
     }
-    assert all(
-        call[:3] == ["repo", "view", "--json"]
-        or call[call.index("--method") + 1] == "GET"
-        for call in issue_cli.calls()
-    )
+    assert all(call[call.index("--method") + 1] == "GET" for call in issue_cli.calls())
 
 
 def test_cli_migration_checks_only_the_selected_family(

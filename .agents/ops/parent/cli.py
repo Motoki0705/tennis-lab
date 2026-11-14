@@ -48,7 +48,7 @@ def parser() -> argparse.ArgumentParser:
         models = implementation_models()
     except (OSError, ValueError) as exc:
         root.error(str(exc))
-    root.add_argument("--repo", help="owner/repo; default: gh repo view")
+    root.add_argument("--repo", help="owner/repo; default: unique GitHub remote")
     root.add_argument(
         "--state-dir", type=Path, help="the same registry as dispatcher/review/merge"
     )

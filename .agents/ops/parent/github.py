@@ -1,10 +1,9 @@
-"""GitHub I/O. Reuse the shared issues reader; writes use structured JSON stdin."""
+"""GitHub I/O with a shared HTTPS pool and explicit transaction boundaries."""
 
 from __future__ import annotations
 
 import copy
 import json
-import subprocess
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
@@ -185,31 +184,14 @@ class GitHub(IssueGitHub):
             started = time.monotonic()
             metrics.count("github_requests")
             try:
-                result = subprocess.run(
-                    [
-                        "gh",
-                        "api",
-                        "--method",
-                        method,
-                        "--header",
-                        "Accept: application/vnd.github+json",
-                        "--header",
-                        "X-GitHub-Api-Version: 2022-11-28",
-                        endpoint,
-                        "--input",
-                        "-",
-                    ],
-                    input=json.dumps(payload, ensure_ascii=False),
-                    text=True,
-                    capture_output=True,
-                    timeout=60,
-                    check=False,
-                )
+                result = self._http.request(method, endpoint, payload)
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
         if result.returncode:
-            raise ValueError(f"gh {method} {endpoint} failed: {result.stderr.strip()}")
-        return object_value(json.loads(result.stdout))
+            raise ValueError(
+                f"gh {method} {self._http.redact(endpoint)} failed: {self._http.redact(result.stderr.strip())}"
+            )
+        return object_value(json.loads(self._http.redact_json(result.stdout)))
 
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         """Read GraphQL without caching or holding the registry lock remotely."""
@@ -217,19 +199,16 @@ class GitHub(IssueGitHub):
             started = time.monotonic()
             metrics.count("github_requests")
             try:
-                result = subprocess.run(
-                    ["gh", "api", "graphql", "--input", "-"],
-                    input=json.dumps({"query": query, "variables": variables}),
-                    text=True,
-                    capture_output=True,
-                    timeout=60,
-                    check=False,
+                result = self._http.request(
+                    "POST", "graphql", {"query": query, "variables": variables}
                 )
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
         if result.returncode:
-            raise ValueError(f"gh graphql failed: {result.stderr.strip()}")
-        response = object_value(json.loads(result.stdout))
+            raise ValueError(
+                f"gh graphql failed: {self._http.redact(result.stderr.strip())}"
+            )
+        response = object_value(json.loads(self._http.redact_json(result.stdout)))
         if response.get("errors"):
             raise ValueError(f"gh graphql errors: {response['errors']}")
         data: dict[str, Any] = object_value(response.get("data"))
