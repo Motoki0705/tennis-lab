@@ -14,7 +14,11 @@ test("real library loads task nodes, stable ids, papers and linked summary", asy
   // The summary changes with research decisions; only its node links are a contract.
   assert.match(graph.summaryHtml, /href="\/\?node=run-[a-z0-9-]+"/);
   const paper = graph.papers.find((p) => p.id === "paper-2024-gvhmr")!;
-  assert.equal(paper.pdfUrl, "/api/papers/paper-2024-gvhmr");
+  assert.equal(paper.source, "https://arxiv.org/abs/2409.06662v1");
+  assert.deepEqual(paper.externalIds, { arxiv: "2409.06662" });
+  assert.match(paper.summary, /Gravity-View/);
+  assert.match(paper.reason, /PLCS/);
+  assert.match(paper.bodyHtml, /固定split/);
   assert.ok(graph.nodes.filter((n) => n.papers.includes(paper.id)).length >= 3);
   const node = graph.nodes.find(
     (n) => n.id === "run-plcs-accad-gvhmr-meiji-1000-v1-train",

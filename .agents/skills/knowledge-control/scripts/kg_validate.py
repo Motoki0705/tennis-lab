@@ -18,6 +18,7 @@ import argparse
 
 from kg_artifacts import validate_runs
 from kg_changes import validate_added_nodes, validate_summary_review
+from kg_citations import load_citations, validate_library
 from kg_history import load_base, validate_identity
 from kg_lib import load_nodes, nodes_dir, validate
 from kg_papers import load_papers, validate_papers
@@ -41,8 +42,11 @@ def main() -> int:
         nodes = load_nodes(directory)
         res = validate(nodes)
         res.errors.extend(validate_counters(nodes))
-        res.errors.extend(validate_papers(nodes).errors)
-        res.errors.extend(validate_registry(nodes, load_papers()))
+        papers = load_papers()
+        res.errors.extend(validate_papers(nodes, papers).errors)
+        if not res.errors:
+            res.errors.extend(validate_library(load_citations(), papers))
+        res.errors.extend(validate_registry(nodes, papers))
         res.errors.extend(validate_runs(directory.parent, nodes, args.base_ref))
         if args.check_summary:
             res.errors.extend(check_summary())

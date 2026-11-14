@@ -234,7 +234,6 @@ GVHMR 适用[教育、研究和非营利目的条款](src/submodules/vendor/gvhm
 | 来自 YouTube 的视频与原创标注 | [YouTube 服务条款](https://www.youtube.com/static?template=terms)；数据的 Git 提交不适用。各数据集的来源记录按视频管理来源和版本。 | 须遵守各视频的相关权利、声明要求及服务条款。添加原创标注不会消除视频的相关权利或合同条款。关于《著作权法》第 30 条之 4 对训练用途的判断范围及合同问题，见[训练数据与公开决定](#training-data-publication)。 |
 | ACCAD / AMASS 动作数据 | [ACCAD 官方网站](https://accad.osu.edu/research/motion-lab/mocap-system-and-data)、[AMASS 官方网站](https://amass.is.tue.mpg.de/)；Git 提交不适用。使用 AMASS 分发的 ACCAD 数据时，须遵循该版本及协议。 | ACCAD Open Motion Project 的官方声明采用 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)。AMASS 版本另有[限于非商业性科学研究的 Dataset License](https://amass.is.tue.mpg.de/license.html) 及再次分发限制。请区分原始数据与 AMASS 转换为 SMPL 格式后的数据。 |
 | Meiji 多相机视频与标注 | [本项目的公开准备及已达成的一致意见，#1267](https://github.com/Motoki0705/tennis-lab/issues/1267)。非公开录制数据；Git 提交不适用。数据集清单标识各视频和片段。 | 已取得被拍摄者的同意（据项目记录）。不属于 Apache-2.0 的适用范围。公开示例的范围及许可证见[示例数据集使用条款](#sample-dataset-terms)。 |
-| `knowledge/Papers/paper-2024-gvhmr/paper.pdf` | [Shen et al., GVHMR, arXiv:2409.06662v1](https://arxiv.org/abs/2409.06662v1)；Git 提交不适用；论文版本为 v1。 | [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)。保留作者的原始 PDF。[随附的来源说明](knowledge/Papers/paper-2024-gvhmr/paper.md)。仓库根目录的 Apache-2.0 不适用于论文本身。 |
 
 <a id="published-artifacts"></a>
 

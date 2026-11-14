@@ -24,8 +24,10 @@ knowledge/
     <task>/000002-group-<slug>.md
   Papers/
     paper-2024-gvhmr/
-      paper.md                       # 書誌情報・読解・プロジェクトとの関係
-      paper.pdf                      # 出典の版を固定したPDF（再配布条件を確認した場合だけ）
+      paper.md                       # 人間が採録した論文の書誌・要約・採録理由・読解
+  citation_map/                      # 探索した文献。Papersへの登録とは独立
+    papers/cite-<identity digest>.md  # 文献・参考文献ごとの判断（未読の参照先も含む）
+    searches/search-<slug>.md         # 探索条件と世代・問題箇所への参照
   reports/                           # 複数ノードにまたがる結果レポート
   runs/<run-id>/                     # 小さな再現性bundle・指標・図・削除記録
   run-storage-exceptions.json        # 既存bundleの固定例外（自動追加しない）
@@ -105,7 +107,7 @@ runに `members` は指定しない。groupには1件以上のmemberが必要。
 
 ## run成果物の保存基準
 
-この節の容量・種別の制約は **`runs/` に適用する**。`Papers/` の論文PDF、reports、Web UIには一律に適用しない。
+この節の容量・種別の制約は **`runs/` に適用する**。文書ライブラリ、reports、Web UIには一律に適用しない。
 Gitに残すものは、研究の考察・指標・設定・正確なコマンド・環境情報・再現スクリプト・小さな図。
 通常ファイルは **256 KiB以下**、図（PNG・SVG・PDF）は **512 KiB以下**、run合計（削除記録を含む）は **2 MiB以下**。KiB=1,024 bytes、MiB=1,048,576 bytes。境界値ちょうどは許可する。
 
@@ -185,8 +187,9 @@ mkdir -p tmp
 
 ## Papersの仕様
 
-論文はタスクをまたぐため、`Papers/` に一元化する。UIは `tasks` によりタスク別に絞り込む。
-ディレクトリIDは `paper-<発表年4桁>-<短いkebab-case名>`（年は1000〜9999）。同名論文は著者名などで区別し、版を追加する場合は別IDに `-v2` などを付ける。ファイル名は `paper.md` と `paper.pdf` に統一し、論文ディレクトリ内はこの2つの通常ファイルだけにする（symlink不可）。PDFは再配布条件を確認できた場合だけ保存し、それ以外は `paper.md` だけのmetadata登録にする。直下のREADME以外の孤立PDF・未認識ディレクトリもエラー。
+人間が研究に必要と判断した論文だけを、タスク横断で `Papers/` に採録する。探索しただけでは登録しない。
+ディレクトリIDは `paper-<発表年4桁>-<短いkebab-case名>`（年は1000〜9999）。既存IDは維持する。同一文献の版違いは一次資料URLを更新し、別の論文として登録しない。
+各ディレクトリには通常ファイル `paper.md` **だけ**を置く。symlink、PDFその他の添付、旧 `pdf` / `sha256` / `license` metadataは拒否する。本文は外部の一次資料URLで閲覧し、永続保存しない。
 
 `paper.md` の必須frontmatter:
 
@@ -196,13 +199,87 @@ mkdir -p tmp
 | `title` / `year` / `authors` | 正式題名 / 発表年 / 著者名の配列 |
 | `tasks` | 関係するタスクの配列（未実験のタスクも可） |
 | `source` | 参照した版の一次資料URL（arXivのabsページなど） |
-| `license` | 利用条件を確認できるURL。PDFを保存する場合は必須 |
-| `pdf` | PDFを保存する場合だけ `paper.pdf` |
-| `sha256` | 保存PDFのSHA-256。PDFを保存する場合だけ。登録スクリプトで計算 |
+| `summary` | 研究内容の短い要約（非空文字列） |
+| `reason` | 採録理由。研究上の問い、または探索・引用元・役割・根拠を含む発見経路（非空文字列） |
+| `external_ids` | 正規化した外部IDの辞書。ID未確認の通常登録では空辞書も可 |
 
-本文には研究の要点、プロジェクトとの関係、検証仮説と適用限界を記す。参照元実験の一覧はノードの `papers` からUIが生成するので手で二重管理しない。
-`authors` / `tasks` は非空・重複なしの文字列配列。title・著者名は空白のみ不可。`tasks` は[タスク登録簿](#レジストリ)のトピック、`source` / `license` はHTTP(S) URL。yearはIDの発表年と一致する整数。PDFを保存した論文はPDF signatureとhashを検証し、保存しない論文に `paper.pdf` や `sha256` があればエラーにする。内容の読解や転載条件の適合性は人間・agentが確認する。
-公開PRにPDFを含める際は転載条件を確認し、著者・原論文・ライセンス・改変の有無を併記する。PDF固有のライセンスはrepo本体のMITとは別に維持する。
+本文には追加の読解、プロジェクトとの関係、検証仮説と適用限界を記せる。必須の要約・理由はfrontmatterを正本としてUIが表示し、本文へ複写しない。参照元実験はノードの `papers` から求める。
+`authors` / `tasks` は非空・重複なしの文字列配列。title・著者名は空白のみ不可。`tasks` は[タスク登録簿](#レジストリ)のトピック。`source` はHTTP(S) URL、yearはIDの年と一致する整数。
+通常登録と探索からの採録の入口は `kg_papers.py`（[登録手順](../.agents/skills/knowledge-control/references/record.md#related-paper)）。探索からの採録は人間の明示操作で、発見経路を `reason` に自動記入する。
+
+## 引用探索文書の仕様
+
+`citation_map/papers/<id>.md` と `citation_map/searches/<id>.md` にYAML frontmatter付きMarkdownを置く。各ディレクトリは通常の `.md` 文書だけを許可し、PDFやsymlinkは拒否する。frontmatterの未知のキー、YAML重複キー・aliasも拒否する。本文は任意の補足で、機械処理はfrontmatterのみを読む。
+探索CLI用の型・parse/serialize・入出力・検証APIは `kg_citations.py`、外部IDの共通処理は `kg_identifiers.py`（いずれもknowledge-controlの `scripts/`）。Web UIは同じfrontmatterを読む。
+
+### 外部ID・同一視・結合
+
+`external_ids` は次のnamespaceから文字列への辞書。未知のnamespaceは拒否する。登録時に正規化し、保存済みの非正規形は検証エラーにする。
+
+| namespace | 正規形と入力の扱い |
+|---|---|
+| `doi` | `10.<4〜9桁>/<suffix>` を小文字化。`doi:` / `https://doi.org/` / `https://dx.doi.org/` を除去しURLエンコードを復号 |
+| `arxiv` | `YYMM.NNNN[N]` または旧 `archive/NNNNNNN`。`arXiv:` / abs・pdf URL / `.pdf` / `vN` を除き小文字化。版は `source` に残す |
+| `openalex` | `W<数字>`。OpenAlex URL・大文字小文字の差を正規化 |
+| `url` | 他のIDが判らない場合の一次資料URL。scheme/hostを小文字化しfragmentを除去。path/queryは保持。HTTPとHTTPSを推測で同一視しない |
+
+同じnamespace/valueを1つでも共有する文献を同一視の候補にする。候補が1件でも、両側にある全namespaceの正規化した値を照合し、1つでも異なれば結合・別名の集約をエラーにする。例えばarXivが一致してもDOIが異なる場合は拒否し、誤ったIDを明示的に訂正してから再検証する。片側にしかないnamespaceは矛盾とせず、別名として追加できる。この規則はPapers↔探索の結合と、探索文書どうしの同一視に共通で、役割や題名で矛盾を推測修正しない。
+
+複数IDは1文献の別名としてまとめ、別名を追加しても既存の `identity_key` / 文書IDを変えない。新規の `identity_key` は `doi` → `arxiv` → `openalex` → `url` の優先順で `namespace:value` を選び、文書IDは `cite-` + そのUTF-8文字列のSHA-256先頭16桁とする。外部IDは最低1つ必要。別名追加が既存の複数文書を結ぶ場合は暗黙に片方を選ばずエラーとする。1文書に別名を集約し、引用・探索の参照をそのIDへ置換してから再検証する。題名の類似や発表年だけで同一視しない。
+
+Papersとの対応も外部ID集合の共通要素から導出する。探索文書にPapersのIDを、Papersに引用文書IDや手書きの逆リンクを持たせない。各領域内の外部ID重複と、複数のPapersを1引用文献へ結ぶ曖昧な結合はエラー。外部IDなしのPapersは結合対象外。Papersの書誌・要約は採録時点の登録情報で、探索側の引用判断はPapersへ複写しない（採録理由の発見経路だけは登録時点の来歴として記録する）。
+
+### 論文文書 (`type: citation_paper`, `schema_version: 1`)
+
+| キー | 内容 |
+|---|---|
+| `id` / `identity_key` | 上記の不変ID / 外部ID集合に含まれる同一視キー |
+| `title` / `year` / `authors` | 題名 / 年（不明はnull） / 著者配列（不明は空配列）。titleは必須 |
+| `external_ids` / `source` | 外部ID辞書 / 一次資料HTTP(S) URL |
+| `summary` | `available` では非空の研究要約。未読・取得失敗では空文字列を許可し、内容を捏造しない |
+| `text_status` | `available`（取得済み） / `failed`（本文取得失敗） / `not_requested`（未展開の参照先） |
+| `text_reason` | 取得状態の補足。`failed` のとき非空必須。他は空文字列も可 |
+| `references` | 下記の参考文献行の配列。取得失敗・未読では空配列 |
+
+参考文献は本文内の言及回数ではなく参考文献表の1行ごとに記録する。
+
+| 行のキー | 内容 |
+|---|---|
+| `ref_id` / `citation` | 引用元内で一意な `ref-<数字>` / 原文の書誌表記（非空） |
+| `target_id` | 同定済み文献の文書ID、未同定はnull。引用先の正規書誌・外部IDはこの文書から結合して得る。行に複写しない |
+| `identification_status` | `resolved` / `unresolved`（参照先未同定）。target_idの有無と一致させる |
+| `roles` | 下記の役割の配列。重複不可、複数可 |
+| `decision_status` | `classified` / `unclassifiable`（役割判定不能） / `pending`（未判定） |
+| `reason` / `evidence` | 判断理由（常に非空） / 根拠位置の文字列配列（節・表・ページ・本文引用等）。`classified` は1役割以上・1根拠以上必須。他の状態はrolesを空にする |
+
+未同定でも引用文脈から役割を判定できるため、同定状態と判定状態は独立させる。同じtargetへの複数行は許可するが、集計では引用元・引用先・役割を一組として数える。
+
+| rolesの列挙値 | 親 #2011 の5分類 |
+|---|---|
+| `foundation` | 基盤アーキテクチャ・モデル |
+| `component` | 個別技術・構成要素 |
+| `comparison` | 比較対象 |
+| `related` | 直接関連する研究・機能 |
+| `benchmark` | ベンチマーク・データセット |
+
+### 探索文書 (`type: citation_search`, `schema_version: 1`)
+
+| キー | 内容 |
+|---|---|
+| `id` | `search-<小文字英数字のkebab slug>`。実行ごとに一意。呼出側が時刻や実行名を含めて割り当てる |
+| `created_at` | timezone付きISO 8601日時の文字列 |
+| `root_id` | 起点論文の文書ID。入力URL/IDは起点文書のsource/external_idsから解決 |
+| `roles` / `max_depth` | 展開に使う役割（非空、複数可、重複不可） / 0以上の整数。起点は深さ0 |
+| `generations` | `depth`、`paper_ids`（到達した文献ID）、`expanded_ids`（その世代で本文取得・判定を試みたID）の辞書配列 |
+| `issues` | `paper_id` と `ref_id`（文献全体の問題はnull）からなる問題箇所への参照配列 |
+
+世代は0から連続し、指定役割の `classified` かつ `resolved` な辺だけをたどる。既出文献は再度世代へ入れないが、論文文書の全ての辺は残す。各 `paper_ids` は重複不可。最大深さでは `expanded_ids: []`、それより浅い全到達文献は取得を試み、`not_requested` のままにしない。次世代の集合は前世代のexpanded_idsから得られる未出の引用先と一致させる。文献が尽きた時点で止め、空世代は作らない。最大深さを超える世代・参照切れ・不足/余分な展開はエラー。
+
+`issues` はexpanded_ids内の `failed` 文献と、`unresolved` または `unclassifiable` / `pending` な行を漏れなく指す。状態・理由・根拠は論文文書から求め、探索側へ複写しない。これにより探索ごとの取得失敗・未同定・判定不能を読める。未展開の末端文献は取得失敗に数えない。保存済み文献を再利用し、同じ引用元の再読・再実行で辺の数を増やさない。論文文書を訂正した場合は、影響する探索文書の世代・issuesも同じ変更で更新する。
+
+Papersへの採録対象は起点と、その探索の各 `expanded_ids` が記録した **全ての `resolved` 引用先**。指定役割・判定状態・`generations.paper_ids` への収録は採録の条件にしない。比較探索でも、基盤として表示された未展開の引用先を人間が採録できる。発見経路には、探索内で展開した全ての引用元についてref_id・役割・判定状態・判断理由・根拠を記入する。判定不能や根拠の空欄もその状態を明示する。未展開論文のcached参考文献にしかない引用先や、探索範囲外の文献は拒否する。
+
+固定例は `tests/fixtures/knowledge/citation_map/`。A→B→D（比較）、A→C（基盤）、B/C→Dの合流、A→Bの比較・基盤兼用、本文取得失敗E、未同定行と役割判定不能行を含む。テスト用の架空文献で、本番のPapersや探索一覧には入れない。
 
 ## summaryと履歴
 
@@ -238,4 +315,4 @@ PRの番号衝突・既存identityの変更は、マージ先commitを比較元�
 
 CI `Knowledge library` は関連ファイル（標準pipelineのconfigと `LICENSES.md` を含む）のPR・main push・手動実行で動く。上記検証、CPUのみのstorage/登録/曲線テスト、SKILLの例を実行して成果物を検証するテスト、Web UIのlint/test/build/E2Eを行う。PRはbase commit、main pushは直前commitと比較する。手動実行は現在の構造を検証する。
 
-ERRORは修正必須。WARNは追加したrunのissue未記録だけで、任意の追跡情報の不足としてCI失敗にしない。科学的な妥当性・実験間の公平性・本文と数値の意味的一致・PDF転載条件は機械検証の範囲外。
+ERRORは修正必須。WARNは追加したrunのissue未記録だけで、任意の追跡情報の不足としてCI失敗にしない。科学的な妥当性・実験間の公平性・本文と数値の意味的一致は機械検証の範囲外。
