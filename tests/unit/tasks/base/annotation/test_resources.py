@@ -874,6 +874,9 @@ root, ref, req, fd, mode = sys.argv[1:]
 manager = ResourceManager(AnnotationLayout.testing(pathlib.Path(root)), ArtifactRef.model_validate_json(ref))
 request = ResourceRequest.model_validate_json(req)
 owner = capture_supervisor(os.getpid())
+if mode == "coordinated":
+    # Cross a binary exponent boundary: (254.1 + 2.5) - 254.1 != 2.5.
+    time.monotonic = lambda: 254.1
 manager.attach(request, int(fd), owner)
 pathlib.Path(root, "attached").write_text(str(os.getpid()))
 if mode == "orphan":
@@ -1006,7 +1009,7 @@ def test_recovery_preserves_finish_record_written_before_lease_acquisition(
             pass_fds=(fd,),
             start_new_session=True,
         )
-    expected_charge = 2.5 if stage == "gpu" else 0.0
+    expected_charge = pytest.approx(2.5 if stage == "gpu" else 0.0, rel=0, abs=1e-9)
 
     @contextmanager
     def finish_before_lock(layout, name, *, blocking=True):
