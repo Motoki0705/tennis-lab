@@ -1,6 +1,7 @@
 # タスクの出力パス
 
 この文書を `src/tasks` の学習・生成・評価・可視化の配置規約の正本とする。
+D:/E:の物理配置・ミラー・取得・保持は [ローカルストレージ規約](../../.agents/ops/storage_tier/README.md) を参照する。
 パスのroot検証は `src/utils/configuration/paths.py`、名前の組み立ては
 `src/utils/configuration/output_layout.py` が所有する。
 

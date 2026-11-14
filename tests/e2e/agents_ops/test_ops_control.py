@@ -86,6 +86,7 @@ def control_factory(tmp_path: Path) -> Callable[[str], ControlEnv]:
             "board",
             "git_sync",
             "worktree_cleanup",
+            "storage_tier",
         ):
             shutil.copytree(ROOT / f".agents/ops/{job}/systemd", ops / job / "systemd")
         spin = repo / ".spin"
@@ -230,6 +231,7 @@ def test_status_distinguishes_enablement_activity_result_and_schedule(
         "cleanup",
         "git-sync",
         "worktree-cleanup",
+        "storage-tier",
     }
     report = next(row for row in data["targets"] if row["target"] == "report")
     units = {unit["unit"]: unit for unit in report["units"]}
@@ -475,7 +477,8 @@ def test_incomplete_unit_properties_never_imply_inactive(control: ControlEnv) ->
 
 
 @pytest.mark.parametrize(
-    "target", ["report", "triage", "cleanup", "git-sync", "worktree-cleanup"]
+    "target",
+    ["report", "triage", "cleanup", "git-sync", "worktree-cleanup", "storage-tier"],
 )
 def test_run_starts_only_oneshot_without_enabling_timer(
     control: ControlEnv, target: str
@@ -487,6 +490,7 @@ def test_run_starts_only_oneshot_without_enabling_timer(
         "cleanup": "tennis-lab-cleanup",
         "git-sync": "tennis-lab-git-sync",
         "worktree-cleanup": "tennis-lab-worktree-cleanup",
+        "storage-tier": "tennis-lab-storage-tier",
     }[target]
     assert ["systemctl", "--user", "start", prefix + ".service"] in control.calls()
     assert control.read()["units"][prefix + ".timer"]["UnitFileState"] == "disabled"
@@ -645,3 +649,26 @@ def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(
     service = (source / (stem + ".service")).read_text()
     assert "-m worktree_cleanup cleanup" in service
     assert "KillMode=control-group" in service
+
+
+def test_storage_timer_installs_failure_notification_and_only_enables_timer(
+    control: ControlEnv,
+) -> None:
+    stem = "tennis-lab-storage-tier"
+    assert control.run("install", "storage-tier").returncode == 0
+    checked(control, "on", "storage-tier")
+    source = control.repo / ".agents/ops/storage_tier/systemd"
+    service = (source / f"{stem}.service").read_text()
+    timer = (source / f"{stem}.timer").read_text()
+    assert f"OnFailure={stem}-failure.service" in service
+    assert "checkout_job.py" in service and "-m storage_tier cycle" in service
+    assert "OnCalendar=*-*-* 05:30:00 Asia/Tokyo" in timer
+    assert "Persistent=true" in timer
+    state = control.read()
+    assert state["units"][f"{stem}.timer"]["UnitFileState"] == "enabled"
+    assert state["units"][f"{stem}-failure.service"]["UnitFileState"] == "static"
+    assert (
+        "org.freedesktop.Notifications"
+        in (source / f"{stem}-failure.service").read_text()
+    )
+    checked(control, "off", "storage-tier")

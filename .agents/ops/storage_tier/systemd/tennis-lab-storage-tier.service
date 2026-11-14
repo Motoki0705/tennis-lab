@@ -1,0 +1,14 @@
+[Unit]
+Description=tennis-lab: verified D:/E: mirror and eviction of unused working copies
+Documentation=file://%h/projects/tennis-lab/.agents/ops/storage_tier/README.md
+OnFailure=tennis-lab-storage-tier-failure.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/tennis-lab
+Environment=PYTHONPATH=%h/projects/tennis-lab/.agents/ops
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=%h/projects/tennis-lab/.venv/bin/python %h/projects/tennis-lab/.agents/ops/checkout_job.py --repo %h/projects/tennis-lab -- %h/projects/tennis-lab/.venv/bin/python -m storage_tier cycle
+Nice=15
+IOSchedulingClass=idle
+TimeoutStartSec=infinity

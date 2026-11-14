@@ -7,6 +7,7 @@
 ## 役割と実際の保存場所
 
 ローカルのroot・相対path契約は [タスク出力規約](../../../../src/tasks/OUTPUTS.md) を参照する。
+D:/E:のローカル配置・ミラー・取得・保持は [storage-tier](../../../ops/storage_tier/README.md) を参照する。
 Driveもその役割に対応させる。rootの既定値はCLIが所有し、タスク名・実験名・データ版を
 スクリプト内の列挙値にしない。
 

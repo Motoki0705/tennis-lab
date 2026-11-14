@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from src.utils.configuration import (
     PathResolver,
     PathRole,
     RuntimePathRoots,
+    local_storage,
 )
 
 
@@ -579,3 +581,90 @@ def test_reserved_prefix_error_names_why_the_prefix_is_reserved(
     assert reason in str(error.value)
     if fragment.startswith("slcs/"):
         assert str(tmp_path.resolve() / "runs/slcs") in str(error.value)
+
+
+@pytest.fixture
+def migrated_storage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[PathResolver, Path, Path]:
+    repository, mount = tmp_path / "repo", tmp_path / "mirror-mount"
+    repository.mkdir()
+    mount.mkdir()
+    marker = repository / ".storage-tier/active.json"
+    marker.parent.mkdir()
+    marker.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "repository": str(repository),
+                "mirror_mount": str(mount),
+            }
+        )
+    )
+    mapping = _root_mapping()
+    mapping["artifact_root"] = "outputs"
+    resolver = PathResolver(
+        RuntimePathRoots.from_mapping(mapping, repository_root=repository)
+    )
+    monkeypatch.setattr(local_storage.os.path, "ismount", lambda path: path == mount)
+    return resolver, repository, mount
+
+
+@pytest.mark.parametrize(
+    "role,directory",
+    [
+        (PathRole.DATA, "data"),
+        (PathRole.ARTIFACT, "outputs"),
+        (PathRole.CHECKPOINT, "ckpt"),
+    ],
+)
+def test_archived_input_fails_at_common_resolver_with_hydrate_command(
+    migrated_storage: tuple[PathResolver, Path, Path], role: PathRole, directory: str
+) -> None:
+    resolver, repository, mount = migrated_storage
+    mirror = mount / repository.relative_to("/") / directory / "task/version/input.bin"
+    mirror.parent.mkdir(parents=True)
+    mirror.write_bytes(b"archived bytes")
+    with pytest.raises(PathContractError, match="storage_tier hydrate") as error:
+        resolver.resolve(role, "task/version/input.bin")
+    assert str(repository / directory / "task/version/input.bin") in str(error.value)
+    assert not (repository / directory).exists()
+
+
+def test_missing_archived_boundary_input_fails_and_new_output_still_resolves(
+    migrated_storage: tuple[PathResolver, Path, Path],
+) -> None:
+    resolver, repository, mount = migrated_storage
+    mirror = (
+        mount
+        / repository.relative_to("/")
+        / "outputs/task/train/experiment/run/input.bin"
+    )
+    mirror.parent.mkdir(parents=True)
+    mirror.write_bytes(b"archived")
+    boundary = NonHydraPathBoundary(
+        "tests.archived",
+        (
+            BoundaryPathField(
+                "input", PathRole.ARTIFACT, PathDirection.INPUT, must_exist=True
+            ),
+        ),
+    )
+    with pytest.raises(PathContractError, match="storage_tier hydrate"):
+        boundary.validate(
+            {"input": repository / "outputs/task/train/experiment/run/input.bin"},
+            resolver=resolver,
+        )
+    assert (
+        resolver.resolve(PathRole.OUTPUT, "task/train/experiment/new-run")
+        == repository / "outputs/task/train/experiment/new-run"
+    )
+
+
+def test_missing_input_with_unmounted_e_has_a_clear_error(
+    migrated_storage: tuple[PathResolver, Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    resolver, _, _ = migrated_storage
+    monkeypatch.setattr(local_storage.os.path, "ismount", lambda path: False)
+    with pytest.raises(PathContractError, match="E: is not mounted"):
+        resolver.resolve(PathRole.DATA, "task/version/input.bin")

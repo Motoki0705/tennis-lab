@@ -56,6 +56,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/ops-report/](ops/ops-report/README.md) | Claude親とCodex調査子の並列全体調査、3日周期の運用レポート（未完了回は部分公開・再開）、採用提案の日次triage |
 | [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、依存を照合する順次merge gate、共有基盤パスの一覧 |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、期限前のcleanなworktreeの手動削除・候補一覧 |
+| [ops/storage_tier/](ops/storage_tier/README.md) | D:作業実体とE:正本ミラーの配置規約、SHA-256照合・手動取得・atimeによる単位削除と日次user timer |
 | [ops/worktree_cleanup/](ops/worktree_cleanup/README.md) | `.claude/worktrees/` の登録worktreeを作成から336時間で強制削除し、管理jobの停止と状態を照合する |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/issue_supplement/](ops/issue_supplement/README.md) | 作成直後の親issueにGeminiで背景を補足するworkflow。不変条件・独立した意味検査・照合付きの書き込みを行う |

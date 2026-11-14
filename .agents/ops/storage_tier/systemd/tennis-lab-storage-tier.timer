@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily verified local dataset/output storage cycle
+
+[Timer]
+OnCalendar=*-*-* 05:30:00 Asia/Tokyo
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

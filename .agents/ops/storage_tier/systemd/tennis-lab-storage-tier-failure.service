@@ -1,0 +1,6 @@
+[Unit]
+Description=Notify the desktop when the local storage cycle fails
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/busctl --user --timeout=10 call org.freedesktop.Notifications /org/freedesktop/Notifications org.freedesktop.Notifications Notify susssasa{sv}i tennis-lab 0 "" "Local storage cycle failed" "Inspect journalctl --user -u tennis-lab-storage-tier.service" 0 0 5000

@@ -1,0 +1,10 @@
+mirror_mount = "/mnt/wsl/tennis-data"
+# No recent writes for one hour, in addition to queue/fd checks and snapshots.
+settle_seconds = 3600
+# Direct children of these namespaces are dataset versions, never individual files.
+dataset_containers = [
+  "data/ball_detection", "data/court_detection", "data/player_detection",
+  "data/blcs", "data/plcs", "data/slcs", "data/ball_refiner", "data/ball_refiner_3d",
+]
+# Nonstandard version roots require an explicit boundary; raw/model assets are unclassified.
+dataset_units = ["data/court_scene_diversity_6000_v1"]
