@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import stat
@@ -156,7 +157,21 @@ def _codex_args(tmp_path: Path, *extra: str) -> subprocess.CompletedProcess[str]
 
 
 def test_profile_uses_its_own_pins(tmp_path: Path) -> None:
-    result = _codex_args(tmp_path, "--mode", "read-only", "--profile", "review")
+    config = tmp_path / "fixed.conf"
+    config.write_text(
+        (ROOT / ".agents/ops/lib/agents.conf")
+        .read_text()
+        .replace('REVIEW_SELECTION_MODE="select"', 'REVIEW_SELECTION_MODE="fixed"')
+    )
+    result = _codex_args(
+        tmp_path,
+        "--mode",
+        "read-only",
+        "--profile",
+        "review",
+        "--config-file",
+        str(config),
+    )
 
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text(encoding="utf-8").splitlines()
@@ -177,7 +192,9 @@ def test_audit_parent_uses_claude_with_read_only_tools(
     assert args[args.index("--effort") + 1] == "xhigh"
     assert args[args.index("--output-format") + 1] == "stream-json"
     assert args[args.index("--tools") + 1 : args.index("--permission-mode")] == [
-        "Read", "Grep", "Glob"
+        "Read",
+        "Grep",
+        "Glob",
     ]
     assert args[args.index("--permission-mode") + 1] == "dontAsk"
     assert "--strict-mcp-config" in args
@@ -328,7 +345,9 @@ def test_install_units_propagates_reload_failure(tmp_path: Path) -> None:
     assert result.returncode == 5
 
 
-def test_install_units_rejects_removed_enable_before_side_effects(tmp_path: Path) -> None:
+def test_install_units_rejects_removed_enable_before_side_effects(
+    tmp_path: Path,
+) -> None:
     result, calls = _run_installer(tmp_path, ["demo.service", "demo.timer"], "--enable")
     assert result.returncode == 2
     assert "spin ops on <target>" in result.stderr
@@ -474,8 +493,27 @@ def test_installer_installs_only_current_report_units(tmp_path: Path) -> None:
     assert "Persistent=true" in timer
 
 
+def _review_selection(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[str, str]:
+    monkeypatch.syspath_prepend(str(ROOT / ".agents/ops"))
+    settings = importlib.import_module("lib.review_settings")
+    path = tmp_path / "review-choice.json"
+    path.write_text(
+        json.dumps(
+            settings.choose(
+                settings.load_policy(),
+                model="gpt-6-astra",
+                reason="取得ツールと実行権限の境界を確認するためAstraを選ぶ。",
+            )
+        )
+    )
+    return "--review-selection-file", str(path)
+
+
 def test_review_mcp_is_read_only_and_records_frozen_configuration(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = tmp_path / "mcp.json"
     config.write_text(
@@ -487,6 +525,7 @@ def test_review_mcp_is_read_only_and_records_frozen_configuration(
         "read-only",
         "--profile",
         "review",
+        *_review_selection(tmp_path, monkeypatch),
         "--mcp-config",
         str(config),
     )
@@ -510,11 +549,17 @@ def test_review_mcp_is_read_only_and_records_frozen_configuration(
 )
 def test_audit_mcp_does_not_change_other_profile_or_implementation_argv(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
     profile: str | None,
     model: str,
     effort: str,
 ) -> None:
-    result = _codex_args(tmp_path, *(["--profile", profile] if profile else []))
+    flags = (
+        ("--profile", profile, *_review_selection(tmp_path, monkeypatch))
+        if profile
+        else ()
+    )
+    result = _codex_args(tmp_path, *flags)
     assert result.returncode == 0, result.stderr
     args = (tmp_path / "args.txt").read_text().splitlines()
     assert args == [
