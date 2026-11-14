@@ -81,6 +81,22 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 
 ### 取得範囲と計測
 
+`GitHub(repo, store=store)` は、そのStoreのactiveなtransaction専用client。
+GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
+`fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
+`history_read_scope()` は独立した観測を開始し、その観測内だけ履歴探索とGETを再利用する。
+`GitHub(repo)` はregistry外のclientで、GET cacheを持たない。
+既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
+transaction用clientがlock不在を検出して自動的にregistry外clientへ切り替わることはない。
+
+transaction内でgit・runner・証拠ファイルを検証するときは `gh.io_scope()` でregistryを解放する。
+GitHub取得も含む読取処理には `session.unlocked()` が返す独立client付きsessionを使う。
+どちらも復帰時に対象親の永続行を再照合し、競合は `RegistryConflict`（終了値2）で返す。
+transactionを終了して長時間処理を行う場合は `store.checkpoint()` を保存し、
+次のtransactionで `store.revalidate(checkpoint)` を実行してから保存・公開・agent起動へ進む。
+自分が保存した変更の後でcheckpointを取り直し、他の親だけの変更は保持する。
+reviewのruntime/events/final等はregistry外で固定入力として検証し、読取中の変更も拒否する。
+
 親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
 親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
 sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
@@ -678,7 +694,10 @@ runごとに `state dir/worker-runs/委任ID/UUID/` を割り当て、共通ラ�
 実行中はregistry・親の操作ロックを保持しない。終了値は共通ランナーの値を返し、stdoutは
 `{child, delegation_id, exit_code, runner_summary}`。`runner_summary` はランナーの公開要約JSONであり、
 起動前拒否等で要約が無い非ゼロ終了ではnullとする。最終文のprivateな参照先は `final_file` へ返す。
-起動前の明確な拒否は診断を残して予約を復元し、起動有無が不明な中断は予約とrunを保持する。別sessionを自動起動しない。
+Popen前の失敗は例外型によらず、診断を残し、GitHub通信なしの新transactionで
+session/status/generation/delegation/最新run/turnを照合して当該runだけを取り消す。
+並行した停止・証拠は保持する。Popen後の保存失敗・受理不明（run dir無しを含む）は
+予約とrunを保持し、runtimeとcleanupの照合を要求する。別sessionを自動起動しない。
 
 `--resume` は現在の委任で最後に記録したrunの契約と終了・cleanupを検査し、
 共通ランナーの `resume --resume-from` で同じsessionへ戻す。委任IDは共通ランナーのtask IDなので保持する。
@@ -780,8 +799,6 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 通常再開の終了・cleanup・同一sessionは保存済みrunner記録から照合する。`--restart-evidence-file` は補足任意。
 PRがmerge済み、issueがclosed/completedでも、同じworkerへ残る受入確認を依頼できる。
 取消・明示停止・生存不明・worktree/branchの取り違えは別に検査する。
-`run-worker` は最新runの `final_file` を返す。起動前拒否でrun dirが作られていない場合は
-失敗の診断をprivateな履歴へ保存し、実行runと予約を元に戻す。起動有無が不明な場合は予約を維持する。
 
 ログ保存と公開は [workerログ保存](../worker_logs/README.md) の独立した結果。
 `pending` は `publish-worker-log` で再開し、workerの終了や他の作業の可否へ読み替えない。

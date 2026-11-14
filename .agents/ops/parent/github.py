@@ -32,6 +32,7 @@ class GitHub(IssueGitHub):
     def __init__(self, repo: str | None, *, store: Store | None = None) -> None:
         super().__init__(repo)
         self._store = store
+        self._outside_store: Store | None = None
         self.parent: int | None = None
         self._cache: dict[tuple[str, bool], object] = {}
         self._fresh = False
@@ -43,11 +44,13 @@ class GitHub(IssueGitHub):
         )
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
+        self._require_scope()
         if (
             self._store is not None
             and self._cache_epoch != self._store.transaction_epoch
         ):
             self._cache.clear()
+            self._history_rows = None
             self._cache_epoch = self._store.transaction_epoch
         key = (endpoint, missing_parent)
         if (
@@ -58,7 +61,7 @@ class GitHub(IssueGitHub):
         ):
             metrics.count("cache_hits")
             return copy.deepcopy(self._cache[key])
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             if "page=" in endpoint:
@@ -67,8 +70,13 @@ class GitHub(IssueGitHub):
                 result = super().get(endpoint, missing_parent=missing_parent)
             finally:
                 metrics.count("github_seconds", time.monotonic() - started)
-        self._cache[key] = copy.deepcopy(result)
-        if "/sub_issues?" in endpoint and isinstance(result, list):
+        if self._store is not None:
+            self._cache[key] = copy.deepcopy(result)
+        if (
+            self._store is not None
+            and "/sub_issues?" in endpoint
+            and isinstance(result, list)
+        ):
             for issue in result:
                 if (
                     isinstance(issue, dict)
@@ -79,6 +87,31 @@ class GitHub(IssueGitHub):
                         (f"repos/{self.repo}/issues/{issue['number']}", False)
                     ] = copy.deepcopy(issue)
         return result
+
+    def _require_scope(self) -> None:
+        if self._store is not None:
+            self._store.require_transaction()
+        elif self._outside_store is not None:
+            self._outside_store.require_unlocked()
+
+    @contextmanager
+    def io_scope(self) -> Iterator[None]:
+        """Release only this client's transaction, never infer a missing lock."""
+        self._require_scope()
+        with self._store.unlocked_read() if self._store else nullcontext():
+            yield
+
+    def detached(self) -> GitHub:
+        """Explicit uncached client for I/O outside the registry transaction."""
+        client = copy.copy(self)
+        client._outside_store = self._store or self._outside_store
+        client._store = None
+        client._cache = {}
+        client._cache_epoch = -1
+        client._history_rows = None
+        client._history_scope = False
+        client._fresh = False
+        return client
 
     @contextmanager
     def fresh_reads(self) -> Iterator[None]:
@@ -143,8 +176,9 @@ class GitHub(IssueGitHub):
     def write(
         self, method: str, endpoint: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
+        self._require_scope()
         self.invalidate(endpoint)
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             try:
@@ -176,7 +210,7 @@ class GitHub(IssueGitHub):
 
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         """Read GraphQL without caching or holding the registry lock remotely."""
-        with self._store.unlocked_read() if self._store else nullcontext():
+        with self.io_scope():
             started = time.monotonic()
             metrics.count("github_requests")
             try:
@@ -215,10 +249,12 @@ class GitHub(IssueGitHub):
     @contextmanager
     def history_read_scope(self) -> Iterator[None]:
         """One complete discovery index per read-only collection, never across observations."""
+        self._require_scope()
+        self._cache.clear()
         previous = getattr(self, "_history_rows", None)
         active = getattr(self, "_history_scope", False)
         self._history_rows = None
-        self._history_scope = True
+        self._history_scope = self._store is not None
         try:
             yield
         finally:

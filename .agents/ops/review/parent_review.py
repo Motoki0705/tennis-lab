@@ -40,8 +40,14 @@ from parent.policy import (  # noqa: E402
     select_prs,
 )
 from parent.session import ParentSession  # noqa: E402
-from parent.snapshot import git, snapshot  # noqa: E402
-from parent.state import Store, session_identity, state_directory  # noqa: E402
+from parent.snapshot import git, require_current_pr, snapshot  # noqa: E402
+from parent.state import (  # noqa: E402
+    Checkpoint,
+    RegistryConflict,
+    Store,
+    session_identity,
+    state_directory,
+)
 from parent.work_targets import require_separate_self_prs  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
@@ -70,7 +76,7 @@ from review_interruption import (  # noqa: E402
     runtime_lock,
     supervisor_confirmation,
 )
-from review_locks import require_finished_overlaps, target_locks  # noqa: E402
+from review_locks import finished_overlaps, run_lock, target_locks  # noqa: E402
 from review_observations import observe  # noqa: E402
 from review_policy import neutralize_markers, normalize_rollup  # noqa: E402
 from review_recovery import (  # noqa: E402
@@ -106,6 +112,19 @@ def authorized(
     launching: bool = False,
     required_issues: set[int] | None = None,
 ) -> dict[str, Any]:
+    with session.gh.fresh_reads():
+        return _authorized(
+            session, request, launching=launching, required_issues=required_issues
+        )
+
+
+def _authorized(
+    session: ParentSession,
+    request: dict[str, Any],
+    *,
+    launching: bool = False,
+    required_issues: set[int] | None = None,
+) -> dict[str, Any]:
     row = session.agreed()
     if not any(run["request"] == request for run in row["reviews"]):
         raise ValueError("review request is unknown, changed or superseded")
@@ -135,6 +154,13 @@ def authorized(
 
 
 def collect(
+    session: ParentSession, request: dict[str, Any]
+) -> tuple[dict[str, Any], dict[int, bytes]]:
+    with session.unlocked() as external:
+        return _collect(external, request)
+
+
+def _collect(
     session: ParentSession, request: dict[str, Any]
 ) -> tuple[dict[str, Any], dict[int, bytes]]:
     parent, children = session.work_items()
@@ -345,7 +371,8 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
     validate_result(result)
     execution = read_json(run_dir / "execution.json")
 
-    verify_result_runtime(run_dir, result, execution)
+    with session.gh.io_scope():
+        verify_result_runtime(run_dir, result, execution)
     invocations = 0 if result["kind"] == "adoption" else 1
     if (
         execution.get("request_sha256") != result["request_sha256"]
@@ -447,14 +474,22 @@ def publish(session: ParentSession, run_dir: Path, result: dict[str, Any]) -> st
 
 
 def publish_result(
-    session: ParentSession, run_dir: Path, result: dict[str, Any]
+    session: ParentSession,
+    run_dir: Path,
+    result: dict[str, Any],
+    checkpoint: Checkpoint,
 ) -> str:
     """Only publication state changes on failure; the immutable result survives."""
     decision_capture.result({"publication": "pending"}, artifact="publication")
     try:
-        url = publish(session, run_dir, result)
+        with session.store.locked():
+            session.store.revalidate(checkpoint)
+            authorized(session, result["request"])
+            url = publish(session, run_dir, result)
         execution = read_json(run_dir / "execution.json")
         execution.update(status="published", parent_run_url=url)
+    except RegistryConflict:
+        raise
     except (Exception, KeyboardInterrupt) as exc:
         (run_dir / "publication-error.log").write_text(str(exc), encoding="utf-8")
         execution = read_json(run_dir / "execution.json")
@@ -515,18 +550,14 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
     choice = request.get("review_selection")
     if choice is not None and choice["kind"] != "run":
         raise ValueError("recovery request cannot launch an agent; use recover")
-    gh = GitHub(request["repo"])
     identity = session_identity(dict(os.environ))
     store = Store(args.state_dir)
+    gh = GitHub(request["repo"], store=store)
     run_dir = store.directory / "reviews" / request["review_run_id"]
     with store.locked(), gh.history_read_scope():
         session = ParentSession(gh, store, request["parent_issue"], identity)
         auth = authorized(session, request)
-        require_finished_overlaps(
-            store.directory,
-            [r for parent_row in store.parents.values() for r in parent_row["reviews"]],
-            request,
-        )
+        finished_overlaps(session, request)
         if read_json(run_dir / "request.json") != request:
             raise ValueError("local request snapshot does not match")
         execution_file = run_dir / "execution.json"
@@ -576,7 +607,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 collect(session, request)
                 recorded_result = validate_result(read_json(run_dir / "result.json"))
 
-                verify_result_runtime(run_dir, recorded_result, execution)
+                with gh.io_scope():
+                    verify_result_runtime(run_dir, recorded_result, execution)
                 return {
                     "reused": True,
                     "result": recorded_result,
@@ -599,14 +631,13 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 raise ValueError(
                     "legacy request requires original fixed settings; prepare a new request"
                 )
-        for pr in request["prs"]:
-            if (
-                hashlib.sha256(
-                    (run_dir / f"pr-{pr['number']}.diff").read_bytes()
-                ).hexdigest()
-                != pr["diff_sha256"]
-            ):
-                raise ValueError("local frozen diff digest mismatch")
+        with gh.io_scope():
+            for pr in request["prs"]:
+                if (
+                    file_digest(run_dir / f"pr-{pr['number']}.diff")
+                    != pr["diff_sha256"]
+                ):
+                    raise ValueError("local frozen diff digest mismatch")
         execution = {
             "request_sha256": digest(request),
             **({"review_selection": choice} if choice is not None else {}),
@@ -634,9 +665,10 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 and read_json(prior_execution)["agent_invocations"]
             ):
                 previous.append(prior_id)
+        checkpoint = store.checkpoint()
     error: BaseException | None = None
     try:
-        context, diffs = collect(session, request)
+        context, diffs = collect(session.detached(), request)
         context["instruction"] = next(
             run.get("evidence", "")
             for run in session.row["reviews"]
@@ -646,7 +678,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
             from parent.review_choice import source
 
             source_request, source_result = source(
-                session, choice["handoff"]["source_run"]
+                session.detached(), choice["handoff"]["source_run"]
             )
             context["review_handoff"] = {
                 "source_request": source_request,
@@ -705,6 +737,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         # Every accepted run reaches this call at most once. No per-PR agent loop.
         with workspace(root, request, context, diffs) as cwd:
             with store.locked():
+                store.revalidate(checkpoint)
                 if authorized(session, request) != auth:
                     raise ValueError("parent authorization changed before review")
                 execution["agent_invocations"] = 1
@@ -751,6 +784,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 timeout=args.agent_timeout,
                 env=decision_capture.runtime_env(run_dir / "agent-runtime"),
             )
+    except RegistryConflict:
+        raise
     except (Exception, KeyboardInterrupt) as exc:
         (run_dir / "error.log").write_text(str(exc), encoding="utf-8")
         error = exc
@@ -776,6 +811,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 )
             if not agent["workspace_cleanup_complete"]:
                 raise ValueError("review workspace cleanup is incomplete")
+        except RegistryConflict:
+            raise
         except (Exception, KeyboardInterrupt) as exc:
             if agent["status"] != "finished":
                 agent["status"] = "unconfirmed"
@@ -812,6 +849,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 "final_sha256": file_digest(final),
                 "output_sha256": digest(candidate),
             }
+        except RegistryConflict:
+            raise
         except (Exception, KeyboardInterrupt) as exc:
             execution["stages"]["output"] = {
                 "status": "invalid",
@@ -822,6 +861,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         Store.write_json(execution_file, execution)
         try:
             with store.locked():
+                store.revalidate(checkpoint)
                 if authorized(session, request) != auth:
                     raise ValueError("parent authorization changed during review")
                 with gh.fresh_reads():
@@ -835,6 +875,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 "status": "passed",
                 "snapshots_sha256": digest(request["prs"]),
             }
+        except RegistryConflict:
+            raise
         except (Exception, KeyboardInterrupt) as exc:
             execution["stages"]["postcheck"] = {
                 "status": "failed",
@@ -851,6 +893,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
                 and runtime_record.get("cleanup_complete") is True
             ):
                 execution["agent_invocations"] = 0
+        except RegistryConflict:
+            raise
         except (Exception, KeyboardInterrupt) as exc:
             error = error or exc
     if execution["agent_invocations"] == 0 and not agent_started(execution):
@@ -859,6 +903,8 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         try:
             cleanup_evidence(run_dir, request, execution)
             agent["workspace_cleanup_complete"] = True
+        except RegistryConflict:
+            raise
         except (Exception, KeyboardInterrupt) as exc:
             agent["workspace_cleanup_complete"] = False
             error = error or exc
@@ -882,7 +928,7 @@ def _run_review(args: argparse.Namespace) -> dict[str, Any]:
         execution.update(status="preparation_failed", finished_at=now())
         Store.write_json(execution_file, execution)
         return {"reused": False, "result": result, "publication": "preparation_failed"}
-    publication = publish_result(session, run_dir, result)
+    publication = publish_result(session, run_dir, result, checkpoint)
     return {"reused": False, "result": result, "publication": publication}
 
 
@@ -927,27 +973,22 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                 raise ValueError("review run is active; cannot recover") from exc
         with store.locked(), ExitStack() as reads:
             session = ParentSession(
-                GitHub(request["repo"]),
+                GitHub(request["repo"], store=store),
                 store,
                 request["parent_issue"],
                 session_identity(dict(os.environ)),
             )
             reads.enter_context(session.gh.history_read_scope())
             auth = authorized(session, request)
-            require_finished_overlaps(
-                store.directory,
-                [
-                    r
-                    for parent_row in store.parents.values()
-                    for r in parent_row["reviews"]
-                ],
-                request,
-            )
+            finished_overlaps(session, request)
             if read_json(run_dir / "request.json") != request:
                 raise ValueError("local recovery request mismatch")
             if (run_dir / "execution.json").exists():
                 require_not_closed(read_json(run_dir / "execution.json"), request)
-            candidate, validation = source_evidence(store.directory, args.source_run)
+            with session.gh.io_scope():
+                candidate, validation = source_evidence(
+                    store.directory, args.source_run
+                )
             source = candidate["request"]
             authorized(session, source)
             if superseding_reviews(session.row["reviews"], args.source_run, request):
@@ -973,7 +1014,8 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                     or result["request"] != request
                 ):
                     raise ValueError("recovery run already contains different evidence")
-                verify_adoption(store.directory, result)
+                with session.gh.io_scope():
+                    verify_adoption(store.directory, result)
             else:
                 result = {
                     **candidate,
@@ -1001,13 +1043,15 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                             / "agent-runtime/result.json"
                         )
                     )
-                verify_adoption(store.directory, result)
+                with session.gh.io_scope():
+                    verify_adoption(store.directory, result)
                 for pr in request["prs"]:
-                    if (
-                        file_digest(run_dir / f"pr-{pr['number']}.diff")
-                        != pr["diff_sha256"]
-                    ):
-                        raise ValueError("recovery frozen diff mismatch")
+                    with session.gh.io_scope():
+                        if (
+                            file_digest(run_dir / f"pr-{pr['number']}.diff")
+                            != pr["diff_sha256"]
+                        ):
+                            raise ValueError("recovery frozen diff mismatch")
                 Store.write_json(run_dir / "result.json", result)
                 Store.write_json(
                     execution_path,
@@ -1045,7 +1089,8 @@ def recover(args: argparse.Namespace) -> dict[str, Any]:
                         },
                     },
                 )
-        publication = publish_result(session, run_dir, result)
+            checkpoint = store.checkpoint()
+        publication = publish_result(session, run_dir, result, checkpoint)
     return {"result": result, "publication": publication, "agent_invocations": 0}
 
 
@@ -1071,7 +1116,7 @@ def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError("review run is active; cannot close interruption") from exc
         with runtime_lock(run_dir), store.locked(), ExitStack() as reads:
             session = ParentSession(
-                GitHub(request["repo"]),
+                GitHub(request["repo"], store=store),
                 store,
                 request["parent_issue"],
                 session_identity(dict(os.environ)),
@@ -1114,9 +1159,10 @@ def close_interrupted(args: argparse.Namespace) -> dict[str, Any]:
                     raise ValueError(
                         "only an unchanged recorded execution can be confirmed"
                     )
-                runtime_sha256, supervisor = cleanup_evidence(
-                    run_dir, request, execution, args.cleanup_confirmation
-                )
+                with session.gh.io_scope():
+                    runtime_sha256, supervisor = cleanup_evidence(
+                        run_dir, request, execution, args.cleanup_confirmation
+                    )
                 record = {
                     "schema_version": 1,
                     "request_sha256": digest(request),
@@ -1169,25 +1215,18 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
         request = result["request"]
         with store.locked(), ExitStack() as reads:
             session = ParentSession(
-                GitHub(request["repo"]),
+                GitHub(request["repo"], store=store),
                 store,
                 request["parent_issue"],
                 session_identity(dict(os.environ)),
             )
             reads.enter_context(session.gh.history_read_scope())
             authorized(session, request)
-            require_finished_overlaps(
-                store.directory,
-                [
-                    r
-                    for parent_row in store.parents.values()
-                    for r in parent_row["reviews"]
-                ],
-                request,
-            )
+            finished_overlaps(session, request)
             execution = read_json(run_dir / "execution.json")
 
-            verify_result_runtime(run_dir, result, execution)
+            with session.gh.io_scope():
+                verify_result_runtime(run_dir, result, execution)
             if execution["status"] == "running":
                 stages = execution_stages(execution)
                 if (
@@ -1197,7 +1236,8 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
                 ):
                     raise ValueError("interrupted run has unconfirmed output/postcheck")
                 if result["kind"] == "result":
-                    runtime_evidence(run_dir)
+                    with session.gh.io_scope():
+                        runtime_evidence(run_dir)
                     if (
                         stages["agent"].get("workspace_cleanup_complete") is not True
                         or read_json(run_dir / "output.json") != result
@@ -1211,7 +1251,8 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
             ):
                 raise ValueError("run is not ready for publication resume")
             if result["kind"] == "adoption":
-                verify_adoption(store.directory, result)
+                with session.gh.io_scope():
+                    verify_adoption(store.directory, result)
                 if superseding_reviews(
                     session.row["reviews"], result["source_run"], request
                 ):
@@ -1225,7 +1266,8 @@ def resume_publication(args: argparse.Namespace) -> dict[str, Any]:
                 for a, b in zip(result["prs"], current_context["prs"], strict=True)
             ):
                 raise ValueError("publication PR child assignments changed")
-        publication = publish_result(session, run_dir, result)
+            checkpoint = store.checkpoint()
+        publication = publish_result(session, run_dir, result, checkpoint)
     return {"result": result, "publication": publication, "agent_invocations": 0}
 
 
@@ -1236,9 +1278,14 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
     run_dir = store.directory / "reviews" / args.run
     result = validate_result(read_json(run_dir / "result.json"))
     request = result["request"]
-    with store.locked(), ExitStack() as reads:
+    with (
+        target_locks(store.directory, request),
+        run_lock(run_dir),
+        store.locked(),
+        ExitStack() as reads,
+    ):
         session = ParentSession(
-            GitHub(request["repo"]),
+            GitHub(request["repo"], store=store),
             store,
             request["parent_issue"],
             session_identity(dict(os.environ)),
@@ -1251,18 +1298,24 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
         execution = read_json(run_dir / "execution.json")
         if execution["status"] != "published" or entry["coverage"] != "reviewed":
             raise ValueError("evidence requires a published code review")
-        verify_result_runtime(run_dir, result, execution)
+        with session.gh.io_scope():
+            verify_result_runtime(run_dir, result, execution)
         raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{args.pr}"))
         select_prs([args.pr], [raw], set(entry["child_issues"]), session.gh.repo)
-        current, _ = snapshot(raw)
+        with session.gh.io_scope():
+            current, _ = snapshot(raw)
         original = next(p for p in request["prs"] if p["number"] == args.pr)
         if current["branch"] != original["branch"]:
             raise ValueError("evidence PR branch changed")
         proof = evidence(read_json(args.evidence))
-        if proof["reviewed_paths"] != changed_paths(
-            current["merge_base_sha"], current["head_sha"]
-        ):
-            raise ValueError("evidence reviewed_paths must cover the current PR diff")
+        with session.gh.io_scope():
+            if proof["reviewed_paths"] != changed_paths(
+                current["merge_base_sha"], current["head_sha"]
+            ):
+                raise ValueError(
+                    "evidence reviewed_paths must cover the current PR diff"
+                )
+        require_current_pr(session, raw)
         record = {
             "schema_version": 1,
             "kind": "evidence",
@@ -1346,9 +1399,14 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
     run_dir = store.directory / "reviews" / args.run
     result = validate_result(read_json(run_dir / "result.json"))
     request = request_manifest(result["request"], instructed=False)
-    with store.locked(), ExitStack() as reads:
+    with (
+        target_locks(store.directory, request),
+        run_lock(run_dir),
+        store.locked(),
+        ExitStack() as reads,
+    ):
         session = ParentSession(
-            GitHub(request["repo"]),
+            GitHub(request["repo"], store=store),
             store,
             request["parent_issue"],
             session_identity(dict(os.environ)),
@@ -1369,7 +1427,8 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
                 "cannot resolve a failed/unpublished review without reviewed PR coverage"
             )
 
-        verify_result_runtime(run_dir, result, execution)
+        with session.gh.io_scope():
+            verify_result_runtime(run_dir, result, execution)
         if args.finding not in {
             "changes",
             *(
@@ -1389,18 +1448,24 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
             {c for p in result["prs"] for c in p["child_issues"]},
             session.gh.repo,
         )
-        current, _ = snapshot(raw)
+        with session.gh.io_scope():
+            current, _ = snapshot(raw)
         if current["head_sha"] != fixed:
             raise ValueError("fixed-head is not the current PR head")
         original = originals[args.pr]
         if original["branch"] != current["branch"]:
             raise ValueError("PR branch identity changed")
         advances: tuple[BaseAdvance, ...] = ()
-        diff = full_diff(original["head_sha"], fixed)
-        paths = changed_paths(original["head_sha"], fixed)
+        with session.gh.io_scope():
+            diff = full_diff(original["head_sha"], fixed)
+        with session.gh.io_scope():
+            paths = changed_paths(original["head_sha"], fixed)
         proof = evidence(read_json(args.evidence))
         if proof["reviewed_paths"] != paths:
             raise ValueError("actual fix paths differ from the parent's reviewed paths")
+        require_current_pr(session, raw)
+        with session.gh.io_scope():
+            diff_sha256 = hashlib.sha256(diff).hexdigest()
         record = {
             "schema_version": 1,
             "kind": "resolution",
@@ -1411,7 +1476,7 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
             "finding": args.finding,
             "reviewed_head": original["head_sha"],
             "fixed_snapshot": current,
-            "fix_diff_sha256": hashlib.sha256(diff).hexdigest(),
+            "fix_diff_sha256": diff_sha256,
             "changed_paths": paths,
             "evidence": proof,
         }

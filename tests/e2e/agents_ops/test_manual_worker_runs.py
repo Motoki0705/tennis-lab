@@ -676,13 +676,142 @@ def test_runner_failure_preserves_record_and_exit_code(
     assert output["exit_code"] == result.returncode == (2 if preflight else 7)
     assert (output["runner_summary"] is None) == preflight
     if preflight:
-        assert task(p)["worker_runs"] == []
-        assert output["launch_state"] == "rejected_before_start"
-        assert len(task(p)["launch_failures"]) == 1
-        assert task(p)["preflight"]["turns"][-1]["cancelled"]
+        # The launcher was spawned; its exit code and absent run dir do not
+        # prove that no descendant started. Keep the reservation for recovery.
+        assert len(task(p)["worker_runs"]) == 1
+        assert output["launch_state"] == "runtime_unconfirmed"
+        assert "worker_ended" not in task(p)
+        assert not task(p)["preflight"]["turns"][-1].get("cancelled")
     else:
         assert len(task(p)["worker_runs"]) == 1 and "worker_ended" in task(p)
         assert output["final_file"] == str(latest(p) / "final.md")
+
+
+@pytest.mark.parametrize("failure", ["command", "http403", "transport", "value", "os"])
+def test_admission_failure_cancels_only_reserved_run_without_github(
+    reserved: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    p = reserved
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    manual_api = importlib.import_module("parent.manual_workers")
+    admission = importlib.import_module("parent.improvement_runtime")
+    errors = importlib.import_module("issues.cli")
+    opsproc = importlib.import_module("opsproc")
+    failures = {
+        "command": opsproc.CommandError("admission command failed"),
+        "http403": errors.GitHubHTTPError("user", 403, "sustained rate limit"),
+        "transport": errors.GitHubTransportError(
+            "user", 3, "transport", "connection lost"
+        ),
+        "value": ValueError("invalid admission input"),
+        "os": OSError("admission input unavailable"),
+    }
+    runner = p.root / "never-start"
+    marker = p.root / "unexpected-runner"
+    runner.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(marker)!r}).touch()\n"
+    )
+    runner.chmod(0o700)
+    monkeypatch.setattr(manual_api, "RUNNER", runner)
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    original = admission.execute_manual
+    requests: list[str] = []
+    reserved_path: list[Path] = []
+    calls_after_preparation: list[int] = []
+
+    def failed_admission(*args: Any, **kwargs: Any) -> Any:
+        command = args[5]
+        reserved_path.append(Path(command[command.index("--run-dir") + 1]))
+        calls_after_preparation.append(len(p.calls()))
+        # A concurrent stop/evidence update must survive targeted cancellation.
+        with registry.locked():
+            current = registry.parents["o/r#1"]["tasks"]["10"]
+            current.update(stopped=True, verification={"evidence": "concurrent proof"})
+            if failure == "command":
+                current["worker_ended"] = {
+                    "delegation_id": current["delegation_id"],
+                    "evidence": "concurrent end proof",
+                }
+            registry.save()
+
+        def unavailable(endpoint: str, **_kwargs: Any) -> Any:
+            requests.append(endpoint)
+            raise failures[failure]
+
+        monkeypatch.setattr(gh, "get", unavailable)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(admission, "execute_manual", failed_admission)
+    code, result = manual_api.run_worker(
+        gh,
+        registry,
+        1,
+        "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+        child=10,
+        prompt=Path(p.note()),
+        resume=False,
+        restart_evidence=None,
+    )
+    assert code == (127 if failure == "os" else 2)
+    assert result["launch_state"] == "rejected_before_start"
+    assert requests == ["user"] and len(p.calls()) == calls_after_preparation[0]
+    assert not marker.exists() and not reserved_path[0].exists()
+    current = task(p)
+    assert current["worker_runs"] == []
+    assert current["preflight"]["turns"][-1]["cancelled"]
+    assert (
+        current["stopped"] and current["verification"]["evidence"] == "concurrent proof"
+    )
+    assert len(current["launch_failures"]) == 1
+    if failure == "command":
+        assert current["worker_ended"]["evidence"] == "concurrent end proof"
+
+
+def test_post_spawn_persistence_failure_keeps_reservation(
+    reserved: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    p = reserved
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    manual_api = importlib.import_module("parent.manual_workers")
+    runner = p.root / "fake-launcher"
+    runner.write_text(f"#!{sys.executable}\nimport sys\nsys.stdin.buffer.read()\n")
+    runner.chmod(0o700)
+    monkeypatch.setattr(manual_api, "RUNNER", runner)
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    original_save = registry.save
+
+    def failed_save() -> None:
+        if registry.parents["o/r#1"]["tasks"]["10"].get("manual_launcher"):
+            raise OSError("post-spawn persistence unavailable")
+        original_save()
+
+    monkeypatch.setattr(registry, "save", failed_save)
+    with pytest.raises(
+        ValueError, match="launcher started but admission persistence failed"
+    ):
+        manual_api.run_worker(
+            gh,
+            registry,
+            1,
+            "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+            child=10,
+            prompt=Path(p.note()),
+            resume=False,
+            restart_evidence=None,
+        )
+    current = task(p)
+    assert len(current["worker_runs"]) == 1
+    assert "launch_failures" not in current and "worker_ended" not in current
+    assert not current["preflight"]["turns"][-1].get("cancelled")
 
 
 def test_record_result_rejects_cancelled_only_history(reserved: ParentEnv) -> None:

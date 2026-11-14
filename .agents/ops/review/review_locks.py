@@ -9,7 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from parent.policy import digest, object_value
+from parent.session import ParentSession
 from parent_review_policy import execution_stages, load_json, request_manifest
+from review_inputs import fixed_files
 from review_interruption import CLOSED, confirmed_exit
 
 
@@ -40,7 +42,7 @@ def require_finished_overlaps(
     reviews: Sequence[Mapping[str, Any]],
     request: Mapping[str, Any],
 ) -> None:
-    """Called under the registry lock, after acquiring all target leases.
+    """Read frozen registrations outside registry, holding all target leases.
 
     SIGKILL releases flock, but may leave a reviewer alive. A durable running
     execution remains a blocker until recovery or explicit closure confirms exit.
@@ -56,7 +58,9 @@ def require_finished_overlaps(
         ].casefold() or not numbers.intersection(p["number"] for p in other["prs"]):
             continue
         path = directory / "reviews" / other["review_run_id"] / "execution.json"
-        if path.exists():
+        with fixed_files([path]):
+            if not path.exists():
+                continue
             execution = object_value(load_json(path.read_text(encoding="utf-8")))
             execution_stages(execution)
             if (
@@ -79,3 +83,37 @@ def require_finished_overlaps(
                     "PR review is active, interrupted or cleanup is unconfirmed in another run; "
                     "confirm its exit and resume-publication or close-interrupted first"
                 )
+
+
+def finished_overlaps(session: ParentSession, request: Mapping[str, Any]) -> None:
+    """Fence registrations from every parent that can overlap these target PRs."""
+
+    def registrations() -> list[Mapping[str, Any]]:
+        numbers = {p["number"] for p in request["prs"]}
+        return [
+            row
+            for parent in session.store.parents.values()
+            for row in parent["reviews"]
+            if row["request"]["repo"].casefold() == request["repo"].casefold()
+            and numbers.intersection(p["number"] for p in row["request"]["prs"])
+        ]
+
+    before = digest(registrations())
+    with session.gh.io_scope():
+        require_finished_overlaps(session.store.directory, registrations(), request)
+    if digest(registrations()) != before:
+        session.store.conflict(
+            "overlapping review registrations changed during verification"
+        )
+
+
+@contextmanager
+def run_lock(directory: Path) -> Iterator[None]:
+    with (directory / "run.lock").open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError(
+                "review run is active; retry after its completion"
+            ) from exc
+        yield

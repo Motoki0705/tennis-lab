@@ -116,6 +116,9 @@ class FakeGitHub:
     def __init__(self) -> None:
         self._fresh = False
         self._store = None
+        self._outside_store = None
+        self._cache: dict[Any, Any] = {}
+        self.evidence_directory: Path | None = None
         self.issues = {1: issue(1)}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}
@@ -194,6 +197,15 @@ class FakeGitHub:
 
     def fresh_reads(self) -> Any:
         return importlib.import_module("parent.github").GitHub.fresh_reads(self)
+
+    def _require_scope(self) -> None:
+        importlib.import_module("parent.github").GitHub._require_scope(self)
+
+    def io_scope(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.io_scope(self)
+
+    def detached(self) -> Any:
+        return importlib.import_module("parent.github").GitHub.detached(self)
 
     def identity(self, raw: object) -> int:
         return cast(

@@ -462,7 +462,10 @@ resolveは同run/result・元のレビューhead・最新fixed snapshotに結び
 ## merge gate
 
 担当親自身が、parent CLI・reviewと同じセッション環境、ghアカウント、private stateで明示実行する。
-GitHub API・CI取得・merge通信中はregistry lockを解放し、戻ると担当親の状態変更を照合する。
+GitHub API・CI取得・merge通信とgit・runtime/events/finalの検証中はregistry lockを解放し、
+戻ると担当親の状態変更と固定入力の同一性を照合する。
+review CLIの6入口も同じ[transaction/client契約](../parent/README.md#取得範囲と計測)を使う。
+受付・agent直前・postcheck・公開での競合は終了値2で停止し、通常の未完了へ変換しない。
 gateのGETは鮮度を優先して再取得し、通信待ちで他の親を止めない。
 timer・poll・hook・agent呼出はない。判定は `merge_gate_policy.evaluate_parent_gate(MergeInput)`、
 I/Oは `merge_gate.py` に分離する。共通引数はサブコマンドより前に置く。

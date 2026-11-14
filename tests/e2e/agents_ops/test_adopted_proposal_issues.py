@@ -63,12 +63,17 @@ class FakeGitHub:
     identity = github.GitHub.identity
     family = github.GitHub.family
     fresh_reads = github.GitHub.fresh_reads
+    _require_scope = github.GitHub._require_scope
+    io_scope = github.GitHub.io_scope
+    detached = github.GitHub.detached
     improvement_extractions = github.GitHub.improvement_extractions
 
     def __init__(self) -> None:
         self.parent: int | None = None
         self._fresh = False
         self._store = None
+        self._outside_store = None
+        self._cache: dict[Any, Any] = {}
         self.issues: dict[int, dict[str, Any]] = {}
         self.parents: dict[int, int] = {}
         self.dependencies: dict[int, list[int]] = {}

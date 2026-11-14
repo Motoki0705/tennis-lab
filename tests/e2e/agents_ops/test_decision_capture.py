@@ -214,7 +214,12 @@ def test_failures_never_become_success_or_parent_acceptance(
     assert response.returncode == expected
     rows = captured(state_dir(p))
     results = sourced(rows, "parent.run-worker")
-    assert results[-1]["data"]["status"] in {"failure", "rejected", "partial"}
+    assert results[-1]["data"]["status"] in {
+        "failure",
+        "rejected",
+        "partial",
+        "unknown",
+    }
     if failure == "final_missing":
         assert not any(r["data"]["status"] == "success" for r in results)
         assert any(
@@ -232,7 +237,9 @@ def test_failures_never_become_success_or_parent_acceptance(
         if r["kind"] == "action" and r["data"]["operation"] == "start_ai"
     ]
     assert actions[-1]["data"]["state"] == (
-        "ended"
+        "unknown"
+        if failure == "runner_rejection"
+        else "ended"
         if failure in {"runtime_failure", "final_missing"}
         else "rejected_before_start"
     )
