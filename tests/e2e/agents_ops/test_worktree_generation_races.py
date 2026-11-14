@@ -59,6 +59,7 @@ class RenameRace:
         stopper = SimpleNamespace(
             stop=stop,
             stop_moved=lambda root, original, stamp: self.moved_stops.append(root),
+            finish_legacy=lambda *args, **kwargs: None,
         )
         self.cleaner = lab.module.Cleaner(
             lab.repo, directory=lab.state, clock=lambda: lab.now, stopper=stopper

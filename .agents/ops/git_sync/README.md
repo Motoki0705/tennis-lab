@@ -102,8 +102,10 @@ user busの不通・state破損・仕事の証拠不足・停止/再開失敗は
   atomicに保存する。HUP送信前にstop_requested、停止確認後にstopped、起動要求前にstartingを記録する。
   停止待ちの旧PIDがactiveでも再開成功とみなさず、停止完了と新PIDの起動を確認してから記録を削除する。
 
-終了コードは0（updated/unchanged）、75（明示的なskip）、2（failed）。serviceの最終結果と
-jobの理由は区別して確認する。再開が失敗した場合は更新済みでもfailedになり、再開記録を残す。
+終了コードは0（updated/unchanged）、75（明示的なskip）、2（failed）。unitの `SuccessExitStatus=75` により
+延期をsystemdのfailedにしない。unit更新前のfailed状態でも `spin ops status git-sync` は
+`last_outcome=deferred` と表示し、生の `active_state`・`last_result`・終了statusは保持する。
+serviceの最終結果とjobの理由は区別して確認する。再開が失敗した場合は更新済みでもfailedになり、再開記録を残す。
 通常の停止signalではfinallyで復旧を試みる。再開記録の破損は手動確認が必要で、削除して成功扱いにしない。
 失敗後も、再開前にmain・追跡ファイル・Git操作を再検査する。部分更新やローカル編集が残る場合は
 `resume_blocked_reason` を保存してserviceを停止したままにし、人間がcheckoutを修復した後の再実行で復旧する。
