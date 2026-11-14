@@ -398,7 +398,9 @@ class Snapshot:
         }
 
 
-def snapshot(path: Path, *, hashes: bool = False) -> Snapshot:
+def snapshot(
+    path: Path, *, hashes: bool = False, root_files_only: bool = False
+) -> Snapshot:
     """Walk pinned directory FDs, rejecting mounts, special files and symlinks."""
     entries: dict[str, dict[str, Any]] = {}
     inode_hashes: dict[tuple[int, int], tuple[tuple[Any, ...], str]] = {}
@@ -418,6 +420,8 @@ def snapshot(path: Path, *, hashes: bool = False) -> Snapshot:
             if info.st_dev != device:
                 raise StorageError(f"nested mount in unit: {path / label}")
             if entry["kind"] == "dir":
+                if root_files_only:
+                    continue
                 child = os.open(
                     name,
                     os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW,
@@ -480,8 +484,12 @@ def snapshot(path: Path, *, hashes: bool = False) -> Snapshot:
     finally:
         os.close(root)
     result = Snapshot(entries, mount_id=mount_id)
+    if root_files_only:
+        # Child-unit publication may change the container's timestamps. Its
+        # identity/mode still matter, but only direct regular files are payload.
+        result.entries["."] = {**entries["."], "mtime_ns": 0, "ctime_ns": 0}
     if hashes:
-        after = snapshot(path)
+        after = snapshot(path, root_files_only=root_files_only)
         if not result.same_metadata(after):
             raise StorageError(f"unit changed during hashing: {path}")
     return result

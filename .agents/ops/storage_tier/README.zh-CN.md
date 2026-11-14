@@ -18,7 +18,7 @@ E: 是挂载到 `/mnt/wsl/tennis-data` 的 HDD ext4（`noatime`），保存权�
 | 主目录 `outputs/` | 实际目录 | 相同相对路径 | task/purpose/experiment/run-id |
 | worktree `outputs/` | 链接到 D:`<main>/.worktree-outputs/<name>/` | `.worktree-outputs/<name>/...` | task/purpose/experiment/run-id |
 | 指向主 outputs 的既有 alias | 链接到主 `outputs/` | 主 `outputs/...` | 不建立独立单位 |
-| 主目录 `ckpt/` | 始终完整取回 | 已校验镜像 | 永不清理 |
+| 主目录 `ckpt/` | 实际容器，逐个取回子目录和根文件 | 相同单位镜像 | 永不清理 |
 | worktree `data/`、`ckpt/`、`.venv` | 指向主 checkout 的链接 | 不建立独立副本 | 不单独扫描 |
 
 [config.toml](config.toml) 声明数据集 **container**（其直接子目录为版本）与例外的**单位根目录**。
@@ -35,6 +35,53 @@ Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必
 硬链接只能用于 D: 内或 E: 内，不能跨 tier。复制保留**单位内**硬链接，单位之间、tier 之间使用独立 inode。
 清理只删除目标单位的名字。审计区分逻辑大小、去重后的分配量、外部硬链接、预计可回收量与文件系统空闲差值。
 其他名字仍存在时，磁盘块可能完全不释放。hydrate 创建新的 D: inode，不恢复跨单位硬链接。
+
+## checkpoint 单位与 CI assets
+
+每个 `ckpt/<顶层目录>` 是独立的 `checkpoint` 单位。根目录的普通文件组成另一个名为
+`ckpt` 的 `checkpoint-files` 投影（目前为README.md）；根文件参数也选择此投影，而不是所有子单位。
+两类只镜像、校验和取回，永不清理。E:的ckpt容器inode本身不交换、不删除；拒绝旧的整ckpt单位操作。
+
+根文件只复制、哈希直属普通文件，再逐文件发布。旧版本和源端已移除文件保留在目标tier的
+`.storage-tier/checkpoint-file-history/<transaction>/`，不自动删除历史。子目录不受影响。
+发布仅逐文件原子，不保证整个集合原子。D:的 `checkpoint-file-operations/` journal记录旧/新entry和进度。
+未完成操作会阻止投影继续处理。恢复时暂停writer，比较journal、历史和已发布文件并整合集合，
+将已确认journal移到 `recovered-checkpoint-file-operations/` 后，显式index E:并verify D:/E:。
+`recover` 不继续该发布，也不删除历史。不一致不能授权删除归档inode。
+投影忽略容器时间戳，但检查容器device/inode/mode及全部直属文件的metadata/hash。
+
+迁移旧整ckpt manifest时先运行 `index ckpt`，旧manifest保存在E:的 `.storage-tier/legacy-manifests/`。
+然后对scan报告的每个 `ckpt/<目录>` 单独index，不复用旧tree的hash。创建D:的实际ckpt容器，
+逐个hydrate根文件和全部子单位，始终保留E:容器。
+
+mount引用检查只用于evict、旧镜像退役（包括发布前检查）和已校验stage的清理。
+index/verify/mirror/hydrate读取保留同UID fd/cwd/mmap检查及前后snapshot，不stat bind目标。
+审计用 `mount_scope.inspection_enabled` 记录是否检查。删除时即使只读，root相等或内部bind仍fail closed。
+普通目录的index dry-run仍跳过quiet；根文件投影执行不含mount检查的quiet。
+
+runner从同一 `Config.load(...).mirror` 和配置推导bind源，不解析repo的data/ckpt symlink。
+CI读取E:data/ckpt，只能看到已镜像的单位；仅在D:的新单位成功镜像后（通常每日cycle后）才可见。
+启动要求配置的E:挂载点有效，并重新读取源mount（device编号可能随重启变化），比较filesystem内root及device，不直接将 `/mnt/...` 拼写与FSROOT比较。
+已有mount的root/device不一致或允许写入时拒绝。
+
+第2阶段D:切换前，父会话协调CI及runner queue维护窗口并等待正在运行的job结束。
+停止活动queue会终止其中训练，必须先排空；其他session的训练另行协调。
+代码进入main后，由人类在main checkout执行：
+
+```bash
+runner_service="$(sudo cat /opt/actions-runner/.service)"
+sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
+sudo bash scripts/github_actions/install_self_hosted_runner.sh
+sudo /opt/tennis-lab-actions/bin/mount_assets.sh start
+# installer会启动service，存储迁移完成前再次暂停。
+sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
+# 父会话执行已同意的D:切换、hydrate和只读验收。
+sudo systemctl start tennis-lab-training-queue.service "$runner_service"
+```
+
+installer更新/opt helper/config及system unit对tennis-data-mount.service的依赖，并执行daemon-reload、enable/start。
+原有package/runtime安装也会运行，需预留下载时间。当前bind已指向E:，FSROOT/device不变，验证通过时切换前无需unmount。
+重新安装修正repo改成D:后的后续启动，不会自动替换运行中的bind。本阶段只实现手顺，不运行sudo或unit操作。
 
 ## CLI
 
@@ -123,7 +170,7 @@ CLI 在持有 lease 期间专用该 thread 的 SIGIO。
 
 使用中检查按 FD 的 device/inode 匹配，也检测已有 `O_PATH` FD。单位在 filesystem 内的路径从工具自身 namespace 求得：
 固定 snapshot root FD，按 mount ID 找到自身 mount root/point，再结合相对路径；quarantine、retained、stage 名称同样适用。
-对可检查的同 UID 进程读取 mountinfo，仅对相同 device 且 root 等于单位或位于其**内部**的 mount，
+只在删除路径对可检查的同 UID 进程读取 mountinfo，仅对相同 device 且 root 等于单位或位于其**内部**的 mount，
 经 `/proc/<pid>/root` stat mountpoint；inode 匹配即判为使用中，包括仅在其他 namespace 可见的单一 file bind。
 祖先和外部/兄弟 root 不 stat，直接排除；按 component 区分 `data/a` 与 `data/ab`。
 `process_scope.mount_scope` 审计 filesystem 单位路径、检查数、祖先排除数、外部排除数（每进程的观测次数）。
@@ -153,7 +200,7 @@ hydrate 拒绝已存在的 D: 目标，完成 E: 哈希、复制、D: 哈希后�
 D:`<repo>/.storage-tier/audit.jsonl` 保存校验、取回、失败、删除确认与完成记录，包含 UTC、单位、大小与校验方式。
 修改操作按 repo 排他；dry-run 不创建锁。持久删除 intent 位于同目录的 `transactions/`。
 各审计事件记录其他 UID 的排除范围。失败仅写入 audit 和 service journal，不发送通知。
-只读 `index --dry-run` 不调用单位的 `quiet`，仅哈希选定小单位，因此不能证明 E: mount 参照检查成功；
+普通目录的只读index dry-run不调用单位quiet（根文件投影检查fd/cwd/mmap）；两者都不能证明E: mount引用检查成功；
 它也不认证 manifest、不授权删除。实机验证须通过 `verify --dry-run` 检查两边，记录 E: `quiet` 通过与 metadata 不变。
 布局迁移前，必须区分既有 D:/E: 配对的只读路径映射验证与仍拒绝待迁移布局的普通 CLI 结果。
 `removals/<transaction>.jsonl` 持久记录 claim/删除 intent、移入身份、已校验 hash 与确认删除的 entry。
@@ -222,7 +269,7 @@ user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。失败仅�
    并核对非 dumpable/能力差的排除证据与记录及相同 user namespace 的运行前提。可读 uid_map 不同或本检查证据不足仍为错误；
    不能忽略，也不隐式改变权限或停止其他 session。
 2. 清点 E:、活动与等待任务引用、配置间接引用、硬链接别名、E: 绝对路径和已有 D: 副本。
-   只取回完整 `ckpt/` 与确定需要的版本、run 单位。
+   逐个取回全部ckpt子目录、根文件投影和需要的版本、run单位。
 3. 将主 outputs alias 归为主 outputs 的引用。独立的旧 E:`.claude/worktrees/<name>/outputs` 在 consumer 暂停时
    rename 到 E:`.worktree-outputs/<name>`，对应关系见 scan 的 `legacy_outputs`。目标已存在时拒绝覆盖、合并，先显式比较。
    旧 manifest 的路径/ctime 不能复用，需按新规范路径重新 index。rename 是第二阶段的修改操作。
@@ -230,7 +277,7 @@ user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。失败仅�
    小文件 seek 可能更慢。这是规划假设，并非全盘实测。index 读 E: 一次；hydrate 还需 E: 哈希、复制与 D: 验证。
    不从小型热缓存 probe 推导 HDD 全盘速度。
 4. 保存旧 symlink entry，并 rename **链接自身**，不移动 E: payload。为 D: `data/`、`outputs/` 创建空实际目录；
-   `ckpt/` 留空缺，由整单位 hydrate 发布。独立 worktree outputs 链接到 D: 持久根，主 alias 链接到 D: 主 outputs。
+   创建实际ckpt容器，逐个hydrate子目录和根文件。独立 worktree outputs 链接到 D: 持久根，主 alias 链接到 D: 主 outputs。
    按规范路径取回选择的单位、验证内容和代表性硬链接后再 activate 输入诊断。已有 D: 副本需显式比较，hydrate 不做合并。
 5. 由对应 session 更新活动、等待命令。先做只读 cycle，再以可丢弃单位执行 mirror→evict→hydrate。
    检查 `statvfs` 空闲量、审计、consumer 读取、同 UID 检查和失败 journal/audit，之后才启用 timer。

@@ -18,7 +18,7 @@ E:は `/mnt/wsl/tennis-data` のHDD上ext4（`noatime`）で正本のミラー�
 | メイン `outputs/` | 実ディレクトリ | 同じ相対path | task/purpose/experiment/run-id |
 | worktree `outputs/` | D:`<main>/.worktree-outputs/<name>/` へのlink | `.worktree-outputs/<name>/...` | task/purpose/experiment/run-id |
 | メインoutputsへの既存alias | メイン `outputs/` へのlink | メイン `outputs/...` | 独立した単位にしない |
-| メイン `ckpt/` | 全体を常にD:へ取得 | 照合済みミラー | 消さない |
+| メイン `ckpt/` | 実コンテナ、子dirとrootファイルを個別取得 | 同じ単位のミラー | 消さない |
 | worktree `data/`・`ckpt/`・`.venv` | メインへのsymlink | 独立したコピーは作らない | 個別に走査しない |
 
 [config.toml](config.toml) にdatasetの**container**（直下の子が版）と、例外の**単位root**を宣言する。
@@ -38,6 +38,57 @@ hardlinkはD:内またはE:内で使い、D:/E:間では使わない。コピー
 別単位・別tierには独立したinodeを作る。削除するのは対象単位の名前だけ。記録には論理サイズ、
 重複を除いた割当量、外部hardlink、回収見積り、filesystem空きの実測差を分けて残す。
 他の名前が残ればブロックは解放されない。取得時は新しいD:のinodeを作り、他単位とのhardlinkは再現しない。
+
+## checkpoint単位とCI assets
+
+`ckpt/<トップレベルdir>` ごとを独立した `checkpoint` 単位にする。直下の通常ファイルは
+`ckpt` という別の `checkpoint-files` 単位（現在README.md）で、rootファイルの引数もこの投影を選ぶ。
+`ckpt` 引数で全子単位を選ぶわけではない。どちらもミラー・照合・取得だけで、未使用削除しない。
+E:のckptコンテナinode自体は交換・削除しない。旧コードの全ckpt単位による操作は拒否する。
+
+rootファイルは直下の通常ファイルだけをstageでコピー・hashし、1ファイルずつ公開する。
+置換前やD:から消えたファイルは、対象tierの `.storage-tier/checkpoint-file-history/<transaction>/` に保持し、
+この履歴は自動削除しない。子dirは触らない。公開はファイル単位で原子的で、集合全体では原子的でない。
+D:の `checkpoint-file-operations/` journalへ旧・予定entryと進行を永続記録し、未完了があれば投影の処理を止める。
+復旧はwriterを止め、journal・履歴・公開済みファイルを比較して集合を整合させ、確認済みjournalを
+`recovered-checkpoint-file-operations/` へ退避してから、E:の明示indexとD:/E: verifyを行う。
+`recover` はこの公開を再開せず、履歴も消さない。不一致を根拠に退避inodeを消してはいけない。
+rootの時刻は投影のmetadata identityから外し、rootのdevice/inode/modeと全直下ファイルのmetadata/hashは検査する。
+
+旧ckpt全体manifestの移行は、まず `index ckpt` でrootファイルを再indexする。旧manifestはE:の
+`.storage-tier/legacy-manifests/` へ保存される。その後scanに出る各 `ckpt/<dir>` を個別にindexする。
+旧treeのhashを子単位へ流用しない。D:には実dirのckptコンテナを作り、rootファイルと全子単位を個別にhydrateする。
+E:のckptコンテナはそのまま保つ。
+
+mount参照の検査は、evict、旧ミラーの退役（その公開前検査を含む）、照合済みstage破棄だけに行う。
+index/verify/mirror/hydrateの読取りは、同UIDのfd/cwd/mmap検査と前後snapshotを維持し、bind先をstatしない。
+監査の `mount_scope.inspection_enabled` へ実施有無を記録する。削除ではread-onlyでもroot一致・内部bindをfail closedにする。
+通常dirのindex dry-runは従来どおりquietを省くが、rootファイル投影ではmount検査なしのquietを行う。
+
+runnerのbind元は同じ `Config.load(...).mirror` と設定から導き、repoのdata/ckpt symlinkを解決して決めない。
+CIはE:のdata/ckptを読み、ミラー済み単位だけが見える。D:だけの新単位は、ミラー成功後（通常は日次cycle後）に見える。
+実行時は設定されたE:のmountpointを必須とし、毎回source mountを読み直し（再起動でdevice番号が変わる場合も扱う）、filesystem内rootとdeviceを照合し、`/mnt/...` という表記をFSROOTと直接比較しない。
+既存mountのroot/device不一致や書込可能なmountは拒否する。
+
+第2段のD:切替前に、親がCIとrunner queueの保守時間を調整し、実行中jobの終了を待つ。
+動作中queueの停止は学習を終了させるため、先に空にする。他sessionの学習は別に調整する。
+mainへ反映後、人間がmain checkoutから以下を行う。
+
+```bash
+runner_service="$(sudo cat /opt/actions-runner/.service)"
+sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
+sudo bash scripts/github_actions/install_self_hosted_runner.sh
+sudo /opt/tennis-lab-actions/bin/mount_assets.sh start
+# installerはserviceを起動するため、配置切替が終わるまで再停止する。
+sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
+# 親が合意済みのD:切替・hydrate・読取専用受入を行う。
+sudo systemctl start tennis-lab-training-queue.service "$runner_service"
+```
+
+installerは/optのhelper/config、system unitのtennis-data-mount.service依存を更新し、daemon-reloadとenable/startを行う。
+従来のpackage/runtime導入も行うためdownload時間を見込む。現在のbindは既にE:なのでFSROOT/deviceは変わらず、
+検査が通れば切替前のunmountは不要。再導入はrepoがD:になった後の次回起動を修正するもので、稼働中bind自体は交換しない。
+この段階は手順の実装のみで、sudo・unit操作は実行しない。
 
 ## CLI
 
@@ -136,7 +187,7 @@ journal/auditへ残して失敗する。SIGIOはLinux `F_SETOWN_EX` で呼出thr
 読み捨てて成功扱いしない。CLIはlease中、そのthreadのSIGIOを専用に使う。
 
 使用中検査はFDのdevice/inodeを照合し、既存の `O_PATH` FDも検出する。
-検査可能な同UIDプロセスはmountinfoも読む。単位のfilesystem内パスはツール自身のnamespaceで求め、
+削除経路では、検査可能な同UIDプロセスのmountinfoも読む。単位のfilesystem内パスはツール自身のnamespaceで求め、
 snapshot rootをFD固定し、mount IDに対応する自身のmount root/pointと相対pathを合わせる。
 quarantine・retained・stage名にも同じ規則を使う。同じdeviceで、rootが単位そのものまたは**内部**にあるmountだけを
 `/proc/<pid>/root` 経由でstatし、単位内inodeと一致すれば使用中とする。別mount namespaceの単一file bindも対象。
@@ -174,7 +225,7 @@ D:`<repo>/.storage-tier/audit.jsonl` に、照合・取得・失敗・削除前�
 照合方式を残す。変更処理はrepoごとに排他し、dry-runはlockも作らない。同じ場所の `transactions/` に
 削除の永続intentを置く。
 他UIDの除外範囲も各監査eventに残す。失敗はauditとserviceのjournalだけに残し、通知は送らない。
-読取専用 `index --dry-run` は単位の `quiet` を呼ばずにhashするため、E:側mount参照検査を通した証拠にはならない。
+通常dirの読取専用 `index --dry-run` は単位quietを省く（rootファイル投影はfd/cwd/mmapを検査）。どちらもE:側mount参照検査の証拠にはならない。
 manifestの認証・削除許可も行わない。実機確認は `verify --dry-run` で両側を検査し、E:の `quiet` 通過とmetadata不変を記録する。
 配置切替前は、既存D:/E:ペアの読取専用対応付けによる確認と、未切替配置を拒否する通常CLIの結果を分ける。
 `removals/<transaction>.jsonl` にclaim/削除のintent、移した個体、照合済みhash、削除完了entryを永続記録する。
@@ -249,7 +300,7 @@ systemのmount unitへの順序依存は張らず、毎回mountを確認する�
    同一user namespaceの運用前提も確認する。読めたuid_mapの不一致や、根拠を証明できない本検査の読取不能は失敗とする。
    それらを無視せず、権限変更や他session停止を暗黙に実行しない。
 2. E:、使用中・queue参照、設定の間接参照、hardlink別名、E:絶対pathのコマンド、既存D:コピーを一覧にする。
-   必要な版/runを選び、`ckpt/` 全体とその単位だけをD:へ戻す。
+   必要な版/runを選び、ckptの全子dir・rootファイル投影と、その単位だけをD:へ戻す。
 3. メインoutputs aliasはメインへの参照として分類する。独立した旧E:`.claude/worktrees/<name>/outputs` はconsumer停止中に
    E:`.worktree-outputs/<name>` へrootをrenameする。scanの `legacy_outputs` が対応を示す。
    移行先があれば上書き・結合せず明示比較する。旧manifestのpath・ctimeは再利用せず、新しい正規pathでindexする。
@@ -258,7 +309,7 @@ systemのmount unitへの順序依存は張らず、毎回mountを確認する�
    小ファイルのseekで長くなる。これは計画上の仮定で、全件実測ではない。
    indexはE:1pass、hydrateはさらにE:のhash・コピーとD:の検証が必要。小さな温かいprobeからHDD速度を推定しない。
 4. 元のsymlink entryを移行記録へ保存し、**リンク自体**をrenameして退避する。E:の実体は動かさない。
-   D:の `data/`・`outputs/` は空の実dirを作る。`ckpt/` はhydrateが全体を公開するまで不在にする。
+   D:の `data/`・`outputs/` は空の実dirを作る。`ckpt/` も実コンテナを作り、子dirとrootファイルを個別hydrateする。
    対象worktreeのoutputsリンクも退避し、独立outputsはD:の永続領域、メインaliasはD:メインoutputsへリンクする。
    正規pathへ選んだ単位を取得し、内容と代表hardlinkを検証して
    入力診断をactivateする。既存D:コピーは明示比較し、hydrateで結合しない。

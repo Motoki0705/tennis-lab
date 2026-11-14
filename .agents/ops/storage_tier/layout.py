@@ -87,7 +87,7 @@ class Unit:
 
     @property
     def sweepable(self) -> bool:
-        return self.kind != "checkpoint"
+        return self.kind not in {"checkpoint", "checkpoint-files"}
 
 
 @dataclass
@@ -217,12 +217,22 @@ def discover(config: Config, base: Path) -> Inventory:
     if os.path.lexists(base / "ckpt"):
         try:
             real_directory(base / "ckpt", anchor)
-            found.add(Unit("ckpt", "checkpoint"))
+            found.add(Unit("ckpt", "checkpoint-files"))
+            for path in directories("ckpt"):
+                found.add(Unit(path, "checkpoint"))
+            unmanaged[:] = [
+                path
+                for path in unmanaged
+                if not (
+                    Path(path).parent == Path("ckpt")
+                    and stat.S_ISREG((base / path).lstat().st_mode)
+                )
+            ]
         except (OSError, StorageError) as exc:
             errors.append(str(exc))
     paths = sorted(found)
     for index, unit in enumerate(paths):
-        if any(
+        if unit.kind != "checkpoint-files" and any(
             PurePosixPath(other.path).is_relative_to(unit.path)
             for other in paths[index + 1 :]
         ):

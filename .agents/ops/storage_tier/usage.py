@@ -337,11 +337,14 @@ class Inspector:
                 )
         return result
 
-    def inspect(self, paths: tuple[Path, ...], tree: Snapshot) -> Usage:
+    def inspect(
+        self, paths: tuple[Path, ...], tree: Snapshot, *, check_mounts: bool = True
+    ) -> Usage:
         result = Usage(uid=self.uid)
+        result.mount_scope["inspection_enabled"] = check_mounts
         inodes = tree.inodes
         location: tuple[int, Path] | None = None
-        if inodes:
+        if inodes and check_mounts:
             try:
                 location = filesystem_unit(paths, tree, self.metadata)
                 result.mount_scope["filesystem_unit"] = str(location[1])

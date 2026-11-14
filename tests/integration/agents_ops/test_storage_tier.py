@@ -40,7 +40,7 @@ class Lab:
         unit = self.layout.Unit(
             path,
             "checkpoint"
-            if path == "ckpt"
+            if path.startswith("ckpt/")
             else "output"
             if "outputs/" in path
             else "dataset",
@@ -120,7 +120,7 @@ def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Lab:
 
 
 def test_mirror_evict_hydrate_verifies_known_bytes_and_keeps_ckpt(lab: Lab) -> None:
-    unit, checkpoint = lab.unit(), lab.unit("ckpt")
+    unit, checkpoint = lab.unit(), lab.unit("ckpt/model")
     lab.mirror(unit)
     lab.mirror(checkpoint)
     manifest = lab.engine.manifest(unit)
@@ -136,7 +136,7 @@ def test_mirror_evict_hydrate_verifies_known_bytes_and_keeps_ckpt(lab: Lab) -> N
     assert code == 0, report
     assert report["results"][0]["action"] == "evicted"
     assert not (lab.config.repo / unit.path).exists()
-    assert (lab.config.repo / "ckpt/a.bin").exists()
+    assert (lab.config.repo / "ckpt/model/a.bin").exists()
     assert (
         lab.filesystem.read_bytes(lab.config.mirror / unit.path / "a.bin") == b"apple\n"
     )
@@ -1462,7 +1462,7 @@ def test_wrong_entry_claim_is_retained_when_a_successor_occupies_its_name(
 def test_checkpoint_file_hardlink_does_not_make_dataset_directory_a_checkpoint(
     lab: Lab,
 ) -> None:
-    unit, checkpoint = lab.unit(), lab.unit("ckpt")
+    unit, checkpoint = lab.unit(), lab.unit("ckpt/model")
     source = lab.config.repo / unit.path
     protected = lab.config.repo / checkpoint.path / "a.bin"
     (source / "a.bin").unlink()
@@ -2336,13 +2336,168 @@ def test_inaccessible_ancestor_bind_does_not_block_verifying_e(
     code, report = lab.run("verify", unit, dry_run=True)
     assert code == 0 and report["results"][0]["action"] == "would_verify", report
     assert denied == 0
+
     scope = report["process_scope"]["mount_scope"]
-    assert scope["excluded_ancestor_roots"] == 1 and scope["checked_roots"] == 0
+    assert scope["inspection_enabled"] is False and scope["checked_roots"] == 0
     code, verified = lab.run("verify", unit)
     assert code == 0, verified
     audit = [row for row in lab.records() if row["event"] == "verified"][-1]
-    assert audit["process_scope"]["mount_scope"]["excluded_ancestor_roots"] == 1
+    assert audit["process_scope"]["mount_scope"]["inspection_enabled"] is False
     assert denied == 0
+
+
+def test_checkpoint_children_and_root_files_preserve_bound_root(lab: Lab) -> None:
+    root = lab.config.repo / "ckpt"
+    (root / "model").mkdir(parents=True)
+    (root / "model/weights").write_bytes(b"weights")
+    (root / "README.md").write_bytes(b"first")
+    inventory = lab.layout.discover(lab.config, lab.config.repo)
+    assert {(u.path, u.kind) for u in inventory.units} == {
+        ("ckpt/model", "checkpoint"),
+        ("ckpt", "checkpoint-files"),
+    }
+    assert "ckpt/README.md" not in inventory.unmanaged
+    code, report = lab.engine.run("mirror", [], dry_run=False)
+    assert code == 0, report
+    mirror = lab.config.mirror / "ckpt"
+    root_inode, model_inode = mirror.stat().st_ino, (mirror / "model").stat().st_ino
+    (root / "README.md").write_bytes(b"second")
+    code, report = lab.engine.run("mirror", ["ckpt/README.md"], dry_run=False)
+    assert code == 0, report
+    assert mirror.stat().st_ino == root_inode
+    assert (mirror / "model").stat().st_ino == model_inode
+    assert lab.filesystem.read_bytes(mirror / "README.md") == b"second"
+    history = lab.config.mirror / ".storage-tier/checkpoint-file-history"
+    assert any(
+        lab.filesystem.read_bytes(p) == b"first" for p in history.rglob("README.md")
+    )
+    code, report = lab.engine.run("evict", [], dry_run=False)
+    assert code == 0 and all(r["action"] == "kept" for r in report["results"]), report
+    local_root_inode = root.stat().st_ino
+    (root / "README.md").unlink()
+    code, report = lab.engine.run("hydrate", ["ckpt"], dry_run=False)
+    assert code == 0 and lab.filesystem.read_bytes(root / "README.md") == b"second", (
+        report
+    )
+    assert root.stat().st_ino == local_root_inode and (root / "model/weights").exists()
+
+
+def test_root_file_removal_archives_payload_and_dry_run_is_immutable(lab: Lab) -> None:
+    root = lab.config.repo / "ckpt"
+    root.mkdir()
+    (root / "README.md").write_bytes(b"retain this")
+    unit = lab.layout.Unit("ckpt", "checkpoint-files")
+    lab.mirror(unit)
+    mirror = lab.config.mirror / "ckpt"
+    before = lab.filesystem.snapshot(mirror, hashes=True).entries
+    root_inode = mirror.stat().st_ino
+    (root / "README.md").unlink()
+    assert lab.run("mirror", unit, dry_run=True)[0] == 0
+    assert before == lab.filesystem.snapshot(mirror, hashes=True).entries
+    assert lab.run("mirror", unit)[0] == 0
+    assert not (mirror / "README.md").exists() and mirror.stat().st_ino == root_inode
+    history = list(
+        (lab.config.mirror / ".storage-tier/checkpoint-file-history").glob(
+            "*/removed-from-source/README.md"
+        )
+    )
+    assert len(history) == 1 and lab.filesystem.read_bytes(history[0]) == b"retain this"
+
+
+def test_explicit_root_file_index_archives_legacy_manifest(lab: Lab) -> None:
+    checkpoint = lab.unit("ckpt/model")
+    lab.mirror(checkpoint)
+    legacy = lab.layout.Unit("ckpt", "checkpoint")
+    old = lab.engine.record(
+        legacy,
+        None,
+        lab.filesystem.snapshot(lab.config.mirror / "ckpt", hashes=True),
+        dry_run=False,
+    )
+    root_files = lab.layout.Unit("ckpt", "checkpoint-files")
+    assert lab.run("mirror", root_files)[0] == 1
+    assert lab.run("index", root_files)[0] == 0
+    assert lab.engine.manifest(root_files)["kind"] == "checkpoint-files"
+    archived = list(
+        (lab.config.mirror / ".storage-tier/legacy-manifests").glob("*.json")
+    )
+    assert len(archived) == 1 and lab.filesystem.read_json(archived[0]) == old
+    assert lab.run("verify", checkpoint)[0] == 0
+
+
+def test_legacy_whole_checkpoint_cannot_be_published(lab: Lab) -> None:
+    lab.unit("ckpt/model")
+    with pytest.raises(lab.filesystem.StorageError, match="whole-ckpt"):
+        lab.engine.mirror(lab.layout.Unit("ckpt", "checkpoint"), dry_run=False)
+
+
+def test_interrupted_root_file_publication_keeps_old_inode_and_blocks_retry(
+    lab: Lab,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = lab.config.repo / "ckpt"
+    root.mkdir()
+    (root / "README.md").write_bytes(b"first")
+    unit = lab.layout.Unit("ckpt", "checkpoint-files")
+    lab.mirror(unit)
+    (root / "README.md").write_bytes(b"second")
+    module = importlib.import_module("storage_tier.checkpoint_files")
+    original = module.rename
+
+    def interrupted(first: Path, second: Path, **kwargs: Any) -> None:
+        original(first, second, **kwargs)
+        raise OSError(errno.EIO, "after exchange")
+
+    monkeypatch.setattr(module, "rename", interrupted)
+    code, report = lab.run("mirror", unit)
+    assert code == 1, report
+    assert lab.filesystem.read_bytes(lab.config.mirror / "ckpt/README.md") == b"second"
+    assert any(
+        lab.filesystem.read_bytes(p) == b"first"
+        for p in (lab.config.mirror / ".storage-tier/checkpoint-file-history").rglob(
+            "README.md"
+        )
+    )
+    assert lab.records()[-2]["event"] == "checkpoint_files_interrupted"
+    monkeypatch.setattr(module, "rename", original)
+    code, report = lab.run("mirror", unit)
+    assert (
+        code == 1
+        and "unfinished checkpoint-file publication" in report["results"][0]["error"]
+    )
+
+
+@pytest.mark.parametrize("command", ["index", "verify", "mirror", "hydrate"])
+def test_read_only_mount_reference_is_checked_only_on_removal(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+) -> None:
+    private_process["denied"] = set()
+    unit = lab.unit()
+    lab.mirror(unit)
+    mirror = lab.config.mirror / unit.path
+    info = mirror.stat()
+    process = private_process["path"]
+    root = filesystem_path(mirror)
+    (process / "mountinfo").write_text(
+        f"288 83 {os.major(info.st_dev)}:{os.minor(info.st_dev)} {root} /hidden ro - ext4 /dev/fake rw\n"
+    )
+    original = Path.stat
+
+    def inaccessible(path: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+        if path == process / "root/hidden":
+            raise PermissionError(errno.EACCES, "inaccessible root bind", str(path))
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", inaccessible)
+    if command == "hydrate":
+        lab.filesystem.rename(lab.config.repo / unit.path, lab.config.repo / "saved")
+    code, report = lab.run(command, unit, dry_run=command != "index")
+    assert code == 0, report
+    inspected = lab.engine.inspector.inspect((mirror,), lab.filesystem.snapshot(mirror))
+    assert inspected.unknown and inspected.mount_scope["checked_roots"] == 1
 
 
 @pytest.mark.parametrize(

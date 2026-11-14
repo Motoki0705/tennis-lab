@@ -99,6 +99,10 @@ class Engine:
         if not path.exists():
             return None
         value = read_json(path)
+        if unit.kind == "checkpoint-files" and value.get("kind") == "checkpoint":
+            raise StorageError(
+                "legacy whole-ckpt manifest; run explicit index ckpt, then index each ckpt/<directory>"
+            )
         if (
             type(value.get("schema_version")) is not int
             or value["schema_version"] != 1
@@ -192,6 +196,10 @@ class Engine:
             yield
 
     def path(self, unit: Unit, *, mirror: bool = False) -> Path:
+        if unit.path == "ckpt" and unit.kind != "checkpoint-files":
+            raise StorageError(
+                "whole-ckpt units are retired; index checkpoint children and root files"
+            )
         base = self.config.mirror if mirror else self.config.repo
         path = base / unit.path
         try:
@@ -230,8 +238,12 @@ class Engine:
             marker.unlink()
             sync_dir(marker.parent)
 
-    def quiet(self, unit: Unit, path: Path, tree: Snapshot) -> None:
-        usage = self.inspector.inspect((self.config.repo / unit.path, path), tree)
+    def quiet(
+        self, unit: Unit, path: Path, tree: Snapshot, *, destructive: bool = False
+    ) -> None:
+        usage = self.inspector.inspect(
+            (self.config.repo / unit.path, path), tree, check_mounts=destructive
+        )
         self.process_scope.clear()
         self.process_scope.update(usage.scope())
         if usage.unknown:
@@ -273,6 +285,10 @@ class Engine:
         )
 
     def index(self, unit: Unit, *, dry_run: bool) -> dict[str, Any]:
+        if unit.kind == "checkpoint-files":
+            from .checkpoint_files import operate
+
+            return operate(self, unit, "index", dry_run=dry_run)
         path = self.path(unit, mirror=True)
         before = snapshot(path)
         if not dry_run:
@@ -300,6 +316,10 @@ class Engine:
         }
 
     def verify(self, unit: Unit, *, dry_run: bool) -> dict[str, Any]:
+        if unit.kind == "checkpoint-files":
+            from .checkpoint_files import operate
+
+            return operate(self, unit, "verify", dry_run=dry_run)
         local_path, mirror_path = self.path(unit), self.path(unit, mirror=True)
         local_before = snapshot(local_path)
         self.quiet(unit, local_path, local_before)
@@ -331,6 +351,10 @@ class Engine:
         }
 
     def mirror(self, unit: Unit, *, dry_run: bool) -> dict[str, Any]:
+        if unit.kind == "checkpoint-files":
+            from .checkpoint_files import operate
+
+            return operate(self, unit, "mirror", dry_run=dry_run)
         self.require_complete_local(unit)
         source = self.path(unit)
         before = snapshot(source)
@@ -399,7 +423,7 @@ class Engine:
             if old is not None:
                 if not old.same_metadata(snapshot(destination)):
                     raise StorageError("E: changed before publication")
-                self.quiet(unit, destination, old)
+                self.quiet(unit, destination, old, destructive=True)
             rename(stage, destination, exchange=old is not None)
             published = True
             final = snapshot(destination)
@@ -487,7 +511,7 @@ class Engine:
             for name, entry in moved.entries.items():
                 if entry["kind"] == "file":
                     entry["sha256"] = expected.entries[name]["sha256"]
-            self.quiet(unit, stage, moved)
+            self.quiet(unit, stage, moved, destructive=True)
             retained.mkdir(mode=0o700)
             sync_dir(retained.parent)
             info = retained.lstat()
@@ -533,6 +557,10 @@ class Engine:
             raise
 
     def hydrate(self, unit: Unit, *, dry_run: bool) -> dict[str, Any]:
+        if unit.kind == "checkpoint-files":
+            from .checkpoint_files import operate
+
+            return operate(self, unit, "hydrate", dry_run=dry_run)
         destination = self.config.repo / unit.path
         with suppress(FileNotFoundError):
             real_directory(destination.parent, self.config.repo)
@@ -614,7 +642,7 @@ class Engine:
         source = self.path(unit)
         before = snapshot(source)
         self.assert_idle(before)
-        self.quiet(unit, source, before)
+        self.quiet(unit, source, before, destructive=True)
         manifest = evidence if evidence is not None else self.manifest(unit)
         if manifest is None:
             raise StorageError(
@@ -633,7 +661,7 @@ class Engine:
         if not local.same_metadata(final):
             raise StorageError("D: changed before eviction")
         self.assert_idle(final)
-        self.quiet(unit, source, final)
+        self.quiet(unit, source, final, destructive=True)
         self.check_mirror(unit, manifest)
         detail = {
             **final.allocation(),
@@ -683,7 +711,7 @@ class Engine:
             if not final.same_metadata(moved, moved=True):
                 raise StorageError("D: unit was replaced or changed during quarantine")
             self.assert_idle(moved)
-            self.quiet(unit, quarantine, moved)
+            self.quiet(unit, quarantine, moved, destructive=True)
             self.check_mirror(unit, manifest)
             real_directory(quarantine, self.config.repo)
             self.check_checkpoint_alias(quarantine, self.config.repo)
@@ -1083,6 +1111,13 @@ class Engine:
                 matches = [
                     u for u in inventory.values() if candidate.is_relative_to(u.path)
                 ]
+                # ckpt is a projection of root files, not a recursive parent
+                # unit. A child directory wins; a direct root-file path selects
+                # only the projection. `ckpt` explicitly means root files.
+                if matches and any(u.kind != "checkpoint-files" for u in matches):
+                    matches = [u for u in matches if u.kind != "checkpoint-files"]
+                elif matches and len(candidate.parts) > 2:
+                    matches = []
                 if len(matches) != 1:
                     raise StorageError(
                         f"unknown/ambiguous unit: {path}; inspect scan and dataset boundaries"

@@ -19,7 +19,7 @@ For main checkout `R`, the E: counterpart of `R/<relative>` is
 | Main `outputs/` | Real directory | Same relative paths | Task/purpose/experiment/run-id |
 | Worktree `outputs/` | Link to D:`<main>/.worktree-outputs/<name>/` | `.worktree-outputs/<name>/...` | Task/purpose/experiment/run-id |
 | Existing worktree alias of main `outputs/` | Link to main `outputs/` | Main `outputs/...` | No independent unit |
-| Main `ckpt/` | Entire real directory, always hydrated | Verified mirror | Never evicted |
+| Main `ckpt/` | Real container; hydrate each child and root files | Same child/file units | Never evicted |
 | Worktree `data/`, `ckpt/`, `.venv` | Links to main checkout | No independent copies | Not independently scanned |
 
 [config.toml](config.toml) declares dataset **containers**, whose direct children
@@ -47,6 +47,74 @@ removes only that unit's names. The audit separates logical bytes, unique alloca
 bytes, external hardlinks, estimated reclaimable bytes and the observed filesystem
 free-space delta. External links can keep all blocks allocated. Hydration creates
 fresh D: inodes; it does not recreate links into other units.
+
+## Checkpoint units and CI assets
+
+Each `ckpt/<top-level-directory>` is an independent `checkpoint` unit. Direct
+regular files form the separate `checkpoint-files` unit named `ckpt` (currently
+`README.md`); a root-file argument selects that projection, not all child units.
+Both kinds are mirror/verify/hydrate-only and are never evicted. The E: `ckpt/`
+container inode is never exchanged or removed. Explicit whole-root checkpoint
+operations from older code are rejected.
+
+Root-file publication stages and hashes only direct regular files, then publishes
+one file at a time. Replaced or removed source files are retained under the target
+tier's `.storage-tier/checkpoint-file-history/<transaction>/`; no automatic cleanup
+of that history is provided. Child directories are untouched. Publication is atomic
+per file, not across the file set. The durable D: `checkpoint-file-operations/`
+journal lists expected/previous entries and publication progress. Any unfinished
+operation blocks the projection: pause writers, compare the published files with
+that journal and retained history, reconcile the complete set, then archive the
+acknowledged journal under `recovered-checkpoint-file-operations/` before explicit
+E: index and D:/E: verify. `recover` does not resume or discard these files. A
+mismatch never authorizes deleting the archived inode. Root-directory timestamps
+are excluded from this projection's metadata identity; root device/inode/mode and
+all direct-file metadata/hashes are still checked.
+
+When migrating a former whole-`ckpt` manifest, run explicit `index ckpt` first.
+It preserves the old manifest under E:`.storage-tier/legacy-manifests/` before
+recording root files. Then index every `ckpt/<directory>` reported by scan. Do not
+reuse the old whole-tree hashes for child units. Create a real D: `ckpt/` container
+and hydrate root files and each child independently; E: `ckpt/` remains in place.
+
+Mount-reference inspection applies only to destructive eviction, old-mirror
+retirement (including its publication check), and verified stage discard. Read-only
+index/verify/mirror/hydrate inspections retain own-UID fd/cwd/mmap checks and
+before/after snapshots; they do not stat bind targets. The audit records
+`mount_scope.inspection_enabled`. Exact/internal bind roots still fail closed on
+deletion, regardless of read-only mount options. A directory `index --dry-run`
+still skips quiet; the root-file projection performs quiet without mount checks.
+
+The runner installer derives asset sources from the same `Config.load(...).mirror`
+rule and configuration, never from repo `data/ckpt` symlink resolution. CI binds
+E: `data/` and `ckpt/`; only already mirrored units are visible. A new D:-only unit
+appears after successful mirroring (normally the daily cycle). The runtime requires the configured E: mountpoint and re-reads the source mount on every start (device IDs may change on reboot) and checks
+FSROOT **and device** against the configured source's actual filesystem-relative
+root, not its `/mnt/...` spelling; existing incorrect or writable mounts fail.
+
+Before the stage-2 D: cutover, the parent coordinates a CI/runner-queue maintenance
+window and waits for their jobs to finish (stopping an active queue terminates its
+jobs). Other sessions' training is coordinated separately. After this code is on
+the main checkout, the human runs, from that checkout:
+
+```bash
+runner_service="$(sudo cat /opt/actions-runner/.service)"
+sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
+sudo bash scripts/github_actions/install_self_hosted_runner.sh
+sudo /opt/tennis-lab-actions/bin/mount_assets.sh start
+# The installer starts services; pause them again until storage migration ends.
+sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
+# Parent performs the agreed D: cutover/hydration and read-only acceptance here.
+sudo systemctl start tennis-lab-training-queue.service "$runner_service"
+```
+
+The installer updates `/opt` helpers/config and system unit dependencies on
+`tennis-data-mount.service`, reloads systemd, and starts/enables services. It also
+runs its existing package/runtime provisioning, so allow download time. The current
+binds already resolve to E:, so their FSROOT/device do not change and no unmount is
+needed before cutover when validation passes. Reinstallation fixes future starts
+after the repo paths become D:; it does not by itself replace an active bind.
+This stage implements the procedure only: no sudo or unit operations are performed.
 
 ## CLI
 
@@ -176,7 +244,7 @@ the final `F_GETLEASE` and `F_UNLCK`; it is never silently drained as success.
 The CLI reserves that thread's SIGIO while holding a lease.
 
 Usage inspection matches FD device/inode identities, including existing `O_PATH` FDs.
-For inspectable same-UID processes, it also reads `mountinfo`. The unit's path inside
+On destructive paths, for inspectable same-UID processes it also reads `mountinfo`. The unit's path inside
 its filesystem comes from the tool's own namespace: pin the snapshot root, match its
 FD mount ID to our mount root/point, and combine that root with the relative path.
 This works for quarantine, retained and stage names too. Only matching-device mounts
@@ -230,9 +298,9 @@ intent and completion with UTC time, unit, byte counts and verification method.
 A single repo lock serializes mutating operations; dry-runs do not acquire/create it.
 Process exclusion scope is included in audit events. Failures remain in this audit
 and the service journal; no desktop, D-Bus, mail or other notification is sent.
-Read-only `index --dry-run` reports process inspection errors but never certifies
-a manifest or authorizes deletion; it hashes the selected tiny tree without calling
-the unit's `quiet` checks. It is therefore not evidence that E: mount-reference
+Read-only `index --dry-run` reports global process inspection errors but never certifies
+a manifest or authorizes deletion; for directory units it hashes the selected tiny tree without
+unit `quiet` checks (the checkpoint root-file projection also inspects fd/cwd/mmap). It is therefore not evidence that E: mount-reference
 inspection passed. Host qualification must exercise both sides through
 `verify --dry-run` and record successful E: `quiet` calls, together with unchanged
 metadata. Before placement migration, distinguish a read-only existing-pair
@@ -332,7 +400,7 @@ the mount itself. Installation only links units. Enablement is a separate deploy
    or stop sessions implicitly.
 2. Inventory E: units and active/queued references, including indirect config defaults,
    old hardlink aliases, E:-absolute command paths and pre-existing D: copies. Decide
-   the needed version/run units. Hydrate all `ckpt/` and those units only.
+   the needed version/run units. Hydrate all checkpoint children plus the `ckpt` root-file projection and those units only.
 3. Classify main-output aliases as references to main outputs. For independent
    old E:`.claude/worktrees/<name>/outputs`, rename the root to
    E:`.worktree-outputs/<name>` while consumers are paused. Refuse occupied
@@ -346,7 +414,7 @@ the mount itself. Installation only links units. Enablement is a separate deploy
    and copying, and D: for verification. Do not infer HDD speed from warm tiny probes.
 4. Keep original symlink entries under a migration record. Detach links by renaming
    the **link itself**, never its target. Create empty real D: `data/` and `outputs/`
-   roots; leave `ckpt/` absent until whole-unit hydration publishes it. Detach each
+   roots plus a real `ckpt/` container; hydrate its children and root files separately. Detach each
    affected worktree's output link. Link independent outputs to the persistent D:
    root; link main-output aliases to D: main outputs. Hydrate into canonical paths.
    Hydrate the chosen units, verify contents and a representative hardlink operation,
