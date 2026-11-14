@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "issue": 1859,
+  "reason": "Parent recovery instruction 2026-11-13: RAM admission 6 GiB, emergency 2 GiB, no wait deadline.",
+  "previous_attempt": 3,
+  "next_attempt": 4,
+  "old_service": "tennis-ball-arch-desktop-production-20261113-a3.service",
+  "old_service_state": "failed",
+  "old_terminal_event": {
+    "schema_version": 1,
+    "returncode": 1,
+    "queue_returncode": 0,
+    "terminal_states": [
+      "failed"
+    ],
+    "state": "failed",
+    "finished_at": 1794555199.2115302,
+    "kind": "production",
+    "job": "0-8205450230444034201_2026-11-13T06-02-49-555965798Z_1408418_ball-arch-desktop-production-a3",
+    "service_result": null,
+    "pid": 1408456,
+    "periodic_progress_polling": false
+  },
+  "old_guard": {
+    "schema_version": 2,
+    "minimum_available_bytes": 4155387904,
+    "threshold_bytes": 4294967296,
+    "d_drive_path": "/mnt/d",
+    "minimum_d_drive_available_bytes": 24432304128,
+    "d_drive_available_threshold_bytes": 10737418240,
+    "triggered": true,
+    "trigger_reason": "host_available_ram",
+    "filesystem_growth_is_telemetry_only": true,
+    "maximum_filesystem_growth_bytes": 33872687104,
+    "updated_at": 1794555117.2164328,
+    "timestamp": 1794555117.2164135,
+    "finished_at": 1794555117.5736578
+  },
+  "previous_numerics": {
+    "continuous_finite_updates": 1283,
+    "sample_position": 11283,
+    "rss_history_available": false,
+    "causal_attribution": "Unknown: prior training RSS was not recorded; concurrent external pytest/du activity is a parent observation."
+  },
+  "selected_verified_status": {
+    "schema_version": 1,
+    "case": "T2",
+    "stage": "T2-q00000-q06000",
+    "event": "checkpoint",
+    "update": 1000,
+    "rows": 1000,
+    "updated_at": 1794553849.2074437,
+    "mode": "production",
+    "execution_commit": "2cb49a907241bdfecd718c71a14c1da93965c57f",
+    "checkpoint_file": "checkpoint-update-00001000.pt",
+    "checkpoint_sha256": "1f7762616a28e347a32407478001340c1bd3051cc946f293adbbde8d8fbc8f87",
+    "weights_file": "weights-update-00001000.pt",
+    "weights_sha256": "026a0870dca04432e6fb291debb9816cf85e3febd3ea52d2bf393bce9da457df",
+    "checkpoint_state_equal": true,
+    "receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00001000-e2f35d3f",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T2-q00000-q06000/checkpoint-00001000-e2f35d3f",
+      "manifest_sha256": "3efed597eaa05ccb627d470febebd07049d41014efc6a3d9b0c7cdb3a2b5250a",
+      "manifest_md5": "e58baf666bb2692418eda500a9ef3c07",
+      "files": 7,
+      "size_bytes": 478649569,
+      "marker_id": "1CPTda2eORAnxdDzb0vJEDuzDa1zX8KT5",
+      "seconds": 99.67406478799967,
+      "status": "verified"
+    },
+    "readback": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "checkpoint-00001000-e2f35d3f",
+      "status": "verified",
+      "files": 7,
+      "manifest_sha256": "3efed597eaa05ccb627d470febebd07049d41014efc6a3d9b0c7cdb3a2b5250a",
+      "seconds": 68.57719496899881
+    }
+  },
+  "bootstrap": {
+    "complete": true,
+    "reused_from": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a3",
+    "next_queue_attempt": 4,
+    "old_service": "tennis-ball-arch-desktop-production-20261113-a3.service",
+    "old_service_state": "failed",
+    "new_rgb_payload_bytes": 0,
+    "private_environment_reused": true,
+    "storage_baseline_preserved": true
+  },
+  "cpu_validation": {
+    "passed": 36,
+    "seconds": 20.66,
+    "log": "resource-tests-final.log",
+    "test_design": "test-design.md",
+    "new_guard_cases": 6,
+    "new_source_migration_cases": 5,
+    "new_real_model_integration_cases": 1
+  },
+  "mutation_checks": [
+    {
+      "mutation": "admission_4_instead_of_6",
+      "node": "tests/unit/tasks/ball_detection/training/test_desktop_guard.py::test_wait_has_no_deadline_and_logs_one_thirty_minute_notice",
+      "returncode": 1,
+      "detected": true,
+      "detected_contract": "Below-6-GiB admission incorrectly returned immediately; expected waiting/start-notice-resume events were absent."
+    },
+    {
+      "mutation": "wait_inside_update_timer",
+      "node": "tests/integration/tasks/ball_detection/test_temporal_heatmap_training.py::test_update_observer_waits_outside_timing_without_changing_scientific_state",
+      "returncode": 1,
+      "detected": true,
+      "detected_contract": "Wait counted inside update timer; recorded update seconds exceeded 3600 and violated the timing assertion after scientific-state equality passed."
+    }
+  ],
+  "captured_at": 1794557683.4448307,
+  "restored_verified_state": {
+    "complete": true,
+    "stages": [
+      {
+        "stage": "T1-q06000-q12000",
+        "update": 6000,
+        "completed": true,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "completed-00006000-f95d9b90",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T1-q06000-q12000/completed-00006000-f95d9b90",
+          "manifest_sha256": "87f7b0fe576eb81a3354eb645a7f0683e5e5634407e8034684a5d47bc7203727",
+          "manifest_md5": "d856b48746aeeacd69d8476198528557",
+          "files": 12,
+          "size_bytes": 550949797,
+          "marker_id": "1HA30gpWwNEyU9tGev-1Vkuz3Q5RqvkVI",
+          "seconds": 100.26304868899751,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "a5e25941814bc5d69b9ccf702c68dfa050607b1a290c2fd3b1b0318c3ae33547",
+        "tensor_cache_retired": true
+      },
+      {
+        "stage": "T2-q00000-q06000",
+        "update": 1000,
+        "completed": false,
+        "source_receipt": {
+          "schema": "verified_artifact_snapshot.v1",
+          "generation": "checkpoint-00001000-e2f35d3f",
+          "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T2-q00000-q06000/checkpoint-00001000-e2f35d3f",
+          "manifest_sha256": "3efed597eaa05ccb627d470febebd07049d41014efc6a3d9b0c7cdb3a2b5250a",
+          "manifest_md5": "e58baf666bb2692418eda500a9ef3c07",
+          "files": 7,
+          "size_bytes": 478649569,
+          "marker_id": "1CPTda2eORAnxdDzb0vJEDuzDa1zX8KT5",
+          "seconds": 99.67406478799967,
+          "status": "verified"
+        },
+        "adapted_checkpoint_sha256": "f35f9b9526546990aee7ad587c64e6e1e500eb353e433d0b30a02094a9faab4d",
+        "tensor_cache_retired": false
+      }
+    ],
+    "policy": {
+      "schema_version": 1,
+      "confirmed": true,
+      "scope": "encoder_msda",
+      "t1_t2_identical": true,
+      "production_mutable": false,
+      "selected_by": "minimum summed warm median update seconds among common passing scopes",
+      "allocator_fraction": 0.8,
+      "scientific_shape_unchanged": true,
+      "cnn_cases_checkpointing": false,
+      "evidence": "probe-matrix.json"
+    },
+    "old_writer_confirmed_stopped": true,
+    "scientific_state_exact": true,
+    "finished_at": 1794558295.9732559
+  },
+  "actual_runner_restore": {
+    "complete": true,
+    "restored_model": true,
+    "restored_optimizer": true,
+    "restored_rng": true,
+    "restored_sampler": true,
+    "new_state_keys": [],
+    "model_keys": 381,
+    "optimizer_states": 375,
+    "sample_position": 11000
+  },
+  "execution_ci": {
+    "commit": "15cdc684ff60a210cb1d8209f393e60490ca8f44",
+    "run_id": 43392201904,
+    "python": "success",
+    "python_job_id": 131779036171,
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43392201904",
+    "confirmation": "gh run watch returned 0; GitHub Python completed successfully"
+  },
+  "new_runtime": {
+    "systemd_unit": "tennis-ball-arch-desktop-production-20261113-a4.service",
+    "queue_job_id": "0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4",
+    "active_output_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4",
+    "terminal_event": {
+      "local": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/notifications/0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4.json",
+      "remote": "outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/notifications/0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4.json",
+      "upload_readback_receipt": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/notifications/0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4-upload.json",
+      "trigger": "service.py on queue exit and systemd ExecStopPost; local record precedes upload",
+      "success": "state == done AND returncode == 0, root COMPLETED.json true, all stage predicates satisfied",
+      "failure": "failed/cancelled/process_ended_without_terminal_receipt; queue serve returncode alone is insufficient"
+    }
+  },
+  "startup_evidence": "attempt-4-startup-acceptance.json",
+  "observation_helper_race": {
+    "production_restarted": false,
+    "description": "The read-only observer was started before launch registration existed; only the observer was restarted after registration.",
+    "original_log": "startup-observation-registration-race.log"
+  }
+}

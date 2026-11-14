@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "confirmed": true,
+  "scope": "encoder_msda",
+  "t1_t2_identical": true,
+  "production_mutable": false,
+  "selected_by": "minimum summed warm median update seconds among common passing scopes",
+  "allocator_fraction": 0.8,
+  "scientific_shape_unchanged": true,
+  "cnn_cases_checkpointing": false,
+  "evidence": "probe-matrix.json"
+}

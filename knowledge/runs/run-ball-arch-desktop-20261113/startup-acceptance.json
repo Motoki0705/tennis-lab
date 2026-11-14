@@ -1,0 +1,162 @@
+{
+  "complete": true,
+  "source_commit": "cb3243ed4cd9c898ec6dc7933aa887c2e996f5ee",
+  "resume_update": 5500,
+  "first_new_update": 5501,
+  "last_accepted_update": 5511,
+  "new_updates": 11,
+  "post_first_compile_updates": 10,
+  "sample_positions": [
+    21501,
+    21511
+  ],
+  "finite_loss_grad_lr": true,
+  "full_state_restore": {
+    "complete": true,
+    "restored_model": true,
+    "restored_optimizer": true,
+    "restored_rng": true,
+    "restored_sampler": true,
+    "new_state_keys": [],
+    "model_keys": 381,
+    "optimizer_states": 375,
+    "sample_position": 21500
+  },
+  "peak_allocated_bytes": 10803609600,
+  "peak_reserved_bytes": 12595494912,
+  "allocator_limit_bytes": 13682291507,
+  "host_guard": {
+    "schema_version": 1,
+    "minimum_available_bytes": 16152305664,
+    "threshold_bytes": 4294967296,
+    "triggered": false,
+    "maximum_filesystem_growth_bytes": 18273955840,
+    "storage_stop_threshold_bytes": 19000000000,
+    "updated_at": 1794544559.3834302
+  },
+  "first_three_draws_and_augmentations_match_probe": true,
+  "captured_at": 1794544559.8940923,
+  "samples": [
+    {
+      "update": 5501,
+      "sample_position": 21501,
+      "loss": 0.0011677408502215431,
+      "gradient_norm": 0.342876136302948,
+      "learning_rate": 1.3093779070056234e-06,
+      "encoder_learning_rate": 1.3093779070056235e-07,
+      "seconds": 18.080786370999704,
+      "peak_vram_bytes": 10803609088,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5502,
+      "sample_position": 21502,
+      "loss": 0.00559039693325758,
+      "gradient_norm": 1.4000556468963623,
+      "learning_rate": 1.3081409133474223e-06,
+      "encoder_learning_rate": 1.3081409133474224e-07,
+      "seconds": 3.1519090330002655,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5503,
+      "sample_position": 21503,
+      "loss": 0.001166404181276448,
+      "gradient_norm": 0.23253343999385834,
+      "learning_rate": 1.306906387056853e-06,
+      "encoder_learning_rate": 1.306906387056853e-07,
+      "seconds": 3.1185501259988087,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5504,
+      "sample_position": 21504,
+      "loss": 0.0017253896984897677,
+      "gradient_norm": 1.1964747905731201,
+      "learning_rate": 1.3056743282185312e-06,
+      "encoder_learning_rate": 1.3056743282185313e-07,
+      "seconds": 3.0884398860016518,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5505,
+      "sample_position": 21505,
+      "loss": 0.02113440854490296,
+      "gradient_norm": 1.3370782136917114,
+      "learning_rate": 1.3044447369169282e-06,
+      "encoder_learning_rate": 1.3044447369169282e-07,
+      "seconds": 3.1194738459998916,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5506,
+      "sample_position": 21506,
+      "loss": 0.0017226762720383704,
+      "gradient_norm": 0.5153657793998718,
+      "learning_rate": 1.303217613236326e-06,
+      "encoder_learning_rate": 1.303217613236326e-07,
+      "seconds": 3.0538793779996922,
+      "peak_vram_bytes": 10449715200,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5507,
+      "sample_position": 21507,
+      "loss": 0.009907039831269462,
+      "gradient_norm": 1.1227010488510132,
+      "learning_rate": 1.3019929572608435e-06,
+      "encoder_learning_rate": 1.3019929572608437e-07,
+      "seconds": 3.1421182430003682,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5508,
+      "sample_position": 21508,
+      "loss": 0.002631392391001592,
+      "gradient_norm": 1.335976243019104,
+      "learning_rate": 1.3007707690744367e-06,
+      "encoder_learning_rate": 1.3007707690744367e-07,
+      "seconds": 3.082060224000088,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5509,
+      "sample_position": 21509,
+      "loss": 0.0017901655519381166,
+      "gradient_norm": 0.6121407151222229,
+      "learning_rate": 1.299551048760883e-06,
+      "encoder_learning_rate": 1.299551048760883e-07,
+      "seconds": 3.1350133220003045,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5510,
+      "sample_position": 21510,
+      "loss": 0.0014104960446662091,
+      "gradient_norm": 1.2320106029510498,
+      "learning_rate": 1.2983337964037913e-06,
+      "encoder_learning_rate": 1.2983337964037914e-07,
+      "seconds": 3.5345164669997757,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12595494912
+    },
+    {
+      "update": 5511,
+      "sample_position": 21511,
+      "loss": 0.005701294233059061,
+      "gradient_norm": 0.8086612224578857,
+      "learning_rate": 1.297119012086616e-06,
+      "encoder_learning_rate": 1.2971190120866162e-07,
+      "seconds": 3.097666945999663,
+      "peak_vram_bytes": 10449715200,
+      "peak_reserved_vram_bytes": 12595494912
+    }
+  ]
+}

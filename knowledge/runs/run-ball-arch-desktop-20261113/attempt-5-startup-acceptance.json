@@ -1,0 +1,795 @@
+{
+  "complete": true,
+  "source_commit": "7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0",
+  "resume_stage": "T2-q00000-q06000",
+  "resume_update": 1000,
+  "resume_sample_position": 11000,
+  "first_new_update": 1001,
+  "last_accepted_update": 1011,
+  "new_updates": 11,
+  "post_first_compile_updates": 10,
+  "sample_positions": [
+    11001,
+    11011
+  ],
+  "full_state_restore": {
+    "complete": true,
+    "restored_model": true,
+    "restored_optimizer": true,
+    "restored_rng": true,
+    "restored_sampler": true,
+    "new_state_keys": [],
+    "model_keys": 381,
+    "optimizer_states": 375,
+    "sample_position": 11000
+  },
+  "source_migration": {
+    "complete": true,
+    "original_sha256": "f35f9b9526546990aee7ad587c64e6e1e500eb353e433d0b30a02094a9faab4d",
+    "local_sha256": "7b9204f52ae2279833b2b45880d8a120c7f20c5b956bbf3c78c759528c9eb33d",
+    "exact_fields": [
+      "optimizer",
+      "optimizer_parameter_names",
+      "rng",
+      "schedule",
+      "sample_position",
+      "updates_completed",
+      "train_log"
+    ],
+    "model_state_keys": 381,
+    "new_state_keys": [],
+    "weights_exact": true,
+    "checkpoint_scope": "encoder_msda",
+    "source_changes": [],
+    "initial_policy_migration": false,
+    "observer_source_transition": null,
+    "metadata_changes": [
+      "recipe.model.activation_checkpointing",
+      "recipe.model.checkpoint_scope",
+      "recipe.data.snapshot.directory",
+      "recipe.manifest_sha256",
+      "recipe.evaluation_manifest_sha256",
+      "code",
+      "model_artifact.model_config",
+      "model_artifact.training.data.snapshot.directory",
+      "model_artifact.training.recipe_sha256",
+      "artifact_sha256"
+    ],
+    "original_gpu": "NVIDIA L4",
+    "local_gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "bitwise_gpu_continuation_guaranteed": false
+  },
+  "committed_prefix_unchanged": true,
+  "finite_loss_grad_lr": true,
+  "encoder_frozen": false,
+  "peak_allocated_bytes": 10803609600,
+  "peak_reserved_bytes": 12763267072,
+  "allocator_limit_bytes": 13682291507,
+  "host_guard": {
+    "schema_version": 4,
+    "minimum_available_bytes": 12376064000,
+    "threshold_bytes": 2147483648,
+    "admission_threshold_bytes": 6442450944,
+    "d_drive_path": "/mnt/d",
+    "minimum_d_drive_available_bytes": 319722835968,
+    "d_drive_available_threshold_bytes": 10737418240,
+    "e_drive_path": "/mnt/wsl/tennis-data",
+    "minimum_e_drive_available_bytes": 3851784626176,
+    "e_drive_available_threshold_bytes": 10737418240,
+    "triggered": false,
+    "trigger_reason": null,
+    "filesystem_growth_is_telemetry_only": true,
+    "maximum_filesystem_growth_bytes": 0,
+    "updated_at": 1794641201.780039
+  },
+  "minimum_admitted_host_available_bytes": 12575571968,
+  "maximum_process_tree_rss_bytes": 11845734400,
+  "cold_first_update_seconds": 63.16387984799985,
+  "warm_ten_median_update_seconds": 3.2804110710003442,
+  "wait_events": [],
+  "wait_events_count": 0,
+  "processes": {
+    "service": {
+      "pid": 1107087,
+      "ppid": 544,
+      "pgid": 1107087,
+      "sid": 1107087,
+      "proc_starttime_ticks": 840056
+    },
+    "serial": {
+      "pid": 1107770,
+      "ppid": 1107498,
+      "pgid": 1107498,
+      "sid": 1107498,
+      "proc_starttime_ticks": 840108
+    },
+    "T2": {
+      "pid": 1240740,
+      "ppid": 1107770,
+      "pgid": 1107498,
+      "sid": 1107498,
+      "proc_starttime_ticks": 862702
+    }
+  },
+  "captured_at": 1794641202.1015718,
+  "samples": [
+    {
+      "update": 1001,
+      "sample_position": 11001,
+      "loss": 0.023066830067407517,
+      "gradient_norm": 3.10868501663208,
+      "learning_rate": 7.23661523274324e-05,
+      "encoder_learning_rate": 7.23661523274324e-06,
+      "seconds": 63.16387984799985,
+      "data_wait_seconds": 1.7851651220007625,
+      "augmentation_seconds": 4.1569074309991265,
+      "peak_vram_bytes": 10803609088,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641104.3981626,
+        "admitted_host_available_bytes": 15695953920,
+        "children_rss_bytes": 7133511680,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263149568,
+        "host_available_bytes": 12718313472,
+        "parent_rss_bytes": 4561874944,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11695386624,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641167.7812488
+      }
+    },
+    {
+      "update": 1002,
+      "sample_position": 11002,
+      "loss": 0.03470717536078559,
+      "gradient_norm": 3.2785818576812744,
+      "learning_rate": 7.236369096867179e-05,
+      "encoder_learning_rate": 7.236369096867179e-06,
+      "seconds": 3.3172470800000156,
+      "data_wait_seconds": 0.0011849410002469085,
+      "augmentation_seconds": 0.11284879699996964,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641167.863839,
+        "admitted_host_available_bytes": 12733505536,
+        "children_rss_bytes": 7135588352,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263149568,
+        "host_available_bytes": 12639338496,
+        "parent_rss_bytes": 4631101440,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11766689792,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641171.1857886
+      }
+    },
+    {
+      "update": 1003,
+      "sample_position": 11003,
+      "loss": 0.028613620020192247,
+      "gradient_norm": 2.474806785583496,
+      "learning_rate": 7.236122720639643e-05,
+      "encoder_learning_rate": 7.236122720639643e-06,
+      "seconds": 3.266174761000002,
+      "data_wait_seconds": 0.0008463220001431182,
+      "augmentation_seconds": 0.05986759900042671,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641171.344127,
+        "admitted_host_available_bytes": 12651630592,
+        "children_rss_bytes": 7144239104,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263141376,
+        "host_available_bytes": 12626481152,
+        "parent_rss_bytes": 4631117824,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11775356928,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641174.6125002
+      }
+    },
+    {
+      "update": 1004,
+      "sample_position": 11004,
+      "loss": 0.01834702491760254,
+      "gradient_norm": 1.3007755279541016,
+      "learning_rate": 7.235876104077523e-05,
+      "encoder_learning_rate": 7.235876104077523e-06,
+      "seconds": 3.2795865850002883,
+      "data_wait_seconds": 0.0010029879995272495,
+      "augmentation_seconds": 0.015608319999955711,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641174.6858132,
+        "admitted_host_available_bytes": 12604035072,
+        "children_rss_bytes": 7163899904,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263141376,
+        "host_available_bytes": 12622012416,
+        "parent_rss_bytes": 4631175168,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11795075072,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641177.9683442
+      }
+    },
+    {
+      "update": 1005,
+      "sample_position": 11005,
+      "loss": 0.018005847930908203,
+      "gradient_norm": 2.4776611328125,
+      "learning_rate": 7.23562924719772e-05,
+      "encoder_learning_rate": 7.235629247197721e-06,
+      "seconds": 3.328836128999683,
+      "data_wait_seconds": 0.0010222250002698274,
+      "augmentation_seconds": 0.015947969999615452,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641178.0442102,
+        "admitted_host_available_bytes": 12610838528,
+        "children_rss_bytes": 7163908096,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263137280,
+        "host_available_bytes": 12595892224,
+        "parent_rss_bytes": 4631244800,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11795152896,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641181.3754685
+      }
+    },
+    {
+      "update": 1006,
+      "sample_position": 11006,
+      "loss": 0.02795722961425781,
+      "gradient_norm": 3.5604448318481445,
+      "learning_rate": 7.235382150017162e-05,
+      "encoder_learning_rate": 7.235382150017162e-06,
+      "seconds": 3.267096321000281,
+      "data_wait_seconds": 0.0013343150003493065,
+      "augmentation_seconds": 0.059684727999410825,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641181.4335675,
+        "admitted_host_available_bytes": 12610125824,
+        "children_rss_bytes": 7163908096,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263133184,
+        "host_available_bytes": 12600524800,
+        "parent_rss_bytes": 4631244800,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11795152896,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641184.7030642
+      }
+    },
+    {
+      "update": 1007,
+      "sample_position": 11007,
+      "loss": 0.0517942395984617,
+      "gradient_norm": 2.686898708343506,
+      "learning_rate": 7.235134812552785e-05,
+      "encoder_learning_rate": 7.235134812552785e-06,
+      "seconds": 3.2812355570004,
+      "data_wait_seconds": 0.0009528400005365256,
+      "augmentation_seconds": 0.06841494000036619,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641184.761995,
+        "admitted_host_available_bytes": 12592934912,
+        "children_rss_bytes": 7164006400,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263133184,
+        "host_available_bytes": 12576706560,
+        "parent_rss_bytes": 4664799232,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11828805632,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641188.0462687
+      }
+    },
+    {
+      "update": 1008,
+      "sample_position": 11008,
+      "loss": 0.022903487330577413,
+      "gradient_norm": 0.7097077965736389,
+      "learning_rate": 7.234887234821543e-05,
+      "encoder_learning_rate": 7.234887234821543e-06,
+      "seconds": 3.273394838999593,
+      "data_wait_seconds": 0.0002812919992720708,
+      "augmentation_seconds": 0.07043491799959156,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641188.099477,
+        "admitted_host_available_bytes": 12595208192,
+        "children_rss_bytes": 7164080128,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263124992,
+        "host_available_bytes": 12574511104,
+        "parent_rss_bytes": 4664811520,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11828891648,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641191.3758504
+      }
+    },
+    {
+      "update": 1009,
+      "sample_position": 11009,
+      "loss": 0.004612955451011658,
+      "gradient_norm": 2.3081514835357666,
+      "learning_rate": 7.234639416840408e-05,
+      "encoder_learning_rate": 7.234639416840408e-06,
+      "seconds": 3.2348329559990816,
+      "data_wait_seconds": 0.000969983000686625,
+      "augmentation_seconds": 0.013055765999524738,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641191.438683,
+        "admitted_host_available_bytes": 12575571968,
+        "children_rss_bytes": 7166087168,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263124992,
+        "host_available_bytes": 12608241664,
+        "parent_rss_bytes": 4664864768,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11830951936,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641194.6758847
+      }
+    },
+    {
+      "update": 1010,
+      "sample_position": 11010,
+      "loss": 0.025545601509819348,
+      "gradient_norm": 1.985594630241394,
+      "learning_rate": 7.234391358626371e-05,
+      "encoder_learning_rate": 7.2343913586263715e-06,
+      "seconds": 3.3156066270003066,
+      "data_wait_seconds": 0.0014775830004509771,
+      "augmentation_seconds": 0.06915267499971378,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641194.8665507,
+        "admitted_host_available_bytes": 12593332224,
+        "children_rss_bytes": 7166128128,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263124992,
+        "host_available_bytes": 12572934144,
+        "parent_rss_bytes": 4664995840,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11831123968,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641198.1857977
+      }
+    },
+    {
+      "update": 1011,
+      "sample_position": 11011,
+      "loss": 0.01889312081038952,
+      "gradient_norm": 2.708436965942383,
+      "learning_rate": 7.234143060196431e-05,
+      "encoder_learning_rate": 7.234143060196432e-06,
+      "seconds": 3.2848937319995457,
+      "data_wait_seconds": 0.0011889029992744327,
+      "augmentation_seconds": 0.07090853299996525,
+      "peak_vram_bytes": 10803609600,
+      "peak_reserved_vram_bytes": 12763267072,
+      "resources": {
+        "admitted_at": 1794641198.241777,
+        "admitted_host_available_bytes": 12584165376,
+        "children_rss_bytes": 7180738560,
+        "d_drive_available_bytes": 319722835968,
+        "e_drive_available_bytes": 3852263116800,
+        "host_available_bytes": 12543971328,
+        "parent_rss_bytes": 4664995840,
+        "process_tree_pids": [
+          1240740,
+          1252679,
+          1335682,
+          1335690,
+          1335703,
+          1335709
+        ],
+        "process_tree_process_count": 6,
+        "process_tree_rss_bytes": 11845734400,
+        "ram_wait_seconds": 0.0,
+        "sampled_at": 1794641201.5305579
+      }
+    }
+  ],
+  "replayed_draws_and_augmentation_match_attempt4": true,
+  "io_timing": {
+    "cold_data_wait_seconds": 1.7851651220007625,
+    "warm_ten_median_data_wait_seconds": 0.0010126064998985385,
+    "warm_ten_max_data_wait_seconds": 0.0014775830004509771,
+    "warm_ten_median_data_wait_fraction": 0.0003064546870364666,
+    "interpretation": "Short resumed prefix on the verified NVMe work copy; cache state and compiler cold start limit comparison. Attempt 4 predates relocation and is a previous-run reference, not an HDD training baseline.",
+    "reference_attempt4": {
+      "reference_attempt": 4,
+      "updates": [
+        1001,
+        1011
+      ],
+      "cold_update_seconds": 37.752692859998206,
+      "cold_data_wait_seconds": 1.125980183998763,
+      "warm_ten_median_update_seconds": 3.453193093000664,
+      "warm_ten_median_data_wait_seconds": 0.0008668925001984462,
+      "warm_ten_max_data_wait_seconds": 0.00561828599893488,
+      "reference_storage_provenance": "Attempt 4 ran before the 2026-11-14 relocation, with the original dataset on the D-backed WSL root. The E-only attempt-5 staging never launched training. No HDD training baseline was collected. Compare attempt 4 only as a previous-run reference; do not attribute a difference to HDD-to-NVMe migration.",
+      "samples": [
+        {
+          "update": 1001,
+          "sample_position": 11001,
+          "seconds": 37.752692859998206,
+          "data_wait_seconds": 1.125980183998763
+        },
+        {
+          "update": 1002,
+          "sample_position": 11002,
+          "seconds": 3.515564548000839,
+          "data_wait_seconds": 0.00561828599893488
+        },
+        {
+          "update": 1003,
+          "sample_position": 11003,
+          "seconds": 3.5890255400008755,
+          "data_wait_seconds": 0.00108742600059486
+        },
+        {
+          "update": 1004,
+          "sample_position": 11004,
+          "seconds": 3.3876371779988403,
+          "data_wait_seconds": 0.00025575899780960754
+        },
+        {
+          "update": 1005,
+          "sample_position": 11005,
+          "seconds": 3.3789186560024973,
+          "data_wait_seconds": 0.00023752600100124255
+        },
+        {
+          "update": 1006,
+          "sample_position": 11006,
+          "seconds": 3.422933259000274,
+          "data_wait_seconds": 0.0003431939985603094
+        },
+        {
+          "update": 1007,
+          "sample_position": 11007,
+          "seconds": 3.508532389998436,
+          "data_wait_seconds": 0.000226415999350138
+        },
+        {
+          "update": 1008,
+          "sample_position": 11008,
+          "seconds": 3.492998237001302,
+          "data_wait_seconds": 0.0015868590016907547
+        },
+        {
+          "update": 1009,
+          "sample_position": 11009,
+          "seconds": 3.4633977449993836,
+          "data_wait_seconds": 0.001610483002878027
+        },
+        {
+          "update": 1010,
+          "sample_position": 11010,
+          "seconds": 3.442988441001944,
+          "data_wait_seconds": 0.0006463589998020325
+        },
+        {
+          "update": 1011,
+          "sample_position": 11011,
+          "seconds": 3.379479915001866,
+          "data_wait_seconds": 0.0012656330000027083
+        }
+      ]
+    }
+  },
+  "actual_data_root": {
+    "directory": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "device": 2112,
+    "root_filesystem_device": 2112,
+    "run_recipe_and_manifest_match": true
+  },
+  "hot_data_handles_at_capture": [
+    {
+      "pid": 1335682,
+      "fd": "83",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00431.bin"
+    },
+    {
+      "pid": 1335682,
+      "fd": "85",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01261.bin"
+    },
+    {
+      "pid": 1335682,
+      "fd": "86",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00696.bin"
+    },
+    {
+      "pid": 1335682,
+      "fd": "87",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00091.bin"
+    },
+    {
+      "pid": 1335682,
+      "fd": "98",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00637.bin"
+    },
+    {
+      "pid": 1335682,
+      "fd": "101",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00662.bin"
+    },
+    {
+      "pid": 1335690,
+      "fd": "88",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00808.bin"
+    },
+    {
+      "pid": 1335690,
+      "fd": "90",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00371.bin"
+    },
+    {
+      "pid": 1335690,
+      "fd": "91",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00545.bin"
+    },
+    {
+      "pid": 1335690,
+      "fd": "92",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00509.bin"
+    },
+    {
+      "pid": 1335690,
+      "fd": "102",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01295.bin"
+    },
+    {
+      "pid": 1335703,
+      "fd": "91",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00941.bin"
+    },
+    {
+      "pid": 1335703,
+      "fd": "93",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00968.bin"
+    },
+    {
+      "pid": 1335703,
+      "fd": "94",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00403.bin"
+    },
+    {
+      "pid": 1335703,
+      "fd": "95",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00820.bin"
+    },
+    {
+      "pid": 1335703,
+      "fd": "106",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01109.bin"
+    },
+    {
+      "pid": 1335709,
+      "fd": "95",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00346.bin"
+    },
+    {
+      "pid": 1335709,
+      "fd": "97",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00255.bin"
+    },
+    {
+      "pid": 1335709,
+      "fd": "98",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00484.bin"
+    },
+    {
+      "pid": 1335709,
+      "fd": "99",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-00896.bin"
+    },
+    {
+      "pid": 1335709,
+      "fd": "110",
+      "path": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1/shards/clip-01404.bin"
+    }
+  ],
+  "relocation_verification": "relocation-verification.json",
+  "dataset_hot_copy": {
+    "schema_version": 1,
+    "complete": true,
+    "source": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/dataset",
+    "destination": "/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1",
+    "distribution_sha256": "f8425ec2cc6f4d0ae018a3c9387cb3d48b3bd8353794a82888936c3d0bb7477b",
+    "verified_files": 2925,
+    "verified_bytes": 157028755547,
+    "copied_files": 2925,
+    "copied_bytes": 157028755547,
+    "reused_files": 0,
+    "root_device": 2112,
+    "canonical_device": 2096,
+    "hardlinks_only": false,
+    "elapsed_seconds": 2730.807013038,
+    "all_sha256_verified": true,
+    "independent_copy": true,
+    "additional_payload_bytes": 157028755547,
+    "finished_at": 1794639608.6152246
+  },
+  "io_reference_attempt4": {
+    "reference_attempt": 4,
+    "updates": [
+      1001,
+      1011
+    ],
+    "cold_update_seconds": 37.752692859998206,
+    "cold_data_wait_seconds": 1.125980183998763,
+    "warm_ten_median_update_seconds": 3.453193093000664,
+    "warm_ten_median_data_wait_seconds": 0.0008668925001984462,
+    "warm_ten_max_data_wait_seconds": 0.00561828599893488,
+    "reference_storage_provenance": "Attempt 4 ran before the 2026-11-14 relocation, with the original dataset on the D-backed WSL root. The E-only attempt-5 staging never launched training. No HDD training baseline was collected. Compare attempt 4 only as a previous-run reference; do not attribute a difference to HDD-to-NVMe migration.",
+    "samples": [
+      {
+        "update": 1001,
+        "sample_position": 11001,
+        "seconds": 37.752692859998206,
+        "data_wait_seconds": 1.125980183998763
+      },
+      {
+        "update": 1002,
+        "sample_position": 11002,
+        "seconds": 3.515564548000839,
+        "data_wait_seconds": 0.00561828599893488
+      },
+      {
+        "update": 1003,
+        "sample_position": 11003,
+        "seconds": 3.5890255400008755,
+        "data_wait_seconds": 0.00108742600059486
+      },
+      {
+        "update": 1004,
+        "sample_position": 11004,
+        "seconds": 3.3876371779988403,
+        "data_wait_seconds": 0.00025575899780960754
+      },
+      {
+        "update": 1005,
+        "sample_position": 11005,
+        "seconds": 3.3789186560024973,
+        "data_wait_seconds": 0.00023752600100124255
+      },
+      {
+        "update": 1006,
+        "sample_position": 11006,
+        "seconds": 3.422933259000274,
+        "data_wait_seconds": 0.0003431939985603094
+      },
+      {
+        "update": 1007,
+        "sample_position": 11007,
+        "seconds": 3.508532389998436,
+        "data_wait_seconds": 0.000226415999350138
+      },
+      {
+        "update": 1008,
+        "sample_position": 11008,
+        "seconds": 3.492998237001302,
+        "data_wait_seconds": 0.0015868590016907547
+      },
+      {
+        "update": 1009,
+        "sample_position": 11009,
+        "seconds": 3.4633977449993836,
+        "data_wait_seconds": 0.001610483002878027
+      },
+      {
+        "update": 1010,
+        "sample_position": 11010,
+        "seconds": 3.442988441001944,
+        "data_wait_seconds": 0.0006463589998020325
+      },
+      {
+        "update": 1011,
+        "sample_position": 11011,
+        "seconds": 3.379479915001866,
+        "data_wait_seconds": 0.0012656330000027083
+      }
+    ]
+  }
+}

@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "issue": 1859,
+  "attempt": 4,
+  "execution_commit": "15cdc684ff60a210cb1d8209f393e60490ca8f44",
+  "startup_prefix_accepted": true,
+  "startup_evidence": "attempt-4-startup-acceptance.json",
+  "current_result": "stopped_d_drive_below_10_gib",
+  "worker_acceptance_complete": false,
+  "observed_at": 1794561000.7291512,
+  "service": {
+    "unit": "tennis-ball-arch-desktop-production-20261113-a4.service",
+    "show": "MainPID=0\nResult=exit-code\nActiveState=failed\nSubState=failed\n",
+    "active": false
+  },
+  "queue_job_id": "0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4",
+  "queue_failed_file": "/home/kamimura/projects/tennis-lab/.training_queue/failed/0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4.job",
+  "terminal_event": {
+    "schema_version": 1,
+    "returncode": 1,
+    "queue_returncode": 0,
+    "terminal_states": [
+      "failed"
+    ],
+    "state": "failed",
+    "finished_at": 1794560747.7630424,
+    "kind": "production",
+    "job": "0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4",
+    "service_result": null,
+    "pid": 3339475,
+    "periodic_progress_polling": false
+  },
+  "terminal_upload_readback": {
+    "verified": true,
+    "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/notifications/0-8205441249570155222_2026-11-13T08-32-30-429844777Z_3338941_ball-arch-desktop-production-a4.json",
+    "sha256": "fe2b6ea07fd435d290bdca86a7826c86a5e643e031bf842f3af00e2ee5d3ae81"
+  },
+  "host_guard": {
+    "schema_version": 3,
+    "minimum_available_bytes": 8395161600,
+    "threshold_bytes": 2147483648,
+    "admission_threshold_bytes": 6442450944,
+    "d_drive_path": "/mnt/d",
+    "minimum_d_drive_available_bytes": 10708541440,
+    "d_drive_available_threshold_bytes": 10737418240,
+    "triggered": true,
+    "trigger_reason": "d_drive_available_space",
+    "filesystem_growth_is_telemetry_only": true,
+    "maximum_filesystem_growth_bytes": 46159142912,
+    "updated_at": 1794560678.020556,
+    "timestamp": 1794560678.0186768,
+    "process_tree_rss_bytes": 13506129920,
+    "parent_rss_bytes": 4610777088,
+    "children_rss_bytes": 8895352832,
+    "process_tree_process_count": 6,
+    "process_tree_pids": [
+      3424625,
+      3433749,
+      3564031,
+      3564042,
+      3564049,
+      3564062
+    ],
+    "finished_at": 1794560678.0685256
+  },
+  "latest_verified_state": {
+    "schema_version": 1,
+    "case": "T2",
+    "stage": "T2-q00000-q06000",
+    "event": "initialized",
+    "update": 1000,
+    "rows": 1000,
+    "updated_at": 1794559059.554622,
+    "mode": "production",
+    "execution_commit": "15cdc684ff60a210cb1d8209f393e60490ca8f44",
+    "checkpoint_file": "checkpoint-update-00001000.pt",
+    "checkpoint_sha256": "f35f9b9526546990aee7ad587c64e6e1e500eb353e433d0b30a02094a9faab4d",
+    "weights_file": "weights-update-00001000.pt",
+    "weights_sha256": "669ccccad25c267a9217353b7f682f2e396ae17df99605894858cdbb0ee25970",
+    "checkpoint_state_equal": true,
+    "receipt": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "initialized-00001000-120a3ef2",
+      "remote": "gdrive:tennis_lab/outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1/production/T2-q00000-q06000/initialized-00001000-120a3ef2",
+      "manifest_sha256": "57ab45dd1b56c1115e4790f3035eec0f68411e643227aa22e3f286965dabb5c0",
+      "manifest_md5": "067a85292a67a8d1113fae0b2a24f9c3",
+      "files": 8,
+      "size_bytes": 478777130,
+      "marker_id": "1SZJOZ2gsQBkLvHCQtphY_1JVgNLftza3",
+      "seconds": 95.4486304100028,
+      "status": "verified"
+    },
+    "readback": {
+      "schema": "verified_artifact_snapshot.v1",
+      "generation": "initialized-00001000-120a3ef2",
+      "status": "verified",
+      "files": 8,
+      "manifest_sha256": "57ab45dd1b56c1115e4790f3035eec0f68411e643227aa22e3f286965dabb5c0",
+      "seconds": 138.98764406400005
+    }
+  },
+  "new_update_summary": {
+    "first": 1001,
+    "last": 1313,
+    "rows": 313,
+    "last_sample_position": 11313,
+    "finite_loss_gradient_lr": true,
+    "continuous_updates_samples": true,
+    "new_rows_after_1000_are_uncommitted": true,
+    "peak_allocated_bytes": 10803609600,
+    "peak_reserved_bytes": 12763267072,
+    "maximum_process_tree_rss_bytes": 13633208320,
+    "wait_events": 0
+  },
+  "stopped_local_train_log": {
+    "path": "/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/production/T2-q00000-q06000/train.jsonl",
+    "size_bytes": 1525951,
+    "sha256": "45a5c14472935d98fbc17a31600961aef52883c8e5a71a5e68ba025cf1bb2f41"
+  },
+  "current_resources": {
+    "host_available_bytes": 17130684416,
+    "d_drive_available_bytes": 6279356416,
+    "d_drive_available_threshold_bytes": 10737418240
+  },
+  "cause_scope": "The D: available-space threshold was observed. This record does not attribute physical disk consumption to a specific writer.",
+  "recovery_requires": "Restore adequate D: capacity first. Confirm stopped writer, use a fresh root/unused attempt 5, recover only latest verified update1000. Do not adopt local updates1001..1313.",
+  "restart_performed": false,
+  "additional_local_cleanup": false,
+  "periodic_followup_registered": false,
+  "implementation_ci": {
+    "commit": "15cdc684ff60a210cb1d8209f393e60490ca8f44",
+    "run_id": 43392201904,
+    "python": "success",
+    "python_job_id": 131779036171,
+    "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/43392201904",
+    "confirmation": "gh run watch returned 0; GitHub Python completed successfully"
+  },
+  "first_reporting_ci": {
+    "commit": "a1cdadc57bfae957699c80b7f8b2d981667b06f3",
+    "run_id": 43397027519,
+    "python_job_id": 131795211636,
+    "python": "success",
+    "knowledge_run_id": 43397027667,
+    "knowledge": "success"
+  }
+}
