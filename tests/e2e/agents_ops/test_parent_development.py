@@ -721,13 +721,26 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
     cli = importlib.import_module("parent.cli")
     original_get = d.h.gh.get
     operations = []
+    held = []
     operation = cli.Store.operation
 
     @contextmanager
     def traced_operation(store: Any, key: str) -> Iterator[None]:
         operations.append(key)
         with operation(store, key):
-            yield
+            held.append(key)
+            try:
+                yield
+            finally:
+                held.pop()
+
+    reconcile = d.mod.Supervisor.reconcile
+
+    def reconcile_without_operation(control: Any, **kwargs: Any) -> None:
+        assert not held, (
+            "supervisor publication must not inherit the CLI operation lock"
+        )
+        reconcile(control, **kwargs)
 
     def bound_github(repo: str, *, store: Any) -> Any:
         def get(endpoint: str, *, missing_parent: bool = False) -> object:
@@ -739,6 +752,7 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
 
     monkeypatch.setattr(cli, "GitHub", bound_github)
     monkeypatch.setattr(cli.Store, "operation", traced_operation)
+    monkeypatch.setattr(d.mod.Supervisor, "reconcile", reconcile_without_operation)
     for key in ("CODEX_SESSION_ID", "CODEX_THREAD_ID", "CLAUDE_CODE_SESSION_ID"):
         monkeypatch.delenv(key, raising=False)
     for key, value in env.items():

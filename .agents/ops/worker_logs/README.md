@@ -242,6 +242,10 @@ release/handoffは担当変更を確定後、worker続行→終了結果のcaptu
 上限を固定する前に、既存capture outboxの凍結済み記録だけを一度再配送する。失われた原文は復元しない。
 配送未完・捕捉欠落が残るとinput_capture_failedとunpublished_count=Noneを返し、未公開ゼロとは扱わない。
 自律親のsupervisorも既存の終了イベントを保存し、ロック解放後に同じ照合を行う。
+判断ログの各batchの公開開始前と終了記録前にも所有者・generationを照合する。引継ぎ済みなら旧世代から新たな
+公開を始めず、旧世代のprivate checkpointにlog_owner_mismatchと現在の再開担当を残す。
+supervisorの旧世代markerは照合して消費するが、後任のregistryへ旧世代の終了結果を上書きしない。
+start/continue-workerのsupervisor照合は親operation lockの前に行い、予約だけをoperation lockで保護する。
 `worker_logs.lifecycle.record_exit()` がprivateな
 `publication-exits/<repo digest>/<parent>/<generation>-<event>.json` にcheckpointを保存し、CLIの
 `publication_exit` へ返す。supervisorではregistryにも保存しstatusから参照できる。

@@ -1228,7 +1228,10 @@ class Supervisor:
                             )
                         except (ValueError, OSError) as exc:
                             dispatch.update(phase="failed", reason=str(exc))
-                if row.get("publication_exit_pending"):
+                if (
+                    row.get("publication_exit_pending")
+                    and key.rpartition("#")[0] == self.gh.repo.casefold()
+                ):
                     exits.append((key, dict(row["publication_exit_pending"])))
             self.store.save()
         # GitHub/Git publication must not hold a registry/parent-operation lock.
@@ -1240,6 +1243,23 @@ class Supervisor:
             from worker_logs.lifecycle import finish_supervised
 
             _, _, number = key.rpartition("#")
+
+            def publication_owner(
+                owner_key: str = key,
+                marker: dict[str, Any] = pending,
+                source_parent: int = int(number),
+            ) -> tuple[bool, int | str]:
+                with self.store.operation(owner_key), self.store.locked():
+                    current = self.store.parents.get(owner_key, {})
+                    return (
+                        current.get("generation") == marker["generation"]
+                        and current.get("status") == "ended"
+                        and current.get("publication_exit_pending") == marker,
+                        source_parent
+                        if current.get("status") == "active"
+                        else "unassigned",
+                    )
+
             # The capture namespace retains the spelling frozen by its producer.
             checkpoint = finish_supervised(
                 self.gh.repo,
@@ -1247,14 +1267,15 @@ class Supervisor:
                 pending["generation"],
                 state_dir=self.store.directory,
                 root=Path(pending["root"]),
+                owner_check=publication_owner,
             )
             with self.store.locked():
                 row = self.store.parents.get(key, {})
-                if (
-                    row.get("generation") == pending["generation"]
-                    and row.get("publication_exit_pending") == pending
-                ):
-                    row["publication_exit"] = checkpoint
+                if row.get("publication_exit_pending") == pending:
+                    if row.get("generation") == pending["generation"]:
+                        row["publication_exit"] = checkpoint
+                    # This marker belongs to the old generation. Preserve the
+                    # private checkpoint without attaching it to a successor.
                     row.pop("publication_exit_pending")
                     self.store.save()
 

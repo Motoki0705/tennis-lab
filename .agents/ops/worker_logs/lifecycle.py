@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -38,12 +39,19 @@ def unavailable_exit(
 
 
 def publish_decisions(
-    repo: str, parent: int, *, state_dir: Path, root: Path
+    repo: str,
+    parent: int,
+    *,
+    state_dir: Path,
+    root: Path,
+    owner_check: Callable[[], bool] | None = None,
 ) -> dict[str, Any]:
     """Finish an old batch and then the captured boundary, without polling.
 
     At most one old batch and one new batch are needed. A pending/blocked
-    response ends this attempt. Publication bookkeeping creates no captures.
+    response ends this attempt. Recheck ownership before each batch so a
+    completed handoff prevents another publication. Publication bookkeeping
+    creates no captures.
     """
     from decision_logs.capture import status as capture_status
     from decision_logs.publication import Publisher
@@ -63,6 +71,8 @@ def publish_decisions(
     had_batch = any(b["state"] != "merged" for b in existing["batches"])
     value: dict[str, Any] = {}
     for _ in range(2 if had_batch else 1):
+        if owner_check is not None and not owner_check():
+            return {**value, "saved_to_main": False, "error": "log_owner_mismatch"}
         value = Publisher(root, log, record_ids=limit).publish()
         if value["state"] != "merged":
             break
@@ -148,13 +158,19 @@ def finish_supervised(
     *,
     state_dir: Path,
     root: Path,
+    owner_check: Callable[[], tuple[bool, int | str]] | None = None,
 ) -> dict[str, Any]:
     """Called after the supervisor has saved ended and released its locks."""
     error = None
+    actor: int | str = "unassigned"
     try:
-        workers = continue_workers(repo, parent, state_dir=state_dir)
-        if any(row.get("error") for row in workers):
-            error = "publication_failed"
+        current, actor = owner_check() if owner_check else (True, actor)
+        if current:
+            workers = continue_workers(repo, parent, state_dir=state_dir)
+            if any(row.get("error") for row in workers):
+                error = "publication_failed"
+        else:
+            error = "log_owner_mismatch"
     except (
         ValueError,
         OSError,
@@ -168,8 +184,18 @@ def finish_supervised(
     except (ValueError, OSError, KeyError, TypeError):
         error = error or "journal_unavailable"
     try:
-        decision = publish_decisions(repo, parent, state_dir=state_dir, root=root)
-        error = error or decision.get("error")
+        current, actor = owner_check() if owner_check else (True, actor)
+        if current:
+            decision = publish_decisions(
+                repo,
+                parent,
+                state_dir=state_dir,
+                root=root,
+                owner_check=lambda: owner_check()[0] if owner_check else True,
+            )
+            error = error or decision.get("error")
+        else:
+            error = "log_owner_mismatch"
     except (
         ValueError,
         OSError,
@@ -179,6 +205,9 @@ def finish_supervised(
     ) as exc:
         error = str(exc) if isinstance(exc, PublicationError) else "publication_failed"
     try:
+        current, actor = owner_check() if owner_check else (True, actor)
+        if not current:
+            error = "log_owner_mismatch"
         return record_exit(
             repo,
             parent,
@@ -187,6 +216,7 @@ def finish_supervised(
             state_dir=state_dir,
             root=root,
             publication_error=error,
+            publication_actor=actor,
         )
     except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
         return unavailable_exit(repo, parent, generation, "ended")

@@ -521,7 +521,7 @@ def _main(argv: list[str] | None = None) -> int:
 
             with (
                 nullcontext()
-                if read_only(args)
+                if args.command != "stop-worker"
                 else store.operation(f"{gh.repo.casefold()}#{parent}")
             ):
                 worker_result = worker_command(

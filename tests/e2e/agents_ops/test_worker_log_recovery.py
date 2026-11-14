@@ -34,7 +34,7 @@ class PublicGitHub(FakeGitHub):
         self.requests: list[tuple[str, str]] = []
 
     def get(self, number: int) -> dict[str, Any]:
-        value = super().get(number)
+        value = dict(super().get(number))
         value["commits"] = len(
             git(self.upstream, "rev-list", f"main..{value['head']['sha']}").splitlines()
         )
@@ -47,7 +47,7 @@ class PublicGitHub(FakeGitHub):
         # would incorrectly turn it into an empty list after the merge.
         row = self.rows[number]
         if not row["merged"]:
-            return super().files(number)
+            return list(super().files(number))
         head = row["head"]["sha"]
         fields = git(
             self.upstream,
@@ -715,8 +715,13 @@ def test_common_continuation_visits_pending_turn_once_outside_operation_lock(
 @pytest.mark.parametrize(
     "command,accept", [("release", False), ("handoff", False), ("handoff", True)]
 )
+@pytest.mark.parametrize("handoff_after_workers", [False, True])
 def test_saved_assignment_exit_is_reconciled_even_when_the_original_command_fails(
-    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, command: str, accept: bool
+    logs: LogEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    accept: bool,
+    handoff_after_workers: bool,
 ) -> None:
     module = importlib.import_module("parent.log_publication")
     state = importlib.import_module("parent.state")
@@ -745,16 +750,33 @@ def test_saved_assignment_exit_is_reconciled_even_when_the_original_command_fail
         else "handoff_pending",
     )
     journal.atomic(logs.state / "registry.json", document)
+    applied_status, applied_generation = owner["status"], owner["generation"]
     monkeypatch.setattr(
         service, "Publisher", lambda root, target: logs.publisher(target)
     )
-    monkeypatch.setattr(
-        module, "publish_decisions", lambda *a, **kw: {"error": "github_failed"}
-    )
+    continue_workers = module.continue_workers
+
+    def workers(*args: Any, **kwargs: Any) -> list:
+        value: list = continue_workers(*args, **kwargs)
+        if handoff_after_workers:
+            owner.update(
+                session="codex:successor",
+                generation=applied_generation + 1,
+                status="active",
+            )
+            journal.atomic(logs.state / "registry.json", document)
+        return value
+
+    def decisions(*args: Any, **kwargs: Any) -> dict:
+        assert not handoff_after_workers, "old generation started another publication"
+        return {"error": "github_failed"}
+
+    monkeypatch.setattr(module, "continue_workers", workers)
+    monkeypatch.setattr(module, "publish_decisions", decisions)
     observed = continuation.failed()
-    assert observed["assignment_observed"] == owner["status"]
+    assert observed["assignment_observed"] == applied_status
     assert "parent_action_applied" not in observed
-    assert observed["publication_exit"]["generation"] == owner["generation"]
+    assert observed["publication_exit"]["generation"] == applied_generation
     assert observed["publication_exit"]["event"] == (
         "handoff_accepted"
         if accept
@@ -762,11 +784,67 @@ def test_saved_assignment_exit_is_reconciled_even_when_the_original_command_fail
         if command == "release"
         else "handoff_pending"
     )
-    assert observed["publication_exit"]["error"] == "github_failed"
+    assert observed["publication_exit"]["error"] == (
+        "log_owner_mismatch" if handoff_after_workers else "github_failed"
+    )
+    current = state.Store(logs.state).read_data()["parents"]["o/r#1"]
+    if handoff_after_workers:
+        assert current == owner
+    else:
+        assert {field: current[field] for field in owner} == owner
+        assert current["publication_continuation"]["logs"][0]["saved_to_main"] is True
     assert journal.read(path)["state"] == "merged" and logs.github.calls == [
         "create",
         "merge",
     ]
+
+
+@pytest.mark.parametrize("handoff_at", ["worker", "decision"])
+def test_exit_checks_generation_before_decision_publication_and_after_it_finishes(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, handoff_at: str
+) -> None:
+    module = importlib.import_module("parent.log_publication")
+    state = importlib.import_module("parent.state")
+    owner: dict[str, Any] = {
+        "session": "codex:previous",
+        "status": "ended",
+        "generation": 1,
+        "tasks": {},
+        "reviews": [],
+    }
+    document = {"version": 1, "parents": {"o/r#1": owner}}
+    journal.atomic(logs.state / "registry.json", document)
+    args = SimpleNamespace(command="release", accept=False, ended=True, dry_run=False)
+    continuation = module.Continuation(
+        args, state.Store(logs.state), "o/r", 1, owner["session"]
+    )
+    calls = []
+
+    def handoff() -> None:
+        owner.update(session="codex:successor", generation=2, status="active")
+        journal.atomic(logs.state / "registry.json", document)
+
+    def workers(*a: Any, **kw: Any) -> list:
+        if handoff_at == "worker":
+            handoff()
+        return []
+
+    def decisions(*a: Any, **kw: Any) -> dict:
+        assert handoff_at == "decision", "old generation started another publication"
+        calls.append("decision")
+        handoff()
+        return {"error": None}
+
+    monkeypatch.setattr(module, "continue_workers", workers)
+    monkeypatch.setattr(module, "publish_decisions", decisions)
+    original = {"assignment": "ended", "parent_action_applied": True}
+    value = continuation.complete(args, original)
+    assert value["parent_action_applied"] is True and value["assignment"] == "ended"
+    checkpoint = value["publication_exit"]
+    assert checkpoint["generation"] == 1 and checkpoint["error"] == "log_owner_mismatch"
+    assert checkpoint["publication_actor"] == 1 and checkpoint["event"] == "ended"
+    assert calls == (["decision"] if handoff_at == "decision" else [])
+    assert state.Store(logs.state).read_data()["parents"]["o/r#1"] == owner
 
 
 @pytest.mark.parametrize(

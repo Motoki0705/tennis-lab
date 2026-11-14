@@ -94,16 +94,25 @@ class Continuation:
         self.key = f"{repo.casefold()}#{parent}"
         self.visited: set[tuple[int, str, int]] = set()
         try:
-            self.initial_owner = next(
-                (
-                    dict(v)
-                    for k, v in store.read_data().get("parents", {}).items()
-                    if k.casefold() == self.key
-                ),
-                {},
-            )
+            self.initial_owner = self._owner_snapshot()
         except (ValueError, OSError, KeyError, TypeError, AttributeError):
             self.initial_owner = {}
+
+    def _owner_snapshot(self) -> dict[str, Any]:
+        with self.store.snapshot():
+            return dict(self.store.parents.get(self.key, {}))
+
+    def _publication_owner(self) -> dict[str, Any]:
+        with self.store.operation(self.key), self.store.locked():
+            return dict(self.store.parents.get(self.key, {}))
+
+    def _same_owner(self, owner: dict[str, Any]) -> bool:
+        return (
+            self.identity is not None
+            and self.generation is not None
+            and owner.get("session") == self.identity
+            and owner.get("generation") == self.generation
+        )
 
     def recovery_visits(self, value: Any) -> None:
         """Exclude journals already visited by an explicit bulk operation."""
@@ -130,6 +139,9 @@ class Continuation:
             # claim and the durable receipt below recheck the current generation.
             with self.store.operation(self.key), self.store.locked():
                 owner = self.store.parents.get(self.key, {})
+                if self.generation is not None and not self._same_owner(owner):
+                    self.error = "log_owner_mismatch"
+                    return
                 if owner.get("session") != self.identity or owner.get("status") not in (
                     {"active", "ended", "released", "handoff_pending"}
                     if command
@@ -206,11 +218,12 @@ class Continuation:
 
     def failed(self) -> Any:
         """A durable assignment change still needs reconciliation on API failure."""
-        self.sweep()
         if self.args.command not in {"release", "handoff"}:
+            self.sweep()
             return None
+        observed = None
         try:
-            owner = self.store.read_data().get("parents", {}).get(self.key, {})
+            owner = self._owner_snapshot()
             previous = self.initial_owner
             accepting = self.args.command == "handoff" and self.args.accept
             expected = (
@@ -223,7 +236,8 @@ class Continuation:
                 else "released"
             )
             applied = (
-                owner.get("session") == self.identity
+                bool(previous)
+                and owner.get("session") == self.identity
                 and owner.get("status") == expected
                 and (
                     accepting
@@ -235,7 +249,10 @@ class Continuation:
                 )
             )
             if applied:
-                return self.finish_exit(self.args, {"assignment_observed": expected})
+                # Freeze the saved assignment before publication can overlap a
+                # successor's handoff. That handoff must not erase this exit.
+                self.generation = owner["generation"]
+                observed = {"assignment_observed": expected}
         except (
             ValueError,
             OSError,
@@ -245,7 +262,8 @@ class Continuation:
             subprocess.SubprocessError,
         ):
             pass
-        return None
+        self.sweep()
+        return self.finish_exit(self.args, observed) if observed is not None else None
 
     def finish_exit(self, args: Any, value: Any) -> Any:
         if args.command not in {"release", "handoff"} or not isinstance(value, dict):
@@ -259,16 +277,18 @@ class Continuation:
             else "ended"
         )
         try:
-            owner = self.store.read_data().get("parents", {}).get(self.key, {})
-            if (
-                self.generation is not None
-                and owner.get("generation") != self.generation
-            ):
+            owner = self._publication_owner()
+            if not self._same_owner(owner):
                 self.error = "log_owner_mismatch"
-            published = publish_decisions(
-                self.repo, self.parent, state_dir=self.store.directory, root=Path.cwd()
-            )
-            self.error = self.error or published.get("error")
+            else:
+                published = publish_decisions(
+                    self.repo,
+                    self.parent,
+                    state_dir=self.store.directory,
+                    root=Path.cwd(),
+                    owner_check=lambda: self._same_owner(self._publication_owner()),
+                )
+                self.error = self.error or published.get("error")
         except (
             ValueError,
             OSError,
@@ -280,10 +300,15 @@ class Continuation:
                 str(exc) if isinstance(exc, PublicationError) else "publication_failed"
             )
         try:
+            owner = self._publication_owner()
+            if not self._same_owner(owner):
+                self.error = "log_owner_mismatch"
+            if self.generation is None:
+                raise PublicationError("log_owner_mismatch")
             checkpoint = record_exit(
                 self.repo,
                 self.parent,
-                self.generation if self.generation is not None else owner["generation"],
+                self.generation,
                 event,
                 state_dir=self.store.directory,
                 root=Path.cwd(),

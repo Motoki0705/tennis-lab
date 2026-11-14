@@ -101,8 +101,11 @@ def test_null_mergeability_proceeds_but_explicit_conflict_stays_blocked(
     assert env.github.calls.count("merge") == 1
 
 
+@pytest.mark.parametrize("handoff_after_first_batch", [False, True])
 def test_exit_decision_publication_finishes_old_batch_and_fixed_capture_boundary(
-    env: DecisionEnv, monkeypatch: pytest.MonkeyPatch
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    handoff_after_first_batch: bool,
 ) -> None:
     lifecycle = importlib.import_module("worker_logs.lifecycle")
     reconciliation = importlib.import_module("worker_logs.reconciliation")
@@ -113,11 +116,14 @@ def test_exit_decision_publication_finishes_old_batch_and_fixed_capture_boundary
     env.github.pause_reads = False
     env.capture([second])
     merge = env.github.merge
+    current_owner = True
 
     def arriving_record(number: int, head: str) -> None:
+        nonlocal current_owner
         merge(number, head)
         if len([c for c in env.github.calls if c == "merge"]) == 1:
             env.capture([concurrent])
+            current_owner = not handoff_after_first_batch
 
     monkeypatch.setattr(env.github, "merge", arriving_record)
     publisher = publication.Publisher
@@ -128,24 +134,26 @@ def test_exit_decision_publication_finishes_old_batch_and_fixed_capture_boundary
             root, journal, env.github, record_ids=record_ids
         ),
     )
-    saved = lifecycle.publish_decisions("o/r", 1, state_dir=env.state, root=env.root)
+    saved = lifecycle.publish_decisions(
+        "o/r", 1, state_dir=env.state, root=env.root, owner_check=lambda: current_owner
+    )
     assert (
         saved["state"] == "merged"
         and not saved["saved_to_main"]
         and env.github.calls
-        == [
-            "create",
-            "merge",
-            "create",
-            "merge",
-        ]
+        == ["create", "merge"] * (1 if handoff_after_first_batch else 2)
     ), saved
+    assert saved["error"] == (
+        "log_owner_mismatch" if handoff_after_first_batch else None
+    )
     states = {s["id"]: s["publication_status"] for s in log.status()}
-    assert states[first["id"]] == states[second["id"]] == "published"
+    assert states[first["id"]] == "published"
+    assert (states[second["id"]] == "published") is (not handoff_after_first_batch)
     assert states[concurrent["id"]] != "published"
     remaining = reconciliation.remaining_publications("o/r", 1, state_dir=env.state)
     assert len(remaining) == 1 and remaining[0]["kind"] == "decision_log"
-    assert remaining[0]["unpublished_count"] == 1 and remaining[0]["batch_key"] is None
+    assert remaining[0]["unpublished_count"] == (2 if handoff_after_first_batch else 1)
+    assert remaining[0]["batch_key"] is None
 
 
 @pytest.mark.parametrize("recoverable", [True, False])

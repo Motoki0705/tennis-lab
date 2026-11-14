@@ -42,7 +42,7 @@ class DispatchGitHub(FakeGitHub):
             row = self.issues[int(endpoint.rsplit("/", 1)[1])]
             row.update(payload)
             return copy.deepcopy(row)
-        return super().write(method, endpoint, payload)
+        return dict(super().write(method, endpoint, payload))
 
 
 class DispatchHarness:
@@ -1212,8 +1212,9 @@ def test_parent_completion_does_not_free_unconfirmed_child_reservation(
     assert d.control.assign() == []
 
 
+@pytest.mark.parametrize("handoff_at", [None, "before_worker", "worker", "decision"])
 def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_locks(
-    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, handoff_at: str | None
 ) -> None:
     fixture_runtime(d, monkeypatch)
     d.prepare()
@@ -1243,33 +1244,78 @@ def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_
     reconciliation = importlib.import_module("worker_logs.reconciliation")
     calls = []
 
+    def handoff() -> None:
+        with d.control.store.locked():
+            current = d.control.store.parents["o/r#1"]
+            current.update(
+                session="claude:successor-private",
+                generation=2,
+                status="active",
+                publication_exit={"generation": 2, "event": "handoff_accepted"},
+            )
+            d.control.store.save()
+
+    finish = lifecycle.finish_supervised
+
+    def finish_after_handoff(*args: Any, **kwargs: Any) -> dict:
+        if handoff_at == "before_worker":
+            handoff()
+        return dict(finish(*args, **kwargs))
+
     def workers(*args: Any, **kwargs: Any) -> list:
+        assert handoff_at != "before_worker", "old generation started a publication"
         assert d.control.store._lock is None
         assert d.control.store.read_data()["parents"]["o/r#1"]["status"] == "ended"
         calls.append("workers")
+        if handoff_at == "worker":
+            handoff()
         return []
 
     def decisions(*args: Any, **kwargs: Any) -> dict:
+        assert handoff_at not in {"before_worker", "worker"}, (
+            "old generation started another decision publication"
+        )
         assert d.control.store._lock is None and calls == ["workers"]
         log = reconciliation.decision_journal(
             "o/r", 1, state_dir=d.control.store.directory
         )
         assert any(e["key"] == "supervisor-ended:1" for e in log.read()["entries"])
         calls.append("decisions")
+        if handoff_at == "decision":
+            handoff()
         return {"error": "github_failed"}
 
+    monkeypatch.setattr(lifecycle, "finish_supervised", finish_after_handoff)
     monkeypatch.setattr(lifecycle, "continue_workers", workers)
     monkeypatch.setattr(lifecycle, "publish_decisions", decisions)
     d.control.reconcile()
     ended = d.row()
-    checkpoint = ended["publication_exit"]
-    assert ended["status"] == "ended" and ended["dispatch"]["phase"] == "completed"
+    if handoff_at:
+        assert ended["publication_exit"] == {
+            "generation": 2,
+            "event": "handoff_accepted",
+        }
+        assert (
+            ended["generation"] == 2 and ended["session"] == "claude:successor-private"
+        )
+        path = (
+            d.control.store.directory
+            / "publication-exits"
+            / importlib.import_module("worker_logs.schema").sha(b"o/r")
+            / "1/1-ended.json"
+        )
+        checkpoint = json.loads(path.read_text())
+    else:
+        checkpoint = ended["publication_exit"]
     assert (
-        checkpoint["event"] == "ended"
-        and checkpoint["publication_actor"] == "unassigned"
+        ended["status"] == ("active" if handoff_at else "ended")
+        and ended["dispatch"]["phase"] == "completed"
+    )
+    assert checkpoint["event"] == "ended" and checkpoint["publication_actor"] == (
+        1 if handoff_at else "unassigned"
     )
     assert (
-        checkpoint["error"] == "github_failed"
+        checkpoint["error"] == ("log_owner_mismatch" if handoff_at else "github_failed")
         and checkpoint["remaining_complete"] is True
     )
     assert checkpoint["remaining"][0]["kind"] == "decision_log"
@@ -1277,7 +1323,13 @@ def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_
     assert checkpoint["resume_command"] and "publication_exit_pending" not in ended
     d.control.reconcile()
     lifecycle.capture_supervised_exit("o/r", 1, 1, state_dir=d.control.store.directory)
-    assert calls == ["workers", "decisions"]
+    assert calls == (
+        []
+        if handoff_at == "before_worker"
+        else ["workers"]
+        if handoff_at == "worker"
+        else ["workers", "decisions"]
+    )
     assert (
         len(
             reconciliation.decision_journal(
