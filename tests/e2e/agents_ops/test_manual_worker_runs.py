@@ -19,10 +19,18 @@ from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.directory_seed import DirectorySeed
 
 ENTRY = """
-import sys
+import os, sys
 from pathlib import Path
 from parent import manual_workers
 manual_workers.RUNNER = Path(sys.argv[1])
+if os.environ.get("MANUAL_ADMISSION_FAILURE"):
+    import subprocess
+    original_popen = subprocess.Popen
+    def rejected_popen(command, *args, **kwargs):
+        if command[0] == str(manual_workers.RUNNER) and "--prompt-file" in command:
+            raise ValueError("injected admission rejection before Popen")
+        return original_popen(command, *args, **kwargs)
+    subprocess.Popen = rejected_popen
 from parent.cli import main
 sys.exit(main(sys.argv[2:]))
 """
