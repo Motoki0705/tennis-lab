@@ -16,6 +16,11 @@ def mount_path(raw: str) -> Path:
     if re.search(r"\\(?!040|011|012|134)", raw):
         raise StorageError("malformed mountinfo path escape")
     value = re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), raw)
+    return absolute_path(value)
+
+
+def absolute_path(value: str) -> Path:
+    """FD readlink paths are already decoded; only mountinfo uses octal escapes."""
     path = Path(value)
     if (
         not path.is_absolute()
@@ -23,7 +28,7 @@ def mount_path(raw: str) -> Path:
         or "//" in value
         or value.endswith(" (deleted)")
     ):
-        raise StorageError(f"unverifiable mountinfo path: {raw}")
+        raise StorageError(f"unverifiable filesystem path: {value}")
     return path
 
 
@@ -70,7 +75,7 @@ def filesystem_unit(
             info = os.fstat(fd)
             if (info.st_dev, info.st_ino) != (root["dev"], root["ino"]):
                 continue
-            canonical = mount_path(os.readlink(f"/proc/self/fd/{fd}"))
+            canonical = absolute_path(os.readlink(f"/proc/self/fd/{fd}"))
             mount_id = fd_mount_id(fd)
             own = [
                 m

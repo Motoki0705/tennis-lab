@@ -2428,6 +2428,8 @@ def test_mount_root_scope_has_component_boundaries_and_never_stats_excluded_root
         ".storage-tier-trash-id",
         ".storage-tier-stage-id",
         ".storage-tier-retained-id",
+        r"v\040",
+        r"v\q",
     ],
 )
 def test_filesystem_unit_uses_caller_mount_root_for_original_and_temporary_names(
@@ -2455,8 +2457,9 @@ def test_filesystem_unit_uses_caller_mount_root_for_original_and_temporary_names
     device = f"{os.major(info.st_dev)}:{os.minor(info.st_dev)}"
     own = f"{record['id']} 1 {device} /volume {lab.config.repo} rw - ext4 /dev/fake rw\n".encode()
     expected = Path("/volume") / unit.path
+    escaped = str(expected).replace("\\", "\\134").replace(" ", "\\040")
     (process / "mountinfo").write_text(
-        f"80 1 {device} /consumer-only / rw - ext4 /dev/fake rw\n81 80 {device} {expected}/a.bin /alias rw - ext4 /dev/fake rw\n"
+        f"80 1 {device} /consumer-only / rw - ext4 /dev/fake rw\n81 80 {device} {escaped}/a.bin /alias rw - ext4 /dev/fake rw\n"
     )
     original = lab.engine.inspector.metadata
 
