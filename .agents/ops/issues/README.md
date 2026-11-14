@@ -404,7 +404,7 @@ specは次の形。`role: parent` では `identifier` と任意の `children` �
 未分割なら空配列。`source` は任意で `{"proposal_id":"ID","report_number":90,"option":null}`。
 `labels` は作業種別・対象領域・起票元を指定する（親子ラベルは生成する）。未知のキーはエラー。
 
-`check` は `gh repo view`（`--repo` 省略時）とGETだけを使い、
+`check` はGETだけを使い、
 [GitHub REST sub-issues API](https://docs.github.com/en/rest/issues/sub-issues) の `.../parent` と
 `.../sub_issues`（100件ずつ全ページ）で直属の関係を取得する。指定したissueから祖先・兄弟・子孫を辿り、
 closed/取消を含む一式のラベル、prefix、本文参照、必須項目、子一覧の番号・要約・状態、循環を検査する。
@@ -420,23 +420,42 @@ closedの理由が不明な子を完了と推測しない。編集中に跨っ�
 役割の根拠がない無ラベルの自由形式では、重複節を従来どおり許容する。
 役割ラベルのない既存issueに新ラベルを要求する検査は行わない。
 
+### GitHub通信・認証・repo解決
+
+`issues.cli.GitHub` と派生するparent clientは `issues.transport.HTTPClient` の
+`requests.Session` でHTTPS接続を再利用する。REST GET・書込み・GraphQLで同じpoolを使い、
+`detached()` も接続を共有する。接続poolとGET cacheは別物で、transaction・鮮度・失効の境界は
+[parent README](../parent/README.md#取得範囲と計測)に従う。長生きする呼出元は `close()` でpoolを閉じる。
+
+認証は `GH_TOKEN`、`GITHUB_TOKEN`、`gh auth token --hostname github.com` の順。
+初回通信で解決し、ghで取得したtokenは同じプロセス・認証設定内で1回だけ取得する。
+API要求ごとのgh起動はない。tokenはエラー詳細・応答本文から無害化し、認証取得のstdout/stderrを
+診断へ含めない。環境のproxy設定を使い、`.netrc` によるtokenの上書きとHTTP redirectを許可しない。
+API hostは `api.github.com`、`GH_HOST` は未設定または `github.com` に限定する。
+
+`--repo` 省略時はカレントディレクトリの実効git設定にある全remoteのfetch/push URLを読み、
+一意のGitHub `owner/repo` に解決する。HTTPS・SSH URL、scp形式、同じrepoの大小文字違いを扱い、
+linked worktreeの共有git設定も読む。remoteなし・複数repo・非GitHub・不正URLでは明示エラーとし、
+`--repo owner/repo` を要求する。originだけを優先したりghへフォールバックしたりしない。
+
 ### GitHub GETの接続断と再試行
 
-`issues.cli.GitHub.get()` は、ghが失敗終了しHTTP応答statusが得られないGETだけを合計3回まで試行し、
-2回目の前に1秒、3回目の前に2秒待つ。各試行のsubprocess timeoutは60秒。
-`error connecting` 等を伴うstatus欠落と、HTTP statusを受信する前のtimeoutが対象。
+`issues.cli.GitHub.get()` は、HTTP応答statusが得られないGETだけを合計3回まで試行し、
+2回目の前に1秒、3回目の前に2秒待つ。接続・読取timeoutは60秒。
+status欠落を伴う接続断と、HTTP statusを受信する前のtimeoutが対象。
 通信原因をDNS・TLS・回線などのいずれかと断定するものではない。
 
 HTTP statusを受信したら再試行しない。認証・権限の401/403、404、rate limitの403/429、5xxは
 `GitHubHTTPError` の実statusを保持して失敗させる。rate limitの解除待ちや自動再送は行わない。
-HTTP statusがある応答の本文不正・欠落も即失敗する。上記の文書化された「親なし」404だけは従来どおり扱う。
-ghが正常終了したのにHTTP statusがない応答は、接続断とみなさず不正応答として即失敗する。
-実行ファイルの欠落等のローカルエラー、`gh repo view`、POST/PATCH/PUT/DELETE、GraphQLのPOSTは再試行しない。
+header読取中のtimeoutや本文の切断・不正も、status受信後なら即失敗する。
+上記の文書化された「親なし」404だけは従来どおり扱う。
+ローカルの設定・認証取得エラー、POST/PATCH/PUT/DELETE、GraphQLのPOSTは再試行しない。
 
 上限に達したら `GitHubTransportError` にGET endpoint、`attempts`、`last_error_kind` と最後の詳細を保持する。
 エラー種別は `missing_http_response_status` または `timeout_without_http_response`。
 再試行後にHTTPエラーへ変わった場合も、HTTPエラーに累積試行回数と最終statusを残す。
-空配列や成功には置き換えない。親・dispatcher等の共有reader利用先にも同じGET契約が適用される。
+空配列や成功には置き換えない。既存のscripted GET用 `_run` 注入境界と診断形式は保持する。
+親・dispatcher等の共有reader利用先にも同じGET契約が適用される。
 `parent.github.GitHub.rows()` の最大3回の取り直しはページ重複の整合対策であり、接続断の再試行とは別である。
 
 ## 新規起票と既存issueの段階移行
