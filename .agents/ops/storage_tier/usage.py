@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import errno
 import os
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from .filesystem import Snapshot, StorageError, names, read_bytes
+from .mountinfo import filesystem_unit, mount_path, mounts
 
 
 @dataclass
@@ -22,6 +22,14 @@ class Usage:
     excluded_nondumpable: list[dict[str, Any]] = field(default_factory=list)
     excluded_capabilities: list[dict[str, Any]] = field(default_factory=list)
     exited_processes: int = 0
+    mount_scope: dict[str, Any] = field(
+        default_factory=lambda: {
+            "filesystem_unit": None,
+            "checked_roots": 0,
+            "excluded_ancestor_roots": 0,
+            "excluded_outside_roots": 0,
+        }
+    )
 
     def scope(self) -> dict[str, Any]:
         return {
@@ -34,6 +42,7 @@ class Usage:
             "excluded_capabilities_count": len(self.excluded_capabilities),
             "excluded_capabilities": self.excluded_capabilities,
             "exited_processes": self.exited_processes,
+            "mount_scope": self.mount_scope,
         }
 
 
@@ -293,51 +302,52 @@ class Inspector:
                 ) from capability_error
 
     def mount_references(
-        self, process: Path, inodes: set[tuple[int, int]]
+        self,
+        process: Path,
+        inodes: set[tuple[int, int]],
+        location: tuple[int, Path],
+        scope: dict[str, Any],
     ) -> list[str]:
         """Resolve matching-device mountpoints in the target's own namespace."""
         if not inodes:
             return []
-        devices = {device for device, _ in inodes}
         result = []
-        for line in (
-            self.metadata(process, "mountinfo")
-            .decode(errors="surrogateescape")
-            .splitlines()
-        ):
-            columns = line.split()
-            try:
-                separator = columns.index("-")
-                if separator < 6 or len(columns) < separator + 4:
-                    raise ValueError("missing mountinfo fields")
-                mount_id, parent_id = int(columns[0]), int(columns[1])
-                major, minor = (int(value) for value in columns[2].split(":"))
-                if min(mount_id, parent_id, major, minor) < 0:
-                    raise ValueError("negative mount identity")
-                device = os.makedev(major, minor)
-            except (ValueError, OverflowError) as exc:
-                raise StorageError(f"malformed mountinfo: {process}") from exc
-            if device not in devices:
+        device, unit = location
+        for record in mounts(self.metadata(process, "mountinfo")):
+            if record.device != device:
                 continue
-            raw = columns[4]
-            if re.search(r"\\(?!040|011|012|134)", raw):
-                raise StorageError(f"malformed mountinfo path: {process}")
-            point = Path(re.sub(r"\\([0-7]{3})", lambda m: chr(int(m[1], 8)), raw))
-            if not point.is_absolute() or ".." in point.parts:
-                raise StorageError(f"invalid mountinfo path: {process}")
+            root = mount_path(record.root)
+            if not root.is_relative_to(unit):
+                key = (
+                    "excluded_ancestor_roots"
+                    if unit.is_relative_to(root)
+                    else "excluded_outside_roots"
+                )
+                scope[key] += 1
+                continue
+            scope["checked_roots"] += 1
+            point = mount_path(record.point)
             # /proc/<pid>/root exposes that process's mounts, including a file
             # bind visible only in a different mount namespace. stat is metadata
             # only; opening the payload would itself count as use/break a lease.
             info = (process / "root" / point.relative_to("/")).stat()
             if (info.st_dev, info.st_ino) in inodes:
                 result.append(
-                    f"mount-reference: pid={process.name} mount-id={mount_id}"
+                    f"mount-reference: pid={process.name} mount-id={record.id}"
                 )
         return result
 
     def inspect(self, paths: tuple[Path, ...], tree: Snapshot) -> Usage:
         result = Usage(uid=self.uid)
         inodes = tree.inodes
+        location: tuple[int, Path] | None = None
+        if inodes:
+            try:
+                location = filesystem_unit(paths, tree, self.metadata)
+                result.mount_scope["filesystem_unit"] = str(location[1])
+            except (OSError, KeyError, ValueError, StorageError) as exc:
+                result.unknown.append(f"unit filesystem path is unverifiable: {exc}")
+                return result
         # /proc itself belongs to root and rejects O_NOATIME for an ordinary
         # user. Its synthetic kernel directory has no dataset access history.
         # Real directories, including injected test inventories, use NOATIME.
@@ -392,7 +402,12 @@ class Inspector:
                     key = (os.makedev(int(major, 16), int(minor, 16)), int(columns[4]))
                     if key in inodes:
                         result.busy.append(f"open-mmap: pid={process.name}")
-                result.busy.extend(self.mount_references(process, inodes))
+                if location is not None:
+                    result.busy.extend(
+                        self.mount_references(
+                            process, inodes, location, result.mount_scope
+                        )
+                    )
             except (FileNotFoundError, ProcessLookupError) as exc:
                 if process.exists():
                     result.unknown.append(

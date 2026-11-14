@@ -136,9 +136,15 @@ journal/auditへ残して失敗する。SIGIOはLinux `F_SETOWN_EX` で呼出thr
 読み捨てて成功扱いしない。CLIはlease中、そのthreadのSIGIOを専用に使う。
 
 使用中検査はFDのdevice/inodeを照合し、既存の `O_PATH` FDも検出する。
-検査可能な同UIDプロセスはmountinfoも読み、deviceを絞って `/proc/<pid>/root` 経由でそのプロセスの
-mountpointをstatし、単位内inodeと一致すれば使用中とする。別mount namespaceだけに見える単一file bindも対象。
-読取・権限エラーを空の一覧にはせず、観測したmountpointがそのrootから辿れない場合も検査を失敗にする。
+検査可能な同UIDプロセスはmountinfoも読む。単位のfilesystem内パスはツール自身のnamespaceで求め、
+snapshot rootをFD固定し、mount IDに対応する自身のmount root/pointと相対pathを合わせる。
+quarantine・retained・stage名にも同じ規則を使う。同じdeviceで、rootが単位そのものまたは**内部**にあるmountだけを
+`/proc/<pid>/root` 経由でstatし、単位内inodeと一致すれば使用中とする。別mount namespaceの単一file bindも対象。
+祖先rootと外部・兄弟rootはstatせず除外する。`data/a` と `data/ab` はcomponent境界で区別する。
+`process_scope.mount_scope` にfilesystem内の単位path、検査数、祖先除外数、外部除外数を監査記録する（processごとの観測数）。
+読取・権限エラーを空一覧にしない。`//deleted` 等の判定不能rootと、対象内mountpointの到達・読取不能は失敗にする。
+CI用read-only data viewのような、到達不能な祖先/外部bindは対象内inode参照ではなく、statも失敗扱いもしない。
+rootが単位と同一ならread-onlyでも対象内のままとする。
 既存のプロセス除外規則は適用し、検査可能な所属プロセスがいないnamespaceの一覧までは取得できない。
 
 WSL2 Linux 6.6で、O_PATH・private file bindのどちらも `nlink=1` でwrite leaseを取得でき、
@@ -168,7 +174,9 @@ D:`<repo>/.storage-tier/audit.jsonl` に、照合・取得・失敗・削除前�
 照合方式を残す。変更処理はrepoごとに排他し、dry-runはlockも作らない。同じ場所の `transactions/` に
 削除の永続intentを置く。
 他UIDの除外範囲も各監査eventに残す。失敗はauditとserviceのjournalだけに残し、通知は送らない。
-読取専用 `index --dry-run` はプロセス検査のエラーを報告するが、manifestの認証や削除許可は行わず、選択した小単位を読める。
+読取専用 `index --dry-run` は単位の `quiet` を呼ばずにhashするため、E:側mount参照検査を通した証拠にはならない。
+manifestの認証・削除許可も行わない。実機確認は `verify --dry-run` で両側を検査し、E:の `quiet` 通過とmetadata不変を記録する。
+配置切替前は、既存D:/E:ペアの読取専用対応付けによる確認と、未切替配置を拒否する通常CLIの結果を分ける。
 `removals/<transaction>.jsonl` にclaim/削除のintent、移した個体、照合済みhash、削除完了entryを永続記録する。
 停止により完了記録のないintentが残った場合は未確認として扱い、削除済みとは断定しない。
 

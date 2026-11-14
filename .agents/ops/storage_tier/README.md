@@ -176,12 +176,23 @@ the final `F_GETLEASE` and `F_UNLCK`; it is never silently drained as success.
 The CLI reserves that thread's SIGIO while holding a lease.
 
 Usage inspection matches FD device/inode identities, including existing `O_PATH` FDs.
-For inspectable same-UID processes, it also reads `mountinfo`, filters by device, and
-stats mountpoints through `/proc/<pid>/root` in that process's filesystem view. A
+For inspectable same-UID processes, it also reads `mountinfo`. The unit's path inside
+its filesystem comes from the tool's own namespace: pin the snapshot root, match its
+FD mount ID to our mount root/point, and combine that root with the relative path.
+This works for quarantine, retained and stage names too. Only matching-device mounts
+whose root equals or lies **inside** that filesystem unit path are statted through
+`/proc/<pid>/root` in the consumer's view. Ancestor and outside/sibling roots are
+excluded without stat; component boundaries distinguish `data/a` from `data/ab`.
+`process_scope.mount_scope` audits the filesystem unit, checked roots, excluded
+ancestor roots and excluded outside roots (observations per process, not unique mounts).
+A
 matching mountpoint inode is busy, including a file bind visible only in another
 mount namespace. Metadata/read permission failures do not become an empty inventory;
-the existing process-exclusion rules still apply. An observed mountpoint that cannot
-be resolved through the process root fails inspection. Namespaces without an
+the existing process-exclusion rules still apply. An unclassifiable root such as
+`//deleted`, or an in-scope mountpoint that cannot be resolved/read, fails inspection.
+An inaccessible ancestor/outside bind, such as a runner's read-only data view, is not
+an in-scope inode reference and does not fail inspection. A root equal to the unit
+remains in scope even when read-only. Namespaces without an
 inspectable member process cannot be inventoried and remain outside this coverage.
 
 Qualification on WSL2 Linux 6.6 confirmed that both an `O_PATH` reference and a private
@@ -220,7 +231,12 @@ A single repo lock serializes mutating operations; dry-runs do not acquire/creat
 Process exclusion scope is included in audit events. Failures remain in this audit
 and the service journal; no desktop, D-Bus, mail or other notification is sent.
 Read-only `index --dry-run` reports process inspection errors but never certifies
-a manifest or authorizes deletion; it can still inspect the selected tiny tree.
+a manifest or authorizes deletion; it hashes the selected tiny tree without calling
+the unit's `quiet` checks. It is therefore not evidence that E: mount-reference
+inspection passed. Host qualification must exercise both sides through
+`verify --dry-run` and record successful E: `quiet` calls, together with unchanged
+metadata. Before placement migration, distinguish a read-only existing-pair
+qualification mapping from the normal CLI, which still refuses the pending layout.
 Durable deletion transactions live in `transactions/` beside the audit.
 `removals/<transaction>.jsonl` durably records claim/removal intents, claimed
 identities, verified digests and confirmed removed entries. A crash may leave an

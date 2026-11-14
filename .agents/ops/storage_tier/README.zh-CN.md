@@ -121,10 +121,15 @@ SIGIO 通过 Linux `F_SETOWN_EX` 定向到调用 thread，在该 thread 阻塞�
 最后 `F_GETLEASE` 至 `F_UNLCK` 间收到的通知也传播为失败，绝不读取后丢弃并宣称成功。
 CLI 在持有 lease 期间专用该 thread 的 SIGIO。
 
-使用中检查按 FD 的 device/inode 匹配，也检测已有 `O_PATH` FD。对可检查的同 UID 进程还读取 mountinfo，
-按 device 过滤，再通过 `/proc/<pid>/root` stat 该进程视图内的 mountpoint；匹配单位 inode 即判为使用中。
-这包括仅在其他 mount namespace 可见的单一 file bind。读取/权限错误不作为空列表；观测到的 mountpoint
-无法经该 root 到达时也使检查失败。原有进程排除规则仍适用；没有可检查成员进程的 namespace 无法枚举。
+使用中检查按 FD 的 device/inode 匹配，也检测已有 `O_PATH` FD。单位在 filesystem 内的路径从工具自身 namespace 求得：
+固定 snapshot root FD，按 mount ID 找到自身 mount root/point，再结合相对路径；quarantine、retained、stage 名称同样适用。
+对可检查的同 UID 进程读取 mountinfo，仅对相同 device 且 root 等于单位或位于其**内部**的 mount，
+经 `/proc/<pid>/root` stat mountpoint；inode 匹配即判为使用中，包括仅在其他 namespace 可见的单一 file bind。
+祖先和外部/兄弟 root 不 stat，直接排除；按 component 区分 `data/a` 与 `data/ab`。
+`process_scope.mount_scope` 审计 filesystem 单位路径、检查数、祖先排除数、外部排除数（每进程的观测次数）。
+读取/权限错误不作为空列表；`//deleted` 等不可判定 root、范围内 mountpoint 无法到达/读取时检查失败。
+CI runner 的只读祖先/外部 data bind 即使无法到达，也不属于单位内 inode 参照，不 stat、不判失败。
+root 等于单位时，即使只读也仍在范围内。原有进程排除规则适用；无可检查成员进程的 namespace 无法枚举。
 
 在 WSL2 Linux 6.6 实测，O_PATH 和 private file bind 均可在 `nlink=1` 时获取 write lease；
 unlink、释放后，通过 `/proc/self/fd/N` 或 bind alias 可以重新打开同一 `nlink=0` inode 并写入。
@@ -148,7 +153,9 @@ hydrate 拒绝已存在的 D: 目标，完成 E: 哈希、复制、D: 哈希后�
 D:`<repo>/.storage-tier/audit.jsonl` 保存校验、取回、失败、删除确认与完成记录，包含 UTC、单位、大小与校验方式。
 修改操作按 repo 排他；dry-run 不创建锁。持久删除 intent 位于同目录的 `transactions/`。
 各审计事件记录其他 UID 的排除范围。失败仅写入 audit 和 service journal，不发送通知。
-只读 `index --dry-run` 报告进程检查错误，但不认证 manifest、不授权删除，仍可读取明确指定的小单位。
+只读 `index --dry-run` 不调用单位的 `quiet`，仅哈希选定小单位，因此不能证明 E: mount 参照检查成功；
+它也不认证 manifest、不授权删除。实机验证须通过 `verify --dry-run` 检查两边，记录 E: `quiet` 通过与 metadata 不变。
+布局迁移前，必须区分既有 D:/E: 配对的只读路径映射验证与仍拒绝待迁移布局的普通 CLI 结果。
 `removals/<transaction>.jsonl` 持久记录 claim/删除 intent、移入身份、已校验 hash 与确认删除的 entry。
 崩溃可留下没有完成记录的 intent；它表示未确认，不能直接算作删除完成。
 

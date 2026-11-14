@@ -84,6 +84,17 @@ class Lab:
         ]
 
 
+def filesystem_path(path: Path) -> str:
+    """Independent util-linux inventory for synthetic mount-root test inputs."""
+    record = json.loads(
+        subprocess.check_output(
+            ["findmnt", "--json", "--target", str(path), "--output", "FSROOT,TARGET"],
+            text=True,
+        )
+    )["filesystems"][0]
+    return str(Path(record["fsroot"]) / path.relative_to(record["target"]))
+
+
 @pytest.fixture
 def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Lab:
     monkeypatch.syspath_prepend(str(OPS))
@@ -2262,7 +2273,7 @@ def test_mount_reference_inspection_uses_identity_and_fails_closed(
         alias.unlink()  # Unrelated devices must not trigger a namespace path stat.
     if condition == "missing":
         alias.unlink()
-    text = f"55 1 {device} /source /outside\\040alias\\134tail.bin rw - ext4 /dev/fake rw\n"
+    text = f"55 1 {device} {filesystem_path(lab.config.repo / unit.path)} /outside\\040alias\\134tail.bin rw - ext4 /dev/fake rw\n"
     if condition == "malformed":
         text = "55 incomplete mount record\n"
     (process / "mountinfo").write_text(text)
@@ -2293,3 +2304,197 @@ def test_mount_reference_inspection_uses_identity_and_fails_closed(
     assert (lab.config.repo / unit.path).exists() == (
         condition not in {"other-inode", "other-device"}
     )
+
+
+def test_inaccessible_ancestor_bind_does_not_block_verifying_e(
+    lab: Lab, private_process: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    private_process["denied"] = set()
+    unit = lab.unit()
+    lab.mirror(unit)
+    process = private_process["path"]
+    mirror = lab.config.mirror / unit.path
+    info = mirror.stat()
+    root = filesystem_path(mirror.parent)
+    (process / "mountinfo").write_text(
+        f"288 83 {os.major(info.st_dev)}:{os.minor(info.st_dev)} {root} /var/lib/tennis-lab-actions/assets/data ro,noatime - ext4 /dev/fake rw\n"
+    )
+    original = Path.stat
+    denied = 0
+    target = process / "root/var/lib/tennis-lab-actions/assets/data"
+
+    def inaccessible(path: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+        nonlocal denied
+        if path == target:
+            denied += 1
+            raise PermissionError(
+                errno.EACCES, "CI assets parent is inaccessible", str(path)
+            )
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", inaccessible)
+    code, report = lab.run("verify", unit, dry_run=True)
+    assert code == 0 and report["results"][0]["action"] == "would_verify", report
+    assert denied == 0
+    scope = report["process_scope"]["mount_scope"]
+    assert scope["excluded_ancestor_roots"] == 1 and scope["checked_roots"] == 0
+    code, verified = lab.run("verify", unit)
+    assert code == 0, verified
+    audit = [row for row in lab.records() if row["event"] == "verified"][-1]
+    assert audit["process_scope"]["mount_scope"]["excluded_ancestor_roots"] == 1
+    assert denied == 0
+
+
+@pytest.mark.parametrize(
+    "relation",
+    ["unit", "file", "ancestor", "sibling", "prefix", "deleted", "inside-denied"],
+)
+def test_mount_root_scope_has_component_boundaries_and_never_stats_excluded_roots(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    relation: str,
+) -> None:
+    private_process["denied"] = set()
+    unit = lab.unit("data/task/a")
+    path = lab.config.repo / unit.path
+    process = private_process["path"]
+    namespace = tmp_path / "consumer-root"
+    namespace.mkdir()
+    point = namespace / "restricted/alias"
+    point.parent.mkdir()
+    point.symlink_to(
+        path if relation == "unit" else path / "a.bin",
+        target_is_directory=relation == "unit",
+    )
+    (process / "root").unlink()
+    (process / "root").symlink_to(namespace, target_is_directory=True)
+    root = Path(filesystem_path(path))
+    raw = str(root)
+    if relation == "file" or relation == "inside-denied":
+        raw = str(root / "a.bin")
+    elif relation == "ancestor":
+        raw = str(root.parent)
+    elif relation == "sibling":
+        raw = str(root.with_name("sibling"))
+    elif relation == "prefix":
+        raw = str(root) + "b"
+    elif relation == "deleted":
+        raw = str(root) + "//deleted"
+    info = path.stat()
+    (process / "mountinfo").write_text(
+        f"288 83 {os.major(info.st_dev)}:{os.minor(info.st_dev)} {raw} /restricted/alias ro,noatime - ext4 /dev/fake rw\n"
+    )
+    original = Path.stat
+    stat_calls = 0
+
+    def restricted(target: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+        nonlocal stat_calls
+        if target == process / "root/restricted/alias":
+            stat_calls += 1
+            if relation not in {"unit", "file"}:
+                raise PermissionError(
+                    errno.EACCES, "inaccessible bind parent", str(target)
+                )
+        return original(target, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "stat", restricted)
+    result = lab.engine.inspector.inspect((path,), lab.filesystem.snapshot(path))
+    scope = result.scope()["mount_scope"]
+    if relation in {"unit", "file"}:
+        assert result.busy and not result.unknown
+        assert scope["checked_roots"] == 1 and stat_calls == 1
+    elif relation in {"deleted", "inside-denied"}:
+        assert result.unknown
+        assert stat_calls == (relation == "inside-denied")
+    else:
+        assert not result.busy and not result.unknown
+        assert stat_calls == 0 and scope["checked_roots"] == 0
+        assert (
+            scope[
+                "excluded_ancestor_roots"
+                if relation == "ancestor"
+                else "excluded_outside_roots"
+            ]
+            == 1
+        )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "v1",
+        ".storage-tier-trash-id",
+        ".storage-tier-stage-id",
+        ".storage-tier-retained-id",
+    ],
+)
+def test_filesystem_unit_uses_caller_mount_root_for_original_and_temporary_names(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    name: str,
+) -> None:
+    private_process["denied"] = set()
+    unit = lab.unit("data/task/" + name)
+    path = lab.config.repo / unit.path
+    process = private_process["path"]
+    namespace = tmp_path / "consumer-root"
+    namespace.mkdir()
+    (namespace / "alias").symlink_to(path / "a.bin")
+    (process / "root").unlink()
+    (process / "root").symlink_to(namespace, target_is_directory=True)
+    info = path.stat()
+    record = json.loads(
+        subprocess.check_output(
+            ["findmnt", "--json", "--target", str(path), "--output", "ID"], text=True
+        )
+    )["filesystems"][0]
+    device = f"{os.major(info.st_dev)}:{os.minor(info.st_dev)}"
+    own = f"{record['id']} 1 {device} /volume {lab.config.repo} rw - ext4 /dev/fake rw\n".encode()
+    expected = Path("/volume") / unit.path
+    (process / "mountinfo").write_text(
+        f"80 1 {device} /consumer-only / rw - ext4 /dev/fake rw\n81 80 {device} {expected}/a.bin /alias rw - ext4 /dev/fake rw\n"
+    )
+    original = lab.engine.inspector.metadata
+
+    def metadata(target: Path, entry: str) -> bytes:
+        if target == Path("/proc/self") and entry == "mountinfo":
+            return own
+        return cast(bytes, original(target, entry))
+
+    monkeypatch.setattr(lab.engine.inspector, "metadata", metadata)
+    result = lab.engine.inspector.inspect((path,), lab.filesystem.snapshot(path))
+    assert result.busy and not result.unknown, result
+    assert result.scope()["mount_scope"]["filesystem_unit"] == str(expected)
+    assert result.scope()["mount_scope"]["checked_roots"] == 1
+
+
+@pytest.mark.parametrize("failure", ["missing-mount", "deleted-root", "wrong-point"])
+def test_unverifiable_caller_filesystem_mapping_never_uses_consumer_namespace(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    unit = lab.unit()
+    path = lab.config.repo / unit.path
+    info = path.stat()
+    record = json.loads(
+        subprocess.check_output(
+            ["findmnt", "--json", "--target", str(path), "--output", "ID"], text=True
+        )
+    )["filesystems"][0]
+    mount_id = record["id"] + (1 if failure == "missing-mount" else 0)
+    root = "//deleted/source" if failure == "deleted-root" else "/"
+    point = "/not-the-unit" if failure == "wrong-point" else "/"
+    raw = f"{mount_id} 1 {os.major(info.st_dev)}:{os.minor(info.st_dev)} {root} {point} rw - ext4 /dev/fake rw\n".encode()
+    original = lab.engine.inspector.metadata
+
+    def metadata(target: Path, entry: str) -> bytes:
+        if target == Path("/proc/self") and entry == "mountinfo":
+            return raw
+        return cast(bytes, original(target, entry))
+
+    monkeypatch.setattr(lab.engine.inspector, "metadata", metadata)
+    result = lab.engine.inspector.inspect((path,), lab.filesystem.snapshot(path))
+    assert result.unknown and "unit filesystem path" in result.unknown[0]
