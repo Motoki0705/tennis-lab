@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "kind": "uncalibrated_planning_scenario",
+  "source": ".agents/skills/annotation-workflow/SKILL.md",
+  "source_context": "Historical prediction-review estimate, not current blank annotation measurements",
+  "assumptions": {
+    "historical_input_tokens": 16000000000,
+    "historical_clips": 500,
+    "historical_frames_per_clip": 780,
+    "historical_worker_seconds_per_clip": 5400,
+    "startup_input_tokens_per_camera_run": 20000,
+    "startup_seconds_per_camera_run": 60,
+    "output_to_input_ratio": 0.05,
+    "cached_input_tokens": null,
+    "cache_is_subset_of_input": true
+  },
+  "scenarios": {
+    "comparison": {
+      "camera_frame_decisions": 768,
+      "initial_camera_runs": 12,
+      "estimated_input_tokens": 31747692.307692304,
+      "estimated_output_tokens_at_five_percent": 1587384.6153846153,
+      "estimated_total_tokens_at_five_percent": 33335076.92307692,
+      "estimated_total_tokens_output_sensitivity": {
+        "output_zero_percent": 31747692.307692304,
+        "output_twenty_percent": 38097230.76923076
+      },
+      "estimated_worker_seconds_sequential": 6036.923076923077
+    },
+    "acceptance": {
+      "camera_frame_decisions": 3030,
+      "initial_camera_runs": 3,
+      "estimated_input_tokens": 124367692.3076923,
+      "estimated_output_tokens_at_five_percent": 6218384.615384616,
+      "estimated_total_tokens_at_five_percent": 130586076.92307693,
+      "estimated_total_tokens_output_sensitivity": {
+        "output_zero_percent": 124367692.3076923,
+        "output_twenty_percent": 149241230.76923075
+      },
+      "estimated_worker_seconds_sequential": 21156.923076923078
+    }
+  },
+  "comparison_to_acceptance_forecast_ratio": 0.25527282623486186,
+  "parent_maximum_comparison_ratio": 0.5,
+  "ceiling_met_in_this_scenario": true,
+  "authorized_resource_scope": null,
+  "runtime": null
+}
