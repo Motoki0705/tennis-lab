@@ -96,9 +96,17 @@ Z/Xは `Threads: 1` かつtask一覧がそのPIDだけのとき終了済みと�
 Zのleaderに別threadが残る場合があるためである（[proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html)）。
 生存中のPIDのmetadata欠落は無視しない。
 非dumpableな同UIDプロセス（Codex CLI本体、sshd、gpg-agent等）は検査しない。
-データを読む学習・スクリプトはdumpableなプロセスで動くことを前提とする。
-UID不明、想定外のI/Oエラー、部分的な拒否、dumpableなのに読めない場合は失敗として止める。
-capabilityを持つsystemd等で通常の所有者のままfd先/maps/cwdが拒否されても、非dumpableとは判定しない。
+別の `permitted-capabilities` 除外は、対象の `CapPrm` に `/proc/self/status` の `CapPrm` にないbitがあり、
+user namespaceのdevice/inodeが一致し、mapsとcwdがどちらもEACCES/EPERMの場合に限る。fd一覧は読めてもよい。
+観測前後のPID・UID・能力値・namespaceの不変も確認する。件数・comm・両方の能力値・namespaceの根拠を
+`process_scope.excluded_capabilities` に記録する。どちらもプロセス名による許可リストは使わない。
+能力集合の根拠は [commoncap](https://github.com/torvalds/linux/blob/v6.6/security/commoncap.c) にある。
+データを読む学習・スクリプトはdumpableで検査可能なプロセスで動くことを前提とする。
+UID不明、想定外のI/Oエラー、どちらの根拠も立たない読取不能は失敗として止める。
+uid_map/gid_mapの値が同じでもnamespaceの同一性は証明できない。
+`/proc/<pid>/ns/user` の読取りにも同じptrace検査がかかる
+（[kernel実装](https://github.com/torvalds/linux/blob/v6.6/fs/proc/namespaces.c)）。
+現環境のsystemdはnamespace handleも拒否されるため除外を証明できず、解決前に自動削除を有効にしない。
 他UIDのconsumerは保護されないため、
 storage処理とデータconsumerは同じユーザーで動かす。training queueの記録は一切読まない。
 待機・予定jobの入力でも14日未使用なら消え、手動hydrateが必要になり得る。
@@ -174,8 +182,8 @@ systemのmount unitへの順序依存は張らず、毎回mountを確認する�
 ## 移行と検証
 
 1. producer・queueの新規起動・旧pathを保持するconsumerの停止時間を親同士で調整する。
-   自動削除の前に、同UIDのdumpableなconsumerを検査できることと、非dumpable除外の根拠・記録を確認する。
-   capabilityを持つsystemd等、非dumpableと証明できない読取不能は失敗のままとする。
+   自動削除の前に、同UIDのdumpableなconsumerを検査できることと、非dumpable/能力差の除外根拠・記録を確認する。
+   namespaceの同一性が不明など、根拠を証明できない読取不能は失敗のままとする。
    それらを無視せず、権限変更や他session停止を暗黙に実行しない。
 2. E:、使用中・queue参照、設定の間接参照、hardlink別名、E:絶対pathのコマンド、既存D:コピーを一覧にする。
    必要な版/runを選び、`ckpt/` 全体とその単位だけをD:へ戻す。

@@ -84,9 +84,16 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 在 `process_scope.excluded_nondumpable` 记录数量、可读 comm（status Name）、PID 和证据。
 Z/X 仅在 `Threads: 1` 且 task 列表只有该 PID 时视为退出并单独计数；zombie leader 仍可能有活动线程
 （[proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html)）。不忽略仍存活 PID 的 metadata 缺失。
-不检查同 UID 的非 dumpable 进程，例如 Codex CLI 本体、sshd、gpg-agent；读取数据的训练和脚本必须以 dumpable 进程运行。
-UID 无法识别、意外 I/O 错误、部分拒绝，以及 dumpable 但不可读的进程仍明确失败。
-例如带 capability 的 systemd，即使 fd 目标/maps/cwd 拒绝读取，普通所有者也不能证明非 dumpable。
+不检查同 UID 的非 dumpable 进程，例如 Codex CLI 本体、sshd、gpg-agent。
+另一种 `permitted-capabilities` 排除要求：目标 `CapPrm` 包含 `/proc/self/status` 的 `CapPrm` 没有的 bit，
+user namespace 的 device/inode 相同，maps 与 cwd 均返回 EACCES/EPERM；fd 列表可以仍可读。
+前后 PID、UID、能力值与 namespace 必须不变。数量、comm、两方能力值和 namespace 证据记录在
+`process_scope.excluded_capabilities`；两种规则都不使用进程名白名单。
+能力集合依据见 [commoncap](https://github.com/torvalds/linux/blob/v6.6/security/commoncap.c)。
+读取数据的训练和脚本必须 dumpable 且可检查。UID 未知、意外 I/O 错误或两种证据都不成立时仍失败。
+相同 uid_map/gid_map 内容不能证明 namespace 相同。读取 `/proc/<pid>/ns/user` 也执行相同 ptrace 检查
+（[kernel 实现](https://github.com/torvalds/linux/blob/v6.6/fs/proc/namespaces.c)）。
+当前环境的 systemd 连 namespace handle 也拒绝读取，因此排除证据不足；解决前不能启用自动删除。
 其他用户的 consumer 不受保护，应让 storage 与数据 consumer
 以同一用户运行。完全不读取 training queue；等待或计划任务的输入也可能在 14 天后删除并需要手动 hydrate。
 不设置 mtime/ctime 静止时间，仅按 atime 和打开的引用判断；哈希与发布前后 snapshot 继续检查内容稳定性。
@@ -155,7 +162,7 @@ user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。失败仅�
 ## 迁移与验证
 
 1. 协调暂停 producer、queue 新任务与持有旧路径的 consumer。启用前确认自身 UID 的 dumpable consumer 可检查，
-   并核对非 dumpable 的排除证据与记录。带 capability 的 systemd 等无法证明的读取失败仍为错误；
+   并核对非 dumpable/能力差的排除证据与记录。namespace 身份未知等无法证明的读取失败仍为错误；
    不能忽略，也不隐式改变权限或停止其他 session。
 2. 清点 E:、活动与等待任务引用、配置间接引用、硬链接别名、E: 绝对路径和已有 D: 副本。
    只取回完整 `ckpt/` 与确定需要的版本、run 单位。

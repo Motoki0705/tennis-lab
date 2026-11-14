@@ -19,6 +19,7 @@ class Usage:
     inspected_processes: int = 0
     excluded_uids: dict[str, int] = field(default_factory=dict)
     excluded_nondumpable: list[dict[str, Any]] = field(default_factory=list)
+    excluded_capabilities: list[dict[str, Any]] = field(default_factory=list)
     exited_processes: int = 0
 
     def scope(self) -> dict[str, Any]:
@@ -29,6 +30,8 @@ class Usage:
             "excluded_uids": self.excluded_uids,
             "excluded_nondumpable_count": len(self.excluded_nondumpable),
             "excluded_nondumpable": self.excluded_nondumpable,
+            "excluded_capabilities_count": len(self.excluded_capabilities),
+            "excluded_capabilities": self.excluded_capabilities,
             "exited_processes": self.exited_processes,
         }
 
@@ -168,6 +171,7 @@ class Inspector:
                 "process identity or credentials changed during exclusion"
             )
         return {
+            "kind": "nondumpable",
             "pid": int(process.name),
             "comm": after.get("Name"),
             "starttime_ticks": start,
@@ -175,6 +179,96 @@ class Inspector:
             "proc_owner_gid": 0,
             "denied": denied,
         }
+
+    @staticmethod
+    def permitted(process: Path, status: dict[str, str]) -> int:
+        value = status.get("CapPrm", "")
+        if len(value) != 16 or any(c not in "0123456789abcdefABCDEF" for c in value):
+            raise StorageError(f"missing/malformed process CapPrm: {process}")
+        return int(value, 16)
+
+    @staticmethod
+    def user_namespace(process: Path) -> tuple[int, int]:
+        # Follow the namespace handle, not the per-PID proc symlink inode.
+        # Equal uid_map/gid_map contents do not prove namespace identity.
+        try:
+            info = (process / "ns/user").stat()
+        except PermissionError as exc:
+            raise StorageError(
+                f"user namespace identity cannot be read: {process}: {exc}"
+            ) from exc
+        return info.st_dev, info.st_ino
+
+    def capability_evidence(self, process: Path) -> dict[str, Any]:
+        caller = self.proc / "self"
+        before, caller_before = self.status(process), self.status(caller)
+        if (
+            self.uids(process, before) != (self.uid,) * 4
+            or self.uids(caller, caller_before) != (self.uid,) * 4
+        ):
+            raise StorageError("cannot establish same-UID capability exclusion")
+        target_caps = self.permitted(process, before)
+        caller_caps = self.permitted(caller, caller_before)
+        masks = f"target CapPrm={target_caps:016x}, inspector CapPrm={caller_caps:016x}"
+        if target_caps & ~caller_caps == 0:
+            raise StorageError(
+                f"target CapPrm is a subset of inspector CapPrm: {masks}"
+            )
+        start = self.starttime(process)
+        try:
+            namespace = self.user_namespace(process)
+            if namespace != self.user_namespace(caller):
+                raise StorageError(
+                    "capability comparison requires the same user namespace"
+                )
+        except (OSError, StorageError) as exc:
+            raise StorageError(f"{exc}; {masks}") from exc
+        denied = {}
+        for name in ("maps", "cwd"):
+            try:
+                if name == "maps":
+                    self.metadata(process, name)
+                else:
+                    os.readlink(process / name)
+            except OSError as exc:
+                if exc.errno not in {errno.EACCES, errno.EPERM}:
+                    raise
+                denied[name] = errno.errorcode[exc.errno]
+            else:
+                raise StorageError(f"{name} is readable; capability denial is unproven")
+        after, caller_after = self.status(process), self.status(caller)
+        if (
+            self.uids(process, after) != self.uids(process, before)
+            or self.uids(caller, caller_after) != self.uids(caller, caller_before)
+            or self.permitted(process, after) != target_caps
+            or self.permitted(caller, caller_after) != caller_caps
+            or after.get("Name") != before.get("Name")
+            or self.starttime(process) != start
+            or self.user_namespace(process) != namespace
+            or self.user_namespace(caller) != namespace
+        ):
+            raise StorageError("process identity, capabilities or namespace changed")
+        return {
+            "kind": "permitted-capabilities",
+            "pid": int(process.name),
+            "comm": after.get("Name"),
+            "starttime_ticks": start,
+            "target_cap_prm": f"{target_caps:016x}",
+            "inspector_cap_prm": f"{caller_caps:016x}",
+            "user_namespace": {"device": namespace[0], "inode": namespace[1]},
+            "denied": denied,
+        }
+
+    def exclusion_evidence(self, process: Path) -> dict[str, Any]:
+        try:
+            return self.nondumpable_evidence(process)
+        except StorageError as nondumpable_error:
+            try:
+                return self.capability_evidence(process)
+            except (OSError, ValueError, StorageError) as capability_error:
+                raise StorageError(
+                    f"{nondumpable_error}; {capability_error}"
+                ) from capability_error
 
     def inspect(self, paths: tuple[Path, ...], tree: Snapshot) -> Usage:
         result = Usage(uid=self.uid)
@@ -250,13 +344,18 @@ class Inspector:
                         errno.EPERM,
                     }:
                         try:
-                            evidence = self.nondumpable_evidence(process)
+                            evidence = self.exclusion_evidence(process)
                         except (OSError, ValueError, StorageError) as proof_error:
                             result.unknown.append(
                                 f"pid={process.name}: {exc}; {proof_error}"
                             )
                             continue
-                        result.excluded_nondumpable.append(evidence)
+                        excluded = (
+                            result.excluded_nondumpable
+                            if evidence["kind"] == "nondumpable"
+                            else result.excluded_capabilities
+                        )
+                        excluded.append(evidence)
                         result.inspected_processes -= int(inspecting)
                         del result.busy[busy_start:]
                         continue

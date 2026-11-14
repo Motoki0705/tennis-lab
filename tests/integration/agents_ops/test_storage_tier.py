@@ -487,6 +487,124 @@ def test_denied_same_uid_without_nondumpable_evidence_fails_closed(
         assert (lab.config.repo / unit.path / "a.bin").exists()
 
 
+@pytest.fixture
+def capability_process(lab: Lab, private_process: dict[str, Any]) -> dict[str, Any]:
+    process, uid = private_process["path"], private_process["uid"]
+    private_process["owner"] = uid
+    private_process["denied"] = {"maps", "cwd"}
+    with (process / "status").open("a") as stream:
+        stream.write("Dumpable:\t1\nCapPrm:\t0000000800000000\n")
+    caller = lab.proc / "self"
+    (caller / "ns").mkdir(parents=True)
+    (process / "ns").mkdir()
+    (caller / "status").write_text(
+        f"Uid:\t{uid}\t{uid}\t{uid}\t{uid}\nCapPrm:\t0000000000000002\n"
+    )
+    # Two namespace handles with one device/inode, independent of proc ownership.
+    (caller / "ns/user").touch()
+    os.link(caller / "ns/user", process / "ns/user")
+    return private_process
+
+
+def test_capability_difference_same_namespace_is_excluded_and_audited(
+    lab: Lab, capability_process: dict[str, Any]
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    code, preview = lab.run("cycle", unit, dry_run=True)
+    assert code == 0 and preview["usage"]["unknown"] == [], preview
+    code, report = lab.run("evict", unit)
+    assert code == 0 and report["results"][0]["action"] == "evicted", report
+    scope = report["process_scope"]
+    assert scope["excluded_capabilities_count"] == 1
+    assert scope["excluded_nondumpable_count"] == 0
+    (excluded,) = scope["excluded_capabilities"]
+    assert excluded["kind"] == "permitted-capabilities"
+    assert excluded["comm"] == "private-agent" and excluded["pid"] == 123456789
+    assert excluded["target_cap_prm"] == "0000000800000000"
+    assert excluded["inspector_cap_prm"] == "0000000000000002"
+    assert excluded["denied"] == {"maps": "EACCES", "cwd": "EACCES"}
+    namespace = (lab.proc / "self/ns/user").stat()
+    assert excluded["user_namespace"] == {
+        "device": namespace.st_dev,
+        "inode": namespace.st_ino,
+    }
+    assert (
+        next(row for row in lab.records() if row["event"] == "deleted")["process_scope"]
+        == scope
+    )
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "subset",
+        "different-namespace",
+        "unreadable-namespace",
+        "malformed-target",
+        "missing-caller",
+        "partial-denial",
+        "pid-reused",
+        "caller-changed",
+    ],
+)
+def test_capability_exclusion_requires_complete_stable_evidence(
+    lab: Lab,
+    capability_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    process = capability_process["path"]
+    caller_status = lab.proc / "self/status"
+    if failure == "subset":
+        # A strict superset, not equality: every target bit is already available.
+        caller_status.write_text(
+            caller_status.read_text().replace("0000000000000002", "0000000800000002")
+        )
+    elif failure == "different-namespace":
+        (process / "ns/user").unlink()
+        (process / "ns/user").touch()
+    elif failure == "unreadable-namespace":
+        original_stat = Path.stat
+
+        def stat(path: Path, *args: Any, **kwargs: Any) -> os.stat_result:
+            if path == process / "ns/user":
+                raise PermissionError(errno.EACCES, "injected namespace denial")
+            return original_stat(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "stat", stat)
+    elif failure == "malformed-target":
+        path = process / "status"
+        path.write_text(path.read_text().replace("0000000800000000", "not-hex"))
+    elif failure == "missing-caller":
+        caller_status.unlink()
+    elif failure == "partial-denial":
+        capability_process["denied"] = {"maps"}
+    elif failure == "pid-reused":
+        capability_process["reuse"] = True
+    else:
+        original_read = lab.usage.read_bytes
+        reads = 0
+
+        def read(path: Path) -> bytes:
+            nonlocal reads
+            value = cast(bytes, original_read(path))
+            if path == caller_status:
+                reads += 1
+                if reads > 1:
+                    return value.replace(b"0000000000000002", b"0000000800000002")
+            return value
+
+        monkeypatch.setattr(lab.usage, "read_bytes", read)
+    code, report = lab.run("evict", unit)
+    assert code == 1 and report["results"][0]["action"] == "failed", report
+    assert report["process_scope"]["excluded_capabilities_count"] == 0
+    assert report["process_scope"]["excluded_nondumpable_count"] == 0
+    assert (lab.config.repo / unit.path / "a.bin").exists()
+
+
 def test_known_zombie_is_counted_as_exited_without_inspecting_resources(
     lab: Lab,
 ) -> None:
