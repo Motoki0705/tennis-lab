@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import subprocess
-from contextlib import ExitStack, nullcontext
+from contextlib import ExitStack
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -14,6 +14,7 @@ from worker_logs.journal import atomic, locked
 
 from .judgement_comments import read_json
 from .policy import digest, nonempty, number, object_value
+from .state import RegistryConflict
 
 if TYPE_CHECKING:
     from .github import GitHub
@@ -146,11 +147,12 @@ class EvidenceIssues:
         timed-out POST was not accepted. Keep the journal when recovering state.
         """
         path = self.path(parent)
-        registry = store or self.gh._store
+        if store is not None and store is not self.gh._store:
+            raise ValueError("evidence client belongs to another registry transaction")
         with ExitStack() as locks, self.gh.fresh_reads():
             # Never wait for the creation lock while holding the registry:
             # its owner may be reacquiring that registry after GitHub I/O.
-            with registry.unlocked_read() if registry else nullcontext():
+            with self.gh.io_scope():
                 locks.enter_context(locked(path))
             self.gh.issue(parent)  # A container can never itself receive evidence.
             found = self.find(parent, login)
@@ -184,6 +186,8 @@ class EvidenceIssues:
                     found = self._binding(response, login)
                     if found.parent != parent:
                         raise ValueError("evidence creation returned another parent")
+                except RegistryConflict:
+                    raise
                 except (ValueError, OSError, subprocess.TimeoutExpired) as exc:
                     raise ValueError(
                         "evidence issue creation uncertain; retry only to reconcile"

@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_merge_gate import GateEnv
 from tests.e2e.agents_ops.test_merge_gate import gate_env as gate_env
 from tests.e2e.agents_ops.test_parent_improvements import (
@@ -25,6 +26,67 @@ from tests.e2e.agents_ops.test_parent_improvements import (
 from tests.e2e.agents_ops.test_parent_session import ParentEnv
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.improvements import candidate_spec, finish_for
+
+
+def test_sustained_http403_during_manual_admission_rolls_back_without_requests(
+    reserved: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    p = reserved
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.chdir(p.repo)
+    manual = importlib.import_module("parent.manual_workers")
+    admission = importlib.import_module("parent.improvement_runtime")
+    state = importlib.import_module("parent.state")
+    registry = state.Store(
+        Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    )
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    fake = p.root / "bin/gh"
+    shebang, body = fake.read_text().split("\n", 1)
+    blocked = p.root / "admission-http403"
+    failed_requests = p.root / "http403-requests.jsonl"
+    fake.write_text(
+        shebang
+        + "\n"
+        + f"""
+import json, pathlib, sys
+if pathlib.Path({str(blocked)!r}).exists():
+    with open({str(failed_requests)!r}, "a") as stream:
+        stream.write(json.dumps(sys.argv[1:]) + "\\n")
+    print('HTTP/2.0 403 Forbidden\\n\\n{{"message":"API rate limit exceeded"}}')
+    print('gh: API rate limit exceeded (HTTP 403)', file=sys.stderr)
+    sys.exit(1)
+"""
+        + body
+    )
+    runner = p.root / "never-run"
+    runner.write_text(f"#!{sys.executable}\nraise RuntimeError('must not spawn')\n")
+    runner.chmod(0o700)
+    monkeypatch.setattr(manual, "RUNNER", runner)
+    original = admission.execute_manual
+
+    def rejected(*args: Any, **kwargs: Any) -> Any:
+        blocked.touch()
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(admission, "execute_manual", rejected)
+    code, result = manual.run_worker(
+        gh,
+        registry,
+        1,
+        "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+        child=10,
+        prompt=Path(p.note()),
+        resume=False,
+        restart_evidence=None,
+    )
+    assert code == 2 and result["launch_state"] == "rejected_before_start"
+    requests = [json.loads(line) for line in failed_requests.read_text().splitlines()]
+    assert len(requests) == 1 and "user" in requests[0]
+    task = registry.read_data()["parents"]["o/r#1"]["tasks"]["10"]
+    assert task["worker_runs"] == [] and task["preflight"]["turns"][-1]["cancelled"]
 
 
 def test_decision_response_loss_and_parallel_retry_preserve_one_event(

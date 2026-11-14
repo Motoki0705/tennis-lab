@@ -14,6 +14,7 @@ from typing import Any
 from parent.policy import digest, object_value
 from parent.snapshot import git
 from parent_review_policy import execution_stages, hex_value, load_json
+from review_inputs import fixed_run
 
 CLOSED = "interrupted_closed"
 
@@ -163,6 +164,7 @@ def require_not_closed(
         raise ValueError("review run is explicitly closed; create a new review request")
 
 
+@fixed_run
 def cleanup_evidence(
     run_dir: Path,
     request: Mapping[str, Any],

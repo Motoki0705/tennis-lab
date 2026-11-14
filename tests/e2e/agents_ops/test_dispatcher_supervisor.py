@@ -768,8 +768,9 @@ def test_evidence_comment_citation_survives_runtime_reservations(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, turn: str
 ) -> None:
     policy = importlib.import_module("parent.policy")
-    d.h.gh._store = d.h.store
-    with d.h.store.locked():
+    d.h.gh.evidence_directory = d.h.store.directory / "evidence-issues"
+    with d.h.store.locked(), monkeypatch.context() as creation:
+        creation.setattr(d.h.gh, "_store", d.h.store)
         d.h.store.save()
         evidence = d.h.gh.evidence_issues().ensure(1, "operator", store=d.h.store)
     note = d.h.gh.write(

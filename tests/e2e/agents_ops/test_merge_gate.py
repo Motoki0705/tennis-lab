@@ -358,7 +358,7 @@ def make_gate_env(
                         "--prompt-file",
                         p.note("同じworkerで追加確認する。"),
                         ok=False,
-                        MANUAL_PREFLIGHT_FAILURE="1",
+                        MANUAL_ADMISSION_FAILURE="1",
                     )
                     assert rejected.returncode == 2
                     assert (
