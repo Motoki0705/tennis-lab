@@ -733,6 +733,7 @@ def test_review_request_uses_current_registry_run(
     response = manual(
         p,
         "review-request",
+        *p.review_flags(),
         "--prs",
         "100",
         "--instruction-file",
@@ -868,7 +869,7 @@ def test_parent_can_verify_artifacts_independent_of_planning_phase(
         p.note("実差分とテストを親が確認した。"),
     )
     assert json.loads(p.cli("reconcile").stdout)["tasks"][0]["artifacts_accepted"]
-    manual(p, "review-prepare", "--prs", "100")
+    manual(p, "review-prepare", *p.review_flags(), "--prs", "100")
     assert len(task(p)["worker_runs"]) == 1
 
 
