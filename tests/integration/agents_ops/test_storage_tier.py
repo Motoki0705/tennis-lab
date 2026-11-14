@@ -92,18 +92,13 @@ def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Lab:
     repo.mkdir(parents=True)
     mount.mkdir()
     proc.mkdir()
-    for state in ("jobs", "running"):
-        (repo / ".training_queue" / state).mkdir(parents=True)
-    config = layout.Config(repo, mount, ("data/task",), settle_seconds=3600)
+    config = layout.Config(repo, mount, ("data/task",))
     config.mirror.mkdir(parents=True)
-    # Pass the settling interval without putting aged file atimes in the future:
-    # a normal read must update them, so losing O_NOATIME remains detectable.
-    result = Lab(
-        module, filesystem, layout, usage, config, None, proc, time.time() + 2 * 3600
-    )
+    # Aged atimes are truly in the past: an ordinary read must update them.
+    result = Lab(module, filesystem, layout, usage, config, None, proc, time.time())
     result.engine = module.Engine(
         config,
-        inspector=usage.Inspector(repo / ".training_queue", proc),
+        inspector=usage.Inspector(proc),
         mount_check=lambda config: None,
         clock=lambda: result.now,
     )
@@ -238,15 +233,17 @@ def test_idle_boundary_uses_most_recent_file_atime(
 
 
 @pytest.mark.parametrize("state", ["running", "jobs"])
-def test_queue_jobs_with_indirect_inputs_keep_all_units(lab: Lab, state: str) -> None:
+def test_queue_records_do_not_protect_idle_units(lab: Lab, state: str) -> None:
     unit = lab.unit()
     lab.mirror(unit)
-    (lab.config.repo / ".training_queue" / state / "training.job").write_text(
+    directory = lab.config.repo / ".training_queue" / state
+    directory.mkdir(parents=True)
+    (directory / "training.job").write_text(
         "cd /elsewhere\npython -m training --config hidden-paths.yaml\n"
     )
     code, report = lab.run("evict", unit)
-    assert code == 0 and "queue-" in report["results"][0]["reason"]
-    assert (lab.config.repo / unit.path).exists()
+    assert code == 0 and report["results"][0]["action"] == "evicted"
+    assert not (lab.config.repo / unit.path).exists()
 
 
 def test_real_open_descriptor_reached_through_external_hardlink_blocks(
@@ -281,13 +278,15 @@ def test_real_open_descriptor_reached_through_external_hardlink_blocks(
         child.communicate("finish\n", timeout=5)
 
 
+@pytest.mark.parametrize("denied_entry", ["fd", "maps"])
 def test_mapping_without_fd_and_uninspectable_process_fail_closed(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, denied_entry: str
 ) -> None:
     unit = lab.unit()
     lab.mirror(unit)
     process = lab.proc / "123456789"
     (process / "fd").mkdir(parents=True)
+    (process / "status").write_text(f"Uid:\t0\t{os.geteuid()}\t0\t0\n")
     (process / "cwd").symlink_to(lab.config.repo)
     (process / "root").symlink_to("/")
     info = (lab.config.repo / unit.path / "a.bin").stat()
@@ -297,13 +296,21 @@ def test_mapping_without_fd_and_uninspectable_process_fail_closed(
     code, report = lab.run("evict", unit)
     assert code == 0 and "open-mmap" in report["results"][0]["reason"]
     original = lab.usage.read_bytes
+    original_names = lab.usage.names
 
     def denied(path: Path) -> bytes:
-        if path == process / "maps":
+        if denied_entry == "maps" and path == process / "maps":
             raise PermissionError("injected unreadable process")
         return cast(bytes, original(path))
 
     monkeypatch.setattr(lab.usage, "read_bytes", denied)
+
+    def denied_names(path: Path) -> list[str]:
+        if denied_entry == "fd" and path == process / "fd":
+            raise PermissionError("injected unreadable process")
+        return cast(list[str], original_names(path))
+
+    monkeypatch.setattr(lab.usage, "names", denied_names)
     code, report = lab.run("evict", unit)
     assert code == 1 and "usage cannot be verified" in report["results"][0]["error"]
     assert (lab.config.repo / unit.path).exists()
@@ -321,13 +328,59 @@ def test_inspection_includes_a_descriptor_in_the_calling_process(lab: Lab) -> No
     assert (lab.config.repo / unit.path).exists()
 
 
-def test_missing_queue_directory_is_not_an_empty_queue(lab: Lab) -> None:
+def test_no_queue_directory_is_needed_for_eviction(lab: Lab) -> None:
     unit = lab.unit()
     lab.mirror(unit)
-    (lab.config.repo / ".training_queue/running").rmdir()
+    assert not (lab.config.repo / ".training_queue").exists()
     code, report = lab.run("evict", unit)
-    assert code == 1 and "queue inspection failed" in report["results"][0]["error"]
-    assert (lab.config.repo / unit.path).exists()
+    assert code == 0 and report["results"][0]["action"] == "evicted"
+
+
+def test_other_uid_is_excluded_before_fd_maps_and_is_audited(lab: Lab) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    process = lab.proc / "123456789"
+    process.mkdir()
+    other_uid = os.geteuid() + 12345
+    # An uninspectable fd inventory and absent maps must never be inspected.
+    (process / "status").write_text(f"Uid:\t{os.geteuid()}\t{other_uid}\t0\t0\n")
+    (process / "fd").write_text("not a readable descriptor directory")
+    code, preview = lab.run("cycle", unit, dry_run=True)
+    assert code == 0 and preview["results"][0]["action"] == "would_evict", preview
+    assert preview["usage"]["unknown"] == []
+    code, report = lab.run("evict", unit)
+    assert code == 0 and report["results"][0]["action"] == "evicted", report
+    scope = report["process_scope"]
+    assert scope["uid"] == os.geteuid()
+    assert scope["excluded_other_uid"] == 1
+    assert scope["excluded_uids"] == {str(other_uid): 1}
+    deletion = next(row for row in lab.records() if row["event"] == "deleted")
+    assert deletion["process_scope"] == scope
+
+
+@pytest.mark.parametrize("failure", ["unreadable", "malformed", "missing"])
+def test_unknown_process_uid_is_not_silently_excluded(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    process = lab.proc / "123456789"
+    process.mkdir()
+    status = process / "status"
+    status.write_text("Uid: invalid\n")
+    if failure == "missing":
+        status.unlink()
+    original = lab.usage.read_bytes
+
+    def read(path: Path) -> bytes:
+        if path == status and failure == "unreadable":
+            raise PermissionError("injected unreadable UID")
+        return cast(bytes, original(path))
+
+    monkeypatch.setattr(lab.usage, "read_bytes", read)
+    code, report = lab.run("evict", unit)
+    assert code == 1 and "usage cannot be verified" in report["results"][0]["error"]
+    assert (lab.config.repo / unit.path / "a.bin").exists()
 
 
 @pytest.mark.parametrize(
@@ -586,13 +639,15 @@ def test_publication_writer_cannot_attach_stale_hashes_to_fresh_metadata(
         assert lab.filesystem.read_bytes(mirror / "a.bin") == b"apple\n"
 
 
-def test_recent_writer_and_empty_unit_are_retained(lab: Lab) -> None:
+def test_recent_ctime_does_not_override_idle_atime_and_empty_unit_is_kept(
+    lab: Lab,
+) -> None:
     unit = lab.unit()
     lab.mirror(unit)
     lab.now = time.time()
     lab.age(unit, 15)
     code, report = lab.run("evict", unit)
-    assert code == 0 and "recent writes" in report["results"][0]["reason"]
+    assert code == 0 and report["results"][0]["action"] == "evicted"
     empty = lab.layout.Unit("data/task/empty", "dataset")
     (lab.config.repo / empty.path).mkdir()
     code, report = lab.run("evict", empty)
@@ -658,9 +713,7 @@ def test_discovery_uses_explicit_dataset_boundaries_and_complete_run_layout(
     assert lab.layout.PURPOSES == OUTPUT_KINDS
     version = lab.unit()
     run = lab.unit("outputs/task/train/experiment/run-001")
-    worktree_run = lab.unit(
-        ".claude/worktrees/worker/outputs/task/evaluate/experiment/run-002"
-    )
+    worktree_run = lab.unit(".worktree-outputs/worker/task/evaluate/experiment/run-002")
     legacy = lab.config.repo / "outputs/task/train/old-run"
     (legacy / "logs/version_0").mkdir(parents=True)
     (legacy / "config.yaml").write_text("legacy: true\n")
@@ -681,6 +734,63 @@ def test_discovery_uses_explicit_dataset_boundaries_and_complete_run_layout(
     inventory = lab.layout.discover(lab.config, lab.config.repo)
     assert inventory.errors and version not in inventory.units
     assert (lab.config.repo / "data").lstat() == link_before
+
+
+def test_worktree_links_are_references_and_orphaned_outputs_remain_units(
+    lab: Lab,
+) -> None:
+    main = lab.unit("outputs/task/train/experiment/run-001")
+    orphan = lab.unit(".worktree-outputs/gone/task/train/experiment/run-002")
+    worktree = lab.config.repo / ".claude/worktrees/alias"
+    worktree.mkdir(parents=True)
+    (worktree / "outputs").symlink_to(lab.config.repo / "outputs")
+    os.utime(worktree / "outputs", ns=(1, 1), follow_symlinks=False)
+    before = (worktree / "outputs").lstat()
+    inventory = lab.layout.discover(lab.config, lab.config.repo)
+    assert inventory.units == sorted([main, orphan])
+    assert inventory.references == [".claude/worktrees/alias/outputs"]
+    assert inventory.errors == []
+    assert (worktree / "outputs").lstat() == before
+    legacy = lab.config.mirror / ".claude/worktrees/old/outputs"
+    legacy.mkdir(parents=True)
+    archive = lab.layout.discover(lab.config, lab.config.mirror)
+    assert archive.legacy_outputs == [
+        {
+            "source": ".claude/worktrees/old/outputs",
+            "destination": ".worktree-outputs/old",
+        }
+    ]
+    assert archive.units == []
+
+
+def test_scan_sizes_unclassified_e_data_without_reading_payloads_or_links(
+    lab: Lab,
+) -> None:
+    root = lab.config.mirror / "data/ACCAD"
+    root.mkdir(parents=True)
+    (root / "motion.bin").write_bytes(b"motion" * 1000)
+    os.link(root / "motion.bin", root / "motion-hardlink.bin")
+    outside = lab.config.mirror / "outside.bin"
+    outside.write_bytes(b"outside" * 2000)
+    (root / "outside-link").symlink_to(outside)
+    for path in (root, root / "motion.bin", root / "outside-link", outside):
+        os.utime(path, ns=(1, path.lstat().st_mtime_ns), follow_symlinks=False)
+    before = {
+        str(p): p.lstat()
+        for p in (root, root / "motion.bin", root / "outside-link", outside)
+    }
+    expected_allocated = sum(
+        (root / name).lstat().st_blocks * 512
+        for name in (".", "motion.bin", "outside-link")
+    )
+    code, report = lab.engine.run("scan", [], dry_run=False)
+    assert code == 0, report
+    (size,) = report["unmanaged_data_sizes_E"]
+    assert size["path"] == "data/ACCAD" and size["logical_bytes"] == 6000
+    assert size["allocated_bytes"] == expected_allocated
+    assert size["files"] == 2 and size["symlinks"] == 1
+    assert before == {name: Path(name).lstat() for name in before}
+    assert not lab.config.state.exists()
 
 
 def test_same_device_bind_mount_is_rejected_before_copying(

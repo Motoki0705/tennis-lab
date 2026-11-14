@@ -16,14 +16,19 @@ E: 是挂载到 `/mnt/wsl/tennis-data` 的 HDD ext4（`noatime`），保存权�
 |---|---|---|---|
 | 主目录 `data/` | 实际目录 | 相同相对路径 | 数据集版本 |
 | 主目录 `outputs/` | 实际目录 | 相同相对路径 | task/purpose/experiment/run-id |
-| worktree `outputs/` | D: 上的实际目录 | `.claude/worktrees/<name>/outputs/...` | task/purpose/experiment/run-id |
+| worktree `outputs/` | 链接到 D:`<main>/.worktree-outputs/<name>/` | `.worktree-outputs/<name>/...` | task/purpose/experiment/run-id |
+| 指向主 outputs 的既有 alias | 链接到主 `outputs/` | 主 `outputs/...` | 不建立独立单位 |
 | 主目录 `ckpt/` | 始终完整取回 | 已校验镜像 | 永不清理 |
 | worktree `data/`、`ckpt/`、`.venv` | 指向主 checkout 的链接 | 不建立独立副本 | 不单独扫描 |
 
 [config.toml](config.toml) 声明数据集 **container**（其直接子目录为版本）与例外的**单位根目录**。
 重叠声明被拒绝；新增任务的命名空间必须先声明。素材与边界模糊的旧目录列为 `unmanaged`，不递归猜测。
 输出依据标准四层 run 路径及已知 purpose 发现。experiment 直接包含文件时视为旧 run，不将其子目录当作 run。
-E: 上的 worktree 输出在 Git 注册删除后仍可发现。拒绝管理根路径中的符号链接、嵌套目录挂载、特殊文件与单位内所有符号链接。
+持久目录 `.worktree-outputs/<name>/` 在 Git 注册和 worktree 删除后仍可发现。同名 worktree 复用同一持久目录；
+需要独立命名空间时使用新名字。outputs 链接本身是引用，不是独立单位。scan 仅列出引用路径，不读取链接目标，
+因为仅 stat 穿过旧 symlink 也会改变其 atime。storage 命令使用主 outputs 或 `.worktree-outputs` 的规范路径。
+旧 `.claude/worktrees/<name>/outputs/` 实际目录作为未管理的迁移源，在 `legacy_outputs` 中列出新目标，先迁移再 index。
+拒绝管理根路径中的符号链接、嵌套目录挂载、特殊文件与单位内所有符号链接。
 Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必须在 readlink 前拒绝，以保持 dry-run 只读。
 管理 payload 应使用实际文件或硬链接；本工具不改写已有链接。
 
@@ -50,9 +55,11 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 "${S[@]}" cycle --dry-run
 ```
 
-`--repo`、`--config`、`--queue-dir` 放在子命令前。repo 必须与 launcher 共用 Git common directory；主目录从 Git 推导。
+`--repo`、`--config` 放在子命令前。repo 必须与 launcher 共用 Git common directory；主目录从 Git 推导。
 显式参数可以指向已发现单位的内部路径。无参数时 mirror/verify/evict/cycle 处理 D: 单位；index/hydrate 必须显式指定单位。
-实机探测也应明确指定单位。`scan` 不读取 payload；`index --dry-run` 仅对所选 E: 单位计算哈希，
+实机探测也应明确指定单位。`scan` 不读取 payload，并在 `unmanaged_data_sizes_E` 中按未分类 E:`data/<顶层>`
+报告 regular file 逻辑字节数、包含目录和 symlink 的分配量。类似 du，在每个顶层内按 inode 去重，不跟随链接目标或嵌套挂载。
+目录用 O_NOATIME 读取，计量失败明确报错，不视为零字节；这些资产仍不清理。`index --dry-run` 仅对所选 E: 单位计算哈希，
 报告字节数、文件数、tree digest 与 atime 保持结果。dry-run 不创建锁、manifest、目录、审计或副本。
 退出码为 0=成功或保留、1=安全或校验失败、2=参数语法、75=没有 launcher。E: 未挂载时 dry-run 也失败。
 
@@ -65,13 +72,14 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 ## 校验与排除条件
 
 `mountpoint`、`findmnt` 必须确认两个不同的 ext4 与指定 atime 选项。E: 缺失绝不解释为空镜像。
-数据、目录、manifest 都用 `O_NOATIME` 读取；失败时不退回普通 open。root 所有的虚拟 `/proc` 根目录
-使用普通列举，它不包含数据集访问历史。
+数据、目录、manifest 都用 `O_NOATIME` 读取；失败时不退回普通 open。虚拟 `/proc` 根目录和 kernel 生成的 status
+不包含数据集访问历史，使用普通读取。注入的真实测试目录仍用 O_NOATIME。
 
-镜像与认证前按 device/inode 检查 fd、cwd、mmap，覆盖单位外的硬链接别名。无法读取进程或 queue 目录则失败。
-存在任何 `jobs/*.job` 或 `running/*.job` 时保留**所有单位**，因为 Python/Hydra/shell 能通过配置间接得到路径，
-命令字符串不能证明其他单位未被引用。旧 running 记录由 queue 流程处理，本工具不改写。
-近期写入需经过配置的静止时间（默认一小时）；哈希与发布前后的 snapshot 也检测并发变更。
+镜像与认证前按 device/inode 检查 fd、cwd、mmap，覆盖单位外的硬链接别名。仅检查 `/proc/<pid>/status` 中
+有效 UID 与执行用户有效 UID 相同的进程。root、CI 等其他 UID 不在范围内；JSON 和审计的 `process_scope` 按 UID 记录排除数。
+UID 无法读取/识别，或同 UID 的 fd/maps 无法读取时仍明确失败。其他用户的 consumer 不受保护，应让 storage 与数据 consumer
+以同一用户运行。完全不读取 training queue；等待或计划任务的输入也可能在 14 天后删除并需要手动 hydrate。
+不设置 mtime/ctime 静止时间，仅按 atime 和打开的引用判断；哈希与发布前后 snapshot 继续检查内容稳定性。
 发布后 metadata 必须与已哈希的 staging tree 一致，才能将其 digest 写入 manifest。
 
 镜像先计算 D: 全量 SHA-256，复制到新的 E: staging，再计算 staging 全量 SHA-256 并比较整个 tree。
@@ -90,6 +98,8 @@ hydrate 拒绝已存在的 D: 目标，完成 E: 哈希、复制、D: 哈希后�
 
 D:`<repo>/.storage-tier/audit.jsonl` 保存校验、取回、失败、删除确认与完成记录，包含 UTC、单位、大小与校验方式。
 修改操作按 repo 排他；dry-run 不创建锁。持久删除 intent 位于同目录的 `transactions/`。
+各审计事件记录其他 UID 的排除范围。失败仅写入 audit 和 service journal，不发送通知。
+只读 `index --dry-run` 报告进程检查错误，但不认证 manifest、不授权删除，仍可读取明确指定的小单位。
 
 ```bash
 "${S[@]}" recover
@@ -109,13 +119,15 @@ D:`<repo>/.storage-tier/audit.jsonl` 保存校验、取回、失败、删除确�
 "${S[@]}" prepare-worktree /absolute/main/.claude/worktrees/new-worker
 ```
 
-先确认主目录 data/outputs/ckpt 为 D: 实际目录，并完整验证计划，才创建 outputs 和共享输入、venv 链接。
-拒绝既有 outputs 符号链接，不自动切换现有路径。
+先确认主目录 data/outputs/ckpt 为 D: 实际目录，创建 `<main>/.worktree-outputs/<name>/`、指向它的 outputs 链接与共享输入、venv 链接。
+持久根与 data 都必须位于 D:，保证硬链接可用。保留正确的既有持久链接或主 outputs alias；其他既有 outputs 被拒绝，不自动切换。
+已有 symlink 时，初始化 dry-run 在读取前拒绝目标验证，避免改变其 atime。
+用实际 prepare-worktree 验证已初始化的 worktree；正确的链接目标保持不变。
 
-现有 [336 小时 worktree 期限删除](../worktree_cleanup/README.md) 会独立删除整个 worktree，包括真实 D: outputs。
-**在此布局同时启用两种删除策略前，必须先达成并实现生命周期协调。** 本工具不擅自弱化该人类已同意的策略或停用 timer。
+现有 [336 小时 worktree 期限删除](../worktree_cleanup/README.md) 仅删除 worktree 内的链接，不跟随目标。
+worktree 消失后持久 outputs 仍保留，仅由 storage_tier 的校验删除管理，不改变期限删除规则。
 
-迁移、进程检查权限与生命周期冲突解决后再安装启用：
+完成迁移并确认同 UID 进程可检查后再安装启用：
 
 ```bash
 spin ops install storage-tier --dry-run
@@ -126,25 +138,28 @@ spin ops logs storage-tier --lines 100
 spin ops off storage-tier
 ```
 
-user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。只有失败时通过 `OnFailure` 用 busctl 调用
-user bus 的 `org.freedesktop.Notifications.Notify`；成功或仅保留时不通知。主机必须有通知服务，
-配送失败会显示为 helper unit 失败。启用前应实测通知配送和完整 `/proc` 检查。
+user timer 每天 05:30 Asia/Tokyo 执行，jitter 最多 15 分钟。失败仅写入 journal 与 `audit.jsonl`，
+没有通知 helper 或 `OnFailure`。启用前检查执行用户的进程；其他 UID 按合意排除。
 不建立对 system mount unit 的顺序依赖，每次直接检查挂载。install 只链接 unit，启用是独立部署操作。
 
 ## 迁移与验证
 
-1. 协调暂停 producer、queue 新任务与持有旧路径的 consumer。启用删除前解决 worktree 期限策略冲突及 user unit
-   无法读取部分 `/proc` 的问题。不隐式改变权限、停止其他 session 或安装特权 helper。
+1. 协调暂停 producer、queue 新任务与持有旧路径的 consumer。启用前确认 user unit 能读取自身 UID 的 fd/maps。
+   同 UID 的 systemd、sshd、nondumpable process 也可能阻止检查；不能忽略，也不隐式改变权限或停止其他 session。
 2. 清点 E:、活动与等待任务引用、配置间接引用、硬链接别名、E: 绝对路径和已有 D: 副本。
    只取回完整 `ckpt/` 与确定需要的版本、run 单位。
-3. 对明确指定且稳定的 E: 单位逐个 `index`。若顺序速度为 80–150MiB/s，432GiB 单 pass 约 49–92 分钟；
+3. 将主 outputs alias 归为主 outputs 的引用。独立的旧 E:`.claude/worktrees/<name>/outputs` 在 consumer 暂停时
+   rename 到 E:`.worktree-outputs/<name>`，对应关系见 scan 的 `legacy_outputs`。目标已存在时拒绝覆盖、合并，先显式比较。
+   旧 manifest 的路径/ctime 不能复用，需按新规范路径重新 index。rename 是第二阶段的修改操作。
+   对明确指定且稳定的 E: 单位逐个 `index`。若顺序速度为 80–150MiB/s，432GiB 单 pass 约 49–92 分钟；
    小文件 seek 可能更慢。这是规划假设，并非全盘实测。index 读 E: 一次；hydrate 还需 E: 哈希、复制与 D: 验证。
    不从小型热缓存 probe 推导 HDD 全盘速度。
 4. 保存旧 symlink entry，并 rename **链接自身**，不移动 E: payload。为 D: `data/`、`outputs/` 创建空实际目录；
-   `ckpt/` 留空缺，由整单位 hydrate 发布。迁移相应 worktree 的 outputs 链接并创建真实 D: 根目录。
-   取回选择的单位、验证内容和代表性硬链接后再 activate 输入诊断。已有 D: 副本需显式比较，hydrate 不做合并。
+   `ckpt/` 留空缺，由整单位 hydrate 发布。独立 worktree outputs 链接到 D: 持久根，主 alias 链接到 D: 主 outputs。
+   按规范路径取回选择的单位、验证内容和代表性硬链接后再 activate 输入诊断。已有 D: 副本需显式比较，hydrate 不做合并。
 5. 由对应 session 更新活动、等待命令。先做只读 cycle，再以可丢弃单位执行 mirror→evict→hydrate。
-   检查 `statvfs` 空闲量、审计、consumer 读取与失败通知，之后才启用 timer。外部硬链接可能阻止容量回收。
+   检查 `statvfs` 空闲量、审计、consumer 读取、同 UID 检查和失败 journal/audit，之后才启用 timer。
+   queue 记录和其他 UID 不保护单位。外部硬链接可能阻止容量回收。
    rollback 仅在 consumer 暂停时恢复旧链接，并独立保留 D: 新写入。根 VHDX 迁移、压缩不在范围内。
 
 `tests/integration/agents_ops/test_storage_tier.py` 使用临时真实文件与模拟 mount/proc，并覆盖真实 fd 和硬链接。

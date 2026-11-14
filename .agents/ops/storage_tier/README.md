@@ -17,7 +17,8 @@ For main checkout `R`, the E: counterpart of `R/<relative>` is
 |---|---|---|---|
 | Main `data/` | Real directory | Same relative paths | Dataset version |
 | Main `outputs/` | Real directory | Same relative paths | Task/purpose/experiment/run-id |
-| Worktree `outputs/` | Real directory on D: | `.claude/worktrees/<name>/outputs/...` | Task/purpose/experiment/run-id |
+| Worktree `outputs/` | Link to D:`<main>/.worktree-outputs/<name>/` | `.worktree-outputs/<name>/...` | Task/purpose/experiment/run-id |
+| Existing worktree alias of main `outputs/` | Link to main `outputs/` | Main `outputs/...` | No independent unit |
 | Main `ckpt/` | Entire real directory, always hydrated | Verified mirror | Never evicted |
 | Worktree `data/`, `ckpt/`, `.venv` | Links to main checkout | No independent copies | Not independently scanned |
 
@@ -27,7 +28,14 @@ New task namespaces must be declared there. Raw assets and ambiguous legacy layo
 are reported as `unmanaged`, without recursive guesses. Output discovery uses the
 standard four-component run hierarchy and known purposes. An experiment directory
 containing files is treated as ambiguous legacy output, not as a collection of runs.
-E: worktree output directories remain discoverable after their Git registrations disappear.
+Persistent `.worktree-outputs/<name>/` remains discoverable after Git registration
+and the worktree disappear. Worktree names reuse that persistent namespace; use a
+new name for a separate namespace. `outputs` links themselves are references,
+never independent units. Scans list them without reading their targets, since
+even stat through an old symlink changes its atime. Use canonical main `outputs/`
+or `.worktree-outputs/` paths in storage commands. Real output roots in the old
+`.claude/worktrees/<name>/outputs/` layout are unmanaged migration sources, listed
+with their new destination in `legacy_outputs`; relocate them before indexing.
 Directory symlinks in managed root paths, nested directory mounts, special files and all
 symlinks inside a unit are rejected. Linux readlink updates old symlink atimes even
 with an O_PATH descriptor; rejecting them before readlink keeps dry-runs read-only.
@@ -59,12 +67,17 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 "${S[@]}" cycle --dry-run
 ```
 
-`--repo`, `--config` and `--queue-dir` precede the subcommand. `--repo` selects the
+`--repo` and `--config` precede the subcommand. `--repo` selects the
 same Git common directory as the launcher; the main checkout is derived from Git.
 Explicit unit arguments may name a child inside exactly one discovered unit.
 Without arguments, mirror/verify/evict/cycle use local units. Index/hydrate require
 explicit units. Use explicit arguments for real-machine probes as well.
-`scan` never hashes payloads. `index --dry-run` hashes only the selected E: units
+`scan` never hashes payloads. It also reports `unmanaged_data_sizes_E`: per
+unclassified E:`data/<top-level>` regular-file logical bytes and allocated bytes
+including directories/symlinks, deduplicated by inode within that top level, like
+`du`. Symlink targets and nested mounts are not traversed; directory reads use
+`O_NOATIME`. Failed sizing is an explicit error, not a zero-byte result. These
+assets remain outside eviction. `index --dry-run` hashes only the selected E: units
 and reports byte/file counts, a tree digest and whether atime was preserved.
 Dry-runs create no lock, manifests, directories, audit records or copies.
 Exit codes: 0 success or expected retention; 1 failed safety/verification; 2 syntax;
@@ -84,16 +97,20 @@ new OUTPUT paths remains possible. No training entrypoints or queue commands are
 `mountpoint` and `findmnt` must confirm separate ext4 filesystems and the prescribed
 atime options. A missing mount is never interpreted as an empty mirror. All data,
 directory and manifest reads use `O_NOATIME`; a failed open is not retried normally.
-The synthetic `/proc` root is enumerated normally because it belongs to root and
-does not hold dataset access history.
+The synthetic `/proc` root and kernel-generated status are read normally because
+they do not hold dataset access history. Injected real test directories still use
+`O_NOATIME`.
 
 Before mirroring or certifying a unit, inspect open descriptors, process cwd and
-mappings by device/inode, including external hardlink aliases. An unreadable
-process or queue directory fails the operation. Any `jobs/*.job` or `running/*.job`
-blocks **all units**: arbitrary Python/Hydra/shell code can resolve inputs indirectly,
-so parsing command text cannot prove that other units are unused. Stale running
-records must be resolved through the queue workflow; this tool does not rewrite them.
-Recently written units wait for the configured settling interval (default one hour).
+mappings by device/inode, including external hardlink aliases. Only processes
+whose effective UID in `/proc/<pid>/status` matches the execution user's effective
+UID are inspected. Other UIDs, including root and CI, are explicitly excluded;
+their counts by UID appear in `process_scope` in JSON output and audit records.
+Unreadable/unknown UID or unreadable own-process fd/maps still fails closed.
+Other-user consumers are therefore not protected: run storage and data consumers
+as the same user. Training queue records are never read, and queued/planned jobs
+may lose a 14-day-old input and need manual hydration. There is no mtime/ctime
+settling interval; eligibility uses regular-file atime and open-process references.
 Snapshots before/after hashing and publication detect concurrent changes. Published
 metadata must match the hashed staging tree before its digests can enter a manifest.
 
@@ -122,6 +139,10 @@ publishes the whole unit with fresh file atimes and updates the manifest.
 D:`<repo>/.storage-tier/audit.jsonl` records verification, hydration, failure, deletion
 intent and completion with UTC time, unit, byte counts and verification method.
 A single repo lock serializes mutating operations; dry-runs do not acquire/create it.
+Process exclusion scope is included in audit events. Failures remain in this audit
+and the service journal; no desktop, D-Bus, mail or other notification is sent.
+Read-only `index --dry-run` reports process inspection errors but never certifies
+a manifest or authorizes deletion; it can still inspect the selected tiny tree.
 Durable deletion transactions live in `transactions/` beside the audit.
 
 ```bash
@@ -147,17 +168,21 @@ After migration and `git worktree add`, run:
 "${S[@]}" prepare-worktree /absolute/main/.claude/worktrees/new-worker
 ```
 
-This requires real D: data/output/checkpoint roots and validates the full plan
-before creating D: outputs and shared input/venv links.
-Existing output symlinks are rejected; no existing path is switched automatically.
+This requires real D: data/output/checkpoint roots. It creates
+`<main>/.worktree-outputs/<name>/` and links the worktree's `outputs` to it, with
+shared input/venv links. Both the persistent root and data must be on D:, so
+hardlinks work. A correct existing persistent link or main-output alias is kept;
+other existing outputs are rejected and never switched automatically.
+For existing symlinks, initialization dry-run refuses target validation before
+reading the link, because that would change its atime. Use actual prepare-worktree
+to validate an already initialized worktree; it preserves correct link targets.
 
 The existing [336-hour worktree expiration](../worktree_cleanup/README.md) removes
-the entire worktree, including real D: output directories, independently of storage
-verification. **The two deletion policies cannot be enabled together with this
-layout until their lifecycle integration is agreed and implemented.** This tool
-does not weaken that separate human-approved policy or disable its timer.
+only the worktree and its symlink entries, never their targets. Persistent output
+units remain managed solely by this verified storage eviction after the worktree
+is gone. The expiration policy itself is unchanged.
 
-After migration, process-inspection permission and lifecycle integration are resolved:
+After migration and successful own-process inspection:
 
 ```bash
 spin ops install storage-tier --dry-run
@@ -169,23 +194,28 @@ spin ops off storage-tier
 ```
 
 The user timer runs daily at 05:30 Asia/Tokyo with up to 15 minutes of jitter.
-`OnFailure` calls the user bus `org.freedesktop.Notifications.Notify` through busctl;
-successful or retained-only cycles send no notification. The notification service
-must exist on the host; delivery failures are visible as failure of the helper unit.
-Host validation must confirm notification delivery and full `/proc` inspection.
+Failures are recorded only in the service journal and `audit.jsonl`; there is no
+notification helper or `OnFailure`. Host validation must confirm inspection of
+the execution user's processes. Other UIDs are outside the agreed safety scope.
 There is no ordering dependency on the system mount service; each operation checks
 the mount itself. Installation only links units. Enablement is a separate deployment step.
 
 ## Migration and validation
 
 1. Coordinate a pause in producers, queue admissions and consumers holding old paths.
-   Resolve the conflicting worktree expiration policy and the user unit's inability
-   to inspect some `/proc` entries before enabling automatic deletion. Do not change
-   permissions, stop other sessions or install a privileged helper implicitly.
+   Confirm the user unit can inspect its own UID's fd/maps before enabling deletion.
+   Same-UID systemd, sshd or nondumpable processes may still prevent this; do not
+   ignore them or change permissions/stop sessions implicitly.
 2. Inventory E: units and active/queued references, including indirect config defaults,
    old hardlink aliases, E:-absolute command paths and pre-existing D: copies. Decide
    the needed version/run units. Hydrate all `ckpt/` and those units only.
-3. Bootstrap E:-only manifests with `index`, one explicit stable unit at a time.
+3. Classify main-output aliases as references to main outputs. For independent
+   old E:`.claude/worktrees/<name>/outputs`, rename the root to
+   E:`.worktree-outputs/<name>` while consumers are paused. Refuse occupied
+   destinations and compare any existing copies explicitly; do not merge trees.
+   The scan's `legacy_outputs` gives the mapping. Re-index at the new canonical
+   path: old manifest paths/ctime cannot be reused. This is a second-stage mutation.
+   Bootstrap E:-only manifests with `index`, one explicit stable unit at a time.
    At 80–150 MiB/s, one sequential pass over 432 GiB takes about 49–92 minutes;
    small-file seeks can take longer. This is a planning assumption, not a measured
    full-disk benchmark. Indexing reads E: once. Hydration then reads E: for hashing
@@ -193,14 +223,16 @@ the mount itself. Installation only links units. Enablement is a separate deploy
 4. Keep original symlink entries under a migration record. Detach links by renaming
    the **link itself**, never its target. Create empty real D: `data/` and `outputs/`
    roots; leave `ckpt/` absent until whole-unit hydration publishes it. Detach each
-   affected worktree's output link and create its real D: root. E: payloads stay intact.
+   affected worktree's output link. Link independent outputs to the persistent D:
+   root; link main-output aliases to D: main outputs. Hydrate into canonical paths.
    Hydrate the chosen units, verify contents and a representative hardlink operation,
    then activate input diagnostics. Existing D: copies need explicit comparison;
    hydrate never merges into them.
 5. Update affected active/queued commands in their owning sessions. Run a read-only
    cycle, then a selected disposable-unit mirror/evict/hydrate round trip. Compare
    `statvfs` free space and audit evidence; external hardlinks may prevent reclamation.
-   Confirm consumer loading and failure notification before enabling the timer.
+   Confirm consumer loading, own-UID inspection and failure journal/audit records
+   before enabling the timer. Queue state and other UIDs do not protect units.
    Roll back by restoring saved symlink entries only while consumers are paused;
    preserve new D: writes separately. Root VHDX relocation/compaction is outside scope.
 

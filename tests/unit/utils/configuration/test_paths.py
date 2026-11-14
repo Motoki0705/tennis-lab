@@ -668,3 +668,17 @@ def test_missing_input_with_unmounted_e_has_a_clear_error(
     monkeypatch.setattr(local_storage.os.path, "ismount", lambda path: False)
     with pytest.raises(PathContractError, match="E: is not mounted"):
         resolver.resolve(PathRole.DATA, "task/version/input.bin")
+
+
+def test_missing_persistent_worktree_output_prompts_canonical_hydration(
+    migrated_storage: tuple[PathResolver, Path, Path],
+) -> None:
+    _, repository, mount = migrated_storage
+    relative = Path(".worktree-outputs/worker/task/train/experiment/run/input.bin")
+    mirror = mount / repository.relative_to("/") / relative
+    mirror.parent.mkdir(parents=True)
+    mirror.write_bytes(b"archived output")
+    with pytest.raises(PathContractError, match="storage_tier hydrate") as error:
+        local_storage.require_hydrated_input(repository / relative)
+    assert str(relative) in str(error.value)
+    assert not (repository / ".worktree-outputs").exists()

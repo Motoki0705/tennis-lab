@@ -18,7 +18,6 @@ from lib.checkout_lock import CHECKOUT_ROOT_ENV, common_directory
 from .engine import Engine
 from .filesystem import StorageError, real_directory, write_json
 from .layout import Config, main_checkout, prepare_worktree
-from .usage import Inspector
 
 
 def main() -> int:
@@ -26,9 +25,6 @@ def main() -> int:
     parser.add_argument("--repo", type=Path, default=Path.cwd())
     parser.add_argument(
         "--config", type=Path, default=Path(__file__).with_name("config.toml")
-    )
-    parser.add_argument(
-        "--queue-dir", type=Path, help="explicit nondefault shared training queue"
     )
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("scan", help="read-only boundary and placement inventory")
@@ -61,9 +57,7 @@ def main() -> int:
             raise StorageError("--repo must share the launcher's Git directory")
         config = Config.load(repo, args.config)
         dry_run = getattr(args, "dry_run", False)
-        engine = Engine(
-            config, inspector=Inspector(args.queue_dir or repo / ".training_queue")
-        )
+        engine = Engine(config)
         if args.command == "prepare-worktree":
             report = prepare_worktree(config, args.worktree, dry_run=dry_run)
             code = 0

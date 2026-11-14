@@ -38,7 +38,7 @@ def require_hydrated_input(path: Path) -> None:
         relative = path.relative_to(repository)
         parts = relative.parts
         managed = bool(parts) and (
-            parts[0] in {"data", "outputs", "ckpt"}
+            parts[0] in {"data", "outputs", "ckpt", ".worktree-outputs"}
             or (
                 len(parts) > 3
                 and parts[:2] == (".claude", "worktrees")

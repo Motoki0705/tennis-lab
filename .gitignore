@@ -180,6 +180,7 @@ Thumbs.db
 agents_workspace/tmp_cache/
 .worktrees/
 .storage-tier/
+.worktree-outputs/
 
 # Large files that should be tracked separately
 *.zip

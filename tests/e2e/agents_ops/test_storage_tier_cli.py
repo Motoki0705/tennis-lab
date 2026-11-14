@@ -100,7 +100,9 @@ def test_prepare_worktree_creates_d_outputs_and_supports_actual_hardlink(
     assert not (worktree / "outputs").exists() and not (worktree / "data").exists()
     result = cli.run("prepare-worktree", str(worktree))
     assert result.returncode == 0, result.stderr
-    assert (worktree / "outputs").is_dir() and not (worktree / "outputs").is_symlink()
+    persistent = cli.repo / ".worktree-outputs/new-worker"
+    assert (worktree / "outputs").is_symlink()
+    assert (worktree / "outputs").resolve() == persistent
     for name in ("data", "ckpt", ".venv"):
         assert (worktree / name).is_symlink() and (
             worktree / name
@@ -110,6 +112,22 @@ def test_prepare_worktree_creates_d_outputs_and_supports_actual_hardlink(
         cli.repo / "data/input.bin"
     ).stat().st_ino
     assert cli.run("prepare-worktree", str(worktree)).returncode == 0
+    # Exercise the same FD-based remover used by expiry; only the link is removed.
+    code = (
+        "from pathlib import Path; from worktree_cleanup.inventory import identity, remove_tree; "
+        f"p=Path({str(worktree)!r}); remove_tree(p, identity(p))"
+    )
+    environment = {**cli.environment, "PYTHONPATH": str(ROOT / ".agents/ops")}
+    removed = subprocess.run(
+        [sys.executable, "-c", code],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert removed.returncode == 0, removed.stderr
+    assert not worktree.exists()
+    assert (persistent / "copy.bin").read_bytes() == b"source bytes"
 
 
 def test_prepare_refuses_existing_e_symlink_without_changing_it(
@@ -121,11 +139,37 @@ def test_prepare_refuses_existing_e_symlink_without_changing_it(
     archive.mkdir()
     (worktree / "outputs").symlink_to(archive, target_is_directory=True)
     result = cli.run("prepare-worktree", str(worktree))
-    assert result.returncode == 1 and "real directory required" in result.stderr
+    assert result.returncode == 1 and "outputs must point" in result.stderr
     assert (worktree / "outputs").is_symlink() and (
         worktree / "outputs"
     ).resolve() == archive
     assert not (worktree / "data").exists()
+
+
+def test_prepare_keeps_main_output_alias_without_independent_storage(cli: Cli) -> None:
+    worktree = cli.repo / ".claude/worktrees/main-alias"
+    cli.git("worktree", "add", "-qb", "alias", str(worktree))
+    (worktree / "outputs").symlink_to(cli.repo / "outputs")
+    result = cli.run("prepare-worktree", str(worktree))
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout)
+    assert report["output_root"] == str(cli.repo / "outputs")
+    assert not (cli.repo / ".worktree-outputs/main-alias").exists()
+    assert (worktree / "outputs").resolve() == cli.repo / "outputs"
+
+
+def test_prepare_dry_run_refuses_to_read_old_symlink_target(cli: Cli) -> None:
+    worktree = cli.repo / ".claude/worktrees/old-alias"
+    cli.git("worktree", "add", "-qb", "old-alias", str(worktree))
+    output = worktree / "outputs"
+    output.symlink_to(cli.repo / "outputs")
+    os.utime(output, ns=(1, 1), follow_symlinks=False)
+    before = output.lstat()
+    result = cli.run("prepare-worktree", str(worktree), "--dry-run")
+    assert result.returncode == 1 and "dry-run cannot inspect" in result.stderr
+    assert output.lstat() == before
+    assert not (worktree / "data").exists()
+    assert not (cli.repo / ".worktree-outputs").exists()
 
 
 def test_cli_requires_launcher_and_missing_mount_fails_even_for_dry_run(
@@ -135,12 +179,13 @@ def test_cli_requires_launcher_and_missing_mount_fails_even_for_dry_run(
     assert direct.returncode == 75 and "checkout_job.py" in direct.stderr
     assert cli.run("hydrate").returncode == 2
     assert cli.run("index", "--dry-run").returncode == 2
+    assert cli.run("--queue-dir", "/unused", "scan").returncode == 2
     unactivated = cli.run("cycle")
     assert unactivated.returncode == 1 and "requires activate" in unactivated.stderr
     assert not (cli.repo / ".storage-tier").exists()
     config = cli.repo / "storage.toml"
     config.write_text(
-        'mirror_mount = "/not-a-tennis-mount"\ndataset_containers = ["data/task"]\ndataset_units = []\nsettle_seconds = 3600\n'
+        'mirror_mount = "/not-a-tennis-mount"\ndataset_containers = ["data/task"]\ndataset_units = []\n'
     )
     result = cli.run("--config", str(config), "cycle", "--dry-run")
     assert result.returncode == 1

@@ -682,7 +682,7 @@ def test_worktree_cleanup_timer_public_controls_and_tokyo_schedule(
     assert "KillMode=control-group" in service
 
 
-def test_storage_timer_installs_failure_notification_and_only_enables_timer(
+def test_storage_timer_only_installs_service_and_timer_without_notification(
     control: ControlEnv,
 ) -> None:
     stem = "tennis-lab-storage-tier"
@@ -691,15 +691,12 @@ def test_storage_timer_installs_failure_notification_and_only_enables_timer(
     source = control.repo / ".agents/ops/storage_tier/systemd"
     service = (source / f"{stem}.service").read_text()
     timer = (source / f"{stem}.timer").read_text()
-    assert f"OnFailure={stem}-failure.service" in service
+    assert "OnFailure=" not in service
     assert "checkout_job.py" in service and "-m storage_tier cycle" in service
     assert "OnCalendar=*-*-* 05:30:00 Asia/Tokyo" in timer
     assert "Persistent=true" in timer
     state = control.read()
     assert state["units"][f"{stem}.timer"]["UnitFileState"] == "enabled"
-    assert state["units"][f"{stem}-failure.service"]["UnitFileState"] == "static"
-    assert (
-        "org.freedesktop.Notifications"
-        in (source / f"{stem}-failure.service").read_text()
-    )
+    assert f"{stem}-failure.service" not in state["units"]
+    assert not (source / f"{stem}-failure.service").exists()
     checked(control, "off", "storage-tier")

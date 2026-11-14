@@ -48,6 +48,71 @@ def fd_mount_id(fd: int) -> int:
     raise StorageError("kernel did not provide a mount ID for the opened directory")
 
 
+def tree_size(path: Path) -> dict[str, Any]:
+    """du-like allocation, deduplicated per top level, without reading payloads."""
+    result = {
+        "logical_bytes": 0,
+        "allocated_bytes": 0,
+        "files": 0,
+        "directories": 0,
+        "symlinks": 0,
+    }
+    seen: set[tuple[int, int]] = set()
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW
+    root_info = path.lstat()
+
+    def account(info: os.stat_result) -> None:
+        kind = (
+            "directories"
+            if stat.S_ISDIR(info.st_mode)
+            else "symlinks"
+            if stat.S_ISLNK(info.st_mode)
+            else "files"
+        )
+        result[kind] += 1
+        key = (info.st_dev, info.st_ino)
+        if key not in seen:
+            seen.add(key)
+            result["allocated_bytes"] += info.st_blocks * 512
+            if stat.S_ISREG(info.st_mode):
+                result["logical_bytes"] += info.st_size
+
+    def walk(fd: int, mount_id: int) -> None:
+        with os.scandir(fd) as entries:
+            children = sorted(entry.name for entry in entries)
+        for name in children:
+            info = os.stat(name, dir_fd=fd, follow_symlinks=False)
+            if info.st_dev != root_info.st_dev:
+                raise StorageError("nested filesystem in unmanaged size inventory")
+            account(info)
+            if stat.S_ISDIR(info.st_mode):
+                child = os.open(name, flags, dir_fd=fd)
+                try:
+                    actual = os.fstat(child)
+                    if (actual.st_dev, actual.st_ino) != (info.st_dev, info.st_ino):
+                        raise StorageError("directory changed during size inventory")
+                    if fd_mount_id(child) != mount_id:
+                        raise StorageError("nested mount in unmanaged size inventory")
+                    walk(child, mount_id)
+                finally:
+                    os.close(child)
+
+    account(root_info)
+    if stat.S_ISDIR(root_info.st_mode):
+        root = os.open(path, flags)
+        try:
+            actual = os.fstat(root)
+            if (actual.st_dev, actual.st_ino) != (root_info.st_dev, root_info.st_ino):
+                raise StorageError("root changed during size inventory")
+            walk(root, fd_mount_id(root))
+        finally:
+            os.close(root)
+    return {
+        **result,
+        "method": "metadata-only; no-follow; hardlinks deduplicated per top level",
+    }
+
+
 def remove_tree(path: Path, expected: dict[str, Any]) -> None:
     """Delete through the verified root FD, preserving any path replacement."""
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NOATIME

@@ -1,6 +1,4 @@
 mirror_mount = "/mnt/wsl/tennis-data"
-# No recent writes for one hour, in addition to queue/fd checks and snapshots.
-settle_seconds = 3600
 # Direct children of these namespaces are dataset versions, never individual files.
 dataset_containers = [
   "data/ball_detection", "data/court_detection", "data/player_detection",

@@ -7,7 +7,7 @@ import re
 import stat
 import subprocess
 import tomllib
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -37,7 +37,6 @@ class Config:
     mount: Path
     containers: tuple[str, ...]
     datasets: tuple[str, ...] = ()
-    settle_seconds: int = 3600
 
     @property
     def mirror(self) -> Path:
@@ -54,7 +53,6 @@ class Config:
             "mirror_mount",
             "dataset_containers",
             "dataset_units",
-            "settle_seconds",
         }:
             raise StorageError(f"unknown/missing storage configuration keys: {path}")
         mount = Path(data["mirror_mount"])
@@ -71,8 +69,6 @@ class Config:
             if len(set(values)) != len(values):
                 raise StorageError(f"duplicate {key}")
             lists.append(tuple(values))
-        if type(data["settle_seconds"]) is not int or data["settle_seconds"] < 0:
-            raise StorageError("settle_seconds must be a nonnegative integer")
         boundaries = [*lists[0], *lists[1]]
         for index, first in enumerate(boundaries):
             if any(
@@ -81,7 +77,7 @@ class Config:
                 for second in boundaries[index + 1 :]
             ):
                 raise StorageError("dataset containers/units must not overlap")
-        return cls(repo.resolve(), mount, lists[0], lists[1], data["settle_seconds"])
+        return cls(repo.resolve(), mount, lists[0], lists[1])
 
 
 @dataclass(frozen=True, order=True)
@@ -99,12 +95,16 @@ class Inventory:
     units: list[Unit]
     unmanaged: list[str]
     errors: list[str]
+    references: list[str] = field(default_factory=list)
+    legacy_outputs: list[dict[str, str]] = field(default_factory=list)
 
 
 def discover(config: Config, base: Path) -> Inventory:
     found: set[Unit] = set()
     unmanaged: list[str] = []
     errors: list[str] = []
+    references: list[str] = []
+    legacy_outputs: list[dict[str, str]] = []
 
     def directories(parent: str) -> list[str]:
         path = base / parent
@@ -150,8 +150,27 @@ def discover(config: Config, base: Path) -> Inventory:
         except (OSError, StorageError) as exc:
             errors.append(str(exc))
     output_roots = ["outputs"]
+    output_roots.extend(directories(".worktree-outputs"))
+    # Worktree links are references, never separate units. Do not read their
+    # targets: even stat-through-symlink changes an old symlink's atime.
     for worktree in directories(".claude/worktrees"):
-        output_roots.append(worktree + "/outputs")
+        output = worktree + "/outputs"
+        try:
+            info = (base / output).lstat()
+        except FileNotFoundError:
+            continue
+        if stat.S_ISLNK(info.st_mode):
+            references.append(output)
+        elif stat.S_ISDIR(info.st_mode):
+            unmanaged.append(output)
+            legacy_outputs.append(
+                {
+                    "source": output,
+                    "destination": ".worktree-outputs/" + PurePosixPath(worktree).name,
+                }
+            )
+        else:
+            errors.append(f"unsupported legacy output path: {base / output}")
     for root in output_roots:
         for task in directories(root):
             if (
@@ -203,7 +222,13 @@ def discover(config: Config, base: Path) -> Inventory:
             for other in paths[index + 1 :]
         ):
             errors.append(f"overlapping units: {unit.path}")
-    return Inventory(paths, sorted(set(unmanaged)), sorted(set(errors)))
+    return Inventory(
+        paths,
+        sorted(set(unmanaged)),
+        sorted(set(errors)),
+        sorted(references),
+        legacy_outputs,
+    )
 
 
 def main_checkout(path: Path) -> Path:
@@ -238,14 +263,36 @@ def prepare_worktree(
         real_directory(config.repo / name, config.repo)
     actions = []
     output = worktree / "outputs"
+    persistent = config.repo / ".worktree-outputs" / worktree.name
+    for path in (persistent.parent, persistent):
+        if os.path.lexists(path):
+            real_directory(path, config.repo)
+            if path.stat().st_dev != config.repo.stat().st_dev:
+                raise StorageError("persistent worktree outputs are not on D:")
     if os.path.lexists(output):
-        real_directory(output, worktree)
+        if dry_run and output.is_symlink():
+            raise StorageError(
+                "dry-run cannot inspect an existing outputs symlink target without changing its atime; use actual prepare-worktree for validation"
+            )
+        if not output.is_symlink() or output.resolve() not in {
+            persistent,
+            config.repo / "outputs",
+        }:
+            raise StorageError(
+                "existing worktree outputs must point to its persistent D: directory or main outputs"
+            )
+        target = output.resolve()
     else:
-        actions.append("mkdir outputs on D:")
+        target = persistent
+        actions.append(f"link outputs to persistent D: {persistent}")
     for name in ("data", "ckpt", ".venv"):
         destination = worktree / name
         source = config.repo / name
         if os.path.lexists(destination):
+            if dry_run and destination.is_symlink():
+                raise StorageError(
+                    f"dry-run cannot inspect an existing {name} symlink target without changing its atime; use actual prepare-worktree for validation"
+                )
             if (
                 not destination.is_symlink()
                 or destination.resolve() != source.resolve()
@@ -257,10 +304,19 @@ def prepare_worktree(
             actions.append(f"link {name} to main checkout")
     # Validate the complete plan before making any changes.
     if not dry_run:
-        output.mkdir(exist_ok=True)
+        if target == persistent:
+            persistent.mkdir(parents=True, exist_ok=True)
+        if not os.path.lexists(output):
+            output.symlink_to(target, target_is_directory=True)
         for name in ("data", "ckpt", ".venv"):
             if not os.path.lexists(worktree / name):
                 (worktree / name).symlink_to(
                     config.repo / name, target_is_directory=True
                 )
-    return {"worktree": str(worktree), "dry_run": dry_run, "actions": actions}
+    return {
+        "worktree": str(worktree),
+        "output_root": str(target),
+        "mirror_output_root": str(config.mirror / target.relative_to(config.repo)),
+        "dry_run": dry_run,
+        "actions": actions,
+    }

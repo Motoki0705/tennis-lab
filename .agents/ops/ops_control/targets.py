@@ -92,21 +92,7 @@ TARGETS = {
         "git-sync", "tennis-lab-git-sync", status_file="git-sync/status.json"
     ),
     "worktree-cleanup": timer_target("worktree-cleanup", "tennis-lab-worktree-cleanup"),
-    "storage-tier": Target(
-        name="storage-tier",
-        kind="timer",
-        units=(
-            "tennis-lab-storage-tier.timer",
-            "tennis-lab-storage-tier.service",
-            "tennis-lab-storage-tier-failure.service",
-        ),
-        enable_units=("tennis-lab-storage-tier.timer",),
-        off_steps=(
-            Step("systemctl", ("disable", "--now", "tennis-lab-storage-tier.timer")),
-            Step("systemctl", ("stop", "tennis-lab-storage-tier.service")),
-        ),
-        run_unit="tennis-lab-storage-tier.service",
-    ),
+    "storage-tier": timer_target("storage-tier", "tennis-lab-storage-tier"),
 }
 
 

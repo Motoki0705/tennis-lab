@@ -28,6 +28,7 @@ from .filesystem import (
     rename,
     snapshot,
     sync_dir,
+    tree_size,
     write_json,
 )
 from .layout import Config, Unit, discover
@@ -74,7 +75,8 @@ class Engine:
         clock: Callable[[], float] = time.time,
     ) -> None:
         self.config = config
-        self.inspector = inspector or Inspector(config.repo / ".training_queue")
+        self.inspector = inspector or Inspector()
+        self.process_scope: dict[str, Any] = {}
         self.mount_check = mount_check
         self.clock = clock
 
@@ -160,10 +162,16 @@ class Engine:
             )
         return value
 
-    def audit(self, event: str, unit: Unit, **details: Any) -> None:
+    def audit(self, event: str, unit: Unit | None = None, **details: Any) -> None:
         append_json(
             self.config.state / "audit.jsonl",
-            {"event": event, "unit": unit.path, "time": self.timestamp(), **details},
+            {
+                "event": event,
+                "unit": unit.path if unit else None,
+                "time": self.timestamp(),
+                "process_scope": self.process_scope,
+                **details,
+            },
         )
 
     @contextmanager
@@ -196,23 +204,14 @@ class Engine:
             raise
         return path
 
-    def quiet(
-        self, unit: Unit, path: Path, tree: Snapshot, *, moved: bool = False
-    ) -> None:
+    def quiet(self, unit: Unit, path: Path, tree: Snapshot) -> None:
         usage = self.inspector.inspect((self.config.repo / unit.path, path), tree)
+        self.process_scope.clear()
+        self.process_scope.update(usage.scope())
         if usage.unknown:
             raise StorageError("usage cannot be verified: " + "; ".join(usage.unknown))
         if usage.busy:
             raise BusyUnit("; ".join(usage.busy))
-        newest_write = max(
-            max(
-                e["mtime_ns"],
-                e["ctime_ns"] if not moved or name != "." else e["mtime_ns"],
-            )
-            for name, e in tree.entries.items()
-        )
-        if newest_write > self.now_ns - self.config.settle_seconds * 10**9:
-            raise BusyUnit("unit has recent writes; waiting for the settling interval")
 
     def assert_idle(self, tree: Snapshot) -> None:
         last = tree.last_access_ns
@@ -506,7 +505,7 @@ class Engine:
             if not final.same_metadata(moved, moved=True):
                 raise StorageError("D: unit was replaced or changed during quarantine")
             self.assert_idle(moved)
-            self.quiet(unit, quarantine, moved, moved=True)
+            self.quiet(unit, quarantine, moved)
             self.check_mirror(unit, manifest)
             record["phase"] = "verified"
             write_json(transaction, record)
@@ -640,11 +639,34 @@ class Engine:
                 "mirror": str(self.config.mirror),
                 "layout_errors": local.errors + mirror.errors,
                 "unmanaged": {"D": local.unmanaged, "E": mirror.unmanaged},
+                "output_references": {"D": local.references, "E": mirror.references},
+                "legacy_outputs": {
+                    "D": local.legacy_outputs,
+                    "E": mirror.legacy_outputs,
+                },
                 "results": [],
             }
+            usage = self.inspector.inspect((), Snapshot({}))
+            self.process_scope.clear()
+            self.process_scope.update(usage.scope())
+            report["process_scope"] = self.process_scope
+            report["usage"] = {"busy": usage.busy, "unknown": usage.unknown}
+            if not dry_run and command != "scan":
+                self.audit("process_scope", operation=command)
             if command == "scan":
-                usage = self.inspector.inspect((), Snapshot({}))
-                report["usage"] = {"busy": usage.busy, "unknown": usage.unknown}
+                sizes = []
+                for path in mirror.unmanaged:
+                    if len(Path(path).parts) == 2 and Path(path).parts[0] == "data":
+                        try:
+                            sizes.append(
+                                {"path": path, **tree_size(self.config.mirror / path)}
+                            )
+                        except (OSError, StorageError) as exc:
+                            report["layout_errors"].append(
+                                f"unmanaged size {path}: {exc}"
+                            )
+                            sizes.append({"path": path, "error": str(exc)})
+                report["unmanaged_data_sizes_E"] = sizes
                 report["units"] = [
                     {
                         "unit": u.path,
@@ -668,9 +690,12 @@ class Engine:
                     "unfinished deletion transactions; run recover before continuing"
                 )
             if not requested and report["layout_errors"]:
-                raise StorageError(
+                report["error"] = (
                     "layout has errors; inspect scan before selecting units"
                 )
+                if not dry_run:
+                    self.audit("failed", operation=command, error=report["error"])
+                return 1, report
             selected: list[Unit] = []
             for path in requested:
                 candidate = Path(path)
