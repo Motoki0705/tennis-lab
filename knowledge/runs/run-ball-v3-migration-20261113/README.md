@@ -93,3 +93,19 @@ filesystem一致を検査し、hardlinkで再利用する。
 decoratorの型付き代入、productのOptional型、テストのmask/metadataの型確認で修正した。
 変換内容と公開要求の仕様は維持する。全repoのmypyに残る指摘と、変更ファイルだけの
 pre-commit結果は最終検証記録へ記載する。
+
+
+## 復旧後の少数公開
+
+実行commit `64f61a41879713169151530c09c8df9fbd2aa4f7` で3本・3,030frameの
+少数公開を完了した。元v2のobserved 2,767、interpolated 105、遮蔽推定10、unknown 148を
+保持した。native画像は1080×1920で読め、readerの教師maskと各種由来の座標を照合した。
+scene importの再読込と同じ要求の再送も成功した。receiptと全検証結果はデータディスクの
+`small-relocated-publication.json`、少数の対応例は `relocated-dry-run.json` に残す。
+旧注釈171件、snapshotのmetadata/index計6件、旧画像513件の内容照合も成功した。
+本集合123本の公開結果は、完了後にこの記録と対応表へ追記する。
+
+変更ファイルのpre-commitと新規28件の検証は成功した。新規caseの最大時間は丸め済み
+pytest実測の合計1.52秒、setup最大0.72秒だった。全ファイルpre-commitのmypyには
+変更対象外で282件と10件のエラーが残る。変更対象内のエラーは0件だった。
+詳細と実行logの場所は `validation-summary.json` に固定する。

@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "source_commit": "64f61a41879713169151530c09c8df9fbd2aa4f7",
+  "added_tests": {
+    "unit": 24,
+    "integration": 4,
+    "largest_parametrization": 17,
+    "passed": 28,
+    "wall_seconds": 11.96,
+    "max_case_seconds_from_rounded_pytest_durations": 1.52,
+    "max_setup_seconds": 0.72
+  },
+  "recovery_related_tests_before_typing_fix": {
+    "passed": 152,
+    "wall_seconds": 862.43,
+    "conditions": "concurrent migration IO; temporary files on relocated data disk"
+  },
+  "scene_unit_tests_before_typing_fix": {
+    "passed": 19,
+    "wall_seconds": 11.06
+  },
+  "scoped_pre_commit": "passed",
+  "all_files_pre_commit": {
+    "ruff": "passed",
+    "mypy": "failed",
+    "errors_in_changed_files": 0,
+    "error_counts_by_invocation": [
+      282,
+      10
+    ]
+  },
+  "expanded_mypy": {
+    "errors_in_changed_files": 0,
+    "errors_in_unchanged_dependency_files": 1,
+    "unchanged_dependency": "src/tasks/base/annotation/plan.py"
+  },
+  "regression_detection": {
+    "prepared_image_retention_before_fix": "failed: reference_count=0",
+    "after_fix_related_tests_passed": 44,
+    "wall_seconds": 54.98
+  },
+  "raw_logs_root": "outputs/ball_detection/migrate/video-v3/20261113"
+}
