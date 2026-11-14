@@ -275,7 +275,7 @@ def test_installation_translations_preserve_sections_commands_and_references(
     language = public_document_language_from_filename(filename)
     required = {
         "requirements", "clone-and-sync", "dino-cuda-extension", "required-assets",
-        "preflight", "run-the-sample", "visualize", "rehearse-clean-install",
+        "drive-quota", "verify-gvhmr-weights", "preflight", "run-the-sample", "visualize", "rehearse-clean-install",
     }
     for text in (english, translated):
         assert_sections(text, required, context=filename)

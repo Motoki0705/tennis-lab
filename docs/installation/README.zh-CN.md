@@ -183,6 +183,123 @@ CUDA_VISIBLE_DEVICES='' .venv/bin/python -c \
 对于 Google Drive 文件夹，请仅下载其中所需的文件，并按表中的名称存放。
 需要注册或申请才能获取的模型不会由本仓库重新分发，也不会通过其他镜像提供。
 
+<a id="drive-quota"></a>
+
+### GVHMR 的 Drive 下载配额超限：诊断与恢复
+
+先获取官方的 ViTPose-H 和 HMR2 文件。验证完成前，将下载文件保存在 `ckpt/` 之外：
+
+```bash
+export GVHMR_WEIGHTS="$PWD/outputs/gvhmr-weights"
+mkdir -p "$GVHMR_WEIGHTS/vitpose" "$GVHMR_WEIGHTS/hmr2"
+.venv/bin/python -m gdown 1sR8xZD9wrZczdDVo6zKscNLwvarIRhP5 -O "$GVHMR_WEIGHTS/vitpose/vitpose-h-multi-coco.pth"
+.venv/bin/python -m gdown 1X5hvVqvqI9tvjUCb2oAlZxtgIKD9kvsc -O "$GVHMR_WEIGHTS/hmr2/epoch=10-step=25000.ckpt"
+```
+
+在 **2026-11-02 UTC** 的全新安装中，两条命令均失败，并显示
+`Too many users have viewed or downloaded this file recently`。直接下载也返回了 HTTP 200，
+但内容是标题为 `Google Drive - Quota exceeded` 的 HTML 页面，而非 checkpoint 的字节。
+这表明目标文件触发了上游下载配额限制，不能据此断定链接永久失效或 pipeline 模型有问题。
+仅凭 HTTP 200 不能判断下载成功。以下检查最多读取每个响应的前 8 KiB，不会安装文件：
+
+```bash
+.venv/bin/python - <<'PY'
+from urllib.error import HTTPError
+from urllib.request import urlopen
+
+for name, file_id in (
+    ("vitpose", "1sR8xZD9wrZczdDVo6zKscNLwvarIRhP5"),
+    ("hmr2", "1X5hvVqvqI9tvjUCb2oAlZxtgIKD9kvsc"),
+):
+    url = f"https://drive.usercontent.google.com/download?id={file_id}&export=download&confirm=t"
+    try:
+        response = urlopen(url, timeout=30)
+    except HTTPError as error:
+        response = error
+    with response:
+        prefix = response.read(8192).decode("utf-8", errors="replace")
+        print(name, response.status, response.headers.get("Content-Type"))
+        print("quota_exceeded:", "Google Drive - Quota exceeded" in prefix)
+PY
+```
+
+如果出现 `quota_exceeded: True`，请保留诊断信息并停止重复下载。
+可以等待官方临时限制解除后重试，或使用之前按照上游条款获取的相同文件。
+将 `GVHMR_WEIGHTS` 设置为已获取文件的根目录，保留表中的 `vitpose/` 和 `hmr2/` 相对路径，
+然后进行[验证与放置](#verify-gvhmr-weights)。
+例如：`export GVHMR_WEIGHTS=/absolute/path/to/user-acquired/ckpt`。
+
+另一个由**用户明确选择**的来源是 [camenduru/GVHMR](https://huggingface.co/camenduru/GVHMR/tree/main)。
+在 **2026-11-14 UTC**，这两个 Git LFS 对象的 SHA-256 与
+[installation_assets.py](../../src/tennis_scene/installation_assets.py) 中已有的固定值一致；
+大小也与经过验证的本地文件一致，并已固定在同一代码中。元数据一致不能代替对下载后字节的验证。
+该镜像没有模型卡或许可证声明，也尚未确认权利人是否允许其重新分发这些 checkpoint。
+上游 ViTPose 代码采用 Apache-2.0，HMR2 代码采用 MIT，但这些代码许可证不能决定权重、训练数据或 SMPL 内容的全部权利。
+请查看[上游条款与署名要求](../../LICENSES.zh-CN.md#third-party-weights)，仅在自行确认获取和使用均获允许时选择该镜像。
+如果无法确认，请使用已经合法获取的文件或官方来源。目前尚未确立获得授权的长期替代来源；
+镜像存在并不证明官方 Drive 稳定，也不保证镜像未来持续可用。
+如果选择此来源，只将这两个文件下载到暂存目录，然后执行下方验证：
+
+```bash
+.venv/bin/python - <<'PY'
+import os
+from huggingface_hub import hf_hub_download
+from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
+
+for asset in INSTALLATION_ASSETS:
+    if asset.name in {"vitpose", "hmr2"}:
+        hf_hub_download("camenduru/GVHMR", asset.filename, revision="main",
+                        local_dir=os.environ["GVHMR_WEIGHTS"])
+PY
+```
+
+<a id="verify-gvhmr-weights"></a>
+
+### 验证并放置已获取的 ViTPose-H 和 HMR2 文件
+
+无论使用已有本地副本、成功的 Drive 下载还是可选镜像，**所有来源**都必须执行此步骤。
+复制前按照代码中的固定大小和 SHA-256 验证两个文件，放置后再次验证，并拒绝覆盖已有的不同文件。
+HTML 错误页面、Git LFS 指针、未下载完整的文件或同名的其他 checkpoint 都必须验证失败。
+出现错误时，请明确修复文件获取过程后重试；不要修改固定值、转换文件或替换模型。
+请为暂存副本和最终放置的副本都预留磁盘空间。
+
+```bash
+CUDA_VISIBLE_DEVICES='' .venv/bin/python - <<'PY'
+import os
+import shutil
+from pathlib import Path
+from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
+from src.utils.checksum import dual_sha256
+
+assets = [asset for asset in INSTALLATION_ASSETS if asset.name in {"vitpose", "hmr2"}]
+source_root = Path(os.environ["GVHMR_WEIGHTS"])
+checkpoint_root = Path("ckpt").resolve()
+
+def verify(asset, path):
+    if asset.size_bytes is None or path.stat().st_size != asset.size_bytes:
+        raise SystemExit(f"Size mismatch: {path}")
+    if dual_sha256(path) != asset.sha256:
+        raise SystemExit(f"SHA-256 mismatch: {path}")
+    print(f"{asset.name}: ok ({path})")
+
+for asset in assets:
+    verify(asset, source_root / asset.filename)
+for asset in assets:
+    destination = (checkpoint_root / asset.filename).resolve()
+    if not destination.is_relative_to(checkpoint_root):
+        raise SystemExit(f"Path escapes checkpoint root: {destination}")
+    if not destination.exists():
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with (source_root / asset.filename).open("rb") as source, destination.open("xb") as target:
+            shutil.copyfileobj(source, target)
+    verify(asset, destination)
+PY
+```
+
+仅在两个放置后的文件均报告 `ok` 后，才继续执行[完整 preflight](#preflight)。它使用相同的固定值，
+还会检查其他资产和 DINO 扩展。仅验证这两个文件并不表示整个安装已通过检查。
+人体模型和 DINOv3 仍需通过上文的官方注册或申请渠道获取，不要从此镜像获取它们。
+
 <a id="preflight"></a>
 
 ## 运行前预检
@@ -271,7 +388,7 @@ CUDA_VISIBLE_DEVICES='' MPLBACKEND=Agg .venv/bin/python -m src.tennis_scene.scri
 对于用户通过注册、申请或 Drive 获取的第三方资产，**仅在此次本地验证中**，脚本会先从明确指定的检查点根目录
 校验并复制文件，再在复制后重新校验。项目权重和示例从 Hub 下载。
 脚本不会链接已有的虚拟环境、data 或 ckpt，也不会在未校验的情况下复制权重。
-自行安装时，请从上述官方来源获取资产。
+自行安装时，请遵循上文的获取与验证步骤。
 
 ```bash
 python3 scripts/prepare_clean_install.py \

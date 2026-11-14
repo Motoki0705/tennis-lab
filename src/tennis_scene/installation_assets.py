@@ -56,6 +56,7 @@ class InstallationAsset:
     license_ja: str
     license_zh_cn: str
     local_acquisition: bool = True
+    size_bytes: int | None = None
 
 
 _GVHMR_DOWNLOAD = (
@@ -79,6 +80,7 @@ THIRD_PARTY_ASSETS = (
         "ViTPose / Apache-2.0¹",
         "ViTPose / Apache-2.0¹",
         "ViTPose / Apache-2.0¹",
+        size_bytes=2_549_075_546,
     ),
     InstallationAsset(
         "hmr2",
@@ -88,6 +90,7 @@ THIRD_PARTY_ASSETS = (
         "HMR2 / MIT¹; separate SMPL terms apply",
         "HMR2 / MIT¹; SMPL条件は別",
         "HMR2 / MIT¹；SMPL 条款另行适用",
+        size_bytes=2_709_494_041,
     ),
     InstallationAsset(
         "gvhmr",
