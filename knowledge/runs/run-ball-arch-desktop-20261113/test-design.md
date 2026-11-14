@@ -49,3 +49,26 @@ The GPU acceptance is the actual restored update-1,000 production state, first
 compile update plus ten further finite continuous updates. Capture per-update
 data-wait and wall seconds, resource peaks/minima, full-state restore and exact
 committed log prefix. Do not compare GPU timing with the historical L4 benchmark.
+## Attempt 5 addendum: explicit NVMe work copy
+
+The parent's added instruction requires a complete copy of the fixed dataset
+onto the WSL root filesystem. E remains the immutable canonical source. Retain
+the earlier E-only staging root and its interrupted recovery evidence; the fresh
+`desktop-recovery-20261114-a5-nvme` root has no reused queue registration.
+
+Before implementation, select a stdlib copy helper with pinned file-set/size/SHA
+checks, independent destination inodes, atomic per-file publication and explicit
+resume validation. Reject a destination on the data volume, symlink aliasing,
+corrupt pre-existing destinations, corrupt copied bytes and unexpected files.
+Extend bootstrap with explicit canonical-source/hot-root arguments, so input
+hardlinks remain on E and dataset payloads are never hardlinked across devices.
+Existing checkpoint relocation must change only the resolved data path/digests.
+
+Add about seven small CPU copy cases in `test_desktop_hot_dataset.py`; use real
+files and injected volume/capacity facts without GPU/model initialization. Reuse
+the 42 existing guard/state/lifecycle cases. Record collection/durations and an
+intentional omitted-copy-hash mutation, then restore and run the selected suite.
+Actual validation copies all 157,028,755,547 bytes and SHA-checks every payload
+on D; source E is unchanged. Capture initial copy duration separately from any
+subsequent D verification. Production acceptance records data-wait/update seconds
+and compares only the same short update prefix with the previous attempt.

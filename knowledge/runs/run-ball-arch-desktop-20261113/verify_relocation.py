@@ -12,7 +12,7 @@ from guard import D_DRIVE, E_DRIVE, d_drive_available, e_drive_available
 from rebuild_dataset import DISTRIBUTION, sha, write
 
 
-def verify(root, previous):
+def verify(root, previous, *, hot_dataset=None):
     import av
     import cv2
     import numpy
@@ -29,10 +29,24 @@ def verify(root, previous):
     if not root.resolve().is_relative_to(E_DRIVE) or root.stat().st_dev != volume_device:
         raise ValueError("New output root must be on the mounted data volume")
     entries = json.loads((root / "dataset/distribution.json").read_text())["files"]
+    canonical = previous / "dataset" if hot_dataset is None else Path(dataset["source"])
+    if hot_dataset is not None:
+        if ((root / "dataset").resolve() != hot_dataset.resolve()
+                or hot_dataset.stat().st_dev != Path("/").stat().st_dev
+                or hot_dataset.resolve().is_relative_to(E_DRIVE)
+                or not canonical.resolve().is_relative_to(E_DRIVE)
+                or not dataset.get("independent_copy")):
+            raise ValueError("Hot dataset must be a verified root-filesystem copy of the canonical E dataset")
     for entry in entries:
-        source, target = previous / "dataset" / entry["path"], root / "dataset" / entry["path"]
-        if not os.path.samefile(source, target) or target.stat().st_dev != volume_device:
+        source, target = canonical / entry["path"], root / "dataset" / entry["path"]
+        if hot_dataset is not None:
+            if os.path.samefile(source, target) or target.stat().st_nlink != 1 or target.stat().st_dev != Path("/").stat().st_dev:
+                raise ValueError("Hot payload is not an independent root-filesystem copy")
+        elif not os.path.samefile(source, target) or target.stat().st_dev != volume_device:
             raise ValueError("Dataset hardlink/device differs: " + str(target))
+    inputs = json.loads((root / "inputs-verified.json").read_text())
+    if sha(root / "inputs/common-dpt-T32/checkpoint-update-00010000.pt") != inputs["c0_checkpoint_sha256"]:
+        raise ValueError("C0 checkpoint differs from the original verified input receipt")
     expected = json.loads((root / "environment-verified.json").read_text())
     differences = {}
     for package, version in expected["installed"].items():
@@ -69,8 +83,10 @@ def verify(root, previous):
                 assets.append(dict(path=str(target.relative_to(root)), size_bytes=target.stat().st_size,
                                    sha256=sha(target)))
     result = dict(complete=True, root=str(root), previous=str(previous), checked_at=time.time(),
-                  dataset=dataset, dataset_hardlinks_verified=len(entries),
-                  dataset_payload_copy_bytes=0, data_volume_device=volume_device,
+                  dataset=dataset, dataset_hardlinks_verified=len(entries) if hot_dataset is None else 0,
+                  dataset_hot_copies_verified=len(entries) if hot_dataset is not None else 0,
+                  hot_dataset=None if hot_dataset is None else str(hot_dataset.resolve()),
+                  dataset_payload_copy_bytes=dataset.get("copied_bytes", 0), data_volume_device=volume_device,
                   python=sys.version, private_prefix=sys.prefix, torch=torch.__version__,
                   numpy=numpy.__version__, cv2=cv2.__version__, av=av.__version__,
                   recorded_packages_verified=len(expected["installed"]), package_differences=differences,
@@ -89,5 +105,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--previous-root", type=Path, required=True)
+    parser.add_argument("--hot-dataset", type=Path)
     args = parser.parse_args()
-    verify(args.root.resolve(), args.previous_root.resolve())
+    verify(args.root.resolve(), args.previous_root.resolve(), hot_dataset=args.hot_dataset)

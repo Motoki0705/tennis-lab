@@ -26,7 +26,9 @@ def link_tree(source, destination):
             os.link(path, target)
 
 
-def main(old, root):
+def main(old, root, *, hot_dataset=None, dataset_source=None):
+    if (hot_dataset is None) != (dataset_source is None):
+        raise ValueError("Hot dataset and canonical dataset source must be specified together")
     if root.exists():
         raise ValueError("Recovery bootstrap requires a new output root")
     latest = sorted(
@@ -68,7 +70,12 @@ def main(old, root):
         (root / name).write_bytes((old / name).read_bytes())
     for name in ("env-original", "msda-build", "cache"):
         (root / name).symlink_to((old / name).resolve(), target_is_directory=True)
-    rebuild(old / "dataset", root / "dataset", root / "dataset-verified.json")
+    if hot_dataset is None:
+        verification = rebuild(old / "dataset", root / "dataset", root / "dataset-verified.json")
+    else:
+        from copy_hot_dataset import copy_hot
+        verification = copy_hot(dataset_source, hot_dataset, root / "dataset-verified.json")
+        (root / "dataset").symlink_to(hot_dataset.resolve(), target_is_directory=True)
     prepare(root)
     attempt = max(int(p.stem.rsplit("-a", 1)[1]) for p in latest) + 1
     write(
@@ -79,7 +86,10 @@ def main(old, root):
             next_queue_attempt=attempt,
             old_service=registration["unit"],
             old_service_state=state,
-            new_rgb_payload_bytes=0,
+            new_rgb_payload_bytes=verification["additional_payload_bytes"],
+            dataset_mode="canonical_hardlinks" if hot_dataset is None else "nvme_copy",
+            hot_dataset=None if hot_dataset is None else str(hot_dataset.resolve()),
+            canonical_dataset=str((old / "dataset").resolve() if dataset_source is None else dataset_source.resolve()),
             private_environment_reused=True,
             storage_baseline_preserved=True,
         ),
@@ -91,5 +101,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--from-root", type=Path, required=True)
     parser.add_argument("--root", type=Path, required=True)
+    parser.add_argument("--hot-dataset", type=Path)
+    parser.add_argument("--dataset-source", type=Path)
     args = parser.parse_args()
-    main(args.from_root.resolve(), args.root.resolve())
+    main(args.from_root.resolve(), args.root.resolve(), hot_dataset=args.hot_dataset,
+         dataset_source=args.dataset_source)

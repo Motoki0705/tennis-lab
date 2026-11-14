@@ -1,10 +1,15 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
-Current state: preparing attempt 5 after the parent's 2026-11-14 storage recovery.
+Current state: preparing attempt 5 with a verified NVMe dataset work copy after
+the parent's 2026-11-14 additional instruction.
 Attempt 4's closed failure remains in [attempt-4-storage-stop.json](attempt-4-storage-stop.json).
-Active data, outputs, private environment and caches now reside on the mounted
-ext4 data volume at `/mnt/wsl/tennis-data`; the original output aliases are
-symlinks. The prior [monitoring-handoff.json](monitoring-handoff.json) still
+Canonical data, outputs, private environment and caches reside on the mounted
+ext4 data volume at `/mnt/wsl/tennis-data`; original output aliases are symlinks.
+The hot dataset is an independent copy at
+`/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1` on the WSL root/NVMe
+filesystem. The E source is unchanged. The earlier E-only attempt-5 staging and
+its interrupted recovery are retained; no production registration used that root.
+The prior [monitoring-handoff.json](monitoring-handoff.json) still
 describes the stopped attempt until the new startup acceptance is committed.
 
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
@@ -22,7 +27,7 @@ qualification, lifecycle and evidence; it does not replace historical generation
 
 ## Inputs and safety
 
-`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5`
+`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme`
 below the implementation worktree. `$SOURCE` is the immutable pushed runtime checkout.
 `$ADAPTER` is this directory in that checkout. `$PY` is `$ROOT/env-original/bin/python`.
 `$QUEUE` is the main repository's shared `.training_queue`; set `$RCLONE_CONFIG`
@@ -32,6 +37,14 @@ to the authenticated private config. Never print its contents.
   desktop dataset. It reads and SHA-checks all 2,925 payloads and the distribution
   declaration; it copies no RGB data. The distribution is the original fixed
   train/validation snapshot, not a newly sampled dataset.
+- For attempt 5, `copy_hot_dataset.py` instead copies this fixed distribution to
+  the explicitly selected NVMe hot root, verifies every destination size/SHA,
+  independent inode and exact inventory, and records copy/reuse bytes and time.
+  `bootstrap_recovery.py --hot-dataset <D-root> --dataset-source <E-canonical>`
+  verifies/reuses that work copy and points only its dataset alias at D. Other
+  immutable inputs keep their E-side hardlinks. The existing path-only preparation
+  and checkpoint migration regenerate manifest digests without changing content,
+  optimizer, RNG, sampler, model tensors or the scientific recipe.
 - `restore_inputs.py` verifies the T1 checkpoint against its immutable marker,
   the saved input receipt, and C0's complete snapshot. Source/inputs of #1675
   remain read-only. `state.py` explicitly relocates store paths and migrates the
@@ -68,8 +81,8 @@ to the authenticated private config. Never print its contents.
   `download-tree`, a precomputed trusted expected manifest and progress file.
   No desktop publication may begin until its closed-tree readback completes.
   The original `/mnt/e/tennis-lab-archive` remains storage only. From attempt 5,
-  training reads/writes the separate mounted ext4 data volume on E as explicitly
-  directed by the parent after WSL recovery.
+  outputs/env/cache use the separate mounted ext4 data volume on E. The added
+  parent instruction selects the independent D dataset work copy for training.
 
 ## Qualification and startup
 
