@@ -340,6 +340,19 @@ class ParentEnv:
         path.write_text(text)
         return str(path)
 
+    def review_flags(self) -> tuple[str, ...]:
+        """Explicit parent choice for workflow fixtures that cross state/gate boundaries."""
+        path = self.root / "review-model-reason.md"
+        path.write_text("永続状態・復旧・merge gateの境界を確認するためAstraを選ぶ。")
+        return (
+            "--review-model",
+            "gpt-6-astra",
+            "--review-effort",
+            "xhigh",
+            "--model-reason-file",
+            str(path),
+        )
+
     def announce_completion(self) -> dict[str, Any]:
         """Act as the parent: explicitly select and record the verified overall outcome."""
         source = json.loads(

@@ -319,6 +319,7 @@ def test_legacy_session_replacement_retries_rejected_launch_and_requests_review(
     refused = manual(
         p,
         "review-request",
+        *p.review_flags(),
         "--prs",
         "100",
         "--instruction-file",
@@ -343,6 +344,7 @@ def test_legacy_session_replacement_retries_rejected_launch_and_requests_review(
     review = manual(
         p,
         "review-request",
+        *p.review_flags(),
         "--prs",
         "100",
         "--instruction-file",
@@ -522,6 +524,7 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
         refused = manual(
             p,
             "review-request",
+            *p.review_flags(),
             "--prs",
             "100",
             "--instruction-file",
@@ -561,6 +564,7 @@ def test_corrupt_events_stop_replace_resume_and_review_request(
     response = manual(
         p,
         "review-request",
+        *p.review_flags(),
         "--prs",
         "100",
         "--instruction-file",
