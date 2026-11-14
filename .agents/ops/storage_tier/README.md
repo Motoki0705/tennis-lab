@@ -69,7 +69,8 @@ acknowledged journal under `recovered-checkpoint-file-operations/` before explic
 E: index and D:/E: verify. `recover` does not resume or discard these files. A
 mismatch never authorizes deleting the archived inode. Root-directory timestamps
 are excluded from this projection's metadata identity; root device/inode/mode and
-all direct-file metadata/hashes are still checked.
+all direct-file metadata/hashes are still checked. Container modes are preserved independently
+on D: and E:, and are not compared as root-file payload.
 
 When migrating a former whole-`ckpt` manifest, run explicit `index ckpt` first.
 It preserves the old manifest under E:`.storage-tier/legacy-manifests/` before

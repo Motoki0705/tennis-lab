@@ -2431,6 +2431,33 @@ def test_legacy_whole_checkpoint_cannot_be_published(lab: Lab) -> None:
         lab.engine.mirror(lab.layout.Unit("ckpt", "checkpoint"), dry_run=False)
 
 
+def test_checkpoint_root_files_preserve_independent_container_permissions(
+    lab: Lab,
+) -> None:
+    local, mirror = lab.config.repo / "ckpt", lab.config.mirror / "ckpt"
+    local.mkdir(mode=0o700)
+    mirror.mkdir(mode=0o755)
+    mirror.chmod(0o755)
+    (local / "README.md").write_bytes(b"root metadata is not mirrored payload")
+    unit = lab.layout.Unit("ckpt", "checkpoint-files")
+    local_inode, mirror_inode = local.stat().st_ino, mirror.stat().st_ino
+    code, report = lab.run("mirror", unit)
+    assert code == 0, report
+    assert lab.run("verify", unit)[0] == 0
+    assert (local.stat().st_ino, mirror.stat().st_ino) == (local_inode, mirror_inode)
+    assert local.stat().st_mode & 0o777 == 0o700
+    assert mirror.stat().st_mode & 0o777 == 0o755
+    (local / "README.md").unlink()
+    assert lab.run("hydrate", unit)[0] == 0
+    assert (
+        lab.filesystem.read_bytes(local / "README.md")
+        == b"root metadata is not mirrored payload"
+    )
+    assert (local.stat().st_ino, mirror.stat().st_ino) == (local_inode, mirror_inode)
+    assert local.stat().st_mode & 0o777 == 0o700
+    assert mirror.stat().st_mode & 0o777 == 0o755
+
+
 def test_interrupted_root_file_publication_keeps_old_inode_and_blocks_retry(
     lab: Lab,
     monkeypatch: pytest.MonkeyPatch,

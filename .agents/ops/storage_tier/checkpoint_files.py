@@ -29,6 +29,12 @@ def files(path: Path, *, hashes: bool = False) -> Snapshot:
     return snapshot(path, hashes=hashes, root_files_only=True)
 
 
+def content(tree: Snapshot) -> dict[str, tuple[Any, ...]]:
+    # Container permissions belong to each tier, not to the file projection.
+    # same_metadata still checks each root's identity/mode within that tier.
+    return {name: value for name, value in tree.content().items() if name != "."}
+
+
 def stable(engine: Engine, unit: Unit, path: Path) -> Snapshot:
     before = files(path)
     engine.quiet(unit, path, before)
@@ -91,7 +97,7 @@ def operate(
                 for name, entry in before.entries.items()
             ),
             "sha256_tree": hashlib.sha256(
-                json.dumps(tree.content(), sort_keys=True).encode()
+                json.dumps(content(tree), sort_keys=True).encode()
             ).hexdigest(),
         }
     previous = engine.manifest(unit)
@@ -107,7 +113,7 @@ def operate(
     local_path = engine.config.repo / "ckpt"
     local = stable(engine, unit, engine.path(unit)) if local_path.exists() else None
     if command == "verify":
-        if local is None or mirror is None or local.content() != mirror.content():
+        if local is None or mirror is None or content(local) != content(mirror):
             raise StorageError("checkpoint root-file SHA-256/tree mismatch")
         manifest = engine.record(unit, local, mirror, dry_run=dry_run)
         return {
@@ -122,7 +128,7 @@ def operate(
         raise StorageError("D: checkpoint root files are missing")
     if hydrate and old is not None and len(old.entries) > 1:
         raise StorageError("D: checkpoint root files already exist; refusing to merge")
-    if not hydrate and old is not None and old.content() == expected.content():
+    if not hydrate and old is not None and content(old) == content(expected):
         manifest = engine.record(unit, expected, old, dry_run=dry_run)
         return {
             "action": "would_verify" if dry_run else "verified",
@@ -167,7 +173,7 @@ def operate(
         staged = history / "payload"
         copy_tree(source, staged, expected, now_ns=engine.now_ns if hydrate else None)
         copied = files(staged, hashes=True)
-        if copied.content() != expected.content() or not expected.same_metadata(
+        if content(copied) != content(expected) or not expected.same_metadata(
             files(source)
         ):
             raise StorageError("checkpoint root-file copy/source changed")
@@ -192,7 +198,7 @@ def operate(
                 record["archived"].append(name)
                 write_json(journal, record)
         final = stable(engine, unit, destination)
-        if final.content() != expected.content() or not expected.same_metadata(
+        if content(final) != content(expected) or not expected.same_metadata(
             files(source)
         ):
             raise StorageError("checkpoint root files changed during publication")

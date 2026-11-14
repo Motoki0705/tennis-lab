@@ -48,7 +48,7 @@ Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必
 未完成操作会阻止投影继续处理。恢复时暂停writer，比较journal、历史和已发布文件并整合集合，
 将已确认journal移到 `recovered-checkpoint-file-operations/` 后，显式index E:并verify D:/E:。
 `recover` 不继续该发布，也不删除历史。不一致不能授权删除归档inode。
-投影忽略容器时间戳，但检查容器device/inode/mode及全部直属文件的metadata/hash。
+投影忽略容器时间戳，但检查容器device/inode/mode及全部直属文件的metadata/hash。D:/E:各自保留容器权限，不将其作为根文件payload跨tier比较。
 
 迁移旧整ckpt manifest时先运行 `index ckpt`，旧manifest保存在E:的 `.storage-tier/legacy-manifests/`。
 然后对scan报告的每个 `ckpt/<目录>` 单独index，不复用旧tree的hash。创建D:的实际ckpt容器，

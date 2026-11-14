@@ -53,7 +53,8 @@ D:の `checkpoint-file-operations/` journalへ旧・予定entryと進行を永�
 復旧はwriterを止め、journal・履歴・公開済みファイルを比較して集合を整合させ、確認済みjournalを
 `recovered-checkpoint-file-operations/` へ退避してから、E:の明示indexとD:/E: verifyを行う。
 `recover` はこの公開を再開せず、履歴も消さない。不一致を根拠に退避inodeを消してはいけない。
-rootの時刻は投影のmetadata identityから外し、rootのdevice/inode/modeと全直下ファイルのmetadata/hashは検査する。
+rootの時刻は投影のmetadata identityから外し、rootのdevice/inode/modeと全直下ファイルのmetadata/hashは検査する。コンテナの権限はD:/E:それぞれで保持し、
+rootファイルのpayloadとしてtier間比較はしない。
 
 旧ckpt全体manifestの移行は、まず `index ckpt` でrootファイルを再indexする。旧manifestはE:の
 `.storage-tier/legacy-manifests/` へ保存される。その後scanに出る各 `ckpt/<dir>` を個別にindexする。
