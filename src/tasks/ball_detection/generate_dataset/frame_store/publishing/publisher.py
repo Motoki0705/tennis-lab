@@ -186,6 +186,7 @@ class BallPublisher:
             raise ValueError(
                 "ball publication requires a production plan at the fixed root"
             )
+        product: ProductPlan | None
         if isinstance(request, (VideoPublishRequest, MigrationPublishRequest)):
             product = request.output
         else:

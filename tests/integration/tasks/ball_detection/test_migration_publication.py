@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
+from typing import Any, cast
 from unittest.mock import Mock
 
 import numpy as np
@@ -137,6 +138,8 @@ def test_migrated_snapshot_replays_after_receipt_interruption(migrated, monkeypa
     receipt = read_document(layout, reference, PublicationReceipt)
     snapshot, store = load_snapshot(layout, receipt.snapshot)
     assert len(snapshot.clips) == 2 and len(store) == 10
+    assert store.teacher_masks is not None
+    metadata_clips = cast(list[dict[str, Any]], store.metadata["clips"])
     assert len(receipt.annotations) == 2 and receipt.adoptions == ()
     assert {c.group_id for c in store.clips} == {content_digest("recording-a")}
     assert {c.split for c in store.clips} == {"val"}
@@ -150,7 +153,7 @@ def test_migrated_snapshot_replays_after_receipt_interruption(migrated, monkeypa
         np.testing.assert_array_equal(store.teacher_masks.heatmap[rows], [2, 2, 2, 0, 2])
         assert annotation.frames[1].occlusion == "unknown"
         assert annotation.frames[3].state == "unknown"
-        assert store.metadata["clips"][clip.index]["provenance"]["original_v2"] in [e.original.model_dump(mode="json") for e in request.annotations]
+        assert metadata_clips[clip.index]["provenance"]["original_v2"] in [e.original.model_dump(mode="json") for e in request.annotations]
     assert all(verify_reference(layout, ref).read_bytes() == data for ref, data in original_bytes.items())
     # The immutable manifest reference alone does not retain its nested archive.
     # Same-request replay needs prepared bytes after snapshot hardlinks exist.

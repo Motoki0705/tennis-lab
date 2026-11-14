@@ -86,3 +86,10 @@ filesystem一致を検査し、hardlinkで再利用する。
 対象一覧は中断前の123本をそのまま使う。実行commitを固定後、repo rootから
 `MIGRATION_CODE_COMMIT=<実行commit> bash knowledge/runs/run-ball-v3-migration-20261113/repro.sh <元repo root> <物理データroot>`
 で少数dry-run・少数公開・全対象公開を順に再現する。
+
+
+再開のattempt 03は、少数dry-runの後半照合中に型検査の修正を行うためSIGINTで停止した。
+公開・新しい画像生成は開始していない。全ファイルmypyでは変更箇所にも6件あり、
+decoratorの型付き代入、productのOptional型、テストのmask/metadataの型確認で修正した。
+変換内容と公開要求の仕様は維持する。全repoのmypyに残る指摘と、変更ファイルだけの
+pre-commit結果は最終検証記録へ記載する。

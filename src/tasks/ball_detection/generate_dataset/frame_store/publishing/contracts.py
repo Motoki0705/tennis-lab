@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Literal, Protocol, Self, TypeVar, cast
+from typing import Literal, Protocol, Self, TypeVar
 
 from pydantic import Field, SerializerFunctionWrapHandler
 
@@ -30,8 +30,8 @@ class _Serializer(Protocol):
     def __call__(self, function: Callable[[_M, SerializerFunctionWrapHandler], dict[str, object]]) -> Callable[[_M, SerializerFunctionWrapHandler], dict[str, object]]: ...
 
 
-_after = cast(_Validator, after_validator)
-_serialize = cast(_Serializer, manifest_serializer)
+_after: _Validator = after_validator
+_serialize: _Serializer = manifest_serializer
 
 
 class SourceSplit(Document):

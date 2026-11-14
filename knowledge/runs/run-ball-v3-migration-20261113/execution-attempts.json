@@ -26,6 +26,19 @@
       "recovery_audit": "resume-audit-20261114.json",
       "exit_code": null,
       "wall_seconds": null
+    },
+    {
+      "code_commit": "ed264f44fc4adf6610789cd50744c148d00162db",
+      "selected_cameras": 123,
+      "state": "interrupted_before_publication",
+      "phase": "small_dry_run",
+      "dry_run_converted_cameras": 3,
+      "new_preparations": 0,
+      "exit_code": 130,
+      "signal": "SIGINT",
+      "wall_seconds": 1078.83,
+      "max_rss_kib": 1598472,
+      "reason": "resolve six type-check errors in changed files observed when imported dependency types are visible; preserve existing preparations"
     }
   ]
 }
