@@ -96,8 +96,10 @@ def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Lab:
         (repo / ".training_queue" / state).mkdir(parents=True)
     config = layout.Config(repo, mount, ("data/task",), settle_seconds=3600)
     config.mirror.mkdir(parents=True)
+    # Pass the settling interval without putting aged file atimes in the future:
+    # a normal read must update them, so losing O_NOATIME remains detectable.
     result = Lab(
-        module, filesystem, layout, usage, config, None, proc, time.time() + 40 * 86400
+        module, filesystem, layout, usage, config, None, proc, time.time() + 2 * 3600
     )
     result.engine = module.Engine(
         config,
