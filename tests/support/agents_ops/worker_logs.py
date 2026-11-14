@@ -67,6 +67,7 @@ def record_source() -> tuple[dict[str, Any], dict[str, Any]]:
         "runtime": {
             "session_id": "private-session-value",
             "turn_id": "private-turn-value",
+            "runtime_errors": [],
             "effective": {
                 k: {"status": "observed", "value": v}
                 for k, v in {"model": "gpt-6.1-sol", "effort": "max"}.items()

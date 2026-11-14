@@ -38,7 +38,7 @@ def runtime_errors_failed(record: dict[str, Any]) -> bool:
     failed results. Callers retain their contract/effective-setting checks.
     """
     try:
-        errors = record.get("runtime", {}).get("runtime_errors", [])
+        errors = record["runtime"]["runtime_errors"]
         if not isinstance(errors, list):
             return True
         if not errors:

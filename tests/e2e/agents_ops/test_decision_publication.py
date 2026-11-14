@@ -37,6 +37,54 @@ class Crash(BaseException):
     """Process death skips the publisher's ordinary error handler."""
 
 
+@pytest.mark.parametrize(
+    "damage", ["missing", "empty", "unrelated", "unprepared", "different_envelope"]
+)
+def test_pending_batch_requires_its_captured_prepared_payloads(
+    env: DecisionEnv, damage: str
+) -> None:
+    reconciliation = importlib.import_module("worker_logs.reconciliation")
+    lifecycle = importlib.import_module("worker_logs.lifecycle")
+    log = env.capture()
+    env.github.pause_reads = True
+    assert env.decision_publisher(log).publish()["state"] == "pending"
+    env.github.pause_reads = False
+    document = log.read()
+    if damage == "missing":
+        log.path.unlink()
+    elif damage == "different_envelope":
+        prepared = next(e for e in document["entries"] if e["event"] == "prepare")
+        prepared["payload"]["record"]["data"]["reason"] += " Different projection."
+        prepared["snapshot_sha256"] = importlib.import_module(
+            "decision_logs.journal"
+        ).preparation_sha(prepared)
+        worker_journal.atomic(log.path, document)
+        log.read()  # A valid journal with the same identity and different content.
+    else:
+        document["entries"] = (
+            [e for e in document["entries"] if e["event"] == "capture"]
+            if damage == "unprepared"
+            else []
+        )
+        worker_journal.atomic(log.path, document)
+        if damage == "unrelated":
+            log.capture("unrelated", result())
+    before = {str(p): p.read_bytes() for p in env.state.rglob("*") if p.is_file()}
+    with pytest.raises(PublicationError, match="input_capture_failed"):
+        reconciliation.remaining_publications("o/r", 1, state_dir=env.state)
+    assert before == {
+        str(p): p.read_bytes() for p in env.state.rglob("*") if p.is_file()
+    }
+    checkpoint = lifecycle.record_exit(
+        "o/r", 1, 1, "ended", state_dir=env.state, root=env.root
+    )
+    assert checkpoint["remaining_complete"] is False
+    assert checkpoint["error"] and checkpoint["resume_command"]
+    with pytest.raises(PublicationError, match="input_capture_failed"):
+        lifecycle.publish_decisions("o/r", 1, state_dir=env.state, root=env.root)
+    assert env.github.calls == ["create"]
+
+
 def test_batch_publication_replay_and_no_self_generated_publication_loop(
     env: DecisionEnv,
 ) -> None:

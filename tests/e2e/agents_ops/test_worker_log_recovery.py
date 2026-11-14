@@ -480,6 +480,132 @@ def test_bulk_recovery_records_generation_change_without_overwriting_successor(
     assert state.Store(logs.state).read_data()["parents"]["o/r#1900"] == owner
 
 
+@pytest.mark.parametrize("entry", ["continuation", "supervisor", "bulk", "orphan"])
+def test_handoff_during_first_worker_merge_stops_later_journals(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, entry: str
+) -> None:
+    module = importlib.import_module("parent.log_publication")
+    lifecycle = importlib.import_module("worker_logs.lifecycle")
+    state = importlib.import_module("parent.state")
+    first, second = logs.ready(child=10), logs.ready(child=11)
+    actor = 1900 if entry in {"bulk", "orphan"} else 1
+    owner: dict[str, Any] = {
+        "session": "codex:previous",
+        "status": "ended" if entry == "supervisor" else "active",
+        "generation": 1,
+        "tasks": {},
+        "reviews": [],
+    }
+    key = f"o/r#{actor}"
+    document = {"version": 1, "parents": {key: owner}}
+    journal.atomic(logs.state / "registry.json", document)
+    if entry == "orphan":
+        logs.github.pause_reads = True
+        for path in (first, second):
+            assert logs.publisher(path).publish()["state"] == "pending"
+        logs.github.pause_reads = False
+        github = PublicGitHub(logs)
+        monkeypatch.setattr(orphans, "GitHub", lambda *a, **kw: github)
+    monkeypatch.setattr(service, "Publisher", lambda root, path: logs.publisher(path))
+    merge = logs.github.merge
+
+    def transfer_after_merge(number: int, head: str) -> None:
+        merge(number, head)
+        owner.update(session="codex:successor", generation=2, status="active")
+        journal.atomic(logs.state / "registry.json", document)
+
+    monkeypatch.setattr(logs.github, "merge", transfer_after_merge)
+    store = state.Store(logs.state)
+    if entry == "continuation":
+        args = SimpleNamespace(command="note", dry_run=False)
+        continuation = module.Continuation(args, store, "o/r", 1, "codex:previous")
+        continuation.sweep()
+        assert continuation.error == "log_owner_mismatch"
+    elif entry == "supervisor":
+        checkpoint = lifecycle.finish_supervised(
+            "o/r",
+            1,
+            1,
+            state_dir=logs.state,
+            root=logs.root,
+            owner_check=lambda: (
+                store.read_data()["parents"][key]["generation"] == 1,
+                1,
+            ),
+        )
+        assert checkpoint["error"] == "log_owner_mismatch"
+    else:
+        args = SimpleNamespace(
+            source_parent=[] if entry == "orphan" else [1],
+            pr=[100, 101] if entry == "orphan" else None,
+            adopt_orphan_prs=entry == "orphan",
+            turn=None,
+            delegation_key=None,
+            dry_run=False,
+        )
+        value = recovery.bulk_command(
+            "o/r", actor, "codex:previous", store=store, args=args, root=logs.root
+        )
+        assert value["error"] == "log_owner_mismatch"
+    assert journal.read(first)["state"] == "merged"
+    assert journal.read(second)["state"] == (
+        "pending" if entry == "orphan" else "ready"
+    ), "the former owner started another journal after handoff"
+    assert logs.github.calls.count("merge") == 1
+    assert store.read_data()["parents"][key] == owner
+
+
+def test_existing_journal_merge_refusal_reaches_orphan_cli_exit(
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    cli = importlib.import_module("parent.cli")
+    path, github = public_pr(logs, erase=False)
+    owner = {
+        "session": "codex:recovery",
+        "status": "active",
+        "generation": 1,
+        "tasks": {},
+        "reviews": [],
+    }
+    journal.atomic(
+        logs.state / "registry.json",
+        {"version": 1, "parents": {"o/r#1900": owner}},
+    )
+
+    def refuse(number: int, head: str) -> None:
+        raise publication.MergeRejected(403, "merge_rejected", "private diagnostic")
+
+    monkeypatch.setattr(logs.github, "merge", refuse)
+    monkeypatch.setattr(
+        service, "Publisher", lambda root, target: logs.publisher(target)
+    )
+    monkeypatch.setattr(orphans, "GitHub", lambda *a, **kw: github)
+    monkeypatch.setattr(cli, "GitHub", lambda *a, **kw: SimpleNamespace(repo="o/r"))
+    monkeypatch.setattr(cli, "session_identity", lambda env: "codex:recovery")
+    monkeypatch.chdir(logs.root)
+    code = cli._main(
+        [
+            "--repo",
+            "o/r",
+            "--parent",
+            "1900",
+            "--state-dir",
+            str(logs.state),
+            "publish-worker-log",
+            "--adopt-orphan-prs",
+            "--pr",
+            "100",
+        ]
+    )
+    value = json.loads(capsys.readouterr().out)
+    assert code == 2, "a rejected nested publication was reported as CLI success"
+    row = value["logs"][0]
+    assert row["error"] == row["logs"][0]["error"] == "merge_rejected"
+    saved = journal.read(path)
+    assert saved["state"] == "blocked" and saved["merge_http_status"] == 403
+    assert not journal.view(saved)["saved_to_main"] and not github.calls
+
+
 def test_exit_checkpoint_marks_corrupt_inventory_as_unknown(logs: LogEnv) -> None:
     path = logs.ready()
     path.write_text("invalid JSON")
@@ -954,7 +1080,9 @@ def test_lifecycle_cli_records_remaining_publication_without_refusing_exit(
     assert json.loads(saved.read_text()) == checkpoint
 
 
-@pytest.mark.parametrize("case", ["recovered", "unfinished", "fatal", "late"])
+@pytest.mark.parametrize(
+    "case", ["recovered", "unfinished", "fatal", "late", "missing_errors"]
+)
 def test_worker_receipt_uses_the_same_error_classification(
     logs: LogEnv, case: str
 ) -> None:
@@ -972,6 +1100,8 @@ def test_worker_receipt_uses_the_same_error_classification(
         else "Reconnecting... 2/5 (workspace routing discovery timed out)",
     }
     record["runtime"]["runtime_errors"] = [error]
+    if case == "missing_errors":
+        record["runtime"].pop("runtime_errors")
     final = (directory / "final.md").read_text()
     start = [
         {"type": "thread.started", "thread_id": record["runtime"]["session_id"]},

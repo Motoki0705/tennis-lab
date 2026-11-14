@@ -175,7 +175,11 @@ class Continuation:
                     ):
                         exclude.add((s["issue"], "d-" + s["public_key"], s["sequence"]))
             values = continue_workers(
-                self.repo, self.parent, state_dir=self.store.directory, exclude=exclude
+                self.repo,
+                self.parent,
+                state_dir=self.store.directory,
+                exclude=exclude,
+                owner_check=lambda: self._same_owner(self._publication_owner()),
             )
             with self.store.operation(self.key), self.store.locked():
                 owner = self.store.parents.get(self.key, {})

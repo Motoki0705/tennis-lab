@@ -10,6 +10,7 @@ import base64
 import hashlib
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
@@ -387,7 +388,13 @@ class OrphanRecovery:
         )
         audit.update(state="closed", error=code, saved_to_main=False)
 
-    def recover(self, number: int, *, dry_run: bool) -> dict[str, Any]:
+    def recover(
+        self,
+        number: int,
+        *,
+        dry_run: bool,
+        owner_check: Callable[[], bool] | None = None,
+    ) -> dict[str, Any]:
         self.inspection_heads.pop(number, None)
         path = (
             self.state_dir
@@ -422,6 +429,8 @@ class OrphanRecovery:
                 number, confirmed=audit if audit.get("merge_attempted") else None
             )
             validated = True
+            if not dry_run:
+                require(owner_check is None or owner_check(), "log_owner_mismatch")
             if row.get("journal_present"):
                 s = row["source"]
                 logs = continue_workers(
@@ -430,6 +439,7 @@ class OrphanRecovery:
                     state_dir=self.state_dir,
                     dry_run=dry_run,
                     only={(s["issue"], "d-" + s["public_key"], s["sequence"])},
+                    owner_check=owner_check,
                 )
                 return {
                     "pr_number": number,
@@ -437,7 +447,7 @@ class OrphanRecovery:
                     "action": "normal_journal",
                     "logs": logs,
                     "original_journal_available": True,
-                    "error": None,
+                    "error": next((v["error"] for v in logs if v.get("error")), None),
                     "dry_run": dry_run,
                 }
             if row.get("saved_to_main"):
@@ -525,6 +535,7 @@ class OrphanRecovery:
                 and code not in PRIVATE_ERRORS
                 and number in self.inspection_heads
                 and not audit.get("merge_attempted")
+                and (owner_check is None or owner_check())
             ):
                 head = self.inspection_heads[number]
                 self.reject(number, head, code, audit, path)
@@ -547,7 +558,13 @@ class OrphanRecovery:
 
 
 def recover_orphans(
-    repo: str, *, state_dir: Path, root: Path, numbers: list[int] | None, dry_run: bool
+    repo: str,
+    *,
+    state_dir: Path,
+    root: Path,
+    numbers: list[int] | None,
+    dry_run: bool,
+    owner_check: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     from contextlib import nullcontext
 
@@ -576,9 +593,16 @@ def recover_orphans(
             / f"{number}.json"
         )
         try:
+            if not dry_run:
+                require(owner_check is None or owner_check(), "log_owner_mismatch")
             safe_private(path)
             with nullcontext() if dry_run else journal.locked(path):
-                values.append(recovery.recover(number, dry_run=dry_run))
+                value = recovery.recover(
+                    number, dry_run=dry_run, owner_check=owner_check
+                )
+                values.append(value)
+                if value.get("error") == "log_owner_mismatch":
+                    break
         except (
             ValueError,
             OSError,
@@ -598,4 +622,6 @@ def recover_orphans(
                     "dry_run": dry_run,
                 }
             )
+            if isinstance(exc, PublicationError) and str(exc) == "log_owner_mismatch":
+                break
     return values

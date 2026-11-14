@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Literal, TypedDict
 
@@ -88,6 +89,22 @@ def worker_row(path: Path, repo: str) -> dict[str, Any]:
     return dict(row)
 
 
+def require_batch_captures(log: Any, document: dict[str, Any]) -> None:
+    """An unfinished batch must retain its original prepared capture envelopes."""
+    batches = [b for b in document["batches"] if b["state"] != "merged"]
+    if not batches:
+        return
+    captured = {p["record"]["id"]: p for p in log.public_payloads()}
+    require(
+        all(
+            captured.get(payload["record"]["id"]) == payload
+            for batch in batches
+            for payload in batch["payloads"]
+        ),
+        "input_capture_failed",
+    )
+
+
 def remaining_publications(
     repo: str, parent: int, *, state_dir: Path
 ) -> list[RemainingPublication]:
@@ -131,6 +148,7 @@ def remaining_publications(
     document = publication_read(
         log.path.with_name("publication.json"), log.repo, parent
     )
+    require_batch_captures(log, document)
     batch = next((b for b in document["batches"] if b["state"] != "merged"), None)
     if count or batch or incomplete_capture:
         revisions = batch["revisions"] if batch else []
@@ -186,6 +204,7 @@ def continue_workers(
     dry_run: bool = False,
     exclude: set[tuple[int, str, int]] | None = None,
     only: set[tuple[int, str, int]] | None = None,
+    owner_check: Callable[[], bool] | None = None,
 ) -> list[dict[str, Any]]:
     """One visit per existing journal; never allocates a key or starts a worker."""
     from dispatcher.runtime import Runtime
@@ -219,12 +238,14 @@ def continue_workers(
                 )
             )
             if not dry_run:
+                require(owner_check is None or owner_check(), "log_owner_mismatch")
                 if row["state"] == "captured" and src.get("run_directory"):
                     runtime = Runtime(RUNNER)
                     proof = runtime.inspect(Path(src["run_directory"]))
                     if runtime.ended(proof):
                         value = service.finish(path, proof, publish_now=False)
                 if value["state"] in {"ready", "pending"} or retry:
+                    require(owner_check is None or owner_check(), "log_owner_mismatch")
                     value = service.publish(path, retry=retry)
             results.append(
                 {
@@ -251,6 +272,8 @@ def continue_workers(
                     "saved_to_main": False,
                 }
             )
+            if isinstance(exc, PublicationError) and str(exc) == "log_owner_mismatch":
+                break
     return results
 
 
@@ -277,6 +300,15 @@ def bulk_command(
                 "log_owner_mismatch",
             )
             generation = owner["generation"]
+
+    def owner_is_current() -> bool:
+        with store.operation(f"{repo.casefold()}#{parent}"), store.locked():
+            current = store.parents.get(f"{repo.casefold()}#{parent}", {})
+            return bool(
+                current.get("generation") == generation
+                and current.get("session") == identity
+            )
+
     if args.adopt_orphan_prs:
         from .orphans import recover_orphans
 
@@ -287,15 +319,22 @@ def bulk_command(
             root=root,
             numbers=args.pr,
             dry_run=args.dry_run,
+            owner_check=owner_is_current,
         )
     else:
         logs = []
         for selected in sorted(set(sources)) if sources else [None]:
             logs.extend(
                 continue_workers(
-                    repo, selected, state_dir=store.directory, dry_run=args.dry_run
+                    repo,
+                    selected,
+                    state_dir=store.directory,
+                    dry_run=args.dry_run,
+                    owner_check=owner_is_current,
                 )
             )
+            if any(row.get("error") == "log_owner_mismatch" for row in logs):
+                break
     value = {"recovery_parent": parent, "logs": logs, "dry_run": args.dry_run}
     if not args.dry_run:
         with store.operation(f"{repo.casefold()}#{parent}"), store.locked():

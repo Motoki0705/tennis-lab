@@ -37,6 +37,22 @@ DONE: dict[str, Any] = {
 
 
 @pytest.mark.parametrize(
+    "case", ["missing_runtime", "missing_errors", "null_errors", "explicit_empty"]
+)
+def test_missing_runtime_errors_is_not_an_explicit_empty_array(
+    events_module: Any, case: str
+) -> None:
+    record: dict[str, Any] = {"runtime": {"runtime_errors": []}}
+    if case == "missing_runtime":
+        record.pop("runtime")
+    elif case == "missing_errors":
+        record["runtime"].pop("runtime_errors")
+    elif case == "null_errors":
+        record["runtime"]["runtime_errors"] = None
+    assert events_module.runtime_errors_failed(record) is (case != "explicit_empty")
+
+
+@pytest.mark.parametrize(
     "case",
     [
         "recovered",

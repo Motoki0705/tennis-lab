@@ -9,7 +9,12 @@ from pathlib import Path
 from typing import Any
 
 from .journal import PublicationError, atomic, locked
-from .reconciliation import continue_workers, decision_journal, remaining_publications
+from .reconciliation import (
+    continue_workers,
+    decision_journal,
+    remaining_publications,
+    require_batch_captures,
+)
 from .schema import sha
 
 
@@ -60,6 +65,8 @@ def publish_decisions(
     log = decision_journal(repo, parent, state_dir=state_dir)
     captured = capture_status(state_dir, log.repo, parent, retry=True)
     capture_error = "input_capture_failed" if captured["status"] != "captured" else None
+    existing = read(log.path.with_name("publication.json"), log.repo, parent)
+    require_batch_captures(log, existing)
     limit = {r["id"] for r in log.status() if r["publication_status"] != "published"}
     if not limit:
         return {
@@ -67,7 +74,6 @@ def publish_decisions(
             "unpublished": None if capture_error else 0,
             "error": capture_error,
         }
-    existing = read(log.path.with_name("publication.json"), log.repo, parent)
     had_batch = any(b["state"] != "merged" for b in existing["batches"])
     value: dict[str, Any] = {}
     for _ in range(2 if had_batch else 1):
@@ -166,7 +172,12 @@ def finish_supervised(
     try:
         current, actor = owner_check() if owner_check else (True, actor)
         if current:
-            workers = continue_workers(repo, parent, state_dir=state_dir)
+            workers = continue_workers(
+                repo,
+                parent,
+                state_dir=state_dir,
+                owner_check=lambda: owner_check()[0] if owner_check else True,
+            )
             if any(row.get("error") for row in workers):
                 error = "publication_failed"
         else:

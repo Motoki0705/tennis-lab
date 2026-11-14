@@ -652,6 +652,8 @@ CLI終了値0、finalファイルとの一致、session/turnと実効設定、cl
 `lib.agent_events.runtime_errors_failed(record)` が保存イベント・final・終了証拠を再照合する共通分類関数で、
 worker公開・dispatcher判定・ops-reportも使う。非空のruntime_errorsだけで失敗へ戻さず、
 completedラベルだけでエラーを無視しない。既存のfailed resultを遡及変更する機能ではない。
+runtime.runtime_errorsは必須で、明示的な空配列だけがエラーなしを表す。キー欠落・null・不正型を
+空配列で補わず失敗として扱う。呼出元による契約・実効設定の検査も維持する。
 
 設定・入力・再開契約の事前拒否は終了値2でCLIを起動しない。run dir作成前の拒否は
 result.jsonを生成しないので、呼出元は終了値とJSONの有無を両方確認する。

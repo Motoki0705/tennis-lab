@@ -188,6 +188,8 @@ PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致
 通常の担当・合意・記録・レビュー・停止/再開・同期・公開・終了/引継ぎの書込みを含む。
 status各種、inspect-worker、basis-input/check、wait-supplement、全dry-run、state-migrateは除外する。
 所有確認は親operation lock→registry lockで行い、公開中は両方を解放する。
+各journalの公開開始直前にも担当・generationを照合し、引継ぎ後は以降のjournalを開始しない。
+同じ照合をsupervisorと明示的な一括回収にも渡し、orphan PRの巡回も世代変更で停止する。
 結果の記録時にgenerationを照合し、後任のregistryを上書きしない。公開失敗は元操作やworkerの終了値を変えない。
 
 worker/decisionの公開はいずれもmergeable=nullなら固定HEADのmerge要求へ進み、falseなら拒否する。
@@ -218,6 +220,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent REC
 合格した固定HEADだけをmergeしmainを照合する。検査不合格のログPRには固定の理由コメントを付けてcloseする。
 対象外PR、取得失敗で未検証のPR、private記録に問題がある場合はcloseしない。HTTP拒否・応答不明も成功へ変換しない。
 結果はprivateな `orphan-worker-prs/`、一括操作は `publication-recovery/` に保存する。
+通常経路へ回した結果の失敗も外側のerrorへ集約し、明示回収CLIは終了値2を返す。
 dry-runはlock・capture・journal・ref・worktreeを作成/更新せず、GitHubもGETだけを使う。
 
 読取りAPIの正本は `worker_logs.reconciliation`:
@@ -227,6 +230,9 @@ remaining_publications(repo: str, parent: int, *, state_dir: Path) -> list[Remai
 ```
 
 ロック・subprocess・ネットワーク・captureを使わない。破損を空一覧へ変換しない。
+未mergeの判断ログbatchは、payloadのIDと内容を捕捉journalの固定済み公開envelopeと照合する。
+捕捉・prepareの欠落や不一致はinput_capture_failedとして一覧取得を失敗させ、終了checkpointでは
+remaining_complete=falseを残す。判断ログの公開入口も、未公開ゼロを返す前に同じ照合を行う。
 `RemainingPublication` はTypedDictで、session IDや絶対パスを含まない。
 
 | field | worker_log | decision_log |
