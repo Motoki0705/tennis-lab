@@ -363,7 +363,14 @@ workerの公開キーは既存のd-付き、decisionの公開キーはbatch_key�
 不完全な空一覧を残件ゼロの証拠にしない。担当はactiveな親番号またはunassigned等の公開文字列。
 worker・判断ログそれぞれの再開コマンドと照合エラーを表示する。
 checkpointはprivate stateの `publication-exits/` に保存される。
-release/handoff/supervisorへの配線は後続の接続で行う。
+release・handoff pending/accepted・supervisor終了は、判断ログ公開の前に
+[lifecycle.capture_checkpoint()](lifecycle.py) を呼ぶ。
+順序は担当変更の保存→worker公開→終了結果の捕捉→判断ログ公開→最終checkpoint保存。
+`record_exit(persist=False)` が公開直前のsnapshotを作り、その残件は後続の公開で解消される場合がある。
+公開後の結果は最終private checkpointへ保存する。公開処理自体は再捕捉せず、新しいbatchを作る循環を防ぐ。
+捕捉・公開の失敗で担当終了や引継ぎを拒否しない。
+受入は同世代の構造化completionコメントの固定receiptから取得し、任意summaryやruntime終了から推定しない。
+終了コメントへリンクし、supervisorでは既存の世代別終了結果へ因果リンクを持つ。
 公開用の担当・再開先もGuardを通し、私的IDやパスを表示名として公開しない。
 受入は既定で未確認とし、担当終了とは別に扱う。正本根拠、残る公開、担当、再開先を表示する。
 同一観測の再送は冪等に扱う。終了receiptが同じでも、後着の明示的な受入根拠は新しい観測として追記する。

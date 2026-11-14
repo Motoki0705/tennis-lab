@@ -427,7 +427,17 @@ known rows and never turns an empty list into evidence of zero remaining work.
 `publication_actor` accepts the active parent number or a public string such as
 `unassigned`. Both worker and decision resume commands and reconciliation errors
 remain visible. Checkpoints live under `publication-exits/` in private state;
-release/handoff/supervisor wiring remains a later integration.
+release, handoff pending/accepted and supervisor exit call
+[lifecycle.capture_checkpoint()](lifecycle.py) before decision publication.
+The order is saved assignment → worker publication → exit capture → decision
+publication → final checkpoint. `record_exit(persist=False)` supplies the
+pre-publication snapshot; its remaining work can be resolved by the following
+publication. The final private checkpoint reflects that later outcome.
+Publication bookkeeping is never captured again, so it cannot create a new batch.
+Capture/publication failure does not veto assignment end or handoff.
+Acceptance comes from the fixed structured completion-comment receipt for the
+same generation; arbitrary summaries and runtime end do not supply it. End
+comments are linked directly; supervisor uses the existing generation-end result.
 Public actor/resume text must pass the existing guard; private IDs/paths are not labels.
 Acceptance defaults to unverified, independently of assignment end. Views link
 the canonical acceptance/end evidence and show remaining work, actor and resume destination.

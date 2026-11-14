@@ -106,8 +106,13 @@ def record_exit(
     root: Path,
     publication_actor: int | str = "unassigned",
     publication_error: str | None = None,
+    persist: bool = True,
 ) -> dict[str, Any]:
-    """Persist/return only public identifiers; never changes the assignment."""
+    """Return an exit snapshot; persist the final checkpoint after publication.
+
+    The non-persisting snapshot feeds typed capture before its publication
+    boundary. Neither mode changes the assignment or captures publication IO.
+    """
     if event not in {"ended", "handoff_pending", "handoff_accepted"}:
         raise ValueError("invalid publication exit event")
     observed = datetime.now(UTC).isoformat()
@@ -152,9 +157,38 @@ def record_exit(
         / str(parent)
         / f"{generation}-{event}.json"
     )
-    with locked(path):
-        atomic(path, checkpoint)
+    if persist:
+        with locked(path):
+            atomic(path, checkpoint)
     return checkpoint
+
+
+def capture_exit(
+    repo: str,
+    parent: int,
+    generation: int,
+    event: str,
+    *,
+    state_dir: Path,
+    root: Path,
+    publication_actor: int | str = "unassigned",
+    publication_error: str | None = None,
+) -> bool:
+    """Freeze the pre-publication checkpoint, without storing a final receipt."""
+    from decision_logs.lifecycle import capture_checkpoint
+
+    checkpoint = record_exit(
+        repo,
+        parent,
+        generation,
+        event,
+        state_dir=state_dir,
+        root=root,
+        publication_actor=publication_actor,
+        publication_error=publication_error,
+        persist=False,
+    )
+    return capture_checkpoint(checkpoint, state_dir=state_dir)
 
 
 def finish_supervised(
@@ -194,6 +228,23 @@ def finish_supervised(
         capture_supervised_exit(repo, parent, generation, state_dir=state_dir)
     except (ValueError, OSError, KeyError, TypeError):
         error = error or "journal_unavailable"
+    try:
+        current, actor = owner_check() if owner_check else (True, actor)
+        if not current:
+            error = "log_owner_mismatch"
+        if not capture_exit(
+            repo,
+            parent,
+            generation,
+            "ended",
+            state_dir=state_dir,
+            root=root,
+            publication_actor=actor,
+            publication_error=error,
+        ):
+            error = error or "input_capture_failed"
+    except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
+        error = error or "input_capture_failed"
     try:
         current, actor = owner_check() if owner_check else (True, actor)
         if current:

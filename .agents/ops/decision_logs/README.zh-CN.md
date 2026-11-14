@@ -345,7 +345,13 @@ pr_number/pr_head/unpublished_count/batch_key，包括缺测的None。
 worker公开键有既有d-前缀；decision公开键等于batch_key或为None。
 未公开件数None显示未确认；即使清单不完整，也保留已知残项，不把不完整空清单当作零残项。
 担当接受active父issue编号或unassigned等公开字符串；显示worker与判断日志各自的恢复指令和核对错误。
-checkpoint保存在private state的 `publication-exits/` 下；release/handoff/supervisor配线由后续集成完成。
+checkpoint保存在private state的 `publication-exits/` 下。
+release、handoff pending/accepted与supervisor结束在判断日志发布前调用
+[lifecycle.capture_checkpoint()](lifecycle.py)。顺序为保存担当变更→worker发布→结束捕获→判断日志发布→最终checkpoint。
+`record_exit(persist=False)` 提供发布前快照，残项可能在后续发布中解决；发布后的结果保存到最终private checkpoint。
+发布过程本身不再捕获，避免产生新batch的循环。捕获或发布失败不拒绝担当结束或交接。
+验收来自同代结构化completion评论的固定receipt，不从任意summary或runtime结束推断。
+直接链接结束评论；supervisor通过因果链接指向既有代次结束结果。
 公开担当与恢复指令也通过Guard，不把私有ID或路径作为显示名称。
 验收默认未确认，与担当结束分开；显示原始验收/结束依据、剩余发布、担当和恢复入口。
 相同观察的重放保持幂等；即使结束receipt不变，后到的明确验收依据也追加为新观察。

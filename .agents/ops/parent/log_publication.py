@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any
 
 from worker_logs.journal import PublicationError
-from worker_logs.lifecycle import publish_decisions, record_exit, unavailable_exit
+from worker_logs.lifecycle import (
+    capture_exit,
+    publish_decisions,
+    record_exit,
+    unavailable_exit,
+)
 from worker_logs.ownership import publication_owner
 from worker_logs.reconciliation import continue_workers
 
@@ -296,6 +301,25 @@ class Continuation:
             if args.command == "handoff"
             else "ended"
         )
+        try:
+            owner = self._publication_owner()
+            if not self._same_owner(owner):
+                self.error = "log_owner_mismatch"
+            if self.generation is not None and not capture_exit(
+                self.repo,
+                self.parent,
+                self.generation,
+                event,
+                state_dir=self.store.directory,
+                root=Path.cwd(),
+                publication_actor=self.parent
+                if owner.get("status") == "active"
+                else "unassigned",
+                publication_error=self.error,
+            ):
+                self.error = self.error or "input_capture_failed"
+        except (ValueError, OSError, KeyError, TypeError, subprocess.SubprocessError):
+            self.error = self.error or "input_capture_failed"
         try:
             owner = self._publication_owner()
             if not self._same_owner(owner):
