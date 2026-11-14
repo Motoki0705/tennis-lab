@@ -181,6 +181,10 @@ PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致
 
 ## 検証
 
+入力捕捉のgitとjournal処理、終了後の受領処理はregistry lockの外で行う。
+入力の反映は元のturnを含むtransactionの再照合、managed workerの受領は同じjob/run・委任の
+新しいtransactionでの再照合を条件とする。公開もregistry外で行い、競合を入力捕捉失敗へ変換しない。
+
 unitは公開schema・無害化・追加専用policy、e2eはfake GitHubと使い捨て実gitで公開、並行再送、障害復旧を検証する。
 既存の手動・自律planningテストを拡張し、実際の送信原文、回答、追加指示、phase/modelの対応も確認する。
 通常gateのPython必須は既存 `test_python_ci_is_required_for_dependency_ordered_merges` を維持する。

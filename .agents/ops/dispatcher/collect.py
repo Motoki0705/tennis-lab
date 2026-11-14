@@ -20,6 +20,8 @@ from parent.improvement_receipts import bound_extraction
 from parent.policy import closing_issues, digest, nonempty, number, object_value
 from parent.state import Store
 
+from .state import client_for, repository_scope
+
 
 class InputsChanged(ValueError):
     """A collected subject changed; collection/validation failures remain fatal."""
@@ -92,7 +94,8 @@ def body_dependencies(body: str, repo: str) -> list[int]:
 def collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
-    with gh.history_read_scope():
+    gh = client_for(gh, store)
+    with repository_scope(store), gh.fresh_reads(), gh.history_read_scope():
         return _collect(gh, store, root, seeds)
 
 
@@ -299,13 +302,18 @@ def _collect(
         "repo": gh.repo.casefold(),
         "publisher": login,
         "supplement_enabled_since": enabled_since,
-        "code": code_snapshot(root),
+        "code": unlocked_code_snapshot(gh, root),
         "subjects": subjects,
         "issues": issues,
         "pulls": sorted(prs, key=lambda x: x["number"]),
         "owners": owners,
         "improvement_extractions": extractions,
     }
+
+
+def unlocked_code_snapshot(gh: GitHub, root: Path) -> dict[str, Any]:
+    with gh.io_scope():
+        return code_snapshot(root)
 
 
 def route(issues: Mapping[str, Any], n: int) -> int:

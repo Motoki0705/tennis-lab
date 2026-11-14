@@ -881,3 +881,48 @@ def test_three_slots_in_one_week_keep_distinct_proposal_identity(ops_env: Any) -
     assert ops.run("triage").returncode == 0
     assert len(set(created)) == len(_children(ops)) == 3
     assert len(_events(ops, "proposal_received")) == 3
+
+
+def test_triage_real_github_and_organizer_allow_peer_registry_lock(
+    ops_env: Any,
+) -> None:
+    import shutil
+
+    from tests.e2e.agents_ops.test_adopted_proposal_issues import decision, plan
+    from tests.support.agents_ops.registry_io import (
+        instrument,
+        observations,
+        probe_code,
+    )
+
+    ops = ops_env
+    _setup(ops, route=False)
+    _select(ops)
+    Path(ops.env["FAKE_ORGANIZATION_PLAN"]).write_text(
+        json.dumps(plan(decisions=[decision("100/R-20261012-02")]))
+    )
+    lock = (
+        Path(ops.env["XDG_STATE_HOME"])
+        / "tennis-lab-agents/parent-sessions/registry.lock"
+    )
+    gh_output, agent_output, git_output = (
+        ops.tmp / f"{name}-probe.jsonl" for name in ("gh", "organizer", "git")
+    )
+    instrument(ops.tmp / "bin/gh", lock, gh_output)
+    instrument(ops.tmp / "bin/codex", lock, agent_output)
+    real_git = shutil.which("git")
+    assert real_git
+    git = ops.tmp / "bin/git"
+    git.write_text(
+        f"#!{sys.executable}\n"
+        + probe_code(lock, git_output)
+        + f"\nimport sys\n_os.execv({real_git!r}, [{real_git!r}, *sys.argv[1:]])\n"
+    )
+    git.chmod(0o700)
+    result = ops.run("triage")
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert len(observations(gh_output)) > 10
+    assert len(observations(agent_output)) == 1
+    observations(git_output)
+    created = [row for row in ops.state["issues"] if row["number"] > 100]
+    assert len(created) == 1

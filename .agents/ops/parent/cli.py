@@ -333,7 +333,11 @@ def _main(argv: list[str] | None = None) -> int:
         args.state_dir = (args.state_dir or state_directory()).resolve()
         workers = {"start-worker", "continue-worker", "inspect-worker", "stop-worker"}
         store: Store
-        if args.command in workers | {"workflow-report", "record-cancellation"}:
+        if args.command in workers | {
+            "workflow-report",
+            "record-cancellation",
+            "improvement-decide",
+        }:
             from .development import workflow_store
 
             store = workflow_store(args.state_dir, args.dispatcher_state_dir)

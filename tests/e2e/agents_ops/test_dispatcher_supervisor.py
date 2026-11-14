@@ -53,6 +53,10 @@ class DispatchHarness:
         self.service = importlib.import_module("dispatcher.service")
         self.clock = importlib.import_module("dispatcher.schedule")
         self.schedule = self.clock.Schedule(tmp / "dispatcher")
+        self.h.store = importlib.import_module("dispatcher.state").DispatchStore(
+            self.h.store.directory, self.schedule
+        )
+        self.h.gh._store = self.h.store
         with self.h.store.locked():
             self.h.store.save()
             self.schedule.initialize(
@@ -620,7 +624,13 @@ def invoke_worker(
             return 0
 
     monkeypatch.setattr(worker, "Runtime", RecordingRuntime)
-    monkeypatch.setattr(worker, "GitHub", lambda repo: d.h.gh)
+
+    def github(repo: str, *, store: Any) -> Any:
+        client = copy.copy(d.h.gh)
+        client._store = store
+        return client
+
+    monkeypatch.setattr(worker, "GitHub", github)
     monkeypatch.setattr(worker.signal, "signal", lambda *args: None)
     monkeypatch.setattr(
         sys,
@@ -1234,7 +1244,12 @@ def test_bootstrap_does_not_bind_a_different_cli_session(
                 "AGENT_RUNTIME_TASK_ID": job["task_id"],
             },
         )
-    assert d.row() == before
+    after = d.row()
+    assert {k: after[k] for k in ("session", "status", "generation", "tasks")} == {
+        k: before[k] for k in ("session", "status", "generation", "tasks")
+    }
+    assert after["dispatch"]["phase"] == before["dispatch"]["phase"]
+    assert after["dispatch"]["jobs"][job["id"]]["observation"]["kind"] == "status"
 
 
 def test_new_child_delegation_resumes_previous_child_session(
@@ -1831,3 +1846,403 @@ def test_invalid_child_worktree_never_defaults_to_parent_checkout(
     with pytest.raises(ValueError, match="absolute"):
         d.control.start_child(1, 10, "d1", "task", env)
     assert d.row() == row
+
+
+@pytest.mark.parametrize("operation", ["judgement", "claim"])
+def test_real_github_and_git_release_registry(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    from tests.support.agents_ops.registry_io import (
+        instrument,
+        observations,
+        probe_code,
+    )
+
+    d.prepare()
+    if operation == "claim":
+        d.control.assign()
+    d.publish_github(monkeypatch)
+    lock = d.h.store.directory / "registry.lock"
+    gh_output, git_output = d.h.root / "gh-probes.jsonl", d.h.root / "git-probes.jsonl"
+    instrument(d.h.root / "bin/gh", lock, gh_output)
+    real_git = shutil.which("git")
+    assert real_git
+    wrapper = d.h.root / "bin/git"
+    wrapper.write_text(
+        f"#!{sys.executable}\n"
+        + probe_code(lock, git_output)
+        + f"\nimport sys\n_os.execv({real_git!r}, [{real_git!r}, *sys.argv[1:]])\n"
+    )
+    wrapper.chmod(0o700)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=d.h.store)
+    if operation == "claim":
+        control = d.mod.Supervisor(gh, d.h.store, d.schedule)
+        assert control.claim("o/r#1", d.job()["id"])["phase"] == "starting"
+    else:
+        d.h.response(decision(1))
+        result = d.h.mod.run(
+            gh, d.h.store, d.h.work, d.h.root / "new-judgement", runner=d.h.fake_runner
+        )
+        assert result["result"] == "preview", result
+    assert len(observations(gh_output)) > 10
+    assert len(observations(git_output)) >= 3
+
+
+@pytest.mark.parametrize(
+    "operation", ["supervise", "stop", "due", "recover", "stop-judgement"]
+)
+def test_runner_waits_release_registry(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, operation: str
+) -> None:
+    from tests.support.agents_ops.registry_io import observations, status_runner
+
+    d.prepare()
+    output = d.h.root / "runner-probes.jsonl"
+    runner = status_runner(
+        d.h.root / "status-runner", d.h.store.directory / "registry.lock", output
+    )
+    if operation in {"supervise", "stop"}:
+        d.control.assign()
+        fixture_runtime(d, monkeypatch)
+        d.accepted()
+        row = d.row()
+        job = d.job(row)
+        job["runner"] = str(runner)
+        d.runtime(job)
+        d.update(row)
+        monkeypatch.setattr(
+            d.mod, "Runtime", importlib.import_module("dispatcher.runtime").Runtime
+        )
+        d.control.reconcile(stop=operation == "stop")
+        assert d.job()["phase"] == "ended"
+    else:
+        with d.h.store.locked():
+            state = d.schedule.read()
+            state["config"]["runner"] = str(runner)
+            state["active"] = state["runs"][0]["id"]
+            state["runs"][0].update(controller=None, phase="recovery_required")
+            d.schedule.write(state)
+        if operation == "due":
+            assert d.run()["result"] == "not_due"
+        elif operation == "recover":
+            d.service.recover_judgement(
+                d.h.store, d.schedule, "fixture cleanup verified"
+            )
+        else:
+            d.service.stop_judgement(d.h.store, d.schedule)
+        if operation == "stop-judgement":
+            assert d.state()["active"] is not None and d.state()["enabled"] is False
+        else:
+            assert d.state()["active"] is None
+    observations(output)
+
+
+@pytest.mark.parametrize("change", ["disable", "configure", "owner", "capacity"])
+def test_admission_preserves_concurrent_schedule_and_owners(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    conflict = importlib.import_module("parent.state").RegistryConflict
+    d.prepare(1, 2) if change == "capacity" else d.prepare()
+    d.control.assign()
+    if change == "capacity":
+        with d.h.store.locked():
+            state = d.schedule.read()
+            state["config"]["max_parents"] = 2
+            d.schedule.write(state)
+    d.publish_github(monkeypatch)
+    gh_class = importlib.import_module("parent.github").GitHub
+    base = importlib.import_module("issues.cli").GitHub
+    original = base.get
+    mutated = False
+
+    def get(client: Any, endpoint: str, **kwargs: Any) -> Any:
+        nonlocal mutated
+        if not mutated:
+            mutated = True
+            script = """
+import copy, sys
+from pathlib import Path
+from parent.state import Store
+from dispatcher.schedule import Schedule
+store, schedule = Store(Path(sys.argv[1])), Schedule(Path(sys.argv[2]))
+with store.locked():
+    change = sys.argv[3]
+    if change in {"disable", "configure"}:
+        state = schedule.read()
+        if change == "disable": state["enabled"] = False
+        else: state["config"]["max_children"] = 7
+        schedule.write(state)
+    elif change == "owner":
+        store.parents["o/r#1"]["session"] = "claude:new-owner"
+        store.parents["o/r#1"]["generation"] += 1
+        store.save()
+    else:
+        row = copy.deepcopy(store.parents["o/r#1"])
+        row["session"] = row["dispatch"]["session"] = "claude:capacity-owner"
+        store.parents["o/r#99"] = row
+        store.save()
+"""
+            peer = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    script,
+                    str(d.h.store.directory),
+                    str(d.schedule.directory),
+                    change,
+                ],
+                env={**os.environ, "PYTHONPATH": str(ROOT / ".agents/ops")},
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            assert peer.returncode == 0, peer.stderr
+        return original(client, endpoint, **kwargs)
+
+    monkeypatch.setattr(base, "get", get)
+    control = d.mod.Supervisor(gh_class("o/r", store=d.h.store), d.h.store, d.schedule)
+    with pytest.raises(conflict):
+        control.assign() if change == "capacity" else control.claim(
+            "o/r#1", d.job()["id"]
+        )
+    assert mutated
+    if change == "disable":
+        assert d.state()["enabled"] is False
+    elif change == "configure":
+        assert d.state()["config"]["max_children"] == 7
+    elif change == "owner":
+        assert d.row()["session"] == "claude:new-owner"
+    else:
+        assert d.row(99)["session"] == "claude:capacity-owner"
+        with d.h.store.locked():
+            assert "o/r#2" not in d.h.store.parents
+    assert not (Path(d.job()["directory"]) / "runtime").exists()
+
+
+@pytest.mark.parametrize("change", ["run", "file", "delegation"])
+def test_runner_observation_rejects_replaced_identity(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    d.prepare_family(10)
+    d.control.assign()
+    fixture_runtime(d, monkeypatch)
+    d.accepted()
+    row = d.row()
+    row["tasks"]["10"] = d.child_task(10, "original-delegation")
+    d.update(row)
+    # Observe the accepted parent; replacing its run is as unsafe as replacing
+    # the delegation on an implementation job.
+    if change == "delegation":
+        with d.h.store.locked():
+            row = d.h.store.parents["o/r#1"]
+            job = copy.deepcopy(d.job(row))
+            job.update(
+                id="implementation",
+                role="implementation",
+                child=10,
+                delegation_id="original-delegation",
+            )
+            row["dispatch"]["jobs"][job["id"]] = job
+            d.h.store.save()
+        d.runtime(job)
+    else:
+        job = d.job()
+        d.runtime(job)
+    original = FixtureRuntime.inspect
+
+    def inspect(runtime: Any, directory: Path, *, stop: bool = False) -> dict[str, Any]:
+        proof = original(runtime, directory, stop=stop)
+        if change == "run":
+            proof["record"]["run_id"] = "replacement-run"
+        elif change == "file":
+            replaced = copy.deepcopy(proof["record"])
+            replaced["run_id"] = "replacement-run"
+            (directory / "result.json").write_text(json.dumps(replaced))
+        else:
+            peer = d.row()
+            peer["tasks"]["10"]["delegation_id"] = "replacement-delegation"
+            d.update(peer)
+        return proof
+
+    monkeypatch.setattr(FixtureRuntime, "inspect", inspect)
+    with pytest.raises(ValueError, match="run changed|job/run/delegation"):
+        d.control._observe_job("o/r#1", job["id"], stop=False)
+    assert d.row()["dispatch"]["jobs"][job["id"]]["phase"] == "starting"
+    if change == "delegation":
+        assert d.row()["tasks"]["10"]["delegation_id"] == "replacement-delegation"
+        assert not d.row()["tasks"]["10"].get("worker_ended")
+
+
+def test_launch_admission_refreshes_second_authorization_in_same_transaction(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    d.control.assign()
+    d.publish_github(monkeypatch)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=d.h.store)
+    control = d.mod.Supervisor(gh, d.h.store, d.schedule)
+    job_id = d.job()["id"]
+    assert control.claim("o/r#1", job_id)
+    remote = d.h.root / "github.json"
+    execution = importlib.import_module("parent.execution")
+    policy = importlib.import_module("parent.policy")
+    primed = []
+    original_require = importlib.import_module("parent.improvements").require
+
+    def require(session: Any, **kwargs: Any) -> object:
+        if not kwargs.get("fresh"):
+            return original_require(session, **kwargs)
+        primed.append(execution.authorization(session))
+        state = json.loads(remote.read_text())
+        rows = state["comments"].setdefault("1", [])
+        rows.append(
+            {
+                "id": 99999,
+                "user": {"login": "operator"},
+                "body": policy.marker(
+                    {
+                        "parent": 1,
+                        "event": "basis_revoked",
+                        "generation": session.row["generation"],
+                        "revision": 1,
+                        "reason": "new remote instruction",
+                    }
+                ),
+            }
+        )
+        remote.write_text(json.dumps(state))
+        return None
+
+    monkeypatch.setattr(
+        importlib.import_module("parent.improvements"), "require", require
+    )
+    with (
+        pytest.raises(ValueError, match="basis|revok|根拠|合意"),
+        control.launch_admission("o/r#1", job_id),
+    ):
+        pytest.fail("revoked authorization reached Popen admission")
+    assert len(primed) == 1
+    assert d.job()["cancelled_before_start"] is True
+    assert not (Path(d.job()["directory"]) / "runtime").exists()
+
+
+def test_decision_capture_visits_only_changed_jobs_after_unlock(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.support.agents_ops.registry_io import probe
+
+    d.prepare()
+    d.control.assign()
+    row = d.row()
+    historical = copy.deepcopy(d.job(row))
+    historical.update(id="historical", phase="ended", decision_capture=None)
+    row["dispatch"]["jobs"]["historical"] = historical
+    d.update(row)
+    captured = []
+
+    def saved_jobs(jobs: list[dict[str, Any]]) -> None:
+        probe(d.h.store.directory / "registry.lock")
+        captured.extend(jobs)
+
+    monkeypatch.setattr(
+        importlib.import_module("decision_logs.observations"), "saved_jobs", saved_jobs
+    )
+    with d.h.store.locked():
+        current = d.h.store.parents["o/r#1"]["dispatch"]
+        identifier = current["active_job"]
+        current["jobs"][identifier]["diagnostic"] = "changed job only"
+        d.h.store.save()
+        assert captured == []
+    assert [job["id"] for job in captured] == [identifier]
+    with d.h.store.locked():
+        d.h.store.save()
+    assert len(captured) == 1
+
+
+def test_failed_stop_retains_durable_intent_and_capacity(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    d.control.assign()
+    fixture_runtime(d, monkeypatch)
+    d.accepted()
+    original = subprocess.run
+    runner = str(Path(d.job()["runner"]).resolve())
+
+    def timeout(args: Any, **kwargs: Any) -> Any:
+        if args[0] == runner and args[1] == "stop":
+            raise subprocess.TimeoutExpired(args, 60)
+        return original(args, **kwargs)
+
+    monkeypatch.setattr(
+        d.mod, "Runtime", importlib.import_module("dispatcher.runtime").Runtime
+    )
+    monkeypatch.setattr(subprocess, "run", timeout)
+    with pytest.raises(subprocess.TimeoutExpired):
+        d.control.reconcile(stop=True, parent=1)
+    row = d.row()
+    assert row["dispatch"]["phase"] == "stopped"
+    assert d.job(row)["stop_requested"] is True
+    assert d.job(row)["phase"] == "starting"
+    assert d.mod.occupies(row)
+
+
+def test_judgment_recovery_rechecks_runtime_identity_before_commit(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare()
+    with d.h.store.locked():
+        state = d.schedule.read()
+        run = state["runs"][0]
+        run.update(phase="recovery_required", controller=None)
+        state["active"] = run["id"]
+        d.schedule.write(state)
+    runtime_class = importlib.import_module("dispatcher.runtime").Runtime
+
+    class ReplacedRuntime(runtime_class):  # type: ignore[misc,valid-type]
+        def inspect(self, directory: Path, *, stop: bool = False) -> dict[str, Any]:
+            proof: dict[str, Any] = super().inspect(directory, stop=stop)
+            replaced = copy.deepcopy(proof["record"])
+            replaced["run_id"] = "a-new-runtime"
+            (directory / "result.json").write_text(json.dumps(replaced))
+            return proof
+
+    monkeypatch.setattr(d.service, "Runtime", ReplacedRuntime)
+    with pytest.raises(ValueError, match="runtime run changed"):
+        d.service.recover_judgement(d.h.store, d.schedule, "fixture cleanup")
+    assert d.state()["active"] == run["id"]
+    assert d.state()["runs"][0]["phase"] == "recovery_required"
+
+
+def test_finished_handoff_child_keeps_explicit_parent_stop(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d.prepare_family(10)
+    d.control.assign()
+    fixture_runtime(d, monkeypatch)
+    d.accepted()
+    row = d.row()
+    dispatch = row["dispatch"]
+    dispatch["controller_mode"] = "handoff"
+    row["tasks"]["10"] = d.child_task(10, "child-delegation")
+    child = copy.deepcopy(d.job(row))
+    directory = Path(child["directory"]) / "child"
+    directory.mkdir()
+    child.update(
+        id="child-runtime",
+        sequence=2,
+        role="implementation",
+        child=10,
+        delegation_id="child-delegation",
+        directory=str(directory),
+        task_id=child["task_id"] + ":child:10",
+    )
+    child.pop("observation", None)
+    dispatch["jobs"][child["id"]] = child
+    d.update(row)
+    d.runtime(child, live=True)
+    d.control.reconcile(stop=True, parent=1)
+    after = d.row()
+    assert after["dispatch"]["jobs"][child["id"]]["phase"] == "ended"
+    assert after["dispatch"]["phase"] == "stopped"
+    assert after["dispatch"]["wake_requested"] is False
