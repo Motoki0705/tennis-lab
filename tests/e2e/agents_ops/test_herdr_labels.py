@@ -586,6 +586,8 @@ def test_board_rename_refreshes_only_the_confirmed_parent_display(
         "missing_summary",
         "legacy_title",
         "stale_summary",
+        "legacy_issue",
+        "other_issue",
         "missing_owner",
     ],
 )
@@ -623,6 +625,11 @@ def test_board_rename_reports_projection_failure_without_undoing_the_rename(
         labels.set_registry(
             {"o/r#42": {**labels.owner(), "display_summary": "新しい要約"}}
         )
+    elif condition == "legacy_issue":
+        # A label synchronized before tl_issue existed has no number to keep.
+        state["panes"]["w1:p1"]["tokens"].pop("tl_issue")
+    elif condition == "other_issue":
+        state["panes"]["w1:p1"]["tokens"]["tl_issue"] = "#99"
     else:
         for path in (labels.registry.parent.parent / "herdr-labels/owners").glob(
             "*.json"
@@ -666,6 +673,12 @@ def test_board_rename_reports_projection_failure_without_undoing_the_rename(
                 connection.execute("SELECT COUNT(*) FROM name_renames").fetchone()[0]
                 == 1
             )
+    if condition in {"legacy_issue", "other_issue"}:
+        # The ordinary parent sync repairs the number from the registry key.
+        assert labels.run("sync").returncode == 0
+        repaired = labels.read()["panes"]["w1:p1"]
+        assert repaired["display_agent"] == "Barry · 表示の要約"
+        assert repaired["tokens"]["tl_issue"] == "#42"
 
 
 @pytest.mark.parametrize("condition", ["missing", "other_parent", "retired"])
@@ -838,6 +851,51 @@ def test_parent_cli_name_and_unread_follow_handoff_and_ended(
     assert ended["board_sync"]["status"] == "retired"
     pane = labels.read()["panes"]["w1:p2"]
     assert "display_agent" not in pane and pane["tokens"] == {}
+
+
+@pytest.mark.parametrize(
+    ("agent", "ending"),
+    [("claude", "clear"), ("claude", "SessionEnd"), ("codex", "clear")],
+)
+def test_issue_number_cell_follows_the_parent_lifecycle(
+    labels: Labels, agent: str, ending: str
+) -> None:
+    env = labels.env
+    if agent == "codex":
+        env = {k: v for k, v in labels.env.items() if not k.startswith("CLAUDE_")}
+        env.update(CODEX_SESSION_ID="test-owner", CODEX_THREAD_ID="test-owner")
+        state = labels.read()
+        state["panes"]["w1:p1"]["agent"] = "codex"
+        labels.write(state)
+        labels.set_registry({"o/r#42": labels.owner(identity="codex:test-owner")})
+        bound = labels.run(
+            "bind",
+            "--herdr-session",
+            "default",
+            "--pane",
+            "w1:p1",
+            "--terminal",
+            "term-a",
+            env=env,
+        )
+        assert bound.returncode == 0, bound.stderr
+    result = labels.run("sync", env=env)
+    assert result.returncode == 0, result.stderr
+    pane = labels.read()["panes"]["w1:p1"]
+    # The sidebar row ["$tl_engine", "$tl_issue"] renders "<engine> · #42";
+    # tl_parent keeps the full registry key and the summary stays in the name.
+    assert pane["tokens"]["tl_engine"] == agent
+    assert pane["tokens"]["tl_issue"] == "#42"
+    assert pane["tokens"]["tl_parent"] == "o/r#42"
+    assert pane["display_agent"] == "表示の要約"
+    if ending == "SessionEnd":
+        result = labels.hook("SessionEnd")
+    else:
+        result = labels.run("clear", env=env)
+    assert result.returncode == 0, result.stderr
+    pane = labels.read()["panes"]["w1:p1"]
+    assert "display_agent" not in pane
+    assert pane["tokens"] == {"other": "keep"}
 
 
 def test_sync_uses_caller_not_focus_and_is_idempotent(labels: Labels) -> None:
