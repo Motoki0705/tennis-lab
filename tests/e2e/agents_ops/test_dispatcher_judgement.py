@@ -105,6 +105,9 @@ def agreement_comment(n: int) -> dict[str, Any]:
 class FakeGitHub:
     repo = "o/r"
 
+    def authenticated_login(self) -> str:
+        return cast(dict[str, str], self.get("user"))["login"]
+
     def improvement_extractions(self, store: Any) -> dict[str, Any]:
         return cast(
             dict[str, Any],

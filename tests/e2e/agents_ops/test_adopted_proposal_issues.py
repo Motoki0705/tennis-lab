@@ -50,6 +50,10 @@ def raw_issue(n: int, **changes: Any) -> dict[str, Any]:
 
 class FakeGitHub:
     repo = "o/r"
+
+    def authenticated_login(self) -> str:
+        return str(self.get("user")["login"])
+
     rows = github.GitHub.rows
     issue_rows = github.GitHub.issue_rows
     issue = github.GitHub.issue

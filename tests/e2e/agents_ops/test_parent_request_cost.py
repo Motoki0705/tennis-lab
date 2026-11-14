@@ -56,7 +56,7 @@ def test_new_record_still_checks_that_its_parent_is_a_work_issue(
     change: str,
 ) -> None:
     p = parent_env
-    p.agreed()
+    p.cli("register")
     state = p.state()
     parent = state["issues"]["1"]
     if change == "proposal-label":
@@ -160,7 +160,7 @@ def test_record_checks_the_fresh_rows_after_acquiring_its_outbox_lock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     p = parent_env
-    p.agreed()
+    p.cli("register")
     for key, value in p.env.items():
         monkeypatch.setenv(key, value)
     writer = importlib.import_module("parent.record_writer")

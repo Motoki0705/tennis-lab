@@ -675,6 +675,9 @@ def test_execution_reads_real_collector_records_without_changing_any_file(
     class FixtureGitHub:
         repo = "o/r"
 
+        def authenticated_login(self) -> str:
+            return self.get("user")["login"]
+
         def get(self, endpoint: str) -> dict[str, str]:
             assert endpoint == "user"  # Session construction only; no network.
             return {"login": "fixture-user"}

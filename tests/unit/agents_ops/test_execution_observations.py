@@ -9,6 +9,23 @@ from types import SimpleNamespace
 import pytest
 
 
+def test_snapshot_login_uses_the_pinned_publisher_without_ambient_authentication(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.syspath_prepend(
+        str(Path(__file__).resolve().parents[3] / ".agents/ops")
+    )
+    github = importlib.import_module("parent.github")
+    collect = importlib.import_module("dispatcher.collect")
+
+    def forbidden(*args: object, **kwargs: object) -> str:
+        raise AssertionError("a frozen snapshot tried to resolve live authentication")
+
+    monkeypatch.setattr(github.GitHub, "authenticated_login", forbidden)
+    snapshot = collect.SnapshotGitHub({"repo": "o/r", "publisher": "pinned-account"})
+    assert snapshot.authenticated_login() == "pinned-account"
+
+
 def test_improvement_approval_does_not_resurrect_a_revoked_planning_basis(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
