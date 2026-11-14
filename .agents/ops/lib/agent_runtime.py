@@ -19,6 +19,11 @@ from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from agent_events import (
     Events,
     EvidenceError,

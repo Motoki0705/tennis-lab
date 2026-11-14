@@ -2,6 +2,10 @@
 
 import argparse
 
+from lib.checkout_lock import guard_interactive_cli
+
+guard_interactive_cli()
+
 # Mirror only root options to identify the subcommand. Values such as a spec
 # filename named improvement-expire must not change another command's policy.
 bootstrap = argparse.ArgumentParser(add_help=False)

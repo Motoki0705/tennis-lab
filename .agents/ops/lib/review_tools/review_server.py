@@ -9,6 +9,11 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from .mcp_server import serve
 from .records import JournalRecorder
 from .repro_isolation import LinuxRunner

@@ -12,6 +12,11 @@ import sys
 from pathlib import Path
 from typing import Any, BinaryIO
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from .retrieval import NOTICE, Retrieval, RetrievalError, encode, strict_json
 
 MAX_REQUEST_BYTES = 64 * 1024

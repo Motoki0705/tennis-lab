@@ -23,6 +23,11 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "lib"))
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from decision_logs import review_capture as decision_capture  # noqa: E402
 from decision_logs.capture import CURRENT  # noqa: E402
 from opsproc import CommandError, run_process_group  # noqa: E402

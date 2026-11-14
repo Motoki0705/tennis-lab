@@ -12,6 +12,12 @@ from contextlib import nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
+if __name__ == "__main__":
+    import runpy
+
+    # Keep the alternate module entry on the same pre-import lock/finite-job path.
+    runpy.run_module("parent", run_name="__main__", alter_sys=True)
+
 from decision_logs import parent_commands as decision_capture
 from decision_logs.capture import CURRENT
 from lib.agent_settings import implementation_models

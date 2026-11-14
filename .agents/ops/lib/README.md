@@ -92,6 +92,49 @@ set済みなら起動せず、実行中のsetはprocess groupを停止・回収�
 を送出する。timeout・通常終了の回収と、cancelを指定しない既存呼出の動作は保持する。
 呼出元はrequest取消・service停止のEventを接続し、後段commitとの同期を別途行う。
 
+### 対話CLIの保護
+
+長時間動き得る次の入口は `guard_interactive_cli()` をproject importより前に呼び、
+メインcheckoutのコードを終了まで共有lockで保護する。**起動方法は従来どおりで、launcherの追加は不要**。
+同じ入口の短いstatus/help操作も保護する。subcommandの選別と入口の取りこぼしを避け、
+数個のGit/lock操作に留めるための判断である。
+
+| 入口 | 保持する期間・用途 |
+|---|---|
+| `python -m parent`、`python -m parent.cli` | worker待機・補足待ち・公開・復旧を含むCLI全体。`improvement-expire` は引き続き有限launcherも必須 |
+| `review/parent_review.py`、`review/merge_gate.py` | レビュー・復旧・公開・mergeの実行全体 |
+| `lib/agent_exec.sh` → `lib/agent_runtime.py`（直接file起動を含む） | runner終了まで。runnerはagentの監視・出力解析・回収でメインのコードを使い続ける |
+| `python -m explain_html` | start/serveを含む全操作。背景のserveは自身で取得し、readerが終了するまで保持 |
+| `python -m ci_watch`、`python -m project_progress` | GitHubのページ取得・複数対象の収集が終わるまで |
+| `python -m issue_supplement`、`python -m review.evaluation` | 生成・検証・比較・取得serverを含む全操作 |
+| `python -m lib.review_tools.mcp_server` / `lib.review_tools.review_server` | stdio取得serverの終了まで |
+| `python -m opsreport.mcp_server` / `opsreport.reproduction_server` | stdio取得・CPU検証serverの終了まで |
+| `dispatcher/worker.py` | 予約の照合からrunner待機・終了記録まで |
+
+lockの対象は `checkout_lock.py` 自身の実体が属するcheckoutで決める。cwd、`--repo`、
+state先や継承した環境変数で別checkoutのlockを取らない。linked worktree由来のコードは
+メインを保護する必要がないため取得しない。内部APIのimportも新たな寿命lockを取らない。
+checkoutの識別では `GIT_DIR` / `GIT_COMMON_DIR` / `GIT_WORK_TREE` の継承値を除外する。
+
+更新側が排他lockを持っていれば、待機をstderrへ出し、**更新完了を待ってからproject importを始める**。
+取得・repoの識別に失敗した場合や、取得後にも中断マーカーが残る場合は、理由を出して75で拒否する。
+lockなしの実行へ切り替えない。共有lockのFDはexecで閉じ、Pythonのfork子でも閉じるため、
+外部Codex/Claude・toolだけが存続しても親CLIのlockを保持しない。ただしメインのコードを使う
+子のrunner/serverは上表の自身の入口で独立に保持する。有限launcherの既存FD継承契約とは区別する。
+
+`agent_exec.sh` は短いbootstrap全体を1つのcompound commandとしてbashに先にparseさせ、
+Pythonへexecする。Pythonがlock待機している間にbashがscriptの続きを読み直すことはない。
+
+boardの投稿/status、worker_status、herdr_labels、issuesの短い管理CLIとhookは寿命lockの対象外。
+dispatcherの管理CLIも対象外で、git-syncが排他lock中に使うstatusを妨げない。
+常駐dispatcher/board webは既存の周期lockと保守停止を使い、寿命全体では保持しない。
+`src/` の学習・評価、training queue workerはこの保護の対象外。
+
+延期時はkernelの `/proc/locks` と `/proc/<PID>/cmdline` から実際の保持者を取得し、
+`lock_holders`（`entry`・`pid`・read/writeの`mode`）をgit-syncのstatus/journalに記録する。
+任意の引数・promptは記録しない。PIDファイルは作らず、異常終了後の古い記録で延期しない。
+取得中に終了したPIDは除き、権限不足等の詳細取得失敗は `inspection_error` として明示する。
+
 ## agyの共通呼び出し部品
 
 `agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加の writer/verifier 用の同期Python API。

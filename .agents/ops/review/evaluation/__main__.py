@@ -9,6 +9,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from lib.review_tools.retrieval import RetrievalError
 from worker_logs.journal import atomic
 

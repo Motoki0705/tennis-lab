@@ -17,6 +17,11 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE.parent / "lib"))
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from issues import Issue  # noqa: E402
 from merge_gate_policy import (  # noqa: E402
     MergeInput,

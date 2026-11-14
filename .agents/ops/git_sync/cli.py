@@ -13,7 +13,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from lib.checkout_lock import checkout_barrier, checkout_lock, state_root
+from lib.checkout_lock import (
+    checkout_barrier,
+    checkout_lock,
+    checkout_lock_holders,
+    state_root,
+)
 from ops_control.systemd import ControlError
 
 from .git import Repository, Skip
@@ -121,7 +126,10 @@ def run(root: Path, directory: Path) -> dict[str, Any]:
                 raise Skip("control_operation_running")
             with checkout_lock(repo.root, exclusive=True, blocking=False) as code_fd:
                 if code_fd is None:
-                    raise Skip("checkout_jobs_running")
+                    raise Skip(
+                        "checkout_jobs_running",
+                        lock_holders=checkout_lock_holders(repo.root),
+                    )
                 # A saved resume ticket must never launch jobs from a dirty,
                 # partially updated or non-main checkout after an interruption.
                 head = repo.preflight()

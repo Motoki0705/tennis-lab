@@ -1,4 +1,4 @@
-"""Lock before importing an operational job from the mutable main checkout."""
+"""Lock finite/resident jobs; interactive CLIs guard their native entrypoints."""
 
 from __future__ import annotations
 

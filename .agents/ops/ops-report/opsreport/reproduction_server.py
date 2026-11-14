@@ -14,6 +14,11 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from .mcp_server import serve
 from .repro_isolation import LinuxRunner, TestRunner, probe
 from .reproduction import Reproduction

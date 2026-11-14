@@ -55,7 +55,7 @@ fetch・ref削除を含むGit hookとrecursive submodule更新は無効にする
 | `protected_path_change` | `.venv` または `.claude/worktrees/` を更新先が変更する |
 | `submodule_layout_change` | gitlinkの追加・削除・通常ファイルとの変換。checkout保護のため手動確認が必要 |
 | `head_changed_during_preflight` | fetchやservice操作の間にHEADが変わった |
-| `checkout_jobs_running` | 有限job、supervisorの処理周期、または別の更新が共通lockを保持している |
+| `checkout_jobs_running` | 有限job、対話CLI、supervisorの処理周期、または別の更新が共通lockを保持している。`lock_holders` に入口・PID・modeを記録 |
 | `control_operation_running` | spinによるdispatcherのON/OFF、または別の更新が制御lockを保持している |
 | `finite_jobs_running` | 登録済み有限service（旧unitを含む）が稼働・起動・停止中 |
 | `unguarded_job_units` | managerが保持するserviceの起動入口が共通launcherを使っていない。全unitをinstallし直す |
@@ -73,6 +73,9 @@ gitlinkの前後の固定版は `submodule_changes` に記録する。依存同�
 [共通checkout lock](../lib/README.md#メインcheckoutと運用jobの排他) を、更新側は排他、
 有限jobは起動前から終了まで共有で保持する。更新が先なら新規jobは対象コードをimportする前に待つ。
 jobが先なら更新側は待ち続けず、次の30分周期へ延期する。新しい有限jobにも同じlauncherを使う。
+対話CLIは[入口側で自動保護](../lib/README.md#対話cliの保護)する。対象一覧・子プロセスのFD方針・
+対象外は同節を参照。何周期延期しても `spin ops status git-sync` の `last_run.lock_holders` と
+logsで現在の延期原因を確認できる。CLIの終了後は次の周期で再び更新を試みる。
 managerの `ExecStart` も照合するため、古いunitが未更新のままでは更新しない。ファイルだけを
 差し替え、daemon-reloadが済んでいない場合も同様に延期する。
 
@@ -119,6 +122,7 @@ importを拒否する。マーカーを手動削除せず、checkoutを修復し
 
 ```bash
 .venv/bin/python -m pytest -n 2 tests/e2e/agents_ops/test_git_sync.py \
+  tests/e2e/agents_ops/test_interactive_checkout.py tests/e2e/agents_ops/test_checkout_job.py \
   tests/e2e/agents_ops/test_ops_control.py tests/e2e/agents_ops/test_dispatcher_supervisor.py
 ```
 

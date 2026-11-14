@@ -8,6 +8,11 @@ import sys
 from pathlib import Path
 from typing import cast
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from lib.review_tools.mcp_server import (  # noqa: F401
     MAX_REQUEST_BYTES,
     dispatch,

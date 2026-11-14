@@ -15,6 +15,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+if __name__ == "__main__":
+    from lib.checkout_lock import guard_interactive_cli
+
+    guard_interactive_cli()
+
 from lib.opsproc import process_identity
 
 from .paths import SafeDirectory

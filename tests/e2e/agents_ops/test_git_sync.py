@@ -28,6 +28,12 @@ from tests.e2e.agents_ops.test_ops_control import (
 from tests.e2e.agents_ops.test_ops_control import (
     control_factory as control_factory,
 )
+from tests.support.agents_ops.checkout_cli import (
+    PROJECT_WAIT,
+    install_cli,
+    line,
+    running_cli,
+)
 
 SYNC = ROOT / ".agents/ops/git_sync/sync.py"
 LAUNCHER = ROOT / ".agents/ops/checkout_job.py"
@@ -834,6 +840,85 @@ def test_running_process_holds_shared_code_lock_through_exec(
     sync.publish({"app.py": "new\n"})
     assert running_job.poll() is None
     sync.run("checkout_jobs_running", 75)
+
+
+def install_native_parent(sync: SyncEnv, project: str = PROJECT_WAIT) -> None:
+    install_cli(sync.repo, project=project)
+    git(sync.repo, "add", "-f", ".agents/ops/parent", ".agents/ops/lib")
+    git(sync.repo, "commit", "-qm", "CLI baseline")
+    git(sync.repo, "push", "-q", "origin", "main")
+    git(sync.producer, "pull", "-q", "--ff-only")
+
+
+def test_native_parent_defers_updates_with_visible_holder_then_next_run_updates(
+    sync: SyncEnv,
+) -> None:
+    install_native_parent(sync)
+    before = git(sync.repo, "rev-parse", "HEAD")
+    target = sync.publish({"app.py": "new\n"})
+    with running_cli(
+        sync.repo,
+        arguments=("--parent", "1893", "run-worker", "--child", "2051"),
+    ) as parent:
+        assert line(parent) == "project-import"
+        for _ in range(2):
+            result = sync.run("checkout_jobs_running", 75)
+            assert result["outcome"] == "skipped"
+            assert result["lock_holders"] == [
+                {"pid": parent.pid, "entry": "python -m parent", "mode": "read"}
+            ]
+            status = json.loads(sync.control.run("status", "git-sync").stdout)
+            assert status["targets"][0]["last_run"] == result
+            assert git(sync.repo, "rev-parse", "HEAD") == before
+            assert (sync.repo / "app.py").read_text() == "old\n"
+    assert parent.returncode == 0
+    result = sync.run("fast_forwarded")
+    assert result["head_after"] == target
+    assert (sync.repo / "app.py").read_text() == "new\n"
+
+
+def test_native_parent_started_during_update_imports_only_updated_project_code(
+    sync: SyncEnv,
+) -> None:
+    install_native_parent(
+        sync, project="print('old-project', flush=True)\nraise SystemExit(0)\n"
+    )
+    sync.publish(
+        {
+            ".agents/ops/parent/cli.py": "print('new-project', flush=True)\nraise SystemExit(0)\n"
+        }
+    )
+    ready, release = [
+        sync.repo.parent / name for name in ("merge-ready", "merge-release")
+    ]
+    install_git_hook(
+        sync,
+        f"""
+if 'merge' in args:
+    Path({str(ready)!r}).touch()
+    deadline = time.monotonic() + 8
+    while not Path({str(release)!r}).exists():
+        if time.monotonic() > deadline: sys.exit(9)
+        time.sleep(.02)
+sys.exit(subprocess.call([real, *args]))
+""",
+    )
+    with sync.start() as updater:
+        try:
+            wait_file(ready)
+            with running_cli(sync.repo) as parent:
+                assert "waiting for git-sync" in line(parent, stderr=True)
+                wait_for_flock(parent)
+                release.touch()
+                stdout, stderr = updater.communicate(timeout=15)
+                assert updater.returncode == 0, stdout + stderr
+                assert line(parent) == "new-project"
+            assert parent.returncode == 0
+        finally:
+            release.touch()
+            if updater.poll() is None:
+                updater.terminate()
+                updater.wait(timeout=5)
 
 
 def test_update_blocks_new_job_before_it_reads_checkout(sync: SyncEnv) -> None:
