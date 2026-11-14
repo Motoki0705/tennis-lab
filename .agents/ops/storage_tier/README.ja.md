@@ -90,23 +90,24 @@ root・CI等の他UIDは対象外とし、UID別の除外数をJSON出力・監�
 観測前後のPID開始時刻・UID・Name・所有者が不変のときだけ、非dumpableの根拠として除外する。
 明示的な `Dumpable: 1` は除外を否定し、`CoreDumping: 0` は根拠にしない。
 所有者の規則は [proc_pid(5)](https://man7.org/linux/man-pages/man5/proc_pid.5.html) に基づく。
-別の所有者・namespaceの対応で根拠が立たなければ失敗する。
+非dumpableの判定では、別の所有者・namespaceの対応で根拠が立たなければ失敗する。
 件数・読めるcomm（status Name）・PID・根拠を `process_scope.excluded_nondumpable` に残す。
 Z/Xは `Threads: 1` かつtask一覧がそのPIDだけのとき終了済みとして別に数える。
 Zのleaderに別threadが残る場合があるためである（[proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html)）。
 生存中のPIDのmetadata欠落は無視しない。
 非dumpableな同UIDプロセス（Codex CLI本体、sshd、gpg-agent等）は検査しない。
-別の `permitted-capabilities` 除外は、対象の `CapPrm` に `/proc/self/status` の `CapPrm` にないbitがあり、
-user namespaceのdevice/inodeが一致し、mapsとcwdがどちらもEACCES/EPERMの場合に限る。fd一覧は読めてもよい。
-観測前後のPID・UID・能力値・namespaceの不変も確認する。件数・comm・両方の能力値・namespaceの根拠を
+別の `permitted-capabilities` 除外は、同一user namespaceを運用前提とする。
+対象の `CapPrm` に `/proc/self/status` の `CapPrm` にないbitがあり、mapsとcwdがどちらもEACCES/EPERMの場合に限る。
+fd一覧は読めてもよい。観測前後のPID・UID・能力値の不変も確認する。件数・comm・両方の能力値・namespaceの前提を
 `process_scope.excluded_capabilities` に記録する。どちらもプロセス名による許可リストは使わない。
 能力集合の根拠は [commoncap](https://github.com/torvalds/linux/blob/v6.6/security/commoncap.c) にある。
 データを読む学習・スクリプトはdumpableで検査可能なプロセスで動くことを前提とする。
 UID不明、想定外のI/Oエラー、どちらの根拠も立たない読取不能は失敗として止める。
-uid_map/gid_mapの値が同じでもnamespaceの同一性は証明できない。
-`/proc/<pid>/ns/user` の読取りにも同じptrace検査がかかる
-（[kernel実装](https://github.com/torvalds/linux/blob/v6.6/fs/proc/namespaces.c)）。
-現環境のsystemdはnamespace handleも拒否されるため除外を証明できず、解決前に自動削除を有効にしない。
+namespace同一性は常に `unverified` と記録する。`/proc/<pid>/ns/user` の読取りにも同じptrace検査がかかるため、
+handleは開かない（[kernel実装](https://github.com/torvalds/linux/blob/v6.6/fs/proc/namespaces.c)）。
+補助検査として観測前後に対象と検査側の `uid_map` を読む。読めて異なる場合や不正なmetadataは失敗する。
+読めない場合は失敗にせずエラー内容を記録する。一致は `matched` と記録するが、namespaceの同一性の証明とはしない。
+前後両方の観測を監査記録に残す。
 他UIDのconsumerは保護されないため、
 storage処理とデータconsumerは同じユーザーで動かす。training queueの記録は一切読まない。
 待機・予定jobの入力でも14日未使用なら消え、手動hydrateが必要になり得る。
@@ -183,7 +184,7 @@ systemのmount unitへの順序依存は張らず、毎回mountを確認する�
 
 1. producer・queueの新規起動・旧pathを保持するconsumerの停止時間を親同士で調整する。
    自動削除の前に、同UIDのdumpableなconsumerを検査できることと、非dumpable/能力差の除外根拠・記録を確認する。
-   namespaceの同一性が不明など、根拠を証明できない読取不能は失敗のままとする。
+   同一user namespaceの運用前提も確認する。読めたuid_mapの不一致や、根拠を証明できない本検査の読取不能は失敗とする。
    それらを無視せず、権限変更や他session停止を暗黙に実行しない。
 2. E:、使用中・queue参照、設定の間接参照、hardlink別名、E:絶対pathのコマンド、既存D:コピーを一覧にする。
    必要な版/runを選び、`ckpt/` 全体とその単位だけをD:へ戻す。

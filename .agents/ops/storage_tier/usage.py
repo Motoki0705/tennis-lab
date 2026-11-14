@@ -187,17 +187,35 @@ class Inspector:
             raise StorageError(f"missing/malformed process CapPrm: {process}")
         return int(value, 16)
 
-    @staticmethod
-    def user_namespace(process: Path) -> tuple[int, int]:
-        # Follow the namespace handle, not the per-PID proc symlink inode.
-        # Equal uid_map/gid_map contents do not prove namespace identity.
+    def uid_map(self, process: Path) -> dict[str, Any]:
+        # Auxiliary evidence only: proc namespace handles themselves require
+        # ptrace permission, and matching ID maps do not prove namespace identity.
         try:
-            info = (process / "ns/user").stat()
-        except PermissionError as exc:
-            raise StorageError(
-                f"user namespace identity cannot be read: {process}: {exc}"
-            ) from exc
-        return info.st_dev, info.st_ino
+            value = self.metadata(process, "uid_map")
+        except OSError as exc:
+            return {"error": str(exc), "errno": errno.errorcode.get(exc.errno or 0)}
+        rows = [line.split() for line in value.splitlines() if line.strip()]
+        if any(
+            len(row) != 3 or any(not item.isdigit() for item in row) for row in rows
+        ):
+            raise StorageError(f"malformed process uid_map: {process}")
+        return {"ranges": [[int(item) for item in row] for row in rows]}
+
+    def compare_uid_maps(self, process: Path, caller: Path) -> dict[str, Any]:
+        target_map, caller_map = self.uid_map(process), self.uid_map(caller)
+        comparison = "unverified"
+        if "ranges" in target_map and "ranges" in caller_map:
+            if target_map["ranges"] != caller_map["ranges"]:
+                raise StorageError(
+                    f"different uid_map; possible different user namespace: "
+                    f"target={target_map}, inspector={caller_map}"
+                )
+            comparison = "matched"
+        return {
+            "comparison": comparison,
+            "target": target_map,
+            "inspector": caller_map,
+        }
 
     def capability_evidence(self, process: Path) -> dict[str, Any]:
         caller = self.proc / "self"
@@ -216,11 +234,7 @@ class Inspector:
             )
         start = self.starttime(process)
         try:
-            namespace = self.user_namespace(process)
-            if namespace != self.user_namespace(caller):
-                raise StorageError(
-                    "capability comparison requires the same user namespace"
-                )
+            maps_before = self.compare_uid_maps(process, caller)
         except (OSError, StorageError) as exc:
             raise StorageError(f"{exc}; {masks}") from exc
         denied = {}
@@ -244,10 +258,12 @@ class Inspector:
             or self.permitted(caller, caller_after) != caller_caps
             or after.get("Name") != before.get("Name")
             or self.starttime(process) != start
-            or self.user_namespace(process) != namespace
-            or self.user_namespace(caller) != namespace
         ):
-            raise StorageError("process identity, capabilities or namespace changed")
+            raise StorageError("process identity or capabilities changed")
+        try:
+            maps_after = self.compare_uid_maps(process, caller)
+        except (OSError, StorageError) as exc:
+            raise StorageError(f"{exc}; {masks}") from exc
         return {
             "kind": "permitted-capabilities",
             "pid": int(process.name),
@@ -255,7 +271,12 @@ class Inspector:
             "starttime_ticks": start,
             "target_cap_prm": f"{target_caps:016x}",
             "inspector_cap_prm": f"{caller_caps:016x}",
-            "user_namespace": {"device": namespace[0], "inode": namespace[1]},
+            "user_namespace": {
+                "identity": "unverified",
+                "assumption": "same-user-namespace",
+                "uid_map_before": maps_before,
+                "uid_map_after": maps_after,
+            },
             "denied": denied,
         }
 

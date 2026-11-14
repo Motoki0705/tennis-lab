@@ -495,20 +495,41 @@ def capability_process(lab: Lab, private_process: dict[str, Any]) -> dict[str, A
     with (process / "status").open("a") as stream:
         stream.write("Dumpable:\t1\nCapPrm:\t0000000800000000\n")
     caller = lab.proc / "self"
-    (caller / "ns").mkdir(parents=True)
-    (process / "ns").mkdir()
+    caller.mkdir()
     (caller / "status").write_text(
         f"Uid:\t{uid}\t{uid}\t{uid}\t{uid}\nCapPrm:\t0000000000000002\n"
     )
-    # Two namespace handles with one device/inode, independent of proc ownership.
-    (caller / "ns/user").touch()
-    os.link(caller / "ns/user", process / "ns/user")
+    # Formatting is irrelevant; equal mappings still do not prove identity.
+    # No ns/user handle exists: exclusion must not try to open one.
+    (caller / "uid_map").write_text("0 0 4294967295\n")
+    (process / "uid_map").write_text("         0          0 4294967295\n")
     return private_process
 
 
-def test_capability_difference_same_namespace_is_excluded_and_audited(
-    lab: Lab, capability_process: dict[str, Any]
+@pytest.mark.parametrize(
+    "auxiliary", ["matched", "target-denied", "inspector-io-error", "target-missing"]
+)
+def test_capability_difference_audits_namespace_assumption_and_uid_maps(
+    lab: Lab,
+    capability_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    auxiliary: str,
 ) -> None:
+    process = capability_process["path"]
+    caller = lab.proc / "self"
+    if auxiliary == "target-missing":
+        (process / "uid_map").unlink()
+    elif auxiliary in {"target-denied", "inspector-io-error"}:
+        path = (process if auxiliary == "target-denied" else caller) / "uid_map"
+        error = errno.EACCES if auxiliary == "target-denied" else errno.EIO
+        original_read = lab.usage.read_bytes
+
+        def read(candidate: Path) -> bytes:
+            if candidate == path:
+                raise OSError(error, "injected auxiliary uid_map failure", str(path))
+            return cast(bytes, original_read(candidate))
+
+        monkeypatch.setattr(lab.usage, "read_bytes", read)
     unit = lab.unit()
     lab.mirror(unit)
     code, preview = lab.run("cycle", unit, dry_run=True)
@@ -524,11 +545,28 @@ def test_capability_difference_same_namespace_is_excluded_and_audited(
     assert excluded["target_cap_prm"] == "0000000800000000"
     assert excluded["inspector_cap_prm"] == "0000000000000002"
     assert excluded["denied"] == {"maps": "EACCES", "cwd": "EACCES"}
-    namespace = (lab.proc / "self/ns/user").stat()
-    assert excluded["user_namespace"] == {
-        "device": namespace.st_dev,
-        "inode": namespace.st_ino,
-    }
+    namespace = excluded["user_namespace"]
+    assert namespace["identity"] == "unverified"
+    assert namespace["assumption"] == "same-user-namespace"
+    for key in ("uid_map_before", "uid_map_after"):
+        observation = namespace[key]
+        if auxiliary == "matched":
+            assert observation["comparison"] == "matched"
+            assert (
+                observation["target"]
+                == observation["inspector"]
+                == {"ranges": [[0, 0, 4294967295]]}
+            )
+        else:
+            assert observation["comparison"] == "unverified"
+            failed = "inspector" if auxiliary == "inspector-io-error" else "target"
+            expected = {
+                "target-denied": "EACCES",
+                "inspector-io-error": "EIO",
+                "target-missing": "ENOENT",
+            }[auxiliary]
+            assert observation[failed]["errno"] == expected
+            assert "error" in observation[failed]
     assert (
         next(row for row in lab.records() if row["event"] == "deleted")["process_scope"]
         == scope
@@ -539,8 +577,9 @@ def test_capability_difference_same_namespace_is_excluded_and_audited(
     "failure",
     [
         "subset",
-        "different-namespace",
-        "unreadable-namespace",
+        "different-uid-map",
+        "changed-uid-map",
+        "malformed-uid-map",
         "malformed-target",
         "missing-caller",
         "partial-denial",
@@ -563,18 +602,10 @@ def test_capability_exclusion_requires_complete_stable_evidence(
         caller_status.write_text(
             caller_status.read_text().replace("0000000000000002", "0000000800000002")
         )
-    elif failure == "different-namespace":
-        (process / "ns/user").unlink()
-        (process / "ns/user").touch()
-    elif failure == "unreadable-namespace":
-        original_stat = Path.stat
-
-        def stat(path: Path, *args: Any, **kwargs: Any) -> os.stat_result:
-            if path == process / "ns/user":
-                raise PermissionError(errno.EACCES, "injected namespace denial")
-            return original_stat(path, *args, **kwargs)
-
-        monkeypatch.setattr(Path, "stat", stat)
+    elif failure == "different-uid-map":
+        (process / "uid_map").write_text("0 1000 1\n")
+    elif failure == "malformed-uid-map":
+        (process / "uid_map").write_text("invalid mapping\n")
     elif failure == "malformed-target":
         path = process / "status"
         path.write_text(path.read_text().replace("0000000800000000", "not-hex"))
@@ -591,10 +622,14 @@ def test_capability_exclusion_requires_complete_stable_evidence(
         def read(path: Path) -> bytes:
             nonlocal reads
             value = cast(bytes, original_read(path))
-            if path == caller_status:
+            if path == caller_status and failure == "caller-changed":
                 reads += 1
                 if reads > 1:
                     return value.replace(b"0000000000000002", b"0000000800000002")
+            if path == process / "uid_map" and failure == "changed-uid-map":
+                reads += 1
+                if reads > 1:
+                    return b"0 1000 1\n"
             return value
 
         monkeypatch.setattr(lab.usage, "read_bytes", read)

@@ -119,21 +119,23 @@ Excluded count, readable comm (status Name), PID and evidence appear in
 still have live threads ([proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html)).
 Missing metadata for a still-live process is not ignored.
 Non-dumpable same-UID processes such as the Codex CLI core, sshd and gpg-agent
-are outside inspection. A separate `permitted-capabilities` exclusion requires
-the target's `CapPrm` to contain a bit absent from `/proc/self/status` `CapPrm`,
-matching user namespace device/inode identities, and EACCES/EPERM for both maps
-and cwd. The fd inventory may remain readable. PID, UID, capabilities and namespace
-must remain stable. Count, comm, both capability masks and namespace evidence are
-recorded in `process_scope.excluded_capabilities`; neither rule uses process names.
+are outside inspection. A separate `permitted-capabilities` exclusion assumes
+the same user namespace as an operational precondition. It requires the target's
+`CapPrm` to contain a bit absent from `/proc/self/status` `CapPrm`, EACCES/EPERM
+for both maps and cwd, and stable PID/UID/capabilities. The fd inventory may remain
+readable. Count, comm, both masks and the namespace assumption are recorded in
+`process_scope.excluded_capabilities`; neither rule uses process names.
 This follows the capability subset check in
 [commoncap](https://github.com/torvalds/linux/blob/v6.6/security/commoncap.c).
 Training/data-reading scripts must run dumpable and inspectable. Unknown UID,
 unexpected I/O failures and denied processes without either proof still fail closed.
-Namespace identity must be observable: equal uid_map/gid_map contents are not
-identity proof. Reading `/proc/<pid>/ns/user` uses the same ptrace check
+Namespace identity is always recorded as `unverified`; the handle is not opened
+because `/proc/<pid>/ns/user` uses the same ptrace check
 ([kernel namespace implementation](https://github.com/torvalds/linux/blob/v6.6/fs/proc/namespaces.c)).
-On the current host, systemd's namespace handle is also denied, so the capability
-exclusion remains unproven and automatic deletion must stay disabled until resolved.
+As an auxiliary check, read target/self `uid_map` before and after the probes.
+Different readable mappings or malformed metadata fail closed. Unreadable mappings
+are nonfatal and record their errors; matching mappings record `matched` without
+claiming namespace identity. Both observations remain in the audit evidence.
 Other-user consumers are therefore not protected: run storage and data consumers
 as the same user. Training queue records are never read, and queued/planned jobs
 may lose a 14-day-old input and need manual hydration. There is no mtime/ctime
@@ -231,9 +233,10 @@ the mount itself. Installation only links units. Enablement is a separate deploy
 
 1. Coordinate a pause in producers, queue admissions and consumers holding old paths.
    Confirm the user unit can inspect its own UID's dumpable consumers before
-   enabling deletion. Confirm nondumpable/capability exclusions and their evidence.
-   Unknown namespace identity or another unproven case remains an error; do not
-   ignore it or change permissions/stop sessions implicitly.
+   enabling deletion. Confirm nondumpable/capability exclusions, their evidence,
+   and the same-user-namespace operational precondition. Different readable uid_map
+   values or another unproven core case remain errors. Do not change permissions
+   or stop sessions implicitly.
 2. Inventory E: units and active/queued references, including indirect config defaults,
    old hardlink aliases, E:-absolute command paths and pre-existing D: copies. Decide
    the needed version/run units. Hydrate all `ckpt/` and those units only.
