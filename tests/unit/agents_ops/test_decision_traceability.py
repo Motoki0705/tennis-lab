@@ -22,6 +22,7 @@ from tests.support.agents_ops.decision_logs import (
 )
 from tests.support.agents_ops.traceability import (
     observation_record,
+    remaining_publication,
     termination_observation,
     worker_observation,
 )
@@ -325,14 +326,45 @@ def test_main_observation_without_files_does_not_claim_this_head_has_them() -> N
     assert "このHEADに公開3ファイルを確認" not in page
 
 
-def test_typed_termination_cannot_publish_a_private_resume_path() -> None:
+@pytest.mark.parametrize("field", ["resume_command", "decision_resume_command"])
+def test_typed_termination_cannot_publish_a_private_resume_path(field: str) -> None:
     row = observation_record(
-        termination_observation(resume_command="resume /home/private/state.json"),
+        termination_observation(**{field: "resume /home/private/state.json"}),
         issue=None,
         delegation=None,
     )
     with pytest.raises(PublicationError, match="absolute_path"):
         projection.render(row)
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "bool_count",
+        "negative_count",
+        "complete_type",
+        "bool_actor",
+        "missing_field",
+        "batch_alias",
+    ],
+)
+def test_termination_inventory_rejects_invalid_producer_fields(fault: str) -> None:
+    pending = remaining_publication("decision_log", unpublished_count=None)
+    fact = termination_observation(remaining=[pending], remaining_complete=False)
+    if fault == "bool_count":
+        pending["unpublished_count"] = True
+    elif fault == "negative_count":
+        pending["unpublished_count"] = -1
+    elif fault == "complete_type":
+        fact["remaining_complete"] = 1
+    elif fault == "bool_actor":
+        fact["publication_actor"] = True
+    elif fault == "missing_field":
+        del pending["issue"]
+    elif fault == "batch_alias":
+        pending["public_key"] = "b" * 32
+    with pytest.raises(PublicationError):
+        projection.render(observation_record(fact, issue=None, delegation=None))
 
 
 def test_termination_is_visible_for_parent_without_workers_and_keeps_pending_owner() -> (
@@ -341,20 +373,19 @@ def test_termination_is_visible_for_parent_without_workers_and_keeps_pending_own
     row = observation_record(
         termination_observation(
             event="handoff_pending",
-            publication_actor="next parent",
-            resume_command="python -m parent --parent 1 publish-decision-log --retry",
+            publication_actor=2,
+            decision_resume_command="python -m parent --parent 1 publish-decision-log --retry",
             remaining=[
-                {
-                    "kind": "decision_log",
-                    "parent": 1,
-                    "state": "pending",
-                    "stage": "pr_open",
-                    "error": None,
-                    "pr_number": 77,
-                    "pr_head": "d" * 40,
-                    "unpublished_count": 3,
-                    "batch_key": "a" * 32,
-                }
+                remaining_publication(
+                    "decision_log",
+                    state="pending",
+                    stage="pr_open",
+                    pr_number=77,
+                    pr_head="d" * 40,
+                    unpublished_count=3,
+                    public_key="a" * 32,
+                    batch_key="a" * 32,
+                )
             ],
         ),
         issue=None,
@@ -364,7 +395,7 @@ def test_termination_is_visible_for_parent_without_workers_and_keeps_pending_own
     parent = generated[ROOT + "/parent-1/README.md"].decode()
     assert (
         "引継ぎ待ち" in parent
-        and "next parent" in parent
+        and "公開の担当: 2" in parent
         and "publish-decision-log" in parent
     )
     assert "https://github.com/o/r/pull/77" in parent and "3" in parent

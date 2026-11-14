@@ -381,8 +381,9 @@ explicit `publish-decision-log --retry` late-file repair, without timers or poll
 
 ### Typed turn and termination observations
 
-V1 envelopes remain byte-for-byte immutable. Only v2 results add `data.observation`,
-whose own `version: 1` selects `worker_turn`, `termination` or `capture_gap`.
+V1 envelopes remain byte-for-byte immutable. Only v2 results add `data.observation`.
+Worker-turn and capture-gap observations use version 1. Termination observations
+use version 2; existing version 1 observations remain readable without rewriting.
 Required fields and rejection rules live in [trace_schema.py](trace_schema.py).
 Execution, final availability and publication are separate facts. Publication
 stores main/public PR/pending/unknown, stage/error, PR URL/HEAD and the observed
@@ -401,13 +402,21 @@ independent final facts require reconciliation. Arbitrary summaries and literal
 dictionaries never become typed evidence.
 
 `trace_capture.capture_termination(operation, receipt, evidence=..., acceptance=...)`
-is the sole adapter for the agreed private receipt: `repo`, `parent`, `generation`,
+is the sole adapter for `worker_logs.lifecycle.record_exit()` checkpoints:
+`repo`, `parent`, `generation`,
 `event` (`ended`/`handoff_pending`/`handoff_accepted`), `observed_at`, `main_revision`,
-`remaining`, `publication_actor`, `resume_command`. The pending producer
-`remaining_publications(repo, parent, *, state_dir)` belongs to the publication-completion
-change. Fixtures assume issue/public_key/sequence for worker entries,
-`unpublished_count`/`batch_key` for decision entries, and state/stage/error/pr_number/pr_head
-for both. Receipt location and release/handoff/supervisor wiring remain a later integration.
+`remaining`, `remaining_complete`, `publication_actor`, `resume_command`,
+`decision_resume_command`, `error`. The producer is
+`worker_logs.reconciliation.remaining_publications(repo, parent, *, state_dir)`;
+its full `RemainingPublication` rows retain kind/parent/issue/public_key/sequence,
+state/stage/error/pr_number/pr_head/unpublished_count/batch_key, including `None` values.
+Worker keys have the existing `d-` prefix; decision keys equal batch_key or are `None`.
+Unknown unpublished counts display as unconfirmed. An incomplete inventory retains
+known rows and never turns an empty list into evidence of zero remaining work.
+`publication_actor` accepts the active parent number or a public string such as
+`unassigned`. Both worker and decision resume commands and reconciliation errors
+remain visible. Checkpoints live under `publication-exits/` in private state;
+release/handoff/supervisor wiring remains a later integration.
 Public actor/resume text must pass the existing guard; private IDs/paths are not labels.
 Acceptance defaults to unverified, independently of assignment end. Views link
 the canonical acceptance/end evidence and show remaining work, actor and resume destination.

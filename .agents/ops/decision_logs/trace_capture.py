@@ -197,9 +197,9 @@ def capture_termination(
 ) -> str:
     """Capture an already-read lifecycle receipt, without publishing or CLI IO.
 
-    Assumed private receipt fields are exactly the parent's agreed #1961 shape.
-    remaining decision_log uses unpublished_count and batch_key. Public actor
-    and resume text must pass the existing projection guard, as do all facts.
+    Accept the record_exit checkpoint and full RemainingPublication rows from
+    worker_logs.lifecycle/reconciliation. Unknown counts and incomplete inventory
+    stay independent of known remaining work. Public strings pass the guard.
     """
     if isinstance(receipt, Path):
         require(not receipt.is_symlink(), "private_storage_symlink")
@@ -214,8 +214,11 @@ def capture_termination(
         "observed_at",
         "main_revision",
         "remaining",
+        "remaining_complete",
         "publication_actor",
         "resume_command",
+        "decision_resume_command",
+        "error",
     }
     require(set(value) == expected, "record_schema")
     scope = operation.row["scope"]
@@ -232,10 +235,9 @@ def capture_termination(
         value,
     )
     observation = {
-        "version": 1,
+        "version": 2,
         "kind": "termination",
         **{k: copy.deepcopy(value[k]) for k in expected - {"repo", "parent"}},
-        "remaining_status": "observed",
         "acceptance": acceptance or {"state": "unverified", "evidence": [proof]},
         "evidence": evidence or [proof],
     }
@@ -243,7 +245,9 @@ def capture_termination(
         return operation.result(
             value,
             artifact="lifecycle publication reconciliation receipt",
-            status="partial" if value["remaining"] else "success",
+            status="partial"
+            if value["remaining"] or not value["remaining_complete"] or value["error"]
+            else "success",
             summary="Parent lifecycle and publication reconciliation observed; acceptance is recorded separately",
             observation=observation,
             evidence=evidence,

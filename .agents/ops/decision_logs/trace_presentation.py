@@ -118,6 +118,8 @@ def observation_view(value: dict[str, Any], repo: str, *, brief: bool = False) -
         "最後の親の受入（明示記録時点）: " + prose(value["acceptance"]["state"]),
     ]
     if brief:
+        if value["version"] == 2 and not value["remaining_complete"]:
+            lines.append("公開残件の照合: 未確認")
         return "<br>".join(lines)
     if value["main_revision"]:
         lines.append(
@@ -130,37 +132,66 @@ def observation_view(value: dict[str, Any], repo: str, *, brief: bool = False) -
         proofs(value["acceptance"]["evidence"]),
         "終了・引継ぎの根拠: " + proofs(value["evidence"]),
     ]
-    if value["remaining_status"] == "unknown":
+    complete = (
+        value["remaining_complete"]
+        if value["version"] == 2
+        else value["remaining_status"] == "observed"
+    )
+    if not complete:
         lines.append("公開残件の照合: 未確認（空配列を残件なしと扱わない）")
+        lines.append(
+            f"判明している公開残件: {len(value['remaining'])} 項目（全件数は未確認）"
+        )
     else:
         lines.append(f"公開残件（観測時点）: {len(value['remaining'])} 件")
-        for pending in value["remaining"][:6]:
-            description = pending["kind"] + ": " + prose(pending["state"])
-            if pending["kind"] == "worker_log":
-                description += f" / 担当issue {pending['issue']} / {prose(pending['public_key'])} / turn {pending['sequence']}"
-            else:
-                description += f" / 未公開 {pending['unpublished_count']} 記録"
-            for key in ("stage", "error"):
-                if pending[key]:
-                    description += " / " + prose(pending[key], 120)
-            if pending["pr_number"]:
-                description += " / " + url_link(
-                    f"https://github.com/{repo}/pull/{pending['pr_number']}",
-                    f"PR #{pending['pr_number']}",
-                )
-            lines.append(description)
-        if len(value["remaining"]) > 6:
-            lines.append("残りの公開作業は記録本文を参照")
+    if value["version"] == 2 and value["error"]:
+        lines.append("公開照合のエラー: " + prose(value["error"], 120))
+    for pending in value["remaining"][:6]:
+        description = pending["kind"] + ": " + prose(pending["state"])
+        if pending["kind"] == "worker_log":
+            identity = [
+                "未確認" if pending[k] is None else prose(str(pending[k]))
+                for k in ("issue", "public_key", "sequence")
+            ]
+            description += (
+                f" / 担当issue {identity[0]} / {identity[1]} / turn {identity[2]}"
+            )
+        else:
+            description += (
+                " / 未公開記録数: 未確認"
+                if pending["unpublished_count"] is None
+                else f" / 未公開 {pending['unpublished_count']} 記録"
+            )
+        for key in ("stage", "error"):
+            if pending[key]:
+                description += " / " + prose(pending[key], 120)
+        if pending["pr_number"]:
+            description += " / " + url_link(
+                f"https://github.com/{repo}/pull/{pending['pr_number']}",
+                f"PR #{pending['pr_number']}",
+            )
+        lines.append(description)
+    if len(value["remaining"]) > 6:
+        lines.append("残りの公開作業は記録本文を参照")
     lines += [
         "公開の担当: "
         + (
-            prose(value["publication_actor"])
+            prose(str(value["publication_actor"]))
             if value["publication_actor"]
             else "未確認"
         ),
-        "再開先: "
+        ("workerログの再開先: " if value["version"] == 2 else "再開先: ")
         + (prose(value["resume_command"]) if value["resume_command"] else "未記録"),
     ]
+    if value["version"] == 2:
+        lines.append(
+            "判断ログの再開先: "
+            + (
+                prose(value["decision_resume_command"])
+                if value["decision_resume_command"]
+                else "未記録"
+            )
+        )
     return "<br>".join(lines)
 
 

@@ -311,8 +311,9 @@ initial/resume为键。清单是经过验证的worker三个文件与event轮次�
 
 ### 轮次与担当结束的类型化观察
 
-既有v1 envelope字节不变。仅v2结果新增 `data.observation`，其自身 `version: 1` 支持
-`worker_turn`、`termination`、`capture_gap`。必需字段和拒绝条件以
+既有v1 envelope字节不变。仅v2结果新增 `data.observation`。
+worker_turn与capture_gap使用观察version 1，termination使用观察version 2；
+既有观察version 1仍可读取，无需改写原文。必需字段和拒绝条件以
 [trace_schema.py](trace_schema.py) 为准。执行、final有无与发布分开记录；发布保留main/公开PR/
 保留/未确认、stage/error、PR URL/HEAD与核对main revision。PR文件是外部依据，不混入main输入。
 
@@ -327,12 +328,16 @@ initial/resume为键。清单是经过验证的worker三个文件与event轮次�
 独立final事实相互矛盾时要求核对，不把任意summary或literal字典提升为类型化依据。
 
 `trace_capture.capture_termination(operation, receipt, evidence=..., acceptance=...)` 是唯一的
-私有结束receipt适配器。假定字段为 `repo`、`parent`、`generation`、`event`
+`worker_logs.lifecycle.record_exit()` 私有checkpoint适配器。字段为 `repo`、`parent`、`generation`、`event`
 （ended/handoff_pending/handoff_accepted）、`observed_at`、`main_revision`、`remaining`、
-`publication_actor`、`resume_command`。`remaining_publications(repo, parent, *, state_dir)` 的producer
-属于发布完成侧变更。fixture假定worker残项有issue/public_key/sequence、判断日志残项有
-`unpublished_count`/`batch_key`，两者均有state/stage/error/pr_number/pr_head。
-准确保存位置与release/handoff/supervisor配线由后续集成确定。
+`remaining_complete`、`publication_actor`、`resume_command`、`decision_resume_command`、`error`。
+producer为 `worker_logs.reconciliation.remaining_publications(repo, parent, *, state_dir)`。
+完整保留RemainingPublication的kind/parent/issue/public_key/sequence/state/stage/error/
+pr_number/pr_head/unpublished_count/batch_key，包括缺测的None。
+worker公开键有既有d-前缀；decision公开键等于batch_key或为None。
+未公开件数None显示未确认；即使清单不完整，也保留已知残项，不把不完整空清单当作零残项。
+担当接受active父issue编号或unassigned等公开字符串；显示worker与判断日志各自的恢复指令和核对错误。
+checkpoint保存在private state的 `publication-exits/` 下；release/handoff/supervisor配线由后续集成完成。
 公开担当与恢复指令也通过Guard，不把私有ID或路径作为显示名称。
 验收默认未确认，与担当结束分开；显示原始验收/结束依据、剩余发布、担当和恢复入口。
 相同观察的重放保持幂等；即使结束receipt不变，后到的明确验收依据也追加为新观察。

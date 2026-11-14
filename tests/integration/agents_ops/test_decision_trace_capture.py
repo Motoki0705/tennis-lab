@@ -6,8 +6,13 @@ import importlib
 from pathlib import Path
 from typing import Any
 
-from tests.support.agents_ops.decision_logs import AT, evidence, journal, schema
-from tests.support.agents_ops.traceability import termination_observation
+import pytest
+
+from tests.support.agents_ops.decision_logs import evidence, journal, schema
+from tests.support.agents_ops.traceability import (
+    lifecycle_receipt,
+    remaining_publication,
+)
 from tests.support.agents_ops.worker_logs import record_source
 
 capture: Any = importlib.import_module("decision_logs.capture")
@@ -26,6 +31,65 @@ def public_files(log: Any) -> dict[str, bytes]:
         navigation.event_path(p["record"]): schema.json_bytes(p)
         for p in preview["payloads"]
     }
+
+
+@pytest.mark.parametrize("inventory", ["complete", "partial", "unavailable"])
+def test_termination_preserves_unknown_counts_and_known_publications(
+    tmp_path: Path, inventory: str
+) -> None:
+    """PR #1984's capture failure must retain both known work and unknowns."""
+    parent = capture.Operation.begin(tmp_path, "o/r", 1, "parent.release", "handoff")
+    remaining = [
+        remaining_publication("worker_log"),
+        remaining_publication(
+            "decision_log",
+            state="captured",
+            stage="capture_incomplete",
+            error="input_capture_failed",
+            unpublished_count=None,
+        ),
+    ]
+    receipt = lifecycle_receipt(
+        remaining=remaining if inventory != "unavailable" else [],
+        remaining_complete=inventory == "complete",
+        error="journal_unavailable"
+        if inventory == "unavailable"
+        else "input_capture_failed",
+        publication_actor="unassigned" if inventory == "unavailable" else 1900,
+    )
+    original = schema.json_bytes(receipt)
+    path = tmp_path / "exit.json"
+    worker_journal.atomic(path, receipt)
+    before = path.read_bytes()
+    first = trace.capture_termination(parent, path)
+    assert trace.capture_termination(parent, receipt) == first
+    files = public_files(parent.journal)
+    result = next(r for r in navigation.records(files) if r["kind"] == "result")
+    fact = result["data"]["observation"]
+    assert result["data"]["status"] == "partial"
+    assert fact["remaining"] == receipt["remaining"]
+    assert fact["remaining_complete"] is receipt["remaining_complete"]
+    assert fact["publication_actor"] == receipt["publication_actor"]
+    assert fact["error"] == receipt["error"]
+    assert fact["decision_resume_command"] == receipt["decision_resume_command"]
+    text = navigation.generate(files)[
+        ".agents/logs/parents/parent-1/README.md"
+    ].decode()
+    assert "publish-worker-log" in text and "publish-decision-log" in text
+    assert "公開残件（観測時点）: 0 件" not in text
+    if inventory == "unavailable":
+        assert "公開残件の照合: 未確認" in text and "journal" in text
+    else:
+        assert "https://github.com/o/r/pull/42" in text
+        assert "未公開記録数: 未確認" in text
+        assert "未公開 0 記録" not in text and "未公開 None" not in text
+        assert "input" in text and "1900" in text
+        if inventory == "partial":
+            assert "公開残件の照合: 未確認" in text
+    assert path.read_bytes() == before and schema.json_bytes(receipt) == original
+    assert navigation.generate(
+        {**files, **navigation.generate(files)}
+    ) == navigation.generate(files)
 
 
 def test_failed_worker_with_a_final_is_observed_without_publication_success(
@@ -79,37 +143,19 @@ def test_termination_after_publication_then_reconciliation_preserves_both_observ
     op.finish({"published": True})
     before = public_files(log)
     parent = capture.Operation.begin(tmp_path, "o/r", 1, "parent.release", "handoff")
-    receipt = {
-        k: v
-        for k, v in termination_observation().items()
-        if k
-        in {
-            "generation",
-            "event",
-            "observed_at",
-            "main_revision",
-            "remaining",
-            "publication_actor",
-            "resume_command",
-        }
-    }
-    receipt.update(
-        repo="o/r",
-        parent=1,
-        publication_actor="parent #1",
-        resume_command="python -m parent --parent 1 publish-decision-log --retry",
+    receipt = lifecycle_receipt(
+        publication_actor=1,
+        decision_resume_command="python -m parent --parent 1 publish-decision-log --retry",
         remaining=[
-            {
-                "kind": "decision_log",
-                "parent": 1,
-                "state": "pending",
-                "stage": "pr_open",
-                "error": None,
-                "pr_number": 77,
-                "pr_head": "c" * 40,
-                "unpublished_count": 2,
-                "batch_key": "b" * 32,
-            }
+            remaining_publication(
+                "decision_log",
+                state="pending",
+                stage="pr_open",
+                pr_number=77,
+                pr_head="c" * 40,
+                public_key="b" * 32,
+                batch_key="b" * 32,
+            )
         ],
     )
     first = trace.capture_termination(
@@ -157,17 +203,12 @@ def test_handoff_and_unverified_acceptance_are_not_completed_by_runtime_end(
     tmp_path: Path,
 ) -> None:
     parent = capture.Operation.begin(tmp_path, "o/r", 1, "parent.handoff", "handoff")
-    receipt = {
-        "repo": "o/r",
-        "parent": 1,
-        "generation": 2,
-        "event": "handoff_accepted",
-        "observed_at": AT,
-        "main_revision": None,
-        "remaining": [],
-        "publication_actor": "receiving parent",
-        "resume_command": None,
-    }
+    receipt = lifecycle_receipt(
+        generation=2,
+        event="handoff_accepted",
+        main_revision=None,
+        publication_actor=2,
+    )
     path = tmp_path / "termination.json"
     worker_journal.atomic(path, receipt)
     first = trace.capture_termination(parent, path)
@@ -215,32 +256,14 @@ def test_termination_keeps_worker_publication_identity_and_resume_destination(
     tmp_path: Path,
 ) -> None:
     parent = capture.Operation.begin(tmp_path, "o/r", 1, "parent.release", "handoff")
-    receipt = {
-        "repo": "o/r",
-        "parent": 1,
-        "generation": 1,
-        "event": "ended",
-        "observed_at": AT,
-        "main_revision": None,
-        "remaining": [
-            {
-                "kind": "worker_log",
-                "parent": 1,
-                "issue": 10,
-                "public_key": "d-" + "a" * 32,
-                "sequence": 2,
-                "state": "pending",
-                "stage": "mergeability_pending",
-                "error": None,
-                "pr_number": 42,
-                "pr_head": "d" * 40,
-            }
-        ],
-        "publication_actor": "parent #1900",
-        "resume_command": "python -m parent --parent 1 publish-worker-log --child 10 --delegation-key d-"
+    receipt = lifecycle_receipt(
+        main_revision=None,
+        remaining=[remaining_publication("worker_log", stage="mergeability_pending")],
+        publication_actor=1900,
+        resume_command="python -m parent --parent 1 publish-worker-log --child 10 --delegation-key d-"
         + "a" * 32
         + " --turn 2",
-    }
+    )
     trace.capture_termination(parent, receipt)
     page = navigation.generate(public_files(parent.journal))[
         ".agents/logs/parents/parent-1/README.md"

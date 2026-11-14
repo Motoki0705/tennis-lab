@@ -324,8 +324,9 @@ activity、phase、initial/resumeはキーにしない。検証済みworker3フ�
 
 ### ターンと担当終了の型付き観測
 
-既存v1 envelopeのバイト列は変えない。v2の結果だけが `data.observation` を追加し、
-その `version: 1` で `worker_turn`・`termination`・`capture_gap` を扱う。
+既存v1 envelopeのバイト列は変えない。v2の結果だけが `data.observation` を追加する。
+worker_turn・capture_gapは観測version 1、terminationは観測version 2を使う。
+既存の観測version 1も原文を書き換えずに読める。
 必須フィールドと拒否条件の正本は [trace_schema.py](trace_schema.py)。実行、finalの有無、
 公開を分け、公開先main・公開PR・保留・未確認と、stage/error・PR URL/HEAD・照合先main revisionを保持する。
 PRのファイルは外部根拠であり、mainの入力へ混ぜない。
@@ -342,12 +343,19 @@ PRのファイルは外部根拠であり、mainの入力へ混ぜない。
 型付き根拠へ読み替えない。
 
 `trace_capture.capture_termination(operation, receipt, evidence=..., acceptance=...)` が
-非公開の終了receiptを受け取る唯一のadapterである。仮定する値は `repo`・`parent`・`generation`・
+`worker_logs.lifecycle.record_exit()` の非公開checkpointを受け取る唯一のadapterである。
+値は `repo`・`parent`・`generation`・
 `event`（ended/handoff_pending/handoff_accepted）・`observed_at`・`main_revision`・`remaining`・
-`publication_actor`・`resume_command`。`remaining_publications(repo, parent, *, state_dir)` のproducerは
-公開完了側の変更が担当する。fixtureではworker残件にissue/public_key/sequence、判断ログに
-`unpublished_count`/`batch_key`、両者にstate/stage/error/pr_number/pr_headを仮定する。
-正確な保存場所とrelease/handoff/supervisorへの配線は後続の接続で確定する。
+`remaining_complete`・`publication_actor`・`resume_command`・`decision_resume_command`・`error`。
+producerは `worker_logs.reconciliation.remaining_publications(repo, parent, *, state_dir)`。
+`RemainingPublication` の全フィールドkind/parent/issue/public_key/sequence/state/stage/error/
+pr_number/pr_head/unpublished_count/batch_keyを、欠測の `None` も含めそのまま保持する。
+workerの公開キーは既存のd-付き、decisionの公開キーはbatch_keyと同値またはNone。
+未公開件数のNoneは未確認と表示し、一覧が不完全でも判明した残件を残す。
+不完全な空一覧を残件ゼロの証拠にしない。担当はactiveな親番号またはunassigned等の公開文字列。
+worker・判断ログそれぞれの再開コマンドと照合エラーを表示する。
+checkpointはprivate stateの `publication-exits/` に保存される。
+release/handoff/supervisorへの配線は後続の接続で行う。
 公開用の担当・再開先もGuardを通し、私的IDやパスを表示名として公開しない。
 受入は既定で未確認とし、担当終了とは別に扱う。正本根拠、残る公開、担当、再開先を表示する。
 同一観測の再送は冪等に扱う。終了receiptが同じでも、後着の明示的な受入根拠は新しい観測として追記する。

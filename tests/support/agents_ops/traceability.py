@@ -36,20 +36,53 @@ def worker_observation(
     }
 
 
-def termination_observation(**updates: Any) -> dict[str, Any]:
+def remaining_publication(kind: str, **updates: Any) -> dict[str, Any]:
+    """The full RemainingPublication contract from PR #1984 reconciliation.py."""
+    worker = kind == "worker_log"
     return {
-        "version": 1,
-        "kind": "termination",
+        "kind": kind,
+        "parent": 1,
+        "issue": 10 if worker else None,
+        "public_key": "d-" + "a" * 32 if worker else None,
+        "sequence": 2 if worker else None,
+        "state": "pending" if worker else "unprepared",
+        "stage": "pr_open" if worker else "awaiting_publication",
+        "error": None,
+        "pr_number": 42 if worker else None,
+        "pr_head": "d" * 40 if worker else None,
+        "unpublished_count": None if worker else 2,
+        "batch_key": None,
+        **updates,
+    }
+
+
+def lifecycle_receipt(**updates: Any) -> dict[str, Any]:
+    """record_exit's public identifiers, without depending on its sibling branch."""
+    return {
+        "repo": "o/r",
+        "parent": 1,
         "generation": 1,
         "event": "ended",
         "observed_at": AT,
         "main_revision": "c" * 40,
+        "remaining": [],
+        "remaining_complete": True,
+        "publication_actor": 1,
+        "resume_command": "parent --repo o/r --parent 1 publish-worker-log --all-parents --source-parent 1",
+        "decision_resume_command": "parent --repo o/r --parent 1 publish-decision-log",
+        "error": None,
+        **updates,
+    }
+
+
+def termination_observation(**updates: Any) -> dict[str, Any]:
+    receipt = lifecycle_receipt()
+    return {
+        **{k: v for k, v in receipt.items() if k not in {"repo", "parent"}},
+        "version": 2,
+        "kind": "termination",
         "acceptance": {"state": "completed", "evidence": [evidence()]},
         "evidence": [evidence()],
-        "remaining": [],
-        "remaining_status": "observed",
-        "publication_actor": "parent #1",
-        "resume_command": None,
         **updates,
     }
 
