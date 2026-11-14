@@ -108,8 +108,14 @@ E:`<mirror-repo>/.storage-tier/manifests/`，保存两边的 SHA-256、size/mtim
 只有全部 regular file 的 atime 至少 14 天未更新才可清理，空单位保留。删除前重新哈希 D:，
 确认 E: 全部 entry 及记录的 metadata 不变，将 D: 改为同父目录的隔离名，再检查后才删除。
 `ckpt/` 永不删除。已过期且有证据的单位在日常镜像更新证据**之前**校验，不能用重新镜像掩盖不一致。
-删除时固定已校验 root 的 FD，核对 device/inode 后按 FD 相对删除。隔离目录被替换时，不删除或将其作为
-原单位恢复，而保留身份错误供人工检查。即使 device 相同，也按目录 mount ID 拒绝嵌套 bind mount。
+删除固定 root FD，并使用包含 hash/atime 的完整 entry 计划。每个 entry 先原子移入同父目录的专用保留区，
+再校验实际移入对象后 unlink/rmdir。原名称被重新创建时，新 entry 不会成为 unlink 目标。
+不匹配对象无覆盖恢复，无法恢复则保留。跟踪内部 hardlink 因自身操作产生的 ctime/link 数变化，仍重新哈希 payload。
+这会增加 D: 读取和逐 entry 的 journal/directory fsync；完整数据集删除耗时留到第二阶段实测。实现位于 `removal.py`。
+隔离目录被替换时不删除或冒充原单位恢复，保留错误供人工检查。
+从 repo/E: 基准 mount 到单位 root 的每个路径成分都通过 nofollow FD 与 mount ID 校验，拒绝同 device 的 bind mount。
+另按 checkpoint 目录的 device/inode 拒绝 dataset/run 的实际别名。普通文件 hardlink 的 dataset 名称删除不会删除 ckpt 名称。
+mount ID 仅为运行期证据，不作为跨 boot 的持久身份。
 hydrate 拒绝已存在的 D: 目标，完成 E: 哈希、复制、D: 哈希后才发布，并将文件 atime 更新为当前时间。
 
 ## 审计与恢复
@@ -118,13 +124,23 @@ D:`<repo>/.storage-tier/audit.jsonl` 保存校验、取回、失败、删除确�
 修改操作按 repo 排他；dry-run 不创建锁。持久删除 intent 位于同目录的 `transactions/`。
 各审计事件记录其他 UID 的排除范围。失败仅写入 audit 和 service journal，不发送通知。
 只读 `index --dry-run` 报告进程检查错误，但不认证 manifest、不授权删除，仍可读取明确指定的小单位。
+`removals/<transaction>.jsonl` 持久记录 claim/删除 intent、移入身份、已校验 hash 与确认删除的 entry。
+崩溃可留下没有完成记录的 intent；它表示未确认，不能直接算作删除完成。
 
 ```bash
 "${S[@]}" recover
 ```
 
 恢复将隔离单位无覆盖地移回，**绝不恢复执行删除**。原位置被占用或身份改变会明确失败。
-部分删除的 tree 会恢复并标记可能不完整，应检查后使用已验证的 E: 副本修复。若崩溃前已删除，则记录事实，
+部分 tree 会移回并标记可能不完整；保留的 entry 无覆盖移入 `recovered-assets/`，完整计划留在
+`recovered-transactions/`。不完整/已修改 tree 或保留 payload 会创建 `recovery-required/` 状态，阻止该单位的
+mirror/evict/cycle，避免用不完整 D: 覆盖完整 E: 副本。
+
+1. 检查恢复结果、保留对象、journal 与计划，保存全部未镜像修改。身份变化或目标被占用需人工检查。
+2. 将部分 tree 保存在管理 root 之外，空出 D: 原位置，再 `hydrate` 完整单位；或明确修复完整 D: 后对 E: 执行 `verify`。
+3. 只有全量 SHA-256 hydrate/verify 成功才解除恢复状态。明确核对、整合之前保留修改，恢复绝不继续删除。
+
+若崩溃前已删除，则记录事实，
 不宣称已实测容量收益。未完成 transaction 阻止后续操作。若 E: exchange 后 manifest 发布中断，旧镜像保留在 staging 名下。
 检查两个 tree；只有 D:/E: 全量一致时才显式 `verify`，在证据落盘前保留旧副本。不静默清理 staging 残留。
 

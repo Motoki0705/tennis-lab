@@ -20,6 +20,7 @@ from .filesystem import (
     Snapshot,
     StorageError,
     append_json,
+    checkpoint_directory_inodes,
     copy_tree,
     names,
     read_json,
@@ -195,14 +196,40 @@ class Engine:
         base = self.config.mirror if mirror else self.config.repo
         path = base / unit.path
         try:
-            real_directory(path, base)
+            real_directory(path, self.config.mount if mirror else base)
         except FileNotFoundError:
             if not mirror and (self.config.mirror / unit.path).exists():
                 raise StorageError(
                     f"unit is archived on E: and missing on D: {unit.path}; use storage_tier hydrate {unit.path}"
                 ) from None
             raise
+        if unit.sweepable:
+            self.check_checkpoint_alias(path, base)
         return path
+
+    def check_checkpoint_alias(self, path: Path, base: Path) -> None:
+        info = path.lstat()
+        if (info.st_dev, info.st_ino) in checkpoint_directory_inodes(base):
+            raise StorageError(
+                f"checkpoint directory alias cannot be a sweepable unit: {path}"
+            )
+
+    def recovery_path(self, unit: Unit) -> Path:
+        return self.config.state / "recovery-required" / self.manifest_path(unit).name
+
+    def require_complete_local(self, unit: Unit) -> None:
+        if os.path.lexists(self.recovery_path(unit)):
+            raise StorageError(
+                f"partial/unverified recovery blocks mirror and eviction: {unit.path}; "
+                "preserve the recovered tree, then hydrate or verify the complete E: copy"
+            )
+
+    def clear_recovery(self, unit: Unit) -> None:
+        marker = self.recovery_path(unit)
+        if os.path.lexists(marker):
+            self.audit("recovery_verified", unit, verification="sha256-both-sides")
+            marker.unlink()
+            sync_dir(marker.parent)
 
     def quiet(self, unit: Unit, path: Path, tree: Snapshot) -> None:
         usage = self.inspector.inspect((self.config.repo / unit.path, path), tree)
@@ -236,11 +263,15 @@ class Engine:
         for part in path.relative_to(base).parts:
             if not current.exists():
                 current.mkdir()
-            real_directory(current, base)
+            real_directory(
+                current, self.config.mount if base == self.config.mirror else base
+            )
             current /= part
         if not current.exists():
             current.mkdir()
-        real_directory(current, base)
+        real_directory(
+            current, self.config.mount if base == self.config.mirror else base
+        )
 
     def index(self, unit: Unit, *, dry_run: bool) -> dict[str, Any]:
         path = self.path(unit, mirror=True)
@@ -292,6 +323,8 @@ class Engine:
         self.quiet(unit, local_path, local)
         self.quiet(unit, mirror_path, mirror)
         manifest = self.record(unit, local, mirror, dry_run=dry_run)
+        if not dry_run:
+            self.clear_recovery(unit)
         return {
             "action": "would_verify" if dry_run else "verified",
             "bytes": local.bytes,
@@ -299,6 +332,7 @@ class Engine:
         }
 
     def mirror(self, unit: Unit, *, dry_run: bool) -> dict[str, Any]:
+        self.require_complete_local(unit)
         source = self.path(unit)
         before = snapshot(source)
         self.quiet(unit, source, before)
@@ -435,6 +469,7 @@ class Engine:
             self.audit(
                 "hydrated", unit, bytes=mirror.bytes, verification="sha256-both-sides"
             )
+            self.clear_recovery(unit)
             return {"action": "hydrated", "bytes": mirror.bytes}
         finally:
             if stage.exists():
@@ -447,6 +482,7 @@ class Engine:
             raise StorageError("unpublished manifests may only be used in a dry-run")
         if not unit.sweepable:
             return {"action": "kept", "reason": "ckpt is mirror-only"}
+        self.require_complete_local(unit)
         source = self.path(unit)
         before = snapshot(source)
         self.assert_idle(before)
@@ -481,15 +517,26 @@ class Engine:
             return {"action": "would_evict", **detail}
         transaction_id = uuid.uuid4().hex
         quarantine = source.with_name(f".storage-tier-trash-{transaction_id}")
+        retained = source.with_name(f".storage-tier-retained-{transaction_id}")
         transaction = self.config.state / "transactions" / f"{transaction_id}.json"
+        removal_journal = self.config.state / "removals" / f"{transaction_id}.jsonl"
+        removed_entries: list[str] = []
+
+        def removal_progress(event: dict[str, Any]) -> None:
+            append_json(removal_journal, {"time": self.timestamp(), **event})
+            if event["event"] == "removed":
+                removed_entries.append(event["entry"])
+
         record = {
             "schema_version": 1,
             "unit": unit.path,
             "kind": unit.kind,
             "quarantine": str(quarantine.relative_to(self.config.repo)),
+            "retained": str(retained.relative_to(self.config.repo)),
             "dev": final.entries["."]["dev"],
             "ino": final.entries["."]["ino"],
             "phase": "prepared",
+            "removal_journal": str(removal_journal.relative_to(self.config.state)),
             **detail,
         }
         write_json(transaction, record)
@@ -507,10 +554,29 @@ class Engine:
             self.assert_idle(moved)
             self.quiet(unit, quarantine, moved)
             self.check_mirror(unit, manifest)
+            real_directory(quarantine, self.config.repo)
+            self.check_checkpoint_alias(quarantine, self.config.repo)
+            for name, entry in moved.entries.items():
+                if entry["kind"] == "file":
+                    entry["sha256"] = local.entries[name]["sha256"]
+            retained.mkdir(mode=0o700)
+            sync_dir(retained.parent)
+            retained_info = retained.lstat()
+            record["retained_identity"] = {
+                "dev": retained_info.st_dev,
+                "ino": retained_info.st_ino,
+            }
             record["phase"] = "verified"
+            record["removal_plan"] = moved.entries
             write_json(transaction, record)
             self.audit("deletion_verified", unit, transaction=transaction_id, **detail)
-            remove_tree(quarantine, moved.entries["."])
+            remove_tree(
+                quarantine,
+                moved,
+                retained=retained,
+                retained_identity=(retained_info.st_dev, retained_info.st_ino),
+                progress=removal_progress,
+            )
             sync_dir(quarantine.parent)
             free_after = (
                 os.statvfs(self.config.repo).f_bavail
@@ -521,13 +587,20 @@ class Engine:
                 "observed_free_delta_bytes": free_after - free_before,
                 **detail,
             }
-            self.audit("deleted", unit, transaction=transaction_id, **result)
+            self.audit(
+                "deleted",
+                unit,
+                transaction=transaction_id,
+                removal_journal=str(removal_journal),
+                removed_entries=removed_entries,
+                **result,
+            )
             record["phase"] = "complete"
             write_json(transaction, record)
             transaction.unlink()
             sync_dir(transaction.parent)
             return result
-        except BaseException:
+        except BaseException as exc:
             # Restore only our pinned unit. A successor at the original name is
             # preserved, and an occupied origin leaves a recoverable quarantine.
             if moved_identity is not None and os.path.lexists(quarantine):
@@ -535,7 +608,51 @@ class Engine:
                     current = quarantine.lstat()
                     if (current.st_dev, current.st_ino) == moved_identity:
                         rename(quarantine, source)
+            self.audit(
+                "deletion_interrupted",
+                unit,
+                transaction=transaction_id,
+                error=str(exc),
+                removal_journal=str(removal_journal),
+                removed_entries=removed_entries,
+                partial_deletion_possible=record["phase"] == "verified",
+            )
             raise
+
+    def archive_retained(
+        self, value: dict[str, Any], name: str, source: Path
+    ) -> Path | None:
+        raw = value.get("retained")
+        if raw is None:
+            return None
+        if not isinstance(raw, str):
+            raise StorageError("invalid retained-entry path")
+        retained = self.config.repo / raw
+        if retained.parent != source.parent or not retained.name.startswith(
+            ".storage-tier-retained-"
+        ):
+            raise StorageError("invalid retained-entry path in transaction")
+        assets = self.config.state / "recovered-assets" / Path(name).stem
+        if not os.path.lexists(retained) and not os.path.lexists(assets):
+            return None
+        expected = value.get("retained_identity")
+        if not isinstance(expected, dict) or set(expected) != {"dev", "ino"}:
+            raise StorageError(
+                "retained directory identity is unproven; manual inspection required"
+            )
+        current = retained if os.path.lexists(retained) else assets
+        real_directory(current, self.config.repo)
+        info = current.lstat()
+        if (info.st_dev, info.st_ino) != (expected["dev"], expected["ino"]):
+            raise StorageError(
+                "retained directory identity changed; manual inspection required"
+            )
+        if current == retained:
+            assets.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            real_directory(assets.parent, self.config.repo)
+            rename(retained, assets)
+        value["retained_archive"] = str(assets)
+        return assets
 
     def recover(self) -> list[dict[str, Any]]:
         directory = self.config.state / "transactions"
@@ -584,6 +701,11 @@ class Engine:
                 rename(quarantine, source)
                 action = "restored_after_interruption"
             elif source.exists():
+                info = source.lstat()
+                if (info.st_dev, info.st_ino) != (value["dev"], value["ino"]):
+                    raise StorageError(
+                        "recovered source identity changed; manual inspection required"
+                    )
                 action = "kept_after_interruption"
             elif value["phase"] in {"verified", "complete"}:
                 action = "removed_before_interruption"
@@ -591,13 +713,42 @@ class Engine:
                 raise StorageError(
                     "prepared transaction has neither source nor quarantine"
                 )
+            retained_assets = self.archive_retained(value, name, source)
             self.audit(
                 "deletion_recovery",
                 unit,
                 action=action,
                 transaction=name,
                 prior_phase=value["phase"],
+                removal_journal=value.get("removal_journal"),
+                retained_assets=str(retained_assets) if retained_assets else None,
             )
+            # Keep the verified full-entry plan after clearing the active blocker.
+            # The append-only journal also retains intents whose outcome may be
+            # unknown if a process died between unlink and its completion record.
+            archive = self.config.state / "recovered-transactions" / name
+            write_json(archive, value)
+            recovery_required = value["phase"] == "verified" and (
+                not source.exists()
+                or "removal_plan" not in value
+                or not Snapshot(value["removal_plan"]).same_metadata(
+                    snapshot(source), moved=True
+                )
+                or (retained_assets is not None and bool(names(retained_assets)))
+            )
+            if recovery_required:
+                write_json(
+                    self.recovery_path(unit),
+                    {
+                        "unit": unit.path,
+                        "transaction": name,
+                        "recovery_plan": str(archive),
+                        "removal_journal": value.get("removal_journal"),
+                        "retained_assets": str(retained_assets)
+                        if retained_assets
+                        else None,
+                    },
+                )
             (directory / name).unlink()
             sync_dir(directory)
             results.append(
@@ -605,6 +756,12 @@ class Engine:
                     "unit": unit.path,
                     "action": action,
                     "partial_deletion_possible": value["phase"] == "verified",
+                    "removal_journal": value.get("removal_journal"),
+                    "recovery_plan": str(archive),
+                    "recovery_required": recovery_required,
+                    "retained_assets": str(retained_assets)
+                    if retained_assets
+                    else None,
                 }
             )
         return results

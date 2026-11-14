@@ -1185,6 +1185,313 @@ def test_same_device_bind_mount_is_rejected_before_copying(
     assert lab.filesystem.read_bytes(nested / "b.bin") == b"\x00\x01\x04\x09"
 
 
+@pytest.mark.parametrize("change", ["write", "read", "add", "replace"])
+def test_late_directory_fd_change_after_quarantine_snapshot_is_not_deleted(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, change: str
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    directory = os.open(source, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME)
+    original = lab.module.snapshot
+    changed = False
+
+    def mutate_after_snapshot(path: Path, *, hashes: bool = False) -> Any:
+        nonlocal changed, directory
+        result = original(path, hashes=hashes)
+        if path.name.startswith(".storage-tier-trash-") and not changed:
+            changed = True
+            if change == "replace":
+                os.unlink("a.bin", dir_fd=directory)
+            name = "unmirrored.bin" if change == "add" else "a.bin"
+            flags = os.O_RDONLY if change == "read" else os.O_WRONLY | os.O_TRUNC
+            if change in {"add", "replace"}:
+                flags |= os.O_CREAT | os.O_EXCL
+            child = os.open(name, flags, 0o600, dir_fd=directory)
+            try:
+                if change == "read":
+                    assert os.read(child, 6) == b"apple\n"
+                else:
+                    assert os.write(child, b"pear!\n") == 6
+            finally:
+                os.close(child)
+                os.close(directory)
+                directory = -1
+        return result
+
+    monkeypatch.setattr(lab.module, "snapshot", mutate_after_snapshot)
+    try:
+        code, report = lab.run("evict", unit)
+    finally:
+        if directory >= 0:
+            os.close(directory)
+    assert changed and code == 1, report
+    expected_name = "unmirrored.bin" if change == "add" else "a.bin"
+    expected = b"apple\n" if change == "read" else b"pear!\n"
+    assert lab.filesystem.read_bytes(source / expected_name) == expected
+    assert (
+        lab.filesystem.read_bytes(lab.config.mirror / unit.path / "a.bin") == b"apple\n"
+    )
+    assert not any(row["event"] == "deleted" for row in lab.records())
+
+
+def test_partial_removal_is_journaled_and_recovery_blocks_mirroring_until_hydrate(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    original = os.unlink
+    changed = False
+
+    def mutate_next_file(path: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal changed
+        result = original(path, *args, **kwargs)
+        fd = kwargs.get("dir_fd")
+        if (
+            fd is not None
+            and not changed
+            and Path(os.readlink(f"/proc/self/fd/{fd}")).name.startswith(
+                ".storage-tier-retained-"
+            )
+        ):
+            changed = True
+            (quarantine,) = source.parent.glob(".storage-tier-trash-*")
+            writer = os.open(quarantine / "nested/b.bin", os.O_WRONLY | os.O_TRUNC)
+            try:
+                assert os.write(writer, b"NEW!") == 4
+            finally:
+                os.close(writer)
+        return result
+
+    monkeypatch.setattr(os, "unlink", mutate_next_file)
+    code, report = lab.run("evict", unit)
+    assert changed and code == 1, report
+    assert not (source / "a.bin").exists()
+    assert lab.filesystem.read_bytes(source / "nested/b.bin") == b"NEW!"
+    interrupted = next(r for r in lab.records() if r["event"] == "deletion_interrupted")
+    assert interrupted["removed_entries"] == ["a.bin"]
+    assert interrupted["partial_deletion_possible"]
+    journal = [
+        json.loads(line)
+        for line in lab.filesystem.read_bytes(
+            Path(interrupted["removal_journal"])
+        ).splitlines()
+    ]
+    assert [r["event"] for r in journal if r["entry"] == "a.bin"] == [
+        "claim_intent",
+        "claimed",
+        "remove_intent",
+        "removed",
+    ]
+    assert journal[0]["expected"]["sha256"] == hashlib.sha256(b"apple\n").hexdigest()
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and recovered["results"][0]["recovery_required"], recovered
+    archive = Path(recovered["results"][0]["recovery_plan"])
+    assert (
+        lab.filesystem.read_json(archive)["removal_plan"]["a.bin"]["sha256"]
+        == hashlib.sha256(b"apple\n").hexdigest()
+    )
+    for command in ("mirror", "evict", "cycle"):
+        code, blocked = lab.run(command, unit)
+        assert code == 1 and "recovery" in blocked["results"][0]["error"], blocked
+    # Preserve unmirrored writes; hydration must not merge over this partial tree.
+    assert lab.run("hydrate", unit)[0] == 1
+    preserved = tmp_path / "preserved-partial"
+    source.rename(preserved)
+    code, hydrated = lab.run("hydrate", unit)
+    assert code == 0, hydrated
+    assert lab.filesystem.read_bytes(preserved / "nested/b.bin") == b"NEW!"
+    assert lab.filesystem.read_bytes(source / "a.bin") == b"apple\n"
+    assert lab.filesystem.read_bytes(source / "nested/b.bin") == b"\x00\x01\x04\x09"
+    assert not lab.engine.recovery_path(unit).exists()
+
+
+def test_child_name_recreated_at_unlink_is_preserved_as_unverified_payload(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    original = os.unlink
+    recreated = False
+
+    def replace_at_unlink(path: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal recreated
+        fd = kwargs.get("dir_fd")
+        if fd is not None and not recreated:
+            directory = Path(os.readlink(f"/proc/self/fd/{fd}"))
+            if directory.name.startswith(
+                (".storage-tier-trash-", ".storage-tier-retained-")
+            ):
+                recreated = True
+                (quarantine,) = source.parent.glob(".storage-tier-trash-*")
+                (quarantine / "a.bin").write_bytes(b"unmirrored successor")
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(os, "unlink", replace_at_unlink)
+    code, report = lab.run("evict", unit)
+    assert recreated and code == 1, report
+    assert lab.filesystem.read_bytes(source / "a.bin") == b"unmirrored successor"
+    assert not any(row["event"] == "deleted" for row in lab.records())
+
+
+def test_wrong_entry_claim_is_retained_when_a_successor_occupies_its_name(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    original = lab.filesystem.rename_at
+    replaced = False
+
+    def replace_at_claim(
+        source_fd: int, first: str, target_fd: int, target: str
+    ) -> None:
+        nonlocal replaced
+        if first != "a.bin" or replaced:
+            original(source_fd, first, target_fd, target)
+            return
+        replaced = True
+        os.unlink(first, dir_fd=source_fd)
+        child = os.open(
+            first, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=source_fd
+        )
+        os.write(child, b"first unmirrored generation")
+        os.close(child)
+        original(source_fd, first, target_fd, target)
+        child = os.open(
+            first, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600, dir_fd=source_fd
+        )
+        os.write(child, b"second unmirrored generation")
+        os.close(child)
+
+    monkeypatch.setattr(lab.filesystem, "rename_at", replace_at_claim)
+    code, report = lab.run("evict", unit)
+    assert replaced and code == 1, report
+    assert (
+        lab.filesystem.read_bytes(source / "a.bin") == b"second unmirrored generation"
+    )
+    assert not any(row["event"] == "deleted" for row in lab.records())
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and recovered["results"][0]["recovery_required"], recovered
+    assets = Path(recovered["results"][0]["retained_assets"])
+    (retained_name,) = lab.filesystem.names(assets)
+    assert (
+        lab.filesystem.read_bytes(assets / retained_name)
+        == b"first unmirrored generation"
+    )
+    assert (
+        lab.filesystem.read_bytes(source / "a.bin") == b"second unmirrored generation"
+    )
+    assert (
+        lab.filesystem.read_bytes(lab.config.mirror / unit.path / "a.bin") == b"apple\n"
+    )
+
+
+def test_checkpoint_file_hardlink_does_not_make_dataset_directory_a_checkpoint(
+    lab: Lab,
+) -> None:
+    unit, checkpoint = lab.unit(), lab.unit("ckpt")
+    source = lab.config.repo / unit.path
+    protected = lab.config.repo / checkpoint.path / "a.bin"
+    (source / "a.bin").unlink()
+    os.link(protected, source / "a.bin")
+    lab.age(unit, 15)
+    lab.mirror(unit)
+    code, report = lab.run("evict", unit)
+    assert code == 0 and report["results"][0]["action"] == "evicted", report
+    assert lab.filesystem.read_bytes(protected) == b"apple\n"
+    assert protected.stat().st_nlink == 1
+
+
+def test_process_exit_after_claim_preserves_payload_and_requires_verified_recovery(
+    lab: Lab,
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    script = r"""
+import os, sys
+from pathlib import Path
+import storage_tier.engine as module
+from storage_tier.layout import Config
+from storage_tier.usage import Inspector
+original = module.append_json
+def crash_after_claim(path, value):
+    original(path, value)
+    if value.get('event') == 'claimed':
+        os._exit(91)
+module.append_json = crash_after_claim
+config = Config(Path(sys.argv[1]), Path(sys.argv[2]), ('data/task',))
+engine = module.Engine(config, inspector=Inspector(Path(sys.argv[3])), mount_check=lambda config: None)
+engine.run('evict', ['data/task/v1'], dry_run=False)
+"""
+    child = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(lab.config.repo),
+            str(lab.config.mount),
+            str(lab.proc),
+        ],
+        env=dict(os.environ, PYTHONPATH=str(OPS)),
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert child.returncode == 91, child.stderr
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and recovered["results"][0]["recovery_required"], recovered
+    result = recovered["results"][0]
+    assets = Path(result["retained_assets"])
+    (token,) = lab.filesystem.names(assets)
+    assert lab.filesystem.read_bytes(assets / token) == b"apple\n"
+    source = lab.config.repo / unit.path
+    assert not (source / "a.bin").exists()
+    assert lab.filesystem.read_bytes(source / "nested/b.bin") == b"\x00\x01\x04\x09"
+    assert lab.run("mirror", unit)[0] == 1
+    assert lab.run("verify", unit)[0] == 1
+    assert lab.engine.recovery_path(unit).exists()
+    # Explicit repair from retained bytes, followed by full D:/E: verification.
+    lab.filesystem.rename(assets / token, source / "a.bin")
+    code, verified = lab.run("verify", unit)
+    assert code == 0, verified
+    assert not lab.engine.recovery_path(unit).exists()
+    assert (source / "a.bin").exists() and (source / "nested/b.bin").exists()
+    assert not any(row["event"] == "deleted" for row in lab.records())
+
+
+@pytest.mark.parametrize(
+    "tier,position",
+    [("D", "ancestor"), ("D", "root"), ("E", "ancestor"), ("E", "root"), ("E", "repo")],
+)
+def test_mount_boundary_is_checked_above_and_at_unit_root(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, tier: str, position: str
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    base = lab.config.repo if tier == "D" else lab.config.mirror
+    boundary = (
+        base / ("data/task" if position == "ancestor" else unit.path)
+        if position != "repo"
+        else base
+    )
+    original = lab.filesystem.fd_mount_id
+
+    def mounted_subtree(fd: int) -> int:
+        value = cast(int, original(fd))
+        current = Path(os.readlink(f"/proc/self/fd/{fd}"))
+        return value + 1 if current.is_relative_to(boundary) else value
+
+    monkeypatch.setattr(lab.filesystem, "fd_mount_id", mounted_subtree)
+    code, report = lab.run("mirror" if tier == "D" else "index", unit)
+    assert code == 1 and "mount" in report["results"][0]["error"], report
+    assert (
+        lab.filesystem.read_bytes(lab.config.repo / unit.path / "a.bin") == b"apple\n"
+    )
+
+
 def test_replacement_after_final_inspection_is_never_deleted_or_restored_as_ours(
     lab: Lab,
 ) -> None:

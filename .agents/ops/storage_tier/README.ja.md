@@ -122,8 +122,14 @@ atomic JSONを置く。両側のSHA-256、size/mtime/ctime/device/inodeを記録
 削除は全regular fileのatimeが14日以上古い場合だけ。空の単位は保持する。
 D:を再hashしてmanifestと照合し、E:の全entryと記録したmetadataが不変であることを確認する。
 D:を同じ親の一時名へ隔離して再確認してから消す。`ckpt/` は消さない。
-照合したroot FDを固定しdevice/inodeを確認して、そのFD相対で削除する。隔離先が別個体へ差し替わったら
-削除も元pathへの復旧も行わず、個体不一致を残して手動確認を求める。deviceが同じbind mountも、directoryのmount IDで拒否する。
+root FDを固定し、hash・atimeを含む照合済み全entryの計画に従う。各entryを同じ親の専用退避領域へ
+原子的に移し、移した実体を照合してからunlink/rmdirする。元の名前に再作成されたentryは削除対象にしない。
+不一致のentryは上書きせず元へ戻し、戻せなければ退避領域へ保持する。単位内hardlinkのctime/link数の自前変更は追跡し、
+payloadは再hashする。D:の追加読取りとentryごとのjournal/directory fsyncが増える。全件削除の時間は第2段で測る。
+実装は `removal.py`。隔離先が別個体へ差し替わった場合も削除や元pathへの復旧はせず、手動確認を求める。
+repo/E:の基準mountから単位rootまで全成分をnofollow FDで開き、同一deviceのbind mountもmount IDで拒否する。
+さらにcheckpointディレクトリ群のdevice/inodeを照合し、dataset/runへの実体aliasを拒否する。
+通常のファイルhardlinkはdataset側の名前を消してもckptの名前を消さない。mount IDは実行中の証拠とし、bootを跨ぐ個体IDとして保存しない。
 期限到達済みで証拠がある単位は、日次ミラーで証拠を更新する**前**に削除の照合を行う。
 不一致を先に再ミラーして隠さない。取得は既存D:を拒否し、E:のhash、コピー、D:のhashを通して公開する。
 取得したファイルのatimeは現在に更新する。
@@ -135,13 +141,24 @@ D:`<repo>/.storage-tier/audit.jsonl` に、照合・取得・失敗・削除前�
 削除の永続intentを置く。
 他UIDの除外範囲も各監査eventに残す。失敗はauditとserviceのjournalだけに残し、通知は送らない。
 読取専用 `index --dry-run` はプロセス検査のエラーを報告するが、manifestの認証や削除許可は行わず、選択した小単位を読める。
+`removals/<transaction>.jsonl` にclaim/削除のintent、移した個体、照合済みhash、削除完了entryを永続記録する。
+停止により完了記録のないintentが残った場合は未確認として扱い、削除済みとは断定しない。
 
 ```bash
 "${S[@]}" recover
 ```
 
 復旧は隔離した単位を上書きせず戻し、**削除を再開しない**。戻し先の占有や個体の変化は明示失敗。
-削除途中のtreeは部分削除の可能性付きで戻す。内容を調べ、照合済みのE:から復旧する。
+削除途中のtreeは部分削除の可能性付きで戻す。退避entryは上書きせず `recovered-assets/` へ移し、
+全計画は `recovered-transactions/` に残す。不完全・変更済みtreeや退避payloadがあれば `recovery-required/` に状態を置き、
+その単位のmirror/evict/cycleを止める。不完全なD:でE:の完全なミラーを上書きしない。
+
+1. 復旧結果、退避entry、journal、全計画を確認し、E:にない変更をすべて保持する。個体不一致・戻し先占有は手動確認する。
+2. 部分treeを管理root外に保持してD:の元pathを空け、完全な単位を `hydrate` する。
+   またはD:を明示的に完全復旧し、E:に対して `verify` する。
+3. 全件SHA-256のhydrate/verify成功時だけ復旧状態を解除する。退避した変更は明示的に照合・統合するまで残す。
+   復旧から削除は再開しない。
+
 削除後に停止していた場合も事実を記録するが、空き容量の実測成功とは称さない。
 未完了transactionがあれば復旧まで次の操作を止める。E:のexchange後にmanifest公開で止まった場合は
 旧ミラーをstage名で保持する。両treeを調べ、D:/E:全件一致の場合だけ明示的な `verify` で証拠を作り、

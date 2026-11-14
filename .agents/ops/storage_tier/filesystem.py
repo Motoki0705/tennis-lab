@@ -8,6 +8,7 @@ import json
 import os
 import stat
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -113,63 +114,24 @@ def tree_size(path: Path) -> dict[str, Any]:
     }
 
 
-def remove_tree(path: Path, expected: dict[str, Any]) -> None:
-    """Delete through the verified root FD, preserving any path replacement."""
-    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_NOATIME
-    parent = os.open(path.parent, flags)
-    root = -1
-    expected_id = (expected["dev"], expected["ino"])
+def remove_tree(
+    path: Path,
+    expected: Snapshot,
+    *,
+    retained: Path,
+    retained_identity: tuple[int, int],
+    progress: Callable[[dict[str, Any]], None] | None = None,
+) -> None:
+    """Remove a verified plan through an isolated, recoverable entry namespace."""
+    from .removal import remove_verified_tree
 
-    def directory_id(fd: int) -> tuple[int, int]:
-        info = os.fstat(fd)
-        return info.st_dev, info.st_ino
-
-    def still_named(fd: int, name: str, identity: tuple[int, int]) -> bool:
-        info = os.stat(name, dir_fd=fd, follow_symlinks=False)
-        return stat.S_ISDIR(info.st_mode) and (info.st_dev, info.st_ino) == identity
-
-    def clear(fd: int, mount_id: int) -> None:
-        with os.scandir(fd) as entries:
-            children = sorted(entry.name for entry in entries)
-        for name in children:
-            info = os.stat(name, dir_fd=fd, follow_symlinks=False)
-            if stat.S_ISDIR(info.st_mode):
-                child = os.open(name, flags, dir_fd=fd)
-                try:
-                    identity = (info.st_dev, info.st_ino)
-                    if directory_id(child) != identity:
-                        raise StorageError("directory identity changed during removal")
-                    if fd_mount_id(child) != mount_id:
-                        raise StorageError("nested mount appeared during removal")
-                    clear(child, mount_id)
-                    if not still_named(fd, name, identity):
-                        raise StorageError("directory identity changed during removal")
-                    os.rmdir(name, dir_fd=fd)
-                finally:
-                    os.close(child)
-            else:
-                os.unlink(name, dir_fd=fd)
-        os.fsync(fd)
-        with os.scandir(fd) as entries:
-            if next(entries, None) is not None:
-                raise StorageError("directory is still being written during removal")
-
-    try:
-        root = os.open(path.name, flags, dir_fd=parent)
-        if directory_id(root) != expected_id or not still_named(
-            parent, path.name, expected_id
-        ):
-            raise StorageError("quarantine identity changed before removal")
-        clear(root, fd_mount_id(root))
-        if not still_named(parent, path.name, expected_id):
-            raise StorageError("quarantine identity changed during removal")
-        # rmdir can remove only an empty entry, never a successor's contents.
-        os.rmdir(path.name, dir_fd=parent)
-        os.fsync(parent)
-    finally:
-        if root >= 0:
-            os.close(root)
-        os.close(parent)
+    remove_verified_tree(
+        path,
+        expected,
+        retained=retained,
+        retained_identity=retained_identity,
+        progress=progress,
+    )
 
 
 def sync_dir(path: Path) -> None:
@@ -225,19 +187,112 @@ def rename(source: Path, target: Path, *, exchange: bool = False) -> None:
         sync_dir(target.parent)
 
 
-def real_directory(path: Path, base: Path) -> None:
-    """Reject symlinks in every managed path component, including its root."""
+def rename_at(source_fd: int, source: str, target_fd: int, target: str) -> None:
+    """Atomically claim/restore a name between pinned directories, no overwrite."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    call = libc.renameat2
+    call.argtypes = [
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_int,
+        ctypes.c_char_p,
+        ctypes.c_uint,
+    ]
+    call.restype = ctypes.c_int
+    if call(source_fd, os.fsencode(source), target_fd, os.fsencode(target), 1):
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), target)
+    os.fsync(source_fd)
+    if target_fd != source_fd:
+        os.fsync(target_fd)
+
+
+def real_directory(path: Path, base: Path) -> int:
+    """Pin every component and reject symlinks and same-device bind mounts."""
     relative = path.relative_to(base)
-    current = base
-    for part in ("", *relative.parts):
-        current = current / part
-        info = current.lstat()
-        if not stat.S_ISDIR(info.st_mode):
-            raise StorageError(
-                f"real directory required (migration may be pending): {current}"
-            )
-        if info.st_dev != base.stat().st_dev:
-            raise StorageError(f"unexpected nested filesystem: {current}")
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW
+    info = base.lstat()
+    if not stat.S_ISDIR(info.st_mode):
+        raise StorageError(
+            f"real directory required (migration may be pending): {base}"
+        )
+    fd = os.open(base, flags)
+    try:
+        if (os.fstat(fd).st_dev, os.fstat(fd).st_ino) != (info.st_dev, info.st_ino):
+            raise StorageError(f"directory identity changed: {base}")
+        mount_id = fd_mount_id(fd)
+        device = os.fstat(fd).st_dev
+        current = base
+        for part in relative.parts:
+            current /= part
+            info = os.stat(part, dir_fd=fd, follow_symlinks=False)
+            if not stat.S_ISDIR(info.st_mode):
+                raise StorageError(
+                    f"real directory required (migration may be pending): {current}"
+                )
+            child = os.open(part, flags, dir_fd=fd)
+            try:
+                actual = os.fstat(child)
+                if (actual.st_dev, actual.st_ino) != (info.st_dev, info.st_ino):
+                    raise StorageError(f"directory identity changed: {current}")
+                if actual.st_dev != device or fd_mount_id(child) != mount_id:
+                    raise StorageError(
+                        f"unexpected nested mount in managed path: {current}"
+                    )
+            except BaseException:
+                os.close(child)
+                raise
+            os.close(fd)
+            fd = child
+        return mount_id
+    finally:
+        os.close(fd)
+
+
+def checkpoint_directory_inodes(base: Path) -> set[tuple[int, int]]:
+    """Inspect directory identities only; never follow checkpoint symlinks."""
+    checkpoint = base / "ckpt"
+    if not os.path.lexists(checkpoint):
+        return set()
+    mount_id = real_directory(checkpoint, base)
+    result: set[tuple[int, int]] = set()
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW
+    root = os.open(checkpoint, flags)
+
+    def walk(fd: int) -> None:
+        info = os.fstat(fd)
+        result.add((info.st_dev, info.st_ino))
+        with os.scandir(fd) as entries:
+            children = sorted(entry.name for entry in entries)
+        for name in children:
+            before = os.stat(name, dir_fd=fd, follow_symlinks=False)
+            if not stat.S_ISDIR(before.st_mode):
+                continue
+            child = os.open(name, flags, dir_fd=fd)
+            try:
+                after = os.fstat(child)
+                if (after.st_dev, after.st_ino) != (
+                    before.st_dev,
+                    before.st_ino,
+                ) or fd_mount_id(child) != mount_id:
+                    raise StorageError("checkpoint directory identity/mount changed")
+                walk(child)
+            finally:
+                os.close(child)
+        if identity(stamp(info)) != identity(stamp(os.fstat(fd))):
+            raise StorageError("checkpoint directory changed during identity inventory")
+
+    try:
+        if fd_mount_id(root) != mount_id:
+            raise StorageError("checkpoint mount changed during identity inventory")
+        original = os.fstat(root)
+        walk(root)
+        current = checkpoint.lstat()
+        if (original.st_dev, original.st_ino) != (current.st_dev, current.st_ino):
+            raise StorageError("checkpoint root changed during identity inventory")
+    finally:
+        os.close(root)
+    return result
 
 
 def stamp(info: os.stat_result) -> dict[str, Any]:
@@ -276,6 +331,7 @@ def identity(entry: dict[str, Any]) -> tuple[Any, ...]:
 @dataclass
 class Snapshot:
     entries: dict[str, dict[str, Any]]
+    mount_id: int | None = None  # Runtime identity; never persisted across boots.
 
     @property
     def bytes(self) -> int:
@@ -311,6 +367,12 @@ class Snapshot:
         }
 
     def same_metadata(self, other: Snapshot, *, moved: bool = False) -> bool:
+        if (
+            self.mount_id is not None
+            and other.mount_id is not None
+            and self.mount_id != other.mount_id
+        ):
+            return False
         if self.entries.keys() != other.entries.keys():
             return False
         for name, entry in self.entries.items():
@@ -417,7 +479,7 @@ def snapshot(path: Path, *, hashes: bool = False) -> Snapshot:
         visit(root, "")
     finally:
         os.close(root)
-    result = Snapshot(entries)
+    result = Snapshot(entries, mount_id=mount_id)
     if hashes:
         after = snapshot(path)
         if not result.same_metadata(after):

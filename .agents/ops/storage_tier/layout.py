@@ -105,11 +105,12 @@ def discover(config: Config, base: Path) -> Inventory:
     errors: list[str] = []
     references: list[str] = []
     legacy_outputs: list[dict[str, str]] = []
+    anchor = config.mount if base == config.mirror else base
 
     def directories(parent: str) -> list[str]:
         path = base / parent
         try:
-            real_directory(path, base)
+            real_directory(path, anchor)
             result = []
             for name in names(path):
                 candidate = path / name
@@ -130,6 +131,10 @@ def discover(config: Config, base: Path) -> Inventory:
 
     if not base.exists():
         return Inventory([], [], [])
+    try:
+        real_directory(base, anchor)
+    except (OSError, StorageError) as exc:
+        return Inventory([], [], [str(exc)])
     for name in names(base):
         if name.startswith(
             (".storage-tier-stage-", ".storage-tier-hydrate-", ".storage-tier-trash-")
@@ -143,7 +148,7 @@ def discover(config: Config, base: Path) -> Inventory:
             found.add(Unit(path, "dataset"))
     for path in config.datasets:
         try:
-            real_directory(base / path, base)
+            real_directory(base / path, anchor)
             found.add(Unit(path, "dataset"))
         except FileNotFoundError:
             pass
@@ -211,7 +216,7 @@ def discover(config: Config, base: Path) -> Inventory:
                             found.add(Unit(run, "output"))
     if os.path.lexists(base / "ckpt"):
         try:
-            real_directory(base / "ckpt", base)
+            real_directory(base / "ckpt", anchor)
             found.add(Unit("ckpt", "checkpoint"))
         except (OSError, StorageError) as exc:
             errors.append(str(exc))

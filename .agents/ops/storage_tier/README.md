@@ -154,10 +154,20 @@ Eviction requires every regular file's atime to be at least 14 days old. Empty
 units remain. D: is rehashed against the manifest; E:'s full file/directory set and
 recorded metadata must remain unchanged. The D: directory is quarantined under a
 temporary sibling name, then checked again before removal. `ckpt/` is never evicted.
-Removal pins the verified root FD and checks its device/inode before deleting its
-contents through that FD. A replaced quarantine is neither deleted nor moved back
-as our unit; its identity mismatch remains a manual recovery condition. Mount IDs
-also reject a nested directory bind mount even when its device ID is unchanged.
+Removal pins the root and consumes the full verified entry plan, including file
+hashes and atimes. Each entry is atomically claimed into a private sibling retained
+directory, then checked through that namespace before unlink/rmdir. A stale writer
+recreating the original name cannot make that new entry the unlink target. Mismatched
+claims are restored without overwrite or retained for recovery. Internal hardlink
+ctime/link-count changes caused by our own claims are tracked; bytes are still hashed.
+This adds D: reads and per-entry journal/directory fsyncs; full-dataset removal timing
+remains a stage-two measurement. The implementation is in `removal.py`.
+A replaced quarantine is neither deleted nor moved back as our unit.
+Every component from the repository/E: mount anchor through the unit root is opened
+with no-follow FDs and checked by mount ID, including same-device bind mounts.
+Checkpoint directory device/inode identities independently reject aliases as dataset
+or run units. Ordinary file hardlinks to checkpoints do not delete checkpoint names.
+Mount IDs are runtime evidence and are not persisted as cross-boot identities.
 An expired unit with existing evidence is verified **before** the daily cycle can
 refresh it, so a hash mismatch cannot be hidden by remirroring it first.
 Hydration rejects existing D: destinations, hashes E:, copies and hashes D:, then
@@ -173,6 +183,9 @@ and the service journal; no desktop, D-Bus, mail or other notification is sent.
 Read-only `index --dry-run` reports process inspection errors but never certifies
 a manifest or authorizes deletion; it can still inspect the selected tiny tree.
 Durable deletion transactions live in `transactions/` beside the audit.
+`removals/<transaction>.jsonl` durably records claim/removal intents, claimed
+identities, verified digests and confirmed removed entries. A crash may leave an
+intent without a completion record; this is uncertain, not a confirmed deletion.
 
 ```bash
 "${S[@]}" recover
@@ -180,8 +193,21 @@ Durable deletion transactions live in `transactions/` beside the audit.
 
 Recovery restores quarantines with no overwrite and **never resumes deletion**.
 An occupied original path or changed identity is an explicit failure. A partially
-deleted tree is restored and marked as possibly partial; inspect it and use the
-verified E: copy for recovery. If removal completed before a crash, recovery records
+deleted tree is restored and marked as possibly partial. Retained claims move,
+without overwrite, into `recovered-assets/`; full plans remain in
+`recovered-transactions/`. A partial/changed tree or retained payload creates a
+`recovery-required/` marker that blocks mirror, eviction and cycle for that unit.
+It cannot overwrite the complete E: copy during automatic mirroring.
+
+1. Inspect the recovery result, retained assets, journal and full plan. Preserve all
+   unmirrored changes; an identity mismatch or occupied destination needs manual inspection.
+2. Keep the recovered partial tree outside managed roots, then `hydrate` the complete
+   unit into its now-empty D: destination. Alternatively, repair the complete D: tree
+   explicitly and run `verify` against E:.
+3. Only a successful full SHA-256 hydrate/verify clears the recovery marker. Keep
+   retained/unmirrored data until explicitly reconciled; recovery never resumes deletion.
+
+If removal completed before a crash, recovery records
 that fact without claiming a measured capacity gain. Any pending transaction blocks
 further operations until recovery. An interrupted E: exchange keeps the old mirror
 under its staging name if manifest publication failed; inspect both trees, use
