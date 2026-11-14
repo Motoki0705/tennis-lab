@@ -27,6 +27,7 @@ READ_ONLY = {
     "state-migrate",
 }
 BEFORE_WORKER = {"run-worker", "start-worker", "continue-worker"}
+EXPLICIT_PUBLICATION = {"publish-worker-log", "publish-decision-log"}
 MUTATIONS = {
     "register",
     "summary",
@@ -101,7 +102,7 @@ class Continuation:
         except (ValueError, OSError, KeyError, TypeError, AttributeError):
             self.initial_owner = {}
         if (
-            args.command in {"publish-worker-log", "publish-decision-log"}
+            args.command in EXPLICIT_PUBLICATION
             and self.initial_owner.get("session") == identity
         ):
             # Explicit publication and its postlude share one admission. A
@@ -143,6 +144,9 @@ class Continuation:
         self.done = True
         command = self.args.command
         if command not in MUTATIONS | {"project-setup", "project-sync", "evidence"}:
+            return
+        if command in EXPLICIT_PUBLICATION and self.generation is None:
+            self.error = "log_owner_unavailable"
             return
         try:
             # No lock is held during Git/GitHub publication. Both this short

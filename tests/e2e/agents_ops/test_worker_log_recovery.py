@@ -723,8 +723,9 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
         assert code == 2 and value["logs"][-1]["error"] == "log_owner_mismatch"
 
 
+@pytest.mark.parametrize("snapshot_unavailable", [False, True])
 def test_decision_publication_postlude_keeps_its_original_generation(
-    logs: LogEnv, monkeypatch: pytest.MonkeyPatch
+    logs: LogEnv, monkeypatch: pytest.MonkeyPatch, snapshot_unavailable: bool
 ) -> None:
     cli = importlib.import_module("parent.cli")
     decisions = importlib.import_module("decision_logs.publication")
@@ -738,6 +739,12 @@ def test_decision_publication_postlude_keeps_its_original_generation(
     }
     document = {"version": 1, "parents": {"o/r#1": owner}}
     journal.atomic(logs.state / "registry.json", document)
+    if snapshot_unavailable:
+
+        def unavailable(self: Any) -> dict[str, Any]:
+            raise OSError("injected registry snapshot failure")
+
+        monkeypatch.setattr(cli.Continuation, "_owner_snapshot", unavailable)
 
     def published_before_registration(**kwargs: Any) -> dict[str, Any]:
         owner["generation"] = 2
