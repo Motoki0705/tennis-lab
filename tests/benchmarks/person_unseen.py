@@ -140,7 +140,7 @@ def plan(freeze: Path, commit: str, report: Path, *, addendum: Path | None = Non
         'time_unix': time.time(), 'event': 'pre-open gate passed; metadata/hash preparation begins',
         'inference_attempts': 0, 'scoring_batches': 0})
     repo = Path(frozen['repo'])
-    dataset = repo / 'data/tennis_multivew/processed/meiji_3cam/dataset'
+    dataset = repo / 'data/tennis_multiview/processed/meiji_3cam/dataset'
     reservation = json.loads(checked(frozen['reservation']).read_text())
     side_path = repo / 'outputs/court_side/evaluate/meiji_clips/i932-detector-v1-20260927/decisions_v2.json'
     sides = selected_sides(json.loads(side_path.read_text()))

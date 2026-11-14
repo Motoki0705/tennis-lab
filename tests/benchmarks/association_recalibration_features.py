@@ -117,7 +117,7 @@ def plan(repo: Path, report: Path) -> None:
     target = report / 'plan.json'
     if target.exists():
         raise FileExistsError(target)
-    dataset = repo / 'data/tennis_multivew/processed/meiji_3cam/dataset'
+    dataset = repo / 'data/tennis_multiview/processed/meiji_3cam/dataset'
     previous = repo / 'outputs/player_association/evaluate/meiji_clips/i933-observe-v1-20260927'
     observed = previous / 'observe.json'
     reservation = dataset / 'annotations/player_association/unseen_protocol.json'
