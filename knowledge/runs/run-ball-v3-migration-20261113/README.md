@@ -109,3 +109,12 @@ scene importの再読込と同じ要求の再送も成功した。receiptと全�
 pytest実測の合計1.52秒、setup最大0.72秒だった。全ファイルpre-commitのmypyには
 変更対象外で282件と10件のエラーが残る。変更対象内のエラーは0件だった。
 詳細と実行logの場所は `validation-summary.json` に固定する。
+
+
+型注釈修正後に既存nodeを含む171件も再実行したが、155件成功・2,522.80秒の時点で
+中断した。移行と並行した実行でI/O pressureのfull avg60が64.50%となり、各workerの
+journal待ちを観測した。新規のreceipt再送caseもcall 220.00秒まで延びた。
+専用28件の実行では同caseのsetup 0.72秒・call 0.80秒だった。4つのintegration caseは
+動画・画像・registryを書き換えるためcaseごとの分離を維持し、入力を各2camera×5frameへ
+抑えた。完走した関連152件・scene unit 19件と修正後の新規28件を成功記録として残す。
+171件の中断分を全件成功とは数えない。CIで対象HEADの結果を確認する。

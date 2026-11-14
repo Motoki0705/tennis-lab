@@ -39,5 +39,15 @@
     "after_fix_related_tests_passed": 44,
     "wall_seconds": 54.98
   },
-  "raw_logs_root": "outputs/ball_detection/migrate/video-v3/20261113"
+  "raw_logs_root": "outputs/ball_detection/migrate/video-v3/20261113",
+  "repeated_related_tests_after_typing_fix": {
+    "state": "interrupted",
+    "collected": 171,
+    "passed_before_interrupt": 155,
+    "wall_seconds": 2522.8,
+    "exit_code": 2,
+    "reason": "repeated local validation competed for filesystem IO with the real migration; prioritize migration after completed focused regression tests",
+    "io_pressure_full_avg60_observed_percent": 64.5,
+    "new_replay_case_call_seconds_under_contention": 220.0
+  }
 }
