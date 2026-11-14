@@ -9,10 +9,13 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
+import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any
 
 
@@ -24,6 +27,14 @@ class Handler(BaseHTTPRequestHandler):
 
     def handle_request(self) -> None:
         self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        executable = shutil.which("gh")
+        if executable is None or not Path(executable).resolve().is_relative_to(
+            Path(tempfile.gettempdir()).resolve()
+        ):
+            self.send_error(
+                503, "fake gh must be installed in the temporary test directory"
+            )
+            return
         endpoint = self.path.removeprefix("/")
         method = self.command
         payload = self.rfile.read(int(self.headers.get("Content-Length", "0")))
