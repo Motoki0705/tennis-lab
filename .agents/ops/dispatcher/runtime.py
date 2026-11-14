@@ -56,7 +56,9 @@ class Runtime:
     def stop_requested(self) -> bool:
         return self.stopping
 
-    def inspect(self, directory: Path, *, stop: bool = False) -> dict[str, Any]:
+    def inspect(
+        self, directory: Path, *, stop: bool = False, timeout: float | None = None
+    ) -> dict[str, Any]:
         proc = subprocess.run(
             [
                 str(self.runner),
@@ -67,6 +69,7 @@ class Runtime:
             capture_output=True,
             text=True,
             check=False,
+            timeout=timeout,
         )
         if proc.returncode:
             raise ValueError(

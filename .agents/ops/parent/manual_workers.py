@@ -44,10 +44,16 @@ MODEL_KEYS = {"model", "model_reason"}
 
 
 def current_task(session: ParentSession, child: int) -> dict[str, Any]:
-    row = session.owner()
+    return reserved_task(session.owner(), child)
+
+
+def reserved_task(row: dict[str, Any], child: int) -> dict[str, Any]:
+    """Validate a manual reservation, also for readers without ownership."""
     if row.get("dispatch") is not None:
         raise ValueError("manual worker commands cannot change dispatcher workers")
-    task: dict[str, Any] = object_value(row["tasks"].get(str(child), {}))
+    task: dict[str, Any] = object_value(
+        object_value(row.get("tasks", {})).get(str(child), {})
+    )
     if (
         not task.get("delegated")
         or task.get("agent") != "codex"
