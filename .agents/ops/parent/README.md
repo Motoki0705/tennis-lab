@@ -84,8 +84,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 `GitHub(repo, store=store)` は、そのStoreのactiveなtransaction専用client。
 GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
 `fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
-`history_read_scope()` は独立した観測を開始し、その観測内だけ履歴探索とGETを再利用する。
+`history_read_scope()` はtransactionのGET cacheを捨て、独立した履歴の観測を開始する。
 `GitHub(repo)` はregistry外のclientで、GET cacheを持たない。
+履歴の探索索引はロック外でも明示した `history_read_scope()` の1観測内だけ再利用する。
+次の観測へは持ち越さず、fresh読取は常に再取得する。
 既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
 transaction用clientがlock不在を検出して自動的にregistry外clientへ切り替わることはない。
 

@@ -296,6 +296,33 @@ def test_each_observation_and_fresh_read_retrieves_new_facts(
     assert calls == [1, 2, 3]
 
 
+def test_external_collection_reuses_discovery_only_within_one_observation(
+    parent_env: ParentEnv,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = importlib.import_module("parent.github")
+    gh = module.GitHub("o/r")
+    revision = [1]
+    calls: list[int] = []
+
+    def fetch(self: object, endpoint: str, **kwargs: object) -> object:
+        calls.append(revision[0])
+        return [{"id": revision[0], "number": revision[0]}]
+
+    monkeypatch.setattr(module.IssueGitHub, "get", fetch)
+    with gh.history_read_scope():
+        assert gh.evidence_rows() == [{"id": 1, "number": 1}]
+        revision[0] = 2
+        assert gh.evidence_rows() == [{"id": 1, "number": 1}]
+    assert gh.evidence_rows() == [{"id": 2, "number": 2}]
+    with gh.history_read_scope():
+        assert gh.evidence_rows() == [{"id": 2, "number": 2}]
+        revision[0] = 3
+        with gh.fresh_reads():
+            assert gh.evidence_rows() == [{"id": 3, "number": 3}]
+    assert calls == [1, 2, 2, 3]
+
+
 @pytest.mark.parametrize(
     "field", ["session", "status", "generation", "tasks", "reviews"]
 )

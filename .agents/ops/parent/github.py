@@ -102,7 +102,7 @@ class GitHub(IssueGitHub):
             yield
 
     def detached(self) -> GitHub:
-        """Explicit uncached client for I/O outside the registry transaction."""
+        """Explicit registry-external client without an endpoint GET cache."""
         client = copy.copy(self)
         client._outside_store = self._store or self._outside_store
         client._store = None
@@ -254,7 +254,7 @@ class GitHub(IssueGitHub):
         previous = getattr(self, "_history_rows", None)
         active = getattr(self, "_history_scope", False)
         self._history_rows = None
-        self._history_scope = self._store is not None
+        self._history_scope = True
         try:
             yield
         finally:
