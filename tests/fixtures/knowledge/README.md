@@ -7,6 +7,8 @@ or pass it to `load_citations(path)`. These are fictional papers with reserved
 
 Look up A–E by titles `Fixture A`–`Fixture E` or DOI `10.5555/fixture-a`–`e`.
 The documents themselves are the canonical metadata; no Papers entries exist.
+An independent `Fixture P` demonstrates a successful reading with reference
+identification still pending, including the original lookup input and dual roles.
 
 - A → B: comparison + foundation; A → C: foundation.
 - B → D: comparison; C → D: comparison + foundation (converging branches).
@@ -24,6 +26,8 @@ with an explicit interruption reason. Existing searches omit status/stop_reason
 and therefore retain their completed-run semantics.
 Only matching classified/resolved edges expand. C's edges remain available for
 display but C is not expanded by the comparison-only search.
+`search-fixture-pending-identification` reaches only P and expands nothing:
+provider failure cannot complete a paper or turn a pending row into unresolved.
 
 Across the whole fixture, distinct comparison citing-paper counts are B=1,
 D=2, E=1. Foundation counts are B=1, C=1, D=1. Within the comparison-depth2

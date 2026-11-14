@@ -42,10 +42,20 @@ references:
   decision_status: classified
   reason: 'コート検出（§4.1）において、Farinらのモデルベースコート検出アルゴリズムに関連するスポーツ映像での同種先行研究の1つとして引用されている（具体的なベースライン比較対象は[11]、実装基盤は[4]）。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Ball+tracking+and+3d+trajectory+approximation+with+applications+to+tactics+analysis+from+single-camera+volleyball+sequences&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 4.1, anchor S4.SS1.p1.1
   - bib [2] (anchor bib.bib2)
+  lookup:
+    title: Ball tracking and 3d trajectory approximation with applications to tactics
+      analysis from single-camera volleyball sequences
+    year: 2012
+    authors:
+    - Hua-Tsung Chen
+    - Wen-Jiin Tsai
+    - Suh-Yin Lee
+    - Jen-Yu Yu
+    links: []
 - ref_id: ref-3
   citation: '[3] Hua-Tsung Chen, Ming-Chun Tien, Yi-Wen Chen, Wen-Jiin Tsai, and Suh-Yin
     Lee. Physics-based ball tracking and 3D trajectory reconstruction with applications
@@ -58,105 +68,176 @@ references:
   decision_status: classified
   reason: 'バスケットボール映像における物理モデルに基づく3D軌道再構成とショット境界検出の先行研究として§1・§2で言及され、§4.1でもFarinらのモデルベースコート検出法に関連する先行研究群の1つとして引用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Physics-based+ball+tracking+and+3D+trajectory+reconstruction+with+applications+to+shooting+location+estimation+in+basketball+video&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 1, anchor S1.p3.1
   - Section 2, anchor S2.p2.1
   - Section 4.1, anchor S4.SS1.p1.1
   - bib [3] (anchor bib.bib3)
+  lookup:
+    title: Physics-based ball tracking and 3D trajectory reconstruction with applications
+      to shooting location estimation in basketball video
+    year: 2009
+    authors:
+    - Hua-Tsung Chen
+    - Ming-Chun Tien
+    - Yi-Wen Chen
+    - Wen-Jiin Tsai
+    - Suh-Yin Lee
+    links: []
 - ref_id: ref-4
   citation: '[4] Grzegorz Chlebus and Thomas Sablik. Fully automatic algorithm for
     tennis court line detection. https://github.com/gchlebus/tennis-court-detection,
     2019.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-a51068d63615c196
+  identification_status: resolved
   roles:
   - foundation
   decision_status: classified
   reason: 'コート検出モジュール（§4.1）の実装を同文献が提供するリファレンスコードの上に構築しており、コート検出の実装基盤として採用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Fully+automatic+algorithm+for+tennis+court+line+detection&per_page=5'
+    Identification: explicit external ID in reference'
   evidence:
   - Section 4.1, anchor S4.SS1.p4.1
   - bib [4] (anchor bib.bib4)
+  lookup:
+    title: Fully automatic algorithm for tennis court line detection
+    year: 2019
+    authors:
+    - Grzegorz Chlebus
+    - Thomas Sablik
+    links:
+    - https://github.com/gchlebus/tennis-court-detection
 - ref_id: ref-5
   citation: '[5] Xiangtong Chu, Xiao Xie, Shuainan Ye, Haolin Lu, Hongguang Xiao,
     Zeqing Yuan, Zhutian Chen, Hui Zhang, and Yingcai Wu. TIVEE: Visual Exploration
     and Explanation of Badminton Tactics in Immersive Visualizations. IEEE Transactions
     on Visualization and Computer Graphics, pages 1–1, 2021. Conference Name: IEEE
     Transactions on Visualization and Computer Graphics.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-eb2f0ee06381e51b
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'バドミントンの3D軌道を用いた戦術分析・可視化システムの先行研究（confirming pointsによりショット単位で人手介入を要する手法）として§1および§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=TIVEE%3A+Visual+Exploration+and+Explanation+of+Badminton+Tactics+in+Immersive+Visualizations&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 1, anchor S1.p2.1
   - Section 2, anchor S2.p1.1, S2.p2.1
   - bib [5] (anchor bib.bib5)
+  lookup:
+    title: 'TIVEE: Visual Exploration and Explanation of Badminton Tactics in Immersive
+      Visualizations'
+    year: 2021
+    authors:
+    - Xiangtong Chu
+    - Xiao Xie
+    - Shuainan Ye
+    - Haolin Lu
+    - Hongguang Xiao
+    - Zeqing Yuan
+    - Zhutian Chen
+    - Hui Zhang
+    - Yingcai Wu
+    links: []
 - ref_id: ref-6
   citation: '[6] Anthony Cioppa, Adrien Deliege, Silvio Giancola, Bernard Ghanem,
     Marc Van Droogenbroeck, Rikke Gade, and Thomas B. Moeslund. A context-aware loss
     function for action spotting in soccer videos. In IEEE/CVF Conference on Computer
     Vision and Pattern Recognition (CVPR), pages 13123–13133. IEEE, 2020.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-ef3765ca64d3dee3
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像における行動の局在化・分類（activity localization and classification）の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=A+context-aware+loss+function+for+action+spotting+in+soccer+videos&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [6] (anchor bib.bib6)
+  lookup:
+    title: A context-aware loss function for action spotting in soccer videos
+    year: 2020
+    authors:
+    - Anthony Cioppa
+    - Adrien Deliege
+    - Silvio Giancola
+    - Bernard Ghanem
+    - Marc Van Droogenbroeck
+    - Rikke Gade
+    - Thomas B. Moeslund
+    links: []
 - ref_id: ref-7
   citation: '[7] A. Cioppa, A. Deliège, and M. Van Droogenbroeck. A bottom-up approach
     based on semantics for the interpretation of the main camera stream in soccer
     games. In IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops
     (CVPRW), pages 1846–184609, 2018. ISSN: 2160-7516.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-dcff37407f36f742
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像における行動の局在化・分類（activity localization and classification）の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=A+bottom-up+approach+based+on+semantics+for+the+interpretation+of+the+main+camera+stream+in+soccer+games&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [7] (anchor bib.bib7)
+  lookup:
+    title: A bottom-up approach based on semantics for the interpretation of the main
+      camera stream in soccer games
+    year: 2018
+    authors:
+    - A. Cioppa
+    - A. Deliège
+    - M. Van Droogenbroeck
+    links: []
 - ref_id: ref-8
   citation: '[8] Caroline Cohen, Baptiste Darbois Texier, David Quéré, and Christophe
     Clanet. The physics of badminton. New Journal of Physics, 17(6):063001, June 2015.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-90b70d5abcde69ae
+  identification_status: resolved
   roles:
   - component
   decision_status: classified
   reason: '3D軌道再構成（§4.5）において、シャトルの飛行を空気抵抗を受ける質点運動の微分方程式（式(1)・式(2)）で近似するための物理モデルとして採用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=The+physics+of+badminton&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 4.5 (Physics-based trajectory estimation), Equation 1-2, anchor S4.SS5.SSS0.Px1.p1.1
   - bib [8] (anchor bib.bib8)
+  lookup:
+    title: The physics of badminton
+    year: 2015
+    authors:
+    - Caroline Cohen
+    - Baptiste Darbois Texier
+    - David Quéré
+    - Christophe Clanet
+    links: []
 - ref_id: ref-9
   citation: '[9] MMPose Contributors. Openmmlab pose estimation toolbox and benchmark.
     https://github.com/open-mmlab/mmpose, 2020.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-5b2467acdee75b41
+  identification_status: resolved
   roles:
   - component
   decision_status: classified
   reason: 'システムの選手姿勢推定ステップ（§4.2）において、HRNetモデルで各フレームの選手姿勢を算出するためのツールボックス／フレームワーク（mmpose）として採用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Openmmlab+pose+estimation+toolbox+and+benchmark&per_page=5'
+    Identification: explicit external ID in reference'
   evidence:
   - Section 4.2, anchor S4.SS2.p1.1
   - bib [9] (anchor bib.bib9)
+  lookup:
+    title: Openmmlab pose estimation toolbox and benchmark
+    year: 2020
+    authors:
+    - MMPose Contributors
+    links:
+    - https://github.com/open-mmlab/mmpose
 - ref_id: ref-10
   citation: '[10] ESPN. Badminton second to soccer in participation worldwide, 2004.'
   target_id: null
@@ -165,10 +246,16 @@ references:
   decision_status: unclassifiable
   reason: '§1冒頭でバドミントンが世界で2番目に競技人口の多いスポーツであるという一般的背景の根拠としてのみ言及されており、同タスクの先行研究や技術的採用・比較・ベンチマークとしての役割を示す記述がないため分類不能。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Badminton+second+to+soccer+in+participation+worldwide&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): no_title_match'
   evidence:
   - Section 1, anchor S1.p1.1
   - bib [10] (anchor bib.bib10)
+  lookup:
+    title: Badminton second to soccer in participation worldwide
+    year: 2004
+    authors:
+    - ESPN
+    links: []
 - ref_id: ref-11
   citation: '[11] Dirk Farin, Susanne Krabbe, Peter H. N. de With, and Wolfgang Effelsberg.
     Robust camera calibration for sport videos using court models. In Minerva M. Yeung,
@@ -185,12 +272,21 @@ references:
   reason: '§2でコート検出の先行研究として挙げられ、§4.1では提案コート検出手法の出発点となるアルゴリズム（foundation）として採用して線分分割をグラフベース手法に改良し、Figure
     3および§4.1の定量評価（検出成功率73.9%→85.5%、平均IoU 0.96→0.97、処理時間1/40）で直接比較している。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Robust+camera+calibration+for+sport+videos+using+court+models&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): author_mismatch_or_missing'
   evidence:
   - Section 2, anchor S2.p1.1
   - Section 3, Figure 3 (anchor S3.F3.8)
   - Section 4.1, anchor S4.SS1.p1.1, S4.SS1.p2.1, S4.SS1.p4.1
   - bib [11] (anchor bib.bib11)
+  lookup:
+    title: Robust camera calibration for sport videos using court models
+    year: 2004
+    authors:
+    - Dirk Farin
+    - Susanne Krabbe
+    - Peter H. N. de With
+    - Wolfgang Effelsberg
+    links: []
 - ref_id: ref-12
   citation: '[12] Rohit Girdhar, Georgia Gkioxari, Lorenzo Torresani, Manohar Paluri,
     and Du Tran. Detect-and-Track: Efficient Pose Estimation in Videos. arXiv:1712.09184
@@ -209,48 +305,73 @@ references:
 - ref_id: ref-13
   citation: '[13] Geoffrey E. Hinton, Oriol Vinyals, and Jeffrey Dean. Distilling
     the knowledge in a neural network. CoRR, abs/1503.02531, 2015.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-61436ddfdddf30b0
+  identification_status: resolved
   roles:
   - component
   decision_status: classified
   reason: 'シャトル検出モデル（§4.3）の学習初期（最初の10エポック）において、TrackNetV2のパラメータを用いてモデルを学習させる知識蒸留（distillation
     learning）技法として採用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Distilling+the+knowledge+in+a+neural+network&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 4.3, anchor S4.SS3.p2.1
   - bib [13] (anchor bib.bib13)
+  lookup:
+    title: Distilling the knowledge in a neural network
+    year: 2015
+    authors:
+    - Geoffrey E. Hinton
+    - Oriol Vinyals
+    - Jeffrey Dean
+    links: []
 - ref_id: ref-14
   citation: '[14] Namdar Homayounfar, Sanja Fidler, and Raquel Urtasun. Sports field
     localization via deep structured models. In IEEE Conference on Computer Vision
     and Pattern Recognition (CVPR), pages 4012–4020. IEEE, 2017.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-9266087073b249e5
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像におけるコート／フィールド検出の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Sports+field+localization+via+deep+structured+models&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [14] (anchor bib.bib14)
+  lookup:
+    title: Sports field localization via deep structured models
+    year: 2017
+    authors:
+    - Namdar Homayounfar
+    - Sanja Fidler
+    - Raquel Urtasun
+    links: []
 - ref_id: ref-15
   citation: '[15] James Hong, Matthew Fisher, Michaël Gharbi, and Kayvon Fatahalian.
     Video pose distillation for few-shot, fine-grained sports action recognition.
     CoRR, abs/2109.01305, 2021.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-8d5a358fae30ba99
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像における姿勢解析（pose analysis）の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Video+pose+distillation+for+few-shot%2C+fine-grained+sports+action+recognition&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [15] (anchor bib.bib15)
+  lookup:
+    title: Video pose distillation for few-shot, fine-grained sports action recognition
+    year: 2021
+    authors:
+    - James Hong
+    - Matthew Fisher
+    - Michaël Gharbi
+    - Kayvon Fatahalian
+    links: []
 - ref_id: ref-16
   citation: '[16] Yu-Chuan Huang, I.-No Liao, Ching-Hsuan Chen, Tsì-Uí İk, and Wen-Chih
     Peng. TrackNet: A Deep Learning Network for Tracking High-speed and Tiny Objects
@@ -279,26 +400,40 @@ references:
   decision_status: classified
   reason: 'スポーツ映像におけるコート／フィールド検出の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Soccer+video+mosaicing+using+self-calibration+and+line+tracking&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [17] (anchor bib.bib17)
+  lookup:
+    title: Soccer video mosaicing using self-calibration and line tracking
+    year: 2000
+    authors:
+    - Hyunwoo Kim
+    - Ki Sang Hong
+    links: []
 - ref_id: ref-18
   citation: '[18] Kaustubh Milind Kulkarni and Sucheth Shenoy. Table Tennis Stroke
     Recognition Using Two-Dimensional Human Pose Estimation. In 2021 IEEE/CVF Conference
     on Computer Vision and Pattern Recognition Workshops (CVPRW), pages 4571–4579,
     Nashville, TN, USA, June 2021. IEEE.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-e9044189be07413f
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'ラケットスポーツにおけるストローク解析（stroke analysis）の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Table+Tennis+Stroke+Recognition+Using+Two-Dimensional+Human+Pose+Estimation&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [18] (anchor bib.bib18)
+  lookup:
+    title: Table Tennis Stroke Recognition Using Two-Dimensional Human Pose Estimation
+    year: 2021
+    authors:
+    - Kaustubh Milind Kulkarni
+    - Sucheth Shenoy
+    links: []
 - ref_id: ref-19
   citation: '[19] Chia-Lo Lee and Peter J Ramadge. Badminton Shuttlecock Tracking
     and 3D Trajectory Estimation From Video. Princeton DataSpace, Electrical Engineering,
@@ -310,58 +445,92 @@ references:
   decision_status: classified
   reason: 'バドミントン映像からのシャトル追跡およびモデルベース3D軌道推定を行う先行研究として§1・§2で言及されている（2D合成軌道のみで評価されている旨が述べられているが、定量的な実験比較は実施されていない）。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Badminton+Shuttlecock+Tracking+and+3D+Trajectory+Estimation+From+Video&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 1, anchor S1.p3.1
   - Section 2, anchor S2.p2.1
   - bib [19] (anchor bib.bib19)
+  lookup:
+    title: Badminton Shuttlecock Tracking and 3D Trajectory Estimation From Video
+    year: 2019
+    authors:
+    - Chia-Lo Lee
+    - Peter J Ramadge
+    links: []
 - ref_id: ref-20
   citation: '[20] Yang Liu, Dawei Liang, Qingming Huang, and Wen Gao. Extracting 3d
     information from broadcast soccer video. Image Vis. Comput., 24(10):1146–1162,
     2006.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-8ed68885a64fecfe
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'コート検出（§4.1）において、Farinらのモデルベースコート検出アルゴリズムに関連する放送スポーツ映像の先行研究群の1つとして引用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Extracting+3d+information+from+broadcast+soccer+video&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 4.1, anchor S4.SS1.p1.1
   - bib [20] (anchor bib.bib20)
+  lookup:
+    title: Extracting 3d information from broadcast soccer video
+    year: 2006
+    authors:
+    - Yang Liu
+    - Dawei Liang
+    - Qingming Huang
+    - Wen Gao
+    links: []
 - ref_id: ref-21
   citation: '[21] Amir Sadeghian, Alexandre Alahi, and Silvio Savarese. Tracking the
     untrackable: Learning to track multiple cues with long-term dependencies. In IEEE
     International Conference on Computer Vision, ICCV 2017, Venice, Italy, October
     22-29, 2017, pages 300–311. IEEE Computer Society, 2017.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-5f3bd0e0bf1ac9b8
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: '§4.2の姿勢追跡において、コート手がかりを用いる提案手法が採用しないリカレントネットワークベースの既存追跡手法として言及されているのみで、採用や実験比較は行われていない。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Tracking+the+untrackable%3A+Learning+to+track+multiple+cues+with+long-term+dependencies&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 4.2, anchor S4.SS2.p1.1
   - bib [21] (anchor bib.bib21)
+  lookup:
+    title: 'Tracking the untrackable: Learning to track multiple cues with long-term
+      dependencies'
+    year: 2017
+    authors:
+    - Amir Sadeghian
+    - Alexandre Alahi
+    - Silvio Savarese
+    links: []
 - ref_id: ref-22
   citation: '[22] Saikat Sarkar, Amlan Chakrabarti, and Dipti Prasad Mukherjee. Generation
     of ball possession statistics in soccer using minimum-cost flow network. In IEEE/CVF
     Conference on Computer Vision and Pattern Recognition Workshops (CVPRW), pages
     2515–2523. IEEE, 2019.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-c191855a0bf3b73a
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像におけるボール追跡（ball tracking）の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Generation+of+ball+possession+statistics+in+soccer+using+minimum-cost+flow+network&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [22] (anchor bib.bib22)
+  lookup:
+    title: Generation of ball possession statistics in soccer using minimum-cost flow
+      network
+    year: 2019
+    authors:
+    - Saikat Sarkar
+    - Amlan Chakrabarti
+    - Dipti Prasad Mukherjee
+    links: []
 - ref_id: ref-23
   citation: '[23] Steven Schwarcz, Peng Xu, David D’Ambrosio, Juhana Kangaspunta,
     Anelia Angelova, Huong Phan, and Navdeep Jaitly. SPIN: A High Speed, High Resolution
@@ -392,11 +561,21 @@ references:
   decision_status: classified
   reason: '単一視点映像からconfirming pointsを用いて3Dシャトル位置を再構成する先行研究（全ショットで人手介入を必要とする手法）として§1および§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Reconstruction+of+3D+Ball%2FShuttle+Position+by+Two+Image+Points+from+a+Single+View&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 1, anchor S1.p3.1
   - Section 2, anchor S2.p2.1
   - bib [24] (anchor bib.bib24)
+  lookup:
+    title: Reconstruction of 3D Ball/Shuttle Position by Two Image Points from a Single
+      View
+    year: 2018
+    authors:
+    - Lejun Shen
+    - Qing Liu
+    - Lin Li
+    - Yawei Ren
+    links: []
 - ref_id: ref-25
   citation: '[25] Lejun Shen, Hui Zhang, Min Zhu, Jia Zheng, and Yawei Ren. Measurement
     and Performance Evaluation of Lob Technique Using Aerodynamic Model in Badminton
@@ -411,17 +590,28 @@ references:
   decision_status: classified
   reason: 'バドミントン試合において空気力学モデルとconfirming pointsで3Dシャトル軌道を推定する先行研究（ショット単位の人手介入が必要）として§1および§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Measurement+and+Performance+Evaluation+of+Lob+Technique+Using+Aerodynamic+Model+in+Badminton+Matches&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 1, anchor S1.p3.1
   - Section 2, anchor S2.p2.1
   - bib [25] (anchor bib.bib25)
+  lookup:
+    title: Measurement and Performance Evaluation of Lob Technique Using Aerodynamic
+      Model in Badminton Matches
+    year: 2020
+    authors:
+    - Lejun Shen
+    - Hui Zhang
+    - Min Zhu
+    - Jia Zheng
+    - Yawei Ren
+    links: []
 - ref_id: ref-26
   citation: '[26] N.-E. Sun, Y.-C. Lin, S.-P. Chuang, T.-H. Hsu, D.-R. Yu, H.-Y. Chung,
     and T.-U. İk. TrackNetV2: Efficient Shuttlecock Tracking Network. In 2020 International
     Conference on Pervasive Artificial Intelligence (ICPAI), pages 86–91, Dec. 2020.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-bee887c491b4ab99
+  identification_status: resolved
   roles:
   - foundation
   - comparison
@@ -430,12 +620,24 @@ references:
   decision_status: classified
   reason: '§2でシャトル追跡の先行研究として挙げられ、§3ではTrackNetV2データセットを学習・評価データ（benchmark）として採用している。さらに§4.3では3-in-3-outのU-Net構成を出発点（foundation）とし、そのパラメータを初期エポックの知識蒸留にも用いる一方、パラメータ数（2.9M対11.3M）および精度（88.6%対84.0%）を直接比較（comparison）している。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=TrackNetV2%3A+Efficient+Shuttlecock+Tracking+Network&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - Section 3, anchor S3.p1.1
   - Section 4.3, anchor S4.SS3.p1.1, S4.SS3.p2.1
   - bib [26] (anchor bib.bib26)
+  lookup:
+    title: 'TrackNetV2: Efficient Shuttlecock Tracking Network'
+    year: 2020
+    authors:
+    - N.-E. Sun
+    - Y.-C. Lin
+    - S.-P. Chuang
+    - T.-H. Hsu
+    - D.-R. Yu
+    - H.-Y. Chung
+    - T.-U. İk
+    links: []
 - ref_id: ref-27
   citation: '[27] Richard Szeliski. Computer Vision: Algorithms and Applications.
     Springer-Verlag, 1st edition, 2010.'
@@ -445,75 +647,122 @@ references:
   decision_status: unclassifiable
   reason: '§2で「3D再構成はコンピュータビジョン分野で広く研究されている」という一般的背景説明のために標準的教科書として引用されているのみで、同タスクの先行研究や具体的技術の採用・比較・ベンチマークとしての役割を示す記述がないため分類不能。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Computer+Vision%3A+Algorithms+and+Applications&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 2, anchor S2.p2.1
   - bib [27] (anchor bib.bib27)
+  lookup:
+    title: 'Computer Vision: Algorithms and Applications'
+    year: 2010
+    authors:
+    - Richard Szeliski
+    links: []
 - ref_id: ref-28
   citation: '[28] Saeid Asgari Taghanaki, Yefeng Zheng, Shaohua Kevin Zhou, Bogdan
     Georgescu, Puneet Sharma, Daguang Xu, Dorin Comaniciu, and Ghassan Hamarneh. Combo
     loss: Handling input and output imbalance in multi-organ segmentation. Comput.
     Medical Imaging Graph., 75:24–33, 2019.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-173ea2a09a4a1c31
+  identification_status: resolved
   roles:
   - component
   decision_status: classified
   reason: 'シャトル検出モデル（§4.3）において、微小なシャトルによる入力不均衡問題に対処するため、Dice損失とバイナリ交差エントロピー損失の重み付き組み合わせ（Combo
     loss）を損失関数として採用している。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Combo+loss%3A+Handling+input+and+output+imbalance+in+multi-organ+segmentation&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 4.3, anchor S4.SS3.p1.1
   - bib [28] (anchor bib.bib28)
+  lookup:
+    title: 'Combo loss: Handling input and output imbalance in multi-organ segmentation'
+    year: 2019
+    authors:
+    - Saeid Asgari Taghanaki
+    - Yefeng Zheng
+    - Shaohua Kevin Zhou
+    - Bogdan Georgescu
+    - Puneet Sharma
+    - Daguang Xu
+    - Dorin Comaniciu
+    - Ghassan Hamarneh
+    links: []
 - ref_id: ref-29
   citation: '[29] Rajkumar Theagarajan, Federico Pala, Xiu Zhang, and Bir Bhanu. Soccer:
     Who has the ball? generating visual analytics and player statistics. In IEEE/CVF
     Conference on Computer Vision and Pattern Recognition Workshops (CVPRW), pages
     1830–18308, 2018. ISSN: 2160-7516.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-04fd0207abe489ab
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像におけるボール追跡（ball tracking）の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Soccer%3A+Who+has+the+ball%3F+generating+visual+analytics+and+player+statistics&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [29] (anchor bib.bib29)
+  lookup:
+    title: 'Soccer: Who has the ball? generating visual analytics and player statistics'
+    year: 2018
+    authors:
+    - Rajkumar Theagarajan
+    - Federico Pala
+    - Xiu Zhang
+    - Bir Bhanu
+    links: []
 - ref_id: ref-30
   citation: '[30] Takamasa Tsunoda, Yasuhiro Komori, Masakazu Matsugu, and Tatsuya
     Harada. Football action recognition using hierarchical LSTM. In IEEE Conference
     on Computer Vision and Pattern Recognition Workshops (CVPRW), pages 155–163. IEEE,
     2017.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-3e4e9b5bacb6beee
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像における行動の局在化・分類（activity localization and classification）の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Football+action+recognition+using+hierarchical+LSTM&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [30] (anchor bib.bib30)
+  lookup:
+    title: Football action recognition using hierarchical LSTM
+    year: 2017
+    authors:
+    - Takamasa Tsunoda
+    - Yasuhiro Komori
+    - Masakazu Matsugu
+    - Tatsuya Harada
+    links: []
 - ref_id: ref-31
   citation: '[31] Fei Wang, Lifeng Sun, Bo Yang, and Shiqiang Yang. Fast arc detection
     algorithm for play field registration in soccer video mining. In 2006 IEEE International
     Conference on Systems, Man and Cybernetics, volume 6, pages 4932–4936, 2006. ISSN:
     1062-922X.'
-  target_id: null
-  identification_status: unresolved
+  target_id: cite-178d98985ca8aa47
+  identification_status: resolved
   roles:
   - related
   decision_status: classified
   reason: 'スポーツ映像におけるコート／フィールド検出の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Fast+arc+detection+algorithm+for+play+field+registration+in+soccer+video+mining&per_page=5'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [31] (anchor bib.bib31)
+  lookup:
+    title: Fast arc detection algorithm for play field registration in soccer video
+      mining
+    year: 2006
+    authors:
+    - Fei Wang
+    - Lifeng Sun
+    - Bo Yang
+    - Shiqiang Yang
+    links: []
 - ref_id: ref-32
   citation: '[32] Jingdong Wang, Ke Sun, Tianheng Cheng, Borui Jiang, Chaorui Deng,
     Yang Zhao, Dong Liu, Yadong Mu, Mingkui Tan, Xinggang Wang, Wenyu Liu, and Bin
@@ -526,10 +775,27 @@ references:
   decision_status: classified
   reason: 'システムの選手姿勢推定ステップ（§4.2）において、各フレームの選手姿勢を推定するためのトップダウン型モデル（HRNet）として採用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Deep+high-resolution+representation+learning+for+visual+recognition&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 4.2, anchor S4.SS2.p1.1
   - bib [32] (anchor bib.bib32)
+  lookup:
+    title: Deep high-resolution representation learning for visual recognition
+    year: 2021
+    authors:
+    - Jingdong Wang
+    - Ke Sun
+    - Tianheng Cheng
+    - Borui Jiang
+    - Chaorui Deng
+    - Yang Zhao
+    - Dong Liu
+    - Yadong Mu
+    - Mingkui Tan
+    - Xinggang Wang
+    - Wenyu Liu
+    - Bin Xiao
+    links: []
 - ref_id: ref-33
   citation: '[33] T. Watanabe, M. Haseyama, and H. Kitajima. A soccer field tracking
     method with wire frame model from TV images. In International Conference on Image
@@ -541,10 +807,18 @@ references:
   decision_status: classified
   reason: 'スポーツ映像におけるコート／フィールド検出の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=A+soccer+field+tracking+method+with+wire+frame+model+from+TV+images&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [33] (anchor bib.bib33)
+  lookup:
+    title: A soccer field tracking method with wire frame model from TV images
+    year: 2004
+    authors:
+    - T. Watanabe
+    - M. Haseyama
+    - H. Kitajima
+    links: []
 - ref_id: ref-34
   citation: '[34] A. Yamada, Y. Shirai, and J. Miura. Tracking players and a ball
     in video image sequence and estimating camera parameters for 3d interpretation
@@ -557,10 +831,19 @@ references:
   decision_status: classified
   reason: 'スポーツ映像におけるコート検出およびカメラパラメータ推定の先行研究として§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Tracking+players+and+a+ball+in+video+image+sequence+and+estimating+camera+parameters+for+3d+interpretation+of+soccer+games&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 2, anchor S2.p1.1
   - bib [34] (anchor bib.bib34)
+  lookup:
+    title: Tracking players and a ball in video image sequence and estimating camera
+      parameters for 3d interpretation of soccer games
+    year: 2002
+    authors:
+    - A. Yamada
+    - Y. Shirai
+    - J. Miura
+    links: []
 - ref_id: ref-35
   citation: '[35] Shuainan Ye, Zhutian Chen, Xiangtong Chu, Yifan Wang, Siwei Fu,
     Lejun Shen, Kun Zhou, and Yingcai Wu. ShuttleSpace: Exploring and Analyzing Movement
@@ -573,11 +856,25 @@ references:
   decision_status: classified
   reason: 'バドミントンの3D軌道を没入型可視化により戦術分析へ活用する先行研究（confirming pointsによる人手介入が必要）として§1および§2で言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=ShuttleSpace%3A+Exploring+and+Analyzing+Movement+Trajectory+in+Immersive+Visualization&per_page=5'
+    Identification: OpenAlex referenced_works (33 candidates): year_mismatch_or_missing'
   evidence:
   - Section 1, anchor S1.p2.1
   - Section 2, anchor S2.p1.1, S2.p2.1
   - bib [35] (anchor bib.bib35)
+  lookup:
+    title: 'ShuttleSpace: Exploring and Analyzing Movement Trajectory in Immersive
+      Visualization'
+    year: 2021
+    authors:
+    - Shuainan Ye
+    - Zhutian Chen
+    - Xiangtong Chu
+    - Yifan Wang
+    - Siwei Fu
+    - Lejun Shen
+    - Kun Zhou
+    - Yingcai Wu
+    links: []
 - ref_id: ref-36
   citation: '[36] Haotian Zhang, Cristobal Sciutto, Maneesh Agrawala, and Kayvon Fatahalian.
     Vid2Player: Controllable Video Sprites that Behave and Appear like Professional
@@ -597,3 +894,5 @@ references:
 schema_version: 1
 ---
 Reader: agy 1.5.9, gemini-4-hydrogen-high (observed: Gemini 4 Hydrogen (High)). Reading elapsed: 127.620 seconds. Input: html, https://arxiv.org/html/2204.01899.
+
+Legacy identification results invalidated; original reading and classifications retained.

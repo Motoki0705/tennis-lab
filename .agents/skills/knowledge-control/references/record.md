@@ -150,14 +150,29 @@ with `--agy`; its default is evaluated in the selected user profile.
 Public article HTML is preferred for arXiv. A landing/abstract page alone is not
 full text. PDF downloads and extracted input exist only in temporary directories;
 PDF reading requires Poppler's `pdftotext` on PATH. A PDF without extractable text
-fails explicitly; no implicit OCR is attempted. Reference identities use explicit
-IDs or unique exact title/year matches from the existing OpenAlex lookup helper.
-Unavailable or ambiguous matches stay unresolved, with the reason in the row.
+fails explicitly; no implicit OCR is attempted. Failure reasons record attempted
+URLs and OpenAlex's best OA/other location PDFs, including absent PDF locations.
+Reference identities use printed external IDs first. Otherwise, the source's
+OpenAlex `referenced_works` supply candidates, compared by normalized title,
+publication year and first-author surname. Multiple matches, missing corroboration
+or a mismatch stay unresolved with a specific reason. An unindexed source or empty
+reference index uses global search, under the same conservative matching rules.
 
-Completed papers are checkpointed and reused for later runs. A validated model
-result is also checkpointed privately before identity lookup; interruption during
-that lookup can resume without another model call. Its key includes the exact
-input, model/version, instructions, and schema. Repeating the same
+OpenAlex calls are serial, paced at least one second apart, and reuse successful
+responses within an invocation. HTTP 429/5xx, communication failures and invalid
+responses have at most four attempts, with exponential backoff (2/4/8 seconds)
+and `Retry-After` (seconds or HTTP date). A required delay above 60 seconds or the
+remaining execution budget stops immediately instead of retrying too early.
+Server cooldowns are saved privately under `--run-dir` across restarts, separately
+for query and singleton endpoints. `OPENALEX_EMAIL` and `OPENALEX_API_KEY` are used
+when set; neither their values nor credential-bearing URLs enter public evidence.
+Exhaustion is an error: affected references remain pending, never unresolved.
+
+Completed readings, original reference lookup inputs, roles and evidence are
+checkpointed in paper documents before identity lookup. Successful rows survive
+interruption; pending rows resume without another model call. A validated model
+result is also checkpointed privately, keyed by the exact input, model/version,
+instructions, and schema. Repeating the same
 `--search-id` resumes an interrupted run only when its conditions match; omitting
 it creates a new search document while reusing the paper cache. Unselected edges
 and every bibliography row remain available for display and adoption. Full-text
@@ -165,13 +180,27 @@ failures are cached as failures. Model errors, unavailable models, quota/rate
 limits, invalid JSON, and mismatched model/version stop the command with a nonzero
 exit and an interrupted search; they never select another model.
 
+Old documents that finalized `reference lookup failed` as unresolved are migrated
+to pending. For each affected source, all unresolved rows are reidentified;
+successful identities and classifications are retained. Old lookup inputs can be
+recovered from matching validated readings in the explicitly selected `--run-dir`
+(including subdirectories); absent archives use the original citation text.
+All affected search documents are rebuilt. For the same saved search, already-read
+sources and old full-text failures from its previous expansion scope are repaired
+before retrying its root. Thus a root search quota does not block independent
+repairs that need only source/target ID requests. Repaired edges remain in paper
+documents even if an incomplete root temporarily truncates the search generations.
+
 `--agy-timeout` defaults to 1800 seconds per paper. `--time-limit` is the wall-time
 budget for this invocation, defaults to 28800 seconds, and cannot exceed 8 hours.
 For a multi-attempt campaign, subtract elapsed attempts from the agreed campaign
 budget and pass the remainder. There is no paper-count limit or parallel option.
 The JSON report and search body record time, actual model calls, new/cached reads,
-unique read papers, fetch failures, unresolved/unclassifiable rows, and the known
-pending count (a lower bound until all intermediate bibliographies are read).
+unique read papers, fetch failures, unresolved/unclassifiable rows, pending
+references, repaired document IDs, and the known pending-paper count (a lower
+bound until all intermediate bibliographies are read). Counts follow all known
+selected-role edges within the depth limit, including cached sources beyond an
+incomplete root. Counting those sources does not expand or read them ahead.
 The same store rejects concurrent CLI writers. Validate the resulting library
 with `kg_validate.py` before committing it.
 

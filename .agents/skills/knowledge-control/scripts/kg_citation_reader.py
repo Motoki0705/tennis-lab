@@ -63,6 +63,40 @@ class CitationReader:
         self.schema = OutputSchema(SCHEMA, agent="agy")
         self.calls = 0
 
+    def recovered_lookups(self, paper: Any) -> dict[str, dict[str, Any]]:
+        """Recover old query inputs only from an exactly corresponding reading.
+
+        Used for migration of pre-lookup-checkpoint documents. No model or
+        network call occurs. Conflicting matching archives are an error.
+        """
+        if not self.run_dir.exists():
+            return {}
+        outputs = []
+        for path in self.run_dir.rglob("reading-cache-*.json"):
+            saved = parse_json(path.read_text(encoding="utf-8"))
+            if isinstance(saved, dict) and isinstance(saved.get("output"), dict):
+                outputs.append(saved["output"])
+        for path in self.run_dir.rglob("*.log.stream.jsonl"):
+            for line in path.read_text(encoding="utf-8").splitlines():
+                event = parse_json(line)
+                if isinstance(event, dict) and event.get("event") == "result":
+                    result = event.get("result")
+                    if isinstance(result, dict) and result.get("status") == "SUCCESS" and isinstance(result.get("structured_output"), dict):
+                        outputs.append(result["structured_output"])
+        expected = {ref.ref_id: ref.citation for ref in paper.references}
+        recovered: dict[str, dict[str, Any]] = {}
+        for output in outputs:
+            if output.get("title") != paper.title or output.get("summary") != paper.summary:
+                continue
+            self.schema.validate(output)
+            if len(output["references"]) != len(expected) or {item["ref_id"]: item["citation"] for item in output["references"]} != expected:
+                continue
+            queries = {item["ref_id"]: {k: item[k] for k in ("title", "year", "authors", "links")} for item in output["references"]}
+            if recovered and recovered != queries:
+                raise ValueError("conflicting archived reference queries")
+            recovered = queries
+        return recovered
+
     def read(self, bibliography: Bibliography, full_text: FullText, timeout: float) -> tuple[dict[str, Any], str]:
         config = load_config(profile="citation")
         if config.model != MODEL:

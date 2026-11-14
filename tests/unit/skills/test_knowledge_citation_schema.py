@@ -100,7 +100,12 @@ def test_fixture_has_independent_failure_states_and_all_roles(api: ModuleType, t
     library = api.load_citations(FIXTURE)
     assert api.validate_library(library) == []
     papers = {p.title[-1]: p for p in library.papers.values()}
-    assert set(papers) == set("ABCDE")
+    assert set(papers) == set("ABCDEP")
+    pending = papers["P"].references[0]
+    assert pending.identification_status == "pending" and pending.target_id is None
+    assert pending.lookup.title == "A Pending Target"
+    assert pending.roles == ["comparison", "foundation"]
+    assert library.searches["search-fixture-pending-identification"].generations[0].expanded_ids == []
     assert papers["D"].text_status == "not_requested" and papers["D"].summary == ""
     assert papers["E"].text_status == "failed" and "403" in papers["E"].text_reason
     a = papers["A"]
@@ -307,3 +312,31 @@ def test_failed_atomic_replace_preserves_the_previous_document(api: ModuleType, 
         api.write_document(paper, tmp_path / "citation_map")
     assert path.read_bytes() == before
     assert list(tmp_path.glob(".citation-*")) == []
+
+
+def test_pending_identification_preserves_roles_and_blocks_expansion(api: ModuleType) -> None:
+    library = api.load_citations(FIXTURE)
+    a = next(p for p in library.papers.values() if p.title == "Fixture A")
+    ref = a.references[0]
+    ref.target_id, ref.identification_status = None, "pending"
+    ref.reason = "Comparison and foundation evidence.\nIdentification: pending"
+    assert ref.roles == ["comparison", "foundation"]
+    assert api.validate_library(library)
+    for search in library.searches.values():
+        api.rebuild_search(search, library.papers)
+    assert not api.validate_library(library)
+    assert all(search.status == "interrupted" for search in library.searches.values())
+    parsed = api.parse_document(api.serialize_document(a))
+    assert parsed.references[0].identification_status == "pending"
+    assert parsed.references[0].roles == ["comparison", "foundation"]
+
+
+@pytest.mark.parametrize("field,value", [("year", True), ("year", 99), ("authors", ["Alice", "Alice"]),
+                                         ("links", ["file:///private"]), ("extra", "ignored?")])
+def test_reference_lookup_inputs_are_strictly_validated(api: ModuleType, field: str, value: Any) -> None:
+    library = api.load_citations(FIXTURE)
+    pending = next(p for p in library.papers.values() if p.title == "Fixture P")
+    data = yaml.safe_load(api.serialize_document(pending).split("---", 2)[1])
+    data["references"][0]["lookup"][field] = value
+    with pytest.raises(ValueError):
+        api.parse_document(markdown(data))

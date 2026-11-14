@@ -19,7 +19,7 @@ from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 from kg_citation_reader import AgyError, CitationReader
 from kg_citations import (
@@ -27,10 +27,14 @@ from kg_citations import (
     CitationPaper,
     CitationSearch,
     Generation,
+    IdentificationStatus,
     Reference,
+    ReferenceLookup,
     Role,
+    identification_pending,
+    legacy_lookup_failure,
     load_citations,
-    search_issues,
+    rebuild_search,
     serialize_document,
     validate_library,
     write_document,
@@ -49,7 +53,9 @@ from kg_literature import (
     TextUnavailable,
     input_identifiers,
     primary_url,
+    reference_identifiers,
 )
+from kg_openalex import LookupUnavailable, OpenAlexClient
 
 
 class BudgetExceeded(RuntimeError):
@@ -69,6 +75,9 @@ class ExplorationResult:
     unclassifiable: int
     known_pending: int
     status: str
+    pending_references: int
+    identified_papers: list[str]
+    refreshed_fetch_failures: list[str]
 
 
 class Explorer:
@@ -86,8 +95,36 @@ class Explorer:
         self.time_limit = time_limit
         self.clock = clock
         self.library = load_citations(directory)
-        self._validate()
+        self.previous_scopes = {s.id: {p for g in s.generations for p in g.expanded_ids} for s in self.library.searches.values()}
         self.locations: dict[str, Bibliography] = {}
+        self.identified: set[str] = set()
+        self.refreshed: set[str] = set()
+        self.legacy_failed: set[str] = set()
+        self.legacy_identifications: set[str] = set()
+        previous = copy.deepcopy(self.library.papers)
+        migrate = False
+        for paper in self.library.papers.values():
+            if any(legacy_lookup_failure(ref) for ref in paper.references):
+                self.legacy_identifications.add(paper.id)
+                recovered = self.reader.recovered_lookups(paper)
+                for ref in paper.references:
+                    if ref.identification_status == "unresolved":
+                        ref.identification_status = "pending"
+                        ref.reason = ref.reason.split("\nIdentification:", 1)[0] + "\nIdentification: pending; source identification invalidated after transient failures"
+                        if ref.lookup is None and ref.ref_id in recovered:
+                            ref.lookup = ReferenceLookup(**recovered[ref.ref_id])
+                paper.body += "\nLegacy identification results invalidated; original reading and classifications retained.\n"
+                migrate = True
+            if paper.text_status == "failed" and "Attempted full-text candidate:" not in paper.text_reason:
+                self.legacy_failed.add(paper.id)
+                paper.text_status = "not_requested"
+                paper.text_reason = "Refreshing legacy full-text candidate diagnostics."
+                migrate = True
+            migrate |= identification_pending(paper)
+        if migrate:
+            self._persist_papers(previous)
+        else:
+            self._validate()
 
     def _validate(self) -> None:
         errors = validate_library(self.library)
@@ -111,11 +148,15 @@ class Explorer:
         return paper
 
     def _persist_papers(self, previous: dict[str, CitationPaper]) -> None:
+        for search in self.library.searches.values():
+            rebuild_search(search, self.library.papers)
         self._validate()
         # Targets first: a newly stored source never points to a nonexistent file.
         changed = [p for p in self.library.papers.values() if p.id not in previous or p != previous[p.id]]
         for paper in sorted(changed, key=lambda p: bool(p.references)):
             write_document(paper, self.directory)
+        for search in self.library.searches.values():
+            write_document(search, self.directory)
 
     def _read(self, paper: CitationPaper, remaining: float) -> bool:
         deadline = self.clock() + remaining
@@ -125,38 +166,83 @@ class Explorer:
         try:
             full_text = self.literature.full_text(bibliography)
         except TextUnavailable as exc:
-            paper.text_status, paper.text_reason = "failed", str(exc)
+            paper.text_status = "failed"
+            paper.text_reason = str(exc)
+            if "Attempted full-text candidate:" not in paper.text_reason:
+                paper.text_reason = f"Attempted full-text candidate: {bibliography.source}; {exc}"
+            if paper.id in self.legacy_failed:
+                self.refreshed.add(paper.id)
             self._persist_papers(previous)
             return False
         remaining = deadline - self.clock()
         if remaining <= 0:
             raise BudgetExceeded("execution reached its time limit during full-text retrieval")
         output, note = self.reader.read(bibliography, full_text, min(remaining, self.agy_timeout))
-        print(f"{paper.id}: {len(output['references'])} bibliography rows; identifying references", file=sys.stderr, flush=True)
+        self._upsert(bibliography)
+        paper.title, paper.year, paper.authors = output["title"], output["year"], output["authors"]
+        paper.summary = output["summary"]
+        paper.references = []
+        for item in output["references"]:
+            ids = reference_identifiers(item["citation"], item["links"])
+            target = self._upsert(Bibliography(item["title"] or primary_url(ids), ids, primary_url(ids), item["year"], item["authors"])) if ids else None
+            state: IdentificationStatus = "resolved" if target is not None else "pending"
+            reason = "explicit external ID in reference" if target is not None else "pending"
+            paper.references.append(Reference(item["ref_id"], item["citation"], target.id if target else None,
+                                              state, item["roles"], item["decision_status"],
+                                              item["reason"] + "\nIdentification: " + reason, item["evidence"],
+                                              ReferenceLookup(item["title"], item["year"], item["authors"], item["links"])))
+        paper.text_status, paper.source = "available", full_text.source
+        paper.text_reason, paper.body = "; ".join(full_text.attempts), note
+        if paper.id in self.legacy_failed:
+            self.refreshed.add(paper.id)
+        self._persist_papers(previous)
+        print(f"saved reading {paper.id}; {len(paper.references)} references pending identification", file=sys.stderr, flush=True)
+        return True
+
+    def _identify(self, paper: CitationPaper, remaining: float) -> None:
+        deadline = self.clock() + remaining
+        previous = copy.deepcopy(self.library.papers)
+        bibliography = Bibliography(paper.title, paper.external_ids, paper.source, paper.year, paper.authors)
+        print(f"identifying references for {paper.id}: {paper.title}", file=sys.stderr, flush=True)
         try:
-            # Location metadata can expose DOI/arXiv aliases of an OpenAlex root.
-            self._upsert(bibliography)
-            refs: list[Reference] = []
-            for item in output["references"]:
+            # Explicit bibliography IDs do not require an available index/search.
+            for ref in paper.references:
+                if ref.identification_status != "pending":
+                    continue
+                links = ref.lookup.links if ref.lookup else []
+                if reference_identifiers(ref.citation, links):
+                    query = asdict(ref.lookup) if ref.lookup else {"title": "", "year": None, "authors": [], "links": []}
+                    target, reason = self.literature.identify({"citation": ref.citation, **query}, candidates=[])
+                    if target is None:
+                        raise ValueError("an explicit identifier did not resolve")
+                    ref.target_id = self._upsert(target).id
+                    ref.identification_status = "resolved"
+                    ref.reason = ref.reason.split("\nIdentification:", 1)[0] + "\nIdentification: " + reason
+            if not identification_pending(paper):
+                self.identified.add(paper.id)
+                self._persist_papers(previous)
+                return
+            candidates = self.literature.reference_candidates(bibliography)
+            for ref in paper.references:
+                if ref.identification_status != "pending":
+                    continue
                 if self.clock() >= deadline:
                     raise BudgetExceeded("execution reached its time limit during reference identification")
-                target, identity_reason = self.literature.identify(item)
-                target_id = self._upsert(target).id if target is not None else None
-                refs.append(Reference(item["ref_id"], item["citation"], target_id,
-                                      "resolved" if target_id else "unresolved", item["roles"],
-                                      item["decision_status"], item["reason"] + "\nIdentification: " + identity_reason,
-                                      item["evidence"]))
-            paper.title, paper.year, paper.authors = output["title"], output["year"], output["authors"]
-            paper.summary, paper.references = output["summary"], refs
-            paper.text_status, paper.source = "available", full_text.source
-            paper.text_reason = "; ".join(full_text.attempts)
-            paper.body = note
-            self._persist_papers(previous)
-            print(f"saved {paper.id}", file=sys.stderr, flush=True)
+                # The original bibliography is durable, including after a process
+                # restart. Candidate titles/years/author names are matched to it.
+                query = asdict(ref.lookup) if ref.lookup else {"title": "", "year": None, "authors": [], "links": []}
+                item: dict[str, Any] = {"citation": ref.citation, **query}
+                target, reason = self.literature.identify(item, candidates=candidates)
+                ref.target_id = self._upsert(target).id if target is not None else None
+                ref.identification_status = "resolved" if target is not None else "unresolved"
+                ref.reason = ref.reason.split("\nIdentification:", 1)[0] + "\nIdentification: " + reason
         except (Exception, KeyboardInterrupt):
-            self.library.papers = previous
+            # Successful rows survive; the failed/unattempted rows remain pending.
+            self._persist_papers(previous)
             raise
-        return True
+        self.identified.add(paper.id)
+        self._persist_papers(previous)
+        print(f"saved {paper.id}", file=sys.stderr, flush=True)
 
     def explore(self, root: str, roles: list[Role], max_depth: int, search_id: str) -> ExplorationResult:
         if type(max_depth) is not int or max_depth < 0:
@@ -177,74 +263,86 @@ class Explorer:
             search = CitationSearch(search_id, datetime.now(UTC).isoformat(), paper.id, roles, max_depth,
                                     [Generation(0, [paper.id], [])], [], status="interrupted", stop_reason="execution in progress")
         serialize_document(search)  # Validate the requested ID before writing anything.
-        self._persist_papers(previous)
         self.library.searches[search.id] = search
+        self._persist_papers(previous)
         newly_read: set[str] = set()
-        reused: set[str] = set()
+        cached = {p.id for p in self.library.papers.values() if p.text_status != "not_requested"}
+        cached |= self.legacy_failed
         history = search.body
 
-        def snapshot(reason: str = "execution in progress", *, complete: bool = False) -> ExplorationResult:
-            expanded = [p for generation in search.generations for p in generation.expanded_ids]
-            search.issues = sorted(search_issues(expanded, self.library.papers), key=lambda p: (p.paper_id, p.ref_id or ""))
-            search.status, search.stop_reason = ("complete", "") if complete else ("interrupted", reason)
-            selected = [self.library.papers[p] for p in expanded]
-            pending = {p for generation in search.generations if generation.depth < max_depth
-                       for p in generation.paper_ids if p not in generation.expanded_ids}
-            # Discovered next-generation papers are a lower bound while a generation is partial.
-            for generation in search.generations:
-                if generation.depth + 1 < max_depth:
-                    pending.update(ref.target_id for p in generation.expanded_ids
-                                   for ref in self.library.papers[p].references
-                                   if ref.target_id and ref.decision_status == "classified" and set(ref.roles) & set(roles))
-            pending -= set(expanded)
+        def snapshot(reason: str = "") -> ExplorationResult:
+            for saved in self.library.searches.values():
+                rebuild_search(saved, self.library.papers)
+            if reason:
+                search.status, search.stop_reason = "interrupted", reason
+            # Count the known scope even when an incomplete source prevents its
+            # expansion. These edges are evidence, not permission to read ahead.
+            required: set[str] = set()
+            frontier = {search.root_id}
+            for _ in range(max_depth):
+                required.update(frontier)
+                frontier = {r.target_id for p in frontier for r in self.library.papers[p].references
+                            if r.target_id is not None and r.decision_status == "classified"
+                            and set(r.roles) & set(search.roles)} - required
+            selected = [self.library.papers[p] for p in required]
+            pending = [p for p in selected if p.text_status == "not_requested" or identification_pending(p)]
             result = ExplorationResult(search.id, self.clock() - started, self.reader.calls - calls_before,
-                                       len(newly_read), len(reused), sum(p.text_status == "available" for p in selected),
+                                       len(newly_read), len(cached & required), sum(p.text_status == "available" for p in selected),
                                        sum(p.text_status == "failed" for p in selected),
                                        sum(r.identification_status == "unresolved" for p in selected for r in p.references),
                                        sum(r.decision_status == "unclassifiable" for p in selected for r in p.references),
-                                       len(pending), search.status)
+                                       len(pending), search.status,
+                                       sum(r.identification_status == "pending" for p in selected for r in p.references),
+                                       sorted(self.identified), sorted(self.refreshed))
             report = asdict(result)
             search.body = history + "\nAttempt report (seconds are for this invocation):\n\n```json\n" + json.dumps(report, ensure_ascii=False, indent=2) + "\n```\n"
             self._validate()
-            write_document(search, self.directory)
+            for saved in self.library.searches.values():
+                write_document(saved, self.directory)
             return result
 
-        seen: set[str] = set()
-        current = [paper.id]
-        # Rebuild traversal from saved paper decisions, rather than appending edges.
-        search.generations = [Generation(0, current, [])]
         snapshot()
+        active_paper = paper.id
         try:
-            for depth in range(max_depth + 1):
-                generation = search.generations[-1]
-                seen.update(current)
-                if depth == max_depth:
+            # Repair already-read records from this search before retrying its
+            # root. A missing root index/search quota must not prevent independent
+            # repairs of the old, explicitly recorded expansion scope.
+            scope = self.previous_scopes.get(search.id, set())
+            repair = sorted(((self.legacy_identifications | self.legacy_failed) & scope) - {search.root_id})
+            for paper_id in repair:
+                active_paper = paper_id
+                old = self.library.papers[paper_id]
+                remaining = self.time_limit - (self.clock() - started)
+                if remaining <= 0:
+                    raise BudgetExceeded("execution reached its time limit")
+                if old.text_status == "not_requested" and self._read(old, remaining):
+                    newly_read.add(old.id)
+                if identification_pending(old):
+                    self._identify(old, self.time_limit - (self.clock() - started))
+                snapshot()
+            while True:
+                unfinished = [p for generation in search.generations if generation.depth < max_depth
+                              for p in generation.paper_ids if self.library.papers[p].text_status == "not_requested"
+                              or identification_pending(self.library.papers[p])]
+                if not unfinished:
                     break
-                for paper_id in current:
-                    paper = self.library.papers[paper_id]
-                    remaining = self.time_limit - (self.clock() - started)
-                    if remaining <= 0:
-                        raise BudgetExceeded("execution reached its time limit")
-                    if paper.text_status == "not_requested":
-                        if self._read(paper, remaining):
-                            newly_read.add(paper_id)
-                    else:
-                        reused.add(paper_id)
-                    generation.expanded_ids.append(paper_id)
-                    snapshot()
-                following = sorted({ref.target_id for p in current for ref in self.library.papers[p].references
-                                    if ref.target_id is not None and ref.decision_status == "classified"
-                                    and set(ref.roles) & set(roles)} - seen)
-                if not following:
-                    break
-                current = following
-                search.generations.append(Generation(depth + 1, current, []))
+                active_paper = unfinished[0]
+                paper = self.library.papers[active_paper]
+                remaining = self.time_limit - (self.clock() - started)
+                if remaining <= 0:
+                    raise BudgetExceeded("execution reached its time limit")
+                if paper.text_status == "not_requested":
+                    if self._read(paper, remaining):
+                        newly_read.add(paper.id)
+                elif identification_pending(paper):
+                    self._identify(paper, remaining)
                 snapshot()
         except (Exception, KeyboardInterrupt) as exc:
             reason = f"agy:{exc.reason}" if isinstance(exc, AgyError) else ("interrupted by operator" if isinstance(exc, KeyboardInterrupt) else str(exc))
+            reason += "; paper=" + active_paper
             snapshot(reason)
             raise
-        return snapshot(complete=True)
+        return snapshot()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -271,10 +369,12 @@ def main(argv: list[str] | None = None) -> int:
             except BlockingIOError as exc:
                 raise ValueError("another exploration is writing this citation library") from exc
             reader = CitationReader(args.agy, run_dir)
-            explorer = Explorer(directory, Literature(), reader, agy_timeout=args.agy_timeout, time_limit=args.time_limit)
+            literature = Literature(client=OpenAlexClient(state_file=run_dir / "openalex-throttle.json"))
+            literature.client.deadline = time.monotonic() + args.time_limit
+            explorer = Explorer(directory, literature, reader, agy_timeout=args.agy_timeout, time_limit=args.time_limit)
             result = asdict(explorer.explore(args.root, cast(list[Role], args.role), args.max_depth, args.search_id))
             print(json.dumps(result, ensure_ascii=False, indent=2))
-    except (AgyError, ValueError, OSError, BudgetExceeded) as exc:
+    except (AgyError, LookupUnavailable, ValueError, OSError, BudgetExceeded) as exc:
         reason = f"agy:{exc.reason}; see private run-dir evidence" if isinstance(exc, AgyError) else str(exc)
         print(f"error: {reason}; search={args.search_id}", file=sys.stderr)
         return 1

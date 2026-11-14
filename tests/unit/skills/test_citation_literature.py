@@ -47,7 +47,7 @@ def test_explicit_ids_and_conflicting_reference_ids(api: Any) -> None:
 @pytest.mark.parametrize("variant,resolved", [("exact", True), ("near", False), ("ambiguous", False), ("year", False)])
 def test_title_lookup_resolves_only_unique_exact_title_and_year(api: Any, variant: str, resolved: bool) -> None:
     work = {"id": "https://openalex.org/W123", "display_name": "An Exact Title", "publication_year": 2023,
-            "doi": "https://doi.org/10.5555/exact", "authorships": [], "primary_location": {},
+            "doi": "https://doi.org/10.5555/exact", "authorships": [{"author": {"display_name": "Alice Smith"}}], "primary_location": {},
             "best_oa_location": {"landing_page_url": "https://arxiv.org/abs/2311.05237", "pdf_url": "https://arxiv.org/pdf/2311.05237"}}
     if variant == "near":
         work["display_name"] = "A Different Title"
@@ -60,7 +60,7 @@ def test_title_lookup_resolves_only_unique_exact_title_and_year(api: Any, varian
             return json.dumps({"results": works}).encode()
         return json.dumps(work).encode()
 
-    found, reason = api.Literature(fetch).identify({"citation": "A. An Exact Title. 2023.", "title": "An Exact Title", "authors": ["A"], "year": 2023, "links": []})
+    found, reason = api.Literature(fetch).identify({"citation": "Alice Smith. An Exact Title. 2023.", "title": "An Exact Title", "authors": ["Alice Smith"], "year": 2023, "links": []})
     assert (found is not None) == resolved
     assert reason
     if found:
@@ -91,21 +91,23 @@ def test_public_lookup_failure_keeps_status_without_environment_contact(api: Any
         assert "mailto=private-contact%40example.invalid" in url
         raise HTTPError(url, 403, "forbidden", Message(), None)
 
-    found, reason = api.Literature(fetch).identify({"citation": "Author. Exact Title.", "title": "Exact Title", "year": None, "authors": [], "links": []})
-    assert found is None and "HTTP 403" in reason
+    with pytest.raises(api.LookupUnavailable) as caught:
+        api.Literature(fetch).identify({"citation": "Author. Exact Title.", "title": "Exact Title", "year": None, "authors": [], "links": []})
+    reason = str(caught.value)
+    assert "HTTP_403" in reason
     assert "private-contact" not in reason and "mailto" not in reason and "?" not in reason
 
 
 def test_conflicting_provider_locations_are_unresolved_instead_of_last_wins(api: Any) -> None:
     work = {"id": "https://openalex.org/W123", "display_name": "Exact Title", "publication_year": 2023,
-            "doi": "https://doi.org/10.5555/exact", "authorships": [],
+            "doi": "https://doi.org/10.5555/exact", "authorships": [{"author": {"display_name": "Alice Smith"}}],
             "locations": [{"landing_page_url": "https://arxiv.org/abs/2204.01899"},
                           {"landing_page_url": "https://arxiv.org/abs/1902.07304"}]}
 
     def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
         return json.dumps({"results": [work]} if "/works?" in url else work).encode()
 
-    found, reason = api.Literature(fetch).identify({"citation": "Author. Exact Title.", "title": "Exact Title", "year": 2023, "authors": [], "links": []})
+    found, reason = api.Literature(fetch).identify({"citation": "Alice Smith. Exact Title.", "title": "Exact Title", "year": 2023, "authors": ["Alice Smith"], "links": []})
     assert found is None and "MetadataConflict" in reason
 
 
@@ -126,5 +128,30 @@ def test_pdf_fallback_uses_pages_and_removes_temporary_file(api: Any, monkeypatc
     monkeypatch.setattr(api.subprocess, "run", extract)
     text = api.Literature(fetch).full_text(api.Bibliography("A", {"arxiv": "2311.05237"}, "https://arxiv.org/abs/2311.05237"))
     assert text.format == "pdf" and "[Page 1]" in text.text and "[Page 2]" in text.text
-    assert text.attempts and "HTTP 404" in text.attempts[0]
+    assert any("HTTP 404" in attempt for attempt in text.attempts)
     assert captured and all(not path.exists() for path in captured)
+
+
+@pytest.mark.parametrize("with_pdf", [False, True])
+def test_failed_fetch_records_all_oa_locations_and_attempted_candidates(api: Any, with_pdf: bool) -> None:
+    work = {"id": "https://openalex.org/W1", "display_name": "Closed paper", "doi": "https://doi.org/10.5555/closed",
+            "authorships": [], "best_oa_location": None, "locations": [{"pdf_url": "https://example.org/closed.pdf" if with_pdf else None,
+                                                                         "landing_page_url": "https://example.org/landing"}]}
+    fetched: list[str] = []
+
+    def fetch(url: str, headers: dict[str, str], timeout: float) -> bytes:
+        fetched.append(url)
+        if url.startswith("https://api.openalex.org/"):
+            return json.dumps(work).encode()
+        if url.endswith(".pdf"):
+            raise HTTPError(url, 404, "missing", Message(), None)
+        return b"<html>Abstract/landing only</html>"
+
+    with pytest.raises(api.TextUnavailable) as caught:
+        api.Literature(fetch).full_text(api.Bibliography("Closed paper", {"openalex": "W1"}, "https://example.org/landing"))
+    reason = str(caught.value)
+    assert "best_oa_location PDF: none" in reason and "locations[0]" in reason
+    assert "Attempted full-text candidate: https://example.org/landing" in reason
+    if with_pdf:
+        assert "https://example.org/closed.pdf" in fetched
+        assert "Attempted full-text candidate: https://example.org/closed.pdf" in reason and "HTTP 404" in reason

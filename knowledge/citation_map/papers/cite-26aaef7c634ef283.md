@@ -11,6 +11,7 @@ authors:
 - Stefan Wermter
 external_ids:
   doi: 10.1007/978-3-319-68792-6_2
+  openalex: W2767065048
 source: https://doi.org/10.1007/978-3-319-68792-6_2
 summary: ''
 text_status: not_requested

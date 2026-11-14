@@ -22,16 +22,28 @@ references:
     Automatic Sports Video Annotation. In Detection and Identification of Rare Audiovisual
     Cues, 2012.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'テニス向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx1)
+  lookup:
+    title: Anomaly Detection and Knowledge Transfer in Automatic Sports Video Annotation
+    year: 2012
+    authors:
+    - Ibrahim Almajai
+    - Fei Yan
+    - Teofilo de Campos
+    - Aftab Khan
+    - William J. Christmas
+    - David Windridge
+    - Josef Kittler
+    links: []
 - ref_id: ref-2
   citation: Maruthavanan Archana and M. Kalaisevi Geetha. Object Detection and Tracking
     Based on Trajectory in Broadcast Tennis Video. Procedia Computer Science, 2015.
@@ -69,34 +81,54 @@ references:
     Gedikli, Francisco Siles, Murat Durus, and Martin Lames. ASPOGAMO: Automated Sports
     Games Analysis Models. Int. J. Comput. Sci. Sport, 2009.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けの古典的SBDT（パーティクルフィルタを用いる手法）の先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - Section 3.3 (anchor:S3.SS3.p3.2)
   - References (anchor:bib.bibx4)
+  lookup:
+    title: 'ASPOGAMO: Automated Sports Games Analysis Models'
+    year: 2009
+    authors:
+    - Michael Beetz
+    - Nico von Hoyningen-Huene
+    - Bernhard Kirchlechner
+    - Suat Gedikli
+    - Francisco Siles
+    - Murat Durus
+    - Martin Lames
+    links: []
 - ref_id: ref-5
   citation: Bodhisattwa Chakraborty and Sukadev Meher. 2D Trajectory-Based Position
     Estimation and Tracking of a Ball in a Basketball Video. In Second International
     Conference on Trends in Optics and Photonics, 2011.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'バスケットボール向けの古典的SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - References (anchor:bib.bibx5)
+  lookup:
+    title: 2D Trajectory-Based Position Estimation and Tracking of a Ball in a Basketball
+      Video
+    year: 2011
+    authors:
+    - Bodhisattwa Chakraborty
+    - Sukadev Meher
+    links: []
 - ref_id: ref-6
   citation: Bodhisattwa Chakraborty and Sukadev Meher. Real-time Position Estimation
     and Tracking of a Basketball. In 2012 IEEE International Conference on Signal
@@ -185,31 +217,52 @@ references:
     to Shooting Location Estimation in Basketball Video. Journal of Visual Communication
     and Image Representation, 2009.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'バスケットボール向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx11)
+  lookup:
+    title: Physics-based Ball Tracking and 3D Trajectory Reconstruction with Applications
+      to Shooting Location Estimation in Basketball Video
+    year: 2009
+    authors:
+    - Hua-Tsung Chen
+    - Ming-Chun Tien
+    - Yi-Wen Chen
+    - Wen-Jiin Tsai
+    - Suh-Yin Lee
+    links: []
 - ref_id: ref-12
   citation: Hua-Tsung Chen, Wen-Jiin Tsai, Suh-Yin Lee, and Jen-Yu Yu. Ball Tracking
     and 3D Trajectory Approximation with Applications to Tactics Analysis from Single-camera
     Volleyball Sequences. Multimedia Tools and Applications, 2012.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'バレーボール向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx12)
+  lookup:
+    title: Ball Tracking and 3D Trajectory Approximation with Applications to Tactics
+      Analysis from Single-camera Volleyball Sequences
+    year: 2012
+    authors:
+    - Hua-Tsung Chen
+    - Wen-Jiin Tsai
+    - Suh-Yin Lee
+    - Jen-Yu Yu
+    links: []
 - ref_id: ref-13
   citation: Wei Chen and Yu-Jin Zhang. Tracking Ball and Players with Applications
     to Highlight Ranking of Broadcasting Table Tennis Video. In The Proceedings of
@@ -343,16 +396,27 @@ references:
     Mosca, and Arcangelo Distante. A Visual System for Real Time Detection of Goal
     Events during Soccer Matches. Computer Vision and Image Understanding, 2009.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx21)
+  lookup:
+    title: A Visual System for Real Time Detection of Goal Events during Soccer Matches
+    year: 2009
+    authors:
+    - Tiziana D’Orazio
+    - Marco Leo
+    - Paolo Spagnolo
+    - Massimiliano Nitti
+    - Nicola Mosca
+    - Arcangelo Distante
+    links: []
 - ref_id: ref-22
   citation: Baris David Ekinci and Muhittin Gokmen. A Ball Tracking System for Offline
     Tennis Videos. In Proceedings of the 1st WSEAS International Conference on Visualization,
@@ -725,16 +789,28 @@ references:
     Generalized Focal Loss V2: Learning Reliable Localization Quality Estimation for
     Dense Object Detection. arXiv preprint, 2020a.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - component
   decision_status: classified
   reason: '提案手法WASBの位置認識型モデル学習における損失関数（quality focal loss、式3）として採用されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 3.2 (anchor:S3.SS2.p3.2)
   - References (anchor:bib.bibx44)
+  lookup:
+    title: 'Generalized Focal Loss V2: Learning Reliable Localization Quality Estimation
+      for Dense Object Detection'
+    year: 2020
+    authors:
+    - Xiang Li
+    - Wenhai Wang
+    - Xiaolin Hu
+    - Jun Li
+    - Jinhui Tang
+    - Jian Yang
+    links: []
 - ref_id: ref-45
   citation: 'Xiang Li, Wenhai Wang, Lijun Wu, Shuo Chen, Xiaolin Hu, Jun Li, Jinhui
     Tang, and Jian Yang. Generalized Focal Loss: Learning Qualified and Distributed
@@ -755,16 +831,25 @@ references:
     Systems for Tracking Football Players and Ball. In IEEE Conference on Advanced
     Video and Signal Based Surveillance, 2005., 2005.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx46)
+  lookup:
+    title: Evaluating the Performance of Systems for Tracking Football Players and
+      Ball
+    year: 2005
+    authors:
+    - Yan Li
+    - Alessio Dore
+    - James Orwell
+    links: []
 - ref_id: ref-47
   citation: Dawei Liang, Yang Liu, Qingming Huang, and Wen Gao. A Scheme for Ball
     Detection and Tracking in Broadcast Soccer Video. In Advances in Multimedia Information
@@ -934,17 +1019,26 @@ references:
     Route Estimation under Heavy Occlusion in Broadcast Soccer Video. Computer Vision
     and Image Understanding, 2009.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けの古典的SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - References (anchor:bib.bibx57)
+  lookup:
+    title: Ball Route Estimation under Heavy Occlusion in Broadcast Soccer Video
+    year: 2009
+    authors:
+    - Jun Miura
+    - Takumi Shimawaki
+    - Takuro Sakiyama
+    - Yoshiaki Shirai
+    links: []
 - ref_id: ref-58
   citation: Hnin Myint, Patrick Wong, Laurence Dooley, and Adrian Hopgood. Tracking
     a Table Tennis Ball for Umpiring Purposes. In 2015 14th IAPR International Conference
@@ -982,31 +1076,48 @@ references:
     on Multisensor Fusion and Integration for Intelligent Systems. MFI’99 (Cat. No.99TH8480),
     1999.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx60)
+  lookup:
+    title: Tracking Players and a Ball in Soccer Games
+    year: 1999
+    authors:
+    - Yoshinori Ohno
+    - Jun Miura
+    - Yoshiaki Shirai
+    links: []
 - ref_id: ref-61
   citation: Yoshinori Ohno, Jun Miura, and Yoshiaki Shirai. Tracking Players and Estimation
     of the 3D Position of a Ball in Soccer Games. In Proceedings 15th International
     Conference on Pattern Recognition. ICPR-2000, 2000.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx61)
+  lookup:
+    title: Tracking Players and Estimation of the 3D Position of a Ball in Soccer
+      Games
+    year: 2000
+    authors:
+    - Yoshinori Ohno
+    - Jun Miura
+    - Yoshiaki Shirai
+    links: []
 - ref_id: ref-62
   citation: V. Pallavi, Jayanta Mukherjee, Arun K. Majumdar, and Shamik Sural. Ball
     Detection from Broadcast Soccer Videos using Static and Dynamic Features. Journal
@@ -1027,31 +1138,47 @@ references:
   citation: Mauricio Perez, Jun Liu, and Alex C. Kot. Skeleton-based Relational Reasoning
     for Group Activity Analysis. Pattern Recognition, 2022.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - benchmark
   decision_status: classified
   reason: '新設したVolleyballデータセットのボール位置アノテーションとして利用されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 4.1 (anchor:S4.SS1.p5.1)
   - References (anchor:bib.bibx63)
+  lookup:
+    title: Skeleton-based Relational Reasoning for Group Activity Analysis
+    year: 2022
+    authors:
+    - Mauricio Perez
+    - Jun Liu
+    - Alex C. Kot
+    links: []
 - ref_id: ref-64
   citation: Gopal Pingali, Agata Opalach, and Yves D. Jean. Ball Tracking and Virtual
     Replays for Innovative Tennis Broadcasts. In Proceedings 15th International Conference
     on Pattern Recognition. ICPR-2000, 2000.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'テニス向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Ball+Tracking+and+Virtual+Replays+for+Innovative+Tennis+Broadcasts&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p1.1, S1.p2.1.2)
   - References (anchor:bib.bibx64)
+  lookup:
+    title: Ball Tracking and Virtual Replays for Innovative Tennis Broadcasts
+    year: 2000
+    authors:
+    - Gopal Pingali
+    - Agata Opalach
+    - Yves D. Jean
+    links: []
 - ref_id: ref-65
   citation: Niall Rea, Rozenn Dahyot, and Anil Kokaram. Semantic Event Detection in
     Sports Through Motion Understanding. In Image and Video Retrieval, 2004.
@@ -1101,16 +1228,25 @@ references:
     Soccer Ball using Multiple Fixed Cameras. Computer Vision and Image Understanding,
     2009.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Tracking+the+Soccer+Ball+using+Multiple+Fixed+Cameras&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx68)
+  lookup:
+    title: Tracking the Soccer Ball using Multiple Fixed Cameras
+    year: 2009
+    authors:
+    - Jinchang Ren
+    - James Orwell
+    - Graeme A. Jones
+    - Ming Xu
+    links: []
 - ref_id: ref-69
   citation: Vito Renò, Nicola Mosca, Massimiliano Nitti, Cataldo Guaragnella, Tiziana
     D’Orazio, and Ettore Stella. Real-time Tracking of a Tennis Ball by Combining
@@ -1148,31 +1284,48 @@ references:
     Networks for Biomedical Image Segmentation. In Medical Image Computing and Computer-Assisted
     Intervention – MICCAI 2015, 2015.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles: []
   decision_status: unclassifiable
   reason: '既存SBDT手法（TrackNetおよびその派生手法）のベースアーキテクチャとして言及されているのみで、提案手法WASBでの採用やSBDT先行研究・比較対象としての役割は確認できない。
 
-    Identification: OpenAlex exact title/year matches: 2; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 2 (anchor:S2.p2.1)
   - Appendix A (anchor:A1.p5.1)
   - References (anchor:bib.bibx71)
+  lookup:
+    title: 'U-Net: Convolutional Networks for Biomedical Image Segmentation'
+    year: 2015
+    authors:
+    - Olaf Ronneberger
+    - Philipp Fischer
+    - Thomas Brox
+    links: []
 - ref_id: ref-72
   citation: Saikat Sarkar, Amlan Chakrabarti, and Dipti Prasad Mukherjee. Generation
     of Ball Possession Statistics in Soccer Using Minimum-Cost Flow Network. In Proceedings
     of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR) Workshops,
     2019.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles: []
   decision_status: unclassifiable
   reason: 'イントロダクションの背景説明でサッカー競技分析の例として引用されているのみで、SBDTの先行研究や提案手法への採用・比較・ベンチマーク利用の有無を判断できない。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Generation+of+Ball+Possession+Statistics+in+Soccer+Using+Minimum-Cost+Flow+Network&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p1.1)
   - References (anchor:bib.bibx72)
+  lookup:
+    title: Generation of Ball Possession Statistics in Soccer Using Minimum-Cost Flow
+      Network
+    year: 2019
+    authors:
+    - Saikat Sarkar
+    - Amlan Chakrabarti
+    - Dipti Prasad Mukherjee
+    links: []
 - ref_id: ref-73
   citation: Takumi Shimawaki, Takuro Sakiyama, Jun Miura, and Yoshiaki Shirai. Estimation
     of Ball Route under Overlapping with Players and Lines in Soccer Video Image Sequence.
@@ -1195,16 +1348,24 @@ references:
     International Conference on Multimedia and Expo (ICME) (IEEE Cat. No.04TH8763),
     2004.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: '野球向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=A+Spatiotemporal+Approach+to+Extract+the+3D+Trajectory+of+the+Baseball+from+a+Single+View+Video+Sequence&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p1.1, S1.p2.1.2)
   - References (anchor:bib.bibx74)
+  lookup:
+    title: A Spatiotemporal Approach to Extract the 3D Trajectory of the Baseball
+      from a Single View Video Sequence
+    year: 2004
+    authors:
+    - Hubert P. H. Shum
+    - Taku Komura
+    links: []
 - ref_id: ref-75
   citation: 'Nien-En Sun, Yu-Ching Lin, Shao-Ping Chuang, Tzu-Han Hsu, Dung-Ru Yu,
     Ho-Yi Chung, and Tsì-Uí İk. TrackNetV2: Efficient Shuttlecock Tracking Network.
@@ -1239,17 +1400,30 @@ references:
     Handling Input and Output Imbalance in Multi-organ Segmentation. Computerized
     Medical Imaging and Graphics, 2019.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles: []
   decision_status: unclassifiable
   reason: '既存SBDT手法（MonoTrackなど）で用いられる損失関数として言及されているのみで、提案手法WASBでの採用やSBDT先行研究・比較対象としての役割は確認できない。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Combo+Loss%3A+Handling+Input+and+Output+Imbalance+in+Multi-organ+Segmentation&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 2 (anchor:S2.p2.1)
   - Section 3.2 (anchor:S3.SS2.p2.1)
   - Appendix A (anchor:A1.p7.1)
   - References (anchor:bib.bibx76)
+  lookup:
+    title: 'Combo Loss: Handling Input and Output Imbalance in Multi-organ Segmentation'
+    year: 2019
+    authors:
+    - Saeid Asgari Taghanaki
+    - Yefeng Zheng
+    - S. Kevin Zhou
+    - Bogdan Georgescu
+    - Puneet Sharma
+    - Daguang Xu
+    - Dorin Comaniciu
+    - Ghassan Hamarneh
+    links: []
 - ref_id: ref-77
   citation: Kosit Teachabarikiti, Thanarat H. Chalidabhongse, and Arit Thammano. Players
     Tracking and Ball Detection for an Automatic Tennis Video Annotation. In 2010
@@ -1285,17 +1459,25 @@ references:
     Soccer Ball Detection and Tracking Method. In Proceedings of the 17th International
     Conference on Pattern Recognition, 2004. ICPR 2004., 2004.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けの古典的SBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=An+Effective+and+Fast+Soccer+Ball+Detection+and+Tracking+Method&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - References (anchor:bib.bibx79)
+  lookup:
+    title: An Effective and Fast Soccer Ball Detection and Tracking Method
+    year: 2004
+    authors:
+    - Xiao-Feng Tong
+    - Han-Qing Lu
+    - Qing-Shan Liu
+    links: []
 - ref_id: ref-80
   citation: Gabriel Van Zandycke and Christophe De Vleeschouwer. Real-Time CNN-Based
     Segmentation Architecture for Ball Detection in a Single View Setup. In Proceedings
@@ -1323,62 +1505,107 @@ references:
     Temporal and Spatial Video Analysis of Table Tennis. In Proceedings of the IEEE/CVF
     Conference on Computer Vision and Pattern Recognition (CVPR) Workshops, June 2020.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'エンコーダ・デコーダCNNを用いた近年のSBDT先行研究として議論されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=TTNet%3A+Real-Time+Temporal+and+Spatial+Video+Analysis+of+Table+Tennis&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 2 (anchor:S2.p2.1)
   - References (anchor:bib.bibx81)
+  lookup:
+    title: 'TTNet: Real-Time Temporal and Spatial Video Analysis of Table Tennis'
+    year: 2020
+    authors:
+    - Roman Voeikov
+    - Nikolay Falaleev
+    - Ruslan Baikulov
+    links: []
 - ref_id: ref-82
   citation: Jingdong Wang, Ke Sun, Tianheng Cheng, Borui Jiang, Chaorui Deng, Yang
     Zhao, Dong Liu, Yadong Mu, Mingkui Tan, Xinggang Wang, Wenyu Liu, and Bin Xiao.
     Deep High-Resolution Representation Learning for Visual Recognition. IEEE Transactions
     on Pattern Analysis and Machine Intelligence, 2021.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - foundation
   decision_status: classified
   reason: '提案手法WASBの高解像度特徴抽出バックボーン（HRNet）として採用されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 3.1 (anchor:S3.SS1.p2.1, S3.SS1.p3.1)
   - Figure 3 (anchor:S3.F3)
   - References (anchor:bib.bibx82)
+  lookup:
+    title: Deep High-Resolution Representation Learning for Visual Recognition
+    year: 2021
+    authors:
+    - Jingdong Wang
+    - Ke Sun
+    - Tianheng Cheng
+    - Borui Jiang
+    - Chaorui Deng
+    - Yang Zhao
+    - Dong Liu
+    - Yadong Mu
+    - Mingkui Tan
+    - Xinggang Wang
+    - Wenyu Liu
+    - Bin Xiao
+    links: []
 - ref_id: ref-83
   citation: 'Wei-Yao Wang, Hong-Han Shuai, Kai-Shiang Chang, and Wen-Chih Peng. ShuttleNet:
     Position-Aware Fusion of Rally Progress and Player Styles for Stroke Forecasting
     in Badminton. Proceedings of the AAAI Conference on Artificial Intelligence, 2022.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles: []
   decision_status: unclassifiable
   reason: 'イントロダクションの背景説明でバドミントン競技分析の例として引用されているのみで、SBDTの先行研究や提案手法への採用・比較・ベンチマーク利用の有無を判断できない。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=ShuttleNet%3A+Position-Aware+Fusion+of+Rally+Progress+and+Player+Styles+for+Stroke+Forecasting+in+Badminton&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p1.1)
   - References (anchor:bib.bibx83)
+  lookup:
+    title: 'ShuttleNet: Position-Aware Fusion of Rally Progress and Player Styles
+      for Stroke Forecasting in Badminton'
+    year: 2022
+    authors:
+    - Wei-Yao Wang
+    - Hong-Han Shuai
+    - Kai-Shiang Chang
+    - Wen-Chih Peng
+    links: []
 - ref_id: ref-84
   citation: 'Xinchao Wang, Vitaly Ablavsky, Horesh Ben Shitrit, and Pascal Fua. Take
     Your Eyes Off the Ball: Improving Ball-tracking by Focusing on Team Play. Computer
     Vision and Image Understanding, 2014.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'Soccerデータセットを用いた従来のSBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 4.1 (anchor:S4.SS1.p2.1)
   - References (anchor:bib.bibx84)
+  lookup:
+    title: 'Take Your Eyes Off the Ball: Improving Ball-tracking by Focusing on Team
+      Play'
+    year: 2014
+    authors:
+    - Xinchao Wang
+    - Vitaly Ablavsky
+    - Horesh Ben Shitrit
+    - Pascal Fua
+    links: []
 - ref_id: ref-85
   citation: Yuan Wang, Xina Cheng, Norikazu Ikoma, Masaaki Honda, and Takeshi Ikenaga.
     Motion Prejudgment Dependent Mixture System Noise in System Model for Tennis Ball
@@ -1401,31 +1628,48 @@ references:
     Ball Tracking for Umpiring Applications. In IEEE 10th INTERNATIONAL CONFERENCE
     ON SIGNAL PROCESSING PROCEEDINGS, 2010.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: '古典的なtracking-by-detection型のSBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=High-motion+Table+Tennis+Ball+Tracking+for+Umpiring+Applications&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - References (anchor:bib.bibx86)
+  lookup:
+    title: High-motion Table Tennis Ball Tracking for Umpiring Applications
+    year: 2010
+    authors:
+    - Kam Cheung Patrik Wong
+    - Laurence S. Dooley
+    links: []
 - ref_id: ref-87
   citation: Wanneng Wu, Min Xu, Qiaokang Liang, Li Mei, and Yu Peng. Multi-camera
     3D Ball Tracking Framework for Sports Video. IET Image Processing, 2020.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'エンコーダ・デコーダCNNを用いた近年のSBDT先行研究として議論されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Multi-camera+3D+Ball+Tracking+Framework+for+Sports+Video&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 2 (anchor:S2.p2.1)
   - References (anchor:bib.bibx87)
+  lookup:
+    title: Multi-camera 3D Ball Tracking Framework for Sports Video
+    year: 2020
+    authors:
+    - Wanneng Wu
+    - Min Xu
+    - Qiaokang Liang
+    - Li Mei
+    - Yu Peng
+    links: []
 - ref_id: ref-88
   citation: Fei Yan, William J. Christmas, and Josef Kittler. A Tennis Ball Tracking
     Algorithm for Automatic Annotation of Tennis Match. In BMVC, 2005.
@@ -1479,16 +1723,26 @@ references:
     Module for Weakly-Supervised Group Activity Recognition. In Computer Vision –
     ECCV 2020, 2020.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - benchmark
   decision_status: classified
   reason: '新設したBasketballデータセットの映像クリップの出典として利用されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Social+Adaptive+Module+for+Weakly-Supervised+Group+Activity+Recognition&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 4.1 (anchor:S4.SS1.p6.1)
   - References (anchor:bib.bibx91)
+  lookup:
+    title: Social Adaptive Module for Weakly-Supervised Group Activity Recognition
+    year: 2020
+    authors:
+    - Rui Yan
+    - Lingxi Xie
+    - Jinhui Tang
+    - Xiangbo Shu
+    - Qi Tian
+    links: []
 - ref_id: ref-92
   citation: 'Changqian Yu, Bin Xiao, Changxin Gao, Lu Yuan, Lei Zhang, Nong Sang,
     and Jingdong Wang. Lite-HRNet: A Lightweight High-Resolution Network. In 2021
@@ -1509,17 +1763,26 @@ references:
   citation: Junqing Yu, Yang Tang, Zhifang Wang, and Lejiang Shi. Playfield and Ball
     Detection in Soccer Video. In Advances in Visual Computing, 2007a.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けの古典的SBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Playfield+and+Ball+Detection+in+Soccer+Video&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - References (anchor:bib.bibx93)
+  lookup:
+    title: Playfield and Ball Detection in Soccer Video
+    year: 2007
+    authors:
+    - Junqing Yu
+    - Yang Tang
+    - Zhifang Wang
+    - Lejiang Shi
+    links: []
 - ref_id: ref-94
   citation: Xinguo Yu, Qi Tian, and Kong Wah Wan. A Novel Ball Detection Framework
     for Real Soccer Video. In 2003 International Conference on Multimedia and Expo.
@@ -1542,53 +1805,84 @@ references:
     for Broadcast Soccer Video. In 2003 International Conference on Multimedia and
     Expo. ICME ’03. Proceedings (Cat. No.03TH8698), 2003b.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けの古典的SBDT（カルマンフィルタを用いる手法）の先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=A+Ball+Tracking+Framework+for+Broadcast+Soccer+Video&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - Section 3.3 (anchor:S3.SS3.p3.2)
   - References (anchor:bib.bibx95)
+  lookup:
+    title: A Ball Tracking Framework for Broadcast Soccer Video
+    year: 2003
+    authors:
+    - Xinguo Yu
+    - Changshen Xu
+    - Qi Tian
+    - Hon Wai Leong
+    links: []
 - ref_id: ref-96
   citation: Xinguo Yu, Changsheng Xu, Hon Wai Leong, Qi Tian, Qing Tang, and Kong
     Wah Wan. Trajectory-Based Ball Detection and Tracking with Applications to Semantic
     Analysis of Broadcast Soccer Video. In Proceedings of the Eleventh ACM International
     Conference on Multimedia, 2003c.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'SBDTの課題およびサッカー向けの古典的SBDT（カルマンフィルタを用いる手法）の先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 2; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p1.1, S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - Section 3.3 (anchor:S3.SS3.p3.2)
   - References (anchor:bib.bibx96)
+  lookup:
+    title: Trajectory-Based Ball Detection and Tracking with Applications to Semantic
+      Analysis of Broadcast Soccer Video
+    year: 2003
+    authors:
+    - Xinguo Yu
+    - Changsheng Xu
+    - Hon Wai Leong
+    - Qi Tian
+    - Qing Tang
+    - Kong Wah Wan
+    links: []
 - ref_id: ref-97
   citation: Xinguo Yu, Chern-Horng Sim, Jenny R. Wang, and Loong Fah Cheong. A Trajectory-based
     Ball Detection and Tracking Algorithm in Broadcast Tennis Video. In 2004 International
     Conference on Image Processing, 2004. ICIP ’04., 2004a.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'テニス向けの古典的SBDT（カルマンフィルタを用いる手法）の先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - Section 3.3 (anchor:S3.SS3.p3.2)
   - References (anchor:bib.bibx97)
+  lookup:
+    title: A Trajectory-based Ball Detection and Tracking Algorithm in Broadcast Tennis
+      Video
+    year: 2004
+    authors:
+    - Xinguo Yu
+    - Chern-Horng Sim
+    - Jenny R. Wang
+    - Loong Fah Cheong
+    links: []
 - ref_id: ref-98
   citation: Xinguo Yu, Xin Yan, Tze Sen Hay, and Hon Wai Leong. 3D Reconstruction
     and Enrichment of Broadcast Soccer Video. In Proceedings of the 12th Annual ACM
@@ -1609,16 +1903,25 @@ references:
     System for Broadcast Soccer Video. In 2005 IEEE International Conference on Multimedia
     and Expo, 2005.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=A+Player-Possession+Acquisition+System+for+Broadcast+Soccer+Video&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx99)
+  lookup:
+    title: A Player-Possession Acquisition System for Broadcast Soccer Video
+    year: 2005
+    authors:
+    - Xinguo Yu
+    - Tze Sen Hay
+    - Xin Yan
+    - E. Chng
+    links: []
 - ref_id: ref-100
   citation: Xinguo Yu, Hon Wai Leong, Changsheng Xu, and Qi Tian. Trajectory-Based
     Ball Detection and Tracking in Broadcast Soccer Video. IEEE Transactions on Multimedia,
@@ -1676,33 +1979,52 @@ references:
     Virtual Content Insertion and Ball Detection and Tracking. Computer Vision and
     Image Understanding, 2009.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'テニス向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: reference lookup failed: openalex: HTTP 429 for https://api.openalex.org/works?search=Automatic+Camera+Calibration+of+Broadcast+Tennis+Video+with+Applications+to+3D+Virtual+Content+Insertion+and+Ball+Detection+and+Tracking&per_page=5'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx103)
+  lookup:
+    title: Automatic Camera Calibration of Broadcast Tennis Video with Applications
+      to 3D Virtual Content Insertion and Ball Detection and Tracking
+    year: 2009
+    authors:
+    - Xinguo Yu
+    - Nianjuan Jiang
+    - Loong-Fah Cheong
+    - Hon Wai Leong
+    - Xin Yan
+    links: []
 - ref_id: ref-104
   citation: Mukesh A. Zaveri, Shabbir N. Merchant, and Uday B. Desai. Small and Fast
     Moving Object Detection and Tracking in Sports Video Sequences. In 2004 IEEE International
     Conference on Multimedia and Expo (ICME) (IEEE Cat. No.04TH8763), 2004.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: '卓球向けの古典的SBDT（カルマンフィルタを用いる手法）の先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - Section 3.3 (anchor:S3.SS3.p3.2)
   - References (anchor:bib.bibx104)
+  lookup:
+    title: Small and Fast Moving Object Detection and Tracking in Sports Video Sequences
+    year: 2004
+    authors:
+    - Mukesh A. Zaveri
+    - Shabbir N. Merchant
+    - Uday B. Desai
+    links: []
 - ref_id: ref-105
   citation: 'Matthew D. Zeiler. ADADELTA: An Adaptive Learning Rate Method, 2012.'
   target_id: cite-82bef8337b06d386
@@ -1719,16 +2041,25 @@ references:
   citation: Yuan-hui Zhang, Wei Wei, Dan Yu, and Cong-wei Zhong. A Tracking and Predicting
     Scheme for Ping Pong Robot. Journal of Zhejiang University SCIENCE C, 2011.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: '卓球向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 2; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx106)
+  lookup:
+    title: A Tracking and Predicting Scheme for Ping Pong Robot
+    year: 2011
+    authors:
+    - Yuan-hui Zhang
+    - Wei Wei
+    - Dan Yu
+    - Cong-wei Zhong
+    links: []
 - ref_id: ref-107
   citation: Zhengtao Zhang, De Xu, and Min Tan. Visual Measurement and Prediction
     of Ball Trajectory for Table Tennis Robot. IEEE Transactions on Instrumentation
@@ -1749,16 +2080,26 @@ references:
     Tracking small and fast moving objects: A benchmark. In Proceedings of the Asian
     Conference on Computer Vision (ACCV), 2022.'
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'ボール位置をバウンディングボックスとして定義する例外的なSBDT関連研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 3 (anchor:S3.p1.1, footnote 4)
   - References (anchor:bib.bibx108)
+  lookup:
+    title: 'Tracking small and fast moving objects: A benchmark'
+    year: 2022
+    authors:
+    - Zhewen Zhang
+    - Fuliang Wu
+    - Yuming Qiu
+    - Jingdong Liang
+    - Shuiwang Li
+    links: []
 - ref_id: ref-109
   citation: Hengshuang Zhao, Xiaojuan Qi, Xiaoyong Shen, Jianping Shi, and Jiaya Jia.
     ICNet for Real-Time Semantic Segmentation on High-Resolution Images. In Computer
@@ -1833,18 +2174,32 @@ references:
     Wen Gao, and Hongxun Yao. Event Tactic Analysis Based on Broadcast Sports Video.
     IEEE Transactions on Multimedia, 2009.
   target_id: null
-  identification_status: unresolved
+  identification_status: pending
   roles:
   - related
   decision_status: classified
   reason: 'サッカー向けの古典的SBDT（パーティクルフィルタを用いる手法）の先行研究として言及されている。
 
-    Identification: OpenAlex exact title/year matches: 0; identity left unresolved'
+    Identification: pending; source identification invalidated after transient failures'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - Section 2 (anchor:S2.p1.1)
   - Section 3.3 (anchor:S3.SS3.p3.2)
   - References (anchor:bib.bibx113)
+  lookup:
+    title: Event Tactic Analysis Based on Broadcast Sports Video
+    year: 2009
+    authors:
+    - Guangyu Zhu
+    - Changsheng Xu
+    - Qingming Huang
+    - Yong Rui
+    - Shuqiang Jiang
+    - Wen Gao
+    - Hongxun Yao
+    links: []
 schema_version: 1
 ---
 Reader: agy 1.5.9, gemini-4-hydrogen-high (observed: Gemini 4 Hydrogen (High)). Reading elapsed: 226.068 seconds. Input: html, https://arxiv.org/html/2311.05237v1.
+
+Legacy identification results invalidated; original reading and classifications retained.

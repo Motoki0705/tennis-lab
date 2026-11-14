@@ -1,6 +1,7 @@
 ---
 id: search-wasb-comparison-depth2
 type: citation_search
+status: interrupted
 created_at: '2026-11-14T13:09:45.637972+00:00'
 root_id: cite-baef928f0aefd5a6
 roles:
@@ -10,350 +11,16 @@ generations:
 - depth: 0
   paper_ids:
   - cite-baef928f0aefd5a6
-  expanded_ids:
-  - cite-baef928f0aefd5a6
-- depth: 1
-  paper_ids:
-  - cite-2f34272a6b8ccd3d
-  - cite-63e5c3654e97f114
-  - cite-aece796df0c08e14
-  - cite-bee887c491b4ab99
-  - cite-e660a594e07339d5
-  - cite-e95495299d83d587
-  expanded_ids:
-  - cite-2f34272a6b8ccd3d
-  - cite-63e5c3654e97f114
-  - cite-aece796df0c08e14
-  - cite-bee887c491b4ab99
-  - cite-e660a594e07339d5
-  - cite-e95495299d83d587
-- depth: 2
-  paper_ids:
-  - cite-df479f515d5be1b5
   expanded_ids: []
-issues:
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-10
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-11
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-13
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-14
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-15
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-17
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-18
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-19
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-2
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-20
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-21
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-22
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-24
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-25
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-26
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-27
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-28
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-29
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-3
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-30
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-31
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-32
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-33
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-34
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-35
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-4
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-5
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-6
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-7
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-8
-- paper_id: cite-2f34272a6b8ccd3d
-  ref_id: ref-9
-- paper_id: cite-63e5c3654e97f114
-  ref_id: null
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-1
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-10
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-11
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-12
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-14
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-16
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-17
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-18
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-19
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-2
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-20
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-21
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-22
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-23
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-24
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-25
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-26
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-3
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-4
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-5
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-6
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-7
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-8
-- paper_id: cite-aece796df0c08e14
-  ref_id: ref-9
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-1
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-103
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-104
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-105
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-106
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-108
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-109
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-11
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-113
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-12
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-21
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-24
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-30
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-4
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-44
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-46
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-49
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-5
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-51
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-57
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-60
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-61
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-63
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-64
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-65
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-68
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-71
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-72
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-74
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-76
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-78
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-79
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-81
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-82
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-83
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-84
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-86
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-87
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-91
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-93
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-95
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-96
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-97
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-99
-- paper_id: cite-bee887c491b4ab99
-  ref_id: null
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-1
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-11
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-12
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-13
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-14
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-16
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-18
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-2
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-20
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-21
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-22
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-23
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-24
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-26
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-28
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-3
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-31
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-32
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-36
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-37
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-38
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-4
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-43
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-45
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-6
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-7
-- paper_id: cite-e660a594e07339d5
-  ref_id: ref-8
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-1
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-10
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-11
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-12
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-13
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-15
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-16
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-17
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-18
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-19
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-2
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-20
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-21
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-22
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-23
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-24
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-25
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-26
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-27
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-28
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-29
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-3
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-30
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-31
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-32
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-33
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-4
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-5
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-6
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-7
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-8
-- paper_id: cite-e95495299d83d587
-  ref_id: ref-9
+issues: []
 schema_version: 1
+stop_reason: OpenAlex query_cooldown; retry_after_exceeds_limit (32484s); paper=cite-baef928f0aefd5a6
 ---
+
+Historical reports below preserve the original measurements. Their earlier
+`complete` status was invalid: transport failures had been finalized as
+unresolved references. Current frontmatter and the repair evidence at the end
+supersede that completion claim; the original readings are retained.
 
 Attempt report (seconds are for this invocation):
 
@@ -420,6 +87,104 @@ Execution evidence:
   full-text failures). The final frontier contains one unread depth-2 leaf.
 - All five model calls across the depth-1 and depth-2 campaign used agy 1.5.9
   with the observed label Gemini 4 Hydrogen (High). No model fallback was used.
-- Unresolved references include public metadata lookup failures (OpenAlex HTTP
-  429), in addition to absent/ambiguous exact title/year matches. They remain
-  explicit unresolved rows and are excluded from recursive expansion.
+- The old unresolved count included 112 OpenAlex HTTP 429 failures. Those were
+  implementation errors, corrected below; they are not evidence of absent or
+  ambiguous literature identities.
+
+Attempt report (seconds are for this invocation):
+
+```json
+{
+  "search_id": "search-wasb-comparison-depth2",
+  "elapsed_seconds": 127.64005422800255,
+  "agy_calls": 0,
+  "newly_read": 0,
+  "reused": 7,
+  "read_papers": 5,
+  "fetch_failed": 2,
+  "unresolved": 38,
+  "unclassifiable": 38,
+  "known_pending": 1,
+  "status": "interrupted",
+  "pending_references": 36,
+  "identified_papers": [
+    "cite-2f34272a6b8ccd3d",
+    "cite-aece796df0c08e14",
+    "cite-e660a594e07339d5",
+    "cite-e95495299d83d587"
+  ],
+  "refreshed_fetch_failures": [
+    "cite-63e5c3654e97f114",
+    "cite-bee887c491b4ab99"
+  ]
+}
+```
+
+Attempt report (seconds are for this invocation):
+
+```json
+{
+  "search_id": "search-wasb-comparison-depth2",
+  "elapsed_seconds": 2.8854801430061343,
+  "agy_calls": 0,
+  "newly_read": 0,
+  "reused": 7,
+  "read_papers": 5,
+  "fetch_failed": 2,
+  "unresolved": 38,
+  "unclassifiable": 38,
+  "known_pending": 1,
+  "status": "interrupted",
+  "pending_references": 36,
+  "identified_papers": [],
+  "refreshed_fetch_failures": []
+}
+```
+
+Repair evidence (2026-11-14 UTC):
+
+| Measure | Before repair | After repair attempts |
+|---|---:|---:|
+| Unique completed readings | 5 | 5, all reused |
+| Full-text failures | 2 | 2 |
+| Bibliography rows | 255 | 255 |
+| Resolved reference rows | 122 | 181 |
+| Unresolved reference rows | 133, including 112 transport failures | 38, after successful candidate queries |
+| Pending identity rows | 0 | 36 in WASB |
+| Unclassifiable role rows | 38 | 38 |
+| Paper documents | 115 | 157 |
+
+- Both repair attempts used the same root, comparison role, maximum depth 2 and
+  search ID. No agy call or additional paper reading occurred. The five original
+  titles, summaries, bibliography strings, roles and evidence locations were
+  checked against their pre-repair values and preserved.
+- The four depth-1 sources now use their source OpenAlex referenced works:
+  MonoTrack unresolved 31→13, DeepBall 24→12, BallSeg 10→2, FootAndBall 32→11.
+  There are 59 newly resolved rows. Remaining unresolved reasons are year
+  mismatch/missing (27), no title match (9), author mismatch/missing (2).
+- Of the old 112 transport failures, 59 now resolve, 38 are confirmed unmatched,
+  and 15 remain pending. WASB's other 21 old unmatched rows were also scheduled
+  for rechecking under the new matching rules, giving 36 pending rows total.
+- BallTrack and TrackNetV2 were retried. Their documents record the DOI candidate
+  attempted and OpenAlex best OA/other location diagnostics; no public PDF URL
+  was provided. They remain explicit full-text failures.
+- The known resolved comparison edges imply four distinct depth-2 candidates:
+  Ball localization for RoboCup soccer, CNN ball detection in tennis, Mask R-CNN,
+  and the Mask R-CNN Keras/TensorFlow implementation. These are cached edge facts;
+  depth-2 generations are not finalized while the root is incomplete.
+- A real OpenAlex query returned HTTP 429 with Retry-After 33838 seconds, longer
+  than the six-hour campaign budget. WASB's indexed source has no referenced-work
+  candidates, so its remaining rows need global search. The server cooldown is
+  retained privately across restarts; no early query retry was sent. The two
+  repair commands exited 1, and both affected searches are interrupted.
+- Repair attempt times inside Explorer were 127.640 and 2.885 seconds, totaling
+  130.526 seconds. Including Python/CLI startup, they took 130.471 and 5.210
+  seconds, totaling 135.681 seconds. The second attempt kept all 157 paper
+  documents byte-identical before this explanatory annotation was added.
+- Remaining work is identity lookup for 36 rows and rebuilding both searches.
+  No comparison row is pending, so the current classifications require no new
+  readings for depth 2. Once query service is available, allow roughly 1–3
+  minutes for those lookups at the configured one-second pacing; this estimate
+  excludes provider waiting and lacks a successful-search timing measurement.
+  Resume with the same CLI arguments and private run directory. The recorded
+  cooldown conservatively ends after 2026-11-15 00:00:58 UTC.

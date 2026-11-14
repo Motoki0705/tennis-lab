@@ -1,6 +1,7 @@
 ---
 id: search-wasb-comparison-depth1
 type: citation_search
+status: interrupted
 created_at: '2026-11-14T12:55:14.828683+00:00'
 root_id: cite-baef928f0aefd5a6
 roles:
@@ -10,108 +11,17 @@ generations:
 - depth: 0
   paper_ids:
   - cite-baef928f0aefd5a6
-  expanded_ids:
-  - cite-baef928f0aefd5a6
-- depth: 1
-  paper_ids:
-  - cite-2f34272a6b8ccd3d
-  - cite-63e5c3654e97f114
-  - cite-aece796df0c08e14
-  - cite-bee887c491b4ab99
-  - cite-e660a594e07339d5
-  - cite-e95495299d83d587
   expanded_ids: []
-issues:
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-1
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-103
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-104
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-105
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-106
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-108
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-109
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-11
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-113
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-12
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-21
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-24
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-30
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-4
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-44
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-46
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-49
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-5
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-51
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-57
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-60
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-61
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-63
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-64
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-65
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-68
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-71
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-72
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-74
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-76
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-78
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-79
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-81
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-82
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-83
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-84
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-86
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-87
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-91
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-93
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-95
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-96
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-97
-- paper_id: cite-baef928f0aefd5a6
-  ref_id: ref-99
+issues: []
 schema_version: 1
+stop_reason: 'Paper processing incomplete: cite-baef928f0aefd5a6'
 ---
+
+Historical timing below predates the identification repair. The root's original
+reading is retained, but its unresolved lookup results are being rechecked.
+This search is now interrupted, as its frontmatter records. See
+[the depth-2 repair evidence](search-wasb-comparison-depth2.md) for current counts
+and the provider cooldown that prevents completion.
 
 Attempt report (seconds are for this invocation):
 

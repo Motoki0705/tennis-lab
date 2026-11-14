@@ -27,15 +27,24 @@ from kg_schema import http_url
 
 Role = Literal["foundation", "component", "comparison", "related", "benchmark"]
 TextStatus = Literal["available", "failed", "not_requested"]
-IdentificationStatus = Literal["resolved", "unresolved"]
+IdentificationStatus = Literal["resolved", "unresolved", "pending"]
 DecisionStatus = Literal["classified", "unclassifiable", "pending"]
 ROLES = {"foundation", "component", "comparison", "related", "benchmark"}
 TEXT_STATUSES = {"available", "failed", "not_requested"}
-IDENTIFICATION_STATUSES = {"resolved", "unresolved"}
+IDENTIFICATION_STATUSES = {"resolved", "unresolved", "pending"}
 DECISION_STATUSES = {"classified", "unclassifiable", "pending"}
 CITATION_RE = re.compile(r"^cite-[0-9a-f]{16}$")
 SEARCH_RE = re.compile(r"^search-[a-z0-9]+(?:-[a-z0-9]+)*$")
 DOCUMENT_RE = re.compile(r"^---[ \t]*\r?\n(.*?)\r?\n---[ \t]*(?:\r?\n|$)(.*)$", re.DOTALL)
+
+
+@dataclass
+class ReferenceLookup:
+    """Query inputs parsed from the citing bibliography, not target metadata."""
+    title: str
+    year: int | None
+    authors: list[str]
+    links: list[str]
 
 
 @dataclass
@@ -48,6 +57,7 @@ class Reference:
     decision_status: DecisionStatus
     reason: str
     evidence: list[str]
+    lookup: ReferenceLookup | None = None
 
 
 @dataclass
@@ -162,7 +172,20 @@ def _list(value: Any, context: str) -> list[Any]:
 
 
 def _reference(value: Any) -> Reference:
-    d = _mapping(value, {"ref_id", "citation", "target_id", "identification_status", "roles", "decision_status", "reason", "evidence"}, "reference")
+    if not isinstance(value, dict):
+        raise ValueError("reference: expected a mapping")
+    d = dict(value)
+    query = d.pop("lookup", None)
+    lookup = None
+    if query is not None:
+        q = _mapping(query, {"title", "year", "authors", "links"}, "reference lookup")
+        if q["year"] is not None and (type(q["year"]) is not int or not 1000 <= q["year"] <= 9999):
+            raise ValueError("reference lookup year must be 1000..9999 or null")
+        links = _strings(q["links"], "reference lookup links")
+        if any(not http_url(link) for link in links):
+            raise ValueError("reference lookup links require HTTP(S) URLs")
+        lookup = ReferenceLookup(_text(q["title"], "reference lookup title", empty=True), q["year"], _strings(q["authors"], "reference lookup authors"), links)
+    _mapping(d, {"ref_id", "citation", "target_id", "identification_status", "roles", "decision_status", "reason", "evidence"}, "reference")
     target = None if d["target_id"] is None else _paper_id(d["target_id"])
     identification = cast(IdentificationStatus, _choice(d["identification_status"], IDENTIFICATION_STATUSES, "identification_status"))
     decision = cast(DecisionStatus, _choice(d["decision_status"], DECISION_STATUSES, "decision_status"))
@@ -174,7 +197,7 @@ def _reference(value: Any) -> Reference:
         raise ValueError("classified reference requires roles and evidence")
     if decision != "classified" and roles:
         raise ValueError("unclassifiable/pending reference must have empty roles")
-    return Reference(_ref_id(d["ref_id"]), _text(d["citation"], "citation"), target, identification, roles, decision, _text(d["reason"], "reason"), evidence)
+    return Reference(_ref_id(d["ref_id"]), _text(d["citation"], "citation"), target, identification, roles, decision, _text(d["reason"], "reason"), evidence, lookup)
 
 
 def _paper(d: dict[str, Any], body: str) -> CitationPaper:
@@ -257,6 +280,10 @@ def parse_document(text: str) -> Document:
 
 def serialize_document(document: Document) -> str:
     data = asdict(document)
+    if isinstance(document, CitationPaper):
+        for ref in data["references"]:
+            if ref["lookup"] is None:
+                del ref["lookup"]
     if isinstance(document, CitationSearch) and document.status == "complete":
         del data["status"], data["stop_reason"]
     body = data.pop("body")
@@ -328,9 +355,47 @@ def search_issues(expanded_ids: list[str], papers: dict[str, CitationPaper]) -> 
         if paper.text_status == "failed":
             issues.add(IssuePointer(paper_id, None))
         for ref in paper.references:
-            if ref.identification_status == "unresolved" or ref.decision_status != "classified":
+            if ref.identification_status != "resolved" or ref.decision_status != "classified":
                 issues.add(IssuePointer(paper_id, ref.ref_id))
     return issues
+
+
+def legacy_lookup_failure(ref: Reference) -> bool:
+    """Pre-fix CLI outputs incorrectly finalized provider failures as unresolved."""
+    return ref.identification_status == "unresolved" and "Identification: reference lookup failed:" in ref.reason
+
+
+def identification_pending(paper: CitationPaper) -> bool:
+    return any(ref.identification_status == "pending" or legacy_lookup_failure(ref) for ref in paper.references)
+
+
+def rebuild_search(search: CitationSearch, papers: dict[str, CitationPaper]) -> None:
+    """Reconcile every affected search after shared paper identities change."""
+    current = [search.root_id]
+    seen: set[str] = set()
+    generations: list[Generation] = []
+    reason = ""
+    for depth in range(search.max_depth + 1):
+        seen.update(current)
+        expanded = [] if depth == search.max_depth else [p for p in current
+                    if papers[p].text_status != "not_requested" and not identification_pending(papers[p])]
+        generations.append(Generation(depth, current, expanded))
+        if depth == search.max_depth:
+            break
+        if len(expanded) != len(current):
+            waiting = [p for p in current if p not in expanded]
+            reason = "Paper processing incomplete: " + ", ".join(waiting)
+            break
+        following = sorted({ref.target_id for p in expanded for ref in papers[p].references
+                            if ref.target_id is not None and ref.decision_status == "classified"
+                            and set(ref.roles) & set(search.roles)} - seen)
+        if not following:
+            break
+        current = following
+    search.generations = generations
+    expanded_all = [p for generation in generations for p in generation.expanded_ids]
+    search.issues = sorted(search_issues(expanded_all, papers), key=lambda p: (p.paper_id, p.ref_id or ""))
+    search.status, search.stop_reason = ("interrupted", reason) if reason else ("complete", "")
 
 
 def _validate_search(search: CitationSearch, papers: dict[str, CitationPaper]) -> list[str]:
@@ -358,6 +423,8 @@ def _validate_search(search: CitationSearch, papers: dict[str, CitationPaper]) -
             paper = papers[paper_id]
             if paper.text_status == "not_requested":
                 errors.append(f"expanded paper {paper_id} has text_status not_requested")
+            if identification_pending(paper):
+                errors.append(f"expanded paper {paper_id} has incomplete reference identification")
             expected.update(ref.target_id for ref in paper.references if ref.target_id is not None and ref.decision_status == "classified" and set(ref.roles) & set(search.roles))
         expected -= seen
     if expected and search.status == "complete":
@@ -402,6 +469,8 @@ def validate_library(library: CitationLibrary, registered: list[Node] | None = N
         errors.append(str(exc))
     for paper in library.papers.values():
         for ref in paper.references:
+            if legacy_lookup_failure(ref):
+                errors.append(f"{paper.id}/{ref.ref_id}: transient lookup failure must be pending, not unresolved")
             if ref.target_id is not None and ref.target_id not in library.papers:
                 errors.append(f"{paper.id}/{ref.ref_id}: unknown target_id {ref.target_id}")
     for search in library.searches.values():

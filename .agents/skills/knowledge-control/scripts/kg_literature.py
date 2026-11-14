@@ -5,7 +5,6 @@ metadata and reading decisions, never this module's FullText objects.
 """
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 import sys
@@ -17,13 +16,14 @@ from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 from kg_identifiers import normalize_identifier
+from kg_openalex import LookupUnavailable, OpenAlexClient
+from kg_reference_match import authors, select_reference
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "research-loop/scripts"))
 from lit_search import (  # noqa: E402
     Fetch,
     LitSearchError,
     get,
-    search_openalex,
     urllib_fetch,
 )
 
@@ -36,6 +36,7 @@ class Bibliography:
     year: int | None = None
     authors: list[str] = field(default_factory=list)
     pdf_urls: list[str] = field(default_factory=list)
+    location_notes: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -132,10 +133,6 @@ class PaperHTML(HTMLParser):
         return "\n".join(line.strip() for line in "".join(self.parts).splitlines() if line.strip())
 
 
-def _title_key(title: str) -> str:
-    return " ".join(re.findall(r"\w+", title.casefold()))
-
-
 def reference_identifiers(citation: str, links: list[str]) -> dict[str, str]:
     """Use explicit identifiers, rejecting contradictory IDs rather than guessing."""
     found: dict[str, set[str]] = {}
@@ -151,27 +148,43 @@ def reference_identifiers(citation: str, links: list[str]) -> dict[str, str]:
         found.setdefault("arxiv", set()).add(normalize_identifier("arxiv", match[1]))
     if any(len(values) != 1 for values in found.values()):
         raise ValueError("reference contains conflicting external identifiers")
-    return {namespace: next(iter(values)) for namespace, values in found.items()}
+    if found:
+        return {namespace: next(iter(values)) for namespace, values in found.items()}
+    urls = {normalize_identifier("url", value.rstrip(".,;")) for value in [*links, *re.findall(r"https?://[^\s<>\[\]{}]+", citation)]}
+    if len(urls) == 1:
+        return {"url": next(iter(urls))}
+    return {}
 
 
 class Literature:
-    def __init__(self, fetch: Fetch = urllib_fetch) -> None:
+    def __init__(self, fetch: Fetch = urllib_fetch, *, client: OpenAlexClient | None = None) -> None:
         self.fetch = fetch
+        self.client = client or OpenAlexClient(fetch)
 
     def _get(self, url: str) -> bytes:
         body: bytes = get(url, source="citation", fetch=self.fetch)
         return body
 
     def openalex(self, identifier: str) -> Bibliography:
-        work = json.loads(self._get(f"https://api.openalex.org/works/{identifier}"))
+        work = self.client.work(identifier)
+        if work is None:
+            raise LookupUnavailable("work_not_found")
+        return self._bibliography(work)
+
+    @staticmethod
+    def _bibliography(work: dict[str, Any]) -> Bibliography:
         ids = {"openalex": normalize_identifier("openalex", work["id"])}
         if work.get("doi"):
             ids["doi"] = normalize_identifier("doi", work["doi"])
         pdfs: list[str] = []
         landings: list[str] = []
-        for loc in [work.get("best_oa_location"), work.get("primary_location"), *(work.get("locations") or [])]:
+        notes = [f"OpenAlex best_oa_location PDF: {(work.get('best_oa_location') or {}).get('pdf_url') or 'none'}"]
+        locations = [("best_oa_location", work.get("best_oa_location")), ("primary_location", work.get("primary_location"))]
+        locations += [(f"locations[{i}]", loc) for i, loc in enumerate(work.get("locations") or [])]
+        for label, loc in locations:
             if not loc:
                 continue
+            notes.append(f"OpenAlex {label}: PDF={loc.get('pdf_url') or 'none'}; landing={loc.get('landing_page_url') or 'none'}")
             for key, target in (("pdf_url", pdfs), ("landing_page_url", landings)):
                 if loc.get(key):
                     target.append(loc[key])
@@ -182,28 +195,48 @@ class Literature:
                         ids["arxiv"] = extracted["arxiv"]
         source = primary_url(ids) if "arxiv" in ids or "doi" in ids else next(iter(landings), primary_url(ids))
         return Bibliography(work["display_name"], ids, source, work.get("publication_year"),
-                            [a["author"]["display_name"] for a in work.get("authorships", [])], list(dict.fromkeys(pdfs)))
+                            authors(work), list(dict.fromkeys(pdfs)), notes)
 
-    def identify(self, reference: dict[str, Any]) -> tuple[Bibliography | None, str]:
+    def reference_candidates(self, source: Bibliography) -> list[dict[str, Any]] | None:
+        """None means source unindexed; [] means an indexed empty reference list."""
+        ids = source.external_ids
+        identifier = ids.get("openalex")
+        if identifier is None and "doi" in ids:
+            identifier = "https://doi.org/" + ids["doi"]
+        if identifier is None and "arxiv" in ids:
+            identifier = "https://doi.org/10.48550/arxiv." + ids["arxiv"]
+        if identifier is None:
+            return None
+        work = self.client.work(identifier)
+        if work is None:
+            return None
+        references = work.get("referenced_works")
+        if not isinstance(references, list) or any(not isinstance(x, str) for x in references):
+            raise LookupUnavailable("invalid_referenced_works")
+        result = []
+        for target in dict.fromkeys(references):
+            candidate = self.client.work(normalize_identifier("openalex", target))
+            if candidate is not None:  # A 404 is a definitive absent index record.
+                result.append(candidate)
+        print(f"OpenAlex {normalize_identifier('openalex', work['id'])}: {len(result)} referenced-work candidates", file=sys.stderr, flush=True)
+        return result
+
+    def identify(self, reference: dict[str, Any], *, candidates: list[dict[str, Any]] | None = None) -> tuple[Bibliography | None, str]:
         ids = reference_identifiers(reference["citation"], reference["links"])
         if ids:
-            return Bibliography(reference["title"], ids, primary_url(ids), reference["year"], reference["authors"]), "explicit external ID in reference"
-        if not reference["title"].strip():
-            return None, "reference has no identifiable title or external ID"
+            return Bibliography(reference.get("title") or primary_url(ids), ids, primary_url(ids), reference.get("year"), reference.get("authors", [])), "explicit external ID in reference"
+        scope = "referenced_works"
+        if not candidates:
+            scope = "global_search"
+            candidates = self.client.search(reference.get("title") or reference["citation"])
+        match, reason = select_reference(reference, candidates)
+        if match is None:
+            return None, f"OpenAlex {scope} ({len(candidates)} candidates): {reason}"
         try:
-            matches = search_openalex(reference["title"], 5, None, self.fetch)
-            exact = [p for p in matches if _title_key(p.title) == _title_key(reference["title"])
-                     and (reference["year"] is None or p.year == reference["year"])]
-            if len(exact) == 1:
-                return self.openalex(exact[0].id), "unique exact title/year match in OpenAlex"
-            return None, f"OpenAlex exact title/year matches: {len(exact)}; identity left unresolved"
-        except (LitSearchError, KeyError, TypeError, ValueError) as exc:
-            # lit_search includes request URLs, including optional mailto from
-            # the caller's environment. Public documents need the failure class,
-            # not private contact/configuration query parameters.
-            status = re.search(r"\bHTTP ([0-9]{3})\b", str(exc))
-            detail = f"HTTP {status[1]}" if status else type(exc).__name__
-            return None, f"reference lookup failed: OpenAlex {detail}"
+            bibliography = self._bibliography(match)
+        except MetadataConflict:
+            return None, f"OpenAlex {scope}: MetadataConflict (conflicting identifiers)"
+        return bibliography, f"OpenAlex {scope}: {reason}"
 
     def full_text(self, bibliography: Bibliography) -> FullText:
         ids = bibliography.external_ids
@@ -214,28 +247,40 @@ class Literature:
             arxiv = version[1].removesuffix(".pdf") if version and "arxiv.org/" in bibliography.source else ids["arxiv"]
             candidates += [f"https://arxiv.org/html/{arxiv}", f"https://arxiv.org/pdf/{arxiv}"]
         candidates += bibliography.pdf_urls + [bibliography.source]
-        if "openalex" in ids or "doi" in ids:
-            key = ids.get("openalex") or f"https://doi.org/{ids['doi']}"
-            try:
-                enriched = self.openalex(key)
+        attempts += bibliography.location_notes
+        metadata_done = False
+        visited: set[str] = set()
+        while candidates or not metadata_done:
+            if not candidates:
+                metadata_done = True
+                key = ids.get("openalex") or (f"https://doi.org/{ids['doi']}" if "doi" in ids else None)
+                if key is None:
+                    continue
+                work = self.client.work(key)
+                if work is None:
+                    attempts.append("OpenAlex source record: not indexed (HTTP 404)")
+                    continue
+                enriched = self._bibliography(work)
+                attempts.extend(enriched.location_notes)
                 for namespace, value in enriched.external_ids.items():
                     if namespace in ids and ids[namespace] != value:
-                        raise ValueError(f"conflicting {namespace} in OpenAlex full-text metadata")
+                        raise MetadataConflict(f"conflicting {namespace} in OpenAlex full-text metadata")
                 bibliography.external_ids = {**ids, **enriched.external_ids}
-                candidates += enriched.pdf_urls
+                candidates.extend(enriched.pdf_urls)
                 if "arxiv" in enriched.external_ids:
                     arxiv = enriched.external_ids["arxiv"]
                     candidates += [f"https://arxiv.org/html/{arxiv}", f"https://arxiv.org/pdf/{arxiv}"]
                 candidates.append(enriched.source)
-            except (LitSearchError, KeyError, TypeError, json.JSONDecodeError) as exc:
-                attempts.append(f"OpenAlex full-text location lookup: {exc}")
-        visited: set[str] = set()
-        while candidates:
+                continue
             url = candidates.pop(0)
             if url in visited:
                 continue
             visited.add(url)
+            if urlsplit(url).hostname in {"openalex.org", "www.openalex.org", "api.openalex.org"}:
+                attempts.append(f"{url}: metadata record, not full text")
+                continue
             try:
+                attempts.append(f"Attempted full-text candidate: {url}")
                 raw = self._get(url)
                 if b"%PDF-" in raw[:1024]:
                     text = self._pdf_text(raw)
