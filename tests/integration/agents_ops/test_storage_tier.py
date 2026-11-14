@@ -472,6 +472,19 @@ def test_denied_same_uid_without_nondumpable_evidence_fails_closed(
     assert code == 1 and report["results"][0]["action"] == "failed", report
     assert report["process_scope"]["excluded_nondumpable_count"] == 0
     assert (lab.config.repo / unit.path / "a.bin").exists()
+    if failure == "pid-reused":
+        # The same identity churn must not authorize an exited-process exemption.
+        path = process / "status"
+        path.write_text(
+            path.read_text().replace("State:\tS (sleeping)", "State:\tZ (zombie)")
+            + "Threads:\t1\n"
+        )
+        path = process / "stat"
+        path.write_text(path.read_text().replace(") S ", ") Z "))
+        (process / "task" / process.name).mkdir(parents=True)
+        code, report = lab.run("evict", unit)
+        assert code == 1 and report["process_scope"]["exited_processes"] == 0, report
+        assert (lab.config.repo / unit.path / "a.bin").exists()
 
 
 def test_known_zombie_is_counted_as_exited_without_inspecting_resources(
@@ -480,13 +493,46 @@ def test_known_zombie_is_counted_as_exited_without_inspecting_resources(
     process = lab.proc / "123456789"
     process.mkdir()
     (process / "status").write_text(
-        f"Name:\tfinished\nState:\tZ (zombie)\nUid:\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\n"
+        f"Name:\tfinished\nState:\tZ (zombie)\nThreads:\t1\nUid:\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\n"
+    )
+    (process / "task" / process.name).mkdir(parents=True)
+    (process / "stat").write_text(
+        f"{process.name} (finished) Z " + "0 " * 18 + "271828\n"
     )
     unit = lab.unit()
     code, report = lab.run("cycle", unit, dry_run=True)
     assert code == 0 and report["usage"]["unknown"] == [], report
     assert report["process_scope"]["exited_processes"] == 1
     assert report["process_scope"]["excluded_nondumpable_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "threads,tasks",
+    [
+        ("2", ["123456789", "123456790"]),
+        (None, ["123456789"]),
+        ("1", ["123456789", "123456790"]),
+    ],
+)
+def test_zombie_leader_with_live_or_unknown_threads_is_not_exited(
+    lab: Lab, threads: str | None, tasks: list[str]
+) -> None:
+    process = lab.proc / "123456789"
+    process.mkdir()
+    status = f"State:\tZ (zombie)\nUid:\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\t{os.geteuid()}\n"
+    if threads is not None:
+        status += f"Threads:\t{threads}\n"
+    (process / "status").write_text(status)
+    (process / "stat").write_text(
+        f"{process.name} (finished) Z " + "0 " * 18 + "271828\n"
+    )
+    for task in tasks:
+        (process / "task" / task).mkdir(parents=True)
+    unit = lab.unit()
+    code, report = lab.run("cycle", unit, dry_run=True)
+    assert code == 1 and report["usage"]["unknown"], report
+    assert report["process_scope"]["exited_processes"] == 0
+    assert (lab.config.repo / unit.path / "a.bin").exists()
 
 
 @pytest.mark.parametrize("dumpable", [0, 1])

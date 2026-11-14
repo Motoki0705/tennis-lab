@@ -92,7 +92,9 @@ root・CI等の他UIDは対象外とし、UID別の除外数をJSON出力・監�
 所有者の規則は [proc_pid(5)](https://man7.org/linux/man-pages/man5/proc_pid.5.html) に基づく。
 別の所有者・namespaceの対応で根拠が立たなければ失敗する。
 件数・読めるcomm（status Name）・PID・根拠を `process_scope.excluded_nondumpable` に残す。
-Z/Xは終了済みとして別に数え、生存中のPIDのmetadata欠落は無視しない。
+Z/Xは `Threads: 1` かつtask一覧がそのPIDだけのとき終了済みとして別に数える。
+Zのleaderに別threadが残る場合があるためである（[proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html)）。
+生存中のPIDのmetadata欠落は無視しない。
 非dumpableな同UIDプロセス（Codex CLI本体、sshd、gpg-agent等）は検査しない。
 データを読む学習・スクリプトはdumpableなプロセスで動くことを前提とする。
 UID不明、想定外のI/Oエラー、部分的な拒否、dumpableなのに読めない場合は失敗として止める。

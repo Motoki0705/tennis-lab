@@ -82,7 +82,8 @@ S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/pytho
 显式 `Dumpable: 1` 否定排除；`CoreDumping: 0` 不作为依据。所有者规则见
 [proc_pid(5)](https://man7.org/linux/man-pages/man5/proc_pid.5.html)。其他所有者/namespace 映射无法证明时仍失败。
 在 `process_scope.excluded_nondumpable` 记录数量、可读 comm（status Name）、PID 和证据。
-Z/X 视为已退出并单独计数，不忽略仍存活 PID 的 metadata 缺失。
+Z/X 仅在 `Threads: 1` 且 task 列表只有该 PID 时视为退出并单独计数；zombie leader 仍可能有活动线程
+（[proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html)）。不忽略仍存活 PID 的 metadata 缺失。
 不检查同 UID 的非 dumpable 进程，例如 Codex CLI 本体、sshd、gpg-agent；读取数据的训练和脚本必须以 dumpable 进程运行。
 UID 无法识别、意外 I/O 错误、部分拒绝，以及 dumpable 但不可读的进程仍明确失败。
 例如带 capability 的 systemd，即使 fd 目标/maps/cwd 拒绝读取，普通所有者也不能证明非 dumpable。

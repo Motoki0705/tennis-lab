@@ -114,8 +114,10 @@ stable across the probes. An explicit `Dumpable: 1` contradicts exclusion;
 [proc_pid(5)](https://man7.org/linux/man-pages/man5/proc_pid.5.html).
 This inference remains conservative for other ownership/namespace mappings.
 Excluded count, readable comm (status Name), PID and evidence appear in
-`process_scope.excluded_nondumpable`. Known Z/X states are already exited and
-count separately; missing metadata for a still-live process is not ignored.
+`process_scope.excluded_nondumpable`. Z/X states count as exited only with
+`Threads: 1` and a task inventory containing just that PID: a zombie leader may
+still have live threads ([proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html)).
+Missing metadata for a still-live process is not ignored.
 Non-dumpable same-UID processes such as the Codex CLI core, sshd and gpg-agent
 are outside inspection. Training/data-reading scripts must run dumpable.
 Unknown UID, unexpected I/O failures, partial denials and unreadable dumpable

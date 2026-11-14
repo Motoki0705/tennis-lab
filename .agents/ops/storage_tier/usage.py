@@ -73,11 +73,38 @@ class Inspector:
             else names(self.proc)
         )
 
-    def descriptors(self, process: Path) -> list[str]:
+    def entries(self, process: Path, name: str) -> list[str]:
         if self.proc == Path("/proc"):
-            with os.scandir(process / "fd") as entries:
+            with os.scandir(process / name) as entries:
                 return sorted(entry.name for entry in entries)
-        return names(process / "fd")
+        return names(process / name)
+
+    def descriptors(self, process: Path) -> list[str]:
+        return self.entries(process, "fd")
+
+    def exited(self, process: Path, status: dict[str, str]) -> bool:
+        # A zombie thread-group leader can still have live sibling threads.
+        # Confirm the task inventory and recheck identity/state after the read.
+        def closed(value: dict[str, str]) -> bool:
+            state = value.get("State", "").split()
+            return bool(
+                state and state[0] in {"Z", "X", "x"} and value.get("Threads") == "1"
+            )
+
+        if not closed(status):
+            return False
+        generation = self.starttime(process)
+        before = self.status(process)
+        if not closed(before) or self.entries(process, "task") != [process.name]:
+            return False
+        after = self.status(process)
+        return (
+            closed(after)
+            and self.uids(process, status)
+            == self.uids(process, before)
+            == self.uids(process, after)
+            and self.starttime(process) == generation
+        )
 
     def starttime(self, process: Path) -> int:
         value = self.metadata(process, "stat").decode(errors="surrogateescape")
@@ -171,8 +198,7 @@ class Inspector:
                         result.excluded_uids.get(uid_key, 0) + 1
                     )
                     continue
-                state = status.get("State", "").split()
-                if state and state[0] in {"Z", "X", "x"}:
+                if self.exited(process, status):
                     result.exited_processes += 1
                     continue
                 result.inspected_processes += 1
