@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Run this replay as one resource=all job in the shared training queue.
-# The exact original queue-generated command remains in queue-repro-original.sh.
+# A redacted queue command is retained in queue-repro-original.sh.
 set -euo pipefail
 if [[ $# -ne 1 ]]; then
     echo "usage: repro.sh <new-output-directory> (from the intended repo checkout)" >&2

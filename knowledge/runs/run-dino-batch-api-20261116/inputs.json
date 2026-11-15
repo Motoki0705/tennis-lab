@@ -27,7 +27,7 @@
       {
         "camera_id": "cam0",
         "video": "media/cam0.mp4",
-        "source_path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/raw/meiji_4cam/video_000/cam0.mp4",
+        "source_path": "data/tennis_multiview/raw/meiji_4cam/video_000/cam0.mp4",
         "offset_sec": 15.0,
         "source_fps": 59.939555337468974,
         "source_frame_start": 10155,
@@ -37,7 +37,7 @@
       {
         "camera_id": "cam1",
         "video": "media/cam1.mp4",
-        "source_path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/raw/meiji_4cam/video_000/cam1.mp4",
+        "source_path": "data/tennis_multiview/raw/meiji_4cam/video_000/cam1.mp4",
         "offset_sec": 0.3336694798910721,
         "source_fps": 59.93955457517151,
         "source_frame_start": 9276,
@@ -47,7 +47,7 @@
       {
         "camera_id": "cam2",
         "video": "media/cam2.mp4",
-        "source_path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/raw/meiji_4cam/video_000/cam2.mp4",
+        "source_path": "data/tennis_multiview/raw/meiji_4cam/video_000/cam2.mp4",
         "offset_sec": 26.0,
         "source_fps": 59.94005994005994,
         "source_frame_start": 10814,
@@ -57,7 +57,7 @@
       {
         "camera_id": "cam3",
         "video": "media/cam3.mp4",
-        "source_path": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/data/tennis_multiview/raw/meiji_4cam/video_000/cam3.mp4",
+        "source_path": "data/tennis_multiview/raw/meiji_4cam/video_000/cam3.mp4",
         "offset_sec": 36.89989915897125,
         "source_fps": 59.93955633476602,
         "source_frame_start": 11467,

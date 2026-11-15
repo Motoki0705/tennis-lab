@@ -27,7 +27,7 @@
   "inputs_sha256": "81787c3e9546b0585c5ac43bccb4ef399c633c6fc45e306f048903a4dff10564",
   "load_seconds": 31.157817505998537,
   "checkpoint_sha256": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
-  "extension": "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/outputs/_worktree-preserved/multiview-sample/outputs/tennis_scene/generate/multiview_sample_release_20261021_dino/lib/MultiScaleDeformableAttention.so",
+  "extension": "$TENNIS_LAB_DINO_EXTENSION",
   "extension_sha256": "d2975afef3748c53f7d9c8d6c2693fccff0492a821cc38f15ffe7d350368d201",
   "scalar_reference_sha256": "7de6b5eb2b239ff875042bce90a02929abf176a9707950b69a291bf65e1787f4",
   "commit": "f738a1918f966c6a9bc679f3a8e0432843f9ee62",

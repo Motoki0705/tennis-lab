@@ -7,7 +7,6 @@ recorded_at: '2026-11-16'
 title: 'DINO正式複数入力API: Meiji 4cameraの8画像で単一推論との一致・速度・VRAMを確認'
 issue: 1750
 provider: codex
-session: 01a1dfbf-2c08-7301-8d9c-2351326b6b4c
 date: '2026-11-16'
 status: done
 config:
@@ -53,7 +52,7 @@ repro:
   commit: f738a1918f966c6a9bc679f3a8e0432843f9ee62
   branch: codex/dino-batch-api
   remote: git@github.com:Motoki0705/tennis-lab.git
-  command: timeout -k 10s 900s env PYTHONPATH=. TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/outputs/_worktree-preserved/multiview-sample/outputs/tennis_scene/generate/multiview_sample_release_20261021_dino/lib/MultiScaleDeformableAttention.so
+  command: timeout -k 10s 900s env PYTHONPATH=. TENNIS_LAB_DINO_EXTENSION="$TENNIS_LAB_DINO_EXTENSION"
     OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 .venv/bin/python outputs/tennis_scene/evaluate/dino_batch_api_20261116/compare.py
     outputs/tennis_scene/evaluate/dino_batch_api_20261116
 artifacts:
@@ -66,6 +65,8 @@ artifacts:
   gpu_log: knowledge/runs/run-dino-batch-api-20261116/gpu.log
   local_output: outputs/tennis_scene/evaluate/dino_batch_api_20261116
   raw_predictions: .training_queue/repro/0-8205244284021426274_2026-11-15T15-15-15-978573725Z_209883_dino-batch-api-20261116/predictions/dino_batch.npz
+  publication_provenance: knowledge/runs/run-dino-batch-api-20261116/publication-provenance.json
+  publication_audit: knowledge/runs/run-dino-batch-api-20261116/publication-audit.json
 parents: []
 relations: []
 papers: []
@@ -146,12 +147,16 @@ CUDA拡張は既存のクリーン導入検証で生成したbinaryを明示選�
 `validate_dino_extension()` のCPU forward/backward dispatchと実GPU推論が成功し、
 #1088で問題になったCUDA拡張の読み込み不良には当たらなかった。再build・共有venv変更は不要だった。
 
-正確な元commandと実装commitは [run.json](../../runs/run-dino-batch-api-20261116/run.json)、
+実装commitと公開用commandテンプレートは [run.json](../../runs/run-dino-batch-api-20261116/run.json)、
 [比較script](../../runs/run-dino-batch-api-20261116/compare.py)、
-[queue log](../../runs/run-dino-batch-api-20261116/gpu.log)に残した。
-queueが自動生成した元の再現scriptは [queue-repro-original.sh](../../runs/run-dino-batch-api-20261116/queue-repro-original.sh)
-にそのまま保存した。ローカルoutputs内scriptへの参照が残るため、再実行には
-保存済みscriptを参照する [repro.sh](../../runs/run-dino-batch-api-20261116/repro.sh) を使う。
+[公開用queue log](../../runs/run-dino-batch-api-20261116/gpu.log)に残した。
+公開コピーから会話識別子を除き、環境固有のパスはrepo rootからの相対表記にした。
+binaryの位置は明示的に設定する `$TENNIS_LAB_DINO_EXTENSION` として表し、実際のbinaryのhashは保持する。
+原本はGit外の非公開領域へ保存し、[公開来歴](../../runs/run-dino-batch-api-20261116/publication-provenance.json)
+に原本と公開コピーのhashを記録した。`results.json` の `inputs_sha256` は原本の入力manifestに対応し、
+公開用manifestのhashは公開来歴から照合できる。数値結果・入力画像・checkpoint・binaryの検証値は変更していない。
+[queue commandの公開コピー](../../runs/run-dino-batch-api-20261116/queue-repro-original.sh)も同じ処理を施した。
+再実行には保存済みscriptを参照する [repro.sh](../../runs/run-dino-batch-api-20261116/repro.sh) を使う。
 この入口はshared queue経由の起動と実装の一致を検査し、新しい出力先へ入力を再作成して比較する。
 比較scriptの保存時変更はimport整形のみで、[来歴](../../runs/run-dino-batch-api-20261116/script-provenance.json)に記録した。
 再実行用の入力作成は [prepare.py](../../runs/run-dino-batch-api-20261116/prepare.py) を使う。
