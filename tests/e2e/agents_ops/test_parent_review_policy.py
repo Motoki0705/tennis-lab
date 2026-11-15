@@ -319,6 +319,91 @@ def test_coverage_and_unresolved_findings_are_distinct(policy: Any) -> None:
     ) == [proof]
 
 
+@pytest.mark.parametrize("scope", ["exact", "missing", "extra"])
+def test_compact_resolution_uses_pr_scope_and_legacy_keeps_full_head_scope(
+    policy: Any, scope: str
+) -> None:
+    run = result(policy)
+    latest = {**run["request"]["prs"][0], "head_sha": "d" * 40, "diff_sha256": "e" * 64}
+    legacy = resolution(policy, run, latest)
+    all_paths = ["a.py", "base.py"]
+    legacy["changed_paths"] = all_paths
+    legacy["evidence"]["reviewed_paths"] = all_paths
+    compact = {
+        **legacy,
+        "schema_version": 2,
+        "changed_paths": policy.path_manifest(["a.py"]),
+        "head_changed_paths": policy.path_manifest(all_paths),
+        "base_only_paths": policy.path_manifest(["base.py"]),
+        "evidence": policy.compact_evidence(
+            {**legacy["evidence"], "reviewed_paths": ["a.py"]}
+        ),
+    }
+    declared = (
+        None
+        if scope == "missing"
+        else {100: ["a.py", "extra.py"] if scope == "extra" else ["a.py"]}
+    )
+    coverage = policy.evaluate_coverage(
+        run,
+        [latest],
+        [compact],
+        {100: all_paths},
+        fix_diff_digests={100: "f" * 64},
+        review_paths=declared,
+    )
+    assert coverage.covered == (scope == "exact")
+    assert bool(coverage.unresolved) == (scope != "exact")
+    assert policy.records(
+        [{"user": {"login": "bot"}, "body": policy.marker(compact)}], "bot"
+    ) == [compact]
+    # The same narrow scope must never redefine an old published attestation.
+    assert policy.evaluate_coverage(
+        run,
+        [latest],
+        [legacy],
+        {100: all_paths},
+        fix_diff_digests={100: "f" * 64},
+        review_paths=declared,
+    ).covered
+    legacy["changed_paths"] = ["a.py"]
+    legacy["evidence"]["reviewed_paths"] = ["a.py"]
+    assert not policy.evaluate_coverage(
+        run,
+        [latest],
+        [legacy],
+        {100: all_paths},
+        fix_diff_digests={100: "f" * 64},
+        review_paths={100: ["a.py"]},
+    ).covered
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"count": True, "sha256": "a" * 64},
+        {"count": -1, "sha256": "a" * 64},
+        {"count": 1, "sha256": "bad"},
+        {"count": 0, "sha256": "a" * 64},
+        {"count": 1, "sha256": "a" * 64, "paths": ["a.py"]},
+        ["a.py"],
+    ],
+)
+def test_compact_paths_reject_unknown_or_inconsistent_manifests(
+    policy: Any, bad: Any
+) -> None:
+    with pytest.raises(ValueError):
+        policy.validate_path_manifest(bad)
+
+
+def test_path_display_character_budget_does_not_split_a_filename(policy: Any) -> None:
+    renderer = importlib.import_module("review_evidence")
+    paths = ["a/" + "界" * 600, "b.py"]
+    text = renderer.path_summary(paths)
+    assert "表示 0/2件" in text and "a/" not in text and "b.py" not in text
+    assert policy.digest(paths) in text and len(text) < 300
+
+
 @pytest.mark.parametrize(
     "case",
     [

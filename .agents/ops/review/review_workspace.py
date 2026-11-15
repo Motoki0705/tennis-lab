@@ -7,6 +7,7 @@ import os
 import string
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -46,6 +47,81 @@ def full_diff(before: str, after: str) -> bytes:
             after,
             "--",
         ),
+    )
+
+
+def file_deltas(before: str, after: str) -> dict[bytes, bytes]:
+    """Blob IDs, modes and status per path; renames retain both endpoints."""
+    raw = git(
+        "diff",
+        "--raw",
+        "--no-abbrev",
+        "--no-renames",
+        "--no-ext-diff",
+        "--no-textconv",
+        "-z",
+        before,
+        after,
+        "--",
+    )
+    parts = raw.split(b"\0")
+    if parts[-1] != b"" or (len(parts) - 1) % 2:
+        raise ValueError("invalid per-file git delta")
+    return dict(zip(parts[1:-1:2], parts[:-1:2], strict=True))
+
+
+@dataclass(frozen=True)
+class ResolutionScope:
+    changed_paths: list[str]
+    head_changed_paths: list[str]
+    base_only_paths: list[str]
+
+    def paths(self) -> dict[str, list[str]]:
+        return {
+            "changed_paths": self.changed_paths,
+            "head_changed_paths": self.head_changed_paths,
+            "base_only_paths": self.base_only_paths,
+        }
+
+
+def resolution_scope(
+    original: Mapping[str, Any], current: Mapping[str, Any]
+) -> ResolutionScope:
+    """Compare the PR's own deltas, proving every excluded head change is base-only.
+
+    A change to either blob/mode in a PR delta needs confirmation, even when the
+    resulting head blob is unchanged (e.g. base absorbed a previous PR edit).
+    """
+    if (
+        original["number"] != current["number"]
+        or original["branch"] != current["branch"]
+    ):
+        raise ValueError("resolution PR/branch identity changed")
+    for entry in (original, current):
+        actual = (
+            git("merge-base", entry["base_sha"], entry["head_sha"]).decode().strip()
+        )
+        if actual != entry["merge_base_sha"]:
+            raise ValueError("resolution merge-base differs from actual git evidence")
+    before = file_deltas(original["merge_base_sha"], original["head_sha"])
+    after = file_deltas(current["merge_base_sha"], current["head_sha"])
+    required = {
+        path
+        for path in before.keys() | after.keys()
+        if before.get(path) != after.get(path)
+    }
+    head = file_deltas(original["head_sha"], current["head_sha"])
+    base = file_deltas(original["merge_base_sha"], current["merge_base_sha"])
+    excluded = head.keys() - required
+    for path in excluded:
+        if path in before or path in after or head[path] != base.get(path):
+            raise ValueError(
+                "excluded resolution path is not explained by base changes"
+            )
+    return ResolutionScope(
+        sorted(os.fsdecode(path) for path in required),
+        sorted(os.fsdecode(path) for path in head),
+        sorted(os.fsdecode(path) for path in excluded),
     )
 
 
@@ -198,34 +274,10 @@ def build_prompt(
 def verify_rebased_snapshot(
     original: Mapping[str, Any], current: Mapping[str, Any]
 ) -> bool:
-    """Only base-touched files may change a PR's own per-file delta."""
+    """Inherit only when the PR's own delta needs no new parent confirmation."""
     if (
         original["number"] != current["number"]
         or original["branch"] != current["branch"]
     ):
         return False
-    base_paths = set(changed_paths(original["base_sha"], current["base_sha"]))
-
-    def deltas(entry: Mapping[str, Any]) -> dict[bytes, bytes]:
-        raw = git(
-            "diff",
-            "--raw",
-            "--no-abbrev",
-            "--no-renames",
-            "--no-ext-diff",
-            "--no-textconv",
-            "-z",
-            entry["merge_base_sha"],
-            entry["head_sha"],
-            "--",
-        )
-        parts = raw.split(b"\0")
-        if parts[-1] != b"" or (len(parts) - 1) % 2:
-            raise ValueError("invalid per-file git delta")
-        return dict(zip(parts[1:-1:2], parts[:-1:2], strict=True))
-
-    before, after = deltas(original), deltas(current)
-    for path in before.keys() | after.keys():
-        if before.get(path) != after.get(path) and os.fsdecode(path) not in base_paths:
-            return False
-    return True
+    return not resolution_scope(original, current).changed_paths

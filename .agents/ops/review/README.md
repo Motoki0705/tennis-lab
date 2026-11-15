@@ -70,8 +70,11 @@ review・取得・公開・復旧・明示確認とmerge gateの観測は
 
 `fix-evidence.json` は `ci` / `regression_tests` / `resolution` / `reviewed_paths` の4キーだけを持つJSON object。
 前3つは非空の文章とし、CIの対象head・結果へのリンク、回帰テストのコマンドと結果、指摘解消と修正範囲の確認理由を書く。
-`reviewed_paths` は、親が差分を確認した全変更パスの重複なし・ソート済み配列。
-指摘のpath以外に必要な回帰テスト・関連ファイルも明示し、レビューheadから現在headまでの実変更パス（renameの旧/新パスを含む）と完全一致させる。
+`reviewed_paths` は、親が差分を確認した対象全パスの重複なし・ソート済み配列。
+指摘のpath以外に必要な回帰テスト・関連ファイルも明示し、[修正確認の範囲](#修正確認の範囲)と完全一致させる。
+`parent review-inspect --prs <番号>` の当該runの `comparison.changed_paths` がresolveの確認対象、
+`comparison.base_only_paths` が実gitで除外根拠を検証したbase側だけの変更である。
+complete-evidenceの確認対象は、現在のPR差分（merge-base→head）の全パスとする。
 未記載パス・理由の欠落・旧3キー形式は公開前に拒否する。指摘のpathがnullでも、親による明示確認があれば同じ契約を使える。
 CI・テストの実行と証拠の確認は親の責任。このコマンドはその確認を記録し、修正差分は実gitから取得する。
 run全体がfailed/incompleteでも、当該PRがreviewedなら同じruntime証拠検証を通して確認できる。
@@ -312,7 +315,7 @@ JSONの `prs` は番号順。各要素の `latest_request` はregistry順で最�
 
 | 欄 | 内容 |
 |---|---|
-| `snapshot`, `comparison` | 元snapshotと確認したパス、現在との各フィールドの新旧・一致、head間の変更パスとdiff digest、既存rebase継承検査の結果 |
+| `snapshot`, `comparison` | 元snapshotと確認したパス、現在との各フィールドの新旧・一致、修正確認対象/base側だけ/head間の全変更パス、diff digestと既存rebase継承検査の結果 |
 | `execution`, `runtime`, `result` | 記録された状態・起動回数・工程、runtime終了理由とcleanup、正式結果のcoverage・個別と横断の指摘・証拠待ち |
 | `review_selection`, `runtime_settings` | 固定した方針・選択値・理由・指定元と、観測した実効値。旧requestはlegacy_unrecorded、adoptionは元runの検証済み値 |
 | `settings_check` | 実効値の確認状態。失敗runの未確認値はunconfirmedとして観測し、成功記録との矛盾は整合エラーにする |
@@ -372,8 +375,8 @@ JSONはUTF-8/canonical（`sort_keys=True, separators=(",", ":")`、マーカー�
 findingはidに加えて `{severity,path,line,rule,detail}`。pathはrepo相対POSIXパスまたはnull、lineは正整数またはnull。
 PR/子issueとbranchが修正担当の対応先。横断指摘は `prs` の各担当へ振り分ける。
 `validate_result` は対象digest・全PR集合・判定/coverage・指摘IDを厳密に検査する。
-外側のresult/projection/resolutionと `parent-review:v1` マーカーはversion=1を維持する。
-既存の意味・digestを変えず、追加kindと省略可能な証拠待ち欄として拡張するため、外側の版は上げない。
+result/projectionと `parent-review:v1` マーカーはversion=1を維持する。
+resolution/evidenceの新規記録は、パスの定義と公開形式を明示するschema_version=2を使う。
 request version 3のruntime_settingsも外側version 1のまま厳密に検証する。
 公開・公開再開・照合表示・gateは同じ検証部品でrequest、execution、runtime、公開値を照合する。
 run全体のstatusでは省略せず、reviewedを含むfailed/incomplete結果にも選択値・実効値・runtime digestの検証を適用する。
@@ -412,16 +415,31 @@ gateは成功resultと全PRのprojection/digest、
 同じ共通の結果・projection・resolve・gate経路に接続する。将来のreuseはmode固有の検証を追加する。
 
 `kind=evidence` は `{schema_version,kind,review_run_id,result_sha256,parent_issue,pr,wait,snapshot,evidence}`。
-`wait` は当該PRの論点番号、`evidence` は上記4キー。`evidence-<digest>.json` にrecordとpublishedを保存する。
+`wait` は当該PRの論点番号、`evidence` は上記4キー。version 2の `evidence.reviewed_paths` はパスmanifestとする。
+`evidence-<digest>.json` にrecord、published、`paths.reviewed_paths`（全パス配列）を保存する。
 gateは同じrun/result・PR・論点・現在snapshot（または実gitで確認したrebase継承）に一致する完了だけを受理する。
 
 `kind=resolution` は `{schema_version,kind,review_run_id,result_sha256,parent_issue,pr,finding,
-reviewed_head,fixed_snapshot,fix_diff_sha256,changed_paths,evidence}`。
-reviewed_headから現在fixed headまでの実diffをhashし、renameは旧/新パスをともに収録する。
-evidenceは実行例の4キー。`evidence.reviewed_paths` と実git由来の `changed_paths` は完全一致を必要とし、
-親の確認理由・最新headを含むfixed_snapshot・実diff digestに結び付ける。差分全文はローカル `resolution-<digest>.diff`、
-公開済み状態は `resolution-<digest>.json` に保存する。同一証拠の再送は再投稿しない。
+reviewed_head,fixed_snapshot,fix_diff_sha256,changed_paths,head_changed_paths,base_only_paths,evidence}`。
+version 2の `changed_paths` は[修正確認の範囲](#修正確認の範囲)、`head_changed_paths` はreviewed head→fixed headの全変更、
+`base_only_paths` はそのうち確認対象から除外したbase側だけの変更。各値と `evidence.reviewed_paths` はパスmanifestで、
+後者は `changed_paths` と完全一致させる。`fix_diff_sha256` は従来どおりhead間の全binary diffをhashする。
+差分全文はローカル `resolution-<digest>.diff`、record・公開済み状態・全パス配列（`paths` 内に同名の3キー）は
+`resolution-<digest>.json` に保存する。同一証拠の再送は再投稿しない。
 PRへ投稿後に親へ記録する。親に未公開のresolutionはgateへ渡さない。
+
+パスmanifestは `{count,sha256}`。重複なし・ソート済みの全パス配列をparentと同じcanonical JSONでdigest化する。
+公開markerに全パスを埋め込まず、人間向け本文は件数・digestと最大20件/2000文字の完全なパスを表示する。
+表示数/全件数とローカルに全量があることを明記し、ファイル名自体は切り詰めない。
+本文全体が60,000文字を超える場合は明示的に失敗し、自由文や機械記録を黙って切り詰めない。
+gate/inspectは両公開コピーとローカルrecordの一致に加えて、全パスとmanifest、実gitからの再計算、保存diffを照合する。
+ローカル全量が欠けたversion 2は受理しない。
+
+既存の公開済みversion 1は書き換えず、そのdigestと旧定義を維持する。resolutionの `changed_paths` と
+`evidence.reviewed_paths` はhead間の全変更パス配列であり、実gitの全差分と照合する。
+version 1をPR自身の範囲へ縮約して受理しない。evidenceのversion 1も従来の全PRパス配列を検証する。
+既存runでresolve/complete-evidenceを新しく実行するとversion 2の別の記録になり、再レビューは起動しない。
+未知の版・manifest・欠損を旧方式へフォールバックしない。
 
 ## 取得と隔離CPUテスト
 
@@ -447,16 +465,32 @@ coverageはPRごとに判定する。他のPRの作成・更新・closeや別run
 部分結果でも `reviewed` のPRを独立して判定し、`not_reviewed` のPRは停止する。
 各PRにはそのPRを対象とする最新の明示runを使う。coverage成立と未解決指摘ゼロは別条件。
 
+### 修正確認の範囲
+
+`review_workspace.resolution_scope(original, current)` をresolve・inspect・merge gateで共用する。
+旧/新snapshotのmerge-baseが実gitのbase/headから求まる値と一致することを検証し、それぞれの
+merge-base→headの差分をパスごとの旧/新blob ID・mode・statusで比較する。片側だけにあるパス、
+または差分が変わったパスを確認対象とする。renameは検出を無効にして旧/新パスを両方残し、削除・binary・mode変更も扱う。
+衝突解消、baseとPRの双方が変えたファイル、baseがPRの編集を取り込んでPR差分から消えたファイルも対象になる。
+最後の例ではheadの内容が変わらなくても確認対象に残る。
+
+head間で変わった残りのパスは、旧/新どちらのPR差分にも無いことと、head間のパス別差分が
+旧/新merge-base間のパス別差分と一致することを検証してから、base側だけの変更として除外する。
+baseの取り込み方がmergeでもrebaseでも同じ定義を使い、親がbaseの全変更を確認したと申告する必要はない。
+この検証は追加のAIレビューを行わず、指摘ごとの解消確認・最新snapshot・全head差分digestへの結び付けは維持する。
+
 ### base取込み・rebase後の継承
 
-`review_workspace.verify_rebased_snapshot(original, current)` は実gitから、旧/新merge-baseに対する
-PR自身の変更をファイル単位で比較する。差が許されるのは同じ期間に旧baseと新baseの間でも
-変更されたファイルだけ。branchとPR番号は一致が必要で、stacked PRのbase retargetもこの条件で検証する。
-合格したsnapshotの組だけを `inherited_snapshots` に渡し、coverageと公開済みresolutionを継承する。
-変更されていないファイルへの追加編集は継承せず、親のresolveを必要とする。AIの再レビューはしない。
+`review_workspace.verify_rebased_snapshot(original, current)` は[修正確認の範囲](#修正確認の範囲)を再計算し、
+確認対象が空の場合だけ継承を認める。branchとPR番号は一致が必要で、stacked PRのbase retargetもこの条件で検証する。
+baseとPRの双方が変更したファイル、衝突解消、確認後に修正を取り消す追加編集は、PR自身の差分が変わるため継承しない。
+baseが同じパスを変更したという理由だけでは確認を省略しない。base側だけの取込みでPR差分が変わらない場合は継承できる。
+合格したsnapshotの組だけを `inherited_snapshots` に渡し、元レビューのcoverage、公開済みresolution（version 1/2）、
+complete-evidenceの確認を同じ条件で継承する。inspectの継承表示・coverageも同じ判定を使う。
+確認対象が残る変更は親が新しいresolve、証拠待ちは新しいcomplete-evidenceで再確認する。AIの再レビューはしない。
 
 resolveは同run/result・元のレビューhead・最新fixed snapshotに結び付ける。
-実git由来の全変更パスと全文diffのSHA-256を公開証拠と照合する。
+実git由来の[修正確認範囲](#修正確認の範囲)と全文diffのSHA-256を公開証拠と照合する。
 指摘の解消は指摘ごと、追加変更の確認は `changes` として記録する。
 横断指摘は影響する各PRで確認する。未知のschema・不完全な証拠は停止する。
 
@@ -512,7 +546,7 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
   merge済み対象も集合に残し、GitHubのmerge済みhead・branch・base ref/repoを確認済みsnapshotと照合する。
   snapshotはレビュー時、gateによるmerge試行済みならその直前の確認時の値を据え置く。
   resolveは親/PR両方への公開・ローカルpublished・保存差分digestを確認する。
-  現headへのresolveは、実gitのレビューhead→現head差分のdigest/パスにも一致させる。
+  現headへのresolveは、実gitのレビューhead→現head差分のdigestと、版に対応する確認範囲にも一致させる。
 - 競合・mergeable不明は停止する。CI取得時のheadも最新snapshotと一致させる。
   対象HEADの `Python` check runが完了し、結論が `success` であることを必須とする。
   commitを指定したREST `commits/<head>/check-runs?check_name=Python&filter=latest` を全ページ取得し、

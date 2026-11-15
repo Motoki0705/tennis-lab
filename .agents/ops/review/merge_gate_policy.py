@@ -310,6 +310,7 @@ class MergeInput:
     base_advances: Sequence[BaseAdvance] = ()
     inherited_snapshots: frozenset[tuple[str, str]] = frozenset()
     parent_needs_human: bool = False
+    review_paths: Mapping[int, Sequence[str]] | None = None
 
 
 @dataclass(frozen=True)
@@ -394,6 +395,7 @@ def evaluate_parent_gate(gate: MergeInput) -> MergeResult:
                 gate.resolutions,
                 gate.fix_paths,
                 fix_diff_digests=gate.fix_diff_digests,
+                review_paths=gate.review_paths,
                 base_advances=gate.base_advances,
                 inherited_snapshots=gate.inherited_snapshots,
             )

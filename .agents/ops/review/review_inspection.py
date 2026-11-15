@@ -35,7 +35,12 @@ from parent_review_policy import (
 from review_evidence import followups, python_check_runs
 from review_interruption import CLOSED, exit_confirmation_record, interruption_record
 from review_observations import baseline, compare_observation, discussion
-from review_workspace import changed_paths, full_diff, verify_rebased_snapshot
+from review_workspace import (
+    changed_paths,
+    full_diff,
+    resolution_scope,
+    verify_rebased_snapshot,
+)
 
 T = TypeVar("T")
 READ_ERRORS = (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError)
@@ -115,6 +120,7 @@ def compare_snapshot(
     )
     if observed != original:
         raise ValueError("reviewed snapshot differs from actual git evidence")
+    scope = resolution_scope(original, current)
     return {
         "fields": {
             key: {
@@ -124,7 +130,7 @@ def compare_snapshot(
             }
             for key in sorted(original)
         },
-        "changed_paths": changed_paths(original["head_sha"], current["head_sha"]),
+        **scope.paths(),
         "reviewed_paths": changed_paths(
             original["merge_base_sha"], original["head_sha"]
         ),
@@ -444,8 +450,9 @@ def inspect_run(
             result,
             [current],
             [p["record"] for p in own_proofs if not p["errors"]],
-            {n: comparison["changed_paths"]},
+            {n: comparison["head_changed_paths"]},
             fix_diff_digests={n: comparison["fix_diff_sha256"]},
+            review_paths={n: comparison["changed_paths"]},
             inherited_snapshots=frozenset(inherited),
         )
         entry["coverage_check"] = asdict(coverage)

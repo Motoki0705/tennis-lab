@@ -287,7 +287,8 @@ def records(
         record = object_value(load_json(line[len(PREFIX) : -4]))
         if (
             type(record.get("schema_version")) is not int
-            or record.get("schema_version") != 1
+            or record.get("schema_version")
+            not in ({1, 2} if record.get("kind") in {"resolution", "evidence"} else {1})
             or record.get("kind")
             not in {
                 "result",
@@ -323,11 +324,34 @@ def path_list(value: Any) -> list[str]:
     return paths
 
 
-def evidence(value: Any) -> dict[str, Any]:
+def path_manifest(paths: list[str]) -> dict[str, Any]:
+    path_list(paths)
+    return {"count": len(paths), "sha256": digest(paths)}
+
+
+def validate_path_manifest(value: Any) -> dict[str, Any]:
+    data = exact(value, {"count", "sha256"})
+    if type(data["count"]) is not int or data["count"] < 0:
+        raise ValueError("invalid path manifest count")
+    hex_value(data["sha256"], 64)
+    if data["count"] == 0 and data != path_manifest([]):
+        raise ValueError("empty path manifest digest mismatch")
+    return data
+
+
+def compact_evidence(value: Any) -> dict[str, Any]:
+    proof = evidence(value)
+    return {**proof, "reviewed_paths": path_manifest(proof["reviewed_paths"])}
+
+
+def evidence(value: Any, *, compact: bool = False) -> dict[str, Any]:
     data = exact(value, {"ci", "regression_tests", "resolution", "reviewed_paths"})
     for key in ("ci", "regression_tests", "resolution"):
         nonempty(data[key], key)
-    path_list(data["reviewed_paths"])
+    if compact:
+        validate_path_manifest(data["reviewed_paths"])
+    else:
+        path_list(data["reviewed_paths"])
     return data
 
 
@@ -557,7 +581,7 @@ def validate_evidence_completion(value: Any) -> dict[str, Any]:
     parent = number(data["parent_issue"])
     if (
         type(data["schema_version"]) is not int
-        or data["schema_version"] != 1
+        or data["schema_version"] not in {1, 2}
         or data["kind"] != "evidence"
     ):
         raise ValueError("unknown evidence schema")
@@ -570,11 +594,14 @@ def validate_evidence_completion(value: Any) -> dict[str, Any]:
     hex_value(data["result_sha256"], 64)
     if snapshots([data["snapshot"]])[0]["number"] != n:
         raise ValueError("evidence PR mismatch")
-    evidence(data["evidence"])
+    evidence(data["evidence"], compact=data["schema_version"] == 2)
     return data
 
 
 def validate_resolution(value: Any) -> dict[str, Any]:
+    version = object_value(value).get("schema_version")
+    if type(version) is not int or version not in {1, 2}:
+        raise ValueError("unknown resolution schema")
     data = exact(
         value,
         {
@@ -590,11 +617,12 @@ def validate_resolution(value: Any) -> dict[str, Any]:
             "fix_diff_sha256",
             "changed_paths",
             "evidence",
-        },
+        }
+        | ({"head_changed_paths", "base_only_paths"} if version == 2 else set()),
     )
     if (
         type(data["schema_version"]) is not int
-        or data["schema_version"] != 1
+        or data["schema_version"] not in {1, 2}
         or data["kind"] != "resolution"
     ):
         raise ValueError("unknown resolution schema")
@@ -609,8 +637,14 @@ def validate_resolution(value: Any) -> dict[str, Any]:
     hex_value(data["reviewed_head"], 40)
     hex_value(data["result_sha256"], 64)
     hex_value(data["fix_diff_sha256"], 64)
-    paths = path_list(data["changed_paths"])
-    if evidence(data["evidence"])["reviewed_paths"] != paths:
+    paths: dict[str, Any] | list[str]
+    if version == 2:
+        paths = validate_path_manifest(data["changed_paths"])
+        validate_path_manifest(data["head_changed_paths"])
+        validate_path_manifest(data["base_only_paths"])
+    else:
+        paths = path_list(data["changed_paths"])
+    if evidence(data["evidence"], compact=version == 2)["reviewed_paths"] != paths:
         raise ValueError("fix paths differ from the parent's reviewed paths")
     return data
 
@@ -675,6 +709,7 @@ def evaluate_coverage(
     changed_paths: Mapping[int, Sequence[str]],
     *,
     fix_diff_digests: Mapping[int, str],
+    review_paths: Mapping[int, Sequence[str]] | None = None,
     base_advances: Sequence[BaseAdvance] = (),
     inherited_snapshots: frozenset[tuple[str, str]] = frozenset(),
 ) -> Coverage:
@@ -682,6 +717,12 @@ def evaluate_coverage(
 
     changed_paths is the *actual* reviewed-head..current-head git diff (including
     deletes/rename sources), and fix_diff_digests hashes that same full binary diff.
+    Version 2 resolutions instead bind changed_paths to review_paths, computed by
+    review_workspace.resolution_scope. Missing scope evidence never defaults to
+    the legacy paths. Version 1 keeps its original full-head-diff definition.
+    inherited_snapshots contains only pairs verified to have an empty new
+    confirmation scope, including resolution and evidence snapshots. Base-touched
+    PR edits must not be added to this trusted set by the I/O caller.
     Only verified peer merges may advance a snapshot's base tip; all other fields
     must match the reviewed or explicitly resolved snapshot. Unresolved findings
     are separate from coverage so the gate can report both.
@@ -768,10 +809,14 @@ def evaluate_coverage(
                 }
             ):
                 continue
-            if not fixed_inherited and record.get("changed_paths") != sorted(
-                set(changed_paths.get(n, []))
-            ):
-                continue
+            if not fixed_inherited:
+                if record["schema_version"] == 2:
+                    if review_paths is None or n not in review_paths:
+                        continue
+                    if record["changed_paths"] != path_manifest(list(review_paths[n])):
+                        continue
+                elif record["changed_paths"] != sorted(set(changed_paths.get(n, []))):
+                    continue
             if not fixed_inherited and record[
                 "fix_diff_sha256"
             ] != fix_diff_digests.get(n):
