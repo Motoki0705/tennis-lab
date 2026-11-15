@@ -25,6 +25,7 @@ from tests.e2e.agents_ops.test_dispatcher_judgement import (
     decision,
     issue,
 )
+from tests.support.agents_ops.locks import available
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -313,6 +314,30 @@ def fixture_runtime(d: DispatchHarness, monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(d.mod, "Runtime", FixtureRuntime)
 
 
+def fenced_owner_writes(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Probe actual owner changes, including a newly constructed worker Store."""
+    state = importlib.import_module("parent.state")
+    original = state.Store.save
+    changed = []
+
+    def owners(parents: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: tuple(row[field] for field in ("session", "status", "generation"))
+            for key, row in parents.items()
+        }
+
+    def save(store: Any) -> None:
+        if owners(store.read_data()["parents"]) != owners(store.parents):
+            assert not available(store.directory / "ownership.lock"), (
+                "dispatcher changed an owner without the ownership fence"
+            )
+            changed.append(str(store.directory))
+        original(store)
+
+    monkeypatch.setattr(state.Store, "save", save)
+    return changed
+
+
 def test_slots_always_in_tokyo_and_catch_up_only_latest(d: DispatchHarness) -> None:
     cases = {
         "2026-10-21T22:59:59+00:00": "2026-10-21T20:00:00+09:00",
@@ -505,6 +530,7 @@ def test_fresh_validate_reserve_order_and_manual_registration_share_lock(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     d.prepare()
+    owner_changes = fenced_owner_writes(monkeypatch)
     order = []
     original_fresh = d.mod.judgement.assert_candidate_fresh
     original_validate = d.mod.validate_candidate
@@ -529,6 +555,7 @@ def test_fresh_validate_reserve_order_and_manual_registration_share_lock(
         results = list(pool.map(lambda _: d.control.assign(), range(2)))
     assert sum(len(x) for x in results) == 1
     assert order == ["fresh", "validate"]
+    assert len(owner_changes) == 1
     with d.h.store.locked(), pytest.raises(ValueError, match="別セッション"):
         session = importlib.import_module("parent.session").ParentSession(
             d.h.gh, d.h.store, 1, "claude:manual"
@@ -892,9 +919,11 @@ def test_rejected_parent_reservation_can_be_rejudged_with_history_preserved(
 ) -> None:
     d.prepare()
     d.control.assign()
+    owner_changes = fenced_owner_writes(monkeypatch)
     previous = d.row()["dispatch"]
     d.h.gh.issues[1]["body"] += "\n要件を変更する。"
     assert invoke_worker(d, monkeypatch, d.job()["id"]) == []
+    assert len(owner_changes) == 1  # Failed admission releases the initial owner.
     assert d.control.assign() == []
     assert len(d.h.calls.read_text().splitlines()) == 1
     assert d.run(explicit=True)["result"] == "recorded"
@@ -918,7 +947,9 @@ def test_slot_waiting_and_sequential_candidates_keep_owner(
     fixture_runtime(d, monkeypatch)
     d.prepare(1, 2)
     assert d.control.assign() == [1]
+    owner_changes = fenced_owner_writes(monkeypatch)
     env = d.accepted()
+    assert len(owner_changes) == 1
     assert env["CLAUDE_CODE_SESSION_ID"] == "fixture-session"
     assert d.control.assign() == []
     job = d.job()
@@ -1301,7 +1332,10 @@ def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_
     monkeypatch.setattr(lifecycle, "finish_supervised", finish_after_handoff)
     monkeypatch.setattr(lifecycle, "continue_workers", workers)
     monkeypatch.setattr(lifecycle, "publish_decisions", decisions)
+    owner_changes = fenced_owner_writes(monkeypatch) if handoff_at is None else None
     d.control.reconcile()
+    if owner_changes is not None:
+        assert len(owner_changes) == 1  # Current parent runtime transitions to ended.
     ended = d.row()
     if handoff_at:
         assert ended["publication_exit"] == {

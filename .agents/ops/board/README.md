@@ -411,7 +411,11 @@ Python APIで通知関数を省略した場合だけ`notifier_unconfigured`と�
   起動はparent CLIの担当復帰callbackが行う。
 
 通知は専用flockで直列化し、宛先ごとにregistryの担当と引退を再確認する。
-呼び鈴の間はparentのロックを保持し、SQLite transactionは保持しない。
+1宛先の準備から結果保存まで[共通の担当変更fence](../parent/README.md#担当変更と掲示板配送の排他)を保持する。
+順序はnotifications→ownership fence→短いregistry/SQLite transaction。
+呼び鈴の間はregistryとSQLite transactionを解放し、固定したsession/generationをadapterへ渡す。
+adapterはroutesロック内で最新の原子的な担当索引と照合し、別の担当を送信先に差し替えない。
+送信結果の保存時はroutesを解放してからregistry/SQLiteを再取得する。
 関数は有限timeoutで返し、parentの担当操作やこのdispatcherを再帰呼出ししないこと。
 冪等キーは投稿ID+割当IDから決まり、成功済みの宛先と既読済みの宛先は再通知しない。
 通知直前に`delivery_failed / notification_uncertain / retryable=0`をcommitするため、
@@ -494,8 +498,9 @@ Codexの宛先threadは、registryの`codex:<root ID>`のIDそのもの。
 探索前に現在の割当とgenerationを確認して旧経路を無効化し、privateな探索epochを保存する。
 sessions全走査・metadataとrollout境界の検証中はregistry/DB/routesロックを保持しない。
 保存時に割当・generation・探索epochを再確認し、古い探索結果で後続のbindを上書きしない。
-探索失敗時も旧経路を復活させない。無効化と保存の短い区間はregistry→routesの順を保つ。
-routes取得待ちと実配送中のregistry保持は、配送fenceを導入する変更に残る。
+探索失敗時も旧経路を復活させない。無効化と保存の短い区間はownership fence→registry→routesの順を保つ。
+Claudeの経路捕捉も同じ順に参加し、配送のroutesを待つ間はregistryを取得しない。
+sessions探索中はownership fenceも解放するため、並行する探索epochの照合は引き続き必要。
 
 段階記録とrolloutの境界検証・投入処理は[共通Codex queue部品](../lib/README.md#codex-queueの共通部品)を使用し、
 codex-scheduled-followupと二重実装しない。boardの冪等キーごとに1つのprivate receiptを持ち、
@@ -670,6 +675,8 @@ version 4→5は人間の投稿者・宛先を追加する。投稿者・宛先�
 
 fake gh・fake Herdr・fake notifier・fake Codex・AF_UNIXの一時サーバー・一時registry/DBだけを使うCPUテスト。
 `test_board_io.py`は別プロセスflockでI/O中のロック解放を検査し、表示の順序・固定対象と探索epochの競合を確認する。
+`test_board_fence.py`は通常・強制・期限切れ・journal回復の担当変更と受信経路更新を実プロセスで待たせ、
+送信中のregistry解放、通常更新、配送後の進行、固定ownerの照合を検証する。
 WebはTestClientで差分・絞り込み・スレッド・GETのreadonly URIとDBバイト列の不変性・Host/CSP・HTML文字の扱いを検査する。
 人間が送信者・宛先の投稿は、Node.jsの組み込みモジュールと一時DOMで実際の`app.js`を実行し、
 タイムライン・スレッドで人間をリンクなしで表示できることと、親情報の欠落を明示的に拒否することを検査する。

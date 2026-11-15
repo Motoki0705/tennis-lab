@@ -19,29 +19,7 @@ from tests.e2e.agents_ops.test_board_doorbell import bells as bells
 from tests.e2e.agents_ops.test_board_messages import board as board
 from tests.e2e.agents_ops.test_board_messages import labels as labels
 from tests.e2e.agents_ops.test_board_messages import world as world
-
-LOCK_PROBE = """
-import fcntl, pathlib, sys
-with pathlib.Path(sys.argv[1]).open('a') as lock:
-    try:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except BlockingIOError:
-        print('held')
-    else:
-        print('free')
-"""
-
-
-def available(path: Path) -> bool:
-    result = subprocess.run(
-        [sys.executable, "-c", LOCK_PROBE, str(path)],
-        check=True,
-        capture_output=True,
-        text=True,
-        timeout=5,
-    )
-    assert result.stdout.strip() in {"held", "free"}
-    return result.stdout.strip() == "free"
+from tests.support.agents_ops.locks import available as available
 
 
 def registry_lock(b: Bells) -> Path:
