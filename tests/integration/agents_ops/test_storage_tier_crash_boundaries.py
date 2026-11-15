@@ -315,3 +315,17 @@ def test_orphan_recovery_persistence_boundary(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, index: int, boundary: str
 ) -> None:
     exercise(tmp_path, monkeypatch, "orphan-recovery", index, boundary)
+
+
+@pytest.mark.parametrize("index,boundary", boundaries("repair-audit"))
+def test_audit_repair_persistence_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, index: int, boundary: str
+) -> None:
+    exercise(tmp_path, monkeypatch, "repair-audit", index, boundary)
+
+
+@pytest.mark.parametrize("index,boundary", boundaries("repair-removals"))
+def test_removal_journal_repair_persistence_boundary(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, index: int, boundary: str
+) -> None:
+    exercise(tmp_path, monkeypatch, "repair-removals", index, boundary)

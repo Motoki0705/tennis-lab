@@ -337,3 +337,25 @@ def test_orphan_recovery_recovery_boundary(
     boundary: str,
 ) -> None:
     exercise(tmp_path, monkeypatch, route_id, index, boundary)
+
+
+@pytest.mark.parametrize("route_id,index,boundary", boundaries("repair-audit"))
+def test_audit_repair_recovery_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    route_id: str,
+    index: int,
+    boundary: str,
+) -> None:
+    exercise(tmp_path, monkeypatch, route_id, index, boundary)
+
+
+@pytest.mark.parametrize("route_id,index,boundary", boundaries("repair-removals"))
+def test_removal_journal_repair_recovery_boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    route_id: str,
+    index: int,
+    boundary: str,
+) -> None:
+    exercise(tmp_path, monkeypatch, route_id, index, boundary)

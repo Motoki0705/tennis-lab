@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import builtins
 import importlib
+import io
 import json
 import multiprocessing
 import os
@@ -41,6 +43,8 @@ SCENARIOS = (
     "recover-copy",
     "recover-checkpoint",
     "recover-checkpoint-hydrate",
+    "repair-audit",
+    "repair-removals",
 )
 
 
@@ -93,7 +97,18 @@ def prepare(scenario: str, root: Path) -> tuple[Lab, Any, Callable[[], Any]]:
         assert code == 91, (scenario, code, trace)
         return lab, unit, lambda: lab.engine.run("recover", [], dry_run=False)
     lab = make_lab(root)
-    if scenario == "index-legacy":
+    if scenario.startswith("repair-"):
+        unit = lab.unit()
+        lab.mirror(unit)
+        path = (
+            lab.config.state / "audit.jsonl"
+            if scenario == "repair-audit"
+            else lab.config.state / "removals" / ("a" * 32 + ".jsonl")
+        )
+        path.parent.mkdir(exist_ok=True)
+        path.write_bytes(b'{"event":"complete"}\n{"event":"incomplete", "detail":')
+        command = "recover"
+    elif scenario == "index-legacy":
         local = lab.config.repo / "ckpt"
         local.mkdir()
         directory = lab.config.mirror / "ckpt"
@@ -224,6 +239,73 @@ def prepare(scenario: str, root: Path) -> tuple[Lab, Any, Callable[[], Any]]:
     return lab, unit, execute
 
 
+class TracedStream:
+    """Observe Python writes without expanding each JSON encoder fragment."""
+
+    def __init__(self, stream: Any, trace: Trace) -> None:
+        self.stream, self.trace = stream, trace
+        self.writes = 0
+        self.dirty = False
+        self.written_bytes = 0
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.stream, name)
+
+    def __enter__(self) -> TracedStream:
+        self.stream.__enter__()
+        return self
+
+    def __exit__(self, *args: Any) -> Any:
+        if self.dirty:
+            self.flush()
+        return self.stream.__exit__(*args)
+
+    def write(self, value: Any) -> Any:
+        path = self.trace.label_path(os.readlink(f"/proc/self/fd/{self.fileno()}"))
+        tear = (
+            self.trace.tear_when is not None
+            and path is not None
+            and self.trace.tear_when(path)
+        )
+        if tear and self.written_bytes + len(value) >= self.trace.tear_after:
+            assert path is not None
+            self.stream.write(value[: max(1, len(value) // 2)])
+            self.stream.flush()
+            self.trace.emit("torn-write:" + path)
+            os._exit(91)
+        result = self.stream.write(value)
+        self.written_bytes += len(value)
+        self.dirty = True
+        self.writes += 1
+        # Text encoder fragments form one consecutive write group. Binary copies
+        # retain the first and next chunk, covering an 8 MiB incomplete copy.
+        if self.writes == 1 or (not isinstance(value, str) and self.writes == 2):
+            self.trace.emit_fd(f"write:stream-{min(self.writes, 2)}", self.fileno())
+        return result
+
+    def writelines(self, lines: Any) -> None:
+        for line in lines:
+            self.write(line)
+
+    def flush(self) -> None:
+        self.stream.flush()
+        if self.dirty:
+            self.trace.emit_fd("flush", self.fileno())
+        self.dirty = False
+        self.writes = 0
+
+    def truncate(self, size: int | None = None) -> int:
+        result = self.stream.truncate(size)
+        self.trace.emit_fd("truncate:stream", self.fileno())
+        return int(result)
+
+    def close(self) -> None:
+        if not self.stream.closed:
+            if self.dirty:
+                self.flush()
+            self.stream.close()
+
+
 class Trace:
     def __init__(
         self,
@@ -231,8 +313,11 @@ class Trace:
         output: Path,
         stop: int | None,
         stop_when: Callable[[str], bool] | None,
+        tear_when: Callable[[str], bool] | None = None,
+        tear_after: int = 128,
     ) -> None:
         self.lab, self.stop, self.stop_when = lab, stop, stop_when
+        self.tear_when, self.tear_after = tear_when, tear_after
         self.fd = os.open(output, os.O_CREAT | os.O_TRUNC | os.O_WRONLY, 0o600)
         self.count = 0
         self.original_write, self.original_fsync = os.write, os.fsync
@@ -259,6 +344,12 @@ class Trace:
             os._exit(91)
         self.count += 1
 
+    def emit_fd(self, operation: str, fd: int) -> None:
+        if fd == self.fd:
+            return
+        value = self.label_path(os.readlink(f"/proc/self/fd/{fd}"))
+        self.emit(f"{operation}:{value}" if value else None)
+
     def install(self) -> None:
         original_mkdir, original_open = Path.mkdir, Path.open
         original_replace, original_unlink, original_rmdir = (
@@ -267,6 +358,14 @@ class Trace:
             os.rmdir,
         )
         original_fsync = os.fsync
+        original_os_open, original_fdopen = os.open, os.fdopen
+        original_io_open, original_builtin_open = io.open, builtins.open
+        original_write, original_pwrite, original_writev = (
+            os.write,
+            os.pwrite,
+            os.writev,
+        )
+        original_truncate, original_ftruncate = os.truncate, os.ftruncate
         original_chmod, original_utime, original_link = os.chmod, os.utime, os.link
         fs = self.lab.filesystem
         original_rename, original_claim, original_append = (
@@ -274,6 +373,74 @@ class Trace:
             fs.rename_at,
             fs.append_json,
         )
+
+        def wrap(stream: Any) -> Any:
+            if isinstance(stream, TracedStream):
+                return stream
+            if stream.writable() and self.label_path(
+                os.readlink(f"/proc/self/fd/{stream.fileno()}")
+            ):
+                return TracedStream(stream, self)
+            return stream
+
+        def io_open(*args: Any, **kwargs: Any) -> Any:
+            stream = original_io_open(*args, **kwargs)
+            mode = kwargs.get("mode", args[1] if len(args) > 1 else "r")
+            if not isinstance(args[0], int) and any(flag in mode for flag in "wa"):
+                self.emit_fd("open-stream:" + mode, stream.fileno())
+            return wrap(stream)
+
+        def builtin_open(*args: Any, **kwargs: Any) -> Any:
+            stream = original_builtin_open(*args, **kwargs)
+            mode = kwargs.get("mode", args[1] if len(args) > 1 else "r")
+            if any(flag in mode for flag in "wax"):
+                self.emit_fd("open-builtin:" + mode, stream.fileno())
+            return wrap(stream)
+
+        def fdopen(*args: Any, **kwargs: Any) -> Any:
+            return wrap(original_fdopen(*args, **kwargs))
+
+        def os_open(path: Any, flags: int, *args: Any, **kwargs: Any) -> int:
+            fd = original_os_open(path, flags, *args, **kwargs)
+            kinds = [
+                name
+                for flag, name in (
+                    (os.O_CREAT, "create"),
+                    (os.O_TRUNC, "truncate"),
+                    (os.O_APPEND, "append"),
+                )
+                if flags & flag
+            ]
+            if kinds:
+                self.emit_fd("open-os:" + "+".join(kinds), fd)
+            return fd
+
+        def write(fd: int, data: Any) -> int:
+            result = original_write(fd, data)
+            self.emit_fd("write:os", fd)
+            return result
+
+        def pwrite(fd: int, data: Any, offset: int) -> int:
+            result = original_pwrite(fd, data, offset)
+            self.emit_fd("write:pwrite", fd)
+            return result
+
+        def writev(fd: int, buffers: Any) -> int:
+            result = original_writev(fd, buffers)
+            self.emit_fd("write:writev", fd)
+            return result
+
+        def truncate(path: Any, length: int) -> None:
+            original_truncate(path, length)
+            if isinstance(path, int):
+                self.emit_fd("truncate:os", path)
+            else:
+                value = self.label_path(path)
+                self.emit("truncate:os:" + value if value else None)
+
+        def ftruncate(fd: int, length: int) -> None:
+            original_ftruncate(fd, length)
+            self.emit_fd("truncate:fd", fd)
 
         def mkdir(path: Path, *args: Any, **kwargs: Any) -> None:
             existed = os.path.lexists(path)
@@ -292,7 +459,9 @@ class Trace:
         def replaced(first: Any, second: Any, *args: Any, **kwargs: Any) -> None:
             original_replace(first, second, *args, **kwargs)
             value = self.label_path(second)
-            if value:
+            if value and Path(second).suffix != ".json":
+                self.emit("replace:" + value)
+            elif value:
                 data = fs.read_json(Path(second))
                 phase = str(data.get("phase", "committed"))
                 if Path(second).parent.name == "checkpoint-file-operations":
@@ -362,6 +531,15 @@ class Trace:
             (os, "unlink", unlinked),
             (os, "rmdir", removed),
             (os, "fsync", synced),
+            (os, "open", os_open),
+            (os, "fdopen", fdopen),
+            (io, "open", io_open),
+            (builtins, "open", builtin_open),
+            (os, "write", write),
+            (os, "pwrite", pwrite),
+            (os, "writev", writev),
+            (os, "truncate", truncate),
+            (os, "ftruncate", ftruncate),
         ):
             setattr(owner, name, primitive)
         for module_name in ("filesystem", "engine", "publication", "checkpoint_files"):
@@ -382,10 +560,12 @@ def run_child(
     *,
     stop: int | None = None,
     stop_when: Callable[[str], bool] | None = None,
+    tear_when: Callable[[str], bool] | None = None,
+    tear_after: int = 128,
 ) -> tuple[int, list[str]]:
     def child() -> None:
         try:
-            Trace(lab, output, stop, stop_when).install()
+            Trace(lab, output, stop, stop_when, tear_when, tear_after).install()
             outcome = action()
             output.with_suffix(".result.json").write_text(json.dumps(outcome))
         except BaseException:

@@ -275,10 +275,27 @@ retained dir作成からidentity記録までに止まった場合、復旧は現
 これは回収先を一意にするcustodyの観測で、payload削除の照合根拠には使わず、記録にも区別を残す。
 記録済みidentityとの不一致は引き続き失敗にする。JSONの原子的置換の途中に残る `.<record>.<uuid>.tmp` は通常ファイルとして保持し、
 処理は正規の `.json` recordだけを読む。他の想定外の名前・特殊ファイル・破損した正規recordは失敗にする。
+各コマンドはcommit済みの制御JSONを検査し、一時ファイルのpath・bytes・`committed=false` を
+`uncommitted_json` に明示する。照合根拠は正規の完全なrecordから得る。
+manifest・transaction・receiptの途中書込みは、一時ファイルと以前のcommit済みrecordを保持する。
+報告された一時ファイルを確認用に残す。
+
+D:`audit.jsonl`・`removals/<transaction>.jsonl` の末尾が途中で切れた場合、通常コマンドはjournalエラーで失敗する。
+書込み側を停止して `recover` を実行する。復旧は元journalのSHA-256と完全なprefixの長さを
+D:`.storage-tier/journal-repairs/` のreceiptへ先に永続化し、切れた末尾を含む元ファイル全体を
+`journal-history/` に保存してから、改行で完結したJSON object行だけを有効なjournalとして原子的に公開する。
+receiptを完了にし、`journal_repaired` と履歴path・末尾bytesをauditとコマンド結果に残す。
+再中断時は同じ履歴bytesを検査して `recover` を再実行できる。JSON objectが完全でも末尾改行がなければ退避対象とする。
+途中の行や正規JSONの破損は失敗にし、保持した証拠を調査して対応する永続recordを復元してから `recover` を再実行する。
+競合する記録も保持する。publication・ckpt operationのjournalは原子的JSON置換を使い、同じcommit済みrecordの検査を受ける。
 
 次の永続化順序を[中断境界テスト](../../../tests/integration/agents_ops/test_storage_tier_crash_boundaries.py)で検査する。
-[全境界一覧](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)にはJSON一時ファイル作成/fsync/置換、
-コピーの作成/metadata/fsync、rename/claim、削除、journal追記、復旧の書込みを含める。
+[全境界一覧](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)にはJSON一時ファイルの作成/write/flush/fsync/置換、
+コピーchunkとmetadata、書込み用 `os.open` のflag、`os.write`/`pwrite`/`writev`、stream write/flush、
+truncate/ftruncate、rename/claim、削除、journal追記、復旧の書込みを含める。
+JSON encoderの連続fragmentは代表write境界にまとめ、binaryコピーは最初と次のchunkを捕捉する。
+[部分書込みテスト](../../../tests/integration/agents_ops/test_storage_tier_writes.py)で8MiB超のコピー、
+大きなJSONの途中書込み、切れた追記、修復根拠の変更を検査し、既存ファイルへの未登録writeを追加するとtrace完全一致が失敗する。
 directory fsyncの前後は、直前の変更と同じプロセス停止時の可視状態になる。検証対象はプロセスの終了である。
 各中断状態を[復旧経路一覧](../../../tests/support/agents_ops/fixtures/storage-recovery-boundaries.json)へ対応付け、
 [復旧境界テスト](../../../tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py)で各経路をさらに中断する。
@@ -291,6 +308,7 @@ directory fsyncの前後は、直前の変更と同じプロセス停止時の�
 | evict | prepared transaction → 隔離rename → 移動identity → retained作成 → 照合済み計画 → entryのclaim/削除journal → 削除 → audit → 完了transaction → transaction unlink |
 | stage退役・破棄 | 親の公開receipt → prepared削除transaction → retained作成 → 照合済み計画 → entryのclaim/削除 → audit → 完了transaction → unlink |
 | ckpt直下ファイル | prepared journal → 履歴/コピー → 公開照合根拠 → 各交換/進行 → 各旧ファイル回収/進行 → manifest → 完了journal → audit |
+| JSONL修復 | 元digest/prefix付きreceipt → journal全体の保持 → 完全prefixの原子的公開 → receipt完了 → audit。再中断は保持した元bytesで再開 |
 | 旧ckpt index | 記録済み直下ファイル照合 → 旧manifest退避 → root-file manifest公開 → audit。再試行は一致する退避manifestを受け入れる |
 | recover | treeの復元・保持 → 回収identity記録 → tree/entry回収 → 旧証拠/計画保存 → 部分復旧markerまたは公開照合 → receipt完了/active transaction解除 |
 

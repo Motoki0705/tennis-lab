@@ -244,11 +244,26 @@ mirror/evict/cycle，避免用不完整 D: 覆盖完整 E: 副本。
 若在retained目录创建后、identity记录前中断，恢复先固定并持久记录观察到的identity，再归档。
 这是归档custody记录，不是删除payload的校验证据，记录中明确标记。与已有identity不一致仍失败。
 JSON原子替换遗留的 `.<record>.<uuid>.tmp` 普通文件予以保留，只读取正式 `.json` record。
-其他异常名称、特殊文件或损坏的正式record仍失败。
+其他异常名称、特殊文件或损坏的正式record仍失败。各命令校验已提交的控制JSON，
+并在 `uncommitted_json` 中列出保留临时文件的path、bytes和 `committed=false`。
+校验证据来自完整的正式record。manifest、transaction或receipt写到一半时，保留临时文件和原已提交record，
+保留报告中的临时文件供检查。
+
+D:`audit.jsonl` 或 `removals/<transaction>.jsonl` 的最后一行截断时，普通命令以journal错误失败。
+暂停写入后执行 `recover`。恢复先在 D:`.storage-tier/journal-repairs/` 持久保存原journal的SHA-256与完整前缀长度，
+将包含截断尾部的整个原文件保存到 `journal-history/`，然后原子发布仅包含以换行结束的JSON object行的有效journal。
+完成receipt，并在audit和命令结果中记录 `journal_repaired`、归档path及尾部bytes。
+再次中断后，`recover` 校验同一归档内容并继续。完整JSON object若缺少末尾换行，也归入保留尾部。
+中间行或正式JSON损坏时失败；检查保留证据、恢复对应的持久record后重试 `recover`，保留所有冲突记录。
+publication及ckpt operation的journal使用原子JSON替换，并执行相同的已提交record校验。
 
 [中断边界测试](../../../tests/integration/agents_ops/test_storage_tier_crash_boundaries.py)覆盖下列持久化序列。
-[完整边界清单](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)包含JSON临时文件创建/fsync/替换、
-副本创建/metadata/fsync、rename/claim、删除、journal追加及恢复写入。
+[完整边界清单](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)包含JSON临时文件创建/write/flush/fsync/替换、
+副本chunk与metadata、写入用 `os.open` flag、`os.write`/`pwrite`/`writev`、stream write/flush、
+truncate/ftruncate、rename/claim、删除、journal追加及恢复写入。
+连续JSON encoder fragment合并为代表write边界，binary复制保留第一及下一个chunk边界。
+[部分写入测试](../../../tests/integration/agents_ops/test_storage_tier_writes.py)检验超过8MiB的复制、大JSON部分写入、
+截断追加与修复证据被改变，并验证增加未登记的现有文件write会使trace完整匹配失败。
 directory fsync前后的进程中断可见状态与前一修改相同。本验证针对进程退出。
 每个中断状态映射到[恢复路径清单](../../../tests/support/agents_ops/fixtures/storage-recovery-boundaries.json)，
 [恢复边界测试](../../../tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py)再次中断每条路径，
@@ -261,6 +276,7 @@ directory fsync前后的进程中断可见状态与前一修改相同。本验�
 | evict | prepared transaction → 隔离rename → 移动identity → 创建retained → 已校验计划 → entry claim/删除journal → 删除 → audit → 完成transaction → unlink transaction |
 | stage退役/清理 | 父发布receipt → prepared删除transaction → 创建retained → 已校验计划 → entry claim/删除 → audit → 完成transaction → unlink |
 | ckpt根文件 | prepared journal → 历史/副本 → 发布校验证据 → 逐文件交换/进度 → 旧文件归档/进度 → manifest → 完成journal → audit |
+| JSONL修复 | 带原digest/prefix的receipt → 保留完整journal → 原子发布完整前缀 → 完成receipt → audit。再次中断后按保留的原bytes继续 |
 | 旧ckpt index | 校验已记录直属文件 → 归档旧manifest → 发布根文件manifest → audit。重试仅接受匹配的已有归档 |
 | recover | 还原/保留tree → 记录归档identity → 归档tree/entry → 保存旧证据/计划 → 部分恢复marker或发布校验 → 完成receipt/解除active transaction |
 

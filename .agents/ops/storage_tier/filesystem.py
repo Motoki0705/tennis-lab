@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+ATOMIC_TEMPORARY = re.compile(r"\..+\.[0-9a-f]{32}\.tmp")
+
 
 class StorageError(RuntimeError):
     """The operation cannot establish its safety conditions."""
@@ -46,7 +48,7 @@ def json_records(path: Path) -> list[str]:
     """Committed records only; retain interrupted atomic-write temporaries."""
     result = []
     for name in names(path) if path.exists() else []:
-        if re.fullmatch(r"\..+\.[0-9a-f]{32}\.tmp", name):
+        if ATOMIC_TEMPORARY.fullmatch(name):
             if not stat.S_ISREG((path / name).lstat().st_mode):
                 raise StorageError(f"invalid atomic-write temporary: {path / name}")
             continue
@@ -158,6 +160,10 @@ def sync_dir(path: Path) -> None:
 
 
 def write_json(path: Path, value: dict[str, Any]) -> None:
+    if path.exists() or path.is_symlink():
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise StorageError(f"invalid committed JSON record: {path}")
+        read_json(path)  # Preserve corrupt committed evidence for manual inspection.
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     try:
@@ -172,7 +178,34 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
         temporary.unlink(missing_ok=True)
 
 
+def write_bytes_atomic(path: Path, value: bytes) -> None:
+    """Commit control bytes only after their complete temporary is durable."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with temporary.open("xb") as stream:
+            stream.write(value)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        sync_dir(path.parent)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def append_json(path: Path, value: dict[str, Any]) -> None:
+    if path.exists() or path.is_symlink():
+        if not stat.S_ISREG(path.lstat().st_mode):
+            raise StorageError(f"invalid journal: {path}")
+        check = os.open(path, os.O_RDONLY | os.O_NOATIME | os.O_NOFOLLOW)
+        try:
+            size = os.fstat(check).st_size
+            if size and os.pread(check, 1, size - 1) != b"\n":
+                raise StorageError(
+                    f"journal has an incomplete tail; run recover: {path}"
+                )
+        finally:
+            os.close(check)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY | os.O_NOFOLLOW, 0o600)
     with os.fdopen(fd, "a", encoding="utf-8") as stream:

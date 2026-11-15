@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from . import publication
+from . import journals, publication
 from .filesystem import (
     Snapshot,
     StorageError,
@@ -1079,6 +1079,10 @@ class Engine:
                     "automatic cycle activation does not match this repository and mount"
                 )
         with self.locked(dry_run=dry_run or command == "scan"):
+            temporaries = journals.inspect_json(self.config.repo, self.config.mirror)
+            repaired_logs = journals.inspect_logs(
+                self.config.state, repair=command == "recover" and not dry_run
+            )
             local = discover(self.config, self.config.repo)
             mirror = discover(self.config, self.config.mirror)
             inventory = {u.path: u for u in [*local.units, *mirror.units]}
@@ -1096,6 +1100,7 @@ class Engine:
                     "E": mirror.legacy_outputs,
                 },
                 "results": [],
+                "uncommitted_json": temporaries,
             }
             usage = self.inspector.inspect((), Snapshot({}))
             self.process_scope.clear()
@@ -1103,6 +1108,8 @@ class Engine:
             report["process_scope"] = self.process_scope
             report["usage"] = {"busy": usage.busy, "unknown": usage.unknown}
             if not dry_run and command != "scan":
+                for repair in repaired_logs:
+                    self.audit("journal_repaired", **repair)
                 self.audit("process_scope", operation=command)
             if command == "scan":
                 sizes = []
@@ -1133,7 +1140,7 @@ class Engine:
                     raise StorageError(
                         "recover changes transaction state; inspect scan/audit first"
                     )
-                report["results"] = self.recover()
+                report["results"] = repaired_logs + self.recover()
                 report["layout_errors"] = (
                     discover(self.config, self.config.repo).errors
                     + discover(self.config, self.config.mirror).errors

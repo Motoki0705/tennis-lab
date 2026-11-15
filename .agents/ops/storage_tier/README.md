@@ -375,13 +375,38 @@ moving it. The record flags this observation; it cannot authorize payload deleti
 An already-recorded identity mismatch remains an error. Atomic JSON replacement may
 leave a `.<record>.<uuid>.tmp` file: committed-record enumeration preserves these
 regular files and reads only the canonical `.json` records. Other unexpected names,
-special files and corrupt committed records remain errors.
+special files and corrupt committed records remain errors. Every command validates
+committed control JSON and reports preserved temporaries in `uncommitted_json`, with
+path, byte count and `committed=false`. Only canonical, complete records supply evidence.
+A partial manifest, transaction or receipt temporary leaves its previous committed
+record intact. Preserve the reported temporaries for inspection.
+
+An interrupted append can leave a torn final line in D:`audit.jsonl` or
+`removals/<transaction>.jsonl`. Ordinary commands fail with an explicit journal error.
+Run `recover` while writers are paused. Recovery first persists a repair receipt in
+D:`.storage-tier/journal-repairs/`, including the original SHA-256 and complete-prefix
+length. It saves the entire original journal, including the torn tail, under
+`journal-history/`, then atomically publishes only newline-terminated JSON object
+lines as the live prefix. It completes the receipt and records `journal_repaired` in
+the audit and command result, including the archive path and tail byte count. Repeated
+`recover` validates the same archived bytes and resumes an interrupted repair.
+A valid JSON object missing its terminal newline also belongs to the preserved tail.
+A corrupt interior line or corrupt canonical JSON requires inspection and restoration
+of the matching durable record from preserved evidence before retrying `recover`.
+Preserve all conflicting records. Publication and checkpoint operation journals use
+atomic JSON replacement and the same committed-record validation.
 
 The persistence sequences below are exercised at every recorded filesystem mutation
 in the [crash-boundary tests](../../../tests/integration/agents_ops/test_storage_tier_crash_boundaries.py).
 The [boundary inventory](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)
-includes JSON temporary creation/fsync/replacement, copy creation/metadata/fsync,
-rename/claim, removal, journal append and recovery writes. Directory fsync calls share
+includes JSON temporary creation/write/flush/fsync/replacement, copy chunks and
+metadata, writable `os.open` flags, `os.write`/`pwrite`/`writev`, stream write/flush,
+truncate/ftruncate, rename/claim, removal, journal append and recovery writes.
+Consecutive JSON encoder fragments share a representative stream-write boundary;
+binary copies retain their first and next chunk boundaries. The
+[partial-write tests](../../../tests/integration/agents_ops/test_storage_tier_writes.py)
+exercise copies larger than 8 MiB, partially written large JSON, torn appends and
+changed repair evidence. An injected existing-file write must fail exact trace coverage. Directory fsync calls share
 the preceding mutation's observable process-crash state. These are process-exit tests.
 Every interrupted state is mapped to a [recovery sequence](../../../tests/support/agents_ops/fixtures/storage-recovery-boundaries.json).
 The [recovery-boundary tests](../../../tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py)
@@ -395,6 +420,7 @@ successful unselected daily cycle after the documented repair.
 | Evict | Prepared transaction → quarantine rename → moved identity → retained mkdir → verified plan → entry claim/removal journal → removal → audit → complete transaction → transaction unlink |
 | Retire/discard stage | Parent publication receipt → prepared removal transaction → retained mkdir → verified plan → entry claim/removal → audit → complete transaction → unlink |
 | Checkpoint root files | Prepared journal → history/copy → publishing proof → each exchange/progress → each old-file archival/progress → manifest → complete journal → audit |
+| JSONL repair | Durable receipt with original digest/prefix → preserve full journal → atomically publish complete prefix → complete receipt → audit; interrupted repair resumes against the preserved original |
 | Legacy checkpoint index | Verify recorded direct files → archive old manifest → publish root-file manifest → audit; retry index accepts the matching prior archive |
 | Recover | Restore or preserve tree → establish archival custody → archive tree/entries → save prior evidence/plan → mark partial recovery or verify publication → complete receipt/clear active transaction |
 
