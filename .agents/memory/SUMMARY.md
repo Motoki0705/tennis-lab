@@ -18,7 +18,7 @@
 
 ## [environment](environment/index.md) — 環境の癖
 
-- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。ホストRAM（上限24GB）が尽きると、学習はtracebackなしで止まる。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。親レビューの隔離CPUテストのprobeが通らず、CIログも読めないので、指示に書かないと統合レビューが `incomplete` になる。distroが再起動しても boot_id は変わらず、旧PID名前空間のプロセスはすべて消える。
+- WSL2 + 16GB GPU。VRAMがあふれてもOOMにならず、ホスト全体が固まる。WSLのメモリ（`.wslconfig` で上限40GB）が尽きると、学習はtracebackなしで止まり、Claude Code は待機中のbackground shellを止める。Blender EEVEE は d3d12 の環境変数を指定しないと、黙って CPU で描画する。親レビューの隔離CPUテストのprobeが通らず、CIログも読めないので、指示に書かないと統合レビューが `incomplete` になる。distroが再起動しても boot_id は変わらず、旧PID名前空間のプロセスはすべて消える。
 
 ## [gotcha](gotcha/index.md) — 落とし穴
 
