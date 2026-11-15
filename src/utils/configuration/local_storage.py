@@ -8,6 +8,7 @@ import shlex
 import stat
 import subprocess
 import tomllib
+from functools import cache
 from pathlib import Path
 
 from src.utils.configuration.errors import PathContractError
@@ -62,13 +63,14 @@ def _standard_data_spelling(root: Path, path: Path) -> Path:
     return root.joinpath(*parts[2:])
 
 
-def _standard_repository() -> Path:
-    """Use the same Git common-directory authority as storage_tier.main_checkout."""
+@cache
+def _standard_repository(checkout: Path) -> Path:
+    """Cache only the successful Git repository identity for a runtime checkout."""
     common = subprocess.check_output(
         [
             "git",
             "-C",
-            str(PROJECT_ROOT),
+            str(checkout),
             "rev-parse",
             "--path-format=absolute",
             "--git-common-dir",
@@ -84,20 +86,18 @@ def declared_data_path(root: Path, path: Path, resolved: Path) -> Path | None:
 
     Keeping the logical name preserves DATA-relative consumer serialization.
     Only DATA has this additional authority; ordinary paths retain the usual
-    containment checks. Configuration and alias contents are never cached.
+    containment checks, without needing Git or policy validation for an already
+    contained path. Configuration and alias contents are never cached.
     """
-    if (
-        root.name != "data"
-        or path == root
-        or (path == resolved and resolved.is_relative_to(root))
-        or not POLICY_CONFIG.exists()
-    ):
+    if resolved.is_relative_to(root):
+        return None
+    if root.name != "data" or path == root or not POLICY_CONFIG.exists():
         return None
     try:
         # Git identifies main even before a new runtime worktree has data/.
         # Require the canonical main/data path, without following its legacy
         # migration symlink. A custom root gets no policy escape authority.
-        if root != _standard_repository() / "data":
+        if root != _standard_repository(PROJECT_ROOT) / "data":
             return None
         spelling = _standard_data_spelling(root, path)
         fd = os.open(POLICY_CONFIG, os.O_RDONLY | os.O_NOATIME | os.O_NOFOLLOW)
@@ -139,9 +139,6 @@ def declared_data_path(root: Path, path: Path, resolved: Path) -> Path | None:
         if selected is None:
             return None
         alias, expected, logical = selected
-        if not alias.is_symlink() and resolved.is_relative_to(root):
-            # The standard DATA root may contain ordinary local directories.
-            return None
         if ".." in logical.parts:
             raise ValueError("parent traversal through an unmanaged data link")
         if not os.path.ismount(mount):

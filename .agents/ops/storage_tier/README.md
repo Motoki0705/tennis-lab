@@ -84,8 +84,15 @@ be explicitly mirrored/evicted/hydrated as units. The original E: unmanaged-size
 metadata inventory is retained. Command output and write-operation audit records
 include `unmanaged_links_D`. Reference failures include observations on stderr.
 
-The shared `PathResolver` reads the same checkout's [config.toml](config.toml),
-without a second alias list. For the standard DATA root only, an exact declared
+The shared `PathResolver` accepts ordinary resolution inside the DATA root
+without Git, policy parsing or E: exception validation. A declared link pointing
+inside D: can therefore pass this path boundary; this does not certify the
+storage layout. `scan`, `activate` and actual storage operations still reject
+any declared link whose target differs from its exact E: counterpart, including
+an internal D: target.
+
+Only resolution outside the DATA root consults the same checkout's
+[config.toml](config.toml), without a second alias list. For the standard DATA root only, an exact declared
 D: alias to its mounted E: counterpart is accepted. The standard root is exactly
 `main_checkout / data`, where `main_checkout` is the parent of the absolute Git
 common directory queried from the runtime's `PROJECT_ROOT`, as in the storage
@@ -93,6 +100,10 @@ CLI. A custom root merely named `data` receives no exception: internal links
 retain ordinary containment semantics and external links, including E:-shaped
 counterparts, remain forbidden. The default root does not depend on whether a
 new runtime worktree already has its shared `data` link.
+Successful Git repository identity is cached per runtime checkout for the
+process lifetime; policy and link contents are revalidated on every request for
+additional authority. If the first required Git lookup cannot run or lacks
+metadata, that request fails explicitly. Ordinary containment needs no lookup.
 
 Absolute input spellings through `main_checkout/.claude/worktrees/<name>/data`
 are accepted only through real `.claude`, `worktrees` and worktree directories

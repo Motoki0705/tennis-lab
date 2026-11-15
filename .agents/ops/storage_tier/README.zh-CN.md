@@ -61,11 +61,16 @@ dataset container直属版本root及单位边界/祖先上的未声明symlink在
 保留E:未分类目录原有的metadata容量调查。命令输出与写操作audit包含 `unmanaged_links_D`；
 引用检查失败也通过stderr保留观察记录。
 
-共享 `PathResolver` 读取同一checkout的 [config.toml](config.toml)，不维护第二份引用名单。
+共享 `PathResolver` 对解析后仍位于DATA root内的路径直接应用普通包含规则，不调用Git、不读取policy，也不进行E:例外验证。
+声明名称的链接即使指向D:内部也可能通过此路径边界，但这不证明存储布局有效。
+`scan`、`activate`及实际storage操作仍拒绝目标不等于精确E:对应路径的声明链接，包括D:内部目标。
+只有需要root外额外权限时才读取同一checkout的 [config.toml](config.toml)，不维护第二份引用名单。
 仅对标准DATA root，声明的D:链接精确指向已挂载E:对应路径时才允许。
 标准root必须精确等于 `main_checkout / data`；main checkout由runtime的 `PROJECT_ROOT` 查询Git绝对common directory，
 取其父目录，与storage CLI使用相同规则。仅basename为data的custom root不获得例外：内部链接保持原包含规则，
 外部链接（包括E:对应路径形状）仍被拒绝。runtime worktree尚未创建共享data链接也不改变标准root。
+Git repository身份仅在查询成功后按runtime checkout在进程内缓存；每次申请额外权限仍重新验证policy和link内容。
+首次必要的Git查询无法执行或缺少metadata时明确报错，普通包含判断无需此查询。
 
 绝对输入中的 `main_checkout/.claude/worktrees/<name>/data` 仅在 `.claude`、`worktrees`、worktree均为实际目录，
 且data为直接指向标准root的绝对symlink时接受。不接受任意前缀、链接祖先或root链接链。

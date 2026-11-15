@@ -188,6 +188,7 @@ def test_wrong_reference_fails_even_for_an_explicit_unrelated_unit(
         "real-directory",
         "target-symlink",
         "ancestor-symlink",
+        "inside-D",
     ],
 )
 def test_external_reference_never_uses_an_unverified_target(lab: Lab, bad: str) -> None:
@@ -207,6 +208,11 @@ def test_external_reference_never_uses_an_unverified_target(lab: Lab, bad: str) 
         other = target.with_name("preserved")
         lab.filesystem.rename(target, other)
         target.symlink_to(other)
+    elif bad == "inside-D":
+        inside = lab.config.repo / "data/local"
+        inside.mkdir()
+        link.unlink()
+        link.symlink_to(inside)
     else:
         root = lab.config.repo / "data"
         lab.filesystem.rename(root, root.with_name("preserved-data"))
@@ -299,20 +305,24 @@ def test_reference_cannot_be_selected_as_a_managed_unit(
     assert link.is_symlink()
 
 
-@pytest.mark.parametrize("wrong", [False, True])
+@pytest.mark.parametrize("target_kind", ["valid", "wrong-E", "inside-D"])
 def test_activate_validates_external_references(
     lab: Lab,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
-    wrong: bool,
+    target_kind: str,
 ) -> None:
     module = importlib.import_module("storage_tier.__main__")
     for name in ("outputs", "ckpt"):
         (lab.config.repo / name).mkdir()
     link = external(lab)
-    if wrong:
+    if target_kind != "valid":
+        target = lab.config.mirror / "outside"
+        if target_kind == "inside-D":
+            target = lab.config.repo / "data/local"
+            target.mkdir()
         link.unlink()
-        link.symlink_to(lab.config.mirror / "outside")
+        link.symlink_to(target)
     monkeypatch.setattr(module, "main_checkout", lambda path: lab.config.repo)
     monkeypatch.setattr(module, "common_directory", lambda path: lab.config.repo)
     monkeypatch.setattr(module.Config, "load", lambda *args: lab.config)
@@ -321,7 +331,7 @@ def test_activate_validates_external_references(
     monkeypatch.setattr("sys.argv", ["storage_tier", "activate", "--dry-run"])
     code = module.main()
     captured = capsys.readouterr()
-    assert code == int(wrong), captured
+    assert code == int(target_kind != "valid"), captured
     assert not lab.config.state.exists()
 
 

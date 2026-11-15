@@ -141,9 +141,7 @@ def test_consumers_keep_data_relative_inputs_through_declared_e_links(
             read_consumer()
 
 
-@pytest.mark.parametrize(
-    "fault", ["nested-escape", "parent-escape", "inside-D", "other-role"]
-)
+@pytest.mark.parametrize("fault", ["nested-escape", "parent-escape", "other-role"])
 def test_data_reference_exception_keeps_other_containment_guards(
     tiered, fault: str
 ) -> None:
@@ -156,12 +154,6 @@ def test_data_reference_exception_keeps_other_containment_guards(
         fragment = "synthetic_data_generation/raw/escape.bin"
     elif fault == "parent-escape":
         parent = resolver.resolve(PathRole.DATA, "synthetic_data_generation/raw")
-    elif fault == "inside-D":
-        alias = repo / relative
-        alias.unlink()
-        (repo / "data/wrong").mkdir()
-        alias.symlink_to(repo / "data/wrong")
-        fragment = "synthetic_data_generation"
     with pytest.raises(PathContractError):
         if fault == "parent-escape":
             resolver.resolve_beneath(PathRole.DATA, parent, "../scenes/B00")
@@ -276,8 +268,9 @@ def test_worktree_absolute_inputs_keep_the_standard_data_contract(
 
 
 @pytest.mark.parametrize("target_kind", ["internal", "external", "E-shaped"])
+@pytest.mark.parametrize("git_state", ["available", "missing", "metadata-missing"])
 def test_custom_data_root_keeps_original_containment(
-    tiered, monkeypatch: pytest.MonkeyPatch, target_kind: str
+    tiered, monkeypatch: pytest.MonkeyPatch, target_kind: str, git_state: str
 ) -> None:
     repo, mount, _, _, _, resolver, _ = tiered
     custom = repo.parent / "custom/data"
@@ -296,6 +289,12 @@ def test_custom_data_root_keeps_original_containment(
     alias = custom / "synthetic_data_generation"
     alias.symlink_to(target, target_is_directory=True)
     custom_resolver = PathResolver(replace(resolver.roots, data_root=custom))
+    if git_state == "missing":
+        empty_path = repo.parent / "empty-PATH"
+        empty_path.mkdir()
+        monkeypatch.setenv("PATH", str(empty_path))
+    elif git_state == "metadata-missing":
+        (repo / ".git").rename(repo / ".git-retained")
     if target_kind == "internal":
         result = custom_resolver.resolve(
             PathRole.DATA, "synthetic_data_generation/input.txt"
@@ -367,3 +366,53 @@ def test_runtime_worktree_uses_main_data_even_before_its_shared_link_is_created(
     result = resolver.resolve(PathRole.DATA, relative)
     assert result == mirror / "data" / relative
     assert result.read_bytes() == b"configuration fixture; never decoded"
+
+
+def test_contained_declared_link_keeps_ordinary_path_rules_without_git(
+    tiered, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, _, _, links, _, resolver, _ = tiered
+    target = repo / "data/local"
+    target.mkdir()
+    (target / "input.bin").write_bytes(b"ordinary contained input")
+    alias = repo / links[0]
+    alias.unlink()
+    alias.symlink_to(target, target_is_directory=True)
+    empty_path = repo.parent / "empty-PATH"
+    empty_path.mkdir()
+    monkeypatch.setenv("PATH", str(empty_path))
+    result = resolver.resolve(PathRole.DATA, "synthetic_data_generation/input.bin")
+    assert result.read_bytes() == b"ordinary contained input"
+    assert resolver.relative(PathRole.DATA, alias / "input.bin") == Path(
+        "local/input.bin"
+    )
+
+
+def test_repository_identity_is_cached_but_policy_and_alias_are_revalidated(
+    tiered, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, _, mirror, links, _, resolver, write_policy = tiered
+    query = local_storage.subprocess.check_output
+    calls = []
+
+    def observed(*args, **kwargs):
+        calls.append(args)
+        return query(*args, **kwargs)
+
+    monkeypatch.setattr(local_storage.subprocess, "check_output", observed)
+    relative = "synthetic_data_generation/raw/B00.mp4"
+    for _ in range(2):
+        resolved = resolver.resolve(PathRole.DATA, relative)
+        assert resolved.read_bytes() == b"configuration fixture; never decoded"
+        assert resolver.relative(PathRole.DATA, resolved) == Path(relative)
+    assert len(calls) == 1
+    write_policy([name for name in links if name != links[0]])
+    with pytest.raises(PathContractError):
+        resolver.resolve(PathRole.DATA, relative)
+    write_policy(links)
+    alias, expected = repo / links[0], mirror / links[0]
+    alias.unlink()
+    alias.symlink_to(os.path.relpath(expected, alias.parent), target_is_directory=True)
+    with pytest.raises(PathContractError):
+        resolver.resolve(PathRole.DATA, relative)
+    assert len(calls) == 1

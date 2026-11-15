@@ -66,12 +66,17 @@ dataset container直下の版rootを含め、単位の境界・上位にある�
 E:未分類領域の既存のmetadataサイズ調査は維持する。出力と変更操作のauditに `unmanaged_links_D` を残し、
 参照検査の失敗時もstderrへ観測記録を出す。
 
-共通の `PathResolver` も同じcheckoutの [config.toml](config.toml) を読み、参照名を二重に持たない。
+共通の `PathResolver` は解決先がDATA root内なら、Git・policy読込み・E:例外検証なしで通常の包含規則を適用する。
+宣言名のlinkがD:内部を指す場合も、このパス境界では許可し得るが、配置の認証ではない。
+`scan`・`activate`・実際のstorage操作は、D:内部を含め、宣言linkのtargetがE:の対応先と違えば引き続き拒否する。
+root外への追加権限が必要な場合だけ同じcheckoutの [config.toml](config.toml) を読み、参照名を二重に持たない。
 標準DATA rootに限り、宣言したD:のlinkがmount済みE:の対応pathへ完全一致するときだけ許可する。
 標準rootは、runtimeの `PROJECT_ROOT` からGitへ問い合わせた絶対common directoryの親をmain checkoutとし、
 その直下の `data` と完全一致するものに限定する（storage CLIと同じ決定方法）。
 basenameがdataというだけのcustom rootに例外を与えない。custom root内の内部linkは従来どおり許可し、
 E:対応先の形を含む外部linkは拒否する。runtime worktreeに共有data linkを作る前でも標準rootは変わらない。
+Git repositoryの同一性は照会成功後、runtime checkoutごとにプロセス内でcacheする。policy・link内容は追加権限を
+求めるたびに再検証する。必要な初回Git照会が実行不能・metadata不在なら明確なエラーにし、通常の包含には照会しない。
 
 絶対入力の `main_checkout/.claude/worktrees/<name>/data` という綴りは、`.claude`・`worktrees`・worktreeが
 実dirで、dataが標準rootへの直接の絶対symlinkの場合だけ認める。任意の接頭辞、祖先link、root linkの連鎖は認めない。
