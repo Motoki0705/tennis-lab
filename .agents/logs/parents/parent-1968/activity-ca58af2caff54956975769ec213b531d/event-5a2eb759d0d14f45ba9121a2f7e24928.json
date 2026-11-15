@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "d24cbe0d327c430fbbcf42bb06464ebc",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=output.json; content_sha256=467cf34eef62b46fcffcebc077f82a46162cbfa4e0a745279c606c5702f7b96d; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "c8be3e7eed724d0daf652505495fc310",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.output.json: status=succeeded; verdict=approve; exception=True; previous_review_keys=['ac6cc79a64664a93bfe7e4283219f54f']; run [private identifier] の固定5件を今回のレビューとして確認し、blocker/majorはありません。受入条件、テストの検出契約・再利用・コスト、文書、関連PRとmainとの接続を確認しました。全件で指定HEAD・diffが一致し、最新Pythonを含む全14 jobの成功を照合しました。review MCPのGitHub取得はバージョン不適合でしたが、GitHub連携で本文・コメント・CIログを取得できました。隔離CPUテストは許可リスト未設定のため再実行せず、静的確認とCI・PR本文の実測を使用しました。",
+      "verifies": []
+    },
+    "id": "5a2eb759d0d14f45ba9121a2f7e24928",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "ca58af2caff54956975769ec213b531d",
+      "delegation": null,
+      "issue": null,
+      "parent": 1968,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "e42177fdebb64ce59fde7dcd763e1d0f"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T07:24:56.544048+00:00"
+      },
+      "recorded_at": "2026-11-14T07:24:56.544063+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 1,
+    "version": 2
+  }
+}

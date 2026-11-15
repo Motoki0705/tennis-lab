@@ -1,0 +1,85 @@
+{
+  "record": {
+    "data": {
+      "action_id": "be9e95eb323d4bed888f882682e9ff28",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.review-request; artifact=saved parent verification; content_sha256=034dccd1458cdc8214328ecc7a4f1f62902209c2582cd98791cd99cda53b8f7c; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=034dccd1458cdc8214328ecc7a4f1f62902209c2582cd98791cd99cda53b8f7c; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": "9561edf35f0c4ad1b324860a00b57365",
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[1998]; **#1641 / PR #1994**: worker報告。公式URLのquota HTMLを再確認、取得済み実ファイル2件の固定SHA-256・サイズ一致、同サイズ破損の拒否、上書きしない動作を実ファイルで確認。関連146件成功（追加9件）、pre-commit成功。対象HEAD `693ece056` のCI run 43565814404 は全14 job成功。GPU実行・独立venvでの全体導入は未実施。",
+      "verifies": [
+        "05ac4f35c2e84fa692bbedf94a85287b"
+      ]
+    },
+    "id": "2cdcca4c43f04b3091d9ca279316a44e",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "a5ee4a48ad9e46b09ea8a51ef1ec2e88",
+      "delegation": null,
+      "issue": null,
+      "parent": 1968,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "8ac07a241a8d420f9c3471af0f5abd08"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T17:27:16.724243+00:00"
+      },
+      "recorded_at": "2026-11-14T17:27:16.724259+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

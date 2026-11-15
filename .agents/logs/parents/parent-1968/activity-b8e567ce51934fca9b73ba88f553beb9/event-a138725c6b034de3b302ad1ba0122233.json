@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "49e5becee3564e3e90c407648e0c1c61",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge_gate.merge; artifact=command response; content_sha256=2a9babf6337c511c22e9f9fa16b037496d87ae71d21299b8e4e64415d4c1a3b5; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "rejected",
+      "summary": "merge_gate.merge: rejected before execution; GitHubHTTPError; details in private evidence",
+      "verifies": []
+    },
+    "id": "a138725c6b034de3b302ad1ba0122233",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b8e567ce51934fca9b73ba88f553beb9",
+      "delegation": null,
+      "issue": null,
+      "parent": 1968,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T06:29:07.442847+00:00"
+      },
+      "recorded_at": "2026-11-15T06:29:07.442918+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

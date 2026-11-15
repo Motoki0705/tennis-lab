@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "8243e408362846ec902fa61a69364256",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.delegate; artifact=command response; content_sha256=3616c18ebcbc430066ca04a936876cced503973998a831521f4e05b30c8cdfd3; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.delegate: success; {\n  \"action\": \"launch\",\n  \"agent\": \"codex\",\n  \"branch\": \"codex/parent-session-skill-decision-points\",\n  \"child\": 1704,\n  \"delegated\": true,\n  \"parent\": 1968\n}",
+      "verifies": []
+    },
+    "id": "51ca2c1be82b494097f584ed5e52c181",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "0435d313f7eb4881ae10756e9fc7fe49",
+      "delegation": null,
+      "issue": 1704,
+      "parent": 1968,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-13T08:06:11.560476+00:00"
+      },
+      "recorded_at": "2026-11-13T08:06:11.560493+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
