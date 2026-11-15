@@ -22,7 +22,7 @@ from worker_logs.journal import (
     require,
 )
 from worker_logs.safety import Guard
-from worker_logs.schema import digest, fields, json_bytes, sha
+from worker_logs.schema import digest, fields, integer, json_bytes, sha
 
 from .graph import references, states, validate_graph
 from .projection import render, validate_public
@@ -32,7 +32,15 @@ PRIVATE_FIELDS = {"sessions", "runs", "identifiers", "roots", "checkout_commit"}
 
 
 def private_context(value: Any) -> None:
-    fields(value, PRIVATE_FIELDS)
+    fields(
+        value,
+        PRIVATE_FIELDS
+        | (
+            {"publication_actor"}
+            if isinstance(value, dict) and "publication_actor" in value
+            else set()
+        ),
+    )
     for key in ("sessions", "runs", "identifiers", "roots"):
         require(isinstance(value[key], list), "journal_source")
         require(
@@ -43,6 +51,15 @@ def private_context(value: Any) -> None:
         value["checkout_commit"] is None or digest(value["checkout_commit"], 40),
         "journal_source",
     )
+    if "publication_actor" in value:
+        actor = value["publication_actor"]
+        fields(actor, {"parent", "session", "generation"})
+        require(
+            integer(actor["parent"])
+            and integer(actor["generation"])
+            and actor["session"] in value["sessions"],
+            "journal_source",
+        )
 
 
 def transform_guard(value: Any, repo: str) -> Guard:
@@ -188,7 +205,12 @@ class Journal:
                 )
             elif event == "publication":
                 fields(
-                    entry, common | {"record_id", "status", "evidence", "error", "at"}
+                    entry,
+                    common
+                    | {"record_id", "status", "evidence", "error", "at"}
+                    | (
+                        {"publication_actor"} if "publication_actor" in entry else set()
+                    ),
                 )
             else:
                 require(False, "journal_invalid")
@@ -285,6 +307,21 @@ class Journal:
                     )
                 prepared[record_id] = entry
             else:
+                if "publication_actor" in entry:
+                    actor = entry["publication_actor"]
+                    fields(actor, {"parent", "request_id"})
+                    public_id(actor["request_id"])
+                    request = captured.get(actor["request_id"], {})
+                    require(
+                        integer(actor["parent"])
+                        and request.get("kind") == "action"
+                        and request["data"]["operation"] == "publish"
+                        and contexts[actor["request_id"]]
+                        .get("publication_actor", {})
+                        .get("parent")
+                        == actor["parent"],
+                        "journal_source",
+                    )
                 require(
                     record_id in prepared and prepared[record_id]["status"] == "ready",
                     "final_not_ready",
@@ -445,6 +482,7 @@ class Journal:
         at: str,
         evidence: list[dict[str, Any]],
         error: str | None = None,
+        publication_actor: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Record only publication facts; callers perform Git/HTTP separately."""
         public_id(record_id)
@@ -456,6 +494,11 @@ class Journal:
             "evidence": copy.deepcopy(evidence),
             "error": error,
             "at": at,
+            **(
+                {"publication_actor": copy.deepcopy(publication_actor)}
+                if publication_actor is not None
+                else {}
+            ),
         }
         with self._locked():
             row = self.read()
@@ -478,6 +521,99 @@ class Journal:
                     validate_public(prepared["payload"], checker)
             self._append(row, entry)
             return copy.deepcopy(row["entries"][-1])
+
+    def publication_request(
+        self, actor: dict[str, Any], *, at: str, boundary: str | None = None
+    ) -> dict[str, Any] | None:
+        """Freeze one explicit foreign-publication request per actor/boundary.
+
+        This is an action request, never a fabricated decision or merge success.
+        Session identity remains private. Retry reuses the frozen action, so
+        publication bookkeeping cannot recursively generate further batches.
+        """
+        fields(actor, {"parent", "session", "generation"})
+        require(
+            integer(actor["parent"])
+            and actor["parent"] != self.parent
+            and integer(actor["generation"])
+            and isinstance(actor["session"], str)
+            and bool(actor["session"]),
+            "journal_source",
+        )
+        timestamp(at)
+        prefix = "unassigned-publication:"
+        actor_prefix = prefix + sha(json_bytes(actor)) + ":"
+        with self._locked():
+            row = self.read()
+            pending = {
+                s["id"] for s in self.status() if s["publication_status"] != "published"
+            }
+            if not pending and boundary is None:
+                return None
+            captures = [e for e in row["entries"] if e["event"] == "capture"]
+            request = next(
+                (
+                    e
+                    for e in captures
+                    if e["key"].startswith(actor_prefix)
+                    and e["record"]["id"] in pending
+                ),
+                None,
+            )
+            if request is None:
+                targets = sorted(
+                    e["record"]["id"]
+                    for e in captures
+                    if e["record"]["id"] in pending and not e["key"].startswith(prefix)
+                )
+                key = actor_prefix + sha(
+                    json_bytes({"records": targets, "batch": boundary})
+                )
+                request = self._key(row, key)
+                if request is None:
+                    record = {
+                        "schema_version": 1,
+                        "id": new_id(),
+                        "kind": "action",
+                        "scope": {
+                            "repo": self.repo,
+                            "parent": self.parent,
+                            "issue": None,
+                            "activity_key": new_id(),
+                            "delegation": None,
+                            "review_key": None,
+                        },
+                        "time": {
+                            "occurred_at": {"status": "observed", "value": at},
+                            "received_at": {"status": "observed", "value": at},
+                            "recorded_at": at,
+                        },
+                        "data": {
+                            "decision_id": None,
+                            "plan_id": None,
+                            "decision_missing_reason": "No decision linked to this explicit publication request",
+                            "previous_action_id": None,
+                            "operation": "publish",
+                            "state": "requested",
+                            "result_ids": [],
+                            "summary": f"公開の担当: 親 #{actor['parent']}。担当なしの親 #{self.parent} の判断記録の公開要求（完了は別途照合）。",
+                        },
+                    }
+                    request = {
+                        "event": "capture",
+                        "key": key,
+                        "record": record,
+                        "private": {
+                            "sessions": [actor["session"]],
+                            "runs": [],
+                            "identifiers": [],
+                            "roots": [],
+                            "checkout_commit": None,
+                            "publication_actor": copy.deepcopy(actor),
+                        },
+                    }
+                    self._append(row, request)
+            return {"parent": actor["parent"], "request_id": request["record"]["id"]}
 
     def public_payloads(self) -> list[dict[str, Any]]:
         """Publication units in dependency order, including sanitization counts."""
@@ -552,6 +688,11 @@ class Journal:
                     else "unprepared",
                     "error": publication["error"] if publication else None,
                     "result": result_states.get(record_id),
+                    **(
+                        {"publication_actor": publication["publication_actor"]}
+                        if publication and "publication_actor" in publication
+                        else {}
+                    ),
                 }
             )
         self._guard(row).check(result)

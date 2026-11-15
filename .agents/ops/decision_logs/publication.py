@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
 from worker_logs.journal import PublicationError, atomic, require
+from worker_logs.ownership import require_owner
 from worker_logs.publication import GitHub as WorkerGitHub
 from worker_logs.publication import GitHubHTTPError, MergeRejected, canonical_remote
 from worker_logs.publication import Publisher as GitTransport
@@ -70,6 +72,9 @@ class Publisher:
         self.document: dict[str, Any] = {}
         self._snapshots: dict[str, dict[str, bytes]] = {}
         self.record_ids = record_ids
+        self.owner_check: Callable[[], bool] | None = None
+        self.actor: dict[str, Any] | None = None
+        self.publication_actor: dict[str, Any] | None = None
 
     def git(self, *args: str, cwd: Path | None = None) -> bytes:
         return cast(bytes, self.transport.git(*args, cwd=cwd))
@@ -183,6 +188,7 @@ class Publisher:
         return retained
 
     def commit(self, batch: dict[str, Any], revision: dict[str, Any]) -> None:
+        require_owner(self.owner_check)
         files = self.plan(batch, revision["base"])
         require(bool(files), "unsafe_diff")
         tree = self.worktree(batch)
@@ -250,6 +256,7 @@ class Publisher:
         known = {r["head"] for r in batch["revisions"] if r["head"]}
         require(remote is None or remote in known, "remote_head_changed")
         if remote != head:
+            require_owner(self.owner_check)
             # A clean verified replacement is generated from new main; the lease
             # prevents overwriting any unrelated remote update.
             self.git(
@@ -271,6 +278,7 @@ class Publisher:
                 pr = found[0]
             else:
                 require(not batch["pr_create_attempted"], "pr_creation_uncertain")
+                require_owner(self.owner_check)
                 batch.update(pr_create_attempted=True, stage="pr_create")
                 self.save()
                 pr = self.github.create(
@@ -349,6 +357,7 @@ class Publisher:
                 at=now(),
                 evidence=evidence,
                 error=error,
+                publication_actor=self.publication_actor,
             )
 
     def confirm(self, batch: dict[str, Any], pr: dict[str, Any]) -> dict[str, Any]:
@@ -437,6 +446,11 @@ class Publisher:
             if batch and batch["revisions"]
             else None,
             **extra,
+            **(
+                {"publication_actor": self.publication_actor}
+                if self.publication_actor
+                else {}
+            ),
         }
         Guard().check(result)
         return result
@@ -452,6 +466,7 @@ class Publisher:
                 or retry
                 and state["publication_status"] == "blocked"
             ):
+                require_owner(self.owner_check)
                 self.journal.prepare(
                     state["id"],
                     key="publication-prepare:" + new_id(),
@@ -489,6 +504,26 @@ class Publisher:
             "repository_changed",
         )
         main = self.main()
+        require_owner(self.owner_check)
+        if self.actor is not None:
+            self.publication_actor = self.journal.publication_request(
+                self.actor, at=now(), boundary=active["key"] if active else None
+            )
+            if self.publication_actor is not None:
+                request_id = self.publication_actor["request_id"]
+                if self.record_ids is not None:
+                    self.record_ids.add(request_id)
+                if (
+                    next(s for s in self.journal.status() if s["id"] == request_id)[
+                        "publication_status"
+                    ]
+                    == "unprepared"
+                ):
+                    require_owner(self.owner_check)
+                    self.journal.prepare(
+                        request_id, key="publication-prepare:" + new_id(), at=now()
+                    )
+                payloads = self.journal.public_payloads()
         status = {r["id"]: r for r in self.journal.status()}
         # Process death can fall between recording the observed merge and
         # appending all per-record publication facts. Reconcile that batch first.
@@ -516,6 +551,7 @@ class Publisher:
                     return self.confirm(last, self.github.get(last["pr_number"]))
                 return self.view()
             key = new_id()
+            require_owner(self.owner_check)
             active = {
                 "repo": self.journal.repo,
                 "parent": self.journal.parent,
@@ -569,6 +605,7 @@ class Publisher:
                 merge_commit=None,
             )
             self.save()
+        require_owner(self.owner_check)
         self.note(active, "pending")
         for _ in range(3):
             if active["pr_number"] is not None:
@@ -614,6 +651,7 @@ class Publisher:
                 main = latest
                 continue
             require(fresh.get("mergeable") is not False, "merge_conflict")
+            require_owner(self.owner_check)
             active.update(merge_attempted=True, stage="merge_attempted", error=None)
             active.pop("merge_http_status", None)
             self.save()
@@ -624,7 +662,17 @@ class Publisher:
         self.save()
         return self.view(active)
 
-    def publish(self, *, dry_run: bool = False, retry: bool = False) -> dict[str, Any]:
+    def publish(
+        self,
+        *,
+        dry_run: bool = False,
+        retry: bool = False,
+        owner_check: Callable[[], bool] | None = None,
+        actor: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        self.owner_check, self.actor = owner_check, actor
+        self.publication_actor = None
+        require_owner(owner_check)
         # The read precedes lock creation to reject a symlinked private hierarchy.
         document = storage.read(self.path, self.journal.repo, self.journal.parent)
         if dry_run:
@@ -666,6 +714,7 @@ class Publisher:
                 self.path, self.journal.repo, self.journal.parent
             )
             try:
+                require_owner(owner_check)
                 return self._publish(retry=retry)
             except (
                 ValueError,
@@ -691,6 +740,10 @@ class Publisher:
                     ),
                     None,
                 )
+                if code == "log_owner_mismatch":
+                    # Ownership loss is not corrupt input. Preserve the last
+                    # durable batch/journal for the next authorized publisher.
+                    return self.view(active, error=code, saved_to_main=False)
                 if active:
                     if active.get("merge_attempted") and isinstance(
                         exc, subprocess.SubprocessError

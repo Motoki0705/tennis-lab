@@ -261,8 +261,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N p
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --retry
 ```
 
-没有定时器、轮询或每次捕获自动发布。入口使用已配置的parent state并检查负责session，
-issue关闭后的历史发布也检查同一身份，不授予新的实现权限。
+没有定时器、轮询或每次捕获自动发布。普通入口使用已配置的parent state并检查原负责session，
+原负责人也可在担当结束后继续发布，不授予新的实现权限。
 通过 `Journal.prepare()` 准备尚未转换的捕获，将 `Journal.public_payloads()` 中所有ready且
 未发布的记录固定到该父issue的一个批次。blocked仍在状态中显示，独立安全的记录可以发布。
 先核对未完成批次，再创建下一批；批次进行中新到达的捕获，在该批merge后的下一次显式调用中处理。
@@ -272,6 +272,33 @@ release、handoff和自律父级结束时，也会在worker日志与结束结果
 剩余工作、负责方和恢复命令写入[结束checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint)。
 mergeable为null时，完成全部检查后仍发送固定HEAD的merge请求；false和HTTP拒绝保留为失败。
 status和dry-run不创建捕获或锁。
+
+当前负责的父级可以显式发布另一个无人负责父级的判断记录：
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT --dry-run
+# 检查预览后执行；修复blocked原因后可添加 --retry：
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT
+```
+
+预览和执行均要求调用session以 **active** 状态负责回收父级。目标必须是另一个父级，且registry中
+没有记录，或状态为 `ended`/`released`；拒绝 `active`/`handoff_pending`。不查询目标issue的open/closed
+状态，不执行register、handoff或registry更新。registry损坏或不可读时拒绝。固定开始时的操作session、
+generation与目标担当快照，在prepare、commit、push、PR创建和merge前重新核对。担当变化返回
+`log_owner_mismatch` 并保留已保存进度，不把源journal改为blocked；新的合格发布者可以继续。
+
+使用目标既有的 `parent-SOURCE_PARENT` journal、批次与retry机制。公开的 `publish` 行动记录显式请求
+和回收父级，在目标父级README链接的活动README显示发布负责人。请求不代表受理或merge成功。
+私有来历保留session与generation，每条发布事实通过 `publication_actor` 引用该请求。retry复用同一请求。
+若有固定的旧批次，先完成旧批次，再处理包含请求和剩余记录的一个批次；最多两批，不替换旧payload或PR。
+发布bookkeeping不生成新capture，此入口也不继续worker日志。dry-run不记录请求。
+自身父级的普通发布及release/handoff/supervisor路径保持原有行为。
+
+`remaining_publications` 返回源父级的decision_log残项，包括registry中不存在的父级。
+父级 `status`、`decision-log-status` 和结束checkpoint的 `decision_resume_command` 在无人负责时
+显示此入口与 `RECOVERY_PARENT`，使用时替换为调用session当前负责的active父级编号。
 
 公开目录保留现有worker文件：
 

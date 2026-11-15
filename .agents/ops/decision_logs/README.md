@@ -319,8 +319,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N p
 ```
 
 There is no timer, polling or implicit publication on each capture. The command
-uses the configured parent state and checks the assigned session, including for
-historical publication after issue closure. It grants no implementation authority.
+uses the configured parent state and checks the original assigned session, which
+can also continue publication after assignment end. It grants no implementation authority.
 It prepares unprepared captures through `Journal.prepare()`, then freezes all
 ready unpublished `Journal.public_payloads()` in one parent batch. Blocked captures
 stay visible in status; independently safe records can still be published.
@@ -334,6 +334,42 @@ undoes ownership changes; the [exit checkpoint](../worker_logs/README.md#続行�
 retains outstanding work, its owner and a resume command. Null mergeability does
 not delay a verified, SHA-pinned merge request. False and HTTP rejections remain
 failures. Status and dry-run create neither captures nor locks.
+
+An active parent can explicitly publish another, unassigned parent's records:
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT --dry-run
+# Publish after inspecting the preview; add --retry only after repairing blocked input:
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT
+```
+
+Both preview and publication require the calling session to own an **active**
+recovery parent. The distinct source parent must have no registry row, or have
+status `ended`/`released`; `active` and `handoff_pending` are refused. The source
+issue may be open or closed: issue lifecycle is not consulted and no registration,
+handoff or registry update occurs. Malformed/unreadable registry data is refused.
+The recovery session/generation and source ownership snapshot remain fixed and
+are rechecked before preparation, commit, push, PR creation and merge. Ownership
+loss returns `log_owner_mismatch`, preserves already saved progress and does not
+mark the source journal blocked; a newly authorized publisher can resume it.
+
+Publication uses the source's existing `parent-SOURCE_PARENT` journal, batch and
+retry policy. A public `publish` action records the explicit request and recovery
+parent in the activity README linked from the source parent README. It states a
+request, not acceptance or merge success. Private provenance retains the session
+and generation; per-record publication facts reference that request through
+`publication_actor`. Retries reuse the request. An old fixed batch is finished
+first, followed by at most one batch containing the request and remaining records;
+its payloads and PR are not replaced. No new captures are added by publication
+bookkeeping, and worker logs are not swept by this entry. Dry-run records no request.
+Normal own-parent and release/handoff/supervisor publication retain their behavior.
+
+`remaining_publications` keeps the source's decision-log rows, including absent
+registry entries. Parent `status`, `decision-log-status` and termination checkpoints
+show `decision_resume_command`; for unassigned sources it uses this entry with
+`RECOVERY_PARENT`, to be replaced by an active parent owned by the caller.
 
 The public tree keeps the existing worker files in place:
 

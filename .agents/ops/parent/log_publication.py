@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from worker_logs.journal import PublicationError
+from worker_logs.journal import PublicationError, require
 from worker_logs.lifecycle import (
     capture_exit,
     publish_decisions,
@@ -15,7 +15,12 @@ from worker_logs.lifecycle import (
     unavailable_exit,
 )
 from worker_logs.ownership import publication_owner
-from worker_logs.reconciliation import continue_workers
+from worker_logs.reconciliation import (
+    continue_workers,
+    decision_journal,
+    require_batch_captures,
+)
+from worker_logs.schema import integer
 
 from .state import Store
 
@@ -86,6 +91,95 @@ def read_only(args: Any) -> bool:
     )
 
 
+def publish_unassigned_decisions(
+    args: Any, continuation: Continuation, *, root: Path
+) -> dict[str, Any]:
+    """An active parent publishes a foreign journal without adopting its work."""
+    from decision_logs.publication import Publisher
+    from decision_logs.publication_state import read
+
+    store, repo, parent, identity = (
+        continuation.store,
+        continuation.repo,
+        continuation.parent,
+        continuation.identity,
+    )
+    target = args.unassigned_parent
+    require(integer(target) and target != parent, "invalid_log_reference")
+    target_key = f"{repo.casefold()}#{target}"
+    with store.snapshot():
+        owner = dict(store.parents.get(continuation.key, {}))
+        original_target = dict(store.parents.get(target_key, {}))
+    if not (
+        identity is not None
+        and owner.get("session") == identity
+        and owner.get("status") == "active"
+        and owner.get("generation") == continuation.generation
+        and integer(continuation.generation)
+    ):
+        raise ValueError(
+            "unassigned decision publication requires an active assigned parent"
+        )
+    if original_target and original_target["status"] not in {"ended", "released"}:
+        raise ValueError(
+            "decision publication target must be unassigned, not active or handoff_pending"
+        )
+
+    def current() -> bool:
+        # No ownership is taken and no registry bytes are written. Snapshot is
+        # also used on dry-run so inspection creates no operation/registry locks.
+        try:
+            with store.snapshot():
+                actor = store.parents.get(continuation.key, {})
+                source = store.parents.get(target_key, {})
+                return bool(
+                    actor.get("session") == identity
+                    and actor.get("status") == "active"
+                    and actor.get("generation") == continuation.generation
+                    and {k: source.get(k) for k in ("session", "status", "generation")}
+                    == {
+                        k: original_target.get(k)
+                        for k in ("session", "status", "generation")
+                    }
+                    and (not source or source["status"] in {"ended", "released"})
+                )
+        except (ValueError, OSError, KeyError, TypeError):
+            raise PublicationError("log_owner_mismatch") from None
+
+    log = decision_journal(repo, target, state_dir=store.directory)
+    actor = {
+        "parent": parent,
+        "session": identity,
+        "generation": continuation.generation,
+    }
+    existing = read(log.path.with_name("publication.json"), log.repo, target)
+    require_batch_captures(log, existing)
+    if args.dry_run:
+        value = Publisher(root, log).publish(
+            dry_run=True, retry=args.retry, owner_check=current
+        )
+    else:
+        # A fixed old batch is reconciled first. The attribution request may
+        # therefore need one following batch. Always allow two visits: another
+        # publisher may have created the old batch after the admission read.
+        limit = {
+            r["id"] for r in log.status() if r["publication_status"] != "published"
+        }
+        value = {}
+        for _ in range(2):
+            value = Publisher(root, log, record_ids=limit).publish(
+                retry=args.retry, owner_check=current, actor=actor
+            )
+            if value["state"] != "merged" or value.get("error"):
+                break
+            pending = {
+                r["id"] for r in log.status() if r["publication_status"] != "published"
+            }
+            if not limit.intersection(pending):
+                break
+    return {**value, "recovery_parent": parent, "parent": target}
+
+
 class Continuation:
     def __init__(
         self, args: Any, store: Store, repo: str, parent: int, identity: str | None
@@ -147,6 +241,11 @@ class Continuation:
         if self.done or read_only(self.args):
             return
         self.done = True
+        if (
+            self.args.command == "publish-decision-log"
+            and getattr(self.args, "unassigned_parent", None) is not None
+        ):
+            return
         command = self.args.command
         if command not in MUTATIONS | {"project-setup", "project-sync", "evidence"}:
             return
