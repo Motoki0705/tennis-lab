@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import importlib
+import json
 from copy import deepcopy
+from dataclasses import asdict
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -12,6 +14,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE = ROOT / "tests/fixtures/knowledge/citation_map"
+BOUNDARIES = json.loads((FIXTURE.parent / "citation-boundaries.json").read_text())
 
 
 @pytest.fixture(scope="module")
@@ -39,16 +42,123 @@ def markdown(data: dict[str, Any]) -> str:
     return "---\n" + yaml.safe_dump(data, allow_unicode=True) + "---\nAdditional reading note.\n"
 
 
-@pytest.mark.parametrize(("namespace", "value", "expected"), [
-    ("doi", " https://doi.org/10.5555/FiXtUrE%2DB ", "10.5555/fixture-b"),
-    ("doi", "DOI:10.5555/FIXTURE-B", "10.5555/fixture-b"),
-    ("arxiv", "https://arxiv.org/pdf/2401.00002v12.pdf", "2401.00002"),
-    ("arxiv", "arXiv:hep-th/9901001v2", "hep-th/9901001"),
-    ("openalex", "https://openalex.org/w1000002", "W1000002"),
-    ("url", "HTTPS://EXAMPLE.ORG/a?version=2#section", "https://example.org/a?version=2"),
-])
-def test_identifier_aliases_have_explicit_normal_forms(identifiers: ModuleType, namespace: str, value: str, expected: str) -> None:
-    assert identifiers.normalize_identifier(namespace, value) == expected
+@pytest.fixture(scope="module")
+def boundary_library(api: ModuleType) -> Any:
+    return api.load_citations(FIXTURE)
+
+
+@pytest.fixture(scope="module")
+def contract_documents() -> dict[str, Any]:
+    result: dict[str, Any] = {"papers": {}, "searches": {}}
+    for kind in result:
+        for file in (FIXTURE / kind).glob("*.md"):
+            meta = yaml.safe_load(file.read_text().split("---", 2)[1])
+            result[kind][meta["title"] if kind == "papers" else meta["id"]] = meta
+    return result
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["libraries"], ids=lambda c: c["name"])
+def test_shared_library_contract(api: ModuleType, contract_documents: dict[str, Any], case: dict[str, Any]) -> None:
+    raw = deepcopy(contract_documents)
+    for edit in case["edits"]:
+        parent = raw
+        for key in edit["path"][:-1]:
+            parent = parent[key]
+        if edit.get("remove"):
+            del parent[edit["path"][-1]]
+        else:
+            parent[edit["path"][-1]] = deepcopy(edit["value"])
+    library = api.CitationLibrary()
+    observed: dict[str, Any] = {"papers": {}, "searches": {}}
+    try:
+        for kind, docs in raw.items():
+            for key, data in docs.items():
+                parsed = api.parse_document(markdown(data))
+                getattr(library, kind)[parsed.id] = parsed
+                observed[kind][key] = asdict(parsed)
+        accepted = not api.validate_library(library)
+    except ValueError:
+        accepted = False
+    assert accepted == case["accept"]
+    if accepted:
+        for expected in case.get("expect", []):
+            value = observed
+            for key in expected["path"]:
+                value = value[key]
+            assert value == expected["value"]
+
+
+def test_saved_wasb_library_accepts_both_searches(api: ModuleType) -> None:
+    directory = ROOT / "knowledge/citation_map"
+    library = api.load_citations(directory)
+    assert len(library.papers) == len(list((directory / "papers").glob("*.md")))
+    assert len(library.papers) >= 115
+    assert api.validate_library(library) == []
+    for search_id in ("search-wasb-comparison-depth1", "search-wasb-comparison-depth2"):
+        assert library.searches[search_id].root_id == "cite-baef928f0aefd5a6"
+        assert library.searches[search_id].status == "complete"
+    sources: dict[str, set[str]] = {}
+    for generation in library.searches["search-wasb-comparison-depth2"].generations:
+        for paper_id in generation.expanded_ids:
+            for ref in library.papers[paper_id].references:
+                if ref.target_id and "comparison" in ref.roles:
+                    sources.setdefault(ref.target_id, set()).add(paper_id)
+    assert len(sources) == 10
+    assert {target for target, papers in sources.items() if len(papers) == 2} == {"cite-8f0c4c4fb0a47be0", "cite-aece796df0c08e14", "cite-bee887c491b4ab99"}
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["external_ids"], ids=lambda c: c["name"])
+def test_identifier_aliases_have_explicit_normal_forms(api: ModuleType, identifiers: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    namespace, value, expected = case["namespace"], case["value"], case["normalized"]
+    if expected is None:
+        with pytest.raises(ValueError):
+            identifiers.normalize_identifier(namespace, value)
+    else:
+        assert identifiers.normalize_identifier(namespace, value) == expected
+    paper = deepcopy(next(iter(boundary_library.papers.values())))
+    paper.references = []
+
+    def parsed(saved_value: str) -> Any:
+        paper.external_ids = {namespace: saved_value}
+        paper.identity_key = f"{namespace}:{saved_value}"
+        paper.id = identifiers.citation_id(paper.identity_key)
+        return api.parse_document(api.serialize_document(paper))
+
+    if expected is not None:
+        canonical = parsed(expected)
+        assert canonical.external_ids == {namespace: expected}
+        assert api.validate_library(api.CitationLibrary(papers={canonical.id: canonical})) == []
+    if expected is None or value != expected:
+        with pytest.raises(ValueError):
+            parsed(value)
+    else:
+        assert parsed(value).external_ids == {namespace: value}
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["timestamps"], ids=lambda c: c["name"])
+def test_shared_timestamp_boundaries(api: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    search = deepcopy(boundary_library.searches["search-fixture-mixed-depth2"])
+    search.created_at = case["value"]
+    if not case["accept"]:
+        with pytest.raises(ValueError):
+            api.serialize_document(search)
+        return
+    parsed = api.parse_document(api.serialize_document(search))
+    assert parsed.created_at == case["value"]
+    assert api.validate_library(api.CitationLibrary(papers=boundary_library.papers, searches={parsed.id: parsed})) == []
+
+
+@pytest.mark.parametrize("case", BOUNDARIES["source_urls"], ids=lambda c: c["name"])
+def test_shared_source_url_boundaries(api: ModuleType, boundary_library: Any, case: dict[str, Any]) -> None:
+    paper = deepcopy(next(iter(boundary_library.papers.values())))
+    paper.source = case["value"]
+    if not case["accept"]:
+        with pytest.raises(ValueError):
+            api.serialize_document(paper)
+        return
+    parsed = api.parse_document(api.serialize_document(paper))
+    assert parsed.source == case["value"]
+    assert api.validate_library(api.CitationLibrary(papers={**boundary_library.papers, parsed.id: parsed}, searches=boundary_library.searches)) == []
 
 
 @pytest.mark.parametrize(("field_path", "value", "message"), [
