@@ -1279,6 +1279,16 @@ def test_status_and_dry_run_cli_preserve_every_state_file(
         else 0
     )
     assert value.returncode == expected, value.stderr
+    if command == ["improvement-expire", "--dry-run"]:
+        # Expiry previews serialize with mutations, so their first invocation
+        # may create only the empty repo operation lock, never business state.
+        policy = importlib.import_module("parent.policy")
+        improvements = importlib.import_module("parent.improvements")
+        lock = (
+            "tennis-lab-agents/parent-sessions/"
+            f"operation-{policy.digest(improvements.lock_key('o/r'))}.lock"
+        )
+        before.setdefault(lock, b"")
     assert snapshot(directory) == before
 
 
