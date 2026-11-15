@@ -192,3 +192,49 @@ def test_cli_requires_launcher_and_missing_mount_fails_even_for_dry_run(
     assert "not mounted" in json.loads(result.stderr)["error"]
     assert not (cli.repo / ".storage-tier").exists()
     assert (cli.repo / "data/input.bin").read_bytes() == b"source bytes"
+
+
+def test_linked_checkout_cli_uses_its_config_with_explicit_main_repo(cli: Cli) -> None:
+    worktree = cli.repo / ".claude/worktrees/storage-operator"
+    cli.git("worktree", "add", "-qb", "operator", str(worktree))
+    ops = worktree / ".agents/ops"
+    shutil.copytree(cli.repo / ".agents/ops", ops)
+    mount = cli.repo.parent / "E"
+    mount.mkdir()
+    (ops / "storage_tier/config.toml").write_text(
+        f"mirror_mount = {json.dumps(str(mount))}\n"
+        "dataset_containers = []\ndataset_units = []\n"
+        'resident_units = ["data/smplx"]\nunmanaged_data_links = []\n'
+    )
+    before_head = cli.git("rev-parse", "HEAD")
+    before = (cli.repo / "README.md").read_bytes()
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ops / "checkout_job.py"),
+            "--repo",
+            str(worktree),
+            "--",
+            sys.executable,
+            "-m",
+            "storage_tier",
+            "--repo",
+            str(cli.repo),
+            "prepare-worktree",
+            str(worktree),
+            "--dry-run",
+        ],
+        cwd=worktree,
+        env={**cli.environment, "PYTHONPATH": str(ops)},
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout)
+    assert report["mirror_output_root"] == str(
+        mount / cli.repo.relative_to("/") / ".worktree-outputs/storage-operator"
+    )
+    assert cli.git("rev-parse", "HEAD") == before_head
+    assert (cli.repo / "README.md").read_bytes() == before
+    assert not (worktree / "outputs").exists()

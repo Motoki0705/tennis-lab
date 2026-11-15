@@ -15,6 +15,8 @@ E:は `/mnt/wsl/tennis-data` のHDD上ext4（`noatime`）で正本のミラー�
 | 場所 | D: | E: | 掃除の単位 |
 |---|---|---|---|
 | メイン `data/` | 実ディレクトリ | 同じ相対path | データセット版 |
+| 常駐入力 | `resident_units` に宣言した実dir | 同じ相対path | 消さない |
+| 未管理のE:参照 | `unmanaged_data_links` に列挙したsymlink | 元のfile/dir | 単位として選ばない |
 | メイン `outputs/` | 実ディレクトリ | 同じ相対path | task/purpose/experiment/run-id |
 | worktree `outputs/` | D:`<main>/.worktree-outputs/<name>/` へのlink | `.worktree-outputs/<name>/...` | task/purpose/experiment/run-id |
 | メインoutputsへの既存alias | メイン `outputs/` へのlink | メイン `outputs/...` | 独立した単位にしない |
@@ -38,6 +40,42 @@ hardlinkはD:内またはE:内で使い、D:/E:間では使わない。コピー
 別単位・別tierには独立したinodeを作る。削除するのは対象単位の名前だけ。記録には論理サイズ、
 重複を除いた割当量、外部hardlink、回収見積り、filesystem空きの実測差を分けて残す。
 他の名前が残ればブロックは解放されない。取得時は新しいD:のinodeを作り、他単位とのhardlinkは再現しない。
+
+## 常駐入力と未管理のE:参照
+
+`resident_units` にACCAD・samples・smplh・smplxと、
+`data/tennis_multiview/{raw,processed}/meiji_4cam` の両方を宣言する。
+processedには `projects.json` を含む。`resident` 単位として既存の全件SHA-256による
+index・mirror・verify・hydrateを使うが、evictは常に保持し、日次cycleでも削除しない。
+payloadと祖先は実dirとし、他単位と同じsymlink・mount検査を行う。
+tennis_multiview全体のデータセット管理対象化は別タスクのままとする。
+
+`unmanaged_data_links` はD:に許すE:参照を明示列挙する。
+tennis_multiviewのraw/processedはD:の実コンテナにし、meiji_4cam以外の列挙した子だけをE:へlinkする。
+`meiji_3cam.tar` のファイル参照も許す。その他の旧トップレベルの対象を含め、正確な一覧は
+[config.toml](config.toml)を正本とする。dataset・常駐・参照の宣言の重複・包含は拒否する。
+新しい2キーを省略した旧custom configも引き続き使える。
+
+存在する参照は、link文字列が `Config.mirror / relative_path` の**絶対pathと完全一致**するsymlinkだけを許す。
+相対pathや別表記は拒否する。E:側の対象は存在する通常fileまたは実dirで、祖先のsymlink・入れ子mountも拒否する。
+宣言したdataコンテナ内で見つけた未許可symlink、違う対象、dangling link、参照位置の実dirは、
+無関係な単位の明示操作やactivateでも失敗する。構築中に参照自体がまだ無いことは許す。
+E:mount検査を最初に行い、未mountを空の外部treeと解釈しない。
+
+参照は `unmanaged` のまま、中を辿って単位を発見せず、mirror・evict・hydrateの明示対象にもできない。
+E:未分類領域の既存のmetadataサイズ調査は維持する。出力と変更操作のauditに `unmanaged_links_D` を残し、
+参照検査の失敗時もstderrへ観測記録を出す。
+
+このWSLカーネルでは `O_PATH|O_NOFOLLOW` のfdからの `readlinkat(fd, "")` でも古いlinkのatimeが更新される。
+通常の方法でlink文字列をatime不変で読む手段はないため、親dirとlinkをfd固定して**各コマンドで1回だけ**読み、
+`atime_before_ns`・`atime_after_ns`・`atime_changed` と方法を記録する。
+dry-runは状態・コピーを作らないが、この未管理参照のatimeには記録付きの影響があり得る。
+link先やpayloadは書き換えず、管理payload内のsymlinkは従来どおり文字列を読む前に拒否する。
+
+初回の移行では過去outputsをE:だけに保持し、D:のoutputs rootは空から始める。
+常駐入力をhash照合して取得し、許可したE:参照を作る。Clip Studio利用者と切替中の停止・再開時刻を調整し、
+D:の元のdata相対pathからraw動画とprocessedの `projects.json` を開けることを確認する。
+容量の受入はLinux側の空きで判定し、Windows物理D:の差は別記録とする。VHDXのsparse化・圧縮は今回に含めない。
 
 ## checkpoint単位とCI assets
 
@@ -75,18 +113,17 @@ CIはE:のdata/ckptを読み、ミラー済み単位だけが見える。D:だ�
 実行時は設定されたE:のmountpointを必須とし、毎回source mountを読み直し（再起動でdevice番号が変わる場合も扱う）、filesystem内rootとdeviceを照合し、`/mnt/...` という表記をFSROOTと直接比較しない。
 既存mountのroot/device不一致や書込可能なmountは拒否する。
 
-第2段のD:切替前に、親がCIとrunner queueの保守時間を調整し、実行中jobの終了を待つ。
-動作中queueの停止は学習を終了させるため、先に空にする。他sessionの学習は別に調整する。
-mainへ反映後、人間がmain checkoutから以下を行う。
+第2段のsudo以外の移行・受入をすべて先に終える。現行bindは切替後もE:を指し続ける。
+その後で親が人間へ通知し、CIとrunner queueの保守時間を調整して実行中jobの終了を待つ。
+動作中queueの停止は学習を終了させるため、先に空にする。
+レビュー済みcheckoutから以下を行う。installerはlinked worktreeからでもGit共通dirからmainを求める。
 
 ```bash
 runner_service="$(sudo cat /opt/actions-runner/.service)"
 sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
 sudo bash scripts/github_actions/install_self_hosted_runner.sh
 sudo /opt/tennis-lab-actions/bin/mount_assets.sh start
-# installerはserviceを起動するため、配置切替が終わるまで再停止する。
-sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
-# 親が合意済みのD:切替・hydrate・読取専用受入を行う。
+# 移行とsudo以外の受入は完了済み。通常運転へ戻す。
 sudo systemctl start tennis-lab-training-queue.service "$runner_service"
 ```
 
@@ -99,6 +136,19 @@ installerは/optのhelper/config、system unitのtennis-data-mount.service依存
 
 実行したい実装があるcheckoutから、dry-runも含めて必ず有限の
 [checkout launcher](../lib/README.md#既存cliと新規jobの接続) を使う。
+
+linked worktreeのコード/configを使い、`--repo` でmainを指定できる。mainの更新は不要。
+
+```bash
+export PYTHONPATH="$PWD/.agents/ops" PYTHONDONTWRITEBYTECODE=1
+R="$(git rev-parse --path-format=absolute --git-common-dir)"
+R="$(dirname "$R")"
+S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/python -m storage_tier --repo "$R")
+"${S[@]}" scan
+```
+
+user serviceのコード参照先はmainのままなので、有効化前にmain側にもレビュー済みの常駐/参照設定と実装が必要。
+worktreeのCLI成功だけでserviceも更新済みとは扱わない。他人のdirtyファイルは変更せず、所有者と反映を調整する。
 
 ```bash
 export PYTHONPATH="$PWD/.agents/ops"

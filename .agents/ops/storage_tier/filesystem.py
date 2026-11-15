@@ -9,7 +9,8 @@ import os
 import re
 import stat
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -255,8 +256,9 @@ def rename_at(source_fd: int, source: str, target_fd: int, target: str) -> None:
         os.fsync(target_fd)
 
 
-def real_directory(path: Path, base: Path) -> int:
-    """Pin every component and reject symlinks and same-device bind mounts."""
+@contextmanager
+def real_directory_handle(path: Path, base: Path) -> Iterator[tuple[int, int]]:
+    """Pin the final directory after checking each ancestor without symlinks."""
     relative = path.relative_to(base)
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW
     info = base.lstat()
@@ -292,9 +294,15 @@ def real_directory(path: Path, base: Path) -> int:
                 raise
             os.close(fd)
             fd = child
-        return mount_id
+        yield fd, mount_id
     finally:
         os.close(fd)
+
+
+def real_directory(path: Path, base: Path) -> int:
+    """Reject symlinks and same-device bind mounts along the entire path."""
+    with real_directory_handle(path, base) as (_, mount_id):
+        return mount_id
 
 
 def checkpoint_directory_inodes(base: Path) -> set[tuple[int, int]]:
