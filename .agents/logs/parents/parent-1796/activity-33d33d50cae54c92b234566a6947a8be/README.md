@@ -14,17 +14,17 @@
 
 対応数は公開worker3ファイルのあるターンを分母にしたものです。イベントのみのターンを加えた和集合とは分けます。対応イベントの存在は、親判断の記録・受入・網羅性を保証しません。
 
-直近の観測（受入の判定とは別）: [結果 765](README.md#record-ca77770e245143e8ab52daab334c82f5) partial / machine: Historical parent statement: host memory pressure interrupted this turn / no final report. This import is not a new runtime verification.
+直近の観測（受入の判定とは別）: [結果 766](README.md#record-ca77770e245143e8ab52daab334c82f5) partial / machine: Historical parent statement: host memory pressure interrupted this turn / no final report. This import is not a new runtime verification.
 
 ## 全記録の詳細
 
 | 時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠 |
 | --- | --- | --- | --- | --- |
-| <a id="record-ca77770e245143e8ab52daab334c82f5"></a>[結果 765](README.md#record-ca77770e245143e8ab52daab334c82f5)<br>2026-11-13T06:58:05.478341+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) / [ターン 2](../child-1816/d-2968076048af45308f9eeca06cdf1bfc/turn-0002/README.md) | Historical parent statement: host memory pressure interrupted this turn<br>no final report. This import is not a new runtime verification.<br>partial / machine<br>親の確認未記録<br>記録不足・最終報告: missing&#95;final<br>終了確認 / 最終報告なし（終了・欠落の根拠あり） / 公開の所在は未確認<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-ca77770e245143e8ab52daab334c82f5.json)<br>[根拠](https://github.com/Motoki0705/tennis-lab/issues/1796#issuecomment-6786435778)（内容識別あり・全文復元は未保証） |
+| <a id="record-ca77770e245143e8ab52daab334c82f5"></a>[結果 766](README.md#record-ca77770e245143e8ab52daab334c82f5)<br>2026-11-13T06:58:05.478341+00:00（記録時刻）<br>[親 &#35;1796](../README.md) / [担当 &#35;1816](../child-1816/README.md) / [ターン 2](../child-1816/d-2968076048af45308f9eeca06cdf1bfc/turn-0002/README.md) | Historical parent statement: host memory pressure interrupted this turn<br>no final report. This import is not a new runtime verification.<br>partial / machine<br>親の確認未記録<br>記録不足・最終報告: missing&#95;final<br>終了確認 / 最終報告なし（終了・欠落の根拠あり） / 公開の所在は未確認<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-ca77770e245143e8ab52daab334c82f5.json)<br>[根拠](https://github.com/Motoki0705/tennis-lab/issues/1796#issuecomment-6786435778)（内容識別あり・全文復元は未保証） |
 
 <details><summary>反映した記録と補助情報</summary>
 
-- [結果 765](README.md#record-ca77770e245143e8ab52daab334c82f5)<br>時刻: 発生時刻: 未取得: source occurrence time not imported / 受信時刻: 観測: 2026-11-13T06:58:05.478341+00:00 / 記録時刻: 2026-11-13T06:58:05.478341+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+- [結果 766](README.md#record-ca77770e245143e8ab52daab334c82f5)<br>時刻: 発生時刻: 未取得: source occurrence time not imported / 受信時刻: 観測: 2026-11-13T06:58:05.478341+00:00 / 記録時刻: 2026-11-13T06:58:05.478341+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
 
 </details>
 
