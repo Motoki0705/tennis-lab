@@ -10,6 +10,7 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from src.utils.inference_recording import measured, span
 from src.utils.video.types import FramePacket, VideoInfo
 
 
@@ -29,6 +30,7 @@ def probe_video_info(video_path: str | Path) -> VideoInfo:
         cap.release()
 
 
+@measured("decode")
 def read_video_frame(
     video_path: str | Path, frame_index: int
 ) -> FramePacket[NDArray[np.uint8]]:
@@ -73,7 +75,8 @@ class OpenCVVideoFrameReader:
         try:
             frame_index = 0
             while self.max_frames is None or frame_index < self.max_frames:
-                ok, frame_bgr = cap.read()
+                with span("decode", frame_index=frame_index):
+                    ok, frame_bgr = cap.read()
                 if not ok:
                     break
                 frame_bgr = cast(
@@ -116,6 +119,7 @@ class RandomAccessVideoReader:
         self._cap: cv2.VideoCapture | None = None
         self._next_index = 0
 
+    @measured("decode")
     def read(self, frame_index: int) -> NDArray[np.uint8]:
         """Decode and return the BGR frame at ``frame_index``."""
         if frame_index < 0:

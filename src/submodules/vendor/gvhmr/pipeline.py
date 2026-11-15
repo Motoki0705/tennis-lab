@@ -208,8 +208,12 @@ class GvhmrDemoModel(nn.Module):
             "cam_angvel": data["cam_angvel"][None],
             "f_imgseq": data["f_imgseq"][None],
         }
-        batch = {k: v.to(device) for k, v in batch.items()}
-        outputs = self.pipeline.forward(batch, postproc=True, static_cam=static_cam)
+        from src.utils.inference_recording import span
+
+        with span("transfer", model="GVHMR"):
+            batch = {k: v.to(device) for k, v in batch.items()}
+        with span("inference", model="GVHMR-network", batch_shape=list(batch["f_imgseq"].shape)):
+            outputs = self.pipeline.forward(batch, postproc=True, static_cam=static_cam)
 
         pred = {
             "smpl_params_global": {k: v[0] for k, v in outputs["pred_smpl_params_global"].items()},

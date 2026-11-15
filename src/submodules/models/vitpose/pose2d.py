@@ -20,6 +20,7 @@ from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
 from src.submodules.vendor.gvhmr.vitpose.flip_utils import flip_heatmap_coco17
 from src.submodules.vendor.gvhmr.vitpose.heatmap_head import ViTPoseHeadConfig
 from src.submodules.vendor.gvhmr.vitpose.kp2d_utils import keypoints_from_heatmaps
+from src.utils.inference_recording import span
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,9 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         self.head_config = head_config
         self._pose: torch.nn.Module | None = None
 
+    def recording_assets(self) -> dict[str, Path]:
+        return {"checkpoint": self.checkpoint}
+
     def _load_impl(self) -> None:
         if not self.checkpoint.exists():
             raise FileNotFoundError(f"ViTPose checkpoint not found: {self.checkpoint}")
@@ -134,8 +138,10 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
         keypoints = []
         batch_iterator = tqdm(batches, desc="ViTPose") if self.show_progress else batches
         for images, bbx_xys_batch in batch_iterator:
-            imgs_batch = images[:, :, :, 32:224].to(self._device)
-            with torch.autocast(
+            with span("transfer", model="ViTPose"):
+                imgs_batch = images[:, :, :, 32:224].to(self._device)
+            with span("inference", model="ViTPose", batch_shape=[len(images) * (2 if self.flip_test else 1), *imgs_batch.shape[1:]],
+                      batch_items=len(images), flip_test=self.flip_test), torch.autocast(
                 self.device.type,
                 dtype=torch.bfloat16,
                 enabled=self.precision == "bfloat16",
@@ -150,19 +156,20 @@ class ViTPosePose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReques
                 else:
                     heatmap = self._pose(imgs_batch.clone())  # (B, J, 64, 48)
 
-            # mmpose-style UDP post-processing back to full-image pixels
-            heatmap_np = heatmap.float().cpu().numpy()
-            center = bbx_xys_batch[:, :2].numpy()
-            scale = (
-                torch.cat(
-                    (bbx_xys_batch[:, [2]] * 24 / 32, bbx_xys_batch[:, [2]]), dim=1
+            with span("postprocess", model="ViTPose"):
+                # mmpose-style UDP post-processing back to full-image pixels
+                heatmap_np = heatmap.float().cpu().numpy()
+                center = bbx_xys_batch[:, :2].numpy()
+                scale = (
+                    torch.cat(
+                        (bbx_xys_batch[:, [2]] * 24 / 32, bbx_xys_batch[:, [2]]), dim=1
+                    )
+                    / 200
+                ).numpy()
+                preds, maxvals = keypoints_from_heatmaps(
+                    heatmaps=heatmap_np, center=center, scale=scale, use_udp=True
                 )
-                / 200
-            ).numpy()
-            preds, maxvals = keypoints_from_heatmaps(
-                heatmaps=heatmap_np, center=center, scale=scale, use_udp=True
-            )
-            kp2d = np.concatenate((preds, maxvals), axis=-1)
-            keypoints.append(torch.from_numpy(kp2d))
+                kp2d = np.concatenate((preds, maxvals), axis=-1)
+                keypoints.append(torch.from_numpy(kp2d))
 
         return Pose2DResult(keypoints=torch.cat(keypoints, dim=0).float() if keypoints else torch.empty(0, 17, 3))

@@ -48,6 +48,7 @@ from src.tasks.court_detection.model_io.keypoint_decoder import (
 )
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
+from src.utils.inference_recording import measured, span
 from src.utils.schema.court import GROUND_COURT_KP_NAMES
 
 CourtImage: TypeAlias = np.ndarray | Image.Image | Tensor
@@ -181,44 +182,46 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
                     [prepared.content_size_hw], device=images.device
                 ),
             )
-            output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
-            self.adapter.validate_logits(output, call)
-            logits = (
-                output.dense_logits if isinstance(output, CourtModelOutput) else output
-            )
-            decoded: dict[CourtTargetKind, CourtDecodedPrediction] = {}
-            for kind in requested:
-                content_logits = logits[kind][..., :content_height, :content_width]
-                if kind == "kp":
-                    prediction = decode_court_keypoint_logits(
-                        content_logits,
-                        original_size_hw=prepared.content_size_hw,
-                        subpixel_refine=self.subpixel_refine,
-                        config=self.decoder_config,
-                    )
-                    points = prediction.keypoints * prediction.keypoints.new_tensor(
-                        prepared.source_from_model_xy
-                    )
-                    valid = (
-                        prediction.valid
-                        & (points[..., 0] >= 0)
-                        & (points[..., 0] < original_size[1])
-                        & (points[..., 1] >= 0)
-                        & (points[..., 1] < original_size[0])
-                    )
-                    decoded[kind] = CourtKeypointPrediction(
-                        points,
-                        prediction.scores.masked_fill(~valid, 0),
-                        valid,
-                        prediction.heatmaps,
-                    )
-                else:
-                    decoded[kind] = self.adapter.decode_prediction(
-                        kind,
-                        content_logits,
-                        original_size_hw=original_size,
-                        subpixel_refine=False,
-                    )
+            with span("inference", model="Court", batch_shape=list(images.shape)):
+                output = cast(CourtLogits | CourtModelOutput, self.model(*call.model_args))
+            with span("postprocess", model="Court"):
+                self.adapter.validate_logits(output, call)
+                logits = (
+                    output.dense_logits if isinstance(output, CourtModelOutput) else output
+                )
+                decoded: dict[CourtTargetKind, CourtDecodedPrediction] = {}
+                for kind in requested:
+                    content_logits = logits[kind][..., :content_height, :content_width]
+                    if kind == "kp":
+                        prediction = decode_court_keypoint_logits(
+                            content_logits,
+                            original_size_hw=prepared.content_size_hw,
+                            subpixel_refine=self.subpixel_refine,
+                            config=self.decoder_config,
+                        )
+                        points = prediction.keypoints * prediction.keypoints.new_tensor(
+                            prepared.source_from_model_xy
+                        )
+                        valid = (
+                            prediction.valid
+                            & (points[..., 0] >= 0)
+                            & (points[..., 0] < original_size[1])
+                            & (points[..., 1] >= 0)
+                            & (points[..., 1] < original_size[0])
+                        )
+                        decoded[kind] = CourtKeypointPrediction(
+                            points,
+                            prediction.scores.masked_fill(~valid, 0),
+                            valid,
+                            prediction.heatmaps,
+                        )
+                    else:
+                        decoded[kind] = self.adapter.decode_prediction(
+                            kind,
+                            content_logits,
+                            original_size_hw=original_size,
+                            subpixel_refine=False,
+                        )
         geometry = None
         if postprocess == "hybrid":
             kp, line = decoded["kp"], decoded["line"]
@@ -228,15 +231,16 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
                 raise CourtModelIOError("Unexpected decoded KP/LINE types")
             observed = kp.keypoints[:, 0].numpy().astype(np.float64)
             observed[~kp.valid[:, 0].numpy()] = np.nan
-            geometry = estimate_hybrid_homography(
-                court_template_xy(14),
-                observed,
-                kp.scores[:, 0].numpy(),
-                line.probability.numpy(),
-                edges=np.asarray(COURT_HOMOGRAPHY_EDGES),
-                image_size_hw=original_size,
-                config=self.hybrid_config,
-            )
+            with span("postprocess", model="Court", operation="hybrid_homography"):
+                geometry = estimate_hybrid_homography(
+                    court_template_xy(14),
+                    observed,
+                    kp.scores[:, 0].numpy(),
+                    line.probability.numpy(),
+                    edges=np.asarray(COURT_HOMOGRAPHY_EDGES),
+                    image_size_hw=original_size,
+                    config=self.hybrid_config,
+                )
         return CourtPrediction(
             decoded,
             original_size,
@@ -247,6 +251,7 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
             else None,
         )
 
+    @measured("preprocess")
     def _prepare_image(self, image: CourtImage) -> PreparedCourtImage:
         if isinstance(image, Tensor):
             if image.ndim not in {3, 4}:
@@ -257,7 +262,9 @@ class CourtPredictor(BasePredictor[CourtPrediction]):
             if images.shape[0] != 1:
                 raise CourtModelIOError("Court predictors accept exactly one image")
             size = (image.shape[-2], image.shape[-1])
-            return PreparedCourtImage(images.to(self.device), size, (1.0, 1.0), size)
+            with span("transfer", model="Court"):
+                images = images.to(self.device)
+            return PreparedCourtImage(images, size, (1.0, 1.0), size)
         return prepare_court_input(image, spec=self.adapter.spec, device=self.device)
 
     @property
