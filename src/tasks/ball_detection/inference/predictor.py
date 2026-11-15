@@ -120,7 +120,7 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
                     transferred, image_normalization=self.image_normalization,
                 )
             del transferred
-            with span("inference", model="Ball", batch_shape=list(images.shape)):
+            with span("inference", model="Ball", batch_shape=list(call.model_input.shape)):
                 logits = self.model(*call.model_args)
             with span("postprocess", model="Ball"):
                 return self.adapter.prediction(
