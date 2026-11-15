@@ -1,0 +1,82 @@
+{
+  "record": {
+    "data": {
+      "action_id": "d87026ddbd47498995c96f5194740991",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.delegate; artifact=command response; content_sha256=cfcb01ea66dba707b7200fe0880917fab542421b615d48e8a02acfc492f09008; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.delegate: success; {\n  \"action\": \"launch\",\n  \"agent\": \"codex\",\n  \"branch\": \"codex/parent-session-skill-decision-points\",\n  \"child\": 1704,\n  \"delegated\": true,\n  \"parent\": 1968\n}",
+      "verifies": []
+    },
+    "id": "52bcea9bc91a43238610dc2675e02d9b",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "08598ef6d76144e7a2045b5598cf4b76",
+      "delegation": {
+        "key": "d-4f1f547a03924245b456b76ebc2e141e",
+        "turn": 1
+      },
+      "issue": 1704,
+      "parent": 1968,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T06:22:22.677207+00:00"
+      },
+      "recorded_at": "2026-11-14T06:22:22.677231+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

@@ -1,0 +1,85 @@
+{
+  "record": {
+    "data": {
+      "action_id": "630003b420b345dc8eb0de643c6ddc33",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.review-request; artifact=saved parent verification; content_sha256=9a0627486c7958cd533a8b41675a645119591aa38779c300966a7816b2dc3b67; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=9a0627486c7958cd533a8b41675a645119591aa38779c300966a7816b2dc3b67; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": "d54db04797f34bda803d87ebd2fa973e",
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[1974]; **#1934 / PR #1972**: worker報告。修正前に回帰2ケース失敗、修正後に関連21ケース成功。対象HEAD `28a5ecfd4` のCI run 43386200798 は全job成功。既存3camera integrationはローカルの共有venvの事情で未完遂、CIでは成功。",
+      "verifies": [
+        "e2f5716019fc4f7f95a39455891c4248"
+      ]
+    },
+    "id": "b6ddd203c27544a0aeb878eb26d15548",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "ca58af2caff54956975769ec213b531d",
+      "delegation": null,
+      "issue": null,
+      "parent": 1968,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "e42177fdebb64ce59fde7dcd763e1d0f"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T06:27:35.962068+00:00"
+      },
+      "recorded_at": "2026-11-14T06:27:35.962088+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

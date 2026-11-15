@@ -14,17 +14,17 @@
 
 対応数は公開worker3ファイルのあるターンを分母にしたものです。イベントのみのターンを加えた和集合とは分けます。対応イベントの存在は、親判断の記録・受入・網羅性を保証しません。
 
-直近の観測（受入の判定とは別）: [結果 986](README.md#record-d913f8a13c2e450baedb38a994383b01) partial / machine: Public PR and immutable worker metadata observed on 2026-11-13. The PR files are not part of the main snapshot input.
+直近の観測（受入の判定とは別）: [結果 999](README.md#record-d913f8a13c2e450baedb38a994383b01) partial / machine: Public PR and immutable worker metadata observed on 2026-11-13. The PR files are not part of the main snapshot input.
 
 ## 全記録の詳細
 
 | 時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠 |
 | --- | --- | --- | --- | --- |
-| <a id="record-d913f8a13c2e450baedb38a994383b01"></a>[結果 986](README.md#record-d913f8a13c2e450baedb38a994383b01)<br>2026-11-13T06:58:05.478341+00:00（記録時刻）<br>[親 &#35;1797](../README.md) / [担当 &#35;1862](../child-1862/README.md) / [ターン 2](../child-1862/d-d5f6e27822fd494fb71d2e74f10be4f0/turn-0002/README.md) | Public PR and immutable worker metadata observed on 2026-11-13. The PR files are not part of the main snapshot input.<br>partial / machine<br>親の確認未記録<br>最終報告あり: [根拠](https://github.com/Motoki0705/tennis-lab/blob/92c99b30910802e88100aa2b9ffa3bea13998209/.agents/logs/parents/parent-1797/child-1862/d-d5f6e27822fd494fb71d2e74f10be4f0/0002-resume/final.md)（固定版）<br>終了確認 / 最終報告あり / 観測時点の公開PR / [公開PR](https://github.com/Motoki0705/tennis-lab/pull/1884) / [PR HEAD](https://github.com/Motoki0705/tennis-lab/commit/92c99b30910802e88100aa2b9ffa3bea13998209) / [照合先main（観測時点）](https://github.com/Motoki0705/tennis-lab/commit/c807cd2a1a0ff8e46ace1ae740b2c2c0f72672f4)<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-d913f8a13c2e450baedb38a994383b01.json)<br>[根拠](https://github.com/Motoki0705/tennis-lab/blob/92c99b30910802e88100aa2b9ffa3bea13998209/.agents/logs/parents/parent-1797/child-1862/d-d5f6e27822fd494fb71d2e74f10be4f0/0002-resume/final.md)（固定版） |
+| <a id="record-d913f8a13c2e450baedb38a994383b01"></a>[結果 999](README.md#record-d913f8a13c2e450baedb38a994383b01)<br>2026-11-13T06:58:05.478341+00:00（記録時刻）<br>[親 &#35;1797](../README.md) / [担当 &#35;1862](../child-1862/README.md) / [ターン 2](../child-1862/d-d5f6e27822fd494fb71d2e74f10be4f0/turn-0002/README.md) | Public PR and immutable worker metadata observed on 2026-11-13. The PR files are not part of the main snapshot input.<br>partial / machine<br>親の確認未記録<br>最終報告あり: [根拠](https://github.com/Motoki0705/tennis-lab/blob/92c99b30910802e88100aa2b9ffa3bea13998209/.agents/logs/parents/parent-1797/child-1862/d-d5f6e27822fd494fb71d2e74f10be4f0/0002-resume/final.md)（固定版）<br>終了確認 / 最終報告あり / 観測時点の公開PR / [公開PR](https://github.com/Motoki0705/tennis-lab/pull/1884) / [PR HEAD](https://github.com/Motoki0705/tennis-lab/commit/92c99b30910802e88100aa2b9ffa3bea13998209) / [照合先main（観測時点）](https://github.com/Motoki0705/tennis-lab/commit/c807cd2a1a0ff8e46ace1ae740b2c2c0f72672f4)<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-d913f8a13c2e450baedb38a994383b01.json)<br>[根拠](https://github.com/Motoki0705/tennis-lab/blob/92c99b30910802e88100aa2b9ffa3bea13998209/.agents/logs/parents/parent-1797/child-1862/d-d5f6e27822fd494fb71d2e74f10be4f0/0002-resume/final.md)（固定版） |
 
 <details><summary>反映した記録と補助情報</summary>
 
-- [結果 986](README.md#record-d913f8a13c2e450baedb38a994383b01)<br>時刻: 発生時刻: 未取得: source occurrence time not imported / 受信時刻: 観測: 2026-11-13T06:58:05.478341+00:00 / 記録時刻: 2026-11-13T06:58:05.478341+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+- [結果 999](README.md#record-d913f8a13c2e450baedb38a994383b01)<br>時刻: 発生時刻: 未取得: source occurrence time not imported / 受信時刻: 観測: 2026-11-13T06:58:05.478341+00:00 / 記録時刻: 2026-11-13T06:58:05.478341+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
 
 </details>
 

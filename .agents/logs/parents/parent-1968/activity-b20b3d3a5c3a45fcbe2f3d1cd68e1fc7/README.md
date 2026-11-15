@@ -1,0 +1,32 @@
+# merge&#95;gate.merge・merge&#95;gate.evaluation / 親 &#35;1968 の直接活動
+
+結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
+
+反映範囲: このHEADの記録集合 5 件。記録時刻 2026-11-14T19:56:34.960444+00:00 〜 2026-11-14T21:51:49.658670+00:00。
+
+公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
+
+[上の階層](../README.md) · [親一覧](../../README.md)
+
+5 記録 / 判断 0 件。失敗・拒否の結果: 1 件。未判断の結果: 3 件。親の確認未記録: 3 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 3 件（結果イベント単位）。
+
+直近の観測（受入の判定とは別）: [結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1) rejected / machine: merge&#95;gate.merge: rejected before execution / GitHubHTTPError / details in private evidence<br>[行動 2245](README.md#record-f8cf12c171db4c3e92f33aea4be08cdf) merge / 起動前拒否
+
+## 全記録の詳細
+
+| 時刻・対象 | 結果 | 親の判断と理由 | 次の行動・実行状態 | 根拠 |
+| --- | --- | --- | --- | --- |
+| <a id="record-c3a66b218da34bc0956b0b0f17276717"></a>[行動 2135](README.md#record-c3a66b218da34bc0956b0b0f17276717)<br>2026-11-14T19:56:34.960444+00:00（記録時刻）<br>[親 &#35;1968](../README.md) / 親の直接活動 | [結果 2237](README.md#record-e19bd9d880a548469fe1e9a0872677aa)、[結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)、[結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1) | 記録不足・判断: parent decision not recorded for this operation | merge&#95;gate.merge: requested<br>merge / 要求済み・実行未確認 | [記録本文](event-c3a66b218da34bc0956b0b0f17276717.json)<br>次の記録: [結果 2237](README.md#record-e19bd9d880a548469fe1e9a0872677aa)、[結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)、[結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1)、[行動 2245](README.md#record-f8cf12c171db4c3e92f33aea4be08cdf) |
+| <a id="record-e19bd9d880a548469fe1e9a0872677aa"></a>[結果 2237](README.md#record-e19bd9d880a548469fe1e9a0872677aa)<br>2026-11-14T21:44:27.957453+00:00（記録時刻）<br>[親 &#35;1968](../README.md) / 親の直接活動 | merge&#95;gate.evaluation: pr=1994<br>判断: merge<br>操作: eligible<br>状態: 記録値なし<br>理由: なし（空の一覧）<br>success / machine<br>親の確認未記録<br>最終報告の観測対象外（記録された理由による）<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-e19bd9d880a548469fe1e9a0872677aa.json)<br>根拠非公開・記録不足: capture&#95;source=merge&#95;gate.merge; artifact=evaluation; content&#95;sha256=bf6d76f87624e83cea7723553ce91e9e1f4ec97aef2484f4c6f4f9ebf73fcb29; private evidence<br>前の記録: [行動 2135](README.md#record-c3a66b218da34bc0956b0b0f17276717)<br>次の記録: [結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)、[行動 2245](README.md#record-f8cf12c171db4c3e92f33aea4be08cdf) |
+| <a id="record-e5665ae0832d4748bd681974bd0cfb21"></a>[結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)<br>2026-11-14T21:47:53.113423+00:00（記録時刻）<br>[親 &#35;1968](../README.md) / 親の直接活動 | merge&#95;gate.merge&#95;attempt: pr=1994<br>判断: 記録値なし<br>操作: 記録値なし<br>状態: attempting<br>理由: なし（空の一覧）<br>unknown / machine<br>親の確認未記録<br>最終報告の観測対象外（記録された理由による）<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-e5665ae0832d4748bd681974bd0cfb21.json)<br>根拠非公開・記録不足: capture&#95;source=merge&#95;gate.merge; artifact=merge&#95;attempt; content&#95;sha256=4da1a3c7641402fa3c900edbfc89429997a1371ef111352b057aecde6d78ad25; private evidence<br>前の記録: [行動 2135](README.md#record-c3a66b218da34bc0956b0b0f17276717)、[結果 2237](README.md#record-e19bd9d880a548469fe1e9a0872677aa)<br>次の記録: [結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1)、[行動 2245](README.md#record-f8cf12c171db4c3e92f33aea4be08cdf) |
+| <a id="record-e6f51d40afb94108a152091c316f9ff1"></a>[結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1)<br>2026-11-14T21:51:49.424483+00:00（記録時刻）<br>[親 &#35;1968](../README.md) / 親の直接活動 | merge&#95;gate.merge: rejected before execution<br>GitHubHTTPError<br>details in private evidence<br>rejected / machine<br>親の確認未記録<br>最終報告の観測対象外（記録された理由による）<br>前回との差: コード: 未確認 / 実行条件: 未確認 / 指示: 未確認 / 要件: 未確認 / 確認済み範囲: 未確認 | 未判断 | 判断待ち | [記録本文](event-e6f51d40afb94108a152091c316f9ff1.json)<br>根拠非公開・記録不足: capture&#95;source=merge&#95;gate.merge; artifact=command response; content&#95;sha256=abd250a579652a90a1fcdd91b893beb5a6a361d43c1c68c691c787d231944ff1; private evidence<br>前の記録: [行動 2135](README.md#record-c3a66b218da34bc0956b0b0f17276717)、[結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)<br>次の記録: [行動 2245](README.md#record-f8cf12c171db4c3e92f33aea4be08cdf) |
+| <a id="record-f8cf12c171db4c3e92f33aea4be08cdf"></a>[行動 2245](README.md#record-f8cf12c171db4c3e92f33aea4be08cdf)<br>2026-11-14T21:51:49.658670+00:00（記録時刻）<br>[親 &#35;1968](../README.md) / 親の直接活動 | [結果 2237](README.md#record-e19bd9d880a548469fe1e9a0872677aa)、[結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)、[結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1) | 記録不足・判断: parent decision not recorded for this operation | merge&#95;gate.merge: rejected&#95;before&#95;start<br>merge / 起動前拒否 | [記録本文](event-f8cf12c171db4c3e92f33aea4be08cdf.json)<br>前の記録: [行動 2135](README.md#record-c3a66b218da34bc0956b0b0f17276717)、[結果 2237](README.md#record-e19bd9d880a548469fe1e9a0872677aa)、[結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)、[結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1) |
+
+<details><summary>反映した記録と補助情報</summary>
+
+- [結果 2237](README.md#record-e19bd9d880a548469fe1e9a0872677aa)<br>時刻: 発生時刻: 未取得: source occurrence time unavailable / 受信時刻: 観測: 2026-11-14T21:44:27.956988+00:00 / 記録時刻: 2026-11-14T21:44:27.957453+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+- [結果 2240](README.md#record-e5665ae0832d4748bd681974bd0cfb21)<br>時刻: 発生時刻: 未取得: source occurrence time unavailable / 受信時刻: 観測: 2026-11-14T21:47:53.113409+00:00 / 記録時刻: 2026-11-14T21:47:53.113423+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+- [結果 2244](README.md#record-e6f51d40afb94108a152091c316f9ff1)<br>時刻: 発生時刻: 未取得: source occurrence time unavailable / 受信時刻: 観測: 2026-11-14T21:51:49.424467+00:00 / 記録時刻: 2026-11-14T21:51:49.424483+00:00<br>補助情報（欠測と累積値を保持、加算なし）: 実効モデル: 未取得: not reported by this source / 実行秒数: 未取得: not reported by this source / 選択モデル: 未取得: not reported by this source / 使用量: 未取得: not reported by this source / 待機秒数: 未取得: not reported by this source
+
+</details>
+

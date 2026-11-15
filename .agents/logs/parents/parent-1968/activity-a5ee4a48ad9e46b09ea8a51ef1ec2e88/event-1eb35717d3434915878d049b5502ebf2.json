@@ -1,0 +1,69 @@
+{
+  "record": {
+    "data": {
+      "decision_id": null,
+      "decision_missing_reason": "parent decision not recorded for this operation",
+      "operation": "review",
+      "plan_id": null,
+      "previous_action_id": "c22deed014a8445e9a5b349fb73ad62d",
+      "result_ids": [
+        "5b8669ea293c4fb8afc4ea530651bb2b",
+        "738d48e09b774cf09a39d7811337cb20",
+        "952b4d4bddf647f2bfd39d3169aca227",
+        "9561edf35f0c4ad1b324860a00b57365",
+        "2cdcca4c43f04b3091d9ca279316a44e",
+        "5e7493f6d9b745de834213974e20127e",
+        "c345623b5bf7496ebc298c3d5bf2ea32",
+        "26a2076f8e054840bbced05053b78b31",
+        "372a50f431ff4021bb93cf27d3df1d79",
+        "f71a0b37934b4029881e531bb23e03a9",
+        "5659897c883c42798ff8c30fc6c741a5",
+        "1f8aba02b18d46d8a11195c121deed3e",
+        "a6d2d16aeb24482d80ce3f1a9b4a3335",
+        "0fce8f629d9344c3a7257311c13e75a6",
+        "9bf8d062215b4213be68ebe030ac048f",
+        "7204db3e83f3437290649294fb053dd9",
+        "d904b59125d84083ad837c90dd788fc4",
+        "9a229bc527aa43968090a331ece9d707",
+        "20b376ff66444b239618e990794fceaf",
+        "2766f25cace1484fb25c85e3d89c864f",
+        "99100476f144427ea12398a84cf1614c",
+        "20e4b0f64c384ba49f65c080e1da467e",
+        "a39c27d5f94d4c708ae44a045d4b60a5",
+        "8fb88e3587204fe8abbd39fca3a5957d",
+        "9e29b0b2e97e4cf4bf404f92bbdf5c67",
+        "94b689b522f24f5fa429988874f2567c",
+        "ebd14620ab07442a988473cf82132bc2"
+      ],
+      "state": "ended",
+      "summary": "parent.review-request: ended"
+    },
+    "id": "1eb35717d3434915878d049b5502ebf2",
+    "kind": "action",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "a5ee4a48ad9e46b09ea8a51ef1ec2e88",
+      "delegation": null,
+      "issue": null,
+      "parent": 1968,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "8ac07a241a8d420f9c3471af0f5abd08"
+    },
+    "time": {
+      "occurred_at": {
+        "status": "observed",
+        "value": "2026-11-14T17:49:07.421634+00:00"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T17:49:07.421695+00:00"
+      },
+      "recorded_at": "2026-11-14T17:49:07.421697+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
