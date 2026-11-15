@@ -48,7 +48,11 @@ def main():
             with np.load(folder / "comparison-arrays.npz") as data:
                 arrays.append({k: data[k] for k in data.files})
             metrics.append(json.loads((folder / "metrics.json").read_text()))
-        readers = [cv2.VideoCapture(str(source / path)) for path in meta["video_paths"]]
+        cameras = metrics[0]["camera_ids"]
+        if cameras != metrics[1]["camera_ids"]:
+            raise ValueError("Comparison camera sets differ")
+        paths = dict(zip(meta["camera_ids"], meta["video_paths"], strict=True))
+        readers = [cv2.VideoCapture(str(source / paths[camera])) for camera in cameras]
         output = args.results / f"{clip}-i935-vs-x3d.mp4"
         with VideoWriter(output, fps=meta["fps"], crf=18) as writer:
             for frame in range(meta["num_frames"]):
@@ -74,7 +78,7 @@ def main():
                                 cv2.circle(panel, point, 6, color, 2, cv2.LINE_AA)
                         label = "i935" if variant == 0 else "X3D/CSN + DPT T32"
                         confidence = float(data["confidence"][camera, frame])
-                        text(panel, f"cam{camera} | {label} | score {confidence:.3f}", (8, 22), color=color)
+                        text(panel, f"{cameras[camera]} | {label} | score {confidence:.3f}", (8, 22), color=color)
                         canvas[camera * 270:(camera + 1) * 270, variant * 480:(variant + 1) * 480] = panel
                 for variant, (data, record, color) in enumerate(zip(arrays, metrics, COLORS)):
                     panel = court()
