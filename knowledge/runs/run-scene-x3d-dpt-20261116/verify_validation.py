@@ -16,6 +16,8 @@ import torch
 from torchvision.io import ImageReadMode, decode_jpeg
 
 from src.tasks.ball_detection.inference.x3d_dpt import X3DDPTPredictor
+from src.tasks.ball_detection.training.runtime.compilation import compile_coordinate_model, coordinate_compile_scope
+from src.utils.data.heatmaps import heatmaps_to_argmax, refine_peaks_log_parabolic
 
 
 def sha(path):
@@ -29,6 +31,7 @@ def main():
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--compile-mode", choices=("off", "default"), required=True)
+    parser.add_argument("--paired-source-reference", action="store_true")
     args = parser.parse_args()
     torch.set_num_threads(2)
     # Exclusive queue reservation plus a cap below physical VRAM; never change
@@ -59,6 +62,16 @@ def main():
         predictor = X3DDPTPredictor.load_from_checkpoint(args.checkpoint, device="cuda", image_size=(720, 1280),
                     frames=32, input_channels=5, normalize_imagenet=False, precision=precision, subpixel_refine=True,
                     compile_mode=args.compile_mode)
+        reference = None
+        paired = dict(max_heatmap_difference=0., max_normalized_coordinate_difference=0., max_score_difference=0.,
+                      frames=0, atol=1e-6)
+        if args.paired_source_reference:
+            from source_reference import build_reference
+            reference, metadata = build_reference(torch.load(args.checkpoint, map_location="cpu", weights_only=True),
+                                                   args.output.parent / "paired-source-reference")
+            reference.to("cuda").eval()
+            compile_coordinate_model(reference, mode=args.compile_mode)
+            paired.update(metadata)
         torch.cuda.synchronize()
         torch.cuda.reset_peak_memory_stats()
         started = time.perf_counter()
@@ -77,6 +90,17 @@ def main():
                     encoded.append(torch.from_numpy(np.frombuffer(stream.read(int(columns["length"][row])), np.uint8).copy()))
             rgb = torch.stack(decode_jpeg(encoded, mode=ImageReadMode.RGB, device="cuda")).unsqueeze(0)
             prediction = predictor.predict(rgb)
+            if reference is not None:
+                with torch.inference_mode(), coordinate_compile_scope(reference):
+                    with torch.autocast("cuda", dtype=torch.bfloat16, enabled=precision == "bf16"):
+                        reference_logits = reference(rgb)
+                    reference_maps = reference_logits.float().sigmoid()
+                    reference_uv, reference_score = heatmaps_to_argmax(reference_maps)
+                    reference_uv = refine_peaks_log_parabolic(reference_maps, reference_uv).cpu()
+                paired["max_heatmap_difference"] = max(paired["max_heatmap_difference"], float((prediction.heatmaps - reference_maps.cpu()).abs().max()))
+                paired["max_normalized_coordinate_difference"] = max(paired["max_normalized_coordinate_difference"], float((prediction.coords - reference_uv).abs().max()))
+                paired["max_score_difference"] = max(paired["max_score_difference"], float((prediction.confidence - reference_score.cpu()).abs().max()))
+                paired["frames"] += int(np.prod(prediction.confidence.shape))
             scale = np.array([window["metadata"]["source_width"] - 1, window["metadata"]["source_height"] - 1])
             for original in window["rows"]:
                 offset = original["owner_offset"]
@@ -95,6 +119,11 @@ def main():
             mismatches=[r for r in differences if not r["passed"]], all_differences=differences,
             tolerance=tolerance, seconds=time.perf_counter() - started,
             peak_allocated_bytes=torch.cuda.max_memory_allocated(), peak_reserved_bytes=torch.cuda.max_memory_reserved())
+        if reference is not None:
+            paired["passed"] = all(paired[key] <= paired["atol"] for key in (
+                "max_heatmap_difference", "max_normalized_coordinate_difference", "max_score_difference"))
+            report["by_precision"][precision]["paired_source_reference"] = paired
+            del reference, reference_logits, reference_maps, reference_uv, reference_score
         del predictor, rgb, prediction
         torch.cuda.empty_cache()
     report["passed"] = all(not item["mismatches"] for item in report["by_precision"].values())
