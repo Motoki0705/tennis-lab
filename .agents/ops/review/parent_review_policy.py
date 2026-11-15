@@ -720,6 +720,9 @@ def evaluate_coverage(
     Version 2 resolutions instead bind changed_paths to review_paths, computed by
     review_workspace.resolution_scope. Missing scope evidence never defaults to
     the legacy paths. Version 1 keeps its original full-head-diff definition.
+    inherited_snapshots contains only pairs verified to have an empty new
+    confirmation scope, including resolution and evidence snapshots. Base-touched
+    PR edits must not be added to this trusted set by the I/O caller.
     Only verified peer merges may advance a snapshot's base tip; all other fields
     must match the reviewed or explicitly resolved snapshot. Unresolved findings
     are separate from coverage so the gate can report both.

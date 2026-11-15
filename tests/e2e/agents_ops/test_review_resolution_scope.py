@@ -30,7 +30,8 @@ from tests.e2e.agents_ops.test_review_recovery import gate_for
 def commit(repo: Path, message: str, *paths: str) -> str:
     run_git(repo, "add", *(paths or (".",)))
     run_git(repo, "commit", "-m", message)
-    return run_git(repo, "rev-parse", "HEAD")
+    head: str = run_git(repo, "rev-parse", "HEAD")
+    return head
 
 
 @pytest.mark.parametrize("strategy", ["merge", "rebase"])
@@ -153,6 +154,135 @@ def resolve(r: ReviewEnv, head: str, paths: list[str]) -> dict[str, Any]:
             ).stdout
         )
     )
+
+
+@pytest.mark.parametrize("receipt", ["resolution", "evidence"])
+@pytest.mark.parametrize(
+    "history", ["conflict_revert", "revert_after_resolve", "base_merge", "base_rebase"]
+)
+def test_gate_inherits_confirmations_only_when_pr_delta_is_unchanged(
+    single_review_env: ReviewEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    receipt: str,
+    history: str,
+) -> None:
+    r, p = single_review_env, single_review_env.p
+    output = json.loads(r.output.read_text())
+    if receipt == "resolution":
+        output["verdict"] = "request_changes"
+        output["prs"][0]["findings"] = [
+            {
+                "severity": "major",
+                "path": "change.txt",
+                "line": 1,
+                "rule": "boundary",
+                "detail": "The bad value must be fixed",
+            }
+        ]
+    else:
+        output["prs"][0]["evidence_waits"] = [
+            {
+                "question": "Confirm the fixed value at the checked head",
+                "required_evidence": "Parent verified the fix and its regression",
+            }
+        ]
+    r.output.write_text(json.dumps(output))
+    r.run()
+    tree = p.repo / ".claude/worktrees/pr-0"
+    bad = (tree / "change.txt").read_text()
+    (tree / "change.txt").write_text("fixed\n")
+    fixed = commit(tree, "fix reviewed value")
+    state = p.state()
+    state["prs"][0]["head"]["sha"] = fixed
+    p.save(state)
+    resolution_args = (
+        "resolve",
+        "--run",
+        r.request["review_run_id"],
+        "--pr",
+        "100",
+        "--finding",
+        "pr-100-1" if receipt == "resolution" else "changes",
+        "--fixed-head",
+        fixed,
+        "--evidence",
+        p.spec(proof(["change.txt"])),
+    )
+    r.cli(*resolution_args)
+    if receipt == "evidence":
+        r.cli(
+            "complete-evidence",
+            "--run",
+            r.request["review_run_id"],
+            "--pr",
+            "100",
+            "--wait",
+            "1",
+            "--evidence",
+            p.spec(proof(["change.txt"])),
+        )
+    gate = gate_for(r, monkeypatch)
+    gate.confirm()
+    assert (
+        gate.results(gate.cli("merge", AGENT_AUTO_MERGE="0"))[100]["decision"]
+        == "merge"
+    )
+
+    base_only = history in {"base_merge", "base_rebase"}
+    base_path = "base-only.txt" if base_only else "change.txt"
+    (p.repo / base_path).write_text("upstream value\n")
+    base = commit(p.repo, "base advances", base_path)
+    if history == "conflict_revert":
+        conflict = subprocess.run(
+            ["git", "merge", "--no-ff", "-m", "follow base", base],
+            cwd=tree,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert conflict.returncode == 1 and "change.txt" in conflict.stdout
+        (tree / "change.txt").write_text(bad)
+        commit(tree, "conflict resolution undoes the verified fix")
+    elif history == "revert_after_resolve":
+        # The new base touches the same path, but is not in this PR's history.
+        # Merely advancing base.ref must not excuse a later PR-only revert.
+        (tree / "change.txt").write_text(bad)
+        commit(tree, "undo fix after parent confirmation")
+    elif history == "base_merge":
+        run_git(tree, "merge", "--no-ff", "-m", "follow base only", base)
+    else:
+        run_git(tree, "rebase", base)
+    head = run_git(tree, "rev-parse", "HEAD")
+    state = p.state()
+    state["prs"][0]["head"]["sha"] = head
+    state["prs"][0]["base"]["sha"] = base
+    p.save(state)
+    assert (tree / "change.txt").read_text() == ("fixed\n" if base_only else bad)
+    current = gate.results(gate.cli("merge", AGENT_AUTO_MERGE="0"))[100]
+    if base_only:
+        assert current["decision"] == "merge", current
+    else:
+        assert current["decision"] == "blocked", current
+        expected = (
+            "unresolved_findings"
+            if receipt == "resolution"
+            else "pr_100_evidence_1_pending"
+        )
+        assert expected in current["reasons"]
+    _, value = inspect(r, 100)
+    observed = value["prs"][0]["history"][0]
+    assert all(
+        item["rebase_inheritance_verified"] is base_only
+        for item in observed["followups"]
+    )
+    if base_only:
+        assert observed["coverage_check"]["covered"] is True
+    elif receipt == "evidence":
+        assert "pr_100_evidence_1_pending" in observed["coverage_check"]["reasons"]
+    assert bool(observed["coverage_check"]["unresolved"]) is (
+        not base_only and receipt == "resolution"
+    )
+    assert len(r.calls()) == 1 and gate.merge_calls() == []
 
 
 @pytest.mark.parametrize("strategy", ["merge", "rebase"])
@@ -313,7 +443,7 @@ def test_thousands_of_reviewed_paths_stay_local_and_tampering_blocks_gate(
         state["prs"][0]["head"]["sha"] = head
         p.save(state)
     paths.sort()
-    args = (
+    args: tuple[str, ...] = (
         ("complete-evidence", "--wait", "1")
         if kind == "evidence"
         else ("resolve", "--finding", "changes", "--fixed-head", head)

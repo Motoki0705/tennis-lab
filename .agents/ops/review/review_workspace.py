@@ -274,17 +274,10 @@ def build_prompt(
 def verify_rebased_snapshot(
     original: Mapping[str, Any], current: Mapping[str, Any]
 ) -> bool:
-    """Only base-touched files may change a PR's own per-file delta."""
+    """Inherit only when the PR's own delta needs no new parent confirmation."""
     if (
         original["number"] != current["number"]
         or original["branch"] != current["branch"]
     ):
         return False
-    base_paths = set(changed_paths(original["base_sha"], current["base_sha"]))
-
-    before = file_deltas(original["merge_base_sha"], original["head_sha"])
-    after = file_deltas(current["merge_base_sha"], current["head_sha"])
-    for path in before.keys() | after.keys():
-        if before.get(path) != after.get(path) and os.fsdecode(path) not in base_paths:
-            return False
-    return True
+    return not resolution_scope(original, current).changed_paths

@@ -481,11 +481,13 @@ baseの取り込み方がmergeでもrebaseでも同じ定義を使い、親がba
 
 ### base取込み・rebase後の継承
 
-`review_workspace.verify_rebased_snapshot(original, current)` は実gitから、旧/新merge-baseに対する
-PR自身の変更をファイル単位で比較する。差が許されるのは同じ期間に旧baseと新baseの間でも
-変更されたファイルだけ。branchとPR番号は一致が必要で、stacked PRのbase retargetもこの条件で検証する。
-合格したsnapshotの組だけを `inherited_snapshots` に渡し、coverageと公開済みresolutionを継承する。
-変更されていないファイルへの追加編集は継承せず、親のresolveを必要とする。AIの再レビューはしない。
+`review_workspace.verify_rebased_snapshot(original, current)` は[修正確認の範囲](#修正確認の範囲)を再計算し、
+確認対象が空の場合だけ継承を認める。branchとPR番号は一致が必要で、stacked PRのbase retargetもこの条件で検証する。
+baseとPRの双方が変更したファイル、衝突解消、確認後に修正を取り消す追加編集は、PR自身の差分が変わるため継承しない。
+baseが同じパスを変更したという理由だけでは確認を省略しない。base側だけの取込みでPR差分が変わらない場合は継承できる。
+合格したsnapshotの組だけを `inherited_snapshots` に渡し、元レビューのcoverage、公開済みresolution（version 1/2）、
+complete-evidenceの確認を同じ条件で継承する。inspectの継承表示・coverageも同じ判定を使う。
+確認対象が残る変更は親が新しいresolve、証拠待ちは新しいcomplete-evidenceで再確認する。AIの再レビューはしない。
 
 resolveは同run/result・元のレビューhead・最新fixed snapshotに結び付ける。
 実git由来の[修正確認範囲](#修正確認の範囲)と全文diffのSHA-256を公開証拠と照合する。
