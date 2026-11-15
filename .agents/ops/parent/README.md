@@ -102,6 +102,13 @@ GET cacheの命中時もtransactionを要求し、transactionを跨いで応答�
 既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
 transaction用clientがlock不在を検出して自動的にregistry外clientへ切り替わることはない。
 
+`session.observation()` はregistryを解放した1回の観測でGETを共有する明示入口。
+専用のdetached clientに `read_observation()` を適用し、空のcacheから始め、終了時には捨てる。
+cacheは元のtransaction client・別のdetached client・次のtransactionへ渡らない。
+ネストした収集・証拠照合は同じ観測を使い、`observation(fresh=True)` は独立した観測を始める。
+`pr_view()` のCLI/GraphQL照会もこのscope内だけ共有し、鮮度指定と厳密なJSON検証を維持する。
+通常の `detached()` は引き続きcacheなし。復帰時のregistry再照合も省略しない。
+
 transaction内でgit・runner・証拠ファイルを検証するときは `gh.io_scope()` でregistryを解放する。
 GitHub取得も含む読取処理には `session.unlocked()` が返す独立client付きsessionを使う。
 どちらも復帰時に対象親の永続行を再照合し、競合は `RegistryConflict`（終了値2）で返す。
@@ -123,6 +130,7 @@ sub-issue一覧に含まれる完全なissue本文も再利用する。固定sna
 
 `PARENT_METRICS_FILE` にローカルJSONLの保存先を指定すると、コマンド・経過秒・lock待機秒・
 GitHub要求数/ページ数/通信秒・cache hit・処理秒・競合数・終了値を記録する。
+merge gateの明示実行も同じ計測に対応する。
 再実行時は `PARENT_METRICS_ATTEMPT=2` などで試行番号を渡し、retry_countを記録できる。
 本文・取得URL・識別子・資格情報は記録しない。未指定ならファイルを作らない。
 
