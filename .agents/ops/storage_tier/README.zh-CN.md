@@ -53,6 +53,7 @@ Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必
 投影忽略容器时间戳，但检查容器device/inode/mode及全部直属文件的metadata/hash。D:/E:各自保留容器权限，不将其作为根文件payload跨tier比较。
 
 迁移旧整ckpt manifest时先运行 `index ckpt`，旧manifest保存在E:的 `.storage-tier/legacy-manifests/`。
+迁移中断后重试 `index ckpt`，仅在已有归档与当前旧manifest全内容一致时接受，否则保留两份并失败。
 然后对scan报告的每个 `ckpt/<目录>` 单独index，不复用旧tree的hash。创建D:的实际ckpt容器，
 逐个hydrate根文件和全部子单位，始终保留E:容器。
 
@@ -224,10 +225,10 @@ mirror/evict/cycle，避免用不完整 D: 覆盖完整 E: 副本。
 
 若崩溃前已删除，则记录事实，
 不宣称已实测容量收益。未完成 transaction 阻止后续操作。mirror/hydrate发布中断时，暂停writer并运行 `recover`，
-不要删除journal、强制index或丢弃stage。普通目录在D:`publications/`持久保存rename前的校验计划，
+不要删除journal、强制index或丢弃stage。普通目录在创建stage前，先在D:`publications/`保存 `copying` intent，副本校验后才改为 `prepared`。
 根文件在 `checkpoint-file-operations/` 保存已校验副本与逐文件进度。
 恢复将稳定的source/destination重新SHA-256与持久计划比较，只继续已校验的剩余发布步骤，绝不继续删除。
-源变更、计划外目标或未校验stage会失败，不替换manifest。写入新证据前，在D:`publication-evidence/`
+`prepared`发布恢复拒绝源变更、计划外目标或未校验stage。写入新证据前，在D:`publication-evidence/`
 保存原始旧manifest、journal及恢复时的manifest。旧目录仅移动至目标tier的
 `.storage-tier/recovered-publications/`，不删除；根文件旧inode仍在 `checkpoint-file-history/`。
 再次哈希D:/E:后才记录新manifest并将receipt标记完成。保留完成receipt和历史，再运行 `verify`。
@@ -235,13 +236,53 @@ mirror/evict/cycle，避免用不完整 D: 覆盖完整 E: 副本。
 仅在旧目标内容完整时允许中止，不生成新manifest。旧格式的未完成journal保留并阻止操作，等待人工检查。
 绝不静默清理stage残留。
 
+`copying` 中断时，先确认旧目标完整，再将stage连同部分副本及未校验bytes保留至历史并中止操作，不生成新manifest。
+恢复后重试mirror/hydrate。即使receipt已为 `complete`，只要旧stage仍在，也必须恢复。
+先记录 `archiving` intent，保留同一旧目录到 `recovered-publications/`，再完成receipt。
+这覆盖manifest提交后、退役开始前的中断，也适用于旧实现的完成receipt，不重新认证manifest。
+
+若在retained目录创建后、identity记录前中断，恢复先固定并持久记录观察到的identity，再归档。
+这是归档custody记录，不是删除payload的校验证据，记录中明确标记。与已有identity不一致仍失败。
+JSON原子替换遗留的 `.<record>.<uuid>.tmp` 普通文件予以保留，只读取正式 `.json` record。
+其他异常名称、特殊文件或损坏的正式record仍失败。
+
+[中断边界测试](../../../tests/integration/agents_ops/test_storage_tier_crash_boundaries.py)覆盖下列持久化序列。
+[完整边界清单](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)包含JSON临时文件创建/fsync/替换、
+副本创建/metadata/fsync、rename/claim、删除、journal追加及恢复写入。
+directory fsync前后的进程中断可见状态与前一修改相同。本验证针对进程退出。
+每个中断状态映射到[恢复路径清单](../../../tests/support/agents_ops/fixtures/storage-recovery-boundaries.json)，
+[恢复边界测试](../../../tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py)再次中断每条路径，
+要求按文档修复后，正式E: payload相等且无参数日常cycle成功。
+
+| 操作 | 持久化顺序 |
+|---|---|
+| 新建/更新镜像 | copy intent → stage副本 → 已校验copy intent → 发布rename → manifest → 完成receipt → 旧stage退役 |
+| hydrate | copy intent → stage副本 → 已校验copy intent → 发布rename → manifest → 完成receipt → 清除恢复marker |
+| evict | prepared transaction → 隔离rename → 移动identity → 创建retained → 已校验计划 → entry claim/删除journal → 删除 → audit → 完成transaction → unlink transaction |
+| stage退役/清理 | 父发布receipt → prepared删除transaction → 创建retained → 已校验计划 → entry claim/删除 → audit → 完成transaction → unlink |
+| ckpt根文件 | prepared journal → 历史/副本 → 发布校验证据 → 逐文件交换/进度 → 旧文件归档/进度 → manifest → 完成journal → audit |
+| 旧ckpt index | 校验已记录直属文件 → 归档旧manifest → 发布根文件manifest → audit。重试仅接受匹配的已有归档 |
+| recover | 还原/保留tree → 记录归档identity → 归档tree/entry → 保存旧证据/计划 → 部分恢复marker或发布校验 → 完成receipt/解除active transaction |
+
+恢复中断后再次运行 `recover`，保留报告的历史。部分D: tree按上述完整hydrate/verify步骤修复，
+activate后确认无参数日常 `cycle` 正常。恢复绝不继续删除entry。
+
 `RENAME_EXCHANGE` 后的旧 E: tree 也只按交换前带 hash 的 snapshot，通过相同 claim、lease、持久 journal 路径删除。
 旧对象被更新或增加 payload 时保留并使 mirror 失败。recover 将旧 tree/entry 保存在 E: 内的
 `<mirror-repo>/.storage-tier/recovered-trees/`、`recovered-assets/`，计划/journal 留在 D:，绝不回滚新发布的镜像。
 旧副本删除中断会建立恢复标记；先保存、核对 E: 独有修改，再全量 verify/hydrate。archive 不自动删除。
 未发布的 mirror/hydrate stage 也仅在具有完整已校验 snapshot 时通过同一删除路径清理。
-不完整/未校验副本保留 staging 名称，并写入 `stage_preserved` 审计记录供人工检查。
-任何 payload 清理都不使用未经校验的递归删除。
+不完整/未校验副本先保留staging名称并写入 `stage_preserved`，有receipt时由recover归档。
+
+旧实现的孤立stage可能没有能定位单位的receipt/transaction。recover重新扫描管理root，
+此类stage仍在时，以 `unclaimed storage artifacts` 失败。按下列步骤显式保留。
+
+1. 暂停producer，选择scan/recover报告的准确stage路径。
+2. 使用正常mount/nofollow检查创建同tier的 `<tier-repo>/.storage-tier/manual-recovery/`。
+   通过 `filesystem.rename(stage, archive)` 按原stage名原子移入，使用 `RENAME_NOREPLACE`，目标占用时失败。
+   记录两个路径及目录的device/inode。
+3. 保留全部bytes供检查。recover后重试原mirror/hydrate/index，或按上述步骤完整verify/修复部分tree，
+   再确认无参数日常cycle。孤立stage归档测试固定此步骤。
 
 ## worktree 与常驻服务
 

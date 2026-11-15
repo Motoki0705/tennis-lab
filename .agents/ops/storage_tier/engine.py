@@ -22,6 +22,7 @@ from .filesystem import (
     append_json,
     checkpoint_directory_inodes,
     copy_tree,
+    json_records,
     names,
     read_json,
     real_directory,
@@ -410,7 +411,18 @@ class Engine:
         stage = destination.with_name(f".storage-tier-stage-{uuid.uuid4().hex}")
         published = False
         copied: Snapshot | None = None
-        receipt: tuple[Path, dict[str, Any]] | None = None
+        receipt = publication.prepare(
+            self,
+            unit,
+            "mirror",
+            source,
+            destination,
+            stage,
+            local,
+            None,
+            old,
+            old_manifest,
+        )
         try:
             copy_tree(source, stage, local)
             copied = snapshot(stage, hashes=True)
@@ -426,18 +438,7 @@ class Engine:
                 if not old.same_metadata(snapshot(destination)):
                     raise StorageError("E: changed before publication")
                 self.quiet(unit, destination, old, destructive=True)
-            receipt = publication.prepare(
-                self,
-                unit,
-                "mirror",
-                source,
-                destination,
-                stage,
-                local,
-                copied,
-                old,
-                old_manifest,
-            )
+            publication.verified(receipt, copied)
             rename(stage, destination, exchange=old is not None)
             published = True
             final = snapshot(destination)
@@ -456,11 +457,12 @@ class Engine:
         finally:
             # After an exchange, preserve the old mirror if manifest publication
             # failed; its named staging path is reported by discovery on retry.
-            if receipt is None and not published and stage.exists():
+            if receipt[1]["phase"] == "copying" and not published and stage.exists():
                 if copied is not None and copied.content() == local.content():
                     self.remove_stage(
                         unit, stage, copied, purpose="discard-mirror-stage"
                     )
+                    publication.complete(*receipt)
                 else:
                     self.audit(
                         "stage_preserved",
@@ -603,7 +605,18 @@ class Engine:
         self.ensure_parent(destination.parent, self.config.repo)
         stage = destination.with_name(f".storage-tier-hydrate-{uuid.uuid4().hex}")
         local: Snapshot | None = None
-        receipt: tuple[Path, dict[str, Any]] | None = None
+        receipt = publication.prepare(
+            self,
+            unit,
+            "hydrate",
+            source,
+            destination,
+            stage,
+            mirror,
+            None,
+            None,
+            previous,
+        )
         try:
             copy_tree(source, stage, mirror, now_ns=self.now_ns)
             local = snapshot(stage, hashes=True)
@@ -613,18 +626,7 @@ class Engine:
                 raise StorageError("hydrate copy/source verification failed")
             self.quiet(unit, source, snapshot(source))
             self.check_mount()
-            receipt = publication.prepare(
-                self,
-                unit,
-                "hydrate",
-                source,
-                destination,
-                stage,
-                mirror,
-                local,
-                None,
-                previous,
-            )
+            publication.verified(receipt, local)
             rename(stage, destination)
             final = snapshot(destination)
             if not local.same_metadata(final, moved=True):
@@ -642,7 +644,7 @@ class Engine:
             self.clear_recovery(unit)
             return {"action": "hydrated", "bytes": mirror.bytes}
         finally:
-            if receipt is None and stage.exists():
+            if receipt[1]["phase"] == "copying" and stage.exists():
                 if local is not None and local.content() == mirror.content():
                     self.remove_stage(
                         unit,
@@ -651,6 +653,7 @@ class Engine:
                         purpose="discard-hydrate-stage",
                         mirror=False,
                     )
+                    publication.complete(*receipt)
                 else:
                     self.audit(
                         "stage_preserved",
@@ -831,6 +834,16 @@ class Engine:
         if not os.path.lexists(retained) and not os.path.lexists(assets):
             return None
         expected = value.get("retained_identity")
+        if expected is None and os.path.lexists(retained):
+            # A process can stop after mkdir and before recording this identity.
+            # Establish custody for archival only, never authorize deletion.
+            anchor = self.config.mount if base == self.config.mirror else base
+            real_directory(retained, anchor)
+            info = retained.lstat()
+            expected = {"dev": info.st_dev, "ino": info.st_ino}
+            value["retained_identity"] = expected
+            value["retained_identity_observed_during_recovery"] = True
+            write_json(self.config.state / "transactions" / name, value)
         if not isinstance(expected, dict) or set(expected) != {"dev", "ino"}:
             raise StorageError(
                 "retained directory identity is unproven; manual inspection required"
@@ -922,7 +935,7 @@ class Engine:
     def recover(self) -> list[dict[str, Any]]:
         directory = self.config.state / "transactions"
         results: list[dict[str, Any]] = []
-        for name in names(directory) if directory.exists() else []:
+        for name in json_records(directory):
             value = read_json(directory / name)
             if value.get("schema_version") != 1 or value.get("phase") not in {
                 "prepared",
@@ -1121,13 +1134,28 @@ class Engine:
                         "recover changes transaction state; inspect scan/audit first"
                     )
                 report["results"] = self.recover()
-                return 0, report
+                report["layout_errors"] = (
+                    discover(self.config, self.config.repo).errors
+                    + discover(self.config, self.config.mirror).errors
+                )
+                unclaimed = [
+                    error
+                    for error in report["layout_errors"]
+                    if error.startswith("unfinished storage transaction:")
+                ]
+                if unclaimed:
+                    report["error"] = (
+                        "unclaimed storage artifacts remain; preserve them outside "
+                        "managed roots as documented before retrying recover"
+                    )
+                    self.audit("recovery_incomplete", artifacts=unclaimed)
+                return int(bool(unclaimed)), report
             transactions = self.config.state / "transactions"
             if publication.pending(self):
                 raise StorageError(
                     "unfinished publication; run recover before continuing"
                 )
-            if transactions.exists() and names(transactions):
+            if json_records(transactions):
                 raise StorageError(
                     "unfinished deletion transactions; run recover before continuing"
                 )

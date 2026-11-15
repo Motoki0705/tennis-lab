@@ -12,7 +12,7 @@ from .filesystem import (
     Snapshot,
     StorageError,
     copy_tree,
-    names,
+    json_records,
     read_json,
     rename,
     snapshot,
@@ -87,7 +87,7 @@ def operate(
     engine.require_complete_local(unit)
     operations = engine.config.state / "checkpoint-file-operations"
     if operations.exists():
-        for name in names(operations):
+        for name in json_records(operations):
             record = read_json(operations / name)
             if record.get("phase") != "complete":
                 raise StorageError(
@@ -113,10 +113,12 @@ def operate(
                     / (old_path.stem + ".whole-ckpt.json")
                 )
                 if archive.exists():
-                    raise StorageError(
-                        "legacy checkpoint manifest archive already exists"
-                    )
-                write_json(archive, legacy_manifest)
+                    if read_json(archive) != legacy_manifest:
+                        raise StorageError(
+                            "legacy checkpoint manifest archive conflicts with the current evidence"
+                        )
+                else:
+                    write_json(archive, legacy_manifest)
         manifest = engine.record(unit, None, tree, dry_run=dry_run)
         return {
             "action": "would_index" if dry_run else "indexed",
@@ -274,7 +276,7 @@ def recover(engine: Engine) -> list[dict[str, Any]]:
 
     folder = engine.config.state / "checkpoint-file-operations"
     results = []
-    for name in names(folder) if folder.exists() else []:
+    for name in json_records(folder):
         journal = folder / name
         value = read_json(journal)
         if value.get("phase") == "complete":

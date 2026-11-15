@@ -12,76 +12,12 @@ import select
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
 
-OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
-
-
-@dataclass
-class Lab:
-    module: Any
-    filesystem: Any
-    layout: Any
-    usage: Any
-    config: Any
-    engine: Any
-    proc: Path
-    now: float
-
-    def unit(self, path: str = "data/task/v1") -> Any:
-        directory = self.config.repo / path
-        (directory / "nested").mkdir(parents=True)
-        (directory / "a.bin").write_bytes(b"apple\n")
-        (directory / "nested/b.bin").write_bytes(b"\x00\x01\x04\x09")
-        unit = self.layout.Unit(
-            path,
-            "checkpoint"
-            if path.startswith("ckpt/")
-            else "output"
-            if "outputs/" in path
-            else "dataset",
-        )
-        self.age(unit, 15)
-        return unit
-
-    def age(self, unit: Any, days: float) -> None:
-        for name, entry in self.filesystem.snapshot(
-            self.config.repo / unit.path
-        ).entries.items():
-            if entry["kind"] == "file":
-                path = self.config.repo / unit.path / name
-                os.utime(
-                    path,
-                    ns=(
-                        int((self.now - days * 86400) * 10**9),
-                        path.stat().st_mtime_ns,
-                    ),
-                )
-
-    def run(
-        self, command: str, unit: Any, *, dry_run: bool = False
-    ) -> tuple[int, dict[str, Any]]:
-        return cast(
-            tuple[int, dict[str, Any]],
-            self.engine.run(command, [unit.path], dry_run=dry_run),
-        )
-
-    def mirror(self, unit: Any) -> None:
-        code, report = self.run("mirror", unit)
-        assert code == 0, report
-        assert report["results"][0]["action"] in {"mirrored", "verified", "unchanged"}
-
-    def records(self) -> list[dict[str, Any]]:
-        return [
-            json.loads(line)
-            for line in self.filesystem.read_bytes(
-                self.config.state / "audit.jsonl"
-            ).splitlines()
-        ]
+from tests.support.agents_ops.storage_tier import OPS, Lab, make_lab
 
 
 def filesystem_path(path: Path) -> str:
@@ -98,25 +34,7 @@ def filesystem_path(path: Path) -> str:
 @pytest.fixture
 def lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Lab:
     monkeypatch.syspath_prepend(str(OPS))
-    module = importlib.import_module("storage_tier.engine")
-    filesystem = importlib.import_module("storage_tier.filesystem")
-    layout = importlib.import_module("storage_tier.layout")
-    usage = importlib.import_module("storage_tier.usage")
-    repo, mount, proc = tmp_path / "D/repo", tmp_path / "E", tmp_path / "proc"
-    repo.mkdir(parents=True)
-    mount.mkdir()
-    proc.mkdir()
-    config = layout.Config(repo, mount, ("data/task",))
-    config.mirror.mkdir(parents=True)
-    # Aged atimes are truly in the past: an ordinary read must update them.
-    result = Lab(module, filesystem, layout, usage, config, None, proc, time.time())
-    result.engine = module.Engine(
-        config,
-        inspector=usage.Inspector(proc),
-        mount_check=lambda config: None,
-        clock=lambda: result.now,
-    )
-    return result
+    return make_lab(tmp_path)
 
 
 def test_mirror_evict_hydrate_verifies_known_bytes_and_keeps_ckpt(lab: Lab) -> None:
@@ -3023,3 +2941,108 @@ def test_recovery_requires_durable_intent_even_when_both_tiers_match(
         lab.engine.run("recover", [], dry_run=False)
     assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == before
     assert local.exists() and mirror.exists()
+
+
+def test_completed_publication_receipt_recovers_old_stage_and_daily_cycle(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = lab.config.repo / unit.path
+    (source / "a.bin").write_bytes(b"new verified output\n")
+    lab.age(unit, 1)
+    module = importlib.import_module("storage_tier.publication")
+    original = module.complete
+
+    class Stopped(BaseException):
+        pass
+
+    def crash_after_complete(*args: Any, **kwargs: Any) -> None:
+        original(*args, **kwargs)
+        raise Stopped
+
+    with monkeypatch.context() as patch:
+        patch.setattr(module, "complete", crash_after_complete)
+        with pytest.raises(Stopped):
+            lab.run("mirror", unit)
+    assert list((lab.config.mirror / unit.path).parent.glob(".storage-tier-stage-*"))
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0, recovered
+    assert lab.run("verify", unit)[0] == 0
+    code, report = lab.engine.run("cycle", [], dry_run=True)
+    assert code == 0, report
+    assert not report["layout_errors"]
+
+
+@pytest.mark.parametrize("archive_changed", [False, True])
+def test_legacy_checkpoint_index_can_retry_after_archiving_old_manifest(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, archive_changed: bool
+) -> None:
+    root = lab.config.mirror / "ckpt"
+    root.mkdir()
+    (root / "README.md").write_bytes(b"legacy checkpoint documentation")
+    unit = lab.layout.Unit("ckpt", "checkpoint-files")
+    legacy = lab.layout.Unit("ckpt", "checkpoint")
+    tree = lab.filesystem.snapshot(root, hashes=True)
+    lab.engine.record(legacy, None, tree, dry_run=False)
+    module = importlib.import_module("storage_tier.checkpoint_files")
+    original = module.write_json
+
+    def interrupted(path: Path, value: dict[str, Any]) -> None:
+        original(path, value)
+        if path.parent.name == "legacy-manifests":
+            raise OSError("after archiving the previous manifest")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(module, "write_json", interrupted)
+        assert lab.run("index", unit)[0] == 1
+    archives = lab.config.mirror / ".storage-tier/legacy-manifests"
+    before = {p: lab.filesystem.read_bytes(p) for p in archives.iterdir()}
+    if archive_changed:
+        archive = next(iter(before))
+        changed = lab.filesystem.read_json(archive)
+        changed["unit"] = "conflicting legacy proof"
+        lab.filesystem.write_json(archive, changed)
+        before = {p: lab.filesystem.read_bytes(p) for p in archives.iterdir()}
+    code, result = lab.run("index", unit)
+    assert code == int(archive_changed), result
+    if archive_changed:
+        assert "conflicts" in result["results"][0]["error"]
+        assert (
+            lab.filesystem.read_json(lab.engine.manifest_path(unit))["kind"]
+            == "checkpoint"
+        )
+    assert before == {p: lab.filesystem.read_bytes(p) for p in archives.iterdir()}
+
+
+def test_orphan_stage_requires_explicit_archival_before_daily_cycle(lab: Lab) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    lab.age(unit, 1)
+    orphan = (lab.config.mirror / unit.path).with_name(
+        ".storage-tier-stage-legacy-orphan"
+    )
+    orphan.mkdir()
+    (orphan / "unverified.bin").write_bytes(b"unrecorded orphan payload")
+    identity = (orphan.stat().st_dev, orphan.stat().st_ino)
+    code, report = lab.engine.run("recover", [], dry_run=False)
+    assert code == 1 and "unclaimed storage artifacts" in report["error"], report
+    archive = lab.config.mirror / ".storage-tier/manual-recovery" / orphan.name
+    lab.engine.ensure_parent(archive.parent, lab.config.mirror)
+    lab.filesystem.rename(orphan, archive)
+    assert identity == (archive.stat().st_dev, archive.stat().st_ino)
+    assert lab.engine.run("recover", [], dry_run=False)[0] == 0
+    assert lab.run("verify", unit)[0] == 0
+    lab.filesystem.write_json(
+        lab.config.state / "active.json",
+        {
+            "schema_version": 1,
+            "repository": str(lab.config.repo),
+            "mirror_mount": str(lab.config.mount),
+        },
+    )
+    assert lab.engine.run("cycle", [], dry_run=False)[0] == 0
+    assert (
+        lab.filesystem.read_bytes(archive / "unverified.bin")
+        == b"unrecorded orphan payload"
+    )

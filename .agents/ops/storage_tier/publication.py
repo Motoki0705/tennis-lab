@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -9,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from .filesystem import (
     Snapshot,
     StorageError,
-    names,
+    json_records,
     read_json,
     real_directory,
     rename,
@@ -63,7 +64,7 @@ def prepare(
     destination: Path,
     stage: Path,
     expected: Snapshot,
-    copied: Snapshot,
+    copied: Snapshot | None,
     previous: Snapshot | None,
     prior_manifest: dict[str, Any] | None,
 ) -> tuple[Path, dict[str, Any]]:
@@ -73,12 +74,12 @@ def prepare(
         "unit": unit.path,
         "kind": unit.kind,
         "operation": operation,
-        "phase": "prepared",
+        "phase": "prepared" if copied is not None else "copying",
         "source": str(source),
         "destination": str(destination),
         "stage": str(stage),
         "expected": expected.entries,
-        "copied": copied.entries,
+        "copied": copied.entries if copied is not None else None,
         "previous": previous.entries if previous is not None else None,
         "previous_manifest": prior_manifest,
     }
@@ -91,17 +92,23 @@ def complete(path: Path, value: dict[str, Any]) -> None:
     write_json(path, value)
 
 
+def verified(receipt: tuple[Path, dict[str, Any]], copied: Snapshot) -> None:
+    path, value = receipt
+    value["copied"], value["phase"] = copied.entries, "prepared"
+    write_json(path, value)
+
+
 def pending(engine: Engine) -> list[Path]:
     folder = engine.config.state / "publications"
-    return (
-        [
-            folder / name
-            for name in names(folder)
-            if read_json(folder / name).get("phase") != "complete"
-        ]
-        if folder.exists()
-        else []
-    )
+    result = []
+    for name in json_records(folder):
+        value = read_json(folder / name)
+        old_stage = value.get("previous") is not None and os.path.lexists(
+            Path(value["stage"])
+        )
+        if value.get("phase") != "complete" or old_stage:
+            result.append(folder / name)
+    return result
 
 
 def fresh(engine: Engine, unit: Unit, path: Path) -> Snapshot:
@@ -118,13 +125,46 @@ def root_matches(tree: Snapshot, expected: dict[str, Any]) -> bool:
     return all(tree.entries["."][k] == expected["."][k] for k in ("dev", "ino"))
 
 
+def archive_stage(
+    engine: Engine,
+    journal: Path,
+    value: dict[str, Any],
+    stage: Path,
+    base: Path,
+    anchor: Path,
+    *,
+    expected: dict[str, Any] | None,
+) -> Path | None:
+    """Preserve even unverified copies; observed identity establishes custody only."""
+    archive = base / ".storage-tier/recovered-publications" / journal.stem
+    if stage.exists() and archive.exists():
+        raise StorageError("publication archive destination is occupied")
+    current = stage if stage.exists() else archive
+    if not current.exists():
+        return None
+    real_directory(current, anchor)
+    info = current.lstat()
+    observed = {"dev": info.st_dev, "ino": info.st_ino}
+    identity = value.get("archive_identity", expected)
+    if identity is not None and any(observed[k] != identity[k] for k in observed):
+        raise StorageError("publication archive identity changed; preserving it")
+    value["archive_identity"] = observed
+    value["old_tree_archive"] = str(archive)
+    write_json(journal, value)
+    if current == stage:
+        engine.ensure_parent(archive.parent, base)
+        rename(stage, archive)
+    return archive
+
+
 def recover(engine: Engine) -> list[dict[str, Any]]:
-    results = []
+    results: list[dict[str, Any]] = []
     for journal in pending(engine):
         value = read_json(journal)
         if (
             value.get("schema_version") != 1
-            or value.get("phase") != "prepared"
+            or value.get("phase")
+            not in {"copying", "prepared", "complete", "archiving"}
             or value.get("operation") not in {"mirror", "hydrate"}
         ):
             raise StorageError("invalid publication recovery journal")
@@ -136,7 +176,7 @@ def recover(engine: Engine) -> list[dict[str, Any]]:
         ):
             raise StorageError("publication unit is not independently discovered")
         hydrate = value["operation"] == "hydrate"
-        source = engine.path(unit, mirror=hydrate)
+        source = (engine.config.mirror if hydrate else engine.config.repo) / unit.path
         destination = (
             engine.config.repo if hydrate else engine.config.mirror
         ) / unit.path
@@ -151,6 +191,60 @@ def recover(engine: Engine) -> list[dict[str, Any]]:
             or not stage.name.startswith(prefix)
         ):
             raise StorageError("invalid publication recovery paths")
+        phase = value["phase"]
+        if phase in {"complete", "archiving"}:
+            previous = value.get("previous")
+            if previous is None:
+                raise StorageError("completed publication has no old-stage plan")
+            value["phase"] = "archiving"
+            write_json(journal, value)
+            archive = archive_stage(
+                engine, journal, value, stage, base, anchor, expected=previous["."]
+            )
+            if archive is None:
+                raise StorageError("old publication stage disappeared during archival")
+            complete(journal, value)
+            engine.audit("completed_publication_archived", unit, archive=str(archive))
+            results.append(
+                {
+                    "unit": unit.path,
+                    "action": "stage_archived",
+                    "old_tree_archive": str(archive),
+                }
+            )
+            continue
+        if phase == "copying":
+            previous = value.get("previous")
+            target = fresh(engine, unit, destination) if destination.exists() else None
+            if (previous is None and target is not None) or (
+                previous is not None
+                and (
+                    target is None
+                    or not root_matches(target, previous)
+                    or target.content() != Snapshot(previous).content()
+                )
+            ):
+                raise StorageError("copy-abort destination differs from the prior copy")
+            archive = archive_stage(
+                engine, journal, value, stage, base, anchor, expected=None
+            )
+            proof = evidence(engine, journal.name, value)
+            complete(journal, value)
+            engine.audit(
+                "publication_aborted",
+                unit,
+                archive=str(archive),
+                evidence_archive=str(proof),
+            )
+            results.append(
+                {
+                    "unit": unit.path,
+                    "action": "publication_aborted",
+                    "old_tree_archive": str(archive) if archive else None,
+                }
+            )
+            continue
+        source = engine.path(unit, mirror=hydrate)
         expected, copied = Snapshot(value["expected"]), Snapshot(value["copied"])
         original = fresh(engine, unit, source)
         if original.content() != expected.content():

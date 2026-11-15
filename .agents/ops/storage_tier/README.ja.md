@@ -58,8 +58,10 @@ journalを退避して再indexするだけでは復旧にならない。不一�
 rootの時刻は投影のmetadata identityから外し、rootのdevice/inode/modeと全直下ファイルのmetadata/hashは検査する。コンテナの権限はD:/E:それぞれで保持し、
 rootファイルのpayloadとしてtier間比較はしない。
 
-旧ckpt全体manifestの移行は、まず `index ckpt` でrootファイルを再indexする。旧manifestはE:の
-`.storage-tier/legacy-manifests/` へ保存される。その後scanに出る各 `ckpt/<dir>` を個別にindexする。
+旧ckpt全体manifestの移行は、まず `index ckpt` でrootファイルを再indexする。
+移行が中断したら `index ckpt` を再実行する。既存の退避manifestは現在の旧manifestと全内容が一致するときだけ受け入れ、
+不一致なら両方を保持して失敗する。
+旧manifestはE:の `.storage-tier/legacy-manifests/` へ保存される。その後scanに出る各 `ckpt/<dir>` を個別にindexする。
 旧treeのhashを子単位へ流用しない。D:には実dirのckptコンテナを作り、rootファイルと全子単位を個別にhydrateする。
 E:のckptコンテナはそのまま保つ。
 
@@ -253,10 +255,10 @@ manifestの認証・削除許可も行わない。実機確認は `verify --dry-
 
 削除後に停止していた場合も事実を記録するが、空き容量の実測成功とは称さない。
 未完了transactionがあれば復旧まで次の操作を止める。mirror/hydrateの公開中断はwriterを止めて `recover` する。
-journalの削除、強制index、stageの破棄で迂回しない。通常dirはrename前の照合済み計画をD:の `publications/` に、
+journalの削除、強制index、stageの破棄で迂回しない。通常dirはstage作成前にD:の `publications/` へ `copying` intentを保存し、コピー照合後に `prepared` にする。
 rootファイルは照合済みコピーとファイルごとの進行を `checkpoint-file-operations/` に残す。
 復旧は永続計画とsource/destinationの安定した再SHA-256を比較し、照合できた残りの公開だけを再開する。削除は再開しない。
-source変更、予定外のdestination、未照合stageはmanifestを置き換えず失敗する。新しい証拠の記録前に、
+`prepared` の公開再開ではsource変更、予定外のdestination、未照合stageを拒否する。新しい証拠の記録前に、
 旧manifestの全内容、journal、復旧時のmanifestをD:の `publication-evidence/` に保存する。
 旧dirは削除せず対象tierの `.storage-tier/recovered-publications/` へ移し、rootファイルの旧inodeは
 `checkpoint-file-history/` に残す。D:/E:を再hashしてからmanifestを記録し、receiptを完了にする。
@@ -264,13 +266,54 @@ source変更、予定外のdestination、未照合stageはmanifestを置き換�
 照合済みrootファイルコピーの作成前に止まった場合は、旧destinationの内容が保たれているときだけ中止扱いにし、
 新manifestは作らない。未対応の旧形式の未完了journalは手動確認まで保持・停止する。stageの残骸を黙って消さない。
 
+`copying` 中断では旧destinationが保たれていることを確かめ、部分コピー・未照合bytesを含むstageを履歴へ回収して中止扱いにする。
+新manifestを作らず、復旧後にmirror/hydrateを再実行する。`complete` receiptでも旧stageが残っていれば復旧対象とする。
+`archiving` intentを先に保存し、同じ旧dirを `recovered-publications/` へ保持してから完了にする。
+manifest記録後・退役開始前の中断と、旧実装の完了receiptにも適用する。manifestは再認証しない。
+
+retained dir作成からidentity記録までに止まった場合、復旧は現在のidentityを固定・永続記録してから回収する。
+これは回収先を一意にするcustodyの観測で、payload削除の照合根拠には使わず、記録にも区別を残す。
+記録済みidentityとの不一致は引き続き失敗にする。JSONの原子的置換の途中に残る `.<record>.<uuid>.tmp` は通常ファイルとして保持し、
+処理は正規の `.json` recordだけを読む。他の想定外の名前・特殊ファイル・破損した正規recordは失敗にする。
+
+次の永続化順序を[中断境界テスト](../../../tests/integration/agents_ops/test_storage_tier_crash_boundaries.py)で検査する。
+[全境界一覧](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)にはJSON一時ファイル作成/fsync/置換、
+コピーの作成/metadata/fsync、rename/claim、削除、journal追記、復旧の書込みを含める。
+directory fsyncの前後は、直前の変更と同じプロセス停止時の可視状態になる。検証対象はプロセスの終了である。
+各中断状態を[復旧経路一覧](../../../tests/support/agents_ops/fixtures/storage-recovery-boundaries.json)へ対応付け、
+[復旧境界テスト](../../../tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py)で各経路をさらに中断する。
+文書化した修復後に、正規E:のpayload一致と引数なし日次cycleの成功を要求する。
+
+| 操作 | 永続化の順序 |
+|---|---|
+| ミラー新規・更新 | copy intent → stageコピー → 照合済みcopy intent → 公開rename → manifest → 完了receipt → 旧stage退役 |
+| hydrate | copy intent → stageコピー → 照合済みcopy intent → 公開rename → manifest → 完了receipt → 復旧marker解除 |
+| evict | prepared transaction → 隔離rename → 移動identity → retained作成 → 照合済み計画 → entryのclaim/削除journal → 削除 → audit → 完了transaction → transaction unlink |
+| stage退役・破棄 | 親の公開receipt → prepared削除transaction → retained作成 → 照合済み計画 → entryのclaim/削除 → audit → 完了transaction → unlink |
+| ckpt直下ファイル | prepared journal → 履歴/コピー → 公開照合根拠 → 各交換/進行 → 各旧ファイル回収/進行 → manifest → 完了journal → audit |
+| 旧ckpt index | 記録済み直下ファイル照合 → 旧manifest退避 → root-file manifest公開 → audit。再試行は一致する退避manifestを受け入れる |
+| recover | treeの復元・保持 → 回収identity記録 → tree/entry回収 → 旧証拠/計画保存 → 部分復旧markerまたは公開照合 → receipt完了/active transaction解除 |
+
+復旧の途中で止まったら再び `recover` する。報告された履歴は保持する。部分D: treeは上記の完全hydrate/verify手順で修復し、
+activate後の引数なし日次 `cycle` を確認する。復旧からentryの削除は再開しない。
+
 `RENAME_EXCHANGE` 後の旧E:実体も、交換前のhash付きsnapshotを計画とし、同じclaim・lease・永続journalの経路でだけ消す。
 旧実体に更新・追加があれば保持してmirrorを失敗にする。recoverは旧treeとentryをE:内の
 `<mirror-repo>/.storage-tier/recovered-trees/`・`recovered-assets/` へ保存し、計画・journalはD:に残す。
 公開済みの新ミラーを巻き戻さない。旧実体の削除中断は復旧マーカーを作るため、E:だけの変更を保持・照合してから
 全件verify/hydrateを通す。archiveは自動削除しない。
 未公開のmirror/hydrate stageも、完全な照合済みsnapshotがある場合だけ同じ削除経路で片付ける。
-不完全・未照合のコピーはstage名で保持し、`stage_preserved` をauditへ残して手動確認を求める。
+不完全・未照合のコピーはまずstage名で保持し、`stage_preserved` をauditへ残す。receiptがあればrecoverが履歴へ回収する。
+
+旧実装の孤立stageには、単位を特定できるreceipt/transactionがない場合がある。recoverは管理rootを再走査し、
+このstageが残れば `unclaimed storage artifacts` を示して失敗する。次の手順で明示的に保持する。
+
+1. producerを止め、scan/recoverが示す正確なstage pathを選ぶ。
+2. 通常のmount/nofollow検査で、同tierの `<tier-repo>/.storage-tier/manual-recovery/` を作る。
+   `filesystem.rename(stage, archive)` で元のstage名のまま原子的に移す。`RENAME_NOREPLACE` のため、宛先が占有されていれば失敗する。
+   両pathとdirectoryのdevice/inodeを記録する。
+3. 全bytesを確認用に保持する。recover後、元のmirror/hydrate/indexを再実行するか、上記の完全verify・部分tree修復を行い、
+   引数なし日次cycleを確認する。孤立stage回収テストでこの手順を固定する。
 payloadを未照合のまま再帰削除する経路は使わない。
 
 ## worktreeと常駐

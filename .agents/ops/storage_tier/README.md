@@ -77,6 +77,9 @@ all direct-file metadata/hashes are still checked. Container modes are preserved
 on D: and E:, and are not compared as root-file payload.
 
 When migrating a former whole-`ckpt` manifest, run explicit `index ckpt` first.
+If indexing was interrupted, retry `index ckpt`; an existing legacy archive is
+accepted only when its full contents equal the current old manifest. A conflict
+fails with both copies retained.
 It preserves the old manifest under E:`.storage-tier/legacy-manifests/` before
 recording root files. Then index every `ckpt/<directory>` reported by scan. Do not
 reuse the old whole-tree hashes for child units. Create a real D: `ckpt/` container
@@ -341,11 +344,12 @@ If removal completed before a crash, recovery records
 that fact without claiming a measured capacity gain. Any pending transaction blocks
 further operations until recovery. For interrupted mirror/hydrate publication, pause
 writers and run `recover`; do not remove journals, force index or discard stages.
-Directory units persist a pre-rename receipt in D:`publications/`. Root-file operations
+Directory units persist a `copying` receipt in D:`publications/` **before creating
+the stage** and change it to `prepared` only after verifying the copy. Root-file operations
 persist verified copies and per-file progress in D:`checkpoint-file-operations/`.
 Recovery compares fresh, stable source/destination SHA-256 with that durable intent.
-It resumes only verified remaining publication steps, never deletion. A changed source,
-unplanned destination or unverified stage fails without replacing the manifest.
+It resumes only verified remaining publication steps, never deletion. For a `prepared`
+publication, a changed source, unplanned destination or unverified stage causes failure.
 Before issuing new evidence it preserves the exact previous manifest, journal and
 observed manifest in D:`publication-evidence/`. Old directory trees move, without
 deletion, to the target tier's `.storage-tier/recovered-publications/`; root-file
@@ -357,6 +361,47 @@ a verified root-file copy exists can only be aborted if the old destination cont
 are intact; it does not issue a new manifest. Unsupported older incomplete journals
 remain blocked for manual inspection. Staging leftovers are never silently swept.
 
+An interrupted `copying` operation archives its stage, including incomplete or
+unverified bytes, and aborts without issuing a new manifest. Recovery first checks
+that the old destination is intact. Retry mirror/hydrate after recovery. A `complete`
+receipt that still has its old stage also requires recovery: it writes an `archiving`
+intent, preserves that exact old directory in `recovered-publications/`, then completes
+the receipt. This works after the manifest was committed but before retirement began,
+including receipts written by the earlier implementation. It does not refresh the manifest.
+
+If interruption occurs between creating a retained directory and saving its identity,
+recovery pins and records the observed identity **for archival custody only** before
+moving it. The record flags this observation; it cannot authorize payload deletion.
+An already-recorded identity mismatch remains an error. Atomic JSON replacement may
+leave a `.<record>.<uuid>.tmp` file: committed-record enumeration preserves these
+regular files and reads only the canonical `.json` records. Other unexpected names,
+special files and corrupt committed records remain errors.
+
+The persistence sequences below are exercised at every recorded filesystem mutation
+in the [crash-boundary tests](../../../tests/integration/agents_ops/test_storage_tier_crash_boundaries.py).
+The [boundary inventory](../../../tests/support/agents_ops/fixtures/storage-crash-boundaries.json)
+includes JSON temporary creation/fsync/replacement, copy creation/metadata/fsync,
+rename/claim, removal, journal append and recovery writes. Directory fsync calls share
+the preceding mutation's observable process-crash state. These are process-exit tests.
+Every interrupted state is mapped to a [recovery sequence](../../../tests/support/agents_ops/fixtures/storage-recovery-boundaries.json).
+The [recovery-boundary tests](../../../tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py)
+interrupt each distinct sequence again and require canonical payload equality and a
+successful unselected daily cycle after the documented repair.
+
+| Operation | Persistence sequence |
+|---|---|
+| New/update mirror | Copy intent → stage copy → verified copy intent → publish rename → manifest → complete receipt → old-stage retirement |
+| Hydrate | Copy intent → stage copy → verified copy intent → publish rename → manifest → complete receipt → recovery-marker clear |
+| Evict | Prepared transaction → quarantine rename → moved identity → retained mkdir → verified plan → entry claim/removal journal → removal → audit → complete transaction → transaction unlink |
+| Retire/discard stage | Parent publication receipt → prepared removal transaction → retained mkdir → verified plan → entry claim/removal → audit → complete transaction → unlink |
+| Checkpoint root files | Prepared journal → history/copy → publishing proof → each exchange/progress → each old-file archival/progress → manifest → complete journal → audit |
+| Legacy checkpoint index | Verify recorded direct files → archive old manifest → publish root-file manifest → audit; retry index accepts the matching prior archive |
+| Recover | Restore or preserve tree → establish archival custody → archive tree/entries → save prior evidence/plan → mark partial recovery or verify publication → complete receipt/clear active transaction |
+
+After any interrupted recovery, run `recover` again. Preserve the reported archives.
+For a partial D: tree follow the full hydrate/verify procedure above, then run the
+unselected daily `cycle` after activation. Recovery never resumes entry deletion.
+
 After `RENAME_EXCHANGE`, the old E: tree is removed only against its pre-exchange
 hashed snapshot through the same claimed-entry, lease and durable journal path.
 Changed/added old payload is retained and mirroring fails. Recovery archives old trees
@@ -365,9 +410,21 @@ plans/journals remain on D:. It never replaces the newly published mirror. Inter
 retirement creates the unit's recovery marker; preserve/reconcile the archived E-only
 changes and run full `verify`/`hydrate` before continuing. Archives are never auto-deleted.
 Unpublished mirror/hydrate stages are cleaned only with a complete verified snapshot
-through that same removal path. Incomplete/unverified copies are retained at their
-staging name with a `stage_preserved` audit record for manual inspection. No payload
-cleanup uses recursive, unverified removal.
+through that same removal path. Incomplete/unverified copies initially remain at their
+staging name with a `stage_preserved` audit record; receipt-backed recovery archives them.
+
+An older orphan may have no receipt or transaction identifying its unit. `recover`
+rescans managed roots and returns failure with `unclaimed storage artifacts` while
+such a stage remains. Preserve it explicitly before retrying:
+
+1. Pause its producers and select the exact stage path reported by scan/recover.
+2. Create the same tier's `<tier-repo>/.storage-tier/manual-recovery/` with the normal
+   mount/no-follow checks. Use `filesystem.rename(stage, archive)` to atomically move
+   it to that directory under its original stage name. This uses `RENAME_NOREPLACE`;
+   an occupied destination is an error. Record both paths and the directory device/inode.
+3. Keep every archived byte for inspection. Run `recover`, retry the original
+   mirror/hydrate/index or perform the full verify/partial-tree repair above, then
+   check the unselected daily cycle. The orphan-archival test fixes this procedure.
 
 ## Worktrees and service
 

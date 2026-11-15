@@ -6,6 +6,7 @@ import ctypes
 import hashlib
 import json
 import os
+import re
 import stat
 import uuid
 from collections.abc import Callable
@@ -39,6 +40,20 @@ def names(path: Path) -> list[str]:
             return sorted(entry.name for entry in entries)
     finally:
         os.close(fd)
+
+
+def json_records(path: Path) -> list[str]:
+    """Committed records only; retain interrupted atomic-write temporaries."""
+    result = []
+    for name in names(path) if path.exists() else []:
+        if re.fullmatch(r"\..+\.[0-9a-f]{32}\.tmp", name):
+            if not stat.S_ISREG((path / name).lstat().st_mode):
+                raise StorageError(f"invalid atomic-write temporary: {path / name}")
+            continue
+        if name.startswith(".") or not name.endswith(".json"):
+            raise StorageError(f"unexpected transaction record: {path / name}")
+        result.append(name)
+    return result
 
 
 def fd_mount_id(fd: int) -> int:
