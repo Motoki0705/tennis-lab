@@ -62,7 +62,15 @@ dataset container直属版本root及单位边界/祖先上的未声明symlink在
 引用检查失败也通过stderr保留观察记录。
 
 共享 `PathResolver` 读取同一checkout的 [config.toml](config.toml)，不维护第二份引用名单。
-仅对标准DATA root，声明的D:链接精确指向已挂载E:对应路径时才允许；仍拒绝越出E:引用subtree、
+仅对标准DATA root，声明的D:链接精确指向已挂载E:对应路径时才允许。
+标准root必须精确等于 `main_checkout / data`；main checkout由runtime的 `PROJECT_ROOT` 查询Git绝对common directory，
+取其父目录，与storage CLI使用相同规则。仅basename为data的custom root不获得例外：内部链接保持原包含规则，
+外部链接（包括E:对应路径形状）仍被拒绝。runtime worktree尚未创建共享data链接也不改变标准root。
+
+绝对输入中的 `main_checkout/.claude/worktrees/<name>/data` 仅在 `.claude`、`worktrees`、worktree均为实际目录，
+且data为直接指向标准root的绝对symlink时接受。不接受任意前缀、链接祖先或root链接链。
+仅规范化此root前缀，随后仍检查原声明链接和精确E:目标。main/worktree两种写法得到相同逻辑DATA名与规范E:输入；
+alignment的scene-root边界及ClipSource序列化也遵循此契约。仍拒绝越出E:引用subtree、
 未声明外部链接、目标不匹配、未挂载及父路径逃逸。解析结果仍是规范E:路径；`PathResolver.relative` 将已验证引用转换回逻辑DATA相对名。
 Clip Studio发现、project序列化及review CLI使用此API，在保留保存名的同时不改变合成pipeline的物理workspace。普通实际目录/custom DATA root和其他role保持原包含规则。
 迁移后恢复consumer之前，须使用本次审核过的runtime和配置。

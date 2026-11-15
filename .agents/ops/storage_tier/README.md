@@ -86,7 +86,22 @@ include `unmanaged_links_D`. Reference failures include observations on stderr.
 
 The shared `PathResolver` reads the same checkout's [config.toml](config.toml),
 without a second alias list. For the standard DATA root only, an exact declared
-D: alias to its mounted E: counterpart is accepted. Its E: subtree is checked for
+D: alias to its mounted E: counterpart is accepted. The standard root is exactly
+`main_checkout / data`, where `main_checkout` is the parent of the absolute Git
+common directory queried from the runtime's `PROJECT_ROOT`, as in the storage
+CLI. A custom root merely named `data` receives no exception: internal links
+retain ordinary containment semantics and external links, including E:-shaped
+counterparts, remain forbidden. The default root does not depend on whether a
+new runtime worktree already has its shared `data` link.
+
+Absolute input spellings through `main_checkout/.claude/worktrees/<name>/data`
+are accepted only through real `.claude`, `worktrees` and worktree directories
+and a direct absolute `data` symlink to the standard root. Arbitrary prefixes,
+linked ancestors and chained root links receive no such authority. Normalize
+only this root prefix, then validate the original declared unmanaged child and
+its exact E: target. Main and worktree spellings produce the same logical DATA
+name and canonical E: input; this also applies to alignment scene-root boundaries
+and ClipSource serialization. Its E: subtree is checked for
 escape; undeclared external links, mismatches, missing E: and parent escapes fail.
 Resolved inputs/workspaces remain canonical E: paths. `PathResolver.relative`
 maps a validated reference to its logical DATA-relative name; Clip Studio uses

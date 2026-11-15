@@ -6,6 +6,7 @@ import json
 import os
 import shlex
 import stat
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -15,6 +16,67 @@ from src.utils.paths import PROJECT_ROOT
 # The runtime checkout and storage CLI read this same policy; no alias list is
 # copied into src. The DATA root can belong to the main checkout of a worktree.
 POLICY_CONFIG = PROJECT_ROOT / ".agents/ops/storage_tier/config.toml"
+
+
+def _check_link(alias: Path, expected: Path) -> None:
+    """Require one stable, direct absolute link to the specified path."""
+    fd = os.open(alias, os.O_PATH | os.O_NOFOLLOW)
+    try:
+        before = os.fstat(fd)
+        if not stat.S_ISLNK(before.st_mode):
+            raise ValueError(f"data reference is not a symlink: {alias}")
+        if os.readlink("", dir_fd=fd) != str(expected):
+            raise ValueError(f"data reference target mismatch: {alias}")
+        observed = alias.lstat()
+        if (before.st_dev, before.st_ino, before.st_ctime_ns) != (
+            observed.st_dev,
+            observed.st_ino,
+            observed.st_ctime_ns,
+        ):
+            raise ValueError(f"data reference changed: {alias}")
+    finally:
+        os.close(fd)
+
+
+def _standard_data_spelling(root: Path, path: Path) -> Path:
+    """Recognize only the conventional direct worktree DATA-root alias.
+
+    Resolve neither arbitrary prefixes nor the unmanaged child here: its
+    original link must still undergo the complete policy/target validation.
+    """
+    worktrees = root.parent / ".claude/worktrees"
+    if not path.is_relative_to(worktrees):
+        return path
+    parts = path.relative_to(worktrees).parts
+    if len(parts) < 3 or parts[1] != "data":
+        return path
+    if ".." in parts:
+        raise ValueError("parent traversal through a worktree DATA alias")
+    worktree = worktrees / parts[0]
+    for parent in (worktrees.parent, worktrees, worktree):
+        if not stat.S_ISDIR(parent.lstat().st_mode):
+            raise ValueError(
+                f"worktree DATA alias has a non-directory ancestor: {parent}"
+            )
+    _check_link(worktree / "data", root)
+    return root.joinpath(*parts[2:])
+
+
+def _standard_repository() -> Path:
+    """Use the same Git common-directory authority as storage_tier.main_checkout."""
+    common = subprocess.check_output(
+        [
+            "git",
+            "-C",
+            str(PROJECT_ROOT),
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+        ],
+        text=True,
+        stderr=subprocess.PIPE,
+    ).strip()
+    return Path(common).parent
 
 
 def declared_data_path(root: Path, path: Path, resolved: Path) -> Path | None:
@@ -32,6 +94,12 @@ def declared_data_path(root: Path, path: Path, resolved: Path) -> Path | None:
     ):
         return None
     try:
+        # Git identifies main even before a new runtime worktree has data/.
+        # Require the canonical main/data path, without following its legacy
+        # migration symlink. A custom root gets no policy escape authority.
+        if root != _standard_repository() / "data":
+            return None
+        spelling = _standard_data_spelling(root, path)
         fd = os.open(POLICY_CONFIG, os.O_RDONLY | os.O_NOATIME | os.O_NOFOLLOW)
         with os.fdopen(fd, "rb") as stream:
             policy = tomllib.load(stream)
@@ -59,21 +127,20 @@ def declared_data_path(root: Path, path: Path, resolved: Path) -> Path | None:
         selected = None
         for name in links:
             alias, expected = repository / name, mirror / name
-            if path.is_relative_to(alias):
-                selected = alias, expected, path
+            if spelling.is_relative_to(alias):
+                selected = alias, expected, spelling
                 break
         if selected is None:
             for name in links:
                 alias, expected = repository / name, mirror / name
-                if path.is_relative_to(expected):
-                    selected = alias, expected, alias / path.relative_to(expected)
+                if spelling.is_relative_to(expected):
+                    selected = alias, expected, alias / spelling.relative_to(expected)
                     break
         if selected is None:
             return None
         alias, expected, logical = selected
         if not alias.is_symlink() and resolved.is_relative_to(root):
-            # Custom/local DATA roots can contain real directories with these
-            # names. They do not need or receive the E: alias exception.
+            # The standard DATA root may contain ordinary local directories.
             return None
         if ".." in logical.parts:
             raise ValueError("parent traversal through an unmanaged data link")
@@ -86,22 +153,7 @@ def declared_data_path(root: Path, path: Path, resolved: Path) -> Path | None:
                 raise ValueError(
                     f"unmanaged data link has a non-directory ancestor: {parent}"
                 )
-        fd = os.open(alias, os.O_PATH | os.O_NOFOLLOW)
-        try:
-            before = os.fstat(fd)
-            if not stat.S_ISLNK(before.st_mode):
-                raise ValueError(f"unmanaged data link is not a symlink: {alias}")
-            if os.readlink("", dir_fd=fd) != str(expected):
-                raise ValueError(f"unmanaged data link target mismatch: {alias}")
-            observed = alias.lstat()
-            if (before.st_dev, before.st_ino, before.st_ctime_ns) != (
-                observed.st_dev,
-                observed.st_ino,
-                observed.st_ctime_ns,
-            ):
-                raise ValueError(f"unmanaged data link changed: {alias}")
-        finally:
-            os.close(fd)
+        _check_link(alias, expected)
         info = expected.lstat()
         if not (stat.S_ISDIR(info.st_mode) or stat.S_ISREG(info.st_mode)):
             raise ValueError(
@@ -109,10 +161,19 @@ def declared_data_path(root: Path, path: Path, resolved: Path) -> Path | None:
             )
         if expected.resolve() != expected or not resolved.is_relative_to(expected):
             raise ValueError(f"unmanaged data link escapes its E: target: {path}")
-        if logical.resolve(strict=False) != resolved:
+        if (
+            logical.resolve(strict=False) != resolved
+            or path.resolve(strict=False) != resolved
+        ):
             raise ValueError(f"unmanaged data link changed while resolving: {path}")
         return logical
-    except (OSError, ValueError, KeyError, TypeError) as error:
+    except (
+        OSError,
+        ValueError,
+        KeyError,
+        TypeError,
+        subprocess.CalledProcessError,
+    ) as error:
         raise PathContractError(f"Invalid unmanaged DATA reference: {error}") from error
 
 

@@ -68,6 +68,15 @@ E:未分類領域の既存のmetadataサイズ調査は維持する。出力と�
 
 共通の `PathResolver` も同じcheckoutの [config.toml](config.toml) を読み、参照名を二重に持たない。
 標準DATA rootに限り、宣言したD:のlinkがmount済みE:の対応pathへ完全一致するときだけ許可する。
+標準rootは、runtimeの `PROJECT_ROOT` からGitへ問い合わせた絶対common directoryの親をmain checkoutとし、
+その直下の `data` と完全一致するものに限定する（storage CLIと同じ決定方法）。
+basenameがdataというだけのcustom rootに例外を与えない。custom root内の内部linkは従来どおり許可し、
+E:対応先の形を含む外部linkは拒否する。runtime worktreeに共有data linkを作る前でも標準rootは変わらない。
+
+絶対入力の `main_checkout/.claude/worktrees/<name>/data` という綴りは、`.claude`・`worktrees`・worktreeが
+実dirで、dataが標準rootへの直接の絶対symlinkの場合だけ認める。任意の接頭辞、祖先link、root linkの連鎖は認めない。
+このroot接頭辞だけを正規化し、その下の元の宣言linkとE:の完全一致を検査する。main/worktreeのどちらの綴りでも
+同じ論理DATA名と正規E:入力を返す。alignmentのscene-root境界とClipSourceの保存もこの契約に従う。
 E:側の参照subtreeからの脱出、宣言外の外部link、不一致、未mount、親pathからの脱出は拒否する。
 解決結果は従来どおりE:の正規pathとし、`PathResolver.relative` で検証済み参照を論理DATA相対名へ戻す。
 Clip Studioの発見・project保存・review CLIはこのAPIを使う。保存名を維持し、合成pipelineの物理workspaceも変えない。通常の実dir/custom DATA rootと他のroleの包含規則は変えない。

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from src.synthetic_data_generation.configuration import ScenePipelineConfiguration
+from src.synthetic_data_generation.scripts.edit_alignment import PATH_BOUNDARY
 from src.tennis_scene.clip_studio.layout import discover_clip_studio_layout
 from src.tennis_scene.clip_studio.project import ClipSource
 from src.utils.configuration import (
@@ -25,6 +28,28 @@ from tests.support.synthetic_data_generation.configuration import compose_scene_
 def tiered(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     repo, mount = tmp_path / "D/repo", tmp_path / "E"
     repo.mkdir(parents=True)
+    subprocess.run(["git", "init", "--quiet", "--template=", str(repo)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "-c",
+            "user.name=test",
+            "-c",
+            "user.email=test@example.invalid",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--quiet",
+            "--allow-empty",
+            "-m",
+            "fixture",
+        ],
+        check=True,
+    )
     mount.mkdir()
     config = compose_scene_config(repo)
     links = [
@@ -59,6 +84,7 @@ def tiered(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
     write_policy(links)
     monkeypatch.setattr(local_storage, "POLICY_CONFIG", policy, raising=False)
+    monkeypatch.setattr(local_storage, "PROJECT_ROOT", repo)
     original = os.path.ismount
     monkeypatch.setattr(
         os.path, "ismount", lambda path: Path(path) == mount or original(path)
@@ -164,3 +190,178 @@ def test_existing_physical_input_and_declared_file_alias_keep_logical_names(
         relative.removeprefix("data/")
     )
     assert result.read_bytes() == b"known archive"
+
+
+@pytest.mark.parametrize("consumer", ["alignment", "clip"])
+@pytest.mark.parametrize(
+    "state", ["allowed", "undeclared", "mismatch", "unmounted", "nested-escape"]
+)
+def test_worktree_absolute_inputs_keep_the_standard_data_contract(
+    tiered, monkeypatch: pytest.MonkeyPatch, consumer: str, state: str
+) -> None:
+    repo, mount, mirror, links, _, resolver, write_policy = tiered
+    worktree = repo / ".claude/worktrees/editor"
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "worktree",
+            "add",
+            "--quiet",
+            "--detach",
+            "--no-checkout",
+            str(worktree),
+        ],
+        check=True,
+    )
+    (worktree / "data").symlink_to(repo / "data", target_is_directory=True)
+    relative = links[0] if consumer == "alignment" else links[1]
+    if state == "undeclared":
+        write_policy([name for name in links if name != relative])
+    elif state == "mismatch":
+        (repo / relative).unlink()
+        wrong = mirror / "data/wrong"
+        wrong.mkdir()
+        (repo / relative).symlink_to(wrong, target_is_directory=True)
+    elif state == "unmounted":
+        monkeypatch.setattr(os.path, "ismount", lambda path: False)
+    policy = worktree / ".agents/ops/storage_tier/config.toml"
+    policy.parent.mkdir(parents=True)
+    policy.write_bytes(local_storage.POLICY_CONFIG.read_bytes())
+    monkeypatch.setattr(local_storage, "PROJECT_ROOT", worktree)
+    monkeypatch.setattr(local_storage, "POLICY_CONFIG", policy)
+    suffix = "scenes/B00" if consumer == "alignment" else "video_000/cam0.mp4"
+    target = mirror / relative / suffix
+    if consumer == "alignment":
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "proof.txt").write_bytes(b"alignment input")
+    if state == "nested-escape":
+        outside = mount / "outside"
+        outside.mkdir()
+        if target.is_dir():
+            target.rename(target.with_name("saved"))
+        else:
+            target.unlink()
+        target.symlink_to(outside, target_is_directory=True)
+    supplied = worktree / relative / suffix
+
+    def read_consumer() -> None:
+        if consumer == "alignment":
+            paths = PATH_BOUNDARY.validate(
+                {"data_root": resolver.roots.data_root, "scene_root": supplied},
+                resolver=resolver,
+            )
+            scene = paths.declared("scene_root").path
+            assert scene == target
+            assert (scene / "proof.txt").read_bytes() == b"alignment input"
+        else:
+            saved = ClipSource(supplied, "cam0").to_dict(resolver)
+            assert saved["path"] == "tennis_multiview/raw/meiji_3cam/video_000/cam0.mp4"
+            restored = ClipSource.from_dict(saved, resolver)
+            assert restored.path == target
+            assert restored.path.read_bytes() == b"cam0.mp4"
+        assert (
+            resolver.relative(PathRole.DATA, supplied)
+            == Path(relative.removeprefix("data/")) / suffix
+        )
+
+    if state == "allowed":
+        read_consumer()
+    else:
+        with pytest.raises(PathContractError):
+            read_consumer()
+
+
+@pytest.mark.parametrize("target_kind", ["internal", "external", "E-shaped"])
+def test_custom_data_root_keeps_original_containment(
+    tiered, monkeypatch: pytest.MonkeyPatch, target_kind: str
+) -> None:
+    repo, mount, _, _, _, resolver, _ = tiered
+    custom = repo.parent / "custom/data"
+    custom.mkdir(parents=True)
+    if target_kind == "internal":
+        target = custom / "local"
+        monkeypatch.setattr(os.path, "ismount", lambda path: False)
+    elif target_kind == "external":
+        target = repo.parent / "outside"
+    else:
+        target = (
+            mount / custom.parent.relative_to("/") / "data/synthetic_data_generation"
+        )
+    target.mkdir(parents=True)
+    (target / "input.txt").write_bytes(b"custom input")
+    alias = custom / "synthetic_data_generation"
+    alias.symlink_to(target, target_is_directory=True)
+    custom_resolver = PathResolver(replace(resolver.roots, data_root=custom))
+    if target_kind == "internal":
+        result = custom_resolver.resolve(
+            PathRole.DATA, "synthetic_data_generation/input.txt"
+        )
+        assert result.read_bytes() == b"custom input"
+        assert custom_resolver.relative(PathRole.DATA, alias / "input.txt") == Path(
+            "local/input.txt"
+        )
+    else:
+        with pytest.raises(PathContractError):
+            custom_resolver.resolve(
+                PathRole.DATA, "synthetic_data_generation/input.txt"
+            )
+
+
+@pytest.mark.parametrize(
+    "spelling", ["arbitrary-prefix", "chained-data", "linked-parent"]
+)
+def test_only_direct_standard_worktree_root_aliases_are_authorized(
+    tiered, spelling: str
+) -> None:
+    repo, _, _, _, _, resolver, _ = tiered
+    worktree = repo / ".claude/worktrees/editor"
+    worktree.mkdir(parents=True)
+    if spelling == "arbitrary-prefix":
+        prefix = repo / "other"
+        prefix.mkdir()
+    elif spelling == "linked-parent":
+        actual = repo / "actual"
+        actual.mkdir()
+        worktree.rmdir()
+        worktree.symlink_to(actual, target_is_directory=True)
+        prefix = worktree
+    else:
+        intermediate = repo / "data-chain"
+        intermediate.symlink_to(repo / "data", target_is_directory=True)
+        prefix = worktree
+    (prefix / "data").symlink_to(
+        intermediate if spelling == "chained-data" else repo / "data",
+        target_is_directory=True,
+    )
+    with pytest.raises(PathContractError):
+        resolver.validate(
+            PathRole.DATA, prefix / "data/synthetic_data_generation/raw/B00.mp4"
+        )
+
+
+def test_runtime_worktree_uses_main_data_even_before_its_shared_link_is_created(
+    tiered, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, _, mirror, _, _, resolver, _ = tiered
+    runtime = repo / ".claude/worktrees/runtime"
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repo),
+            "worktree",
+            "add",
+            "--quiet",
+            "--detach",
+            "--no-checkout",
+            str(runtime),
+        ],
+        check=True,
+    )
+    monkeypatch.setattr(local_storage, "PROJECT_ROOT", runtime)
+    relative = "synthetic_data_generation/raw/B00.mp4"
+    result = resolver.resolve(PathRole.DATA, relative)
+    assert result == mirror / "data" / relative
+    assert result.read_bytes() == b"configuration fixture; never decoded"
