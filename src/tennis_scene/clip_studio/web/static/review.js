@@ -11,7 +11,14 @@ async function get(path, signal) {
   return result;
 }
 export class DatasetReview {
-  constructor(onStatus) { this.onStatus = onStatus; this.loadEpoch = 0; this.frameEpoch = 0; this.time = 0; }
+  constructor(onStatus) { this.onStatus = onStatus; this.loadEpoch = 0; this.frameEpoch = 0; this.time = 0; this.active = true; }
+  // The all-camera correspondence table is not requested while it is hidden (single-camera clip work).
+  setActive(active, time) {
+    if (active === this.active) return;
+    this.active = active;
+    if (active) { this.wasPlaying = false; this.atTime(time, false); return; }
+    clearTimeout(this.timer); this.controller?.abort(); ++this.frameEpoch;
+  }
   load(project, selected) {
     this.project = project; this.selected = selected; this.catalog = null;
     const epoch = ++this.loadEpoch;
@@ -88,6 +95,7 @@ export class DatasetReview {
     this.time = time;
     if (!this.project) return;
     this.updateMembership();
+    if (!this.active) return;
     if (playing && this.wasPlaying) { $('review-time').textContent = `${timecode(time)} · 再生中・停止して照合`; return; }
     this.wasPlaying = playing;
     clearTimeout(this.timer); this.controller?.abort();
