@@ -45,3 +45,10 @@ Integration-review correction: WASB's 77 old top-five global-search identities
 are now unverified, in addition to its 36 pending rows. Its arXiv source ID and
 exact HTML title were checked and the reading was preserved. This search remains
 interrupted; see the depth-2 document's correction audit for current totals.
+
+After the retry time, the same root was retried by the depth-2 search on
+2026-11-15 at 09:04:40 JST. Its first reference failed with HTTP 503/429 after four
+attempts. This depth-1 search therefore remains interrupted at the shared root
+(depth 0 paper_ids = [cite-baef928f0aefd5a6], expanded_ids = []). It was not
+separately invoked after that failure. The depth-2 document records the attempt
+time, unchanged identity counts and the provider's next retry time.

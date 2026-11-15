@@ -29,7 +29,7 @@ references:
   decision_status: classified
   reason: 'テニス向けのドメイン特化型SBDT先行研究として言及されている。
 
-    Identification: pending; source identification invalidated after transient failures'
+    Identification: pending; OpenAlex HTTP_429; retries_exhausted (4 attempts)'
   evidence:
   - Section 1 (anchor:S1.p2.1.2)
   - References (anchor:bib.bibx1)

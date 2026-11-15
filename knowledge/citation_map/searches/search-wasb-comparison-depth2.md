@@ -14,7 +14,7 @@ generations:
   expanded_ids: []
 issues: []
 schema_version: 1
-stop_reason: 'Paper processing incomplete: cite-baef928f0aefd5a6'
+stop_reason: OpenAlex HTTP_429; retries_exhausted (4 attempts); paper=cite-baef928f0aefd5a6
 ---
 
 Historical reports below preserve the original measurements. Their earlier
@@ -141,6 +141,8 @@ Attempt report (seconds are for this invocation):
 }
 ```
 
+
+
 Repair evidence (2026-11-14 UTC):
 
 | Measure | Before repair | After repair attempts |
@@ -221,3 +223,56 @@ exploration was not resumed. There are now 114 identity rows to recheck rather
 than 36. New comparison identities may require further readings; the required
 count is unknown until those rows are reidentified. The five existing readings
 remain reusable. Unverified and pending rows prevent completed expansion.
+
+Attempt report (seconds are for this invocation):
+
+```json
+{
+  "search_id": "search-wasb-comparison-depth2",
+  "elapsed_seconds": 162.1603764140018,
+  "agy_calls": 0,
+  "newly_read": 0,
+  "reused": 1,
+  "read_papers": 1,
+  "fetch_failed": 0,
+  "unresolved": 0,
+  "unclassifiable": 12,
+  "known_pending": 1,
+  "status": "interrupted",
+  "pending_references": 36,
+  "unverified_references": 77,
+  "identified_papers": [],
+  "refreshed_fetch_failures": []
+}
+```
+
+Resume attempt (2026-11-15, after the provider retry time):
+
+The same root URL, comparison role, maximum depth 2 and search ID were used.
+OPENALEX_API_KEY and OPENALEX_EMAIL were removed from the child environment;
+neither authentication nor the email/polite pool was used. The command started
+at 00:04:40 UTC (09:04:40 JST) and exited 1 after 165.302 seconds including startup
+(162.160 seconds inside Explorer). The campaign, including its baseline capture,
+took 165.938 seconds, within the six-hour limit.
+
+The first bibliography lookup encountered HTTP 503, 503, 429 and 429. Four bounded
+attempts honored Retry-After waits of 60, 60 and 37 seconds before stopping.
+The final recorded query not-before time was 00:08:02.832 UTC / 09:08:02.832 JST;
+retry no earlier than 09:08:03 JST. That time elapsed during reporting, but service
+recovery has not been verified. No fallback credential, email or model was used.
+
+No identity rows were resolved: all 36 pending rows remain pending and all 78
+unverified rows remain unverified. Only the diagnostic for WASB/ref-1 changed.
+All five previously read papers retained their title, summary, source, authors,
+bibliography, roles, decision states and evidence positions. This invocation
+reused WASB alone (one required cached paper); the other four cached readings
+were not reached because the root could not finish. No new reading or agy call
+occurred. Across the stored library, there are still five readings, two earlier
+full-text failures, 38 confirmed unresolved rows (year mismatch/missing 27, title
+mismatch 9, author mismatch/missing 2), and 38 unclassifiable role rows.
+
+Both depth-1 and depth-2 searches remain interrupted. Their only recorded
+generation is depth 0: paper_ids = [cite-baef928f0aefd5a6], expanded_ids = [].
+Later generations were not reached. The depth-1 CLI was not separately invoked
+after this failure because it shares the same incomplete root. Completion and
+the remaining 114 lookups are still unverified.
