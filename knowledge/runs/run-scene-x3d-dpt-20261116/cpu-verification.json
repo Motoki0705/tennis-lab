@@ -12,5 +12,16 @@
   "pipeline_regression": {
     "cases": 164,
     "max_case_seconds": 5.614
+  },
+  "model_device_decode_regression": {
+    "cases": 44,
+    "max_case_seconds": 2.994
+  },
+  "final_precommit": {
+    "source_test_files": 22,
+    "ruff": "passed",
+    "mypy": "passed",
+    "scope": "all source/test files changed from origin/main",
+    "log": "/tmp/scene-x3d-final-precommit.log"
   }
 }

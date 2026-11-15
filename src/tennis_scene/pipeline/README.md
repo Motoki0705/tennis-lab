@@ -164,6 +164,8 @@ v1 artifactの自動補完は行わず、executeで再生成、loadはschema不�
 `ball_detection.model_type` は必須で、既定は `conv_next_unet`。
 `pipeline_x3d_dpt.yaml` は共通事前学習10kのX3D/CSN＋DPTを選ぶoverride。
 `pipeline.yaml` の既定checkpointは変わらない。
+学習時validationとの履歴一致は、固定した104frame中BF16の5frameで事前許容差を超えており未達。
+実動画比較と未解決点は[受入記録](../../../knowledge/nodes/tennis_scene/000042-run-scene-x3d-dpt-20261116.md)を参照。
 
 元のweights-only artifactはRGB/MDD契約とTを持つが解像度を保存していない。
 scene用artifactは、固定validation manifestの全clipが720×1280であることを確認して

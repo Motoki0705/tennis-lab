@@ -116,6 +116,8 @@ def main():
                     label = "i935 3D" if variant == 0 else "X3D/CSN + DPT T32 3D"
                     text(panel, label, (16, 24), color=color)
                     text(panel, f"{clip} | frame {frame}/{meta['num_frames'] - 1} | {frame / meta['fps']:.2f}s", (16, 50))
+                    if record.get("fixed_geometry_replay"):
+                        text(panel, "FIXED X3D CAMERAS / diagnostic replay", (16, 76), scale=.5)
                     if "ball_3d_valid" in data:
                         valid = data["ball_3d_valid"]
                         xyz = data["ball_3d"]
@@ -141,6 +143,11 @@ def main():
                         text(panel, "3D reconstruction unavailable", (16, 450), color=color)
                         text(panel, record["failure"]["reason"], (16, 478), scale=.45)
                     canvas[variant * 540:(variant + 1) * 540, 960:] = panel
+                if len(cameras) < 4:
+                    text(canvas, "Explicit camera subset: " + ", ".join(cameras), (18, 848), scale=.7)
+                    if metrics[0].get("fixed_geometry_replay"):
+                        text(canvas, "Fixed camera geometry from the successful X3D run is shared by both models.", (18, 886), scale=.6)
+                        text(canvas, "Original i935 pipeline stopped at court-side margin; this 3D is a separate CPU replay.", (18, 918), scale=.55)
                 writer.write_frame(cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB))
         for reader in readers:
             reader.release()
