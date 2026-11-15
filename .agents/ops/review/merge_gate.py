@@ -62,6 +62,7 @@ from review_recovery import verify_adoption  # noqa: E402
 from review_workspace import (  # noqa: E402
     changed_paths,
     full_diff,
+    resolution_scope,
     verify_rebased_snapshot,
 )
 
@@ -90,6 +91,7 @@ class Collection:
     snapshots: list[dict[str, Any]]
     paths: dict[int, tuple[str, ...]]
     fix_paths: dict[int, list[str]]
+    review_paths: dict[int, list[str]]
     fix_hashes: dict[int, str]
     errors: dict[int, list[str]]
 
@@ -145,6 +147,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         }
     )
     details, snapshots, paths, fix_paths, fix_hashes = {}, [], {}, {}, {}
+    review_paths: dict[int, list[str]] = {}
     errors: dict[int, list[str]] = {}
     for n in candidates:
         raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
@@ -186,7 +189,9 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         paths[n] = tuple(changed_paths(current["merge_base_sha"], current["head_sha"]))
         if n in targets:
             before = targets[n]["head_sha"]
-            fix_paths[n] = changed_paths(before, current["head_sha"])
+            scope = resolution_scope(targets[n], current)
+            fix_paths[n] = scope.head_changed_paths
+            review_paths[n] = scope.changed_paths
             fix_hashes[n] = hashlib.sha256(
                 full_diff(before, current["head_sha"])
             ).hexdigest()
@@ -217,6 +222,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         snapshots,
         paths,
         fix_paths,
+        review_paths,
         fix_hashes,
         errors,
     )
@@ -364,6 +370,7 @@ def _evaluate(
                 resolutions=resolutions,
                 fix_paths=view.fix_paths,
                 fix_diff_digests=view.fix_hashes,
+                review_paths=view.review_paths,
                 changed_paths=view.paths[n],
                 review_state=state,
                 evidence_errors=(*errors, *view.errors[n]),

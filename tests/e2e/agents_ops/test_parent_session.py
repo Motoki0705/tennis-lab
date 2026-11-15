@@ -2895,8 +2895,8 @@ def test_fix_and_regression_test_push_are_resolved_without_codex_again(
     assert {x["finding"] for x in resolutions} == {"pr-100-1", "cross-1"}
     assert all(
         x["fixed_snapshot"]["head_sha"] == head
-        and x["changed_paths"] == paths
-        and x["evidence"]["reviewed_paths"] == paths
+        and x["changed_paths"] == policy.path_manifest(paths)
+        and x["evidence"]["reviewed_paths"] == policy.path_manifest(paths)
         for x in resolutions
     )
     latest = [
@@ -2916,6 +2916,7 @@ def test_fix_and_regression_test_push_are_resolved_without_codex_again(
         resolutions,
         {100: paths},
         fix_diff_digests={100: fix_digest},
+        review_paths={100: paths},
     )
     assert coverage.covered
     assert coverage.unresolved == ((101, "cross-1"),)
@@ -3156,6 +3157,7 @@ def test_resolve_after_peer_merge_keeps_explicit_fix_coverage(
         [record],
         {101: paths},
         fix_diff_digests={101: actual_digest},
+        review_paths={101: paths},
         base_advances=advances,
     )
     assert coverage.covered and not coverage.unresolved
@@ -3195,7 +3197,7 @@ def test_merging_main_into_a_reviewed_pr_accepts_parent_resolution(
                 "ci": "成功",
                 "regression_tests": "成功",
                 "resolution": "main追従を確認",
-                "reviewed_paths": ["change-1.txt"],
+                "reviewed_paths": [],
             }
         ),
     )
