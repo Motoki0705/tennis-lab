@@ -223,6 +223,7 @@ def inspect_run(
                 "result",
                 "exit_code",
                 "cli_exit_code",
+                "cli_exit_signal",
                 "turn_end_reason",
                 "cleanup_complete",
                 "agent_spawned",

@@ -135,6 +135,7 @@ lock fileはunlinkしない。例外・プロセス終了でflockが解放され
    起動前に [`../lib/agents.conf`](../lib/agents.conf) のreview方針・許可された組と照合し、runnerへ専用入力で渡す。
    executionとruntimeの選択値、実効model・effortの一致を共通部品で検証する。tier未取得は理由付きで保持する。
    CLIイベント・実効設定・使用量は `agent-runtime/` に保存する（[共通ランナー契約](../lib/README.md)）。
+   組込みWeb検索は初回・継続とも無効にする（[検索設定と確認したCLI](../lib/README.md#レビューのweb検索)）。
    agentは専用プロセスグループで起動し、timeout/異常終了時は子孫も停止する。
    プロンプトは親の目的・親番号・run ID・固定値・資料とツールの入口だけを含む。
    context・全文diff・schemaは埋め込まない。確認不能ならincompleteとし、追加agentへ分割しない。
@@ -269,7 +270,7 @@ head変更には通常の解消記録と同じ実diff照合と、検証済みreb
 `events.jsonl` を再読し、session/turn・実効設定・エラーの記録と、完了イベントの最終メッセージとfinalの内容を照合する。
 異なるfinalのコピーや完了後の別メッセージ、形式矛盾、cleanup不明、対象変更は拒否する。
 許可するruntime終了理由は `completed`、`runtime_error`、`cli_error` のみ。後二者も完了イベントとfinalが一致し、
-終了コードと記録済みエラーが理由に整合するときだけ対象にする。`invalid_output`、`metadata_error`、実効設定・実行先の不一致、
+終了コードと記録済みエラーが理由に整合するときだけ対象にする。`invalid_output`、`metadata_error`、`cli_signal`、実効設定・実行先の不一致、
 証拠不足、timeout・停止などはschema上有効なfinalがあっても採用しない。
 `agent_output.md` が無く `agent-runtime/final.md` だけが残った場合も、上記のイベント照合は必須。
 旧runも必要なruntime・schema・final・イベントが揃う場合だけ採用できる。
