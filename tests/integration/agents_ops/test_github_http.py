@@ -6,6 +6,7 @@ import importlib
 import json
 import socket
 import subprocess
+import sys
 import threading
 import traceback
 from collections.abc import Iterator
@@ -162,6 +163,132 @@ def test_login_is_reused_across_clients_transactions_and_detached_reads(
             gh.close()
             other.close()
     assert len(calls) == 1 and calls[0]["path"] == "/user"
+
+
+@pytest.fixture
+def auth_registry(
+    api: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> tuple[Any, Path]:
+    """Run the actual token subprocess against a real, independently probed lock."""
+    store = importlib.import_module("parent.state").Store(tmp_path / "registry")
+    store.focus("o/r#1")
+    with store.locked():
+        store.parents["o/r#1"] = {
+            "session": "operator-session",
+            "status": "active",
+            "generation": 1,
+            "tasks": {},
+            "reviews": [],
+        }
+        store.save()
+    executable = tmp_path / "gh"
+    executable.write_text(
+        f"#!{sys.executable}\n"
+        + r"""
+import fcntl, json, os, pathlib, sys
+directory = pathlib.Path(os.environ["AUTH_TEST_REGISTRY"])
+acquired = False
+with (directory / "registry.lock").open("a") as lock:
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        pass
+    else:
+        acquired = True
+        if os.environ.get("AUTH_TEST_OUTCOME") == "changed":
+            path = directory / "registry.json"
+            data = json.loads(path.read_text())
+            data["parents"]["o/r#1"]["generation"] += 1
+            path.write_text(json.dumps(data))
+pathlib.Path(os.environ["AUTH_TEST_TRACE"]).write_text(json.dumps({
+    "acquired": acquired, "args": sys.argv[1:]
+}))
+if os.environ.get("AUTH_TEST_OUTCOME") == "failure":
+    print("secret-auth-token")
+    print("secret-auth-stderr", file=sys.stderr)
+    sys.exit(1)
+print("secret-auth-token")
+"""
+    )
+    executable.chmod(0o700)
+    trace = tmp_path / "auth-trace.json"
+    monkeypatch.delenv("GH_TOKEN")
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    monkeypatch.setenv("GH_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("PATH", str(tmp_path))
+    monkeypatch.setenv("AUTH_TEST_REGISTRY", str(store.directory))
+    monkeypatch.setenv("AUTH_TEST_TRACE", str(trace))
+    return store, trace
+
+
+@pytest.mark.parametrize("outcome", ["success", "failure"])
+def test_token_subprocess_releases_registry_lock_and_hides_output(
+    api: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    auth_registry: tuple[Any, Path],
+    capsys: pytest.CaptureFixture[str],
+    outcome: str,
+) -> None:
+    store, trace = auth_registry
+    monkeypatch.setenv("AUTH_TEST_OUTCOME", outcome)
+    replies: list[bytes | None] = (
+        [response({"login": "operator"})] if outcome == "success" else []
+    )
+    with server(api, monkeypatch, replies) as calls:
+        gh = api.parent.GitHub("o/r", store=store)
+        try:
+            with store.locked():
+                if outcome == "success":
+                    assert gh.authenticated_login() == "operator"
+                else:
+                    with pytest.raises(
+                        ValueError, match="token lookup failed"
+                    ) as error:
+                        gh.authenticated_login()
+                    assert "secret" not in "".join(
+                        traceback.format_exception(error.value)
+                    )
+                store.save()
+        finally:
+            gh.close()
+    assert json.loads(trace.read_text()) == {
+        "acquired": True,
+        "args": ["auth", "token", "--hostname", "github.com"],
+    }
+    assert len(calls) == (1 if outcome == "success" else 0)
+    captured = capsys.readouterr()
+    assert "secret" not in captured.out + captured.err
+
+
+def test_token_subprocess_revalidates_registry_before_login_fetch(
+    api: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    auth_registry: tuple[Any, Path],
+) -> None:
+    store, trace = auth_registry
+    monkeypatch.setenv("AUTH_TEST_OUTCOME", "changed")
+    state = importlib.import_module("parent.state")
+    gh = api.parent.GitHub("o/r", store=store)
+
+    def forbidden(*args: Any, **kwargs: Any) -> None:
+        pytest.fail(
+            "login fetch must not follow a registry conflict during token lookup"
+        )
+
+    monkeypatch.setattr(gh, "get", forbidden)
+    try:
+        with store.locked():
+            with pytest.raises(state.RegistryConflict, match="registry changed"):
+                gh.authenticated_login()
+            # Catching the conflict must not reauthorize the stale transaction.
+            with pytest.raises(state.RegistryConflict, match="registry changed"):
+                store.save()
+        assert json.loads(trace.read_text())["acquired"] is True
+        with store.locked():
+            assert store.parents["o/r#1"]["generation"] == 2
+            store.save()
+    finally:
+        gh.close()
 
 
 def test_login_cache_separates_credentials_and_api_hosts(

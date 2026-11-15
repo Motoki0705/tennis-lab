@@ -168,22 +168,38 @@ def _repo_name(value: str) -> str:
 
 
 def local_repository() -> str:
-    """Resolve all configured fetch/push URLs without contacting GitHub."""
-    result = subprocess.run(
-        ["git", "config", "--get-regexp", r"^remote\..*\.(url|pushurl)$"],
-        text=True,
-        capture_output=True,
-        timeout=60,
-        check=False,
-    )
-    if result.returncode or not result.stdout.strip():
-        raise ValueError("cannot resolve a GitHub remote; specify --repo owner/repo")
+    """Resolve every effective fetch/push URL without contacting GitHub."""
+
+    def git_lines(*args: str) -> list[str]:
+        try:
+            result = subprocess.run(
+                ["git", *args],
+                text=True,
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            raise ValueError(
+                "cannot resolve a GitHub remote; specify --repo owner/repo"
+            ) from None
+        if result.returncode or not result.stdout.strip():
+            raise ValueError(
+                "cannot resolve a GitHub remote; specify --repo owner/repo"
+            )
+        return result.stdout.splitlines()
+
+    urls = []
+    for remote in git_lines("remote"):
+        # Ask git to apply insteadOf/pushInsteadOf, including the fallback to
+        # fetch URLs when pushurl is absent. Inspect every URL, not just origin
+        # or the first destination, so a rewritten push cannot pick another repo.
+        urls.extend(git_lines("remote", "get-url", "--all", "--", remote))
+        urls.extend(
+            git_lines("remote", "get-url", "--push", "--all", "--", remote)
+        )
     repos: dict[str, str] = {}
-    for line in result.stdout.splitlines():
-        fields = line.split(None, 1)
-        if len(fields) != 2:
-            raise ValueError("invalid git remote; specify --repo owner/repo")
-        url = fields[1]
+    for url in urls:
         scp = re.fullmatch(r"git@github\.com:([^?#]+)", url, re.IGNORECASE)
         if scp:
             path = scp[1]

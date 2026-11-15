@@ -89,6 +89,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
 `authenticated_login()` のloginだけはAPI hostと認証ごとにprocess内で再利用する。
 これは認証principalの識別であり、Issueや履歴の観測を保持するcacheではない。
+初回のtoken取得もregistryロック外で行い、復帰時の永続行の再照合後にlogin取得へ進む。
 通常の `get("user")` とscope検査は従来どおりで、異なるtokenやhostへloginを持ち越さない。
 `fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
 入口で探索索引を失効させ、scope内ではendpoint GETのcacheを迂回する。

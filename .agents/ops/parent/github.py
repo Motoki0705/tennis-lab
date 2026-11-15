@@ -91,6 +91,11 @@ class GitHub(IssueGitHub):
 
     def authenticated_login(self) -> str:
         self._require_scope()
+        # gh auth token can block before /user enters get()'s I/O scope.
+        # Revalidate the registry after credential lookup, before the callback
+        # uses the transaction client; it cannot run in a suspended transaction.
+        with self.io_scope():
+            self._http.prepare_authentication()
         return self._http.authenticated_login(
             lambda: nonempty(object_value(self.get("user")).get("login"), "gh login")
         )

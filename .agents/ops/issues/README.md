@@ -433,8 +433,9 @@ API要求ごとのgh起動はない。tokenはエラー詳細・応答本文か�
 診断へ含めない。環境のproxy設定を使い、`.netrc` によるtokenの上書きとHTTP redirectを許可しない。
 API hostは `api.github.com`、`GH_HOST` は未設定または `github.com` に限定する。
 
-`--repo` 省略時はカレントディレクトリの実効git設定にある全remoteのfetch/push URLを読み、
-一意のGitHub `owner/repo` に解決する。HTTPS・SSH URL、scp形式、同じrepoの大小文字違いを扱い、
+`--repo` 省略時は `git remote get-url --all` と `--push --all` で全remoteの実効URLを読み、
+`insteadOf`・`pushInsteadOf` の適用後のfetch/push先が一意のGitHub `owner/repo` に
+決まる場合だけ採用する。HTTPS・SSH URL、scp形式、同じrepoの大小文字違いを扱い、
 linked worktreeの共有git設定も読む。remoteなし・複数repo・非GitHub・不正URLでは明示エラーとし、
 `--repo owner/repo` を要求する。originだけを優先したりghへフォールバックしたりしない。
 

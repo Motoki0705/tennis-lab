@@ -132,11 +132,16 @@ class HTTPClient:
         self._session: requests.Session | None = None
         self._token: str | None = None
 
+    def prepare_authentication(self) -> None:
+        """Resolve credentials before entering any registry-bound callback."""
+        self._token = self._token or _token()
+
     def authenticated_login(self, fetch: Callable[[], str]) -> str:
         # Principal identity is stable for a credential, unlike issue facts.
         # Keep only login, keyed by API host and an opaque credential digest;
         # neither tokens nor complete /user responses enter the shared cache.
-        self._token = self._token or _token()
+        self.prepare_authentication()
+        assert self._token is not None
         key = (_API_URL, hashlib.sha256(self._token.encode()).hexdigest())
         if key not in _logins:
             _logins[key] = fetch()
@@ -203,14 +208,14 @@ class HTTPClient:
         ):
             raise ValueError("GitHub API endpoint must be a relative API path")
         if self._session is None:
-            token = self._token or _token()
-            self._token = token
+            self.prepare_authentication()
+            assert self._token is not None
             self._session = requests.Session()
             self._session.mount("https://", _Adapter(max_retries=0))
             self._session.mount("http://", _Adapter(max_retries=0))
             # An explicit auth object also prevents ambient .netrc credentials
             # from silently replacing the selected GitHub token.
-            self._session.auth = _BearerAuth(token)
+            self._session.auth = _BearerAuth(self._token)
             self._session.headers.update(
                 {
                     "Accept": "application/vnd.github+json",
