@@ -57,6 +57,11 @@ Both kinds are mirror/verify/hydrate-only and are never evicted. The E: `ckpt/`
 container inode is never exchanged or removed. Explicit whole-root checkpoint
 operations from older code are rejected.
 
+If a root-file manifest exists, hydrate/mirror/verify/index compare both its saved
+metadata and SHA-256 against E: before any publication or evidence update. Explicit
+index does not reset a mismatch. Legacy whole-ckpt migration also compares the
+recorded direct-file subset before archiving its old manifest.
+
 Root-file publication stages and hashes only direct regular files, then publishes
 one file at a time. Replaced or removed source files are retained under the target
 tier's `.storage-tier/checkpoint-file-history/<transaction>/`; no automatic cleanup
@@ -258,7 +263,9 @@ A
 matching mountpoint inode is busy, including a file bind visible only in another
 mount namespace. Metadata/read permission failures do not become an empty inventory;
 the existing process-exclusion rules still apply. An unclassifiable root such as
-`//deleted`, or an in-scope mountpoint that cannot be resolved/read, fails inspection.
+`//deleted`, or an in-scope mountpoint that cannot be resolved/read, fails inspection. If the
+visible inode does not belong to the verified unit, inspection also fails as unknown:
+an overmount may hide a still-live lower file bind. Ancestor/outside roots remain excluded.
 An inaccessible ancestor/outside bind, such as a runner's read-only data view, is not
 an in-scope inode reference and does not fail inspection. A root equal to the unit
 remains in scope even when read-only. Namespaces without an

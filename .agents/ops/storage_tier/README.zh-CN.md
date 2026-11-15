@@ -42,6 +42,9 @@ Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必
 `ckpt` 的 `checkpoint-files` 投影（目前为README.md）；根文件参数也选择此投影，而不是所有子单位。
 两类只镜像、校验和取回，永不清理。E:的ckpt容器inode本身不交换、不删除；拒绝旧的整ckpt单位操作。
 
+已有根文件manifest时，hydrate/mirror/verify/index在发布或更新证据前，必须同时匹配E:的metadata与保存的SHA-256。
+显式index也不能覆盖不一致的证据。迁移旧整ckpt manifest时，先校验其记录的直属文件子集。
+
 根文件只复制、哈希直属普通文件，再逐文件发布。旧版本和源端已移除文件保留在目标tier的
 `.storage-tier/checkpoint-file-history/<transaction>/`，不自动删除历史。子目录不受影响。
 发布仅逐文件原子，不保证整个集合原子。D:的 `checkpoint-file-operations/` journal记录旧/新entry和进度。
@@ -175,6 +178,7 @@ CLI 在持有 lease 期间专用该 thread 的 SIGIO。
 祖先和外部/兄弟 root 不 stat，直接排除；按 component 区分 `data/a` 与 `data/ab`。
 `process_scope.mount_scope` 审计 filesystem 单位路径、检查数、祖先排除数、外部排除数（每进程的观测次数）。
 读取/权限错误不作为空列表；`//deleted` 等不可判定 root、范围内 mountpoint 无法到达/读取时检查失败。
+范围内root的stat结果不属于已校验单位inode时也记为unknown，因为上层mount可能遮住仍存活的下层file bind。祖先与外部root仍排除。
 CI runner 的只读祖先/外部 data bind 即使无法到达，也不属于单位内 inode 参照，不 stat、不判失败。
 root 等于单位时，即使只读也仍在范围内。原有进程排除规则适用；无可检查成员进程的 namespace 无法枚举。
 

@@ -1010,16 +1010,74 @@ def test_copy_corruption_is_detected_by_actual_e_hashes(
     assert not lab.engine.manifest_path(unit).exists()
 
 
-def test_hydrate_checks_e_hash_against_existing_manifest(lab: Lab) -> None:
-    unit = lab.unit()
+@pytest.mark.parametrize("kind", ["dataset", "checkpoint-files"])
+def test_hydrate_checks_e_hash_against_existing_manifest(lab: Lab, kind: str) -> None:
+    if kind == "checkpoint-files":
+        root = lab.config.repo / "ckpt"
+        root.mkdir()
+        (root / "README.md").write_bytes(b"apple\n")
+        unit = lab.layout.Unit("ckpt", kind)
+        filename = "README.md"
+    else:
+        unit = lab.unit()
+        filename = "a.bin"
     lab.mirror(unit)
-    assert lab.run("evict", unit)[0] == 0
+    if kind == "checkpoint-files":
+        (root / filename).unlink()
+    else:
+        assert lab.run("evict", unit)[0] == 0
     manifest = lab.engine.manifest(unit)
-    manifest["mirror"]["a.bin"]["sha256"] = hashlib.sha256(b"peach\n").hexdigest()
+    manifest["mirror"][filename]["sha256"] = hashlib.sha256(b"peach\n").hexdigest()
     lab.filesystem.write_json(lab.engine.manifest_path(unit), manifest)
+    evidence = lab.filesystem.read_bytes(lab.engine.manifest_path(unit))
     code, report = lab.run("hydrate", unit)
     assert code == 1 and "SHA-256" in report["results"][0]["error"]
-    assert not (lab.config.repo / unit.path).exists()
+    assert not (lab.config.repo / unit.path / filename).exists()
+    if kind == "dataset":
+        assert not (lab.config.repo / unit.path).exists()
+    assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == evidence
+
+
+@pytest.mark.parametrize("command", ["mirror", "verify", "index"])
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_checkpoint_root_file_operations_preserve_mismatched_hash_evidence(
+    lab: Lab,
+    command: str,
+    dry_run: bool,
+) -> None:
+    root = lab.config.repo / "ckpt"
+    root.mkdir()
+    (root / "README.md").write_bytes(b"apple\n")
+    unit = lab.layout.Unit("ckpt", "checkpoint-files")
+    lab.mirror(unit)
+    saved = lab.engine.manifest(unit)
+    saved["mirror"]["README.md"]["sha256"] = hashlib.sha256(b"peach\n").hexdigest()
+    lab.filesystem.write_json(lab.engine.manifest_path(unit), saved)
+    before = lab.filesystem.read_bytes(lab.engine.manifest_path(unit))
+    local = lab.filesystem.snapshot(root).entries
+    code, report = lab.run(command, unit, dry_run=dry_run)
+    assert code == 1 and "SHA-256" in report["results"][0]["error"], report
+    assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == before
+    assert lab.filesystem.snapshot(root).entries == local
+
+
+def test_checkpoint_root_file_legacy_index_preserves_mismatched_hash_evidence(
+    lab: Lab,
+) -> None:
+    root = lab.config.mirror / "ckpt"
+    root.mkdir()
+    (root / "README.md").write_bytes(b"apple\n")
+    legacy = lab.layout.Unit("ckpt", "checkpoint")
+    saved = lab.engine.record(
+        legacy, None, lab.filesystem.snapshot(root, hashes=True), dry_run=False
+    )
+    saved["mirror"]["README.md"]["sha256"] = hashlib.sha256(b"peach\n").hexdigest()
+    lab.filesystem.write_json(lab.engine.manifest_path(legacy), saved)
+    before = lab.filesystem.read_bytes(lab.engine.manifest_path(legacy))
+    code, report = lab.run("index", lab.layout.Unit("ckpt", "checkpoint-files"))
+    assert code == 1 and "SHA-256" in report["results"][0]["error"], report
+    assert lab.filesystem.read_bytes(lab.engine.manifest_path(legacy)) == before
+    assert not (lab.config.mirror / ".storage-tier/legacy-manifests").exists()
 
 
 def test_mount_loss_after_quarantine_restores_source_without_deletion(lab: Lab) -> None:
@@ -2297,13 +2355,50 @@ def test_mount_reference_inspection_uses_identity_and_fails_closed(
             and "mount-reference" in result["reason"]
         ), report
         assert lab.filesystem.read_bytes(alias) == b"apple\n"
-    elif condition in {"other-inode", "other-device"}:
+    elif condition == "other-device":
         assert code == 0 and result["action"] == "evicted", report
     else:
         assert code == 1 and "usage cannot be verified" in result["error"], report
-    assert (lab.config.repo / unit.path).exists() == (
-        condition not in {"other-inode", "other-device"}
+    assert (lab.config.repo / unit.path).exists() == (condition != "other-device")
+
+
+@pytest.mark.parametrize("operation", ["evict", "retire-mirror"])
+def test_stacked_mount_with_hidden_unit_inode_blocks_removal(
+    lab: Lab,
+    private_process: dict[str, Any],
+    tmp_path: Path,
+    operation: str,
+) -> None:
+    private_process["denied"] = set()
+    unit = lab.unit()
+    lab.mirror(unit)
+    source = (
+        lab.config.repo if operation == "evict" else lab.config.mirror
+    ) / unit.path
+    original_inode = (source / "a.bin").stat().st_ino
+    namespace = tmp_path / "covered-mount"
+    namespace.mkdir()
+    cover = namespace / "overlaid.bin"
+    cover.write_bytes(b"covering inode")
+    process = private_process["path"]
+    (process / "root").unlink()
+    (process / "root").symlink_to(namespace, target_is_directory=True)
+    device = source.stat().st_dev
+    prefix = f"{os.major(device)}:{os.minor(device)}"
+    lower = filesystem_path(source / "a.bin")
+    upper = filesystem_path(cover)
+    (process / "mountinfo").write_text(
+        f"55 1 {prefix} {lower} /overlaid.bin rw - ext4 /dev/fake rw\n"
+        f"56 1 {prefix} {upper} /overlaid.bin rw - ext4 /dev/fake rw\n"
     )
+    if operation == "retire-mirror":
+        (lab.config.repo / unit.path / "a.bin").write_bytes(b"peach\n")
+    code, report = lab.run("evict" if operation == "evict" else "mirror", unit)
+    assert code == 1 and "usage cannot be verified" in report["results"][0]["error"], (
+        report
+    )
+    assert (source / "a.bin").stat().st_ino == original_inode
+    assert lab.filesystem.read_bytes(source / "a.bin") == b"apple\n"
 
 
 def test_inaccessible_ancestor_bind_does_not_block_verifying_e(

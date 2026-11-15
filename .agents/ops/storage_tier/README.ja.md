@@ -46,6 +46,9 @@ hardlinkはD:内またはE:内で使い、D:/E:間では使わない。コピー
 `ckpt` 引数で全子単位を選ぶわけではない。どちらもミラー・照合・取得だけで、未使用削除しない。
 E:のckptコンテナinode自体は交換・削除しない。旧コードの全ckpt単位による操作は拒否する。
 
+rootファイルのmanifestがあれば、hydrate/mirror/verify/indexは公開・証拠更新の前に、E:のmetadataと保存済みSHA-256の両方を照合する。
+明示indexでも不一致の証拠を上書きしない。旧ckpt全体manifestの移行でも、記録済み直下ファイルの部分集合を先に照合する。
+
 rootファイルは直下の通常ファイルだけをstageでコピー・hashし、1ファイルずつ公開する。
 置換前やD:から消えたファイルは、対象tierの `.storage-tier/checkpoint-file-history/<transaction>/` に保持し、
 この履歴は自動削除しない。子dirは触らない。公開はファイル単位で原子的で、集合全体では原子的でない。
@@ -195,6 +198,8 @@ quarantine・retained・stage名にも同じ規則を使う。同じdeviceで、
 祖先rootと外部・兄弟rootはstatせず除外する。`data/a` と `data/ab` はcomponent境界で区別する。
 `process_scope.mount_scope` にfilesystem内の単位path、検査数、祖先除外数、外部除外数を監査記録する（processごとの観測数）。
 読取・権限エラーを空一覧にしない。`//deleted` 等の判定不能rootと、対象内mountpointの到達・読取不能は失敗にする。
+対象内rootのstat結果が単位のinodeと一致しない場合もunknownにする。上層mountが下層のfile bindを隠す場合があるためで、
+祖先・単位外rootの除外は維持する。
 CI用read-only data viewのような、到達不能な祖先/外部bindは対象内inode参照ではなく、statも失敗扱いもしない。
 rootが単位と同一ならread-onlyでも対象内のままとする。
 既存のプロセス除外規則は適用し、検査可能な所属プロセスがいないnamespaceの一覧までは取得できない。

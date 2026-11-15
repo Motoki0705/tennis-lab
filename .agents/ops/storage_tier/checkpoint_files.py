@@ -19,10 +19,10 @@ from .filesystem import (
     sync_dir,
     write_json,
 )
+from .layout import Unit
 
 if TYPE_CHECKING:
     from .engine import Engine
-    from .layout import Unit
 
 
 def files(path: Path, *, hashes: bool = False) -> Snapshot:
@@ -43,6 +43,35 @@ def stable(engine: Engine, unit: Unit, path: Path) -> Snapshot:
         raise StorageError("checkpoint root files changed during hashing")
     engine.quiet(unit, path, result)
     return result
+
+
+def recorded_snapshot(engine: Engine, unit: Unit, *, legacy: bool) -> Snapshot | None:
+    """Keep existing digest evidence, including direct files of the old schema."""
+    path = engine.manifest_path(unit)
+    if legacy and path.exists() and read_json(path).get("kind") == "checkpoint":
+        saved = engine.manifest(Unit("ckpt", "checkpoint"))
+        if saved is None:
+            raise StorageError("checkpoint manifest disappeared while reading")
+        entries = {
+            name: dict(entry)
+            for name, entry in saved["mirror"].items()
+            if name == "." or ("/" not in name and entry["kind"] == "file")
+        }
+        entries["."]["mtime_ns"] = entries["."]["ctime_ns"] = 0
+        return Snapshot(entries)
+    saved = engine.manifest(unit)
+    return Snapshot(saved["mirror"]) if saved is not None else None
+
+
+def check_recorded(previous: Snapshot | None, observed: Snapshot) -> None:
+    if previous is None:
+        return
+    if not previous.same_metadata(observed):
+        raise StorageError("E: checkpoint root files changed since verification")
+    if content(previous) != content(observed):
+        raise StorageError(
+            "E: checkpoint root-file SHA-256 does not match its recorded manifest"
+        )
 
 
 def operate(
@@ -66,10 +95,12 @@ def operate(
                     "reconcile retained history and published files before retrying"
                 )
     mirror_path = engine.config.mirror / "ckpt"
+    previous = recorded_snapshot(engine, unit, legacy=command == "index")
     if command == "index":
         path = engine.path(unit, mirror=True)
         before = files(path)
         tree = stable(engine, unit, path)
+        check_recorded(previous, tree)
         # Explicit index is the schema-boundary migration. Preserve the former
         # whole-ckpt manifest before replacing the same path-key with root files.
         old_path = engine.manifest_path(unit)
@@ -100,14 +131,10 @@ def operate(
                 json.dumps(content(tree), sort_keys=True).encode()
             ).hexdigest(),
         }
-    previous = engine.manifest(unit)
     mirror: Snapshot | None = None
     if mirror_path.exists():
         mirror = stable(engine, unit, engine.path(unit, mirror=True))
-        if previous is not None and not Snapshot(previous["mirror"]).same_metadata(
-            mirror
-        ):
-            raise StorageError("E: checkpoint root files changed since verification")
+        check_recorded(previous, mirror)
     if command in {"verify", "hydrate"} and mirror is None:
         raise StorageError("E: checkpoint root files are missing; index/mirror first")
     local_path = engine.config.repo / "ckpt"

@@ -331,10 +331,13 @@ class Inspector:
             # bind visible only in a different mount namespace. stat is metadata
             # only; opening the payload would itself count as use/break a lease.
             info = (process / "root" / point.relative_to("/")).stat()
-            if (info.st_dev, info.st_ino) in inodes:
-                result.append(
-                    f"mount-reference: pid={process.name} mount-id={record.id}"
+            if (info.st_dev, info.st_ino) not in inodes:
+                raise StorageError(
+                    "in-scope mount identity cannot be verified: "
+                    f"pid={process.name} mount-id={record.id} root={root} "
+                    f"observed-dev={info.st_dev} observed-ino={info.st_ino}"
                 )
+            result.append(f"mount-reference: pid={process.name} mount-id={record.id}")
         return result
 
     def inspect(

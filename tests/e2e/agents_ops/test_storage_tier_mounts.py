@@ -251,3 +251,103 @@ os.close(fd)
         if child.poll() is None:
             child.kill()
         child.communicate(timeout=10)
+
+
+@pytest.mark.parametrize("operation", ["evict", "retire-mirror"])
+def test_stacked_file_bind_cannot_hide_reference_from_removal(
+    tmp_path: Path,
+    private_mount_namespace: None,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+) -> None:
+    import importlib
+    import select
+    import time
+
+    monkeypatch.syspath_prepend(str(OPS))
+    module = importlib.import_module("storage_tier.engine")
+    layout = importlib.import_module("storage_tier.layout")
+    usage = importlib.import_module("storage_tier.usage")
+    repo, mount, proc = tmp_path / "D/repo", tmp_path / "E", tmp_path / "proc"
+    repo.mkdir(parents=True)
+    mount.mkdir()
+    proc.mkdir()
+    config = layout.Config(repo, mount, ("data/task",))
+    unit = "data/task/v1"
+    local = repo / unit
+    local.mkdir(parents=True)
+    (local / "a.bin").write_bytes(b"apple\n")
+    old = int((time.time() - 15 * 86400) * 10**9)
+    os.utime(local / "a.bin", ns=(old, (local / "a.bin").stat().st_mtime_ns))
+    engine = module.Engine(
+        config, inspector=usage.Inspector(proc), mount_check=lambda c: None
+    )
+    code, report = engine.run("mirror", [unit], dry_run=False)
+    assert code == 0, report
+    source = (repo if operation == "evict" else config.mirror) / unit / "a.bin"
+    identity = source.stat().st_ino
+    alias, cover = tmp_path / "alias.bin", tmp_path / "cover.bin"
+    alias.touch()
+    cover.write_bytes(b"cover\n")
+    consumer = r"""
+import json, os, subprocess, sys
+from pathlib import Path
+source,alias,cover=map(Path,sys.argv[1:])
+subprocess.run(['mount','--bind',str(source),str(alias)],check=True)
+original=alias.stat().st_ino
+subprocess.run(['mount','--bind',str(cover),str(alias)],check=True)
+print(json.dumps({'pid':os.getpid(),'original':original,'visible':alias.stat().st_ino}),flush=True)
+sys.stdin.readline()
+print('consumer-done',flush=True)
+"""
+    child = subprocess.Popen(
+        [
+            "unshare",
+            "--user",
+            "--map-root-user",
+            "--mount",
+            "--propagation",
+            "private",
+            sys.executable,
+            "-c",
+            consumer,
+            str(source),
+            str(alias),
+            str(cover),
+        ],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        assert child.stdout is not None and select.select([child.stdout], [], [], 10)[0]
+        line = child.stdout.readline()
+        assert line, child.stderr.read() if child.stderr else "no consumer output"
+        ready = json.loads(line)
+        assert ready["original"] == identity and ready["visible"] != identity, ready
+        (proc / str(child.pid)).symlink_to(
+            f"/proc/{child.pid}", target_is_directory=True
+        )
+        if operation == "retire-mirror":
+            (local / "a.bin").write_bytes(b"peach\n")
+        code, report = engine.run(
+            "evict" if operation == "evict" else "mirror", [unit], dry_run=False
+        )
+        stdout, stderr = child.communicate("probe\n", timeout=10)
+        assert child.returncode == 0, stderr
+        assert stdout.strip() == "consumer-done"
+        observed = {
+            "code": code,
+            "report": report,
+            "original_inode": identity,
+            "named_original_survives": source.exists()
+            and source.stat().st_ino == identity,
+        }
+        print(json.dumps(observed))
+        assert code == 1 and "usage cannot be verified" in json.dumps(report), observed
+        assert observed["named_original_survives"], observed
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate(timeout=10)
