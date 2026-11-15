@@ -323,3 +323,30 @@ def test_only_native_agents_supply_session_ownership_from_their_environment(
             "identity": ident,
             "sessions": ["codex:session", "claude:other"],
         }
+
+
+@pytest.mark.parametrize("ended", ["exited", "Z", "X"])
+def test_reference_observed_before_parent_exit_keeps_the_snapshot_child_edge(
+    files: ProcFiles, monkeypatch: pytest.MonkeyPatch, ended: str
+) -> None:
+    files.add(12, 11, "30")
+    (files.proc / "11/fd/3").symlink_to(files.root / "held file")
+    real_text = Path.read_text
+    reads = []
+
+    def text(path: Path, *args: Any, **kwargs: Any) -> str:
+        if path == files.proc / "11/stat":
+            reads.append(True)
+            if len(reads) == 2:
+                # The edge was captured before C left P, after P's fd was read.
+                files.stat(12, 900, "30")
+                if ended == "exited":
+                    raise FileNotFoundError(str(path))
+                files.stat(11, 1, "20", ended)
+        return real_text(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", text)
+    result = files.scan()
+    assert len(reads) == 2
+    assert {row["identity"]["pid"] for row in result["references"]} == {11}
+    assert {row["pid"] for row in result["related"]} == {11, 12}

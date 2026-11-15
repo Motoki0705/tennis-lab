@@ -103,7 +103,9 @@ def _inspect(node: dict[str, Any], root: Path, proc: Path) -> dict[str, Any] | N
     try:
         raw = (entry / "stat").read_text()
         fields = raw[raw.rindex(")") + 2 :].split()
-        if fields[0] in {"Z", "X"}:
+        # A positive reference remains evidence of this generation even if it
+        # exits now. scan must still expand its already captured child edges.
+        if fields[0] in {"Z", "X"} and not matches:
             return None
         if fields[19] != ident["start_ticks"]:
             # A path was observed but its final owner is ambiguous. Preserve
@@ -113,7 +115,8 @@ def _inspect(node: dict[str, Any], root: Path, proc: Path) -> dict[str, Any] | N
                 "identity", ValueError("process generation changed during inspection")
             )
     except (FileNotFoundError, ProcessLookupError):
-        return None
+        if not matches:
+            return None
     except PermissionError as error:
         failure("stat", error)
     return {

@@ -7,9 +7,34 @@ from pathlib import Path
 from typing import Any
 
 from . import inventory
-from .storage import State, utc
+from .storage import CleanupError, State, utc
 
 TERMINAL = {"deleted", "absent", "superseded"}
+
+
+def unregistered_residue(saved: dict[str, Any], repo: Path) -> str | None:
+    """Do not retire the filesystem duty left after legacy Git unregistration."""
+    if saved["phase"] != "unregistered":
+        return None
+    quarantine = repo / ".claude/worktrees" / (".expired-" + saved["id"])
+    if saved.get("quarantine") not in {None, str(quarantine)}:
+        return "legacy unregistered intent has an invalid quarantine path"
+    try:
+        quarantine.lstat()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        return f"legacy unregistered quarantine cannot be inspected: {error}"
+    return (
+        "legacy unregistered quarantine remains; its generation cannot be verified "
+        "without the matching Git registration"
+    )
+
+
+def require_ready(saved: dict[str, Any]) -> None:
+    event = saved.get("filesystem_migration", {})
+    if event.get("result") == "blocked":
+        raise CleanupError(event["reason"])
 
 
 def directory_evidence(
@@ -100,6 +125,10 @@ def reconcile(state: State, rows: list[dict[str, Any]], now: int) -> None:
                     saved, current, Path(state.data["repo"])
                 )
         outcome = "migrated" if actual is not None else "retired"
+        if actual is None and (
+            residue := unregistered_residue(saved, Path(state.data["repo"]))
+        ):
+            outcome, reason = "blocked", reason + "; " + residue
         saved["filesystem_migration"] = {
             "result": outcome,
             "checked_at": utc(now),
@@ -112,7 +141,7 @@ def reconcile(state: State, rows: list[dict[str, Any]], now: int) -> None:
             saved["admin_identity"] = current["admin_identity"]
             saved["directory_identity"] = actual
             saved.pop("registration_lost_at", None)
-        else:
+        elif outcome != "blocked":
             saved.update(phase="superseded", superseded_at=utc(now))
     state.data["schema_version"] = 2
     if changed:

@@ -581,16 +581,12 @@ class Stopper:
         known, pids = ([], set()) if moved else self.managed_processes(root, view)
         check = references.scan(
             root,
-            related=[*self.known_processes(root), *known, *(inherited or [])],
+            related=[*self.known_processes(root), *known, *seeds, *(inherited or [])],
             managed_pids=pids,
             view=view,
         )
-        self.reference_checks.append(check)
         self.recorded_pids.setdefault(str(root), set()).update(pids)
-        saved = processes.prepare_stop(
-            view, [*seeds, *check["related"]], self.native_proof(root)
-        )
-        self.observed[str(root)] = saved["tracked"]
+        self.record_reference_check(root, check, view=view)
         native = processes.agents(root)
         for row in check["references"]:
             ident = row["identity"]
@@ -602,6 +598,31 @@ class Stopper:
                     or {"identity": ident, "sessions": []}
                 )
         return view, native
+
+    def record_reference_check(
+        self,
+        root: Path,
+        check: dict[str, Any],
+        *,
+        view: dict[int, Any] | None = None,
+    ) -> None:
+        """Persist every new observed stop obligation before deciding the gate."""
+        self.reference_checks.append(check)
+        seen = {
+            processes.identity_key(item) for item in self.observed.get(str(root), [])
+        }
+        proof = self.native_proof(root)
+        if proof.exists() or any(
+            processes.identity_key(item) not in seen for item in check["related"]
+        ):
+            saved = processes.prepare_stop(
+                processes.snapshot() if view is None else view,
+                check["related"],
+                proof,
+            )
+            self.observed[str(root)] = saved["tracked"]
+        # When stop_tree already confirmed every saved identity ended, a scan
+        # seeded with those same identities must not recreate a completed duty.
 
     def stop_native(
         self, root: Path, native: list[dict[str, Any]], view: dict[int, Any]
@@ -626,8 +647,8 @@ class Stopper:
             known.extend(self.known_processes(original))
             pids.update(self.recorded_pids.get(str(original), set()))
         check = references.scan(root, related=known, managed_pids=pids)
-        self.reference_checks.append(check)
-        if check["references"] or check["errors"]:
+        self.record_reference_check(root, check)
+        if check["references"] or check["errors"] or self.native_proof(root).exists():
             raise CleanupError(f"worktree reference gate failed: {check}")
         return check
 
@@ -645,8 +666,12 @@ class Stopper:
                 related=[*self.known_processes(root), *self.known_processes(original)],
                 managed_pids=self.recorded_pids.get(str(original), set()),
             )
-            self.reference_checks.append(check)
-            if not check["references"] and not check["errors"]:
+            self.record_reference_check(root, check)
+            if (
+                not check["references"]
+                and not check["errors"]
+                and not self.native_proof(root).exists()
+            ):
                 return
         self.confirm_references(root, original=original)
 

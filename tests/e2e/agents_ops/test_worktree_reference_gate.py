@@ -105,6 +105,11 @@ def test_quarantine_gate_refuses_live_references_and_succeeds_after_stop(
             child.stdin.write("\n")
             child.stdin.flush()
             assert child.wait(timeout=5) == 0
+            # Resume the real pinned stop verifier to discharge its journal;
+            # the injected no-op above deliberately left that duty pending.
+            monkeypatch.setattr(
+                lab.lifecycle.processes, "stop_tree", lab.real_stop_tree
+            )
             lab.run(cleanup=True)
         assert not path.exists()
         assert all(

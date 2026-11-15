@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -183,3 +185,43 @@ def test_quarantined_git_file_mismatch_retires_the_old_intent(lab: Lab) -> None:
     )
     assert link.read_text() == changed
     assert row["id"] not in {entry["id"] for entry in report["entries"]}
+
+
+@pytest.mark.parametrize("replacement", [False, True])
+def test_legacy_unregistered_intent_keeps_residual_quarantine_as_a_failure(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, replacement: bool
+) -> None:
+    data = legacy_records(lab)
+    old = next(iter(data["records"].values()))
+    path, quarantine = Path(old["path"]), Path(old["quarantine"])
+    path.rename(quarantine)
+    lab.git("worktree", "remove", "--force", str(path))
+    old["phase"] = "unregistered"
+    (lab.state / "worktrees.json").write_text(json.dumps(data))
+    lab.now += LIFETIME
+    if replacement:
+        monkeypatch.setattr(
+            lab.inventory,
+            "birth_time",
+            lambda fd: (
+                BORN if ".expired-" in os.readlink(f"/proc/self/fd/{fd}") else lab.now
+            ),
+        )
+        lab.add("replacement", path=path)
+        (path / "keep").write_text("replacement")
+    for _ in range(2):
+        code, report = lab.cleaner().run(cleanup=True)
+        assert code == 1
+        assert report["results"][0]["deleted"] is False
+        assert quarantine.is_dir()
+        current = lab.records()[old["id"]]
+        assert current["phase"] == "unregistered"
+        assert current["filesystem_migration"]["result"] == "blocked"
+    code, report = lab.cleaner().run(cleanup=True, dry_run=True)
+    assert code == 1 and report["errors"]
+    assert quarantine.is_dir()
+    shutil.rmtree(quarantine)
+    lab.run(cleanup=True)
+    assert lab.records()[old["id"]]["phase"] == "superseded"
+    if replacement:
+        assert (path / "keep").read_text() == "replacement"

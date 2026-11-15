@@ -42,6 +42,7 @@ class Lab:
         self.lifecycle = importlib.import_module("worktree_cleanup.lifecycle")
         self.storage = importlib.import_module("worktree_cleanup.storage")
         self.real_snapshot = self.lifecycle.processes.snapshot
+        self.real_stop_tree = self.lifecycle.processes.stop_tree
         self.references = importlib.import_module("worktree_cleanup.references")
         self.real_references = self.references.scan
         monkeypatch.setattr(
@@ -745,10 +746,15 @@ def test_parent_ownership_is_released_and_native_process_is_stopped(
     registry = save_registry(lab, row)
     stopped = []
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
+
+    def stop(identity: Any, **kwargs: Any) -> None:
+        stopped.extend([identity] if identity else [])
+        lab.real_stop_tree(identity, **kwargs)
+
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: stopped.extend([identity] if identity else []),
+        stop,
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -1024,6 +1030,95 @@ class NativeForest:
                     child["parent"] = 1
 
 
+@pytest.mark.parametrize("stage", ["post_stop", "confirm"])
+@pytest.mark.parametrize("failure", ["survives", "opaque"])
+def test_late_reference_observations_remain_stop_obligations_on_retry(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, stage: str, failure: str
+) -> None:
+    lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    parent = dict(forest.nodes[101]["identity"])
+    child = dict(forest.nodes[102]["identity"])
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    scans = []
+    opaque: list[bool] = []
+    original_identity = forest.proc.process_identity
+    original_signal = forest.signal
+    refuse = [True]
+
+    def identity(pid: int) -> Any:
+        if pid == 102 and opaque and refuse[0] and failure == "opaque":
+            raise PermissionError("late observed child became opaque")
+        return original_identity(pid)
+
+    def signal(fd: int, sig: int) -> None:
+        if fd == 1102 and sig == forest.proc.signal.SIGKILL and refuse[0]:
+            forest.signals.append((102, sig))
+            return
+        original_signal(fd, sig)
+
+    def scan(root: Path, **kwargs: Any) -> dict[str, Any]:
+        related = list(kwargs.get("related") or [])
+        references = []
+        if root.name.startswith(".expired-"):
+            scans.append(True)
+            if len(scans) == (2 if stage == "post_stop" else 3):
+                references = [
+                    {
+                        "identity": parent,
+                        "comm": "parent",
+                        "references": [{"item": "fd/3", "path": str(root / "held")}],
+                    }
+                ]
+                related.extend([parent, child])
+                forest.nodes.pop(101)
+                forest.nodes[102]["parent"] = 900
+                opaque.append(True)
+        associated = child in related
+        unreadable = (
+            [
+                {
+                    "identity": child,
+                    "pid": 102,
+                    "comm": "child",
+                    "items": [{"item": "fd", "error": "PermissionError"}],
+                    "related": associated,
+                }
+            ]
+            if opaque and refuse[0] and failure == "opaque"
+            else []
+        )
+        return {
+            "path": str(root),
+            "references": references,
+            "related": related,
+            "uninspectable": unreadable,
+            "errors": ["related late child is opaque"]
+            if unreadable and associated
+            else [],
+        }
+
+    monkeypatch.setattr(forest.proc, "process_identity", identity)
+    monkeypatch.setattr(forest.proc, "signal_pidfd", signal)
+    monkeypatch.setattr(lab.references, "scan", scan)
+    lab.now += LIFETIME
+    for _ in range(2):
+        code, report = lab.cleaner().run(cleanup=True)
+        assert code == 1 and report["results"][0]["deleted"] is False
+        row = next(
+            row for row in lab.records().values() if row["phase"] == "quarantined"
+        )
+        quarantine = Path(row["quarantine"])
+        assert quarantine.is_dir() and 102 in forest.nodes
+        proof = lab.cleaner().stopper.native_proof(quarantine)
+        saved = lab.storage.read_json(proof)
+        assert child in saved["tracked"]
+    refuse[0] = False
+    lab.run(cleanup=True)
+    assert 102 not in forest.nodes and not quarantine.exists()
+    assert not proof.exists()
+
+
 def test_native_stop_pins_children_and_parent_without_pid_reuse(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1279,10 +1374,15 @@ def test_legacy_parent_session_is_linked_by_existing_herdr_process_stamp(
         "agents",
         lambda root: list(remaining) if root == path else [],
     )
+
+    def stop(identity: Any, **kwargs: Any) -> None:
+        remaining.clear()
+        lab.real_stop_tree(identity, **kwargs)
+
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: remaining.clear(),
+        stop,
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -1306,9 +1406,6 @@ def test_split_registry_interruption_is_replayed_before_reading_ownership(
     with store.locked():
         store.migrate()
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
-    monkeypatch.setattr(
-        lab.lifecycle.processes, "stop_tree", lambda identity, **kwargs: None
-    )
     ExpiryStore = lab.lifecycle.ExpiryStore
     original = ExpiryStore.write_json
 
@@ -1572,10 +1669,15 @@ def test_stale_parent_runtime_does_not_release_new_owner_or_children(
     registry = save_registry(lab, row)
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
     stopped = []
+
+    def stop(identity: Any, **kwargs: Any) -> None:
+        stopped.extend([identity] if identity else [])
+        lab.real_stop_tree(identity, **kwargs)
+
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: stopped.extend([identity] if identity else []),
+        stop,
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)

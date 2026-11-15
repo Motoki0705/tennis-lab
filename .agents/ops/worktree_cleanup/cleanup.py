@@ -165,6 +165,7 @@ class Cleaner:
         )
 
     def remove(self, state: State, row: dict[str, Any], now: int) -> None:
+        migration.require_ready(row)
         path = Path(row["path"])
         error = inventory.scope_error(self.repo, path)
         if error:
@@ -306,6 +307,7 @@ class Cleaner:
                 if cleanup and dry_run and entry["selected"]:
                     try:
                         saved = state.records[entry["id"]]
+                        migration.require_ready(saved)
                         physical = Path(saved.get("quarantine") or entry["path"])
                         if not physical.exists():
                             physical = Path(entry["path"])
