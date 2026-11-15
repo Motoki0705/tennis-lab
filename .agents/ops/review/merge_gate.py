@@ -103,11 +103,16 @@ def check_adoptions(
     session: ParentSession,
     pr: dict[str, Any],
     family: tuple[Issue, dict[int, Issue]] | None = None,
+    *,
+    fresh_bodies: bool = False,
 ) -> None:
     parent, children = family if family is not None else session.work_items()
-    check_task_adoptions(session.gh, parent.body)
+    items = {parent.number: parent}
     for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
-        check_task_adoptions(session.gh, children[n].body)
+        items[n] = children[n]
+    for n, item in items.items():
+        body = session.gh.issue(n)["body"] if fresh_bodies else item.body
+        check_task_adoptions(session.gh, body)
 
 
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
@@ -558,12 +563,15 @@ def _merge_request(
             evaluations.append(entry)
             if entry["decision"] != GateDecision.MERGE:
                 continue
-            # Adoption reports may have changed during review evidence I/O.
-            # Keep this narrow, explicit final reread, with the collected family
-            # rather than traversing all formal relations again.
+            # Bindings and source reports may change during review evidence I/O.
+            # Reread only parent/closing bodies and their sources, retaining the
+            # collected target set instead of rediscovering the formal family.
             with session.gh.fresh_reads():
                 check_adoptions(
-                    session, fresh.details[n], (fresh.parent, fresh.children)
+                    session,
+                    fresh.details[n],
+                    (fresh.parent, fresh.children),
+                    fresh_bodies=True,
                 )
             journal_path = attempt_path(session, n, current["head_sha"])
             if journal_path.exists():

@@ -201,15 +201,13 @@ def test_merging_three_prs_keeps_explicit_rechecks_within_request_budget(
     assert response.returncode == 0, response.stderr
     assert all(row["action"] == "merged" for row in g.results(response).values())
     assert len(g.merge_calls()) == 3
-    # The same fixture used 1,283 requests before scoped observations. Keep the
-    # complete merge/postcheck/progress path below one fifth, with some margin.
-    assert len(api_endpoints(p.calls()[offset:])) <= 250
+    # The same fixture used 1,283 requests before scoped observations. The 250
+    # request budget gains only two fresh bodies (parent + closing child) per
+    # merge: 3 * 2 = 6, without rediscovering the formal family.
+    assert len(api_endpoints(p.calls()[offset:])) <= 256
 
 
-@pytest.mark.parametrize("revoke", [False, True])
-def test_adoption_source_is_needed_and_rechecked_after_review_evidence(
-    gate_env: GateEnv, revoke: bool
-) -> None:
+def bind_task_adoption(gate_env: GateEnv, issue: int) -> None:
     g, p = gate_env, gate_env.review.p
     proposals = importlib.import_module("parent.proposals")
     model = importlib.import_module("opsreport.proposals")
@@ -248,8 +246,8 @@ def test_adoption_source_is_needed_and_rechecked_after_review_evidence(
         "body": body,
         "labels": [{"name": "ops-report"}],
     }
-    state["issues"]["10"]["body"] = adoption.bind_task(
-        state["issues"]["10"]["body"],
+    state["issues"][str(issue)]["body"] = adoption.bind_task(
+        state["issues"][str(issue)]["body"],
         plan="a" * 64,
         node="implementation",
         bindings=[
@@ -264,6 +262,15 @@ def test_adoption_source_is_needed_and_rechecked_after_review_evidence(
         ],
     )
     p.save(state)
+
+
+@pytest.mark.parametrize("issue", [1, 10], ids=["parent", "child"])
+@pytest.mark.parametrize("revoke", [False, True])
+def test_adoption_source_is_needed_and_rechecked_after_review_evidence(
+    gate_env: GateEnv, revoke: bool, issue: int
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    bind_task_adoption(g, issue)
     fake = p.root / "bin/gh"
     line = 'payload = json.load(sys.stdin) if method != "GET" else None\n'
     fake.write_text(
@@ -287,3 +294,66 @@ def test_adoption_source_is_needed_and_rechecked_after_review_evidence(
     else:
         assert response.returncode == 0, response.stderr
         assert g.results(response)[100]["action"] == "merged"
+
+
+@pytest.mark.parametrize("issue", [1, 10], ids=["parent", "child"])
+@pytest.mark.parametrize("change", ["report", "option", "proposal_sha256"])
+def test_adoption_binding_changes_during_review_evidence_block_merge(
+    gate_env: GateEnv, issue: int, change: str
+) -> None:
+    g, p = gate_env, gate_env.review.p
+    bind_task_adoption(g, issue)
+    adoption = importlib.import_module("issues.adoption")
+    state = p.state()
+    original = state["issues"][str(issue)]["body"]
+    metadata = adoption.parse_task_metadata(original)
+    binding = metadata["bindings"][0]
+    if change == "report":
+        state["issues"]["78"] = {
+            **state["issues"]["77"],
+            "id": 10078,
+            "number": 78,
+            "state": "closed",
+        }
+        binding["source"]["report_number"] = 78
+        expected = "source report must remain open and complete"
+    elif change == "option":
+        binding["source"]["option"] = "other option"
+        expected = "task adoption/option changed"
+    else:
+        binding["proposal_sha256"] = "b" * 64
+        expected = "task proposal digest changed"
+    _, _, rest = original.partition("\n")
+    state["changed_binding_body"] = (
+        adoption.task_marker(
+            metadata["plan_sha256"], metadata["node"], metadata["bindings"]
+        )
+        + "\n"
+        + rest
+    )
+    p.save(state)
+    fake = p.root / "bin/gh"
+    line = 'payload = json.load(sys.stdin) if method != "GET" else None\n'
+    fake.write_text(
+        fake.read_text().replace(
+            line,
+            line
+            + """if method == "GET" and endpoint.split("?")[0] == "repos/o/r/issues/100/comments":
+    state["binding_evidence_reads"] = state.get("binding_evidence_reads", 0) + 1
+    if state["binding_evidence_reads"] == 2:
+        # The final observation already collected parent/child bodies. Change
+        # the binding during review evidence I/O, leaving the old report valid.
+        state["issues"][os.environ["BINDING_ISSUE"]]["body"] = state["changed_binding_body"]
+    save()
+""",
+        )
+    )
+    response = g.cli("merge", BINDING_ISSUE=str(issue))
+    assert p.state()["binding_evidence_reads"] >= 2
+    assert (
+        adoption.parse_task_metadata(p.state()["issues"][str(issue)]["body"])
+        == metadata
+    )
+    assert not g.merge_calls()
+    assert response.returncode == 2, response.stdout
+    assert expected in response.stderr
