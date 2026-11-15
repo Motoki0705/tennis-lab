@@ -998,7 +998,8 @@ recoverも既存の委任予約を保持し、照合結果から自動再起動�
 終了・引継ぎを確定した後、CLIはworkerログの残件、今回の終了結果の捕捉、未公開の判断ログを順に照合する。
 公開の失敗は担当変更を取り消さず、`publication_exit` に残件・担当・再開コマンドを返す。
 自律親も既存supervisorの終了イベントから同じ照合を行う。通常の書込み操作は共通後処理から、
-workerの起動・継続は予約前に一度だけ保留公開を続ける。status系とdry-runはstateを書かない。
+workerの起動・継続は予約前に一度だけ保留公開を続ける。status系とdry-runは業務stateを書かない。
+期限処理のdry-runの操作lockは [改善提案の期限処理](improvements.md#期限切れcloseとunit導入) を参照する。
 対象入口、他親／journal不在PRの明示回収、読取りAPI `remaining_publications` と
 privateな終了checkpointの型・保存先は [workerログ契約](../worker_logs/README.md#続行一括回収終了checkpoint) を正本とする。
 
