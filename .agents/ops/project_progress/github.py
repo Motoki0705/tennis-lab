@@ -6,6 +6,7 @@ import json
 import subprocess
 import time
 from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
 from typing import TYPE_CHECKING, Any
 
 from issues.evidence import require_work_issue
@@ -55,10 +56,15 @@ class Projects:
         self._store = store
 
     def api(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
-        if self._store is not None and query.lstrip().startswith("query "):
-            with self._store.unlocked_read():
-                return self._api(query, variables)
-        return self._api(query, variables)
+        with self.io_scope():
+            return self._api(query, variables)
+
+    @contextmanager
+    def io_scope(self) -> Iterator[None]:
+        # A bound client always requires its active transaction, including on
+        # writes. Standalone inspect explicitly uses an unbound client.
+        with self._store.unlocked_read() if self._store else nullcontext():
+            yield
 
     def _api(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         started = time.monotonic()
@@ -266,6 +272,12 @@ class Projects:
         return result
 
     def create_board(
+        self, owner_login: str, project_number: int, payload: dict[str, Any]
+    ) -> str:
+        with self.io_scope():
+            return self._create_board(owner_login, project_number, payload)
+
+    def _create_board(
         self, owner_login: str, project_number: int, payload: dict[str, Any]
     ) -> str:
         # REST supports column/group fields at creation. GraphQL's view update

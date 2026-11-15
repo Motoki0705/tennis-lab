@@ -111,6 +111,27 @@ class Store:
             metrics.flock(lock, fcntl.LOCK_EX)
             yield
 
+    @contextmanager
+    def ownership(self) -> Iterator[None]:
+        """Fence owner changes and one board send, outside any transaction.
+
+        All worktrees use this one host-state lock. Ordinary registry updates
+        do not participate. Never wait for it while holding registry.lock.
+        """
+        # A different thread may be using this Store. Wait for its live
+        # references first; only our own nested transaction is an inversion.
+        # Release the guard before waiting for the host-wide fence.
+        with self._transaction_guard:
+            if self._lock is not None:
+                raise ValueError(
+                    "ownership fence must precede the registry transaction"
+                )
+        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with (self.directory / "ownership.lock").open("a", encoding="utf-8") as lock:
+            os.chmod(lock.name, 0o600)
+            metrics.flock(lock, fcntl.LOCK_EX)
+            yield
+
     def _validate_loaded(self) -> None:
         if (
             set(self.data) != {"version", "parents"}

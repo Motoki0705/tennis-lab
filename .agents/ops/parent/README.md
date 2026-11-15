@@ -59,6 +59,21 @@ GitHub GETの再利用は1回の読取りCLI内に限定し、registryに束縛�
 Project書込み操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
 途中まで保存・公開済みの操作は取り消さず、非ゼロ終了後は不足分だけ再実行する。
 
+### 担当変更と掲示板配送の排他
+
+同じhost stateの全worktreeで `ownership.lock` を共有する。`Store.ownership()` はregistry transactionの
+外で取得し、担当のsession/status/generationを変える操作と、掲示板の1宛先の配送試行を排他する。
+順序は既存の親/dispatcher operation lock→ownership fence→registry lock。
+`register`・`handoff`（`--accept --recover`を含む）・`release`（structured finishを含む）、
+dispatcherの予約・実session結合・初期予約取消・親完了、worktree期限切れの解除とjournal回復が参加する。
+同じStoreを使う別threadのtransactionは終了を待ち、自分のtransaction内からのfence取得は拒否する。
+
+配送中は無関係な親の担当変更も送信結果の保存まで待つ。強制引継ぎや期限切れ解除も迂回しない。
+statusや通常のtask/review更新はこのfenceを取らず、既存のoperation/registry排他だけを使う。
+担当CLIの表示・掲示板callbackはoperation/fence/registryの全解放後に実行する。
+受信経路の更新もfence→registry→routesの順に取り、配送のroutes待ちでregistryを占有しない。
+配送の準備・通知・結果保存は[boardの配送契約](../board/README.md#通知関数と保留分の取得)を参照する。
+
 状態のキーは小文字の `owner/repo#親番号`。version=1も読み書きできる。
 version=2では `registry.json` に担当・status・generationの最小索引だけを持ち、
 `parents/` 内の親ごとのJSONにtasks・reviews・拡張フィールドを保存する。

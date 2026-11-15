@@ -1,4 +1,4 @@
-"""Fence board operations with the existing parent registry writer lock."""
+"""Short registry validation and the common owner-change/send fence."""
 
 from __future__ import annotations
 
@@ -15,6 +15,12 @@ from .names import Assignment
 from .participants import HUMAN, Participant
 from .service import _assigned, _reference
 from .storage import Store, directory
+
+
+@contextmanager
+def ownership_fence(env: Mapping[str, str]) -> Iterator[None]:
+    with ParentStore(directory(env).parent / "parent-sessions").ownership():
+        yield
 
 
 @contextmanager
