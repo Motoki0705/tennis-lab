@@ -136,6 +136,11 @@ def test_exit_after_publication_links_acceptance_and_end_without_publication_loo
     checkpoint = end(env, event=event, generation=generation)
     assert order == ["workers", "capture", "decisions", "checkpoint"]
     assert checkpoint["remaining"] == [] and checkpoint["remaining_complete"] is True
+    assert checkpoint["decision_resume_command"] == (
+        "parent --repo o/r --parent RECOVERY_PARENT publish-decision-log --unassigned-parent 1"
+        if event == "ended"
+        else "parent --repo o/r --parent 1 publish-decision-log"
+    )
     saved = env.upstream_files()
     assert all(saved[name] == raw for name, raw in before.items() if "/event-" in name)
     page = saved[".agents/logs/parents/parent-1/README.md"].decode()

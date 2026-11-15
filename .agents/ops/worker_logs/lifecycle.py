@@ -40,7 +40,9 @@ def unavailable_exit(
         "publication_actor": publication_actor,
         "resume_command": f"parent --repo {repo} --parent {parent} publish-worker-log --all-parents --source-parent {parent}",
         "decision_resume_command": decision_resume_command(
-            repo, parent, assigned=publication_actor != "unassigned"
+            repo,
+            parent,
+            assigned=publication_actor != "unassigned" or event == "handoff_pending",
         ),
         "error": "journal_unavailable",
     }
