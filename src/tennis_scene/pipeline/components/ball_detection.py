@@ -113,6 +113,7 @@ class BallDetectionConfig:
     input_channels: int
     num_frames: int
     precision: str
+    compile_mode: str
     batch_size: int
     device: str
     image_size: tuple[int, int]
@@ -135,11 +136,13 @@ class BallDetectionConfig:
             raise ValueError("ball_detection.model_type must explicitly select conv_next_unet or x3d_csn_dpt")
         if self.precision not in {"fp32", "bf16"}:
             raise ValueError("ball_detection.precision must be fp32 or bf16")
+        if self.compile_mode not in {"off", "default"}:
+            raise ValueError("ball_detection.compile_mode must be off or default")
         if type(self.num_frames) is not int or self.num_frames < 1:
             raise ValueError("ball_detection.num_frames must be a positive integer")
         if self.model_type == "conv_next_unet":
-            if self.input_channels != 2 or self.precision != "fp32":
-                raise ValueError("ConvNeXt requires two MDD channels and fp32 inference")
+            if self.input_channels != 2 or self.precision != "fp32" or self.compile_mode != "off":
+                raise ValueError("ConvNeXt requires two MDD channels, fp32 inference and compile_mode=off")
         elif (self.input_channels != 5 or self.num_frames != 32 or self.image_size != (720, 1280)
               or self.normalize_imagenet or self.window_stride != 16 or self.tail_policy != "backfill"
               or self.overlap_aggregation != "nearest_window_centre_then_earlier_start"
@@ -169,6 +172,7 @@ class BallDetectionModule(BasePipelineModule):
                 frames=self.config.num_frames, input_channels=self.config.input_channels,
                 normalize_imagenet=self.config.normalize_imagenet, precision=self.config.precision,
                 subpixel_refine=self.config.subpixel_refine,
+                compile_mode=self.config.compile_mode,
             )
             return
         predictor = BallDetectionPredictor.load_from_checkpoint(

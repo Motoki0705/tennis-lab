@@ -20,6 +20,10 @@ from src.tasks.ball_detection.model_io.mdd_heatmap import (
     restore_heatmap_model,
 )
 from src.tasks.ball_detection.models.mdd import MDDDPTDetector, MDDHeatmapConfig
+from src.tasks.ball_detection.training.runtime.compilation import (
+    compile_coordinate_model,
+    coordinate_compile_scope,
+)
 from src.utils.device import resolve_device
 
 
@@ -45,7 +49,7 @@ class X3DDPTPredictor:
     """
 
     def __init__(self, model: MDDDPTDetector, *, device: torch.device,
-                 image_size: tuple[int, int], precision: str, subpixel_refine: bool) -> None:
+                 image_size: tuple[int, int], precision: str, subpixel_refine: bool, compile_mode: str) -> None:
         if type(model) is not MDDDPTDetector or type(model.config) is not MDDHeatmapConfig:
             raise BallModelIOError("X3D/CSN + DPT requires the heatmap-only DPT model")
         if (model.config.encoder_variant, model.config.temporal_mixing, model.config.input_channels) != ("x3d_csn", "depthwise3d", 5):
@@ -57,11 +61,12 @@ class X3DDPTPredictor:
         self.model = model.to(device).eval()
         self.device, self.image_size, self.precision = device, image_size, precision
         self.subpixel_refine = subpixel_refine
+        compile_coordinate_model(self.model, mode=compile_mode)
 
     @classmethod
     def load_from_checkpoint(cls, path: Path, *, device: str, image_size: tuple[int, int],
                              frames: int, input_channels: int, normalize_imagenet: bool,
-                             precision: str, subpixel_refine: bool) -> X3DDPTPredictor:
+                             precision: str, subpixel_refine: bool, compile_mode: str) -> X3DDPTPredictor:
         saved = torch.load(path, map_location="cpu", weights_only=True)
         expected = scene_dpt_input_contract(image_size=image_size, frames=frames, input_channels=input_channels)
         if not isinstance(saved, dict) or saved.get("scene_input_contract") != expected:
@@ -75,7 +80,7 @@ class X3DDPTPredictor:
         if type(model) is not MDDDPTDetector:
             raise BallModelIOError("X3D/CSN + DPT does not accept a query or hybrid artifact")
         return cls(model, device=resolve_device(device), image_size=image_size,
-                   precision=precision, subpixel_refine=subpixel_refine)
+                   precision=precision, subpixel_refine=subpixel_refine, compile_mode=compile_mode)
 
     @property
     def configured_frames(self) -> int:
@@ -85,7 +90,7 @@ class X3DDPTPredictor:
         validate_rgb_input(images, frames=self.configured_frames)
         if tuple(images.shape[-2:]) != self.image_size:
             raise BallModelIOError(f"X3D/CSN + DPT requires image size {self.image_size}")
-        with torch.inference_mode():
+        with torch.inference_mode(), coordinate_compile_scope(self.model):
             rgb = images.to(self.device, non_blocking=True)
             with torch.autocast(self.device.type, dtype=torch.bfloat16, enabled=self.precision == "bf16"):
                 logits = self.model(rgb)

@@ -29,7 +29,7 @@ def artifact(tmp_path: Path) -> Path:
 
 def load(path: Path, **changes) -> X3DDPTPredictor:
     settings: dict[str, Any] = dict(device="cpu", image_size=(24, 40), frames=2, input_channels=5,
-                    normalize_imagenet=False, precision="fp32", subpixel_refine=True)
+                    normalize_imagenet=False, precision="fp32", subpixel_refine=True, compile_mode="off")
     settings.update(changes)
     return X3DDPTPredictor.load_from_checkpoint(path, **settings)
 

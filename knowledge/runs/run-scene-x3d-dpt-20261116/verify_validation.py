@@ -28,6 +28,7 @@ def main():
     parser.add_argument("--store", type=Path, required=True)
     parser.add_argument("--checkpoint", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--compile-mode", choices=("off", "default"), required=True)
     args = parser.parse_args()
     torch.set_num_threads(2)
     # Exclusive queue reservation plus a cap below physical VRAM; never change
@@ -52,10 +53,12 @@ def main():
     report = dict(schema="scene_dpt_validation_parity.v1", plan_sha256=sha(args.plan),
                   checkpoint_sha256=sha(args.checkpoint), commit=subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
                   torch=torch.__version__, gpu=torch.cuda.get_device_name(), memory_fraction=.70,
+                  compile_mode=args.compile_mode,
                   input_decoder="torchvision.io.decode_jpeg/nvjpeg (same encoded JPEG bytes)", by_precision={})
     for precision in ("bf16", "fp32"):
         predictor = X3DDPTPredictor.load_from_checkpoint(args.checkpoint, device="cuda", image_size=(720, 1280),
-                    frames=32, input_channels=5, normalize_imagenet=False, precision=precision, subpixel_refine=True)
+                    frames=32, input_channels=5, normalize_imagenet=False, precision=precision, subpixel_refine=True,
+                    compile_mode=args.compile_mode)
         torch.cuda.synchronize()
         torch.cuda.reset_peak_memory_stats()
         started = time.perf_counter()

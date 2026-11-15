@@ -79,7 +79,7 @@ def make_submodule_runtime(
 def make_ball_config(root: Path) -> BallDetectionConfig:
     resolver = make_resolver(root)
     return BallDetectionConfig(
-        model_type="conv_next_unet", input_channels=2, num_frames=8, precision="fp32",
+        model_type="conv_next_unet", input_channels=2, num_frames=8, precision="fp32", compile_mode="off",
         checkpoint=resolver.resolve(PathRole.CHECKPOINT, "ball.ckpt"),
         batch_size=2,
         device="cpu",

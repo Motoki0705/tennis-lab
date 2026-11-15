@@ -128,6 +128,7 @@ ball_detection:
   input_channels: 2
   num_frames: 8
   precision: fp32
+  compile_mode: "off"
   checkpoint: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
   enabled: true
   batch_size: 4

@@ -9,6 +9,7 @@ ball_detection:
   input_channels: 5
   num_frames: 32
   precision: bf16
+  compile_mode: default
   batch_size: 1
   image_size: [720, 1280]
   normalize_imagenet: false

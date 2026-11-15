@@ -203,6 +203,7 @@ _BALL_SCHEMA = StrictConfigSchema(
         "input_channels": ConfigField.of(int),
         "num_frames": ConfigField.of(int),
         "precision": ConfigField.of(str),
+        "compile_mode": ConfigField.of(str),
         "checkpoint": ConfigField.of(str, type(None)),
         "batch_size": ConfigField.of(int),
         "image_size": ConfigField.sequence(ConfigField.of(int)),
@@ -1044,6 +1045,7 @@ def build_ball_detection_config(
         input_channels=cast(int, ball["input_channels"]),
         num_frames=cast(int, ball["num_frames"]),
         precision=cast(str, ball["precision"]),
+        compile_mode=cast(str, ball["compile_mode"]),
         checkpoint=resolver.resolve(
             PathRole.CHECKPOINT, cast(str, ball["checkpoint"])
         ),
