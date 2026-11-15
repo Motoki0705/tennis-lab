@@ -187,7 +187,9 @@ uint8 RGBをOpenCVのlinear補間で720×1280へresizeし、各T32窓のmodel I/
 RGB＋MDDの5chをFP32で作る。ImageNet正規化は加えず、各窓先頭のMDDだけを0にする。
 stride16・実frameの末尾backfill・中心距離最小（同点は早い窓）を固定し、短いclipの反復padは拒否する。
 窓batchの形は既存と同じ `(B,T,C,H,W)`、dtypeはuint8。
-precisionは明示のbf16、batch_sizeは1。fp32は明示overrideで選べる。
+precisionは明示のbf16、batch_sizeは1、`compile_mode=default`で学習時のvalidationに合わせる。
+初回はcompileの準備時間を含む。fp32・`compile_mode=off`は明示overrideで選べるが、
+学習時BF16＋compile(default)とは別の数値実行条件になる。
 メモリ不足でprecision・batch・解像度を自動変更しない。
 native /4 heatmap（180×320）と候補は既存のevidence/gate/保存へ渡し、
 格子正規化座標に元動画の `(W−1,H−1)` を掛けてpixelへ戻す。

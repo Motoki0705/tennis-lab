@@ -43,7 +43,7 @@ DPTは`src/utils/models/dpt.py`をcourtと共有し、CNNの4特徴を融合し�
 `build_mdd_encoder` は `encoder_variant=x3d_csn` と `temporal_mixing=depthwise3d` の組を明示選択できる。
 stemのdepthは0、各stageの時間半径は残差depthの累積となる。学習済みT32の標準構成は
 幅16/32/64/128/256/512、depth0/1/2/3/3/2、DPT幅128、時間stride1。
-sceneへの接続とcheckpointの空間metadataは [pipeline README](../../../../tennis_scene/pipeline/README.md#x3dcsndpt-t32の明示選択)を参照。
+sceneへの接続とcheckpointの空間metadataは [pipeline README](../../../../tennis_scene/pipeline/README.md)を参照。
 2段目の事後学習は同一CNNだけをstrict転送し、新規query decoderを学習する。encoder固定/解除は学習側が制御する。
 
 ## 任意長のheatmap専用モデル
