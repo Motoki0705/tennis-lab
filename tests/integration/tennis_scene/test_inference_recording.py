@@ -9,9 +9,14 @@ from typing import cast
 
 import numpy as np
 import pytest
+import torch
 from numpy.typing import NDArray
 
 from src.submodules.models import BaseInferenceModel
+from src.tasks.ball_detection.inference.predictor import BallDetectionPredictor
+from src.tasks.ball_detection.model_io.adapters import BallModelIOAdapter
+from src.tasks.ball_detection.model_io.contracts import BallModelInputSpec
+from src.tasks.base.model_io import bind_model_io
 from src.tennis_scene.pipeline.contracts import (
     AssemblyContext,
     ClipSource,
@@ -115,3 +120,28 @@ def test_runner_failure_records_unload_and_does_not_publish(tmp_path: Path) -> N
     assert record["models"][0]["load_count"] == record["models"][0]["unload_count"] == 1
     assert runner.statuses == {"values": "failed"} and runner.store.references() == {}
     assert next(e for e in record["events"] if e["stage"] == "node")["status"] == "error"
+
+
+def test_ball_records_the_mdd_forward_shape_instead_of_rgb_shape(tmp_path: Path) -> None:
+    class MddModel(torch.nn.Module):
+        in_channels = 2
+        num_classes = 1
+
+        def forward(self, images: torch.Tensor) -> torch.Tensor:
+            assert images.shape == (2, 2, 5, 6, 8)
+            return torch.zeros_like(images[:, :1])
+
+    adapter = BallModelIOAdapter(
+        BallModelInputSpec(model_name="recording_test", input_mode="mdd", input_layout="bcthw",
+                           in_channels=2, num_classes=1, configured_frames=5, image_size_hw=None,
+                           minimum_spatial_size=None, mdd_gain=1., mdd_offset=0.),
+        expected_model_type=MddModel, minimum_frames=1,
+    )
+    predictor = BallDetectionPredictor(bind_model_io(MddModel(), adapter), torch.device("cpu"), subpixel_refine=False)
+    rgb = torch.linspace(0., 1., 2 * 5 * 3 * 6 * 8).reshape(2, 5, 3, 6, 8)
+    with InferenceRecorder(tmp_path / "ball.json") as recorder:
+        prediction = predictor.predict(rgb)
+    forward = next(e for e in recorder.events if e["stage"] == "inference")
+    assert forward["attributes"]["batch_shape"] == [2, 2, 5, 6, 8]
+    assert forward["attributes"]["batch_items"] == 2
+    assert prediction.coords.shape == (2, 5, 2)
