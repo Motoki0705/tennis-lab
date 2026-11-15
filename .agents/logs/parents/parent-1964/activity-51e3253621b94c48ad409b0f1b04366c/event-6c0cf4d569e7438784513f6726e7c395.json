@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "97d0eb9ff2d944a1b81beebe2d679dd0",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=result.json; content_sha256=a9ba906bb41c6d5dacef007a5241696b270344745789a257702d9743cfed7828; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "197b9411c88349989d66111c89a1a449",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.result.json: status=succeeded; verdict=approve; exception=True; previous_review_keys=['083bd92266a14386b4528c64e2a95110', '627af5a8c2c349d38c200acf22e6579e', '0dd368e7df594492ae7f6291d5a47457']; PR #2159の固定HEAD・全差分と関連経路を確認し、blocker/majorはありません。隔離CPUテストはallowlist未承認で未実行です。最新Python CIの最終結論はmerge gateで照合してください。",
+      "verifies": []
+    },
+    "id": "6c0cf4d569e7438784513f6726e7c395",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "51e3253621b94c48ad409b0f1b04366c",
+      "delegation": null,
+      "issue": null,
+      "parent": 1964,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "9117fbb4244a4ccf8d0a38ba7f39518f"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T16:02:17.888479+00:00"
+      },
+      "recorded_at": "2026-11-15T16:02:17.888495+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
