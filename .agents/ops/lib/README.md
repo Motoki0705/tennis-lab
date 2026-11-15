@@ -782,6 +782,8 @@ result.jsonを生成しないので、呼出元は終了値とJSONの有無を�
 statusは保存結果とrunner/CLI/CLI process groupの生存を返す。読み取りだけで状態を変えない。
 通常のstopは同じboot/start ticksのrunnerへTERMを送り、終了記録を待つ。
 runnerはCLI groupをTERM→KILLし、subreaperで引き受けた別sessionの子孫も回収する。
+停止要求が重なっても終端のresult/session記録を保存できるよう、
+SIGINT/SIGTERMのhandlerは子孫回収後の最終保存まで保持する。
 stdoutを先に閉じたCLIも、停止・timeoutを監視し続ける。
 
 runnerがSIGKILL等で失われた場合、`running` の残存は成功でも稼働の証拠でもない。

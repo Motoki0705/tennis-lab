@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import uuid
+from contextlib import ExitStack
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -171,13 +172,16 @@ def capture(
     save: Any,
     events: Events,
     timeout: float | None,
+    signals: ExitStack,
 ) -> tuple[int, str | None]:
     stop_signal = [0]
 
     def stop(signum: int, frame: Any) -> None:
         stop_signal[0] = signum
 
-    old = {sig: signal.signal(sig, stop) for sig in (signal.SIGTERM, signal.SIGINT)}
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        previous = signal.signal(sig, stop)
+        signals.callback(signal.signal, sig, previous)
     proc = None
     try:
         with (
@@ -253,25 +257,28 @@ def capture(
                 time.sleep(0.05)
             return proc.returncode, None
     finally:
-        try:
-            if proc is not None:
-                result["terminated_pids"] = _terminate_group(proc, proc.pid, 1.0)
-                result["cli_exit_code"] = proc.returncode
-                result["cli_exit_signal"] = (
-                    -proc.returncode if proc.returncode < 0 else None
-                )
-                result["terminated_pids"].extend(terminate_descendants(1.0))
-                result["cleanup_complete"] = True
-                if proc.stdout is not None:
-                    proc.stdout.close()
-            else:
-                result["cleanup_complete"] = True
-        finally:
-            for sig, handler in old.items():
-                signal.signal(sig, handler)
+        if proc is not None:
+            result["terminated_pids"] = _terminate_group(proc, proc.pid, 1.0)
+            result["cli_exit_code"] = proc.returncode
+            result["cli_exit_signal"] = (
+                -proc.returncode if proc.returncode < 0 else None
+            )
+            result["terminated_pids"].extend(terminate_descendants(1.0))
+            result["cleanup_complete"] = True
+            if proc.stdout is not None:
+                proc.stdout.close()
+        else:
+            result["cleanup_complete"] = True
 
 
 def run(args: argparse.Namespace) -> dict[str, Any]:
+    # Repeated stop requests must stay handled until the terminal cleanup
+    # evidence is durable, including finalization after capture has returned.
+    with ExitStack() as signals:
+        return _run(args, signals)
+
+
+def _run(args: argparse.Namespace, signals: ExitStack) -> dict[str, Any]:
     if args.cleanup_confirmation is not None:
         raise ValueError("--cleanup-confirmation requires stop")
     if (
@@ -565,7 +572,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 },
             )
             status, reason = capture(
-                cmd, cwd, env, run_dir, result, save, events, args.timeout
+                cmd, cwd, env, run_dir, result, save, events, args.timeout, signals
             )
             if reason is None and status < 0:
                 reason = "cli_signal"
