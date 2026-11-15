@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fcntl
+import http.client
 import json
 import os
 import shutil
@@ -308,6 +309,73 @@ raise SystemExit(cli_impl.main(['supervise'], _supervisor_launcher=True))
             assert json.loads(schedule.read_text()) == state
         finally:
             stop(resident)
+
+
+def test_board_request_during_update_does_not_block_graceful_resident_stop(
+    world: World,
+) -> None:
+    driver = """
+import os,socket
+import uvicorn
+from board.web import create_app
+listener = socket.socket()
+listener.bind(('127.0.0.1', 0))
+listener.listen()
+class Server(uvicorn.Server):
+    async def startup(self, sockets=None):
+        await super().startup(sockets=sockets)
+        print(listener.getsockname()[1], flush=True)
+Server(uvicorn.Config(create_app(os.environ), log_level='warning', access_log=False)).run(sockets=[listener])
+"""
+    with subprocess.Popen(
+        [sys.executable, "-c", driver],
+        cwd=world.repo,
+        env=world.env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    ) as resident:
+        try:
+            port = int(line(resident))
+            connection = http.client.HTTPConnection("127.0.0.1", port, timeout=3)
+            try:
+                connection.request("GET", "/")
+                page = connection.getresponse()
+                assert page.status == 200
+                token = page.getheader("X-CSRF-Token")
+                assert token is not None
+                page.read()
+                with (world.repo / ".git/ops-code.lock").open("a") as updater:
+                    fcntl.flock(updater, fcntl.LOCK_EX)
+                    connection.request(
+                        "POST",
+                        "/api/posts",
+                        body=json.dumps(
+                            {
+                                "subject": "Question during maintenance",
+                                "body": "Temporary offline request",
+                                "kind": "question",
+                                "to": [],
+                            }
+                        ),
+                        headers={
+                            "Content-Type": "application/json",
+                            "Origin": f"http://127.0.0.1:{port}",
+                            "X-CSRF-Token": token,
+                        },
+                    )
+                    response = connection.getresponse()
+                    assert response.status == 503
+                    assert "maintenance" in json.loads(response.read())["detail"]
+                    connection.close()
+                    resident.terminate()
+                    stdout, stderr = resident.communicate(timeout=5)
+                    assert resident.returncode in {0, -signal.SIGTERM}, stdout + stderr
+            finally:
+                connection.close()
+        finally:
+            stop(resident, group=True)
 
 
 @pytest.mark.parametrize("operation", ["status", "stop"])

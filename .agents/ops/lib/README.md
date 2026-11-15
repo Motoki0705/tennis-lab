@@ -78,7 +78,9 @@ reconcile/assign/launchでは設定したjob checkoutと実行コードのGit共
 `ops-control.lock` はspinによるdispatcherのON/OFFと保守時の停止・再開を直列化する。
 保守側は両lockを非待機で取得し、jobや制御操作と競合したら延期する。
 board webは `checkout_job.py --repo <main> --board-web-port 8790` でimportを保護し、
-保守側が停止・再開する。常駐serviceに共有lockを寿命全体で保持させない。
+HTTP requestごとにも非待機の共有lockを取る。更新中のrequestは503で再試行を求め、
+registry待ちのHTTP workerがwebの保守終了を塞がない。保守側が停止・再開する。
+常駐serviceに共有lockを寿命全体で保持させない。
 
 state rootは `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents`。
 共通lockはstate rootを変更しても変わらず、同じGit共通ディレクトリへ集約される。

@@ -11,6 +11,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from lib.checkout_lock import registry_checkout_lock
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -108,7 +109,17 @@ def create_app(
                 status_code=403,
             )
         else:
-            response = await call_next(request)
+            # An updater stops this resident while holding checkout exclusively.
+            # Never leave an in-flight HTTP worker waiting on that same lock.
+            with registry_checkout_lock(blocking=False) as code_fd:
+                response = (
+                    JSONResponse(
+                        {"detail": "Board maintenance in progress; retry shortly."},
+                        status_code=503,
+                    )
+                    if code_fd is None
+                    else await call_next(request)
+                )
         response.headers.update(
             {
                 "Content-Security-Policy": CSP,
