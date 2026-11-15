@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205244284021426274_2026-11-15T15-15-15-978573725Z_209883_dino-batch-api-20261116",
+  "name": "dino-batch-api-20261116",
+  "command": "timeout -k 10s 900s env PYTHONPATH=. TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/outputs/_worktree-preserved/multiview-sample/outputs/tennis_scene/generate/multiview_sample_release_20261021_dino/lib/MultiScaleDeformableAttention.so OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 OPENBLAS_NUM_THREADS=1 .venv/bin/python outputs/tennis_scene/evaluate/dino_batch_api_20261116/compare.py outputs/tennis_scene/evaluate/dino_batch_api_20261116",
+  "provider": "codex",
+  "session": "01a1dfbf-2c08-7301-8d9c-2351326b6b4c",
+  "issue": "1750",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "f738a1918f966c6a9bc679f3a8e0432843f9ee62",
+  "branch": "codex/dino-batch-api",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/dino-batch-api",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/dino-batch-api",
+  "captured_at": "2026-11-16T00:15:28+09:00"
+}

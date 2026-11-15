@@ -1,0 +1,50 @@
+{
+  "unit_command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest tests/unit/submodules/models/dino/test_person_detector.py -n 0 -q --durations=0 --durations-min=0",
+  "unit_passed": 28,
+  "unit_elapsed_seconds": 5.5,
+  "unit_slowest_call_seconds_displayed": 0.07,
+  "unit_setup_seconds_less_than": 0.01,
+  "unit_cases_before": 5,
+  "unit_cases_added": 23,
+  "largest_parametrized_function": 6,
+  "related_command": "CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python -m pytest tests/unit/submodules/models/dino tests/unit/submodules/models/test_public_api.py tests/unit/tennis_scene/pipeline/components/test_person_detection.py -n 2 -q --durations=10",
+  "related_passed": 62,
+  "related_elapsed_seconds": 12.4,
+  "related_slowest_call_seconds": 0.58,
+  "collect_only": {
+    "test_person_detector.py": 28
+  },
+  "pre_commit": {
+    "ruff": "passed",
+    "mypy": "passed"
+  },
+  "mutation_checks": [
+    {
+      "mutation": "reuse batch index 0 scores",
+      "node": "test_decode_batch_uses_each_image_size_threshold_and_row_order",
+      "observed": "assertion failed, max box discrepancy 90px",
+      "log": "mutation-batch-axis.log"
+    },
+    {
+      "mutation": "reuse first image dimensions",
+      "node": "test_predict_batch_matches_single_and_duplicate_rows[False-2]",
+      "observed": "assertion failed, max box discrepancy 4.92805px",
+      "log": "mutation-image-size.log"
+    }
+  ],
+  "mutation_isolation": "Mutated code only in separate CPU Python process memory; product files and GPU comparison source were not changed.",
+  "unmutated_confirmation": {
+    "nodes": [
+      "test_decode_batch_uses_each_image_size_threshold_and_row_order",
+      "test_predict_batch_matches_single_and_duplicate_rows[False-2]"
+    ],
+    "passed": 2,
+    "elapsed_seconds": 5.62
+  },
+  "input_replay_preparation": {
+    "passed": true,
+    "images": 8,
+    "output": "outputs/tennis_scene/evaluate/dino_batch_api_replay_check",
+    "scope": "full media decoding, pinned media/frame/checkpoint digests, same input order; CPU only"
+  }
+}

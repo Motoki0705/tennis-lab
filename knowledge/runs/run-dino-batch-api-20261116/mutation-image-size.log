@@ -1,0 +1,53 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/dino-batch-api
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 1 item
+
+tests/unit/submodules/models/dino/test_person_detector.py F              [100%]
+
+=================================== FAILURES ===================================
+________ test_predict_batch_matches_single_and_duplicate_rows[False-2] _________
+
+tiny_detector = (<src.submodules.models.dino.person_detector.DinoPersonDetector object at 0x7cea94966850>, _TinyDino(), [True])
+batch_size = 2, merge_duplicates = False
+
+    @pytest.mark.parametrize("batch_size", [1, 2, 4])
+    @pytest.mark.parametrize("merge_duplicates", [False, True])
+    def test_predict_batch_matches_single_and_duplicate_rows(
+        tiny_detector: tuple[DinoPersonDetector, _TinyDino, list[bool]],
+        batch_size: int, merge_duplicates: bool,
+    ) -> None:
+        detector, model, loads = tiny_detector
+        requests = [PersonDetectionRequest(np.full((h, w, 3), i * 40, dtype=np.uint8))
+                    for i, (h, w) in enumerate([(6, 12), (9, 18), (6, 12), (12, 24), (6, 12)])]
+        expected = [detector.predict(request) for request in requests]
+        model.inputs.clear()
+
+        actual = detector.predict_batch(requests, batch_size=batch_size)
+
+        assert len(actual) == len(requests)
+        assert loads == [True] and detector.is_loaded
+        assert [len(images) for images in model.inputs] == {
+            1: [1, 1, 1, 1, 1], 2: [2, 2, 1], 4: [4, 1],
+        }[batch_size]
+        for index, (single, batched) in enumerate(zip(expected, actual, strict=True)):
+>           np.testing.assert_array_equal(single.boxes_xyxy, batched.boxes_xyxy)
+E           AssertionError:
+E           Arrays are not equal
+E
+E           Mismatched elements: 12 / 12 (100%)
+E           Max absolute difference among violations: 4.92805
+E           Max relative difference among violations: 0.50000006
+E            ACTUAL: array([[ 2.184151,  3.6     ,  5.784151,  5.4     ],
+E                  [ 2.364151,  3.6     ,  5.964151,  5.4     ],
+E                  [12.984151,  3.6     , 14.784151,  5.4     ]], dtype=float32)
+E            DESIRED: array([[1.456101, 2.4     , 3.856101, 3.6     ],
+E                  [1.576101, 2.4     , 3.9761  , 3.6     ],
+E                  [8.656101, 2.4     , 9.856101, 3.6     ]], dtype=float32)
+
+tests/unit/submodules/models/dino/test_person_detector.py:179: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/submodules/models/dino/test_person_detector.py::test_predict_batch_matches_single_and_duplicate_rows[False-2]
+========================= 1 failed, 1 warning in 0.33s =========================

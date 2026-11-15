@@ -1,0 +1,62 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/dino-batch-api
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 1 item
+
+tests/unit/submodules/models/dino/test_person_detector.py F              [100%]
+
+=================================== FAILURES ===================================
+________ test_decode_batch_uses_each_image_size_threshold_and_row_order ________
+
+    def test_decode_batch_uses_each_image_size_threshold_and_row_order() -> None:
+        logits = torch.full((3, 4, 91), -10.0)
+        logits[0, :, 1] = torch.tensor([0.0, 2.0, -1e-5, 1.0])
+        logits[1, :, 1] = torch.tensor([3.0, -1.0, 0.0, 3.0])
+        # A different class's high score must not select a person.
+        logits[2, :, 2] = 10.0
+        boxes = torch.tensor(
+            [
+                [[0.5, 0.5, 0.2, 0.4], [0.25, 0.5, 0.2, 0.2],
+                 [0.8, 0.5, 0.1, 0.2], [0.1, 0.1, 0.4, 0.4]],
+                [[0.5, 0.5, 0.5, 0.2], [0.25, 0.5, 0.2, 0.2],
+                 [0.8, 0.8, 0.1, 0.2], [0.9, 0.9, 0.4, 0.6]],
+                [[0.5, 0.5, 0.2, 0.4]] * 4,
+            ]
+        )
+
+        results = decode_person_detections(
+            {"pred_logits": logits, "pred_boxes": boxes},
+            image_sizes=[(100, 200), (300, 80), (13, 47)],
+            confidence=0.5,
+        )
+
+        assert len(results) == 3
+        np.testing.assert_allclose(
+            results[0].boxes_xyxy,
+            [[30, 40, 70, 60], [0, 0, 60, 30], [80, 30, 120, 70]],
+            rtol=0, atol=1e-5,
+        )
+>       np.testing.assert_allclose(
+            results[1].boxes_xyxy,
+            [[20, 120, 60, 180], [56, 180, 80, 300], [60, 210, 68, 270]],
+            rtol=0, atol=2e-5,
+        )
+E       AssertionError:
+E       Not equal to tolerance rtol=0, atol=2e-05
+E
+E       Mismatched elements: 6 / 12 (50%)
+E       Max absolute difference among violations: 90.
+E       Max relative difference among violations: 0.66666667
+E        ACTUAL: array([[ 12.     , 120.     ,  28.     , 180.     ],
+E              [ 56.     , 179.99998,  80.     , 300.     ],
+E              [ 20.     , 120.     ,  60.     , 180.     ]], dtype=float32)
+E        DESIRED: array([[ 20, 120,  60, 180],
+E              [ 56, 180,  80, 300],
+E              [ 60, 210,  68, 270]])
+
+tests/unit/submodules/models/dino/test_person_detector.py:88: AssertionError
+=========================== short test summary info ============================
+FAILED tests/unit/submodules/models/dino/test_person_detector.py::test_decode_batch_uses_each_image_size_threshold_and_row_order
+========================= 1 failed, 1 warning in 0.23s =========================

@@ -82,7 +82,8 @@ single_image_batches = detector.predict_batch(requests, batch_size=1)
 `batch_size` は正の整数で、既定値の1は1画像ずつのforwardを明示します。
 `predict(request)` も同じ前処理・復号を使います。空の入力列はモデルをloadせず空のlistを返し、
 無効なbatch上限・画像はエラーになります。前処理済み画像は最大1batch分（形状比較用の次の1画像を除く）
-だけ保持します。実GPUで確認したbatch上限・数値差・速度・VRAMは受入記録を参照してください。
+だけ保持します。実GPUで確認したbatch値・数値差・速度・VRAMは
+[受入記録](../../knowledge/nodes/tennis_scene/000042-run-dino-batch-api-20261116.md)を参照してください。
 
 ## デモ
 
