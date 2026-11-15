@@ -20,6 +20,8 @@
 - **ボール3Dの評価基盤**（2026-11-03）: clip_000の人間参照を使い、[固定入力のCPU replay比較](nodes/tennis_scene/000032-run-ball3d-evaluation-foundation-20261103.md)を作りました。[レビュー修正後](nodes/tennis_scene/000033-run-ball3d-foundation-review-20261103.md)、全方式に共通の768点でのLOVO中央値/p90は、既定が8.97/25.40 px、LOESSなしが9.70/28.02 pxです。共通点は全対象の52.53%に限られ、可用性を条件とする比較です。[誤差分解](nodes/tennis_scene/000034-run-ball3d-error-decomposition-20261103.md)では、top-8候補にargmax失敗の約半数を回収できる候補がある一方、既存の採用maskを保つ3D候補oracleの改善は小さく、校正誤差と同期ずれも分離できていません。
 - **6方式の比較と採否**: [統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では後半LOVOとcoverageの一貫した改善は得られず、人間はbaseline維持を決定しました。後処理・三角測量側の追加改善はキャンセルされ、検出モデルの学習戦略の改善が必要と判断されました。比較は1 clip・近似校正・推定を含む2D参照に限られます。詳細は[凍結アーカイブ](history/summary-2026-11-05.md)を参照してください。
 
+- **動画一括推論の基準値**: [meiji_4camの逐次計測](nodes/tennis_scene/000042-run-video-batch-baseline-20261116.md)は固定3clip・3繰返しを保存しましたが、全例がCourtで停止し、全モデルの速度基準値と全cache hit条件は未成立です。[追加8clip](nodes/tennis_scene/000043-run-video-batch-input-qualification-20261116.md)もcam3で不成立でした。Court側の対処か比較入力の見直しを先行判断する必要があり、この停止例の時間をpipeline全体の高速化根拠へ使いません。
+
 ## Court Detection
 
 - **現行**: `multiscale_depth3` のcheckpointと、画像だけによる領域探索を組み合わせ、各カメラの先頭frameだけを推論します。[Meiji 3cameraの校正が通った](nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)ことが採用の根拠です。このcheckpointを学習したrunのノードはなく、独立したheld-out testでの精度も未確立です。
