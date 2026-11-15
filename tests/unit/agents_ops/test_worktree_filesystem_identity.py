@@ -52,7 +52,7 @@ def test_identity_ignores_device_and_distinguishes_inode_generations(
     module = importlib.import_module("worktree_cleanup.inventory")
     stat = SimpleNamespace(st_dev=2112, st_ino=123)
     born = [10]
-    monkeypatch.setattr(module.os, "fstat", lambda fd: stat)
+    monkeypatch.setattr(module, "os", SimpleNamespace(fstat=lambda fd: stat))
     monkeypatch.setattr(
         module, "filesystem_id", lambda fd: "ext4-fsid:0123456789abcdef"
     )
