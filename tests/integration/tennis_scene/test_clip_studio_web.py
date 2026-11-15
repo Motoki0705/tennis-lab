@@ -249,6 +249,22 @@ def test_sync_controls_share_a_collapsible_media_area_with_video(web_client):
     )
 
 
+
+def test_playback_settings_and_fullscreen_stage_are_served(web_client):
+    """Rate/step live in the gear menu inside the fullscreen stage with the timeline."""
+    client, _ = web_client
+    index = client.get("/").text
+    stage = index[index.index('<section id="stage"') : index.index('<section id="time-review"')]
+    menu = stage[stage.index('<div id="settings-menu"') :]
+    assert '<select id="rate">' in menu and '<select id="step">' in menu
+    for element in ('id="fullscreen"', 'id="viewers"', 'id="seek"', 'id="clip-track"'):
+        assert element in stage
+    assert '<button id="sync-close">同期終了</button>' in index
+
+    stylesheet = client.get("/static/style.css").text
+    assert ".clip-mode #dataset-map,.clip-mode #time-review{display:none}" in stylesheet
+    assert "#stage:fullscreen" in stylesheet
+
 def test_autosave_revision_and_cross_origin_protection(web_client):
     client, runtime = web_client
     body = {"revision": 0, "action": "create", "start_sec": 0.5, "end_sec": 1.0}
