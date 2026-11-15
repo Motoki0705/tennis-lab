@@ -5,7 +5,15 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from src.utils.video.transforms import BgrToTensorTransform
+from src.utils.video.transforms import BgrToRgbUint8Transform, BgrToTensorTransform
+
+
+def test_native_resize_preserves_uint8_rounding_and_rgb_order() -> None:
+    # Hand-calculated bilinear centre: [.5, 3.5, 8.5] rounds to [1,4,9].
+    bgr = np.array([[[0, 3, 8], [1, 4, 9]]], dtype=np.uint8)
+    out = BgrToRgbUint8Transform(image_size=(1, 1))(bgr)
+    assert out.dtype == torch.uint8
+    torch.testing.assert_close(out[:, 0, 0], torch.tensor([9, 4, 1], dtype=torch.uint8))
 
 
 class TestBgrToTensorTransform:

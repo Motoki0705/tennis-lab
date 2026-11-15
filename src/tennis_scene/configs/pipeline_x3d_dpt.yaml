@@ -1,0 +1,22 @@
+# Explicit opt-in; the default pipeline retains i935 ConvNeXt-UNet.
+defaults:
+- pipeline
+- _self_
+
+ball_detection:
+  model_type: x3d_csn_dpt
+  checkpoint: ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt
+  input_channels: 5
+  num_frames: 32
+  precision: bf16
+  batch_size: 1
+  image_size: [720, 1280]
+  normalize_imagenet: false
+  checkpoint_strict: true
+  checkpoint_weights_only: true
+  window_stride: 16
+  tail_policy: backfill
+  overlap_aggregation: nearest_window_centre_then_earlier_start
+  # Same validation, balanced (FPR+FNR)/2; see the scene acceptance record.
+  score_threshold: 0.5380124449729919
+  prefetch_batches: 1

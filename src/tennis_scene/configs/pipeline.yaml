@@ -124,6 +124,10 @@ person_observations:
   max_tracks_per_camera: 6
 ball_detection:
   method: model
+  model_type: conv_next_unet
+  input_channels: 2
+  num_frames: 8
+  precision: fp32
   checkpoint: ball_detection/i935-mixed-ft-s42-epoch09.ckpt
   enabled: true
   batch_size: 4

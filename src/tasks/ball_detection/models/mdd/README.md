@@ -6,6 +6,7 @@
 |---|---|
 | `token_encoder.py` | Conv2d / Average / Pixel Unshuffle / Haarの1/16圧縮と、局所2D/3D処理による1/64 token化 |
 | `cnn_encoder.py`、`blocks.py` | 深い残差/ConvNeXt V2系/FasterNet系CNN。4解像度の特徴を返し、dense3d/factorizedの時間処理を選択 |
+| `x3d_csn.py` | 学習時と同じpointwise expand2→depthwise 3D→project残差blockとframe-local GroupNorm |
 | `pose.py` | DeepSets / Attention Pooling / Hierarchical Transformer / Skeleton GNNによるframeごとのpose token |
 | `attention.py` | 同時刻のCross-Attentionと実時間RoPEのSelf-Attention。pose融合とquery-onlyの違いは明示する |
 | `detectors.py` | MDDPoseDetector、MDDQueryDetector、MDDDPTDetector、DeepMDDQueryDetector |
@@ -39,6 +40,10 @@ RGBのdtype・shape・設定したフレーム数は`model_io`で検証する。
 深いquery decoderはSwiGLU（中間幅8/3 dimを64単位で切上げ）、dim256なら704。
 
 DPTは`src/utils/models/dpt.py`をcourtと共有し、CNNの4特徴を融合して入力1/4のheatmap logitsを出す。
+`build_mdd_encoder` は `encoder_variant=x3d_csn` と `temporal_mixing=depthwise3d` の組を明示選択できる。
+stemのdepthは0、各stageの時間半径は残差depthの累積となる。学習済みT32の標準構成は
+幅16/32/64/128/256/512、depth0/1/2/3/3/2、DPT幅128、時間stride1。
+sceneへの接続とcheckpointの空間metadataは [pipeline README](../../../../tennis_scene/pipeline/README.md#x3dcsndpt-t32の明示選択)を参照。
 2段目の事後学習は同一CNNだけをstrict転送し、新規query decoderを学習する。encoder固定/解除は学習側が制御する。
 
 ## 任意長のheatmap専用モデル

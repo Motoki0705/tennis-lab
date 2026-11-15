@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from src.submodules.configuration import (
@@ -78,6 +79,7 @@ def make_submodule_runtime(
 def make_ball_config(root: Path) -> BallDetectionConfig:
     resolver = make_resolver(root)
     return BallDetectionConfig(
+        model_type="conv_next_unet", input_channels=2, num_frames=8, precision="fp32",
         checkpoint=resolver.resolve(PathRole.CHECKPOINT, "ball.ckpt"),
         batch_size=2,
         device="cpu",
@@ -114,6 +116,12 @@ def make_court_kp_config(root: Path) -> CourtKPConfig:
         region_search=CourtRegionSearchConfig(),
         resolver=resolver,
     )
+
+
+def make_x3d_ball_config(root: Path) -> BallDetectionConfig:
+    return replace(make_ball_config(root), model_type="x3d_csn_dpt", input_channels=5, num_frames=32,
+                   precision="fp32", image_size=(720, 1280), checkpoint_weights_only=True,
+                   window_stride=16, overlap_aggregation="nearest_window_centre_then_earlier_start")
 
 
 def make_people_config(root: Path, *, dino_confidence: float = .35) -> PeopleModelConfig:

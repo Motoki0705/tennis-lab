@@ -199,6 +199,10 @@ _BALL_SCHEMA = StrictConfigSchema(
     fields={
         "enabled": ConfigField.of(bool),
         "method": ConfigField.of(str),
+        "model_type": ConfigField.of(str),
+        "input_channels": ConfigField.of(int),
+        "num_frames": ConfigField.of(int),
+        "precision": ConfigField.of(str),
         "checkpoint": ConfigField.of(str, type(None)),
         "batch_size": ConfigField.of(int),
         "image_size": ConfigField.sequence(ConfigField.of(int)),
@@ -1036,6 +1040,10 @@ def build_ball_detection_config(
         )
     _positive(gate_passes, name="ball_detection.trajectory_gate.max_passes")
     return BallDetectionConfig(
+        model_type=cast(str, ball["model_type"]),
+        input_channels=cast(int, ball["input_channels"]),
+        num_frames=cast(int, ball["num_frames"]),
+        precision=cast(str, ball["precision"]),
         checkpoint=resolver.resolve(
             PathRole.CHECKPOINT, cast(str, ball["checkpoint"])
         ),
