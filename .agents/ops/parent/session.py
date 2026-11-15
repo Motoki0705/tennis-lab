@@ -300,7 +300,10 @@ class ParentSession:
         return {"parent": self.parent, "display_summary": row["display_summary"]}
 
     def status(self) -> dict[str, Any]:
-        from worker_logs.reconciliation import remaining_publications
+        from worker_logs.reconciliation import (
+            decision_resume_command,
+            remaining_publications,
+        )
 
         from .notifications import publication_status
 
@@ -321,6 +324,11 @@ class ParentSession:
             "parent": self.parent,
             "remaining_publications": publications,
             "publication_inventory_error": inventory_error,
+            "decision_resume_command": decision_resume_command(
+                self.gh.repo,
+                self.parent,
+                assigned=row.get("status") in {"active", "handoff_pending"},
+            ),
             "assignment": row.get("status", "unassigned"),
             "display_summary": row.get("display_summary"),
             "current_session_is_owner": bool(row and row["session"] == self.session),

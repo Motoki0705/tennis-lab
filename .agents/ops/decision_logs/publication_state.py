@@ -73,8 +73,16 @@ def read(path: Path, repo: str, parent: int) -> dict[str, Any]:
                 "merge_commit",
                 "superseded_prs",
             }
-            | ({"merge_http_status"} if "merge_http_status" in batch else set()),
+            | ({"merge_http_status"} if "merge_http_status" in batch else set())
+            | ({"publication_actor"} if "publication_actor" in batch else set()),
         )
+        if batch.get("publication_actor") is not None:
+            actor = batch["publication_actor"]
+            fields(actor, {"parent", "request_id"})
+            require(
+                integer(actor["parent"]) and actor["parent"] != parent, "journal_source"
+            )
+            public_id(actor["request_id"])
         if "merge_http_status" in batch:
             require(
                 type(batch["merge_http_status"]) is int

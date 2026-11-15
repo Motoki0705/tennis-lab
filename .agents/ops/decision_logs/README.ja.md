@@ -270,8 +270,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N p
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --retry
 ```
 
-timer・定期poll・捕捉ごとの自動公開は追加しない。既存parent stateと担当sessionを照合し、
-issueのclose後の履歴公開も同じ本人確認を行う。新しい実装権限は与えない。
+timer・定期poll・捕捉ごとの自動公開は追加しない。通常入口は既存parent stateと元の担当sessionを照合し、
+担当終了後も元担当による公開続行を認める。新しい実装権限は与えない。
 `Journal.prepare()` で未準備の捕捉を変換し、`Journal.public_payloads()` のうちreadyかつ
 未公開の全記録を親ごとの1 batchへ固定する。blockedは状態に残し、独立して安全な記録は公開できる。
 未完了batchを照合してから次を作る。batchの途中で増えた捕捉は、そのbatchのmerge後の
@@ -282,6 +282,44 @@ release/handoffと自律親の終了時は、worker公開と今回の終了結�
 残件・担当・再開先を [終了checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint) に残す。
 mergeableがnullでも全検査後にHEAD指定mergeを要求し、falseとHTTP拒否は失敗として残す。
 statusとdry-runはcaptureもlockも作成しない。
+
+担当中の親は、別の担当なし親の判断記録を明示的に公開できる。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT --dry-run
+# プレビューの確認後に実行する。blockedの原因を修復した場合は --retry を付ける:
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT
+```
+
+dry-runも実行も、操作sessionが回収親を **active** で担当していることを要求する。
+対象は操作親と別の親で、registryに行がないか `ended`／`released` の場合だけ受け付ける。
+`active`／`handoff_pending` は拒否する。対象issueのopen／closeは照合せず、register・handoffや
+registryの更新を行わない。registryが破損・読取り不能なら拒否する。開始時の操作session・世代と
+対象の担当snapshotを固定し、prepare・commit・push・PR作成・merge前に再照合する。
+担当変更時は `log_owner_mismatch` で中断し、保存済みの進捗を保持する。journalをblockedへ変えず、
+新たに条件を満たした公開担当が続行できる。
+
+対象の既存 `parent-SOURCE_PARENT` journal・batch・retryを使う。公開する `publish` 行動には
+明示要求と回収親を記録し、対象親READMEから辿れる活動READMEに公開の担当を表示する。
+これは要求の記録で、受入やmerge成功とは区別する。sessionと世代は非公開の来歴に残し、
+記録ごとの公開事実は `publication_actor` でその要求を参照する。同じ要求のretryは記録を再利用する。
+既存の固定batchがあれば先に完了させ、要求と残りの記録を含む次のbatchまで最大2回で処理し、
+既存payload・PRを差し替えない。公開のbookkeepingは新たなcaptureを作らず、workerログの続行も行わない。
+dry-runは要求記録を作らない。自分の親の通常公開とrelease／handoff／supervisorの挙動は維持する。
+
+merge済みbatchの記録別公開事実を先に照合してから、新しい要求を求める。
+private batchに `publication_actor` を固定し、旧batchは既存の公開事実の担当を再利用する。
+参照が矛盾する場合は拒否し、要求自身がpublishedでも同じ要求で照合を完了する。
+別の担当親が未mergeのbatchを続行するときは本人の要求を記録し、merge済みの公開担当は付け替えない。
+実際のgit commit・batch保存・journal追記の直前、およびPR／mergeのintent保存後の送信直前にも担当を照合する。
+中断worktreeの変更・stage済みファイルは、固定planまたは未変更のbaseの内容と一致するときだけ再開する。
+それ以外の編集は残して拒否し、resetで消さない。
+
+`remaining_publications` はregistry行がない親も含め、対象のdecision_log残件を返す。
+親の `status`・`decision-log-status`・終了checkpointの `decision_resume_command` は、担当なしなら
+この入口を `RECOVERY_PARENT` 付きで示す。呼出sessionが担当するactiveな親番号に置き換えて使う。
 
 既存workerファイルを維持した公開構成:
 
@@ -461,6 +499,8 @@ merge確認後の記録別journal追記が中断しても、次のbatchを選ぶ
 dirty worktreeや破損journalを自動resetせず、影響する公開だけを確認・修復する。
 確認後はcleanな公開worktreeを削除し、dirtyまたは同一性未確認のものは保持して
 `retained_worktrees` の件数で返す。
+再開時はignore対象の未追跡ファイルも検査する。固定plan外のignoredファイルがあれば
+`worktree_dirty` で再開を拒否する。cleanupもignore指定を含む未追跡ファイルがあるworktreeを保持する。
 
 `--dry-run` は `Journal.preview_publication()` とローカル `origin/main` を使う。
 readyなenvelopeは固定版を保持し、未準備の捕捉は同じrenderer/guardで依存関係も含めて読み取り専用変換する。

@@ -261,8 +261,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N p
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent N publish-decision-log --retry
 ```
 
-没有定时器、轮询或每次捕获自动发布。入口使用已配置的parent state并检查负责session，
-issue关闭后的历史发布也检查同一身份，不授予新的实现权限。
+没有定时器、轮询或每次捕获自动发布。普通入口使用已配置的parent state并检查原负责session，
+原负责人也可在担当结束后继续发布，不授予新的实现权限。
 通过 `Journal.prepare()` 准备尚未转换的捕获，将 `Journal.public_payloads()` 中所有ready且
 未发布的记录固定到该父issue的一个批次。blocked仍在状态中显示，独立安全的记录可以发布。
 先核对未完成批次，再创建下一批；批次进行中新到达的捕获，在该批merge后的下一次显式调用中处理。
@@ -272,6 +272,40 @@ release、handoff和自律父级结束时，也会在worker日志与结束结果
 剩余工作、负责方和恢复命令写入[结束checkpoint](../worker_logs/README.md#続行一括回収終了checkpoint)。
 mergeable为null时，完成全部检查后仍发送固定HEAD的merge请求；false和HTTP拒绝保留为失败。
 status和dry-run不创建捕获或锁。
+
+当前负责的父级可以显式发布另一个无人负责父级的判断记录：
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT --dry-run
+# 检查预览后执行；修复blocked原因后可添加 --retry：
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo OWNER/REPO --parent RECOVERY_PARENT \
+  publish-decision-log --unassigned-parent SOURCE_PARENT
+```
+
+预览和执行均要求调用session以 **active** 状态负责回收父级。目标必须是另一个父级，且registry中
+没有记录，或状态为 `ended`/`released`；拒绝 `active`/`handoff_pending`。不查询目标issue的open/closed
+状态，不执行register、handoff或registry更新。registry损坏或不可读时拒绝。固定开始时的操作session、
+generation与目标担当快照，在prepare、commit、push、PR创建和merge前重新核对。担当变化返回
+`log_owner_mismatch` 并保留已保存进度，不把源journal改为blocked；新的合格发布者可以继续。
+
+使用目标既有的 `parent-SOURCE_PARENT` journal、批次与retry机制。公开的 `publish` 行动记录显式请求
+和回收父级，在目标父级README链接的活动README显示发布负责人。请求不代表受理或merge成功。
+私有来历保留session与generation，每条发布事实通过 `publication_actor` 引用该请求。retry复用同一请求。
+若有固定的旧批次，先完成旧批次，再处理包含请求和剩余记录的一个批次；最多两批，不替换旧payload或PR。
+发布bookkeeping不生成新capture，此入口也不继续worker日志。dry-run不记录请求。
+自身父级的普通发布及release/handoff/supervisor路径保持原有行为。
+
+先核对已merge批次的逐条发布事实，再生成新的请求。private批次固定 `publication_actor`；
+旧批次复用已有发布事实中的担当，拒绝矛盾引用。即使请求本身已经published，确认重放也复用同一请求。
+其他父级继续未merge批次时记录其自身请求；确认已merge的发布时保留原担当。
+在实际git commit、批次保存和journal追加之前重新核对担当；PR/merge intent保存后、实际发送前也再次核对。
+中断worktree只有在更改或已stage文件与固定plan或未修改base内容一致时才能恢复。
+其他编辑保留并拒绝，不通过reset删除。
+
+`remaining_publications` 返回源父级的decision_log残项，包括registry中不存在的父级。
+父级 `status`、`decision-log-status` 和结束checkpoint的 `decision_resume_command` 在无人负责时
+显示此入口与 `RECOVERY_PARENT`，使用时替换为调用session当前负责的active父级编号。
 
 公开目录保留现有worker文件：
 
@@ -433,6 +467,8 @@ commit后中断会复用完全核对的commit；push、PR创建和merge响应丢
 已确认merge但逐记录journal追加中断时，先恢复该批再选择新批次。
 不自动reset dirty worktree或损坏journal；只检查和修复受影响的发布。
 确认后移除clean发布worktree，保留dirty或身份未确认的worktree，并返回 `retained_worktrees` 数量。
+恢复检查也包含被ignore规则忽略的未跟踪文件。固定plan之外的ignored文件会以
+`worktree_dirty` 阻止恢复。cleanup同样保留含有任何未跟踪文件的worktree，包括被忽略的文件。
 
 `--dry-run` 使用 `Journal.preview_publication()` 与本地 `origin/main`，保留ready envelope的固定版本，
 用相同renderer/guard只读转换尚未准备的捕获，同时检查依赖。
