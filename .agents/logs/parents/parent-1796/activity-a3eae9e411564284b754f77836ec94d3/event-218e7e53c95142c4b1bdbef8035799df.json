@@ -1,0 +1,41 @@
+{
+  "record": {
+    "data": {
+      "decision_id": null,
+      "decision_missing_reason": "No decision linked to this explicit publication request",
+      "operation": "publish",
+      "plan_id": null,
+      "previous_action_id": null,
+      "result_ids": [],
+      "state": "requested",
+      "summary": "公開の担当: 親 #1900。担当なしの親 #1796 の判断記録の公開要求（完了は別途照合）。"
+    },
+    "id": "218e7e53c95142c4b1bdbef8035799df",
+    "kind": "action",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "a3eae9e411564284b754f77836ec94d3",
+      "delegation": null,
+      "issue": null,
+      "parent": 1796,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "status": "observed",
+        "value": "2026-11-15T10:02:28.910061+00:00"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T10:02:28.910061+00:00"
+      },
+      "recorded_at": "2026-11-15T10:02:28.910061+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
