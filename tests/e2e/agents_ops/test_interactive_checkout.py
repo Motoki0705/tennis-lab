@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import fcntl
 import json
 import os
@@ -22,6 +23,108 @@ from tests.support.agents_ops.checkout_cli import (
     line,
     running_cli,
 )
+
+
+@pytest.mark.parametrize("entry", ENTRIES, ids=lambda entry: entry.name)
+def test_all_entries_contain_only_checkout_bootstrap(entry: Entry) -> None:
+    source = ROOT / ".agents/ops" / entry.source
+    if source.suffix == ".sh":
+        text = source.read_text()
+        commands = [
+            line.strip()
+            for line in text.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        assert commands[0] == "{" and commands[-1] == "}"
+        assert sum(command.startswith("exec ") for command in commands) == 1
+        assert all(
+            command in {"{", "}"} or command.startswith(("set ", "lib_dir=", "exec "))
+            for command in commands
+        )
+        assert '"$lib_dir/agent_runtime.py" "$@"' in text
+        source = source.with_name("agent_runtime.py")
+    tree = ast.parse(source.read_text())
+    allowed_imports = {"sys", "pathlib", "lib.checkout_lock"}
+    for node in tree.body:
+        assert isinstance(node, (ast.Expr, ast.Import, ast.ImportFrom, ast.If))
+        if isinstance(node, ast.Import):
+            assert {alias.name for alias in node.names} <= allowed_imports
+        if isinstance(node, ast.ImportFrom):
+            assert node.module in allowed_imports
+            if node.module == "lib.checkout_lock":
+                assert [alias.name for alias in node.names] == ["run_cli"]
+        if isinstance(node, ast.Expr) and not isinstance(node.value, ast.Constant):
+            assert isinstance(node.value, ast.Call)
+            assert ast.unparse(node.value.func) == "sys.path.insert"
+        if isinstance(node, ast.If):
+            assert ast.unparse(node.test) == "__name__ == '__main__'"
+            assert not node.orelse and len(node.body) == 1
+            assert isinstance(node.body[0], ast.Expr)
+            assert isinstance(node.body[0].value, ast.Call)
+            assert ast.unparse(node.body[0].value.func) == "run_cli"
+    calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call)]
+    entry_calls = [
+        node
+        for node in calls
+        if isinstance(node.func, ast.Name) and node.func.id == "run_cli"
+    ]
+    assert len(entry_calls) == 1
+    assert isinstance(entry_calls[0].args[0], ast.Constant)
+    expected = (
+        entry.dependency.removesuffix(".py")
+        .replace("ops-report/", "")
+        .replace("/", ".")
+    )
+    assert entry_calls[0].args[0].value == expected
+    for option in entry_calls[0].keywords:
+        ast.literal_eval(option.value)
+    assert all(
+        not isinstance(
+            node,
+            (
+                ast.FunctionDef,
+                ast.AsyncFunctionDef,
+                ast.ClassDef,
+                ast.Lambda,
+                ast.For,
+                ast.While,
+                ast.Try,
+            ),
+        )
+        for node in ast.walk(tree)
+    )
+
+
+@pytest.mark.parametrize(
+    "name", ["parent", "agent-exec", "agent-runtime", "parent-review", "merge-gate"]
+)
+def test_waiting_cli_loads_new_entry_implementation_and_new_dependency(
+    repo: Path,
+    name: str,
+) -> None:
+    entry = next(entry for entry in ENTRIES if entry.name == name)
+    old = "from bootstrap_dependency import call\ndef main():\n    print('old-body', call(old=True), flush=True)\n    return 0\n"
+    new = "from bootstrap_dependency import call\ndef main():\n    print('new-body', call(new=True), flush=True)\n    return 0\n"
+    install_cli(repo, entry, project=old)
+    dependency = repo / ".agents/ops/bootstrap_dependency.py"
+    dependency.write_text("def call(*, old):\n    return 'old-dependency'\n")
+    with (repo / ".git/ops-code.lock").open("a") as updater:
+        fcntl.flock(updater, fcntl.LOCK_EX)
+        with running_cli(repo, entry) as process:
+            assert "waiting for git-sync" in line(process, stderr=True)
+            source = repo / ".agents/ops" / entry.source
+            source.write_text(source.read_text() + "\n# updated bootstrap revision\n")
+            if source.suffix == ".sh":
+                wrapper = source.with_name("agent_runtime.py")
+                wrapper.write_text(
+                    wrapper.read_text() + "\n# updated Python bootstrap\n"
+                )
+            (repo / ".agents/ops" / entry.dependency).write_text(new)
+            dependency.write_text("def call(*, new):\n    return 'new-dependency'\n")
+            fcntl.flock(updater, fcntl.LOCK_UN)
+            stdout, stderr = process.communicate(timeout=8)
+            assert process.returncode == 0, stdout + stderr
+            assert stdout.strip() == "new-body new-dependency"
 
 
 @pytest.fixture

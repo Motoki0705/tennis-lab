@@ -377,7 +377,7 @@ def test_error_reports_do_not_publish_private_session_or_checkout_paths(
     from types import SimpleNamespace
 
     monkeypatch.syspath_prepend(str(OPS / "lib"))
-    runner = importlib.import_module("parent_review")
+    runner = importlib.import_module("parent_review_impl")
     session = SimpleNamespace(
         store=SimpleNamespace(
             directory=tmp_path / "private-state",

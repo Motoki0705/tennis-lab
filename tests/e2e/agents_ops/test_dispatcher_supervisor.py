@@ -608,7 +608,7 @@ def test_current_authorization_is_required_after_external_freshness_check(
 def invoke_worker(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, job_id: str
 ) -> list[dict[str, Any]]:
-    worker = importlib.import_module("dispatcher.worker")
+    worker = importlib.import_module("dispatcher.worker_impl")
     calls: list[dict[str, Any]] = []
 
     class RecordingRuntime:
@@ -1811,7 +1811,7 @@ def test_cli_disabled_setup_configuration_and_diagnostics(d: DispatchHarness) ->
 def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    cli = importlib.import_module("dispatcher.cli")
+    cli = importlib.import_module("dispatcher.cli_impl")
     lock = importlib.import_module("lib.checkout_lock").checkout_lock
     calls = []
     for name in ("reconcile", "assign", "launch_reserved"):
@@ -1845,7 +1845,7 @@ def test_supervisor_never_reconciles_or_launches_while_checkout_is_locked(
 def test_supervisor_maintenance_pause_preserves_enabled_but_normal_stop_shuts_down(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, maintenance: bool
 ) -> None:
-    cli = importlib.import_module("dispatcher.cli")
+    cli = importlib.import_module("dispatcher.cli_impl")
     handlers = {}
     calls = []
     monkeypatch.setattr(

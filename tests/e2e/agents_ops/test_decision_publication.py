@@ -666,7 +666,7 @@ def test_parent_cli_checks_owner_and_never_captures_its_own_publication(
     capsys: pytest.CaptureFixture[str],
     authorized: bool,
 ) -> None:
-    cli: Any = importlib.import_module("parent.cli")
+    cli: Any = importlib.import_module("parent.cli_impl")
     log = env.capture()
     monkeypatch.chdir(env.root)
     monkeypatch.setattr(cli, "session_identity", lambda _: "codex:current-owner")

@@ -1311,7 +1311,7 @@ def test_cleanup_confirmation_cannot_override_live_processes(
     h: Harness, lost_turn: dict[str, Any]
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     sleeper = subprocess.Popen(
         [sys.executable, "-c", "import time;time.sleep(20)"], start_new_session=True
     )
@@ -1454,7 +1454,7 @@ def test_missing_executable_saves_a_failed_attempt(
     h: Harness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     monkeypatch.setattr(runtime, "enable_child_subreaper", lambda: None)
     monkeypatch.setattr(
         runtime, "command", lambda *args: [str(h.root / "missing-executable")]
@@ -1489,7 +1489,7 @@ def test_existing_or_reused_process_identity_prevents_unsafe_actions(
     h: Harness, operation: str
 ) -> None:
     sys.path.insert(0, str(ROOT / ".agents/ops/lib"))
-    runtime: Any = importlib.import_module("agent_runtime")
+    runtime: Any = importlib.import_module("agent_runtime_impl")
     assert h.run().returncode == 0
     sleeper = subprocess.Popen(
         [sys.executable, "-c", "import time;time.sleep(20)"], start_new_session=True

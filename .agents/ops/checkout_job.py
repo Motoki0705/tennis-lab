@@ -45,7 +45,7 @@ def main() -> int:
             )
             return 75
         if args.supervisor:
-            from dispatcher.cli import main as supervise
+            from dispatcher.cli_impl import main as supervise
         elif args.board_web_port is not None:
             from board.web import serve
         else:

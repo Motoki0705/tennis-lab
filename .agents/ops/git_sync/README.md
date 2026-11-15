@@ -82,6 +82,8 @@ managerの `ExecStart` も照合するため、古いunitが未更新のまま�
 dispatcherは各処理周期を共有lockで保護する。更新側は排他lockを取得して新規起動を止め、
 既存CLIのstatusから判定・親・子・予約・占有枠を確認する。仕事が残れば停止せず延期する。
 空ならmain processへSIGHUPを送り、内部enabledを保持した保守停止と終了後のstatusを確認して更新する。
+registryの取得順と、排他lockを維持したstatus/stop呼出は
+[共通lockの保守契約](../lib/README.md#registryと保守呼出のlock順)に従う。
 board webも停止してから更新する。停止前にactiveかつenabledだった常駐serviceだけを再開し、
 unitのenabledとdispatcher内部enabledを再確認する。timerの有効化は変更しない。
 
@@ -123,8 +125,10 @@ importを拒否する。マーカーを手動削除せず、checkoutを修復し
 ```bash
 .venv/bin/python -m pytest -n 2 tests/e2e/agents_ops/test_git_sync.py \
   tests/e2e/agents_ops/test_interactive_checkout.py tests/e2e/agents_ops/test_checkout_job.py \
+  tests/e2e/agents_ops/test_checkout_registry_order.py \
   tests/e2e/agents_ops/test_ops_control.py tests/e2e/agents_ops/test_dispatcher_supervisor.py
 ```
 
 bare originとclone、一時worktree・実submodule・fake systemd/プロセス・実flockで検証する。
+registry競合テストはdispatcher・registry・agent_execを実装のまま使い、systemdと外部agentだけをfakeにする。
 実ホストのunit・メインcheckout・ほかの作業worktreeは変更しない。

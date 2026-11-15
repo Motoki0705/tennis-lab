@@ -37,18 +37,23 @@ class Entry:
 
 
 ENTRIES = (
-    Entry("parent", "parent/__main__.py", "parent/cli.py", "parent"),
-    Entry("parent-cli", "parent/cli.py", "decision_logs/__init__.py", "parent.cli"),
-    Entry("parent-review", "review/parent_review.py", "decision_logs/__init__.py"),
-    Entry("merge-gate", "review/merge_gate.py", "issues/__init__.py"),
-    Entry("agent-exec", "lib/agent_exec.sh", "lib/agent_events.py"),
-    Entry("agent-runtime", "lib/agent_runtime.py", "lib/agent_events.py"),
-    Entry("explain-html", "explain_html/__main__.py", "lib/opsproc.py", "explain_html"),
+    Entry("parent", "parent/__main__.py", "parent/cli_impl.py", "parent"),
+    Entry("parent-cli", "parent/cli.py", "parent/cli_impl.py", "parent.cli"),
+    Entry("parent-review", "review/parent_review.py", "review/parent_review_impl.py"),
+    Entry("merge-gate", "review/merge_gate.py", "review/merge_gate_impl.py"),
+    Entry("agent-exec", "lib/agent_exec.sh", "lib/agent_runtime_impl.py"),
+    Entry("agent-runtime", "lib/agent_runtime.py", "lib/agent_runtime_impl.py"),
+    Entry(
+        "explain-html",
+        "explain_html/__main__.py",
+        "explain_html/cli_impl.py",
+        "explain_html",
+    ),
     Entry("ci-watch", "ci_watch/__main__.py", "ci_watch/cli.py", "ci_watch"),
     Entry(
         "review-evaluation",
         "review/evaluation/__main__.py",
-        "lib/review_tools/retrieval.py",
+        "review/evaluation/cli_impl.py",
         "review.evaluation",
     ),
     Entry(
@@ -60,34 +65,34 @@ ENTRIES = (
     Entry(
         "project-progress",
         "project_progress/__main__.py",
-        "parent/github.py",
+        "project_progress/cli_impl.py",
         "project_progress",
     ),
     Entry(
         "retrieval-server",
         "lib/review_tools/mcp_server.py",
-        "lib/review_tools/retrieval.py",
+        "lib/review_tools/mcp_server_impl.py",
         "lib.review_tools.mcp_server",
     ),
     Entry(
         "review-server",
         "lib/review_tools/review_server.py",
-        "lib/review_tools/mcp_server.py",
+        "lib/review_tools/review_server_impl.py",
         "lib.review_tools.review_server",
     ),
     Entry(
         "report-server",
         "ops-report/opsreport/mcp_server.py",
-        "lib/review_tools/mcp_server.py",
+        "ops-report/opsreport/mcp_server_impl.py",
         "opsreport.mcp_server",
     ),
     Entry(
         "reproduction-server",
         "ops-report/opsreport/reproduction_server.py",
-        "ops-report/opsreport/mcp_server.py",
+        "ops-report/opsreport/reproduction_server_impl.py",
         "opsreport.reproduction_server",
     ),
-    Entry("dispatch-worker", "dispatcher/worker.py", "parent/github.py"),
+    Entry("dispatch-worker", "dispatcher/worker.py", "dispatcher/worker_impl.py"),
 )
 PARENT = ENTRIES[0]
 PROJECT_WAIT = "import sys\nprint('project-import', flush=True)\nsys.stdin.read()\nraise SystemExit(0)\n"
@@ -97,8 +102,6 @@ def install_cli(repo: Path, entry: Entry = PARENT, project: str = PROJECT_WAIT) 
     """Copy the actual bootstrap and its package initializers, not a second CLI."""
     ops = repo / ".agents/ops"
     sources = ["lib/checkout_lock.py", entry.source]
-    if entry.module == "parent.cli":
-        sources.append("parent/__main__.py")
     if entry.source.endswith(".sh"):
         sources.append("lib/agent_runtime.py")
     for relative in [*sources, entry.dependency]:

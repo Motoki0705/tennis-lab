@@ -179,9 +179,11 @@ class Store:
 
     @contextmanager
     def locked(self) -> Iterator[Store]:
+        from lib.checkout_lock import registry_checkout_lock
+
         # A Store owns live transaction objects. Threads sharing that instance
         # must wait even while its flock is released for another process's I/O.
-        with self._transaction_guard:
+        with registry_checkout_lock(), self._transaction_guard:
             if self._lock is not None:
                 raise ValueError("registry transaction is already active")
             with self._locked() as store:

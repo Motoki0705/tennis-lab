@@ -19,7 +19,7 @@ audit: Any = importlib.import_module("opsreport.audit")
 ledger: Any = importlib.import_module("opsreport.ledger")
 retrieval: Any = importlib.import_module("opsreport.retrieval")
 audit_tools: Any = importlib.import_module("opsreport.audit_tools")
-mcp: Any = importlib.import_module("opsreport.mcp_server")
+mcp: Any = importlib.import_module("opsreport.mcp_server_impl")
 SLOT = "20261012"
 
 

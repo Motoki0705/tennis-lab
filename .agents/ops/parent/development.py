@@ -494,7 +494,7 @@ def verify_completion(session: ParentSession) -> list[int]:
                 ended(job)
     check_task_adoptions(session.gh, parent.body)
     sys.path.insert(0, str(OPS / "review"))
-    merge_gate = importlib.import_module("merge_gate")
+    merge_gate = importlib.import_module("merge_gate_impl")
     merged: set[int] = set()
     pulls = session.gh.pulls()
     work_targets.require_separate_self_prs(parent, pulls, session.gh.repo)

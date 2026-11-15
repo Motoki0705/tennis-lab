@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import registry_checkout_lock
 from parent.policy import digest
 from parent.state import Store
 
@@ -65,6 +66,11 @@ class ExpiryStore(Store):
 
     @contextmanager
     def locked(self) -> Iterator[Store]:
+        with registry_checkout_lock(), self._recover_and_lock() as store:
+            yield store
+
+    @contextmanager
+    def _recover_and_lock(self) -> Iterator[Store]:
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         fd = os.open(
             self.directory / "registry.lock",

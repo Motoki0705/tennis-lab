@@ -11,6 +11,7 @@ from contextlib import AbstractContextManager, contextmanager, nullcontext
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import checkout_subprocess_options
 from parent.policy import object_value
 
 from .records import read_json
@@ -70,6 +71,7 @@ class Runtime:
             text=True,
             check=False,
             timeout=timeout,
+            **checkout_subprocess_options(),
         )
         if proc.returncode:
             raise ValueError(

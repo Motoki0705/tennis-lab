@@ -252,7 +252,7 @@ class FixedClock(datetime.datetime):
     def now(cls, tz=None):
         return cls(2026, 10, 18, tzinfo=tz)
 datetime.datetime = FixedClock
-import parent_review as pr
+import parent_review_impl as pr
 txn_authorizations = 0
 txn_original_authorized = pr.authorized
 def txn_authorized(*args, **kwargs):
@@ -313,7 +313,7 @@ def test_merge_git_and_evidence_verification_release_registry(
     driver = r.p.root / "merge-probed.py"
     driver.write_text(
         f"import sys\nsys.path.insert(0, {str(OPS / 'review')!r})\n"
-        + "import merge_gate\n"
+        + "import merge_gate_impl as merge_gate\n"
         + evidence_probes()
         + "\nsys.exit(merge_gate.main())\n"
     )

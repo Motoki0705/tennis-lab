@@ -17,7 +17,7 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 
 | ファイル | 責務 |
 |---|---|
-| `parent_review.py` | 明示runの受理、収集、Codex実行、記録公開、親による修正確認 |
+| `parent_review.py` / `parent_review_impl.py` | checkout lock取得だけを行う入口 / 明示runの受理、収集、Codex実行、記録公開、親による修正確認 |
 | `parent_review_policy.py` | 要求・出力・公開記録の検証とcoverageの純粋関数 |
 | `review_recovery.py` | 保存final・runtime・元runの検証と採用来歴の照合（AI起動なし） |
 | `review_inspection.py` | 親CLIの読み取り専用照合表示、PR別の証拠履歴・入力差・不明範囲 |
@@ -27,7 +27,7 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 | `review_interruption.py` | 中断runのcleanup・workspace照合と、承認に使わない終結記録の検証 |
 | `review_workspace.py` | PR別headの読み取りworktree、全文diffとプロンプト、先行mergeによるbase前進の実git検証 |
 | `merge_gate_policy.py` | 公開証拠の照合、親の確認状態・PRごとのcoverage・依存順・merge判定の純粋関数 |
-| `merge_gate.py` | 親の明示コマンドによる最新情報の取得、dry-run、順次merge |
+| `merge_gate.py` / `merge_gate_impl.py` | checkout lock取得だけを行う入口 / 親の明示コマンドによる最新情報の取得、dry-run、順次merge |
 | `review_policy.py` | blocker/major解析、無害化、CI正規化、競合等のgate判定部品 |
 | `prompt_template.md` | 親の受入条件・個別diff・依存/インターフェースを1実行で確認する指示 |
 | `result_schema.json` | 共通ランナーへ渡す出力schema |
@@ -35,6 +35,10 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 | `evaluation/` | [非公開比較](evaluation/README.ja.md)。歴史snapshot・正解表・専用state・指標集計。通常pytestから実LLMを起動しない |
 
 ## 実行
+
+file名と起動引数は従来どおり。入口には実処理を置かず、lock取得後に `_impl` moduleをimportする。
+内部Python APIは `_impl` を参照する。保護範囲と待機・拒否の契約は
+[共通checkout lock](../lib/README.md#対話cliの保護)を参照。
 
 review・取得・公開・復旧・明示確認とmerge gateの観測は
 [判断記録](../decision_logs/README.ja.md#捕捉元と未対応入口)へ保存する。

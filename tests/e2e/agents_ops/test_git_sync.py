@@ -747,9 +747,25 @@ sys.exit(subprocess.call([real, *args]))
         assert sync.control.read()["units"][SUPERVISOR]["ActiveState"] == "active"
 
 
+@pytest.mark.parametrize("primary_entry", [False, True], ids=["worktree", "primary"])
 def test_abandoned_update_blocks_imports_until_clean_main_is_revalidated(
-    sync: SyncEnv,
+    sync: SyncEnv, monkeypatch: pytest.MonkeyPatch, primary_entry: bool
 ) -> None:
+    if primary_entry:
+        for directory in ("git_sync", "lib", "ops_control"):
+            shutil.copytree(
+                ROOT / ".agents/ops" / directory,
+                sync.repo / ".agents/ops" / directory,
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        git(sync.repo, "add", "-f", ".agents/ops")
+        git(sync.repo, "commit", "-qm", "primary updater bootstrap")
+        git(sync.repo, "push", "-q", "origin", "main")
+        git(sync.producer, "pull", "-q", "--ff-only")
+        monkeypatch.setattr(
+            sys.modules[__name__], "SYNC", sync.repo / ".agents/ops/git_sync/sync.py"
+        )
     before = git(sync.repo, "rev-parse", "HEAD")
     target = sync.publish({"app.py": "new\n"})
     barrier = sync.repo / ".git/ops-code.blocked"
@@ -885,7 +901,7 @@ def test_native_parent_started_during_update_imports_only_updated_project_code(
     )
     sync.publish(
         {
-            ".agents/ops/parent/cli.py": "print('new-project', flush=True)\nraise SystemExit(0)\n"
+            ".agents/ops/parent/cli_impl.py": "print('new-project', flush=True)\nraise SystemExit(0)\n"
         }
     )
     ready, release = [

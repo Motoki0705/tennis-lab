@@ -633,7 +633,7 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
         )
         assert checkpoint["error"] == "log_owner_mismatch"
     elif entry.startswith("explicit"):
-        cli = importlib.import_module("parent.cli")
+        cli = importlib.import_module("parent.cli_impl")
         monkeypatch.setattr(cli, "GitHub", lambda *a, **kw: SimpleNamespace(repo="o/r"))
         monkeypatch.setattr(cli, "session_identity", lambda env: "codex:previous")
         monkeypatch.chdir(logs.root)
@@ -727,7 +727,7 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
 def test_decision_publication_postlude_keeps_its_original_generation(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch, snapshot_unavailable: bool
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     decisions = importlib.import_module("decision_logs.publication")
     path = logs.ready()
     owner = {
@@ -794,7 +794,7 @@ def test_decision_publication_postlude_keeps_its_original_generation(
 def test_existing_journal_merge_refusal_reaches_orphan_cli_exit(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     path, github = public_pr(logs, erase=False)
     owner = {
         "session": "codex:recovery",
@@ -1225,7 +1225,7 @@ def test_exit_checks_generation_before_decision_publication_and_after_it_finishe
 def test_bulk_scope_flags_are_never_silently_ignored(
     monkeypatch: pytest.MonkeyPatch, arguments: list[str]
 ) -> None:
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
 
     def no_github(*args: Any, **kwargs: Any) -> None:
         pytest.fail("invalid scope reached GitHub/state initialization")
