@@ -48,6 +48,40 @@ def signal_pidfd(fd: int, sig: int) -> None:
             raise OSError(code, "pidfd_send_signal failed")
 
 
+def agent_metadata(ident: dict[str, Any]) -> dict[str, Any] | None:
+    """Read sessions only from a pinned Codex/Claude, never inherited tool env."""
+    entry = Path(f"/proc/{ident['pid']}")
+    try:
+        if process_identity(ident["pid"]) != ident:
+            return None
+        argv = (entry / "cmdline").read_bytes().split(b"\0")
+        names = [Path(os.fsdecode(arg)).name for arg in argv[:2]]
+        if not any(name in {"codex", "claude"} for name in names):
+            return None
+        try:
+            environment = dict(
+                item.split(b"=", 1)
+                for item in (entry / "environ").read_bytes().split(b"\0")
+                if b"=" in item
+            )
+        except PermissionError:
+            environment = {}
+        sessions = [
+            "codex:" + os.fsdecode(environment[key])
+            for key in (b"CODEX_SESSION_ID", b"CODEX_THREAD_ID")
+            if environment.get(key)
+        ]
+        if environment.get(b"CLAUDE_CODE_SESSION_ID"):
+            sessions.append(
+                "claude:" + os.fsdecode(environment[b"CLAUDE_CODE_SESSION_ID"])
+            )
+        if process_identity(ident["pid"]) == ident:
+            return {"identity": ident, "sessions": sessions}
+    except (FileNotFoundError, ProcessLookupError, PermissionError):
+        pass
+    return None
+
+
 def agents(root: Path) -> list[dict[str, Any]]:
     found = []
     for entry in Path("/proc").iterdir():
@@ -56,36 +90,16 @@ def agents(root: Path) -> list[dict[str, Any]]:
         try:
             if entry.stat().st_uid != os.getuid():
                 continue
-            argv = (entry / "cmdline").read_bytes().split(b"\0")
-            names = [Path(os.fsdecode(arg)).name for arg in argv[:2]]
-            if not any(name in {"codex", "claude"} for name in names):
-                continue
             cwd = os.readlink(entry / "cwd").removesuffix(" (deleted)")
             if not within(cwd, root):
                 continue
-            environment = dict(
-                item.split(b"=", 1)
-                for item in (entry / "environ").read_bytes().split(b"\0")
-                if b"=" in item
-            )
-            sessions = [
-                "codex:" + os.fsdecode(environment[key])
-                for key in (b"CODEX_SESSION_ID", b"CODEX_THREAD_ID")
-                if environment.get(key)
-            ]
-            if environment.get(b"CLAUDE_CODE_SESSION_ID"):
-                sessions.append(
-                    "claude:" + os.fsdecode(environment[b"CLAUDE_CODE_SESSION_ID"])
-                )
             ident = process_identity(int(entry.name))
-            if ident:
-                found.append({"identity": ident, "sessions": sessions})
-        except (FileNotFoundError, ProcessLookupError):
+            info = agent_metadata(ident) if ident else None
+            if info is not None:
+                found.append(info)
+        except (FileNotFoundError, ProcessLookupError, PermissionError):
+            # Reference inspection separately classifies opaque related PIDs.
             continue
-        except PermissionError as exc:
-            raise CleanupError(
-                f"cannot inspect local agent process {entry.name}"
-            ) from exc
     return found
 
 
@@ -138,6 +152,10 @@ def snapshot() -> dict[int, dict[str, Any]]:
                 }
             except (FileNotFoundError, ProcessLookupError):
                 continue
+            except PermissionError:
+                # Reference scans report these as uninspectable and apply
+                # the explicit related/unrelated policy; do not reject the host.
+                continue
     for pid, node in found.items():
         entry = Path(f"/proc/{pid}")
         try:
@@ -162,66 +180,6 @@ def snapshot() -> dict[int, dict[str, Any]]:
     return found
 
 
-def discovery_uncertainty(
-    view: dict[int, dict[str, Any]],
-    lost: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    """Retain possible orphans read after a parent vanished within snapshot.
-
-    A child can reparent before its stat is read and thus enter the baseline
-    under an outside ancestor. Baseline membership alone is then insufficient
-    proof of independence. Earlier observations and branches of an already
-    observed independent process remain outside this ambiguity.
-    """
-    result = {identity_key(item): item for item in lost}
-    order = {pid: index for index, pid in enumerate(view)}
-    for item in lost:
-        root = view.get(item["pid"], {})
-        if not root.get("identity_lost"):
-            continue
-        ancestors, seen = set(), {item["pid"]}
-        parent = root["parent"]
-        while parent in view and parent not in seen:
-            ancestors.add(parent)
-            seen.add(parent)
-            parent = view[parent]["parent"]
-        incomplete = bool(parent)
-        for pid, node in view.items():
-            if order[pid] <= order[item["pid"]] or int(
-                node["identity"]["start_ticks"]
-            ) < int(item["start_ticks"]):
-                continue
-            if (
-                node.get("uid") is not None
-                and node["uid"] != os.getuid()
-                and not node.get("scope_uncertain")
-            ):
-                continue  # An independent foreign service is not a native cwd root.
-            parent, seen = node["parent"], {pid}
-            while parent in view and parent not in seen:
-                if parent == item["pid"]:
-                    break  # The original parent edge was actually captured.
-                if parent in ancestors:
-                    result[identity_key(node["identity"])] = node["identity"]
-                    break
-                if (
-                    int(view[parent]["identity"]["start_ticks"])
-                    < int(item["start_ticks"])
-                    and not view[parent].get("identity_lost")
-                    and not incomplete
-                ):
-                    # /proc enumeration order is not birth order. This older
-                    # independent branch cannot be a child of the lost root,
-                    # even if its stat happened to be read afterwards.
-                    break
-                seen.add(parent)
-                parent = view[parent]["parent"]
-            else:
-                if incomplete or parent:
-                    result[identity_key(node["identity"])] = node["identity"]
-    return list(result.values())
-
-
 def threads_stopped(ident: dict[str, Any]) -> bool:
     if process_identity(ident["pid"]) != ident:
         return True
@@ -243,44 +201,51 @@ def identity_key(ident: dict[str, Any]) -> str:
     return f"{ident['pid']}:{ident['boot_id']}:{ident['start_ticks']}"
 
 
+def valid_identity(value: Any) -> bool:
+    return (
+        isinstance(value, dict)
+        and set(value) == {"pid", "boot_id", "start_ticks"}
+        and type(value["pid"]) is int
+        and value["pid"] > 0
+        and isinstance(value["boot_id"], str)
+        and bool(value["boot_id"])
+        and isinstance(value["start_ticks"], str)
+        and value["start_ticks"].isdecimal()
+    )
+
+
 def scoped_processes(
     root: Path, view: dict[int, dict[str, Any]]
-) -> tuple[list[dict[str, Any]], set[str]]:
-    """Find all cwd roots and retain the identities proven outside this scope."""
+) -> list[dict[str, Any]]:
+    """Retain pinned identities whose cwd was observed in this worktree."""
     found = []
-    excluded = set()
     for pid, node in view.items():
         if "uid" in node and "cwd" in node:
             if node.get("scope_uncertain"):
                 continue  # Retain observations without trusting another generation's scope.
-            # This evidence belongs to the pinned baseline identity, including
+            # This evidence belongs to the observed identity, including
             # after it exits. A later PID owner must not replace its cwd.
-            if (node["uid"] is not None and node["uid"] != os.getuid()) or (
-                node["cwd"] is not None and not within(node["cwd"], root)
+            if (
+                node["uid"] == os.getuid()
+                and node["cwd"] is not None
+                and within(node["cwd"], root)
             ):
-                excluded.add(identity_key(node["identity"]))
-            elif node["cwd"] is not None:
                 found.append(node["identity"])
             continue
         entry = Path(f"/proc/{pid}")
         try:
             if entry.stat().st_uid != os.getuid():
-                if process_identity(pid) == node["identity"]:
-                    excluded.add(identity_key(node["identity"]))
                 continue
             cwd = os.readlink(entry / "cwd").removesuffix(" (deleted)")
-            if process_identity(pid) == node["identity"]:
-                if within(cwd, root):
-                    found.append(node["identity"])
-                else:
-                    excluded.add(identity_key(node["identity"]))
+            if process_identity(pid) == node["identity"] and within(cwd, root):
+                found.append(node["identity"])
         except (FileNotFoundError, ProcessLookupError):
             continue
         except PermissionError:
             # An unrelated same-UID sandbox can hide its cwd. It is not
             # selected by path; known descendants remain covered by lineage.
             continue
-    return found, excluded
+    return found
 
 
 def expand_tracked(tracked: dict[str, Any], view: dict[int, dict[str, Any]]) -> None:
@@ -291,254 +256,51 @@ def expand_tracked(tracked: dict[str, Any], view: dict[int, dict[str, Any]]) -> 
             item["pid"]
             for item in tracked.values()
             if view.get(item["pid"], {}).get("identity") == item
+            and not view[item["pid"]].get("scope_uncertain")
         }
         for node in view.values():
             key = identity_key(node["identity"])
-            if node["parent"] in parents and key not in tracked:
+            if (
+                node["parent"] in parents
+                and key not in tracked
+                and int(node["identity"]["start_ticks"])
+                >= int(view[node["parent"]]["identity"]["start_ticks"])
+            ):
                 tracked[key] = node["identity"]
                 changed = True
 
 
 def read_stop_proof(proof: Path | None) -> dict[str, Any] | None:
+    """Read only the current journal of observed identities, never orphan guesses."""
     saved: dict[str, Any] | None = (
         read_json(proof) if proof is not None and proof.exists() else None
     )
     if saved is None:
         return None
-    version = saved.get("schema_version")
     if (
-        type(version) is not int
-        or version not in {1, 2, 3}
-        or set(saved)
-        != {"schema_version", "baseline", "ancestors", "tracked"}
-        | ({"parents", "capture_complete", "unconfirmed"} if version >= 2 else set())
-        or not all(
-            isinstance(saved[k], list) for k in ("baseline", "ancestors", "tracked")
-        )
+        set(saved) != {"schema_version", "tracked"}
+        or type(saved["schema_version"]) is not int
+        or saved["schema_version"] != 4
+        or not isinstance(saved["tracked"], list)
     ):
-        raise CleanupError("invalid native stop proof")
-    if version >= 2 and not isinstance(saved["unconfirmed"], list):
-        raise CleanupError("invalid native uncertainty in stop proof")
-    for item in (
-        *saved["baseline"],
-        *saved["ancestors"],
-        *saved["tracked"],
-        *saved.get("unconfirmed", []),
-    ):
-        if (
-            not isinstance(item, dict)
-            or set(item) != {"pid", "boot_id", "start_ticks"}
-            or type(item["pid"]) is not int
-            or item["pid"] <= 0
-            or not isinstance(item["boot_id"], str)
-            or not isinstance(item["start_ticks"], str)
-        ):
-            raise CleanupError("invalid native process identity in stop proof")
-    if version >= 2 and (
-        type(saved["capture_complete"]) is not bool
-        or not isinstance(saved["parents"], dict)
-        or set(saved["parents"]) != {identity_key(item) for item in saved["baseline"]}
-        or any(type(pid) is not int or pid < 0 for pid in saved["parents"].values())
-    ):
-        raise CleanupError("invalid native ancestry in stop proof")
+        raise CleanupError("invalid observed native stop journal")
+    for item in saved["tracked"]:
+        if not valid_identity(item):
+            raise CleanupError("invalid observed native process identity")
     return saved
 
 
-def unscoped_recovery_evidence(
-    view: dict[int, dict[str, Any]],
-    seeds: list[dict[str, Any]],
-    saved: dict[str, Any] | None,
-    root: Path,
-) -> dict[str, Any] | None:
-    """Rebase a completed v2 discovery that never captured a worktree root.
-
-    V2 recorded every vanished host PID as a possible root, even if it was a
-    transient tool of another job. Its ancestors cannot attribute *future*
-    unrelated jobs indefinitely. Retain the original proof; require every
-    captured uncertain identity (including its captured children) to have ended
-    and a fresh empty worktree scope. Known roots and interrupted capture are
-    deliberately ineligible for this recovery.
-    """
-    if (
-        saved is None
-        or saved["schema_version"] != 2
-        or not saved["capture_complete"]
-        or saved["tracked"]
-        or seeds
-        or not saved["unconfirmed"]
-        or any(
-            view.get(item["pid"], {}).get("identity") == item
-            for item in saved["unconfirmed"]
-        )
-    ):
-        return None
-    return {
-        "worktree": str(root),
-        "reason": "legacy_unscoped_roots_ended",
-        "captured_roots": 0,
-        "ended_unconfirmed": saved["unconfirmed"],
-    }
-
-
-def recover_unscoped_stop(
-    view: dict[int, dict[str, Any]],
-    seeds: list[dict[str, Any]],
-    proof: Path,
-    root: Path,
-) -> dict[str, Any] | None:
-    saved = read_stop_proof(proof)
-    evidence = unscoped_recovery_evidence(view, seeds, saved, root)
-    if evidence is None:
-        return None
-    archive = proof.with_suffix(".unscoped-v2.json")
-    original = {"proof": saved, "recovery": evidence}
-    if archive.exists() and read_json(archive) != original:
-        raise CleanupError("conflicting legacy unscoped stop recovery")
-    write_json(archive, original)
-    write_json(proof, prepare_stop(view, [], None, capture_completed=True))
-    return evidence
-
-
-def uncertain_processes(
-    view: dict[int, dict[str, Any]],
-    tracked: dict[str, Any],
-    baseline: dict[str, Any],
-    outside: dict[str, Any],
-    unconfirmed: dict[str, Any],
-) -> list[dict[str, Any]]:
-    """Keep observed ambiguity; attribute new orphans only to worktree roots."""
-    result = []
-    for node in view.values():
-        key = identity_key(node["identity"])
-        if key in tracked:
-            continue
-        if key in unconfirmed:
-            result.append(node["identity"])
-            continue
-        if key in baseline:
-            continue
-        if not tracked:
-            # An unscoped disappearing host PID does not establish that this
-            # worktree owned any processes. Retain its captured uncertain
-            # children above, but do not use its ancestors to claim future
-            # independent jobs. This also bounds existing v3 stop proofs.
-            continue
-        if (
-            node.get("uid") is not None
-            and node["uid"] != os.getuid()
-            and not node.get("scope_uncertain")
-        ):
-            continue
-        parent, seen, unattributed = node["parent"], set(), True
-        while parent in view and parent not in seen:
-            seen.add(parent)
-            ancestor = view[parent]
-            ancestor_key = identity_key(ancestor["identity"])
-            if ancestor_key in outside or ancestor_key in unconfirmed:
-                break
-            if ancestor_key in baseline and ancestor_key not in tracked:
-                unattributed = False
-                break
-            parent = ancestor["parent"]
-        if unattributed:
-            result.append(node["identity"])
-    return result
-
-
 def prepare_stop(
-    view: dict[int, dict[str, Any]],
-    seeds: list[dict[str, Any]],
-    proof: Path | None,
-    *,
-    capture_completed: bool = False,
-    uncertain_roots: list[dict[str, Any]] | None = None,
+    view: dict[int, dict[str, Any]], seeds: list[dict[str, Any]], proof: Path | None
 ) -> dict[str, Any]:
-    """Persist the first baseline and all roots before any managed stop action."""
+    """Journal observed roots and descendants before managed jobs can exit."""
     saved = read_stop_proof(proof)
-    baseline = (
-        {identity_key(item): item for item in saved["baseline"]}
-        if saved
-        else {
-            identity_key(node["identity"]): node["identity"] for node in view.values()
-        }
-    )
-    lineage = (
-        dict(saved.get("parents", {}))
-        if saved
-        else {identity_key(node["identity"]): node["parent"] for node in view.values()}
-    )
-    # Version-1 proofs have no ancestry map. Never infer a vanished root's
-    # lineage from a later PID owner; make all new provenance uncertain instead.
-    if saved and "parents" not in saved:
-        lineage = {key: 0 for key in baseline}
-    old_view = {
-        item["pid"]: {"identity": item, "parent": lineage[key]}
-        for key, item in baseline.items()
-    }
     tracked = {
         identity_key(item): item
         for item in [*(saved["tracked"] if saved else []), *seeds]
     }
-    unconfirmed = {
-        identity_key(item): item
-        for item in [
-            *(saved.get("unconfirmed", []) if saved else []),
-            *(uncertain_roots or []),
-        ]
-    }
-    outside = {
-        identity_key(item): item
-        for item in (saved["ancestors"] if saved and not capture_completed else [])
-    }
-    # Only observed worktree roots establish possible reapers for new orphans.
-    # An unscoped lost PID still retains its captured children below; missing
-    # ancestry for that PID cannot widen a known root's scope to the whole host.
-    for item in seeds:
-        node = old_view.get(item["pid"])
-        if (
-            node is None
-            or node["identity"] != item
-            or (saved and "parents" not in saved)
-        ):
-            outside.update(
-                baseline
-            )  # A root disappeared before its lineage was captured.
-            continue
-        parent, seen = node["parent"], set()
-        while parent in old_view and parent not in seen:
-            seen.add(parent)
-            ancestor = old_view[parent]
-            outside[identity_key(ancestor["identity"])] = ancestor["identity"]
-            parent = ancestor["parent"]
-        if parent:
-            # A missing ancestor/cycle cannot prove which existing subreaper
-            # could inherit children. Do not infer an unrelated branch.
-            outside.update(baseline)
-    expand_tracked(tracked, old_view)
     expand_tracked(tracked, view)
-    # A process can disappear before its cwd is read. Baseline children of
-    # that unknown root are not proven unrelated merely because they predate
-    # discovery. Preserve their uncertainty without signalling them by guess.
-    expand_tracked(unconfirmed, old_view)
-    expand_tracked(unconfirmed, view)
-    result = {
-        # Keep unresolved legacy uncertainty eligible for the explicit recovery
-        # above, until all identities have ended. Fresh captures use v3.
-        "schema_version": 2
-        if saved and saved["schema_version"] == 2 and not tracked
-        else 3,
-        "baseline": list(baseline.values()),
-        "ancestors": list(outside.values()),
-        "tracked": list(tracked.values()),
-        "unconfirmed": list(unconfirmed.values()),
-        "parents": lineage,
-        "capture_complete": capture_completed
-        or bool(saved and saved.get("capture_complete", True)),
-    }
-    if proof is not None:
-        write_json(proof, result)
-    ancestors = {os.getpid()}
-    current = os.getpid()
+    ancestors, current = {os.getpid()}, os.getpid()
     while (
         current := view.get(current, {}).get("parent", 0)
     ) and current not in ancestors:
@@ -550,78 +312,47 @@ def prepare_stop(
         raise CleanupError(
             "cleanup cannot stop its own agent ancestor; run from the main checkout service"
         )
+    result = {"schema_version": 4, "tracked": list(tracked.values())}
+    if proof is not None:
+        write_json(proof, result)
     return result
-
-
-def begin_stop(view: dict[int, dict[str, Any]], proof: Path) -> bool:
-    """Journal before discovery. An interrupted discovery cannot certify roots."""
-    if proof.exists():
-        saved = read_stop_proof(proof)
-        if saved is not None and not saved.get("capture_complete", True):
-            raise CleanupError(
-                "native discovery was interrupted; original roots cannot be certified"
-            )
-        return False
-    data = prepare_stop(view, [], None)
-    # Only this invocation, after finishing discovery, may narrow this set.
-    # A resumed attempt cannot certify which original roots it missed.
-    data["ancestors"] = list(data["baseline"])
-    write_json(proof, data)
-    return True
 
 
 def stop_tree(
     ident: dict[str, Any] | None, timeout: float = 5.0, *, proof: Path | None = None
 ) -> None:
-    """Freeze a closed forest before KILL; replay the preparation's provenance."""
+    """Stop pinned observed identities. Unobserved orphan guesses are not a gate."""
     view = snapshot()
-    saved = read_stop_proof(proof)
-    if saved is not None and not saved.get("capture_complete", True):
-        raise CleanupError(
-            "native discovery was interrupted; original roots cannot be certified"
-        )
-    if saved is None and (
-        ident is None or view.get(ident["pid"], {}).get("identity") != ident
-    ):
-        return  # Raw pin helper only; Stopper always supplies its durable proof.
-    saved = prepare_stop(
-        view, [] if ident is None else [ident], proof, capture_completed=saved is None
-    )
+    if proof is None and (ident is None or process_identity(ident["pid"]) != ident):
+        return
+    saved = prepare_stop(view, [] if ident is None else [ident], proof)
     tracked = {identity_key(item): item for item in saved["tracked"]}
-    baseline = {identity_key(item): item for item in saved["baseline"]}
-    outside = {identity_key(item): item for item in saved["ancestors"]}
-    unconfirmed = {identity_key(item): item for item in saved["unconfirmed"]}
-
-    def expand(current_view: dict[int, dict[str, Any]]) -> None:
-        expand_tracked(tracked, current_view)
-        expand_tracked(unconfirmed, current_view)
 
     def save() -> None:
         if proof is not None:
-            write_json(
-                proof,
-                {
-                    "schema_version": saved["schema_version"],
-                    "parents": saved["parents"],
-                    "capture_complete": saved["capture_complete"],
-                    "baseline": list(baseline.values()),
-                    "ancestors": list(outside.values()),
-                    "tracked": list(tracked.values()),
-                    "unconfirmed": list(unconfirmed.values()),
-                },
-            )
+            write_json(proof, {"schema_version": 4, "tracked": list(tracked.values())})
 
-    expand(view)
-    save()
+    def live() -> list[dict[str, Any]]:
+        try:
+            return [
+                item
+                for item in tracked.values()
+                if process_identity(item["pid"]) == item
+            ]
+        except PermissionError as exc:
+            raise CleanupError(
+                "cannot confirm an observed native process ended"
+            ) from exc
+
     pinned: dict[str, int] = {}
     try:
         deadline = time.monotonic() + timeout
         while True:
             view = snapshot()
-            expand(view)
-            save()  # Persist newly found children before signalling their parents.
-            for key, item in tracked.items():
-                if key in pinned or view.get(item["pid"], {}).get("identity") != item:
+            expand_tracked(tracked, view)
+            save()
+            for key, item in list(tracked.items()):
+                if key in pinned or process_identity(item["pid"]) != item:
                     continue
                 try:
                     fd = open_pidfd(item["pid"])
@@ -632,27 +363,21 @@ def stop_tree(
                     continue
                 pinned[key] = fd
                 signal_pidfd(fd, signal.SIGSTOP)
-            view = snapshot()
             old_count = len(tracked)
-            expand(view)
-            live = [
-                item
-                for item in tracked.values()
-                if view.get(item["pid"], {}).get("identity") == item
-            ]
+            expand_tracked(tracked, snapshot())
             if len(tracked) == old_count and all(
-                threads_stopped(item) for item in live
+                threads_stopped(item) for item in live()
             ):
-                # A second snapshot after every thread stopped closes the last
-                # fork-in-flight window. No TERM handler or SIGCONT may run.
-                final_view = snapshot()
-                expand(final_view)
+                # Capture one more view after every observed thread is stopped.
+                expand_tracked(tracked, snapshot())
                 if len(tracked) == old_count and all(
-                    threads_stopped(item) for item in live
+                    threads_stopped(item) for item in live()
                 ):
                     break
             if time.monotonic() >= deadline:
-                raise CleanupError("native process forest did not become fully stopped")
+                raise CleanupError(
+                    "observed native process forest did not become fully stopped"
+                )
             Event().wait(0.05)
         save()
         for key, fd in pinned.items():
@@ -660,21 +385,14 @@ def stop_tree(
                 signal_pidfd(fd, signal.SIGKILL)
         deadline = time.monotonic() + timeout
         while True:
-            view = snapshot()
-            expand(view)
+            expand_tracked(tracked, snapshot())
             save()
-            live = [
-                item
-                for item in tracked.values()
-                if view.get(item["pid"], {}).get("identity") == item
-            ]
-            unknown = uncertain_processes(view, tracked, baseline, outside, unconfirmed)
-            if not live and not unknown:
+            remaining = live()
+            if not remaining:
                 break
             if time.monotonic() >= deadline:
                 raise CleanupError(
-                    "native descendants survived or new orphan provenance is unconfirmed: "
-                    f"live={live}; uncertain={unknown}"
+                    f"observed native processes survived: live={remaining}"
                 )
             Event().wait(0.05)
         if proof is not None and proof.exists():

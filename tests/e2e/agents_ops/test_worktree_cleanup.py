@@ -42,9 +42,21 @@ class Lab:
         self.lifecycle = importlib.import_module("worktree_cleanup.lifecycle")
         self.storage = importlib.import_module("worktree_cleanup.storage")
         self.real_snapshot = self.lifecycle.processes.snapshot
-        # Only the explicit process tests supply a forest. A host-wide view
-        # would mix unrelated concurrent pytest/agent processes into the
-        # deliberately conservative orphan-provenance checks.
+        self.references = importlib.import_module("worktree_cleanup.references")
+        self.real_references = self.references.scan
+        monkeypatch.setattr(
+            self.references,
+            "scan",
+            lambda root, **kw: {
+                "path": str(root),
+                "references": [],
+                "uninspectable": [],
+                "related": kw.get("related") or [],
+                "errors": [],
+            },
+        )
+        # Explicit process tests supply an isolated forest. Other lifecycle
+        # contracts must never inspect or signal concurrent host jobs.
         monkeypatch.setattr(self.lifecycle.processes, "snapshot", lambda: {})
         self.now = BORN
         monkeypatch.setattr(self.inventory, "birth_time", lambda fd: BORN)
@@ -740,6 +752,45 @@ def test_parent_ownership_is_released_and_native_process_is_stopped(
     assert not path.exists()
 
 
+def test_fd_only_native_agent_releases_manual_parent_ownership(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    row = parent_row()
+    registry = save_registry(lab, row)
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    monkeypatch.setattr(
+        forest.proc,
+        "agent_metadata",
+        lambda ident: {"identity": ident, "sessions": [row["session"]]},
+    )
+
+    def scan(root: Path, **kwargs: Any) -> dict[str, Any]:
+        found = [forest.nodes[101]["identity"]] if 101 in forest.nodes else []
+        return {
+            "path": str(root),
+            "references": [
+                {
+                    "identity": ident,
+                    "comm": "codex",
+                    "references": [{"item": "fd/3", "path": str(root / "file")}],
+                }
+                for ident in found
+            ],
+            "uninspectable": [],
+            "errors": [],
+            "related": [*(kwargs.get("related") or []), *found],
+        }
+
+    monkeypatch.setattr(lab.references, "scan", scan)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    current = json.loads(registry.read_text())["parents"]["o/r#1"]
+    assert current["status"] == "released"
+    assert not path.exists() and {101, 102}.isdisjoint(forest.nodes)
+
+
 @pytest.mark.parametrize("phase", ["reserved", "starting"])
 def test_dispatcher_jobs_finish_and_free_child_reservations(
     lab: Lab, monkeypatch: pytest.MonkeyPatch, phase: str
@@ -906,9 +957,7 @@ class NativeForest:
         for pid, parent in ((1, 0), (101, 1), (102, 101), (900, 1)):
             self.add(pid, parent)
         monkeypatch.setattr(self.proc, "snapshot", self.snapshot)
-        monkeypatch.setattr(
-            self.proc, "scoped_processes", lambda root, view: ([], set())
-        )
+        monkeypatch.setattr(self.proc, "scoped_processes", lambda root, view: [])
         monkeypatch.setattr(
             self.proc,
             "process_identity",
@@ -1001,7 +1050,7 @@ def test_native_stop_preserves_new_child_of_an_existing_other_process(
     assert not any(pid in {900, 103} for pid, _ in forest.signals)
 
 
-def test_unattributed_new_orphan_blocks_cleanup_and_replay_until_it_exits(
+def test_unobserved_orphan_without_worktree_references_does_not_gate_deletion(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = lab.add()
@@ -1015,17 +1064,10 @@ def test_unattributed_new_orphan_blocks_cleanup_and_replay_until_it_exits(
         ),
     )
     lab.now += LIFETIME
-    code, report = lab.cleaner().run(cleanup=True)
-    assert code == 1
-    assert report["results"][0]["deleted"] is False
-    assert path.exists()
-    assert 103 in forest.nodes
-    assert not any(pid == 103 for pid, sig in forest.signals)
-    assert lab.cleaner().run(cleanup=True)[0] == 1
-    assert path.exists()
-    forest.nodes.pop(103)
     lab.run(cleanup=True)
     assert not path.exists()
+    assert 103 in forest.nodes and not any(pid == 103 for pid, _ in forest.signals)
+    assert {101, 102}.isdisjoint(forest.nodes)
 
 
 def test_unrelated_process_exits_after_snapshot_without_poisoning_scope(
@@ -1052,87 +1094,111 @@ def test_unrelated_process_exits_after_snapshot_without_poisoning_scope(
     assert {102, 103} <= forest.nodes.keys() and not forest.signals
 
 
-@pytest.mark.parametrize("version", [2, 3])
-@pytest.mark.parametrize("recorded_survivor", [False, True])
-def test_replay_unscoped_proof_requires_captured_identities_to_end(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch, recorded_survivor: bool, version: int
+@pytest.mark.parametrize("version", [1, 2, 3, "corrupt"])
+def test_legacy_orphan_proofs_do_not_gate_new_reference_policy(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, version: int | str
 ) -> None:
     path = lab.add()
     forest = NativeForest(lab, monkeypatch)
     monkeypatch.setattr(forest.proc, "agents", lambda root: [])
-    proof = lab.cleaner().stopper.native_proof(path)
-    original = forest.proc.prepare_stop(
-        forest.snapshot(), [], None, capture_completed=True
-    )
-    original.update(
-        schema_version=version,
-        ancestors=[forest.nodes[1]["identity"]],
-        unconfirmed=[forest.nodes[101]["identity"], forest.nodes[102]["identity"]],
-    )
-    lab.storage.write_json(proof, original)
-    forest.nodes.pop(101)
-    if not recorded_survivor:
-        forest.nodes.pop(102)
-    forest.add(103, 1)  # A different job launched long after the old attempt.
-    lab.now += LIFETIME
-    dry_code, dry_report = lab.cleaner().run(cleanup=True, dry_run=True)
-    assert dry_code == int(recorded_survivor)
-    assert (
-        bool(dry_report["stop_preflight"][0]["legacy_proof_recovery"])
-        is (version == 2 and not recorded_survivor)
-    )
-    assert json.loads(proof.read_text()) == original
-    assert not proof.with_suffix(".unscoped-v2.json").exists()
-    code, report = lab.cleaner().run(cleanup=True)
-    assert code == int(recorded_survivor)
-    assert path.exists() is recorded_survivor
-    assert 103 in forest.nodes and not forest.signals
-    if recorded_survivor:
-        assert not report["results"][0]["deleted"]
-        forest.nodes.pop(102)
-        lab.run(cleanup=True)
-        assert not path.exists()
-    archived = proof.with_suffix(".unscoped-v2.json")
-    assert archived.exists() is (version == 2)
-    if version == 2:
-        assert json.loads(archived.read_text())["proof"] == original
-
-
-@pytest.mark.parametrize("job", ["main_shell", "other_worktree_runner", "root_service"])
-def test_unscoped_v3_proof_does_not_claim_an_independent_process_lineage(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch, job: str
-) -> None:
-    path = lab.add()
-    forest = NativeForest(lab, monkeypatch)
-    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
-    proof = lab.cleaner().stopper.native_proof(path)
-    original = forest.proc.prepare_stop(
-        forest.snapshot(),
-        [],
-        None,
-        capture_completed=True,
-        uncertain_roots=[forest.nodes[101]["identity"]],
-    )
-    # An unobserved ancestor in the old discovery widened this set to the
-    # entire host baseline. No process was ever attributed to the target.
-    original["ancestors"] = original["baseline"]
-    lab.storage.write_json(proof, original)
-    forest.nodes.pop(101)
-    forest.nodes.pop(102)
-    forest.add(103, 1 if job == "root_service" else 900)
-    forest.nodes[103].update(
-        uid=os.getuid() if job != "root_service" else os.getuid() + 1,
-        cwd=str(lab.repo if job == "main_shell" else lab.repo / "other-worktree")
-        if job != "root_service"
-        else None,
-    )
+    proof = lab.cleaner().stopper.legacy_native_proof(path)
+    original = {
+        "schema_version": version,
+        "tracked": [],
+        "unconfirmed": [forest.nodes[101]["identity"], forest.nodes[102]["identity"]],
+        "capture_complete": False,
+    }
+    proof.parent.mkdir(parents=True)
+    contents = "broken JSON" if version == "corrupt" else json.dumps(original)
+    proof.write_text(contents)
     lab.now += LIFETIME
     report = lab.run(cleanup=True, dry_run=True)
-    assert report["stop_preflight"][0]["errors"] == []
-    assert json.loads(proof.read_text()) == original
+    assert report["stop_preflight"][0]["ignored_legacy_proof"] == str(proof)
+    assert proof.read_text() == contents
+    lab.run(cleanup=True)
+    assert not path.exists() and not forest.signals
+    assert {101, 102} <= forest.nodes.keys()
+    assert proof.read_text() == contents
+
+
+def test_legacy_observed_identities_still_authorize_a_pinned_stop(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    proof = lab.cleaner().stopper.legacy_native_proof(path)
+    lab.storage.write_json(
+        proof,
+        {
+            "schema_version": 3,
+            "tracked": [forest.nodes[101]["identity"]],
+            "unconfirmed": [],
+            "capture_complete": False,
+        },
+    )
+    lab.now += LIFETIME
     lab.run(cleanup=True)
     assert not path.exists()
-    assert 103 in forest.nodes and not forest.signals
+    assert set(forest.nodes) == {1, 900}
+    assert (101, forest.proc.signal.SIGKILL) in forest.signals
+    assert (102, forest.proc.signal.SIGKILL) in forest.signals
+    assert proof.exists(), "legacy evidence is retained, not silently overwritten"
+
+
+def test_corrupt_observed_journal_does_not_discard_known_stop_obligations(
+    lab: Lab,
+) -> None:
+    path = lab.add()
+    proof = lab.cleaner().stopper.native_proof(path)
+    proof.parent.mkdir(parents=True)
+    proof.write_text("broken current journal")
+    lab.now += LIFETIME
+    code, report = lab.cleaner().run(cleanup=True)
+    assert code == 1 and report["results"][0]["deleted"] is False
+    assert path.exists()
+    assert proof.read_text() == "broken current journal"
+    assert str(path) in lab.git("worktree", "list", "--porcelain")
+
+
+@pytest.mark.parametrize("failure", ["survives", "permission"])
+def test_observed_child_stop_failure_is_retried_without_any_path_references(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    parent = forest.nodes[101]["identity"]
+    monkeypatch.setattr(
+        forest.proc,
+        "agents",
+        lambda root: (
+            [{"identity": parent, "sessions": []}] if 101 in forest.nodes else []
+        ),
+    )
+    signal = forest.signal
+    forest.nodes[102]["uid"] = os.getuid() + 1
+
+    def survives(fd: int, sig: int) -> None:
+        if fd == 1102 and sig == forest.proc.signal.SIGKILL:
+            if failure == "permission":
+                raise PermissionError("observed child changed UID")
+            return
+        signal(fd, sig)
+
+    monkeypatch.setattr(forest.proc, "signal_pidfd", survives)
+    lab.now += LIFETIME
+    for _ in range(2):
+        code, report = lab.cleaner().run(cleanup=True)
+        assert code == 1 and not report["results"][0]["deleted"]
+        assert path.exists() and 102 in forest.nodes
+        assert (
+            "observed native processes survived"
+            if failure == "survives"
+            else "observed child changed UID"
+        ) in report["results"][0]["error"]
+    monkeypatch.setattr(forest.proc, "signal_pidfd", signal)
+    lab.run(cleanup=True)
+    assert not path.exists() and 102 not in forest.nodes
 
 
 def test_foreign_service_is_not_a_new_orphan_of_a_known_worktree_root(

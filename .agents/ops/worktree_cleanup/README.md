@@ -58,10 +58,12 @@ birth timeが既知ならその日時を再利用する。不明な旧記録は�
 変更確認の失敗で期限を免除しない。`results` と追記型 `results.jsonl` はpath・HEAD・判定UTC・
 削除成否・エラーを残す。作業ファイルのバックアップは作らない。
 
-`cleanup --dry-run` の `stop_preflight` はrunner記録・registry・現在のprocessと保存済み停止証拠を
-読み取り、対象run、記録なし委任、停止準備の問題、旧証拠の復旧予定を表示する。
-関係する破損・来歴不明・探索中断は非0で返す。runnerのstatus/stop・signal・停止証拠の修復・registry更新は行わない。
-実際の停止・削除の成功はdry-runでは確定できず、非dry-runの結果で確認する。
+`cleanup --dry-run` の `stop_preflight` はrunner記録・registry・現在のprocessと観測済みPIDを
+読み取り、対象run・記録なし委任・`reference_gate`（参照と読取不能の診断）を表示する。
+既に隔離されていれば隔離パスを、隔離前なら元パスを調べ、`stage=after_quarantine` / `before_quarantine`
+で区別する。関係するrunner記録の破損・来歴不明や、関連PIDの参照確認不能は非0で返す。
+関連未観測の `uninspectable` だけでは非0にしない。runnerのstatus/stop・signal・停止記録の修復・
+registry更新は行わない。実際の停止・隔離後の参照消失・削除成功はdry-runでは確定できない。
 
 ## 停止と再実行
 
@@ -69,7 +71,7 @@ birth timeが既知ならその日時を再利用する。不明な旧記録は�
 対象の委任は `stopped` にして新規起動を止め、共通ランナーのstop/statusで
 terminal result・`cleanup_complete`・runner/CLI/groupの消滅を確認してから `worker_ended` を記録する。
 共通ランナー導入前など、`worker_runs` 自体がない旧委任は新規起動を止めたうえで、
-管理job・native子孫の停止と、その委任のworktree内のローカルprocess不在を確認してから終了扱いにする。
+管理job・観測済みnative子孫の停止と、その委任のworktreeへのローカル参照不在を確認してから終了扱いにする。
 `worktree_expiry.termination.source=local_process_absence` と確認UTCを残す。runner証拠や別マシンの
 session終了、task成功を推測した記録にはしない。停止失敗中は終了根拠を新たに書かず、次回に再確認する。
 dispatcherの未起動予約は既存cancel APIを使い、起動済jobは停止確認後に `phase=ended` とする。
@@ -90,41 +92,42 @@ state root全体の再帰走査や、workflow自身の `result.json` の読み�
 置換済みの旧委任でローカルrun-dirが存在しない参照は `retired_reference` として報告する。
 その場所を参照するprocessが対象cwdにいれば再び検査対象にし、記録欠落を失敗として扱う。
 
-同じユーザーのnative Codex/Claudeプロセスも確認する。
-停止準備の最初のbaselineを対象探索より前に保存し、親子関係とPID identityを保持する。
-baseline取得時にUID・cwdも観測し、探索中に終了した対象外processを来歴不明へ読み替えない。
-snapshot内ではPID・start ticks・親PIDを先に採取し、その後にUID・cwdと現在のidentityを調べる。
-後段で消滅・読取不能になっても採取済みstatとcwdを捨てない。PIDが別世代なら元のidentityと親子関係を
-保持し、後段のUID/cwdは新世代の値かもしれないため所属未確定とする。
-親のstat採取後、子のstat読取前に親が消え、子が既に外側の祖先へreparentされる窓も扱う。
-消えた親より後に観測し、誕生時刻と祖先から独立性を証明できない候補は、baseline所属だけで除外せず
-不明PIDとして保存する。列挙順を誕生順とはみなさず、消えた親より前に生まれた独立の親系統は、
-statの読取順が後でもその子を巻き込まない。別UIDの独立したserviceも孤児候補にしない。
-推測で停止せず、所属未確定の観測済み候補が終了するまで削除を失敗にする。
-同じユーザーで対象cwdを確認できるPython/shell等も対象に含める。registry・queue・runnerの停止前に
-捕捉を完了し、後段も再実行も最初のbaselineを引き継ぐ。親PIDの消滅だけでは成功にしない。
-探索中にcwdを観測できず消えたPIDは、最初の一覧に含まれた子孫も確認不能として保持する。
-そのPIDの祖先は、対象worktreeとの関係を観測した根の孤児引受先へ加えない。
-対象を一度も捕捉していない証拠では、捕捉済みの不明PID・子孫を保持しつつ、それらの祖先から
-将来の別jobを不明へ広げない。この判定は既存v3証拠にも適用し、証拠の破棄やbaselineのリセットはしない。
-捕捉済みの不明な子孫の残存・探索中断は失敗を維持する。最初のstatでZ/XだったPIDは終了済みとして
-cwdの探索対象から外す。観測後にZへ変わった親は、採取済みのidentity・親子関係を残して子孫を追跡する。
-探索の中断で捕捉が未完了なら、再実行でも失敗を維持する。元の対象を確認できない証拠を自動で捨てず、
-プロセスの終了と保存証拠を人間が確認・修復してから再実行する。
-旧v2証拠で対象PIDが一度も捕捉されず、探索完了済みで、記録済みの不明PID・その捕捉済み子孫が
-すべて終了し、再探索も空なら、その証拠を `.unscoped-v2.json` に理由付きで保存して新しいbaselineへ進む。
-対象PIDを捕捉済みの証拠・不明PIDの残存・探索中断には適用しない。新しい証拠はv3として区別する。
-native agentはPID・boot ID・start ticksを照合し、pidfdで親子をSIGSTOPする。
-全threadの停止後にも一覧を取り直し、新規の子を含む閉包が停止状態に固定されたことを確認してSIGKILLする。
-TERM handlerやSIGCONTを実行させず、確認済みPIDは親が変わっても消滅まで追跡する。
-対象と確認した根があるとき、新しく現れた同じUIDのPIDが旧親の外側の祖先に引き取られ、
-元の子か独立した新規jobかを確認できない場合は、
-推測して停止せず非0を返す。`native-stops/` に保存した観測・PID identityは再実行でも引き継ぎ、
-当該PIDとその後継候補が消滅するまで削除成功にしない。既存の別processから生まれた子は対象に含めない。
-停止失敗には `live` / `uncertain` のPID identityを含め、読み取り診断で残存と来歴不明を区別できる。
+[references.py](references.py) が削除の参照ゲートを実装する。隔離後、同じユーザーのprocessと、
+UIDにかかわらず関連を観測したprocessについて、`/proc/<pid>/cwd`・`root`・`exe`・`fd/*`・`maps`
+（読めない場合は `map_files`）から隔離パス配下への参照を調べる。fdやmmapだけが残る場合も含む。
+`(deleted)` 付きの参照も確認し、パスの共通prefixだけでは別worktreeを巻き込まない。
+参照processと観測できた子孫を停止してから再走査する。参照が残る場合や、関連processの参照が
+確認不能なら非0で返す。Git登録解除・実体削除の直前にも確認する。既に隔離済みの再実行にも同じゲートを適用する。
+
+関連は、停止準備・隔離前後に対象への参照を観測したPIDとその観測済み親子連鎖、および
+parent担当・委任、runner、training queue、dispatcherの管理記録から求める。
+対象への参照を持たず外へchdirした子も、観測済みなら停止を試み、停止失敗を保持する。
+観測できず対象の参照もない孤児は削除ゲートに含めない。ホスト全体で孤児の不在を証明する処理は行わない。
+別UIDという理由だけで関連PIDを除外せず、停止権限がなければ失敗にする。世代を特定できない管理PIDは
+確認不能の分類には使うが、そのPID番号だけでsignalを送らない。
+
+参照を確認できないprocessは `uninspectable` にPID・comm・読めなかった項目・関連の有無を残す。
+`stop_preflight.reference_gate` と実行結果の `reference_checks` で確認できる。
+同じUIDでもnon-dumpableな常駐processは存在するため、関連を一度も観測していない確認不能processを
+一律に失敗にすると、対象と無関係なserviceがすべての期限削除を恒久的に止めてしまう。
+この場合は診断だけに留める。**確認不能processが見えない参照を持つ可能性は残る**。
+関連未観測のprocessについて、この検出限界を採用する。管理job・観測済みPIDの停止失敗は削除を止める。
+
+[processes.py](processes.py) はPID・boot ID・start ticksと観測した親子関係を保持する。
+stat採取後に終了しても、それまでに観測したcwdや親子関係を捨てない。最初からZ/XのPIDは終了済みとして除外する。
+同じユーザーで対象を参照するPython/shell等も、Codex/Claudeという名前に限らず停止対象とする。
+観測済みidentityはpidfdで固定し、親子をSIGSTOPし、全thread停止後の再観測でも子孫を捕捉してSIGKILLする。
+TERM handlerやSIGCONTは実行させず、既知のidentityはreparent後も終了まで確認する。
+自分のagent祖先は停止できないため明示失敗し、mainのserviceから再実行する。
 既存の手動親はHerdrのprivateなsession/process対応も照合する。
-自分のagent祖先は停止できないため、該当する直接呼出しは明示失敗し、mainのserviceから再実行する。
-任意の外部daemonや他ユーザーのプロセスを制御可能とはみなさない。
+
+停止記録は `native-observed/` のv4 JSONで、観測済みidentityの `tracked` だけを保存する。
+管理jobの停止やsignalより前に保存し、観測済み子が参照を失っても、停止失敗を再実行で忘れないために保持する。
+旧 `native-stops/` のv1/v2/v3証拠は上書きせず、妥当な `tracked` だけを読み取って引き継ぐ。
+旧baseline・祖先・`unconfirmed`・探索未完了flag・v2の復旧判定は削除ゲートに使わない。
+旧証拠が壊れて引き継げない場合は診断に残し、現在の参照確認で判定する。
+新しい観測済み停止記録の破損は、既知の停止義務を確認できないため明示失敗にする。
+任意の外部daemonや他ユーザーのprocessを制御可能とはみなさない。
 training queueは既存のシェル単語decoderで参照を探し、既存cancel CLIを呼び、terminal記録まで照合する。
 停止・確認に失敗した場合は非0で返す。失敗は期限延長や恒久免除ではなく、次回も停止・削除を試みる。
 

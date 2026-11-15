@@ -17,7 +17,7 @@ from dispatcher.runtime import Runtime, alive, gate
 from dispatcher.supervisor import Supervisor, event, managed
 from parent.manual_workers import run_directory, worker_runs
 
-from . import processes
+from . import processes, references
 from .registry import ExpiryStore
 from .run_records import RunRecords
 from .storage import CleanupError, read_json, state_root
@@ -36,6 +36,9 @@ class Stopper:
         self.store = ExpiryStore(self.root / "parent-sessions")
         self.timeout = timeout
         self.diagnostics: list[dict[str, Any]] = []
+        self.reference_checks: list[dict[str, Any]] = []
+        self.observed: dict[str, list[dict[str, Any]]] = {}
+        self.recorded_pids: dict[str, set[int]] = {}
 
     def stop_run(
         self,
@@ -298,12 +301,7 @@ class Stopper:
         """Certify local absence after all managed and native stops succeeded."""
         if not self.store.path.exists():
             return
-        view = processes.snapshot()
-        remaining, _ = processes.scoped_processes(physical, view)
-        if remaining:
-            raise CleanupError(
-                f"local processes remain before legacy termination: {remaining}"
-            )
+        self.confirm_references(physical, original=root)
         with self.store.locked():
             for row in self.store.parents.values():
                 for task in row["tasks"].values():
@@ -322,17 +320,13 @@ class Stopper:
                     task_root = Path(task["worktree"])
                     if processes.within(str(task_root), root):
                         task_root = physical / task_root.relative_to(root)
-                    remaining, _ = processes.scoped_processes(task_root, view)
-                    if remaining:
-                        raise CleanupError(
-                            f"legacy child still has local processes: {remaining}"
-                        )
+                    self.confirm_references(task_root)
                     # No shared-runner result exists for this old delegation.
                     # This is a forced local termination, never task success or
                     # a claim about a remote machine's agent session.
                     task["worker_ended"] = {
                         "delegation_id": task.get("delegation_id", "legacy"),
-                        "evidence": "worktree expiry: legacy delegation without runner records; local cwd processes and captured native descendants confirmed absent",
+                        "evidence": "worktree expiry: legacy delegation without runner records; local worktree references absent and observed native processes stopped",
                     }
                     expiry.update(
                         result="stopped",
@@ -346,35 +340,23 @@ class Stopper:
                     )
             self.store.save()
 
-    def preflight(self, root: Path) -> dict[str, Any]:
+    def preflight(self, root: Path, *, physical: Path | None = None) -> dict[str, Any]:
         """Read-only stop planning; never invoke runner status/stop or repair."""
-        runs, diagnostics, errors = RunRecords(self.root, self.store).select(root)
+        physical = physical or root
+        runs, diagnostics, errors = RunRecords(self.root, self.store).select(
+            physical, contract_root=root
+        )
         view = processes.snapshot()
-        scoped, _ = processes.scoped_processes(root, view)
-        scoped.extend(agent["identity"] for agent in processes.agents(root))
-        saved = processes.read_stop_proof(self.native_proof(root))
-        recovery = processes.unscoped_recovery_evidence(view, scoped, saved, root)
-        if saved is not None and recovery is None:
-            if not saved.get("capture_complete", True):
-                errors.append(
-                    "native discovery was interrupted; original roots cannot be certified"
-                )
-            tracked = {processes.identity_key(item): item for item in saved["tracked"]}
-            unconfirmed = {
-                processes.identity_key(item): item
-                for item in saved.get("unconfirmed", [])
-            }
-            processes.expand_tracked(tracked, view)
-            processes.expand_tracked(unconfirmed, view)
-            unknown = processes.uncertain_processes(
-                view,
-                tracked,
-                {processes.identity_key(item): item for item in saved["baseline"]},
-                {processes.identity_key(item): item for item in saved["ancestors"]},
-                unconfirmed,
-            )
-            if unknown:
-                errors.append(f"unconfirmed native process provenance: {unknown}")
+        scoped = processes.scoped_processes(physical, view)
+        scoped.extend(agent["identity"] for agent in processes.agents(physical))
+        known, pids = self.managed_processes(root, view, runs=runs)
+        known.extend([*self.known_processes(root), *self.known_processes(physical)])
+        # A fresh scan also reports entries whose stat was inaccessible in the
+        # planning snapshot. Retain all earlier observations across that scan.
+        check = references.scan(physical, related=[*known, *scoped], managed_pids=pids)
+        check["stage"] = "before_quarantine" if physical == root else "after_quarantine"
+        scoped.extend(item["identity"] for item in check["references"])
+        errors.extend(check["errors"])
         legacy = [
             n
             for row in self.store.read_data()["parents"].values()
@@ -388,12 +370,15 @@ class Stopper:
             "runner_runs": len(runs),
             "native_scope": scoped,
             "legacy_delegations": legacy,
-            "legacy_proof_recovery": recovery,
+            "reference_gate": check,
+            "ignored_legacy_proof": str(self.legacy_native_proof(root))
+            if self.legacy_native_proof(root).exists()
+            else None,
             "diagnostics": diagnostics,
             "errors": errors,
         }
 
-    def queue(self, root: Path) -> None:
+    def queue_jobs(self, root: Path) -> tuple[Path, set[str]]:
         # Reuse the existing shell-word decoder, including printf %q paths.
         sys.path.insert(0, str(OPS / "cleanup"))
         legacy = importlib.import_module("inventory")
@@ -418,6 +403,10 @@ class Stopper:
                 )
                 if legacy.queue_refs_for([job], str(root)):
                     selected.add(path.name)
+        return queue, selected
+
+    def queue(self, root: Path) -> None:
+        queue, selected = self.queue_jobs(root)
         for name in sorted(selected):
             result = subprocess.run(
                 ["bash", str(QUEUE), "cancel", name],
@@ -463,65 +452,203 @@ class Stopper:
         if errors:
             raise CleanupError("; ".join(errors))
 
-    def stop_moved(self, root: Path, original: Path, stamp: str) -> None:
-        # Only processes physically in quarantine are selected. Replaying an
-        # old deletion must not stop a replacement's jobs at the original path.
-        view, native = self.prepare_native(root)
-        self.loose_runs(root, contract_root=original, discovered_only=True)
-        self.stop_native(root, native, view)
-        if processes.agents(root):
-            raise CleanupError("native agents remain in quarantined worktree")
-
-    def native_proof(self, root: Path) -> Path:
+    def legacy_native_proof(self, root: Path) -> Path:
         return (
             self.root
             / "native-stops"
             / (hashlib.sha256(os.fsencode(root)).hexdigest() + ".json")
         )
 
-    def prepare_native(self, root: Path) -> tuple[dict[int, Any], list[dict[str, Any]]]:
-        # Take the baseline before even enumerating agents. Retain it across
-        # registry/queue/runner calls which can make a parent exit and orphan a child.
-        view = processes.snapshot()
-        proof = self.native_proof(root)
-        fresh = processes.begin_stop(view, proof)
-        native = processes.agents(root)
-        seeds, excluded = processes.scoped_processes(root, view)
-        seeds.extend(agent["identity"] for agent in native)
-        recovery = processes.recover_unscoped_stop(view, seeds, proof, root)
-        if recovery is not None:
-            self.diagnostics.append(recovery)
-        after = processes.snapshot()
-        lost = [
-            node["identity"]
-            for pid, node in view.items()
-            if (
-                node.get("identity_lost")
-                or after.get(pid, {}).get("identity") != node["identity"]
-            )
-            and processes.identity_key(node["identity"]) not in excluded
-        ]
-        processes.prepare_stop(
-            view,
-            seeds,
-            proof,
-            capture_completed=fresh,
-            uncertain_roots=processes.discovery_uncertainty(view, lost),
+    def native_proof(self, root: Path) -> Path:
+        # v1-v3 orphan guesses remain untouched and never gate deletion.
+        # Only their valid observed identities can enter this minimal journal.
+        return (
+            self.root
+            / "native-observed"
+            / (hashlib.sha256(os.fsencode(root)).hexdigest() + ".json")
         )
+
+    def known_processes(self, root: Path) -> list[dict[str, Any]]:
+        saved = processes.read_stop_proof(self.native_proof(root))
+        observed = []
+        legacy = self.legacy_native_proof(root)
+        if legacy.exists():
+            try:
+                old = read_json(legacy)
+                if old.get("schema_version") not in {1, 2, 3} or not isinstance(
+                    old.get("tracked"), list
+                ):
+                    raise CleanupError("unrecognized legacy native evidence")
+                for item in old["tracked"]:
+                    if not processes.valid_identity(item):
+                        raise CleanupError("invalid legacy observed identity")
+                    observed.append(item)
+            except (OSError, ValueError, CleanupError) as error:
+                diagnostic = {
+                    "worktree": str(root),
+                    "legacy_native_proof": str(legacy),
+                    "reason": f"legacy orphan evidence ignored; unreadable observed identities: {error}",
+                }
+                if diagnostic not in self.diagnostics:
+                    self.diagnostics.append(diagnostic)
+        return [
+            *self.observed.get(str(root), []),
+            *(saved["tracked"] if saved else []),
+            *observed,
+        ]
+
+    def managed_processes(
+        self, root: Path, view: dict[int, Any], *, runs: list[Path] | None = None
+    ) -> tuple[list[dict[str, Any]], set[int]]:
+        known: list[dict[str, Any]] = []
+        pids: set[int] = set()
+
+        def identity(value: Any) -> None:
+            if value is None:
+                return
+            if (
+                not isinstance(value, dict)
+                or not {"pid", "boot_id", "start_ticks"} <= value.keys()
+            ):
+                raise CleanupError("invalid process identity in selected managed job")
+            item = {key: value[key] for key in ("pid", "boot_id", "start_ticks")}
+            if not processes.valid_identity(item):
+                raise CleanupError("invalid process identity in selected managed job")
+            known.append(item)
+
+        for row in self.store.read_data()["parents"].values():
+            owner = row.get("owner_runtime", {})
+            if (
+                owner.get("session") == row["session"]
+                and owner.get("generation") == row["generation"]
+                and processes.within(owner.get("cwd", ""), root)
+            ):
+                identity(owner.get("process"))
+            for job in (row.get("dispatch") or {}).get("jobs", {}).values():
+                if job.get("phase") != "ended" and processes.within(
+                    job.get("cwd", ""), root
+                ):
+                    identity(job.get("worker"))
+        if runs is None:
+            runs, _, _ = RunRecords(self.root, self.store).select(root)
+        for directory in runs:
+            record = read_json(directory / "result.json")
+            identity(record.get("runner"))
+            identity(record.get("process"))
+        queue, names = self.queue_jobs(root)
+        for name in names:
+            for suffix in ("owner", "state"):
+                path = queue / "state" / (name.removesuffix(".job") + "." + suffix)
+                try:
+                    values = dict(
+                        line.split("=", 1)
+                        for line in path.read_text().splitlines()
+                        if "=" in line
+                    )
+                except FileNotFoundError:
+                    continue
+                pid = values.get("pid", "")
+                if not pid.isdecimal() or int(pid) <= 0:
+                    continue
+                node = view.get(int(pid), {})
+                if (
+                    suffix == "owner"
+                    and values.get("job") == name
+                    and node.get("identity", {}).get("start_ticks")
+                    == values.get("start_time")
+                ):
+                    identity(node["identity"])
+                elif suffix == "state":
+                    # Legacy job state has no generation pin. It can classify
+                    # opaque references, but cannot authorize a PID signal.
+                    pids.add(int(pid))
+        return known, pids
+
+    def prepare_native(
+        self,
+        root: Path,
+        *,
+        inherited: list[dict[str, Any]] | None = None,
+        moved: bool = False,
+    ) -> tuple[dict[int, Any], list[dict[str, Any]]]:
+        view = processes.snapshot()
+        seeds = processes.scoped_processes(root, view)
+        if self.store.journal.exists():
+            # Replay expiry's interrupted split transaction before any new
+            # read of ownership. Dry-run never enters this mutation path.
+            with self.store.locked():
+                pass
+        known, pids = ([], set()) if moved else self.managed_processes(root, view)
+        check = references.scan(
+            root,
+            related=[*self.known_processes(root), *known, *(inherited or [])],
+            managed_pids=pids,
+            view=view,
+        )
+        self.reference_checks.append(check)
+        self.recorded_pids.setdefault(str(root), set()).update(pids)
+        saved = processes.prepare_stop(
+            view, [*seeds, *check["related"]], self.native_proof(root)
+        )
+        self.observed[str(root)] = saved["tracked"]
+        native = processes.agents(root)
+        for row in check["references"]:
+            ident = row["identity"]
+            if not any(agent["identity"] == ident for agent in native):
+                # Include fd/maps-only native agents in session/Herdr ownership
+                # reconciliation, without trusting a generic child's inherited SID.
+                native.append(
+                    processes.agent_metadata(ident)
+                    or {"identity": ident, "sessions": []}
+                )
         return view, native
 
     def stop_native(
         self, root: Path, native: list[dict[str, Any]], view: dict[int, Any]
     ) -> None:
         proof = self.native_proof(root)
-        # registry() may add a saved owner identity. Resolve it against the
-        # original ancestry, not a snapshot taken after stopping that owner.
-        processes.prepare_stop(view, [agent["identity"] for agent in native], proof)
+        saved = processes.prepare_stop(
+            view, [agent["identity"] for agent in native], proof
+        )
+        self.observed[str(root)] = saved["tracked"]
         if native:
             for agent in native:
                 processes.stop_tree(agent["identity"], proof=proof)
         else:
             processes.stop_tree(None, proof=proof)
+
+    def confirm_references(
+        self, root: Path, *, original: Path | None = None
+    ) -> dict[str, Any]:
+        known = self.known_processes(root)
+        pids = set(self.recorded_pids.get(str(root), set()))
+        if original is not None:
+            known.extend(self.known_processes(original))
+            pids.update(self.recorded_pids.get(str(original), set()))
+        check = references.scan(root, related=known, managed_pids=pids)
+        self.reference_checks.append(check)
+        if check["references"] or check["errors"]:
+            raise CleanupError(f"worktree reference gate failed: {check}")
+        return check
+
+    def stop_moved(self, root: Path, original: Path, stamp: str) -> None:
+        # Select only physical references in quarantine. Do not reread the old
+        # path's registry: a successor may already own different jobs there.
+        for _ in range(2):
+            view, native = self.prepare_native(
+                root, inherited=self.known_processes(original), moved=True
+            )
+            self.loose_runs(root, contract_root=original, discovered_only=True)
+            self.stop_native(root, native, view)
+            check = references.scan(
+                root,
+                related=[*self.known_processes(root), *self.known_processes(original)],
+                managed_pids=self.recorded_pids.get(str(original), set()),
+            )
+            self.reference_checks.append(check)
+            if not check["references"] and not check["errors"]:
+                return
+        self.confirm_references(root, original=original)
 
     def stop(self, root: Path, stamp: str) -> None:
         view, native = self.prepare_native(root)

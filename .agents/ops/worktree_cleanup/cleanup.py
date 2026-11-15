@@ -258,6 +258,8 @@ class Cleaner:
                 raise CleanupError("original path was recreated during expiry")
             row["head"] = live["head"]
             state.save()
+        # Last reference check precedes Git unregistration and filesystem removal.
+        self.stopper.confirm_references(quarantine, original=path)
         inventory.unregister(self.common, row)
         if self.current(row) is not None:
             raise CleanupError("Git registration remains after forced removal")
@@ -302,7 +304,15 @@ class Cleaner:
             for entry in entries:
                 if cleanup and dry_run and entry["selected"]:
                     try:
-                        preflight.append(self.stopper.preflight(Path(entry["path"])))
+                        saved = state.records[entry["id"]]
+                        physical = Path(saved.get("quarantine") or entry["path"])
+                        if not physical.exists():
+                            physical = Path(entry["path"])
+                        preflight.append(
+                            self.stopper.preflight(
+                                Path(entry["path"]), physical=physical
+                            )
+                        )
                     except (OSError, ValueError, CleanupError) as exc:
                         preflight.append({"path": entry["path"], "errors": [str(exc)]})
                 unsafe_target = (
@@ -370,6 +380,8 @@ class Cleaner:
             }
             if getattr(self.stopper, "diagnostics", None):
                 report["stop_diagnostics"] = self.stopper.diagnostics
+            if getattr(self.stopper, "reference_checks", None):
+                report["reference_checks"] = self.stopper.reference_checks
             if cleanup and dry_run:
                 report["stop_preflight"] = preflight
             write_json(self.directory / "report-latest.json", report)
