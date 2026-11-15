@@ -8,6 +8,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from src.utils.configuration.errors import PathContractError
+from src.utils.configuration.local_storage import require_hydrated_input
 from src.utils.configuration.schema import ConfigField, StrictConfigSchema
 
 __all__ = [
@@ -239,7 +240,7 @@ class PathResolver:
         if not relative_parts:
             raise PathContractError("At least one relative path part is required.")
         root = self.roots.root(role)
-        resolved_parent = self.validate(role, parent)
+        resolved_parent = self.validate(role, parent, check_local_storage=False)
         candidate = resolved_parent
         forbidden_prefixes = self.roots.forbidden_child_prefixes()
         for part in relative_parts:
@@ -260,6 +261,8 @@ class PathResolver:
                 f"Derived {role.value} path escapes its declared parent: {resolved} "
                 f"(parent: {resolved_parent}, role root: {root})."
             )
+        if role in {PathRole.DATA, PathRole.CHECKPOINT, PathRole.ARTIFACT}:
+            require_hydrated_input(resolved)
         return resolved
 
     def resolve_symlink_entry(
@@ -294,7 +297,9 @@ class PathResolver:
             )
         return entry
 
-    def validate(self, role: PathRole, path: Path) -> Path:
+    def validate(
+        self, role: PathRole, path: Path, *, check_local_storage: bool = True
+    ) -> Path:
         """Validate an already resolved absolute path against its declared root."""
         if not path.is_absolute():
             raise PathContractError(
@@ -306,6 +311,12 @@ class PathResolver:
             raise PathContractError(
                 f"Resolved {role.value} path is outside its root: {resolved} (root: {root})."
             )
+        if check_local_storage and role in {
+            PathRole.DATA,
+            PathRole.CHECKPOINT,
+            PathRole.ARTIFACT,
+        }:
+            require_hydrated_input(resolved)
         return resolved
 
 
