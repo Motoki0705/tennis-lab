@@ -1,16 +1,15 @@
 {
-  "source_commit": "2ec3957635a6d84ae65cafe04c5874a8ddaa1bfa",
+  "source_commit": "5218ca36f1be28a8815bfe40d33373a832834966",
   "independent_validator": {
     "requested": 0,
     "attempted": 0,
     "completed": 0
   },
-  "added_collected_cases": 16,
+  "added_collected_cases": 17,
   "largest_parameterization": 5,
-  "added_slowest_call_seconds": 0.85,
-  "added_max_setup_seconds": 0.02,
-  "related_passed": 381,
-  "related_wall_seconds": 60.18,
+  "added_slowest_call_seconds": 0.5,
+  "related_passed": 382,
+  "related_wall_seconds": 27.39,
   "pre_commit": {
     "ruff": "passed",
     "mypy": "passed"
@@ -19,6 +18,15 @@
     ".venv/bin/python -m pytest -n 0 tests/unit/utils/test_inference_recording.py tests/integration/tennis_scene/test_inference_recording.py --collect-only -q",
     ".venv/bin/python -m pytest -n 0 tests/unit/utils/test_inference_recording.py tests/integration/tennis_scene/test_inference_recording.py --durations=0 -q",
     ".venv/bin/python -m pytest -n 4 tests/unit/tennis_scene/pipeline tests/unit/utils/video tests/unit/submodules/models tests/unit/tasks/court_detection/inference/test_predictor.py tests/unit/tasks/court_detection/inference/test_unified_predictor.py tests/unit/tasks/court_detection/model_io/test_images.py tests/unit/tasks/ball_detection/model_io/test_predict.py tests/unit/utils/test_inference_recording.py tests/integration/tennis_scene/test_inference_recording.py --durations=10 -q",
-    ".venv/bin/pre-commit run"
+    ".venv/bin/pre-commit run",
+    ".venv/bin/python -m pytest -n 0 tests/unit/utils/test_inference_recording.py tests/integration/tennis_scene/test_inference_recording.py tests/unit/tasks/ball_detection/model_io/test_predict.py tests/unit/tasks/ball_detection/visualization/test_predict_mdd.py --durations=0 -q"
+  ],
+  "added_setup_upper_bound_seconds": 0.005,
+  "focused_passed": 23,
+  "focused_wall_seconds": 1.32,
+  "post_measurement_fixes": [
+    "non-finite interval rejection and resource-error JSON",
+    "zero-duration span attribution",
+    "ball forward batch shape after MDD conversion"
   ]
 }
