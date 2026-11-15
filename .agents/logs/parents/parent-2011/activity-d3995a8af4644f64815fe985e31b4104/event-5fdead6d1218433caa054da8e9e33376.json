@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "2ca3efc11f1a4808a8f1baa99c885791",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge_gate.merge; artifact=merge_result; content_sha256=9dd1ecc7cf7d2c4e98eb284dcde2adbdd7b46b4f5abe1f28c66bc4b89137bb63; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "0f4956225cec451fac5e1e0fc16bfb63",
+      "repeat": null,
+      "status": "success",
+      "summary": "merge_gate.merge_result: pr=2134; decision=None; action=None; status=merged; reasons=[]",
+      "verifies": []
+    },
+    "id": "5fdead6d1218433caa054da8e9e33376",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "d3995a8af4644f64815fe985e31b4104",
+      "delegation": null,
+      "issue": null,
+      "parent": 2011,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T11:32:04.021816+00:00"
+      },
+      "recorded_at": "2026-11-15T11:32:04.021829+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "c0c887d8e304433aa17a2571d6adfea8",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review_tools.github_item; artifact=retrieval received receipt; content_sha256=52c880cdd422d274316e4c91e00a156140fad1449fb58268453cd956bb8e79f2; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "failure",
+      "summary": "review_tools.github_item: failure; error=UNSUPPORTED_GH_VERSION",
+      "verifies": []
+    },
+    "id": "0aff2595241f468b9784db6e851f6a50",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "bb2f510294d14a1986c27115697f6dd3",
+      "delegation": null,
+      "issue": null,
+      "parent": 2011,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "f8f290c40bd642649192b37e673e91a6"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-14T16:03:48.123795+00:00"
+      },
+      "recorded_at": "2026-11-14T16:03:48.123809+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

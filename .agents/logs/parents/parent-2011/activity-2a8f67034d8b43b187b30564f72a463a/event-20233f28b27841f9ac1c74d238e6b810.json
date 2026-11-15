@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "13582df4024f492b93f637941f0c9d01",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge_gate.merge; artifact=evaluation; content_sha256=e7aa30b2415561f1b6160783a399cdcc903f78ee58f58089c96333c29cd9f20b; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "rejected",
+      "summary": "merge_gate.evaluation: pr=2043; decision=blocked; action=blocked; status=None; reasons=('review_stage_incomplete', 'review_child_assignment_changed', 'run_failed_or_incomplete', 'pr_2043_not_reviewed', 'parent_review_not_confirmed', 'review_missing')",
+      "verifies": []
+    },
+    "id": "20233f28b27841f9ac1c74d238e6b810",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "2a8f67034d8b43b187b30564f72a463a",
+      "delegation": null,
+      "issue": null,
+      "parent": 2011,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T02:32:50.540174+00:00"
+      },
+      "recorded_at": "2026-11-15T02:32:50.540189+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
