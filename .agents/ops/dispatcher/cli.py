@@ -109,7 +109,9 @@ def execute(args: argparse.Namespace) -> dict[str, Any]:
         return {"result": "initialized", "enabled": False}
     with store.locked():
         state = schedule.read()
-    supervisor = Supervisor(GitHub(state["config"]["repo"]), store, schedule)
+    supervisor = Supervisor(
+        GitHub(state["config"]["repo"], store=store), store, schedule
+    )
     if args.command == "status":
         return supervisor.status(local_time(args.now))
     if args.command in {"enable", "disable", "configure"}:

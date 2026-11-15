@@ -19,7 +19,7 @@ from parent.record_writer import write_record
 from parent.session import ParentSession
 from parent.state import Store, state_directory
 
-from .agent import RUNNER, judge
+from .agent import RUNNER, StopRequest, judge
 from .agent_input import write_agent_input
 from .collect import (
     InputsChanged,
@@ -34,6 +34,7 @@ from .collect import (
 )
 from .records import DETAIL_KEYS, comment_body, owned_comment, read_json
 from .schema import REQUIREMENTS, execution_context, source_url, strings, validate
+from .state import client_for, repository_scope, require_client
 
 RESULT_VERSION = 2
 CANDIDATE_KEYS = {
@@ -57,10 +58,11 @@ CANDIDATE_KEYS = {
 def inputs_for(
     snapshot: dict[str, Any], store: Store, n: int, sources: Sequence[str] = ()
 ) -> dict[str, Any]:
-    session = ParentSession(SnapshotGitHub(snapshot), store, n, None)
-    inputs: dict[str, Any] = execution_input(
-        session, context=execution_context(snapshot, n, sources)
-    )
+    with repository_scope(store):
+        session = ParentSession(SnapshotGitHub(snapshot), store, n, None)
+        inputs: dict[str, Any] = execution_input(
+            session, context=execution_context(snapshot, n, sources)
+        )
     return inputs
 
 
@@ -220,7 +222,7 @@ def record_decision(
     """Caller holds Store.locked(); surround each publication with target checks."""
     n = decision["issue"]
     sources = decision["sources"]
-    session = ParentSession(gh, store, n, None)
+    session = ParentSession(client_for(gh, store), store, n, None)
     assert_fresh(gh, store, root, snapshot, n, sources)
     action = publish_decision(session, decision, snapshot)
     result["publications"].append({"issue": n, "action": action})
@@ -280,9 +282,11 @@ def run(
     apply: bool = False,
     timeout: float = 1800,
     runner: Path = RUNNER,
+    stop: StopRequest | None = None,
 ) -> dict[str, Any]:
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be a finite positive number")
+    require_client(gh, store)
     root, run_dir = root.resolve(), run_dir.resolve()
     run_dir.mkdir(parents=True, mode=0o700, exist_ok=False)
     result: dict[str, Any] = {
@@ -296,6 +300,8 @@ def run(
         "diagnostics": [],
     }
     try:
+        if stop is not None:
+            stop.check()
         with store.locked():
             snapshot = collect(gh, store, root)
             snapshot["input_sha256"] = digest(material(snapshot))
@@ -305,10 +311,18 @@ def run(
                 for n in snapshot["subjects"]
                 if not is_container(snapshot["issues"][str(n)])
             }
+        if stop is not None:
+            stop.check()
         Store.write_json(run_dir / "input.json", snapshot)
         write_agent_input(snapshot, run_dir / "agent-input")
         # Always one fresh turn, even if material equals a previous scheduled run.
-        raw = judge(root, run_dir, timeout, runner)
+        raw = (
+            judge(root, run_dir, timeout, runner)
+            if stop is None
+            else judge(root, run_dir, timeout, runner, stop=stop)
+        )
+        if stop is not None:
+            stop.check()
         Store.write_json(run_dir / "agent-output.json", raw)
         decisions, diagnostics = validate(raw, snapshot)
         result["decisions"] = decisions
@@ -316,13 +330,17 @@ def run(
         with store.locked():
             # Check public payloads before the first irreversible publication.
             for decision in decisions:
-                ParentSession(gh, store, decision["issue"], None).public(decision)
+                ParentSession(
+                    client_for(gh, store), store, decision["issue"], None
+                ).public(decision)
             retain_fresh_decisions(gh, store, root, snapshot, result, "preflight")
         if not apply:
             result["result"] = "preview"
         else:
             candidates = []
             for decision in result["decisions"]:
+                if stop is not None:
+                    stop.check()
                 n = decision["issue"]
                 if is_container(snapshot["issues"][str(n)]):
                     continue
@@ -346,6 +364,8 @@ def run(
             )
         if result["deferred"] and not result["decisions"]:
             result["result"] = "deferred"
+        if stop is not None:
+            stop.check()
     except (
         ValueError,
         OSError,
@@ -382,9 +402,10 @@ def main(argv: list[str] | None = None) -> int:
     require_checkout_job()
     os.umask(0o077)
     try:
+        store = Store(args.parent_state_dir or state_directory())
         result = run(
-            GitHub(args.repo),
-            Store(args.parent_state_dir or state_directory()),
+            GitHub(args.repo, store=store),
+            store,
             args.cwd,
             args.run_dir,
             apply=args.apply,
