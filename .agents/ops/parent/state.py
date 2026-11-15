@@ -178,6 +178,31 @@ class Store:
         yield self
 
     @contextmanager
+    def consistent_snapshot(self) -> Iterator[Store]:
+        """Read a validated snapshot that never interleaves with a peer save.
+
+        Every save holds registry.lock exclusively, and a v2 read spans the
+        ownership index and each parent record. A shared hold covers only that
+        read; callers run their GitHub I/O after it is released, so peers are
+        never blocked by remote latency. The snapshot is read-only: it opens no
+        transaction and cannot save.
+        """
+        from lib.checkout_lock import registry_checkout_lock
+
+        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with registry_checkout_lock():
+            with (self.directory / "registry.lock").open("a", encoding="utf-8") as lock:
+                os.chmod(lock.name, 0o600)
+                metrics.flock(lock, fcntl.LOCK_SH)
+                try:
+                    data = self.read_data()
+                finally:
+                    metrics.flock(lock, fcntl.LOCK_UN)
+            self.data = data
+            self._validate_loaded()
+        yield self
+
+    @contextmanager
     def locked(self) -> Iterator[Store]:
         from lib.checkout_lock import registry_checkout_lock
 

@@ -159,6 +159,11 @@ PYTHONPATH=.agents/ops .venv/bin/python .agents/ops/checkout_job.py --repo "$PWD
 失効した候補をcloseコメントに列挙し、承認済み・未取り出しを区別する。同じコメントを再投稿しない。
 GitHub取得・更新に失敗すれば非0で終了し、stdoutのclosed/pending/errorsに部分結果を返す。
 成功済みのcloseを戻さず、再実行で残りを処理する。
+実行・dry-runともrepo単位の改善操作ロックでpropose・decide・extractと直列化する。
+dry-runの初回は空の改善操作lockファイルを作成し得るが、業務stateは保存しない。
+期限処理は担当registryを保存しない。公開情報の検査用に検証済みsnapshotを読み、GitHub操作は
+registry transactionに束縛しないclientで行う。他の親の担当記録が取得中に更新されても期限処理の競合にはしない。
+判断ログの捕捉や元親の候補event追加は行わず、期限切れコメントと提案本文・closeだけを更新する。
 
 `parent/systemd/tennis-lab-improvement-expire.service` はoneshot、対応timerは日次・`Persistent=true`。
 mainへmerge後に [unit installer](../install_units.sh) を使う（この操作だけでは有効化しない）。

@@ -153,11 +153,13 @@ boardの投稿/status、worker_status、herdr_labels、issuesの短い管理CLI�
 reviewの本体・親の内部APIは `lib.ops_review` の固有import名から既存のreviewソースを読む。
 他モデルの同名 `review` package/namespaceが先に読み込まれていても、それを置換しない。
 
-parent/dispatcherの `Store.locked()` とworktree expiryのjournal回復は、必ず
+parent/dispatcherの `Store.locked()` / `consistent_snapshot()` とworktree expiryのjournal回復は、必ず
 **checkout → registry** の順に取得する。直接Python APIやworktreeからの呼出も、transaction中は
 sourceのGit共通ディレクトリの共有lockを取る。保存済みjobがメイン由来のrunnerを参照する場合も、
 registryを持ったままrunnerのcheckout待ちに入らないためである。registryを一時解放するI/O中も
 checkoutは保持し、再取得の順序を変えない。更新が先ならregistry取得前に理由を出して待つ。
+`consistent_snapshot()` はregistryを共有読取後に、自分で追加したcheckout lockを検証後に解放する。
+呼出元のGitHub I/Oでregistryを保持せず、入口の寿命lockは終了まで続く。
 
 dispatcherの `__main__.py` / `cli.py` / `dispatch.py` も薄いbootstrapで、
 `dispatcher.cli_impl` のimport前に保護する。runは有限launcher、superviseは専用launcherという

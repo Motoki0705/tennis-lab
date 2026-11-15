@@ -148,6 +148,12 @@ import sys
 from dispatcher.cli_impl import main
 print('api-imported', flush=True)
 sys.stdin.readline()
+if sys.argv[1] == 'consistent-snapshot':
+    from pathlib import Path
+    from parent.state import Store
+    with Store(Path(sys.argv[2])).consistent_snapshot():
+        print('snapshot-read', flush=True)
+    raise SystemExit(0)
 raise SystemExit(main())
 """
 
@@ -166,14 +172,24 @@ def stop(process: subprocess.Popen[str], *, group: bool = False) -> None:
         process.communicate(timeout=5)
 
 
-@pytest.mark.parametrize("entry", ["cli", "api"])
-@pytest.mark.parametrize("operation", ["shutdown", "recover-judgement"])
+@pytest.mark.parametrize(
+    ("entry", "operation"),
+    [
+        ("cli", "shutdown"),
+        ("api", "shutdown"),
+        ("cli", "recover-judgement"),
+        ("api", "recover-judgement"),
+        ("api", "consistent-snapshot"),
+    ],
+)
 def test_update_first_never_waits_for_a_registry_owner_waiting_for_checkout(
     world: World,
     entry: str,
     operation: str,
 ) -> None:
     arguments = [operation]
+    if operation == "consistent-snapshot":
+        arguments.append(str(world.parent))
     if operation == "recover-judgement":
         evidence = world.repo.parent / "recovery.txt"
         evidence.write_text("verified controller end\n")
