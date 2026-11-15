@@ -1,9 +1,10 @@
 # Resume a stopped desktop attempt
 
-Attempt 5 is active after the 2026-11-14 storage recovery and verified NVMe work
-copy. Do not execute recovery while its unit/job is live. Attempt 4's closed
-failure remains in `attempt-4-storage-stop.json`; its uncommitted 1,001–1,313
-suffix was discarded. The commands below are for a future stopped attempt.
+Attempt 6 is active after resuming the Drive-verified C1 update-6,500
+generation on 2026-11-15. Do not recover while its unit/job is live. Attempt 5
+ended in an externally reported WSL shutdown without a terminal event; its
+uncommitted 6,501–6,605 suffix and stale running history remain preserved.
+The commands below are for a future stopped attempt, using unused attempt 7.
 
 First inspect the unit/job in `monitoring-handoff.json`, queue state, GPU processes,
 `production-FAILED.json`, `production-FAILED-<case>-encoder_msda.json` and the terminal event. Diagnose the
@@ -23,8 +24,8 @@ configuration. Choose a fresh root suffix, never delete or reuse a failed root.
 cd "$SOURCE"
 export RCLONE_CONFIG=/home/kamimura/.config/tennis-lab/rclone-drive.conf
 export PYTHONDONTWRITEBYTECODE=1
-OLD_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme
-NEW_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme
+OLD_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme
+NEW_ROOT=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a7-nvme
 HOT_ROOT=/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1
 CANONICAL_DATA=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.claude/worktrees/ball-arch-desktop/outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261113-a4/dataset
 ADAPTER="$SOURCE/knowledge/runs/run-ball-arch-desktop-20261113"
@@ -104,3 +105,19 @@ and derived manifest/artifact digests. Model/AdamW/RNG/schedule/sampler and the
 1,000-row committed prefix were compared exactly, and the real runner confirmed
 the restored state. Future recovery selects the latest verified pointer, which
 may have advanced; it never adopts an uncommitted local suffix.
+
+Attempt 6 independently restored `checkpoint-00006500-1b54ed05` with its pinned
+manifest and full-state equality. The committed 6,500-row prefix was unchanged;
+source changes and added state keys were empty, and C1 activation checkpointing
+remained off. Both T2 stages and T1 tail retained verified completion, all
+85,473 observed validation frames and their per-frame predictions. After a
+hard WSL shutdown, do not infer liveness from a stale queue file or successful
+completion from a missing terminal event: check the unit, captured process
+identities and GPU, then preserve the old record and use a new attempt key.
+
+The D dataset received full size/SHA validation in attempt 6. Its separate
+`dataset-stat-ledger.json` records size/mtime for every payload after validation
+for a later reuse decision. The unchanged bootstrap still performs a full SHA
+scan. The total host RAM observed after restart was about 39.17 GiB; admission
+6 GiB, emergency 2 GiB, service MemoryHigh/Max 18/20 GiB, allocator 80% and both
+10-GiB capacity floors are unchanged. No WSL configuration was edited.

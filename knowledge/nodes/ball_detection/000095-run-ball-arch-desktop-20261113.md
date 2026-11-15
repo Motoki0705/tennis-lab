@@ -3,7 +3,7 @@ id: run-ball-arch-desktop-20261113
 type: run
 task: ball_detection
 sequence: 95
-recorded_at: '2026-11-14'
+recorded_at: '2026-11-15'
 title: RTX 5060 Tiへの本学習移管とactivation checkpointing検証
 issue: 1859
 provider: codex
@@ -49,9 +49,13 @@ metrics:
   attempt5_warm_median_data_wait_seconds: 0.0010126064998985385
   attempt5_peak_allocated_bytes: 10803609600
   attempt5_peak_reserved_bytes: 12763267072
+  attempt6_c1_warm_median_update_seconds: 1.8173975565000546
+  attempt6_c1_warm_median_data_wait_seconds: 0.0010403244998542505
+  attempt6_peak_allocated_bytes: 9786588672
+  attempt6_peak_reserved_bytes: 10810818560
 artifacts:
   run_dir: knowledge/runs/run-ball-arch-desktop-20261113
-  output_dir: outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme
+  output_dir: outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme
   drive_outputs: outputs/ball_detection/train/arch_efficiency/s42-20261111/desktop-attempts/20261113-a1
 repro:
   commit: 7d7a2e4faad1a42cdab0ed355b4edc472c8f9db0
@@ -123,3 +127,15 @@ WSL復旧で正本データ・outputs・私有env/native/cacheがE側ext4へ移�
 初回更新は63.164秒（compile込み）、data_wait1.785秒。後続10更新の中央値はupdate3.280411秒、data_wait0.0010126065秒、data_wait最大0.001477583秒で、wait/update比の中央値は0.03065%。a4同prefixの中央値はupdate3.453193秒、data_wait0.0008668925秒だった。a4当時は移設前のD上で学習しており、E-only stagingでは学習未起動だったため、HDD学習baselineは存在しない。この差をHDD→NVMeの効果へ帰属せず、復旧前後の短い参考prefixとして扱う。新prefixでデータ待ちは更新時間の小部分だった。
 
 allocated最大10,803,609,600 / reserved最大12,763,267,072 bytesは上限13,682,291,507以内。host available最小12,376,064,000、admission最小12,575,571,968、D最小319,722,835,968、E最小3,851,784,626,176 bytesで、各下限内。親子RSS合計最大11,845,734,400 bytes、RAM waitとguard発火は0。起動prefixの根拠は`attempt-5-startup-acceptance.json`、コピー・復元は`attempt-5-recovery.json`、現在のunit/job/PID/PGID・terminal event・待機/容量logと未使用attempt6の復旧手順は更新した`monitoring-handoff.json`。workerの進捗観測はこのprefixで終え、T2/C1〜C3の完走と評価は親へ返す。定期follow-upは登録しない。モデル採用やsummaryの判断は変わらない。
+
+# 外部WSL shutdown後のC1再開（attempt 6、2026-11-15）
+
+親の確認による外部WSL shutdownでattempt 5が停止した。serviceはinactive、旧wrapper・serial・学習PIDは消失し、GPU processは空だった。失敗記録・terminal eventはなく、学習の数値異常とは扱わない。queueの旧running記録は証拠として変更せず、新しいattempt6のkey/unitを使った。新しいwriterの共有all-resource予約と独立systemd serviceを確認した。
+
+Dのhot copy全2,925 payload・157,028,755,547 bytesを全件サイズ/SHAで再照合し、270.940秒、追加コピー0だった。実filesystem、独立inode/link数1、E入力のhardlink55資産、167 package版、native binary SHA/import、Inductor/Triton cacheを確認した。再起動後のRAM総量は約39.17GiBへ増えていたが、コード・ガード・recipeを変えず、実行commitは7d7a2e4faのまま。共有.venvやWSL設定は変更していない。
+
+DriveのC1 `checkpoint-00006500-1b54ed05`をmarker固定で独立復元した。model/AdamW/RNG/schedule/samplerと6,500行のcommitted prefixが一致し、source差分・追加state keyは0、C1のactivation checkpointingはoffを保った。未保存6,501〜6,605は採用しない。T1後半・T2前後半のcompleted snapshotも独立復元し、各固定validationのobserved85,473・identity・per-frame予測を確認して再実行しない。
+
+C1の6,501〜6,511更新（compile初回＋後続10回）はloss/勾配/LRが有限、update/sample位置が連続で、data draw/augmentation/LRがa5の同prefixと一致した。warm10回のmedianはupdate 1.817398秒、data_wait 0.001040324秒。両方ともD copyを読む短い観測であり、HDD移行の効果やL4比較にはしない。peak allocated/reservedは9786588672 / 10810818560 bytesでallocator内、RAM/D/Eも各下限内だった。
+
+引継ぎ正本はmonitoring-handoff.jsonとattempt-6-recovery.json / attempt-6-startup-acceptance.json。unit/queue/root、terminal event、wait/capacity log、次の未使用attempt7復旧コマンドを更新した。workerはこのprefix以後の学習進捗を監視せず、C1〜C3の完走・評価と統合判断を親へ返す。summaryの採用判断は変わらない（summary_impact: none）。

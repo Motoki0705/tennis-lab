@@ -1,22 +1,36 @@
 # RTX 5060 Ti continuation of the architecture campaign
 
-Current state: **attempt 5 is running from verified T2 update 1,000** with the
-NVMe dataset work copy. Updates 1,001–1,011 passed the startup acceptance below.
-Attempt 4's closed failure remains in [attempt-4-storage-stop.json](attempt-4-storage-stop.json).
-Canonical data, outputs, private environment and caches reside on the mounted
-ext4 data volume at `/mnt/wsl/tennis-data`; original output aliases are symlinks.
-The hot dataset is an independent copy at
-`/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1` on the WSL root/NVMe
-filesystem. The E source is unchanged. The earlier E-only attempt-5 staging and
-its interrupted recovery are retained; no production registration used that root.
-The current [monitoring-handoff.json](monitoring-handoff.json) identifies its
-live unit/queue/processes, terminal event and future recovery commands.
+Current state: **attempt 6 is running from independently verified C1 update
+6,500**, after the external WSL shutdown on 2026-11-15. C1 updates 6,501–6,511
+(the first compiled update plus ten subsequent updates) passed finite-value,
+continuity and resource acceptance. T1 tail and both T2 stages were independently
+restored as completed with their fixed validation contracts/predictions; they
+are skipped. C1 continues to 10,000, then C2 and C3 run in the existing order.
+The frozen execution commit remains `7d7a2e4fa`; code, guards and recipes are unchanged.
+
+The D hot dataset at
+`/home/kamimura/tennis-hot/ball-arch-s42-20261111-fixed-v1` was fully SHA-verified
+again (2,925 payloads / 157,028,755,547 bytes; 270.940 seconds, no copied bytes).
+It remains an independent copy on the WSL root filesystem. Inputs, outputs,
+private environment and caches remain on the mounted E ext4 data volume.
+The current [monitoring-handoff.json](monitoring-handoff.json) identifies the
+unit/queue/PID identities, terminal event, wait/capacity records and unused
+attempt-7 recovery commands. The parent owns monitoring after this acceptance;
+the worker registers no periodic follow-up and does not wait for C1 completion.
+
+Attempt 5's interrupted 6,501–6,605 suffix is retained but not adopted.
+Its inactive service, absent process identities and empty GPU were verified;
+the stale `running` queue record is preserved as history. Abrupt WSL shutdown
+can prevent both normal notifications and ExecStopPost: absence of a terminal
+event is not completion. [attempt-6-recovery.json](attempt-6-recovery.json) and
+[attempt-6-startup-acceptance.json](attempt-6-startup-acceptance.json) hold the
+closed recovery/acceptance proof. Earlier failures and attempts remain retained.
 
 Refs #1859. The [2026-11-13 agreement](https://github.com/Motoki0705/tennis-lab/issues/1859#issuecomment-6840801232)
 supersedes the original prohibition on checkpointing for T1/T2. The initial desktop migration started
 T1 from tail update 5,500 (query cumulative 11,500). T1 has since completed with
-verified validation and predictions. Attempt 4 resumes the verified T2 first-stage
-update 1,000, then continues its remaining stages, C1, C2 and C3.
+verified validation and predictions. The current attempt resumes C1 update 6,500 after the completed query stages,
+then continues C1, C2 and C3.
 No completed stage is repeated. C1/C2/C3 retain their original recipe and do not
 checkpoint activations. A different GPU cannot promise bitwise continuation.
 Its timing/memory must not be compared with the historical untrained L4 benchmark.
@@ -27,7 +41,7 @@ qualification, lifecycle and evidence; it does not replace historical generation
 
 ## Inputs and safety
 
-`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a5-nvme`
+`$ROOT` is the recovery output `outputs/ball_detection/train/arch_efficiency/desktop-recovery-20261114-a6-nvme`
 below the implementation worktree. `$SOURCE` is the immutable pushed runtime checkout.
 `$ADAPTER` is this directory in that checkout. `$PY` is `$ROOT/env-original/bin/python`.
 `$QUEUE` is the main repository's shared `.training_queue`; set `$RCLONE_CONFIG`
@@ -225,8 +239,9 @@ verified copy of these reporting files.
 | Parent milestone | Authoritative evidence |
 | --- | --- |
 | T1 tail 6,000 / query 12k | `stage-status/T1-q06000-q12000/state.json`: event completed, update 6000, receipt/readback verified, checkpoint_state_equal true. `validation-update-00006000.json`: observed 85473 and matching target/teacher/frame identities; its `.frames.jsonl` must be in that verified snapshot. |
-| T2 first 500 checkpoint | Retained `persistence/T2-q00000-q06000/*.json` entry: event checkpoint, update 500, verified receipt/readback and checkpoint_state_equal true. The mutable latest pointer may already be later. |
+| T2 first 500 checkpoint (historical) | Verified in attempt 3; its retained `persistence/T2-q00000-q06000/*.json` entry has event checkpoint, update 500, verified receipt/readback and checkpoint_state_equal true. The active root now restores the completed stage. |
 | T2 CNN unfreeze | Its `train.jsonl` row 600 has encoder_frozen true, row 601 false, subsequent updates/samples continuous with finite loss/gradient/LR. |
+| C1 next checkpoint 7,000 | `persistence/C1-dpt-10000/*.json` entry with update 7000, receipt/readback verified and checkpoint_state_equal true. The mutable latest pointer may already be later. |
 | Each condition completed | Matching stage completed pointer and local COMPLETED marker, exact budget (T 6000 per stage, C 10000), fixed validation/prediction readback; controller moves on only afterward. |
 | Whole serial process ended | Root COMPLETED.json plus every completed stage, queue done, and the recorded terminal event state done / returncode 0. A service exit alone does not prove completion. |
 
@@ -242,7 +257,7 @@ The historical attempt-2 startup prefix is retained in `startup-acceptance.json`
 (update 5511 / sample 21511, execution `cb3243ed4`). Its later storage failure
 is recorded in [attempt-2-storage-recovery.json](attempt-2-storage-recovery.json).
 The historical attempt-3 acceptance prefix remains in
-`attempt-3-startup-acceptance.json`; the current handoff identifies attempt 4.
+`attempt-3-startup-acceptance.json`; later attempts superseded that handoff.
 
 ## Interrupted 6,000 checkpoint recovery
 
@@ -292,8 +307,9 @@ inside the 4 GiB / 10 GiB lower bounds. See
 [attempt-3-startup-acceptance.json](attempt-3-startup-acceptance.json).
 
 The historical attempt-3 unit was `tennis-ball-arch-desktop-production-20261113-a3.service`; it later failed at the old RAM floor.
-The historical prefix precedes its later RAM failure. The current handoff records
-attempt 4, its terminal-event path and fresh-root attempt-5 recovery commands.
+The historical prefix precedes its later RAM failure. That handoff recorded
+attempt 4, its terminal-event path and fresh-root attempt-5 recovery commands;
+use the current handoff for today's identities and next attempt.
 T2's first checkpoint and unfreeze were verified in attempt 3; remaining stage
 completions belong to the parent. No periodic follow-up or further live progress
 polling is registered by this worker.
@@ -386,11 +402,11 @@ reporting HEAD passed CI Python; this subsequent runtime failure is separate.
 
 Local updates 1,001–1,313 / sample positions 11,001–11,313 remained continuous
 and finite. They have no newer verified checkpoint and must not be adopted.
-The latest verified pointer remains update 1,000,
+At that stop the latest verified pointer remained update 1,000,
 `initialized-00001000-120a3ef2`, with matching full-state/readback evidence.
 The successful startup proof remains a historical prefix; it does not assert
-current service liveness or worker completion. The current handoff sets
-`worker_acceptance_complete=false` and records the storage block.
+current service liveness or worker completion. The handoff at that stop set
+`worker_acceptance_complete=false` and recorded the storage block.
 
 At the stop investigation D: available was 6,279,356,416 bytes, already below
 the limit. No additional cleanup or restart was performed. The evidence does
@@ -460,8 +476,29 @@ passed. No additional CUDA numerical qualification was needed for a file relocat
 the same binary/environment were verified and real queued forward/backward/compile
 ran in the accepted prefix. Existing native qualification remains retained.
 
-Current identities, terminal event, stage/receipt/wait/guard paths, milestones and
-fresh unused attempt-6 commands are in the committed handoff. The frozen runtime
-checkout stays fixed while reporting commits advance. Worker progress observation
-ends at this prefix; T2/C1/C2/C3 completion and final analysis belong to the parent.
-No periodic follow-up is registered.
+That attempt-5 handoff contained fresh attempt-6 recovery commands. Its later
+external shutdown and the current C1 acceptance are recorded at the top of this
+document and in the current handoff. The frozen runtime checkout stays fixed
+while reporting commits advance; no periodic follow-up is registered.
+
+## Attempt-6 timing and verification
+
+The real runner restored 181 model state keys and 177 AdamW states, RNG and
+sample position 6,500 exactly. The accepted prefix replays the same data draws,
+augmentation and learning rates as attempt 5. C1 keeps T32, the original DPT
+recipe and activation checkpointing off. No runtime code changed.
+
+| C1 update prefix 6,502–6,511 | Median update seconds | Median data wait seconds |
+| --- | ---: | ---: |
+| Attempt 5, D NVMe copy | 1.839151 | 0.001006535 |
+| Attempt 6, same D NVMe copy | 1.817398 | 0.001040324 |
+
+Attempt 6's first update took 25.598 seconds including compilation, with 1.360
+seconds of data wait. This short prefix is not a controlled storage benchmark.
+The startup's fixed upfront image verification also ran before updates.
+Six restored RAM-wait events belong to old updates 5,521/5,585/5,707; the new
+accepted prefix had no admission wait. Peak allocated/reserved was
+9,786,588,672 / 10,810,818,560 bytes, under the unchanged 13,682,291,507-byte cap.
+Minimum host available was 29,083,549,696, D: 306,770,300,928 and E:
+3,772,008,771,584 bytes, all inside their floors. Parent/children RSS peaked at
+8,524,324,864 bytes. See the small attempt-6 proof JSON for complete samples.
