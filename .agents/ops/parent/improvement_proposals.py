@@ -117,9 +117,9 @@ def validate_candidate(row: dict[str, Any]) -> None:
         )
 
 
-def candidate_requirements(spec: dict[str, Any]) -> dict[str, str]:
-    """Freeze every candidate field, including exclusions and stopping rules."""
-    sections = {
+def candidate_sections(spec: dict[str, Any]) -> dict[str, str]:
+    """Candidate fields as written, with line breaks kept for display."""
+    return {
         "目的・背景": spec["purpose"] + "\n\n" + spec["observation"],
         "全体のスコープ": "対象:\n"
         + spec["scope"]
@@ -132,6 +132,11 @@ def candidate_requirements(spec: dict[str, Any]) -> dict[str, str]:
         "未決事項・人間の判断が必要な点": spec["unknowns"],
         "期待する効果": spec["expected_effect"],
     }
+
+
+def candidate_requirements(spec: dict[str, Any]) -> dict[str, str]:
+    """Freeze every candidate field, including exclusions and stopping rules."""
+    sections = candidate_sections(spec)
     # Same normalization as the existing execution contract, without an Issue body.
     return contract("\n\n".join(f"## {h}\n\n{v}" for h, v in sections.items()))
 
@@ -356,11 +361,38 @@ def extraction_draft(
     snapshots = {
         k: r["decisions"][-1]["data"]["requirements"] for k, r in selected.items()
     }
-    headings = sorted({h for snapshot in snapshots.values() for h in snapshot})
+    # Approval snapshots are whitespace-normalized for comparison only. Display the
+    # approved revision as written, so lists and paragraphs keep their line breaks.
+    written: dict[str, dict[str, str]] = {}
+    for k, r in selected.items():
+        spec = r["candidate"]["data"]["spec"]
+        if candidate_requirements(spec) != snapshots[k]:
+            raise ValueError(
+                f"I-{source.parent}-{k}: approved snapshot differs from the candidate revision"
+            )
+        written[k] = candidate_sections(spec)
+    draft = _extraction_body(session, source, selected, written)
+    if contract(draft["body"]) != contract(
+        _extraction_body(session, source, selected, snapshots)["body"]
+    ):
+        raise ValueError(
+            "candidate line breaks change the approved section structure; "
+            "update the candidate text before extraction"
+        )
+    return draft
+
+
+def _extraction_body(
+    session: ParentSession,
+    source: Extraction,
+    selected: dict[str, Any],
+    texts: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    headings = sorted({h for text in texts.values() for h in text})
     sections = {
         h: "\n\n".join(
             f"### I-{source.parent}-{k}\n\n{v[h]}"
-            for k, v in sorted(snapshots.items())
+            for k, v in sorted(texts.items())
             if h in v
         )
         for h in headings
