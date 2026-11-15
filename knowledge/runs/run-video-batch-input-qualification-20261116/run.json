@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8205243388358865349_2026-11-15T15-30-11-641134650Z_336854_video-batch-input-qualification",
+  "name": "video-batch-input-qualification",
+  "command": "TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/outputs/player_detection/evaluate/coco_fullframe/i964-r5-20260929/dino_extension/lib/MultiScaleDeformableAttention.so .venv/bin/python knowledge/runs/run-video-batch-baseline-20261116/qualify_inputs.py",
+  "provider": "codex",
+  "session": "01a1dfbd-594e-7f72-9f3a-53d3f7f3a340",
+  "issue": "1748",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "ec4c192060d4394d7e2a486bf2536a8ec8cd0337",
+  "branch": "codex/video-batch-baseline",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline",
+  "captured_at": "2026-11-16T00:44:06+09:00"
+}

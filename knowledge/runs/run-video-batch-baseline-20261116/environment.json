@@ -1,0 +1,12 @@
+{
+  "python": "3.11.15 (main, Mar 24 2026, 22:50:29) [Clang 22.1.1 ]",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "torch": "2.13.0+cu130",
+  "torch_cuda": "13.0",
+  "opencv": "5.0.0",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti, 610.88, 16311",
+  "dino_extension": "outputs/player_detection/evaluate/coco_fullframe/i964-r5-20260929/dino_extension/lib/MultiScaleDeformableAttention.so",
+  "dino_extension_sha256": "e4effe790b4cd9b47d45cf68bbc26958d1be658574fc7a1dd84089b4dc647f3f",
+  "dino_submodule": "d84a491d41898b3befd8294d1cf2614661fc0953",
+  "dinov3_submodule": "4add255125e6cbf446c6a43c5f3028aa41b63648"
+}
