@@ -109,8 +109,10 @@ merge後の確認が残れば同じworkerへ続けて依頼する。issueのclos
 通常設定selectでは、[モデル選択手順](../../ops/parent/README.md#正式レビューのモデル選択)に従い
 `--review-model` と `--model-reason-file` を渡す。具体例・引継ぎ・使用量確認・fixedへの復帰は同節を正本とする。
 目的・確認点・利用可能な証拠を渡す。取得できない証拠はその事実と代替を示し、残る判断不能点を具体化させる。
-対象ごとの初回レビューに再実行理由は不要。同じ対象を再レビューする場合は、その必要性を判断して理由を付ける。
-指摘・修正・テストを親が確認し、`review-state --state fixes_verified` に確認結果を記録する。
+正式レビューは対象PRごとに1回だけ行う。blocker・majorを含む指摘があっても、修正後に再レビューしない。
+指摘はworkerに修正させ、親が修正・回帰テスト・CIを確認して、指摘ごとに `parent_review.py resolve` で解消を記録し、
+`review-state --state fixes_verified` に確認結果を記録する。
+再レビューするのは、人間が指示した場合と、結果を出さずに終わったrun（準備失敗・中断・`incomplete`）のやり直しだけで、理由を付ける。
 受領と確認が同時なら、`result_received` を別操作で先に記録する必要はない。
 具体的な起動・結果・指摘解消の契約は [review README](../../ops/review/README.md)を参照する。
 
