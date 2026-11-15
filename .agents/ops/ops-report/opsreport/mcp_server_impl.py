@@ -45,7 +45,7 @@ def source(args: argparse.Namespace, *, runner: TestRunner | None = None) -> Ret
         or allowlist["base_sha"] != args.base_sha
     ):
         raise ValueError("host CPU-test allowlist must match the fixed base SHA")
-    from .reproduction_server import ReproductionServer
+    from .reproduction_server_impl import ReproductionServer
 
     return ReproductionServer(
         args.repo,

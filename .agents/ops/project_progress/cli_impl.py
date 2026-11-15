@@ -39,6 +39,3 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, OSError, KeyError, TypeError, subprocess.TimeoutExpired) as exc:
         print(f"project-progress: {exc}", file=sys.stderr)
         return 2
-
-
-raise SystemExit(main())
