@@ -9,6 +9,7 @@ from __future__ import annotations
 import functools
 import heapq
 import json
+import math
 import os
 import resource
 import threading
@@ -69,8 +70,8 @@ class InferenceRecorder:
 
     def __init__(self, destination: Path, *, metadata: Mapping[str, Any] | None = None,
                  devices: Sequence[str] = (), sample_interval: float = 0.1) -> None:
-        if sample_interval <= 0:
-            raise ValueError("sample_interval must be positive")
+        if not math.isfinite(sample_interval) or sample_interval <= 0:
+            raise ValueError("sample_interval must be finite and positive")
         self.destination = destination
         self.metadata = dict(metadata or {})
         self.devices = tuple(devices)
@@ -123,15 +124,18 @@ class InferenceRecorder:
     def _finish(self, kind: Any, error: Any) -> None:
         self._stop.set()
         self._thread.join()
-        self._sample()
-        self.resources["ram_process_lifetime_peak_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
-        if self.devices:
-            import torch
+        try:
+            self._sample()
+            self.resources["ram_process_lifetime_peak_bytes"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
+            if self.devices:
+                import torch
 
-            self.resources["cuda"] = {device: {
-                "allocated_peak_bytes": torch.cuda.max_memory_allocated(device),
-                "reserved_peak_bytes": torch.cuda.max_memory_reserved(device),
-            } for device in self.devices}
+                self.resources["cuda"] = {device: {
+                    "allocated_peak_bytes": torch.cuda.max_memory_allocated(device),
+                    "reserved_peak_bytes": torch.cuda.max_memory_reserved(device),
+                } for device in self.devices}
+        except Exception as exc:
+            self._sample_errors.append(f"{type(exc).__name__}: {exc}")
         assert self._started_ns is not None
         total_ns = time.perf_counter_ns() - self._started_ns
         events = sorted(self.events, key=lambda event: event["id"])

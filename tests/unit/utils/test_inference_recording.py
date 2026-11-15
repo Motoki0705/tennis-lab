@@ -122,3 +122,39 @@ def test_nested_recorder_rejected_and_context_restored_after_failure(tmp_path: P
         pass
     assert next(e for e in recorder.events if e["stage"] == "inference")["attributes"]["batch_items"] == 0
     assert not (tmp_path / "nested.json").exists()
+
+
+@pytest.mark.parametrize("interval", [0., -1., float("nan"), float("inf"), -float("inf")])
+def test_invalid_sampling_interval_fails_before_resources_start(tmp_path: Path, interval: float) -> None:
+    with pytest.raises(ValueError, match="finite and positive"):
+        InferenceRecorder(tmp_path / "record.json", sample_interval=interval)
+    assert not list(tmp_path.iterdir())
+
+
+def test_initialization_failure_restores_the_execution_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def unavailable() -> None:
+        raise OSError("resource source unavailable")
+
+    broken = InferenceRecorder(tmp_path / "broken.json")
+    monkeypatch.setattr(broken, "_sample", unavailable)
+    with pytest.raises(OSError, match="resource source unavailable"), broken:
+        pytest.fail("Initialization must fail before running inference")
+    with InferenceRecorder(tmp_path / "next.json"):
+        pass
+    assert json.loads((tmp_path / "next.json").read_text())["status"] == "complete"
+
+
+def test_final_sampling_failure_saves_error_record_and_restores_context(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def unavailable() -> None:
+        raise OSError("final resource sample unavailable")
+
+    with pytest.raises(RuntimeError, match="resource sampling failed"), InferenceRecorder(tmp_path / "failed.json", sample_interval=60) as recorder:
+        with span("decode"):
+            pass
+        monkeypatch.setattr(recorder, "_sample", unavailable)
+    record = json.loads((tmp_path / "failed.json").read_text())
+    assert record["status"] == "failed"
+    assert "final resource sample unavailable" in record["measurement_errors"][0]
+    assert any(e["stage"] == "decode" for e in record["events"])
+    with InferenceRecorder(tmp_path / "next.json"):
+        pass
