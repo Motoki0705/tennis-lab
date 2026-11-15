@@ -97,7 +97,7 @@ set済みなら起動せず、実行中のsetはprocess groupを停止・回収�
 長時間動き得る次の入口は `guard_interactive_cli()` をproject importより前に呼び、
 メインcheckoutのコードを終了まで共有lockで保護する。**起動方法は従来どおりで、launcherの追加は不要**。
 同じ入口の短いstatus/help操作も保護する。subcommandの選別と入口の取りこぼしを避け、
-数個のGit/lock操作に留めるための判断である。
+Gitメタデータの読取とlock操作に留めるための判断である。
 
 | 入口 | 保持する期間・用途 |
 |---|---|
@@ -114,7 +114,9 @@ set済みなら起動せず、実行中のsetはprocess groupを停止・回収�
 lockの対象は `checkout_lock.py` 自身の実体が属するcheckoutで決める。cwd、`--repo`、
 state先や継承した環境変数で別checkoutのlockを取らない。linked worktree由来のコードは
 メインを保護する必要がないため取得しない。内部APIのimportも新たな寿命lockを取らない。
-checkoutの識別では `GIT_DIR` / `GIT_COMMON_DIR` / `GIT_WORK_TREE` の継承値を除外する。
+入口のbootstrapは自身の `.git` / gitdir / commondirを直接読み、外部commandを起動しない。
+separate git-dirのメインも保護し、壊れたメタデータは75で拒否する。
+共通Git照会も `GIT_DIR` / `GIT_COMMON_DIR` / `GIT_WORK_TREE` の継承値を除外する。
 
 更新側が排他lockを持っていれば、待機をstderrへ出し、**更新完了を待ってからproject importを始める**。
 取得・repoの識別に失敗した場合や、取得後にも中断マーカーが残る場合は、理由を出して75で拒否する。

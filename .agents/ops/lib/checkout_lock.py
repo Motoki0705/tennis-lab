@@ -35,6 +35,36 @@ def _release_cli_lock() -> None:
         _cli_lock = None
 
 
+def _source_git_directory(root: Path) -> Path | None:
+    """Locate the bootstrap's Git metadata without invoking caller-supplied tools."""
+    marker = root / ".git"
+    if marker.is_dir():
+        directory = marker.resolve()
+    else:
+        location = marker.read_text(encoding="utf-8").strip()
+        prefix = "gitdir: "
+        if (
+            not location.startswith(prefix)
+            or "\n" in location
+            or not location[len(prefix) :]
+        ):
+            raise ValueError("invalid source checkout gitfile")
+        directory = (root / location[len(prefix) :]).resolve()
+    if not (directory / "HEAD").is_file():
+        raise ValueError("source checkout Git directory has no HEAD")
+    common = directory / "commondir"
+    if common.exists():
+        location = common.read_text(encoding="utf-8").strip()
+        if not location or "\n" in location:
+            raise ValueError("invalid source checkout commondir")
+        shared = (directory / location).resolve()
+        if not (shared / "objects").is_dir():
+            raise ValueError("source checkout commondir is not a Git directory")
+        if shared != directory:
+            return None
+    return directory
+
+
 def guard_interactive_cli() -> None:
     """Pin this module's main checkout before importing operational code.
 
@@ -46,43 +76,27 @@ def guard_interactive_cli() -> None:
         return
     root = Path(__file__).resolve().parents[3]
     try:
-        directories = subprocess.check_output(
-            [
-                "git",
-                "-C",
-                str(root),
-                "rev-parse",
-                "--path-format=absolute",
-                "--git-dir",
-                "--git-common-dir",
-                "--show-toplevel",
-            ],
-            text=True,
-            stderr=subprocess.PIPE,
-            env=_git_environment(),
-        ).splitlines()
-        git_dir, common, top = map(Path, directories)
-        if top != root:
-            raise ValueError("operational source is outside its checkout root")
-        if git_dir != common:
+        directory = _source_git_directory(root)
+        if directory is None:
             return
         with ExitStack() as stack:
-            descriptor = stack.enter_context(checkout_lock(root, blocking=False))
+            path = directory / "ops-code.lock"
+            descriptor = stack.enter_context(_file_lock(path, blocking=False))
             if descriptor is None:
                 print(
                     "checkout CLI waiting for git-sync to release the checkout lock",
                     file=sys.stderr,
                     flush=True,
                 )
-                descriptor = stack.enter_context(checkout_lock(root))
-            if checkout_barrier(root).exists():
+                descriptor = stack.enter_context(_file_lock(path))
+            if (directory / "ops-code.blocked").exists():
                 raise ValueError("checkout recovery pending")
             assert descriptor is not None
             os.set_inheritable(descriptor, False)
             _cli_lock = stack.pop_all()
         atexit.register(_release_cli_lock)
         os.register_at_fork(after_in_child=_release_cli_lock)
-    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+    except (OSError, ValueError) as exc:
         print(
             f"checkout CLI refused: {exc}; inspect spin ops status git-sync",
             file=sys.stderr,
@@ -203,9 +217,22 @@ def checkout_lock(
     blocking: bool = True,
 ) -> Iterator[int | None]:
     """Never unlink these files: all checkouts must refer to the same inode."""
-    with (common_directory(root) / f"{name}.lock").open(
-        "a", encoding="utf-8"
-    ) as stream:
+    with _file_lock(
+        common_directory(root) / f"{name}.lock",
+        exclusive=exclusive,
+        blocking=blocking,
+    ) as descriptor:
+        yield descriptor
+
+
+@contextmanager
+def _file_lock(
+    path: Path,
+    *,
+    exclusive: bool = False,
+    blocking: bool = True,
+) -> Iterator[int | None]:
+    with path.open("a", encoding="utf-8") as stream:
         mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
         try:
             fcntl.flock(stream, mode | (0 if blocking else fcntl.LOCK_NB))

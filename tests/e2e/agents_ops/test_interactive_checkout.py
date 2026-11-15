@@ -97,13 +97,63 @@ def test_cli_waits_for_updater_before_project_import(repo: Path) -> None:
     assert process.returncode == 0
 
 
-@pytest.mark.parametrize("failure", ["recovery", "lock-unavailable"])
+def test_native_bootstrap_does_not_invoke_repository_commands(
+    repo: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install_cli(repo)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    unexpected = tmp_path / "unexpected-command"
+    for name in ("git", "gh"):
+        executable = bin_dir / name
+        executable.write_text(
+            f"#!{sys.executable}\nfrom pathlib import Path\n"
+            f"Path({str(unexpected)!r}).touch()\nraise SystemExit(97)\n"
+        )
+        executable.chmod(0o700)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    with running_cli(repo) as process:
+        assert line(process) == "project-import"
+        assert code_is_locked(repo)
+        assert not unexpected.exists()
+    assert process.returncode == 0
+
+
+def test_separate_git_directory_is_main_checkout_and_keeps_same_lock(
+    tmp_path: Path,
+) -> None:
+    root, metadata = tmp_path / "checkout", tmp_path / "metadata"
+    subprocess.run(
+        ["git", "init", "-q", "--separate-git-dir", str(metadata), str(root)],
+        check=True,
+    )
+    install_cli(root)
+    with running_cli(root) as process:
+        assert line(process) == "project-import"
+        with (
+            (metadata / "ops-code.lock").open("a") as exclusive,
+            pytest.raises(BlockingIOError),
+        ):
+            fcntl.flock(exclusive, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    assert process.returncode == 0
+
+
+@pytest.mark.parametrize(
+    "failure", ["recovery", "lock-unavailable", "gitfile", "commondir"]
+)
 def test_lock_failure_refuses_cli_before_import(repo: Path, failure: str) -> None:
     install_cli(repo)
     if failure == "recovery":
         (repo / ".git/ops-code.blocked").write_text("interrupted update")
-    else:
+    elif failure == "lock-unavailable":
         (repo / ".git/ops-code.lock").mkdir()
+    elif failure == "gitfile":
+        (repo / ".git").rename(repo / "metadata")
+        (repo / ".git").write_text("invalid gitfile\n")
+    else:
+        (repo / ".git/commondir").write_text("missing-common-directory\n")
     result = subprocess.run(
         PARENT.command(repo),
         env=environment(repo),
