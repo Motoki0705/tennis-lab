@@ -1,0 +1,67 @@
+{
+  "record": {
+    "data": {
+      "basis": [],
+      "evaluation": "handoff",
+      "inputs": [
+        "deafae4442184b4dbfe1f9dd220ae436"
+      ],
+      "next_actions": [
+        {
+          "actor": "parent",
+          "conditions": "元親の必須作業ではないことを確認する。",
+          "expected_result": "人間判断待ちの改善提案Issue。",
+          "id": "e522d90346784dbca69126f73e5d9fef",
+          "instruction": "記録済み候補を改善提案Issueへ列挙する。",
+          "operation": "publish",
+          "summary": "改善提案Issueへ列挙して人間判断へ渡す",
+          "target": "I-1900-decision-pr-head-lag"
+        }
+      ],
+      "reason": "See existing improvement reason in referenced evidence",
+      "recheck_scope": [],
+      "resume_conditions": [],
+      "reuse_scope": [],
+      "source": {
+        "actor_key": "921967794c7d4ed383c4ca36c018d73d",
+        "evidence": [
+          {
+            "content_sha256": "050d39d66a768d0e47d594f5f40db285cb7612ff8d26fbaea5fe048575233e9f",
+            "kind": "public",
+            "revision": null,
+            "url": "https://github.com/motoki0705/tennis-lab/issues/1960#issuecomment-6892945118"
+          }
+        ],
+        "kind": "parent_choice"
+      },
+      "unresolved": []
+    },
+    "id": "0bb4a70da67942628bfb585d0dad8171",
+    "kind": "decision",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "fd0c8d39b8aa4d24a59c650dac729ee0",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T10:24:48.411042+00:00"
+      },
+      "recorded_at": "2026-11-15T10:24:48.411069+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

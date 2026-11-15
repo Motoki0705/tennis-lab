@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "ff6d9ce94a364336afe2ddd09d34c26a",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=command response; content_sha256=ff83e68b27ef1bd3d1c5f12632544e12d8a8cabcf0ad874fef9a1629f07e6156; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "1930b291020c4d9c90da165c26b6a0e3",
+      "repeat": null,
+      "status": "failure",
+      "summary": "review.run: reused=False; publication=preparation_failed; status=failed; verdict=incomplete",
+      "verifies": []
+    },
+    "id": "59ae0847f5fa4fdfb0fac85f42cd64fb",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b47b26953e61429c80fafc8bbaccf0c9",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "162483ea6a874c68a53064511584d155"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T04:35:18.507400+00:00"
+      },
+      "recorded_at": "2026-11-15T04:35:18.507414+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
