@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import copy
 import subprocess
 from collections.abc import Iterator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from herdr_labels.client import Herdr
-from herdr_labels.coordination import Guard, owner_token, read_record, state_root
+from herdr_labels.coordination import (
+    Guard,
+    locked,
+    owner_token,
+    read_record,
+    state_root,
+)
 from herdr_labels.service import issue_label, parent_summary
 
 from .access import as_parent, parent_state
@@ -18,12 +26,82 @@ from .errors import BoardError
 from .storage import Store, directory
 
 
+@dataclass(frozen=True)
+class Projection:
+    assignment_id: int
+    name: str
+    repo: str
+    parent: int
+    retired: str | None
+    owner: dict[str, Any] | None
+    destination: dict[str, Any] | None
+    count: int
+
+    def inputs(self) -> tuple[Any, ...]:
+        binding = (
+            None
+            if self.owner is None
+            else tuple(
+                self.owner.get(key)
+                for key in ("session", "status", "generation", "display_summary")
+            )
+        )
+        return (
+            self.name,
+            self.repo,
+            self.parent,
+            self.retired,
+            binding,
+            self.destination,
+            self.count,
+        )
+
+
+def _capture(env: Mapping[str, str], assignment_id: int) -> Projection:
+    with parent_state(env) as parents, Store(directory(env)).read() as connection:
+        row = connection.execute(
+            "SELECT name, repo, parent, retired_at FROM name_assignments WHERE id=?",
+            (assignment_id,),
+        ).fetchone()
+        if row is None:
+            raise BoardError("display assignment missing")
+        name, repo, parent, retired = row
+        owner = copy.deepcopy(parents.get(f"{repo}#{parent}"))
+        destination = (
+            None
+            if retired or owner is None or owner["status"] != "active"
+            else read_record(
+                state_root(env)
+                / "herdr-labels/owners"
+                / f"{owner_token(owner['session'])}.json"
+            )
+        )
+        return Projection(
+            assignment_id,
+            name,
+            repo,
+            parent,
+            retired,
+            owner,
+            destination,
+            summary(connection, assignment_id).unread_count,
+        )
+
+
+def _verify(env: Mapping[str, str], expected: Projection) -> None:
+    if _capture(env, expected.assignment_id).inputs() != expected.inputs():
+        raise BoardError("display assignment or projection inputs changed")
+
+
 @contextmanager
 def _confirmed_target(
-    env: Mapping[str, str], identity: str
+    env: Mapping[str, str],
+    identity: str,
+    owner: dict[str, Any] | None,
 ) -> Iterator[tuple[Herdr, Guard] | None]:
     root = state_root(env) / "herdr-labels"
-    owner = read_record(root / "owners" / f"{owner_token(identity)}.json")
+    if read_record(root / "owners" / f"{owner_token(identity)}.json") != owner:
+        raise BoardError("confirmed display destination changed")
     if owner is None:
         yield None
         return
@@ -71,13 +149,28 @@ def _confirmed_target(
         if token and token != owner_token(identity):
             raise BoardError("confirmed display owner changed")
         yield client, guard
+        after = client.pane(pane["pane_id"])
+        if (
+            after["terminal_id"] != owner["terminal_id"]
+            or after.get("agent") != identity.partition(":")[0]
+            or after.get("agent_session") != native
+        ):
+            raise BoardError("confirmed display native session or terminal changed")
 
 
-def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
-    with _confirmed_target(env, identity) as destination:
+def _publish(
+    env: Mapping[str, str], identity: str, count: int, *, expected: Projection
+) -> str:
+    with _confirmed_target(env, identity, expected.destination) as destination:
         if destination is None:
             return "not_configured"
         client, guard = destination
+
+        def check() -> None:
+            _verify(env, expected)
+            guard.check()
+
+        check()
         pane = guard.pane
         desired = {
             "tl_inbox": str(count),
@@ -89,7 +182,7 @@ def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
         other_tokens = {
             k: v for k, v in pane.get("tokens", {}).items() if k not in desired
         }
-        guard.check()
+        check()
         args = ["pane", "report-metadata", pane["pane_id"], "--source", "tennis-board"]
         for key, value in desired.items():
             args.extend(
@@ -97,7 +190,7 @@ def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
             )
         client.call(*args)
         after = client.pane(pane["pane_id"])
-        guard.check()
+        check()
         if (
             any(
                 after.get(k) != before.get(k)
@@ -115,13 +208,25 @@ def _publish(env: Mapping[str, str], identity: str, count: int) -> str:
 
 
 def _publish_name(
-    env: Mapping[str, str], owner: Mapping[str, Any], repo: str, parent: int, name: str
+    env: Mapping[str, str],
+    owner: Mapping[str, Any],
+    repo: str,
+    parent: int,
+    name: str,
+    *,
+    expected: Projection,
 ) -> str:
     identity = owner["session"]
-    with _confirmed_target(env, identity) as destination:
+    with _confirmed_target(env, identity, expected.destination) as destination:
         if destination is None:
             return "not_configured"
         client, guard = destination
+
+        def check() -> None:
+            _verify(env, expected)
+            guard.check()
+
+        check()
         # The parent record is the only source of the summary. A token left by
         # an older title-based label, or a summary not yet synchronized, is an
         # error rather than text to carry over into the renamed label.
@@ -155,7 +260,7 @@ def _publish_name(
                     )
                 },
             },
-            validate=guard.check,
+            validate=check,
         )
         return str(result["status"])
 
@@ -167,26 +272,24 @@ def update(
     for assignment_id in sorted(set(assignments)):
         result: dict[str, Any] = {"assignment_id": assignment_id}
         try:
-            with (
-                parent_state(env) as parents,
-                Store(directory(env)).read() as connection,
-            ):
-                row = connection.execute(
-                    "SELECT name, repo, parent, retired_at FROM name_assignments WHERE id=?",
-                    (assignment_id,),
-                ).fetchone()
-                if row is None:
-                    raise BoardError("display assignment missing")
-                name, repo, parent, retired = row
+            # Serialize before taking the snapshot, and never await this lock
+            # while holding the registry or a SQLite read transaction.
+            with locked(directory(env) / f"display-{assignment_id}.lock"):
+                expected = _capture(env, assignment_id)
+                name, repo, parent = expected.name, expected.repo, expected.parent
                 result.update(name=name, repo=repo, parent=parent)
-                owner = parents.get(f"{repo}#{parent}")
-                if retired or not owner or owner["status"] != "active":
+                owner = expected.owner
+                if expected.retired or not owner or owner["status"] != "active":
                     result["status"] = "recipient_unavailable"
                 elif renamed:
-                    result["status"] = _publish_name(env, owner, repo, parent, name)
+                    result["status"] = _publish_name(
+                        env, owner, repo, parent, name, expected=expected
+                    )
                 else:
-                    count = summary(connection, assignment_id).unread_count
-                    result["status"] = _publish(env, owner["session"], count)
+                    result["status"] = _publish(
+                        env, owner["session"], expected.count, expected=expected
+                    )
+                _verify(env, expected)
         except (
             BoardError,
             OSError,

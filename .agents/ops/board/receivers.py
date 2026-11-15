@@ -24,7 +24,7 @@ from .storage import Store, directory
 
 
 def root(env: Mapping[str, str]) -> Path:
-    path = directory(env) / "receivers"
+    path: Path = directory(env) / "receivers"
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
     directory(env).chmod(0o700)
     path.chmod(0o700)
@@ -202,6 +202,7 @@ def _codex(env: Mapping[str, str], identity: str) -> dict[str, Any] | None:
 
 def bind_receiver(env: Mapping[str, str]) -> dict[str, str]:
     """Run after parent register/accept, with its registry writer lock released."""
+    env = dict(env)
     identity = session_identity(env)
     engine = identity.partition(":")[0]
     with parent_state(env) as parents, locked(root(env) / "routes.lock"):
@@ -212,15 +213,30 @@ def bind_receiver(env: Mapping[str, str]) -> dict[str, str]:
         if engine == "codex":
             # Registration that discovers a broken/ambiguous runtime must not
             # leave an older same-generation route usable by later posts.
-            write(path, {"version": 1, "identity": identity, "binding": None})
-            record = _codex(env, identity)
+            pending = {
+                "version": 1,
+                "identity": identity,
+                "binding": None,
+                "epoch": uuid.uuid4().hex,
+            }
+            write(path, pending)
         else:
             record = read(path)
+            if record is None:
+                return {"status": "not_configured", "reason": "route_unavailable"}
+            _check_claude(env, record)
+            record["binding"] = binding
+            write(path, record)
+            return {"status": "bound"}
+    # Directory discovery and rollout validation can be arbitrarily expensive.
+    # Keep both registry and routes locks free, then reject superseded results.
+    record = _codex(env, identity)
+    with parent_state(env) as parents, locked(root(env) / "routes.lock"):
+        if _binding(env, identity, parents) != binding or read(path) != pending:
+            raise BoardError("receiver assignment or discovery epoch changed")
         if record is None:
             return {"status": "not_configured", "reason": "route_unavailable"}
-        if engine == "claude":
-            _check_claude(env, record)
-        record["binding"] = binding
+        record.update(binding=binding, epoch=pending["epoch"])
         write(path, record)
     return {"status": "bound"}
 
