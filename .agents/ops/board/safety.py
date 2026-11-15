@@ -25,6 +25,11 @@ ABSOLUTE_PATH = re.compile(
     r"|~[/\\]|[a-zA-Z]:[/\\]|\\\\)",
     re.IGNORECASE,
 )
+_CODE_IDENTIFIER = r"`[A-Za-z_][A-Za-z0-9_]*`"
+_CODE_IDENTIFIER_LIST = re.compile(
+    rf"(?<![^\s(（「『、。]){_CODE_IDENTIFIER}(?:[/／]{_CODE_IDENTIFIER})+"
+    r"(?=$|[\s)）」』、。])"
+)
 SESSION_TOKEN = re.compile(
     r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b"
     r"|\b(?:session|thread)[_-]?id\s*[:=]",
@@ -57,13 +62,19 @@ def public(value: Any, parents: Mapping[str, Any], env: Mapping[str, str]) -> No
                 secret and secret in item for secret in secrets
             ) or SESSION_TOKEN.search(item):
                 raise BoardError("board text contains private session information")
+            # A slash between standalone code identifiers is prose punctuation.
+            # Recognize only literal syntax before decoding or normalization, so
+            # encoded paths and slashes inside code still reach the path check.
+            literal = _CODE_IDENTIFIER_LIST.sub(
+                lambda match: match[0].replace("/", " ").replace("／", " "), item
+            )
             try:
-                path_text = unicodedata.normalize("NFKC", decoded_text(item))
+                path_text = unicodedata.normalize("NFKC", decoded_text(literal))
             except ValueError:
                 raise BoardError("board text contains ambiguous encoding") from None
             if any(
                 ABSOLUTE_PATH.search(view) or view.strip().strip("\"'`") == "/"
-                for view in (item, path_text)
+                for view in (literal, path_text)
             ):
                 raise BoardError("board text contains a private path")
             if any(
