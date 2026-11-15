@@ -473,6 +473,11 @@ def test_migration_seals_old_records_without_reusing_unproven_fallback_age(
     old = state["records"].pop(first["id"])
     ident = old["admin_identity"]
     ident.pop("token")
+    ident.pop("filesystem_id")
+    ident["device"] = 42
+    old["directory_identity"].pop("filesystem_id")
+    old["directory_identity"]["device"] = 42
+    old["directory_identity"].pop("birth_time_ns")
     legacy_id = hashlib.sha256(
         f"{old['admin']}:{ident['device']}:{ident['inode']}:{ident['birth_time_ns']}".encode()
     ).hexdigest()
@@ -482,8 +487,10 @@ def test_migration_seals_old_records_without_reusing_unproven_fallback_age(
     lab.now += LIFETIME
     report = lab.run(cleanup=True)
     current = report["entries"][0]
-    assert current["id"] != legacy_id
-    assert current["identity_migration"] == "unsealed_generation"
+    assert (current["id"] == legacy_id) is has_birth
+    assert report["filesystem_migrations"][0]["result"] == (
+        "migrated" if has_birth else "retired"
+    )
     assert current["selected"] is has_birth
     assert path.exists() is not has_birth
     assert current["created_at"] == (

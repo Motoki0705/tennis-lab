@@ -9,7 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import inventory
+from . import inventory, migration
 from .lifecycle import Stopper
 from .storage import (
     LIFETIME_NS,
@@ -43,6 +43,7 @@ class Cleaner:
 
     def observe(self, state: State, now: int) -> list[dict[str, Any]]:
         rows = inventory.registrations(self.repo, self.common)
+        migration.reconcile(state, rows, now)
         live_ids = set()
         entries = []
         for row in rows:
@@ -382,6 +383,13 @@ class Cleaner:
                 report["stop_diagnostics"] = self.stopper.diagnostics
             if getattr(self.stopper, "reference_checks", None):
                 report["reference_checks"] = self.stopper.reference_checks
+            migrated = [
+                {"id": row["id"], "path": row["path"], **row["filesystem_migration"]}
+                for row in state.records.values()
+                if "filesystem_migration" in row
+            ]
+            if migrated:
+                report["filesystem_migrations"] = migrated
             if cleanup and dry_run:
                 report["stop_preflight"] = preflight
             write_json(self.directory / "report-latest.json", report)

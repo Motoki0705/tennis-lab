@@ -86,7 +86,43 @@ def birth_time(fd: int) -> int | None:
     return int(seconds) * 10**9 + int(nanos)
 
 
-def identity(path: Path, *, birth: bool = False) -> dict[str, Any]:
+class _Statfs(ctypes.Structure):
+    _fields_ = [
+        ("kind", ctypes.c_long),
+        ("block_size", ctypes.c_long),
+        ("counts", ctypes.c_ulong * 5),
+        ("fsid", ctypes.c_uint32 * 2),
+        ("name_length", ctypes.c_long),
+        ("fragment_size", ctypes.c_long),
+        ("flags", ctypes.c_long),
+        ("spare", ctypes.c_long * 4),
+    ]
+
+
+def filesystem_id(fd: int) -> str:
+    """Read ext4's UUID-derived f_fsid from the pinned descriptor.
+
+    WSL drvfs/9p can return the same fsid for independent Windows volumes.
+    Filesystems without a known persistent ID must fail explicitly.
+    """
+    call = getattr(ctypes.CDLL(None, use_errno=True), "fstatfs", None)
+    if call is None:
+        raise CleanupError("fstatfs is required for persistent filesystem identity")
+    call.argtypes = [ctypes.c_int, ctypes.POINTER(_Statfs)]
+    call.restype = ctypes.c_int
+    result = _Statfs()
+    if call(fd, ctypes.byref(result)):
+        code = ctypes.get_errno()
+        raise OSError(code, "cannot read persistent filesystem identity")
+    if result.kind != 0xEF53 or not any(result.fsid):
+        raise CleanupError(
+            f"persistent filesystem identity unavailable: type={result.kind:#x}; "
+            "a UUID-derived ext4 f_fsid is required (drvfs/9p is unsupported)"
+        )
+    return f"ext4-fsid:{result.fsid[0]:08x}{result.fsid[1]:08x}"
+
+
+def identity(path: Path, *, birth: bool = True) -> dict[str, Any]:
     fd = open_directory(path)
     try:
         return opened_identity(fd, birth=birth)
@@ -94,9 +130,9 @@ def identity(path: Path, *, birth: bool = False) -> dict[str, Any]:
         os.close(fd)
 
 
-def opened_identity(fd: int, *, birth: bool = False) -> dict[str, Any]:
+def opened_identity(fd: int, *, birth: bool = True) -> dict[str, Any]:
     st = os.fstat(fd)
-    result: dict[str, Any] = {"device": st.st_dev, "inode": st.st_ino}
+    result: dict[str, Any] = {"filesystem_id": filesystem_id(fd), "inode": st.st_ino}
     if birth:
         result["birth_time_ns"] = birth_time(fd)
     return result
@@ -104,7 +140,7 @@ def opened_identity(fd: int, *, birth: bool = False) -> dict[str, Any]:
 
 def registration_id(admin: Path, ident: dict[str, Any]) -> str:
     return hashlib.sha256(
-        f"{admin}:{ident['device']}:{ident['inode']}:{ident.get('birth_time_ns')}:{ident.get('token')}".encode()
+        f"{admin}:{ident['filesystem_id']}:{ident['inode']}:{ident.get('birth_time_ns')}:{ident.get('token')}".encode()
     ).hexdigest()
 
 
@@ -193,6 +229,8 @@ def rename_no_replace(source_fd: int, source: str, target_fd: int, target: str) 
 
 
 def quarantine_tree(path: Path, destination: Path, expected: dict[str, Any]) -> None:
+    if expected.get("birth_time_ns") is None:
+        raise CleanupError("worktree directory birth time is unavailable")
     source_fd = open_directory(path.parent)
     try:
         target_fd = open_directory(destination.parent)
@@ -233,17 +271,22 @@ def restore_quarantine(path: Path, destination: Path) -> None:
         try:
             leaf = os.open(destination.name, os.O_PATH | os.O_NOFOLLOW, dir_fd=source)
             try:
-                expected = os.fstat(leaf)
+                expected = opened_identity(leaf)
+                mode = os.fstat(leaf).st_mode
                 rename_no_replace(source, destination.name, target, path.name)
                 os.fsync(source)
                 os.fsync(target)
-                actual = os.stat(path.name, dir_fd=target, follow_symlinks=False)
-                if (actual.st_dev, actual.st_ino, actual.st_mode) != (
-                    expected.st_dev,
-                    expected.st_ino,
-                    expected.st_mode,
-                ):
-                    raise CleanupError("replacement changed during quarantine recovery")
+                check = os.open(path.name, os.O_PATH | os.O_NOFOLLOW, dir_fd=target)
+                try:
+                    if (
+                        opened_identity(check) != expected
+                        or os.fstat(check).st_mode != mode
+                    ):
+                        raise CleanupError(
+                            "replacement changed during quarantine recovery"
+                        )
+                finally:
+                    os.close(check)
             finally:
                 os.close(leaf)
         finally:
@@ -254,7 +297,8 @@ def restore_quarantine(path: Path, destination: Path) -> None:
 
 def same_registration(left: dict[str, Any], right: dict[str, Any]) -> bool:
     return (
-        left["device"] == right["device"]
+        left.get("filesystem_id") == right.get("filesystem_id")
+        and left.get("filesystem_id") is not None
         and left["inode"] == right["inode"]
         and left.get("token") == right.get("token")
         and (
@@ -405,12 +449,16 @@ def changes(path: Path, error: str | None) -> dict[str, Any]:
 
 
 def require_directory(path: Path, expected: dict[str, Any]) -> None:
+    if expected.get("birth_time_ns") is None:
+        raise CleanupError("worktree directory birth time is unavailable")
     if identity(path) != expected:
         raise CleanupError(f"directory identity changed: {path}")
 
 
 def remove_tree(path: Path, expected: dict[str, Any]) -> None:
     """Remove contents through the pinned leaf, not a later path-selected root."""
+    if expected.get("birth_time_ns") is None:
+        raise CleanupError("worktree directory birth time is unavailable")
     parent = open_directory(path.parent)
     try:
         leaf = os.open(
@@ -420,10 +468,7 @@ def remove_tree(path: Path, expected: dict[str, Any]) -> None:
             if opened_identity(leaf) != expected:
                 raise CleanupError("quarantine identity changed before removal")
             st = os.stat(path.name, dir_fd=parent, follow_symlinks=False)
-            if (
-                not stat.S_ISDIR(st.st_mode)
-                or {"device": st.st_dev, "inode": st.st_ino} != expected
-            ):
+            if not stat.S_ISDIR(st.st_mode) or identity(path) != expected:
                 raise CleanupError("quarantine path moved before removal")
             clear_directory(leaf)
             if identity(path) != expected:

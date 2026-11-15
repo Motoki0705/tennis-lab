@@ -39,17 +39,33 @@ birth timeを取得する。既存worktreeも同じ方法で移行する。取�
 
 状態は `${XDG_STATE_HOME:-~/.local/state}/tennis-lab-agents/worktree-cleanup/<repo-key>/`。
 repo-keyはGit common directoryから算出し、別cloneの状態を分離する。
-`worktrees.json` にUTCの作成時刻、根拠、管理ディレクトリのdevice/inode/birth time/UUID、
+`worktrees.json` のschema v2にUTCの作成時刻、根拠、管理ディレクトリと実体の
+filesystem ID・inode・birth time、管理ディレクトリのUUID、
 パス、HEAD、削除phaseをfsync＋atomic renameで保存する。同パスでも管理ディレクトリが別個体なら
 新しい記録にする。対象の管理ディレクトリにはwrite-onceの `tennis-lab-expiry-id` をFD相対で
 atomicに作り、birth timeが取れずinodeが再利用されてもUUIDの不一致で再作成を識別する。
 UUIDは個体の識別だけに使い、作成日時の根拠にはしない。管理ディレクトリと実体のFDを保持し、
 gitdirの対応とパスの個体も再照合する。symlink・不正なUUIDは推測で置き換えず失敗とする。
+
+filesystem IDは、開いたFDへの `fstatfs` が返すext4のUUID由来 `f_fsid` を使う。
+WSLの再起動でblock deviceの並びと `st_dev` が変わっても同じIDで追跡する。
+drvfs/9pは複数のWindows volumeへ同じfsidを返す場合があり、安定した個体照合を提供できない。
+現在はext4の永続IDを取得できるfilesystemを対象とし、取得失敗・0のID・他のfilesystemは
+明示失敗のJSONと非0終了で記録する。実体のbirth timeを確認できない場合も隔離・削除を失敗にする。
+
+[migration.py](migration.py) が旧device形式のactive記録を、管理ディレクトリのinode・保存済みbirth time・既存UUID、
+保存パス、管理ディレクトリの `gitdir` と実体の `.git` の双方向登録、実体inodeを照合して移行する。
+隔離済みなら保存された `.expired-<id>` の実体を調べる。旧実体にbirth timeが保存されていない形式は、
+管理ディレクトリの保存済みbirth timeと双方向登録を根拠に照合し、実体のbirth timeを追加保存する。
+移行後も記録ID・隔離パス・作成日時を引き継ぎ、schema v2のstateをatomicに保存してから再開する。
+再実行は移行済み記録を再解釈せず、保存の中断では旧stateか新stateのどちらからも再開できる。
+一致を確認できない旧intentは `superseded` として閉じ、`filesystem_migration` に理由・旧identityを残す。
+現在の登録は新規個体としてbirth time由来の通常の期限判定を受ける。
+`filesystem_migrations` に移行・終了理由を表示し、終了済みの旧履歴もstateに保持する。
 scanで登録消失を観測した記録は再利用せず、同じ管理名・inodeが現れても新しい初観測として扱う。
 削除途中の実体の復旧記録は残し、消失した登録への操作権限だけを失効させる。
 scan/dry-runは初観測記録・レポートと対象のGit管理UUIDを永続化する。作業内容・Git参照・稼働jobは変更しない。
-対象外のworktreeにはUUIDを作らない。UUID導入前の記録は `identity_migration=unsealed_generation` で示す。
-birth timeが既知ならその日時を再利用する。不明な旧記録は再作成と区別できないため、UUID付き個体の初観測から
+対象外のworktreeにはUUIDを作らない。UUID導入前でbirth timeも不明な旧記録は再作成と区別できないため、UUID付き個体の初観測から
 14日とし、旧inodeだけを根拠に早期削除しない。UUID導入後は欠落scanの有無に依存しない。
 
 `report-latest.json` と標準出力のJSONは、`created_at` / `source` / `deadline` / `decided_at`、

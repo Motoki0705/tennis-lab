@@ -310,7 +310,14 @@ def test_retry_does_not_delete_replacement_after_unregistration(
             lambda *a: (_ for _ in ()).throw(OSError("interrupt")),
         )
         assert lab.cleaner().run(cleanup=True)[0] == 1
-    monkeypatch.setattr(lab.inventory, "birth_time", lambda fd: lab.now)
+    # The old quarantined directory keeps its birth time across replacement.
+    monkeypatch.setattr(
+        lab.inventory,
+        "birth_time",
+        lambda fd: (
+            BORN if ".expired-" in os.readlink(f"/proc/self/fd/{fd}") else lab.now
+        ),
+    )
     lab.add("replacement", path=path)
     (path / "new-work").write_text("keep")
     lab.run(cleanup=True)
@@ -1360,7 +1367,9 @@ def test_completed_fallback_record_does_not_expire_recycled_admin_inode(
         lab.inventory,
         "opened_identity",
         lambda path, *, birth=False: (
-            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(path)
+            {**real(path), "inode": 123, "birth_time_ns": None}
+            if "/.git/worktrees/" in os.readlink(f"/proc/self/fd/{path}")
+            else real(path)
         ),
     )
     path = lab.add()
@@ -1441,7 +1450,16 @@ def test_unregistration_keeps_replacement_created_in_the_last_gap(
         fired.append(True)
         lab.git("worktree", "add", "--force", "-qb", "replacement", str(path))
         (path / "new-work").write_text("keep this replacement")
-        monkeypatch.setattr(lab.inventory, "birth_time", lambda fd: lab.now)
+        monkeypatch.setattr(
+            lab.inventory,
+            "birth_time",
+            lambda fd: (
+                BORN
+                if os.readlink(f"/proc/self/fd/{fd}") == str(original_admin)
+                or ".expired-" in os.readlink(f"/proc/self/fd/{fd}")
+                else lab.now
+            ),
+        )
 
     if point == "before_pin":
         real_save = lab.storage.State.save
@@ -1485,7 +1503,9 @@ def test_external_removal_observation_retires_fallback_identity(
         lab.inventory,
         "opened_identity",
         lambda path, *, birth=False: (
-            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(path)
+            {**real(path), "inode": 123, "birth_time_ns": None}
+            if "/.git/worktrees/" in os.readlink(f"/proc/self/fd/{path}")
+            else real(path)
         ),
     )
     path = lab.add()
@@ -1573,7 +1593,9 @@ def test_observed_registration_loss_does_not_rebind_pending_deletion_to_reused_i
         lab.inventory,
         "opened_identity",
         lambda fd, *, birth=False: (
-            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(fd)
+            {**real(fd), "inode": 123, "birth_time_ns": None}
+            if "/.git/worktrees/" in os.readlink(f"/proc/self/fd/{fd}")
+            else real(fd)
         ),
     )
     path = lab.add()
