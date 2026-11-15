@@ -18,3 +18,4 @@
 - [メインtreeのローカル main は自動で pull されず、そこで読む規則・memoryが古いまま残る](main-tree-main-lags-origin.md)
 - [src パッケージはインストールされておらず、カレントディレクトリから import される](src-imported-from-cwd.md)
 - [tests/ はPythonパッケージではないので、テストモジュール同士で import できない](tests-dir-not-a-package.md)
+- [親の正式レビュー（parent_review.py run）の実行中に同じ親のCLIで書き込むと、レビューが registry の衝突で止まり、保存済みの結果を採用できなくなる](parent-review-registry-write-conflict.md)
