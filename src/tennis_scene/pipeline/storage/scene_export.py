@@ -10,8 +10,10 @@ from pathlib import Path
 from src.tennis_scene.archive import save_scene_result
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.schema import SceneResult
+from src.utils.inference_recording import measured, temporary_directory
 
 
+@measured("save")
 def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -> Path:
     """Write ``exports/<artifact ID>/scene.npz`` once and adopt it in ``scene.json``.
 
@@ -25,7 +27,8 @@ def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -
     if not destination.exists():
         temporary = Path(tempfile.mkdtemp(prefix=".writing-", dir=exports))
         try:
-            save_scene_result(scene, temporary / "scene.npz")
+            with temporary_directory(temporary):
+                save_scene_result(scene, temporary / "scene.npz")
             os.replace(temporary, destination)
         finally:
             if temporary.exists():

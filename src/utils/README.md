@@ -7,6 +7,7 @@
 ## Modules
 
 ### Top-level
+- **[`inference_recording.py`](inference_recording.md)**: opt-inな推論実行provenance。モデルload/unload、段階別span、実batch、RAM/VRAM・一時diskをJSONへ記録し、成果物とcache identityから分離する。
 - **`paths.py`**: `PROJECT_ROOT` と `resolve_project_path()`。repo ルート基準のパス解決が必要なときに見る。
 - **`device.py`**: strictな `resolve_device()` と `select_accelerator()`。availabilityに応じた選択は`"auto"`だけが行い、明示CUDA/GPU要求を満たせない場合は`DeviceSelectionError`でmodel/Trainer構築前に失敗する。
 - **`seeding.py`**: `seed_everything()` と `make_sample_rng()`。軽量な RNG 初期化や dataloader worker-aware なサンプル単位 RNG を扱う。

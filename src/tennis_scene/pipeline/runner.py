@@ -18,6 +18,7 @@ from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SceneResult
+from src.utils.inference_recording import recording_context, span
 
 ReadySelector = Callable[[tuple[NodeKey, ...]], NodeKey]
 
@@ -74,6 +75,14 @@ class PlanExecutor:
         return references
 
     def execute(self, key: NodeKey) -> ArtifactRef:
+        node = self.plan.nodes[key]
+        with recording_context(clip_id=key[0], camera_id=node.context.camera_id, node=key[1]), span("node", source=node.source) as event:
+            try:
+                return self._execute(key)
+            finally:
+                event["outcome"] = self.plan.statuses.get(key, "failed")
+
+    def _execute(self, key: NodeKey) -> ArtifactRef:
         """Run or load one ready node; completed nodes are never reconsidered."""
         plan = self.plan
         if key in plan.references:
@@ -94,10 +103,12 @@ class PlanExecutor:
             else:
                 artifacts = {port: store.load(ref, ArtifactCodec(plan.nodes[plan.dependencies[key][port]].io.output_type))
                              for port, ref in decision.dependencies.items()}
-                inputs = node.assembler.assemble(node.context, artifacts)
+                with span("preprocess", operation="input_assembly"):
+                    inputs = node.assembler.assemble(node.context, artifacts)
                 if not isinstance(inputs, node.io.input_type):
                     raise TypeError(f"Assembler returned wrong input type for {key[1]}")
-                output = node.component.process(inputs)
+                with span("postprocess", operation="component"):
+                    output = node.component.process(inputs)
                 reference = store.publish(key[1], output, ArtifactCodec(node.io.output_type),
                     schema=node.io.output_schema, version=node.io.version, identity=decision.identity,
                     dependencies=decision.dependencies, provenance={"origin": "component", "implementation": node.implementation})

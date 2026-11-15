@@ -18,6 +18,7 @@ from src.tasks.court_detection.model_io.contracts import (
     CourtModelSpec,
 )
 from src.utils.geometry.image_size import resize_short_side_aligned
+from src.utils.inference_recording import span
 
 
 def prepare_court_image(
@@ -52,7 +53,8 @@ def prepare_court_image(
     )
     resized = image.resize((new_width, new_height), Image.Resampling.BILINEAR)
     tensor = TF.normalize(TF.to_tensor(resized), IMAGENET_MEAN, IMAGENET_STD)
-    batched = cast(Tensor, tensor.unsqueeze(0).to(device))
+    with span("transfer", model="Court"):
+        batched = cast(Tensor, tensor.unsqueeze(0).to(device))
     return batched, original_height, original_width
 
 
@@ -95,5 +97,7 @@ def prepare_court_input(image: np.ndarray | Image.Image, *, spec: CourtModelSpec
     padded = cv2.copyMakeBorder(content, 0, (-content_height) % spec.patch_size,
                                0, (-content_width) % spec.patch_size, cv2.BORDER_REPLICATE)
     tensor = TF.normalize(TF.to_tensor(padded), IMAGENET_MEAN, IMAGENET_STD)
-    return PreparedCourtImage(tensor[None].to(device), (height, width), (1 / scale, 1 / scale),
+    with span("transfer", model="Court"):
+        images = tensor[None].to(device)
+    return PreparedCourtImage(images, (height, width), (1 / scale, 1 / scale),
                               (content_height, content_width))

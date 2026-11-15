@@ -29,6 +29,7 @@ from src.tennis_scene.pipeline.components.base import (
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
 from src.utils.configuration import PathResolver
 from src.utils.geometry.keypoints import normalize_grid_keypoints
+from src.utils.inference_recording import model_action
 from src.utils.video import read_video_frame
 
 if TYPE_CHECKING:
@@ -116,6 +117,8 @@ class CourtKPModule(BasePipelineModule):
         self.config = config
         self._predictor: CourtPredictor | None = None
 
+    @model_action("load", "Court", weights=lambda owner: {"checkpoint": owner.config.checkpoint},
+                  device=lambda owner: owner.config.device, loaded=lambda owner: owner.is_loaded)
     def load(self) -> None:
         if self._predictor is not None:
             return
@@ -132,6 +135,8 @@ class CourtKPModule(BasePipelineModule):
         _require_camera_view_schema(predictor.adapter.spec.target_bundle.targets["kp"].schema)
         self._predictor = predictor
 
+    @model_action("unload", "Court", weights=lambda owner: {"checkpoint": owner.config.checkpoint},
+                  device=lambda owner: owner.config.device, loaded=lambda owner: owner.is_loaded)
     def unload(self) -> None:
         self._predictor = None
         release_inference_memory(self.config.device)

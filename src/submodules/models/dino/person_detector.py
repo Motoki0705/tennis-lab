@@ -12,6 +12,8 @@ from numpy.typing import NDArray
 
 from src.submodules.configuration import require_absolute_path
 from src.submodules.models._base.inference_model import BaseInferenceModel
+from src.utils.inference_recording import span
+
 from src.submodules.models.dino.architecture import (
     COCO_PERSON_CLASS_ID,
     build_dino,
@@ -74,6 +76,9 @@ class DinoPersonDetector(
         self.max_long_side = max_long_side
         self._model: torch.nn.Module | None = None
 
+    def recording_assets(self) -> dict[str, Path]:
+        return {"checkpoint": self.checkpoint}
+
     def _load_impl(self) -> None:
         if self.device.type != "cuda":
             raise RuntimeError(
@@ -130,9 +135,10 @@ class DinoPersonDetector(
                 )
             if frame.dtype != np.uint8:
                 raise TypeError(f"frame_bgr must have dtype uint8, got {frame.dtype}")
-            image = preprocess_frame(
-                frame, short_side=self.short_side, max_long_side=self.max_long_side
-            )
+            with span("preprocess", model="DINO"):
+                image = preprocess_frame(
+                    frame, short_side=self.short_side, max_long_side=self.max_long_side
+                )
             if images and image.shape != images[0].shape:
                 results.extend(self._predict_compatible_batch(images, image_sizes))
                 images.clear()
@@ -152,10 +158,16 @@ class DinoPersonDetector(
     ) -> list[PersonDetectionResult]:
         if self._model is None:
             raise RuntimeError("DINO model did not load before prediction.")
-        output = self._model(torch.stack(list(images)).to(self.device))
-        return decode_person_detections(
-            output, image_sizes=image_sizes, confidence=self.confidence
-        )
+        with span("preprocess", model="DINO"):
+            batch = torch.stack(list(images))
+        with span("transfer", model="DINO"):
+            batch = batch.to(self.device)
+        with span("inference", model="DINO", batch_shape=list(batch.shape)):
+            output = self._model(batch)
+        with span("postprocess", model="DINO"):
+            return decode_person_detections(
+                output, image_sizes=image_sizes, confidence=self.confidence
+            )
 
 
 def decode_person_detections(

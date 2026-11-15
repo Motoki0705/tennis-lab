@@ -16,6 +16,7 @@ from src.submodules.vendor.gvhmr.hmr2.preproc import (
     IMAGE_STD,
     crop_and_resize,
 )
+from src.utils.inference_recording import span
 from src.utils.video import OpenCVVideoFrameReader
 
 
@@ -69,14 +70,16 @@ def iter_frame_person_crops(
             raise ValueError(f"Missing requested source frame {indices[row]}")
         if index < indices[row]:
             continue
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        height, width = rgb.shape[:2]
-        small = cv2.resize(rgb, (int(width * .5), int(height * .5)))
+        with span("preprocess", operation="pose_resize"):
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            height, width = rgb.shape[:2]
+            small = cv2.resize(rgb, (int(width * .5), int(height * .5)))
         while row < len(indices) and indices[row] == index:
             box = boxes_xys[row].float()
             factor = float(box[2]) * .5 / 256 / 2
             source = cv2.GaussianBlur(small, (5, 5), (factor - 1) / 2) if factor > 1.1 else small
-            crop, _ = crop_and_resize(source, box[:2].numpy() * .5, float(box[2]) * .5, 256, enlarge_ratio=1.)
+            with span("preprocess", operation="person_crop"):
+                crop, _ = crop_and_resize(source, box[:2].numpy() * .5, float(box[2]) * .5, 256, enlarge_ratio=1.)
             crops.append(crop)
             boxes.append(box)
             row += 1
