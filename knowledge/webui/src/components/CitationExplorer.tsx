@@ -13,6 +13,7 @@ import type {
   CitationLoadResult,
   CitationPaper,
   CitationReference,
+  CitationReadLibrary,
   CitationRole,
   CitationSearch,
 } from "@/lib/citation-types";
@@ -28,8 +29,58 @@ function CitationError({ children }: { children: React.ReactNode }) {
   return (
     <div className="citation-error" role="alert" aria-label="引用探索のエラー">
       <h3>引用探索を表示できません</h3>
-      <p>{children}</p>
+      <div>{children}</div>
     </div>
+  );
+}
+function CitationDiagnostics({
+  library,
+  onOpen,
+}: {
+  library: CitationReadLibrary;
+  onOpen: (id: string) => void;
+}) {
+  if (!library.documentErrors.length) return null;
+  return (
+    <section
+      className="citation-error"
+      role="alert"
+      aria-label="引用文書のエラー"
+    >
+      <h3>引用文書のエラー</h3>
+      <p>
+        影響を受けない探索は閲覧できます。エラーになった文書は表示・集計・Papers結合に使いません。
+      </p>
+      <ul>
+        {library.documentErrors.map((error, i) => (
+          <li key={i}>
+            {error.files.map((file) => (
+              <div key={file}>
+                <code>{file}</code>
+              </div>
+            ))}
+            <p>{error.reason}</p>
+          </li>
+        ))}
+      </ul>
+      {library.searchErrors.length > 0 && (
+        <>
+          <h4>閲覧できない探索 ({library.searchErrors.length})</h4>
+          <ul>
+            {library.searchErrors.map((search) => (
+              <li key={search.id}>
+                <button
+                  className="related-link"
+                  onClick={() => onOpen(search.id)}
+                >
+                  エラー: {search.id}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
   );
 }
 export function CitationSearchList({
@@ -45,11 +96,17 @@ export function CitationSearchList({
     <section className="citation-searches" aria-label="保存済み引用探索">
       <div className="section-caption">
         <h3>引用探索</h3>
-        <span>{library.searches.length} 件 · 閲覧専用</span>
+        <span>
+          閲覧可能 {library.searches.length} 件 · エラー{" "}
+          {library.searchErrors.length} 件 · 閲覧専用
+        </span>
       </div>
+      <CitationDiagnostics library={library} onOpen={onOpen} />
       {!library.searches.length ? (
         <p className="empty-state">
-          探索なし — 保存された引用探索はありません。
+          {library.documentErrors.length
+            ? "閲覧可能な探索はありません。文書のエラーを確認してください。"
+            : "探索なし — 保存された引用探索はありません。"}
         </p>
       ) : (
         <div className="citation-search-grid">
@@ -315,10 +372,33 @@ export function CitationExplorer({
       </div>
     );
   const search = library.searches.find((s) => s.id === searchId);
-  if (!search)
+  if (!search) {
+    const failed = library.searchErrors.find((s) => s.id === searchId);
     return (
-      <CitationError>指定された探索が見つかりません: {searchId}</CitationError>
+      <div className="citation-explorer">
+        <CitationSearchList result={result} onOpen={onSearch} />
+        <CitationError>
+          {failed
+            ? `この探索はエラーのため閲覧できません: ${searchId}`
+            : `指定された探索が見つかりません: ${searchId}`}
+          {failed && (
+            <>
+              <p>
+                <code>{failed.file}</code>
+              </p>
+              <ul>
+                {failed.errors.map((error, i) => (
+                  <li key={i}>
+                    {error.files.join(", ")}: {error.reason}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </CitationError>
+      </div>
     );
+  }
   if (roleValue && !CITATION_ROLES.includes(roleValue as CitationRole))
     return <CitationError>不正な役割: {roleValue}</CitationError>;
   if (!["map", "ranking"].includes(mode))
@@ -341,6 +421,7 @@ export function CitationExplorer({
   );
   return (
     <div className="citation-explorer">
+      <CitationDiagnostics library={library} onOpen={onSearch} />
       <div className="citation-controls">
         <label>
           保存済み探索

@@ -32,7 +32,14 @@ npm run build && npm start      # production
 読み込み失敗や不正なID・連番を空のライブラリに置き換えず、エラーとして表示する。
 Papersは文書だけを保持し、本文は一次資料URLから閲覧する。
 `citation_map/` が無い、または保存済み探索が0件なら「探索なし」を表示する。
-不正な引用文書、参照や世代の不整合、外部IDの矛盾、読み込み失敗はエラーとして表示する。
+不正な引用文書・参照や世代の不整合・外部IDの矛盾・読み込み失敗は、ファイル名と理由を表示する。
+閲覧可否は探索ごとに決め、その探索文書、世代の `paper_ids`、展開した論文の全引用先が
+不正なら、その探索をエラーにする。役割の絞り込みでエラーを隠さず、無関係な探索は
+マップ・ランキング・件数を保って閲覧できる。未展開論文のcached参考文献まで依存を広げない。
+外部IDが衝突する場合は、登録済みPapersを経由する別名も含め、関係する全ての文書を不正とする。
+Papersへの結合は不正文書を除いて再検証する。文書IDを確定できないファイル名や
+不正な保存構造、一覧取得の失敗など、影響範囲を特定できない場合は全体をエラーにする。
+これはUIの閲覧方針で、文書自体の受理条件やPythonの `kg_validate` / CIによる拒否は変えない。
 
 ## 検証・コードの入口
 
@@ -55,7 +62,8 @@ KNOWLEDGE_DIR="$PWD/.citation-e2e" npm run dev
 ![固定例の引用マップ](assets/citation-map.png)
 
 - `src/lib/{content,nodes}.ts`: Markdown/Papers/summary読込とリンク解決。
-- `src/lib/citation-documents.ts`: 引用frontmatter・文書間整合性の検証と読込、外部IDによるPapers結合。
+- `src/lib/citation-documents.ts`: 引用frontmatter・文書間整合性の厳密な検証、外部IDによるPapers結合。
+- `src/lib/citation-library.ts`: 文書読込、外部ID衝突の全参加文書の特定、探索ごとの依存とエラーの判定。
 - `src/lib/citations.ts`: 探索範囲の引用関係と、異なる引用元数による集計。
 - `src/lib/explorer.ts`: 絞り込み・並び順・CSV。
 - `src/components/ResearchExplorer.tsx`: ライブラリの状態と各ビュー。

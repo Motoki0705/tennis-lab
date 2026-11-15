@@ -1,9 +1,6 @@
 import { createHash } from "node:crypto";
-import { promises as fs } from "node:fs";
 import { isIP } from "node:net";
-import path from "node:path";
 import { isAlias, isScalar, parseDocument, visit } from "yaml";
-import { KNOWLEDGE_DIR } from "./content";
 import {
   identificationPending,
   legacyLookupFailure,
@@ -12,7 +9,6 @@ import {
 import { CITATION_ROLES } from "./citation-types";
 import type {
   CitationLibrary,
-  CitationLoadResult,
   CitationPaper,
   CitationReference,
   CitationSearch,
@@ -558,171 +554,103 @@ export function validateCitationLibrary(library: CitationLibrary): void {
     new Set(library.searches.map((s) => s.id)).size === library.searches.length,
     "duplicate search id",
   );
-  for (const p of papers.values())
-    for (const r of p.references) {
-      requireValue(
-        !legacyLookupFailure(r),
-        `${p.id}/${r.ref_id}: transient lookup failure must be pending, not unresolved`,
-      );
-      requireValue(
-        !legacySearchResult(r),
-        `${p.id}/${r.ref_id}: legacy partial search must be unverified until rechecked`,
-      );
-      requireValue(
-        r.target_id === null || papers.has(r.target_id),
-        `${p.id}/${r.ref_id}: unknown target_id ${r.target_id}`,
-      );
-    }
-  for (const search of library.searches) {
-    let expected = new Set([search.root_id]);
-    const seen = new Set<string>();
-    const issues = new Set<string>();
-    for (const [depth, g] of search.generations.entries()) {
-      const reached = new Set(g.paper_ids);
-      const expanded = new Set(g.expanded_ids);
-      requireValue(
-        g.depth === depth && depth <= search.max_depth,
-        `${search.id}: generations must have consecutive depths within max_depth`,
-      );
-      requireValue(
-        equalSets(reached, expected) &&
-          ![...reached].some((id) => seen.has(id)),
-        `${search.id}: generation ${depth} paper_ids disagree with selected-role traversal`,
-      );
-      const partialLast =
-        search.status === "interrupted" &&
-        depth === search.generations.length - 1 &&
-        depth < search.max_depth;
-      requireValue(
-        partialLast
-          ? [...expanded].every((id) => reached.has(id))
-          : equalSets(expanded, depth < search.max_depth ? reached : new Set()),
-        `${search.id}: expanded_ids disagree with max_depth`,
-      );
-      for (const id of reached) {
-        requireValue(
-          papers.has(id),
-          `${search.id}: unknown citation paper ${id}`,
-        );
-        seen.add(id);
-      }
-      expected = new Set();
-      for (const id of expanded) {
-        const p = papers.get(id)!;
-        requireValue(
-          p.text_status !== "not_requested",
-          `${search.id}: expanded paper ${id} has text_status not_requested`,
-        );
-        requireValue(
-          !identificationPending(p),
-          `${search.id}: expanded paper ${id} has incomplete reference identification`,
-        );
-        if (p.text_status === "failed") issues.add(`${id}/null`);
-        for (const r of p.references) {
-          if (
-            r.identification_status !== "resolved" ||
-            r.decision_status !== "classified"
-          )
-            issues.add(`${id}/${r.ref_id}`);
-          if (
-            r.target_id &&
-            r.decision_status === "classified" &&
-            r.roles.some((role) => search.roles.includes(role))
-          )
-            expected.add(r.target_id);
-        }
-      }
-      for (const id of seen) expected.delete(id);
-    }
+  const paperIds = new Set(papers.keys());
+  for (const p of papers.values()) validateCitationPaperReferences(p, paperIds);
+  for (const search of library.searches) validateCitationSearch(search, papers);
+}
+
+export function validateCitationPaperReferences(
+  p: CitationPaper,
+  paperIds: ReadonlySet<string>,
+): void {
+  for (const r of p.references) {
     requireValue(
-      !expected.size || search.status === "interrupted",
-      `${search.id}: missing a selected-role generation`,
+      !legacyLookupFailure(r),
+      `${p.id}/${r.ref_id}: transient lookup failure must be pending, not unresolved`,
     );
     requireValue(
-      equalSets(
-        issues,
-        new Set(search.issues.map((p) => `${p.paper_id}/${p.ref_id}`)),
-      ),
-      `${search.id}: issues disagree with expanded paper/reference states`,
+      !legacySearchResult(r),
+      `${p.id}/${r.ref_id}: legacy partial search must be unverified until rechecked`,
+    );
+    requireValue(
+      r.target_id === null || paperIds.has(r.target_id),
+      `${p.id}/${r.ref_id}: unknown target_id ${r.target_id}`,
     );
   }
 }
 
-export async function loadCitations(
-  directory = path.join(KNOWLEDGE_DIR, "citation_map"),
-  registered: Pick<Paper, "id" | "externalIds">[] = [],
-): Promise<CitationLibrary> {
-  const library: CitationLibrary = {
-    papers: [],
-    searches: [],
-    registeredIds: {},
-  };
-  const stat = await fs
-    .lstat(directory)
-    .catch((error: NodeJS.ErrnoException) => {
-      if (error.code === "ENOENT") return null;
-      throw error;
-    });
-  if (!stat) return library;
+export function validateCitationSearch(
+  search: CitationSearch,
+  papers: ReadonlyMap<string, CitationPaper>,
+): void {
+  let expected = new Set([search.root_id]);
+  const seen = new Set<string>();
+  const issues = new Set<string>();
+  for (const [depth, g] of search.generations.entries()) {
+    const reached = new Set(g.paper_ids);
+    const expanded = new Set(g.expanded_ids);
+    requireValue(
+      g.depth === depth && depth <= search.max_depth,
+      `${search.id}: generations must have consecutive depths within max_depth`,
+    );
+    requireValue(
+      equalSets(reached, expected) && ![...reached].some((id) => seen.has(id)),
+      `${search.id}: generation ${depth} paper_ids disagree with selected-role traversal`,
+    );
+    const partialLast =
+      search.status === "interrupted" &&
+      depth === search.generations.length - 1 &&
+      depth < search.max_depth;
+    requireValue(
+      partialLast
+        ? [...expanded].every((id) => reached.has(id))
+        : equalSets(expanded, depth < search.max_depth ? reached : new Set()),
+      `${search.id}: expanded_ids disagree with max_depth`,
+    );
+    for (const id of reached) {
+      requireValue(
+        papers.has(id),
+        `${search.id}: unknown citation paper ${id}`,
+      );
+      seen.add(id);
+    }
+    expected = new Set();
+    for (const id of expanded) {
+      const p = papers.get(id)!;
+      requireValue(
+        p.text_status !== "not_requested",
+        `${search.id}: expanded paper ${id} has text_status not_requested`,
+      );
+      requireValue(
+        !identificationPending(p),
+        `${search.id}: expanded paper ${id} has incomplete reference identification`,
+      );
+      if (p.text_status === "failed") issues.add(`${id}/null`);
+      for (const r of p.references) {
+        if (
+          r.identification_status !== "resolved" ||
+          r.decision_status !== "classified"
+        )
+          issues.add(`${id}/${r.ref_id}`);
+        if (
+          r.target_id &&
+          r.decision_status === "classified" &&
+          r.roles.some((role) => search.roles.includes(role))
+        )
+          expected.add(r.target_id);
+      }
+    }
+    for (const id of seen) expected.delete(id);
+  }
   requireValue(
-    stat.isDirectory() && !stat.isSymbolicLink(),
-    `${directory}: expected regular citation_map directory`,
+    !expected.size || search.status === "interrupted",
+    `${search.id}: missing a selected-role generation`,
   );
-  for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
-    const folder = path.join(directory, entry.name);
-    if (entry.name === "README.md" && entry.isFile()) continue;
-    requireValue(
-      ["papers", "searches"].includes(entry.name) &&
-        entry.isDirectory() &&
-        !entry.isSymbolicLink(),
-      `${folder}: expected papers/ or searches/ directory`,
-    );
-    for (const item of await fs.readdir(folder, { withFileTypes: true })) {
-      const file = path.join(folder, item.name);
-      try {
-        requireValue(
-          item.isFile() && !item.isSymbolicLink() && item.name.endsWith(".md"),
-          "only regular Markdown citation documents are allowed",
-        );
-        const doc = parseCitationDocument(
-          new TextDecoder("utf-8", { fatal: true }).decode(
-            await fs.readFile(file),
-          ),
-        );
-        requireValue(
-          item.name === `${doc.id}.md` &&
-            entry.name ===
-              (doc.type === "citation_paper" ? "papers" : "searches"),
-          "document type/id must match path",
-        );
-        if (doc.type === "citation_paper") library.papers.push(doc);
-        else library.searches.push(doc);
-      } catch (error) {
-        throw new Error(
-          `${file}: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-  }
-  validateCitationLibrary(library);
-  library.registeredIds = joinRegisteredPapers(library.papers, registered);
-  library.searches.sort(
-    (a, b) =>
-      b.created_at.localeCompare(a.created_at) || a.id.localeCompare(b.id),
+  requireValue(
+    equalSets(
+      issues,
+      new Set(search.issues.map((p) => `${p.paper_id}/${p.ref_id}`)),
+    ),
+    `${search.id}: issues disagree with expanded paper/reference states`,
   );
-  return library;
-}
-
-export async function readCitations(
-  registered: Paper[],
-  directory?: string,
-): Promise<CitationLoadResult> {
-  try {
-    return { ok: true, library: await loadCitations(directory, registered) };
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
 }

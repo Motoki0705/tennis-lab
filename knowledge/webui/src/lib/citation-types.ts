@@ -80,6 +80,17 @@ export interface CitationLibrary {
   /** Derived from external IDs; never stored in the source documents. */
   registeredIds: Record<string, string>;
 }
+export interface CitationDocumentError {
+  files: string[];
+  reason: string;
+}
+export interface CitationReadLibrary extends CitationLibrary {
+  documentErrors: CitationDocumentError[];
+  searchErrors: {
+    id: string;
+    file: string;
+    errors: CitationDocumentError[];
+  }[];
+}
 export type CitationLoadResult =
-  | { ok: true; library: CitationLibrary }
-  | { ok: false; error: string };
+  { ok: true; library: CitationReadLibrary } | { ok: false; error: string };

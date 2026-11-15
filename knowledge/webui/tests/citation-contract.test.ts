@@ -1,3 +1,4 @@
+import { loadCitations } from "../src/lib/citation-library";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { promises as fs } from "node:fs";
@@ -5,7 +6,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseDocument, stringify } from "yaml";
 import {
-  loadCitations,
   parseCitationDocument,
   validateCitationLibrary,
 } from "../src/lib/citation-documents";
@@ -106,6 +106,8 @@ test("saved WASB papers and both searches load without errors", async () => {
     f.endsWith(".md"),
   );
   const library = await loadCitations(real);
+  assert.deepEqual(library.documentErrors, []);
+  assert.deepEqual(library.searchErrors, []);
   assert.equal(library.papers.length, papers.length);
   assert.ok(library.papers.length >= 115);
   for (const id of [

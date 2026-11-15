@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { citationFixtureRoot, fixtureIds } from "../citation-fixture";
 
 const mixed = "search-fixture-mixed-depth2";
@@ -211,13 +212,16 @@ test("missing or empty storage displays no searches; malformed and conflicting d
     ).toBeVisible();
     await fs.mkdir(path.join(citationDir, "papers"));
     await fs.writeFile(
-      path.join(citationDir, "papers", "bad.md"),
+      path.join(citationDir, "papers", "cite-0000000000000000.md"),
       "---\nschema_version: 999\n---\n",
     );
     await page.reload();
     await expect(
-      page.getByRole("alert", { name: "引用探索のエラー" }),
+      page.getByRole("alert", { name: "引用文書のエラー" }),
     ).toContainText("schema_version");
+    await expect(
+      page.getByRole("alert", { name: "引用文書のエラー" }),
+    ).toContainText("cite-0000000000000000.md");
     await expect(page.getByText("探索なし", { exact: false })).toHaveCount(0);
   } finally {
     await fs.rm(citationDir, { recursive: true, force: true });
@@ -241,8 +245,19 @@ test("missing or empty storage displays no searches; malformed and conflicting d
     );
     await page.reload();
     await expect(
-      page.getByRole("alert", { name: "引用探索のエラー" }),
+      page.getByRole("alert", { name: "引用文書のエラー" }),
     ).toContainText("conflicting external IDs");
+    await expect(
+      page.getByRole("alert", { name: "引用文書のエラー" }),
+    ).toContainText(`citation_map/papers/${fixtureIds.B}.md`);
+    await expect(page.locator(".citation-search-card")).toHaveCount(1);
+    await page.locator(".citation-search-card").click();
+    await expect(
+      page.getByRole("region", { name: "探索の状態" }),
+    ).toContainText("探索中断");
+    await expect(
+      page.getByRole("alert", { name: "引用探索のエラー" }),
+    ).toHaveCount(0);
   } finally {
     await fs.writeFile(paperPath, raw);
   }
@@ -284,4 +299,137 @@ test("missing or empty storage displays no searches; malformed and conflicting d
   await expect(
     page.getByRole("alert", { name: "引用探索のエラー" }),
   ).toContainText("指定された探索が見つかりません");
+});
+
+test("healthy direct URLs preserve maps, ranking counts and Papers links beside an invalid search", async ({
+  page,
+}) => {
+  const badId = "search-invalid-status";
+  const file = path.join(
+    citationFixtureRoot,
+    "citation_map",
+    "searches",
+    `${badId}.md`,
+  );
+  const source = await fs.readFile(
+    path.join(citationFixtureRoot, "citation_map", "searches", `${mixed}.md`),
+    "utf8",
+  );
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await fs.writeFile(
+    file,
+    source
+      .replaceAll(mixed, badId)
+      .replace("schema_version: 1", "status: invalid\nschema_version: 1"),
+  );
+  try {
+    await page.goto(`/?citationSearch=${mixed}&citationRole=comparison`);
+    const warning = page.getByRole("alert", { name: "引用文書のエラー" });
+    await expect(warning).toContainText(`${badId}.md`);
+    await expect(warning).toContainText("search status");
+    await expect(
+      page.locator(`.react-flow__node[data-id='${fixtureIds.D}']`),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("alert", { name: "引用探索のエラー" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "役割別ランキング", exact: true })
+      .click();
+    const ranking = page.getByRole("region", { name: "比較対象ランキング" });
+    await expect(ranking.locator("tbody tr")).toHaveCount(3);
+    await page.setViewportSize({ width: 1600, height: 1400 });
+    await warning.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: "assets/citation-errors.png" });
+    await ranking
+      .getByRole("button", { name: "Fixture D の比較対象 2件の根拠" })
+      .click();
+    await expect(detail(page)).toContainText("引用元 2 論文");
+    await expect(detail(page)).toContainText("Fixture B");
+    await expect(detail(page)).toContainText("Fixture C");
+    await detail(page).getByRole("button", { name: "Papersの詳細へ" }).click();
+    await expect(page.locator(".paper-detail")).toContainText(
+      "Registered Fixture D",
+    );
+    await page.goto(`/?citationSearch=${badId}&citationView=ranking`);
+    await expect(
+      page.getByRole("alert", { name: "引用探索のエラー" }),
+    ).toContainText(`${badId}.md`);
+    await expect(
+      page.getByRole("alert", { name: "引用探索のエラー" }),
+    ).toContainText("search status");
+    await expect(page.locator(".citation-search-card")).toHaveCount(5);
+    await page
+      .locator(".citation-search-card")
+      .filter({ hasText: mixed })
+      .click();
+    await expect(page.locator(".citation-canvas .react-flow")).toBeVisible();
+    expect(errors).toEqual([]);
+  } finally {
+    await fs.rm(file, { force: true });
+  }
+});
+
+test("WASB remains viewable with unchanged counts while another search is invalid", async ({
+  page,
+}) => {
+  const real = fileURLToPath(
+    new URL("../../../citation_map/", import.meta.url),
+  );
+  const target = path.join(citationFixtureRoot, "citation_map");
+  const added: string[] = [];
+  const badId = "search-invalid-wasb-neighbor";
+  try {
+    // Mutate only the isolated browser fixture, never the real knowledge store.
+    for (const kind of ["papers", "searches"])
+      for (const name of await fs.readdir(path.join(real, kind))) {
+        const file = path.join(target, kind, name);
+        await fs.copyFile(
+          path.join(real, kind, name),
+          file,
+          fs.constants.COPYFILE_EXCL,
+        );
+        added.push(file);
+      }
+    const file = path.join(target, "searches", `${badId}.md`);
+    added.push(file);
+    const raw = await fs.readFile(
+      path.join(real, "searches", "search-wasb-comparison-depth2.md"),
+      "utf8",
+    );
+    await fs.writeFile(
+      file,
+      raw
+        .replaceAll("search-wasb-comparison-depth2", badId)
+        .replace("schema_version: 1", "status: invalid\nschema_version: 1"),
+    );
+    await page.goto(
+      "/?citationSearch=search-wasb-comparison-depth2&citationRole=comparison",
+    );
+    await expect(
+      page.getByRole("alert", { name: "引用文書のエラー" }),
+    ).toContainText(`${badId}.md`);
+    await expect(
+      page.locator(".react-flow__node[data-id='cite-baef928f0aefd5a6']"),
+    ).toHaveCount(1);
+    await expect(
+      page.getByRole("alert", { name: "引用探索のエラー" }),
+    ).toHaveCount(0);
+    await page
+      .getByRole("button", { name: "役割別ランキング", exact: true })
+      .click();
+    const ranking = page.getByRole("region", { name: "比較対象ランキング" });
+    await expect(ranking.locator("tbody tr")).toHaveCount(10);
+    await expect(
+      ranking.locator(".citation-count").filter({ hasText: /^2 件/ }),
+    ).toHaveCount(3);
+    await page.reload();
+    await expect(ranking.locator("tbody tr")).toHaveCount(10);
+    await ranking.locator(".citation-count").first().click();
+    await expect(detail(page)).toContainText("判断理由");
+    await expect(detail(page)).toContainText("根拠の位置");
+  } finally {
+    await Promise.all(added.map((file) => fs.rm(file, { force: true })));
+  }
 });

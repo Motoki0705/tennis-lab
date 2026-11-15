@@ -1,3 +1,4 @@
+import { loadCitations, readCitations } from "../src/lib/citation-library";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
@@ -9,9 +10,7 @@ import { stringify } from "yaml";
 import {
   normalizeIdentifier,
   joinRegisteredPapers,
-  loadCitations,
   parseCitationDocument,
-  readCitations,
   validateCitationLibrary,
 } from "../src/lib/citation-documents";
 import {
@@ -629,7 +628,7 @@ test("broken reference targets and unread expanded papers fail cross-document va
   );
 });
 
-test("absent storage is empty, while file/read/schema failures remain errors", async (t) => {
+test("absent storage is empty; known document failures are explicit and unsafe storage fails globally", async (t) => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), "citation-load-"));
   t.after(() => fs.rm(temp, { recursive: true, force: true }));
   assert.equal(
@@ -641,15 +640,33 @@ test("absent storage is empty, while file/read/schema failures remain errors", a
   assert.equal((await loadCitations(dir)).searches.length, 5);
   const file = path.join(dir, "papers", `${root.id}.md`);
   await fs.writeFile(file, "---\nbroken: true\n---\n");
-  await assert.rejects(loadCitations(dir), /schema_version/);
   const state = await readCitations([], dir);
-  assert.equal(state.ok, false);
-  if (!state.ok) assert.match(state.error, /schema_version/);
+  assert.equal(state.ok, true);
+  if (state.ok) {
+    assert.match(state.library.documentErrors[0].reason, /schema_version/);
+    assert.ok(
+      state.library.documentErrors[0].files.includes(
+        `citation_map/papers/${root.id}.md`,
+      ),
+    );
+    assert.equal(state.library.searches.length, 1);
+    assert.equal(
+      state.library.searches[0].id,
+      "search-fixture-pending-identification",
+    );
+    assert.ok(state.library.searchErrors.some((s) => s.id === mixed.id));
+  }
   await fs.writeFile(file, Buffer.from([0xff, 0xfe]));
-  await assert.rejects(loadCitations(dir), /encoded data/);
+  assert.match(
+    (await loadCitations(dir)).documentErrors[0].reason,
+    /encoded data/,
+  );
   await fs.rm(file);
   await fs.symlink("/nonexistent-citation", file);
-  await assert.rejects(loadCitations(dir), /regular Markdown/);
+  assert.match(
+    (await loadCitations(dir)).documentErrors[0].reason,
+    /regular Markdown/,
+  );
   await fs.rm(file);
   await fs.writeFile(path.join(dir, "papers", "attached.pdf"), "pdf");
   await assert.rejects(loadCitations(dir), /regular Markdown/);
