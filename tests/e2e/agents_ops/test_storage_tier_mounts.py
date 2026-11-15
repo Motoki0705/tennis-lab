@@ -90,9 +90,14 @@ engine = Engine(config, inspector=Inspector(proc), mount_check=lambda config: No
 try:
     code, report = engine.run('cycle' if tier == 'D' else 'index', ['data/task/v1'], dry_run=False)
 except StorageError as exc:
-    # Preflight may reject before unit dispatch; a second scan must not be
-    # required to report that rejection, since it has the same safety gate.
     code, report = 1, {'error': str(exc)}
+    try:
+        _, scan = engine.run('scan', [], dry_run=True)
+    except StorageError as scan_error:
+        # An early namespace rejection can also reject the diagnostic scan.
+        report['layout_errors'] = [str(scan_error)]
+    else:
+        report['layout_errors'] = scan['layout_errors']
 print(json.dumps({
     'code': code, 'report': report,
     'checkpoint_survived': payload.exists() and read_bytes(payload) == b'checkpoint must survive',
