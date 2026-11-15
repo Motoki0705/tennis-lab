@@ -238,12 +238,14 @@ def test_worktree_absolute_inputs_keep_the_standard_data_contract(
         (target / "proof.txt").write_bytes(b"alignment input")
     if state == "nested-escape":
         outside = mount / "outside"
-        outside.mkdir()
         if target.is_dir():
+            outside.mkdir()
+            (outside / "proof.txt").write_bytes(b"alignment input")
             target.rename(target.with_name("saved"))
         else:
+            outside.write_bytes(b"cam0.mp4")
             target.unlink()
-        target.symlink_to(outside, target_is_directory=True)
+        target.symlink_to(outside, target_is_directory=consumer == "alignment")
     supplied = worktree / relative / suffix
 
     def read_consumer() -> None:
