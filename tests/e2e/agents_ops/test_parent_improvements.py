@@ -706,6 +706,11 @@ def test_extract_recovers_parent_and_proposal_close(
     )
     extract(p, ok=False)
     del p.env[key]
+    # A sent extraction, including an uncertain POST, belongs to explicit recovery.
+    assert json.loads(
+        p.cli("improvement-expire", "--now", "2099-01-08T00:00:00Z").stdout
+    )["closed"] == []
+    assert not p.state()["comments"].get("10")
     assert json.loads(extract(p).stdout)["issue"] == 11
     assert p.state()["issues"]["10"]["state"] == "closed" and post_count(p) == 2
     assert (

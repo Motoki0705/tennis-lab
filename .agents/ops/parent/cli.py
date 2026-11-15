@@ -387,10 +387,14 @@ def _main(argv: list[str] | None = None) -> int:
             from .improvements import lock_key
 
             with (
-                nullcontext() if args.dry_run else store.operation(lock_key(gh.repo)),
-                store.snapshot() if args.dry_run else store.locked(),
+                store.operation(lock_key(gh.repo)),
+                store.snapshot(),
             ):
-                outcome = expire(gh, store, now=args.now, dry_run=args.dry_run)
+                # Expiry only reads the registry for public-payload validation.
+                # Its business state is canonical comments and creation receipts.
+                outcome = expire(
+                    gh.detached(), store, now=args.now, dry_run=args.dry_run
+                )
             print(json.dumps(outcome, ensure_ascii=False, sort_keys=True))
             return 2 if outcome["errors"] else 0
         if args.parent is None:
