@@ -8,13 +8,19 @@ against their training source hashes in source-parity.json.
 import ast
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import subprocess
+import sys
 
 from src.tasks.ball_detection.models.mdd import MDDHeatmapConfig
 
 
 def build_reference(saved, directory: Path):
+    checks = json.loads(Path(__file__).with_name("source-parity.json").read_text())
+    for path, record in checks.items():
+        if hashlib.sha256(Path(path).read_bytes()).hexdigest() != record["training_sha256"]:
+            raise ValueError(f"Reference dependency differs from training: {path}")
     original = subprocess.check_output([
         "git", "show", "13dff57d4:src/tasks/ball_detection/models/mdd/detectors.py"
     ], text=True)
@@ -34,6 +40,7 @@ from src.utils.models.dpt import DPTDecoder
     path.write_text(header + "\n" + body + "\n")
     spec = importlib.util.spec_from_file_location("training_reference_dpt", path)
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     config = MDDHeatmapConfig(**saved["model_config"])
     reference = module.MDDDPTDetector(config, mdd_a=saved["input_contract"]["mdd_a"], mdd_b=saved["input_contract"]["mdd_b"])
