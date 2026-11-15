@@ -4,6 +4,11 @@ import { isIP } from "node:net";
 import path from "node:path";
 import { isAlias, isScalar, parseDocument, visit } from "yaml";
 import { KNOWLEDGE_DIR } from "./content";
+import {
+  identificationPending,
+  legacyLookupFailure,
+  legacySearchResult,
+} from "./citations";
 import { CITATION_ROLES } from "./citation-types";
 import type {
   CitationLibrary,
@@ -11,6 +16,7 @@ import type {
   CitationPaper,
   CitationReference,
   CitationSearch,
+  ReferenceLookup,
 } from "./citation-types";
 import type { Paper } from "./types";
 
@@ -36,7 +42,7 @@ function mapping(value: unknown, keys?: string[]): Record<string, unknown> {
 }
 function text(value: unknown, name: string, empty = false): string {
   requireValue(
-    typeof value === "string" && (empty || value.trim()),
+    typeof value === "string" && (empty || strip(value)),
     `${name}: expected ${empty ? "a string" : "nonempty text"}`,
   );
   return value;
@@ -78,14 +84,15 @@ function integer(value: unknown, name: string): number {
 }
 function paperId(value: unknown): string {
   requireValue(
-    typeof value === "string" && /^cite-[0-9a-f]{16}$/.test(value),
+    typeof value === "string" &&
+      /^cite-[0-9a-f]{16}$/.exec(value)?.[0] === value,
     "invalid citation paper id",
   );
   return value;
 }
 function refId(value: unknown): string {
   requireValue(
-    typeof value === "string" && /^ref-[0-9]+$/.test(value),
+    typeof value === "string" && /^ref-[0-9]+$/.exec(value)?.[0] === value,
     "invalid ref_id",
   );
   return value;
@@ -134,12 +141,12 @@ function httpUrl(value: unknown): string {
 // Match Python's str.strip()/Unicode whitespace; a BOM is not whitespace there.
 const ID_SPACE =
   "[\\u0009-\\u000d\\u001c-\\u0020\\u0085\\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000]";
+function strip(value: string): string {
+  return value.replace(new RegExp(`^${ID_SPACE}+|${ID_SPACE}+$`, "g"), "");
+}
 
 export function normalizeIdentifier(namespace: string, value: string): string {
-  const v = text(value, "external_ids").replace(
-    new RegExp(`^${ID_SPACE}+|${ID_SPACE}+$`, "g"),
-    "",
-  );
+  const v = strip(text(value, "external_ids"));
   let normalized: string;
   if (namespace === "doi") {
     normalized = v
@@ -232,7 +239,27 @@ function timestamp(value: unknown): string {
 }
 
 function reference(value: unknown): CitationReference {
-  const d = mapping(value, [
+  const d = { ...mapping(value) };
+  const query = d.lookup;
+  delete d.lookup;
+  let lookup: ReferenceLookup | null = null;
+  if (query !== undefined && query !== null) {
+    const q = mapping(query, ["title", "year", "authors", "links"]);
+    requireValue(
+      q.year === null ||
+        (Number.isInteger(q.year) &&
+          (q.year as number) >= 1000 &&
+          (q.year as number) <= 9999),
+      "reference lookup year must be 1000..9999 or null",
+    );
+    lookup = {
+      title: text(q.title, "reference lookup title", true),
+      year: q.year as number | null,
+      authors: strings(q.authors, "reference lookup authors"),
+      links: strings(q.links, "reference lookup links").map(httpUrl),
+    };
+  }
+  mapping(d, [
     "ref_id",
     "citation",
     "target_id",
@@ -245,7 +272,7 @@ function reference(value: unknown): CitationReference {
   const target = d.target_id === null ? null : paperId(d.target_id);
   const identification = choice(
     d.identification_status,
-    ["resolved", "unresolved"],
+    ["resolved", "unresolved", "pending", "unverified"],
     "identification_status",
   );
   const decision = choice(
@@ -274,6 +301,7 @@ function reference(value: unknown): CitationReference {
     decision_status: decision,
     reason: text(d.reason, "reason"),
     evidence,
+    lookup,
   };
 }
 
@@ -304,7 +332,11 @@ export function parseCitationDocument(
       );
     }
   });
-  const d = mapping(yaml.toJS());
+  return parseCitationData(yaml.toJS());
+}
+
+function parseCitationData(value: unknown): CitationPaper | CitationSearch {
+  const d = mapping(value);
   requireValue(d.schema_version === 1, "citation schema_version must be 1");
   if (d.type === "citation_paper") {
     mapping(d, [
@@ -372,7 +404,8 @@ export function parseCitationDocument(
     d.type === "citation_search",
     "type must be citation_paper or citation_search",
   );
-  mapping(d, [
+  const searchData = { status: "complete", stop_reason: "", ...d };
+  mapping(searchData, [
     "schema_version",
     "type",
     "id",
@@ -382,10 +415,12 @@ export function parseCitationDocument(
     "max_depth",
     "generations",
     "issues",
+    "status",
+    "stop_reason",
   ]);
   const id = text(d.id, "id");
   requireValue(
-    /^search-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id),
+    /^search-[a-z0-9]+(?:-[a-z0-9]+)*$/.exec(id)?.[0] === id,
     "search id must be search-kebab-slug",
   );
   const created = timestamp(d.created_at);
@@ -410,6 +445,20 @@ export function parseCitationDocument(
       issues.length,
     "duplicate issue pointer",
   );
+  const status = choice(
+    searchData.status,
+    ["complete", "interrupted"],
+    "search status",
+  );
+  const stop_reason = text(
+    searchData.stop_reason,
+    "stop_reason",
+    status === "complete",
+  );
+  requireValue(
+    status !== "complete" || !stop_reason,
+    "complete search must have an empty stop_reason",
+  );
   return {
     schema_version: 1,
     type: "citation_search",
@@ -420,6 +469,8 @@ export function parseCitationDocument(
     max_depth: integer(d.max_depth, "max_depth"),
     generations,
     issues,
+    status,
+    stop_reason,
   };
 }
 
@@ -491,6 +542,16 @@ function equalSets(a: Set<string>, b: Set<string>) {
   return a.size === b.size && [...a].every((v) => b.has(v));
 }
 export function validateCitationLibrary(library: CitationLibrary): void {
+  for (const p of library.papers)
+    requireValue(
+      parseCitationData(p).type === "citation_paper",
+      "expected citation paper",
+    );
+  for (const s of library.searches)
+    requireValue(
+      parseCitationData(s).type === "citation_search",
+      "expected citation search",
+    );
   const papers = new Map(library.papers.map((p) => [p.id, p]));
   identityIndex(library.papers.map((p) => ({ id: p.id, ids: p.external_ids })));
   requireValue(
@@ -498,11 +559,20 @@ export function validateCitationLibrary(library: CitationLibrary): void {
     "duplicate search id",
   );
   for (const p of papers.values())
-    for (const r of p.references)
+    for (const r of p.references) {
+      requireValue(
+        !legacyLookupFailure(r),
+        `${p.id}/${r.ref_id}: transient lookup failure must be pending, not unresolved`,
+      );
+      requireValue(
+        !legacySearchResult(r),
+        `${p.id}/${r.ref_id}: legacy partial search must be unverified until rechecked`,
+      );
       requireValue(
         r.target_id === null || papers.has(r.target_id),
         `${p.id}/${r.ref_id}: unknown target_id ${r.target_id}`,
       );
+    }
   for (const search of library.searches) {
     let expected = new Set([search.root_id]);
     const seen = new Set<string>();
@@ -519,8 +589,14 @@ export function validateCitationLibrary(library: CitationLibrary): void {
           ![...reached].some((id) => seen.has(id)),
         `${search.id}: generation ${depth} paper_ids disagree with selected-role traversal`,
       );
+      const partialLast =
+        search.status === "interrupted" &&
+        depth === search.generations.length - 1 &&
+        depth < search.max_depth;
       requireValue(
-        equalSets(expanded, depth < search.max_depth ? reached : new Set()),
+        partialLast
+          ? [...expanded].every((id) => reached.has(id))
+          : equalSets(expanded, depth < search.max_depth ? reached : new Set()),
         `${search.id}: expanded_ids disagree with max_depth`,
       );
       for (const id of reached) {
@@ -537,10 +613,14 @@ export function validateCitationLibrary(library: CitationLibrary): void {
           p.text_status !== "not_requested",
           `${search.id}: expanded paper ${id} has text_status not_requested`,
         );
+        requireValue(
+          !identificationPending(p),
+          `${search.id}: expanded paper ${id} has incomplete reference identification`,
+        );
         if (p.text_status === "failed") issues.add(`${id}/null`);
         for (const r of p.references) {
           if (
-            r.identification_status === "unresolved" ||
+            r.identification_status !== "resolved" ||
             r.decision_status !== "classified"
           )
             issues.add(`${id}/${r.ref_id}`);
@@ -555,7 +635,7 @@ export function validateCitationLibrary(library: CitationLibrary): void {
       for (const id of seen) expected.delete(id);
     }
     requireValue(
-      !expected.size,
+      !expected.size || search.status === "interrupted",
       `${search.id}: missing a selected-role generation`,
     );
     requireValue(

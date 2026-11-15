@@ -15,6 +15,7 @@ export const fixtureIds = {
   C: "cite-520c4b649c4b20f6",
   D: "cite-297fb8cf588b14c9",
   E: "cite-9278de4b09038c2d",
+  P: "cite-4720c3fa08e1f674",
 };
 export async function prepareCitationFixture() {
   await fs.rm(citationFixtureRoot, { recursive: true, force: true });

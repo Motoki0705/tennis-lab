@@ -1007,7 +1007,7 @@ input[type="checkbox"] {
   min-width: 0;
 }
 .citation-canvas {
-  height: 480px;
+  height: var(--citation-map-height, 480px);
   border: 1px solid #35505a;
   border-radius: 8px;
   background: #10222a;
@@ -1196,6 +1196,50 @@ input[type="checkbox"] {
 .citation-issues h3 {
   margin-top: 0;
   font-size: 16px;
+}
+.citation-search-state {
+  margin: 0 0 18px;
+  padding: 10px 14px;
+  border: 1px solid #42695d;
+  border-radius: 6px;
+  background: #19312e;
+  font-size: 12px;
+}
+.citation-search-card .citation-search-state {
+  align-self: start;
+  margin: 0;
+  padding: 5px 9px;
+}
+.citation-search-state.interrupted,
+.citation-pending {
+  background: #302a22;
+  border-color: #9a7b4a;
+}
+.citation-search-state p {
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.citation-pending {
+  margin-top: 24px;
+  padding: 18px;
+  border: 1px solid #9a7b4a;
+  border-radius: 8px;
+}
+.citation-pending h3 {
+  font-size: 16px;
+  margin-top: 0;
+}
+.citation-lookup {
+  font-size: 12px;
+  margin-top: 12px;
+}
+.citation-lookup summary {
+  cursor: pointer;
+  color: #b2ddcf;
+}
+.citation-lookup a {
+  color: #b2ddcf;
+  overflow-wrap: anywhere;
 }
 .citation-issues p {
   font-size: 12px;

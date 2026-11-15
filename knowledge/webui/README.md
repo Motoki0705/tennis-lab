@@ -20,7 +20,7 @@ npm run build && npm start      # production
 - 詳細: 考察、実測metrics、config、曲線、再現bundleのパス、前提・後続・関連実験、論文参照。Escapeで閉じる。
 - 実験比較: 最大4件の条件・metricsを並置しCSV出力。異なる評価条件に自動の優劣を付けない。
 - Papers: 論文情報・要約・採録理由・読解ノート・一次資料URL・参照実験への逆引き。
-- 引用探索: Papersから保存済み探索の起点を選び、役割付きマップと役割別ランキングを閲覧。件数から引用元ごとの判断理由・根拠位置へ移り、外部IDで対応した登録済みPapersの詳細を開ける。問題箇所は役割の絞り込み中も表示する。
+- 引用探索: Papersから保存済み探索の起点を選び、役割付きマップと役割別ランキングを閲覧。件数から引用元ごとの判断理由・根拠位置へ移り、外部IDで対応した登録済みPapersの詳細を開ける。完了/中断と停止理由、照会待ち・一意性未確認・未同定・役割判定不能・本文取得失敗を区別する。問題箇所と未完了の照会情報は役割の絞り込み中も表示し、未展開論文は集計に含めない。
 - 研究サマリー: `summary.md` を表示し、根拠ノードへ遷移。
 - URLにタスク・検索・フィルタ・表示・選択ノードを保持。`/?node=<id>`、`/?paper=<id>` で直接開ける。実験の論文絞り込みには別キー `paperFilter` を使う。
 - 引用探索のURLは `citationSearch`（探索ID）・`citationRole`（役割）・`citationPaper`（論文文書ID）・`citationView`（`map` / `ranking`）。例: `/?citationSearch=search-example&citationRole=comparison`。探索やPapers登録はCLIで行い、Web UIは読み取り専用。
@@ -62,6 +62,12 @@ KNOWLEDGE_DIR="$PWD/.citation-e2e" npm run dev
 - `src/components/{GraphView,DetailPanel}.tsx`: グラフとノード詳細。
 - `src/components/{CitationExplorer,CitationMap}.tsx`: 引用マップ・ランキング・根拠と問題箇所の表示。
 - `src/app/api/curves/[id]/route.ts`: 曲線。
+
+共有の状態・lookup・部分展開の正常/異常ケースは `tests/fixtures/knowledge/citation-boundaries.json` にあり、PythonとTSが同じ例を読む。unitとe2eは保存済みWASBの実データも検証し、探索・外部照会は実行しない。
+
+![WASB 比較対象・深さ2の引用マップ](assets/wasb-citation-map.png)
+
+![WASB 比較対象のランキング](assets/wasb-citation-ranking.png)
 
 一覧のDOMはページ単位、グラフは可視範囲だけを描画する。現在の200ノード規模では
 サーバがMarkdownを読み、検索用本文もclientへ渡す。数千〜数万ノードに拡大する際は

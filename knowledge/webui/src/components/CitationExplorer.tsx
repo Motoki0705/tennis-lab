@@ -3,7 +3,9 @@ import { useEffect, useRef } from "react";
 import {
   CITATION_ROLES,
   DECISION_LABELS,
+  IDENTIFICATION_LABELS,
   ROLE_LABELS,
+  SEARCH_LABELS,
   TEXT_LABELS,
 } from "@/lib/citation-types";
 import type {
@@ -16,6 +18,7 @@ import type {
 } from "@/lib/citation-types";
 import {
   citationRelations,
+  identificationPending,
   rankCitations,
   searchReferences,
 } from "@/lib/citations";
@@ -63,6 +66,10 @@ export function CitationSearchList({
                 {s.roles.map((r) => ROLE_LABELS[r]).join(" / ")} · 深さ{" "}
                 {s.max_depth}
               </span>
+              <span className={`citation-search-state ${s.status}`}>
+                {SEARCH_LABELS[s.status]}
+              </span>
+              {s.stop_reason && <span>中断理由: {s.stop_reason}</span>}
               <small>
                 {s.id} · {s.created_at}
               </small>
@@ -80,11 +87,7 @@ function Evidence({ reference }: { reference: CitationReference }) {
     <div className="citation-evidence">
       <div className="citation-badges">
         <b>{reference.ref_id}</b>
-        <span>
-          {reference.identification_status === "resolved"
-            ? "同定済み"
-            : "未同定"}
-        </span>
+        <span>{IDENTIFICATION_LABELS[reference.identification_status]}</span>
         <span>{DECISION_LABELS[reference.decision_status]}</span>
         {reference.roles.map((r) => (
           <span key={r}>{ROLE_LABELS[r]}</span>
@@ -107,6 +110,32 @@ function Evidence({ reference }: { reference: CitationReference }) {
           )}
         </dd>
       </dl>
+      {reference.lookup && (
+        <details className="citation-lookup">
+          <summary>照会に使う情報</summary>
+          <dl>
+            <dt>題名</dt>
+            <dd>{reference.lookup.title || "未記録"}</dd>
+            <dt>年 / 著者</dt>
+            <dd>
+              {reference.lookup.year ?? "年不明"} /{" "}
+              {reference.lookup.authors.join(", ") || "著者不明"}
+            </dd>
+            <dt>照会元リンク</dt>
+            <dd>
+              {reference.lookup.links.length
+                ? reference.lookup.links.map((link) => (
+                    <div key={link}>
+                      <a href={link} target="_blank" rel="noreferrer">
+                        {link}
+                      </a>
+                    </div>
+                  ))
+                : "リンクの記録なし"}
+            </dd>
+          </dl>
+        </details>
+      )}
     </div>
   );
 }
@@ -215,7 +244,23 @@ function CitationDetail({
       <section aria-label="この論文の参考文献">
         <h4>この論文が引用した文献</h4>
         {!expanded ? (
-          <p>この探索では未展開です。</p>
+          <>
+            <p>この探索では未展開です。</p>
+            {identificationPending(paper) && (
+              <>
+                <p className="citation-note">
+                  照会が完了していない参考文献です。展開・集計には含めず、役割の絞り込みにかかわらず表示します。
+                </p>
+                {paper.references
+                  .filter((r) =>
+                    ["pending", "unverified"].includes(r.identification_status),
+                  )
+                  .map((r) => (
+                    <Evidence key={r.ref_id} reference={r} />
+                  ))}
+              </>
+            )}
+          </>
         ) : !outgoing.length ? (
           <p>この条件での参考文献なし。</p>
         ) : (
@@ -290,6 +335,10 @@ export function CitationExplorer({
     (p) => p.id === selected && scopeIds.has(p.id),
   );
   const expanded = new Set(search.generations.flatMap((g) => g.expanded_ids));
+  const reached = new Set(search.generations.flatMap((g) => g.paper_ids));
+  const waitingPapers = library.papers.filter(
+    (p) => reached.has(p.id) && !expanded.has(p.id) && identificationPending(p),
+  );
   return (
     <div className="citation-explorer">
       <div className="citation-controls">
@@ -302,7 +351,8 @@ export function CitationExplorer({
           >
             {library.searches.map((s) => (
               <option key={s.id} value={s.id}>
-                {library.papers.find((p) => p.id === s.root_id)!.title} · {s.id}
+                {library.papers.find((p) => p.id === s.root_id)!.title} · {s.id}{" "}
+                · {SEARCH_LABELS[s.status]}
               </option>
             ))}
           </select>
@@ -335,6 +385,20 @@ export function CitationExplorer({
           表示・集計は展開済み論文の参考文献。役割の絞り込みは保存済み探索の範囲を変更しません。
         </p>
       </header>
+      <section
+        className={`citation-search-state ${search.status}`}
+        aria-label="探索の状態"
+      >
+        <strong>{SEARCH_LABELS[search.status]}</strong>
+        {search.status === "interrupted" && (
+          <>
+            <p>中断理由: {search.stop_reason}</p>
+            <p className="citation-note">
+              展開を完了した引用元の参考文献を表示・集計しています。未展開・照会未完了の文献は集計に含めません。
+            </p>
+          </>
+        )}
+      </section>
       <nav className="citation-modes" aria-label="引用表示切替">
         <button aria-pressed={mode === "map"} onClick={() => onMode("map")}>
           引用マップ
@@ -358,7 +422,7 @@ export function CitationExplorer({
               />
               {!relations.length && (
                 <p className="empty-state">
-                  この条件での引用関係はありません。
+                  この条件での展開済み引用関係はありません。
                 </p>
               )}
               <details className="citation-relations">
@@ -389,7 +453,7 @@ export function CitationExplorer({
             <div className="citation-rankings">
               <p className="citation-note">
                 件数 =
-                この探索内で、その役割で引用した異なる論文数。同じ引用元の複数行は1件です。件数を選ぶと引用元・判断理由・根拠へ移れます。
+                この探索で展開済みの論文のうち、その役割で引用した異なる論文数。同じ引用元の複数行は1件です。件数を選ぶと引用元・判断理由・根拠へ移れます。
               </p>
               {(role ? [role] : CITATION_ROLES).map((r) => (
                 <section key={r} aria-label={`${ROLE_LABELS[r]}ランキング`}>
@@ -430,10 +494,40 @@ export function CitationExplorer({
               ))}
             </div>
           )}
+          {waitingPapers.length > 0 && (
+            <section className="citation-pending" aria-label="照会未完了の論文">
+              <h3>照会未完了の論文 ({waitingPapers.length})</h3>
+              <p className="citation-note">
+                本文や役割の記録を保持し、同定が完了するまで展開・集計に含めません。役割の絞り込みにかかわらず表示します。
+              </p>
+              {waitingPapers.map((p) => (
+                <article key={p.id}>
+                  <button
+                    className="related-link"
+                    onClick={() => onSelect(p.id)}
+                  >
+                    {p.title}
+                  </button>
+                  <span className="citation-badges">
+                    {TEXT_LABELS[p.text_status]} · この探索では未展開
+                  </span>
+                  {p.references
+                    .filter((r) =>
+                      ["pending", "unverified"].includes(
+                        r.identification_status,
+                      ),
+                    )
+                    .map((r) => (
+                      <Evidence key={r.ref_id} reference={r} />
+                    ))}
+                </article>
+              ))}
+            </section>
+          )}
           <section className="citation-issues" aria-label="探索の問題箇所">
             <h3>問題箇所 ({search.issues.length})</h3>
             <p className="citation-note">
-              役割の絞り込みにかかわらず、この探索の全問題箇所を表示します。
+              役割の絞り込みにかかわらず、展開済み引用元の全問題箇所を表示します。
             </p>
             {!search.issues.length && <p>記録された問題箇所なし。</p>}
             {search.issues.map((issue) => {

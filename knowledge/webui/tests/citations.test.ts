@@ -111,8 +111,8 @@ for (const row of boundaries.external_ids)
   });
 
 test("shared documents join canonical target metadata and preserve all converging evidence", () => {
-  assert.equal(library.papers.length, 5);
-  assert.equal(library.searches.length, 3);
+  assert.equal(library.papers.length, 6);
+  assert.equal(library.searches.length, 5);
   const rows = searchReferences(library, mixed);
   const comparison = rankCitations(rows, "comparison");
   const d = comparison.find((r) => r.paper.title === "Fixture D")!;
@@ -638,7 +638,7 @@ test("absent storage is empty, while file/read/schema failures remain errors", a
   );
   const dir = path.join(temp, "citation_map");
   await fs.cp(fixture, dir, { recursive: true });
-  assert.equal((await loadCitations(dir)).searches.length, 3);
+  assert.equal((await loadCitations(dir)).searches.length, 5);
   const file = path.join(dir, "papers", `${root.id}.md`);
   await fs.writeFile(file, "---\nbroken: true\n---\n");
   await assert.rejects(loadCitations(dir), /schema_version/);

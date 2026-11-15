@@ -6,6 +6,30 @@ import type {
   CitationSearch,
 } from "./citation-types";
 
+export function legacyLookupFailure(ref: CitationReference): boolean {
+  return (
+    ref.identification_status === "unresolved" &&
+    ref.reason.includes("Identification: reference lookup failed:")
+  );
+}
+export function legacySearchResult(ref: CitationReference): boolean {
+  return (
+    ["resolved", "unresolved"].includes(ref.identification_status) &&
+    (ref.reason.includes(
+      "Identification: unique exact title/year match in OpenAlex",
+    ) ||
+      (ref.reason.includes("Identification: OpenAlex global_search") &&
+        !ref.reason.includes("cursor_complete")))
+  );
+}
+export function identificationPending(paper: CitationPaper): boolean {
+  return paper.references.some(
+    (ref) =>
+      ["pending", "unverified"].includes(ref.identification_status) ||
+      legacyLookupFailure(ref),
+  );
+}
+
 export interface ScopedReference {
   source: CitationPaper;
   target: CitationPaper | null;

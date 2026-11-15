@@ -10,7 +10,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 1000 },
   },
   projects: [
-    { name: "library", testMatch: "library.spec.ts" },
+    { name: "library", testMatch: ["library.spec.ts", "wasb.spec.ts"] },
     {
       name: "citations",
       testMatch: "citations.spec.ts",

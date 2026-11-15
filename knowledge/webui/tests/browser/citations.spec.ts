@@ -8,6 +8,58 @@ const comparison = "search-fixture-comparison-depth2";
 const detail = (page: import("@playwright/test").Page) =>
   page.getByRole("complementary", { name: "引用論文の詳細" });
 
+test("complete and interrupted searches coexist and unfinished identification remains visible outside counts", async ({
+  page,
+}) => {
+  await page.goto("/?view=papers");
+  await expect(page.locator(".citation-search-card")).toHaveCount(5);
+  await page
+    .locator(".citation-search-card")
+    .filter({ hasText: "search-fixture-pending-identification" })
+    .click();
+  const state = page.getByRole("region", { name: "探索の状態" });
+  await expect(state).toContainText("探索中断");
+  await expect(state).toContainText("Paper processing incomplete");
+  await expect(page.locator(".citation-header")).toContainText("展開 0 論文");
+  const waiting = page.getByRole("region", { name: "照会未完了の論文" });
+  await expect(waiting).toContainText("照会待ち");
+  await expect(waiting).toContainText("一意性未確認");
+  await page
+    .getByLabel("引用の役割", { exact: true })
+    .selectOption("benchmark");
+  await expect(waiting).toContainText("照会待ち");
+  await waiting.getByRole("button", { name: "Fixture P", exact: true }).click();
+  await detail(page)
+    .getByText("照会に使う情報", { exact: true })
+    .first()
+    .click();
+  await expect(
+    detail(page).getByText("A Pending Target", { exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page
+    .getByRole("button", { name: "役割別ランキング", exact: true })
+    .click();
+  await expect(page.locator(".citation-rankings tbody tr")).toHaveCount(0);
+  await page
+    .getByLabel("保存済み探索", { exact: true })
+    .selectOption("search-fixture-interrupted-depth2");
+  await expect(state).toContainText("agy:cli_error");
+  await page
+    .getByLabel("引用の役割", { exact: true })
+    .selectOption("comparison");
+  await page.locator(".citation-relations summary").click();
+  await expect(page.locator(".citation-relations article")).toHaveCount(3);
+  await expect(
+    page.getByRole("region", { name: "探索の問題箇所" }),
+  ).toContainText("問題箇所 (2)");
+  await page.getByLabel("保存済み探索", { exact: true }).selectOption(mixed);
+  await expect(state).toContainText("探索完了");
+  await expect(
+    page.getByRole("alert", { name: "引用探索のエラー" }),
+  ).toHaveCount(0);
+});
+
 test("Papers opens a converging map, filters roles and links ranking counts to all evidence and registered Papers", async ({
   page,
 }) => {

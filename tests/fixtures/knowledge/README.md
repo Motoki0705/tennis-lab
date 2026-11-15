@@ -41,3 +41,6 @@ timestamps, source URLs, and external IDs. The Python schema tests and TypeScrip
 unit tests both read the same cases and expected results. It is a sibling of the
 store because `citation_map/` itself only permits citation Markdown documents.
 The value contract is defined in [knowledge/README.md](../../../knowledge/README.md#入力値の境界条件).
+Its `libraries` cases apply the same edits to the shared documents in both
+languages and compare completed/interrupted searches, partial expansion,
+identification states, lookup metadata, and rejection of legacy partial results.

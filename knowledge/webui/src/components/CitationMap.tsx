@@ -1,5 +1,11 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import dagre from "dagre";
 import ReactFlow, {
   Background,
@@ -12,6 +18,7 @@ import "reactflow/dist/style.css";
 import { ROLE_LABELS, TEXT_LABELS } from "@/lib/citation-types";
 import type { CitationPaper } from "@/lib/citation-types";
 import type { CitationRelation } from "@/lib/citations";
+import { identificationPending } from "@/lib/citations";
 
 const SHORT_ROLES = {
   foundation: "基盤",
@@ -110,6 +117,7 @@ export function CitationMap({
               <small>
                 {id === root.id ? "起点 · " : ""}
                 {paper ? TEXT_LABELS[paper.text_status] : "未同定"}
+                {paper && identificationPending(paper) ? " · 照会未完了" : ""}
               </small>
               <strong>{paper?.title ?? rel!.references[0].citation}</strong>
               <span>
@@ -125,7 +133,16 @@ export function CitationMap({
     return { nodes, edges };
   }, [root, relations, selected, onSelect]);
   return (
-    <div ref={container} className="citation-canvas" aria-label="引用マップ">
+    <div
+      ref={container}
+      className="citation-canvas"
+      aria-label="引用マップ"
+      style={
+        {
+          "--citation-map-height": `${Math.min(960, Math.max(480, nodes.length * 70))}px`,
+        } as CSSProperties
+      }
+    >
       <ReactFlow
         key={nodes.map((n) => n.id).join(",")}
         nodes={nodes}
