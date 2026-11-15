@@ -1,0 +1,85 @@
+{
+  "record": {
+    "data": {
+      "action_id": "98bd54f45d16460ab4e9c804c4277009",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.improvement; artifact=parent issue comment; content_sha256=3ee4563f16766dfbb32ac5b7352d8f06e7395db74006da6ab5b0508e62317584; private evidence"
+        },
+        {
+          "content_sha256": "8a184f17c4d733f5f5d9fc042029e50fc163f0f38d2712314f072d364a1be458",
+          "kind": "public",
+          "revision": null,
+          "url": "https://github.com/Motoki0705/tennis-lab/issues/1947#issuecomment-6845270616"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent comment recorded: event=candidate; state=None",
+      "verifies": []
+    },
+    "id": "0c165dea28ac430dba7dc3e815ff8091",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "fbb2a5c9e8dc446caa412c31d8a09c83",
+      "delegation": null,
+      "issue": null,
+      "parent": 1797,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-13T05:45:25.740839+00:00"
+      },
+      "recorded_at": "2026-11-13T05:45:25.740854+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
