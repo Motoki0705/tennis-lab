@@ -18,6 +18,7 @@ from lib.checkout_lock import CHECKOUT_ROOT_ENV, common_directory
 from .engine import Engine
 from .filesystem import StorageError, real_directory, write_json
 from .layout import Config, main_checkout, prepare_worktree
+from .references import ReferenceError
 
 
 def main() -> int:
@@ -50,6 +51,7 @@ def main() -> int:
     worktree.add_argument("worktree", type=Path)
     worktree.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
+    engine: Engine | None = None
     try:
         repo = main_checkout(args.repo)
         if common_directory(repo) != common_directory(
@@ -76,6 +78,7 @@ def main() -> int:
                 report = {
                     "action": "would_activate" if dry_run else "activated",
                     "dry_run": dry_run,
+                    "unmanaged_links_D": engine.external_links,
                 }
                 code = 0
         else:
@@ -85,8 +88,22 @@ def main() -> int:
         print(json.dumps(report, ensure_ascii=True, indent=2))
         return code
     except (OSError, ValueError, KeyError, TypeError, StorageError) as exc:
+        references = (
+            exc.observations
+            if isinstance(exc, ReferenceError)
+            else engine.external_links
+            if engine is not None
+            else []
+        )
         print(
-            json.dumps({"outcome": "failure", "error": str(exc)}, ensure_ascii=True),
+            json.dumps(
+                {
+                    "outcome": "failure",
+                    "error": str(exc),
+                    **({"unmanaged_links_D": references} if references else {}),
+                },
+                ensure_ascii=True,
+            ),
             file=sys.stderr,
         )
         return 1

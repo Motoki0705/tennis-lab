@@ -34,6 +34,7 @@ from .filesystem import (
     write_json,
 )
 from .layout import Config, Unit, discover
+from .references import inspect_references
 from .usage import Inspector
 
 IDLE_NS = 14 * 24 * 3600 * 10**9
@@ -79,6 +80,7 @@ class Engine:
         self.config = config
         self.inspector = inspector or Inspector()
         self.process_scope: dict[str, Any] = {}
+        self.external_links: list[dict[str, Any]] = []
         self.mount_check = mount_check
         self.clock = clock
 
@@ -176,13 +178,23 @@ class Engine:
                 "unit": unit.path if unit else None,
                 "time": self.timestamp(),
                 "process_scope": self.process_scope,
+                **(
+                    {"unmanaged_links_D": self.external_links}
+                    if self.external_links
+                    else {}
+                ),
                 **details,
             },
         )
 
     @contextmanager
-    def locked(self, *, dry_run: bool) -> Iterator[None]:
+    def locked(
+        self, *, dry_run: bool, reference_targets: bool = True
+    ) -> Iterator[None]:
         self.check_mount()  # Never create even a lock when E: is missing.
+        self.external_links = inspect_references(
+            self.config, read_targets=reference_targets
+        )
         if dry_run:
             yield
             return
@@ -669,7 +681,12 @@ class Engine:
         if evidence is not None and not dry_run:
             raise StorageError("unpublished manifests may only be used in a dry-run")
         if not unit.sweepable:
-            return {"action": "kept", "reason": "ckpt is mirror-only"}
+            return {
+                "action": "kept",
+                "reason": "resident input is mirror-only"
+                if unit.kind == "resident"
+                else "ckpt is mirror-only",
+            }
         self.require_complete_local(unit)
         source = self.path(unit)
         before = snapshot(source)
@@ -1078,7 +1095,10 @@ class Engine:
                 raise StorageError(
                     "automatic cycle activation does not match this repository and mount"
                 )
-        with self.locked(dry_run=dry_run or command == "scan"):
+        with self.locked(
+            dry_run=dry_run or command == "scan",
+            reference_targets=not (dry_run and requested and command != "scan"),
+        ):
             temporaries = journals.inspect_json(self.config.repo, self.config.mirror)
             repaired_logs = journals.inspect_logs(
                 self.config.state, repair=command == "recover" and not dry_run
@@ -1100,6 +1120,7 @@ class Engine:
                     "E": mirror.legacy_outputs,
                 },
                 "results": [],
+                "unmanaged_links_D": self.external_links,
                 "uncommitted_json": temporaries,
             }
             usage = self.inspector.inspect((), Snapshot({}))

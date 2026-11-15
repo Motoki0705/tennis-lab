@@ -86,9 +86,9 @@ def main(argv: list[str] | None = None) -> None:
     del cfg["defaults"]
     del cfg["hydra"]
     cfg.paths = {key: str(value) for key, value in roots.as_mapping().items()}
-    cfg.source_directory = (
-        paths.declared("source_directory").path.relative_to(data_root).as_posix()
-    )
+    cfg.source_directory = resolver.relative(
+        PathRole.DATA, paths.declared("source_directory").path
+    ).as_posix()
     cfg.gui.port = args.port
     runtime = parse_clip_studio_config(cfg)
     project = load_review_project(runtime)

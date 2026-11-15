@@ -34,7 +34,7 @@ def discover_clip_studio_layout(
     if not source.is_dir():
         raise FileNotFoundError(f"source directory not found: {source}")
 
-    relative = source.relative_to(resolver.roots.data_root)
+    relative = resolver.relative(PathRole.DATA, source)
     parts = relative.parts
     if len(parts) != 4 or parts[:2] != ("tennis_multiview", "raw"):
         raise ValueError(
