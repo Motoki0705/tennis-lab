@@ -46,5 +46,10 @@
     "images": 8,
     "output": "outputs/tennis_scene/evaluate/dino_batch_api_replay_check",
     "scope": "full media decoding, pinned media/frame/checkpoint digests, same input order; CPU only"
+  },
+  "replay_entry_validation": {
+    "bash_syntax": "passed",
+    "rejects_outside_queue": true,
+    "original_queue_script_retained": "queue-repro-original.sh"
   }
 }

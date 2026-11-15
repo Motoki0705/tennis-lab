@@ -149,6 +149,10 @@ CUDA拡張は既存のクリーン導入検証で生成したbinaryを明示選�
 正確な元commandと実装commitは [run.json](../../runs/run-dino-batch-api-20261116/run.json)、
 [比較script](../../runs/run-dino-batch-api-20261116/compare.py)、
 [queue log](../../runs/run-dino-batch-api-20261116/gpu.log)に残した。
+queueが自動生成した元の再現scriptは [queue-repro-original.sh](../../runs/run-dino-batch-api-20261116/queue-repro-original.sh)
+にそのまま保存した。ローカルoutputs内scriptへの参照が残るため、再実行には
+保存済みscriptを参照する [repro.sh](../../runs/run-dino-batch-api-20261116/repro.sh) を使う。
+この入口はshared queue経由の起動と実装の一致を検査し、新しい出力先へ入力を再作成して比較する。
 比較scriptの保存時変更はimport整形のみで、[来歴](../../runs/run-dino-batch-api-20261116/script-provenance.json)に記録した。
 再実行用の入力作成は [prepare.py](../../runs/run-dino-batch-api-20261116/prepare.py) を使う。
 repo rootから次を実行し、CUDA拡張を導入READMEに従って明示選択した新しいqueue jobで比較する。
