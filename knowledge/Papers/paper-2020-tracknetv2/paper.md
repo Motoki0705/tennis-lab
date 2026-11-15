@@ -14,8 +14,7 @@ authors:
 tasks:
 - ball_detection
 source: https://doi.org/10.1109/icpai51961.2020.00023
-summary: バドミントンのシャトルを動画から追跡する、TrackNetを改良したヒートマップ型の検出ネットワーク。複数フレームを入力して複数フレームの位置を同時に出力するMIMO設計を採る。本文は取得できなかったため、この要約はWASB（arXiv
-  2311.05237）の引用文脈に基づく。
+summary: バドミントン動画からシャトルを検出するU-Netベースのモデル。連続3フレームをチャネル方向に結合して入力し、対応する3枚のヒートマップを出力するMIMO設計を採り、focal lossで学習する。本文は取得できなかったため、この要約はWASB（arXiv 2311.05237v1）の付録Aの記述に基づく。
 reason: '探索 search-wasb-comparison-depth2（起点 cite-baef928f0aefd5a6、指定役割 comparison、最大深さ
   2）から採録。
 
