@@ -499,6 +499,8 @@ merge確認後の記録別journal追記が中断しても、次のbatchを選ぶ
 dirty worktreeや破損journalを自動resetせず、影響する公開だけを確認・修復する。
 確認後はcleanな公開worktreeを削除し、dirtyまたは同一性未確認のものは保持して
 `retained_worktrees` の件数で返す。
+再開時はignore対象の未追跡ファイルも検査する。固定plan外のignoredファイルがあれば
+`worktree_dirty` で再開を拒否する。cleanupもignore指定を含む未追跡ファイルがあるworktreeを保持する。
 
 `--dry-run` は `Journal.preview_publication()` とローカル `origin/main` を使う。
 readyなenvelopeは固定版を保持し、未準備の捕捉は同じrenderer/guardで依存関係も含めて読み取り専用変換する。

@@ -467,6 +467,8 @@ commit后中断会复用完全核对的commit；push、PR创建和merge响应丢
 已确认merge但逐记录journal追加中断时，先恢复该批再选择新批次。
 不自动reset dirty worktree或损坏journal；只检查和修复受影响的发布。
 确认后移除clean发布worktree，保留dirty或身份未确认的worktree，并返回 `retained_worktrees` 数量。
+恢复检查也包含被ignore规则忽略的未跟踪文件。固定plan之外的ignored文件会以
+`worktree_dirty` 阻止恢复。cleanup同样保留含有任何未跟踪文件的worktree，包括被忽略的文件。
 
 `--dry-run` 使用 `Journal.preview_publication()` 与本地 `origin/main`，保留ready envelope的固定版本，
 用相同renderer/guard只读转换尚未准备的捕获，同时检查依赖。

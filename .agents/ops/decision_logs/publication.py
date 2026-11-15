@@ -249,7 +249,7 @@ class Publisher:
                 or self.git("rev-parse", "HEAD", cwd=tree).decode().strip()
                 != revision["head"]
                 or self.git(
-                    "status", "--porcelain", "--untracked-files=all", cwd=tree
+                    "status", "--porcelain", "--untracked-files=all", "--ignored", cwd=tree
                 ).strip()
             ):
                 retained += 1
@@ -280,9 +280,9 @@ class Publisher:
             )
         except PublicationError:
             raise PublicationError("worktree_dirty") from None
-        others = self.git(
-            "ls-files", "--others", "--exclude-standard", "-z", cwd=tree
-        ).rstrip(b"\0")
+        # Ignore rules control publication paths too. They must not hide a
+        # recovery file outside the frozen plan from validation or cleanup.
+        others = self.git("ls-files", "--others", "-z", cwd=tree).rstrip(b"\0")
         untracked = {n.decode() for n in others.split(b"\0")} if others else set()
         require(
             set(staged) | set(working) | untracked <= files.keys(), "worktree_dirty"
@@ -328,7 +328,7 @@ class Publisher:
         )
         head = self.git("rev-parse", "HEAD", cwd=tree).decode().strip()
         dirty = self.git(
-            "status", "--porcelain", "--untracked-files=all", cwd=tree
+            "status", "--porcelain", "--untracked-files=all", "--ignored", cwd=tree
         ).strip()
         if head == revision["base"]:
             self.prepared_worktree(tree, files, revision["base"])

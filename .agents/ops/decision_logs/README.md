@@ -601,6 +601,9 @@ Dirty worktrees and corrupt journals
 are not automatically reset; inspect and repair only the affected publication.
 Clean publication worktrees are removed after confirmation; dirty or unrecognized
 worktrees are retained and reported as `retained_worktrees`.
+Resume checks include ignored, untracked files. An ignored file outside the frozen
+plan blocks resumption with `worktree_dirty`. Cleanup also retains a worktree that
+contains any untracked file, including files covered by ignore rules.
 
 `--dry-run` uses `Journal.preview_publication()` and local `origin/main`. It keeps
 ready envelopes frozen and transforms unprepared captures read-only with the same

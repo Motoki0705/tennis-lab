@@ -679,6 +679,119 @@ def test_interrupted_publication_rejects_worktree_changes_outside_frozen_plan(
     )
 
 
+@pytest.mark.parametrize("unassigned", [False, True], ids=["own", "unassigned"])
+@pytest.mark.parametrize("point", ["staged", "committed"])
+def test_publication_resume_retains_ignored_outside_plan_files(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    unassigned: bool,
+    point: str,
+) -> None:
+    cli = importlib.import_module("parent.cli")
+    env.advance({".gitignore": b"*.json\n"})
+    args = unassigned_cli(env, monkeypatch)
+    if not unassigned:
+        args = args[:-2]
+    log = env.capture([decision()], parent=2 if unassigned else 1900)
+    registry = env.state / "registry.json"
+    original_registry = registry.read_bytes()
+    run_git = publication.Publisher.git
+
+    def interrupted(self: Any, *a: str, **kw: Any) -> bytes:
+        value: bytes = run_git(self, *a, **kw)
+        if a[0] == ("add" if point == "staged" else "commit"):
+            if not unassigned:
+                raise Crash()
+            data = json.loads(registry.read_bytes())
+            data["parents"]["o/r#2"] = recovery_owner(session="codex:successor")
+            worker_journal.atomic(registry, data)
+        return value
+
+    monkeypatch.setattr(publication.Publisher, "git", interrupted)
+    if unassigned:
+        assert cli.main(args) == 2
+        assert json.loads(capsys.readouterr().out)["error"] == "log_owner_mismatch"
+    else:
+        with pytest.raises(Crash):
+            cli.main(args)
+    monkeypatch.setattr(publication.Publisher, "git", run_git)
+    publisher = env.decision_publisher(log)
+    batch = json.loads(publisher.path.read_bytes())["batches"][0]
+    tree = publisher.worktree(batch)
+    original_head = git(tree, "rev-parse", "HEAD")
+    target = tree / "scratch/recovery-notes.json"
+    target.parent.mkdir()
+    target.write_bytes(b'{"recovery": "keep these notes"}\n')
+    assert git(tree, "check-ignore", "scratch/recovery-notes.json")
+    assert "recovery-notes" not in git(
+        tree, "status", "--porcelain", "--untracked-files=all"
+    )
+    registry.write_bytes(original_registry)
+    for retry in ([], ["--retry"]):
+        assert cli.main(args + retry) == 2
+        value = json.loads(capsys.readouterr().out)
+        assert value["error"] == "worktree_dirty" and not value["saved_to_main"]
+        assert git(tree, "rev-parse", "HEAD") == original_head
+        assert target.read_bytes() == b'{"recovery": "keep these notes"}\n'
+        assert registry.read_bytes() == original_registry
+        assert env.github.calls == []
+    assert not navigation.records(env.upstream_files())
+    entries = log.read()["entries"]
+    captures = [e for e in entries if e["event"] == "capture"]
+    target.unlink()  # Explicit fixture repair releases the retained worktree.
+    assert cli.main(args + ["--retry"]) == 0
+    assert json.loads(capsys.readouterr().out)["saved_to_main"]
+    assert not tree.exists() and env.github.calls == ["create", "merge"]
+    assert [e for e in log.read()["entries"] if e["event"] == "capture"] == captures
+    assert len(json.loads(publisher.path.read_bytes())["batches"]) == 1
+
+
+@pytest.mark.parametrize("unassigned", [False, True], ids=["own", "unassigned"])
+def test_publication_cleanup_retains_ignored_outside_plan_files(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    unassigned: bool,
+) -> None:
+    cli = importlib.import_module("parent.cli")
+    env.advance({".gitignore": b"*.json\n"})
+    args = unassigned_cli(env, monkeypatch)
+    if not unassigned:
+        args = args[:-2]
+    log = env.capture([decision()], parent=2 if unassigned else 1900)
+    publisher = env.decision_publisher(log)
+    merge = env.github.merge
+    retained: list[Path] = []
+
+    def add_notes(*a: Any, **kw: Any) -> None:
+        merge(*a, **kw)
+        batch = json.loads(publisher.path.read_bytes())["batches"][0]
+        tree = publisher.worktree(batch)
+        target = tree / "recovery-notes.json"
+        target.write_bytes(b'{"recovery": "keep after confirmation"}\n')
+        assert git(tree, "check-ignore", "recovery-notes.json")
+        assert not git(tree, "status", "--porcelain", "--untracked-files=all")
+        retained.append(target)
+
+    monkeypatch.setattr(env.github, "merge", add_notes)
+    for _ in range(2):
+        assert cli.main(args) == 0
+        value = json.loads(capsys.readouterr().out)
+        assert value["saved_to_main"] and value["retained_worktrees"] == 1
+        assert retained[0].read_bytes() == b'{"recovery": "keep after confirmation"}\n'
+        assert env.github.calls == ["create", "merge"]
+    assert all(s["publication_status"] == "published" for s in log.status())
+    entries = log.read()["entries"]
+    retained[0].unlink()  # Explicit fixture repair makes cleanup safe.
+    assert cli.main(args) == 0
+    value = json.loads(capsys.readouterr().out)
+    assert value["saved_to_main"] and value["retained_worktrees"] == 0
+    assert not retained[0].parent.exists()
+    assert log.read()["entries"] == entries
+    assert env.github.calls == ["create", "merge"]
+
+
 @pytest.mark.parametrize(
     "damage", ["missing", "empty", "unrelated", "unprepared", "different_envelope"]
 )
