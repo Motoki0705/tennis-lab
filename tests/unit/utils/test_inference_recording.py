@@ -61,6 +61,11 @@ def test_wall_breakdown_partitions_nested_and_prefetched_work() -> None:
     assert wall_breakdown(events, 10_000_000_000) == {
         "unattributed": 2., "postprocess": 2., "decode": 2., "inference": 4.,
     }
+    # A zero-length nested interval cannot consume its parent's remaining time.
+    assert wall_breakdown([
+        {"stage": "postprocess", "start_ns": 0, "end_ns": 10_000_000_000, "depth": 1},
+        {"stage": "decode", "start_ns": 2_000_000_000, "end_ns": 2_000_000_000, "depth": 2},
+    ], 10_000_000_000) == {"postprocess": 10., "unattributed": 0.}
 
 
 def test_disabled_recording_never_reads_assets_or_creates_files(tmp_path: Path) -> None:
