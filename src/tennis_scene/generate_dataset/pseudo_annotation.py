@@ -20,6 +20,7 @@ from src.tennis_scene.pipeline.dataset_publication import (
     scene_array_manifest,
 )
 from src.tennis_scene.schema import SceneResult
+from src.utils.inference_recording import recording_context, span
 
 # (video paths, camera IDs, clip directory) -> scene; the clip directory owns the component store.
 SceneRunner = Callable[[Sequence[Path], Sequence[str], Path], SceneResult]
@@ -60,7 +61,8 @@ def generate_pseudo_annotations(
             if marker is not None:
                 outcomes.append(AnnotationGenerationResult(record.clip_id, "skipped", marker))
                 continue
-            result = runner(inputs.video_paths, inputs.camera_ids, inputs.clip_dir)
+            with recording_context(clip_id=record.clip_id), span("clip"):
+                result = runner(inputs.video_paths, inputs.camera_ids, inputs.clip_dir)
             marker = publish_annotation(inputs, result, pipeline_config_yaml=pipeline_config_yaml,
                                         publication_identity=publication_identity)
             outcomes.append(AnnotationGenerationResult(record.clip_id, "generated", marker))

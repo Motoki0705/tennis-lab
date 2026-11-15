@@ -19,6 +19,7 @@ from src.tennis_scene.schema import (
     SceneResult,
     validate_scene_result_arrays,
 )
+from src.utils.inference_recording import measured
 from src.utils.io import save_json_atomic, utc_now_iso
 
 if TYPE_CHECKING:
@@ -129,6 +130,7 @@ def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mappin
     return destination
 
 
+@measured("publication")
 def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeline_config_yaml: str,
                        publication_identity: Mapping[str, object]) -> Path:
     """Validate a complete clip and atomically publish its dataset marker."""

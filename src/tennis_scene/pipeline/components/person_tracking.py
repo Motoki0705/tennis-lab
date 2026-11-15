@@ -28,6 +28,7 @@ from src.tennis_scene.pipeline.components.person_detection import PersonDetectio
 from src.tennis_scene.pipeline.components.tracking_identity import TrackletLink
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.utils.inference_recording import model_release
 from src.utils.video import OpenCVVideoFrameReader
 
 
@@ -178,7 +179,8 @@ class PersonTrackingModule:
                 progress.close()
         finally:
             pose.unload()
-            del encoder
-            release_inference_memory(people.runtime.device)
+            with model_release(str(id(encoder))):
+                del encoder
+                release_inference_memory(people.runtime.device)
         return PersonTrackingOutput(video.camera_id, result.track_ids, result.boxes, result.observed,
             result.source_track_ids, (), result.evidence, result.reconstruction, result.link_candidates)

@@ -25,6 +25,7 @@ from src.tasks.base.inference.predictor import BasePredictor
 from src.tasks.base.model_io import BoundModelIO
 from src.utils.configuration import PathResolver, PathRole
 from src.utils.device import resolve_device
+from src.utils.inference_recording import span
 
 
 class BallDetectionPredictor(BasePredictor[BallPrediction]):
@@ -112,16 +113,22 @@ class BallDetectionPredictor(BasePredictor[BallPrediction]):
         if not isinstance(images, Tensor):
             raise BallModelIOError("Ball detector input must be a Tensor.")
         with torch.no_grad():
-            call = self.adapter.prepare_model_call(
-                images.to(self.device), image_normalization=self.image_normalization,
-            )
-            logits = self.model(*call.model_args)
-            return self.adapter.prediction(
-                logits,
-                call,
-                subpixel_refine=self.subpixel_refine,
-                candidate_config=candidate_config,
-            )
+            with span("transfer", model="Ball"):
+                transferred = images.to(self.device)
+            with span("preprocess", model="Ball", device=str(self.device)):
+                call = self.adapter.prepare_model_call(
+                    transferred, image_normalization=self.image_normalization,
+                )
+            del transferred
+            with span("inference", model="Ball", batch_shape=list(images.shape)):
+                logits = self.model(*call.model_args)
+            with span("postprocess", model="Ball"):
+                return self.adapter.prediction(
+                    logits,
+                    call,
+                    subpixel_refine=self.subpixel_refine,
+                    candidate_config=candidate_config,
+                )
 
     @property
     def configured_frames(self) -> int:
