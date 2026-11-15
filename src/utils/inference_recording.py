@@ -43,7 +43,7 @@ def wall_breakdown(events: Sequence[Mapping[str, Any]], total_ns: int) -> dict[s
     """
     edges: list[tuple[int, bool, int]] = []
     for index, event in enumerate(events):
-        if event["stage"] not in {"node", "clip"}:
+        if event["stage"] not in {"node", "clip"} and int(event["end_ns"]) > int(event["start_ns"]):
             edges.extend(((int(event["start_ns"]), True, index), (int(event["end_ns"]), False, index)))
     active: set[int] = set()
     heap: list[tuple[int, int, int, int, str]] = []
