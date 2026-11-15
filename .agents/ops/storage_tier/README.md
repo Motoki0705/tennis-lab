@@ -67,12 +67,11 @@ one file at a time. Replaced or removed source files are retained under the targ
 tier's `.storage-tier/checkpoint-file-history/<transaction>/`; no automatic cleanup
 of that history is provided. Child directories are untouched. Publication is atomic
 per file, not across the file set. The durable D: `checkpoint-file-operations/`
-journal lists expected/previous entries and publication progress. Any unfinished
-operation blocks the projection: pause writers, compare the published files with
-that journal and retained history, reconcile the complete set, then archive the
-acknowledged journal under `recovered-checkpoint-file-operations/` before explicit
-E: index and D:/E: verify. `recover` does not resume or discard these files. A
-mismatch never authorizes deleting the archived inode. Root-directory timestamps
+journal lists verified expected/copied entries, previous entries/manifest and publication
+progress. An unfinished operation blocks the projection: pause writers and run
+`recover` as described in [Journals and recovery](#journals-and-recovery). Keep the journal
+and retained history; moving the journal aside and reindexing is not a recovery procedure.
+A mismatch never authorizes deleting the archived inode. Root-directory timestamps
 are excluded from this projection's metadata identity; root device/inode/mode and
 all direct-file metadata/hashes are still checked. Container modes are preserved independently
 on D: and E:, and are not compared as root-file payload.
@@ -340,10 +339,23 @@ It cannot overwrite the complete E: copy during automatic mirroring.
 
 If removal completed before a crash, recovery records
 that fact without claiming a measured capacity gain. Any pending transaction blocks
-further operations until recovery. An interrupted E: exchange keeps the old mirror
-under its staging name if manifest publication failed; inspect both trees, use
-explicit `verify` only when the complete D:/E: contents match, and retain the old
-copy until that proof is recorded. Staging leftovers are reported, never silently swept.
+further operations until recovery. For interrupted mirror/hydrate publication, pause
+writers and run `recover`; do not remove journals, force index or discard stages.
+Directory units persist a pre-rename receipt in D:`publications/`. Root-file operations
+persist verified copies and per-file progress in D:`checkpoint-file-operations/`.
+Recovery compares fresh, stable source/destination SHA-256 with that durable intent.
+It resumes only verified remaining publication steps, never deletion. A changed source,
+unplanned destination or unverified stage fails without replacing the manifest.
+Before issuing new evidence it preserves the exact previous manifest, journal and
+observed manifest in D:`publication-evidence/`. Old directory trees move, without
+deletion, to the target tier's `.storage-tier/recovered-publications/`; root-file
+inodes remain in `checkpoint-file-history/`. Both D:/E: are hashed again before the
+new manifest is recorded and the receipt is marked complete. Completed receipts and
+archives remain available for inspection. Then run `verify`; ordinary mirror/hydrate
+and index still reject mismatches with saved evidence. An operation interrupted before
+a verified root-file copy exists can only be aborted if the old destination contents
+are intact; it does not issue a new manifest. Unsupported older incomplete journals
+remain blocked for manual inspection. Staging leftovers are never silently swept.
 
 After `RENAME_EXCHANGE`, the old E: tree is removed only against its pre-exchange
 hashed snapshot through the same claimed-entry, lease and durable journal path.

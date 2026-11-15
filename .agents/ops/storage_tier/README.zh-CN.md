@@ -47,10 +47,9 @@ Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必
 
 根文件只复制、哈希直属普通文件，再逐文件发布。旧版本和源端已移除文件保留在目标tier的
 `.storage-tier/checkpoint-file-history/<transaction>/`，不自动删除历史。子目录不受影响。
-发布仅逐文件原子，不保证整个集合原子。D:的 `checkpoint-file-operations/` journal记录旧/新entry和进度。
-未完成操作会阻止投影继续处理。恢复时暂停writer，比较journal、历史和已发布文件并整合集合，
-将已确认journal移到 `recovered-checkpoint-file-operations/` 后，显式index E:并verify D:/E:。
-`recover` 不继续该发布，也不删除历史。不一致不能授权删除归档inode。
+发布仅逐文件原子，不保证整个集合原子。D:的 `checkpoint-file-operations/` journal记录已校验的计划/副本entry、旧entry/manifest和进度。
+未完成操作会阻止投影继续处理。暂停writer，按照[审计与恢复](#审计与恢复)运行 `recover`，保留journal和历史。
+移开journal再index并不能完成恢复。不一致不能授权删除归档inode。
 投影忽略容器时间戳，但检查容器device/inode/mode及全部直属文件的metadata/hash。D:/E:各自保留容器权限，不将其作为根文件payload跨tier比较。
 
 迁移旧整ckpt manifest时先运行 `index ckpt`，旧manifest保存在E:的 `.storage-tier/legacy-manifests/`。
@@ -224,8 +223,17 @@ mirror/evict/cycle，避免用不完整 D: 覆盖完整 E: 副本。
 3. 只有全量 SHA-256 hydrate/verify 成功才解除恢复状态。明确核对、整合之前保留修改，恢复绝不继续删除。
 
 若崩溃前已删除，则记录事实，
-不宣称已实测容量收益。未完成 transaction 阻止后续操作。若 E: exchange 后 manifest 发布中断，旧镜像保留在 staging 名下。
-检查两个 tree；只有 D:/E: 全量一致时才显式 `verify`，在证据落盘前保留旧副本。不静默清理 staging 残留。
+不宣称已实测容量收益。未完成 transaction 阻止后续操作。mirror/hydrate发布中断时，暂停writer并运行 `recover`，
+不要删除journal、强制index或丢弃stage。普通目录在D:`publications/`持久保存rename前的校验计划，
+根文件在 `checkpoint-file-operations/` 保存已校验副本与逐文件进度。
+恢复将稳定的source/destination重新SHA-256与持久计划比较，只继续已校验的剩余发布步骤，绝不继续删除。
+源变更、计划外目标或未校验stage会失败，不替换manifest。写入新证据前，在D:`publication-evidence/`
+保存原始旧manifest、journal及恢复时的manifest。旧目录仅移动至目标tier的
+`.storage-tier/recovered-publications/`，不删除；根文件旧inode仍在 `checkpoint-file-history/`。
+再次哈希D:/E:后才记录新manifest并将receipt标记完成。保留完成receipt和历史，再运行 `verify`。
+普通mirror/hydrate/index仍拒绝与已保存证据不一致的内容。若根文件的已校验副本尚未生成就中断，
+仅在旧目标内容完整时允许中止，不生成新manifest。旧格式的未完成journal保留并阻止操作，等待人工检查。
+绝不静默清理stage残留。
 
 `RENAME_EXCHANGE` 后的旧 E: tree 也只按交换前带 hash 的 snapshot，通过相同 claim、lease、持久 journal 路径删除。
 旧对象被更新或增加 payload 时保留并使 mirror 失败。recover 将旧 tree/entry 保存在 E: 内的

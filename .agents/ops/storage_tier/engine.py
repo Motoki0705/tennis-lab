@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from . import publication
 from .filesystem import (
     Snapshot,
     StorageError,
@@ -409,6 +410,7 @@ class Engine:
         stage = destination.with_name(f".storage-tier-stage-{uuid.uuid4().hex}")
         published = False
         copied: Snapshot | None = None
+        receipt: tuple[Path, dict[str, Any]] | None = None
         try:
             copy_tree(source, stage, local)
             copied = snapshot(stage, hashes=True)
@@ -424,6 +426,18 @@ class Engine:
                 if not old.same_metadata(snapshot(destination)):
                     raise StorageError("E: changed before publication")
                 self.quiet(unit, destination, old, destructive=True)
+            receipt = publication.prepare(
+                self,
+                unit,
+                "mirror",
+                source,
+                destination,
+                stage,
+                local,
+                copied,
+                old,
+                old_manifest,
+            )
             rename(stage, destination, exchange=old is not None)
             published = True
             final = snapshot(destination)
@@ -435,13 +449,14 @@ class Engine:
                 if entry["kind"] == "file":
                     entry["sha256"] = copied.entries[name]["sha256"]
             manifest = self.record(unit, local, final, dry_run=False)
+            publication.complete(*receipt)
             if old is not None:
                 self.remove_stage(unit, stage, old)
             return {"action": "mirrored", "bytes": local.bytes, "manifest": manifest}
         finally:
             # After an exchange, preserve the old mirror if manifest publication
             # failed; its named staging path is reported by discovery on retry.
-            if not published and stage.exists():
+            if receipt is None and not published and stage.exists():
                 if copied is not None and copied.content() == local.content():
                     self.remove_stage(
                         unit, stage, copied, purpose="discard-mirror-stage"
@@ -588,6 +603,7 @@ class Engine:
         self.ensure_parent(destination.parent, self.config.repo)
         stage = destination.with_name(f".storage-tier-hydrate-{uuid.uuid4().hex}")
         local: Snapshot | None = None
+        receipt: tuple[Path, dict[str, Any]] | None = None
         try:
             copy_tree(source, stage, mirror, now_ns=self.now_ns)
             local = snapshot(stage, hashes=True)
@@ -597,6 +613,18 @@ class Engine:
                 raise StorageError("hydrate copy/source verification failed")
             self.quiet(unit, source, snapshot(source))
             self.check_mount()
+            receipt = publication.prepare(
+                self,
+                unit,
+                "hydrate",
+                source,
+                destination,
+                stage,
+                mirror,
+                local,
+                None,
+                previous,
+            )
             rename(stage, destination)
             final = snapshot(destination)
             if not local.same_metadata(final, moved=True):
@@ -607,13 +635,14 @@ class Engine:
                 if entry["kind"] == "file":
                     entry["sha256"] = local.entries[name]["sha256"]
             self.record(unit, final, mirror, dry_run=False)
+            publication.complete(*receipt)
             self.audit(
                 "hydrated", unit, bytes=mirror.bytes, verification="sha256-both-sides"
             )
             self.clear_recovery(unit)
             return {"action": "hydrated", "bytes": mirror.bytes}
         finally:
-            if stage.exists():
+            if receipt is None and stage.exists():
                 if local is not None and local.content() == mirror.content():
                     self.remove_stage(
                         unit,
@@ -893,9 +922,7 @@ class Engine:
     def recover(self) -> list[dict[str, Any]]:
         directory = self.config.state / "transactions"
         results: list[dict[str, Any]] = []
-        if not directory.exists():
-            return results
-        for name in names(directory):
+        for name in names(directory) if directory.exists() else []:
             value = read_json(directory / name)
             if value.get("schema_version") != 1 or value.get("phase") not in {
                 "prepared",
@@ -1014,6 +1041,10 @@ class Engine:
                     else None,
                 }
             )
+        from .checkpoint_files import recover as recover_checkpoint_files
+
+        results.extend(publication.recover(self))
+        results.extend(recover_checkpoint_files(self))
         return results
 
     def run(
@@ -1092,6 +1123,10 @@ class Engine:
                 report["results"] = self.recover()
                 return 0, report
             transactions = self.config.state / "transactions"
+            if publication.pending(self):
+                raise StorageError(
+                    "unfinished publication; run recover before continuing"
+                )
             if transactions.exists() and names(transactions):
                 raise StorageError(
                     "unfinished deletion transactions; run recover before continuing"

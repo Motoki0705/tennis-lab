@@ -52,10 +52,9 @@ rootファイルのmanifestがあれば、hydrate/mirror/verify/indexは公開�
 rootファイルは直下の通常ファイルだけをstageでコピー・hashし、1ファイルずつ公開する。
 置換前やD:から消えたファイルは、対象tierの `.storage-tier/checkpoint-file-history/<transaction>/` に保持し、
 この履歴は自動削除しない。子dirは触らない。公開はファイル単位で原子的で、集合全体では原子的でない。
-D:の `checkpoint-file-operations/` journalへ旧・予定entryと進行を永続記録し、未完了があれば投影の処理を止める。
-復旧はwriterを止め、journal・履歴・公開済みファイルを比較して集合を整合させ、確認済みjournalを
-`recovered-checkpoint-file-operations/` へ退避してから、E:の明示indexとD:/E: verifyを行う。
-`recover` はこの公開を再開せず、履歴も消さない。不一致を根拠に退避inodeを消してはいけない。
+D:の `checkpoint-file-operations/` journalへ照合済みの予定・コピーentry、旧entry・manifestと進行を永続記録し、未完了なら投影の処理を止める。
+writerを止めて、[記録と復旧](#記録と復旧)に従い `recover` する。journalと履歴は保持する。
+journalを退避して再indexするだけでは復旧にならない。不一致を根拠に退避inodeを消してはいけない。
 rootの時刻は投影のmetadata identityから外し、rootのdevice/inode/modeと全直下ファイルのmetadata/hashは検査する。コンテナの権限はD:/E:それぞれで保持し、
 rootファイルのpayloadとしてtier間比較はしない。
 
@@ -253,9 +252,17 @@ manifestの認証・削除許可も行わない。実機確認は `verify --dry-
    復旧から削除は再開しない。
 
 削除後に停止していた場合も事実を記録するが、空き容量の実測成功とは称さない。
-未完了transactionがあれば復旧まで次の操作を止める。E:のexchange後にmanifest公開で止まった場合は
-旧ミラーをstage名で保持する。両treeを調べ、D:/E:全件一致の場合だけ明示的な `verify` で証拠を作り、
-確認までは旧コピーを保持する。stageの残骸を黙って消さない。
+未完了transactionがあれば復旧まで次の操作を止める。mirror/hydrateの公開中断はwriterを止めて `recover` する。
+journalの削除、強制index、stageの破棄で迂回しない。通常dirはrename前の照合済み計画をD:の `publications/` に、
+rootファイルは照合済みコピーとファイルごとの進行を `checkpoint-file-operations/` に残す。
+復旧は永続計画とsource/destinationの安定した再SHA-256を比較し、照合できた残りの公開だけを再開する。削除は再開しない。
+source変更、予定外のdestination、未照合stageはmanifestを置き換えず失敗する。新しい証拠の記録前に、
+旧manifestの全内容、journal、復旧時のmanifestをD:の `publication-evidence/` に保存する。
+旧dirは削除せず対象tierの `.storage-tier/recovered-publications/` へ移し、rootファイルの旧inodeは
+`checkpoint-file-history/` に残す。D:/E:を再hashしてからmanifestを記録し、receiptを完了にする。
+完了receiptと履歴は保持する。その後 `verify` し、通常のmirror/hydrate/indexでは保存済み証拠との不一致を引き続き拒否する。
+照合済みrootファイルコピーの作成前に止まった場合は、旧destinationの内容が保たれているときだけ中止扱いにし、
+新manifestは作らない。未対応の旧形式の未完了journalは手動確認まで保持・停止する。stageの残骸を黙って消さない。
 
 `RENAME_EXCHANGE` 後の旧E:実体も、交換前のhash付きsnapshotを計画とし、同じclaim・lease・永続journalの経路でだけ消す。
 旧実体に更新・追加があれば保持してmirrorを失敗にする。recoverは旧treeとentryをE:内の

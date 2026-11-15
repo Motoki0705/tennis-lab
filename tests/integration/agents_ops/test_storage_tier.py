@@ -2553,16 +2553,25 @@ def test_checkpoint_root_files_preserve_independent_container_permissions(
     assert mirror.stat().st_mode & 0o777 == 0o755
 
 
+@pytest.mark.parametrize("tamper", [None, "source", "destination"])
+@pytest.mark.parametrize("operation", ["mirror", "hydrate"])
 def test_interrupted_root_file_publication_keeps_old_inode_and_blocks_retry(
     lab: Lab,
     monkeypatch: pytest.MonkeyPatch,
+    tamper: str | None,
+    operation: str,
 ) -> None:
     root = lab.config.repo / "ckpt"
     root.mkdir()
     (root / "README.md").write_bytes(b"first")
     unit = lab.layout.Unit("ckpt", "checkpoint-files")
     lab.mirror(unit)
-    (root / "README.md").write_bytes(b"second")
+    old_manifest = lab.engine.manifest(unit)
+    if operation == "mirror":
+        (root / "README.md").write_bytes(b"second")
+    else:
+        (root / "README.md").unlink()
+    expected_payload = b"second" if operation == "mirror" else b"first"
     module = importlib.import_module("storage_tier.checkpoint_files")
     original = module.rename
 
@@ -2571,15 +2580,17 @@ def test_interrupted_root_file_publication_keeps_old_inode_and_blocks_retry(
         raise OSError(errno.EIO, "after exchange")
 
     monkeypatch.setattr(module, "rename", interrupted)
-    code, report = lab.run("mirror", unit)
+    code, report = lab.run(operation, unit)
     assert code == 1, report
-    assert lab.filesystem.read_bytes(lab.config.mirror / "ckpt/README.md") == b"second"
-    assert any(
-        lab.filesystem.read_bytes(p) == b"first"
-        for p in (lab.config.mirror / ".storage-tier/checkpoint-file-history").rglob(
-            "README.md"
+    destination = lab.config.mirror if operation == "mirror" else lab.config.repo
+    assert lab.filesystem.read_bytes(destination / "ckpt/README.md") == expected_payload
+    if operation == "mirror":
+        assert any(
+            lab.filesystem.read_bytes(p) == b"first"
+            for p in (
+                lab.config.mirror / ".storage-tier/checkpoint-file-history"
+            ).rglob("README.md")
         )
-    )
     assert lab.records()[-2]["event"] == "checkpoint_files_interrupted"
     monkeypatch.setattr(module, "rename", original)
     code, report = lab.run("mirror", unit)
@@ -2587,6 +2598,82 @@ def test_interrupted_root_file_publication_keeps_old_inode_and_blocks_retry(
         code == 1
         and "unfinished checkpoint-file publication" in report["results"][0]["error"]
     )
+    if tamper:
+        base = (
+            (lab.config.repo if operation == "mirror" else lab.config.mirror)
+            if tamper == "source"
+            else destination
+        )
+        (base / "ckpt/README.md").write_bytes(b"unverified")
+        before = lab.filesystem.read_bytes(lab.engine.manifest_path(unit))
+        with pytest.raises(lab.filesystem.StorageError, match="SHA-256|publication"):
+            lab.engine.run("recover", [], dry_run=False)
+        assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == before
+        assert lab.run("mirror", unit)[0] == 1
+        return
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and recovered["results"], recovered
+    item = next(
+        r for r in recovered["results"] if r["action"] == "publication_recovered"
+    )
+    evidence = lab.filesystem.read_json(Path(item["evidence_archive"]))
+    assert evidence["previous_manifest"] == old_manifest
+    assert lab.run("verify", unit)[0] == 0
+    assert lab.run("mirror", unit)[0] == 0
+    (root / "README.md").unlink()
+    assert lab.run("hydrate", unit)[0] == 0
+    assert lab.filesystem.read_bytes(root / "README.md") == expected_payload
+
+
+@pytest.mark.parametrize("operation", ["mirror", "hydrate"])
+@pytest.mark.parametrize("boundary", ["before-rename", "before-record"])
+def test_directory_publication_interruption_recovers_previous_evidence(
+    lab: Lab,
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    boundary: str,
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    if operation == "mirror":
+        (lab.config.repo / unit.path / "a.bin").write_bytes(b"peach\n")
+    else:
+        assert lab.run("evict", unit)[0] == 0
+    prior = lab.engine.manifest(unit)
+    target = lab.module if boundary == "before-rename" else lab.engine
+    method = "rename" if boundary == "before-rename" else "record"
+    original = getattr(target, method)
+
+    def interrupted(*args: Any, **kwargs: Any) -> Any:
+        raise OSError(errno.EIO, boundary)
+
+    monkeypatch.setattr(target, method, interrupted)
+    assert lab.run(operation, unit)[0] == 1
+    monkeypatch.setattr(target, method, original)
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and recovered["results"], recovered
+    item = next(
+        r for r in recovered["results"] if r["action"] == "publication_recovered"
+    )
+    assert (
+        lab.filesystem.read_json(Path(item["evidence_archive"]))["previous_manifest"]
+        == prior
+    )
+    if operation == "mirror":
+        assert (
+            lab.filesystem.read_bytes(Path(item["old_tree_archive"]) / "a.bin")
+            == b"apple\n"
+        )
+    else:
+        assert item["old_tree_archive"] is None
+    assert lab.run("verify", unit)[0] == 0
+    assert lab.run("mirror", unit)[0] == 0
+    assert lab.run("evict", unit)[0] == 0
+    # Hydration gives a fresh atime; the first eviction may therefore keep it.
+    if (lab.config.repo / unit.path).exists():
+        lab.age(unit, 15)
+        assert lab.run("evict", unit)[0] == 0
+    assert lab.run("hydrate", unit)[0] == 0
 
 
 @pytest.mark.parametrize("command", ["index", "verify", "mirror", "hydrate"])
@@ -2778,3 +2865,161 @@ def test_unverifiable_caller_filesystem_mapping_never_uses_consumer_namespace(
     monkeypatch.setattr(lab.engine.inspector, "metadata", metadata)
     result = lab.engine.inspector.inspect((path,), lab.filesystem.snapshot(path))
     assert result.unknown and "unit filesystem path" in result.unknown[0]
+
+
+def test_checkpoint_recovery_completes_partial_verified_file_set(
+    lab: Lab,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = lab.config.repo / "ckpt"
+    root.mkdir()
+    (root / "README.md").write_bytes(b"old readme")
+    (root / "notes.txt").write_bytes(b"old notes")
+    unit = lab.layout.Unit("ckpt", "checkpoint-files")
+    lab.mirror(unit)
+    prior = lab.engine.manifest(unit)
+    (root / "README.md").write_bytes(b"new readme")
+    (root / "notes.txt").write_bytes(b"new notes")
+    module = importlib.import_module("storage_tier.checkpoint_files")
+    original = module.rename
+
+    def interrupt(first: Path, second: Path, **kwargs: Any) -> None:
+        original(first, second, **kwargs)
+        raise OSError(errno.EIO, "after first publication")
+
+    monkeypatch.setattr(module, "rename", interrupt)
+    assert lab.run("mirror", unit)[0] == 1
+    mirror = lab.config.mirror / "ckpt"
+    assert lab.filesystem.read_bytes(mirror / "README.md") == b"new readme"
+    assert lab.filesystem.read_bytes(mirror / "notes.txt") == b"old notes"
+    monkeypatch.setattr(module, "rename", original)
+    code, report = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and report["results"], report
+    assert lab.run("verify", unit)[0] == 0
+    assert lab.filesystem.read_bytes(mirror / "notes.txt") == b"new notes"
+    archive = Path(report["results"][0]["evidence_archive"])
+    assert lab.filesystem.read_json(archive)["previous_manifest"] == prior
+    assert lab.engine.run("recover", [], dry_run=False)[1]["results"] == []
+
+
+@pytest.mark.parametrize("tamper", ["source", "destination"])
+def test_directory_publication_recovery_rejects_unverified_payload(
+    lab: Lab,
+    monkeypatch: pytest.MonkeyPatch,
+    tamper: str,
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    (lab.config.repo / unit.path / "a.bin").write_bytes(b"peach\n")
+    original = lab.engine.record
+
+    def interrupt(*args: Any, **kwargs: Any) -> Any:
+        raise OSError(errno.EIO, "before manifest")
+
+    monkeypatch.setattr(lab.engine, "record", interrupt)
+    assert lab.run("mirror", unit)[0] == 1
+    monkeypatch.setattr(lab.engine, "record", original)
+    base = lab.config.repo if tamper == "source" else lab.config.mirror
+    (base / unit.path / "a.bin").write_bytes(b"unverified")
+    manifest = lab.filesystem.read_bytes(lab.engine.manifest_path(unit))
+    with pytest.raises(lab.filesystem.StorageError, match="SHA-256|publication"):
+        lab.engine.run("recover", [], dry_run=False)
+    assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == manifest
+
+
+@pytest.mark.parametrize("kind", ["directory", "checkpoint-files"])
+def test_publication_recovery_can_retry_after_evidence_commit_failure(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    if kind == "checkpoint-files":
+        root = lab.config.repo / "ckpt"
+        root.mkdir()
+        payload = root / "README.md"
+        payload.write_bytes(b"old")
+        unit = lab.layout.Unit("ckpt", kind)
+    else:
+        unit = lab.unit()
+        payload = lab.config.repo / unit.path / "a.bin"
+    lab.mirror(unit)
+    prior = lab.engine.manifest(unit)
+    payload.write_bytes(b"new")
+    original = lab.engine.record
+
+    def failed_commit(*args: Any, **kwargs: Any) -> Any:
+        raise OSError(errno.EIO, "manifest commit failed")
+
+    monkeypatch.setattr(lab.engine, "record", failed_commit)
+    assert lab.run("mirror", unit)[0] == 1
+    with pytest.raises(OSError, match="manifest commit failed"):
+        lab.engine.run("recover", [], dry_run=False)
+    archive = lab.config.state / "publication-evidence"
+    evidence_before = {p: lab.filesystem.read_bytes(p) for p in archive.iterdir()}
+    assert len(evidence_before) == 1
+    assert lab.engine.manifest(unit) == prior
+    monkeypatch.setattr(lab.engine, "record", original)
+    code, result = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and result["results"], result
+    assert evidence_before == {
+        p: lab.filesystem.read_bytes(p) for p in archive.iterdir()
+    }
+    assert lab.run("verify", unit)[0] == 0
+    assert lab.engine.run("recover", [], dry_run=False)[1]["results"] == []
+
+
+def test_unverified_checkpoint_copy_can_only_abort_without_reissuing_evidence(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    root = lab.config.repo / "ckpt"
+    root.mkdir()
+    (root / "README.md").write_bytes(b"old")
+    unit = lab.layout.Unit("ckpt", "checkpoint-files")
+    lab.mirror(unit)
+    prior = lab.filesystem.read_bytes(lab.engine.manifest_path(unit))
+    (root / "README.md").write_bytes(b"new")
+    module = importlib.import_module("storage_tier.checkpoint_files")
+    original = module.copy_tree
+
+    def failed_copy(*args: Any, **kwargs: Any) -> None:
+        raise OSError(errno.EIO, "copy is unverified")
+
+    monkeypatch.setattr(module, "copy_tree", failed_copy)
+    assert lab.run("mirror", unit)[0] == 1
+    monkeypatch.setattr(module, "copy_tree", original)
+    code, recovered = lab.engine.run("recover", [], dry_run=False)
+    assert code == 0 and recovered["results"][0]["action"] == "publication_aborted"
+    assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == prior
+    assert lab.filesystem.read_bytes(lab.config.mirror / "ckpt/README.md") == b"old"
+    assert lab.run("mirror", unit)[0] == 0
+
+
+@pytest.mark.parametrize("kind", ["directory", "checkpoint-files"])
+def test_recovery_requires_durable_intent_even_when_both_tiers_match(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    if kind == "checkpoint-files":
+        root = lab.config.repo / "ckpt"
+        root.mkdir()
+        local = root / "README.md"
+        local.write_bytes(b"old")
+        unit = lab.layout.Unit("ckpt", kind)
+    else:
+        unit = lab.unit()
+        local = lab.config.repo / unit.path / "a.bin"
+    lab.mirror(unit)
+    before = lab.filesystem.read_bytes(lab.engine.manifest_path(unit))
+    local.write_bytes(b"planned")
+    original = lab.engine.record
+
+    def stopped(*args: Any, **kwargs: Any) -> Any:
+        raise OSError(errno.EIO, "before recording published evidence")
+
+    monkeypatch.setattr(lab.engine, "record", stopped)
+    assert lab.run("mirror", unit)[0] == 1
+    monkeypatch.setattr(lab.engine, "record", original)
+    mirror = lab.config.mirror / local.relative_to(lab.config.repo)
+    local.write_bytes(b"same unverified replacement")
+    mirror.write_bytes(b"same unverified replacement")
+    with pytest.raises(lab.filesystem.StorageError, match="SHA-256"):
+        lab.engine.run("recover", [], dry_run=False)
+    assert lab.filesystem.read_bytes(lab.engine.manifest_path(unit)) == before
+    assert local.exists() and mirror.exists()

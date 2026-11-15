@@ -37,7 +37,8 @@ def main() -> int:
         )
         sub.add_argument("--dry-run", action="store_true")
     commands.add_parser(
-        "recover", help="restore interrupted D: quarantines, never resume deletion"
+        "recover",
+        help="restore quarantines and verify interrupted publications; never resume deletion",
     )
     activate = commands.add_parser(
         "activate", help="enable missing-input diagnostics after migration"

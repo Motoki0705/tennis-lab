@@ -92,7 +92,7 @@ def operate(
             if record.get("phase") != "complete":
                 raise StorageError(
                     f"unfinished checkpoint-file publication: {operations / name}; "
-                    "reconcile retained history and published files before retrying"
+                    "pause writers and run recover; preserve the journal and retained history"
                 )
     mirror_path = engine.config.mirror / "ckpt"
     previous = recorded_snapshot(engine, unit, legacy=command == "index")
@@ -183,7 +183,9 @@ def operate(
     engine.ensure_parent(history.parent, base)
     journal = operations / f"{transaction}.json"
     record = {
+        "schema_version": 2,
         "unit": unit.path,
+        "kind": unit.kind,
         "operation": command,
         "phase": "prepared",
         "history": str(history),
@@ -191,6 +193,7 @@ def operate(
         "destination": str(destination),
         "expected": expected.entries,
         "previous": old.entries if old else None,
+        "previous_manifest": engine.manifest(unit),
         "published": [],
         "archived": [],
     }
@@ -207,6 +210,7 @@ def operate(
         if old is not None and not old.same_metadata(files(destination)):
             raise StorageError("checkpoint root files changed before publication")
         engine.quiet(unit, source, expected)
+        record["copied"] = copied.entries
         record["phase"] = "publishing"
         write_json(journal, record)
         for name in expected.entries:
@@ -261,3 +265,173 @@ def operate(
             error=str(exc),
         )
         raise
+
+
+def recover(engine: Engine) -> list[dict[str, Any]]:
+    """Complete only a journaled, hash-verified root-file publication."""
+    from .filesystem import real_directory
+    from .publication import complete, evidence
+
+    folder = engine.config.state / "checkpoint-file-operations"
+    results = []
+    for name in names(folder) if folder.exists() else []:
+        journal = folder / name
+        value = read_json(journal)
+        if value.get("phase") == "complete":
+            continue
+        if (
+            value.get("schema_version") != 2
+            or value.get("kind") != "checkpoint-files"
+            or value.get("unit") != "ckpt"
+            or value.get("operation") not in {"mirror", "hydrate"}
+            or value.get("phase") not in {"prepared", "publishing"}
+        ):
+            raise StorageError(
+                "unsupported checkpoint publication journal; retain it for manual inspection"
+            )
+        unit = Unit("ckpt", "checkpoint-files")
+        hydrate = value["operation"] == "hydrate"
+        source = engine.path(unit, mirror=hydrate)
+        destination = engine.path(unit, mirror=not hydrate)
+        base = engine.config.repo if hydrate else engine.config.mirror
+        anchor = base if hydrate else engine.config.mount
+        history = base / ".storage-tier/checkpoint-file-history" / journal.stem
+        if (
+            value["source"] != str(source)
+            or value["destination"] != str(destination)
+            or value["history"] != str(history)
+        ):
+            raise StorageError("invalid checkpoint publication recovery paths")
+        expected = Snapshot(value["expected"])
+        previous = (
+            Snapshot(value["previous"]) if value["previous"] is not None else None
+        )
+        target = stable(engine, unit, destination)
+        if "copied" not in value:
+            if (previous is None and content(target)) or (
+                previous is not None and content(target) != content(previous)
+            ):
+                raise StorageError(
+                    "unverified checkpoint publication cannot be recovered"
+                )
+            archive = evidence(engine, "checkpoint-" + name, value)
+            complete(journal, value)
+            engine.audit(
+                "publication_aborted",
+                unit,
+                evidence_archive=str(archive),
+                history=str(history),
+            )
+            results.append(
+                {
+                    "unit": unit.path,
+                    "action": "publication_aborted",
+                    "evidence_archive": str(archive),
+                }
+            )
+            continue
+        original = stable(engine, unit, source)
+        if content(original) != content(expected):
+            raise StorageError(
+                "checkpoint publication source SHA-256 differs from verified intent"
+            )
+        real_directory(history, anchor)
+        staged = history / "payload"
+        real_directory(staged, anchor)
+        staged_tree = files(staged, hashes=True)
+        copied = Snapshot(value["copied"])
+        old = previous.entries if previous is not None else {}
+        extra = set(target.entries) - set(expected.entries)
+        if any(label not in old for label in extra):
+            raise StorageError("checkpoint publication has unplanned destination files")
+
+        def identity(entry: dict[str, Any]) -> tuple[int, int]:
+            return entry["dev"], entry["ino"]
+
+        def equal_file(first: dict[str, Any], second: dict[str, Any]) -> bool:
+            return (
+                Snapshot({"file": first}).content()
+                == Snapshot({"file": second}).content()
+            )
+
+        actions = []
+        for label, entry in expected.entries.items():
+            if label == ".":
+                continue
+            current = target.entries.get(label)
+            if current is not None and equal_file(current, entry):
+                continue
+            staged_entry = staged_tree.entries.get(label)
+            if (
+                staged_entry is None
+                or not equal_file(staged_entry, entry)
+                or identity(staged_entry) != identity(copied.entries[label])
+            ):
+                raise StorageError(
+                    "checkpoint publication staged SHA-256 differs from verified intent"
+                )
+            if current is not None and (
+                label not in old
+                or identity(current) != identity(old[label])
+                or not equal_file(current, old[label])
+            ):
+                raise StorageError("checkpoint publication destination is unverified")
+            actions.append((label, current is not None))
+        for label in extra:
+            if (
+                label == "."
+                or identity(target.entries[label]) != identity(old[label])
+                or not equal_file(target.entries[label], old[label])
+            ):
+                raise StorageError("checkpoint publication retired file is unverified")
+        # All inputs were checked before any remaining publication is resumed.
+        archive = evidence(engine, "checkpoint-" + name, value)
+        for label, exchange in actions:
+            engine.check_mount()
+            rename(staged / label, destination / label, exchange=exchange)
+            value["published"].append(label)
+            write_json(journal, value)
+        retired = history / "removed-from-source"
+        for label in sorted(extra):
+            retired.mkdir(exist_ok=True)
+            real_directory(retired, anchor)
+            rename(destination / label, retired / label)
+            value["archived"].append(label)
+            write_json(journal, value)
+        # Every superseded inode must remain named in the destination or history.
+        for label, entry in old.items():
+            if label == ".":
+                continue
+            candidates = (destination / label, staged / label, retired / label)
+            if not any(
+                p.exists() and (p.lstat().st_dev, p.lstat().st_ino) == identity(entry)
+                for p in candidates
+            ):
+                raise StorageError(
+                    "checkpoint publication lost a previous inode; retaining recovery blocker"
+                )
+        local = stable(engine, unit, engine.path(unit))
+        mirror = stable(engine, unit, engine.path(unit, mirror=True))
+        if content(local) != content(expected) or content(mirror) != content(expected):
+            raise StorageError(
+                "checkpoint publication SHA-256 changed before recovery commit"
+            )
+        engine.record(unit, local, mirror, dry_run=False)
+        value["evidence_archive"] = str(archive)
+        complete(journal, value)
+        engine.audit(
+            "publication_recovered",
+            unit,
+            operation=value["operation"],
+            evidence_archive=str(archive),
+            history=str(history),
+        )
+        results.append(
+            {
+                "unit": unit.path,
+                "action": "publication_recovered",
+                "evidence_archive": str(archive),
+                "history": str(history),
+            }
+        )
+    return results
