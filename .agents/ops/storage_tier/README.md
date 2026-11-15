@@ -71,24 +71,47 @@ Omitting the two new keys keeps compatibility with older custom configurations.
 Each present reference must be a symlink whose text is the **absolute, exact**
 `Config.mirror / relative_path`; relative or alternate spellings are rejected.
 The target must exist as a real regular file/directory on the configured E:
-mount, without symlink ancestors or nested mounts. Unknown symlinks encountered
-in data's declared containers, wrong targets, dangling links and real directories
-at reference paths fail closed, including explicit unrelated-unit commands and
-`activate`. Missing references are allowed while setting up the layout. E: mount
-validation happens first; missing E: never means an empty external tree.
+mount, without symlink ancestors or nested mounts. Undeclared links at unit
+boundaries or their ancestors, including version roots directly inside dataset
+containers, are rejected without reading their targets. Wrong targets, dangling
+links and real directories at reference positions fail layout validation and
+actual operations, including unrelated-unit operations and `activate`. Missing
+references are allowed while setting up the layout. E: mount validation happens
+first; missing E: never means an empty external tree.
 
 References remain `unmanaged`, are never traversed for unit discovery, and cannot
 be explicitly mirrored/evicted/hydrated as units. The original E: unmanaged-size
 metadata inventory is retained. Command output and write-operation audit records
 include `unmanaged_links_D`. Reference failures include observations on stderr.
 
-Linux `readlinkat(fd, "")` on an `O_PATH|O_NOFOLLOW` descriptor also updates an old
-symlink's atime on this WSL kernel; there is no ordinary no-atime link-text read.
-The validator pins the parent and link, reads each allowed link **once per command**,
-and records `atime_before_ns`, `atime_after_ns`, `atime_changed` and the method.
-Dry-runs still create no state/copies, but may have this recorded atime effect on
-these unmanaged references. No link target or payload is rewritten, and managed
-payload symlinks remain forbidden before reading their text.
+The shared `PathResolver` reads the same checkout's [config.toml](config.toml),
+without a second alias list. For the standard DATA root only, an exact declared
+D: alias to its mounted E: counterpart is accepted. Its E: subtree is checked for
+escape; undeclared external links, mismatches, missing E: and parent escapes fail.
+Resolved inputs/workspaces remain canonical E: paths. `PathResolver.relative`
+maps a validated reference to its logical DATA-relative name; Clip Studio uses
+this for discovery, project serialization and review-CLI configuration. This
+preserves existing serialized names without changing physical workspace paths. Existing real/custom DATA directories and all other
+roles keep ordinary containment rules. Consumers must use this reviewed runtime
+and policy before resuming with the migrated layout.
+
+Linux `readlinkat(fd, "")` on an `O_PATH|O_NOFOLLOW` descriptor can update an old
+symlink's atime. **Only the atime of declared unmanaged symlink entries is exempt
+from the dry-run no-change contract.** It is not used for idle detection or any
+other safety decision. Payload contents and atimes, all other managed metadata,
+state files and directories remain unchanged; tests compare both trees including
+file hashes. Managed-payload and undeclared symlinks are rejected before readlink.
+
+Global layout checks (`scan`, `activate`, unqualified dry-run commands) and actual
+operations validate targets, pinning the parent/link and reading each link once
+per command. The result records `atime_before_ns`, `atime_after_ns`,
+`atime_changed`, the method and `verification=verified`. An explicitly selected
+managed-unit dry-run cannot consume these disjoint unmanaged trees: it checks the
+link entries/ancestors without reading targets and reports
+`verification=deferred-explicit-dry-run`, `verified=false`, `method=lstat-only`.
+This is not full layout validation; run `scan` before deployment. All write
+operations retain full target validation. Global scans cannot omit it without
+hiding an invalid configured layout.
 
 Initial migration leaves all previous outputs on E: and starts D: output roots
 empty. Copy/hash resident inputs, create the declared external references, and

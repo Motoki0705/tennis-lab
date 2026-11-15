@@ -28,6 +28,7 @@ def data_parents(config: Config) -> set[str]:
     )
     return {
         "data",
+        *config.containers,
         *(
             str(parent)
             for path in paths
@@ -43,7 +44,9 @@ class ReferenceError(StorageError):
         super().__init__(message)
 
 
-def inspect_references(config: Config) -> list[dict[str, Any]]:
+def inspect_references(
+    config: Config, *, read_targets: bool = True
+) -> list[dict[str, Any]]:
     """Read each allowed link once, recording unavoidable Linux atime effects.
 
     Mount verification is the caller's responsibility and must happen first.
@@ -78,6 +81,20 @@ def inspect_references(config: Config) -> list[dict[str, Any]]:
                         raise StorageError(
                             f"undeclared unmanaged data link: {relative}"
                         )
+                    if not read_targets:
+                        observations.append(
+                            {
+                                "path": relative,
+                                "expected_target": str(config.mirror / relative),
+                                "verification": "deferred-explicit-dry-run",
+                                "verified": False,
+                                "method": "lstat-only",
+                                "atime_before_ns": info.st_atime_ns,
+                                "atime_after_ns": info.st_atime_ns,
+                                "atime_changed": False,
+                            }
+                        )
+                        continue
                     fd = os.open(name, os.O_PATH | os.O_NOFOLLOW, dir_fd=parent_fd)
                     try:
                         before = os.fstat(fd)
@@ -143,12 +160,16 @@ def inspect_references(config: Config) -> list[dict[str, Any]]:
                             finally:
                                 os.close(target_fd)
                         record["verified"] = True
+                        record["verification"] = "verified"
                     finally:
                         os.close(fd)
         except FileNotFoundError as exc:
             # Missing mixed containers are expected before hydration. Missing
             # targets after reading a link are not absent containers.
-            if observations and observations[-1].get("verified") is not True:
+            if observations and observations[-1].get("verification") not in {
+                "verified",
+                "deferred-explicit-dry-run",
+            }:
                 raise ReferenceError(
                     f"unmanaged link target is missing: {observations[-1]['path']}",
                     observations,

@@ -53,19 +53,31 @@ dataset、常驻、引用边界不能重复或相互包含。省略两个新键�
 
 已有引用必须为symlink，链接文本与 `Config.mirror / relative_path` 的**绝对路径完全一致**；
 拒绝相对或其他拼写。目标必须为配置E:mount上存在的普通文件/实际目录，祖先symlink和嵌套mount也拒绝。
-声明的数据容器内发现的未允许链接、错误目标、dangling link或引用位置的实际目录，
-即使操作明确指定无关单位或activate也失败。配置布局时允许引用尚未建立。
-先检查E:挂载；未挂载绝不解释为空外部目录。
+dataset container直属版本root及单位边界/祖先上的未声明symlink在读取target前拒绝。
+错误目标、dangling link或引用位置的实际目录在布局验证和实际操作（包括无关单位的显式操作及activate）时失败。
+配置布局时允许引用尚未建立。先检查E:挂载；未挂载绝不解释为空外部目录。
 
 引用保持为 `unmanaged`，不沿链接发现单位，也不能明确作为mirror/evict/hydrate的单位。
 保留E:未分类目录原有的metadata容量调查。命令输出与写操作audit包含 `unmanaged_links_D`；
 引用检查失败也通过stderr保留观察记录。
 
-此WSL内核中，`O_PATH|O_NOFOLLOW` fd上的 `readlinkat(fd, "")` 仍更新旧symlink的atime。
-普通方法无法不改变atime读取链接文本，因此固定父目录和链接fd，**每条命令只读一次**，
-记录 `atime_before_ns`、`atime_after_ns`、`atime_changed` 及方法。
-dry-run不创建状态或副本，但可能产生这一已记录的未管理链接atime变化。
-不改写目标或payload；管理payload中的symlink仍在读取文本前拒绝。
+共享 `PathResolver` 读取同一checkout的 [config.toml](config.toml)，不维护第二份引用名单。
+仅对标准DATA root，声明的D:链接精确指向已挂载E:对应路径时才允许；仍拒绝越出E:引用subtree、
+未声明外部链接、目标不匹配、未挂载及父路径逃逸。解析结果仍是规范E:路径；`PathResolver.relative` 将已验证引用转换回逻辑DATA相对名。
+Clip Studio发现、project序列化及review CLI使用此API，在保留保存名的同时不改变合成pipeline的物理workspace。普通实际目录/custom DATA root和其他role保持原包含规则。
+迁移后恢复consumer之前，须使用本次审核过的runtime和配置。
+
+Linux通过 `O_PATH|O_NOFOLLOW` fd调用 `readlinkat(fd, "")` 仍可能更新旧链接atime。
+**dry-run无变更契约仅豁免已声明未管理symlink entry自身的atime。** 此值不参与闲置判断或其他安全判断。
+payload内容与atime、其他管理metadata、状态文件及目录均保持不变，测试比较两端tree的metadata及file hash。
+管理payload内和未允许的symlink在读取文本前拒绝。
+
+全局布局验证（scan、activate、未指定单位的dry-run）及实际操作固定父目录/link fd，每条命令读取各链接一次，
+记录 `atime_before_ns`、`atime_after_ns`、`atime_changed`、方法及 `verification=verified`。
+显式选择管理单位的dry-run不会使用与其不重叠的未管理tree，只检查link entry/祖先，不读取target，
+并报告 `verification=deferred-explicit-dry-run`、`verified=false`、`method=lstat-only`。
+这不表示全布局已验证；部署前应执行scan。实际写操作仍完整校验target。
+全局scan若省略target验证将隐藏错误布局，因此不能省略此读取。
 
 首次迁移将历史outputs仅保留在E:，D:输出根从空目录开始。
 对常驻输入进行hash校验复制并创建允许的外部引用，与Clip Studio使用者协调切换期间的暂停和恢复时间，

@@ -6,6 +6,7 @@ import hashlib
 import importlib
 import json
 import os
+import stat
 from pathlib import Path
 from typing import Any, cast
 
@@ -138,10 +139,16 @@ def test_allowed_reference_is_validated_once_without_discovering_payload(
     )
     assert code == 0, report
     assert report["layout_errors"] == []
-    assert len(reads) == 1
+    assert unit.path not in report["unmanaged"]["D"]
+    assert unit.path not in report["unmanaged"]["E"]
+    inspect_target = operation in {"scan", "cycle"}
+    assert len(reads) == int(inspect_target)
     (record,) = report["unmanaged_links_D"]
     assert record["path"] == str(link.relative_to(lab.config.repo))
-    assert record["target"] == str(target)
+    if inspect_target:
+        assert record["target"] == str(target)
+    else:
+        assert record["verification"] == "deferred-explicit-dry-run"
     assert record["atime_before_ns"] == 1
     assert record["atime_after_ns"] == link.lstat().st_atime_ns
     assert record["atime_changed"] == (
@@ -166,8 +173,8 @@ def test_wrong_reference_fails_even_for_an_explicit_unrelated_unit(
     with pytest.raises(lab.filesystem.StorageError, match="unmanaged.*link|reference"):
         lab.engine.run(
             operation,
-            [] if operation in {"scan", "cycle"} else [unit.path],
-            dry_run=True,
+            [] if operation == "scan" else [unit.path],
+            dry_run=False,
         )
     assert (lab.config.repo / unit.path / "a.bin").read_bytes() == b"apple\n"
 
@@ -316,3 +323,122 @@ def test_activate_validates_external_references(
     captured = capsys.readouterr()
     assert code == int(wrong), captured
     assert not lab.config.state.exists()
+
+
+@pytest.mark.parametrize("operation", ["scan", "cycle", "activate"])
+@pytest.mark.parametrize("container", ["data/task", "data/nested/task"])
+def test_container_version_alias_is_rejected_without_reading_target(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, operation: str, container: str
+) -> None:
+    object.__setattr__(lab.config, "containers", (container,))
+    for name in ("outputs", "ckpt"):
+        (lab.config.repo / name).mkdir()
+    target = lab.config.mirror / container / "v1"
+    target.mkdir(parents=True)
+    link = lab.config.repo / container / "v1"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(target, target_is_directory=True)
+    os.utime(link, ns=(1, 1), follow_symlinks=False)
+    before = link.lstat()
+    if operation == "activate":
+        with (
+            pytest.raises(lab.filesystem.StorageError),
+            lab.engine.locked(dry_run=True),
+        ):
+            pass
+    else:
+        with pytest.raises(lab.filesystem.StorageError):
+            lab.engine.run(operation, [], dry_run=True)
+    assert link.lstat().st_atime_ns == before.st_atime_ns
+
+
+@pytest.mark.parametrize("wrong", [False, True])
+def test_explicit_unrelated_dry_run_defers_target_reads(lab: Lab, wrong: bool) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    link = external(lab)
+    if wrong:
+        link.unlink()
+        link.symlink_to(lab.config.mirror / "outside")
+        os.utime(link, ns=(1, 1), follow_symlinks=False)
+    before = link.lstat()
+    code, report = lab.engine.run("verify", [unit.path], dry_run=True)
+    assert code == 0, report
+    assert link.lstat().st_atime_ns == before.st_atime_ns
+    (observation,) = report["unmanaged_links_D"]
+    assert observation["verification"] == "deferred-explicit-dry-run"
+
+
+def _unchanged_tree(lab: Lab, root: Path, exempt_link: Path) -> dict[str, Any]:
+    """Observe every inode and file content without causing observer atimes."""
+    result = {}
+
+    def observe(path: Path) -> None:
+        info = path.lstat()
+        metadata = lab.filesystem.stamp(info)
+        metadata.update(uid=info.st_uid, gid=info.st_gid)
+        if path == exempt_link:
+            assert stat.S_ISLNK(info.st_mode)
+            metadata.pop("atime_ns")
+        if stat.S_ISREG(info.st_mode):
+            fd = os.open(path, os.O_RDONLY | os.O_NOATIME | os.O_NOFOLLOW)
+            with os.fdopen(fd, "rb") as stream:
+                metadata["sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
+        result[str(path)] = metadata
+        if stat.S_ISDIR(info.st_mode):
+            fd = os.open(
+                path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW
+            )
+            try:
+                with os.scandir(fd) as entries:
+                    names = [entry.name for entry in entries]
+            finally:
+                os.close(fd)
+            for name in names:
+                observe(path / name)
+
+    observe(root)
+    return result
+
+
+@pytest.mark.parametrize(
+    "operation",
+    ["scan", "cycle", "verify", "mirror", "evict", "index", "hydrate", "activate"],
+)
+def test_dry_run_changes_only_declared_link_atime(
+    lab: Lab,
+    operation: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    unit = lab.unit()
+    lab.mirror(unit)
+    link = external(lab)
+    if operation == "hydrate":
+        lab.filesystem.rename(
+            lab.config.repo / unit.path, lab.config.repo.parent / "saved"
+        )
+    if operation == "activate":
+        for name in ("outputs", "ckpt"):
+            (lab.config.repo / name).mkdir()
+    before_d = _unchanged_tree(lab, lab.config.repo, link)
+    before_e = _unchanged_tree(lab, lab.config.mirror, link)
+    if operation == "activate":
+        module = importlib.import_module("storage_tier.__main__")
+        monkeypatch.setattr(module, "main_checkout", lambda path: lab.config.repo)
+        monkeypatch.setattr(module, "common_directory", lambda path: lab.config.repo)
+        monkeypatch.setattr(module.Config, "load", lambda *args: lab.config)
+        monkeypatch.setattr(module, "Engine", lambda config: lab.engine)
+        monkeypatch.setenv(module.CHECKOUT_ROOT_ENV, str(lab.config.repo))
+        monkeypatch.setattr("sys.argv", ["storage_tier", "activate", "--dry-run"])
+        code = module.main()
+        report = json.loads(capsys.readouterr().out)
+    else:
+        code, report = lab.engine.run(
+            operation,
+            [] if operation in {"scan", "cycle"} else [unit.path],
+            dry_run=True,
+        )
+    assert code == 0, report
+    assert before_d == _unchanged_tree(lab, lab.config.repo, link)
+    assert before_e == _unchanged_tree(lab, lab.config.mirror, link)

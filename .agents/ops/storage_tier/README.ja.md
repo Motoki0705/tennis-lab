@@ -58,19 +58,33 @@ tennis_multiviewのraw/processedはD:の実コンテナにし、meiji_4cam以外
 
 存在する参照は、link文字列が `Config.mirror / relative_path` の**絶対pathと完全一致**するsymlinkだけを許す。
 相対pathや別表記は拒否する。E:側の対象は存在する通常fileまたは実dirで、祖先のsymlink・入れ子mountも拒否する。
-宣言したdataコンテナ内で見つけた未許可symlink、違う対象、dangling link、参照位置の実dirは、
-無関係な単位の明示操作やactivateでも失敗する。構築中に参照自体がまだ無いことは許す。
-E:mount検査を最初に行い、未mountを空の外部treeと解釈しない。
+dataset container直下の版rootを含め、単位の境界・上位にある未許可symlinkは、targetを読まずに拒否する。
+違う対象・dangling link・参照位置の実dirは、配置検証と実操作（無関係な明示単位の操作やactivateも含む）で失敗する。
+構築中に参照自体がまだ無いことは許す。E:mount検査を最初に行い、未mountを空の外部treeと解釈しない。
 
 参照は `unmanaged` のまま、中を辿って単位を発見せず、mirror・evict・hydrateの明示対象にもできない。
 E:未分類領域の既存のmetadataサイズ調査は維持する。出力と変更操作のauditに `unmanaged_links_D` を残し、
 参照検査の失敗時もstderrへ観測記録を出す。
 
-このWSLカーネルでは `O_PATH|O_NOFOLLOW` のfdからの `readlinkat(fd, "")` でも古いlinkのatimeが更新される。
-通常の方法でlink文字列をatime不変で読む手段はないため、親dirとlinkをfd固定して**各コマンドで1回だけ**読み、
-`atime_before_ns`・`atime_after_ns`・`atime_changed` と方法を記録する。
-dry-runは状態・コピーを作らないが、この未管理参照のatimeには記録付きの影響があり得る。
-link先やpayloadは書き換えず、管理payload内のsymlinkは従来どおり文字列を読む前に拒否する。
+共通の `PathResolver` も同じcheckoutの [config.toml](config.toml) を読み、参照名を二重に持たない。
+標準DATA rootに限り、宣言したD:のlinkがmount済みE:の対応pathへ完全一致するときだけ許可する。
+E:側の参照subtreeからの脱出、宣言外の外部link、不一致、未mount、親pathからの脱出は拒否する。
+解決結果は従来どおりE:の正規pathとし、`PathResolver.relative` で検証済み参照を論理DATA相対名へ戻す。
+Clip Studioの発見・project保存・review CLIはこのAPIを使う。保存名を維持し、合成pipelineの物理workspaceも変えない。通常の実dir/custom DATA rootと他のroleの包含規則は変えない。
+切替後にconsumerを再開する前に、このレビュー済みruntimeと設定を使う。
+
+Linuxでは `O_PATH|O_NOFOLLOW` のfdからの `readlinkat(fd, "")` でも古いlinkのatimeが動き得る。
+**dry-runの無変更契約から除くのは、宣言した未管理symlink entry自身のatimeだけ**とする。
+この値は未使用判定にも他の安全判定にも使わない。payloadの内容・atime、他の管理metadata、状態ファイル、
+ディレクトリは変えず、両treeのmetadataとfile hashの前後比較をテストする。
+管理payload内・未許可のsymlinkは文字列を読む前に拒否する。
+
+配置全体の検証（scan・activate・単位指定のないdry-run）と実操作では、親dir/linkをfd固定して各linkを1回読み、
+`atime_before_ns`・`atime_after_ns`・`atime_changed`・方法・`verification=verified` を記録する。
+管理単位を明示したdry-runは、重ならない未管理treeを使わないためlink entry/祖先だけを検査し、targetを読まずに
+`verification=deferred-explicit-dry-run`・`verified=false`・`method=lstat-only` を出す。
+全配置を検証済みとは扱わず、配備前にはscanを行う。実際の書込みではtargetの全検証を維持する。
+全体scanでtarget検証を省くと不正配置を隠すため、この読取りは省けない。
 
 初回の移行では過去outputsをE:だけに保持し、D:のoutputs rootは空から始める。
 常駐入力をhash照合して取得し、許可したE:参照を作る。Clip Studio利用者と切替中の停止・再開時刻を調整し、

@@ -120,7 +120,7 @@ def discover(config: Config, base: Path) -> Inventory:
     legacy_outputs: list[dict[str, str]] = []
     anchor = config.mount if base == config.mirror else base
 
-    def directories(parent: str) -> list[str]:
+    def directories(parent: str, *, reject_links: bool = False) -> list[str]:
         path = base / parent
         try:
             real_directory(path, anchor)
@@ -131,6 +131,8 @@ def discover(config: Config, base: Path) -> Inventory:
                     errors.append(f"unfinished storage transaction: {candidate}")
                 elif name.startswith("."):
                     unmanaged.append(str(candidate.relative_to(base)))
+                elif reject_links and stat.S_ISLNK(candidate.lstat().st_mode):
+                    errors.append(f"undeclared managed unit symlink: {candidate}")
                 elif stat.S_ISDIR(candidate.lstat().st_mode):
                     result.append(str(candidate.relative_to(base)))
                 else:
@@ -160,7 +162,7 @@ def discover(config: Config, base: Path) -> Inventory:
     }
     unmanaged.extend(p for p in children if PurePosixPath(p).parts[1] not in known)
     for container in config.containers:
-        for path in directories(container):
+        for path in directories(container, reject_links=True):
             found.add(Unit(path, "dataset"))
     for path in (*config.datasets, *config.residents):
         try:
@@ -182,7 +184,7 @@ def discover(config: Config, base: Path) -> Inventory:
     }
     parents = data_parents(config)
     for parent in parents:
-        if parent == "data":
+        if parent == "data" or parent in config.containers:
             continue
         try:
             real_directory(base / parent, anchor)

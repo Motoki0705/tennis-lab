@@ -8,7 +8,10 @@ from enum import StrEnum
 from pathlib import Path
 
 from src.utils.configuration.errors import PathContractError
-from src.utils.configuration.local_storage import require_hydrated_input
+from src.utils.configuration.local_storage import (
+    declared_data_path,
+    require_hydrated_input,
+)
 from src.utils.configuration.schema import ConfigField, StrictConfigSchema
 
 __all__ = [
@@ -222,7 +225,11 @@ class RuntimePathRoots:
 
 @dataclass(frozen=True, slots=True)
 class PathResolver:
-    """Resolve derived runtime paths beneath one explicitly selected root."""
+    """Resolve paths under one root, including explicitly declared DATA aliases.
+
+    Paths remain filesystem-resolved. ``relative`` supplies logical DATA names
+    for verified E: references without widening any other role's authority.
+    """
 
     roots: RuntimePathRoots
 
@@ -251,12 +258,19 @@ class PathResolver:
             )
             candidate /= path_part
         resolved = candidate.resolve(strict=False)
+        logical = (
+            declared_data_path(root, candidate, resolved)
+            if role is PathRole.DATA
+            else None
+        )
         if resolved == resolved_parent:
             raise PathContractError(
                 f"Derived {role.value} path must identify a child below its "
                 "declared parent."
             )
-        if not resolved.is_relative_to(resolved_parent):
+        if not resolved.is_relative_to(resolved_parent) and not (
+            logical is not None and logical.is_relative_to(resolved_parent)
+        ):
             raise PathContractError(
                 f"Derived {role.value} path escapes its declared parent: {resolved} "
                 f"(parent: {resolved_parent}, role root: {root})."
@@ -301,13 +315,26 @@ class PathResolver:
         self, role: PathRole, path: Path, *, check_local_storage: bool = True
     ) -> Path:
         """Validate an already resolved absolute path against its declared root."""
+        return self._validated(role, path, check_local_storage=check_local_storage)[0]
+
+    def relative(self, role: PathRole, path: Path) -> Path:
+        """Return a validated role-relative name, including declared DATA aliases."""
+        _, logical = self._validated(role, path, check_local_storage=True)
+        return logical.relative_to(self.roots.root(role))
+
+    def _validated(
+        self, role: PathRole, path: Path, *, check_local_storage: bool
+    ) -> tuple[Path, Path]:
         if not path.is_absolute():
             raise PathContractError(
                 f"Validated {role.value} path must be absolute: {path}"
             )
         resolved = path.resolve(strict=False)
         root = self.roots.root(role)
-        if not resolved.is_relative_to(root):
+        logical = (
+            declared_data_path(root, path, resolved) if role is PathRole.DATA else None
+        )
+        if not resolved.is_relative_to(root) and logical is None:
             raise PathContractError(
                 f"Resolved {role.value} path is outside its root: {resolved} (root: {root})."
             )
@@ -317,7 +344,7 @@ class PathResolver:
             PathRole.ARTIFACT,
         }:
             require_hydrated_input(resolved)
-        return resolved
+        return resolved, logical or resolved
 
 
 @dataclass(frozen=True, slots=True)

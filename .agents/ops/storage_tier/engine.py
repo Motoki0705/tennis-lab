@@ -188,9 +188,13 @@ class Engine:
         )
 
     @contextmanager
-    def locked(self, *, dry_run: bool) -> Iterator[None]:
+    def locked(
+        self, *, dry_run: bool, reference_targets: bool = True
+    ) -> Iterator[None]:
         self.check_mount()  # Never create even a lock when E: is missing.
-        self.external_links = inspect_references(self.config)
+        self.external_links = inspect_references(
+            self.config, read_targets=reference_targets
+        )
         if dry_run:
             yield
             return
@@ -1091,7 +1095,10 @@ class Engine:
                 raise StorageError(
                     "automatic cycle activation does not match this repository and mount"
                 )
-        with self.locked(dry_run=dry_run or command == "scan"):
+        with self.locked(
+            dry_run=dry_run or command == "scan",
+            reference_targets=not (dry_run and requested and command != "scan"),
+        ):
             temporaries = journals.inspect_json(self.config.repo, self.config.mirror)
             repaired_logs = journals.inspect_logs(
                 self.config.state, repair=command == "recover" and not dry_run
