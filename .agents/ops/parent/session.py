@@ -142,6 +142,16 @@ class ParentSession:
         with self.gh.io_scope():
             yield self.detached()
 
+    @contextmanager
+    def observation(self, *, fresh: bool = False) -> Iterator[ParentSession]:
+        """Share reads in one unlocked observation; fresh starts a new one."""
+        if self.gh.observing and not fresh:
+            self.gh._require_scope()
+            yield self
+            return
+        with self.unlocked() as external, external.gh.read_observation():
+            yield external
+
     @property
     def row(self) -> dict[str, Any]:
         return object_value(self.store.parents.get(self.key, {}))

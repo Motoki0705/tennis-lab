@@ -1489,7 +1489,9 @@ def test_completed_dependency_requires_no_pr_or_default_branch_merge(
 @pytest.mark.parametrize(
     "endpoint",
     [
-        "repos/o/r/issues/13",
+        # Complete dependency issues are now supplied by the formal sub-issue
+        # page. Fail that authoritative read rather than an unused separate GET.
+        "repos/o/r/issues/1/sub_issues?per_page=100&page=1",
         "repos/o/r/issues/13/timeline?per_page=100&page=1",
         "repos/o/r",
     ],
@@ -1996,7 +1998,7 @@ def test_head_race_stops_without_merge(gate_env: GateEnv, when: str) -> None:
     )
     rows = g.results(result)
     assert (
-        "head_changed_during_ci" if when == "ci" else "pr_100_unverified_head"
+        "head_changed_during_ci" if when == "ci" else "head_changed_before_merge"
     ) in rows[100]["reasons"]
     assert rows[100]["ci_head_sha"] == new_head
     assert not g.merge_calls()
@@ -2084,6 +2086,15 @@ def test_later_partial_run_preserves_other_prs_and_merges_each_once(
     r.output.write_text(json.dumps(output))
     r.run()
     g.confirm()
+    offset = len(p.calls())
+    dry_run = g.cli("merge", AGENT_AUTO_MERGE="0")
+    assert dry_run.returncode == 0, dry_run.stderr
+    # Both live review runs observe all three PRs. REST facts and CLI/GraphQL
+    # rollups must be shared until an explicit pre-merge observation starts.
+    calls = p.calls()[offset:]
+    assert sum(c[:2] == ["pr", "view"] for c in calls) == 3
+    endpoints = [c[-1] for c in calls if c[0] == "api"]
+    assert len(endpoints) <= 28 and len(endpoints) == len(set(endpoints))
     response = g.cli("merge", PARENT_MERGE_ADVANCE_BASE="1")
     assert response.returncode == 0, response.stderr
     assert all(row["action"] == "merged" for row in g.results(response).values())
