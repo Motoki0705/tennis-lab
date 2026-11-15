@@ -388,10 +388,11 @@ def _main(argv: list[str] | None = None) -> int:
 
             with (
                 store.operation(lock_key(gh.repo)),
-                store.snapshot(),
+                store.consistent_snapshot(),
             ):
                 # Expiry only reads the registry for public-payload validation.
                 # Its business state is canonical comments and creation receipts.
+                # The snapshot read excludes peer saves; GitHub I/O runs after it.
                 outcome = expire(
                     gh.detached(), store, now=args.now, dry_run=args.dry_run
                 )

@@ -46,6 +46,63 @@ IssueGitHub.get, Store.save = get, forbidden_save
 runpy.run_module("parent", run_name="__main__")
 """
 
+SNAPSHOT_RACE = r"""
+import fcntl, json, os, pathlib, runpy
+from issues.cli import GitHub as IssueGitHub
+from parent import state
+from parent.state import Store
+directory = pathlib.Path(os.environ["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+report = pathlib.Path(os.environ["EXPIRY_RACE_REPORT"])
+original_read, original_digest, original_get = Store.read_data, state.digest, IssueGitHub.get
+reading = peer = False
+outcome = {"attempted": False, "blocked_during_read": None, "saved_after_read": False}
+def save_peer():
+    global peer
+    peer = True
+    try:
+        with Store(directory).locked() as other:
+            other.parents["o/r#2"]["generation"] += 1
+            other.parents["o/r#2"]["heartbeat"] = "peer saved"
+            other.save()
+    finally:
+        peer = False
+def read_data(self):
+    global reading
+    if peer:
+        return original_read(self)
+    reading = True
+    try:
+        return original_read(self)
+    finally:
+        reading = False
+def digest(key):
+    # The v2 read has loaded the ownership index and is about to read the rows.
+    if reading and not peer and not outcome["attempted"]:
+        outcome["attempted"] = True
+        with (directory / "registry.lock").open("a") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                outcome["blocked_during_read"] = True
+            else:
+                outcome["blocked_during_read"] = False
+                fcntl.flock(lock, fcntl.LOCK_UN)
+        if outcome["blocked_during_read"] is False:
+            save_peer()  # Unsynchronized reader: the peer save interleaves.
+    return original_digest(key)
+def get(self, endpoint, **kwargs):
+    if outcome["blocked_during_read"] and not outcome["saved_after_read"]:
+        save_peer()  # The shared hold ended before GitHub I/O.
+        outcome["saved_after_read"] = True
+    report.write_text(json.dumps(outcome))
+    return original_get(self, endpoint, **kwargs)
+Store.read_data, state.digest, IssueGitHub.get = read_data, digest, get
+try:
+    runpy.run_module("parent", run_name="__main__")
+finally:
+    report.write_text(json.dumps(outcome))
+"""
+
 SERIALIZED_ENTRY = r"""
 import os, pathlib, runpy
 from contextlib import contextmanager
@@ -183,6 +240,45 @@ def test_expiry_preserves_peer_registry_updates_during_get(
     assert replay["errors"] == [] and replay["closed"] == []
     assert private_payloads(directory) == json.loads(expected.read_text())
     assert len(p.state()["comments"].get("10", [])) == (0 if dry_run else 1)
+
+
+@pytest.mark.parametrize("dry_run", [False, True], ids=["close", "dry-run"])
+def test_expiry_snapshot_read_excludes_peer_registry_save(
+    parent_env: ParentEnv, dry_run: bool
+) -> None:
+    """A v2 peer save between the index and row reads must not abort expiry."""
+    p = parent_env
+    p.agreed()
+    record(p)
+    publish(p)
+    module = importlib.import_module("parent.state")
+    directory = state_directory(p)
+    with module.Store(directory).locked() as store:
+        store.parents["o/r#2"] = {
+            "session": "claude:expiry-snapshot-race-session",
+            "generation": 1,
+            "status": "active",
+            "tasks": {},
+            "reviews": [],
+        }
+        store.save()
+        store.migrate()
+    report = p.root / "expiry-race.json"
+    args = ["improvement-expire", "--now", NOW, *(["--dry-run"] if dry_run else [])]
+    result = run_cli(p, SNAPSHOT_RACE, args, {"EXPIRY_RACE_REPORT": str(report)})
+    outcome = json.loads(report.read_text())
+    assert outcome["attempted"], "the v2 row read was never reached"
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert outcome == {
+        "attempted": True,
+        "blocked_during_read": True,
+        "saved_after_read": True,
+    }
+    data = json.loads(result.stdout)
+    assert data["errors"] == [] and data["pending"] == [10]
+    assert data["closed"] == ([] if dry_run else [10])
+    peer = module.Store(directory).read_data()["parents"]["o/r#2"]
+    assert (peer["generation"], peer["heartbeat"]) == (2, "peer saved")
 
 
 def receive(fd: int) -> bytes:
