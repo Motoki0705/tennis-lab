@@ -49,7 +49,7 @@ def parser() -> argparse.ArgumentParser:
         models = implementation_models()
     except (OSError, ValueError) as exc:
         root.error(str(exc))
-    root.add_argument("--repo", help="owner/repo; default: gh repo view")
+    root.add_argument("--repo", help="owner/repo; default: unique GitHub remote")
     root.add_argument(
         "--state-dir", type=Path, help="the same registry as dispatcher/review/merge"
     )
@@ -79,6 +79,11 @@ def parser() -> argparse.ArgumentParser:
     publication = commands.add_parser("publish-decision-log")
     publication.add_argument("--dry-run", action="store_true")
     publication.add_argument("--retry", action="store_true")
+    publication.add_argument(
+        "--unassigned-parent",
+        type=int,
+        help="publish another unassigned parent's records as this active parent",
+    )
     for name in ("worker-log-status", "publish-worker-log"):
         log = commands.add_parser(name)
         if name == "publish-worker-log":
@@ -345,6 +350,7 @@ def _main(argv: list[str] | None = None) -> int:
             if (
                 args.command in {"publish-worker-log", "publish-decision-log"}
                 and getattr(args, "dry_run", False)
+                and getattr(args, "unassigned_parent", None) is None
             )
             or args.command
             in {
@@ -365,7 +371,11 @@ def _main(argv: list[str] | None = None) -> int:
         args.state_dir = (args.state_dir or state_directory()).resolve()
         workers = {"start-worker", "continue-worker", "inspect-worker", "stop-worker"}
         store: Store
-        if args.command in workers | {"workflow-report", "record-cancellation"}:
+        if args.command in workers | {
+            "workflow-report",
+            "record-cancellation",
+            "improvement-decide",
+        }:
             from .development import workflow_store
 
             store = workflow_store(args.state_dir, args.dispatcher_state_dir)
@@ -436,6 +446,15 @@ def _main(argv: list[str] | None = None) -> int:
 
             # Publication bookkeeping never enters the capture adapter: an
             # otherwise successful publication must not create another batch.
+            if args.unassigned_parent is not None:
+                from .log_publication import publish_unassigned_decisions
+
+                value = publish_unassigned_decisions(
+                    args, continuation, root=Path.cwd()
+                )
+                code = 2 if value.get("error") or value.get("blocked") else 0
+                print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+                return code
             owner = (
                 store.read_data()
                 .get("parents", {})
@@ -469,6 +488,7 @@ def _main(argv: list[str] | None = None) -> int:
             )
         if args.command in {"decision-log-status", "retry-decision-capture"}:
             from decision_logs.capture import status as capture_status
+            from worker_logs.reconciliation import decision_resume_command
 
             if args.command == "retry-decision-capture":
                 row = (
@@ -486,6 +506,13 @@ def _main(argv: list[str] | None = None) -> int:
                 parent,
                 retry=args.command == "retry-decision-capture",
             )
+            with store.snapshot():
+                row = store.parents.get(f"{gh.repo.casefold()}#{parent}", {})
+                value["decision_resume_command"] = decision_resume_command(
+                    gh.repo,
+                    parent,
+                    assigned=row.get("status") in {"active", "handoff_pending"},
+                )
             continuation.sweep()
             print(json.dumps(value, ensure_ascii=False, sort_keys=True))
             return 0 if value["status"] == "captured" else 2

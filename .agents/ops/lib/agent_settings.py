@@ -142,7 +142,7 @@ def resolve(
         if not value.isdecimal() or int(value) < 2:
             raise ValueError("agents.conf must set OPS_REPORT_MAX_THREADS >= 2")
         threads = int(value)
-    return {
+    settings = {
         "source": str(config.resolve()),
         "sha256": hashlib.sha256(raw).hexdigest(),
         "role": profile or ("parent" if agent == "claude" else "implementation"),
@@ -161,6 +161,9 @@ def resolve(
         },
         "max_threads": threads,
     }
+    if agent == "codex" and profile == "review":
+        settings["web_search"] = "disabled"
+    return settings
 
 
 def execution_contract(contract: dict[str, Any]) -> dict[str, Any]:
@@ -294,6 +297,8 @@ def command(
                         ]
                 else:
                     cmd += ["-c", f"mcp_servers.{name}.{key}=" + json.dumps(value)]
+    if settings["profile"] == "review":
+        cmd += ["-c", "web_search=" + json.dumps(settings["web_search"])]
     if settings["profile"] in {"review", "ops_scout", "issue_judgement"}:
         cmd += ["--disable", "multi_agent"]
     if session:

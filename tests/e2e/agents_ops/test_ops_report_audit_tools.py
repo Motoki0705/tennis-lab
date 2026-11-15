@@ -459,8 +459,9 @@ def test_resume_rejects_live_or_unconfirmed_runner(tools_env: Any) -> None:
         audit.ensure_quiescent([str(runtime.runtime)])
 
 
+@pytest.mark.parametrize("reason", ["startup_failed", "cli_signal"])
 def test_previous_startup_failure_does_not_erase_a_later_verified_success(
-    tools_env: Any,
+    tools_env: Any, reason: str
 ) -> None:
     server, runtime, ops = tools_env
     old = ops.tmp / "startup-failed"
@@ -470,7 +471,10 @@ def test_previous_startup_failure_does_not_erase_a_later_verified_success(
             {
                 "schema_version": 1,
                 "result": "failed",
-                "turn_end_reason": "startup_failed",
+                "turn_end_reason": reason,
+                "exit_code": 143 if reason == "cli_signal" else 127,
+                "cli_exit_code": -15 if reason == "cli_signal" else 127,
+                "cli_exit_signal": 15 if reason == "cli_signal" else None,
                 "contract": {"mode": "read-only", "settings": {"agent": "codex"}},
                 "cleanup_complete": True,
                 "runtime": {"session_id": None},

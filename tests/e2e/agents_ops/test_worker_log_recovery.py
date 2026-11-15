@@ -657,8 +657,22 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
         for n, path in enumerate((first, second)):
             directory = logs.state / f"job-{n}"
             (directory / "runtime").mkdir(parents=True)
-            (directory / "runtime/result.json").write_text("{}")
+            record = {
+                "run_id": str(n),
+                "contract": {
+                    "cwd": str(logs.root),
+                    "task_id": f"task-{n}",
+                    "mode": "write",
+                    "settings": {"role": "parent", "agent": "claude", "profile": None},
+                },
+            }
+            (directory / "runtime/result.json").write_text(json.dumps(record))
             jobs[str(n)] = {
+                "id": str(n),
+                "role": "parent",
+                "child": None,
+                "cwd": str(logs.root),
+                "task_id": f"task-{n}",
                 "phase": "starting",
                 "directory": str(directory),
                 "runner": "unused",
@@ -667,14 +681,17 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
             }
         owner["dispatch"] = {"phase": "waiting", "jobs": jobs}
         journal.atomic(logs.state / "registry.json", document)
+        schedule = importlib.import_module("dispatcher.schedule").Schedule(
+            logs.state / "schedule"
+        )
+        monkeypatch.setattr(schedule, "read", lambda: {"enabled": False})
+        store = importlib.import_module("dispatcher.state").DispatchStore(
+            logs.state, schedule
+        )
         control = supervisor.Supervisor(
-            SimpleNamespace(repo="o/r"),
+            importlib.import_module("parent.github").GitHub("o/r", store=store),
             store,
-            SimpleNamespace(
-                read=lambda: {"enabled": False},
-                directory=logs.state / "schedule",
-                path=logs.state / "schedule/schedule.json",
-            ),
+            schedule,
         )
         # Admission/end-evidence have their own tests. Here both jobs have ended;
         # the real reconcile loop must freeze ownership before releasing its lock.
@@ -683,7 +700,10 @@ def test_handoff_during_first_worker_merge_stops_later_journals(
             supervisor,
             "Runtime",
             lambda runner: SimpleNamespace(
-                inspect=lambda *a, **kw: {}, ended=lambda _: True
+                inspect=lambda directory, **kw: {
+                    "record": json.loads((directory / "result.json").read_text())
+                },
+                ended=lambda _: True,
             ),
         )
         monkeypatch.setattr(

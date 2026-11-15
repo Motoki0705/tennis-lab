@@ -4,8 +4,8 @@ from __future__ import annotations
 import math
 import re
 from datetime import date
+from ipaddress import IPv4Address, IPv6Address
 from typing import Any
-from urllib.parse import urlsplit
 
 TASK_RE = re.compile(r"^[a-z][a-z0-9_]*$")
 ID_RE = re.compile(r"^(?:run|group)-[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -31,13 +31,42 @@ def iso_date(value: Any) -> bool:
 
 
 def http_url(value: Any) -> bool:
-    if not nonempty_text(value):
+    """Validate the portable absolute-URL syntax in knowledge/README.md.
+
+    Check the original text, rather than accepting a parser's repaired URL.
+    The TypeScript reader uses the same lexical host/port and IP checks.
+    """
+    if not isinstance(value, str) or re.search(r"[\x00-\x20\x7f-\x9f\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff\\]", value):
         return False
-    try:
-        url = urlsplit(value)
-        return url.scheme in {"http", "https"} and bool(url.hostname)
-    except ValueError:
+    match = re.fullmatch(r"https?://([^/?#]+)(?:[/?#].*)?", value, flags=re.IGNORECASE | re.ASCII)
+    if match is None:
         return False
+    authority = match[1]
+    if authority.startswith("["):
+        host_port = re.fullmatch(r"\[([0-9a-fA-F:.]+)\](?::([0-9]{1,5}))?", authority)
+        if host_port is None:
+            return False
+        try:
+            IPv6Address(host_port[1])
+        except ValueError:
+            return False
+    else:
+        host_port = re.fullmatch(r"([a-zA-Z0-9.-]+)(?::([0-9]{1,5}))?", authority)
+        if host_port is None:
+            return False
+        host = host_port[1]
+        dns_name = host.removesuffix(".")
+        labels = dns_name.split(".")
+        if len(dns_name) > 253 or any(not re.fullmatch(r"[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?", label) for label in labels):
+            return False
+        # Browsers interpret a numeric/hex final label as an IPv4 address.
+        if re.fullmatch(r"[0-9]+|0[xX][0-9a-fA-F]+", labels[-1]):
+            try:
+                IPv4Address(host)
+            except ValueError:
+                return False
+    port = host_port[2]
+    return port is None or int(port) <= 65535
 
 
 def json_value(value: Any) -> bool:

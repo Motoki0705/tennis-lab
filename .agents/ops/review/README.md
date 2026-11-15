@@ -140,6 +140,7 @@ lock fileはunlinkしない。例外・プロセス終了でflockが解放され
    起動前に [`../lib/agents.conf`](../lib/agents.conf) のreview方針・許可された組と照合し、runnerへ専用入力で渡す。
    executionとruntimeの選択値、実効model・effortの一致を共通部品で検証する。tier未取得は理由付きで保持する。
    CLIイベント・実効設定・使用量は `agent-runtime/` に保存する（[共通ランナー契約](../lib/README.md)）。
+   組込みWeb検索は初回・継続とも無効にする（[検索設定と確認したCLI](../lib/README.md#レビューのweb検索)）。
    agentは専用プロセスグループで起動し、timeout/異常終了時は子孫も停止する。
    プロンプトは親の目的・親番号・run ID・固定値・資料とツールの入口だけを含む。
    context・全文diff・schemaは埋め込まない。確認不能ならincompleteとし、追加agentへ分割しない。
@@ -274,7 +275,7 @@ head変更には通常の解消記録と同じ実diff照合と、検証済みreb
 `events.jsonl` を再読し、session/turn・実効設定・エラーの記録と、完了イベントの最終メッセージとfinalの内容を照合する。
 異なるfinalのコピーや完了後の別メッセージ、形式矛盾、cleanup不明、対象変更は拒否する。
 許可するruntime終了理由は `completed`、`runtime_error`、`cli_error` のみ。後二者も完了イベントとfinalが一致し、
-終了コードと記録済みエラーが理由に整合するときだけ対象にする。`invalid_output`、`metadata_error`、実効設定・実行先の不一致、
+終了コードと記録済みエラーが理由に整合するときだけ対象にする。`invalid_output`、`metadata_error`、`cli_signal`、実効設定・実行先の不一致、
 証拠不足、timeout・停止などはschema上有効なfinalがあっても採用しない。
 `agent_output.md` が無く `agent-runtime/final.md` だけが残った場合も、上記のイベント照合は必須。
 旧runも必要なruntime・schema・final・イベントが揃う場合だけ採用できる。
@@ -542,6 +543,35 @@ gateは以下をすべて検査し、各PRを理由コード付きの `merge` / 
 `gh pr merge --merge --match-head-commit <確認済みhead>` を一度だけ実行する。
 各merge後も残りを再取得し、[base取込み・rebase後の継承](#base取込みrebase後の継承)を検証する。
 確認済みのmerge済みheadが一致しなければ `merged_head_mismatch` を表示する。
+
+取得は[明示的な観測scope](../parent/README.md#取得範囲と計測)でまとめる。
+初回は有効なreview run群の収集・判定・未登録PRの発見でGETとCLIのCI照会を共有し、同じendpointを繰り返さない。
+PR・実git・CIの収集後に担当権限と公開レビュー証拠を照合する。
+各merge直前は空のcacheから観測をやり直す。証拠照合後にも親とそのPRが閉じる対象Issueの本文、および
+その最新bindingが参照する採用元reportを明示的に再取得する。この最終照合では正式familyを再探索しない。
+merge後のPR状態・対象issueの完了確認と進捗更新も古いcacheを捨てて行う。
+残る対象がなければ完了確認後の全件収集を省略する。
+
+正式familyのtimelineとclosing指示からPRを見つけ、他の親のfamily・履歴は探索しない。
+証拠用Issueのlabel一覧は重複bindingを検出するため全ページ必要だが、個別GET・コメント照合は
+対象親のbindingとその公開証拠に限定する。レビュー登録の重なりはローカルregistryで照合する。
+要件が明示した採用元report・改善承認の出典・単独issueの外部依存は判定に必要なため取得する。
+これらを無関係な他親としてskipせず、採用・依存・担当の条件を従来どおり検証する。
+
+呼出し回数の診断はfake gh・一時registry・実gitを使い、実GitHubやagentを起動しない。
+実装checkoutから同じscriptで比較元checkoutを指定し、各条件を独立した出力先で測る。
+
+```bash
+.venv/bin/python tests/benchmarks/agents_ops/merge_gate_reads.py \
+  --checkout <比較元checkout> --output /tmp/gate-before --mode merge --repeats 2
+.venv/bin/python tests/benchmarks/agents_ops/merge_gate_reads.py \
+  --checkout . --output /tmp/gate-after --mode merge --repeats 2
+```
+
+親1件・子/PR各3件・公開済みレビューと証拠用Issueに、他親20件（各子/PR2件と証拠用Issue）を加える。
+`--mode dry-run` では1観測だけを比較できる。`PARENT_METRICS_FILE` の要求数とfakeの実要求数を照合し、
+endpoint別・正確なURL別の件数、取得元の関数stack、CI照会とmergeの回数を出力する。
+秒数はfakeのprocess起動を含む診断値であり、実GitHubの速度改善率として扱わない。
 
 merge直前にflock下で `merges/<repo digest>/pr-<N>-<head>.json` をprivate stateへ保存する。
 この試行記録の `snapshot` に確認済みhead/base/merge-base/diff/ref/branchを保存し、次回の明示実行でも保持する。

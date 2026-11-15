@@ -8,7 +8,7 @@
 
 [上の階層](../README.md) · [親一覧](../../README.md)
 
-4 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。
+4 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 1 件（結果イベント単位）。
 
 直近の観測（受入の判定とは別）: [結果 148](README.md#record-4fe36d3ce38b4135a13db197c52036cc) success / machine: parent.delegate: success / 操作: launch / agent: codex / branch: codex/parent-self-work-target / 担当issue: 1804 / 委任: はい / 親issue: 1804<br>[行動 149](README.md#record-fc7248b397eb4ff389eb717eb1a8d72f) 記録 / 終了（成果受入とは別）
 

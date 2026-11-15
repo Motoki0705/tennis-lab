@@ -20,6 +20,8 @@ from parent.improvement_receipts import bound_extraction
 from parent.policy import closing_issues, digest, nonempty, number, object_value
 from parent.state import Store
 
+from .state import client_for, repository_scope
+
 
 class InputsChanged(ValueError):
     """A collected subject changed; collection/validation failures remain fatal."""
@@ -92,7 +94,8 @@ def body_dependencies(body: str, repo: str) -> list[int]:
 def collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
-    with gh.history_read_scope():
+    gh = client_for(gh, store)
+    with repository_scope(store), gh.fresh_reads(), gh.history_read_scope():
         return _collect(gh, store, root, seeds)
 
 
@@ -100,7 +103,7 @@ def _collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
     """Caller holds Store.locked(). Every page/failure is significant."""
-    login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+    login = gh.authenticated_login()
     extractions = gh.improvement_extractions(store)
     with gh.fresh_reads():
         enabled_since = read_enabled_since(gh)
@@ -301,13 +304,18 @@ def _collect(
         "repo": gh.repo.casefold(),
         "publisher": login,
         "supplement_enabled_since": enabled_since,
-        "code": code_snapshot(root),
+        "code": unlocked_code_snapshot(gh, root),
         "subjects": subjects,
         "issues": issues,
         "pulls": sorted(prs, key=lambda x: x["number"]),
         "owners": owners,
         "improvement_extractions": extractions,
     }
+
+
+def unlocked_code_snapshot(gh: GitHub, root: Path) -> dict[str, Any]:
+    with gh.io_scope():
+        return code_snapshot(root)
 
 
 def route(issues: Mapping[str, Any], n: int) -> int:
@@ -491,6 +499,11 @@ class SnapshotGitHub(GitHub):
     def __init__(self, snapshot: dict[str, Any]) -> None:
         self.snapshot = snapshot
         self.repo = snapshot["repo"]
+
+    def authenticated_login(self) -> str:
+        # Identity belongs to the frozen observation too. This adapter has no
+        # transport/authentication context and must never resolve ambient auth.
+        return nonempty(self.snapshot.get("publisher"), "gh login")
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         if endpoint == "user":

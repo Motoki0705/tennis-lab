@@ -87,6 +87,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1483 state-migrate
 
 `GitHub(repo, store=store)` は、そのStoreのactiveなtransaction専用client。
 GET cacheの命中時もtransactionを要求し、transactionを跨いで応答を再利用しない。
+`authenticated_login()` のloginだけはAPI hostと認証ごとにprocess内で再利用する。
+これは認証principalの識別であり、Issueや履歴の観測を保持するcacheではない。
+初回のtoken取得もregistryロック外で行い、復帰時の永続行の再照合後にlogin取得へ進む。
+通常の `get("user")` とscope検査は従来どおりで、異なるtokenやhostへloginを持ち越さない。
 `fresh_reads()` は同じtransaction内でも観測を取り直す指定で、assert_fresh・書込前照合に使う。
 入口で探索索引を失効させ、scope内ではendpoint GETのcacheを迂回する。
 同じfresh照合内の複数の履歴読取は、取り直した探索索引を共有する。
@@ -98,6 +102,13 @@ GET cacheの命中時もtransactionを要求し、transactionを跨いで応答�
 既存clientからは `detached()` で親の取得範囲と証拠保存先を引き継ぐregistry外clientを作る。
 transaction用clientがlock不在を検出して自動的にregistry外clientへ切り替わることはない。
 
+`session.observation()` はregistryを解放した1回の観測でGETを共有する明示入口。
+専用のdetached clientに `read_observation()` を適用し、空のcacheから始め、終了時には捨てる。
+cacheは元のtransaction client・別のdetached client・次のtransactionへ渡らない。
+ネストした収集・証拠照合は同じ観測を使い、`observation(fresh=True)` は独立した観測を始める。
+`pr_view()` のCLI/GraphQL照会もこのscope内だけ共有し、鮮度指定と厳密なJSON検証を維持する。
+通常の `detached()` は引き続きcacheなし。復帰時のregistry再照合も省略しない。
+
 transaction内でgit・runner・証拠ファイルを検証するときは `gh.io_scope()` でregistryを解放する。
 GitHub取得も含む読取処理には `session.unlocked()` が返す独立client付きsessionを使う。
 どちらも復帰時に対象親の永続行を再照合し、競合は `RegistryConflict`（終了値2）で返す。
@@ -106,13 +117,20 @@ transactionを終了して長時間処理を行う場合は `store.checkpoint()`
 自分が保存した変更の後でcheckpointを取り直し、他の親だけの変更は保持する。
 reviewのruntime/events/final等はregistry外で固定入力として検証し、読取中の変更も拒否する。
 
+通信・認証・repo解決は [共通HTTP client](../issues/README.md#github通信認証repo解決) を使う。
 親の家族に属するissueのtimelineからclosing指示を持つPRを発見し、番号指定で取得する。
+launch plan内では、検証したfamilyの同じ観測をPR探索にも渡し、再走査を省く。
+delegateの初期計画・reconcileは同じ `LaunchInputs` を使い、ローカルgit検証後の
+fresh照合は新しいfamily・履歴・PR一覧を各1回取得して同じ照合内だけで渡す。
+改善承認の照合が別のfresh観測を行う場合、実行根拠はその後に改めて読み、古い計画入力を使わない。
+委任直前のfresh照合ではfamilyとtimelineを改めて取得する。
 親CLIの1操作でrepo全体のPR一覧を列挙しない。コマンド内のGETは再利用し、書込み対象を失効する。
 sub-issue一覧に含まれる完全なissue本文も再利用する。固定snapshotの再照合と書込み直前の本文は再取得する。
 ページ内・ページ間の重複は最大3回取り直し、解消しなければ失敗する。空結果への変換はしない。
 
 `PARENT_METRICS_FILE` にローカルJSONLの保存先を指定すると、コマンド・経過秒・lock待機秒・
 GitHub要求数/ページ数/通信秒・cache hit・処理秒・競合数・終了値を記録する。
+merge gateの明示実行も同じ計測に対応する。
 再実行時は `PARENT_METRICS_ATTEMPT=2` などで試行番号を渡し、retry_countを記録できる。
 本文・取得URL・識別子・資格情報は記録しない。未指定ならファイルを作らない。
 
@@ -140,7 +158,7 @@ worktreeの絶対パスと再起動証拠はローカル出力にのみ含まれ
 ## 入口と合意
 
 以下のコマンドは会話を受けたagentが実行する。人間に実行させる手順ではない。
-共通引数はサブコマンドの前に置く。`--repo` 省略時は `gh repo view` で特定する。
+共通引数はサブコマンドの前に置く。`--repo` 省略時は一意のGitHub remoteから特定する。
 `--parent` は番号、`#番号`、同じrepoのHTTPS issue URLを受け取る。
 `--state-dir` でdispatcher/review/mergeと同じregistryを明示できる。省略時は従来のXDG state。
 workerの起動・継続では `--dispatcher-state-dir` も同じscheduleへ向ける。
@@ -152,6 +170,10 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent https://github.com/Mo
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 checking
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 agree --spec tmp/agreement.json
 ```
+
+`register` はrepo・parent・assignment・display_summary・current_session_is_owner・phaseと
+表示連携の結果を返す。担当登録後にfamily/timeline/worker/completionを全収集し直さず、
+それらの独立した現状確認は `status` で行う。登録コメントの公開と検証は省略しない。
 
 `agreement.json` は `purpose` / `scope` / `behavior` / `acceptance` / `human_confirmation` の
 5キーだけを持つJSON object。値はすべて非空の文章とし、最後の値に人間の確認発言を引用する。
@@ -1245,6 +1267,8 @@ PR open/push/CI完了ではこの入口もレビューも起動しない。
 公開の単位・階層README・限定例外と復旧は[判断記録の公開仕様](../decision_logs/README.ja.md#git公開と閲覧)を参照する。
 人間向けの入口は[親の結果・判断一覧](../../logs/parents/README.md)。親READMEの概要から活動の詳細へ辿る。
 初回も `publish-decision-log --dry-run` で未準備記録を含む表示を確認する。プレビューの項目と制限は公開仕様を参照する。
+担当なしの別親（close済みも含む）の公開は `--unassigned-parent N` を明示する。
+操作親のactive担当・拒否条件・公開担当の来歴・再開先は、上記の判断ログ公開仕様を参照する。
 取得元・未対応入口・判断spec・操作との結び付けは
 [判断記録の仕様](../decision_logs/README.ja.md#捕捉元と未対応入口)を正本とする。
 既存の要求・runner応答形式、成果受入や担当の権限は変更しない。
@@ -1254,6 +1278,13 @@ PR open/push/CI完了ではこの入口もレビューも起動しない。
 自動割当側は上記の候補検査と既存registryの排他を使い、対象親の実行根拠とruntime identityを結び付ける。
 同じrepo・親番号/URL・環境由来ID・state・競合エラーを使い、子作成・実装・レビューの検査を飛ばさない。
 判定agent・timerはこのCLIから起動しない。手動実装子の明示起動だけは `run-worker` が共通ランナーへ渡す。
+
+start/continue-workerの終了待ちとstop-workerは対象job/runを保存してregistry外でrunnerへ問い合わせ、
+新しいtransactionで担当・委任・runを照合する。stop-workerは停止intentを先に保存する。
+inspect-workerは読み取り専用とし、snapshotで対象job/runを固定してrunnerへ問い合わせ、新しいsnapshotで
+job/run・委任・generationを照合する。intentやruntime_run_idを保存せず、registry lockファイルも作らない。
+Python APIの `inspect_worker` / `stop_worker` は自身でsnapshotまたはtransactionを開くため、呼出元はregistry lockを持たない。
+変更された対象の古い応答を現在のworkerへ適用しない。
 
 CLIはJSONをstdout、エラーをstderrへ出し、成功0・設定/取得/整合エラー2で終了する。`run-worker` の実行後はランナーの終了値を返す。
 `wait-worker` の状態不明・回収未確認・timeoutはstdoutのJSONにも区分を返し、timeoutは終了値124とする。

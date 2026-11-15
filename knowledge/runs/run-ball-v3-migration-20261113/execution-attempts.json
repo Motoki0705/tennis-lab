@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "attempts": [
+    {
+      "code_commit": "59140377bdccfd73125f6fbd6d889e96576c3b43",
+      "selected_cameras": 123,
+      "completed_preparations": 8,
+      "state": "interrupted",
+      "exit_code": 130,
+      "signal": "SIGINT",
+      "reason": "prepared JPEG archives were not in migration publication protection; stop before publication to fix retention and reuse immutable preparations",
+      "wall_seconds": 338.02,
+      "max_rss_kib": 2180524
+    },
+    {
+      "code_commit": "7c2c58ee60114ef937a4bfb4dbb0011ebe8652ec",
+      "selected_cameras": 123,
+      "state": "host_interrupted",
+      "parent_reported_stop": "2026-11-13 18:20 JST",
+      "parent_last_observed_preparations": 61,
+      "retained_log_completed_lines": 88,
+      "verified_preparations_after_recovery": 89,
+      "remaining_preparations": 34,
+      "invalid_preparations_after_recovery": 0,
+      "reason": "WSL stopped when the host D drive ran out of space; process reaping confirmed by parent",
+      "recovery_audit": "resume-audit-20261114.json",
+      "exit_code": null,
+      "wall_seconds": null
+    },
+    {
+      "code_commit": "ed264f44fc4adf6610789cd50744c148d00162db",
+      "selected_cameras": 123,
+      "state": "interrupted_before_publication",
+      "phase": "small_dry_run",
+      "dry_run_converted_cameras": 3,
+      "new_preparations": 0,
+      "exit_code": 130,
+      "signal": "SIGINT",
+      "wall_seconds": 1078.83,
+      "max_rss_kib": 1598472,
+      "reason": "resolve six type-check errors in changed files observed when imported dependency types are visible; preserve existing preparations"
+    },
+    {
+      "code_commit": "64f61a41879713169151530c09c8df9fbd2aa4f7",
+      "selected_cameras": 123,
+      "state": "completed",
+      "exit_code": 0,
+      "reused_verified_preparations": 89,
+      "new_preparations": 34,
+      "elapsed_hms": "1:43:19",
+      "wall_seconds_from_reported_hms": 6199,
+      "user_cpu_seconds": 2710.65,
+      "system_cpu_seconds": 310.16,
+      "max_rss_kib": 3012596,
+      "published_frames": 63540,
+      "scene_clips": 41,
+      "replay_equal": true,
+      "report": "outputs/ball_detection/migrate/video-v3/20261113/full-publication.json",
+      "resource_log": "outputs/ball_detection/migrate/video-v3/20261113/full-attempt04-time.txt"
+    }
+  ]
+}

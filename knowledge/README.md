@@ -198,7 +198,7 @@ mkdir -p tmp
 | `id` / `type` | ディレクトリID / `paper` |
 | `title` / `year` / `authors` | 正式題名 / 発表年 / 著者名の配列 |
 | `tasks` | 関係するタスクの配列（未実験のタスクも可） |
-| `source` | 参照した版の一次資料URL（arXivのabsページなど） |
+| `source` | 参照した版の一次資料URL（arXivのabsページなど）。[入力値の境界条件](#入力値の境界条件)に従う |
 | `summary` | 研究内容の短い要約（非空文字列） |
 | `reason` | 採録理由。研究上の問い、または探索・引用元・役割・根拠を含む発見経路（非空文字列） |
 | `external_ids` | 正規化した外部IDの辞書。ID未確認の通常登録では空辞書も可 |
@@ -212,16 +212,31 @@ mkdir -p tmp
 `citation_map/papers/<id>.md` と `citation_map/searches/<id>.md` にYAML frontmatter付きMarkdownを置く。各ディレクトリは通常の `.md` 文書だけを許可し、PDFやsymlinkは拒否する。frontmatterの未知のキー、YAML重複キー・aliasも拒否する。本文は任意の補足で、機械処理はfrontmatterのみを読む。
 探索CLI用の型・parse/serialize・入出力・検証APIは `kg_citations.py`、外部IDの共通処理は `kg_identifiers.py`（いずれもknowledge-controlの `scripts/`）。Web UIは同じfrontmatterを読む。
 
+### 入力値の境界条件
+
+`created_at` は文字列で、`YYYY-MM-DDTHH:MM[:SS[.小数秒]]` に `Z`・`±HH:MM`・`±HHMM` のいずれかを付ける。
+例えば `'2026-11-14T22:00:00+09:00'` と `'2026-11-14T22:00:00+0900'` はともに受理する。
+年は0001〜9999、日付は実在する暦日、時は00〜23、分・秒は00〜59、offsetの時は00〜23・分は00〜59とする。小数秒は秒の後の1〜6桁に限る。
+timezoneなし、空白による日付/時刻の区切り、基本形式・週日付、offsetの秒、うるう秒、範囲外の値は拒否する。入力文字列は補正・切り詰め・UTC変換せず保持する。
+
+Papersと引用論文の `source`、および `url` 外部IDは、入力そのものが `http://` または `https://` から始まる絶対URLとする（schemeの大文字も可）。
+hostはASCIIのDNS名（各labelは英数字で始まり終わる1〜63文字、中間は英数字・ハイフン、全体253文字以内、末尾のdotは可）、標準の10進4区切りIPv4、またはbracket付きIPv6を使う。IDNはpunycode表記にする。
+portを付ける場合は1〜5桁の10進数、0〜65535。credentials、空白・制御文字・BOM、backslash、空host、空port、不正なIP/DNS表記を拒否する。数値・16進数で終わるhostを省略形IPv4へ補正しない。
+path/query/fragmentはUnicodeやURLエンコードも保持する。`source` は大文字小文字や明示portを含め入力をそのまま保持し、URL parserによる欠けたslashの補完などはしない。`https:example.org/paper` は拒否する。
+
+受理/拒否と外部IDの入力正規化の共有例は [citation-boundaries.json](../tests/fixtures/knowledge/citation-boundaries.json)。PythonとTypeScriptのunit testはこの1ファイルを読み、同じ期待値を照合する。
+
 ### 外部ID・同一視・結合
 
 `external_ids` は次のnamespaceから文字列への辞書。未知のnamespaceは拒否する。登録時に正規化し、保存済みの非正規形は検証エラーにする。
+prefix・URL内の固定部分の大文字小文字はASCIIで照合し、Unicodeの類似文字を同一視しない。
 
 | namespace | 正規形と入力の扱い |
 |---|---|
 | `doi` | `10.<4〜9桁>/<suffix>` を小文字化。`doi:` / `https://doi.org/` / `https://dx.doi.org/` を除去しURLエンコードを復号 |
 | `arxiv` | `YYMM.NNNN[N]` または旧 `archive/NNNNNNN`。`arXiv:` / abs・pdf URL / `.pdf` / `vN` を除き小文字化。版は `source` に残す |
 | `openalex` | `W<数字>`。OpenAlex URL・大文字小文字の差を正規化 |
-| `url` | 他のIDが判らない場合の一次資料URL。scheme/hostを小文字化しfragmentを除去。path/queryは保持。HTTPとHTTPSを推測で同一視しない |
+| `url` | 他のIDが判らない場合の一次資料URL。上のURL条件を検証し、scheme/hostを小文字化、fragmentを除去、空pathを `/` にし空queryの `?` を省く。path/query・明示portは保持。HTTPとHTTPSを推測で同一視しない |
 
 同じnamespace/valueを1つでも共有する文献を同一視の候補にする。候補が1件でも、両側にある全namespaceの正規化した値を照合し、1つでも異なれば結合・別名の集約をエラーにする。例えばarXivが一致してもDOIが異なる場合は拒否し、誤ったIDを明示的に訂正してから再検証する。片側にしかないnamespaceは矛盾とせず、別名として追加できる。この規則はPapers↔探索の結合と、探索文書どうしの同一視に共通で、役割や題名で矛盾を推測修正しない。
 
@@ -247,12 +262,15 @@ Papersとの対応も外部ID集合の共通要素から導出する。探索文
 |---|---|
 | `ref_id` / `citation` | 引用元内で一意な `ref-<数字>` / 原文の書誌表記（非空） |
 | `target_id` | 同定済み文献の文書ID、未同定はnull。引用先の正規書誌・外部IDはこの文書から結合して得る。行に複写しない |
-| `identification_status` | `resolved` / `unresolved`（参照先未同定）。target_idの有無と一致させる |
+| `identification_status` | `resolved`（同定済み） / `unresolved`（候補を網羅して照会したが一意に同定できない） / `pending`（照会未完了） / `unverified`（候補の網羅性・同定の一意性を未確認）。resolvedだけtarget_idを持つ |
 | `roles` | 下記の役割の配列。重複不可、複数可 |
 | `decision_status` | `classified` / `unclassifiable`（役割判定不能） / `pending`（未判定） |
 | `reason` / `evidence` | 判断理由（常に非空） / 根拠位置の文字列配列（節・表・ページ・本文引用等）。`classified` は1役割以上・1根拠以上必須。他の状態はrolesを空にする |
+| `lookup`（省略可） | 原文から抽出した照合用の `title`（不明は空文字列）、`year`（不明はnull）、`authors` / `links`（不明は空配列）。linksはHTTP(S) URLのみ。参照先の正規書誌ではなく、照会再開に使う入力 |
 
 未同定でも引用文脈から役割を判定できるため、同定状態と判定状態は独立させる。同じtargetへの複数行は許可するが、集計では引用元・引用先・役割を一組として数える。
+レート制限・5xx・通信失敗は `unresolved` にしない。成功済みの読解・役割・根拠を保存し、失敗行と未照会行を `identification_status: pending` のまま探索を中断する。再実行は本文を読み直さず、保存済みの `lookup` または原文の書誌表記で照会を再開する。旧文書の一時失敗を未同定として確定した理由は検証エラーにし、CLIが照会待ちへ移して修復する。
+検索の後続ページ・件数の整合を確認できない結果と、旧先頭ページだけの確定結果は `unverified` とする。候補不足を「一致なし」と確定せず、理由を残して探索を中断し、次回に再照会する。旧結果を戻す場合も引用原文・役割・根拠は保持し、旧target_idは理由の来歴に残す。
 
 | rolesの列挙値 | 親 #2011 の5分類 |
 |---|---|
@@ -267,19 +285,25 @@ Papersとの対応も外部ID集合の共通要素から導出する。探索文
 | キー | 内容 |
 |---|---|
 | `id` | `search-<小文字英数字のkebab slug>`。実行ごとに一意。呼出側が時刻や実行名を含めて割り当てる |
-| `created_at` | timezone付きISO 8601日時の文字列 |
+| `created_at` | [入力値の境界条件](#入力値の境界条件)に従うtimezone付きISO 8601日時の文字列 |
 | `root_id` | 起点論文の文書ID。入力URL/IDは起点文書のsource/external_idsから解決 |
 | `roles` / `max_depth` | 展開に使う役割（非空、複数可、重複不可） / 0以上の整数。起点は深さ0 |
-| `generations` | `depth`、`paper_ids`（到達した文献ID）、`expanded_ids`（その世代で本文取得・判定を試みたID）の辞書配列 |
+| `generations` | `depth`、`paper_ids`（到達した文献ID）、`expanded_ids`（その世代で本文取得失敗を確定、または読解・同定を完了したID）の辞書配列 |
 | `issues` | `paper_id` と `ref_id`（文献全体の問題はnull）からなる問題箇所への参照配列 |
+| `status` / `stop_reason` | 省略時は `complete` / 空文字列。`interrupted` は中断した実行で、非空の停止理由を必須とする。`complete` の停止理由は空文字列のみ |
 
 世代は0から連続し、指定役割の `classified` かつ `resolved` な辺だけをたどる。既出文献は再度世代へ入れないが、論文文書の全ての辺は残す。各 `paper_ids` は重複不可。最大深さでは `expanded_ids: []`、それより浅い全到達文献は取得を試み、`not_requested` のままにしない。次世代の集合は前世代のexpanded_idsから得られる未出の引用先と一致させる。文献が尽きた時点で止め、空世代は作らない。最大深さを超える世代・参照切れ・不足/余分な展開はエラー。
+
+中断した探索だけは、最後の世代の `expanded_ids` が `paper_ids` の部分集合でよく、未記録の次世代を許可する。それ以前の世代、選択役割による到達集合、参照先、issuesの規則は完了探索と同じ。中断理由は本文取得状態と分ける。例えばagyの失敗は `stop_reason: agy:cli_error` とし、その論文を取得失敗や読解成功へ書き換えない。再開時は同じ起点・役割・深さ・search IDを照合し、保存済みの読解結果から世代を組み直す。
+同定に `pending` / `unverified` が残る論文は、本文が `available` でもexpanded_idsに入れず、後続世代へ進まない。共有する論文文書の修復で起点が未完了に戻る場合も、影響する全探索を中断状態に組み直す。論文文書の読解済みという事実は保持する。
 
 `issues` はexpanded_ids内の `failed` 文献と、`unresolved` または `unclassifiable` / `pending` な行を漏れなく指す。状態・理由・根拠は論文文書から求め、探索側へ複写しない。これにより探索ごとの取得失敗・未同定・判定不能を読める。未展開の末端文献は取得失敗に数えない。保存済み文献を再利用し、同じ引用元の再読・再実行で辺の数を増やさない。論文文書を訂正した場合は、影響する探索文書の世代・issuesも同じ変更で更新する。
 
 Papersへの採録対象は起点と、その探索の各 `expanded_ids` が記録した **全ての `resolved` 引用先**。指定役割・判定状態・`generations.paper_ids` への収録は採録の条件にしない。比較探索でも、基盤として表示された未展開の引用先を人間が採録できる。発見経路には、探索内で展開した全ての引用元についてref_id・役割・判定状態・判断理由・根拠を記入する。判定不能や根拠の空欄もその状態を明示する。未展開論文のcached参考文献にしかない引用先や、探索範囲外の文献は拒否する。
 
-固定例は `tests/fixtures/knowledge/citation_map/`。A→B→D（比較）、A→C（基盤）、B/C→Dの合流、A→Bの比較・基盤兼用、本文取得失敗E、未同定行と役割判定不能行を含む。テスト用の架空文献で、本番のPapersや探索一覧には入れない。
+固定例は `tests/fixtures/knowledge/citation_map/`。A→B→D（比較）、A→C（基盤）、B/C→Dの合流、A→Bの比較・基盤兼用、本文取得失敗E、未同定行と役割判定不能行、読解済みで同定待ちのPを含む。テスト用の架空文献で、本番のPapersや探索一覧には入れない。
+
+探索の入口・再開・実行条件は [knowledge-controlの手順](../.agents/skills/knowledge-control/references/record.md#citation-exploration) を参照する。
 
 ## summaryと履歴
 

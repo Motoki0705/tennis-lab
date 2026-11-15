@@ -1,5 +1,7 @@
 # cleanup: branch・worktree の掃除（#1060）
 
+データ・学習出力のローカル保持は [storage-tier](../storage_tier/README.md) を参照する。
+
 ローカルbranchとgit worktreeを **自動削除 / 承認待ち / 保護** に分類する。この `apply-auto` が
 消すのは **worktree を持たない merge 済みのローカルbranch の ref だけ**。
 メインcheckout配下 `.claude/worktrees/` の登録worktreeは、別の

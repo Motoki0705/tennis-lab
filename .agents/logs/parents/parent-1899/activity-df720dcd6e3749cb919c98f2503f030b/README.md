@@ -8,7 +8,7 @@
 
 [上の階層](../README.md) · [親一覧](../../README.md)
 
-4 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件。最終報告の観測対象外: 1 件。
+4 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 1 件（結果イベント単位）。
 
 直近の観測（受入の判定とは別）: [結果 616](README.md#record-fc27a365600b492a8aca0ec7a6aead4a) success / machine: parent.delegate: success / 操作: launch / agent: codex / branch: codex/ball-query-desktop / 担当issue: 1899 / 委任: はい / 親issue: 1899<br>[行動 617](README.md#record-14a2f9e335764c7c9244a5d992009700) 記録 / 終了（成果受入とは別）
 

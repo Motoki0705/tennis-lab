@@ -283,13 +283,18 @@ remainingは上記APIの一覧。publication_actorはactiveな親番号、担当
 破損等で全件を読めないときはremaining_complete=falseとerrorを保存し、空一覧を残件ゼロの証拠にしない。
 親statusの一覧も読めなければNoneとpublication_inventory_errorを返す。
 resume_commandはworkerログ、decision_resume_commandは判断ログの再開先。終了済みの元担当sessionも
-自分の親の公開を再開できる。別の担当中の親はworkerログを一括回収でき、判断ログの担当変更は既存handoffを使う。
+自分の親の公開を再開できる。別の担当中の親はworkerログを一括回収できる。
+担当なし親の判断ログは、担当を変えずに[明示的な公開入口](../decision_logs/README.ja.md#git公開と閲覧)から回収できる。
 公開の未完了・破損・取得失敗で担当終了／引継ぎを拒否せず、errorと残件・再開先を残す。
 
 次の書込みも終了イベントも発生しない強制終了の後は、明示的な一括続行を使う。
 過去の失敗runnerを成功へ書き換えたり、失われたjournalをPRから復元したりしない。
 
 ## 検証
+
+入力捕捉のgitとjournal処理、終了後の受領処理はregistry lockの外で行う。
+入力の反映は元のturnを含むtransactionの再照合、managed workerの受領は同じjob/run・委任の
+新しいtransactionでの再照合を条件とする。公開もregistry外で行い、競合を入力捕捉失敗へ変換しない。
 
 unitは公開schema・無害化・追加専用policy、e2eはfake GitHubと使い捨て実gitで公開、並行再送、障害復旧を検証する。
 既存の手動・自律planningテストを拡張し、実際の送信原文、回答、追加指示、phase/modelの対応も確認する。

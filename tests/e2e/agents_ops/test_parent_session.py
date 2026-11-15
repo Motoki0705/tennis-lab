@@ -1078,10 +1078,29 @@ def test_board_review_marker_and_ack_cannot_instruct_fixed_review(
 
 
 def test_assignment_is_not_agreement_and_both_inputs(parent_env: ParentEnv) -> None:
+    from tests.support.agents_ops.decision_logs import journal, result
+
     p = parent_env
     assert json.loads(p.cli("status").stdout)["assignment"] == "unassigned"
+    # Late captured facts remain visible without registering their parent.
+    directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
+    log = journal.Journal(directory, "o/r", 1)
+    log.capture("historical-unassigned", result())
+    before = log.path.read_bytes()
+    unassigned = json.loads(p.cli("status").stdout)
+    assert unassigned["remaining_publications"][0]["kind"] == "decision_log"
+    assert unassigned["remaining_publications"][0]["unpublished_count"] == 1
+    assert unassigned["decision_resume_command"] == (
+        "parent --repo o/r --parent RECOVERY_PARENT publish-decision-log --unassigned-parent 1"
+    )
+    assert log.path.read_bytes() == before
     p.cli("register", parent="https://github.com/o/r/issues/1")
-    assert json.loads(p.cli("status").stdout)["phase"] == "担当指定のみ"
+    assigned = json.loads(p.cli("status").stdout)
+    assert assigned["phase"] == "担当指定のみ"
+    assert (
+        assigned["decision_resume_command"]
+        == "parent --repo o/r --parent 1 publish-decision-log"
+    )
     p.child("forbidden", ok=False)
     p.cli(
         "delegate",

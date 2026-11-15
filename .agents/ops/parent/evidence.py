@@ -137,6 +137,11 @@ class EvidenceIssues:
             )
         return matches[0] if matches else None
 
+    def needs_binding(self, parent: int, login: str) -> bool:
+        """Keep first-time binding and lost-creation recovery under ensure's lock."""
+        saved = self._saved(parent, login)
+        return saved is None or saved["state"] == "sent"
+
     def ensure(
         self, parent: int, login: str, *, store: Store | None = None
     ) -> EvidenceIssue:

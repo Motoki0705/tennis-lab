@@ -467,6 +467,8 @@ def test_launcher_disables_unpinned_tools_and_execution_is_explicit(
             "gpt-6.1-sol",
             "-c",
             'mcp_servers.review_evaluation.command="python"',
+            "-c",
+            'web_search="disabled"',
             "-",
         ],
         ["live_github"],
@@ -484,6 +486,7 @@ def test_launcher_disables_unpinned_tools_and_execution_is_explicit(
         assert args[args.index(feature) - 1] == "--disable"
     for overrides in (
         ["-c", 'web_search="live"'],
+        ["-c", 'web_search="cached"'],
         ["--enable", "apps"],
         ['--config=web_search="live"'],
         ["-c", 'mcp_servers.review_evaluation.url="https://example.invalid/live"'],
@@ -685,7 +688,12 @@ def test_private_execution_builds_the_shared_runner_contract_without_a_live_agen
         assert set(c.read(connection)) == {"review_evaluation"}
         selection = c.read(directory / "review-selection.json")["selected"]
         raw = command(
-            {"agent": "codex", "profile": "review", "selected": selection},
+            {
+                "agent": "codex",
+                "profile": "review",
+                "selected": selection,
+                "web_search": "disabled",
+            },
             "read-only",
             cwd,
             directory / "agent_output.md",

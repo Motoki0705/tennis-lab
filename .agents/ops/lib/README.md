@@ -14,7 +14,7 @@ Linux（`/proc`、flock、child subreaper）を前提に、Claude/Codexの1タ�
 | `agent_settings.py` | 設定の検証・優先順位・実CLIの引数構築 |
 | `agent_events.py` | 構造化イベントの検証と実効値・使用量の抽出 |
 | `agent_output.py` | 出力JSON Schemaの固定と構造化結果の検証 |
-| `agy_headless.py` | issue補足追加用agyの読み取り専用1回実行。固定版・logのモデル・構造化結果を照合 |
+| `agy_headless.py` | issue補足追加と引用読解用agyの読み取り専用1回実行。profileの固定版・logのモデル・構造化結果を照合 |
 | `agy_permissions.py` | コマンド・引数・フラグの定義から、両端を固定したagyの権限規則を生成 |
 | `agy_hook.py` | 使い捨てworkspaceのPreToolUse設定と、controller側で動く拒否・記録処理 |
 | `agy_capture.py` | 本番と調査ハーネスで共有するstreamのコマンド捕捉・正規化・集計 |
@@ -42,6 +42,7 @@ repo rootを子へ渡し、入口の `require_checkout_job()` が実FDのinode�
 | `ops-report/ops_report.py` の全subcommand | 有限launcher。直接file実行は拒否 |
 | `cleanup/cleanup.py` のscan/apply-auto/delete | 有限launcher。直接file実行は拒否 |
 | `worktree_cleanup` のscan/cleanup（dry-run含む） | 有限launcher。直接module実行は拒否 |
+| `storage_tier` の全subcommand（dry-run含む） | 有限launcher。直接module実行は拒否 |
 | `dispatcher run` / `dispatcher.judgement` | 有限launcher。直接の判定起動は拒否 |
 | `dispatcher supervise` | `--supervisor` 専用launcher。直接CLIや有限launcherからは拒否 |
 | `board web` | `--board-web-port PORT` 専用launcher。直接CLIからは拒否 |
@@ -158,6 +159,8 @@ parent/dispatcherの `Store.locked()` / `consistent_snapshot()` とworktree expi
 sourceのGit共通ディレクトリの共有lockを取る。保存済みjobがメイン由来のrunnerを参照する場合も、
 registryを持ったままrunnerのcheckout待ちに入らないためである。registryを一時解放するI/O中も
 checkoutは保持し、再取得の順序を変えない。更新が先ならregistry取得前に理由を出して待つ。
+registry transactionを終了してからrunnerを待つ経路では、次のtransactionで改めて
+checkoutから取得する。runner待機・GitHub通信をregistryの保持下へ戻さない。
 `consistent_snapshot()` はregistryを共有読取後に、自分で追加したcheckout lockを検証後に解放する。
 呼出元のGitHub I/Oでregistryを保持せず、入口の寿命lockは終了まで続く。
 
@@ -167,7 +170,7 @@ dispatcherの `__main__.py` / `cli.py` / `dispatch.py` も薄いbootstrapで、
 行い、自身の排他lock取得前にその共有lockを解放する。本体には遅延project importを置かない。
 復旧主体のgit-syncだけは残存マーカーがあっても起動し、既存のpreflightでcheckoutを検証して回復する。
 
-更新側の `Maintenance.pause()` → dispatcher statusと、registry内の `Runtime.inspect()` →
+更新側の `Maintenance.pause()` → dispatcher statusと、`Runtime.inspect()` →
 runner status/stopだけは、親の実FDを `pass_fds` と専用contextで同期子へ明示的に渡す。
 入口はGit共通ディレクトリ・FDのinodeと `/proc/self/fdinfo` の実flockを照合する。
 排他contextはstatus/stopに限定し、flockを取り直さないため更新側の排他を共有へ降格しない。
@@ -178,7 +181,7 @@ status/stopを中継するwrapperもFDを明示的に継承する。環境変数
 
 ## agyの共通呼び出し部品
 
-`agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加の writer/verifier 用の同期Python API。
+`agy_headless.py` は `agent_exec.sh` とは独立した、issue補足追加と引用読解用の同期Python API。
 導入・ログイン・更新・手動疎通は [runner README](../../../scripts/github_actions/README.md#agyの導入と疎通) にある。
 `sys.path` にこの `lib/` を加え、次の公開APIを使う。`jsonschema` が必要で、schemaの方言と
 外部参照の拒否は既存の `OutputSchema` に従う。
@@ -205,7 +208,7 @@ else:
 
 `run_headless(*, agy: Path, cwd: Path, prompt_file: Path, json_schema: Path,
 log_file: Path, timeout: float = DEFAULT_TIMEOUT, model: str | None = None,
-config_file: Path = DEFAULT_CONFIG) -> AgyResult` が公開する呼び出し契約。
+config_file: Path = DEFAULT_CONFIG, profile: str = "issue_supplement") -> AgyResult` が公開する呼び出し契約。
 相対パスは呼出元のcwdを基準に解決する。prompt/schemaはUTF-8ファイル。
 `cwd` は呼出元が用意し片付ける使い捨てworkspace、`log_file` はその外側の非公開領域を必須とする。
 controller checkout内で直接呼び出さず、smokeもテンプレートのコピーを使い捨てworkspaceへ置く。
@@ -222,6 +225,13 @@ timeoutでは既存の `opsproc.run_process_group` がCLIと同じprocess group�
   4キーは `AGY_VERSION`, `AGY_URL`, `AGY_SHA256`, `ISSUE_SUPPLEMENT_AGY_MODEL`。
   導入テスト用の明示configでは `file://` のtarballも使える。通常は公式GitHub Releaseの版付きasset URLと
   release APIが返したSHA-256 digestを固定する。
+  引用読解は `profile="citation"` を明示し、`CITATION_AGY_VERSION` / `CITATION_AGY_URL` /
+  `CITATION_AGY_SHA256` / `CITATION_AGY_MODEL` の別pinを使う。`load_config(..., profile="citation")`
+  でも同じ設定を取得する。実行APIのmodel引数は選んだprofileのpinと一致する値だけを許可する。
+  citationは1.5.9 / `gemini-4-hydrogen-high`、issue_supplementの既定は従来の1.4.11 /
+  `gemini-3.8-flash-high`。モデルの実効log labelもprofileごとに照合し、別モデルへfallbackしない。
+  `DEFAULT_AGY` のCI用パスは維持する。ローカル呼出側は `agy=Path.home() / ".local/bin/agy"`
+  を渡す。共有の読み取り権限・user settings guard・JSON検証は同じものを使う。
 - `model` の省略時は `ISSUE_SUPPLEMENT_AGY_MODEL` を使い、明示しても固定値と異なれば起動前に拒否する。
   `AGY_CLI_DISABLE_AUTO_UPDATE=true` を子環境へ設定し、実行前後の版が `AGY_VERSION` と一致することを確かめる。
   logの選択モデル表示は、既知のslugに対応するlabelと全件一致しなければ拒否する。
@@ -578,6 +588,22 @@ Codexのread-only再開は `exec --sandbox read-only ... resume` の親引数で
 `--last`、fork、新sessionへの自動振替は使わない。
 JSONL/再開の公式説明は [Non-interactive mode](https://developers.openai.com/codex/noninteractive)。
 
+### レビューのWeb検索
+
+Codexのreview profileは、初回・再開とも `-c 'web_search="disabled"'` を渡し、
+ユーザーのCLI設定にかかわらず組込みWeb検索を無効にする。
+指定値は `contract.settings.web_search` と `invocation.json` の実引数に残す。
+この値がない旧review runや異なる値のrunは実行契約が異なるため、resumeで黙って設定を変えない。
+他profileと実装workerのWeb検索設定は変更しない。
+
+公式の[設定仕様](https://learn.chatgpt.com/docs/config-file/config-reference)では既定はcached検索であり、
+read-only sandboxの指定だけでは組込み検索を無効化しない。
+Codex CLI 0.168.0の `exec --help` / `exec resume --help` と
+`app-server --strict-config -c 'web_search="disabled"' --print-startup-config` で設定の受理を確認した。
+レビューは固定した要件・差分と[専用取得ツール](../review/README.md#取得と隔離cpuテスト)を使うため、
+設定を外部検索へ依存させない。必要な根拠を確認できなければ確認不能として返す。
+この設定は過去のSIGTERMの送り手やWeb検索との因果関係を特定するものではない。
+
 ### JSON Schemaによる構造化出力
 
 `--mcp-config FILE` はread-onlyのCodex `review` / `ops_scout` とClaude `ops_report` で使うホスト提供MCP接続。
@@ -703,6 +729,9 @@ Claudeイベント・保存JSON・Codex transcript・最終構造化出力の重
   usage/modelUsage/costは取得できたresultの値を保存し、請求確定額へ読み替えない。
 - `runner` / `process`: PID、boot ID、start ticks。生存確認はPIDだけで判定しない。
   `cli_exit_code` はCLIの実終了、`exit_code` はwrapperの終了、`terminated_pids` は回収対象。
+  `cli_exit_signal` はCLIがシグナル終了したときの正の番号で、それ以外はnull（旧記録にはキーがない）。
+  stop/timeoutの回収でCLIへ送ったシグナルもこの値へ記録するが、終了理由は `stopped` / `timeout` を維持する。
+  出力検査のエラーでrunnerがCLIを回収した場合も、元の検査エラーを終了理由に保つ。
   `cleanup_complete` が未確認、または前のCLI/groupが残る場合は再開を拒否する。
   session IDはイベント受信時に保存する。強制終了直前の未保存情報は推定しない。
 - `transcript_before`: Codex継続の起動前transcriptのパス・byte数・SHA-256・turn ID。
@@ -722,6 +751,7 @@ stdoutは `schema_version`, `run_id`, `result`, `turn_end_reason`, `exit_code`, 
 | `invalid_output` / `metadata_error` | 1 | 空・破損・未完了イベント、最終文不一致、実効値取得失敗 |
 | `runtime_error` / `usage_limit` | 非0（CLIが0なら1） | runtime失敗。枠不足の識別は構造化errorの文言による補助分類 |
 | `cli_error` / `startup_failed` | CLI終了値 / 127 | 起動・認証・モデル利用不能など。詳細はローカルstderr |
+| `cli_signal` | 128 + シグナル番号 | runnerが停止・回収を始める前にCLIがシグナル終了。`cli_exit_code` は負の番号、`cli_exit_signal` は正の番号。出力の有無やruntimeのエラー分類より優先し、最終文を採用しない |
 | `timeout` | 124 | 呼出元が明示した有限正数の `--timeout` 到達。既定は上限なし |
 | `stopped` | 130 / 143 | SIGINT / SIGTERM、またはstopで中断を照合 |
 | `descendants_reaped` | 1 | CLI終了後も残ったtoolsを回収。タスク完了にはしない |

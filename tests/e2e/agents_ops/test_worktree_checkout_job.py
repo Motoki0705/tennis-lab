@@ -192,17 +192,14 @@ def expiry(sync: SyncEnv, monkeypatch: pytest.MonkeyPatch) -> ExpiryWorld:
             }
         )
     )
-    # As in test_worktree_cleanup.Lab, these cases have no native agents.
-    # Isolate their process world from unrelated concurrent pytest/CI jobs;
-    # native discovery/stop contracts have explicit process-forest tests.
-    # The sentinel, handshake and process fixture affect only this copy.
-    # Checkout coordination, managed stopping and deletion remain real APIs.
+    # This coordination fixture has a fake runner and no native target process.
+    # Isolate host/other-worker process churn, as the dedicated expiry tests do.
+    # Native stop/ancestry contracts live in test_worktree_cleanup and
+    # test_worktree_generation_races; checkout coordination/deletion stay real.
     source = ops / "worktree_cleanup/cleanup.py"
     text = source.read_text().replace(
         "from __future__ import annotations\n",
         "from __future__ import annotations\n"
-        "from . import processes as _test_processes\n"
-        "_test_processes.snapshot = lambda: {}\n"
         f"from pathlib import Path as _TestPath\n_TestPath({str(world.imported)!r}).touch()\n",
         1,
     )
@@ -210,6 +207,8 @@ def expiry(sync: SyncEnv, monkeypatch: pytest.MonkeyPatch) -> ExpiryWorld:
         text
         + f"""
 _test_remove = Cleaner.remove
+from worktree_cleanup import processes as _test_processes
+_test_processes.snapshot = lambda: {{}}
 def _test_blocked_remove(self, *args, **kwargs):
     if _TestPath({str(world.hold)!r}).exists():
         import sys

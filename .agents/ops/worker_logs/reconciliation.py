@@ -28,6 +28,13 @@ class RemainingPublication(TypedDict):
     batch_key: str | None
 
 
+def decision_resume_command(repo: str, parent: int, *, assigned: bool) -> str:
+    """A public resume hint, without changing the remaining-inventory schema."""
+    actor = str(parent) if assigned else "RECOVERY_PARENT"
+    suffix = "" if assigned else f" --unassigned-parent {parent}"
+    return f"parent --repo {repo} --parent {actor} publish-decision-log{suffix}"
+
+
 def decision_journal(repo: str, parent: int, *, state_dir: Path) -> Any:
     """Repository aliases share a namespace; retain the producer's spelling."""
     from decision_logs.journal import Journal

@@ -29,6 +29,7 @@ from merge_gate_policy import (  # noqa: E402
     evaluate_parent_gate,
     publication_errors,
 )
+from parent import metrics  # noqa: E402
 from parent.adopted_tasks import check_task_adoptions  # noqa: E402
 from parent.execution import (  # noqa: E402
     authorization,
@@ -104,15 +105,20 @@ def check_adoptions(
     session: ParentSession,
     pr: dict[str, Any],
     family: tuple[Issue, dict[int, Issue]] | None = None,
+    *,
+    fresh_bodies: bool = False,
 ) -> None:
     parent, children = family if family is not None else session.work_items()
-    check_task_adoptions(session.gh, parent.body)
+    items = {parent.number: parent}
     for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
-        check_task_adoptions(session.gh, children[n].body)
+        items[n] = children[n]
+    for n, item in items.items():
+        body = session.gh.issue(n)["body"] if fresh_bodies else item.body
+        check_task_adoptions(session.gh, body)
 
 
 def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
-    with session.unlocked() as external, external.gh.fresh_reads():
+    with session.observation() as external:
         return _collect(external, request)
 
 
@@ -190,24 +196,7 @@ def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collecti
         raw["ci_head_sha"] = None
         raw["ci_check_runs"] = []
         if raw["state"] == "open":
-            with session.gh.io_scope():
-                ci = subprocess.run(
-                    [
-                        "gh",
-                        "pr",
-                        "view",
-                        str(n),
-                        "--repo",
-                        session.gh.repo,
-                        "--json",
-                        "headRefOid,statusCheckRollup",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                    timeout=60,
-                )
-            data = object_value(load_json(ci.stdout))
+            data = session.gh.pr_view(n, ("headRefOid", "statusCheckRollup"))
             if set(data) != {"headRefOid", "statusCheckRollup"} or not isinstance(
                 data["statusCheckRollup"], list
             ):
@@ -243,7 +232,7 @@ def load_evidence(
     str | None,
     tuple[str, ...],
 ]:
-    with session.unlocked() as external:
+    with session.observation() as external:
         return _load_evidence(external, request, view)
 
 
@@ -332,7 +321,7 @@ def _load_evidence(
 def evaluate(
     session: ParentSession, request: dict[str, Any] | None, view: Collection
 ) -> dict[int, MergeResult]:
-    with session.unlocked() as external:
+    with session.observation() as external:
         return _evaluate(external, request, view)
 
 
@@ -392,6 +381,15 @@ def _evaluate(
 def completion(
     session: ParentSession, pr: dict[str, Any], *, write: bool
 ) -> tuple[str, ...]:
+    # Merge changed GitHub outside this client. Reconcile/progress share new
+    # transaction-local reads; their own writes still invalidate affected facts.
+    with session.gh.history_read_scope():
+        return _completion(session, pr, write=write)
+
+
+def _completion(
+    session: ParentSession, pr: dict[str, Any], *, write: bool
+) -> tuple[str, ...]:
     if not pr.get("merged_at"):
         return ("merge_not_confirmed",)
     if pr["base"]["ref"] != repository_default_branch(session):
@@ -412,28 +410,49 @@ def completion(
     return ()
 
 
+def observe(
+    session: ParentSession, request: dict[str, Any] | None
+) -> tuple[Collection, dict[int, MergeResult]]:
+    with session.observation() as external:
+        external.owner()
+        view = collect(external, request)
+        # Read review authority/publication after PR/git/CI collection, so a
+        # revocation or changed review during that I/O cannot use old evidence.
+        external.agreed()
+        return view, evaluate(external, request, view)
+
+
 def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
-    session.agreed()
     runs = [
         request_manifest(row["request"], instructed=False)
         for row in session.row["reviews"]
     ]
-    if not runs:
-        return _merge_request(session, enabled, None, None)
     latest = {
         pr["number"]: request["review_run_id"]
         for request in runs
         for pr in request["prs"]
     }
+    # All registered runs initially see the same observation, including unknown
+    # PR discovery. No registry lock is held during GitHub/git/evidence reads.
+    # A merge discards these observations for the remaining runs.
+    with session.observation() as external:
+        if not runs:
+            initial = observe(external, None)
+            observations = {}
+        else:
+            observations = {
+                request["review_run_id"]: observe(external, request)
+                for request in runs
+                if request["review_run_id"] in latest.values()
+            }
+            initial = observations[runs[-1]["review_run_id"]]
+    if not runs:
+        return _merge_request(session, enabled, None, None, initial)
     results: dict[int, dict[str, Any]] = {}
     evaluations = []
-    unknown = {
-        p["number"]
-        for p in session.gh.pulls()
-        if p["state"] == "open" and p["number"] not in latest
-    }
+    unknown = {n for n in initial[0].candidates if n not in latest}
     if unknown:
-        value = _merge_request(session, enabled, runs[-1], unknown)
+        value = _merge_request(session, enabled, runs[-1], unknown, initial)
         results.update({entry["pr"]: entry for entry in value["results"]})
         evaluations.extend(value["evaluations"])
     for _ in range(len(runs) + 1):
@@ -447,7 +466,15 @@ def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
             }
             if not selected:
                 continue
-            value = _merge_request(session, enabled, request, selected)
+            value = _merge_request(
+                session,
+                enabled,
+                request,
+                selected,
+                observations.pop(request["review_run_id"], None),
+            )
+            if any(entry["action"] == "merged" for entry in value["results"]):
+                observations.clear()
             for entry in value["results"]:
                 results[entry["pr"]] = entry
                 progressed |= entry["action"] == "merged"
@@ -477,6 +504,7 @@ def _merge_request(
     enabled: bool,
     request: dict[str, Any] | None,
     selected: set[int] | None,
+    initial: tuple[Collection, dict[int, MergeResult]] | None = None,
 ) -> dict[str, Any]:
     from decision_logs.review_capture import gate_result
 
@@ -484,9 +512,8 @@ def _merge_request(
     evaluations = []
     handled: set[int] = set()
     while True:
-        session.agreed()
-        view = collect(session, request)
-        decisions = evaluate(session, request, view)
+        view, decisions = initial if initial is not None else observe(session, request)
+        initial = None
         order = dependency_order(
             [view.details[n] for n in view.candidates], view.children, session.gh.repo
         )
@@ -523,9 +550,8 @@ def _merge_request(
                 continue
             # Re-read all coverage, base/head/diff, CI, parent state and dependencies
             # immediately before the write. --match-head-commit closes the last race.
-            session.agreed()
-            fresh = collect(session, request)
-            decision = evaluate(session, request, fresh)[n]
+            fresh, fresh_decisions = observe(session, request)
+            decision = fresh_decisions[n]
             current = next(s for s in fresh.snapshots if s["number"] == n)
             entry = {
                 "pr": n,
@@ -539,7 +565,16 @@ def _merge_request(
             evaluations.append(entry)
             if entry["decision"] != GateDecision.MERGE:
                 continue
-            check_adoptions(session, fresh.details[n])
+            # Bindings and source reports may change during review evidence I/O.
+            # Reread only parent/closing bodies and their sources, retaining the
+            # collected target set instead of rediscovering the formal family.
+            with session.gh.fresh_reads():
+                check_adoptions(
+                    session,
+                    fresh.details[n],
+                    (fresh.parent, fresh.children),
+                    fresh_bodies=True,
+                )
             journal_path = attempt_path(session, n, current["head_sha"])
             if journal_path.exists():
                 entry.update(decision="blocked", reasons=("merge_already_attempted",))
@@ -572,7 +607,10 @@ def _merge_request(
                     check=False,
                 )
             attempt["exit_code"] = command.returncode
-            actual = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
+            with session.gh.fresh_reads():
+                actual = object_value(
+                    session.gh.get(f"repos/{session.gh.repo}/pulls/{n}")
+                )
             errors = completion(
                 session, actual, write=actual.get("merged_at") is not None
             )
@@ -593,7 +631,16 @@ def _merge_request(
             # No reuse of the pre-merge collection for any remaining PR.
             if made_progress:
                 break
-        if not made_progress or not view.children:
+        if (
+            not made_progress
+            or not view.children
+            or not any(
+                n not in handled and (selected is None or n in selected)
+                for n in view.candidates
+            )
+        ):
+            # Completion already rechecked the last merge. There is no remaining
+            # selected PR needing another head/coverage/CI observation.
             break
     return {
         "parent": session.parent,
@@ -621,6 +668,14 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    path = os.environ.get("PARENT_METRICS_FILE")
+    with metrics.command("merge_gate.merge", Path(path) if path else None) as row:
+        code = _main(argv)
+        row["exit_code"] = code
+        return code
+
+
+def _main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     from decision_logs.capture import (
         CURRENT,
@@ -665,7 +720,7 @@ def main(argv: list[str] | None = None) -> int:
             initialization_failed(store.directory, gh.repo, parent, "merge_gate.merge")
             capture = None
         token = CURRENT.set(capture)
-        with store.locked(), gh.fresh_reads():
+        with store.locked():
             session = ParentSession(
                 gh, store, issue_number(args.parent, gh.repo), identity
             )

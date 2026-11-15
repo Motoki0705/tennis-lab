@@ -37,7 +37,7 @@ sudoパスワードの後、別の非表示プロンプトでGitHub登録トー�
 
 - sudo/docker権限を持たない `tennis-actions` system userを作る。
 - GitHub公式release APIが返すSHA-256 digestを検証してrunnerと`uv`を導入する。
-- `data/` と `ckpt/` だけをrunner用namespaceへread-only bind mountする。
+- [ローカルストレージ規約](../../.agents/ops/storage_tier/README.ja.md#checkpoint単位とci-assets)に従い、E:のミラー上の `data/` と `ckpt/` だけをrunner用namespaceへread-only bindする。D:だけの新単位はミラー成功後に見える。
 - runnerとtraining queueをsystemd serviceとして有効化する。
 - runnerから通常ユーザーのhome、検出したWindowsドライブ（`/mnt/c` など）、
   WSLg mountを見えなくする。WSLのDNSが参照する `/mnt/wsl` は遮断しない。
@@ -46,6 +46,8 @@ sudoパスワードの後、別の非表示プロンプトでGitHub登録トー�
   main lockをexclusiveに取得し、`all`として動作する。
 - main、`.gate`、`.slot-0`、`.slot-1`の4つのGPU lockを
   `tennis-actions`専用として作成する。
+
+D:/E:切替時の再導入・sudoコマンド・停止対象と順序は、上記ストレージ規約の正本を参照する。
 
 queue runtimeの配置は `install_queue_bundle.sh` に集約している。履歴helperや
 共有Python moduleの追加を既存runnerへ反映するには再インストールが必要。
