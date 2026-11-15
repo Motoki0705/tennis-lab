@@ -1,0 +1,10 @@
+{
+  "bf16": {
+    "frames": 104,
+    "mismatches": 5,
+    "max_source_px_difference": 16.38134855031967,
+    "max_score_difference": 0.0034130215644836426
+  },
+  "mechanism_note": "Compilation changed numerical rounding. Source code identity alone does not establish cross-version/cross-GPU output equivalence.",
+  "next_check": "Same data/tolerances with isolated torch2.14.1 + torchvision0.29.1 packages; shared .venv remains unchanged."
+}

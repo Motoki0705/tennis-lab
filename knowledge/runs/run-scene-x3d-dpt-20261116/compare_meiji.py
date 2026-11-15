@@ -61,7 +61,7 @@ def main():
         videos = tuple((source_root / video_map[camera]).resolve() for camera in args.camera_ids)
         for video in videos:
             info = probe_video_info(video)
-            if (info.num_frames, info.width, info.height) != (metadata["num_frames"], metadata["width"], metadata["height"]):
+            if (info.frame_count, info.width, info.height) != (metadata["num_frames"], metadata["width"], metadata["height"]):
                 raise ValueError("Export marker/video dimensions differ")
         output = args.output / args.variant / clip
         if output.resolve().is_relative_to(args.dataset.resolve()):

@@ -33,11 +33,42 @@ def court():
     return image
 
 
+def camera_video(source, meta, camera, camera_row, arrays, output):
+    paths = dict(zip(meta["camera_ids"], meta["video_paths"], strict=True))
+    reader = cv2.VideoCapture(str(source / paths[camera]))
+    with VideoWriter(output, fps=meta["fps"], crf=18) as writer:
+        for frame in range(meta["num_frames"]):
+            ok, original = reader.read()
+            if not ok:
+                raise ValueError("Video ended before its completed export timeline")
+            panels = []
+            for variant, (data, color) in enumerate(zip(arrays, COLORS)):
+                panel = original.copy()
+                previous = None
+                for index in range(max(0, frame - 12), frame + 1):
+                    if not data["observed"][camera_row, index]:
+                        previous = None
+                        continue
+                    point = tuple(np.rint(data["uv_px"][camera_row, index]).astype(int))
+                    if previous is not None:
+                        cv2.line(panel, previous, point, color, 2, cv2.LINE_AA)
+                    previous = point
+                    if index == frame:
+                        cv2.circle(panel, point, 12, color, 2, cv2.LINE_AA)
+                label = "i935" if variant == 0 else "X3D/CSN + DPT T32"
+                state = "detected" if data["observed"][camera_row, frame] else "absent / rejected"
+                text(panel, f"{camera} | {label} | {state} | frame {frame}", (20, 38), color=color, scale=1.)
+                panels.append(panel)
+            writer.write_frame(cv2.cvtColor(np.concatenate(panels, axis=1), cv2.COLOR_BGR2RGB))
+    reader.release()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=Path, required=True)
     parser.add_argument("--results", type=Path, required=True)
     parser.add_argument("--clips", nargs="+", required=True)
+    parser.add_argument("--camera-videos", action="store_true")
     args = parser.parse_args()
     for clip in args.clips:
         source = args.dataset / "videos/video_000/clips" / clip
@@ -114,6 +145,11 @@ def main():
         for reader in readers:
             reader.release()
         print(output, flush=True)
+        if args.camera_videos:
+            for row, camera in enumerate(cameras):
+                path = args.results / f"{clip}-{camera}-i935-vs-x3d-2d.mp4"
+                camera_video(source, meta, camera, row, arrays, path)
+                print(path, flush=True)
 
 
 if __name__ == "__main__":
