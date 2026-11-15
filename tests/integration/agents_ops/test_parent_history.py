@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import importlib
+import subprocess
 import sys
 from pathlib import Path
 
@@ -20,6 +21,42 @@ is_evidence_issue, require_work_issue = (
     evidence.is_evidence_issue,
     evidence.require_work_issue,
 )
+
+
+def test_preloaded_review_namespace_keeps_ops_history_reader_available(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "review").mkdir()
+    driver = """
+import sys
+sys.path.insert(0, sys.argv[1])
+import review
+sys.path.insert(0, sys.argv[2])
+from parent.history import HistoryValidationError, parse_history
+comment = {'id': 1, 'user': {'login': 'publisher'}, 'body': '<!-- parent-review:v2 {} -->'}
+try:
+    parse_history('o/r', 1, 'publisher', [comment], [], evidence_issue=None)
+except HistoryValidationError:
+    print('invalid-owned-record')
+else:
+    raise AssertionError('invalid review record was accepted')
+"""
+    process = subprocess.run(
+        [
+            sys.executable,
+            "-I",
+            "-c",
+            driver,
+            str(tmp_path),
+            str(Path(__file__).resolve().parents[3] / ".agents/ops"),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=8,
+        check=False,
+    )
+    assert process.returncode == 0, process.stdout + process.stderr
+    assert process.stdout.strip() == "invalid-owned-record"
 
 
 def comment(n: int, event: dict, *, login: str = "publisher") -> dict:

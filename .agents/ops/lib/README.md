@@ -168,6 +168,7 @@ runner status/stopだけは、親の実FDを `pass_fds` と専用contextで同�
 排他contextはstatus/stopに限定し、flockを取り直さないため更新側の排他を共有へ降格しない。
 これにより更新中も保守照会・停止が完了する。通常の直接CLIは更新完了を待つ。
 contextの環境変数は入口で消費し、継承FDは再exec不可・fork時closeに戻す。
+status/stopを中継するwrapperもFDを明示的に継承する。環境変数だけの中継は実FD検証で拒否する。
 外部agentのrun/resume・worker起動には渡さず、親CLIの終了後に不当に更新を止めない。
 
 ## agyの共通呼び出し部品
