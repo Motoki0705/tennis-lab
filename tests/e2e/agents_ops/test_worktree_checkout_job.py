@@ -192,12 +192,17 @@ def expiry(sync: SyncEnv, monkeypatch: pytest.MonkeyPatch) -> ExpiryWorld:
             }
         )
     )
-    # The import sentinel and input handshake instrument only this test's
-    # copied code. All coordination, stopping, and deletion remain real APIs.
+    # As in test_worktree_cleanup.Lab, these cases have no native agents.
+    # Isolate their process world from unrelated concurrent pytest/CI jobs;
+    # native discovery/stop contracts have explicit process-forest tests.
+    # The sentinel, handshake and process fixture affect only this copy.
+    # Checkout coordination, managed stopping and deletion remain real APIs.
     source = ops / "worktree_cleanup/cleanup.py"
     text = source.read_text().replace(
         "from __future__ import annotations\n",
         "from __future__ import annotations\n"
+        "from . import processes as _test_processes\n"
+        "_test_processes.snapshot = lambda: {}\n"
         f"from pathlib import Path as _TestPath\n_TestPath({str(world.imported)!r}).touch()\n",
         1,
     )
