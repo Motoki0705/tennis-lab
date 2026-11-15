@@ -42,9 +42,22 @@ class Lab:
         self.lifecycle = importlib.import_module("worktree_cleanup.lifecycle")
         self.storage = importlib.import_module("worktree_cleanup.storage")
         self.real_snapshot = self.lifecycle.processes.snapshot
-        # Only the explicit process tests supply a forest. A host-wide view
-        # would mix unrelated concurrent pytest/agent processes into the
-        # deliberately conservative orphan-provenance checks.
+        self.real_stop_tree = self.lifecycle.processes.stop_tree
+        self.references = importlib.import_module("worktree_cleanup.references")
+        self.real_references = self.references.scan
+        monkeypatch.setattr(
+            self.references,
+            "scan",
+            lambda root, **kw: {
+                "path": str(root),
+                "references": [],
+                "uninspectable": [],
+                "related": kw.get("related") or [],
+                "errors": [],
+            },
+        )
+        # Explicit process tests supply an isolated forest. Other lifecycle
+        # contracts must never inspect or signal concurrent host jobs.
         monkeypatch.setattr(self.lifecycle.processes, "snapshot", lambda: {})
         self.now = BORN
         monkeypatch.setattr(self.inventory, "birth_time", lambda fd: BORN)
@@ -298,7 +311,14 @@ def test_retry_does_not_delete_replacement_after_unregistration(
             lambda *a: (_ for _ in ()).throw(OSError("interrupt")),
         )
         assert lab.cleaner().run(cleanup=True)[0] == 1
-    monkeypatch.setattr(lab.inventory, "birth_time", lambda fd: lab.now)
+    # The old quarantined directory keeps its birth time across replacement.
+    monkeypatch.setattr(
+        lab.inventory,
+        "birth_time",
+        lambda fd: (
+            BORN if ".expired-" in os.readlink(f"/proc/self/fd/{fd}") else lab.now
+        ),
+    )
     lab.add("replacement", path=path)
     (path / "new-work").write_text("keep")
     lab.run(cleanup=True)
@@ -726,10 +746,15 @@ def test_parent_ownership_is_released_and_native_process_is_stopped(
     registry = save_registry(lab, row)
     stopped = []
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
+
+    def stop(identity: Any, **kwargs: Any) -> None:
+        stopped.extend([identity] if identity else [])
+        lab.real_stop_tree(identity, **kwargs)
+
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: stopped.extend([identity] if identity else []),
+        stop,
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -738,6 +763,45 @@ def test_parent_ownership_is_released_and_native_process_is_stopped(
     assert current["status"] == "released"
     assert current["worktree_expiry"]["result"] == "stopped"
     assert not path.exists()
+
+
+def test_fd_only_native_agent_releases_manual_parent_ownership(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    row = parent_row()
+    registry = save_registry(lab, row)
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    monkeypatch.setattr(
+        forest.proc,
+        "agent_metadata",
+        lambda ident: {"identity": ident, "sessions": [row["session"]]},
+    )
+
+    def scan(root: Path, **kwargs: Any) -> dict[str, Any]:
+        found = [forest.nodes[101]["identity"]] if 101 in forest.nodes else []
+        return {
+            "path": str(root),
+            "references": [
+                {
+                    "identity": ident,
+                    "comm": "codex",
+                    "references": [{"item": "fd/3", "path": str(root / "file")}],
+                }
+                for ident in found
+            ],
+            "uninspectable": [],
+            "errors": [],
+            "related": [*(kwargs.get("related") or []), *found],
+        }
+
+    monkeypatch.setattr(lab.references, "scan", scan)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    current = json.loads(registry.read_text())["parents"]["o/r#1"]
+    assert current["status"] == "released"
+    assert not path.exists() and {101, 102}.isdisjoint(forest.nodes)
 
 
 @pytest.mark.parametrize("phase", ["reserved", "starting"])
@@ -906,9 +970,7 @@ class NativeForest:
         for pid, parent in ((1, 0), (101, 1), (102, 101), (900, 1)):
             self.add(pid, parent)
         monkeypatch.setattr(self.proc, "snapshot", self.snapshot)
-        monkeypatch.setattr(
-            self.proc, "scoped_processes", lambda root, view: ([], set())
-        )
+        monkeypatch.setattr(self.proc, "scoped_processes", lambda root, view: [])
         monkeypatch.setattr(
             self.proc,
             "process_identity",
@@ -968,6 +1030,95 @@ class NativeForest:
                     child["parent"] = 1
 
 
+@pytest.mark.parametrize("stage", ["post_stop", "confirm"])
+@pytest.mark.parametrize("failure", ["survives", "opaque"])
+def test_late_reference_observations_remain_stop_obligations_on_retry(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, stage: str, failure: str
+) -> None:
+    lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    parent = dict(forest.nodes[101]["identity"])
+    child = dict(forest.nodes[102]["identity"])
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    scans = []
+    opaque: list[bool] = []
+    original_identity = forest.proc.process_identity
+    original_signal = forest.signal
+    refuse = [True]
+
+    def identity(pid: int) -> Any:
+        if pid == 102 and opaque and refuse[0] and failure == "opaque":
+            raise PermissionError("late observed child became opaque")
+        return original_identity(pid)
+
+    def signal(fd: int, sig: int) -> None:
+        if fd == 1102 and sig == forest.proc.signal.SIGKILL and refuse[0]:
+            forest.signals.append((102, sig))
+            return
+        original_signal(fd, sig)
+
+    def scan(root: Path, **kwargs: Any) -> dict[str, Any]:
+        related = list(kwargs.get("related") or [])
+        references = []
+        if root.name.startswith(".expired-"):
+            scans.append(True)
+            if len(scans) == (2 if stage == "post_stop" else 3):
+                references = [
+                    {
+                        "identity": parent,
+                        "comm": "parent",
+                        "references": [{"item": "fd/3", "path": str(root / "held")}],
+                    }
+                ]
+                related.extend([parent, child])
+                forest.nodes.pop(101)
+                forest.nodes[102]["parent"] = 900
+                opaque.append(True)
+        associated = child in related
+        unreadable = (
+            [
+                {
+                    "identity": child,
+                    "pid": 102,
+                    "comm": "child",
+                    "items": [{"item": "fd", "error": "PermissionError"}],
+                    "related": associated,
+                }
+            ]
+            if opaque and refuse[0] and failure == "opaque"
+            else []
+        )
+        return {
+            "path": str(root),
+            "references": references,
+            "related": related,
+            "uninspectable": unreadable,
+            "errors": ["related late child is opaque"]
+            if unreadable and associated
+            else [],
+        }
+
+    monkeypatch.setattr(forest.proc, "process_identity", identity)
+    monkeypatch.setattr(forest.proc, "signal_pidfd", signal)
+    monkeypatch.setattr(lab.references, "scan", scan)
+    lab.now += LIFETIME
+    for _ in range(2):
+        code, report = lab.cleaner().run(cleanup=True)
+        assert code == 1 and report["results"][0]["deleted"] is False
+        row = next(
+            row for row in lab.records().values() if row["phase"] == "quarantined"
+        )
+        quarantine = Path(row["quarantine"])
+        assert quarantine.is_dir() and 102 in forest.nodes
+        proof = lab.cleaner().stopper.native_proof(quarantine)
+        saved = lab.storage.read_json(proof)
+        assert child in saved["tracked"]
+    refuse[0] = False
+    lab.run(cleanup=True)
+    assert 102 not in forest.nodes and not quarantine.exists()
+    assert not proof.exists()
+
+
 def test_native_stop_pins_children_and_parent_without_pid_reuse(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -1001,7 +1152,7 @@ def test_native_stop_preserves_new_child_of_an_existing_other_process(
     assert not any(pid in {900, 103} for pid, _ in forest.signals)
 
 
-def test_unattributed_new_orphan_blocks_cleanup_and_replay_until_it_exits(
+def test_unobserved_orphan_without_worktree_references_does_not_gate_deletion(
     lab: Lab, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = lab.add()
@@ -1015,17 +1166,10 @@ def test_unattributed_new_orphan_blocks_cleanup_and_replay_until_it_exits(
         ),
     )
     lab.now += LIFETIME
-    code, report = lab.cleaner().run(cleanup=True)
-    assert code == 1
-    assert report["results"][0]["deleted"] is False
-    assert path.exists()
-    assert 103 in forest.nodes
-    assert not any(pid == 103 for pid, sig in forest.signals)
-    assert lab.cleaner().run(cleanup=True)[0] == 1
-    assert path.exists()
-    forest.nodes.pop(103)
     lab.run(cleanup=True)
     assert not path.exists()
+    assert 103 in forest.nodes and not any(pid == 103 for pid, _ in forest.signals)
+    assert {101, 102}.isdisjoint(forest.nodes)
 
 
 def test_unrelated_process_exits_after_snapshot_without_poisoning_scope(
@@ -1052,47 +1196,151 @@ def test_unrelated_process_exits_after_snapshot_without_poisoning_scope(
     assert {102, 103} <= forest.nodes.keys() and not forest.signals
 
 
-@pytest.mark.parametrize("recorded_survivor", [False, True])
-def test_replay_v2_unscoped_proof_requires_captured_identities_to_end(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch, recorded_survivor: bool
+@pytest.mark.parametrize("version", [1, 2, 3, "corrupt"])
+def test_legacy_orphan_proofs_do_not_gate_new_reference_policy(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, version: int | str
 ) -> None:
     path = lab.add()
     forest = NativeForest(lab, monkeypatch)
     monkeypatch.setattr(forest.proc, "agents", lambda root: [])
-    proof = lab.cleaner().stopper.native_proof(path)
-    original = forest.proc.prepare_stop(
-        forest.snapshot(), [], None, capture_completed=True
-    )
-    original.update(
-        schema_version=2,
-        ancestors=[forest.nodes[1]["identity"]],
-        unconfirmed=[forest.nodes[101]["identity"], forest.nodes[102]["identity"]],
-    )
-    lab.storage.write_json(proof, original)
-    forest.nodes.pop(101)
-    if not recorded_survivor:
-        forest.nodes.pop(102)
-    forest.add(103, 1)  # A different job launched long after the old attempt.
+    proof = lab.cleaner().stopper.legacy_native_proof(path)
+    original = {
+        "schema_version": version,
+        "tracked": [],
+        "unconfirmed": [forest.nodes[101]["identity"], forest.nodes[102]["identity"]],
+        "capture_complete": False,
+    }
+    proof.parent.mkdir(parents=True)
+    contents = "broken JSON" if version == "corrupt" else json.dumps(original)
+    proof.write_text(contents)
     lab.now += LIFETIME
-    dry_code, dry_report = lab.cleaner().run(cleanup=True, dry_run=True)
-    assert dry_code == int(recorded_survivor)
-    assert (
-        bool(dry_report["stop_preflight"][0]["legacy_proof_recovery"])
-        is not recorded_survivor
+    report = lab.run(cleanup=True, dry_run=True)
+    assert report["stop_preflight"][0]["ignored_legacy_proof"] == str(proof)
+    assert proof.read_text() == contents
+    lab.run(cleanup=True)
+    assert not path.exists() and not forest.signals
+    assert {101, 102} <= forest.nodes.keys()
+    assert proof.read_text() == contents
+
+
+def test_legacy_observed_identities_still_authorize_a_pinned_stop(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    monkeypatch.setattr(forest.proc, "agents", lambda root: [])
+    proof = lab.cleaner().stopper.legacy_native_proof(path)
+    lab.storage.write_json(
+        proof,
+        {
+            "schema_version": 3,
+            "tracked": [forest.nodes[101]["identity"]],
+            "unconfirmed": [],
+            "capture_complete": False,
+        },
     )
-    assert json.loads(proof.read_text()) == original
-    assert not proof.with_suffix(".unscoped-v2.json").exists()
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert not path.exists()
+    assert set(forest.nodes) == {1, 900}
+    assert (101, forest.proc.signal.SIGKILL) in forest.signals
+    assert (102, forest.proc.signal.SIGKILL) in forest.signals
+    assert proof.exists(), "legacy evidence is retained, not silently overwritten"
+
+
+def test_corrupt_observed_journal_does_not_discard_known_stop_obligations(
+    lab: Lab,
+) -> None:
+    path = lab.add()
+    proof = lab.cleaner().stopper.native_proof(path)
+    proof.parent.mkdir(parents=True)
+    proof.write_text("broken current journal")
+    lab.now += LIFETIME
     code, report = lab.cleaner().run(cleanup=True)
-    assert code == int(recorded_survivor)
-    assert path.exists() is recorded_survivor
-    assert 103 in forest.nodes and not forest.signals
-    if recorded_survivor:
-        assert not report["results"][0]["deleted"]
-        forest.nodes.pop(102)
-        lab.run(cleanup=True)
-        assert not path.exists()
-    archived = proof.with_suffix(".unscoped-v2.json")
-    assert json.loads(archived.read_text())["proof"] == original
+    assert code == 1 and report["results"][0]["deleted"] is False
+    assert path.exists()
+    assert proof.read_text() == "broken current journal"
+    assert str(path) in lab.git("worktree", "list", "--porcelain")
+
+
+@pytest.mark.parametrize("failure", ["survives", "permission"])
+def test_observed_child_stop_failure_is_retried_without_any_path_references(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    parent = forest.nodes[101]["identity"]
+    monkeypatch.setattr(
+        forest.proc,
+        "agents",
+        lambda root: (
+            [{"identity": parent, "sessions": []}] if 101 in forest.nodes else []
+        ),
+    )
+    signal = forest.signal
+    forest.nodes[102]["uid"] = os.getuid() + 1
+
+    def survives(fd: int, sig: int) -> None:
+        if fd == 1102 and sig == forest.proc.signal.SIGKILL:
+            if failure == "permission":
+                raise PermissionError("observed child changed UID")
+            return
+        signal(fd, sig)
+
+    monkeypatch.setattr(forest.proc, "signal_pidfd", survives)
+    lab.now += LIFETIME
+    for _ in range(2):
+        code, report = lab.cleaner().run(cleanup=True)
+        assert code == 1 and not report["results"][0]["deleted"]
+        assert path.exists() and 102 in forest.nodes
+        assert (
+            "observed native processes survived"
+            if failure == "survives"
+            else "observed child changed UID"
+        ) in report["results"][0]["error"]
+    monkeypatch.setattr(forest.proc, "signal_pidfd", signal)
+    lab.run(cleanup=True)
+    assert not path.exists() and 102 not in forest.nodes
+
+
+def test_foreign_service_is_not_a_new_orphan_of_a_known_worktree_root(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    forest = NativeForest(lab, monkeypatch, newborn="orphan")
+    snapshot = forest.snapshot
+
+    def with_service() -> dict[int, Any]:
+        view = snapshot()
+        if 103 in forest.nodes:
+            forest.nodes[103].update(uid=os.getuid() + 1, cwd=None)
+        return view
+
+    monkeypatch.setattr(forest.proc, "snapshot", with_service)
+    forest.proc.stop_tree(forest.nodes[101]["identity"])
+    assert set(forest.nodes) == {1, 900, 103}
+    assert not any(pid == 103 for pid, _ in forest.signals)
+
+
+def test_an_unscoped_lost_pid_does_not_widen_a_known_roots_possible_reapers(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = lab.add()
+    forest = NativeForest(lab, monkeypatch)
+    forest.add(104, 777)  # An unrelated transient whose parent was not observed.
+    parent = forest.nodes[101]["identity"]
+
+    def discovery(root: Path) -> list[dict[str, Any]]:
+        if 104 in forest.nodes:
+            forest.nodes.pop(104)
+            forest.add(103, 900)  # Another job under its independent baseline parent.
+        return [{"identity": parent, "sessions": []}] if 101 in forest.nodes else []
+
+    monkeypatch.setattr(forest.proc, "agents", discovery)
+    lab.now += LIFETIME
+    lab.run(cleanup=True)
+    assert not path.exists()
+    assert set(forest.nodes) == {1, 900, 103}
+    assert not any(pid in {900, 103, 104} for pid, _ in forest.signals)
 
 
 def test_legacy_parent_session_is_linked_by_existing_herdr_process_stamp(
@@ -1126,10 +1374,15 @@ def test_legacy_parent_session_is_linked_by_existing_herdr_process_stamp(
         "agents",
         lambda root: list(remaining) if root == path else [],
     )
+
+    def stop(identity: Any, **kwargs: Any) -> None:
+        remaining.clear()
+        lab.real_stop_tree(identity, **kwargs)
+
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: remaining.clear(),
+        stop,
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -1153,9 +1406,6 @@ def test_split_registry_interruption_is_replayed_before_reading_ownership(
     with store.locked():
         store.migrate()
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
-    monkeypatch.setattr(
-        lab.lifecycle.processes, "stop_tree", lambda identity, **kwargs: None
-    )
     ExpiryStore = lab.lifecycle.ExpiryStore
     original = ExpiryStore.write_json
 
@@ -1214,7 +1464,9 @@ def test_completed_fallback_record_does_not_expire_recycled_admin_inode(
         lab.inventory,
         "opened_identity",
         lambda path, *, birth=False: (
-            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(path)
+            {**real(path), "inode": 123, "birth_time_ns": None}
+            if "/.git/worktrees/" in os.readlink(f"/proc/self/fd/{path}")
+            else real(path)
         ),
     )
     path = lab.add()
@@ -1295,7 +1547,16 @@ def test_unregistration_keeps_replacement_created_in_the_last_gap(
         fired.append(True)
         lab.git("worktree", "add", "--force", "-qb", "replacement", str(path))
         (path / "new-work").write_text("keep this replacement")
-        monkeypatch.setattr(lab.inventory, "birth_time", lambda fd: lab.now)
+        monkeypatch.setattr(
+            lab.inventory,
+            "birth_time",
+            lambda fd: (
+                BORN
+                if os.readlink(f"/proc/self/fd/{fd}") == str(original_admin)
+                or ".expired-" in os.readlink(f"/proc/self/fd/{fd}")
+                else lab.now
+            ),
+        )
 
     if point == "before_pin":
         real_save = lab.storage.State.save
@@ -1339,7 +1600,9 @@ def test_external_removal_observation_retires_fallback_identity(
         lab.inventory,
         "opened_identity",
         lambda path, *, birth=False: (
-            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(path)
+            {**real(path), "inode": 123, "birth_time_ns": None}
+            if "/.git/worktrees/" in os.readlink(f"/proc/self/fd/{path}")
+            else real(path)
         ),
     )
     path = lab.add()
@@ -1406,10 +1669,15 @@ def test_stale_parent_runtime_does_not_release_new_owner_or_children(
     registry = save_registry(lab, row)
     monkeypatch.setattr(lab.lifecycle.processes, "agents", lambda root: [])
     stopped = []
+
+    def stop(identity: Any, **kwargs: Any) -> None:
+        stopped.extend([identity] if identity else [])
+        lab.real_stop_tree(identity, **kwargs)
+
     monkeypatch.setattr(
         lab.lifecycle.processes,
         "stop_tree",
-        lambda identity, **kwargs: stopped.extend([identity] if identity else []),
+        stop,
     )
     lab.now += LIFETIME
     lab.run(cleanup=True)
@@ -1427,7 +1695,9 @@ def test_observed_registration_loss_does_not_rebind_pending_deletion_to_reused_i
         lab.inventory,
         "opened_identity",
         lambda fd, *, birth=False: (
-            {"device": 42, "inode": 123, "birth_time_ns": None} if birth else real(fd)
+            {**real(fd), "inode": 123, "birth_time_ns": None}
+            if "/.git/worktrees/" in os.readlink(f"/proc/self/fd/{fd}")
+            else real(fd)
         ),
     )
     path = lab.add()

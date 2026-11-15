@@ -9,7 +9,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from . import inventory
+from . import inventory, migration
 from .lifecycle import Stopper
 from .storage import (
     LIFETIME_NS,
@@ -43,6 +43,7 @@ class Cleaner:
 
     def observe(self, state: State, now: int) -> list[dict[str, Any]]:
         rows = inventory.registrations(self.repo, self.common)
+        migration.reconcile(state, rows, now)
         live_ids = set()
         entries = []
         for row in rows:
@@ -164,6 +165,7 @@ class Cleaner:
         )
 
     def remove(self, state: State, row: dict[str, Any], now: int) -> None:
+        migration.require_ready(row)
         path = Path(row["path"])
         error = inventory.scope_error(self.repo, path)
         if error:
@@ -258,6 +260,8 @@ class Cleaner:
                 raise CleanupError("original path was recreated during expiry")
             row["head"] = live["head"]
             state.save()
+        # Last reference check precedes Git unregistration and filesystem removal.
+        self.stopper.confirm_references(quarantine, original=path)
         inventory.unregister(self.common, row)
         if self.current(row) is not None:
             raise CleanupError("Git registration remains after forced removal")
@@ -302,7 +306,16 @@ class Cleaner:
             for entry in entries:
                 if cleanup and dry_run and entry["selected"]:
                     try:
-                        preflight.append(self.stopper.preflight(Path(entry["path"])))
+                        saved = state.records[entry["id"]]
+                        migration.require_ready(saved)
+                        physical = Path(saved.get("quarantine") or entry["path"])
+                        if not physical.exists():
+                            physical = Path(entry["path"])
+                        preflight.append(
+                            self.stopper.preflight(
+                                Path(entry["path"]), physical=physical
+                            )
+                        )
                     except (OSError, ValueError, CleanupError) as exc:
                         preflight.append({"path": entry["path"], "errors": [str(exc)]})
                 unsafe_target = (
@@ -370,6 +383,15 @@ class Cleaner:
             }
             if getattr(self.stopper, "diagnostics", None):
                 report["stop_diagnostics"] = self.stopper.diagnostics
+            if getattr(self.stopper, "reference_checks", None):
+                report["reference_checks"] = self.stopper.reference_checks
+            migrated = [
+                {"id": row["id"], "path": row["path"], **row["filesystem_migration"]}
+                for row in state.records.values()
+                if "filesystem_migration" in row
+            ]
+            if migrated:
+                report["filesystem_migrations"] = migrated
             if cleanup and dry_run:
                 report["stop_preflight"] = preflight
             write_json(self.directory / "report-latest.json", report)
