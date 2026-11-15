@@ -1,0 +1,88 @@
+{
+  "record": {
+    "data": {
+      "action_id": "627b1913eac24f34bea770e48a4a37f6",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=saved parent verification; content_sha256=e1a7a7bdfa16f6cae3e599bcfee5783c4425e4b4356d2775b84db0ece566c45a; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=e1a7a7bdfa16f6cae3e599bcfee5783c4425e4b4356d2775b84db0ece566c45a; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2044]; PR #2044（merged 2026-11-15T04:05Z、merge commit 89040e5a6）。main CIは、不安定なテスト1件をjob単位で再実行して成功した。親の確認内容は次のとおり。",
+      "verifies": [
+        "498cea1aecef46fcb55c56f715f0b113"
+      ]
+    },
+    "id": "4048950ce2c5438692f0ae254dbc1cfd",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "ebd98e9d0ed546c095534213e886cb4a",
+      "delegation": {
+        "key": "d-6ca2b48ff54244128a9e4b78ecee5387",
+        "turn": 5
+      },
+      "issue": 2022,
+      "parent": 2011,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T12:20:01.476115+00:00"
+      },
+      "recorded_at": "2026-11-15T12:20:01.476132+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

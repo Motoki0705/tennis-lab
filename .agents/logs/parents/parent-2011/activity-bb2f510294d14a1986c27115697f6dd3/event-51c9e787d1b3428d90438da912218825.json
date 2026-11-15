@@ -1,0 +1,97 @@
+{
+  "record": {
+    "data": {
+      "action_id": "e08d2ff1691d48778cecd8565f04b2ff",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.resolve; artifact=command response; content_sha256=1d1c1a152d7afe45f47e7a7189ed9d5eb549f8278f253d6d053ba32bc3ae520d; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "review.resolve: explicit verification recorded for PR 2044, finding pr-2044-2; coverage={'covered': False, 'reasons': ('pr_2044_evidence_1_pending',), 'unresolved': ()}",
+      "verifies": [
+        "51ac33b181a3468cb0db73f11f1c6c0a",
+        "4897a59c87c94212afe3252211017488",
+        "d7d7ad20cdfb4a319c32a686850c9dc8",
+        "867ffb2bc36a44209a069841aa7d944f",
+        "ee72ce4f4aee4269a930a1a845668788",
+        "e94fed90eb0b4121be4e4c2544d417af",
+        "4801fa18264b4d69818067ba8986d874",
+        "21a97103a5d14937bbabf909014c44df",
+        "4258e7ecf08e4c198d71fe4f76fa61df",
+        "5448f8783d594f779d5a3cf888542312",
+        "1f178ca47ad24a94aac9c930dd7caa41",
+        "fe701349dff1492ba30b763677742e8d",
+        "2d8cdba6f5054bcb8619c3ee8beaab75",
+        "9baaca76c68c4cadab0dca6b9f7131f8",
+        "e83ff402ed7141c8b251a080b7b7c312",
+        "16e066fd6dc449b7a79bab776ea42ee9",
+        "3104ee4043de466a94e8ba003a57c5cf"
+      ]
+    },
+    "id": "51c9e787d1b3428d90438da912218825",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "bb2f510294d14a1986c27115697f6dd3",
+      "delegation": null,
+      "issue": null,
+      "parent": 2011,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "f8f290c40bd642649192b37e673e91a6"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T02:36:38.678181+00:00"
+      },
+      "recorded_at": "2026-11-15T02:36:38.678198+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

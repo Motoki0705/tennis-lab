@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "561cf963b83d472c909998a0b6b8dba9",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=result.json; content_sha256=93c3e174d3b6f52f9950bb5d823f094b22044fe05b3a5c6a34749e5324c8ba57; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "ad388e8a27e147a5b8b228a66e525fa7",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.result.json: status=succeeded; verdict=approve; exception=True; previous_review_keys=['5f65ad7026324d0fada3634d2aad8453', 'cf9882d362004976a3559d6224116a50', 'f8f290c40bd642649192b37e673e91a6', 'b97006cfe9c246e683305465c0a29d53', '7b5c24eeebbc4df4bf03340a262da521']; PR #2134の固定HEADと全差分を今回独立にレビューし、blocker/majorはありません。",
+      "verifies": []
+    },
+    "id": "f925fcb9eb484173a5b71d6c0222f8fe",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "8a814ce7745242589a91a99364826357",
+      "delegation": null,
+      "issue": null,
+      "parent": 2011,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "76c660d3a82f47bfaad113c962b8d8b7"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T11:09:24.554718+00:00"
+      },
+      "recorded_at": "2026-11-15T11:09:24.554733+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
