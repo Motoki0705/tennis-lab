@@ -19,7 +19,7 @@ from parent.record_writer import write_record
 from parent.session import ParentSession
 from parent.state import Store, state_directory
 
-from .agent import RUNNER, judge
+from .agent import RUNNER, StopRequest, judge
 from .agent_input import write_agent_input
 from .collect import (
     InputsChanged,
@@ -282,6 +282,7 @@ def run(
     apply: bool = False,
     timeout: float = 1800,
     runner: Path = RUNNER,
+    stop: StopRequest | None = None,
 ) -> dict[str, Any]:
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValueError("timeout must be a finite positive number")
@@ -299,6 +300,8 @@ def run(
         "diagnostics": [],
     }
     try:
+        if stop is not None:
+            stop.check()
         with store.locked():
             snapshot = collect(gh, store, root)
             snapshot["input_sha256"] = digest(material(snapshot))
@@ -308,10 +311,18 @@ def run(
                 for n in snapshot["subjects"]
                 if not is_container(snapshot["issues"][str(n)])
             }
+        if stop is not None:
+            stop.check()
         Store.write_json(run_dir / "input.json", snapshot)
         write_agent_input(snapshot, run_dir / "agent-input")
         # Always one fresh turn, even if material equals a previous scheduled run.
-        raw = judge(root, run_dir, timeout, runner)
+        raw = (
+            judge(root, run_dir, timeout, runner)
+            if stop is None
+            else judge(root, run_dir, timeout, runner, stop=stop)
+        )
+        if stop is not None:
+            stop.check()
         Store.write_json(run_dir / "agent-output.json", raw)
         decisions, diagnostics = validate(raw, snapshot)
         result["decisions"] = decisions
@@ -328,6 +339,8 @@ def run(
         else:
             candidates = []
             for decision in result["decisions"]:
+                if stop is not None:
+                    stop.check()
                 n = decision["issue"]
                 if is_container(snapshot["issues"][str(n)]):
                     continue
@@ -351,6 +364,8 @@ def run(
             )
         if result["deferred"] and not result["decisions"]:
             result["result"] = "deferred"
+        if stop is not None:
+            stop.check()
     except (
         ValueError,
         OSError,

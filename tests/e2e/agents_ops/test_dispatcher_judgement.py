@@ -1032,7 +1032,7 @@ def test_collection_keeps_related_prs_after_an_unrelated_parent_session(
     ]
     # Keep the production reader's parent-dependent PR routing. The fixture's
     # usual pulls() deliberately bypasses that routing and concealed this bug.
-    gh = importlib.import_module("parent.github").GitHub("o/r")
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=h.store)
 
     def get(endpoint: str, *, missing_parent: bool = False) -> object:
         if "/timeline?" in endpoint:

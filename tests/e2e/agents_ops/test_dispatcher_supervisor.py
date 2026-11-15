@@ -7,7 +7,9 @@ import hashlib
 import importlib
 import json
 import os
+import selectors
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -2383,4 +2385,238 @@ def test_finished_handoff_child_keeps_explicit_parent_stop(
     after = d.row()
     assert after["dispatch"]["jobs"][child["id"]]["phase"] == "ended"
     assert after["dispatch"]["phase"] == "stopped"
+
+
+@pytest.mark.parametrize("signum", [signal.SIGTERM, signal.SIGINT])
+def test_running_judgement_signal_reaps_runner_without_registry_lock(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, signum: int
+) -> None:
+    from tests.e2e.agents_ops.test_agent_runtime import process_alive
+    from tests.support.agents_ops.registry_io import observations, probe_code
+
+    d.prepare()
+    d.publish_github(monkeypatch)
+    ready = d.h.root / "judgement-ready.fifo"
+    block = d.h.root / "judgement-block.fifo"
+    os.mkfifo(ready)
+    os.mkfifo(block)
+    probes = d.h.root / "judgement-signal-locks.jsonl"
+    runner = d.h.root / "bin/observed-runner"
+    real_runner = d.h.mod.RUNNER
+    runner.write_text(
+        f"#!{sys.executable}\n"
+        + probe_code(d.h.store.directory / "registry.lock", probes)
+        + f"\nimport sys\n_os.execv({str(real_runner)!r}, [{str(real_runner)!r}, *sys.argv[1:]])\n"
+    )
+    runner.chmod(0o700)
+    with d.h.store.locked():
+        state = d.schedule.read()
+        state["config"].update(runner=str(runner), judgement_timeout=30)
+        d.schedule.write(state)
+    script = """
+import json, sys
+from pathlib import Path
+from dispatcher.schedule import Schedule, local_time
+from dispatcher.service import run_due
+from dispatcher.state import DispatchStore
+from parent.github import GitHub
+schedule = Schedule(Path(sys.argv[2]))
+store = DispatchStore(Path(sys.argv[1]), schedule)
+print(json.dumps(run_due(GitHub('o/r', store=store), store, schedule,
+    local_time('2026-10-22T08:00:00+09:00'), explicit=True)))
+"""
+    env = {
+        **os.environ,
+        "PYTHONPATH": str(ROOT / ".agents/ops"),
+        "FAKE_JUDGEMENT_READY_FIFO": str(ready),
+        "FAKE_JUDGEMENT_BLOCK_FIFO": str(block),
+    }
+    read_fd = os.open(ready, os.O_RDONLY | os.O_NONBLOCK)
+    runtime_dir = None
+    cli_pid = None
+    with subprocess.Popen(
+        [
+            sys.executable,
+            "-c",
+            script,
+            str(d.h.store.directory),
+            str(d.schedule.directory),
+        ],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    ) as controller:
+        try:
+            with selectors.DefaultSelector() as selector:
+                selector.register(read_fd, selectors.EVENT_READ)
+                assert selector.select(20), "judgement CLI never became ready"
+                started = json.loads(os.read(read_fd, 8192))
+            runtime_dir = Path(started["runtime"])
+            cli_pid = started["pid"]
+            assert process_alive(cli_pid)
+            controller.send_signal(signum)
+            stdout, stderr = controller.communicate(timeout=20)
+            assert controller.returncode == 0, stdout + stderr
+            assert json.loads(stdout)["result"] == "failed", stdout + stderr
+            record = json.loads((runtime_dir / "result.json").read_text())
+            assert record["turn_end_reason"] == "stopped"
+            assert record["cleanup_complete"] is True
+            assert not record.get("runner_lost")
+            assert not process_alive(record["runner"]["pid"])
+            assert not process_alive(cli_pid)
+            proof = d.service.Runtime(runner).inspect(runtime_dir)
+            assert d.service.Runtime(runner).ended(proof)
+            state = d.state()
+            assert state["active"] is None
+            assert state["runs"][-1]["phase"] == "failed"
+            observations(probes)
+        finally:
+            os.close(read_fd)
+            if runtime_dir is not None:
+                subprocess.run(
+                    [str(real_runner), "stop", "--run-dir", str(runtime_dir)],
+                    capture_output=True,
+                    timeout=15,
+                    check=False,
+                )
+            if controller.poll() is None:
+                controller.terminate()
+                try:
+                    controller.communicate(timeout=15)
+                except subprocess.TimeoutExpired:
+                    controller.kill()
+                    controller.communicate(timeout=5)
+            if cli_pid is not None and process_alive(cli_pid):
+                os.kill(cli_pid, signal.SIGKILL)
+
+
+def test_judgement_signal_before_launch_does_not_require_runtime_recovery(
+    d: DispatchHarness,
+) -> None:
+    d.h.response(decision(1))
+
+    def interrupt(endpoint: str) -> None:
+        d.h.gh.on_get = None
+        os.kill(os.getpid(), signal.SIGTERM)
+
+    d.h.gh.on_get = interrupt
+    assert d.run()["result"] == "failed"
+    state = d.state()
+    assert state["active"] is None
+    assert state["runs"][-1]["phase"] == "failed"
+    assert not d.h.calls.exists()
+
+
+@pytest.mark.parametrize(
+    "stage", ["accept", "finish_authorized", "finish_authorization"]
+)
+def test_run_replacement_during_final_github_check_is_not_applied(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    from tests.support.agents_ops.registry_io import probe
+
+    d.prepare()
+    d.control.assign()
+    fixture_runtime(d, monkeypatch)
+    if stage == "accept":
+        row = d.row()
+        job = d.job(row)
+        job["phase"] = "starting"
+        d.update(row)
+        d.runtime(job, live=True)
+    else:
+        d.accepted()
+        row = d.row()
+        job = d.job(row)
+        d.runtime(job, state="completed")
+        response = json.loads((Path(job["directory"]) / "runtime/final.md").read_text())
+        with d.h.store.locked():
+            current = d.h.store.parents["o/r#1"]
+            auth = d.mod.authorization(d.control._session("o/r#1", current))
+            current["completion"] = {"state": "completed", "finish_sha256": "f" * 64}
+            current["development_result"] = {
+                "completion_receipt": {
+                    "job": job["id"],
+                    "generation": current["generation"],
+                    "authorization": auth,
+                    "response_sha256": importlib.import_module("parent.policy").digest(
+                        response
+                    ),
+                    "finish_sha256": "f" * 64,
+                }
+            }
+            d.h.store.save()
+    d.publish_github(monkeypatch)
+    gh_class = importlib.import_module("parent.github").GitHub
+    control = d.mod.Supervisor(gh_class("o/r", store=d.h.store), d.h.store, d.schedule)
+    base = importlib.import_module("issues.cli").GitHub
+    original_get = base.get
+    within_check = False
+    replaced = False
+    auth_calls = 0
+
+    def get(client: Any, endpoint: str, **kwargs: Any) -> object:
+        nonlocal replaced
+        value: object = original_get(client, endpoint, **kwargs)
+        if within_check and not replaced:
+            probe(d.h.store.directory / "registry.lock")
+            path = Path(job["directory"]) / "runtime/result.json"
+            record = json.loads(path.read_text())
+            record["run_id"] = "superseding-runtime"
+            path.write_text(json.dumps(record))
+            replaced = True
+        return value
+
+    authorized = control._authorized
+    authorization = d.mod.authorization
+
+    def checked(key: str, current: dict[str, Any]) -> None:
+        nonlocal within_check
+        within_check = stage != "finish_authorization"
+        try:
+            authorized(key, current)
+        finally:
+            within_check = False
+
+    def authorize(session: Any, *args: Any, **kwargs: Any) -> Any:
+        nonlocal within_check, auth_calls
+        auth_calls += 1
+        if stage == "finish_authorization" and auth_calls == 2:
+            within_check = True
+        try:
+            return authorization(session, *args, **kwargs)
+        finally:
+            within_check = False
+
+    monkeypatch.setattr(base, "get", get)
+    monkeypatch.setattr(control, "_authorized", checked)
+    monkeypatch.setattr(d.mod, "authorization", authorize)
+    conflict = importlib.import_module("parent.state").RegistryConflict
+    with pytest.raises(conflict, match="runtime run changed"):
+        if stage == "accept":
+            control.accept(
+                json.loads((Path(job["directory"]) / "input.json").read_text()),
+                {
+                    "CLAUDE_CODE_SESSION_ID": "fixture-session",
+                    "AGENT_RUNTIME_RUN_DIR": str(Path(job["directory"]) / "runtime"),
+                    "AGENT_RUNTIME_TASK_ID": job["task_id"],
+                },
+            )
+        else:
+            control._observe_job("o/r#1", job["id"], stop=False)
+    assert replaced
+    after = d.row()
+    assert after["status"] == "active"
+    assert after["dispatch"]["jobs"][job["id"]]["phase"] == "starting"
+    assert d.mod.occupies(after)
+    if stage == "accept":
+        assert after["session"].startswith("dispatcher-reservation:")
+    else:
+        assert "publication_exit_pending" not in after
+    assert not any(
+        event["event"] in {"parent_accepted", "parent_completed", "runtime_ended"}
+        for event in after["dispatch"]["events"]
+        if stage == "accept" or event["event"] != "parent_accepted"
+    )
     assert after["dispatch"]["wake_requested"] is False

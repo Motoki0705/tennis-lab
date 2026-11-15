@@ -301,9 +301,15 @@ dispatcherの観測は全担当を競合検査し、I/O前後でscheduleも照�
 
 runnerのstatus/stopは対象job/runのintentを保存してregistryを解放し、応答後に新しいtransactionで
 同じ担当・assignment・job・run・委任を照合する。停止intentは待機前に保存し、応答不明でも保持する。
+acceptと親の完了適用は、後続のGitHub authorization照合も終えてからruntime/result.jsonのrun IDを
+再照合する。その後は外部I/Oを挟まずに受理・終了状態を保存し、古いrunから担当や容量を変更しない。
 dispatcherからのrunner待機は1呼出し60秒を上限とし、timeout・runの置換・回収未確認を終了成功にしない。
 起動検査と監視の競合は親ごとのoperation lockで直列化し、最終Popenの短いadmissionだけregistry内に残す。
 workerログの受領・公開と、保存時に変わったjobの判断記録捕捉はregistry外で行う。
+
+予定判定のSIGTERM/SIGINTハンドラは停止要求のフラグだけを立てる。runnerの待機側がregistry外で
+通常のstopを送り、runner自身によるCLI・子孫の回収と終了を待ってから判定を中断として保存する。
+runnerが停止ハンドラを持つ前の要求は起動証拠を待って扱い、runner未起動なら照会や手動回収を要求しない。
 
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m dispatcher init \

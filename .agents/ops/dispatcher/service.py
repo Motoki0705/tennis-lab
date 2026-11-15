@@ -15,6 +15,7 @@ from parent.policy import nonempty
 from parent.state import Store
 
 from . import judgement
+from .agent import StopRequest
 from .outcomes import read_result, validate_result
 from .runtime import Runtime, alive, gate, load, process_identity
 from .schedule import Schedule, latest_slot
@@ -159,14 +160,11 @@ def run_due(
             expected_run = copy.deepcopy(run)
             config = copy.deepcopy(state["config"])
 
-        was_interrupted = False
+        stop = StopRequest()
 
         def interrupted(signum: int, frame: object) -> None:
-            # The signal handler must never call a waiting runner while a
-            # transaction happens to be active. Reconcile via an explicit stop.
-            nonlocal was_interrupted
-            was_interrupted = True
-            raise InterruptedError("scheduled judgment was explicitly stopped")
+            # No waits, registry locks, or exceptions into the runner's launcher.
+            stop.requested = True
 
         old = {
             sig: signal.signal(sig, interrupted)
@@ -182,6 +180,7 @@ def run_due(
                     apply=True,
                     timeout=config["judgement_timeout"],
                     runner=Path(config["runner"]),
+                    stop=stop,
                 )
             )
         finally:
@@ -199,11 +198,9 @@ def run_due(
         try:
             if (runtime_dir / "result.json").exists():
                 runtime = Runtime(Path(config["runner"]))
-                if not runtime.ended(
-                    runtime.inspect(runtime_dir, stop=was_interrupted)
-                ):
+                if not runtime.ended(runtime.inspect(runtime_dir, stop=stop.requested)):
                     diagnostic = "judgment runtime cleanup remains unconfirmed"
-            elif was_interrupted:
+            elif stop.requested and stop.started:
                 diagnostic = "interrupted startup has no runtime evidence"
         except (ValueError, OSError) as exc:
             diagnostic = str(exc)

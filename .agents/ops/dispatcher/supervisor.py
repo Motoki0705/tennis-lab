@@ -204,7 +204,11 @@ def job_snapshot(row: dict[str, Any], job: dict[str, Any]) -> dict[str, Any]:
 
 
 def current_job(
-    store: Store, key: str, expected: dict[str, Any]
+    store: Store,
+    key: str,
+    expected: dict[str, Any],
+    *,
+    run_id: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     row = store.parents.get(key)
     job = ((row or {}).get("dispatch") or {}).get("jobs", {}).get(expected["job"]["id"])
@@ -218,7 +222,8 @@ def current_job(
     if actual != comparison:
         store.conflict("worker job/run/delegation or owner changed during observation")
     assert row is not None and job is not None
-    run_id = expected["job"].get("observation", {}).get("run_id")
+    if run_id is None:
+        run_id = expected["job"].get("observation", {}).get("run_id")
     if run_id is not None:
         try:
             current_run = load(Path(job["directory"]) / "runtime/result.json")["run_id"]
@@ -1011,6 +1016,8 @@ class Supervisor:
             ):
                 raise ValueError("never replace an existing runtime session")
             self._authorized(key, row)
+            row, job = current_job(self.store, key, expected)
+            dispatch = row["dispatch"]
             if any(
                 k != key
                 and r["session"] == identity
@@ -1194,6 +1201,56 @@ class Supervisor:
         dispatch = row["dispatch"]
         record = evidence["record"]
         self._check_contract(job, record)
+        expected = job_snapshot(row, job)
+        response = None
+        diagnostic = None
+        if (
+            job["role"] != "implementation"
+            and dispatch.get("controller_mode") != "handoff"
+            and job["id"] == dispatch["active_job"]
+            and job["authorization"]["generation"] == row["generation"]
+            and dispatch["phase"] != "stopped"
+            and record["result"] == "completed"
+            and not row["session"].startswith("dispatcher-reservation:")
+        ):
+            try:
+                response = load(Path(job["directory"]) / "runtime/final.md")
+                if (
+                    set(response)
+                    != {"schema_version", "state", "reason", "resume_condition"}
+                    or type(response["schema_version"]) is not int
+                    or response["schema_version"] != 1
+                    or response["state"] not in {"waiting", "completed", "failed"}
+                ):
+                    raise ValueError("invalid parent event schema")
+                nonempty(response["reason"], "parent event reason")
+                nonempty(response["resume_condition"], "parent resume condition")
+                if response["state"] == "completed":
+                    from parent.completion import require_report_receipt
+
+                    self._authorized(key, row)
+                    require_report_receipt(
+                        row, job, response, authorization(self._session(key, row))
+                    )
+                    if children_pending(row):
+                        raise ValueError(
+                            "cannot finish a parent while child reservations/runtimes remain"
+                        )
+            except RegistryConflict:
+                raise
+            except (ValueError, OSError, KeyError, TypeError) as exc:
+                diagnostic = str(exc)
+
+        # Authorization releases registry.lock for GitHub I/O. Revalidate the
+        # observed runtime after the LAST such read, before applying any result.
+        row, job = current_job(
+            self.store,
+            key,
+            expected,
+            run_id=nonempty(record.get("run_id"), "runtime run ID"),
+        )
+        dispatch = row["dispatch"]
+        job["runtime_run_id"] = record["run_id"]
         job["phase"] = "ended"
         event(
             dispatch,
@@ -1237,54 +1294,31 @@ class Supervisor:
                 reason="親runtime失敗または担当未受理。記録を確認して明示再開する",
             )
             return
-        try:
-            response = load(Path(job["directory"]) / "runtime/final.md")
-            if (
-                set(response)
-                != {"schema_version", "state", "reason", "resume_condition"}
-                or type(response["schema_version"]) is not int
-                or response["schema_version"] != 1
-                or response["state"] not in {"waiting", "completed", "failed"}
-            ):
-                raise ValueError("invalid parent event schema")
-            nonempty(response["reason"], "parent event reason")
-            nonempty(response["resume_condition"], "parent resume condition")
-            if response["state"] == "completed":
-                from parent.completion import require_report_receipt
-
-                self._authorized(key, row)
-                require_report_receipt(
-                    row, job, response, authorization(self._session(key, row))
-                )
+        if diagnostic is not None:
+            dispatch.update(phase="failed", reason=diagnostic)
+            return
+        assert response is not None
+        dispatch.update(
+            phase=response["state"],
+            reason=response["reason"],
+            resume_condition=response["resume_condition"],
+        )
+        if response["state"] == "waiting" and dispatch.get("wake_requested"):
             dispatch.update(
-                phase=response["state"],
-                reason=response["reason"],
-                resume_condition=response["resume_condition"],
+                phase="resume_pending", reason="子runtimeの終了イベントを確認する"
             )
-            if response["state"] == "waiting" and dispatch.get("wake_requested"):
-                dispatch.update(
-                    phase="resume_pending", reason="子runtimeの終了イベントを確認する"
-                )
-            if response["state"] == "completed":
-                if children_pending(row):
-                    raise ValueError(
-                        "cannot finish a parent while child reservations/runtimes remain"
-                    )
-                row["status"] = "ended"
-                row["publication_exit_pending"] = {
-                    "generation": row["generation"],
-                    "root": job["cwd"],
-                }
-            event(
-                dispatch,
-                "parent_" + response["state"],
-                job_id=job["id"],
-                reason=response["reason"],
-            )
-        except RegistryConflict:
-            raise
-        except (ValueError, OSError, KeyError, TypeError) as exc:
-            dispatch.update(phase="failed", reason=str(exc))
+        if response["state"] == "completed":
+            row["status"] = "ended"
+            row["publication_exit_pending"] = {
+                "generation": row["generation"],
+                "root": job["cwd"],
+            }
+        event(
+            dispatch,
+            "parent_" + response["state"],
+            job_id=job["id"],
+            reason=response["reason"],
+        )
 
     def _observe_job(
         self, key: str, identifier: str, *, stop: bool
@@ -1336,9 +1370,10 @@ class Supervisor:
                     )
                     dispatch.update(phase="recovery_required", reason=job["diagnostic"])
             else:
-                job["runtime_run_id"] = evidence["record"]["run_id"]
                 if terminated:
                     self._finish(key, row, job, evidence)
+                else:
+                    job["runtime_run_id"] = evidence["record"]["run_id"]
             self.store.save()
             if terminated and saved.get("log_journal"):
                 return (
