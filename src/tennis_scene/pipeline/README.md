@@ -8,17 +8,46 @@
 | `components/` | 検出、追跡、pose、人物対応、幾何、身体復元・配置。各IO契約の所有者 |
 | `input_assembly/` | 宣言済み成果物のcamera/frame/track照合とInput構築。store全体へ自由に問い合わせない |
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
-| `runner.py` | 宣言の互換性・循環検査、依存順実行、execute/load、公開の共通手順 |
+| `execution_plan.py` | 複数clipの依存計画、宣言の互換性・循環検査、nodeごとのcache/load判定 |
+| `runner.py` | 依存が揃ったnodeの実行・公開、clipの最終化。`ComponentRunner`は単一clipの互換入口 |
+| `clip_inputs.py` | datasetのclip選択・manifest/media解決、sourceの同期・frame数検証、実行前後の入力照合 |
+| `dataset_publication.py` | dataset完成markerの再利用判定、scene契約検証、`annotation.json`の原子的公開と失敗marker |
 | `storage/codec.py` | componentが宣言したOutput型をJSONと数値配列へ保存・復元。pickleや動的class importは使わない |
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
-| `orchestrator.py` | source動画の束縛、標準recipeのcomposition、scene export、実行receipt |
+| `orchestrator.py` | 共通入力部品への動画束縛、標準recipeから1clipの計画を作成・実行・最終化、実行receipt |
 | `direct_annotation/` | 白紙注釈request・固定幾何参照と、scene完了・公開だけの再開 |
 | `feature_flags.py` | 無効化できる出力機能（`OPTIONAL_FEATURES`）とその依存関係 |
 
 component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.yaml`の`execution`はその全てを1回ずつ持つ。
 `ball_detection.method=model`が既定。`gpt_annotation`の設定・分離したreceipt・復旧・後続受入は
 [一連実行のREADME](direct_annotation/README.ja.md)を正本とする。
+
+## 実行計画と入口
+
+`ExecutionPlan`は`ClipExecution(clip_id, nodes, store, overwrite, targets)`の列を受け取り、
+nodeを`(clip_id, node名)`で識別する。bindingsは同じclip内のproducerだけを参照し、
+異なるclipに同じnode名があってもstoreと依存参照は混ざらない。clip IDとstoreの重複は拒否する。
+`targets`を指定すると、その依存閉包だけを実行する。
+
+`PlanExecutor.run()`は依存が揃ったnodeを順次処理する。
+`select_ready(ready_keys) -> key`で、その時点で実行可能なnodeの選択方針を差し替えられる。
+既定は従来の宣言順の深さ優先による依存順序（複数clipではclip登録順）を維持する。
+cache/load判定は依存artifactが確定してから1回だけ行い、完了したnodeはoverwriteでも再実行しない。
+外側から`run(targets=...)`を繰り返してschedulerを作る必要はない。
+計画中のclip一覧・実行順・選択方針はidentityに加えず、componentの設定全体
+（モデル種別・前処理を含む）・資産・実装・source・上流参照の既存identityを保持する。
+
+`finalize_clip(clip_id)`は、そのclipの必要nodeが完了した時点でsceneをexportする。
+`run(on_clip_complete=callback)`はclipが完成した直後に1回通知するため、
+callbackから最終化とdataset公開を呼び、後続clipの処理を待たずに公開できる。
+他clipの完了を待たず、失敗・未処理のclipは最終化しない。モデルの共有・寿命管理やbatch化は実行計画の責務に含めない。
+既存の`ComponentRunner(nodes, store)`・`run(targets=...)`・`output(name)`は1clipの同じ計画へ委譲する。
+
+単一動画入口は`prepare_clip_source`で実mediaの時間軸を検証し、入力hashを実行後・export前に照合する。
+dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manifestとrecordの時間軸・mediaを検証し、
+同じ単一clip入口を呼ぶ。完成markerの呼出し順序と失敗継続は
+[generate_dataset](../generate_dataset/README.md)を参照する。共通関数は複数clip入口からも個別に呼び出せる。
 
 ## 処理単位
 
@@ -176,7 +205,8 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 `scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
-datasetの完成marker（`annotation.json`）は[generate_dataset](../generate_dataset/README.md)が所有する。
+datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公開し、
+[generate_dataset](../generate_dataset/README.md)がclipごとの呼出しと結果を管理する。
 
 モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。現行のコードfingerprintは`src`全体を保守的に含むため、
 コード変更は全componentを無効化する。設定・checkpointだけの変更は、そのcomponentと依存先だけを無効化する。
