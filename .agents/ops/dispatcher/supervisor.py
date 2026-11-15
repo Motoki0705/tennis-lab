@@ -9,7 +9,7 @@ import signal
 import subprocess
 import uuid
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -476,7 +476,12 @@ class Supervisor:
         self, key: str, expected: dict[str, Any], reason: str, *, claimed: bool = False
     ) -> None:
         """Rollback only this unstarted job, using no remote authorization."""
-        with self.store.locked():
+        with (
+            self.store.ownership()
+            if expected["job"]["role"] == "parent"
+            else nullcontext(),
+            self.store.locked(),
+        ):
             row = self.store.parents.get(key)
             saved = expected["job"]
             dispatch = managed(row) if row else None
@@ -830,7 +835,7 @@ class Supervisor:
     def assign(self) -> list[int]:
         """No model invocation. Consume only committed candidates, in priority order."""
         assigned: list[int] = []
-        with self.store.locked():
+        with self.store.ownership(), self.store.locked():
             state = self.schedule.read()
             if not state["enabled"]:
                 return assigned
@@ -1001,7 +1006,7 @@ class Supervisor:
             Path(job["directory"]) / "runtime"
         )
         check_observation(expected["job"], evidence)
-        with self.store.locked():
+        with self.store.ownership(), self.store.locked():
             row, job = current_job(self.store, key, expected)
             dispatch = row["dispatch"]
             self._check_contract(job, evidence["record"])
@@ -1359,7 +1364,12 @@ class Supervisor:
         if terminated and saved.get("log_journal"):
             assert evidence is not None
             worker_logs.finish(Path(saved["log_journal"]), evidence, publish_now=False)
-        with self.store.locked():
+        with (
+            self.store.ownership()
+            if terminated and saved["role"] != "implementation"
+            else nullcontext(),
+            self.store.locked(),
+        ):
             row, job = current_job(self.store, key, expected)
             dispatch = row["dispatch"]
             if evidence is None:

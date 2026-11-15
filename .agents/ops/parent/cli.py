@@ -627,6 +627,11 @@ def _main(argv: list[str] | None = None) -> int:
             if args.command in {"project-setup", "project-sync"} and not read_only(args)
             else nullcontext()
         )
+        ownership = (
+            store.ownership()
+            if args.command in {"register", "handoff", "release"}
+            else nullcontext()
+        )
         transaction = store.snapshot() if read_only(args) else store.locked()
         history_reads = gh.history_read_scope()
         from .improvements import lock_key
@@ -646,6 +651,7 @@ def _main(argv: list[str] | None = None) -> int:
             improvement_operation,
             operation,
             project_operation,
+            ownership,
             transaction,
             history_reads,
         ):

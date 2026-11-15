@@ -1,4 +1,8 @@
-"""Engine-specific bells. No fallback transport and no session launch."""
+"""Engine-specific bells called under dispatch's common ownership fence.
+
+Registry/DB transactions end before these adapters acquire routes.lock.
+There is no fallback transport or session launch.
+"""
 
 from __future__ import annotations
 
