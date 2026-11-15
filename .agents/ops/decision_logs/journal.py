@@ -8,7 +8,7 @@ with worker_logs. No HTTP, Git, runner or parent-registry lock is involved.
 from __future__ import annotations
 
 import copy
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, cast
@@ -21,6 +21,7 @@ from worker_logs.journal import (
     locked,
     require,
 )
+from worker_logs.ownership import require_owner
 from worker_logs.safety import Guard
 from worker_logs.schema import digest, fields, integer, json_bytes, sha
 
@@ -359,9 +360,16 @@ class Journal:
         require(isinstance(key, str) and bool(key.strip()), "journal_key")
         return next((e for e in row["entries"] if e["key"] == key), None)
 
-    def _append(self, row: dict[str, Any], entry: dict[str, Any]) -> None:
+    def _append(
+        self,
+        row: dict[str, Any],
+        entry: dict[str, Any],
+        *,
+        owner_check: Callable[[], bool] | None = None,
+    ) -> None:
         row["entries"].append({"sequence": len(row["entries"]) + 1, **entry})
         self._validate(row)
+        require_owner(owner_check)
         atomic(self.path, row)
 
     def capture(
@@ -415,7 +423,13 @@ class Journal:
             return copy.deepcopy(candidate)
 
     def prepare(
-        self, record_id: str, *, key: str, at: str, retry: bool = False
+        self,
+        record_id: str,
+        *,
+        key: str,
+        at: str,
+        retry: bool = False,
+        owner_check: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         """Fix a safe projection, or append blocked while retaining raw input.
 
@@ -470,7 +484,7 @@ class Journal:
             except PublicationError as error:
                 entry.update(status="blocked", payload=None, error=str(error))
             entry["snapshot_sha256"] = preparation_sha(entry)
-            self._append(row, entry)
+            self._append(row, entry, owner_check=owner_check)
             return copy.deepcopy(row["entries"][-1])
 
     def publication(
@@ -483,6 +497,7 @@ class Journal:
         evidence: list[dict[str, Any]],
         error: str | None = None,
         publication_actor: dict[str, Any] | None = None,
+        owner_check: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         """Record only publication facts; callers perform Git/HTTP separately."""
         public_id(record_id)
@@ -519,11 +534,16 @@ class Journal:
                 )
                 if prepared is not None:
                     validate_public(prepared["payload"], checker)
-            self._append(row, entry)
+            self._append(row, entry, owner_check=owner_check)
             return copy.deepcopy(row["entries"][-1])
 
     def publication_request(
-        self, actor: dict[str, Any], *, at: str, boundary: str | None = None
+        self,
+        actor: dict[str, Any],
+        *,
+        at: str,
+        boundary: str | None = None,
+        owner_check: Callable[[], bool] | None = None,
     ) -> dict[str, Any] | None:
         """Freeze one explicit foreign-publication request per actor/boundary.
 
@@ -612,7 +632,7 @@ class Journal:
                             "publication_actor": copy.deepcopy(actor),
                         },
                     }
-                    self._append(row, request)
+                    self._append(row, request, owner_check=owner_check)
             return {"parent": actor["parent"], "request_id": request["record"]["id"]}
 
     def public_payloads(self) -> list[dict[str, Any]]:

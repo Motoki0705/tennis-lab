@@ -8,6 +8,7 @@ import os
 import stat
 import subprocess
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -75,6 +76,55 @@ def test_publication_actor_must_reference_its_frozen_request(
         next(r for r in log.status() if r["id"] == item["id"])["publication_actor"]
         == attribution
     )
+
+
+@pytest.mark.parametrize("writer", ["prepare", "request", "publication"])
+def test_publication_journal_rechecks_owner_after_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    writer: str,
+) -> None:
+    log = journal.Journal(tmp_path, "o/r", 1)
+    item = result()
+    log.capture("source", item)
+    if writer == "publication":
+        log.prepare(item["id"], key="prepared", at=AT)
+    before = log.path.read_bytes()
+    allowed = True
+    validate = log._validate
+
+    def racing(row: Any) -> Any:
+        nonlocal allowed
+        value = validate(row)
+        latest = row["entries"][-1]
+        if (
+            latest["key"] == "guarded"
+            or latest["event"] == "capture"
+            and "publication_actor" in latest["private"]
+        ):
+            allowed = False
+        return value
+
+    monkeypatch.setattr(log, "_validate", racing)
+    with pytest.raises(PublicationError, match="log_owner_mismatch"):
+        if writer == "prepare":
+            log.prepare(item["id"], key="guarded", at=AT, owner_check=lambda: allowed)
+        elif writer == "request":
+            log.publication_request(
+                {"parent": 1900, "session": "codex:publisher", "generation": 3},
+                at=AT,
+                owner_check=lambda: allowed,
+            )
+        else:
+            log.publication(
+                item["id"],
+                key="guarded",
+                status="pending",
+                at=AT,
+                evidence=[],
+                owner_check=lambda: allowed,
+            )
+    assert not allowed and log.path.read_bytes() == before
 
 
 def test_capture_replay_and_publication_are_independent_and_private(

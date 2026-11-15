@@ -309,6 +309,14 @@ registryの更新を行わない。registryが破損・読取り不能なら拒�
 既存payload・PRを差し替えない。公開のbookkeepingは新たなcaptureを作らず、workerログの続行も行わない。
 dry-runは要求記録を作らない。自分の親の通常公開とrelease／handoff／supervisorの挙動は維持する。
 
+merge済みbatchの記録別公開事実を先に照合してから、新しい要求を求める。
+private batchに `publication_actor` を固定し、旧batchは既存の公開事実の担当を再利用する。
+参照が矛盾する場合は拒否し、要求自身がpublishedでも同じ要求で照合を完了する。
+別の担当親が未mergeのbatchを続行するときは本人の要求を記録し、merge済みの公開担当は付け替えない。
+実際のgit commit・batch保存・journal追記の直前、およびPR／mergeのintent保存後の送信直前にも担当を照合する。
+中断worktreeの変更・stage済みファイルは、固定planまたは未変更のbaseの内容と一致するときだけ再開する。
+それ以外の編集は残して拒否し、resetで消さない。
+
 `remaining_publications` はregistry行がない親も含め、対象のdecision_log残件を返す。
 親の `status`・`decision-log-status`・終了checkpointの `decision_resume_command` は、担当なしなら
 この入口を `RECOVERY_PARENT` 付きで示す。呼出sessionが担当するactiveな親番号に置き換えて使う。

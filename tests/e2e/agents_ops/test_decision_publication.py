@@ -271,8 +271,13 @@ def test_unassigned_parent_cli_refuses_ownership_before_any_mutation(
     "boundary,change",
     [
         ("repository", "target"),
+        ("plan", "target"),
+        ("staged", "target"),
+        ("verified", "target"),
         ("push", "target"),
+        ("pushed", "target"),
         ("create", "target"),
+        ("created", "target"),
         ("merge", "target"),
         ("merge", "actor"),
         ("merge", "generation"),
@@ -315,22 +320,27 @@ def test_unassigned_publication_rechecks_before_external_writes(
             worker_journal.atomic(registry, row)
         boundary_files = private_files(env.state)
 
-    target, name = (
-        (env.github, "repository")
-        if boundary == "repository"
-        else (publication.Publisher, "remote")
-        if boundary == "push"
-        else (env.github, "find")
-        if boundary == "create"
-        else (publication.policy, "pr_changes")
-    )
+    target, name = {
+        "repository": (env.github, "repository"),
+        "plan": (publication.Publisher, "plan"),
+        "staged": (publication.Publisher, "git"),
+        "verified": (publication.Publisher, "verify"),
+        "push": (publication.Publisher, "remote"),
+        "pushed": (publication.Publisher, "git"),
+        "create": (env.github, "find"),
+        "created": (env.github, "create"),
+        "merge": (publication.policy, "pr_changes"),
+    }[boundary]
     original = getattr(target, name)
     fired = False
 
     def racing(*a: Any, **kw: Any) -> Any:
         nonlocal fired
         value = original(*a, **kw)
-        if not fired:
+        if not fired and (
+            boundary not in {"staged", "pushed"}
+            or a[1] == ("add" if boundary == "staged" else "push")
+        ):
             fired = True
             reassign()
         return value
@@ -343,6 +353,16 @@ def test_unassigned_publication_rechecks_before_external_writes(
     assert "merge" not in env.github.calls
     assert all(s["publication_status"] != "blocked" for s in log.status())
     assert len(navigation.records(env.upstream_files())) == 0
+    if boundary in {"plan", "staged", "verified"}:
+        document = json.loads(log.path.with_name("publication.json").read_bytes())
+        batch = document["batches"][0]
+        assert batch["stage"] != "committed" and batch["revisions"][-1]["head"] is None
+        if boundary != "verified":
+            tree = env.decision_publisher(log).worktree(batch)
+            assert (
+                not tree.exists()
+                or git(tree, "rev-parse", "HEAD") == batch["revisions"][-1]["base"]
+            )
     # Return only this isolated fixture's assignment to retry the saved batch.
     registry.write_bytes(original_registry)
     assert cli.main(args) == 0
@@ -398,6 +418,265 @@ def test_unassigned_publication_reuses_existing_batch_and_records_recovery_actor
 
 class Crash(BaseException):
     """Process death skips the publisher's ordinary error handler."""
+
+
+@pytest.mark.parametrize("point", ["request_published", "merge_recorded"])
+@pytest.mark.parametrize("legacy_batch", [False, True])
+def test_unassigned_publication_resumes_frozen_actor_after_partial_confirmation(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    point: str,
+    legacy_batch: bool,
+) -> None:
+    cli = importlib.import_module("parent.cli")
+    log = env.capture(parent=2)
+    args = unassigned_cli(env, monkeypatch)
+    record_publication = type(log).publication
+    note = publication.Publisher.note
+
+    def interrupted_record(self: Any, record_id: str, **kw: Any) -> Any:
+        value = record_publication(self, record_id, **kw)
+        actor = kw.get("publication_actor")
+        if (
+            point == "request_published"
+            and kw["status"] == "published"
+            and actor
+            and record_id == actor["request_id"]
+        ):
+            raise Crash()
+        return value
+
+    def interrupted_note(self: Any, batch: Any, state: str, **kw: Any) -> Any:
+        if point == "merge_recorded" and state == "published":
+            raise Crash()
+        return note(self, batch, state, **kw)
+
+    monkeypatch.setattr(type(log), "publication", interrupted_record)
+    monkeypatch.setattr(publication.Publisher, "note", interrupted_note)
+    with pytest.raises(Crash):
+        cli.main(args)
+    capsys.readouterr()
+    path = log.path.with_name("publication.json")
+    document = json.loads(path.read_bytes())
+    assert len(document["batches"]) == 1 and document["batches"][0]["state"] == "merged"
+    captures = [e for e in log.read()["entries"] if e["event"] == "capture"]
+    request = next(
+        e for e in captures if e["key"].startswith("unassigned-publication:")
+    )
+    actor = {"parent": 1900, "request_id": request["record"]["id"]}
+    states = {s["id"]: s["publication_status"] for s in log.status()}
+    assert any(v != "published" for v in states.values())
+    if point == "request_published":
+        assert states[actor["request_id"]] == "published"
+    if legacy_batch:
+        document["batches"][0].pop("publication_actor", None)
+        worker_journal.atomic(path, document)
+    saved_files = env.upstream_files()
+    monkeypatch.setattr(type(log), "publication", record_publication)
+    monkeypatch.setattr(publication.Publisher, "note", note)
+    assert cli.main(args + ["--retry"]) == 0
+    value = json.loads(capsys.readouterr().out)
+    assert value["saved_to_main"]
+    assert env.github.calls == ["create", "merge"]
+    assert len(json.loads(path.read_bytes())["batches"]) == 1
+    assert [e for e in log.read()["entries"] if e["event"] == "capture"] == captures
+    assert {
+        json.dumps(s["publication_actor"], sort_keys=True) for s in log.status()
+    } == {json.dumps(actor, sort_keys=True)}
+    assert env.upstream_files() == saved_files
+    completed = private_files(env.state)
+    assert cli.main(args + ["--retry"]) == 0
+    assert json.loads(capsys.readouterr().out)["saved_to_main"]
+    assert private_files(env.state) == completed and env.github.calls == [
+        "create",
+        "merge",
+    ]
+
+
+def test_unassigned_publication_rechecks_confirmation_after_merge(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    cli = importlib.import_module("parent.cli")
+    env.capture(parent=2)
+    args = unassigned_cli(env, monkeypatch)
+    registry = env.state / "registry.json"
+    original_registry = registry.read_bytes()
+    merge = env.github.merge
+    boundary: dict[str, bytes] = {}
+
+    def racing(number: int, head: str) -> None:
+        nonlocal boundary
+        merge(number, head)
+        data = json.loads(registry.read_bytes())
+        data["parents"]["o/r#2"] = recovery_owner(session="codex:successor")
+        worker_journal.atomic(registry, data)
+        boundary = private_files(env.state)
+
+    monkeypatch.setattr(env.github, "merge", racing)
+    assert cli.main(args) == 2
+    value = json.loads(capsys.readouterr().out)
+    assert value["error"] == "log_owner_mismatch" and not value["saved_to_main"]
+    assert private_files(env.state) == boundary
+    # The refused publisher stops before fetching the newly merged commit.
+    # Inspect upstream independently instead of relying on its local Git cache.
+    git(env.root, "fetch", "origin")
+    assert len(navigation.records(env.upstream_files())) == 7
+    registry.write_bytes(original_registry)
+    monkeypatch.setattr(env.github, "merge", merge)
+    assert cli.main(args) == 0
+    assert json.loads(capsys.readouterr().out)["saved_to_main"]
+    assert env.github.calls == ["create", "merge"]
+
+
+def test_unassigned_successor_records_its_request_for_unmerged_batch(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    cli = importlib.import_module("parent.cli")
+    log = env.capture(parent=2)
+    args = unassigned_cli(env, monkeypatch)
+    env.github.pause_reads = True
+    assert cli.main(args) == 2
+    capsys.readouterr()
+    env.github.pause_reads = False
+    registry = env.state / "registry.json"
+    data = json.loads(registry.read_bytes())
+    data["parents"]["o/r#1900"]["status"] = "ended"
+    data["parents"]["o/r#1901"] = recovery_owner(session="codex:successor")
+    worker_journal.atomic(registry, data)
+    monkeypatch.setattr(cli, "session_identity", lambda _: "codex:successor")
+    args[args.index("--parent") + 1] = "1901"
+    assert cli.main(args + ["--retry"]) == 0
+    value = json.loads(capsys.readouterr().out)
+    assert value["saved_to_main"] and value["publication_actor"]["parent"] == 1901
+    requests = [
+        e
+        for e in log.read()["entries"]
+        if e["event"] == "capture" and "publication_actor" in e["private"]
+    ]
+    assert {e["private"]["publication_actor"]["parent"] for e in requests} == {
+        1900,
+        1901,
+    }
+    assert len(requests) == 2 and env.github.calls == [
+        "create",
+        "merge",
+        "create",
+        "merge",
+    ]
+    assert "親 #1901" in unescape(
+        "\n".join(
+            raw.decode()
+            for n, raw in env.upstream_files().items()
+            if n.endswith("README.md")
+        )
+    )
+
+
+@pytest.mark.parametrize("dispatch", ["create", "merge"])
+def test_publication_rechecks_owner_after_saving_dispatch_intent(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    dispatch: str,
+) -> None:
+    log = env.capture()
+    publisher = env.decision_publisher(log)
+    authorized = True
+    frozen: dict[str, bytes] = {}
+    save = publisher.save
+
+    def racing() -> None:
+        nonlocal authorized, frozen
+        save()
+        active = publisher.document["batches"][-1]
+        if active["stage"] == (
+            "pr_create" if dispatch == "create" else "merge_attempted"
+        ):
+            authorized = False
+            frozen = private_files(env.state)
+
+    monkeypatch.setattr(publisher, "save", racing)
+    value = publisher.publish(owner_check=lambda: authorized)
+    assert value["error"] == "log_owner_mismatch" and not value["saved_to_main"]
+    assert frozen and private_files(env.state) == frozen
+    assert env.github.calls == ([] if dispatch == "create" else ["create"])
+
+
+@pytest.mark.parametrize("dispatch", ["create", "merge"])
+def test_failed_dispatch_does_not_save_bookkeeping_after_owner_change(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    dispatch: str,
+) -> None:
+    publisher = env.decision_publisher(env.capture())
+    authorized = True
+    frozen: dict[str, bytes] = {}
+
+    def fail(*a: Any, **kw: Any) -> None:
+        nonlocal authorized, frozen
+        authorized = False
+        frozen = private_files(env.state)
+        raise PublicationError("github_failed")
+
+    monkeypatch.setattr(env.github, dispatch, fail)
+    value = publisher.publish(owner_check=lambda: authorized)
+    assert value["error"] == "log_owner_mismatch" and not value["saved_to_main"]
+    assert frozen and private_files(env.state) == frozen
+    assert env.github.calls == ([] if dispatch == "create" else ["create"])
+
+
+@pytest.mark.parametrize("damage", ["planned_bytes", "outside_plan", "ignored_plan"])
+def test_interrupted_publication_rejects_worktree_changes_outside_frozen_plan(
+    env: DecisionEnv,
+    monkeypatch: pytest.MonkeyPatch,
+    damage: str,
+) -> None:
+    log = env.capture()
+    publisher = env.decision_publisher(log)
+    authorized = True
+    run_git = publisher.git
+    if damage == "ignored_plan":
+        (env.root / ".git/info/exclude").write_text(".agents/logs/\n")
+
+    def racing(*args: str, **kw: Any) -> bytes:
+        nonlocal authorized
+        if damage == "ignored_plan" and args[0] == "add":
+            raise Crash()
+        value: bytes = run_git(*args, **kw)
+        if args[0] == "add":
+            authorized = False
+        return value
+
+    monkeypatch.setattr(publisher, "git", racing)
+    if damage == "ignored_plan":
+        with pytest.raises(Crash):
+            publisher.publish(owner_check=lambda: authorized)
+    else:
+        assert (
+            publisher.publish(owner_check=lambda: authorized)["error"]
+            == "log_owner_mismatch"
+        )
+    batch = json.loads(publisher.path.read_bytes())["batches"][0]
+    tree = publisher.worktree(batch)
+    target = tree / (
+        ".agents/logs/parents/parent-1/README.md"
+        if damage in {"planned_bytes", "ignored_plan"}
+        else "code.py"
+    )
+    target.write_text("unrecognized worktree edit\n")
+    if damage != "ignored_plan":
+        git(tree, "add", "--force", "--", str(target))
+    authorized = True
+    value = env.decision_publisher(log).publish(owner_check=lambda: authorized)
+    assert value["error"] == "worktree_dirty" and not value["saved_to_main"]
+    assert git(tree, "rev-parse", "HEAD") == batch["revisions"][-1]["base"]
+    assert (
+        target.read_text() == "unrecognized worktree edit\n" and env.github.calls == []
+    )
 
 
 @pytest.mark.parametrize(
@@ -648,13 +927,6 @@ def test_publication_reconciles_boundary_response_loss(
         with pytest.raises(Crash):
             publisher.publish()
         monkeypatch.setattr(publisher, "git", real)
-        if point == "before_commit":
-            assert publisher.publish()["error"] == "worktree_dirty"
-            batch = json.loads(publisher.path.read_text())["batches"][0]
-            tree = publisher.worktree(batch)
-            # Only this disposable fixture's interrupted publication is repaired.
-            git(tree, "reset", "--hard", batch["revisions"][-1]["base"])
-            git(tree, "clean", "-fd")
     elif point == "after_merge_recorded":
         real_note = publisher.note
 

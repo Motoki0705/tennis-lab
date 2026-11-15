@@ -366,6 +366,17 @@ its payloads and PR are not replaced. No new captures are added by publication
 bookkeeping, and worker logs are not swept by this entry. Dry-run records no request.
 Normal own-parent and release/handoff/supervisor publication retain their behavior.
 
+Merged batches finish their per-record publication facts before a new request is
+derived. The private batch freezes `publication_actor`; legacy batches reuse the
+actor in their existing facts, rejecting inconsistent references. A request that
+already reached `published` remains the same request during confirmation replay.
+A successor resuming an unmerged batch records its own request; confirmation of
+an already merged publication preserves its original actor.
+Owner checks run at the actual Git commit, batch save and journal append boundaries,
+and again after saving PR/merge intent before dispatch. An interrupted worktree may
+resume only when its changed/staged files match the frozen plan or untouched base
+bytes. Other edits remain intact and are refused; recovery does not reset them.
+
 `remaining_publications` keeps the source's decision-log rows, including absent
 registry entries. Parent `status`, `decision-log-status` and termination checkpoints
 show `decision_resume_command`; for unassigned sources it uses this entry with

@@ -80,6 +80,7 @@ class Publisher:
         return cast(bytes, self.transport.git(*args, cwd=cwd))
 
     def main(self) -> str:
+        require_owner(self.owner_check)
         return cast(str, self.transport.main())
 
     def snapshot(self, ref: str) -> dict[str, bytes]:
@@ -99,7 +100,76 @@ class Publisher:
         return dict(files)
 
     def save(self) -> None:
+        require_owner(self.owner_check)
         atomic(self.path, self.document)
+
+    def batch_actor(self, batch: dict[str, Any]) -> dict[str, Any] | None:
+        """Use the frozen batch actor, including legacy partial confirmations."""
+        ids = {p["record"]["id"] for p in batch["payloads"]}
+        entries = self.journal.read()["entries"]
+        actors = {
+            json_bytes(e["publication_actor"]): e["publication_actor"]
+            for e in entries
+            if e["event"] == "publication"
+            and e["record_id"] in ids
+            and "publication_actor" in e
+            and ("publication_actor" not in batch or e["status"] == "published")
+        }
+        if "publication_actor" in batch:
+            actor = batch["publication_actor"]
+            require(
+                all(a == actor for a in actors.values()), "publication_identity_changed"
+            )
+        else:
+            # Earlier batches did not persist their actor separately. Existing
+            # publication facts are authoritative; never allocate a new request
+            # from the remaining subset of that batch's records.
+            if not actors:
+                actors = {
+                    json_bytes(
+                        {
+                            "parent": e["private"]["publication_actor"]["parent"],
+                            "request_id": e["record"]["id"],
+                        }
+                    ): {
+                        "parent": e["private"]["publication_actor"]["parent"],
+                        "request_id": e["record"]["id"],
+                    }
+                    for e in entries
+                    if e["event"] == "capture"
+                    and e["record"]["id"] in ids
+                    and "publication_actor" in e["private"]
+                }
+            require(len(actors) <= 1, "publication_identity_changed")
+            actor = next(iter(actors.values()), None)
+        if actor is not None:
+            request = next(
+                (
+                    e
+                    for e in entries
+                    if e["event"] == "capture"
+                    and e["record"]["id"] == actor["request_id"]
+                ),
+                None,
+            )
+            require(
+                request is not None
+                and request["record"]["kind"] == "action"
+                and request["record"]["data"]["operation"] == "publish"
+                and request["private"].get("publication_actor", {}).get("parent")
+                == actor["parent"],
+                "publication_identity_changed",
+            )
+        return cast(dict[str, Any] | None, actor)
+
+    def request_actor(self, attribution: dict[str, Any]) -> dict[str, Any]:
+        request = next(
+            e
+            for e in self.journal.read()["entries"]
+            if e["event"] == "capture"
+            and e["record"]["id"] == attribution["request_id"]
+        )
+        return cast(dict[str, Any], request["private"]["publication_actor"])
 
     def expected(self, batch: dict[str, Any]) -> dict[str, bytes]:
         return {event_path(p["record"]): json_bytes(p) for p in batch["payloads"]}
@@ -184,17 +254,70 @@ class Publisher:
             ):
                 retained += 1
                 continue
+            require_owner(self.owner_check)
             self.git("worktree", "remove", str(tree))
         return retained
+
+    def prepared_worktree(self, tree: Path, files: dict[str, bytes], base: str) -> None:
+        """Resume only exact plan bytes or untouched base files; preserve tampering."""
+        try:
+            staged = policy.changes(
+                self.git(
+                    "diff",
+                    "--cached",
+                    "--raw",
+                    "--abbrev=40",
+                    "--no-renames",
+                    "-z",
+                    base,
+                    cwd=tree,
+                )
+            )
+            working = policy.changes(
+                self.git(
+                    "diff", "--raw", "--abbrev=40", "--no-renames", "-z", base, cwd=tree
+                )
+            )
+        except PublicationError:
+            raise PublicationError("worktree_dirty") from None
+        others = self.git(
+            "ls-files", "--others", "--exclude-standard", "-z", cwd=tree
+        ).rstrip(b"\0")
+        untracked = {n.decode() for n in others.split(b"\0")} if others else set()
+        require(
+            set(staged) | set(working) | untracked <= files.keys(), "worktree_dirty"
+        )
+        before = self.snapshot(base)
+        for name, raw in files.items():
+            target = tree / name
+            require(
+                not any(p.is_symlink() for p in (target, *target.parents)),
+                "worktree_dirty",
+            )
+            actual = target.read_bytes() if target.is_file() else None
+            require(
+                actual == raw or name not in staged and actual == before.get(name),
+                "worktree_dirty",
+            )
+            if target.exists():
+                require(
+                    target.is_file() and not target.stat().st_mode & 0o111,
+                    "worktree_dirty",
+                )
+            if name in staged:
+                require(self.git("show", ":" + name, cwd=tree) == raw, "worktree_dirty")
 
     def commit(self, batch: dict[str, Any], revision: dict[str, Any]) -> None:
         require_owner(self.owner_check)
         files = self.plan(batch, revision["base"])
         require(bool(files), "unsafe_diff")
+        require_owner(self.owner_check)
         tree = self.worktree(batch)
         require(not tree.is_symlink(), "worktree_symlink")
         if not tree.exists():
+            require_owner(self.owner_check)
             tree.parent.mkdir(parents=True, exist_ok=True)
+            require_owner(self.owner_check)
             self.git("worktree", "add", "--detach", str(tree), revision["base"])
         require(
             self.git(
@@ -203,13 +326,14 @@ class Publisher:
             == self.git("rev-parse", "--path-format=absolute", "--git-common-dir"),
             "worktree_changed",
         )
-        require(
-            not self.git(
-                "status", "--porcelain", "--untracked-files=all", cwd=tree
-            ).strip(),
-            "worktree_dirty",
-        )
         head = self.git("rev-parse", "HEAD", cwd=tree).decode().strip()
+        dirty = self.git(
+            "status", "--porcelain", "--untracked-files=all", cwd=tree
+        ).strip()
+        if head == revision["base"]:
+            self.prepared_worktree(tree, files, revision["base"])
+        else:
+            require(not dirty, "worktree_dirty")
         if head == revision["base"]:
             for name, raw in files.items():
                 target = tree / name
@@ -221,11 +345,15 @@ class Publisher:
                     ),
                     "worktree_symlink",
                 )
+                require_owner(self.owner_check)
                 target.parent.mkdir(parents=True, exist_ok=True)
+                require_owner(self.owner_check)
                 target.write_bytes(raw)
             # Only the fully validated public file set is force-added; old main's
             # ignore rules may predate this new publication format.
+            require_owner(self.owner_check)
             self.git("add", "--force", "--", *sorted(files), cwd=tree)
+            require_owner(self.owner_check)
             self.git(
                 "commit",
                 "-m",
@@ -234,6 +362,7 @@ class Publisher:
             )
             head = self.git("rev-parse", "HEAD", cwd=tree).decode().strip()
         self.verify(batch, revision, head)
+        require_owner(self.owner_check)
         revision["head"] = head
         batch.update(stage="committed", state="pending", error=None)
         self.save()
@@ -281,6 +410,7 @@ class Publisher:
                 require_owner(self.owner_check)
                 batch.update(pr_create_attempted=True, stage="pr_create")
                 self.save()
+                require_owner(self.owner_check)
                 pr = self.github.create(
                     batch["branch"],
                     f"親判断記録: #{batch['parent']}",
@@ -335,7 +465,9 @@ class Publisher:
             record = payload["record"]
             state = current[record["id"]]
             if state["publication_status"] == "published" or (
-                state["publication_status"] == status and state["error"] == error
+                state["publication_status"] == status
+                and state["error"] == error
+                and state.get("publication_actor") == self.publication_actor
             ):
                 continue
             evidence = (
@@ -358,9 +490,11 @@ class Publisher:
                 evidence=evidence,
                 error=error,
                 publication_actor=self.publication_actor,
+                owner_check=self.owner_check,
             )
 
     def confirm(self, batch: dict[str, Any], pr: dict[str, Any]) -> dict[str, Any]:
+        self.publication_actor = self.batch_actor(batch)
         revision = batch["revisions"][-1]
         status = {r["id"]: r for r in self.journal.status()}
         # A completed publication already passed the full policy before its
@@ -455,25 +589,15 @@ class Publisher:
         Guard().check(result)
         return result
 
+    def owner_mismatch(self) -> dict[str, Any]:
+        """Report durable progress, excluding any mutation refused by save()."""
+        self.document = storage.read(self.path, self.journal.repo, self.journal.parent)
+        active = next(
+            (b for b in self.document["batches"] if b["state"] != "merged"), None
+        )
+        return self.view(active, error="log_owner_mismatch", saved_to_main=False)
+
     def _publish(self, *, retry: bool) -> dict[str, Any]:
-        # Preparation reuses the shared transformation; capture insertion order
-        # is dependency order. No ready projection is ever re-rendered.
-        for state in self.journal.status():
-            if self.record_ids is not None and state["id"] not in self.record_ids:
-                continue
-            if (
-                state["publication_status"] == "unprepared"
-                or retry
-                and state["publication_status"] == "blocked"
-            ):
-                require_owner(self.owner_check)
-                self.journal.prepare(
-                    state["id"],
-                    key="publication-prepare:" + new_id(),
-                    at=now(),
-                    retry=retry,
-                )
-        payloads = self.journal.public_payloads()
         active = next(
             (b for b in self.document["batches"] if b["state"] != "merged"), None
         )
@@ -505,25 +629,6 @@ class Publisher:
         )
         main = self.main()
         require_owner(self.owner_check)
-        if self.actor is not None:
-            self.publication_actor = self.journal.publication_request(
-                self.actor, at=now(), boundary=active["key"] if active else None
-            )
-            if self.publication_actor is not None:
-                request_id = self.publication_actor["request_id"]
-                if self.record_ids is not None:
-                    self.record_ids.add(request_id)
-                if (
-                    next(s for s in self.journal.status() if s["id"] == request_id)[
-                        "publication_status"
-                    ]
-                    == "unprepared"
-                ):
-                    require_owner(self.owner_check)
-                    self.journal.prepare(
-                        request_id, key="publication-prepare:" + new_id(), at=now()
-                    )
-                payloads = self.journal.public_payloads()
         status = {r["id"]: r for r in self.journal.status()}
         # Process death can fall between recording the observed merge and
         # appending all per-record publication facts. Reconcile that batch first.
@@ -535,6 +640,76 @@ class Publisher:
                 reconciled = self.confirm(batch, self.github.get(batch["pr_number"]))
                 if reconciled["state"] != "merged":
                     return reconciled
+        self.publication_actor = self.batch_actor(active) if active else None
+        if active and active["pr_number"] is not None:
+            # A lost response can leave a merged PR in a pending batch. Check
+            # that fixed publication before recording any fresh request too.
+            observed = self.github.get(active["pr_number"])
+            if observed.get("merged") is True:
+                reconciled = self.confirm(active, self.reconcile_pr(active))
+                if (
+                    reconciled["state"] == "merged"
+                    or active["stage"] != "readme_refresh_required"
+                ):
+                    return reconciled
+        # Reconcile completed work before deriving a new request from pending
+        # records. Its actor may already be published while dependents are not.
+        for state in self.journal.status():
+            if self.record_ids is not None and state["id"] not in self.record_ids:
+                continue
+            if (
+                state["publication_status"] == "unprepared"
+                or retry
+                and state["publication_status"] == "blocked"
+            ):
+                require_owner(self.owner_check)
+                self.journal.prepare(
+                    state["id"],
+                    key="publication-prepare:" + new_id(),
+                    at=now(),
+                    retry=retry,
+                    owner_check=self.owner_check,
+                )
+        if self.actor is not None and (
+            self.publication_actor is None
+            or self.request_actor(self.publication_actor) != self.actor
+        ):
+            self.publication_actor = self.journal.publication_request(
+                self.actor,
+                at=now(),
+                boundary=active["key"] if active else None,
+                owner_check=self.owner_check,
+            )
+        if self.publication_actor is not None:
+            request_id = self.publication_actor["request_id"]
+            if self.record_ids is not None:
+                self.record_ids.add(request_id)
+            if (
+                next(s for s in self.journal.status() if s["id"] == request_id)[
+                    "publication_status"
+                ]
+                == "unprepared"
+            ):
+                self.journal.prepare(
+                    request_id,
+                    key="publication-prepare:" + new_id(),
+                    at=now(),
+                    owner_check=self.owner_check,
+                )
+        payloads = self.journal.public_payloads()
+        if active is not None and self.publication_actor is not None:
+            published = {
+                r["id"]
+                for r in self.journal.status()
+                if r["publication_status"] == "published"
+            }
+            if any(p["record"]["id"] in published for p in active["payloads"]):
+                # A README repair preserves the original record publication.
+                # A successor's own request waits for the following batch.
+                self.publication_actor = self.batch_actor(active)
+            elif active.get("publication_actor") != self.publication_actor:
+                active["publication_actor"] = dict(self.publication_actor)
+                self.save()
         status = {r["id"]: r for r in self.journal.status()}
         if active is None:
             pending = [
@@ -568,6 +743,7 @@ class Publisher:
                 "diagnostic": None,
                 "merge_commit": None,
                 "superseded_prs": [],
+                "publication_actor": self.publication_actor,
             }
             self.document["batches"].append(active)
             self.save()
@@ -655,6 +831,7 @@ class Publisher:
             active.update(merge_attempted=True, stage="merge_attempted", error=None)
             active.pop("merge_http_status", None)
             self.save()
+            require_owner(self.owner_check)
             self.github.merge(active["pr_number"], revision["head"])
             active["merge_http_status"] = 200
             return self.confirm(active, self.github.get(active["pr_number"]))
@@ -743,7 +920,11 @@ class Publisher:
                 if code == "log_owner_mismatch":
                     # Ownership loss is not corrupt input. Preserve the last
                     # durable batch/journal for the next authorized publisher.
-                    return self.view(active, error=code, saved_to_main=False)
+                    return self.owner_mismatch()
+                try:
+                    require_owner(owner_check)
+                except PublicationError:
+                    return self.owner_mismatch()
                 if active:
                     if active.get("merge_attempted") and isinstance(
                         exc, subprocess.SubprocessError
@@ -777,10 +958,15 @@ class Publisher:
                         if isinstance(exc, PublicationError)
                         else str(exc),
                     )
-                    self.save()
-                    self.note(
-                        active,
-                        "pending" if transient else "blocked",
-                        error=None if transient else code,
-                    )
+                    try:
+                        self.save()
+                        self.note(
+                            active,
+                            "pending" if transient else "blocked",
+                            error=None if transient else code,
+                        )
+                    except PublicationError as bookkeeping_error:
+                        if str(bookkeeping_error) == "log_owner_mismatch":
+                            return self.owner_mismatch()
+                        raise
                 return self.view(active, error=code)

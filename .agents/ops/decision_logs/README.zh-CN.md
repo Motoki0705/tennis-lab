@@ -296,6 +296,13 @@ generation与目标担当快照，在prepare、commit、push、PR创建和merge�
 发布bookkeeping不生成新capture，此入口也不继续worker日志。dry-run不记录请求。
 自身父级的普通发布及release/handoff/supervisor路径保持原有行为。
 
+先核对已merge批次的逐条发布事实，再生成新的请求。private批次固定 `publication_actor`；
+旧批次复用已有发布事实中的担当，拒绝矛盾引用。即使请求本身已经published，确认重放也复用同一请求。
+其他父级继续未merge批次时记录其自身请求；确认已merge的发布时保留原担当。
+在实际git commit、批次保存和journal追加之前重新核对担当；PR/merge intent保存后、实际发送前也再次核对。
+中断worktree只有在更改或已stage文件与固定plan或未修改base内容一致时才能恢复。
+其他编辑保留并拒绝，不通过reset删除。
+
 `remaining_publications` 返回源父级的decision_log残项，包括registry中不存在的父级。
 父级 `status`、`decision-log-status` 和结束checkpoint的 `decision_resume_command` 在无人负责时
 显示此入口与 `RECOVERY_PARENT`，使用时替换为调用session当前负责的active父级编号。
