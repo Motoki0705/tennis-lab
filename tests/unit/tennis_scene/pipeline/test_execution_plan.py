@@ -166,6 +166,40 @@ def test_single_clip_api_keeps_references_and_never_reexecutes_completed_targets
     assert spec.store.lookups == {"first": 1, "second": 1}
 
 
+@pytest.mark.parametrize("initial_targets", [None, [("a", "second"), ("a", "separate")]])
+def test_failed_completion_is_recorded_once_and_does_not_block_other_clip(
+    tmp_path: Path, initial_targets: list[NodeKey] | None,
+) -> None:
+    clips = [clip(tmp_path, "a"), clip(tmp_path, "b", 7)]
+    plan = ExecutionPlan(clips)
+    executor = PlanExecutor(plan)
+    calls: list[str] = []
+    failure = ValueError("clip inputs changed before publication")
+
+    def publish(clip_id: str) -> None:
+        calls.append(clip_id)
+        if clip_id == "a":
+            raise failure
+
+    with pytest.raises(ValueError, match="inputs changed") as caught:
+        executor.run(targets=initial_targets, on_clip_complete=publish)
+    assert caught.value is failure
+    # This call used to retry A during the initial all-clip notification scan,
+    # so B's independent nodes could never execute.
+    executor.run(targets=[("b", "second"), ("b", "separate")], on_clip_complete=publish)
+    executor.run(on_clip_complete=publish)
+    assert calls == ["a", "b"]
+    assert executor.completion_attempts == {"a", "b"}
+    assert executor.completion_results["a"].status == "failed"
+    assert executor.completion_results["a"].error_type == "ValueError"
+    assert executor.completion_results["a"].error == str(failure)
+    assert executor.completion_results["b"].status == "succeeded"
+    assert executor.completion_results["b"].error is None
+    assert plan.clip_complete("a") and plan.clip_complete("b")
+    assert set(plan.statuses.values()) == {"executed"}
+    assert all(node.component.calls == 1 for spec in clips for node in spec.nodes)
+
+
 @pytest.mark.parametrize("source", ["execute", "load"])
 def test_corrupt_cached_or_loaded_artifact_fails_without_recalculation(tmp_path: Path, source: str) -> None:
     spec = clip(tmp_path)

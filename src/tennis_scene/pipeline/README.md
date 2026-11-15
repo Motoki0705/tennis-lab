@@ -41,6 +41,10 @@ cache/load判定は依存artifactが確定してから1回だけ行い、完了�
 `finalize_clip(clip_id)`は、そのclipの必要nodeが完了した時点でsceneをexportする。
 `run(on_clip_complete=callback)`はclipが完成した直後に1回通知するため、
 callbackから最終化とdataset公開を呼び、後続clipの処理を待たずに公開できる。
+通知はcallbackを呼ぶ前に`completion_attempts`へ記録し、成功・失敗とエラー情報を
+`completion_results[clip_id]`（`ClipCompletionResult`）へ保存する。
+callbackの例外はそのまま呼出し側へ伝わる。同じexecutorを再開しても、失敗したcallbackは再通知しない。
+呼出し側はnode完了と公開成否を分けて読み、失敗clipの処理と独立した他clipの再開を判断する。
 他clipの完了を待たず、失敗・未処理のclipは最終化しない。モデルの共有・寿命管理やbatch化は実行計画の責務に含めない。
 既存の`ComponentRunner(nodes, store)`・`run(targets=...)`・`output(name)`は1clipの同じ計画へ委譲する。
 

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from src.tennis_scene.pipeline.execution_plan import (
     ClipExecution,
@@ -21,24 +22,47 @@ from src.tennis_scene.schema import SceneResult
 ReadySelector = Callable[[tuple[NodeKey, ...]], NodeKey]
 
 
+@dataclass(frozen=True)
+class ClipCompletionResult:
+    """Callback outcome, separate from completion of the clip's nodes."""
+
+    status: Literal["succeeded", "failed"]
+    error: str | None = None
+    error_type: str | None = None
+
+
 class PlanExecutor:
     def __init__(self, plan: ExecutionPlan, *, select_ready: ReadySelector | None = None) -> None:
         self.plan = plan
         self.select_ready = select_ready
-        self._notified_clips: set[str] = set()
+        self._completion_attempts: set[str] = set()
+        self.completion_results: dict[str, ClipCompletionResult] = {}
+
+    @property
+    def completion_attempts(self) -> frozenset[str]:
+        return frozenset(self._completion_attempts)
 
     def run(self, *, targets: Sequence[NodeKey] | None = None,
             on_clip_complete: Callable[[str], None] | None = None) -> dict[NodeKey, ArtifactRef]:
+        references: dict[NodeKey, ArtifactRef] = self.plan.references
         required = self.plan.required if targets is None else self.plan.target_nodes(targets)
         if not required <= self.plan.required:
             raise ValueError("Targets are outside the execution plan")
         def notify(clip_id: str) -> None:
-            if on_clip_complete is not None and clip_id not in self._notified_clips and self.plan.clip_complete(clip_id):
-                on_clip_complete(clip_id)
-                self._notified_clips.add(clip_id)
+            if on_clip_complete is not None and clip_id not in self._completion_attempts and self.plan.clip_complete(clip_id):
+                # A failed or interrupted publication must not be retried when
+                # the caller resumes this executor for an independent clip.
+                self._completion_attempts.add(clip_id)
+                try:
+                    on_clip_complete(clip_id)
+                except BaseException as error:
+                    self.completion_results[clip_id] = ClipCompletionResult("failed", str(error), type(error).__name__)
+                    raise
+                else:
+                    self.completion_results[clip_id] = ClipCompletionResult("succeeded")
         for clip_id in self.plan.clips:
             notify(clip_id)
-        while required - self.plan.references.keys():
+        while required - references.keys():
             ready = self.plan.ready(required)
             if not ready:
                 raise ValueError("Execution plan is blocked by a failed component")
@@ -47,7 +71,7 @@ class PlanExecutor:
                 raise ValueError(f"Selected component is not ready: {key}")
             self.execute(key)
             notify(key[0])
-        return self.plan.references
+        return references
 
     def execute(self, key: NodeKey) -> ArtifactRef:
         """Run or load one ready node; completed nodes are never reconsidered."""
