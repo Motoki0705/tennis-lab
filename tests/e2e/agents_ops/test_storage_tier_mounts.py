@@ -44,11 +44,13 @@ def private_mount_namespace(tmp_path_factory: pytest.TempPathFactory) -> None:
 
 SCRIPT = r"""
 import json, os, subprocess, sys, time
+from contextlib import contextmanager
 from pathlib import Path
 import storage_tier.engine as engine_module
 import storage_tier.layout as layout_module
+import storage_tier.references as references_module
 from storage_tier.engine import Engine
-from storage_tier.filesystem import read_bytes
+from storage_tier.filesystem import StorageError, read_bytes
 from storage_tier.layout import Config, Unit
 from storage_tier.usage import Inspector
 
@@ -76,12 +78,21 @@ if guard == 'identity-only':
     # Independent defense: bypass path-boundary checks only in this child.
     engine_module.real_directory = lambda *args: None
     layout_module.real_directory = lambda *args: None
+    @contextmanager
+    def no_mount_boundary(path, base):
+        fd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOATIME | os.O_NOFOLLOW)
+        try:
+            yield fd, 0
+        finally:
+            os.close(fd)
+    references_module.real_directory_handle = no_mount_boundary
 engine = Engine(config, inspector=Inspector(proc), mount_check=lambda config: None)
 try:
     code, report = engine.run('cycle' if tier == 'D' else 'index', ['data/task/v1'], dry_run=False)
-except Exception as exc:
-    _, scan = engine.run('scan', [], dry_run=True)
-    code, report = 1, {'error': str(exc), 'layout_errors': scan['layout_errors']}
+except StorageError as exc:
+    # Preflight may reject before unit dispatch; a second scan must not be
+    # required to report that rejection, since it has the same safety gate.
+    code, report = 1, {'error': str(exc)}
 print(json.dumps({
     'code': code, 'report': report,
     'checkpoint_survived': payload.exists() and read_bytes(payload) == b'checkpoint must survive',
