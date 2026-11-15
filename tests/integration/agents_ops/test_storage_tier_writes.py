@@ -197,9 +197,17 @@ def test_partial_atomic_json_preserves_committed_proof_and_recovers(
     assert partial[0].read_bytes() == raw
 
 
-@pytest.mark.parametrize("command", ["mirror", "hydrate"])
+@pytest.mark.parametrize(
+    "command,chunk",
+    [
+        pytest.param("mirror", 1, id="mirror"),
+        pytest.param("hydrate", 1, id="hydrate"),
+        pytest.param("mirror", 2, id="mirror-next"),
+        pytest.param("hydrate", 2, id="hydrate-next"),
+    ],
+)
 def test_multichunk_partial_copy_is_preserved_and_daily_cycle_recovers(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, command: str, chunk: int
 ) -> None:
     from tests.support.agents_ops.storage_crashes import finish_recovery, prepare
 
@@ -222,20 +230,34 @@ def test_multichunk_partial_copy_is_preserved_and_daily_cycle_recovers(
         action,
         tmp_path / "partial-copy.jsonl",
         stop_when=lambda name: (
-            name.startswith("write:stream-1:") and name.endswith("/a.bin")
+            name.startswith(f"write:stream-{chunk}:") and name.endswith("/a.bin")
         ),
     )
     assert code == 91, trace
     base = lab.config.mirror if command == "mirror" else lab.config.repo
     copies = list((base / unit.path).parent.glob(".storage-tier-*/a.bin"))
     assert len(copies) == 1
-    assert copies[0].read_bytes() == data[: 8 * 1024 * 1024]
+    assert copies[0].read_bytes() == data[: chunk * 8 * 1024 * 1024]
+    inventory = json.loads(
+        (
+            Path(__file__).resolve().parents[2]
+            / "support/agents_ops/fixtures/storage-crash-boundaries.json"
+        ).read_text()
+    )
+    expected = inventory["mirror-new" if command == "mirror" else "hydrate"]
+    first = next(
+        i
+        for i, value in enumerate(expected)
+        if value.startswith("write:stream-1:") and value.endswith("/a.bin")
+    )
+    expected.insert(first + 1, expected[first].replace("stream-1", "stream-2"))
+    assert trace == expected[: first + chunk], trace
     inode = copies[0].stat().st_dev, copies[0].stat().st_ino
     finish_recovery(lab, unit)
     archives = list((base / ".storage-tier/recovered-publications").rglob("a.bin"))
     assert any(
         (p.stat().st_dev, p.stat().st_ino) == inode
-        and p.read_bytes() == data[: 8 * 1024 * 1024]
+        and p.read_bytes() == data[: chunk * 8 * 1024 * 1024]
         for p in archives
     )
 
