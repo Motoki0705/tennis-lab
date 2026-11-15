@@ -401,20 +401,24 @@ def observe(
 
 
 def require(
-    session: ParentSession, target: int | None = None, *, fresh: bool = False
+    session: ParentSession,
+    target: int | None = None,
+    *,
+    fresh: bool = False,
+    body: str | None = None,
+    history: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any] | None:
     from .execution import ExecutionBasisStale
 
     n = target or session.parent
     index = session.gh.improvement_extractions(session.store)
     if not fresh:
-        raw = session.gh.issue(n)
-        if (
-            parse_source(raw.get("body") or "") is None
-            and bound_extraction(raw.get("body") or "", n, index) is None
-        ):
+        if body is None:
+            body = session.gh.issue(n).get("body") or ""
+        if parse_source(body) is None and bound_extraction(body, n, index) is None:
             if n == session.parent and any(
-                e.get("improvement_approval") for e in session.history()
+                e.get("improvement_approval")
+                for e in (session.history() if history is None else history)
             ):
                 raise ExecutionBasisStale(
                     "improvement approval source marker is missing"

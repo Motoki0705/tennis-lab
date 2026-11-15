@@ -100,7 +100,7 @@ def _collect(
     gh: GitHub, store: Store, root: Path, seeds: Iterable[int] | None = None
 ) -> dict[str, Any]:
     """Caller holds Store.locked(). Every page/failure is significant."""
-    login = nonempty(object_value(gh.get("user")).get("login"), "gh login")
+    login = gh.authenticated_login()
     extractions = gh.improvement_extractions(store)
     with gh.fresh_reads():
         enabled_since = read_enabled_since(gh)
@@ -491,6 +491,11 @@ class SnapshotGitHub(GitHub):
     def __init__(self, snapshot: dict[str, Any]) -> None:
         self.snapshot = snapshot
         self.repo = snapshot["repo"]
+
+    def authenticated_login(self) -> str:
+        # Identity belongs to the frozen observation too. This adapter has no
+        # transport/authentication context and must never resolve ambient auth.
+        return nonempty(self.snapshot.get("publisher"), "gh login")
 
     def get(self, endpoint: str, *, missing_parent: bool = False) -> object:
         if endpoint == "user":

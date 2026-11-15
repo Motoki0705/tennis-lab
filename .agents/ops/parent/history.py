@@ -51,6 +51,7 @@ class History:
     diagnostics: tuple[Diagnostic, ...]
     parent_comments: list[dict[str, Any]]
     _comments: list[dict[str, Any]]
+    evidence_issue: int | None
 
     def require_valid(self) -> None:
         if self.diagnostics:
@@ -293,6 +294,7 @@ def _parse_history(
         tuple(diagnostics),
         [dict(c) for c in parent_comments],
         sorted(comments, key=lambda c: c["id"]),
+        evidence_issue,
     )
 
 
