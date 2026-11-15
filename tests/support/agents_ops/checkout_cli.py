@@ -102,6 +102,8 @@ def install_cli(repo: Path, entry: Entry = PARENT, project: str = PROJECT_WAIT) 
     """Copy the actual bootstrap and its package initializers, not a second CLI."""
     ops = repo / ".agents/ops"
     sources = ["lib/checkout_lock.py", entry.source]
+    if entry.dependency.startswith("review/"):
+        sources.append("lib/ops_review/__init__.py")
     if entry.source.endswith(".sh"):
         sources.append("lib/agent_runtime.py")
     for relative in [*sources, entry.dependency]:

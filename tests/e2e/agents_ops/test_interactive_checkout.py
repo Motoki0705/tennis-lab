@@ -75,6 +75,8 @@ def test_all_entries_contain_only_checkout_bootstrap(entry: Entry) -> None:
         .replace("ops-report/", "")
         .replace("/", ".")
     )
+    if expected.startswith("review."):
+        expected = "lib.ops_review." + expected.removeprefix("review.")
     assert entry_calls[0].args[0].value == expected
     for option in entry_calls[0].keywords:
         ast.literal_eval(option.value)

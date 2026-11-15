@@ -23,10 +23,13 @@ is_evidence_issue, require_work_issue = (
 )
 
 
+@pytest.mark.parametrize("foreign", ["namespace", "package"])
 def test_preloaded_review_namespace_keeps_ops_history_reader_available(
-    tmp_path: Path,
+    tmp_path: Path, foreign: str
 ) -> None:
     (tmp_path / "review").mkdir()
+    if foreign == "package":
+        (tmp_path / "review/__init__.py").write_text('"""Another domain review package."""\n')
     driver = """
 import sys
 sys.path.insert(0, sys.argv[1])
@@ -37,6 +40,7 @@ comment = {'id': 1, 'user': {'login': 'publisher'}, 'body': '<!-- parent-review:
 try:
     parse_history('o/r', 1, 'publisher', [comment], [], evidence_issue=None)
 except HistoryValidationError:
+    assert sys.modules['review'] is review
     print('invalid-owned-record')
 else:
     raise AssertionError('invalid review record was accepted')

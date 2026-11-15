@@ -108,15 +108,15 @@ Gitメタデータの読取とlock操作に留めるための判断である。
 |---|---|---|
 | `python -m parent` | `parent.cli_impl` | worker待機・補足待ち・公開・復旧を含む全体。`improvement-expire` は有限launcherも必須 |
 | `python -m parent.cli` | `parent.cli_impl` | 同上 |
-| `review/parent_review.py` | `review.parent_review_impl` | レビュー・復旧・公開の全体 |
-| `review/merge_gate.py` | `review.merge_gate_impl` | gate取得・順次mergeの全体 |
+| `review/parent_review.py` | `lib.ops_review.parent_review_impl` | レビュー・復旧・公開の全体 |
+| `review/merge_gate.py` | `lib.ops_review.merge_gate_impl` | gate取得・順次mergeの全体 |
 | `lib/agent_exec.sh` | `lib/agent_runtime.py` 経由 | runner終了まで。監視・出力解析・回収中も保護 |
 | `lib/agent_runtime.py` | `lib.agent_runtime_impl` | 同上。直接file起動も保護 |
 | `python -m explain_html` | `explain_html.cli_impl` | start/serveを含む全体。背景serveも自身で取得 |
 | `python -m ci_watch` | `ci_watch.cli` | GitHubのページ取得・複数対象の収集が終わるまで |
 | `python -m project_progress` | `project_progress.cli_impl` | 同上 |
 | `python -m issue_supplement` | `issue_supplement.cli` | 生成・検証・取得serverを含む全体 |
-| `python -m review.evaluation` | `review.evaluation.cli_impl` | 比較・検証の全体 |
+| `python -m review.evaluation` | `lib.ops_review.evaluation.cli_impl` | 比較・検証の全体 |
 | `python -m lib.review_tools.mcp_server` | `lib.review_tools.mcp_server_impl` | stdio取得serverの終了まで |
 | `python -m lib.review_tools.review_server` | `lib.review_tools.review_server_impl` | 同上 |
 | `python -m opsreport.mcp_server` | `opsreport.mcp_server_impl` | stdio取得serverの終了まで |
@@ -149,6 +149,9 @@ boardの投稿/status、worker_status、herdr_labels、issuesの短い管理CLI�
 取得中に終了したPIDは除き、権限不足等の詳細取得失敗は `inspection_error` として明示する。
 
 ### registryと保守呼出のlock順
+
+reviewの本体・親の内部APIは `lib.ops_review` の固有import名から既存のreviewソースを読む。
+他モデルの同名 `review` package/namespaceが先に読み込まれていても、それを置換しない。
 
 parent/dispatcherの `Store.locked()` とworktree expiryのjournal回復は、必ず
 **checkout → registry** の順に取得する。直接Python APIやworktreeからの呼出も、transaction中は

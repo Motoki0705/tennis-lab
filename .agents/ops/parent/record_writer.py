@@ -155,7 +155,7 @@ def url(session: ParentSession, comment: dict[str, Any]) -> str:
 
 def replace_pending(session: ParentSession, comment: dict[str, Any], body: str) -> None:
     """Journal the sole mutable record transition before its idempotent PATCH."""
-    from review.parent_review_policy import records
+    from lib.ops_review.parent_review_policy import records
 
     session.public(body)
     before = records([comment], session.login)

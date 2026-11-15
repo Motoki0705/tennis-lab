@@ -37,7 +37,8 @@ review/resolve入口はmerge・ラベル操作・子への修正委任を行わ�
 ## 実行
 
 file名と起動引数は従来どおり。入口には実処理を置かず、lock取得後に `_impl` moduleをimportする。
-内部Python APIは `_impl` を参照する。保護範囲と待機・拒否の契約は
+内部Python APIは `lib.ops_review` 経由の `_impl` / policyを参照し、他モデルのreview packageと区別する。
+保護範囲と待機・拒否の契約は
 [共通checkout lock](../lib/README.md#対話cliの保護)を参照。
 
 review・取得・公開・復旧・明示確認とmerge gateの観測は

@@ -8,5 +8,5 @@ from lib.checkout_lock import run_cli  # noqa: E402
 
 if __name__ == "__main__":
     run_cli(
-        "review.parent_review_impl",
+        "lib.ops_review.parent_review_impl",
     )

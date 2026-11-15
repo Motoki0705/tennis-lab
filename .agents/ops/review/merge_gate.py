@@ -8,5 +8,5 @@ from lib.checkout_lock import run_cli  # noqa: E402
 
 if __name__ == "__main__":
     run_cli(
-        "review.merge_gate_impl",
+        "lib.ops_review.merge_gate_impl",
     )
