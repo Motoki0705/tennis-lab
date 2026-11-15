@@ -1,7 +1,6 @@
 ---
 id: search-wasb-comparison-depth2
 type: citation_search
-status: interrupted
 created_at: '2026-11-14T13:09:45.637972+00:00'
 root_id: cite-baef928f0aefd5a6
 roles:
@@ -11,10 +10,232 @@ generations:
 - depth: 0
   paper_ids:
   - cite-baef928f0aefd5a6
+  expanded_ids:
+  - cite-baef928f0aefd5a6
+- depth: 1
+  paper_ids:
+  - cite-2f34272a6b8ccd3d
+  - cite-63e5c3654e97f114
+  - cite-aece796df0c08e14
+  - cite-bee887c491b4ab99
+  - cite-e660a594e07339d5
+  - cite-e95495299d83d587
+  expanded_ids:
+  - cite-2f34272a6b8ccd3d
+  - cite-63e5c3654e97f114
+  - cite-aece796df0c08e14
+  - cite-bee887c491b4ab99
+  - cite-e660a594e07339d5
+  - cite-e95495299d83d587
+- depth: 2
+  paper_ids:
+  - cite-26aaef7c634ef283
+  - cite-299f0bb4f722c9aa
+  - cite-8f0c4c4fb0a47be0
+  - cite-df479f515d5be1b5
   expanded_ids: []
-issues: []
+issues:
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-10
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-11
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-17
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-19
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-2
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-24
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-25
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-27
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-3
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-32
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-33
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-34
+- paper_id: cite-2f34272a6b8ccd3d
+  ref_id: ref-35
+- paper_id: cite-63e5c3654e97f114
+  ref_id: null
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-12
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-16
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-19
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-2
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-21
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-23
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-26
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-3
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-5
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-6
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-7
+- paper_id: cite-aece796df0c08e14
+  ref_id: ref-8
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-1
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-103
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-104
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-105
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-108
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-109
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-11
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-113
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-12
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-14
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-21
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-24
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-30
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-39
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-4
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-44
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-46
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-49
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-5
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-51
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-56
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-57
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-60
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-61
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-63
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-64
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-65
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-68
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-71
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-72
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-74
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-76
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-78
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-82
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-83
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-84
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-96
+- paper_id: cite-baef928f0aefd5a6
+  ref_id: ref-97
+- paper_id: cite-bee887c491b4ab99
+  ref_id: null
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-1
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-11
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-12
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-13
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-18
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-20
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-21
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-22
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-23
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-24
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-26
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-28
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-3
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-31
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-32
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-36
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-38
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-4
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-43
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-45
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-6
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-7
+- paper_id: cite-e660a594e07339d5
+  ref_id: ref-8
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-1
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-10
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-16
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-18
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-19
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-25
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-28
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-4
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-6
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-7
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-8
+- paper_id: cite-e95495299d83d587
+  ref_id: ref-9
 schema_version: 1
-stop_reason: OpenAlex HTTP_429; retries_exhausted (4 attempts); paper=cite-baef928f0aefd5a6
 ---
 
 Historical reports below preserve the original measurements. Their earlier
@@ -276,3 +497,99 @@ generation is depth 0: paper_ids = [cite-baef928f0aefd5a6], expanded_ids = [].
 Later generations were not reached. The depth-1 CLI was not separately invoked
 after this failure because it shares the same incomplete root. Completion and
 the remaining 114 lookups are still unverified.
+
+Attempt report (seconds are for this invocation):
+
+```json
+{
+  "search_id": "search-wasb-comparison-depth2",
+  "elapsed_seconds": 162.39332983500026,
+  "agy_calls": 0,
+  "newly_read": 0,
+  "reused": 7,
+  "read_papers": 5,
+  "fetch_failed": 2,
+  "unresolved": 65,
+  "unclassifiable": 38,
+  "known_pending": 0,
+  "status": "complete",
+  "pending_references": 0,
+  "unverified_references": 0,
+  "identified_papers": [
+    "cite-2f34272a6b8ccd3d",
+    "cite-baef928f0aefd5a6"
+  ],
+  "refreshed_fetch_failures": []
+}
+```
+
+Attempt report (seconds are for this invocation):
+
+```json
+{
+  "search_id": "search-wasb-comparison-depth2",
+  "elapsed_seconds": 1.9769280709997474,
+  "agy_calls": 0,
+  "newly_read": 0,
+  "reused": 7,
+  "read_papers": 5,
+  "fetch_failed": 2,
+  "unresolved": 65,
+  "unclassifiable": 38,
+  "known_pending": 0,
+  "status": "complete",
+  "pending_references": 0,
+  "unverified_references": 0,
+  "identified_papers": [],
+  "refreshed_fetch_failures": []
+}
+```
+
+Authenticated resume evidence (2026-11-15):
+
+The same root arXiv:2311.05237v1, role comparison, maximum depth 2 and
+search ID were resumed at 10:40:34 JST. OpenAlex queries used an authenticated
+API key under the recorded human approval. No contact email was used.
+
+- Depth-2 invocation: 164.839 seconds including startup, 162.393 seconds in the
+  explorer; exit 0, complete. Five completed readings and two cached full-text
+  failures were reused (seven records). Newly read papers and agy calls: both 0.
+- Depth-1 invocation: 4.484 seconds including startup; exit 0, complete. It
+  reused the root reading, made no agy/OpenAlex call, and did not expand depth 1.
+- Cached depth-2 verification: 4.467 seconds including startup; exit 0, complete.
+  It made no agy/OpenAlex call; every paper document was byte-identical to the
+  completed depth-2 result. The three invocations plus snapshots took 176.586
+  seconds in total, within the six-hour limit.
+- All five pre-existing readings retained their title, year, authors, source,
+  summary, citation rows, roles, decision statuses and evidence. Only reference
+  identities/reasons were repaired for WASB and MonoTrack. Ten newly identified
+  reference targets were added as not_requested documents; no PDF was fetched.
+
+| Reference status | Before authenticated resume | After |
+|---|---:|---:|
+| Resolved | 103 | 190 |
+| Unresolved | 38 | 65 |
+| Pending | 36 | 0 |
+| Unverified | 78 | 0 |
+| Unclassifiable role | 38 | 38 |
+
+All 36 pending rows were queried: 12 became resolved; 24 became unresolved
+(year_mismatch_or_missing 20, no_title_match 2, ambiguous 2). All 78 unverified
+rows were checked: 75 became resolved; three became unresolved (no_title_match 1,
+author_mismatch_or_missing 2). No transient lookup failure was finalized as
+unresolved. The final 65 unresolved rows comprise year_mismatch_or_missing 47,
+no_title_match 12, author_mismatch_or_missing 4 and ambiguous 2.
+
+The completed depth-2 scope has five read papers, two cached full-text failures,
+255 reference rows and four depth-2 targets. Depth-2 targets are leaves, so they
+are not read. paper_ids and expanded_ids for each generation are authoritative
+in this document's frontmatter. Depth 0 has one paper/one expanded; depth 1 has
+six/six; depth 2 has four/zero. The depth-1 search has one/one then six/zero.
+
+Transport observation counted 113 successful query requests and 36 singleton
+requests (35 successful, one definitive HTTP 404), with no retry or rate-limit
+error. Queries completed their cursors; the largest result set contained 29 works.
+At 10 credits per search and free singleton lookups, estimated total usage is
+1,130 OpenAlex credits, based on the [published operation costs](https://help.openalex.org/access/example-costs/).
+Cached verification and depth 1 made zero requests. This is an estimate from
+request counts, not an account-balance audit.

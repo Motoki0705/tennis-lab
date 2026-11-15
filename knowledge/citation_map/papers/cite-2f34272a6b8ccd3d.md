@@ -21,14 +21,14 @@ references:
   citation: '[1] Yousset I Abdel-Aziz, HM Karara, and Michael Hauck. Direct linear
     transformation from comparator coordinates into object space coordinates in close-range
     photogrammetry. Photogrammetric engineering & remote sensing, 81(2):103–107, 2015.'
-  target_id: null
-  identification_status: unverified
+  target_id: cite-ee694b10d11ddffa
+  identification_status: resolved
   roles:
   - component
   decision_status: classified
   reason: '3D軌道再構成において、推定した3D軌道を画像空間の2D軌道へ投影しカメラパラメータを得るためのDirect Linear Transform（DLT）手法として採用されている。
 
-    Identification: uniqueness unverified; legacy top-5 search; previous target=cite-ee694b10d11ddffa'
+    Identification: OpenAlex referenced_works: unique_title_year_first_author_match'
   evidence:
   - Section 4.5 (Estimating the initial conditions), anchor S4.SS5.SSS0.Px2.p1.1
   - bib [1] (anchor bib.bib1)
