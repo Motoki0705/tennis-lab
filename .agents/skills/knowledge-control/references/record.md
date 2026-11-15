@@ -122,6 +122,103 @@ Add the paper ID to relevant nodes' `papers`; backlinks are derived. A
 retrospective citation does not imply that a historical run reproduced the
 paper. Keep temporary full-text downloads outside the versioned library.
 
+## Citation exploration
+
+Run the independent exploration CLI with one or more roles and a maximum depth.
+It reuses the [storage contract](../../../../knowledge/README.md#引用探索文書の仕様)
+and never registers Papers automatically. Depth 0 records only the root; depth 1
+reads the root's bibliography; depth 2 also reads its selected-role targets.
+
+```bash
+$PY "$SKILL/kg_explore.py" https://arxiv.org/abs/2311.05237v1 --role comparison --max-depth 1 --search-id search-wasb-comparison-depth1
+$PY "$SKILL/kg_explore.py" https://arxiv.org/abs/2311.05237v1 --role comparison --max-depth 2 --search-id search-wasb-comparison-depth2
+```
+
+Each paper is read serially by `gemini-4-hydrogen-high` through `agy_headless.py`.
+The citation profile's version/model pins are in `agents.conf`; issue supplement
+defaults are independent. `--agy` defaults to `~/.local/bin/agy`. Its version and
+effective model must match the citation profile. See the
+[read-only execution contract](../../../ops/lib/README.md#agyの共通呼び出し部品)
+for the user-settings guard. Use a dedicated authenticated agy user profile with
+`toolPermission: request-review`, no allow rules or trusted workspace, and only
+the supported keys. A normal interactive profile with broader permissions fails
+explicitly; the CLI does not rewrite it. Raw agy evidence goes outside knowledge
+under `$XDG_STATE_HOME/tennis-lab-citations/<search-id>` (or `--run-dir`).
+When selecting a dedicated HOME, pass the original executable's absolute path
+with `--agy`; its default is evaluated in the selected user profile.
+
+Public article HTML is preferred for arXiv. A landing/abstract page alone is not
+full text. PDF downloads and extracted input exist only in temporary directories;
+PDF reading requires Poppler's `pdftotext` on PATH. A PDF without extractable text
+fails explicitly; no implicit OCR is attempted. Failure reasons record attempted
+URLs and OpenAlex's best OA/other location PDFs, including absent PDF locations.
+Only primary locators, arXiv ID URLs, OpenAlex work locations and a primary
+page's citation_pdf_url metadata are download candidates. Ordinary PDF anchors
+(references, related papers and supplements) are ignored. Known titles must match
+HTML title metadata/headings or the PDF title block before its abstract/body;
+supplementary/appendix documents are rejected. Unconfirmed identity is a full-text
+failure, never an alternative paper read under the original ID.
+Reference identities use printed external IDs first. Otherwise, the source's
+OpenAlex `referenced_works` supply candidates, compared by normalized title,
+publication year and first-author surname. Multiple matches, missing corroboration
+or a mismatch stay unresolved with a specific reason. An unindexed source or empty
+reference index uses global search, under the same conservative matching rules.
+That lookup searches the title field when a parsed title exists. It follows
+[cursor paging](https://help.openalex.org/api/paging/) to the end, checking total
+count consistency, unique work IDs and cursor progress before returning any
+candidate set. A failed later request remains pending. Incomplete/inconsistent
+coverage is separately recorded as unverified and stops expansion; it is retried
+on resume. Old results from the top-five search are invalidated to unverified,
+including formerly resolved rows, with their prior target in the reason. Their
+original reading is preserved, and archived lookup inputs can be recovered.
+
+OpenAlex calls are serial, paced at least one second apart, and reuse successful
+responses within an invocation. HTTP 429/5xx, communication failures and invalid
+responses have at most four attempts, with exponential backoff (2/4/8 seconds)
+and `Retry-After` (seconds or HTTP date). A required delay above 60 seconds or the
+remaining execution budget stops immediately instead of retrying too early.
+Server cooldowns are saved privately under `--run-dir` across restarts, separately
+for query and singleton endpoints. `OPENALEX_EMAIL` and `OPENALEX_API_KEY` are used
+when set; neither their values nor credential-bearing URLs enter public evidence.
+Exhaustion is an error: affected references remain pending, never unresolved.
+
+Completed readings, original reference lookup inputs, roles and evidence are
+checkpointed in paper documents before identity lookup. Successful rows survive
+interruption; pending rows resume without another model call. A validated model
+result is also checkpointed privately, keyed by the exact input, model/version,
+instructions, and schema. Repeating the same
+`--search-id` resumes an interrupted run only when its conditions match; omitting
+it creates a new search document while reusing the paper cache. Unselected edges
+and every bibliography row remain available for display and adoption. Full-text
+failures are cached as failures. Model errors, unavailable models, quota/rate
+limits, invalid JSON, and mismatched model/version stop the command with a nonzero
+exit and an interrupted search; they never select another model.
+
+Old documents that finalized `reference lookup failed` as unresolved are migrated
+to pending. For each affected source, all unresolved rows are reidentified;
+successful identities and classifications are retained. Old lookup inputs can be
+recovered from matching validated readings in the explicitly selected `--run-dir`
+(including subdirectories); absent archives use the original citation text.
+All affected search documents are rebuilt. For the same saved search, already-read
+sources and old full-text failures from its previous expansion scope are repaired
+before retrying its root. Thus a root search quota does not block independent
+repairs that need only source/target ID requests. Repaired edges remain in paper
+documents even if an incomplete root temporarily truncates the search generations.
+
+`--agy-timeout` defaults to 1800 seconds per paper. `--time-limit` is the wall-time
+budget for this invocation, defaults to 28800 seconds, and cannot exceed 8 hours.
+For a multi-attempt campaign, subtract elapsed attempts from the agreed campaign
+budget and pass the remainder. There is no paper-count limit or parallel option.
+The JSON report and search body record time, actual model calls, new/cached reads,
+unique read papers, fetch failures, unresolved/unclassifiable rows, pending
+references, repaired document IDs, and the known pending-paper count (a lower
+bound until all intermediate bibliographies are read). Unverified-reference counts
+are separate from pending and confirmed unresolved counts. Counts follow all known
+selected-role edges within the depth limit, including cached sources beyond an
+incomplete root. Counting those sources does not expand or read them ahead.
+The same store rejects concurrent CLI writers. Validate the resulting library
+with `kg_validate.py` before committing it.
+
 ## Finish the draft
 
 Replace scaffold comments with findings; record actual config/metrics and attach
