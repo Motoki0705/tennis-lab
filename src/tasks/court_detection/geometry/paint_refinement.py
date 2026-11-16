@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -11,6 +12,7 @@ from scipy.optimize import least_squares
 from .homography import court_template_xy
 from .hybrid_homography import project_candidate
 from .line_evidence import FloatArray
+from .paint_correspondence import court_consensus, line_errors
 from .paint_observations import (
     PAINT_NAMES,
     PaintConfig,
@@ -105,19 +107,31 @@ def _uncertainty(matrix: FloatArray, lines: tuple[PaintLine, ...], chart: _Chart
     base = project_candidate(matrix, world)
     assert base is not None
     changes: list[float] = []
+    change_names: list[str] = []
+    essential: list[str] = []
     for removed in usable:
         reduced = tuple(line for line in lines if line.index != removed.index)
+        if config.version == "semantic_consensus_v2":
+            kept = jacobian[labels != removed.index]
+            spectrum = np.linalg.svd(kept, compute_uv=False)
+            if len(spectrum) < 8 or spectrum[-1] <= spectrum[0] / config.max_normalized_condition:
+                # Removing an essential measurement destroys identifiability;
+                # the resulting arbitrary H is not measured influence. The
+                # intact covariance still measures extrapolation uncertainty.
+                essential.append(PAINT_NAMES[removed.index])
+                continue
         alternative, _ = _fit(matrix, reduced, chart, config)
         if alternative is None:
             return {"stability_status": "unconstrained_leave_line_out", "normalized_condition": condition,
                     "projection_std_px": std.tolist(), "removed_line": PAINT_NAMES[removed.index]}
         projection = project_candidate(alternative, world)
         assert projection is not None
+        change_names.append(PAINT_NAMES[removed.index])
         changes.append(float(np.max(np.linalg.norm(projection[visible] - base[visible], axis=1))))
     return {"stability_status": "ok", "normalized_condition": condition, "projection_std_px": std.tolist(),
             "max_visible_projection_std_px": float(std[visible].max()), "max_all_projection_std_px": float(std.max()),
-            "leave_line_out_max_px": dict(zip((PAINT_NAMES[line.index] for line in usable), changes, strict=True)),
-            "max_leave_line_out_px": max(changes)}
+            "leave_line_out_max_px": dict(zip(change_names, changes, strict=True)),
+            "essential_lines": essential, "max_leave_line_out_px": max(changes, default=0.)}
 
 
 def _semantic_alternatives(matrix: FloatArray, coarse: tuple[PaintLine, ...], fine: tuple[PaintLine, ...],
@@ -147,8 +161,8 @@ def refine_paint(image: NDArray[np.uint8], initial: FloatArray | None,
                   config: PaintConfig = DEFAULT_PAINT_CONFIG) -> PaintResult:
     """Coarse/fine stripe fitting; missing support and ambiguity are failures.
 
-    Every initially measured line remains required. The final H is optimized on
-    exactly the reported lines. Rejected initial/fitted H are diagnostics only.
+    Only semantically confirmed initial lines are mandatory in v2. Every raw
+    stripe and its disposition remains diagnostic. No rejected H is published.
     """
     if image.dtype != np.uint8 or image.ndim != 3 or image.shape[-1] != 3 or min(image.shape[:2]) < 2:
         raise ValueError("Paint refinement requires uint8 RGB")
@@ -168,15 +182,39 @@ def refine_paint(image: NDArray[np.uint8], initial: FloatArray | None,
     assert initial is not None
     brightness = image.min(axis=2).astype(np.float64)
     coarse = extract_paint_lines(brightness, projected, config.radius_px, config)
-    required = {line.index for line in coarse if line.status == "ok"}
+    initial_stripes = {line.index for line in coarse if line.status == "ok"}
+    required = initial_stripes.copy()
+    chart = _Chart(image.shape[:2])
+    coarse_start = initial
+    coarse_observations = coarse
+    if config.version == "semantic_consensus_v2":
+        near = extract_paint_lines(brightness, projected, config.fine_radius_px, config)
+        coarse_start, coarse_observations, consensus = court_consensus(initial, coarse, config, near)
+        metrics["initial_correspondence"] = consensus
+        # The fine-search band is the existing localization capture range. A
+        # distant net/parallel stripe is not a mandatory semantic observation.
+        initial_errors = line_errors(initial, coarse_observations)
+        required = {line.index for line in coarse_observations if line.status == "ok"
+                    and initial_errors[line.index] <= config.fine_radius_px}
+        metrics["initial_model_residual_px"] = {PAINT_NAMES[line.index]: float(initial_errors[line.index])
+            if np.isfinite(initial_errors[line.index]) else None for line in coarse}
+        if coarse_start is None:
+            metrics["initial_stripe_lines"] = [PAINT_NAMES[i] for i in sorted(initial_stripes)]
+            return finish(["insufficient_paint_distribution" if len(initial_stripes) < config.min_court_lines
+                           else "unconfirmed_paint_correspondence"])
+        ambiguous_initial = set(_semantic_alternatives(coarse_start, coarse, coarse_observations, chart, config))
+        required = {i for i in required if PAINT_NAMES[i] not in ambiguous_initial}
+        metrics["initial_unresolved_alternatives"] = sorted(ambiguous_initial)
+    metrics["initial_stripe_lines"] = [PAINT_NAMES[i] for i in sorted(initial_stripes)]
     metrics["initial_supported_lines"] = [PAINT_NAMES[i] for i in sorted(required)]
     metrics["initial_ambiguous_lines"] = [PAINT_NAMES[line.index] for line in coarse if line.ambiguous and line.status == "ok"]
     transverse = {0, 1, 6, 7}
-    if len(required) < config.min_court_lines or min(len(required & transverse), len(required - transverse)) < 2:
+    coarse_supported = {line.index for line in coarse_observations if line.status == "ok"}
+    if len(coarse_supported) < config.min_court_lines or min(len(coarse_supported & transverse), len(coarse_supported - transverse)) < 2:
         metrics["lines"] = [{"name": PAINT_NAMES[line.index], "status": line.status, "coverage": line.coverage} for line in coarse]
         return finish(["insufficient_paint_distribution"])
-    chart = _Chart(image.shape[:2])
-    coarse_h, coarse_diagnostic = _fit(initial, coarse, chart, config)
+    assert coarse_start is not None
+    coarse_h, coarse_diagnostic = _fit(coarse_start, coarse_observations, chart, config)
     metrics["coarse_fit"] = coarse_diagnostic
     if coarse_h is None:
         return finish(["paint_optimization_failed"])
@@ -186,6 +224,7 @@ def refine_paint(image: NDArray[np.uint8], initial: FloatArray | None,
     supported = {line.index for line in fine if line.status == "ok"}
     lost = required - supported
     metrics["lost_initial_lines"] = [PAINT_NAMES[i] for i in sorted(lost)]
+    metrics["lost_unconfirmed_stripes"] = [PAINT_NAMES[i] for i in sorted(initial_stripes - required - supported)]
     # Retain failures as reasons even when enough other lines could fit a H.
     reasons = ["lost_initial_paint_lines"] if lost else []
     if len(supported) < config.min_court_lines or min(len(supported & transverse), len(supported - transverse)) < 2:
@@ -195,6 +234,13 @@ def refine_paint(image: NDArray[np.uint8], initial: FloatArray | None,
     if fitted is None:
         return finish([*reasons, "paint_optimization_failed"])
     projected_lines = image_lines(fitted)
+    if config.version == "semantic_consensus_v2":
+        retained_errors = line_errors(fitted, coarse_observations)
+        metrics["confirmed_initial_residual_px"] = {PAINT_NAMES[i]: float(retained_errors[i]) for i in sorted(required)}
+        shifted = [PAINT_NAMES[i] for i in sorted(required) if retained_errors[i] > config.max_line_residual_px]
+        metrics["shifted_confirmed_lines"] = shifted
+        if shifted:
+            reasons.append("confirmed_paint_line_shifted")
     reports = []
     residuals = []
     for line in fine:
@@ -225,6 +271,11 @@ def refine_paint(image: NDArray[np.uint8], initial: FloatArray | None,
         return finish([*reasons, str(stability["stability_status"])])
     std = float(stability["max_visible_projection_std_px"])  # type: ignore[arg-type]
     influence = float(stability["max_leave_line_out_px"])  # type: ignore[arg-type]
+    if config.version == "semantic_consensus_v2":
+        unconfirmed_essential = sorted(set(cast(list[str], stability["essential_lines"])) - {PAINT_NAMES[i] for i in required})
+        metrics["unconfirmed_essential_lines"] = unconfirmed_essential
+        if unconfirmed_essential:
+            reasons.append("unconfirmed_essential_paint")
     if std > config.max_projection_std_px:
         reasons.append("uncertain_paint_extrapolation")
     if influence > config.max_leave_line_out_px:

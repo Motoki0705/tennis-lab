@@ -50,7 +50,7 @@ court_kp:
     enabled: true
     refinement_method: rgb_paint
     paint:
-      version: paired_edges_v1
+      version: semantic_consensus_v2
       radius_px: 48.0
       fine_radius_px: 6.0
       sample_spacing_px: 8.0
@@ -82,7 +82,8 @@ court_kp:
     max_projection_std_ratio: 0.005
     max_leave_line_out_ratio: 0.01
   postprocess:
-    support_method: fixed_subsets
+    support_method: candidate_subsets
+    max_support_candidates: 8
     min_score: 0.05
     threshold_diagonal_ratio: 0.005
     line_probability_threshold: 0.5

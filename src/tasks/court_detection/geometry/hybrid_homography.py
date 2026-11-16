@@ -41,11 +41,14 @@ class HybridHomographyConfig:
     ambiguity_displacement_ratio: float = 0.03
     boundary_margin_cells: float = 1.0
     duplicate_distance_cells: float = 1.0
-    support_method: str = "fixed_subsets"
+    support_method: str = "candidate_subsets"
+    max_support_candidates: int = 8
 
     def __post_init__(self) -> None:
-        if self.support_method not in {"fixed_subsets", "adaptive"}:
+        if self.support_method not in {"candidate_subsets", "fixed_subsets", "adaptive"}:
             raise ValueError("Unknown hybrid support_method")
+        if self.max_support_candidates < 2:
+            raise ValueError("At least two support candidates are required")
         for value in (self.boundary_margin_cells, self.duplicate_distance_cells):
             if not np.isfinite(value) or value < 0:
                 raise ValueError("KP cell distances must be finite and nonnegative")
@@ -244,7 +247,7 @@ def estimate_hybrid_homography(
         min_score=config.min_score, boundary_margin_cells=config.boundary_margin_cells,
         duplicate_distance_cells=config.duplicate_distance_cells,
     )
-    fixed_method = config.support_method == "fixed_subsets"
+    fixed_method = config.support_method != "adaptive"
     if not fixed_method:
         observed[~support.eligible] = np.nan
     fit_support = support if fixed_method else None
@@ -424,13 +427,23 @@ def estimate_hybrid_homography(
                     observed_line_distance, threshold, config, support=support, spatial=spatial)
                 if selected.any():
                     subsets.setdefault(tuple(np.flatnonzero(selected).tolist()), name)
-            for fixed_indices, policy in subsets.items():
+            # Candidate discovery is separate from each fixed-set solve. A
+            # rejected solve may expose another supported set. Enqueue it with
+            # provenance, never replace the failed H or require rankings to
+            # reach a fixed point. A set is solved once per seed; cycles stop.
+            pending: list[tuple[tuple[int, ...], str, FloatArray, int | None]] = [
+                (indices, policy, seed.matrix, None) for indices, policy in subsets.items()
+            ]
+            seen = set(subsets)
+            for fixed_indices, policy, start_matrix, parent_id in pending:
                 fixed: NDArray[np.bool_] = np.zeros(len(template), dtype=bool)
                 fixed[list(fixed_indices)] = True
                 required_visible = np.asarray(seed.line["visible_segment_mask"], dtype=bool)
-                current_matrix = seed.matrix
+                current_matrix = start_matrix
+                candidate_id = len(solves)
                 trace: dict[str, object] = {"seed_index": seed_index, "policy": policy,
-                    "selected_indices": list(fixed_indices), "method": "fixed_subsets"}
+                    "selected_indices": list(fixed_indices), "method": config.support_method,
+                    "candidate_id": candidate_id, "parent_candidate_id": parent_id}
                 stops: list[int] = []
                 success = True
                 for field in fields:
@@ -460,9 +473,31 @@ def estimate_hybrid_homography(
                 projection = project_candidate(current_matrix, template)
                 if projection is not None:
                     trace["selected_residuals_px"] = np.linalg.norm(support.residual(projection, observed)[fixed], axis=1).tolist()
+                    if success and updated is None and np.all(np.asarray(trace["selected_residuals_px"]) <= threshold):
+                        trace["stop_reason"] = "invalid_projected_geometry"
+                elif success:
+                    trace["stop_reason"] = "invalid_projected_geometry"
                 solves.append(trace)
                 if updated is not None:
                     solutions.append(updated)
+                if success and projection is not None and config.support_method == "candidate_subsets":
+                    proposals = []
+                    for spatial, name in ((True, "spatial"), (False, "confidence")):
+                        selected = select_keypoints(template, observed, quality, projection,
+                            observed_line_distance, threshold, config, support=support, spatial=spatial)
+                        proposed_indices = tuple(np.flatnonzero(selected).tolist())
+                        if not proposed_indices:
+                            state = "insufficient_support"
+                        elif proposed_indices in seen:
+                            state = "already_solved_or_queued"
+                        elif len(pending) >= config.max_support_candidates:
+                            state = "candidate_budget_exhausted"
+                        else:
+                            state = "queued"
+                            seen.add(proposed_indices)
+                            pending.append((proposed_indices, name, current_matrix, candidate_id))
+                        proposals.append({"policy": name, "proposed_indices": list(proposed_indices), "status": state})
+                    trace["support_proposals"] = proposals
     for seed in (() if fixed_method else seeds):
         current = seed
         required_visible = np.asarray(seed.line["visible_segment_mask"], dtype=bool)

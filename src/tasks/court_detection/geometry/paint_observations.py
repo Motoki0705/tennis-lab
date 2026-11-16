@@ -25,7 +25,7 @@ PAINT_NAMES = ("far_baseline", "near_baseline", "left_doubles", "right_doubles",
 class PaintConfig:
     """Pixel tolerances describe the paint measurement, not GT correctness."""
 
-    version: str = "paired_edges_v1"
+    version: str = "semantic_consensus_v2"
     radius_px: float = 48.
     fine_radius_px: float = 6.
     sample_spacing_px: float = 8.
@@ -52,7 +52,7 @@ class PaintConfig:
     def __post_init__(self) -> None:
         from dataclasses import fields
 
-        if self.version != "paired_edges_v1":
+        if self.version not in {"paired_edges_v1", "semantic_consensus_v2"}:
             raise ValueError("Unknown paint extraction version")
         for field in fields(self):
             value = getattr(self, field.name)

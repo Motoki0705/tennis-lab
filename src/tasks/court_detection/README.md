@@ -227,9 +227,11 @@ LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明�
 合格候補がなければ`CourtRegionUnavailable`と候補ごとの理由を返します。
 `region_search.enabled=false`でもfull-frame推論の品質確認は行います。
 
-`postprocess.support_method=fixed_subsets`は、各初期Hに対して空間分布を重視する集合と
-confidenceを重視する集合を明示的に作り、各集合を固定して最大8点で解きます。
-最適化中の選び直しや集合の循環によるH切替はありません。境界から
+`postprocess.support_method=candidate_subsets`は、各初期Hに対して空間分布とconfidenceの
+支持集合を明示的に作り、各集合を固定して最大8点で解きます。最適化後に支持集合が変われば、
+別候補として親candidate IDとともに登録します。1 seedで同じ集合は再実行せず、
+`max_support_candidates`で候補数を制限します。採用するHと、そのHを実際に解いた集合は一致します。
+集合の循環による暗黙のH切替はありません。`fixed_subsets`は初期集合だけを解く前方式です。境界から
 `boundary_margin_cells`未満の座標は外側への移動を拘束しない片側制約です。
 `duplicate_distance_cells`以内のピークの連結成分から、1候補には最大1点を使います。
 rawは変更せず、`keypoint_observations`に打切方向と相関群、`support_solves`に
@@ -251,15 +253,25 @@ rawは変更せず、`keypoint_observations`に打切方向と相関群、`suppo
 `rgb_paint`は元RGBの1frameとモデルHから塗線中心へ精密化します。
 RGB精密化はregion APIとscene componentの段階で行い、`CourtPredictor.predict`単独はモデルHまでを返します。
 `region_search.paint`に探索幅・edge対の条件・支持・残差・安定性の全設定があります。
-camera固有のmaskや参照は使いません。両側の明るさ勾配の中心を取り、直線consensus、
-全支持線を使ったcoarse/fine最適化を行います。初期支持線の喪失、他の線でも
-解消できないstripeの対応、線残差、各物理線を独立群とする投影の標準偏差と
-leave-one-line-out変位で拒否します。fit成功だけでは採用しません。
+camera固有のmaskや参照は使いません。`paint.version=semantic_consensus_v2`は両側の明るさ
+勾配の中心からstripe候補を測り、両方向2本ずつのprojective gridを独立した残りの線で検証します。
+モデル近傍のstripeとcoarse候補を比較し、幾何で確認できた近傍対応を優先します。
+coarseで直線が見つかっただけでは必須にせず、モデル投影・コート全体・代替stripeの検査を
+通った線だけを初期支持とします。未確認stripeの喪失は診断に残し、確認済みの線の喪失や
+別のstripeへの移動は拒否します。`paired_edges_v1`は全coarse stripeを必須にした前方式です。
+
+線残差、未解決の意味対応、各物理線を独立群とする投影標準偏差と線除去の影響を確認します。
+線の除去後にrankが不足する場合は、変位を捏造せず`essential_lines`に記録します。
+その線が意味確認済みであることと、全線での外挿不確かさの合格を必要とします。
+計算できる線除去変位は従来どおり判定に使い、fit成功だけでは採用しません。
 
 RGB方式の`quality.schema=court_quality_v2`は、`model_consistency`（従来v1）と
 `rgb_paint`（`court_rgb_quality_v1`）を分離します。RGB側の`lines`は固定した物理線名、
 支持位置数・coverage・元画像pxの中央値/p95残差・曖昧性を持ちます。
-`stability`は全14点の標準偏差と可視点の最大値、線別除去の最大変位です。
+`initial_stripe_lines`、`initial_supported_lines`、`lost_unconfirmed_stripes`で測定候補と必須支持を区別します。
+`confirmed_initial_residual_px`は確認済み対応の保持、`shifted_confirmed_lines`は別stripeへの移動を表します。
+`stability`は全14点の標準偏差と可視点の最大値、計算可能な線別除去の最大変位、
+除去するとrankが不足する`essential_lines`です。
 順位用`score`は線別p95残差の平均、可視点の最大標準偏差、線除去の最大変位を
 各設定上限で割った和（`dimensionless_paint_cost`、小さいほど良い）です。
 旧Hは`model_homography`、精密化を試したHは`rgb_fitted_homography`に残ります。

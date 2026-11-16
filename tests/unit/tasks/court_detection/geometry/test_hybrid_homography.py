@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Any
+from typing import Any, cast
 
 import cv2
 import numpy as np
@@ -140,6 +140,32 @@ def test_rejected_kp_have_exactly_zero_effect_on_objective() -> None:
     actual = selected_kp_residuals(truth, observed, scores, selected, 3)
     np.testing.assert_array_equal(expected, actual)
     assert len(actual) == 2 * selected.sum()
+
+
+def test_new_support_candidate_recovers_after_fixed_set_becomes_inconsistent() -> None:
+    template, truth, probability = scene()
+    rng = np.random.default_rng(17)
+    observed = truth + rng.normal(0, 1.6, truth.shape)
+    scores = rng.uniform(.6, 1., 14)
+    config = HybridHomographyConfig(max_candidates=100, refine_candidates=2)
+    before = estimate_hybrid_homography(template, observed, scores, probability, edges=EDGES,
+        image_size_hw=(320, 320), config=replace(config, support_method="fixed_subsets"))
+    assert before.matrix is None and before.status == "joint_optimization_failed"
+    result = estimate_hybrid_homography(template, observed, scores, probability, edges=EDGES,
+        image_size_hw=(320, 320), config=config)
+    assert result.matrix is not None and result.status == "ok"
+    assert np.max(np.linalg.norm(result.projected - truth, axis=1)) < 1.
+    winning = next(s for s in result.solve_diagnostics if s["stop_reason"] == "converged"
+                   and np.allclose(s["fitted_homography"], result.matrix))
+    assert winning["parent_candidate_id"] is not None
+    parent = result.solve_diagnostics[cast(int, winning["parent_candidate_id"])]
+    assert parent["stop_reason"] == "fixed_support_inconsistent"
+    assert winning["selected_indices"] == np.flatnonzero(result.selected).tolist()
+    np.testing.assert_allclose(winning["selected_residuals_px"], result.residuals_px[result.selected])
+    assert result.best is not None and len(set(result.best.selection_history)) == 1
+    identities = [(s["seed_index"], tuple(cast(list[int], s["selected_indices"]))) for s in result.solve_diagnostics]
+    assert len(set(identities)) == len(identities)
+    assert len(result.solve_diagnostics) <= config.refine_candidates * config.max_support_candidates
 
 
 def test_nonconvergent_joint_fit_has_no_kp_only_fallback() -> None:
