@@ -10,8 +10,23 @@ from typing import Any, cast
 import numpy as np
 import pytest
 
+from src.tasks.court_detection.geometry.quality import CourtQuality
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKPResult
 from tests.unit.tennis_scene.pipeline.config_factories import make_court_kp_config
+
+
+@pytest.fixture(autouse=True)
+def isolate_numerical_quality_from_component_persistence(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Geometry quality has dedicated numerical tests; these fixtures test IO."""
+    import src.tasks.court_detection.inference.regions as regions
+    import src.tennis_scene.pipeline.components.court_kp as component
+
+    def assess(prediction, _config, _size):
+        ok = prediction.homography.status == "ok"
+        return CourtQuality(ok, .25 if ok else None, () if ok else ("no_homography",), {})
+
+    monkeypatch.setattr(regions, "assess_prediction_quality", assess)
+    monkeypatch.setattr(component, "assess_prediction_quality", assess)
 
 
 def test_pipeline_rejects_a_kp_cap_above_eight_before_model_loading(tmp_path) -> None:
@@ -183,3 +198,21 @@ def test_frame_size_must_match_the_source(tmp_path: Path, monkeypatch: pytest.Mo
 
     with pytest.raises(ValueError, match="disagrees with source"):
         _run_frame_zero(tmp_path, monkeypatch, geometry_prediction(), size=(32, 20))
+
+
+def test_quality_rejection_cannot_publish_a_calibratable_homography(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import src.tennis_scene.pipeline.components.court_kp as component
+    from tests.unit.tasks.court_detection.inference.test_unified_predictor import (
+        geometry_prediction,
+    )
+
+    rejected = CourtQuality(False, 3.0, ("unstable_projection",), {"max_projection_std_px": 80.})
+    monkeypatch.setattr(component, "assess_prediction_quality", lambda *_: rejected)
+    result, _, _ = _run_frame_zero(tmp_path, monkeypatch, geometry_prediction())
+    assert not result.keypoints.any() and not result.visibility.any()
+    assert result.diagnostics is not None
+    frame = result.diagnostics["cameras"][0]["frames"][0]
+    assert frame["status"] == "quality_rejected"
+    assert frame["homography_court_metres_to_image_pixels"] is None
+    assert frame["rejected_homography"] is not None
+    assert frame["quality"]["reasons"] == ["unstable_projection"]

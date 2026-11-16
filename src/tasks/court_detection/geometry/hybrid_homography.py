@@ -18,6 +18,7 @@ from .confidence_homography import (
     estimate_confidence_homography,
 )
 from .line_evidence import FloatArray, LineDiagnostics, LineEvidence, line_residuals
+from .observations import keypoint_support
 
 
 @dataclass(frozen=True)
@@ -38,8 +39,13 @@ class HybridHomographyConfig:
     min_line_support: float = 0.55
     ambiguity_gap: float = 0.02
     ambiguity_displacement_ratio: float = 0.03
+    boundary_margin_cells: float = 1.0
+    duplicate_distance_cells: float = 1.0
 
     def __post_init__(self) -> None:
+        for value in (self.boundary_margin_cells, self.duplicate_distance_cells):
+            if not np.isfinite(value) or value < 0:
+                raise ValueError("KP cell distances must be finite and nonnegative")
         if not 0 <= self.min_score <= 1 or not 0 < self.line_probability_threshold < 1:
             raise ValueError("Invalid probability thresholds")
         if not 0 < self.threshold_diagonal_ratio < 0.1:
@@ -105,6 +111,7 @@ class HybridHomographyResult:
     candidate_count: int
     refined_count: int
     alternative_score_gap: float | None
+    observation_diagnostics: dict[str, object] | None = None
 
 
 def project_candidate(matrix: FloatArray, template: FloatArray) -> FloatArray | None:
@@ -142,9 +149,24 @@ def select_keypoints(
     )
     indices = np.flatnonzero(eligible)
     merit = scores[indices] / (1 + (residual[indices] / threshold_px) ** 2)
-    order = indices[np.argsort(-merit, kind="stable")]
+    # Confidence alone can put all fit points at one end of the court. Keep the
+    # best-supported point first, then cover distinct template locations. The
+    # template is normalized per axis so metres and court aspect do not bias it.
+    normalized = (template - template.min(axis=0)) / np.maximum(np.ptp(template, axis=0), 1e-12)
+    remaining = list(range(len(indices)))
+    chosen: list[int] = []
+    while remaining and len(chosen) < min(config.max_kp, len(template) - 1):
+        def utility(index: int) -> float:
+            if not chosen:
+                return float(merit[index])
+            separation = float(np.min(np.sum((normalized[indices[index]] - normalized[indices[chosen]]) ** 2, axis=1)))
+            return float(merit[index] * separation)
+
+        next_index = max(remaining, key=utility)
+        chosen.append(next_index)
+        remaining.remove(next_index)
     selected: NDArray[np.bool_] = np.zeros(len(template), dtype=bool)
-    selected[order[: min(config.max_kp, len(template) - 1)]] = True
+    selected[indices[chosen]] = True
     if selected.sum() < 4 or not _has_support(template[selected], observed[selected]):
         selected[:] = False
     return selected
@@ -183,7 +205,7 @@ def estimate_hybrid_homography(
     LINE labels, camera intrinsics, LINE-only initializer or GT are assumed.
     """
     template = np.asarray(template_xy, dtype=np.float64)
-    observed = np.asarray(image_xy, dtype=np.float64)
+    observed = np.array(image_xy, dtype=np.float64, copy=True)
     quality = np.asarray(scores, dtype=np.float64)
     segments = np.asarray(edges)
     if (
@@ -200,8 +222,17 @@ def estimate_hybrid_homography(
     height, width = image_size_hw
     if min(height, width) < 2:
         raise ValueError("Invalid image size")
+    if np.ndim(line_probability) != 2 or min(line_probability.shape) < 2:
+        raise ValueError("LINE probability must be a two-dimensional image")
     diagonal = float(np.hypot(width, height))
     threshold = config.threshold_diagonal_ratio * diagonal
+    support = keypoint_support(
+        observed, quality, image_size_hw=image_size_hw,
+        native_size_hw=(line_probability.shape[0], line_probability.shape[1]),
+        min_score=config.min_score, boundary_margin_cells=config.boundary_margin_cells,
+        duplicate_distance_cells=config.duplicate_distance_cells,
+    )
+    observed[~support.eligible] = np.nan
     # Reuse its strict coordinate/score validation and the published baseline.
     baseline = estimate_confidence_homography(
         template,
@@ -241,6 +272,7 @@ def estimate_hybrid_homography(
             count,
             refined,
             gap,
+            support.diagnostics(),
         )
 
     # Invalid probability arrays are caller errors; lack of meaningful evidence
@@ -354,6 +386,7 @@ def estimate_hybrid_homography(
     fields = (gaussian_filter(evidence.distance, threshold / 2), evidence.distance)
     for seed in seeds:
         current = seed
+        required_visible = np.asarray(seed.line["visible_segment_mask"], dtype=bool)
         history: list[tuple[int, ...]] = []
         valid = True
         for field in fields:
@@ -366,6 +399,7 @@ def estimate_hybrid_homography(
                     parameters: FloatArray,
                     fixed: NDArray[np.bool_] = fixed,
                     field: FloatArray = field,
+                    required_visible: NDArray[np.bool_] = required_visible,
                 ) -> FloatArray:
                     projected = project_candidate(unpack(parameters), template)
                     size = (
@@ -382,6 +416,7 @@ def estimate_hybrid_homography(
                         threshold,
                         samples_per_line=config.samples_per_line,
                         distance_field=field,
+                        required_visible=required_visible,
                     )
                     kp = selected_kp_residuals(
                         projected, observed, quality, fixed, threshold

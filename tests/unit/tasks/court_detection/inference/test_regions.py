@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 import torch
 
+from src.tasks.court_detection.geometry.quality import CourtQuality
 from src.tasks.court_detection.inference.regions import (
     CourtRegionPrediction,
     CourtRegionSearchConfig,
@@ -67,7 +68,7 @@ def test_crop_outside_image_fails_before_inference() -> None:
 
 
 @pytest.mark.parametrize("failure", ["geometry", "support", "outside", "degenerate", None])
-def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) -> None:
+def test_search_requires_assessed_geometry_and_visible_area(monkeypatch, failure) -> None:
     import src.tasks.court_detection.inference.regions as module
 
     points = np.tile([20.0, 20.0], (14, 1)).astype(np.float32)
@@ -83,11 +84,13 @@ def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) ->
     raw = cropped.raw_heads["kp"]
     raw_points = points.copy()
     if failure == "support":
-        raw_points[7:] += 15
+        raw_points[3:] += 15
     cropped = replace(cropped, raw_heads={"kp": replace(raw, keypoints=torch.tensor(raw_points[:, None]))})
     monkeypatch.setattr(module, "region_proposals", lambda _: ((0, 0, 100, 100),))
-    monkeypatch.setattr(module, "predict_court_region", lambda *_: CourtRegionPrediction(cropped, (0, 0, 100, 100), (100, 100)))
-    if failure is not None:
+    quality = CourtQuality(failure != "support", 0.5, ("insufficient_independent_keypoints",) if failure == "support" else (),
+                           {"supported_keypoints": 3 if failure == "support" else 14})
+    monkeypatch.setattr(module, "predict_court_region", lambda *_, **__: CourtRegionPrediction(cropped, (0, 0, 100, 100), (100, 100), quality))
+    if failure not in (None, "outside"):
         with pytest.raises(module.CourtRegionUnavailable, match="No Court region meets") as error:
             select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
         assert len(error.value.candidates) == 1
@@ -96,3 +99,27 @@ def test_search_requires_geometry_and_raw_model_support(monkeypatch, failure) ->
         selected = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
         assert selected.region == (0, 0, 100, 100)
         assert selected.candidates[0]["inliers"] == 14
+        assert selected.candidates[0]["inside_content"] == (failure != "outside")
+
+
+def test_quality_cost_ranks_regions_instead_of_raw_support_count(monkeypatch) -> None:
+    import src.tasks.court_detection.inference.regions as module
+
+    base = geometry_prediction()
+    assert base.homography is not None
+    points = np.tile([30., 30.], (14, 1))
+    points[:4] = [[10, 10], [60, 10], [10, 60], [60, 60]]
+    base = replace(base, homography=replace(base.homography, projected=points))
+    regions = ((0, 0, 100, 100), (5, 0, 100, 100))
+    monkeypatch.setattr(module, "region_proposals", lambda _: regions)
+
+    def predict(_predictor, _image, region, **_):
+        score, count = (.8, 14) if region == regions[0] else (.2, 4)
+        return CourtRegionPrediction(base, region, (100, 100), CourtQuality(True, score, (), {"supported_keypoints": count}))
+
+    monkeypatch.setattr(module, "predict_court_region", predict)
+    result = select_court_region(cast(Any, object()), np.ones((100, 100, 3), np.uint8), CourtRegionSearchConfig())
+    assert result.region == regions[1]
+    quality = result.candidates[1]["quality"]
+    assert isinstance(quality, dict)
+    assert quality["score"] == .2

@@ -77,6 +77,7 @@ class CourtPrediction:
             if result.matrix is None
             else result.matrix.tolist(),
             "selected_keypoints": np.flatnonzero(result.selected).tolist(),
+            "keypoint_observations": result.observation_diagnostics,
             "raw_keypoints_px": [
                 [float(v) if np.isfinite(v) else None for v in xy]
                 for xy in raw.keypoints[:, 0].numpy()

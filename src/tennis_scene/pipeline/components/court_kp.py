@@ -17,8 +17,10 @@ from src.tasks.court_detection.inference.contracts import (
     validate_hybrid_inference_config,
 )
 from src.tasks.court_detection.inference.regions import (
+    CourtRegionPrediction,
     CourtRegionSearchConfig,
     Region,
+    assess_prediction_quality,
     predict_court_region,
     select_court_region,
 )
@@ -156,7 +158,7 @@ class CourtKPModule(BasePipelineModule):
         keypoints = normalize_grid_keypoints(prediction.points_px, video.width, video.height)
         result = CourtKPResult(
             keypoints[None, None].astype(np.float32), prediction.valid[None, None].astype(np.float32), np.array([0], np.int32),
-            {"schema": "court_kp_hybrid_v1", "checkpoint": checkpoint,
+            {"schema": "court_kp_quality_v2", "checkpoint": checkpoint,
              "postprocess": asdict(self.config.postprocess), "region_search": asdict(self.config.region_search),
              "output_keypoint_contract": KEYPOINT_CONTRACT,
              "cameras": [{"camera_id": video.camera_id, "video_path": str(video.path), "region_selection": prediction.region_selection,
@@ -201,11 +203,13 @@ class CourtKPModule(BasePipelineModule):
             raise RuntimeError("Court predictor is not loaded")
         if region is None:
             prediction = self._predictor.predict(frame_rgb, postprocess="hybrid", heads=("kp", "line"))
-            points, visible = prediction.downstream_keypoints()
-            diagnostic = prediction.geometry_diagnostics()
+            quality = assess_prediction_quality(prediction, self.config.region_search, frame_rgb.shape[:2])
+            full = CourtRegionPrediction(prediction, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), frame_rgb.shape[:2], quality)
+            points, visible = full.downstream_keypoints()
+            diagnostic = full.geometry_diagnostics()
             schema = prediction.keypoint_schema
         else:
-            region_prediction = predict_court_region(self._predictor, frame_rgb, region)
+            region_prediction = predict_court_region(self._predictor, frame_rgb, region, quality_config=self.config.region_search)
             points, visible = region_prediction.downstream_keypoints()
             diagnostic = region_prediction.geometry_diagnostics()
             schema = region_prediction.cropped.keypoint_schema

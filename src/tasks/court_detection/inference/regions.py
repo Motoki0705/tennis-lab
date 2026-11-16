@@ -13,8 +13,17 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.court_detection.geometry.quality import (
+    DEFAULT_QUALITY_CONFIG,
+    CourtQuality,
+    CourtQualityConfig,
+    assess_court_quality,
+)
 from src.tasks.court_detection.inference.contracts import CourtPrediction
-from src.tasks.court_detection.model_io.contracts import CourtKeypointPrediction
+from src.tasks.court_detection.model_io.contracts import (
+    CourtKeypointPrediction,
+    CourtLinePrediction,
+)
 
 if TYPE_CHECKING:
     from src.tasks.court_detection.inference.predictor import CourtPredictor
@@ -23,19 +32,14 @@ Region = tuple[int, int, int, int]
 
 
 @dataclass(frozen=True, slots=True)
-class CourtRegionSearchConfig:
+class CourtRegionSearchConfig(CourtQualityConfig):
     enabled: bool = False
-    min_inliers: int = 8
-    inlier_distance_ratio: float = 0.005
     min_area_ratio: float = 0.01
 
     def __post_init__(self) -> None:
-        if not 4 <= self.min_inliers <= 14:
-            raise ValueError("region_search.min_inliers must be between 4 and 14")
-        for name in ("inlier_distance_ratio", "min_area_ratio"):
-            value = getattr(self, name)
-            if not np.isfinite(value) or not 0 < value < 1:
-                raise ValueError(f"region_search.{name} must be finite and between 0 and 1")
+        CourtQualityConfig.__post_init__(self)
+        if not np.isfinite(self.min_area_ratio) or not 0 < self.min_area_ratio < 1:
+            raise ValueError("region_search.min_area_ratio must be finite and between 0 and 1")
 
 
 def image_content_region(image: NDArray[np.uint8]) -> Region:
@@ -69,12 +73,13 @@ class CourtRegionPrediction:
     cropped: CourtPrediction
     region: Region
     original_size_hw: tuple[int, int]
+    quality: CourtQuality | None = None
 
     def downstream_keypoints(self) -> tuple[NDArray[np.float32], NDArray[np.bool_]]:
         geometry = self.cropped.homography
         if geometry is None:
             raise ValueError("Region geometry requires hybrid postprocessing")
-        if geometry.status != "ok" or geometry.matrix is None:
+        if geometry.status != "ok" or geometry.matrix is None or (self.quality is not None and not self.quality.accepted):
             return np.zeros((14, 2), np.float32), np.zeros(14, dtype=bool)
         points = np.asarray(geometry.projected, dtype=np.float32) + np.asarray(self.region[:2], dtype=np.float32)
         height, width = self.original_size_hw
@@ -105,11 +110,19 @@ class CourtRegionPrediction:
             postprocess_image_size_hw=list(self.cropped.original_size_hw),
             native_size_hw=list(self.cropped.native_size_hw),
         )
+        if self.quality is not None:
+            diagnostic["quality"] = self.quality.diagnostics()
+            if geometry is not None and geometry.status == "ok" and not self.quality.accepted:
+                diagnostic["hybrid_status"] = "ok"
+                diagnostic["status"] = "quality_rejected"
+                diagnostic["rejected_homography"] = diagnostic["homography_court_metres_to_image_pixels"]
+                diagnostic["homography_court_metres_to_image_pixels"] = None
         return diagnostic
 
 
 def predict_court_region(
     predictor: CourtPredictor, image: NDArray[np.uint8], region: Region,
+    *, quality_config: CourtQualityConfig = DEFAULT_QUALITY_CONFIG,
 ) -> CourtRegionPrediction:
     x0, y0, x1, y1 = region
     if not (0 <= x0 < x1 <= image.shape[1] and 0 <= y0 < y1 <= image.shape[0]):
@@ -118,7 +131,24 @@ def predict_court_region(
         np.ascontiguousarray(image[y0:y1, x0:x1]),
         postprocess="hybrid", heads=("kp", "line"),
     )
-    return CourtRegionPrediction(prediction, region, (image.shape[0], image.shape[1]))
+    quality = assess_prediction_quality(prediction, quality_config, image.shape[:2])
+    return CourtRegionPrediction(prediction, region, (image.shape[0], image.shape[1]), quality)
+
+
+def assess_prediction_quality(
+    prediction: CourtPrediction, config: CourtQualityConfig, evaluation_size_hw: tuple[int, int],
+) -> CourtQuality:
+    """One shared quality contract for full-frame and cropped inference."""
+    raw, line = prediction.raw_heads["kp"], prediction.raw_heads["line"]
+    if not isinstance(raw, CourtKeypointPrediction) or not isinstance(line, CourtLinePrediction):
+        raise ValueError("Court quality requires typed KP and LINE evidence")
+    geometry = prediction.homography
+    return assess_court_quality(
+        None if geometry is None else geometry.matrix, raw.keypoints[:, 0].numpy(),
+        raw.valid[:, 0].numpy() & (geometry.selected if geometry is not None else False),
+        line.probability.numpy(), image_size_hw=prediction.original_size_hw,
+        evaluation_size_hw=evaluation_size_hw, config=config,
+    )
 
 
 @dataclass(frozen=True)
@@ -138,46 +168,61 @@ class CourtRegionUnavailable(ValueError):
 def select_court_region(
     predictor: CourtPredictor, image: NDArray[np.uint8], config: CourtRegionSearchConfig,
 ) -> CourtRegionSelection:
-    """Select by model inlier count, then confidence; fail if no candidate qualifies.
+    """Select by visible-line quality and stability; fail if no candidate qualifies.
 
     This establishes a region once, not a stored homography or per-frame fallback.
     The caller reruns inference for every frame within the selected region.
     """
     left, top, right, bottom = image_content_region(image)
     height, width = image.shape[:2]
-    threshold = config.inlier_distance_ratio * np.hypot(width, height)
     candidates: list[dict[str, object]] = []
-    accepted: list[tuple[int, float, Region]] = []
+    accepted: list[tuple[float, Region]] = []
     for region in region_proposals(image):
-        prediction = predict_court_region(predictor, image, region)
-        points, visible = prediction.downstream_keypoints()
-        raw = prediction.cropped.raw_heads["kp"]
-        assert isinstance(raw, CourtKeypointPrediction)
-        raw_points = raw.keypoints[:, 0].numpy() + np.asarray(region[:2])
-        inliers = (np.linalg.norm(points - raw_points, axis=-1) <= threshold) & raw.valid[:, 0].numpy()
-        count = int(inliers.sum())
-        score = float(raw.scores[:, 0].numpy()[inliers].sum())
-        polygon = points[[0, 1, 3, 2]].astype(np.float32)
-        area = abs(cv2.contourArea(polygon)) / (width * height)
-        convex = bool(cv2.isContourConvex(polygon))
-        inside_content = bool((
-            (points[:, 0] >= left) & (points[:, 0] <= right - 1)
-            & (points[:, 1] >= top) & (points[:, 1] <= bottom - 1)
-        ).all())
+        prediction = predict_court_region(predictor, image, region, quality_config=config)
+        quality = prediction.quality
+        if quality is None:
+            raise ValueError("Region selection requires assessed court quality")
         geometry = prediction.cropped.homography
         status = geometry.status if geometry is not None else "not_requested"
-        qualifies = (
-            status == "ok" and bool(visible.all()) and inside_content and convex
-            and area >= config.min_area_ratio and count >= config.min_inliers
-        )
+        area, convex, inside_content = 0.0, False, False
+        count, confidence_sum = 0, 0.0
+        if geometry is not None and geometry.matrix is not None:
+            raw = prediction.cropped.raw_heads["kp"]
+            assert isinstance(raw, CourtKeypointPrediction)
+            raw_inliers = raw.valid[:, 0].numpy() & (
+                np.linalg.norm(geometry.projected - raw.keypoints[:, 0].numpy(), axis=1)
+                <= config.line_tolerance_ratio * np.hypot(width, height)
+            )
+            count = int(raw_inliers.sum())
+            confidence_sum = float(raw.scores[:, 0].numpy()[raw_inliers].sum())
+            points = geometry.projected + np.asarray(region[:2])
+            polygon = points[[0, 1, 3, 2]].astype(np.float32)
+            convex = bool(np.isfinite(polygon).all() and cv2.isContourConvex(polygon))
+            if convex:
+                content = np.array([[left, top], [right-1, top], [right-1, bottom-1], [left, bottom-1]], np.float32)
+                intersection, _ = cv2.intersectConvexConvex(polygon, content)
+                area = float(intersection) / (width * height)
+            inside_content = bool(((points[:, 0] >= left) & (points[:, 0] <= right - 1)
+                & (points[:, 1] >= top) & (points[:, 1] <= bottom - 1)).all())
+        reasons = list(quality.reasons)
+        if not convex:
+            reasons.append("invalid_court_polygon")
+        if area < config.min_area_ratio:
+            reasons.append("insufficient_visible_area")
+        qualifies = status == "ok" and quality.accepted and not reasons
         candidates.append({
             "region_xyxy": list(region), "status": status, "accepted": qualifies,
-            "inliers": count, "inlier_score": score, "area_ratio": area,
+            "inliers": count, "inlier_score": confidence_sum, "area_ratio": area,
+            "fit_support_count": quality.metrics.get("supported_keypoints", 0),
             "convex": convex, "inside_content": inside_content,
+            "quality": quality.diagnostics(), "rejection_reasons": list(dict.fromkeys(reasons)),
         })
         if qualifies:
-            accepted.append((count, score, region))
+            assert quality.score is not None
+            accepted.append((quality.score, region))
     if not accepted:
         raise CourtRegionUnavailable(tuple(candidates))
-    chosen = max(accepted, key=lambda item: (item[0], item[1]))
-    return CourtRegionSelection(chosen[2], tuple(candidates))
+    # Stable input order resolves equal quality. Raw confidence is not a
+    # tiebreaker: channels collapsed onto one peak cannot improve this ranking.
+    chosen = min(accepted, key=lambda item: item[0])
+    return CourtRegionSelection(chosen[1], tuple(candidates))

@@ -159,10 +159,8 @@ _POSTPROCESS_SCHEMA = StrictConfigSchema(
 _COURT_REGION_SCHEMA = StrictConfigSchema(
     name="tennis_scene.court_kp.region_search",
     fields={
-        "enabled": ConfigField.of(bool),
-        "min_inliers": ConfigField.of(int),
-        "inlier_distance_ratio": ConfigField.of(float, int),
-        "min_area_ratio": ConfigField.of(float, int),
+        field.name: ConfigField.of(type(getattr(CourtRegionSearchConfig(), field.name)))
+        for field in fields(CourtRegionSearchConfig)
     },
 )
 _COURT_SCHEMA = StrictConfigSchema(
@@ -366,8 +364,8 @@ class PipelineRuntimeConfig:
         court_config = CourtKPConfig(
             checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, court["checkpoint"])), device=device,
             subpixel_refine=cast(bool, court["subpixel_refine"]),
-            postprocess=CourtKPPostprocessConfig(**dict(_mapping(court["postprocess"], name="court.postprocess"))),
-            region_search=CourtRegionSearchConfig(**dict(_mapping(court["region_search"], name="court.region_search"))),
+            postprocess=CourtKPPostprocessConfig(**cast(dict[str, Any], dict(_mapping(court["postprocess"], name="court.postprocess")))),
+            region_search=CourtRegionSearchConfig(**cast(dict[str, Any], dict(_mapping(court["region_search"], name="court.region_search")))),
             resolver=resolver,
         )
         models = _mapping(value["people_models"], name="people_models")

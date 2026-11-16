@@ -219,6 +219,37 @@ LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明�
 固定カメラ向け領域探索は`inference/regions.py`に残し、`tennis_scene`が利用します。
 合成データ生成のalignmentも`CourtLinePredictor`を利用します。
 
+領域探索の採否は`court_kp.region_search`の品質設定を使います。
+14点すべてが画像内にあることや一律8点のinlierを要求せず、画像内に見える線の一致、
+各方向の独立した線の分布、実際にfitへ使ったKPの支持、投影の安定性を確認します。
+画像との交差面積が`min_area_ratio`以上ある凸なコートだけを候補に残し、
+合格候補の品質costが最小の領域を選びます。同点では提案順です。
+合格候補がなければ`CourtRegionUnavailable`と候補ごとの理由を返します。
+`region_search.enabled=false`でもfull-frame推論の品質確認は行います。
+
+後処理はnative gridで境界から`boundary_margin_cells`未満の点と、
+`duplicate_distance_cells`以内に重なるsemantic KPをfitの等式制約から外します。
+重複は両点を外し、raw出力は変更しません。残った点からconfidenceとtemplate上の分布で
+最大8点を選びます。最適化開始時に可視だった線は、最適化中に画面外へ移しても
+残差から消えません。元から画像外の線は要求しません。
+
+診断`quality.schema=court_quality_v1`の`score`は小さいほどよい順位用costで、
+正解確率や参照とのpx誤差ではありません。forward/reverse線残差のRMSを許容距離で割った和、
+全14点の最大投影標準偏差と1本の線を除いたときの最大変位をそれぞれの制限で割った値、
+`2-forward_support-reverse_support`を加算します。計算できないときは`null`です。
+距離は入力cropのpixel、比率の分母は領域比較に共通な元画像の対角長です。
+`line.segment_support`、`line.visible_segment_mask`、`line_coverage`、
+`supported_keypoints`、`normalized_condition`、`max_projection_std_px`、
+`max_leave_line_out_px`と`reasons`を保持します。安定性は各線を1群とし、実際のKP制約と合わせた
+局所線形化で測ります。LINE自体の誤検出・semanticな取り違えを証明する指標ではありません。
+同じモデル・品質設定の推定間で比較し、camera別の推定を使う側も`accepted`を必ず確認してください。
+
+`tennis_scene`の診断schemaは`court_kp_quality_v2`です。品質不合格は`quality_rejected`とし、
+採用Hは`null`、下流点はゼロ・全無効にします。調査用のHは`rejected_homography`に分けます。
+`keypoint_observations`には境界・重複で除外したindexを残します。
+旧`region_search.min_inliers` / `inlier_distance_ratio`は受理しません。
+品質・後処理の全設定はcomponentのcache identityに入ります。
+
 KPのcamera-view順序を複数cameraの物理point identityへ自動変換しません。
 向きの設定は[tennis_scene](../../tennis_scene/README.md)を参照してください。
 

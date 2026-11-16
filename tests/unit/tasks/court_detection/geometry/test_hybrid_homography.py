@@ -93,6 +93,7 @@ def test_line_corrects_biased_kp_and_excludes_confident_outliers(
     assert result.status == "ok"
     assert 4 <= result.selected.sum() <= 8
     assert not result.selected[bad].any()
+    assert result.observation_diagnostics is not None
     assert all(4 <= mask.sum() <= 8 for mask in selections)
     assert result.best is not None
     assert 1 <= len(result.seeds) <= CONFIG.refine_candidates
@@ -222,6 +223,33 @@ def test_bidirectional_line_objective_penalizes_collapsed_court() -> None:
     assert wrong @ wrong > real @ real + 5
     assert real_diag["reverse_support"] > 0.95
     assert wrong_diag["reverse_support"] < 0.2
+
+
+def test_refinement_cannot_erase_previously_visible_markings() -> None:
+    _, truth, probability = scene()
+    evidence = LineEvidence.from_probability(probability, (320, 320))
+    _, initial = line_residuals(truth, EDGES, evidence, 3)
+    moved = truth + [0, -1000]
+    unconstrained, _ = line_residuals(moved, EDGES, evidence, 3)
+    fixed, diagnostic = line_residuals(moved, EDGES, evidence, 3,
+        required_visible=np.array(initial["visible_segment_mask"], dtype=bool))
+    assert fixed @ fixed > unconstrained @ unconstrained + 15
+    assert diagnostic["forward_support"] == 0
+
+
+def test_collapsed_boundary_peaks_are_excluded_before_candidate_generation() -> None:
+    template, truth, probability = scene()
+    observed = truth.copy()
+    bad = [1, 3, 6, 7]
+    observed[bad] = [319, 180]
+    result = estimate_hybrid_homography(template, observed, np.full(14, .9), probability,
+        edges=EDGES, image_size_hw=(320, 320), config=replace(CONFIG, max_candidates=300, refine_candidates=2))
+    assert result.status == "ok"
+    assert not result.selected[bad].any()
+    assert result.observation_diagnostics is not None
+    assert result.observation_diagnostics["boundary_censored_indices"] == bad
+    assert result.observation_diagnostics["duplicate_peak_indices"] == bad
+    assert np.max(np.linalg.norm(result.projected - truth, axis=1)) < 2
 
 
 def test_cropped_segments_are_clipped_without_assuming_missing_lines() -> None:
