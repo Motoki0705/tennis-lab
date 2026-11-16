@@ -6,7 +6,7 @@ import torch
 from torch import Tensor, nn
 
 from src.tasks.ball_detection.models.mdd.attention import FusionBlock, QueryFusionBlock
-from src.tasks.ball_detection.models.mdd.cnn_encoder import DeepMDDEncoder
+from src.tasks.ball_detection.models.mdd.cnn_encoder import build_mdd_encoder
 from src.tasks.ball_detection.models.mdd.config import MDDPoseConfig, MDDPretrainConfig
 from src.tasks.ball_detection.models.mdd.execution import (
     checkpoint_call,
@@ -83,7 +83,7 @@ class MDDDPTDetector(nn.Module):
         super().__init__()
         self.config = config
         self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b, frames=config.frames)
-        self.encoder = DeepMDDEncoder(config)
+        self.encoder = build_mdd_encoder(config)
         self.decoder = DPTDecoder(encoder_channels=self.encoder.feature_channels,
                                   decoder_channels=config.decoder_channels, reassemble_factors=(1., 1., 1., 1.),
                                   block_style="residual")
@@ -103,7 +103,7 @@ class DeepMDDQueryTrunk(nn.Module):
         super().__init__()
         self.config = config
         self.mdd = build_input_transform(config.input_channels, a=mdd_a, b=mdd_b, frames=config.frames)
-        self.encoder = DeepMDDEncoder(config)
+        self.encoder = build_mdd_encoder(config)
         self.projection = nn.Linear(config.mixed_channels[-1], config.dim)
         self.spatial_position = nn.Linear(2, config.dim)
         self.ball_query = nn.Parameter(torch.randn(config.dim) * .02)

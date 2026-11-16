@@ -1,0 +1,2 @@
+?? knowledge/runs/run-scene-x3d-dpt-20261116/model-composition-parity.json
+?? knowledge/runs/run-scene-x3d-dpt-20261116/validation-parity-torch214.json

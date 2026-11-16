@@ -6,7 +6,7 @@ import re
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from review.review_policy import check_started_at
+from lib.ops_review.review_policy import check_started_at
 
 REQUIRED_CHECK = "Python"
 

@@ -84,6 +84,12 @@ def test_public_request_detached_review_merge_completion(
 ) -> None:
     p = parent_env
     numbers, fake, calls = prepared(p)
+    # A regular package can shadow the ops review namespace in CLI processes.
+    foreign = p.repo / "review"
+    foreign.mkdir()
+    (foreign / "__init__.py").write_text(
+        "raise RuntimeError('foreign review package loaded')\n"
+    )
     if base == "trunk":
         remote = p.state()
         remote["default_branch"] = base
@@ -366,10 +372,12 @@ def test_machine_notifications_do_not_claim_parent_verification(
 
 
 def test_controller_and_pr_leases_prevent_duplicate_effects(tmp_path: Path) -> None:
-    controller_lock = importlib.import_module("review.merge_gate").controller_lock
-    progression = importlib.import_module("review.progression")
+    controller_lock = importlib.import_module(
+        "lib.ops_review.merge_gate_impl"
+    ).controller_lock
+    progression = importlib.import_module("lib.ops_review.progression")
     new_state, save = progression.new_state, progression.save
-    targets = importlib.import_module("review.review_locks").targets
+    targets = importlib.import_module("lib.ops_review.review_locks").targets
 
     request_value = {
         "schema_version": 4,

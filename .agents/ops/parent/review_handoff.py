@@ -90,6 +90,6 @@ def request(
     for child in sorted(linked):
         runner_ended(session, child)
     session.record_results(sorted(linked), evidence)
-    from review.merge_gate import register
+    from lib.ops_review.merge_gate_impl import register
 
     return register(session, prs, instruction, reason, review_selection, options or {})

@@ -97,7 +97,7 @@ def progression_event(
 ) -> None:
     """Capture a persisted notification once; never call it parent verification."""
     path = directory / "progressions" / state["id"] / "decision-capture.json"
-    from review.progression import read, save
+    from lib.ops_review.progression import read, save
 
     op = None
     confirmation = state["request"].get("kind") == "post_merge_confirmation"

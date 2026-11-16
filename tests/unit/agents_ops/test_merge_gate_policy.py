@@ -24,7 +24,7 @@ def policy(monkeypatch: pytest.MonkeyPatch) -> Any:
     ops = Path(__file__).resolve().parents[3] / ".agents/ops"
     monkeypatch.syspath_prepend(str(ops))
     monkeypatch.syspath_prepend(str(ops / "review"))
-    return importlib.import_module("merge_gate_policy")
+    return importlib.import_module("lib.ops_review.merge_gate_policy")
 
 
 def ci_runs(state: str, head: str = HEAD) -> list[dict[str, Any]]:
@@ -127,7 +127,7 @@ def test_required_check_run_pages_are_all_checked(
     tail: str,
 ) -> None:
     Store = importlib.import_module("parent.state").Store
-    LiveBackend = importlib.import_module("review.progression_backend").LiveBackend
+    LiveBackend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend
     backend = LiveBackend(
         {"request": {"repo": "o/r", "parent_issue": 1}}, Store(tmp_path)
     )
@@ -178,7 +178,7 @@ def test_dependency_keeps_completion_and_default_branch_contract(
     expected: bool,
 ) -> None:
     Store = importlib.import_module("parent.state").Store
-    Backend = importlib.import_module("review.progression_backend").LiveBackend
+    Backend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend
     backend = Backend({"request": {"repo": "o/r", "parent_issue": 1}}, Store(tmp_path))
     item: dict[str, Any] = {"state": "closed", "state_reason": "completed", "body": ""}
     pr: dict[str, Any] = {

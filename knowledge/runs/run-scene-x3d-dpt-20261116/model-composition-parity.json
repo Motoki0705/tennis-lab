@@ -1,0 +1,14 @@
+{
+  "MDDDPTDetector": {
+    "path": "src/tasks/ball_detection/models/mdd/detectors.py",
+    "computation_ast_identical": true,
+    "training_ast_sha256": "ef5578100bf153cd5d8dd3124a9f7bff4e88313a1469ddaa80eca324ddb7afff",
+    "current_ast_sha256": "ef5578100bf153cd5d8dd3124a9f7bff4e88313a1469ddaa80eca324ddb7afff"
+  },
+  "build_mdd_encoder": {
+    "path": "src/tasks/ball_detection/models/mdd/cnn_encoder.py",
+    "computation_ast_identical": true,
+    "training_ast_sha256": "45b2501964d82ade1d4b2e136a4afdfb85793989bef89ceb300d0982cf8bd48e",
+    "current_ast_sha256": "45b2501964d82ade1d4b2e136a4afdfb85793989bef89ceb300d0982cf8bd48e"
+  }
+}

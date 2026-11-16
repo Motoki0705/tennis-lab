@@ -137,7 +137,7 @@ def test_publication_with_decision_link_recovers_after_response_loss_and_concurr
 
         store = importlib.import_module("parent.state").Store(state_dir(p))
         parsed = (
-            importlib.import_module("parent.cli")
+            importlib.import_module("parent.cli_impl")
             .parser()
             .parse_args(["--repo", "o/r", "--parent", "1", *args])
         )

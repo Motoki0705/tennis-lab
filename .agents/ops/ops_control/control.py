@@ -9,7 +9,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from lib.checkout_lock import checkout_lock, state_root
+from lib.checkout_lock import (
+    checkout_lock,
+    checkout_subprocess_options,
+    common_directory,
+    state_root,
+)
 
 from .systemd import ControlError, ManagerUnavailable, Systemd
 from .targets import Step, Target
@@ -19,9 +24,22 @@ class Controller:
     def __init__(self, repo_root: Path) -> None:
         self.repo_root = repo_root
         self.systemd = Systemd(repo_root)
+        self.checkout_fd: int | None = None
 
     def dispatcher(self, command: str) -> dict[str, Any]:
+        inherited = (
+            checkout_subprocess_options(
+                directory=common_directory(self.repo_root), descriptor=self.checkout_fd
+            )
+            if self.checkout_fd is not None
+            else {}
+        )
+        if self.checkout_fd is not None and command != "status":
+            raise ControlError(
+                "checkout maintenance may only inspect dispatcher status"
+            )
         environment = dict(os.environ)
+        environment.update(inherited.pop("env", {}))
         environment["PYTHONPATH"] = str(self.repo_root / ".agents/ops")
         result = subprocess.run(
             [sys.executable, "-m", "dispatcher", command],
@@ -30,6 +48,7 @@ class Controller:
             capture_output=True,
             text=True,
             check=False,
+            **inherited,
         )
         if result.returncode:
             raise ControlError(

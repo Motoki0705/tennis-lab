@@ -16,7 +16,7 @@ from typing import Any, TypeVar, cast
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops"))
-module: Any = importlib.import_module("review.progression")
+module: Any = importlib.import_module("lib.ops_review.progression")
 Engine, RateWait, new_state, read, save = (
     module.Engine,
     module.RateWait,

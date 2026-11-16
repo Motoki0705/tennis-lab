@@ -371,7 +371,7 @@ class ParentSession:
             return "未指示"
         run = self.row["reviews"][-1]
         if run["request"].get("schema_version") == 4:
-            from review.merge_gate import state_path, view
+            from lib.ops_review.merge_gate_impl import state_path, view
 
             return [view(state_path(self.store, run["request"]["review_run_id"]))]
         public_state = legacy_review_state(history, run["request"])

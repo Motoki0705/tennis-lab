@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops"))
-policy = importlib.import_module("review.parent_review_policy")
+policy = importlib.import_module("lib.ops_review.parent_review_policy")
 marker, parse_output, records = policy.marker, policy.parse_output, policy.records
 
 

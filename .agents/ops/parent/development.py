@@ -583,7 +583,7 @@ def verify_completion(session: ParentSession) -> list[int]:
                 with session.gh.io_scope():
                     ended(job)
     check_task_adoptions(session.gh, parent.body)
-    from review.merge_gate import completion as merge_completion
+    from lib.ops_review.merge_gate_impl import completion as merge_completion
 
     merged: set[int] = set()
     pulls = session.gh.pulls()

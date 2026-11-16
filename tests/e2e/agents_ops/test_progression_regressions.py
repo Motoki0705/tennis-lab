@@ -157,7 +157,7 @@ def test_legacy_merged_prs_can_be_confirmed_without_review_or_merge(
         if fault is None:
             with registry(p).locked() as saved:
                 # The production completion consumer reads the new receipt, not legacy approval.
-                check = importlib.import_module("review.merge_gate").completion
+                check = importlib.import_module("lib.ops_review.merge_gate_impl").completion
                 for n in numbers:
                     assert check(saved, "o/r", 1, n)["issues_confirmed"]
     if fault is None:
@@ -244,7 +244,7 @@ def test_review_context_and_mcp_include_bound_evidence_and_dependency_pr(
     assert dependency_head in config["github_scope"]["ci_heads"]
     for k, v in p.env.items():
         monkeypatch.setenv(k, v)
-    server = importlib.import_module("lib.review_tools.review_server").ReviewRetrieval(
+    server = importlib.import_module("lib.review_tools.review_server_impl").ReviewRetrieval(
         config
     )
     response = server.call("github_item", {"kind": "issue", "number": evidence})
@@ -259,7 +259,7 @@ def test_review_context_and_mcp_include_bound_evidence_and_dependency_pr(
 
 
 def major_progression(session: Any, pr: int, options: dict[str, Any]) -> Path:
-    gate = importlib.import_module("review.merge_gate")
+    gate = importlib.import_module("lib.ops_review.merge_gate_impl")
     settings = importlib.import_module("lib.review_settings")
     choice = settings.choose(
         settings.load_policy(), model="gpt-6-astra", reason="Fixture broad review"

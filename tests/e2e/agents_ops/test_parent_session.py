@@ -2037,7 +2037,6 @@ def test_cli_dependencies_are_published_and_latest_body_controls_resume(
 
 
 # The consumer is tested against the producer's actual public/local contract above.
-REVIEW_SCRIPT = OPS / "review/parent_review.py"
 FAKE_PARENT_REVIEWER = r"""
 import hashlib, json, os, pathlib, sys, time
 args = sys.argv[1:]
@@ -2205,7 +2204,7 @@ def make_review_env(
     )
     driver = p.root / "prepare-approved-fixture.py"
     driver.write_text(
-        "from pathlib import Path\nfrom review.progression import read,save\nfrom review.progression_backend import LiveBackend\nfrom parent.state import Store\np=Path("
+        "from pathlib import Path\nfrom lib.ops_review.progression import read,save\nfrom lib.ops_review.progression_backend import LiveBackend\nfrom parent.state import Store\np=Path("
         + repr(str(path))
         + ")\ns=read(p)\nb=LiveBackend(s,Store(p.parents[2]))\ns['review']['result']=b.review(s,p.parent)\ns['review']['stage']='accepted'\ns['events']=[]\ns['status']='parent_wait'\nsave(p,s)\n"
     )
@@ -2312,4 +2311,4 @@ def independent_pair_review_env(
 def review_policy_module(monkeypatch: pytest.MonkeyPatch) -> Any:
     monkeypatch.syspath_prepend(str(OPS / "review"))
     monkeypatch.syspath_prepend(str(OPS))
-    return importlib.import_module("parent_review_policy")
+    return importlib.import_module("lib.ops_review.parent_review_policy")

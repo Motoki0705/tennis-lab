@@ -19,7 +19,7 @@ from tests.e2e.agents_ops.test_ops_report_retrieval import (
 
 OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 sys.path.insert(0, str(OPS))
-server: Any = importlib.import_module("lib.review_tools.review_server")
+server: Any = importlib.import_module("lib.review_tools.review_server_impl")
 
 
 def test_multiple_pinned_commits_exclude_dirty_worktree_and_other_revisions(

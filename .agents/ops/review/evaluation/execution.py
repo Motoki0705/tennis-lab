@@ -353,7 +353,7 @@ def observe(directory: Path, slot: dict[str, Any]) -> dict[str, Any]:
     for path in (OPS / "lib", OPS / "review"):
         if str(path) not in sys.path:
             sys.path.insert(0, str(path))
-    from review.parent_review_policy import parse_output
+    from lib.ops_review.parent_review_policy import parse_output
 
     runtime = read(directory / "agent-runtime/result.json")
     if (
@@ -592,7 +592,7 @@ def execute(
     )
     shim = directory / "bin/codex"
     shim.write_text(
-        f"#!{sys.executable}\nfrom review.evaluation.restrictions import main\nraise SystemExit(main())\n"
+        f"#!{sys.executable}\nfrom lib.ops_review.evaluation.restrictions import main\nraise SystemExit(main())\n"
     )
     shim.chmod(0o700)
     atomic(
@@ -602,7 +602,7 @@ def execute(
                 "command": sys.executable,
                 "args": [
                     "-m",
-                    "review.evaluation",
+                    "lib.ops_review.evaluation",
                     "serve",
                     "--repo",
                     str(repo.resolve()),

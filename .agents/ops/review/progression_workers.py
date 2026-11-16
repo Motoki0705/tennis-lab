@@ -63,9 +63,8 @@ def refresh(
 ) -> None:
     """The owner's explicit continuation may follow a proven same-worker chain."""
     from dispatcher.repairs import register_progression
+    from lib.ops_review.progression_backend import ProgressionGitHub
     from parent.review_handoff import runner_ended
-
-    from review.progression_backend import ProgressionGitHub
 
     selected = [
         t

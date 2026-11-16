@@ -9,9 +9,8 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any
 
+from lib.ops_review.progression import read, save
 from parent.policy import digest
-
-from review.progression import read, save
 
 
 @contextmanager

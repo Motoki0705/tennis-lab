@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from lib.ops_review.merge_gate_impl import state_path, view
+from lib.ops_review.progression import read
+from lib.ops_review.progression_backend import LiveBackend
 from parent.github import GitHub
 from parent.state import Store
-from review.merge_gate import state_path, view
-from review.progression import read
-from review.progression_backend import LiveBackend
 
 
 def inspect_reviews(

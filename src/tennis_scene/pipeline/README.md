@@ -159,6 +159,52 @@ native格子の解像度は `heatmaps.shape[-2:]`、元動画サイズは `sourc
 taskの位置利用可・直接観測を分離した専用schemaを使用し、通常モデル経路の観測限定契約を維持する。
 v1 artifactの自動補完は行わず、executeで再生成、loadはschema不一致で停止する。
 
+## X3D/CSN＋DPT T32の明示選択
+
+`ball_detection.model_type` は必須で、既定は `conv_next_unet`。
+`pipeline_x3d_dpt.yaml` は共通事前学習10kのX3D/CSN＋DPTを選ぶoverride。
+`pipeline.yaml` の既定checkpointは変わらない。
+学習時validationとの履歴一致は、人間が現状の証拠で受入れ（2026-11-16）。
+固定した104frame中BF16の5frameが事前許容差を超えた数値は維持している。
+判断の出典・実動画比較・残件は[受入記録](../../../knowledge/nodes/tennis_scene/000043-run-scene-x3d-dpt-20261116.md)を参照。
+
+元のweights-only artifactはRGB/MDD契約とTを持つが解像度を保存していない。
+scene用artifactは、固定validation manifestの全clipが720×1280であることを確認して
+`scene_input_contract` を付加したものを使う。モデルstateは元checkpointと厳密一致する。
+取得・SHA照合・metadata追加・validation閾値再計算の再現手順:
+
+```bash
+# Driveから取得した完了snapshotをoutputs/の同じ相対pathへ置いてから実行する。
+PYTHONPATH=. .venv/bin/python knowledge/runs/run-scene-x3d-dpt-20261116/prepare.py \
+  --snapshot outputs/ball_detection/train/capacity_scaling/s42-20261103-main/common-dpt-T32/completed-00010000-dc030faf \
+  --checkpoint ckpt/ball_detection/x3d-csn-dpt-T32-common-u10000-scene.pt \
+  --report outputs/tennis_scene/evaluate/x3d-dpt/export-calibration.json
+
+# GPU実行は共有training queueへ登録する。動画はDATA root相対。
+.venv/bin/python -m src.tennis_scene.scripts.run_pipeline --config-name pipeline_x3d_dpt \
+  'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
+  'camera_ids=[cam0,cam1,cam2]'
+```
+
+uint8 RGBをOpenCVのlinear補間で720×1280へresizeし、各T32窓のmodel I/O境界で
+RGB＋MDDの5chをFP32で作る。ImageNet正規化は加えず、各窓先頭のMDDだけを0にする。
+stride16・実frameの末尾backfill・中心距離最小（同点は早い窓）を固定し、短いclipの反復padは拒否する。
+窓batchの形は既存と同じ `(B,T,C,H,W)`、dtypeはuint8。
+precisionは明示のbf16、batch_sizeは1、`compile_mode=default`で学習時のvalidationに合わせる。
+初回はcompileの準備時間を含む。fp32・`compile_mode=off`は明示overrideで選べるが、
+学習時BF16＋compile(default)とは別の数値実行条件になる。
+メモリ不足でprecision・batch・解像度を自動変更しない。
+native /4 heatmap（180×320）と候補は既存のevidence/gate/保存へ渡し、
+格子正規化座標に元動画の `(W−1,H−1)` を掛けてpixelへ戻す。
+
+存在閾値はvalidationでbalanced `(FPR+FNR)/2` を最小化した **0.5380124449729919**。
+同点は低FPR、次に高閾値を選び、同じscoreのframe群は分割しない。
+observed 85,473、確認済み不在31,885に対してFPR 16.735%、FNR 17.099%。
+maskedは除外し、位置誤差条件は含めない。同じvalidationで較正・測定した値で、独立testではない。
+実行時の再較正は行わない。model_type・channels・T・解像度・正規化・窓policyの不一致、
+空間metadataのない元artifact、strict復元エラーは停止する。
+設定と重みの内容はcomponent cache identityに含まれる。
+
 ## ボール点と欠損
 
 `ball_detection → ball_points → court_side / camera_alignment / ball_triangulation` を使う。

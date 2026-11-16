@@ -7,15 +7,14 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from lib.ops_review.progression import new_state, read, save
 from parent.execution import authorization
 from parent.policy import closing_issues, object_value
 from parent.session import ParentSession
 
-from review.progression import new_state, read, save
-
 
 def register(session: ParentSession, numbers: list[int]) -> dict[str, Any]:
-    from review.merge_gate import state_path
+    from lib.ops_review.merge_gate_impl import state_path
 
     if not numbers or len(numbers) != len(set(numbers)):
         raise ValueError("confirmation requires unique merged PR numbers")

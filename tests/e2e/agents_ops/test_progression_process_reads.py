@@ -25,7 +25,7 @@ def progression(d: Any, monkeypatch: pytest.MonkeyPatch) -> tuple[Any, dict, Pat
     monkeypatch.setenv("FAKE_DISPATCH_HTTP_CALLS", str(endpoints))
     row = d.row()
     saved = row["repair_progressions"]["pipeline-1"]
-    state = importlib.import_module("review.progression").new_state(
+    state = importlib.import_module("lib.ops_review.progression").new_state(
         {
             "schema_version": 4,
             "review_run_id": "parent-1-" + "a" * 32,
@@ -49,7 +49,7 @@ def progression(d: Any, monkeypatch: pytest.MonkeyPatch) -> tuple[Any, dict, Pat
         generation=row["generation"],
     )
     state["options"] = {"dispatcher_state_dir": str(d.schedule.directory)}
-    backend = importlib.import_module("review.progression_backend").LiveBackend(
+    backend = importlib.import_module("lib.ops_review.progression_backend").LiveBackend(
         state, d.h.store
     )
     return backend, state, endpoints

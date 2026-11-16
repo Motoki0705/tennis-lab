@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops"))
-parser = importlib.import_module("parent.cli").parser
+parser = importlib.import_module("parent.cli_impl").parser
 
 
 def test_empty_review_request_is_rejected() -> None:

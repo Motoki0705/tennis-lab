@@ -6,17 +6,16 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from lib.ops_review.parent_review_policy import marker, parse_output
+from lib.ops_review.progression import read, save
+from lib.ops_review.review_policy import neutralize_markers
+from lib.ops_review.review_workspace import build_prompt, workspace
 from lib.review_settings import runtime_view
 from parent.github import GitHub
 from parent.policy import object_value
 from parent.session import ParentSession
 from parent.snapshot import git, snapshot
 from parent.state import Store
-
-from review.parent_review_policy import marker, parse_output
-from review.progression import read, save
-from review.review_policy import neutralize_markers
-from review.review_workspace import build_prompt, workspace
 
 HERE = Path(__file__).resolve().parent
 OPS = HERE.parent

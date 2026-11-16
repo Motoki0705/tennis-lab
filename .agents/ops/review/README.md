@@ -6,7 +6,7 @@ PRのopen・push・時間経過からレビューを始めるtimerや常駐servi
 
 ## レビュー
 
-`parent_review.py` は親・対象Issueの原要件とコメント、PRの本文とコメント、レビュー時のhead、全文diff、read-only checkoutを収集し、共通ランナーを1回だけ呼ぶ。
+`parent_review_impl.py` は親・対象Issueの原要件とコメント、PRの本文とコメント、レビュー時のhead、全文diff、read-only checkoutを収集し、共通ランナーを1回だけ呼ぶ。
 番号で辿った親関係と保存済みの証拠用Issueを資料へ含め、合意・判断の原文を保持する。証拠用Issueと依存PR・そのCI headもMCPの取得範囲に入れる。
 証拠bindingがない関連Issueはその欠測を `evidence_bindings` に示す。担当親のbinding欠落・不確定な作成・既知bindingの不整合はエラーになる。
 モデル選択の方針は [正式レビューのモデル選択](../parent/README.md#正式レビューのモデル選択) が正本。
@@ -91,6 +91,9 @@ merge後は移動するmain先端を使わず、merge commitのpush CIを確認�
 merge commitの存在、default branchへのmerge、対象Issueのclosed/completed、merge commitのpush CIを確認し、privateな後確認記録を親の完了判定へ渡す。
 旧レビューの承認とは結び付けず、履歴・registryの旧review行も変更しない。レビュー・修正worker・mergeは起動せず、open PRと `--rereview` は受け付けない。
 確認だけなので `AGENT_AUTO_MERGE=1` は不要。担当・実行根拠・needs-human・停止は確認する。待機・通知・明示再開は通常の `merge-status` / `wait-merge` / `merge-continue` を使う。
+
+大局レビューのAPIは `lib.ops_review.parent_review_impl` へ置き、保護されたcontrollerから呼ぶ。単独の旧review CLIは廃止する。
+checkout保護とregistry/ownershipのlock順は [共通CLIの契約](../lib/README.md#対話cliの保護) に従う。
 
 ## 検証と取得量
 

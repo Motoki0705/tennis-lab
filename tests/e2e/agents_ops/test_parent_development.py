@@ -622,7 +622,7 @@ def test_workflow_cli_never_recreates_registry_with_dispatcher_history(
     loss: str,
 ) -> None:
     _, _, env = workflow(d, monkeypatch)
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
 
     def github(repo: str, *, store: Any) -> Any:
         client = copy.copy(d.h.gh)
@@ -729,7 +729,7 @@ def test_parent_cli_uses_bootstrap_state_for_start_inspect_and_targeted_stop(
 ) -> None:
     development, _, env = workflow(d, monkeypatch)
     tree = child_tree(d)
-    cli = importlib.import_module("parent.cli")
+    cli = importlib.import_module("parent.cli_impl")
     original_get = d.h.gh.get
     operations = []
     held: list[str] = []

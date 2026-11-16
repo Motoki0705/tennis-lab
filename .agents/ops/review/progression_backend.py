@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from issues.cli import GitHubHTTPError
+from lib.ops_review.merge_gate_policy import auto_merge, python_ci_errors
+from lib.ops_review.progression import RateWait
 from lib.repair_turn import parse_report
 from lib.repair_turn import request as repair_request
 from parent.execution import authorization
@@ -18,9 +20,6 @@ from parent.github import GitHub
 from parent.policy import child_stopped, closing_issues, object_value
 from parent.session import ParentSession
 from parent.state import Store
-
-from review.merge_gate_policy import auto_merge, python_ci_errors
-from review.progression import RateWait
 
 
 class ProgressionGitHub(GitHub):
@@ -99,7 +98,7 @@ class LiveBackend:
                 raise ValueError("progression execution authority changed")
 
     def review(self, state: dict[str, Any], directory: Path) -> dict[str, Any]:
-        from review.parent_review import run_review
+        from lib.ops_review.parent_review_impl import run_review
 
         self.authorize()
         return run_review(state, directory, self.gh)
