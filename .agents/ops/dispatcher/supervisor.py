@@ -352,6 +352,18 @@ class Supervisor:
 
         verify_completion(session)
 
+    def _validate_repair_registration(
+        self, key: str, row: dict[str, Any], job: dict[str, Any]
+    ) -> None:
+        from .repairs import require_registration
+
+        registration = require_registration(self, key, row, job["progression_id"])
+        if (
+            job["child"] != registration["child"]
+            or job["repair"]["pr"] != registration["pr"]
+        ):
+            raise ValueError("repair job differs from its registered target")
+
     def _validate_start(
         self, key: str, row: dict[str, Any], job: dict[str, Any]
     ) -> None:
@@ -369,6 +381,8 @@ class Supervisor:
             )
         self._authorized(key, row)
         session = self._session(key, row)
+        if "repair" in job:
+            self._validate_repair_registration(key, row, job)
         if job["role"] == "parent" and dispatch.get("controller_mode") == "handoff":
             raise ValueError("parent runtime was handed off to the current owner")
         issue = self.gh.issue(session.parent)
@@ -594,6 +608,11 @@ class Supervisor:
                         or task.get("delegation_id") != job["delegation_id"]
                     ):
                         raise ValueError("claimed implementation stopped before launch")
+                if "repair" in job:
+                    from parent.repair_admission import require_repair_labels
+
+                    self._validate_repair_registration(key, row, job)
+                    require_repair_labels(session, job["child"], job["repair"]["pr"])
                 if not self.schedule.read()["enabled"]:
                     self.store.conflict("dispatcher disabled before launch")
                 admitted = True
@@ -1054,6 +1073,19 @@ class Supervisor:
             != ("claude" if job["role"] == "parent" else "codex")
         ):
             raise ValueError("runner contract does not match the reserved job")
+        if contract.get("repair") != job.get("repair"):
+            raise ValueError("runner repair contract does not match the reserved job")
+        if "repair" in contract:
+            from lib.repair_turn import validate_contract
+
+            validate_contract(contract)
+
+    def start_repair(
+        self, parent: int, progression_id: str, repair_id: str, details: str
+    ) -> str:
+        from .repairs import reserve
+
+        return reserve(self, parent, progression_id, repair_id, details)
 
     def start_child(
         self,

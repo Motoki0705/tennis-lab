@@ -747,7 +747,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 `run-worker` は現在の32桁hexの委任ID・Codex担当・worktree・branchと、有効な根拠・要件・停止・依存を検査する。
 初回は終了未記録かつ当該委任のrun未登録に限る。`--model` の選択肢は
 [`agents.conf`](../lib/agents.conf) の `CODEX_MODEL`（既定Sol）と `CODEX_ALTERNATE_MODEL`（Astra）のみ。
-effortはmax固定で引数に出さない。判断基準は [AGENTS.md](../../../AGENTS.md#開発ルール) を参照する。
+通常のeffortはmax固定で引数に出さない。highを使う例外の入口は[自動進行の修正ターン](#自動進行の修正ターン)。判断基準は [AGENTS.md](../../../AGENTS.md#開発ルール) を参照する。
 高難度の委任では親がAstraを明示選択でき、人間との合意による指定を優先する。
 選択理由は `note`（証拠用Issue）と `--model-reason-file` に残す。初回の代替選択には理由ファイルを必須とし、
 既定の採用で省略した場合は既定採用の理由を記録する。委任taskの `model` / privateな `model_reason` と各runへ保存する。
@@ -812,7 +812,7 @@ runner喪失時は保存済みcleanup confirmationも照合する。`metadata_er
 session ID・runの場所・証拠原文はprivate registryへ保存する。
 
 `record-worker-run` は存在する `result.json` / `invocation.json` のすべてでschemaと
-`contract.task_id`・`contract.cwd`・`contract.branch` と実装子のmodel/max effort・profile・modeを現在の委任と照合する。
+`contract.task_id`・`contract.cwd`・`contract.branch` と実装子のmodel/effort（修正ターンの例外を含む）・profile・modeを現在の委任と照合する。
 複数の保存記録間でmodel設定が異なる場合や、modelを特定できない場合も拒否する。
 どちらも無い場合や片方でも不一致なら拒否し、同一runの再登録は冪等とする。
 起動はせず、既存の終了記録は変更しない。保存contractから委任のmodel欄を補完する。
@@ -898,6 +898,41 @@ statusの実行にも残り時間を適用し、workerの停止や記録の修�
 
 4. 終了通知のJSONで `wait_state`・runnerの結果・終了記録を確認し、返された `final_file` を読んで次を判断する。
    会話を再開した場合も同じ入口を再実行できる。親ごとの待機ループやプロセス名検索は作らない。
+
+### 自動進行の修正ターン
+
+CI失敗・軽いgate停止をPR作成workerへ渡す専用resume。起動・終了待機の接続と回数管理は自動進行側が担当する。
+手動worker系列では `run-worker --resume --repair-id ID --repair-pr N --prompt-file FILE` を使う。
+Python APIは `manual_workers.run_worker(..., resume=True, repair=lib.repair_turn.request(ID, N))`。
+モデル・sessionと現在の委任を維持し、専用ターンのeffortをhighにする。次の通常ターンはmaxへ戻る。
+
+修正IDは1試行に固定する。`prepare_run` は同じID・PR・指示の予約を再取得する。
+起動intentはPopen前に保存する。既存の `session.lock`・`latest_run` の排他も使う。
+確実に起動前に拒否された試行は同じ予約で再実行できる。起動intent以後の再送は保存先を返す。
+起動直後に応答や記録を失った場合は `run_dir` を照合し、起動の再送へ進まず親の復旧判断へ返す。
+完了済みの再取得では同じ `final_file` を返す。終了の認定は既存runnerの終了・cleanup検査を使う。
+手動・dispatcherの両経路はPopen直前に親・子・対象PRのラベルをfresh取得し、`needs-human` があれば理由付きで起動を拒否する。
+
+修正指示は `lib.repair_turn.instruction` が組み立てる。workerは自分で修正できるか親AIの判断が必要かを決め、
+実装・検証・pre-commit・commit・pushを終えたらターンを終了する。CI待機は呼出側CLIへ戻す。
+既存sessionの出力schemaは保持し、修正報告は呼出側で `lib.repair_turn.parse_report(text, repair_id=ID, pr=N)` に通す。
+JSONの前後に自然文やコードフェンスを付けない。未知・重複・欠落キー、異なるID/PR、型・値の不正はエラーにする。
+
+| キー | 契約 |
+|---|---|
+| `schema_version` | 整数1 |
+| `repair_id` / `pr` | 起動予約のIDとPR番号 |
+| `outcome` | `repaired` または `needs_parent` |
+| `head_sha` | 報告時の完全な40桁commit |
+| `summary` | 非空文字列 |
+| `verification` | 実施した検証結果・未実施を示す文字列配列 |
+| `parent_request` | `repaired`ではnull、`needs_parent`では非空の判断依頼 |
+
+dispatcher系列の土台APIは `dispatcher.repairs.register_progression(session, progression_id, child=N, pr=P)` と
+`Supervisor.start_repair(parent, progression_id, repair_id, details)`。登録は実際の担当親のsessionで行い、
+親の世代・実行根拠・委任・作成workerのsession/契約へ結び付ける。登録済みの対象だけが切り離した呼出元から予約できる。
+claim時とPopen直前の最終admissionでも、登録した親のsession・generation・実行根拠と現在の登録・権限を照合する。親runtimeの環境変数は起動入力に使わない。
+戻り値は既存dispatcherのjob ID。同じ修正IDは同じjobを返し、通常のclaim・起動・回収・ログ公開へ接続する。
 
 ### workerの調査・親判断・実装フェーズ
 

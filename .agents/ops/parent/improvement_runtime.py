@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import signal
 import subprocess
+import uuid
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -15,6 +16,7 @@ from issues.improvement import human_state
 
 from .execution import authorization
 from .improvements import get, lock_key, require
+from .repair_admission import require_repair_labels
 from .session import ParentSession
 
 if TYPE_CHECKING:
@@ -26,6 +28,8 @@ if TYPE_CHECKING:
 class ManualExecution:
     completed: subprocess.CompletedProcess[bytes]
     spawned: bool
+    reused: bool = False
+    repair_claim: str | None = None
 
 
 def execute_manual(
@@ -46,6 +50,7 @@ def execute_manual(
 
     directory = Path(command[command.index("--run-dir") + 1])
     process: subprocess.Popen[bytes] | None = None
+    repair_claim = None
     try:
         with (
             store.operation(lock_key(gh.repo)),
@@ -54,6 +59,19 @@ def execute_manual(
         ):
             session = ParentSession(gh, store, parent, identity)
             task = current_task(session, child)
+            attempt = None
+            if "--repair-id" in command:
+                repair_id = command[command.index("--repair-id") + 1]
+                attempt = task["repair_attempts"][repair_id]
+                if (
+                    attempt["command"] != command
+                    or attempt["instruction"] != instruction
+                ):
+                    raise ValueError("repair launch differs from its reservation")
+                if attempt["launch_state"] != "reserved":
+                    return ManualExecution(
+                        subprocess.CompletedProcess(command, 0, b"", b""), False, True
+                    )
             require(session, fresh=True)
             current = authorization(session)
             require(session, child, fresh=True)
@@ -73,6 +91,13 @@ def execute_manual(
                 raise ValueError(
                     "manual reservation/authority changed before runtime admission"
                 )
+            if attempt is not None:
+                # Save intent before Popen. An interrupted starting claim is
+                # recovered by inspection, never by resubmitting the launch.
+                repair_claim = uuid.uuid4().hex
+                attempt.update(launch_state="starting", launch_claim=repair_claim)
+                store.save()
+                require_repair_labels(session, child, attempt["request"]["pr"])
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,
@@ -95,6 +120,7 @@ def execute_manual(
         return ManualExecution(
             subprocess.CompletedProcess(command, process.returncode, stdout, stderr),
             True,
+            repair_claim=repair_claim,
         )
     except (Exception, KeyboardInterrupt) as exc:
         if process is not None:
@@ -105,11 +131,18 @@ def execute_manual(
             raise ValueError(
                 "manual launcher started but admission persistence failed; inspect its runtime and cleanup before retrying"
             ) from exc
+        if repair_claim is not None and not isinstance(exc, (OSError, ValueError)):
+            # An interruption inside Popen can leave a child even though its
+            # constructor never returned. Retain the durable starting claim.
+            raise ValueError(
+                "repair launch is unconfirmed; inspect the saved reservation and cleanup"
+            ) from exc
         return ManualExecution(
             subprocess.CompletedProcess(
                 command, 127 if isinstance(exc, OSError) else 2, b"", str(exc).encode()
             ),
             False,
+            repair_claim=repair_claim,
         )
 
 

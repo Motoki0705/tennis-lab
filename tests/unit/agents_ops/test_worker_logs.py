@@ -303,6 +303,20 @@ def test_schema_and_receipts_fail_closed(case: str) -> None:
         schema.validate(files)
 
 
+def test_high_effort_without_a_repair_is_rejected_at_both_log_boundaries() -> None:
+    source, receipt = record_source()
+    files = sources.render(source, receipt)
+    meta = json.loads(files["meta.json"])
+    meta["worker"]["selected"]["effort"] = "high"
+    meta["worker"]["effective"]["effort"]["value"] = "high"
+    files["meta.json"] = schema.json_bytes(meta)
+    with pytest.raises(ValueError, match="record_worker"):
+        schema.validate(files)
+    receipt["record"]["contract"]["settings"]["selected"]["effort"] = "high"
+    with pytest.raises(ValueError, match="runner_settings_changed"):
+        sources.render(source, receipt)
+
+
 def test_mask_counts_cover_instruction_final_and_additional_text() -> None:
     source, receipt = record_source()
     source["instruction"] = "観測/補間。パスは/home/unknown/report.txt。"

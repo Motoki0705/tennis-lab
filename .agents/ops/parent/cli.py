@@ -230,6 +230,8 @@ def parser() -> argparse.ArgumentParser:
         help="investigate and report before implementation",
     )
     manual.add_argument("--restart-evidence-file")
+    manual.add_argument("--repair-id")
+    manual.add_argument("--repair-pr", type=int)
     manual.add_argument(
         "--model",
         choices=models,
@@ -573,6 +575,8 @@ def _main(argv: list[str] | None = None) -> int:
             )
             return 0
         if args.command == "run-worker":
+            from lib.repair_turn import request as repair_request
+
             from .manual_workers import run_worker
 
             code, worker_result = run_worker(
@@ -583,6 +587,9 @@ def _main(argv: list[str] | None = None) -> int:
                 child=number(args.child),
                 prompt=args.prompt_file,
                 resume=args.resume,
+                repair=repair_request(args.repair_id, args.repair_pr)
+                if args.repair_id is not None or args.repair_pr is not None
+                else None,
                 replace_session=args.replace_session,
                 planning=args.planning,
                 model=args.model,

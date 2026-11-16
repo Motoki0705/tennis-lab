@@ -65,6 +65,26 @@ def test_publication_accepts_canonical_repo_url(
     assert logs.github.calls == ["create", "merge"]
 
 
+@pytest.mark.parametrize(
+    "repair_id", ["a", "f" * 32, "12345678-1234-1234-1234-123456789abc"]
+)
+def test_repair_turn_is_validated_and_published_with_high_effort(
+    logs: LogEnv, repair_id: str
+) -> None:
+    marker = {"schema_version": 1, "repair_id": repair_id, "pr": 42}
+    path = logs.ready(repair=marker, instruction=f"Repair request {repair_id}.")
+    result = logs.publisher(path).publish()
+    assert result["state"] == "merged" and result["saved_to_main"] is True, result
+    row = journal.read(path)
+    files = {k: v.encode() for k, v in row["files"].items()}
+    meta = schema.validate(files)
+    assert meta["turn"]["repair"] == {"pr": 42}
+    assert meta["worker"]["selected"] == {"model": "gpt-6.1-sol", "effort": "high"}
+    if len(repair_id) >= 32:
+        assert repair_id not in files["instruction.md"].decode()
+    assert logs.github.calls == ["create", "merge"]
+
+
 def test_capture_adapter_failure_preserves_successful_log_publication(
     logs: LogEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:

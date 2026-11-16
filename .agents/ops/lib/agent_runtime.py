@@ -28,7 +28,7 @@ from agent_events import (
     parse_json,
 )
 from agent_output import OutputSchema
-from agent_settings import command, execution_contract, resolve
+from agent_settings import command, resolve, session_contract
 from decision_logs.capture import RETRIEVAL_ENV, RUNTIME_ENV  # noqa: E402
 from decision_logs.observations import runtime_record  # noqa: E402
 from opsproc import (
@@ -146,6 +146,8 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--profile")
     result.add_argument("--model")
     result.add_argument("--effort")
+    result.add_argument("--repair-id")
+    result.add_argument("--repair-pr", type=int)
     result.add_argument("--review-selection-file", type=Path)
     result.add_argument("--task-id")
     result.add_argument("--branch")
@@ -292,6 +294,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("resume requires --resume-from and --task-id")
     if args.action != "resume" and args.resume_from is not None:
         raise ValueError("--resume-from requires resume")
+    repair = None
+    if args.repair_id is not None or args.repair_pr is not None:
+        from lib.repair_turn import request
+
+        repair = request(args.repair_id, args.repair_pr)
+        if args.action != "resume":
+            raise ValueError("repair turn requires resume")
     cwd = args.cwd.resolve(strict=True)
     if not cwd.is_dir():
         raise ValueError("--cwd is not a directory")
@@ -327,6 +336,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     )
     if previous:
         for key in ("model", "effort"):
+            if key == "effort" and (
+                repair is not None or "repair" in previous["contract"]
+            ):
+                continue
             if getattr(args, key) is None:
                 setattr(
                     args, key, previous["contract"]["settings"]["overrides"].get(key)
@@ -339,6 +352,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         args.effort,
         args.mode,
         review_selection=review_selection,
+        repair=repair,
     )
     home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).resolve()
     branch = branch_at(cwd, bool(args.task_id))
@@ -356,6 +370,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     }
     if review_selection is not None:
         contract["review_selection"] = review_selection
+    if repair is not None:
+        contract["repair"] = repair
     if output_schema is not None:
         contract["json_schema_sha256"] = output_schema.sha256
     mcp_bytes = None
@@ -379,7 +395,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         if head.returncode:
             raise ValueError("failed to read detached worktree HEAD")
         contract["detached_head"] = head.stdout.strip()
-    if previous and execution_contract(contract) != execution_contract(
+    if previous and session_contract(contract) != session_contract(
         previous["contract"]
     ):
         raise ValueError(
@@ -431,6 +447,13 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             state = read_json(root / "session.json")
             if state["latest_run"] != str(args.resume_from.resolve()):
                 raise ValueError("resume-from is not the latest session run")
+            if repair is not None:
+                attempts = state.setdefault("repair_runs", {})
+                if repair["repair_id"] in attempts:
+                    raise ValueError(
+                        "repair ID already has a session run; recover its reservation"
+                    )
+                attempts[repair["repair_id"]] = str(run_dir)
             if previous["result"] == "running":
                 raise ValueError(
                     "previous run is still running or unreconciled; inspect status/stop first"
