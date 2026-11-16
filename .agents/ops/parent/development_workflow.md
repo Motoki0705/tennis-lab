@@ -116,6 +116,8 @@ major・判断要求を受けた親は必要な修正を同じworkerへ依頼し
 
 ## 待機・完了・担当終了
 
+切替前にmerge済みの子を含む親は、[既存成果の後確認](../review/README.md#切替前にmerge済みの成果)で完了判定に必要な記録を揃える。
+
 worker終了イベントでのログ保存と公開失敗の照合・再開は [workerログ保存](../worker_logs/README.md) を参照する。
 親自身の操作・再試行・引継ぎを含む結果と判断は [判断記録](../decision_logs/README.ja.md#親の判断を明示記録する)へ結び、
 まとまった区切りで [Git公開と閲覧](../decision_logs/README.ja.md#git公開と閲覧)を行う。

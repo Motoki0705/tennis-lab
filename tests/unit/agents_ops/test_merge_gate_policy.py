@@ -154,3 +154,78 @@ def test_required_check_run_pages_are_all_checked(
     else:
         assert backend.ci(11, HEAD)["status"] == tail
     assert len(calls) == 2
+
+
+@pytest.mark.parametrize(
+    "case,expected",
+    [
+        ("research", True),
+        ("merged", True),
+        ("extra_closed_unmerged", True),
+        ("extra_open", False),
+        ("closed_unmerged", False),
+        ("nondefault", False),
+        ("issue_open", False),
+        ("cancelled", False),
+        ("duplicate", False),
+        ("body_stopped", False),
+    ],
+)
+def test_dependency_keeps_completion_and_default_branch_contract(
+    policy: Any,
+    tmp_path: Path,
+    case: str,
+    expected: bool,
+) -> None:
+    Store = importlib.import_module("parent.state").Store
+    Backend = importlib.import_module("review.progression_backend").LiveBackend
+    backend = Backend({"request": {"repo": "o/r", "parent_issue": 1}}, Store(tmp_path))
+    item: dict[str, Any] = {"state": "closed", "state_reason": "completed", "body": ""}
+    pr: dict[str, Any] = {
+        "number": 30,
+        "state": "closed",
+        "body": "Closes #3",
+        "merged": True,
+        "base": {"ref": "main", "repo": {"full_name": "o/r", "default_branch": "main"}},
+    }
+    prs = [pr]
+    if case == "research":
+        prs = []
+    elif case == "extra_closed_unmerged":
+        prs.append({**pr, "number": 31, "merged": False})
+    elif case == "extra_open":
+        prs.append({**pr, "number": 31, "merged": False, "state": "open"})
+    elif case == "closed_unmerged":
+        pr["merged"] = False
+    elif case == "nondefault":
+        pr["base"]["ref"] = "codex/dependency"
+    elif case == "issue_open":
+        item.update(state="open", state_reason=None)
+    elif case in {"cancelled", "duplicate"}:
+        item["state_reason"] = "not_planned" if case == "cancelled" else "duplicate"
+    elif case == "body_stopped":
+        item["body"] = importlib.import_module("parent.policy").replace_section(
+            "",
+            "作業状況・停止事項",
+            "<!-- parent-task-status:v1 state=stopped detail=" + "a" * 64 + " -->",
+        )
+
+    class Fake:
+        def issue(self, n: int) -> dict:
+            assert n == 3
+            return item
+
+        def pulls(self, numbers: set[int]) -> list[dict]:
+            assert numbers == {3}
+            return prs
+
+        def get(self, endpoint: str) -> dict:
+            return next(p for p in prs if endpoint.endswith("/" + str(p["number"])))
+
+    backend.gh = Fake()
+    assert (
+        backend.dependency(
+            {"dependencies": [{"issue": 3, "prs": [p["number"] for p in prs]}]}
+        )
+        is expected
+    )

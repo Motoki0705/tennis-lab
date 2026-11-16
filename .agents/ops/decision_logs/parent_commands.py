@@ -51,6 +51,7 @@ COMMANDS = {
     "release": "handoff",
     "review-request": "review",
     "merge-continue": "resume",
+    "merge-confirm": "verify",
     "inspect-worker": "fetch",
     "publish-worker-log": "publish",
     "worker-log-status": "fetch",

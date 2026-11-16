@@ -302,6 +302,9 @@ def parser() -> argparse.ArgumentParser:
     review_choice_arguments(request)
     status = commands.add_parser("merge-status")
     status.add_argument("--run-id")
+    confirmation = commands.add_parser("merge-confirm")
+    confirmation.add_argument("--prs", nargs="+", type=int, required=True)
+    confirmation.add_argument("--wait", action="store_true")
     resume = commands.add_parser("merge-continue")
     resume.add_argument("--run-id")
     resume.add_argument("--instruction-file", required=True)
@@ -960,6 +963,10 @@ def _main(argv: list[str] | None = None) -> int:
                     review_selection=review_choice(session, args),
                     options=options,
                 )
+            elif command == "merge-confirm":
+                from review.post_merge import register as confirm_merged
+
+                result = confirm_merged(session, args.prs)
             else:
                 raise ValueError("unknown parent command")
             if command in {
@@ -968,7 +975,7 @@ def _main(argv: list[str] | None = None) -> int:
                 "basis-revoke",
             }:
                 session.sync_progress()
-        if command == "review-request":
+        if command in {"review-request", "merge-confirm"}:
             from review.merge_gate import start, state_path, wait
 
             path = state_path(store, result["review_run_id"])

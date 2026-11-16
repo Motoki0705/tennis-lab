@@ -399,7 +399,8 @@ def test_self_result_review_merge_completion_without_creating_children(
     assert g.review.request["prs"][0]["issues"] == [1]
     result = json.loads((g.review.run_dir / "result.json").read_text())
     assert {i["issue"]["number"] for i in g.review.calls()[0]["context"]["issues"]} == {
-        1
+        1,
+        g.review.calls()[0]["context"]["evidence_bindings"]["1"],
     }
     assert result["reviewed_heads"]["100"] == p.state()["prs"][0]["head"]["sha"]
     if task.get("delegated"):

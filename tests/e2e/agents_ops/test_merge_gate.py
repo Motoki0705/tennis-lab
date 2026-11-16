@@ -110,6 +110,7 @@ class GateSeed:
         )
 
     def restore(self, p: ParentEnv, monkeypatch: pytest.MonkeyPatch) -> GateEnv:
+        p.env["AGENT_AUTO_MERGE"] = "1"
         self.directory.restore(p.root)
         run_git(p.repo, "worktree", "repair")
         review = self.template.review

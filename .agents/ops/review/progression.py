@@ -118,6 +118,7 @@ class Engine:
             "running",
             "accepted",
             "parent_wait",
+            "not_required",
         }:
             raise ValueError("unknown review stage")
         for n, target in self.state["targets"].items():
@@ -131,6 +132,14 @@ class Engine:
                 "completed",
             }:
                 raise ValueError("unknown progression target or stage")
+        confirmation = self.state["request"].get("kind") == "post_merge_confirmation"
+        if (self.state["review"]["stage"] == "not_required") != confirmation:
+            raise ValueError("only post-merge confirmation may omit review")
+        if confirmation and any(
+            t["stage"] not in {"post_merge_wait", "parent_wait", "completed"}
+            for t in self.state["targets"].values()
+        ):
+            raise ValueError("confirmation cannot authorize review, repair or merge")
 
     def save(self) -> None:
         save(self.path, self.state)
@@ -179,9 +188,12 @@ class Engine:
         prs: list[int] | None = None,
         review_selection: dict[str, Any] | None = None,
         review_config_file: str | None = None,
+        prepare: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         if not evidence.strip():
             raise ValueError("continuation requires the parent's instruction")
+        if rereview and self.state["request"].get("kind") == "post_merge_confirmation":
+            raise ValueError("post-merge confirmation cannot start a review")
         if prs is not None:
             selected = {str(n) for n in prs}
             if (
@@ -201,6 +213,8 @@ class Engine:
         reason = self.backend.local(self.state)
         if reason:
             raise ValueError(reason)
+        if prepare is not None:
+            prepare(self.state)
         self.state["decisions"].append(
             {
                 "instruction": evidence,
@@ -260,6 +274,12 @@ class Engine:
                     self.state["status"] = "parent_wait"
                     self.emit("parent_wait", reason=reason)
                     return self.state
+                for target in self.state["targets"].values():
+                    reason = self.backend.human(self.state, target)
+                    if reason:
+                        self.state["status"] = "parent_wait"
+                        self.emit("parent_wait", pr=target["number"], reason=reason)
+                        return self.state
                 review["stage"] = "running"
                 self.state["status"] = "running"
                 self.save()
@@ -294,10 +314,14 @@ class Engine:
         if review["stage"] == "parent_wait":
             return self.state
         result = review.get("result", {})
-        if result.get("verdict") != "approve" and not (
-            result.get("verdict") == "major" and review.get("major_repaired")
+        if (
+            review["stage"] != "not_required"
+            and result.get("verdict") != "approve"
+            and not (result.get("verdict") == "major" and review.get("major_repaired"))
         ):
             raise ValueError("review has no approval or explicit major continuation")
+        self.state["status"] = "running"
+        self.save()
         while True:
             for target in self.state["targets"].values():
                 if (
@@ -355,6 +379,13 @@ class Engine:
 
     def step(self, target: dict[str, Any]) -> None:
         stage = target["stage"]
+        if stage in {"merge_pending", "repair_pending", "post_merge_wait"}:
+            blocked = self.backend.local(self.state) or self.backend.human(
+                self.state, target
+            )
+            if blocked:
+                self.pause(target, blocked)
+                return
         if stage == "merge_pending":
             self.confirm_merge(target)
             return
@@ -492,6 +523,9 @@ class Engine:
         self.save()
 
     def post_merge(self, target: dict[str, Any]) -> None:
+        if target.get("merged_at") is None:
+            target["merged_at"] = self.clock()
+            self.save()
         if not self.backend.issues_completed(target):
             self.pause(target, "issue_not_completed")
             return

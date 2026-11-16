@@ -123,11 +123,14 @@ def register(
                 raise ValueError(
                     "PR does not belong to the registered creating Codex worker"
                 )
+            from review.progression_workers import source as worker_source
+
             entry["worker"] = {
                 "kind": "dispatcher" if row.get("dispatch") else "manual",
                 "child": child,
                 "delegation_id": task["delegation_id"],
                 "progression_id": uuid.uuid4().hex,
+                "source": worker_source(session, child),
             }
         entries.append(entry)
     identifier = f"parent-{session.parent}-{uuid.uuid4().hex}"
@@ -169,17 +172,11 @@ def register(
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=False)
     save(path, state)
     row["reviews"].append({"request": request, "state": "requested"})
+    row["latest_progression_id"] = identifier
     session.store.save()
-    from decision_logs.capture import current
+    from decision_logs.review_capture import bind_request
 
-    capture = current()
-    if capture is not None:
-        try:
-            with capture.transaction():
-                capture.row["review_run_id"] = identifier
-                capture._save()
-        except Exception:
-            capture.mark_failed(lost_source="review.binding")
+    bind_request(identifier)
     return {"review_run_id": identifier, "reused": False, "status": "requested"}
 
 
@@ -191,10 +188,11 @@ def latest(store: Store, repo: str, parent: int, identifier: str | None = None) 
             for r in row.get("reviews", [])
             if r["request"].get("schema_version") == 4
         ]
+        found.extend(row.get("post_merge_confirmations", []))
     if identifier is None:
         if not found:
             raise ValueError("no automatic progression is registered")
-        identifier = found[-1]
+        identifier = row.get("latest_progression_id", found[-1])
     if identifier not in found:
         raise ValueError("progression is not registered with this parent")
     return state_path(store, identifier)
@@ -205,6 +203,7 @@ def view(path: Path) -> dict[str, Any]:
     return {
         "review_run_id": state["id"],
         "status": state["status"],
+        "kind": state["request"].get("kind", "review_and_merge"),
         "review": state["review"],
         "prs": [
             {k: v for k, v in t.items() if k != "worker"}
@@ -254,6 +253,7 @@ def continue_progression(
     review_config_file: str | None = None,
 ) -> None:
     from review.progression_backend import LiveBackend
+    from review.progression_workers import refresh
 
     with controller_lock(path):
         state = read(path)
@@ -267,6 +267,7 @@ def continue_progression(
             prs=prs,
             review_selection=review_selection,
             review_config_file=review_config_file,
+            prepare=lambda value: refresh(backend, value, prs, instruction),
         )
     start(path)
 
@@ -289,13 +290,14 @@ def wait(path: Path, *, after: int = 0, timeout: float | None = None) -> dict[st
 
 def completion(store: Store, repo: str, parent: int, pr: int) -> dict[str, Any]:
     row = store.read_data().get("parents", {}).get(f"{repo.casefold()}#{parent}", {})
-    requests = [
-        r["request"]
+    identifiers = [
+        r["request"]["review_run_id"]
         for r in row.get("reviews", [])
         if r["request"].get("schema_version") == 4
     ]
-    for request in reversed(requests):
-        state = read(state_path(store, request["review_run_id"]))
+    identifiers.extend(row.get("post_merge_confirmations", []))
+    for identifier in reversed(identifiers):
+        state = read(state_path(store, identifier))
         target = state["targets"].get(str(pr))
         if (
             target

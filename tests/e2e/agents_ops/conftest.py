@@ -31,6 +31,7 @@ def _isolate_agent_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Non
         "DECISION_LOG_RETRIEVAL",
         "AGENT_RUNTIME_RUN_DIR",
         "AGENT_RUNTIME_TASK_ID",
+        "AGENT_AUTO_MERGE",
     ):
         monkeypatch.delenv(key, raising=False)
 

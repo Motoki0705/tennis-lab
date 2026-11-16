@@ -120,6 +120,7 @@ approveならCLIがCI待機・gate・merge・merge後確認を進める。major�
 CLIの修正上限・人間の制御・中断復旧・通知の正本は [自動進行の契約](../../ops/review/README.md)。
 CLI変更のmerge後は [呼出元と既存worker](../../ops/parent/README.md#cli更新後の既存worker) を確認する。
 
+切替前のmerge済み成果が混ざる場合は[番号指定の後確認](../../ops/review/README.md#切替前にmerge済みの成果)を先に行う。
 merge後のCIと全体の受入条件を確認する。今回の受入結果と次回改善を分け、
 [構造化finish](../../ops/parent/improvements.md#今回の受入と候補整理)を手動の `release --ended --spec` または自律の `workflow-report` へ渡す。
 未達の受入条件を改善へ移してcompletedにしない。候補なしも明示し、noteだけの担当終了を受入済みと報告しない。

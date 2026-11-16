@@ -86,6 +86,7 @@ GitHub GETの接続断は[共有readerの有限再試行](../issues/README.md#gi
   GitHubの `created_at` も保持し、ラベル・有効化時刻とともに[共有の補足追加判定](../issues/README.md#親issueの補足追加状態)へ渡す。
   親、子、先行依存、提案出典レポートはclosedも含め再帰的に収集する。別親に属する同repo依存も収集する。
 - `pulls`（全状態・全ページのPRとclosing指示・head・merge状態）、`owners`（既存registryの状態・generation・内容digest・委任予約の投影）。
+  自動進行の修正予約では明示seedの親子・依存閉包から番号指定timelineとPRを読む。通常の全体着手判定と異なりrepo全体一覧は取得しない。
   生session ID・ローカルworktreeは判定入力や公開コメントへ渡さない。別の担当台帳は作らない。
 - `code`（commitとgit treeのpath/mode/kind/oid）。agentが必要なtracked blobを調べ、そのcommit/pathを出典にする。
   gitlinkの先にある未固定ファイルやuntrackedファイルを着手根拠にしない。

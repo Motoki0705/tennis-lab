@@ -56,6 +56,9 @@ def fail():
     sys.exit(1)
 if args[:2] == ["repo", "view"]:
     response({"nameWithOwner": "o/r"})
+if args == ["--version"]:
+    print("gh version 2.97.0")
+    sys.exit(0)
 if args[:2] == ["run", "watch"]:
     assert "--repo" in args and args[args.index("--repo") + 1] == "o/r"
     if state.get("watch_label"):
@@ -141,6 +144,9 @@ if path == "repos/o/r/actions/workflows/issue-supplement.yml/runs":
     response({"workflow_runs": paged(state.get("supplement_runs", []))}, state.get("supplement_workflow_status", 200))
 if path == "repos/o/r":
     response({"default_branch": state["default_branch"]})
+commit = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})", path)
+if commit:
+    response({"sha": commit[1]})
 checks = re.fullmatch(r"repos/o/r/commits/([0-9a-f]{40})/check-runs", path)
 if checks:
     assert method == "GET" and "check_name=Python&filter=latest" in query

@@ -5,8 +5,19 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .capture import Operation, runtime_environment, warn
+from .capture import Operation, current, runtime_environment, warn
 from .journal import Journal
+
+
+def bind_request(identifier: str) -> None:
+    capture = current()
+    if capture is not None:
+        try:
+            with capture.transaction():
+                capture.row["review_run_id"] = identifier
+                capture._save()
+        except Exception:
+            capture.mark_failed(lost_source="review.binding")
 
 
 def start_review(
@@ -89,6 +100,7 @@ def progression_event(
     from review.progression import read, save
 
     op = None
+    confirmation = state["request"].get("kind") == "post_merge_confirmation"
     try:
         if path.exists():
             op = Operation.load(Path(read(path)["operation"]))
@@ -103,14 +115,19 @@ def progression_event(
                 directory,
                 state["request"]["repo"],
                 state["request"]["parent_issue"],
-                "merge.progression",
-                "merge",
+                "merge.confirmation" if confirmation else "merge.progression",
+                "verify" if confirmation else "merge",
                 scope=previous.row["scope"] if previous else None,
             )
             with op.transaction():
                 op.row["review_run_id"] = state["id"]
                 op.row["private"]["runs"] = [state["id"]]
-                op.action("running", "CLI automatic review, CI, repair and merge")
+                op.action(
+                    "running",
+                    "Confirm existing merged artifacts"
+                    if confirmation
+                    else "CLI automatic review, CI, repair and merge",
+                )
             save(path, {"operation": str(op.path)})
         with op.transaction():
             op.result(
@@ -128,7 +145,9 @@ def progression_event(
             if event["kind"] == "completed":
                 op.action(
                     "ended",
-                    "Automatic merge and post-merge confirmation completed",
+                    "Post-merge confirmation completed"
+                    if confirmation
+                    else "Automatic merge and post-merge confirmation completed",
                     key="completed",
                 )
     except Exception:

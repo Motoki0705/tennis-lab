@@ -61,6 +61,7 @@ class ReviewRetrieval(Retrieval):
         scope = config.get("github_scope")
         if scope is not None:
             allowed = set(scope["issues"]) | set(scope["prs"])
+            ci_heads = self.revisions | set(scope.get("ci_heads", []))
             self.tools.pop("github_items", None)
             for name in (
                 "github_item",
@@ -73,10 +74,10 @@ class ReviewRetrieval(Retrieval):
 
                 def scoped(_tool: Tool = tool, **arguments: Any) -> Retrieved:
                     if _tool.name == "ci_runs":
-                        if arguments.get("head_sha") not in self.revisions:
+                        if arguments.get("head_sha") not in ci_heads:
                             raise RetrievalError(
                                 "FORBIDDEN_SCOPE",
-                                "CI reads require a review commit head_sha",
+                                "CI reads require a reviewed or dependency PR head_sha",
                             )
                     elif arguments.get("number") not in allowed:
                         raise RetrievalError(

@@ -96,7 +96,7 @@ def test_ci_rollups_are_shared_only_within_one_observation(
 
 
 def bind_task_adoption(gate_env: GateEnv, issue: int) -> None:
-    g, p = gate_env, gate_env.review.p
+    p = gate_env.review.p
     proposals = importlib.import_module("parent.proposals")
     model = importlib.import_module("opsreport.proposals")
     adoption = importlib.import_module("issues.adoption")
@@ -145,7 +145,9 @@ def bind_task_adoption(gate_env: GateEnv, issue: int) -> None:
                     "proposal_id": proposal.pid,
                     "option": None,
                 },
-                "proposal_sha256": g.policy.digest(proposal.snapshot()),
+                "proposal_sha256": importlib.import_module("parent.policy").digest(
+                    proposal.snapshot()
+                ),
             }
         ],
     )

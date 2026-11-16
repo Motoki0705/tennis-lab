@@ -15,7 +15,7 @@ from lib.repair_turn import parse_report
 from lib.repair_turn import request as repair_request
 from parent.execution import authorization
 from parent.github import GitHub
-from parent.policy import closing_issues, object_value
+from parent.policy import child_stopped, closing_issues, object_value
 from parent.session import ParentSession
 from parent.state import Store
 
@@ -76,7 +76,9 @@ class LiveBackend:
         self.gh.evidence_directory = store.directory / "evidence-issues"
 
     def local(self, state: dict[str, Any]) -> str | None:
-        if not auto_merge(os.environ.get("AGENT_AUTO_MERGE")):
+        if state["request"].get("kind") != "post_merge_confirmation" and not auto_merge(
+            os.environ.get("AGENT_AUTO_MERGE")
+        ):
             return "auto_merge_disabled"
         with self.store.consistent_snapshot():
             row = self.store.parents.get(self.key, {})
@@ -182,6 +184,7 @@ class LiveBackend:
         return None
 
     def human(self, state: dict[str, Any], target: dict[str, Any]) -> str | None:
+        bodies = {}
         for resource, n in [
             ("issues", self.parent),
             *[("issues", n) for n in target["issues"] if n != self.parent],
@@ -192,36 +195,60 @@ class LiveBackend:
                 raise ValueError("human-control target or labels are unavailable")
             if "needs-human" in {label["name"] for label in row["labels"]}:
                 return f"needs-human: {resource}/{n}"
+            if resource == "issues":
+                bodies[n] = row.get("body") or ""
         from parent.development import check_task_adoptions
 
-        for n in {self.parent, *target["issues"]}:
-            check_task_adoptions(self.gh, self.gh.issue(n).get("body") or "")
+        for body in bodies.values():
+            check_task_adoptions(self.gh, body)
         with self.store.consistent_snapshot():
             row = self.store.parents.get(self.key, {})
+            for n in target["issues"]:
+                task = row.get("tasks", {}).get(str(n), {})
+                if child_stopped(bodies[n], task.get("stopped", False)):
+                    return f"target_stopped: #{n}"
             worker = target.get("worker")
             if worker:
                 task = row.get("tasks", {}).get(str(worker["child"]), {})
-                if task.get("delegation_id") != worker["delegation_id"] or task.get(
-                    "stopped"
-                ):
-                    return "creating_worker_changed_or_stopped"
+                if task.get("delegation_id") != worker["delegation_id"]:
+                    return "creating_worker_changed"
         self.authorize()
         return None
 
     def dependency(self, target: dict[str, Any]) -> bool:
         for dependency in target["dependencies"]:
-            prs = dependency["prs"]
-            if prs:
-                for number in prs:
-                    if self.pr(number).get("merged") is not True:
-                        return False
-            else:
-                issue = self.gh.issue(dependency["issue"])
-                if (
-                    issue["state"] != "closed"
-                    or issue.get("state_reason") != "completed"
-                ):
-                    return False
+            number = dependency["issue"]
+            issue = self.gh.issue(number)
+            with self.store.consistent_snapshot():
+                task = (
+                    self.store.parents.get(self.key, {})
+                    .get("tasks", {})
+                    .get(str(number), {})
+                )
+            if (
+                issue["state"] != "closed"
+                or issue.get("state_reason") != "completed"
+                or child_stopped(issue.get("body") or "", task.get("stopped", False))
+            ):
+                return False
+            # A later open PR must still hold its consumers. Discover only this
+            # dependency's numbered timeline, and fetch referenced PRs by number.
+            prs = self.gh.pulls({number})
+            if any(pr.get("state") not in {"open", "closed"} for pr in prs):
+                raise ValueError("dependency PR state is unavailable")
+            if any(pr["state"] == "open" for pr in prs):
+                return False
+            if prs and not any(
+                pr.get("merged") is True
+                and pr.get("base", {}).get("ref")
+                and pr["base"]["ref"]
+                == pr["base"].get("repo", {}).get("default_branch")
+                and pr["base"]["repo"].get("full_name", "").casefold()
+                == self.repo.casefold()
+                and number in closing_issues(pr.get("body") or "", self.repo)
+                for pr in prs
+            ):
+                return False
         return True
 
     def runs(
@@ -300,8 +327,6 @@ class LiveBackend:
     def repair(
         self, state: dict[str, Any], target: dict[str, Any], attempt: dict[str, Any]
     ) -> dict[str, Any]:
-        from parent.manual_workers import run_worker
-
         worker = target.get("worker")
         if not worker:
             return {
@@ -314,6 +339,8 @@ class LiveBackend:
                 self.parent, worker["progression_id"], attempt["id"], details
             )
             return {"outcome": "running"}
+        from parent.manual_workers import run_worker
+
         prompt = (
             self.store.directory
             / "progressions"
@@ -350,7 +377,6 @@ class LiveBackend:
         self, state: dict[str, Any], target: dict[str, Any], attempt: dict[str, Any]
     ) -> dict[str, Any] | None:
         from dispatcher.runtime import Runtime
-        from parent.manual_workers import RUNNER
 
         worker = target["worker"]
         with self.store.consistent_snapshot():
@@ -373,6 +399,8 @@ class LiveBackend:
                 directory = Path(job["directory"]) / "runtime"
                 runner = Path(job["runner"])
             else:
+                from parent.manual_workers import RUNNER
+
                 saved = task.get("repair_attempts", {}).get(attempt["id"])
                 if not saved:
                     return None

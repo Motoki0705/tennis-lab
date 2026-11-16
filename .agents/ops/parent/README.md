@@ -1114,11 +1114,15 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 merge-continue \
 `--wait` は最初の通知まで待つ。省略時はrun IDを返す。手動親の背景待機は [wait-workerと同じ方法](#会話の背景実行で終了を待つ) を使う。
 各入口の `--run-id` 省略時は最新の自動進行を対象にする。`merge-continue --prs` は親待ちになった一部のPRだけを続行できる。
 majorを直した後は親が判断と確認内容をinstructionへ書いて続行する。変更が大きいと判断した場合だけ `--rereview` を付ける。
+同じworkerの継続来歴と終了を確認して委任ID・修正登録を更新するので、dispatcherの `continue-worker` 後も同じrunを続行できる。
 その際にモデルを変えるなら、同じモデル選択引数と理由を付ける。既存の人間指定は維持する。
 
 要求schema 4はrepo・親・対象PRとhead・Issue・依存・作成worker・実行根拠・モデル選択・親の指示を保存する。
 private state、段階、待機・修正上限・復旧・通知・merge条件の正本は [自動進行](../review/README.md)。このREADMEに状態表を複製しない。
 担当・実行根拠・作成workerが変わった場合は自動で付け替えず親へ返す。
+
+切替前にmerge済みの成果は、`merge-confirm --prs N... --wait` で[後確認](../review/README.md#切替前にmerge済みの成果)を登録してから親の完了判定へ進む。
+この入口は既存のmergeを確認するもので、旧レビューを新しいmerge許可へ変換しない。
 
 ### レビュー指示へ渡す証拠
 

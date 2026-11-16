@@ -381,3 +381,44 @@ def test_get_scope_ignores_unrelated_issues(tmp_path: Path) -> None:
         )
     assert traces[0] == traces[1]
     assert json.loads(path.read_text())["status"] == "completed"
+
+
+@pytest.mark.parametrize(
+    "stage", ["requested", "merge_pending", "repair_pending", "post_merge_wait"]
+)
+def test_human_control_pauses_saved_stages_before_further_effects(
+    tmp_path: Path, stage: str
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    saved = read(path)
+    if stage != "requested":
+        saved["review"].update(
+            stage="accepted", result={"verdict": "approve", "major": []}
+        )
+        saved["targets"]["11"]["stage"] = stage
+    save(path, saved)
+    backend.stops.add(11)
+    result = run(path, backend, clock)
+    assert result["status"] == "parent_wait"
+    assert backend.review_count == 0 and backend.repair_count[11] == 0
+    assert not any(
+        c[0] in {"merge", "recover_repair", "main_ci", "issues_completed"}
+        for c in backend.calls
+    )
+
+
+def test_dependency_wait_preserves_independent_progress_and_merge_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path, backend, clock = setup(tmp_path, (11, 12, 13))
+
+    def dependencies(target: dict[str, Any]) -> bool:
+        backend.calls.append(("dependencies", target["number"]))
+        return target["number"] != 11 or 12 in backend.merged
+
+    monkeypatch.setattr(backend, "dependency", dependencies)
+    assert run(path, backend, clock)["status"] == "completed"
+    assert [c[1] for c in backend.calls if c[0] == "merge"] == [12, 13, 11]
+    assert backend.review_count == 1 and not any(backend.repair_count.values())
+    assert clock.sleeps == [60]

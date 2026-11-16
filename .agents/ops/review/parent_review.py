@@ -55,8 +55,9 @@ def run_review(state: dict[str, Any], directory: Path, gh: GitHub) -> dict[str, 
     )
     materials["prs"] = []
     diffs = {}
-    prs = []
-    issues = {request["parent_issue"]}
+    prs: list[dict[str, Any]] = []
+    issues: set[int] = {request["parent_issue"]}
+    dependency_prs: set[int] = set()
     for target in request["prs"]:
         pr = object_value(gh.get(f"repos/{gh.repo}/pulls/{target['number']}"))
         entry, diff = snapshot(pr)
@@ -70,16 +71,47 @@ def run_review(state: dict[str, Any], directory: Path, gh: GitHub) -> dict[str, 
         )
         issues.update(target["issues"])
         issues.update(d["issue"] for d in target["dependencies"])
+        dependency_prs.update(n for d in target["dependencies"] for n in d["prs"])
+    for n in sorted(dependency_prs - {p["number"] for p in materials["prs"]}):
+        prs.append(
+            {
+                "pr": object_value(gh.get(f"repos/{gh.repo}/pulls/{n}")),
+                "comments": gh.comments(n),
+            }
+        )
+    # Follow numbered ancestry and saved evidence bindings, never a repository index.
+    pending = list(issues)
+    while pending:
+        parent = gh.get(
+            f"repos/{gh.repo}/issues/{pending.pop()}/parent", missing_parent=True
+        )
+        if parent is not None:
+            n = gh.identity(parent)
+            if n not in issues:
+                issues.add(n)
+                pending.append(n)
+    login = gh.authenticated_login()
+    bindings: dict[str, int | None] = {}
+    evidence_numbers: set[int] = set()
+    for n in sorted(issues):
+        binding = gh.evidence_issues().find_bound(
+            n, login, required=n == request["parent_issue"]
+        )
+        bindings[str(n)] = binding.number if binding else None
+        if binding:
+            evidence_numbers.add(binding.number)
+    issues.update(evidence_numbers)
     context = {
         "instruction": request["instruction"],
         "issues": [
             {
-                "issue": gh.issue(n),
+                "issue": object_value(gh.get(f"repos/{gh.repo}/issues/{n}")),
                 "comments": gh.rows(f"repos/{gh.repo}/issues/{n}/comments"),
             }
             for n in sorted(issues)
         ],
         "prs": prs,
+        "evidence_bindings": bindings,
     }
     root = Path(state["checkout"])
     template = (HERE / "prompt_template.md").read_text(encoding="utf-8")
@@ -106,7 +138,8 @@ def run_review(state: dict[str, Any], directory: Path, gh: GitHub) -> dict[str, 
         ),
         "github_scope": {
             "issues": sorted(issues),
-            "prs": [p["number"] for p in materials["prs"]],
+            "prs": sorted(p["pr"]["number"] for p in prs),
+            "ci_heads": sorted({p["pr"]["head"]["sha"] for p in prs}),
         },
         "journal_dir": str(review_dir / "retrieval"),
         "cpu_tests": config.get("cpu_tests", {}),
