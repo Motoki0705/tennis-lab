@@ -45,3 +45,7 @@ main checkoutには同じ資産が存在した。次の試行ではresolverの
 元の再現コマンドはoutputs内の同名ファイルを指すため、再現時はこの版を
 当該outputsへコピーしてから実行する。ログの末尾はbundleの`failure.txt`にも保存した。
 summary.mdのcheckpoint・後処理の判断を変更する証拠ではないため、summaryへの影響はない。
+
+再現補正（2026-11-16、PR #2200のKnowledge CI）: 元コマンドが指す未追跡の`capture_stages.py`が
+空の保存patchに欠けていたため、bundleに既に保存されていた当時のscriptを追加diffとして補った。
+元コマンド・script内容・測定値は変更していない。補正前後とsourceのhashは`repro-source-correction.json`に記録した。

@@ -264,3 +264,7 @@ benchmarkではなく、今後の処理時間予算を意味しない。
 
 summary.mdの「後処理は診断段階で、会場分離benchmark未確立」という判断を支持する記録であり、
 checkpoint・採用方式・独立testの判断は変えない。このためsummaryへの影響はnoneとした。
+
+再現補正（2026-11-16、PR #2200のKnowledge CI）: 元コマンドが指す未追跡の`capture_stages.py`が
+空の保存patchに欠けていたため、bundleに既に保存されていた当時のscriptを追加diffとして補った。
+元コマンド・script内容・測定値は変更していない。補正前後とsourceのhashは`repro-source-correction.json`に記録した。
