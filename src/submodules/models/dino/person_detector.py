@@ -12,8 +12,6 @@ from numpy.typing import NDArray
 
 from src.submodules.configuration import require_absolute_path
 from src.submodules.models._base.inference_model import BaseInferenceModel
-from src.utils.inference_recording import span
-
 from src.submodules.models.dino.architecture import (
     COCO_PERSON_CLASS_ID,
     build_dino,
@@ -21,6 +19,7 @@ from src.submodules.models.dino.architecture import (
     load_dino_state_dict,
     preprocess_frame,
 )
+from src.utils.inference_recording import span
 
 
 @dataclass(frozen=True)
@@ -164,6 +163,7 @@ class DinoPersonDetector(
             batch = batch.to(self.device)
         with span("inference", model="DINO", batch_shape=list(batch.shape)):
             output = self._model(batch)
+        del batch
         with span("postprocess", model="DINO"):
             return decode_person_detections(
                 output, image_sizes=image_sizes, confidence=self.confidence

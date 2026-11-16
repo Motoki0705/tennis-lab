@@ -54,8 +54,8 @@ execution overhead, so comparisons must use the same recorder settings. It does
 not change precision, model lifetime, batch limits or inference order. Eager
 CLIP unload events describe the existing reference-drop and memory-cleanup
 boundary; other local owners may retain tensors until their function returns.
-Body root-regressor assets have a lazy load but no explicit unload in the
-existing component; no unload is invented for them.
+AFLink and body root-regressor assets have no explicit unload in the
+existing component; their loads are recorded without inventing an unload.
 
 `stage_inclusive_seconds` sums spans and can exceed wall time due to nesting and
 prefetch overlap. `stage_wall_seconds` partitions the measured interval without
