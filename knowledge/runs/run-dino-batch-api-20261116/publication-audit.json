@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "scope": "Full contents of every added or modified PR file, including publication metadata",
+  "base_commit": "e561377cec714ead088fc37569cd5fb5a893866c",
+  "files": [
+    "knowledge/nodes/tennis_scene/.sequence",
+    "knowledge/nodes/tennis_scene/000042-run-dino-batch-api-20261116.md",
+    "knowledge/runs/run-dino-batch-api-20261116/compare.py",
+    "knowledge/runs/run-dino-batch-api-20261116/cpu-validation.json",
+    "knowledge/runs/run-dino-batch-api-20261116/git_status.txt",
+    "knowledge/runs/run-dino-batch-api-20261116/gpu.log",
+    "knowledge/runs/run-dino-batch-api-20261116/inputs.json",
+    "knowledge/runs/run-dino-batch-api-20261116/metrics.json",
+    "knowledge/runs/run-dino-batch-api-20261116/mutation-batch-axis.log",
+    "knowledge/runs/run-dino-batch-api-20261116/mutation-image-size.log",
+    "knowledge/runs/run-dino-batch-api-20261116/prepare.py",
+    "knowledge/runs/run-dino-batch-api-20261116/protocol.json",
+    "knowledge/runs/run-dino-batch-api-20261116/publication-audit.json",
+    "knowledge/runs/run-dino-batch-api-20261116/publication-provenance.json",
+    "knowledge/runs/run-dino-batch-api-20261116/queue-repro-original.sh",
+    "knowledge/runs/run-dino-batch-api-20261116/repro.sh",
+    "knowledge/runs/run-dino-batch-api-20261116/results.json",
+    "knowledge/runs/run-dino-batch-api-20261116/run.json",
+    "knowledge/runs/run-dino-batch-api-20261116/scalar_reference.py",
+    "knowledge/runs/run-dino-batch-api-20261116/script-provenance.json",
+    "knowledge/runs/run-dino-batch-api-20261116/uncommitted.patch",
+    "src/submodules/README.md",
+    "src/submodules/models/dino/person_detector.py",
+    "tests/unit/submodules/models/dino/test_person_detector.py"
+  ],
+  "files_scanned": 24,
+  "matches": {
+    "home_path": 0,
+    "mount_path": 0,
+    "worktree_path": 0,
+    "conversation_identifier": 0
+  },
+  "preservation": {
+    "numerical_comparisons": true,
+    "timing": true,
+    "input_hashes": true,
+    "checkpoint_hash": true,
+    "binary_hash": true,
+    "implementation_commits": true,
+    "sequence": 42
+  },
+  "private_original_files_verified": 22
+}
