@@ -249,6 +249,7 @@ rawは変更せず、`keypoint_observations`に打切方向と相関群、`suppo
 
 `region_search.refinement_method=model`は上記のモデル内部品質を採否に使います。
 `rgb_paint`は元RGBの1frameとモデルHから塗線中心へ精密化します。
+RGB精密化はregion APIとscene componentの段階で行い、`CourtPredictor.predict`単独はモデルHまでを返します。
 `region_search.paint`に探索幅・edge対の条件・支持・残差・安定性の全設定があります。
 camera固有のmaskや参照は使いません。両側の明るさ勾配の中心を取り、直線consensus、
 全支持線を使ったcoarse/fine最適化を行います。初期支持線の喪失、他の線でも
