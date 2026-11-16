@@ -21,7 +21,10 @@ from tests.unit.tennis_scene.pipeline.components.test_ball_detection import (
     _process,
     _TypedBallPredictor,
 )
-from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_ball_config,
+    materialize_model_weights,
+)
 
 
 def test_artifact_roundtrip_is_exact_and_load_only_does_not_infer(
@@ -29,7 +32,7 @@ def test_artifact_roundtrip_is_exact_and_load_only_does_not_infer(
 ) -> None:
     output = _process(tmp_path, monkeypatch, num_frames=3)
     module = BallDetectionModule(make_ball_config(tmp_path))
-    monkeypatch.setattr(module, "process", lambda _: output)
+    monkeypatch.setattr(module, "process_with_models", lambda _inputs, _models: output)
     source = ClipSource("clip", (SourceVideo("near", tmp_path / "near.mp4", "hash", 3, 30., 6, 4),))
     context = AssemblyContext(source, "near")
     node = ComponentNode("ball_detection/near", module, module.io, BallDetectionInputAssembler(), {},
@@ -39,7 +42,7 @@ def test_artifact_roundtrip_is_exact_and_load_only_does_not_infer(
     runner.run()
     reference = runner.references[node.name]
     assert (reference.schema, reference.version) == ("ball_detections", 2)
-    monkeypatch.setattr(module, "process", lambda _: pytest.fail("load-only must not infer"))
+    monkeypatch.setattr(module, "process_with_models", lambda _inputs, _models: pytest.fail("load-only must not infer"))
     resumed = ComponentRunner([replace(node, source="load")], ClipStore(store.root, json_value(source), memory_entries=0))
     resumed.run()
     restored = resumed.output(node.name)
@@ -124,7 +127,8 @@ def test_trajectory_gate_does_not_erase_raw_evidence(tmp_path: Path, monkeypatch
             return _prediction(maps, candidate_config)
 
     module = BallDetectionModule(replace(make_ball_config(tmp_path), image_size=(4, 6)))
-    monkeypatch.setattr(module, "load", lambda: setattr(module, "_pipeline", MovingBall()))
+    materialize_model_weights(module)
+    monkeypatch.setattr(module, "_load_predictor", MovingBall)
     output = module.process(BallDetectionInput(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 12, 30., 1000, 500)))
     assert not output.observed[6] and output.observed[[5, 7]].all()
     assert output.confidence[6] == 0

@@ -372,7 +372,8 @@ def test_reconstruction_preserves_known_body_and_renderer_transform() -> None:
     np.testing.assert_allclose(players.mesh_reprojection_px[0], 0, atol=1e-3)
     assert players.diagnostics["players"][str(IDENTITY)]["scale"] == trace.scale
     assert players.diagnostics["source_cameras"][str(IDENTITY)] == "cam0"
-    assert case.geometry.unloaded
+    assert not case.geometry.unloaded  # The caller owns the borrowed geometry.
+    case.geometry.unload()
 
 
 def test_reprojection_gate_preserves_roots_and_ignores_non_torso_outliers() -> None:

@@ -22,7 +22,10 @@ from src.tennis_scene.pipeline.components.ball_detection import (
 from src.tennis_scene.pipeline.contracts import SourceVideo
 from src.utils.data.heatmaps import heatmaps_to_argmax
 from src.utils.video import FramePacket
-from tests.unit.tennis_scene.pipeline.config_factories import make_ball_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_ball_config,
+    materialize_model_weights,
+)
 
 
 class _TypedBallPredictor:
@@ -76,9 +79,9 @@ def test_predict_video_consumes_typed_task_prediction(
     )
     config = replace(make_ball_config(tmp_path), image_size=(4, 6))
     module = BallDetectionModule(config)
-    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    predictor = _TypedBallPredictor()
 
-    coords, confidence, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4))
+    coords, confidence, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4), predictor)
 
     np.testing.assert_allclose(coords, [[0.1, 0.2], [0.3, 0.4]])
     np.testing.assert_allclose(confidence, [0.6, 0.8])
@@ -94,9 +97,9 @@ def _process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, num_frames: int
     base = make_ball_config(tmp_path)
     module = BallDetectionModule(replace(base, image_size=(4, 6), score_threshold=0.7, tail_policy=tail_policy,
                                          trajectory_gate=replace(base.trajectory_gate, enabled=False)))
-    monkeypatch.setattr(module, "load", lambda: setattr(module, "_pipeline", _TypedBallPredictor()))
+    materialize_model_weights(module)
+    monkeypatch.setattr(module, "_load_predictor", _TypedBallPredictor)
     output = module.process(BallDetectionInput(SourceVideo("near", tmp_path / "near.mp4", "hash", num_frames, 30.0, 6, 4)))
-    assert not module.is_loaded
     return output
 
 
@@ -136,8 +139,8 @@ def test_video_to_predictor_is_always_raw_rgb(
 
     module = BallDetectionModule(replace(make_ball_config(tmp_path), image_size=(4, 6),
                                          normalize_imagenet=expected_normalization))
-    module._pipeline = CapturingPredictor()  # type: ignore[assignment]
-    module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4))
+    predictor = CapturingPredictor()
+    module._predict_video(SourceVideo("cam", tmp_path / "unused.mp4", "hash", 2, 30., 6, 4), predictor)
 
 
 @pytest.mark.parametrize("policy,expected", [("max_score", .9), ("last_window_wins", .4)])
@@ -157,8 +160,8 @@ def test_overlapping_windows_select_all_evidence_atomically(
 
     config = replace(make_ball_config(tmp_path), image_size=(4, 6), overlap_aggregation=policy)
     module = BallDetectionModule(config)
-    module._pipeline = OverlappingPredictor()  # type: ignore[assignment]
-    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 3, 30., 6, 4))
+    predictor = OverlappingPredictor()
+    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 3, 30., 6, 4), predictor)
     assert scores[1] == pytest.approx(expected)
     assert evidence.candidate_scores[1, 0] == pytest.approx(expected)
     assert evidence.heatmaps[1].max() == pytest.approx(expected)
@@ -170,9 +173,9 @@ def test_overlapping_windows_select_all_evidence_atomically(
 
 def test_stride_cannot_leave_silent_holes(tmp_path: Path) -> None:
     module = BallDetectionModule(replace(make_ball_config(tmp_path), window_stride=3))
-    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    predictor = _TypedBallPredictor()
     with pytest.raises(ValueError, match="cover every frame"):
-        module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 5, 30., 6, 4))
+        module._predict_video(SourceVideo("cam", tmp_path / "clip.mp4", "hash", 5, 30., 6, 4), predictor)
 
 
 def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
@@ -184,8 +187,7 @@ def test_checkpoint_normalization_mismatch_is_rejected_before_inference(
     monkeypatch.setattr(ball_component.BallDetectionPredictor, "load_from_checkpoint", lambda *args, **kwargs: fake)
     module = BallDetectionModule(replace(make_ball_config(tmp_path), normalize_imagenet=True))
     with pytest.raises(ValueError, match="does not match the saved checkpoint"):
-        module.load()
-    assert not module.is_loaded
+        module._load_predictor()
 
 
 @pytest.mark.parametrize("batch_size", [1, 3])
@@ -209,8 +211,8 @@ def test_centre_policy_matches_training_owners_without_score_selection(
     config = replace(make_ball_config(tmp_path), image_size=(4, 6), window_stride=3, batch_size=batch_size,
                      overlap_aggregation="nearest_window_centre_then_earlier_start")
     module = BallDetectionModule(config)
-    module._pipeline = Predictor()  # type: ignore[assignment]
-    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", 11, 30., 6, 4))
+    predictor = Predictor()
+    coords, scores, evidence = module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", 11, 30., 6, 4), predictor)
     starts = (0, 3, 6, 7)  # stride 3 with an irregular final backfill
     # Independent oracle: nearest window centre, ties to the earlier start.
     centres = np.asarray(starts) + 1.5
@@ -232,6 +234,6 @@ def test_centre_policy_rejects_padding_and_drop(tmp_path: Path, frames: int, tai
     config = replace(make_ball_config(tmp_path), tail_policy=tail,
                      overlap_aggregation="nearest_window_centre_then_earlier_start")
     module = BallDetectionModule(config)
-    module._pipeline = _TypedBallPredictor()  # type: ignore[assignment]
+    predictor = _TypedBallPredictor()
     with pytest.raises(ValueError, match="short-clip padding is forbidden"):
-        module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", frames, 30., 6, 4))
+        module._predict_video(SourceVideo("cam", tmp_path / "unused", "hash", frames, 30., 6, 4), predictor)

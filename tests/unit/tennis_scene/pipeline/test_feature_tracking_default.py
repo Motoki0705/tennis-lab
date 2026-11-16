@@ -16,7 +16,11 @@ from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
 )
-from tests.unit.tennis_scene.pipeline.config_factories import make_people_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    fake_encoder_spec,
+    make_people_config,
+    materialize_model_weights,
+)
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     materialize_assets,
     runtime,
@@ -44,6 +48,18 @@ def test_default_assets_and_schema_wiring_are_explicit(tmp_path: Path, body_enab
     assert node.component.config == cfg.tracking
     assert node.io.version == 5 and node.io.inputs['detections'].version == 2
     assert nodes['player_selection/cam0'].io.inputs['tracks'].version == 5
+    # The standard recipe declares the same runtime model across cameras and
+    # across CLIP consumers; assembling it must not instantiate any model.
+    for stage, alias in [('court_detection', 'court'), ('ball_detection', 'ball'),
+                         ('person_detection', 'detector'), ('person_tracking', 'pose')]:
+        assert len({nodes[f'{stage}/cam{i}'].component.model_specs()[alias].key for i in range(3)}) == 1
+    encoder_keys = {nodes[f'{stage}/cam{i}'].component.model_specs()['encoder'].key
+                    for stage in ('person_tracking', 'player_selection') for i in range(3)}
+    encoder_keys.add(nodes['player_association'].component.model_specs()['encoder'].key)
+    assert len(encoder_keys) == 1
+    assert nodes['pose_estimation/cam0'].component.model_specs() == {}
+    assert set(nodes['gvhmr'].component.model_specs()) == ({'features', 'mesh'} if body_enabled else set())
+    assert set(nodes['body_placement'].component.model_specs()) == ({'body'} if body_enabled else set())
     cfg.aflink_checkpoint.unlink()
     with pytest.raises(FileNotFoundError, match='AFLink'):
         standard_definition(cfg, source, code_identity='test')
@@ -66,6 +82,8 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
             values = torch.zeros((1, 17, 3))
             values[..., 0], values[..., 1], values[..., 2] = 30., 60., 1.4
             return SimpleNamespace(keypoints=values)
+        def load(self) -> None:
+            pass
         def unload(self) -> None:
             pass
     class Encoder:
@@ -89,8 +107,8 @@ def test_pipeline_consumes_detection_features_once_and_reuses_pose(tmp_path: Pat
         np.tile(np.array([[10, 20, 50, 120]], np.float32), (5, 1)), np.full(5, .9, np.float32),
         np.array([0, 2, 4, 6, 8], np.int64))
     people = make_people_config(tmp_path)
-    tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=Encoder, aflink_checkpoint=tmp_path / 'af.pth')
-    result = tracker.process(module.PersonTrackingInput(video, detections))
+    tracker = module.PersonTrackingModule(TrackingConfig(), people=people, encoder=fake_encoder_spec(Encoder), aflink_checkpoint=tmp_path / 'af.pth')
+    result = materialize_model_weights(tracker).process(module.PersonTrackingInput(video, detections))
     assert len(calls) == 5 and result.evidence is not None
     assert result.evidence.detection_rows.tolist() == [[-1, -1, 4, 6, 8]]
     def forbidden(*a: Any, **k: Any) -> Any:

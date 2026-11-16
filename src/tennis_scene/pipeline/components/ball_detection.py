@@ -20,11 +20,12 @@ from src.tennis_scene.pipeline.components.ball_evidence import (
     SelectedBallFrame,
     assemble_ball_evidence,
 )
-from src.tennis_scene.pipeline.components.base import (
-    BasePipelineModule,
-    release_inference_memory,
-)
 from src.tennis_scene.pipeline.contracts import ComponentIO, SourceVideo
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    ModelBorrower,
+    ModelSpec,
+)
 from src.utils.configuration import PathResolver
 from src.utils.geometry.keypoints import denormalize_grid_keypoints
 from src.utils.video import (
@@ -121,7 +122,7 @@ class BallDetectionConfig:
     resolver: PathResolver
 
 
-class BallDetectionModule(BasePipelineModule):
+class BallDetectionModule(InferenceComponent[BallDetectionInput, BallDetectionOutput]):
     """Detect one unidentified ball observation stream for one camera video."""
 
     io = ComponentIO("ball_detection", BallDetectionInput, BallDetectionOutput, {}, "ball_detections", version=2)
@@ -129,13 +130,16 @@ class BallDetectionModule(BasePipelineModule):
     def __init__(self, config: BallDetectionConfig, *, enabled: bool = True) -> None:
         self.config = config
         self.enabled = enabled
-        self._pipeline: BallDetectionPredictor | None = None
 
-    def load(self) -> None:
-        """Load the ball detection predictor."""
-        if self._pipeline is not None:
-            return
+    def model_specs(self) -> dict[str, ModelSpec[BallDetectionPredictor]]:
+        from dataclasses import fields
 
+        settings = {f.name: getattr(self.config, f.name) for f in fields(self.config)
+                    if f.name not in {"checkpoint", "device", "resolver"}}
+        return {} if not self.enabled else {"ball": ModelSpec("ball", {"checkpoint": self.config.checkpoint},
+            "checkpoint_model_config", self.config.device, "float32", settings, self._load_predictor)}
+
+    def _load_predictor(self) -> BallDetectionPredictor:
         LOGGER.info(f"Loading ball detection model from {self.config.checkpoint}")
         predictor = BallDetectionPredictor.load_from_checkpoint(
             self.config.checkpoint,
@@ -150,28 +154,15 @@ class BallDetectionModule(BasePipelineModule):
                 "ball_detection.normalize_imagenet does not match the saved "
                 f"checkpoint preprocessing ({predictor.image_normalization.enabled})."
             )
-        self._pipeline = predictor
+        return predictor
 
-    @property
-    def is_loaded(self) -> bool:
-        """Check if the model is loaded."""
-        return self._pipeline is not None
-
-    def unload(self) -> None:
-        self._pipeline = None
-        release_inference_memory(self.config.device)
-
-    def process(self, inputs: BallDetectionInput) -> BallDetectionOutput:
+    def process_with_models(self, inputs: BallDetectionInput, models: ModelBorrower) -> BallDetectionOutput:
         video = inputs.video
         frames: NDArray[np.int64] = np.arange(video.num_frames, dtype=np.int64)
         if not self.enabled:
             return BallDetectionOutput(video.camera_id, frames, np.zeros((video.num_frames, 2), np.float32),
                 np.zeros(video.num_frames, np.float32), np.zeros(video.num_frames, bool), np.zeros(video.num_frames, np.uint8), "disabled", None)
-        try:
-            self.load()
-            ball_uv, score, evidence = self._predict_video(video)
-        finally:
-            self.unload()
+        ball_uv, score, evidence = self._predict_video(video, models.borrow("ball"))
         uv_px, score, observed = self._accept_detections(denormalize_grid_keypoints(ball_uv, video.width, video.height), score)
         return BallDetectionOutput(video.camera_id, frames, uv_px, score, observed, observed.astype(np.uint8), "model_score", evidence)
 
@@ -200,12 +191,10 @@ class BallDetectionModule(BasePipelineModule):
     def _predict_video(
         self,
         video: SourceVideo,
+        predictor: BallDetectionPredictor,
     ) -> tuple[NDArray[np.float32], NDArray[np.float32], BallHeatmapEvidence]:
         """Stream video windows through the predictor."""
-        if self._pipeline is None:
-            raise RuntimeError("Ball detection predictor is not loaded.")
-
-        sequence_length = self._pipeline.configured_frames
+        sequence_length = predictor.configured_frames
         stride = (
             sequence_length
             if self.config.window_stride is None
@@ -250,7 +239,7 @@ class BallDetectionModule(BasePipelineModule):
         selected: dict[int, SelectedBallFrame] = {}
 
         for batch in prefetched_batches:
-            prediction = self._pipeline.predict(batch.tensor, candidate_config=self.config.candidates)
+            prediction = predictor.predict(batch.tensor, candidate_config=self.config.candidates)
             for window_index, window in enumerate(batch.windows):
                 for time_index, frame_index in enumerate(window.frame_indices):
                     new = SelectedBallFrame(prediction, window_index, time_index, window.start_index)

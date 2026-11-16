@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, TypeVar
 
 from src.submodules.configuration import (
     DinoDetectorRuntimeConfig,
@@ -21,8 +23,11 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPPostprocessConfig,
 )
+from src.tennis_scene.pipeline.inference_runtime import InferenceComponent, ModelSpec
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
+
+ComponentT = TypeVar("ComponentT", bound=InferenceComponent[Any, Any])
 
 
 def make_resolver(root: Path) -> PathResolver:
@@ -132,3 +137,17 @@ def make_people_config(root: Path, *, dino_confidence: float = .35) -> PeopleMod
             smplx_verts437=resolver.resolve(PathRole.CHECKPOINT, "smplx_verts437.npy"),
             smpl_neutral_joint_regressor=resolver.resolve(PathRole.CHECKPOINT, "smplx_neutral_joints.npy")),
         runtime=make_submodule_runtime(dino_confidence=dino_confidence))
+
+
+def materialize_model_weights(component: ComponentT) -> ComponentT:
+    """Dummy content identities for tests replacing model loading, never real weights."""
+    for spec in component.model_specs().values():
+        for path in spec.weights.values():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                path.write_bytes(b"fake-model-identity")
+    return component
+
+
+def fake_encoder_spec(factory: Callable[[], Any]) -> ModelSpec[Any]:
+    return ModelSpec("appearance", {}, "fake-encoder", "cpu", "float32", {}, factory)

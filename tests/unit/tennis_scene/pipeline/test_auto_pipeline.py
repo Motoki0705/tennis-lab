@@ -304,6 +304,8 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
             root = hip + drift + rotation @ np.array([.03, 0., -.05])
             verts = root[:, None] + np.einsum("tij,vj->tvi", rotation, np.array([[0., 0., 0.], [.1, 0., 0.], [0., .1, 0.], [0., 0., .1]]))
             return BodyGeometry((verts @ cam.rotation.T + cam.translation).astype(np.float32), (world @ cam.rotation.T + cam.translation).astype(np.float32))
+        def load(self):
+            pass
         def unload(self):
             self.unloaded = True
     body = KnownBody()

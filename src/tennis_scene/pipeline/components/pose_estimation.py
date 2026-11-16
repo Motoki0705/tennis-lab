@@ -9,10 +9,15 @@ import torch
 from numpy.typing import NDArray
 
 from src.submodules.models import Pose2DRequest, TrackResult, ViTPosePose2D
-from src.tennis_scene.pipeline.components.base import release_inference_memory
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    ModelBorrower,
+    ModelSpec,
+)
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_resources import vitpose_model
 from src.tennis_scene.pipeline.observation_types import ObjectObservations
 
 
@@ -22,7 +27,7 @@ class PoseEstimationInput:
     tracks: PersonTrackingOutput
 
 
-class PoseEstimationModule:
+class PoseEstimationModule(InferenceComponent[PoseEstimationInput, ObjectObservations]):
     io = ComponentIO("pose_estimation", PoseEstimationInput, ObjectObservations,
         {"selection": InputPort("selected_player_tracks", 2)}, "person_poses")
 
@@ -30,7 +35,10 @@ class PoseEstimationModule:
         self.config = config
         self.require_evidence = require_evidence
 
-    def process(self, inputs: PoseEstimationInput) -> ObjectObservations:
+    def model_specs(self) -> dict[str, ModelSpec[ViTPosePose2D]]:
+        return {} if self.require_evidence else {"pose": vitpose_model(self.config, factory=ViTPosePose2D, show_progress=True)}
+
+    def process_with_models(self, inputs: PoseEstimationInput, models: ModelBorrower) -> ObjectObservations:
         video, tracks = inputs.video, inputs.tracks
         if tracks.camera_id != video.camera_id or tracks.observed.shape[1] != video.num_frames:
             raise ValueError("Pose input camera/timeline mismatch")
@@ -51,22 +59,20 @@ class PoseEstimationModule:
                 uv, confidence, tracks.observed.T[None], tracks.track_ids[None], boxes)
         if self.require_evidence:
             raise ValueError('Feature tracker lost per-detection pose evidence; regenerate upstream artifacts')
-        pose = ViTPosePose2D(config.vitpose_checkpoint, device=config.runtime.device,
-            flip_test=config.runtime.vitpose.flip_test, batch_size=config.runtime.vitpose.batch_size, head_config=config.runtime.vitpose.head)
-        try:
-            for p, track_id in enumerate(ids):
-                indices = tracked.observed_mask(track_id).nonzero().flatten()
-                track_boxes = tracked.bbx_xys(track_id, base_enlarge=config.runtime.tracking.bbox_enlarge)
-                boxes[0, :, p] = track_boxes.numpy()
-                if not len(indices):
-                    continue
-                result = pose.predict(Pose2DRequest(video.path, track_boxes[indices], frame_indices=indices))
-                if result.keypoints.shape != (len(indices), 17, 3) or not bool(torch.isfinite(result.keypoints).all()):
-                    raise ValueError("ViTPose output does not preserve observed frame IDs")
-                uv[0, indices.numpy(), p] = result.keypoints[..., :2].numpy()
-                confidence[0, indices.numpy(), p] = result.keypoints[..., 2].numpy()
-        finally:
-            pose.unload()
-            release_inference_memory(config.runtime.device)
+        pose: ViTPosePose2D | None = None
+        for p, track_id in enumerate(ids):
+            indices = tracked.observed_mask(track_id).nonzero().flatten()
+            track_boxes = tracked.bbx_xys(track_id, base_enlarge=config.runtime.tracking.bbox_enlarge)
+            boxes[0, :, p] = track_boxes.numpy()
+            if not len(indices):
+                continue
+            if pose is None:
+                pose = models.borrow("pose")
+            assert pose is not None
+            result = pose.predict(Pose2DRequest(video.path, track_boxes[indices], frame_indices=indices))
+            if result.keypoints.shape != (len(indices), 17, 3) or not bool(torch.isfinite(result.keypoints).all()):
+                raise ValueError("ViTPose output does not preserve observed frame IDs")
+            uv[0, indices.numpy(), p] = result.keypoints[..., :2].numpy()
+            confidence[0, indices.numpy(), p] = result.keypoints[..., 2].numpy()
         return ObjectObservations((video.camera_id,), (video.width, video.height), video.fps,
             uv, confidence, tracks.observed.T[None], tracks.track_ids[None], boxes)

@@ -10,7 +10,6 @@ person_tracks dependency and are addressed by raw_track_ids + selected.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from typing import Any
 
@@ -31,12 +30,16 @@ from src.tasks.player_association.appearance.sampling import (
 )
 from src.tasks.player_association.association.associate import CameraTracks
 from src.tasks.player_association.geometry.footpoints import FootpointConfig
-from src.tennis_scene.pipeline.components.base import release_inference_memory
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    ModelBorrower,
+    ModelSpec,
+)
 
 
 @dataclass(frozen=True)
@@ -70,20 +73,23 @@ class PlayerSelectionOutput:
             raise ValueError('Group timeline contains an unselected observation')
 
 
-class PlayerSelectionModule:
+class PlayerSelectionModule(InferenceComponent[PlayerSelectionInput, PlayerSelectionOutput]):
     io = ComponentIO('player_selection', PlayerSelectionInput, PlayerSelectionOutput,
         {'tracks': InputPort('person_tracks', 5), 'calibration': InputPort('local_court_calibration')},
         'selected_player_tracks', version=2)
 
     def __init__(self, config: LinkingConfig, *, footpoints: FootpointConfig,
-                 sampling: CropSamplingConfig, encoder: Callable[[], AppearanceEncoder] | None,
+                 sampling: CropSamplingConfig, encoder: ModelSpec[AppearanceEncoder] | None,
                  encoder_name: str | None, device: str, enabled: bool) -> None:
         if (encoder is None) != (encoder_name is None):
             raise ValueError('Selection encoder and name must be provided together')
         self.config, self.footpoints, self.sampling = config, footpoints, sampling
         self.encoder, self.encoder_name, self.device, self.enabled = encoder, encoder_name, device, enabled
 
-    def process(self, inputs: PlayerSelectionInput) -> PlayerSelectionOutput:
+    def model_specs(self) -> dict[str, ModelSpec[AppearanceEncoder]]:
+        return {"encoder": self.encoder} if self.enabled and self.encoder is not None else {}
+
+    def process_with_models(self, inputs: PlayerSelectionInput, models: ModelBorrower) -> PlayerSelectionOutput:
         video, raw = inputs.video, inputs.tracks
         if raw.camera_id != video.camera_id or raw.observed.shape[1] != video.num_frames:
             raise ValueError('Selection input camera/timeline mismatch')
@@ -107,17 +113,13 @@ class PlayerSelectionModule:
             appearance_record.update(encoder=raw.evidence.encoder, sampling=asdict(sampling),
                                      source='tracked_detection_features')
         elif self.encoder is not None and raw.observed.any():
-            encoder = self.encoder()
-            try:
-                if encoder.name != self.encoder_name:
-                    raise ValueError('Selection encoder differs from configured encoder')
-                appearances, samples = embed_tracks(video.path, raw.boxes_xyxy, raw.observed,
-                    (video.width, video.height), encoder, sampling)
-                appearance_record.update(encoder=encoder.name, sampling=asdict(sampling),
-                    samples=[{'frames': s.frames.tolist(), 'rejected': s.rejected} for s in samples])
-            finally:
-                del encoder
-                release_inference_memory(self.device)
+            encoder: AppearanceEncoder = models.borrow("encoder")
+            if encoder.name != self.encoder_name:
+                raise ValueError('Selection encoder differs from configured encoder')
+            appearances, samples = embed_tracks(video.path, raw.boxes_xyxy, raw.observed,
+                (video.width, video.height), encoder, sampling)
+            appearance_record.update(encoder=encoder.name, sampling=asdict(sampling),
+                samples=[{'frames': s.frames.tolist(), 'rejected': s.rejected} for s in samples])
         camera_tracks = CameraTracks(cameras[video.camera_id], (video.width, video.height),
             raw.track_ids, raw.boxes_xyxy, raw.observed, appearances)
         selected, diagnostic = select_linked_candidates(camera_tracks, video.fps, self.config, footpoints)

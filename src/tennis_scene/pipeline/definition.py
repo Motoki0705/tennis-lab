@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
-from functools import lru_cache, partial
+from collections.abc import Callable
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from src.tasks.person_tracking.court_linking import LinkingConfig
@@ -64,32 +64,15 @@ from src.tennis_scene.pipeline.input_assembly.reconstruction import (
     PlayerTriangulationInputAssembler,
 )
 from src.tennis_scene.pipeline.input_assembly.scene import SceneAssemblyInputAssembler
+from src.tennis_scene.pipeline.model_assets import asset_identities as asset_identities
+from src.tennis_scene.pipeline.model_assets import file_identity as file_identity
+from src.tennis_scene.pipeline.model_resources import appearance_model
 from src.tennis_scene.pipeline.runner import ComponentNode
-from src.utils.checksum import dual_sha256
 
 if TYPE_CHECKING:
     from pathlib import Path
 
     from src.tennis_scene.configuration import PipelineRuntimeConfig
-
-
-@lru_cache(maxsize=128)
-def _asset_digest(path: Path, stat_identity: tuple[int, ...]) -> str:
-    digest: str = dual_sha256(path)
-    return digest
-
-
-def file_identity(path: Path) -> dict[str, Any]:
-    """Content identity of a required asset; a missing asset stops the build."""
-    if not path.is_file():
-        raise FileNotFoundError(f"Required pipeline asset is missing: {path}")
-    stat = path.stat()
-    return {"path": str(path), "sha256": _asset_digest(path, (stat.st_dev, stat.st_ino, stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns))}
-
-
-def asset_identities(enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]:
-    """Identities of a feature's assets; a disabled feature neither needs nor records them."""
-    return {name: file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
 
 
 def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_identity: str,
@@ -124,11 +107,13 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     weights = cfg.association_encoder_weights
     encoder_name = None if association.appearance is None else association.appearance.encoder
     sampling = CropSamplingConfig()
-    encoder = None if encoder_name is None else partial(build_encoder, encoder_name,
-        checkpoint_root=cfg.roots.checkpoint_root, external_root=cfg.roots.external_asset_root, device=cfg.device)
+    encoder = None if encoder_name is None or weights is None else appearance_model(encoder_name, weights, cfg.device,
+        partial(build_encoder, encoder_name,
+            checkpoint_root=cfg.roots.checkpoint_root, external_root=cfg.roots.external_asset_root, device=cfg.device))
     body_enabled = cfg.enabled["gvhmr"]
-    tracking_encoder = partial(build_encoder, cfg.tracking.encoder, checkpoint_root=cfg.roots.checkpoint_root,
-                               external_root=cfg.roots.external_asset_root, device=cfg.device)
+    tracking_encoder = appearance_model(cfg.tracking.encoder, cfg.tracking_encoder_weights, cfg.device,
+        partial(build_encoder, cfg.tracking.encoder, checkpoint_root=cfg.roots.checkpoint_root,
+                external_root=cfg.roots.external_asset_root, device=cfg.device))
     tracking_assets = {'pose': cfg.people.vitpose_checkpoint, 'encoder': cfg.tracking_encoder_weights,
                        'aflink': cfg.aflink_checkpoint}
 

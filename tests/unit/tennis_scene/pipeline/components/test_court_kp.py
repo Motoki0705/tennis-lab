@@ -11,7 +11,10 @@ import numpy as np
 import pytest
 
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule, CourtKPResult
-from tests.unit.tennis_scene.pipeline.config_factories import make_court_kp_config
+from tests.unit.tennis_scene.pipeline.config_factories import (
+    make_court_kp_config,
+    materialize_model_weights,
+)
 
 
 def test_pipeline_rejects_a_kp_cap_above_eight_before_model_loading(tmp_path) -> None:
@@ -33,10 +36,10 @@ class _TypedCourtPredictor:
 
 def test_predict_frame_consumes_typed_task_prediction(tmp_path) -> None:
     module = CourtKPModule(make_court_kp_config(tmp_path))
-    module._predictor = _TypedCourtPredictor()  # type: ignore[assignment]
+    predictor = cast(Any, _TypedCourtPredictor())
 
     keypoints, valid, diagnostic = module._predict_frame_geometry(
-        np.zeros((8, 12, 3), dtype=np.uint8)
+        np.zeros((8, 12, 3), dtype=np.uint8), predictor
     )
 
     assert keypoints.shape == (14, 2)
@@ -70,11 +73,11 @@ def test_camera_view_checkpoint_preserves_local_order_for_reference_alignment(
         keypoint_schema="synthetic_camera_view_kp14_v3_target_court:gaussian_max_v1",
     )
     module = CourtKPModule(make_court_kp_config(tmp_path))
-    module._predictor = cast(
+    predictor = cast(
         Any, SimpleNamespace(predict=lambda *args, **kwargs: prediction)
     )
     actual, visible, diagnostic = module._predict_frame_geometry(
-        np.zeros((8, 12, 3), dtype=np.uint8)
+        np.zeros((8, 12, 3), dtype=np.uint8), predictor
     )
     points, validity = prediction.downstream_keypoints()
     np.testing.assert_array_equal(actual, points)
@@ -89,9 +92,9 @@ def test_non_camera_view_checkpoint_schema_is_rejected(tmp_path) -> None:
 
     prediction = replace(geometry_prediction(), keypoint_schema="physical_kp14:gaussian_max_v1")
     module = CourtKPModule(make_court_kp_config(tmp_path))
-    module._predictor = cast(Any, SimpleNamespace(predict=lambda *args, **kwargs: prediction))
+    predictor = cast(Any, SimpleNamespace(predict=lambda *args, **kwargs: prediction))
     with pytest.raises(ValueError, match="camera-view KP14 checkpoint schema"):
-        module._predict_frame_geometry(np.zeros((8, 12, 3), dtype=np.uint8))
+        module._predict_frame_geometry(np.zeros((8, 12, 3), dtype=np.uint8), predictor)
 
 
 def _run_frame_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prediction: Any, *, region_search: bool = False,
@@ -108,7 +111,7 @@ def _run_frame_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prediction:
     config = make_court_kp_config(tmp_path)
     if region_search:
         config = replace(config, region_search=CourtRegionSearchConfig(enabled=True))
-    module = CourtKPModule(config)
+    module = materialize_model_weights(CourtKPModule(config))
     def predict(image: np.ndarray, **kwargs: Any) -> Any:
         calls.append(("predict", image.shape))
         return prediction
@@ -122,7 +125,7 @@ def _run_frame_zero(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, prediction:
         return CourtRegionSelection((5, 4, 17, 12), ())
 
     predictor = SimpleNamespace(predict=predict, checkpoint_identity={"checkpoint_sha256": "fixture"})
-    monkeypatch.setattr(module, "load", lambda: setattr(module, "_predictor", predictor))
+    monkeypatch.setattr(module, "_load_predictor", lambda: predictor)
     monkeypatch.setattr(component, "read_video_frame", read)
     monkeypatch.setattr(component, "select_court_region", select)
     video = SourceVideo("cam0", tmp_path / "cam0.mp4", "media_hash", 1010, 59.94, 30, 20)
@@ -147,7 +150,6 @@ def test_component_infers_only_frame_zero_and_normalizes_by_last_pixel(tmp_path:
     assert result.diagnostics["checkpoint"] == {"checkpoint_sha256": "fixture"}
     assert result.diagnostics["cameras"][0]["frames"][0]["frame_index"] == 0
     assert result.diagnostics["cameras"][0]["frames"][0]["kp_only_prosac_orientation"] == "identity"
-    assert not module.is_loaded
 
 
 def test_failed_geometry_is_invisible_and_never_refit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

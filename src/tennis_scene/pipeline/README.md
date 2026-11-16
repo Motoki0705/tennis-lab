@@ -10,6 +10,8 @@
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
 | `execution_plan.py` | 複数clipの依存計画、宣言の互換性・循環検査、nodeごとのcache/load判定 |
 | `runner.py` | 依存が揃ったnodeの実行・公開、clipの最終化。`ComponentRunner`は単一clipの互換入口 |
+| `inference_runtime.py` | 内容ベースの共有キー、モデルの遅延読込・借用・最終需要後の解放、計測hook |
+| `model_resources.py` | 複数componentが使うViTPose・外観encoderの共通モデル宣言 |
 | `clip_inputs.py` | datasetのclip選択・manifest/media解決、sourceの同期・frame数検証、実行前後の入力照合 |
 | `dataset_publication.py` | dataset完成markerの再利用判定、scene契約検証、`annotation.json`の原子的公開と失敗marker |
 | `storage/codec.py` | componentが宣言したOutput型をJSONと数値配列へ保存・復元。pickleや動的class importは使わない |
@@ -32,7 +34,8 @@ nodeを`(clip_id, node名)`で識別する。bindingsは同じclip内のproducer
 
 `PlanExecutor.run()`は依存が揃ったnodeを順次処理する。
 `select_ready(ready_keys) -> key`で、その時点で実行可能なnodeの選択方針を差し替えられる。
-既定は従来の宣言順の深さ優先による依存順序（複数clipではclip登録順）を維持する。
+既定はruntimeが常駐中のモデルを使うready nodeを優先し、次にモデル不要のnode、最後に宣言順を使う。
+同順位では追加で必要なモデルが少ないnodeを先に選ぶ。依存の揃わないnodeは選ばない。
 cache/load判定は依存artifactが確定してから1回だけ行い、完了したnodeはoverwriteでも再実行しない。
 外側から`run(targets=...)`を繰り返してschedulerを作る必要はない。
 計画中のclip一覧・実行順・選択方針はidentityに加えず、componentの設定全体
@@ -52,6 +55,40 @@ callbackの例外はそのまま呼出し側へ伝わる。同じexecutorを再�
 dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manifestとrecordの時間軸・mediaを検証し、
 同じ単一clip入口を呼ぶ。完成markerの呼出し順序と失敗継続は
 [generate_dataset](../generate_dataset/README.md)を参照する。共通関数は複数clip入口からも個別に呼び出せる。
+
+## モデルの所有と寿命
+
+推論を持つcomponentは`InferenceComponent`を実装し、`model_specs()`でaliasと`ModelSpec`を宣言する。
+`process_with_models(inputs, models)`は`models.borrow(alias)`で借りる。宣言やcache判定ではモデルを起動しない。
+通常の`process(inputs)`も、同じruntimeを1nodeの寿命で使う。componentには重みを保持しない。
+
+`ModelSpec`はモデル種別・architecture/encoder・device・dtype・前処理/推論設定と、名前付き資産path、
+生成・初期化・解放のcallbackを持つ。`key`は資産のSHA-256と設定のcanonical JSONを含み、
+clip/camera IDと資産pathを含めない。同じ内容の別pathは共有でき、異なる重み・設定は共有しない。
+checkpoint内のarchitectureは重み全体の内容identityにも含まれる。
+runtimeは開始した計画内でキーを固定し、借用時・初期化直後に資産の変化を検出したら停止する。
+
+`PlanExecutor.run()`は今回のtargetsの未完了nodeにruntimeを1つ作る。
+最初の借用で初期化し、そのキーを宣言する最後のnodeが完了した直後に解放する。
+cache hitのnodeも需要を消費するが借用しない。明示的な`load` nodeには最初からモデル需要がない。
+全cache hit・全loadならモデルの生成・初期化・解放イベントは0となる。
+例外・KeyboardInterrupt・公開失敗でもcontext終了時に残るモデルを解放する。
+失敗tracebackの完了済みframeが重みを保持しないよう、local参照も除去する。
+
+共有対象はCourt、DINO、Ball、ViTPose、CLIP（追跡・選別の画像推論経路・人物対応）、HMR2、GVHMR、
+身体配置のSMPL-X/変換行列/関節・root regressor。tracker・AFLink・時系列入力は共有モデルへ混ぜない。
+追跡はViTPoseとCLIP、現行GVHMR nodeはHMR2とGVHMRを同時に必要とする。
+依存に従ってモデルの段階をまとめ、全モデルを常時GPUへ載せない。
+途中targetsで`run()`を分けるとcontextごとに解放し、次の実行で必要なモデルは新しいpassとして読み込む。
+単独の`execute(key)`も1nodeで寿命を閉じる。処理済みartifactは再計算しない。
+
+計測は任意の`model_event(action, model, *, weights, device, dtype, instance)` context-manager hookへ渡す。
+`PlanExecutor`・`ComponentRunner`・`TennisSceneOrchestrator`（`from_config` / `from_runtime_config`を含む）の
+`model_event=`から指定でき、実際の生成/初期化と解放だけを囲む。借用回数をload回数として数えない。
+hook失敗時も後始末を実行し、エラーは呼出し側へ返す。
+C1のrecorder統合時はその`model_event`を渡し、管理下のモデルで下位の`model_action`/`model_release`と
+二重計数しないよう、runtime境界を記録の所有者にする。
+
 
 ## 処理単位
 

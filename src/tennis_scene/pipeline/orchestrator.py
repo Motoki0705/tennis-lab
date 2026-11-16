@@ -20,6 +20,7 @@ from src.tennis_scene.pipeline.definition import (
 from src.tennis_scene.pipeline.direct_annotation import saved_scene, scene_receipt
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
+from src.tennis_scene.pipeline.inference_runtime import ModelEventHook
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.schema import SceneResult
@@ -39,10 +40,12 @@ class TennisSceneOrchestrator:
     def __init__(self, config: PipelineRuntimeConfig, *, components: dict[str, Any] | None = None,
                  annotation_layout: AnnotationLayout | None = None,
                  annotation_controller_factory: Callable[..., LocalAnnotationController] | None = None,
-                 annotation_wait: Callable[[LocalAnnotationController], None] | None = None) -> None:
+                 annotation_wait: Callable[[LocalAnnotationController], None] | None = None,
+                 model_event: ModelEventHook | None = None) -> None:
         self.config, self.components = config, components
         self.annotation_layout = annotation_layout
         self.annotation_controller_factory, self.annotation_wait = annotation_controller_factory, annotation_wait
+        self.model_event = model_event
         self.last_receipt: dict[str, Any] = {}
         self.last_runner: ComponentRunner | None = None
         self.last_store: ClipStore | None = None
@@ -50,13 +53,13 @@ class TennisSceneOrchestrator:
         self.code_identity = document_digest({str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))})
 
     @classmethod
-    def from_runtime_config(cls, cfg: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
-        return cls(cfg)
+    def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
+        return cls(cfg, model_event=model_event)
 
     @classmethod
-    def from_config(cls, cfg: DictConfig) -> TennisSceneOrchestrator:
+    def from_config(cls, cfg: DictConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
         from src.tennis_scene.configuration import PipelineRuntimeConfig
-        return cls.from_runtime_config(PipelineRuntimeConfig.from_config(cfg))
+        return cls.from_runtime_config(PipelineRuntimeConfig.from_config(cfg), model_event=model_event)
 
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
@@ -131,7 +134,7 @@ class TennisSceneOrchestrator:
             else:
                 nodes = standard_definition(self.config, source, code_identity=self.code_identity, overrides=self.components)
             if direct is None or direct.resume != "publication":
-                runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite)
+                runner = ComponentRunner(nodes, store, overwrite=self.config.cache_overwrite, model_event=self.model_event)
                 self.last_runner = runner
                 runner.run()
                 inputs.snapshot.assert_unchanged()
