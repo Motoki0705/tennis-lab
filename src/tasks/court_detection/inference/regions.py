@@ -13,6 +13,11 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tasks.court_detection.geometry.paint_observations import PaintConfig
+from src.tasks.court_detection.geometry.paint_refinement import (
+    PaintResult,
+    refine_paint,
+)
 from src.tasks.court_detection.geometry.quality import (
     DEFAULT_QUALITY_CONFIG,
     CourtQuality,
@@ -35,9 +40,15 @@ Region = tuple[int, int, int, int]
 class CourtRegionSearchConfig(CourtQualityConfig):
     enabled: bool = False
     min_area_ratio: float = 0.01
+    refinement_method: str = "model"
+    paint: PaintConfig = PaintConfig()
 
     def __post_init__(self) -> None:
         CourtQualityConfig.__post_init__(self)
+        if self.refinement_method not in {"model", "rgb_paint"}:
+            raise ValueError("Unknown court refinement_method")
+        if not isinstance(self.paint, PaintConfig):
+            raise ValueError("Court paint configuration must be typed")
         if not np.isfinite(self.min_area_ratio) or not 0 < self.min_area_ratio < 1:
             raise ValueError("region_search.min_area_ratio must be finite and between 0 and 1")
 
@@ -74,6 +85,7 @@ class CourtRegionPrediction:
     region: Region
     original_size_hw: tuple[int, int]
     quality: CourtQuality
+    paint: PaintResult | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.quality, CourtQuality):
@@ -85,7 +97,8 @@ class CourtRegionPrediction:
             raise ValueError("Region geometry requires hybrid postprocessing")
         if geometry.status != "ok" or geometry.matrix is None or not self.quality.accepted:
             return np.zeros((14, 2), np.float32), np.zeros(14, dtype=bool)
-        points = np.asarray(geometry.projected, dtype=np.float32) + np.asarray(self.region[:2], dtype=np.float32)
+        points = (np.asarray(geometry.projected, dtype=np.float32) + np.asarray(self.region[:2], dtype=np.float32)
+                  if self.paint is None else np.asarray(self.paint.projected, dtype=np.float32))
         height, width = self.original_size_hw
         valid = (
             np.isfinite(points).all(axis=1)
@@ -115,10 +128,15 @@ class CourtRegionPrediction:
             native_size_hw=list(self.cropped.native_size_hw),
         )
         diagnostic["quality"] = self.quality.diagnostics()
+        if self.paint is not None:
+            diagnostic["model_homography"] = diagnostic["homography_court_metres_to_image_pixels"]
+            diagnostic["rgb_fitted_homography"] = None if self.paint.fitted_matrix is None else self.paint.fitted_matrix.tolist()
+            diagnostic["homography_court_metres_to_image_pixels"] = None if self.paint.matrix is None else self.paint.matrix.tolist()
         if geometry is not None and geometry.status == "ok" and not self.quality.accepted:
             diagnostic["hybrid_status"] = "ok"
             diagnostic["status"] = "quality_rejected"
-            diagnostic["rejected_homography"] = diagnostic["homography_court_metres_to_image_pixels"]
+            diagnostic["rejected_homography"] = (diagnostic["homography_court_metres_to_image_pixels"] if self.paint is None
+                                                 else diagnostic["rgb_fitted_homography"])
             diagnostic["homography_court_metres_to_image_pixels"] = None
         return diagnostic
 
@@ -134,8 +152,25 @@ def predict_court_region(
         np.ascontiguousarray(image[y0:y1, x0:x1]),
         postprocess="hybrid", heads=("kp", "line"),
     )
-    quality = assess_prediction_quality(prediction, quality_config, image.shape[:2])
-    return CourtRegionPrediction(prediction, region, (image.shape[0], image.shape[1]), quality)
+    return assess_region_prediction(prediction, image, region, quality_config)
+
+
+def assess_region_prediction(prediction: CourtPrediction, image: NDArray[np.uint8], region: Region,
+                             config: CourtQualityConfig) -> CourtRegionPrediction:
+    """Common live/frozen-raw boundary; RGB always uses the full source frame."""
+    model_quality = assess_prediction_quality(prediction, config, image.shape[:2])
+    paint = None
+    quality = model_quality
+    if isinstance(config, CourtRegionSearchConfig) and config.refinement_method == "rgb_paint":
+        geometry = prediction.homography
+        translation = np.eye(3)
+        translation[:2, 2] = region[:2]
+        initial = None if geometry is None or geometry.matrix is None else translation @ geometry.matrix
+        paint = refine_paint(image, initial, config.paint)
+        quality = CourtQuality(paint.quality.accepted, paint.quality.score, paint.quality.reasons,
+            {"schema": "court_quality_v2", "method": "rgb_paint", "score_units": "dimensionless_paint_cost",
+             "model_consistency": model_quality.diagnostics(), "rgb_paint": paint.quality.diagnostics()})
+    return CourtRegionPrediction(prediction, region, (image.shape[0], image.shape[1]), quality, paint)
 
 
 def assess_prediction_quality(
@@ -198,7 +233,8 @@ def select_court_region(
             )
             count = int(raw_inliers.sum())
             confidence_sum = float(raw.scores[:, 0].numpy()[raw_inliers].sum())
-            points = geometry.projected + np.asarray(region[:2])
+            points = (geometry.projected + np.asarray(region[:2]) if prediction.paint is None else
+                      prediction.paint.projected)
             polygon = points[[0, 1, 3, 2]].astype(np.float32)
             convex = bool(np.isfinite(polygon).all() and cv2.isContourConvex(polygon))
             if convex:

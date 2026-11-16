@@ -110,6 +110,13 @@ def test_line_corrects_biased_kp_and_excludes_confident_outliers(
         for previous in result.seeds[:index]
     )
     assert tuple(np.flatnonzero(result.selected)) == result.best.selection_history[-1]
+    assert result.solve_diagnostics
+    winning = [solve for solve in result.solve_diagnostics if solve["stop_reason"] == "converged" and
+               np.allclose(solve["fitted_homography"], result.matrix)]
+    assert len(winning) >= 1
+    assert winning[0]["selected_indices"] == np.flatnonzero(result.selected).tolist()
+    np.testing.assert_allclose(winning[0]["selected_residuals_px"], result.residuals_px[result.selected])
+    assert len(set(result.best.selection_history)) == 1  # fixed across both distance fields
     before = np.mean(np.linalg.norm(result.kp_only.projected - truth, axis=1))
     after = np.mean(np.linalg.norm(result.projected - truth, axis=1))
     assert after < 0.8
@@ -152,6 +159,7 @@ def test_nonconvergent_joint_fit_has_no_kp_only_fallback() -> None:
     assert result.line_selection is not None
     assert result.seeds  # Seeds survive failures after candidate generation.
     assert not result.selected.any()
+    assert {s["stop_reason"] for s in result.solve_diagnostics} == {"optimizer_failed"}
 
 
 def test_a_projection_pole_inside_court_is_rejected() -> None:

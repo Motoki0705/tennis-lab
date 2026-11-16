@@ -13,12 +13,22 @@ class KeypointSupport:
     eligible: NDArray[np.bool_]
     boundary: NDArray[np.bool_]
     duplicate: NDArray[np.bool_]
+    censor_direction: NDArray[np.int8]
+    correlation_groups: NDArray[np.int64]
+
+    def residual(self, projected: NDArray[np.floating], observed: NDArray[np.floating]) -> NDArray[np.float64]:
+        """Boundary peaks constrain inward motion, never pull an outside point in."""
+        delta = np.asarray(projected - observed, dtype=np.float64)
+        return np.where(self.censor_direction < 0, np.maximum(delta, 0),
+                        np.where(self.censor_direction > 0, np.minimum(delta, 0), delta))
 
     def diagnostics(self) -> dict[str, object]:
         return {
             "eligible_indices": np.flatnonzero(self.eligible).tolist(),
             "boundary_censored_indices": np.flatnonzero(self.boundary).tolist(),
             "duplicate_peak_indices": np.flatnonzero(self.duplicate).tolist(),
+            "censor_direction_xy": self.censor_direction.tolist(),
+            "correlation_groups": self.correlation_groups.tolist(),
         }
 
 
@@ -68,4 +78,13 @@ def keypoint_support(
     close = (distance <= duplicate_distance_cells) & finite[:, None] & finite[None]
     np.fill_diagonal(close, False)
     duplicate = close.any(axis=1)
-    return KeypointSupport(finite & ~boundary & ~duplicate, boundary, duplicate)
+    direction = np.zeros_like(points, dtype=np.int8)
+    for axis, extent in enumerate((native_width, native_height)):
+        direction[finite & (grid[:, axis] < boundary_margin_cells), axis] = -1
+        direction[finite & (grid[:, axis] > extent - 1 - boundary_margin_cells), axis] = 1
+    groups: NDArray[np.int64] = np.arange(len(points), dtype=np.int64)
+    # Connected components, including transitive collisions, are one source of
+    # localization evidence. A hypothesis may use at most one member per group.
+    for a, b in zip(*np.nonzero(close), strict=True):
+        groups[groups == groups[b]] = groups[a]
+    return KeypointSupport(finite & ~boundary & ~duplicate, boundary, duplicate, direction, groups)

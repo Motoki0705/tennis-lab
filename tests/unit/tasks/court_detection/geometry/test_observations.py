@@ -17,6 +17,14 @@ def test_censoring_uses_native_cells_and_preserves_raw_coordinates() -> None:
     np.testing.assert_array_equal(support.eligible, [False, True, False, False, True, False])
     np.testing.assert_array_equal(raw, original)
     assert support.diagnostics()["duplicate_peak_indices"] == [2, 3]
+    assert support.correlation_groups[2] == support.correlation_groups[3]
+    # A left-edge observation gives an upper bound on x, not x=0. Its y
+    # coordinate remains measured; moving inward violates the bound.
+    projected = raw.copy()
+    projected[0] = [-40, 53]
+    np.testing.assert_array_equal(support.residual(projected, raw)[0], [0, 3])
+    projected[0] = [8, 47]
+    np.testing.assert_array_equal(support.residual(projected, raw)[0], [8, -3])
 
 
 def test_source_resize_preserves_peak_eligibility_and_low_scores_do_not_collide() -> None:

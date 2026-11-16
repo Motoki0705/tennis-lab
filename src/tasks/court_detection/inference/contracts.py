@@ -88,6 +88,7 @@ class CourtPrediction:
                 float(x) if np.isfinite(x) else None for x in result.residuals_px
             ],
             "candidate_count": result.candidate_count,
+            "support_solves": list(result.solve_diagnostics),
             "line_support": None if result.best is None else dict(result.best.line),
             "original_size_hw": list(self.original_size_hw),
         }

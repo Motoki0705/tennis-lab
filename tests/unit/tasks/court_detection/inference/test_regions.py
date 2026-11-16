@@ -13,6 +13,7 @@ from src.tasks.court_detection.geometry.quality import CourtQuality
 from src.tasks.court_detection.inference.regions import (
     CourtRegionPrediction,
     CourtRegionSearchConfig,
+    assess_region_prediction,
     image_content_region,
     predict_court_region,
     region_proposals,
@@ -61,6 +62,23 @@ def test_failed_crop_has_zero_placeholders_without_offset_or_fallback() -> None:
     points, valid = result.downstream_keypoints()
     assert not points.any() and not valid.any()
     assert result.geometry_diagnostics()["homography_court_metres_to_image_pixels"] is None
+
+
+def test_rgb_rejection_keeps_model_evidence_but_never_publishes_its_h(monkeypatch):
+    import src.tasks.court_detection.inference.regions as module
+
+    monkeypatch.setattr(module, "assess_prediction_quality", lambda *_: CourtQuality(True, .1, (), {}))
+    result = assess_region_prediction(geometry_prediction(), np.full((80, 120, 3), 80, np.uint8),
+                                     (5, 4, 17, 12), CourtRegionSearchConfig(refinement_method="rgb_paint"))
+    points, valid = result.downstream_keypoints()
+    assert not points.any() and not valid.any()
+    diagnostic = result.geometry_diagnostics()
+    assert diagnostic["model_homography"] is not None
+    assert diagnostic["homography_court_metres_to_image_pixels"] is None
+    quality = cast(dict[str, Any], diagnostic["quality"])
+    assert quality["schema"] == "court_quality_v2"
+    assert quality["model_consistency"]["accepted"] is True
+    assert quality["rgb_paint"]["accepted"] is False
 
 
 def test_crop_outside_image_fails_before_inference() -> None:

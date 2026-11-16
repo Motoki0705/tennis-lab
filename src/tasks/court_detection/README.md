@@ -227,11 +227,14 @@ LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明�
 合格候補がなければ`CourtRegionUnavailable`と候補ごとの理由を返します。
 `region_search.enabled=false`でもfull-frame推論の品質確認は行います。
 
-後処理はnative gridで境界から`boundary_margin_cells`未満の点と、
-`duplicate_distance_cells`以内に重なるsemantic KPをfitの等式制約から外します。
-重複は両点を外し、raw出力は変更しません。残った点からconfidenceとtemplate上の分布で
-最大8点を選びます。最適化開始時に可視だった線は、最適化中に画面外へ移しても
-残差から消えません。元から画像外の線は要求しません。
+`postprocess.support_method=fixed_subsets`は、各初期Hに対して空間分布を重視する集合と
+confidenceを重視する集合を明示的に作り、各集合を固定して最大8点で解きます。
+最適化中の選び直しや集合の循環によるH切替はありません。境界から
+`boundary_margin_cells`未満の座標は外側への移動を拘束しない片側制約です。
+`duplicate_distance_cells`以内のピークの連結成分から、1候補には最大1点を使います。
+rawは変更せず、`keypoint_observations`に打切方向と相関群、`support_solves`に
+実際の集合・H・残差・optimizer終了理由を残します。`adaptive`は前方式の明示的な比較用です。
+最適化開始時に可視だったLINEは、画面外へ移しても残差から消えません。
 
 診断`quality.schema=court_quality_v1`の`score`は小さいほどよい順位用costで、
 正解確率や参照とのpx誤差ではありません。forward/reverse線残差のRMSを許容距離で割った和、
@@ -243,6 +246,24 @@ LINEだけの利用は`predict(rgb, heads=("line",), postprocess="none")`と明�
 `max_leave_line_out_px`と`reasons`を保持します。安定性は各線を1群とし、実際のKP制約と合わせた
 局所線形化で測ります。LINE自体の誤検出・semanticな取り違えを証明する指標ではありません。
 同じモデル・品質設定の推定間で比較し、camera別の推定を使う側も`accepted`を必ず確認してください。
+
+`region_search.refinement_method=model`は上記のモデル内部品質を採否に使います。
+`rgb_paint`は元RGBの1frameとモデルHから塗線中心へ精密化します。
+`region_search.paint`に探索幅・edge対の条件・支持・残差・安定性の全設定があります。
+camera固有のmaskや参照は使いません。両側の明るさ勾配の中心を取り、直線consensus、
+全支持線を使ったcoarse/fine最適化を行います。初期支持線の喪失、他の線でも
+解消できないstripeの対応、線残差、各物理線を独立群とする投影の標準偏差と
+leave-one-line-out変位で拒否します。fit成功だけでは採用しません。
+
+RGB方式の`quality.schema=court_quality_v2`は、`model_consistency`（従来v1）と
+`rgb_paint`（`court_rgb_quality_v1`）を分離します。RGB側の`lines`は固定した物理線名、
+支持位置数・coverage・元画像pxの中央値/p95残差・曖昧性を持ちます。
+`stability`は全14点の標準偏差と可視点の最大値、線別除去の最大変位です。
+順位用`score`は線別p95残差の平均、可視点の最大標準偏差、線除去の最大変位を
+各設定上限で割った和（`dimensionless_paint_cost`、小さいほど良い）です。
+旧Hは`model_homography`、精密化を試したHは`rgb_fitted_homography`に残ります。
+RGB不合格時に旧Hを採用Hへ戻すことはありません。品質を利用する側はschemaとmethodを
+確認し、異なる方式のscoreを混ぜず、`accepted`を満たす推定だけを選んでください。
 
 `tennis_scene`の診断schemaは`court_kp_quality_v2`です。品質不合格は`quality_rejected`とし、
 採用Hは`null`、下流点はゼロ・全無効にします。調査用のHは`rejected_homography`に分けます。

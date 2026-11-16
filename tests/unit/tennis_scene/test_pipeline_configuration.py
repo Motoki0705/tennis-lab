@@ -69,6 +69,16 @@ def test_placement_override_is_typed_and_part_of_cache_settings() -> None:
     )
 
 
+def test_court_methods_and_paint_measurements_change_cache_identity() -> None:
+    baseline = _runtime([])
+    for override in ("court_kp.region_search.refinement_method=model", "court_kp.postprocess.support_method=adaptive",
+                     "court_kp.region_search.paint.radius_px=40.0"):
+        changed = _runtime([override])
+        assert changed.processing_settings["court_kp"] != baseline.processing_settings["court_kp"]
+    with pytest.raises(ValueError, match="refinement_method"):
+        _runtime(["court_kp.region_search.refinement_method=automatic"])
+
+
 @pytest.mark.parametrize(
     "override",
     [

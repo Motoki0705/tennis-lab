@@ -17,10 +17,9 @@ from src.tasks.court_detection.inference.contracts import (
     validate_hybrid_inference_config,
 )
 from src.tasks.court_detection.inference.regions import (
-    CourtRegionPrediction,
     CourtRegionSearchConfig,
     Region,
-    assess_prediction_quality,
+    assess_region_prediction,
     predict_court_region,
     select_court_region,
 )
@@ -203,8 +202,7 @@ class CourtKPModule(BasePipelineModule):
             raise RuntimeError("Court predictor is not loaded")
         if region is None:
             prediction = self._predictor.predict(frame_rgb, postprocess="hybrid", heads=("kp", "line"))
-            quality = assess_prediction_quality(prediction, self.config.region_search, frame_rgb.shape[:2])
-            full = CourtRegionPrediction(prediction, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), frame_rgb.shape[:2], quality)
+            full = assess_region_prediction(prediction, frame_rgb, (0, 0, frame_rgb.shape[1], frame_rgb.shape[0]), self.config.region_search)
             points, visible = full.downstream_keypoints()
             diagnostic = full.geometry_diagnostics()
             schema = prediction.keypoint_schema
