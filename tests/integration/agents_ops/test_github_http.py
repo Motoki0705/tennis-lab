@@ -91,11 +91,54 @@ def server(
         assert not replies, "the scenario did not exercise every response"
 
 
-def response(body: object, status: int = 200) -> bytes:
+def response(body: object, status: int = 200, /, **headers: str) -> bytes:
     raw = json.dumps(body).encode()
+    metadata = "".join(f"{name}: {value}\r\n" for name, value in headers.items())
     return (
-        f"HTTP/1.1 {status} Test\r\nContent-Length: {len(raw)}\r\n\r\n".encode() + raw
+        f"HTTP/1.1 {status} Test\r\nContent-Length: {len(raw)}\r\n{metadata}\r\n".encode()
+        + raw
     )
+
+
+def test_conditional_parent_reads_revalidate_on_the_wire_with_current_headers(
+    api: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    store = importlib.import_module("parent.state").Store(tmp_path / "registry")
+    endpoint = "repos/o/r/pulls/17"
+    with server(
+        api,
+        monkeypatch,
+        [
+            response({"revision": 0}),
+            response({"revision": 1}, ETag='"v1"', **{"X-RateLimit-Remaining": "49"}),
+            b'HTTP/1.1 304 Not Modified\r\nETag: "v1"\r\nX-RateLimit-Remaining: 48\r\nX-Poll-Interval: 90\r\n\r\n',
+        ],
+    ) as calls:
+        gh = api.parent.GitHub("o/r", store=store)
+        gh.parent = 1
+        try:
+            with pytest.raises(ValueError, match="active registry transaction"):
+                gh.get_conditional(endpoint)
+            with api.metrics.command("conditional", None) as row, store.locked():
+                assert gh.get(endpoint) == {"revision": 0}
+                assert gh.get_conditional(endpoint).body == {"revision": 1}
+                current = gh.get_conditional(endpoint)
+                assert current.status == 304 and current.body == {"revision": 1}
+                assert current.headers["x-ratelimit-remaining"] == "48"
+                assert current.headers["x-poll-interval"] == "90"
+                assert gh.get(endpoint) == {"revision": 0}
+                with pytest.raises(ValueError, match="lock to be released"):
+                    gh.detached().get_conditional(endpoint)
+        finally:
+            gh.close()
+    assert len({c["port"] for c in calls}) == 1
+    assert [c["headers"].get("If-None-Match") for c in calls] == [None, None, '"v1"']
+    assert (
+        row["github_get_requests"],
+        row["github_get_200"],
+        row["github_get_304"],
+    ) == (3, 2, 1)
+    assert row["github_requests"] == 3 and row["cache_hits"] == 1
 
 
 def test_rest_graphql_and_detached_share_one_connection_and_token(
