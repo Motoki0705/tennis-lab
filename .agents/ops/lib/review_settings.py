@@ -336,44 +336,6 @@ def launch_selection(selection: Any, pins: dict[str, str]) -> dict[str, Any]:
     return data
 
 
-def verify_execution(request: dict[str, Any], execution: dict[str, Any]) -> None:
-    if request["schema_version"] == 3:
-        selection = validate_selection(request["review_selection"])
-        if execution.get("review_selection") != selection:
-            raise ValueError("review execution selection differs from request")
-
-
-def runtime_summary(runtime: dict[str, Any]) -> dict[str, Any]:
-    selected = validate_values(
-        obj(obj(runtime.get("contract")).get("settings")).get("selected")
-    )
-    effective = obj(obj(runtime.get("runtime")).get("effective"))
-    observed = {}
-    for key in sorted(FIELDS):
-        value = obj(effective.get(key))
-        if value.get("status") == "observed":
-            text(value.get("value"), "effective " + key)
-            observed[key] = {"status": "observed", "value": value["value"]}
-        elif (
-            key == "service_tier"
-            and value.get("status") == "unavailable"
-            and value.get("value") is None
-        ):
-            observed[key] = {
-                "status": "unavailable",
-                "value": None,
-                "reason": text(value.get("reason"), "effective tier reason"),
-            }
-        else:
-            raise ValueError(f"review effective {key} is not confirmed")
-        if (
-            observed[key]["status"] == "observed"
-            and observed[key]["value"] != selected[key]
-        ):
-            raise ValueError(f"review effective {key} differs from selection")
-    return {"selected": selected, "effective": observed}
-
-
 def runtime_view(runtime: dict[str, Any]) -> dict[str, Any]:
     """Display observations even when they disagree, excluding private sources."""
     settings = obj(obj(runtime.get("contract", {})).get("settings", {}))
@@ -390,38 +352,3 @@ def runtime_view(runtime: dict[str, Any]) -> dict[str, Any]:
             for key in sorted(FIELDS)
         },
     }
-
-
-def validate_summary(value: Any) -> dict[str, Any]:
-    summary = exact(value, {"selected", "effective"})
-    normalized = runtime_summary(
-        {
-            "contract": {"settings": {"selected": summary["selected"]}},
-            "runtime": {"effective": summary["effective"]},
-        }
-    )
-    if summary != normalized:
-        raise ValueError("invalid public review runtime settings")
-    return summary
-
-
-def verify_runtime(request: dict[str, Any], runtime: dict[str, Any]) -> None:
-    if request["schema_version"] != 3:
-        return
-    selection = validate_selection(request["review_selection"])
-    if selection["kind"] != "run":
-        raise ValueError("recovery request has no local agent runtime")
-    contract = obj(runtime.get("contract"))
-    settings = obj(contract.get("settings"))
-    if (
-        contract.get("mode") != "read-only"
-        or settings.get("agent") != "codex"
-        or settings.get("profile") != "review"
-    ):
-        raise ValueError("review runtime permissions/profile differ from request")
-    if (
-        contract.get("review_selection") != selection
-        or settings.get("selected") != selection["selected"]
-    ):
-        raise ValueError("review runtime selection differs from request")
-    runtime_summary(runtime)

@@ -1303,6 +1303,10 @@ class Supervisor:
                     "delegation_id": job["delegation_id"],
                     "evidence": f"dispatcher runtime {record['run_id']}: terminal result, cleanup_complete, no live runner/CLI/group",
                 }
+            if job.get("repair") and job.get("progression_id"):
+                # The progression consumes the repair report; it wakes the
+                # parent only for a decision or final notification.
+                return
             dispatch["wake_requested"] = True
             if dispatch.get("controller_mode") == "handoff":
                 dispatch["wake_requested"] = False

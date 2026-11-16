@@ -1,778 +1,333 @@
-#!/usr/bin/env python3
-"""Explicit parent merge gate. Never launches a reviewer or polls for changes."""
+"""Automatic review-to-merge lifecycle and its detached controller entry point."""
 
 from __future__ import annotations
 
 import argparse
-import hashlib
+import fcntl
 import json
+import math
 import os
 import subprocess
 import sys
-from dataclasses import asdict, dataclass
+import time
+import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
-HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parent))
-sys.path.insert(0, str(HERE.parent / "lib"))
+from lib.review_settings import run_id
+from parent.execution import authorization
+from parent.policy import closing_issues, dependencies, nonempty, object_value
+from parent.session import ParentSession
+from parent.snapshot import snapshot
+from parent.state import Store
 
-from issues import Issue  # noqa: E402
-from merge_gate_policy import (  # noqa: E402
-    MergeInput,
-    MergeResult,
-    auto_merge,
-    confirmed_state,
-    dependency_order,
-    evaluate_parent_gate,
-    publication_errors,
-)
-from parent import metrics  # noqa: E402
-from parent.adopted_tasks import check_task_adoptions  # noqa: E402
-from parent.execution import (  # noqa: E402
-    authorization,
-)
-from parent.github import GitHub  # noqa: E402
-from parent.policy import (  # noqa: E402
-    closing_issues,
-    digest,
-    issue_number,
-    nonempty,
-    object_value,
-)
-from parent.session import ParentSession  # noqa: E402
-from parent.snapshot import snapshot  # noqa: E402
-from parent.state import Store, session_identity, state_directory  # noqa: E402
-from parent.work_targets import (  # noqa: E402
-    dependency_graph,
-    require_separate_self_prs,
-)
-from parent_review_policy import (  # noqa: E402
-    BaseAdvance,
-    load_json,
-    request_manifest,
-    superseding_reviews,
-    validate_result,
-)
-from parent_review_policy import snapshots as validate_snapshots  # noqa: E402
-from review_evidence import followups, python_check_runs  # noqa: E402
-from review_interruption import interruption_record  # noqa: E402
-from review_policy import GateDecision  # noqa: E402
-from review_recovery import verify_adoption  # noqa: E402
-from review_workspace import (  # noqa: E402
-    changed_paths,
-    full_diff,
-    resolution_scope,
-    verify_rebased_snapshot,
-)
+from review.progression import Engine, new_state, read, save
 
 
-def read_json(path: Path) -> dict[str, Any]:
-    return object_value(load_json(path.read_text(encoding="utf-8")))
+def state_path(store: Store, identifier: str) -> Path:
+    return store.directory / "progressions" / run_id(identifier) / "state.json"
 
 
-def attempt_path(session: ParentSession, n: int, head: str) -> Path:
-    return (
-        session.store.directory
-        / "merges"
-        / digest(session.gh.repo.casefold())
-        / f"pr-{n}-{head}.json"
-    )
-
-
-@dataclass
-class Collection:
-    parent: Issue
-    children: dict[int, Issue]
-    default_branch: str
-    pulls: list[dict[str, Any]]
-    candidates: list[int]
-    details: dict[int, dict[str, Any]]
-    snapshots: list[dict[str, Any]]
-    paths: dict[int, tuple[str, ...]]
-    fix_paths: dict[int, list[str]]
-    review_paths: dict[int, list[str]]
-    fix_hashes: dict[int, str]
-    errors: dict[int, list[str]]
-
-
-def repository_default_branch(session: ParentSession) -> str:
-    repo = object_value(session.gh.get(f"repos/{session.gh.repo}"))
-    return nonempty(repo.get("default_branch"), "repository default_branch")
-
-
-def check_adoptions(
-    session: ParentSession,
-    pr: dict[str, Any],
-    family: tuple[Issue, dict[int, Issue]] | None = None,
-    *,
-    fresh_bodies: bool = False,
-) -> None:
-    parent, children = family if family is not None else session.work_items()
-    items = {parent.number: parent}
-    for n in closing_issues(pr.get("body") or "", session.gh.repo) & set(children):
-        items[n] = children[n]
-    for n, item in items.items():
-        body = session.gh.issue(n)["body"] if fresh_bodies else item.body
-        check_task_adoptions(session.gh, body)
-
-
-def collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
-    with session.observation() as external:
-        return _collect(external, request)
-
-
-def _collect(session: ParentSession, request: dict[str, Any] | None) -> Collection:
-    parent, children = session.work_items()
-    policy_children, external_deps = dependency_graph(parent, children)
-    dependency_errors = []
-    for dep in external_deps:
-        raw = session.gh.issue(dep)
-        if raw["state"] != "closed" or raw.get("state_reason") != "completed":
-            dependency_errors.append(f"dependency_{dep}_not_completed")
-    default_branch = repository_default_branch(session)
-    pulls = session.gh.pulls()
-    require_separate_self_prs(parent, pulls, session.gh.repo)
-    if len({p["number"] for p in pulls}) != len(pulls):
-        raise ValueError("duplicate PR records from GitHub")
-    targets = {p["number"]: p for p in request["prs"]} if request else {}
-    issue_targets = set(children)
-    candidates = sorted(
-        set(targets)
-        | {
-            p["number"]
-            for p in pulls
-            if p["state"] == "open"
-            and closing_issues(p.get("body") or "", session.gh.repo) & issue_targets
-        }
-    )
-    details, snapshots, paths, fix_paths, fix_hashes = {}, [], {}, {}, {}
-    review_paths: dict[int, list[str]] = {}
-    errors: dict[int, list[str]] = {}
-    for n in candidates:
-        raw = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
-        if raw.get("number") != n:
-            raise ValueError("GitHub PR identity mismatch")
-        errors[n] = list(dependency_errors)
+@contextmanager
+def controller_lock(path: Path) -> Iterator[None]:
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with path.with_suffix(".lock").open("a") as lock:
+        os.chmod(lock.name, 0o600)
         try:
-            check_adoptions(session, raw, (parent, children))
-        except ValueError:
-            errors[n].append("task_adoption_changed")
-        if request is not None and n in targets and raw.get("merged_at"):
-            # Recomputing after merge would change merge-base/diff. Preserve the
-            # reviewed snapshot, or the one checked immediately before our merge.
-            current = targets[n]
-            journal = attempt_path(session, n, raw["head"]["sha"])
-            if journal.exists():
-                attempted = read_json(journal)
-                if attempted.get("review_run_id") == request["review_run_id"]:
-                    current = validate_snapshots([attempted["snapshot"]])[0]
-                    if (
-                        current["number"] != n
-                        or current["head_sha"] != attempted["head_sha"]
-                    ):
-                        raise ValueError("merge journal snapshot identity mismatch")
-            if raw["head"]["sha"] != current["head_sha"]:
-                errors[n].append("merged_head_mismatch")
-            if (
-                raw["head"]["ref"] != current["branch"]
-                or raw["base"]["ref"] != current["base_ref"]
-                or raw["base"]["repo"]["full_name"].casefold()
-                != session.gh.repo.casefold()
-                or raw["head"]["repo"]["full_name"].casefold()
-                != session.gh.repo.casefold()
-            ):
-                errors[n].append("merged_snapshot_identity_mismatch")
-        else:
-            current, _ = snapshot(raw)
-        snapshots.append(current)
-        paths[n] = tuple(changed_paths(current["merge_base_sha"], current["head_sha"]))
-        if n in targets:
-            before = targets[n]["head_sha"]
-            scope = resolution_scope(targets[n], current)
-            fix_paths[n] = scope.head_changed_paths
-            review_paths[n] = scope.changed_paths
-            fix_hashes[n] = hashlib.sha256(
-                full_diff(before, current["head_sha"])
-            ).hexdigest()
-        raw["statusCheckRollup"] = []
-        raw["ci_head_sha"] = None
-        raw["ci_check_runs"] = []
-        if raw["state"] == "open":
-            data = session.gh.pr_view(n, ("headRefOid", "statusCheckRollup"))
-            if set(data) != {"headRefOid", "statusCheckRollup"} or not isinstance(
-                data["statusCheckRollup"], list
-            ):
-                raise ValueError("incomplete CI response")
-            if data["headRefOid"] != current["head_sha"]:
-                errors[n].append("head_changed_during_ci")
-            raw["statusCheckRollup"] = data["statusCheckRollup"]
-            raw["ci_head_sha"] = data["headRefOid"]
-            raw["ci_check_runs"] = python_check_runs(session, current["head_sha"])
-        details[n] = raw
-    # Use the fresh individual PRs for dependency/duplicate checks, too.
-    pulls = [details.get(p["number"], p) for p in pulls]
-    return Collection(
-        parent,
-        policy_children,
-        default_branch,
-        pulls,
-        candidates,
-        details,
-        snapshots,
-        paths,
-        fix_paths,
-        review_paths,
-        fix_hashes,
-        errors,
-    )
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise ValueError(
+                "automatic progression controller is already running"
+            ) from exc
+        yield
 
 
-def load_evidence(
-    session: ParentSession, request: dict[str, Any] | None, view: Collection
-) -> tuple[
-    dict[str, Any] | None,
-    list[dict[str, Any]],
-    str | None,
-    tuple[str, ...],
-]:
-    with session.observation() as external:
-        return _load_evidence(external, request, view)
-
-
-def _load_evidence(
-    session: ParentSession, request: dict[str, Any] | None, view: Collection
-) -> tuple[dict[str, Any] | None, list[dict[str, Any]], str | None, tuple[str, ...]]:
-    if request is None:
-        return None, [], None, ("parent_review_missing",)
-    run_dir = session.store.directory / "reviews" / request["review_run_id"]
-    if (run_dir / "execution.json").exists():
-        execution = read_json(run_dir / "execution.json")
-        if interruption_record(execution, request) is not None:
-            if read_json(run_dir / "request.json") != request:
-                raise ValueError("local closed review/request mismatch")
-            return None, [], None, ("parent_review_interrupted_closed",)
-    if (
-        not (run_dir / "result.json").exists()
-        or not (run_dir / "execution.json").exists()
-    ):
-        return None, [], None, ("parent_review_missing_or_interrupted",)
-    result = validate_result(read_json(run_dir / "result.json"))
-    execution = read_json(run_dir / "execution.json")
-    if result["request"] != request or read_json(run_dir / "request.json") != request:
-        raise ValueError("local review result/request mismatch")
-    from review_recovery import verify_result_runtime
-
-    verify_result_runtime(run_dir, result, execution)
-    auth = authorization(session, request)
-    if result["kind"] == "adoption":
-        source = next(
-            (
-                r["request"]
-                for r in session.row["reviews"]
-                if r["request"]["review_run_id"] == result["source_run"]
-            ),
-            None,
-        )
-        if source is None or source["prs"] != request["prs"]:
-            raise ValueError("adoption has no registered source review")
-        if (
-            read_json(
-                session.store.directory
-                / "reviews"
-                / result["source_run"]
-                / "request.json"
-            )
-            != source
-        ):
-            raise ValueError("adoption source request differs from registry")
-        verify_adoption(session.store.directory, result)
-        for n in superseding_reviews(
-            session.row["reviews"], result["source_run"], request
-        ):
-            if n in view.errors:
-                view.errors[n].append("adoption_source_superseded")
-    parent_comments = session.gh.parent_comments(session.parent, session.login)
-    pr_comments = {n: session.gh.comments(n) for n in view.candidates}
-    errors = list(
-        publication_errors(
-            result,
-            execution,
-            parent_comments,
-            pr_comments,
-            session.login,
-            request.get("authorization", auth),
-        )
-    )
-    state = confirmed_state(session.history(), request, auth)
-    resolutions = []
-    for proof in followups(
-        run_dir,
-        result,
-        parent_comments,
-        pr_comments,
-        session.login,
-        {p["number"]: p for p in view.snapshots},
-        view.fix_hashes,
-    ):
-        if proof["errors"] == ["resolution_fix_diff_mismatch"]:
-            view.errors[proof["record"]["pr"]].append("resolution_fix_diff_mismatch")
-        if not proof["errors"]:
-            resolutions.append(proof["record"])
-    return result, resolutions, state, tuple(errors)
-
-
-def evaluate(
-    session: ParentSession, request: dict[str, Any] | None, view: Collection
-) -> dict[int, MergeResult]:
-    with session.observation() as external:
-        return _evaluate(external, request, view)
-
-
-def _evaluate(
-    session: ParentSession, request: dict[str, Any] | None, view: Collection
-) -> dict[int, MergeResult]:
-    result, resolutions, state, errors = load_evidence(session, request, view)
-    advances: set[BaseAdvance] = set()
-    inherited: set[tuple[str, str]] = set()
-    if result is not None:
-        originals = {p["number"]: p for p in result["request"]["prs"]}
-        for current in view.snapshots:
-            n = current["number"]
-            candidates = [originals[n]] if n in originals else []
-            candidates += [
-                r["fixed_snapshot"] if r["kind"] == "resolution" else r["snapshot"]
-                for r in resolutions
-                if r["pr"] == n
-            ]
-            for original in candidates:
-                if verify_rebased_snapshot(original, current):
-                    inherited.add((digest(original), digest(current)))
-    for n in view.candidates:
-        pr = view.details[n]
-        if (
-            pr["state"] == "open"
-            and attempt_path(session, n, pr["head"]["sha"]).exists()
-        ):
-            view.errors[n].append("merge_already_attempted")
-    return {
-        n: evaluate_parent_gate(
-            MergeInput(
-                repo=session.gh.repo,
-                default_branch=view.default_branch,
-                parent_issue=session.parent,
-                pr=view.details[n],
-                children=view.children,
-                tasks=session.row["tasks"],
-                pulls=view.pulls,
-                result=result,
-                current=view.snapshots,
-                resolutions=resolutions,
-                fix_paths=view.fix_paths,
-                fix_diff_digests=view.fix_hashes,
-                review_paths=view.review_paths,
-                changed_paths=view.paths[n],
-                review_state=state,
-                evidence_errors=(*errors, *view.errors[n]),
-                base_advances=tuple(advances),
-                inherited_snapshots=frozenset(inherited),
-                parent_needs_human="needs-human" in view.parent.labels,
-            )
-        )
-        for n in view.candidates
-    }
-
-
-def completion(
-    session: ParentSession, pr: dict[str, Any], *, write: bool
-) -> tuple[str, ...]:
-    # Merge changed GitHub outside this client. Reconcile/progress share new
-    # transaction-local reads; their own writes still invalidate affected facts.
-    with session.gh.history_read_scope():
-        return _completion(session, pr, write=write)
-
-
-def _completion(
-    session: ParentSession, pr: dict[str, Any], *, write: bool
-) -> tuple[str, ...]:
-    if not pr.get("merged_at"):
-        return ("merge_not_confirmed",)
-    if pr["base"]["ref"] != repository_default_branch(session):
-        return ("base_not_default_branch",)
-    parent, children = session.work_items()
-    issue_targets = set(children)
-    linked = closing_issues(pr.get("body") or "", session.gh.repo) & issue_targets
-    if not linked:
-        return ("merged_pr_child_missing",)
-    for child in sorted(linked):
-        raw = session.gh.issue(child)
-        if raw["state"] != "closed" or raw.get("state_reason") != "completed":
-            return (f"child_{child}_close_not_confirmed",)
-    if write and parent.children:
-        # Parent progress is derived from GitHub, never from the merge command's exit.
-        session.reconcile()
-        session.sync_progress()
-    return ()
-
-
-def observe(
-    session: ParentSession, request: dict[str, Any] | None
-) -> tuple[Collection, dict[int, MergeResult]]:
-    with session.observation() as external:
-        external.owner()
-        view = collect(external, request)
-        # Read review authority/publication after PR/git/CI collection, so a
-        # revocation or changed review during that I/O cannot use old evidence.
-        external.agreed()
-        return view, evaluate(external, request, view)
-
-
-def merge(session: ParentSession, enabled: bool) -> dict[str, Any]:
-    runs = [
-        request_manifest(row["request"], instructed=False)
-        for row in session.row["reviews"]
-    ]
-    latest = {
-        pr["number"]: request["review_run_id"]
-        for request in runs
-        for pr in request["prs"]
-    }
-    # All registered runs initially see the same observation, including unknown
-    # PR discovery. No registry lock is held during GitHub/git/evidence reads.
-    # A merge discards these observations for the remaining runs.
-    with session.observation() as external:
-        if not runs:
-            initial = observe(external, None)
-            observations = {}
-        else:
-            observations = {
-                request["review_run_id"]: observe(external, request)
-                for request in runs
-                if request["review_run_id"] in latest.values()
-            }
-            initial = observations[runs[-1]["review_run_id"]]
-    if not runs:
-        return _merge_request(session, enabled, None, None, initial)
-    results: dict[int, dict[str, Any]] = {}
-    evaluations = []
-    unknown = {n for n in initial[0].candidates if n not in latest}
-    if unknown:
-        value = _merge_request(session, enabled, runs[-1], unknown, initial)
-        results.update({entry["pr"]: entry for entry in value["results"]})
-        evaluations.extend(value["evaluations"])
-    for _ in range(len(runs) + 1):
-        progressed = False
-        for request in runs:
-            selected = {
-                n
-                for n, run_id in latest.items()
-                if run_id == request["review_run_id"]
-                and results.get(n, {}).get("action") not in {"merged", "already_merged"}
-            }
-            if not selected:
-                continue
-            value = _merge_request(
-                session,
-                enabled,
-                request,
-                selected,
-                observations.pop(request["review_run_id"], None),
-            )
-            if any(entry["action"] == "merged" for entry in value["results"]):
-                observations.clear()
-            for entry in value["results"]:
-                results[entry["pr"]] = entry
-                progressed |= entry["action"] == "merged"
-            evaluations.extend(value["evaluations"])
-        if (
-            not enabled
-            or not progressed
-            or all(
-                results.get(n, {}).get("action") in {"merged", "already_merged"}
-                for n in latest
-            )
-        ):
-            break
-    return {
-        "parent": session.parent,
-        "review_run_id": runs[-1]["review_run_id"],
-        "auto_merge": enabled,
-        "agent_invocations": 0,
-        "reasons": [] if results else ["no_target_prs"],
-        "results": [results[n] for n in sorted(results)],
-        "evaluations": evaluations,
-    }
-
-
-def _merge_request(
+def register(
     session: ParentSession,
-    enabled: bool,
-    request: dict[str, Any] | None,
-    selected: set[int] | None,
-    initial: tuple[Collection, dict[int, MergeResult]] | None = None,
+    prs: list[int],
+    instruction: str,
+    reason: str | None,
+    selection: dict[str, Any],
+    options: dict[str, Any],
 ) -> dict[str, Any]:
-    from decision_logs.review_capture import gate_result
-
-    results: dict[int, dict[str, Any]] = {}
-    evaluations = []
-    handled: set[int] = set()
-    while True:
-        view, decisions = initial if initial is not None else observe(session, request)
-        initial = None
-        order = dependency_order(
-            [view.details[n] for n in view.candidates], view.children, session.gh.repo
+    timeout = options.get("agent_timeout", 1800)
+    if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
+        raise ValueError("agent timeout must be positive and finite")
+    session.gh.targeted_history = True
+    row = session.agreed()
+    if not prs or len(set(prs)) != len(prs):
+        raise ValueError("review needs a nonempty set of unique PRs")
+    # Reusing the request cannot restart a paused controller. That always needs
+    # merge-continue, even after the original process or WSL has disappeared.
+    for prior in row["reviews"]:
+        request = prior["request"]
+        if request.get("schema_version") == 4 and set(prs) & {
+            p["number"] for p in request["prs"]
+        }:
+            state = read(state_path(session.store, request["review_run_id"]))
+            if state["status"] != "completed":
+                if set(prs) != {p["number"] for p in request["prs"]}:
+                    raise ValueError("PR is already managed by another progression")
+                return {
+                    "review_run_id": state["id"],
+                    "reused": True,
+                    "status": state["status"],
+                }
+    auth = authorization(session)
+    parent, children = session.work_items()
+    entries = []
+    for n in sorted(prs):
+        pr = object_value(session.gh.get(f"repos/{session.gh.repo}/pulls/{n}"))
+        issues = sorted(
+            closing_issues(pr.get("body") or "", session.gh.repo) & set(children)
         )
-        made_progress = False
-        for n in order:
-            if n in handled or (selected is not None and n not in selected):
-                continue
-            pr = view.details[n]
-            entry = {
-                "pr": n,
-                **asdict(decisions[n]),
-                "snapshot": next(s for s in view.snapshots if s["number"] == n),
-                "action": "dry_run"
-                if not enabled
-                else "eligible"
-                if decisions[n].decision == GateDecision.MERGE
-                else "blocked",
-            }
-            if pr.get("merged_at"):
-                errors = (*view.errors[n], *completion(session, pr, write=enabled))
-                entry.update(
-                    decision="blocked" if errors else "merge",
-                    reasons=errors,
-                    action="merge_unconfirmed" if errors else "already_merged",
-                )
-                results[n] = entry
-                evaluations.append(entry)
-                handled.add(n)
-                continue
-            results[n] = entry
-            evaluations.append(entry)
-            gate_result(entry, "evaluation")
-            if decisions[n].decision != GateDecision.MERGE or not enabled:
-                continue
-            # Re-read all coverage, base/head/diff, CI, parent state and dependencies
-            # immediately before the write. --match-head-commit closes the last race.
-            fresh, fresh_decisions = observe(session, request)
-            decision = fresh_decisions[n]
-            current = next(s for s in fresh.snapshots if s["number"] == n)
-            entry = {
-                "pr": n,
-                **asdict(decision),
-                "snapshot": current,
-                "action": "blocked",
-            }
-            if current["head_sha"] != pr["head"]["sha"]:
-                entry.update(decision="blocked", reasons=("head_changed_before_merge",))
-            results[n] = entry
-            evaluations.append(entry)
-            if entry["decision"] != GateDecision.MERGE:
-                continue
-            # Bindings and source reports may change during review evidence I/O.
-            # Reread only parent/closing bodies and their sources, retaining the
-            # collected target set instead of rediscovering the formal family.
-            with session.gh.fresh_reads():
-                check_adoptions(
-                    session,
-                    fresh.details[n],
-                    (fresh.parent, fresh.children),
-                    fresh_bodies=True,
-                )
-            journal_path = attempt_path(session, n, current["head_sha"])
-            if journal_path.exists():
-                entry.update(decision="blocked", reasons=("merge_already_attempted",))
-                continue
-            attempt = {
-                "pr": n,
-                "head_sha": current["head_sha"],
-                "review_run_id": request["review_run_id"] if request else None,
-                "snapshot": current,
-                "status": "attempting",
-            }
-            Store.write_json(journal_path, attempt)
-            gate_result(attempt, "merge_attempt")
-            with session.store.unlocked_read():
-                command = subprocess.run(
-                    [
-                        "gh",
-                        "pr",
-                        "merge",
-                        str(n),
-                        "--repo",
-                        session.gh.repo,
-                        "--merge",
-                        "--match-head-commit",
-                        current["head_sha"],
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
-                )
-            attempt["exit_code"] = command.returncode
-            with session.gh.fresh_reads():
-                actual = object_value(
-                    session.gh.get(f"repos/{session.gh.repo}/pulls/{n}")
-                )
-            errors = completion(
-                session, actual, write=actual.get("merged_at") is not None
-            )
-            if actual["head"]["sha"] != current["head_sha"]:
-                errors = (*errors, "merge_head_mismatch")
-            if command.returncode and not actual.get("merged_at"):
-                errors = (*errors, "merge_command_failed")
-            attempt["status"] = "unconfirmed" if errors else "merged"
-            Store.write_json(journal_path, attempt)
-            gate_result(attempt, "merge_result")
-            entry.update(
-                action="merge_unconfirmed" if errors else "merged",
-                decision="blocked" if errors else "merge",
-                reasons=errors,
-            )
-            handled.add(n)
-            made_progress = actual.get("merged_at") is not None
-            # No reuse of the pre-merge collection for any remaining PR.
-            if made_progress:
-                break
-        if (
-            not made_progress
-            or not view.children
-            or not any(
-                n not in handled and (selected is None or n in selected)
-                for n in view.candidates
-            )
+        if pr.get("number") != n or pr.get("state") != "open" or not issues:
+            raise ValueError("review requires related open PRs")
+        if any(
+            pr[side]["repo"]["full_name"].casefold() != session.gh.repo.casefold()
+            for side in ("head", "base")
         ):
-            # Completion already rechecked the last merge. There is no remaining
-            # selected PR needing another head/coverage/CI observation.
-            break
+            raise ValueError("review requires same-repository PRs")
+        with session.gh.io_scope():
+            entry, _ = snapshot(pr)
+        entry["issues"] = issues
+        deps = sorted(
+            {
+                d
+                for child in issues
+                for d in row["tasks"]
+                .get(str(child), {})
+                .get("dependencies", dependencies(children[child].body))
+            }
+            - set(issues)
+        )
+        entry["dependencies"] = [
+            {"issue": d, "prs": [p["number"] for p in session.gh.pulls({d})]}
+            for d in deps
+        ]
+        workers = [
+            (child, row["tasks"].get(str(child), {}))
+            for child in issues
+            if row["tasks"].get(str(child), {}).get("delegated")
+        ]
+        if len(workers) > 1:
+            raise ValueError(
+                "PR has multiple creating workers; identify one before requesting review"
+            )
+        entry["worker"] = None
+        if workers:
+            child, task = workers[0]
+            if task.get("agent") != "codex" or task["branch"] != entry["branch"]:
+                raise ValueError(
+                    "PR does not belong to the registered creating Codex worker"
+                )
+            entry["worker"] = {
+                "kind": "dispatcher" if row.get("dispatch") else "manual",
+                "child": child,
+                "delegation_id": task["delegation_id"],
+                "progression_id": uuid.uuid4().hex,
+            }
+        entries.append(entry)
+    identifier = f"parent-{session.parent}-{uuid.uuid4().hex}"
+    request = {
+        "schema_version": 4,
+        "review_run_id": identifier,
+        "repo": session.gh.repo,
+        "parent_issue": session.parent,
+        "authorization": auth,
+        "review_selection": selection,
+        "prs": entries,
+        "instruction": nonempty(instruction, "review instruction"),
+        "reason": reason or "親が対象PR全体のレビューと自動進行を依頼",
+    }
+    state = new_state(
+        request,
+        owner=nonempty(session.session, "parent identity"),
+        generation=row["generation"],
+    )
+    state.update(checkout=str(Path.cwd()), options=options)
+    # Parent registration serializes new requests. Existing legacy rows remain
+    # untouched and can be inspected, but cannot authorize this progression.
+    for entry in entries:
+        worker = entry["worker"]
+        if worker and worker["kind"] == "dispatcher":
+            from dispatcher.repairs import register_progression
+
+            if not options.get("dispatcher_state_dir"):
+                raise ValueError(
+                    "dispatcher progression requires --dispatcher-state-dir"
+                )
+            register_progression(
+                session,
+                worker["progression_id"],
+                child=worker["child"],
+                pr=entry["number"],
+            )
+    path = state_path(session.store, identifier)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=False)
+    save(path, state)
+    row["reviews"].append({"request": request, "state": "requested"})
+    session.store.save()
+    from decision_logs.capture import current
+
+    capture = current()
+    if capture is not None:
+        try:
+            with capture.transaction():
+                capture.row["review_run_id"] = identifier
+                capture._save()
+        except Exception:
+            capture.mark_failed(lost_source="review.binding")
+    return {"review_run_id": identifier, "reused": False, "status": "requested"}
+
+
+def latest(store: Store, repo: str, parent: int, identifier: str | None = None) -> Path:
+    with store.consistent_snapshot():
+        row = store.parents.get(f"{repo.casefold()}#{parent}", {})
+        found = [
+            r["request"]["review_run_id"]
+            for r in row.get("reviews", [])
+            if r["request"].get("schema_version") == 4
+        ]
+    if identifier is None:
+        if not found:
+            raise ValueError("no automatic progression is registered")
+        identifier = found[-1]
+    if identifier not in found:
+        raise ValueError("progression is not registered with this parent")
+    return state_path(store, identifier)
+
+
+def view(path: Path) -> dict[str, Any]:
+    state = read(path)
     return {
-        "parent": session.parent,
-        "review_run_id": request["review_run_id"] if request else None,
-        "auto_merge": enabled,
-        "agent_invocations": 0,
-        "reasons": [] if results else ["no_target_prs"],
-        "results": [results[n] for n in sorted(results)],
-        "evaluations": evaluations,
+        "review_run_id": state["id"],
+        "status": state["status"],
+        "review": state["review"],
+        "prs": [
+            {k: v for k, v in t.items() if k != "worker"}
+            for t in state["targets"].values()
+        ],
+        "events": state["events"],
+        "decisions": state["decisions"],
     }
 
 
-def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(description=__doc__)
-    root.add_argument("--repo")
-    root.add_argument("--parent", required=True)
-    root.add_argument("--state-dir", type=Path, default=state_directory())
-    commands = root.add_subparsers(dest="command", required=True)
-    merge_parser = commands.add_parser("merge")
-    merge_parser.add_argument("--decision-id")
-    merge_parser.add_argument("--plan-id")
-    merge_parser.add_argument("--retry-of")
-    merge_parser.add_argument("--changes-file", type=Path)
-    return root
+def start(path: Path) -> None:
+    # The child takes a nonblocking lifetime lock before doing any work. Two
+    # competing launchers can never run two reviewers/workers or merge twice.
+    state = read(path)
+    with (path.parent / "controller.log").open("ab") as log:
+        subprocess.Popen(
+            [sys.executable, "-m", "review.merge_gate", "--state", str(path)],
+            cwd=state["checkout"],
+            env={
+                **os.environ,
+                "PYTHONPATH": os.pathsep.join(
+                    filter(
+                        None,
+                        [
+                            str(Path(__file__).resolve().parents[1]),
+                            os.environ.get("PYTHONPATH"),
+                        ],
+                    )
+                ),
+            },
+            stdin=subprocess.DEVNULL,
+            stdout=log,
+            stderr=log,
+            start_new_session=True,
+        )
 
 
-def main(argv: list[str] | None = None) -> int:
-    path = os.environ.get("PARENT_METRICS_FILE")
-    with metrics.command("merge_gate.merge", Path(path) if path else None) as row:
-        code = _main(argv)
-        row["exit_code"] = code
-        return code
+def continue_progression(
+    path: Path,
+    store: Store,
+    identity: str,
+    instruction: str,
+    *,
+    rereview: bool = False,
+    prs: list[int] | None = None,
+    review_selection: dict[str, Any] | None = None,
+    review_config_file: str | None = None,
+) -> None:
+    from review.progression_backend import LiveBackend
+
+    with controller_lock(path):
+        state = read(path)
+        if state["owner"] != identity:
+            raise ValueError("only the registered parent may continue progression")
+        backend = LiveBackend(state, store)
+        backend.authorize()
+        Engine(path, backend).continue_run(
+            instruction,
+            rereview=rereview,
+            prs=prs,
+            review_selection=review_selection,
+            review_config_file=review_config_file,
+        )
+    start(path)
 
 
-def _main(argv: list[str] | None = None) -> int:
-    args = parser().parse_args(argv)
-    from decision_logs.capture import (
-        CURRENT,
-        CaptureInputError,
-        Operation,
-        checked_link,
-        comparison,
-        initialization_failed,
-        observe,
-    )
-    from decision_logs.journal import Journal
-    from decision_logs.parent_commands import failed
+def wait(path: Path, *, after: int = 0, timeout: float | None = None) -> dict[str, Any]:
+    if timeout is not None and (not math.isfinite(timeout) or timeout <= 0):
+        raise ValueError("timeout must be positive")
+    deadline = time.monotonic() + timeout if timeout is not None else None
+    while True:
+        state = read(path)
+        if (
+            any(e["id"] > after for e in state["events"])
+            or state["status"] == "completed"
+        ):
+            return view(path)
+        if deadline is not None and time.monotonic() >= deadline:
+            return {**view(path), "wait_timed_out": True}
+        time.sleep(0.25)
 
-    token = None
+
+def completion(store: Store, repo: str, parent: int, pr: int) -> dict[str, Any]:
+    row = store.read_data().get("parents", {}).get(f"{repo.casefold()}#{parent}", {})
+    requests = [
+        r["request"]
+        for r in row.get("reviews", [])
+        if r["request"].get("schema_version") == 4
+    ]
+    for request in reversed(requests):
+        state = read(state_path(store, request["review_run_id"]))
+        target = state["targets"].get(str(pr))
+        if (
+            target
+            and target["stage"] == "completed"
+            and target.get("issues_confirmed")
+            and target.get("main_ci", {}).get("status") == "success"
+        ):
+            return object_value(target)
+    raise ValueError(f"PR #{pr}: automatic post-merge confirmation is missing")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--state", type=Path, required=True)
+    args = parser.parse_args()
+    from review.progression_backend import LiveBackend
+
+    path = args.state.resolve()
+    store = Store(path.parents[2])
     try:
-        enabled = auto_merge(os.environ.get("AGENT_AUTO_MERGE"))
-        identity = session_identity(dict(os.environ))
-        store = Store(args.state_dir)
-        gh = GitHub(args.repo, store=store)
-        parent = issue_number(args.parent, gh.repo)
-        try:
-            plan = checked_link(
-                Journal(store.directory, gh.repo, parent),
-                args.decision_id,
-                args.plan_id,
-                "merge",
-            )
-            capture = Operation.begin(
-                store.directory,
-                gh.repo,
-                parent,
-                "merge_gate.merge",
-                "merge",
-                decision_id=args.decision_id,
-                plan_id=plan,
-                previous_result_id=args.retry_of,
-                changes=comparison(args.changes_file),
-            )
-        except CaptureInputError:
-            raise
-        except Exception:
-            initialization_failed(store.directory, gh.repo, parent, "merge_gate.merge")
-            capture = None
-        token = CURRENT.set(capture)
-        with store.locked():
-            session = ParentSession(
-                gh, store, issue_number(args.parent, gh.repo), identity
-            )
-            value = merge(session, enabled)
-        observe(
-            value,
-            status="success"
-            if value["results"]
-            and all(r["decision"] == "merge" for r in value["results"])
-            else "rejected",
-            summary=f"merge_gate.merge: auto_merge={enabled}; results={len(value['results'])}",
-        )
-        print(json.dumps(value, ensure_ascii=False, indent=2))
-        return (
-            0
-            if args.command != "merge"
-            or (
-                value["results"]
-                and all(r["decision"] == "merge" for r in value["results"])
-            )
-            else 1
-        )
-    except (
-        ValueError,
-        OSError,
-        KeyError,
-        TypeError,
-        StopIteration,
-        subprocess.SubprocessError,
-    ) as exc:
-        failed(exc)
-        # Do not emit arbitrary GitHub payloads or private registry content.
-        print(
-            json.dumps(
-                {
-                    "decision": "blocked",
-                    "reasons": ["input_or_collection_error"],
-                    "error": f"{type(exc).__name__}: {exc}",
-                    "agent_invocations": 0,
-                }
-            ),
-            file=sys.stderr,
-        )
+        with controller_lock(path):
+            state = read(path)
+            backend = LiveBackend(state, store)
+            from review.review_locks import targets
+
+            with targets(store.directory, state):
+                result = Engine(path, backend).run()
+            print(json.dumps(view(path), ensure_ascii=False))
+            return 0 if result["status"] == "completed" else 1
+    except (ValueError, OSError) as exc:
+        print(str(exc), file=sys.stderr)
         return 2
-    finally:
-        if token is not None:
-            CURRENT.reset(token)
 
 
 if __name__ == "__main__":

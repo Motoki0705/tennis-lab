@@ -54,14 +54,14 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 | [ops/ops_control/](ops/ops_control/README.md) | `spin ops` の対象表と実処理。運用unitの状態・導入・対象ごとのON/OFF・単発実行・ログを扱う |
 | [ops/install_units.sh](ops/install_units.sh) | `spin ops install` が使うunit導入処理。`ops/*/systemd/` を `~/.config/systemd/user` へリンクしdaemon-reloadする。有効化は `spin ops on <target>` |
 | [ops/ops-report/](ops/ops-report/README.md) | Claude親とCodex調査子の並列全体調査、3日周期の運用レポート（未完了回は部分公開・再開）、採用提案の日次triage |
-| [ops/review/](ops/review/README.md) | 親が明示起動する1回の統合Codexレビュー、指摘解消・coverageの記録、依存を照合する順次merge gate、共有基盤パスの一覧 |
+| [ops/review/](ops/review/README.md) | 親の1回の明示要求から大局レビュー・CI待機・作成workerによる修正・軽いgate・merge後確認までの自動進行、共有基盤パスの一覧 |
 | [ops/cleanup/](ops/cleanup/README.md) | worktreeを持たないmerge済みbranchの自動削除と、期限前のcleanなworktreeの手動削除・候補一覧 |
 | [ops/storage_tier/](ops/storage_tier/README.md) | D:作業実体とE:正本ミラーの配置規約、SHA-256照合・手動取得・atimeによる単位削除と日次user timer |
 | [ops/worktree_cleanup/](ops/worktree_cleanup/README.md) | `.claude/worktrees/` の登録worktreeを作成から336時間で強制削除し、管理jobの停止と状態を照合する |
 | [ops/issues/](ops/issues/README.md) | 親子issueの書式の正本、生成・整合検査の共通APIと読み取りCLI |
 | [ops/issue_supplement/](ops/issue_supplement/README.md) | 作成直後の親issueにGeminiで背景を補足するworkflow。不変条件・独立した意味検査・照合付きの書き込みを行う |
 | [ops/explain_html/](ops/explain_html/README.md) | 説明HTMLの共通契約・版store、指定Geminiの候補生成/意味検査、ローカルHTTP/job runtime |
-| [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](ops/parent/development_workflow.md) がCodex workerの起動・継続・停止・結果照合と既存レビュー/mergeを接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
+| [ops/parent/](ops/parent/README.md) | 親セッションの担当・実行根拠・子の進捗・明示レビュー要求を管理するCLI。[開発workflow](ops/parent/development_workflow.md) がCodex workerの起動・継続・停止・結果照合とレビューからmerge後確認までの自動進行を接続する。会話からの手順は [parent-session](skills/parent-session/SKILL.md) |
 | [ops/worker_status/](ops/worker_status/README.md) | 親registry・共通ランナー記録から子の実行状況・根拠・鮮度・秘匿済み要約を返す読み取り専用Python API/JSON CLI。GitHub取得は明示指定時のみ |
 | [ops/worker_logs/](ops/worker_logs/README.md) | workerの具体指示・最終報告・来歴を無害化し、ターン別のログ専用PRへ追記する。公開検査・追加専用merge・CI除外の限定例外と復旧の正本 |
 | [ops/decision_logs/](ops/decision_logs/README.ja.md) | 結果・判断・行動の非公開捕捉と復旧、親ごとのGit公開、階層READMEの決定的生成。新形式の限定例外と公開復旧の正本 |
@@ -78,7 +78,7 @@ Claude・Codexなど、このrepoで働くAIエージェントの運用ルール
 - **親セッションの担当**: 担当登録の規則は [AGENTS.md](../AGENTS.md#開発ルール)、手順は [parent-session](skills/parent-session/SKILL.md) を参照する。担当指定と要件合意を区別する。担当の排他・解除・引継ぎの正本は [parent CLIのローカルstate](ops/parent/README.md#責務と状態の正本)。
 - **自律割当された親**: dispatcherのbootstrapで予約と実行根拠を受理し、[開発workflow](ops/parent/development_workflow.md) で実装子から実merge/closeまで照合する。自律根拠を人間合意に読み替えない。委任先の既定とdshの明示指定は [AGENTS.md](../AGENTS.md#開発ルール) に従う。
 - **close**: 実装issueは、PRのmerge（`Closes #`）で自動closeする。研究テーマのissueは、収束後に人間がレポートを読んでcloseする。
-- **merge**: PRへのpushごとにCIを実行し、対象HEADの `Python` check runの成功、親が明示起動した統合Codexレビューと指摘解消を必須条件とする。コミットに `[skip ci]` を付けない。blocker/majorの解消は親が修正差分・回帰テストで確認し、自動再レビューを行わない。親の明示mergeコマンドで各PRのcoverage・最新head/base/merge-base/diff・CI・依存関係・競合を照合し、合格した独立PRから順次進める。merge後のmainのCIも確認する。既定はdry-run、人間の有効化判断後に呼出元環境の `AGENT_AUTO_MERGE=1` で実mergeする。変更パスによる追加承認は不要。記録・判定・停止/復旧の正本は [merge gate](ops/review/README.md#merge-gate)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
+- **merge**: pushごとにCIを実行し、コミットに `[skip ci]` を付けない。親がレビュー依頼を1回出し、大局レビュー、現headのPython CI、軽いgate、merge後確認をCLIが自動進行する。majorの修正方針と追加レビューの要否は親が判断する。人間の有効化判断後の `AGENT_AUTO_MERGE=1` とneeds-humanの制御を維持する。状態・修正上限・停止/復旧の正本は [自動進行](ops/review/README.md)。運用レポート専用memoryの限定例外は [ops-report README](ops/ops-report/README.md#専用memoryの保存)。
 
 ## 研究ループ（概要）
 

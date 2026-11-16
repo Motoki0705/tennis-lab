@@ -64,7 +64,12 @@ def runtime_errors_failed(record: dict[str, Any]) -> bool:
         info = record["runtime"]
         identifier(info["session_id"])
         identifier(info["turn_id"])
-        events = Events("codex", settings["selected"], info["session_id"])
+        events = Events(
+            "codex",
+            settings["selected"],
+            info["session_id"],
+            verify_settings=settings.get("profile") != "review",
+        )
         for line in raw.read_bytes().splitlines():
             if line.strip():
                 events.feed(line)
@@ -284,7 +289,10 @@ class Events:
         selected: dict[str, str],
         expected_session: str | None,
         output_schema: OutputSchema | None = None,
+        *,
+        verify_settings: bool = True,
     ) -> None:
+        self.verify_settings = verify_settings
         self.agent, self.selected = agent, selected
         self.expected_session = expected_session
         self.session: str | None = None
@@ -320,7 +328,7 @@ class Events:
         if not isinstance(value, str) or not value:
             raise EvidenceError(f"runtime did not report effective {key}")
         self.effective[key] = {"value": value, "status": "observed", "source": source}
-        if value != self.selected[key]:
+        if self.verify_settings and value != self.selected[key]:
             raise EvidenceError(f"effective {key} differs from selected setting")
 
     def token_usage(self, value: Any, source: str) -> None:

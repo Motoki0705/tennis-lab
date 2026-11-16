@@ -2837,3 +2837,57 @@ def test_run_replacement_during_final_github_check_is_not_applied(
         if stage == "accept" or event["event"] != "parent_accepted"
     )
     assert after["dispatch"]["wake_requested"] is False
+
+
+def test_repair_completion_wakes_progression_and_final_notice_wakes_parent_once(
+    registered_repair: tuple[DispatchHarness, Any],
+) -> None:
+    LiveBackend = importlib.import_module("review.progression_backend").LiveBackend
+
+    d, _ = registered_repair
+    row = d.row()
+    row["dispatch"].update(phase="waiting", wake_requested=False)
+    d.update(row)
+    d.runtime(d.job(row), state="waiting")
+    d.control.reconcile()
+    assert d.row()["dispatch"]["phase"] == "waiting"
+    repair_id = d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.")
+    assert d.control.claim("o/r#1", repair_id) is not None
+    job = d.row()["dispatch"]["jobs"][repair_id]
+    d.runtime(job)
+    record_path = Path(job["directory"]) / "runtime/result.json"
+    record = json.loads(record_path.read_text())
+    settings = importlib.import_module("lib.agent_settings")
+    record["contract"]["settings"] = settings.resolve(
+        settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+    )
+    record["contract"]["settings"]["selected"]["effort"] = "high"
+    record["contract"]["repair"] = job["repair"]
+    record_path.write_text(json.dumps(record))
+    row = d.row()
+    row["dispatch"]["jobs"][repair_id]["worker"] = None
+    d.update(row)
+    d.control.reconcile()
+    row = d.row()
+    assert row["dispatch"]["jobs"][repair_id]["phase"] == "ended"
+    assert row["dispatch"]["phase"] == "waiting"
+    assert row["dispatch"]["wake_requested"] is False
+    # A saved final notification is independently idempotent and uses the
+    # existing dispatcher wake path for the waiting parent.
+    state = {
+        "id": "parent-1-" + "1" * 32,
+        "request": {"repo": "o/r", "parent_issue": 1},
+        "owner": row["session"],
+        "generation": row["generation"],
+        "review": {},
+        "targets": {},
+    }
+    backend = LiveBackend(state, d.h.store)
+    notification = {"id": 1, "kind": "completed", "reason": None}
+    backend.notify(state, notification)
+    backend.notify(state, notification)
+    row = d.row()
+    assert row["dispatch"]["phase"] == "resume_pending"
+    assert len(row["progression_notifications"]) == 1
+    d.control.reconcile()
+    assert d.row()["dispatch"]["phase"] == "reserved"

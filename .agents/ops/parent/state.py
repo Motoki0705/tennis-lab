@@ -172,11 +172,11 @@ class Store:
                 object_value(review)
                 request = object_value(review.get("request"))
                 version = request.get("schema_version")
-                if type(version) is not int or version not in {1, 2, 3}:
+                if type(version) is not int or version not in {1, 2, 3, 4}:
                     raise ValueError("unknown or malformed saved review request")
-                if version in {2, 3}:
+                if version in {2, 3, 4}:
                     validate_authorization(request.get("authorization"))
-                if version == 3:
+                if version in {3, 4}:
                     from lib.review_settings import validate_selection
 
                     validate_selection(request.get("review_selection"))

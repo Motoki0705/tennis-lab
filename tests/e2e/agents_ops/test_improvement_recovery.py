@@ -448,6 +448,9 @@ def approved_gate(
             decisions=decisions,
         )
         first_approval.append(decisions["first"])
+        # Automatic progression follows this source parent by its saved binding,
+        # without discovering evidence through a repository-wide issue listing.
+        p.cli("evidence", "--create", parent="2")
         p.cli("agree", "--improvement-approval", decisions["first"])
 
     monkeypatch.setattr(p, "agreed", agreed_improvement)

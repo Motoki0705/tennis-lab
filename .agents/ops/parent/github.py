@@ -37,6 +37,7 @@ class GitHub(IssueGitHub):
         super().__init__(repo)
         self._store = store
         self._outside_store: Store | None = None
+        self.targeted_history = False
         self.parent: int | None = None
         self._cache: dict[tuple[str, bool], object] = {}
         self._fresh = False

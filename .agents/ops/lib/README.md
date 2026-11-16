@@ -428,8 +428,8 @@ effortはmaxを必須とする。[修正ターン](../parent/README.md#自動進
   `NAME=value` とコメントだけで、shellとして評価しない。環境変数の同名pinは読まない。
   CLI自身のmodel/effort/service tier設定より明示引数を優先し、実効値も別途照合する。
 
-利用可能モデルへの事前アクセス確認は行わない。指定モデルを1回起動し、失敗・異なる実効値を
-非ゼロ終了にする。他モデルへの振替や自動再試行はしない。
+利用可能モデルへの事前アクセス確認は行わない。指定モデルを1回起動し、失敗を非ゼロ終了にする。
+review以外では選択値と異なる実効値もエラーにする。他モデルへの振替や自動再試行はしない。
 
 ### レビュー専用の選択入力
 
@@ -445,16 +445,15 @@ select時の実行model/effortは明示選択を使い、`REVIEW_CODEX_MODEL`を
 JSONの`kind=run`は`policy,selected,specified_by,reason,human,handoff`を持つ。
 `policy`は`version,mode,fixed,allowed_pairs`、`selected`は`model,effort,service_tier`。
 `specified_by`は`settings / parent_choice / human_instruction`。
-人間の拘束は`human={model,effort,reference}`、引継ぎは
-`handoff={source_run,source_request_sha256,source_result_sha256,scope,candidates}`。どちらも不要ならnull。
-`candidates`は検証済み保存候補の指摘と証拠待ちを来歴付きで固定する配列で、無ければ空配列。
-候補は`candidate_only`として扱い、coverageや承認を含めない。検証と親の確認は[review契約](../review/README.md#保存候補を含む別runへの引継ぎ)を参照。
+人間の拘束は`human={model,effort,reference}`。不要ならnull。
+旧handoff metadataは保存記録の読取り用に保持するが、新規の自動進行ではnullを使う。
+レビューの続行・追加実行は [自動進行](../review/README.md) から明示する。
 選択・理由・拘束は`lib/review_settings.py`の共通検査を使う。
 
 fixedでは固定値と一致する明示指定だけを許し、selectでは明示選択と理由を必須とする。
 runnerは起動前に保存された方針と現在のreview設定を照合し、相違を黙って解決しない。
-選択を`contract.review_selection`と`review-selection.json`へ保存し、実効model・effortとの一致も検証する。
-実効tierが未取得なら理由付きunavailableを維持し、観測できたときだけ一致を要求する。
+選択を`contract.review_selection`と`review-selection.json`へ保存する。reviewの実効model・effort・tierは観測として保持し、選択値との一致は要求しない。
+実効tierが未取得なら理由付きunavailableを維持する。
 resumeで入力を省略した場合は保存選択を復元する。変更した選択・関連方針は起動前に拒否する。
 コメント・他profile・configパスだけの変更は引き続き実行契約を変えない。
 専用入力のない従来のreview呼出しはfixedでだけ使用でき、selectではエラーになる。
@@ -518,7 +517,7 @@ Codexのreview profileは、初回・再開とも `-c 'web_search="disabled"'` �
 read-only sandboxの指定だけでは組込み検索を無効化しない。
 Codex CLI 0.168.0の `exec --help` / `exec resume --help` と
 `app-server --strict-config -c 'web_search="disabled"' --print-startup-config` で設定の受理を確認した。
-レビューは固定した要件・差分と[専用取得ツール](../review/README.md#取得と隔離cpuテスト)を使うため、
+レビューは固定した要件・差分と[専用取得ツール](review_tools/README.md)を使うため、
 設定を外部検索へ依存させない。必要な根拠を確認できなければ確認不能として返す。
 この設定は過去のSIGTERMの送り手やWeb検索との因果関係を特定するものではない。
 

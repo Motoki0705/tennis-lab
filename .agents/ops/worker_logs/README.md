@@ -115,7 +115,7 @@ URLは原文と復号後の両方から取り出し、query/fragmentも復号し
 - PRがmergedであること、HEADとmerge commitがorigin/mainに含まれること、main上の保存内容を照合する。
   ここまで確認して初めて `merged / saved_to_main=true` とする。
 
-通常の [merge gate](../review/README.md#merge-gate) とops-report memoryのCI必須処理は変更しない。
+通常の [merge gate](../review/README.md#軽いgate) とops-report memoryのCI必須処理は変更しない。
 保存実装、schema、公開検査、workflow、規則を変更するコードPRは通常レビューと対象HEADのPython成功が必要。
 
 ## workflowの範囲と制約

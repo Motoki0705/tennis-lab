@@ -109,6 +109,20 @@ class EvidenceIssues:
         """
         number(parent)
         saved = self._saved(parent, login)
+        if self.gh.targeted_history:
+            if saved is None or saved["state"] != "bound":
+                raise ValueError(
+                    "automatic progression requires a saved evidence issue binding; use evidence --create first"
+                )
+            pinned = self._binding(
+                object_value(
+                    self.gh.get(f"repos/{self.gh.repo}/issues/{saved['number']}")
+                ),
+                login,
+            )
+            if pinned.parent != parent or pinned.number != saved["number"]:
+                raise ValueError("saved evidence issue binding changed")
+            return pinned
         matches = []
         for raw in self.gh.evidence_rows():
             if "pull_request" not in raw and is_evidence_issue(raw):

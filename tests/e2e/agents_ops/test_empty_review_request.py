@@ -1,19 +1,26 @@
-"""An empty target set must never become a successful review request."""
-
-from __future__ import annotations
+"""The public request cannot accept an empty PR target list."""
 
 import importlib
 import sys
 from pathlib import Path
-from typing import Any
 
 import pytest
 
-OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
-sys.path[:0] = [str(OPS), str(OPS / "review")]
-policy: Any = importlib.import_module("parent_review_policy")
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops"))
+parser = importlib.import_module("parent.cli").parser
 
 
 def test_empty_review_request_is_rejected() -> None:
-    with pytest.raises(ValueError, match="PR snapshots must be a nonempty list"):
-        policy.snapshots([])
+    with pytest.raises(SystemExit):
+        parser().parse_args(
+            [
+                "--parent",
+                "1",
+                "review-request",
+                "--prs",
+                "--evidence-file",
+                "e",
+                "--instruction-file",
+                "i",
+            ]
+        )

@@ -4,6 +4,7 @@ Run this script from the implementation checkout, passing an unchanged baseline
 checkout to --checkout to compare against its CLI/fixtures. Results are private
 PARENT_METRICS_FILE JSONL. The HTTP revision uses the real transport and a local
 HTTP bridge whose backend runs the same fake-gh scenarios as the baseline.
+Review/merge progression is measured separately by merge_gate_reads.py.
 
 Example:
     .venv/bin/python tests/benchmarks/agents_ops/parent_http.py \
@@ -116,22 +117,6 @@ def run(checkout: Path, output: Path, repeats: int) -> None:
                 "codex/benchmark",
                 "--worktree",
                 str(worktree),
-            )
-            review_directory = directory / "review"
-            review_directory.mkdir()
-            p = environment(review_directory)
-            module.review_setup(p, pr_count=1)
-            prepared = json.loads(
-                p.cli("review-prepare", *p.review_flags(), "--prs", "100").stdout
-            )
-            measure(
-                p,
-                "review-request",
-                *p.review_flags(),
-                "--run-id",
-                prepared["review_run_id"],
-                "--instruction-file",
-                p.note("変更の契約を確認する。"),
             )
     print(metric_file.read_text(), end="")
 
