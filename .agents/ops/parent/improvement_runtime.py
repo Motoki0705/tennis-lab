@@ -16,6 +16,7 @@ from issues.improvement import human_state
 
 from .execution import authorization
 from .improvements import get, lock_key, require
+from .repair_admission import require_repair_labels
 from .session import ParentSession
 
 if TYPE_CHECKING:
@@ -96,6 +97,7 @@ def execute_manual(
                 repair_claim = uuid.uuid4().hex
                 attempt.update(launch_state="starting", launch_claim=repair_claim)
                 store.save()
+                require_repair_labels(session, child, attempt["request"]["pr"])
             process = subprocess.Popen(
                 command,
                 stdin=subprocess.PIPE,

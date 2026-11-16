@@ -911,6 +911,7 @@ Python APIは `manual_workers.run_worker(..., resume=True, repair=lib.repair_tur
 確実に起動前に拒否された試行は同じ予約で再実行できる。起動intent以後の再送は保存先を返す。
 起動直後に応答や記録を失った場合は `run_dir` を照合し、起動の再送へ進まず親の復旧判断へ返す。
 完了済みの再取得では同じ `final_file` を返す。終了の認定は既存runnerの終了・cleanup検査を使う。
+手動・dispatcherの両経路はPopen直前に親・子・対象PRのラベルをfresh取得し、`needs-human` があれば理由付きで起動を拒否する。
 
 修正指示は `lib.repair_turn.instruction` が組み立てる。workerは自分で修正できるか親AIの判断が必要かを決め、
 実装・検証・pre-commit・commit・pushを終えたらターンを終了する。CI待機は呼出側CLIへ戻す。
@@ -930,7 +931,7 @@ JSONの前後に自然文やコードフェンスを付けない。未知・重�
 dispatcher系列の土台APIは `dispatcher.repairs.register_progression(session, progression_id, child=N, pr=P)` と
 `Supervisor.start_repair(parent, progression_id, repair_id, details)`。登録は実際の担当親のsessionで行い、
 親の世代・実行根拠・委任・作成workerのsession/契約へ結び付ける。登録済みの対象だけが切り離した呼出元から予約できる。
-起動時にも登録・権限を再確認する。親runtimeの環境変数は起動入力に使わない。
+claim時とPopen直前の最終admissionでも、登録した親のsession・generation・実行根拠と現在の登録・権限を照合する。親runtimeの環境変数は起動入力に使わない。
 戻り値は既存dispatcherのjob ID。同じ修正IDは同じjobを返し、通常のclaim・起動・回収・ログ公開へ接続する。
 
 ### workerの調査・親判断・実装フェーズ

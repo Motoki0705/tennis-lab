@@ -16,6 +16,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -1461,9 +1462,10 @@ def test_new_child_delegation_resumes_previous_child_session(
     )
 
 
-def test_registered_progression_reserves_repair_without_parent_runtime_environment(
+@pytest.fixture
+def registered_repair(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
-) -> None:
+) -> tuple[DispatchHarness, Any]:
     fixture_runtime(d, monkeypatch)
     runtime_module = importlib.import_module("dispatcher.runtime")
     runtime_type = runtime_module.Runtime
@@ -1500,15 +1502,25 @@ def test_registered_progression_reserves_repair_without_parent_runtime_environme
             "state": "open",
             "merged_at": None,
             "draft": False,
+            "labels": [],
             "head": {"ref": "test", "sha": "a" * 40, "repo": {"full_name": "o/r"}},
         }
     ]
-    with pytest.raises(ValueError, match="owner-registered"):
-        d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.")
     with d.h.store.locked():
         row = d.h.store.parents["o/r#1"]
         session = d.control._session("o/r#1", row)
         repairs.register_progression(session, "pipeline-1", child=10, pr=42)
+    return d, runtime_type
+
+
+def test_registered_progression_reserves_repair_without_parent_runtime_environment(
+    registered_repair: tuple[DispatchHarness, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d, runtime_type = registered_repair
+    creator = next(j for j in d.row()["dispatch"]["jobs"].values() if j["child"] == 10)
+    record_path = Path(creator["directory"]) / "runtime/result.json"
+    with pytest.raises(ValueError, match="owner-registered"):
+        d.control.start_repair(1, "missing-pipeline", "ci-1", "Failed import.")
     # The detached caller has no parent runtime environment to impersonate.
     for key in (
         "CLAUDE_CODE_SESSION_ID",
@@ -1550,6 +1562,86 @@ def test_registered_progression_reserves_repair_without_parent_runtime_environme
     d.update(row)
     with pytest.raises(ValueError, match="owner/authority/delegation"):
         d.control.start_repair(1, "pipeline-1", "ci-2", "Failed import.")
+
+
+@pytest.mark.parametrize("target", ["parent", "child", "pr"])
+@pytest.mark.parametrize("timing", ["reserved", "claimed"])
+def test_dispatch_repair_rechecks_needs_human_before_popen(
+    registered_repair: tuple[DispatchHarness, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    target: str,
+    timing: str,
+) -> None:
+    d, runtime_type = registered_repair
+    job_id = d.control.start_repair(1, "pipeline-1", "ci-label", "Failed import.")
+    claimed = d.control.claim("o/r#1", job_id) if timing == "claimed" else None
+    if timing == "claimed":
+        assert claimed is not None
+    remote = (
+        d.h.gh.prs[0]
+        if target == "pr"
+        else d.h.gh.issues[1 if target == "parent" else 10]
+    )
+    remote["labels"].append({"name": "needs-human"})
+    if timing == "reserved":
+        claimed = d.control.claim("o/r#1", job_id)
+    popen = MagicMock()
+    popen.return_value.wait.return_value = 0
+    monkeypatch.setattr("subprocess.Popen", popen)
+    if claimed is not None:
+        runtime = runtime_type(Path(claimed["runner"]))
+        runtime.launch_context = lambda: d.control.launch_admission("o/r#1", job_id)
+        with pytest.raises(ValueError, match="needs-human|human decision"):
+            runtime.execute(claimed, 0)
+    popen.assert_not_called()
+    rejected = d.row()["dispatch"]["jobs"][job_id]
+    assert rejected["phase"] == "ended" and rejected["cancelled_before_start"]
+    assert (
+        "needs-human" in rejected["diagnostic"]
+        or "human decision" in rejected["diagnostic"]
+    )
+    assert not (Path(rejected["directory"]) / "runtime").exists()
+
+
+@pytest.mark.parametrize("change", ["handoff", "authorization"])
+def test_dispatch_repair_rechecks_registration_after_claim(
+    registered_repair: tuple[DispatchHarness, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    d, runtime_type = registered_repair
+    job_id = d.control.start_repair(1, "pipeline-1", "ci-owner", "Failed import.")
+    claimed = d.control.claim("o/r#1", job_id)
+    assert claimed is not None
+    with d.h.store.ownership(), d.h.store.locked():
+        row = d.h.store.parents["o/r#1"]
+        if change == "handoff":
+            row.update(session="codex:new-owner", generation=row["generation"] + 1)
+            current_auth = importlib.import_module("parent.execution").authorization(
+                d.control._session("o/r#1", row)
+            )
+            importlib.import_module("parent.development").transfer_controller(
+                row, current_auth, "claim後の引継ぎ", takeover=True
+            )
+        else:
+            row["repair_progressions"]["pipeline-1"]["authorization"][
+                "execution_basis_sha256"
+            ] = "f" * 64
+        d.h.store.save()
+    owner = d.row()["session"], d.row()["generation"]
+    runtime = runtime_type(Path(claimed["runner"]))
+    runtime.launch_context = lambda: d.control.launch_admission("o/r#1", job_id)
+    popen = MagicMock()
+    popen.return_value.wait.return_value = 0
+    monkeypatch.setattr("subprocess.Popen", popen)
+    with pytest.raises(ValueError, match="owner/authority/delegation"):
+        runtime.execute(claimed, 0)
+    popen.assert_not_called()
+    rejected = d.row()["dispatch"]["jobs"][job_id]
+    assert rejected["phase"] == "ended" and rejected["cancelled_before_start"]
+    assert "owner/authority/delegation" in rejected["diagnostic"]
+    assert not (Path(rejected["directory"]) / "runtime").exists()
+    assert (d.row()["session"], d.row()["generation"]) == owner
 
 
 def test_cancelled_resume_reservation_reuses_original_session(

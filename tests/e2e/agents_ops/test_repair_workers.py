@@ -30,6 +30,7 @@ def creating_worker(p: ParentEnv) -> Path:
     run(p)
     gh = p.state()
     gh["prs"] = [p.pr(42, 10, branch="codex/worker")]
+    gh["prs"][0]["labels"] = []
     p.save(gh)
     return Path(latest(p))
 
@@ -241,3 +242,82 @@ def test_uncertain_popen_keeps_the_claim_and_never_resends(
     replay = run(p, "--resume", "--repair-id", "ci-uncertain", "--repair-pr", "42")
     assert json.loads(replay.stdout)["launch_state"] == "starting"
     assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize("target", ["parent", "child", "pr"])
+@pytest.mark.parametrize("timing", ["reserved", "claimed"])
+def test_manual_repair_rechecks_needs_human_immediately_before_popen(
+    reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch, target: str, timing: str
+) -> None:
+    p = reserved
+    creating_worker(p)
+    for key, value in p.env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("MANUAL_STATE_DIR", str(state_dir(p)))
+    monkeypatch.setenv("MANUAL_RUNNER_CALLS", str(p.root / "runner-calls.jsonl"))
+    monkeypatch.chdir(p.repo)
+    api = importlib.import_module("parent.manual_workers")
+    admission = importlib.import_module("parent.improvement_runtime")
+    monkeypatch.setattr(api, "RUNNER", p.root / "fake-runner")
+    registry = store(p)
+    gh = importlib.import_module("parent.github").GitHub("o/r", store=registry)
+    original_require = admission.require
+    original_save = registry.save
+    primed = []
+
+    def label_target() -> None:
+        remote = p.state()
+        row = (
+            remote["prs"][0]
+            if target == "pr"
+            else remote["issues"]["1" if target == "parent" else "10"]
+        )
+        row["labels"].append({"name": "needs-human"})
+        p.save(remote)
+
+    def require_then_label(session: Any, *args: Any, **kwargs: Any) -> Any:
+        result = original_require(session, *args, **kwargs)
+        if args == (10,):
+            # Cache all three targets in this final admission transaction,
+            # then change the remote labels before the Popen boundary.
+            for endpoint in ("issues/1", "issues/10", "pulls/42"):
+                primed.append(session.gh.get("repos/o/r/" + endpoint))
+            if timing == "reserved":
+                label_target()
+        return result
+
+    def save_then_label() -> None:
+        original_save()
+        attempt = (
+            registry.parents["o/r#1"]["tasks"]["10"]
+            .get("repair_attempts", {})
+            .get("ci-needs-human", {})
+        )
+        if attempt.get("launch_state") == "starting":
+            label_target()
+
+    monkeypatch.setattr(admission, "require", require_then_label)
+    if timing == "claimed":
+        monkeypatch.setattr(registry, "save", save_then_label)
+    code, result = api.run_worker(
+        gh,
+        registry,
+        1,
+        "claude:" + p.env["CLAUDE_CODE_SESSION_ID"],
+        child=10,
+        prompt=Path(p.note()),
+        resume=True,
+        restart_evidence=None,
+        repair={"schema_version": 1, "repair_id": "ci-needs-human", "pr": 42},
+    )
+    assert len(primed) == 3
+    assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 1, (
+        "needs-human target reached the runner"
+    )
+    assert code == 2 and result["launch_state"] == "rejected_before_start"
+    assert "needs-human" in result["reason"]
+    assert {"parent": "parent issue #1", "child": "child issue #10", "pr": "PR #42"}[
+        target
+    ] in result["reason"]
+    assert task(p)["repair_attempts"]["ci-needs-human"]["launch_state"] == "reserved"
+    assert not latest(p).exists()

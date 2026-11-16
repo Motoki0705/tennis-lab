@@ -866,6 +866,7 @@ def run_worker(
                 "exit_code": code,
                 "launch_state": "rejected_before_start",
                 "next_action": "retry_same_operation",
+                "reason": proc.stderr.decode("utf-8", errors="replace"),
             }
         failure = directory.parent / "rejected" / directory.name
         with store.operation(f"{gh.repo.casefold()}#{parent}"), store.locked():
