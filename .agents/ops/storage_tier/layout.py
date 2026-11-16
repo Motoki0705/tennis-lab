@@ -37,6 +37,8 @@ class Config:
     mount: Path
     containers: tuple[str, ...]
     datasets: tuple[str, ...] = ()
+    residents: tuple[str, ...] = ()
+    external_links: tuple[str, ...] = ()
 
     @property
     def mirror(self) -> Path:
@@ -49,18 +51,27 @@ class Config:
     @classmethod
     def load(cls, repo: Path, path: Path) -> Config:
         data = tomllib.loads(read_bytes(path).decode())
-        if set(data) != {
+        required = {
             "mirror_mount",
             "dataset_containers",
             "dataset_units",
+        }
+        if not required <= data.keys() or data.keys() - required - {
+            "resident_units",
+            "unmanaged_data_links",
         }:
             raise StorageError(f"unknown/missing storage configuration keys: {path}")
         mount = Path(data["mirror_mount"])
         if not mount.is_absolute() or mount == Path("/") or mount.resolve() != mount:
             raise StorageError("mirror_mount must be a real absolute non-root path")
         lists = []
-        for key in ("dataset_containers", "dataset_units"):
-            values = data[key]
+        for key in (
+            "dataset_containers",
+            "dataset_units",
+            "resident_units",
+            "unmanaged_data_links",
+        ):
+            values = data.get(key, [])
             if not isinstance(values, list) or any(
                 not isinstance(v, str) or not relative_path(v).startswith("data/")
                 for v in values
@@ -69,15 +80,17 @@ class Config:
             if len(set(values)) != len(values):
                 raise StorageError(f"duplicate {key}")
             lists.append(tuple(values))
-        boundaries = [*lists[0], *lists[1]]
+        boundaries = [value for values in lists for value in values]
         for index, first in enumerate(boundaries):
             if any(
                 PurePosixPath(first).is_relative_to(second)
                 or PurePosixPath(second).is_relative_to(first)
                 for second in boundaries[index + 1 :]
             ):
-                raise StorageError("dataset containers/units must not overlap")
-        return cls(repo.resolve(), mount, lists[0], lists[1])
+                raise StorageError(
+                    "dataset/resident/reference boundaries must not overlap"
+                )
+        return cls(repo.resolve(), mount, *lists)
 
 
 @dataclass(frozen=True, order=True)
@@ -87,7 +100,7 @@ class Unit:
 
     @property
     def sweepable(self) -> bool:
-        return self.kind not in {"checkpoint", "checkpoint-files"}
+        return self.kind not in {"checkpoint", "checkpoint-files", "resident"}
 
 
 @dataclass
@@ -107,7 +120,7 @@ def discover(config: Config, base: Path) -> Inventory:
     legacy_outputs: list[dict[str, str]] = []
     anchor = config.mount if base == config.mirror else base
 
-    def directories(parent: str) -> list[str]:
+    def directories(parent: str, *, reject_links: bool = False) -> list[str]:
         path = base / parent
         try:
             real_directory(path, anchor)
@@ -118,6 +131,8 @@ def discover(config: Config, base: Path) -> Inventory:
                     errors.append(f"unfinished storage transaction: {candidate}")
                 elif name.startswith("."):
                     unmanaged.append(str(candidate.relative_to(base)))
+                elif reject_links and stat.S_ISLNK(candidate.lstat().st_mode):
+                    errors.append(f"undeclared managed unit symlink: {candidate}")
                 elif stat.S_ISDIR(candidate.lstat().st_mode):
                     result.append(str(candidate.relative_to(base)))
                 else:
@@ -141,15 +156,46 @@ def discover(config: Config, base: Path) -> Inventory:
         ):
             errors.append(f"unfinished storage transaction: {base / name}")
     children = directories("data")
-    known = {PurePosixPath(p).parts[1] for p in (*config.containers, *config.datasets)}
+    known = {
+        PurePosixPath(p).parts[1]
+        for p in (*config.containers, *config.datasets, *config.residents)
+    }
     unmanaged.extend(p for p in children if PurePosixPath(p).parts[1] not in known)
     for container in config.containers:
-        for path in directories(container):
+        for path in directories(container, reject_links=True):
             found.add(Unit(path, "dataset"))
-    for path in config.datasets:
+    for path in (*config.datasets, *config.residents):
         try:
             real_directory(base / path, anchor)
-            found.add(Unit(path, "dataset"))
+            found.add(Unit(path, "resident" if path in config.residents else "dataset"))
+        except FileNotFoundError:
+            pass
+        except (OSError, StorageError) as exc:
+            errors.append(str(exc))
+    # Inspect only explicitly implied containers, never resident payloads or
+    # reference targets. Preserve unclassified siblings as unmanaged entries.
+    from .references import data_parents
+
+    declared = {
+        *config.containers,
+        *config.datasets,
+        *config.residents,
+        *config.external_links,
+    }
+    parents = data_parents(config)
+    for parent in parents:
+        if parent == "data" or parent in config.containers:
+            continue
+        try:
+            real_directory(base / parent, anchor)
+            for name in names(base / parent):
+                relative = parent + "/" + name
+                if (
+                    relative not in declared
+                    and relative not in parents
+                    or relative in config.external_links
+                ):
+                    unmanaged.append(relative)
         except FileNotFoundError:
             pass
         except (OSError, StorageError) as exc:

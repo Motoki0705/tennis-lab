@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "4d29bed8e2914f9f874d21f83417f24d",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge_gate.merge; artifact=merge_attempt; content_sha256=f1c90a1b82bc9c275a99f6caec53c710149accace8e9c10f276496687ce192b9; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "fb9ca0162e65438bb9b7de4582a9d150",
+      "repeat": null,
+      "status": "unknown",
+      "summary": "merge_gate.merge_attempt: pr=2159; decision=None; action=None; status=attempting; reasons=[]",
+      "verifies": []
+    },
+    "id": "776f6ea8f9564a58b090e3eb70ae60ad",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "c8eb1e6bdb604fc1936af2a1bd4b33eb",
+      "delegation": null,
+      "issue": null,
+      "parent": 1964,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-15T16:25:17.469477+00:00"
+      },
+      "recorded_at": "2026-11-15T16:25:17.469493+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

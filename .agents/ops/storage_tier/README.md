@@ -16,6 +16,8 @@ For main checkout `R`, the E: counterpart of `R/<relative>` is
 | Location | D: | E: | Eviction unit |
 |---|---|---|---|
 | Main `data/` | Real directory | Same relative paths | Dataset version |
+| Resident inputs | Real directories declared in `resident_units` | Same relative paths | Never evicted |
+| Unmanaged E: references | Explicit `unmanaged_data_links` symlinks | Original files/directories | Never selected as units |
 | Main `outputs/` | Real directory | Same relative paths | Task/purpose/experiment/run-id |
 | Worktree `outputs/` | Link to D:`<main>/.worktree-outputs/<name>/` | `.worktree-outputs/<name>/...` | Task/purpose/experiment/run-id |
 | Existing worktree alias of main `outputs/` | Link to main `outputs/` | Main `outputs/...` | No independent unit |
@@ -47,6 +49,102 @@ removes only that unit's names. The audit separates logical bytes, unique alloca
 bytes, external hardlinks, estimated reclaimable bytes and the observed filesystem
 free-space delta. External links can keep all blocks allocated. Hydration creates
 fresh D: inodes; it does not recreate links into other units.
+
+## Resident inputs and unmanaged E: references
+
+`resident_units` declares permanent D: inputs: ACCAD, samples, smplh, smplx and
+both `data/tennis_multiview/{raw,processed}/meiji_4cam`. The processed directory
+includes `projects.json`. They use the existing full SHA-256 index/mirror/verify/
+hydrate protocol as `resident` units, but `evict` always keeps them and the daily
+cycle never evicts them. Their payloads and ancestors must be real directories,
+with the same no-symlink/mount checks as other units. These declarations do not
+make the rest of tennis_multiview managed datasets; that is a separate task.
+
+`unmanaged_data_links` explicitly lists allowed D: references, including the
+other raw/processed tennis_multiview entries and the two legacy top-level trees.
+The tennis_multiview/raw/processed containers are real D: directories: only their
+listed nonresident children link to E:. The archive file `meiji_3cam.tar` is an
+allowed file reference. The exact list lives in [config.toml](config.toml).
+Declarations cannot duplicate or overlap dataset/resident/reference boundaries.
+Omitting the two new keys keeps compatibility with older custom configurations.
+
+Each present reference must be a symlink whose text is the **absolute, exact**
+`Config.mirror / relative_path`; relative or alternate spellings are rejected.
+The target must exist as a real regular file/directory on the configured E:
+mount, without symlink ancestors or nested mounts. Undeclared links at unit
+boundaries or their ancestors, including version roots directly inside dataset
+containers, are rejected without reading their targets. Wrong targets, dangling
+links and real directories at reference positions fail layout validation and
+actual operations, including unrelated-unit operations and `activate`. Missing
+references are allowed while setting up the layout. E: mount validation happens
+first; missing E: never means an empty external tree.
+
+References remain `unmanaged`, are never traversed for unit discovery, and cannot
+be explicitly mirrored/evicted/hydrated as units. The original E: unmanaged-size
+metadata inventory is retained. Command output and write-operation audit records
+include `unmanaged_links_D`. Reference failures include observations on stderr.
+
+The shared `PathResolver` accepts ordinary resolution inside the DATA root
+without Git, policy parsing or E: exception validation. A declared link pointing
+inside D: can therefore pass this path boundary; this does not certify the
+storage layout. `scan`, `activate` and actual storage operations still reject
+any declared link whose target differs from its exact E: counterpart, including
+an internal D: target.
+
+Only resolution outside the DATA root consults the same checkout's
+[config.toml](config.toml), without a second alias list. For the standard DATA root only, an exact declared
+D: alias to its mounted E: counterpart is accepted. The standard root is exactly
+`main_checkout / data`, where `main_checkout` is the parent of the absolute Git
+common directory queried from the runtime's `PROJECT_ROOT`, as in the storage
+CLI. A custom root merely named `data` receives no exception: internal links
+retain ordinary containment semantics and external links, including E:-shaped
+counterparts, remain forbidden. The default root does not depend on whether a
+new runtime worktree already has its shared `data` link.
+Successful Git repository identity is cached per runtime checkout for the
+process lifetime; policy and link contents are revalidated on every request for
+additional authority. If the first required Git lookup cannot run or lacks
+metadata, that request fails explicitly. Ordinary containment needs no lookup.
+
+Absolute input spellings through `main_checkout/.claude/worktrees/<name>/data`
+are accepted only through real `.claude`, `worktrees` and worktree directories
+and a direct absolute `data` symlink to the standard root. Arbitrary prefixes,
+linked ancestors and chained root links receive no such authority. Normalize
+only this root prefix, then validate the original declared unmanaged child and
+its exact E: target. Main and worktree spellings produce the same logical DATA
+name and canonical E: input; this also applies to alignment scene-root boundaries
+and ClipSource serialization. Its E: subtree is checked for
+escape; undeclared external links, mismatches, missing E: and parent escapes fail.
+Resolved inputs/workspaces remain canonical E: paths. `PathResolver.relative`
+maps a validated reference to its logical DATA-relative name; Clip Studio uses
+this for discovery, project serialization and review-CLI configuration. This
+preserves existing serialized names without changing physical workspace paths. Existing real/custom DATA directories and all other
+roles keep ordinary containment rules. Consumers must use this reviewed runtime
+and policy before resuming with the migrated layout.
+
+Linux `readlinkat(fd, "")` on an `O_PATH|O_NOFOLLOW` descriptor can update an old
+symlink's atime. **Only the atime of declared unmanaged symlink entries is exempt
+from the dry-run no-change contract.** It is not used for idle detection or any
+other safety decision. Payload contents and atimes, all other managed metadata,
+state files and directories remain unchanged; tests compare both trees including
+file hashes. Managed-payload and undeclared symlinks are rejected before readlink.
+
+Global layout checks (`scan`, `activate`, unqualified dry-run commands) and actual
+operations validate targets, pinning the parent/link and reading each link once
+per command. The result records `atime_before_ns`, `atime_after_ns`,
+`atime_changed`, the method and `verification=verified`. An explicitly selected
+managed-unit dry-run cannot consume these disjoint unmanaged trees: it checks the
+link entries/ancestors without reading targets and reports
+`verification=deferred-explicit-dry-run`, `verified=false`, `method=lstat-only`.
+This is not full layout validation; run `scan` before deployment. All write
+operations retain full target validation. Global scans cannot omit it without
+hiding an invalid configured layout.
+
+Initial migration leaves all previous outputs on E: and starts D: output roots
+empty. Copy/hash resident inputs, create the declared external references, and
+pause/restart Clip Studio around the switch; verify both raw videos and processed
+`projects.json` through their original data-relative paths on D:. Capacity acceptance
+uses Linux filesystem free space; record Windows D: separately. VHDX sparse/compact
+operations remain outside this migration.
 
 ## Checkpoint units and CI assets
 
@@ -100,19 +198,18 @@ appears after successful mirroring (normally the daily cycle). The runtime requi
 FSROOT **and device** against the configured source's actual filesystem-relative
 root, not its `/mnt/...` spelling; existing incorrect or writable mounts fail.
 
-Before the stage-2 D: cutover, the parent coordinates a CI/runner-queue maintenance
-window and waits for their jobs to finish (stopping an active queue terminates its
-jobs). Other sessions' training is coordinated separately. After this code is on
-the main checkout, the human runs, from that checkout:
+Finish all non-sudo migration and acceptance steps first. The current E: binds
+remain valid through the D: cutover. The parent then notifies the human and
+coordinates a CI/runner-queue maintenance window, waiting for jobs to finish
+(stopping an active queue terminates its jobs). Run from the reviewed checkout;
+the installer also supports linked worktrees and derives the main repo from Git:
 
 ```bash
 runner_service="$(sudo cat /opt/actions-runner/.service)"
 sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
 sudo bash scripts/github_actions/install_self_hosted_runner.sh
 sudo /opt/tennis-lab-actions/bin/mount_assets.sh start
-# The installer starts services; pause them again until storage migration ends.
-sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
-# Parent performs the agreed D: cutover/hydration and read-only acceptance here.
+# Migration and non-sudo acceptance are already complete; resume normal service.
 sudo systemctl start tennis-lab-training-queue.service "$runner_service"
 ```
 
@@ -128,6 +225,22 @@ This stage implements the procedure only: no sudo or unit operations are perform
 
 Run from the checkout containing the desired implementation. The finite
 [checkout launcher](../lib/README.md#既存cliと新規jobの接続) is mandatory, including dry-runs.
+
+A linked checkout can supply the code/config while `--repo` selects its main
+checkout, without updating that checkout:
+
+```bash
+export PYTHONPATH="$PWD/.agents/ops" PYTHONDONTWRITEBYTECODE=1
+R="$(git rev-parse --path-format=absolute --git-common-dir)"
+R="$(dirname "$R")"
+S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/python -m storage_tier --repo "$R")
+"${S[@]}" scan
+```
+
+The user service still imports the main checkout. Before enabling it, its deployed
+code/config must include the reviewed resident/reference declarations; a successful
+linked-checkout CLI does not upgrade the service. Preserve others' dirty main files
+and coordinate deployment with their owner.
 
 ```bash
 export PYTHONPATH="$PWD/.agents/ops"

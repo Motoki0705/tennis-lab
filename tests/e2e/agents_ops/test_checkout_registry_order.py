@@ -154,6 +154,13 @@ if sys.argv[1] == 'consistent-snapshot':
     with Store(Path(sys.argv[2])).consistent_snapshot():
         print('snapshot-read', flush=True)
     raise SystemExit(0)
+if sys.argv[1] == 'ownership':
+    from pathlib import Path
+    from parent.state import Store
+    store = Store(Path(sys.argv[2]))
+    with store.ownership(), store.locked():
+        print('ownership-read', flush=True)
+    raise SystemExit(0)
 raise SystemExit(main())
 """
 
@@ -180,6 +187,7 @@ def stop(process: subprocess.Popen[str], *, group: bool = False) -> None:
         ("cli", "recover-judgement"),
         ("api", "recover-judgement"),
         ("api", "consistent-snapshot"),
+        ("api", "ownership"),
     ],
 )
 def test_update_first_never_waits_for_a_registry_owner_waiting_for_checkout(
@@ -188,7 +196,7 @@ def test_update_first_never_waits_for_a_registry_owner_waiting_for_checkout(
     operation: str,
 ) -> None:
     arguments = [operation]
-    if operation == "consistent-snapshot":
+    if operation in {"consistent-snapshot", "ownership"}:
         arguments.append(str(world.parent))
     if operation == "recover-judgement":
         evidence = world.repo.parent / "recovery.txt"
@@ -245,6 +253,14 @@ def test_update_first_never_waits_for_a_registry_owner_waiting_for_checkout(
                     registry_available = True
                 except BlockingIOError:
                     registry_available = False
+            if operation == "ownership":
+                with (world.parent / "ownership.lock").open("a") as probe:
+                    try:
+                        fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        ownership_available = True
+                    except BlockingIOError:
+                        ownership_available = False
+                assert ownership_available, "ownership acquired before checkout"
             assert updater.stdin is not None
             updater.stdin.write("pause\n")
             updater.stdin.flush()

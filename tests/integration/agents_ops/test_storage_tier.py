@@ -1531,8 +1531,14 @@ def test_mount_boundary_is_checked_above_and_at_unit_root(
         return value + 1 if current.is_relative_to(boundary) else value
 
     monkeypatch.setattr(lab.filesystem, "fd_mount_id", mounted_subtree)
-    code, report = lab.run("mirror" if tier == "D" else "index", unit)
-    assert code == 1 and "mount" in report["results"][0]["error"], report
+    try:
+        code, report = lab.run("mirror" if tier == "D" else "index", unit)
+    except lab.filesystem.StorageError as error:
+        # Container ancestry is now checked before per-unit dispatch. The CLI
+        # maps this preflight exception to failure just like a unit failure.
+        assert "mount" in str(error)
+    else:
+        assert code == 1 and "mount" in report["results"][0]["error"], report
     assert (
         lab.filesystem.read_bytes(lab.config.repo / unit.path / "a.bin") == b"apple\n"
     )

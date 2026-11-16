@@ -59,6 +59,21 @@ GitHub GETの再利用は1回の読取りCLI内に限定し、registryに束縛�
 Project書込み操作は親の操作ロック→Project共通の操作ロック→registryロックの順に取る。
 途中まで保存・公開済みの操作は取り消さず、非ゼロ終了後は不足分だけ再実行する。
 
+### 担当変更と掲示板配送の排他
+
+同じhost stateの全worktreeで `ownership.lock` を共有する。`Store.ownership()` はregistry transactionの
+外で取得し、担当のsession/status/generationを変える操作と、掲示板の1宛先の配送試行を排他する。
+順序は既存の親/dispatcher operation lock→ownership fence→registry lock。
+`register`・`handoff`（`--accept --recover`を含む）・`release`（structured finishを含む）、
+dispatcherの予約・実session結合・初期予約取消・親完了、worktree期限切れの解除とjournal回復が参加する。
+同じStoreを使う別threadのtransactionは終了を待ち、自分のtransaction内からのfence取得は拒否する。
+
+配送中は無関係な親の担当変更も送信結果の保存まで待つ。強制引継ぎや期限切れ解除も迂回しない。
+statusや通常のtask/review更新はこのfenceを取らず、既存のoperation/registry排他だけを使う。
+担当CLIの表示・掲示板callbackはoperation/fence/registryの全解放後に実行する。
+受信経路の更新もfence→registry→routesの順に取り、配送のroutes待ちでregistryを占有しない。
+配送の準備・通知・結果保存は[boardの配送契約](../board/README.md#通知関数と保留分の取得)を参照する。
+
 状態のキーは小文字の `owner/repo#親番号`。version=1も読み書きできる。
 version=2では `registry.json` に担当・status・generationの最小索引だけを持ち、
 `parents/` 内の親ごとのJSONにtasks・reviews・拡張フィールドを保存する。
@@ -643,8 +658,12 @@ PRは子番号ごとのclosing指示を明記し、複数子を閉じる場合�
 予約後の起動失敗・中断時は、既存workerが終了した証拠を確認し、必要なら停止・再開を記録して
 `delegate --restart-evidence-file tmp/evidence.md` で明示的に再予約する。既存PRがあれば再予約もしない。
 
+### 成果の記録
+
 `record-result --child N --evidence-file tmp/tests.md` はclosing指示とbranchを照合し、
-担当Issueの成果物欄へPRと検証結果を追記する。記録だけで完了扱いにせず、過去の検証記録も残す。
+担当Issueの成果物欄へPRと検証結果を追記する。証拠の各行はMarkdownの引用にして転記するため、
+証拠内の見出しはIssueの要件節にならない。見出しを手動で除去する必要はない。
+記録だけで完了扱いにせず、過去の検証記録も残す。
 委任予約にはauthorizationと子の要件本文digest、結果記録にも現在のauthorizationと要件digestを持たせる。
 根拠・担当・子の要件が変わったときは親が成果への影響を判断し、必要な部分を再確認してrecord-resultへ記録する。
 要件確認中の結果記録は従来どおり可能だが、authorization=nullの事実記録であり実行の許可には使わない。
@@ -714,9 +733,9 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 # 高難度の委任で親が代替モデルを選ぶ場合。理由は証拠用Issueのnoteにも残す
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --prompt-file tmp/task.md --model gpt-6-astra --model-reason-file tmp/model-reason.md
-# 同じ委任・sessionの修正ターン。終了枠を解放済みなら再開証拠も渡す
+# 同じ委任・sessionの修正ターン。終了・回収は保存済みrunから照合する
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
-  run-worker --child 1217 --resume --prompt-file tmp/fix.md --restart-evidence-file tmp/restart.md
+  run-worker --child 1217 --resume --prompt-file tmp/fix.md
 # 保存記録から同じsessionへの再開不能を確認した場合の明示付替え
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
   run-worker --child 1217 --replace-session --prompt-file tmp/replacement.md --restart-evidence-file tmp/restart.md
@@ -728,7 +747,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
 `run-worker` は現在の32桁hexの委任ID・Codex担当・worktree・branchと、有効な根拠・要件・停止・依存を検査する。
 初回は終了未記録かつ当該委任のrun未登録に限る。`--model` の選択肢は
 [`agents.conf`](../lib/agents.conf) の `CODEX_MODEL`（既定Sol）と `CODEX_ALTERNATE_MODEL`（Astra）のみ。
-effortはmax固定で引数に出さない。判断基準は [AGENTS.md](../../../AGENTS.md#開発ルール) を参照する。
+通常のeffortはmax固定で引数に出さない。highを使う例外の入口は[自動進行の修正ターン](#自動進行の修正ターン)。判断基準は [AGENTS.md](../../../AGENTS.md#開発ルール) を参照する。
 高難度の委任では親がAstraを明示選択でき、人間との合意による指定を優先する。
 選択理由は `note`（証拠用Issue）と `--model-reason-file` に残す。初回の代替選択には理由ファイルを必須とし、
 既定の採用で省略した場合は既定採用の理由を記録する。委任taskの `model` / privateな `model_reason` と各runへ保存する。
@@ -793,7 +812,7 @@ runner喪失時は保存済みcleanup confirmationも照合する。`metadata_er
 session ID・runの場所・証拠原文はprivate registryへ保存する。
 
 `record-worker-run` は存在する `result.json` / `invocation.json` のすべてでschemaと
-`contract.task_id`・`contract.cwd`・`contract.branch` と実装子のmodel/max effort・profile・modeを現在の委任と照合する。
+`contract.task_id`・`contract.cwd`・`contract.branch` と実装子のmodel/effort（修正ターンの例外を含む）・profile・modeを現在の委任と照合する。
 複数の保存記録間でmodel設定が異なる場合や、modelを特定できない場合も拒否する。
 どちらも無い場合や片方でも不一致なら拒否し、同一runの再登録は冪等とする。
 起動はせず、既存の終了記録は変更しない。保存contractから委任のmodel欄を補完する。
@@ -880,6 +899,41 @@ statusの実行にも残り時間を適用し、workerの停止や記録の修�
 4. 終了通知のJSONで `wait_state`・runnerの結果・終了記録を確認し、返された `final_file` を読んで次を判断する。
    会話を再開した場合も同じ入口を再実行できる。親ごとの待機ループやプロセス名検索は作らない。
 
+### 自動進行の修正ターン
+
+CI失敗・軽いgate停止をPR作成workerへ渡す専用resume。起動・終了待機の接続と回数管理は自動進行側が担当する。
+手動worker系列では `run-worker --resume --repair-id ID --repair-pr N --prompt-file FILE` を使う。
+Python APIは `manual_workers.run_worker(..., resume=True, repair=lib.repair_turn.request(ID, N))`。
+モデル・sessionと現在の委任を維持し、専用ターンのeffortをhighにする。次の通常ターンはmaxへ戻る。
+
+修正IDは1試行に固定する。`prepare_run` は同じID・PR・指示の予約を再取得する。
+起動intentはPopen前に保存する。既存の `session.lock`・`latest_run` の排他も使う。
+確実に起動前に拒否された試行は同じ予約で再実行できる。起動intent以後の再送は保存先を返す。
+起動直後に応答や記録を失った場合は `run_dir` を照合し、起動の再送へ進まず親の復旧判断へ返す。
+完了済みの再取得では同じ `final_file` を返す。終了の認定は既存runnerの終了・cleanup検査を使う。
+手動・dispatcherの両経路はPopen直前に親・子・対象PRのラベルをfresh取得し、`needs-human` があれば理由付きで起動を拒否する。
+
+修正指示は `lib.repair_turn.instruction` が組み立てる。workerは自分で修正できるか親AIの判断が必要かを決め、
+実装・検証・pre-commit・commit・pushを終えたらターンを終了する。CI待機は呼出側CLIへ戻す。
+既存sessionの出力schemaは保持し、修正報告は呼出側で `lib.repair_turn.parse_report(text, repair_id=ID, pr=N)` に通す。
+JSONの前後に自然文やコードフェンスを付けない。未知・重複・欠落キー、異なるID/PR、型・値の不正はエラーにする。
+
+| キー | 契約 |
+|---|---|
+| `schema_version` | 整数1 |
+| `repair_id` / `pr` | 起動予約のIDとPR番号 |
+| `outcome` | `repaired` または `needs_parent` |
+| `head_sha` | 報告時の完全な40桁commit |
+| `summary` | 非空文字列 |
+| `verification` | 実施した検証結果・未実施を示す文字列配列 |
+| `parent_request` | `repaired`ではnull、`needs_parent`では非空の判断依頼 |
+
+dispatcher系列の土台APIは `dispatcher.repairs.register_progression(session, progression_id, child=N, pr=P)` と
+`Supervisor.start_repair(parent, progression_id, repair_id, details)`。登録は実際の担当親のsessionで行い、
+親の世代・実行根拠・委任・作成workerのsession/契約へ結び付ける。登録済みの対象だけが切り離した呼出元から予約できる。
+claim時とPopen直前の最終admissionでも、登録した親のsession・generation・実行根拠と現在の登録・権限を照合する。親runtimeの環境変数は起動入力に使わない。
+戻り値は既存dispatcherのjob ID。同じ修正IDは同じjobを返し、通常のclaim・起動・回収・ログ公開へ接続する。
+
 ### workerの調査・親判断・実装フェーズ
 
 各ターンの作業は親の具体指示で決める。既定は `implementing`、調査だけを依頼するときは
@@ -889,11 +943,7 @@ planningの報告は任意の書式でよく、親は直接 `--resume --prompt-f
 保存済み回答は次の同session継続に送られ、具体指示や追加指示も併記できる。
 
 `preflight` はターン・指示・回答・runtimeの来歴。本文・担当世代・依存の状態変化で自動失効させない。
-新しいtask記録はversion=2。旧version=1も読み、次の明示操作で新しい来歴を追記する。run/jobのsnapshotはversion=1のまま保持する。
-session付替えを記録したtaskとその継続はversion=3を使う。
-旧CLIは新しいtask versionを扱えないため、呼出元を新CLIへ更新してから利用する。稼働中の記録を一括変換しない。
 statusの `inputs_changed` は親が意味と影響を確認するための通知であり、再調査の強制ではない。
-旧委任にphase記録がなくても、通常のrun・session・終了照合を経て継続できる。過去の承認を生成しない。
 過去のrunとレビューは作成時の対象を保持し、今の条件への適用可能性は親が判断する。
 
 ```bash
@@ -910,6 +960,16 @@ PRがmerge済み、issueがclosed/completedでも、同じworkerへ残る受入�
 
 ログ保存と公開は [workerログ保存](../worker_logs/README.md) の独立した結果。
 `pending` は `publish-worker-log` で再開し、workerの終了や他の作業の可否へ読み替えない。
+
+### CLI更新後の既存worker
+
+親CLI・共通ランナーを変えるPRのmerge後は、次の操作に使う呼出元を新CLIへ更新する。
+旧worktreeを更新できない場合の参照方法とregistryのversion変更は[状態の移行](#状態の移行)を参照する。
+新しいtaskのphase来歴はversion=2。旧version=1も読み、次の明示操作で来歴を追記する。run/jobのsnapshotはversion=1のまま保持する。
+session付替えを記録したtaskとその継続はversion=3を使う。
+旧CLIは新しいtask versionを扱えない。稼働中の記録を一括変換したり、過去の承認を生成したりしない。
+phase記録のない旧委任も、[通常の継続](#workerの調査親判断実装フェーズ)でrun・session・終了・回収を照合する。
+継続後の成果は[成果の記録](#成果の記録)で受理し、生存不明・回収未確認だけは[共通ランナーの復旧](../lib/README.md#状態確認停止中断からの復旧)で事実を確認する。
 
 ### stacked branchの確認とrebase
 
@@ -1235,6 +1295,8 @@ fixedでは引数を省略すると設定の固定値を使用する。明示指
 未起動の旧requestは従来のfixed設定でだけ起動でき、selectや固定値変更時は新版requestを要求する。
 手動親と自律親は同じ入口・検証を使う。選択元は判断記録の既存の3分類へ接続する。
 
+### レビュー要求の記録と再実行
+
 証拠用Issueの `event:review, state:targets_fixed` にrun ID・requestのcanonical JSON SHA-256を記録し、
 本文のJSONコードブロックにmanifest全体を載せる。この時点ではレビュー未指示。
 `review-request` は同じ対象が現在も有効なことを再検査して、親の明示指示を証拠用Issueへ記録する。
@@ -1252,12 +1314,37 @@ run IDごとの実行を一度だけ受理する責任を持つ。** prepareだ�
 既にレビュー対象となったPRの再レビューには `--reason-file` を付ける。別PRの初回レビューには不要。
 PR open/push/CI完了ではこの入口もレビューも起動しない。
 
+### レビュー指示へ渡す証拠
+
+`--instruction-file` に目的・確認点と利用可能な証拠を渡す。取得できない証拠がある場合は、確認した事実で次の文例を埋める。
+
+```text
+対象: PR <番号>、HEAD <commit>。確認点: <要件・境界・検出したい不具合>。
+利用できない証拠: <CIログ・隔離CPUテスト等と、確認した取得不能の理由>。
+代替の証拠: <対象HEADのCI結論へのリンク、親/workerが実行したテストのコマンド・結果と出典>。
+固定diffを確認できた範囲でcoverageを判断し、上記の取得不能だけでnot_reviewedにしない。
+判断に必須の証拠がなお不足する論点は、対象・不足・必要な確認をevidence_waitsへ具体化する。
+```
+
+親の検証とworkerの自己報告を区別し、未実施を成功として埋めない。
+coverage・verdictと証拠待ちの境界は[レビューの証拠待ち](../review/README.md#証拠待ちの完了)が正本。
+
+### レビュー結果の受領と確認
+
 未指示 → `targets_fixed`（対象確定）→ `instructed`（指示済み）→ `result_received`（結果受領）→
 `fixes_verified`（修正確認）→ `complete`（完了）の順。
 後半は `review-state --run-id ID --state 状態 --evidence-file tmp/evidence.md` で証拠を残す。
 受領と確認が同時なら `instructed` から `fixes_verified` へ直接進めてよい。指示前の確認や状態の後退は拒否する。
 結果受領は成功判定ではなく、失敗・阻害指摘も受領して記録する。親が指摘と修正を照合し、
-各PRのCIなどを確認した証拠が揃うまで完了へ進めない。CLIは#1219のmerge gateの代用ではない。
+各PRのCIなどを確認した証拠が揃うまで完了へ進めない。指摘なしのapproveでも、親が対象・差分・受入証拠を確認して記録する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 \
+  review-state --run-id "$review_run_id" --state fixes_verified --evidence-file tmp/parent-verification.md
+```
+
+指摘の解消は[reviewの実行・修正確認](../review/README.md#実行)に従う。
+この記録を揃えてから[merge gateのdry-run](../review/README.md#merge-gate)へ進む。CLIはgateの代用ではない。
 
 ## 結果捕捉と親の判断
 

@@ -16,6 +16,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any, cast
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -25,6 +26,7 @@ from tests.e2e.agents_ops.test_dispatcher_judgement import (
     decision,
     issue,
 )
+from tests.support.agents_ops.locks import available
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -313,6 +315,30 @@ def fixture_runtime(d: DispatchHarness, monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(d.mod, "Runtime", FixtureRuntime)
 
 
+def fenced_owner_writes(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """Probe actual owner changes, including a newly constructed worker Store."""
+    state = importlib.import_module("parent.state")
+    original = state.Store.save
+    changed = []
+
+    def owners(parents: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: tuple(row[field] for field in ("session", "status", "generation"))
+            for key, row in parents.items()
+        }
+
+    def save(store: Any) -> None:
+        if owners(store.read_data()["parents"]) != owners(store.parents):
+            assert not available(store.directory / "ownership.lock"), (
+                "dispatcher changed an owner without the ownership fence"
+            )
+            changed.append(str(store.directory))
+        original(store)
+
+    monkeypatch.setattr(state.Store, "save", save)
+    return changed
+
+
 def test_slots_always_in_tokyo_and_catch_up_only_latest(d: DispatchHarness) -> None:
     cases = {
         "2026-10-21T22:59:59+00:00": "2026-10-21T20:00:00+09:00",
@@ -505,6 +531,7 @@ def test_fresh_validate_reserve_order_and_manual_registration_share_lock(
     d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     d.prepare()
+    owner_changes = fenced_owner_writes(monkeypatch)
     order = []
     original_fresh = d.mod.judgement.assert_candidate_fresh
     original_validate = d.mod.validate_candidate
@@ -529,6 +556,7 @@ def test_fresh_validate_reserve_order_and_manual_registration_share_lock(
         results = list(pool.map(lambda _: d.control.assign(), range(2)))
     assert sum(len(x) for x in results) == 1
     assert order == ["fresh", "validate"]
+    assert len(owner_changes) == 1
     with d.h.store.locked(), pytest.raises(ValueError, match="別セッション"):
         session = importlib.import_module("parent.session").ParentSession(
             d.h.gh, d.h.store, 1, "claude:manual"
@@ -892,9 +920,11 @@ def test_rejected_parent_reservation_can_be_rejudged_with_history_preserved(
 ) -> None:
     d.prepare()
     d.control.assign()
+    owner_changes = fenced_owner_writes(monkeypatch)
     previous = d.row()["dispatch"]
     d.h.gh.issues[1]["body"] += "\n要件を変更する。"
     assert invoke_worker(d, monkeypatch, d.job()["id"]) == []
+    assert len(owner_changes) == 1  # Failed admission releases the initial owner.
     assert d.control.assign() == []
     assert len(d.h.calls.read_text().splitlines()) == 1
     assert d.run(explicit=True)["result"] == "recorded"
@@ -918,7 +948,9 @@ def test_slot_waiting_and_sequential_candidates_keep_owner(
     fixture_runtime(d, monkeypatch)
     d.prepare(1, 2)
     assert d.control.assign() == [1]
+    owner_changes = fenced_owner_writes(monkeypatch)
     env = d.accepted()
+    assert len(owner_changes) == 1
     assert env["CLAUDE_CODE_SESSION_ID"] == "fixture-session"
     assert d.control.assign() == []
     job = d.job()
@@ -1301,7 +1333,10 @@ def test_supervisor_end_reconciles_logs_after_saving_assignment_without_holding_
     monkeypatch.setattr(lifecycle, "finish_supervised", finish_after_handoff)
     monkeypatch.setattr(lifecycle, "continue_workers", workers)
     monkeypatch.setattr(lifecycle, "publish_decisions", decisions)
+    owner_changes = fenced_owner_writes(monkeypatch) if handoff_at is None else None
     d.control.reconcile()
+    if owner_changes is not None:
+        assert len(owner_changes) == 1  # Current parent runtime transitions to ended.
     ended = d.row()
     if handoff_at:
         assert ended["publication_exit"] == {
@@ -1425,6 +1460,188 @@ def test_new_child_delegation_resumes_previous_child_session(
     assert d.row()["dispatch"]["jobs"][resumed]["resume_from"] == str(
         Path(child["directory"]) / "runtime"
     )
+
+
+@pytest.fixture
+def registered_repair(
+    d: DispatchHarness, monkeypatch: pytest.MonkeyPatch
+) -> tuple[DispatchHarness, Any]:
+    fixture_runtime(d, monkeypatch)
+    runtime_module = importlib.import_module("dispatcher.runtime")
+    runtime_type = runtime_module.Runtime
+    monkeypatch.setattr(runtime_module, "Runtime", FixtureRuntime)
+    repairs = importlib.import_module("dispatcher.repairs")
+    settings = importlib.import_module("lib.agent_settings")
+    d.prepare_family(10)
+    d.control.assign()
+    env = d.accepted()
+    row = d.row()
+    row["tasks"]["10"] = d.child_task(10, "creator")
+    d.update(row)
+    creator_id = d.control.start_child(1, 10, "creator", "initial", env)
+    creator = d.row()["dispatch"]["jobs"][creator_id]
+    creator["phase"] = "starting"
+    row = d.row()
+    row["dispatch"]["jobs"][creator_id] = creator
+    d.update(row)
+    d.runtime(creator)
+    record_path = Path(creator["directory"]) / "runtime/result.json"
+    record = json.loads(record_path.read_text())
+    record["contract"].update(
+        branch="test",
+        settings=settings.resolve(
+            settings.DEFAULT_CONFIG, "codex", None, "gpt-6-astra", None, "write"
+        ),
+    )
+    record_path.write_text(json.dumps(record))
+    d.control.reconcile()
+    d.h.gh.prs = [
+        {
+            "number": 42,
+            "body": "Closes #10",
+            "state": "open",
+            "merged_at": None,
+            "draft": False,
+            "labels": [],
+            "head": {"ref": "test", "sha": "a" * 40, "repo": {"full_name": "o/r"}},
+        }
+    ]
+    with d.h.store.locked():
+        row = d.h.store.parents["o/r#1"]
+        session = d.control._session("o/r#1", row)
+        repairs.register_progression(session, "pipeline-1", child=10, pr=42)
+    return d, runtime_type
+
+
+def test_registered_progression_reserves_repair_without_parent_runtime_environment(
+    registered_repair: tuple[DispatchHarness, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    d, runtime_type = registered_repair
+    creator = next(j for j in d.row()["dispatch"]["jobs"].values() if j["child"] == 10)
+    record_path = Path(creator["directory"]) / "runtime/result.json"
+    with pytest.raises(ValueError, match="owner-registered"):
+        d.control.start_repair(1, "missing-pipeline", "ci-1", "Failed import.")
+    # The detached caller has no parent runtime environment to impersonate.
+    for key in (
+        "CLAUDE_CODE_SESSION_ID",
+        "CODEX_THREAD_ID",
+        "AGENT_RUNTIME_RUN_DIR",
+        "AGENT_RUNTIME_TASK_ID",
+    ):
+        monkeypatch.delenv(key, raising=False)
+    repair_id = d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.")
+    assert (
+        d.control.start_repair(1, "pipeline-1", "ci-1", "Failed import.") == repair_id
+    )
+    job = d.row()["dispatch"]["jobs"][repair_id]
+    assert job["resume_from"] == str(record_path.parent)
+    assert job["model"] == "gpt-6-astra"
+    assert job["task_id"] == creator["task_id"]
+    assert job["repair"] == {"schema_version": 1, "repair_id": "ci-1", "pr": 42}
+    with pytest.raises(ValueError, match="another request"):
+        d.control.start_repair(1, "pipeline-1", "ci-1", "Different failure.")
+    claimed = d.control.claim("o/r#1", repair_id)
+    assert claimed is not None
+    assert d.control.claim("o/r#1", repair_id) is None
+    captured = d.h.root / "repair-argv.json"
+    runner = d.h.root / "repair-runner"
+    runner.write_text(
+        f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\nPath({str(captured)!r}).write_text(json.dumps(sys.argv[1:]))\n"
+    )
+    runner.chmod(0o700)
+    with (d.h.root / "repair-execute.lock").open("a") as lock:
+        assert runtime_type(runner).execute(claimed, lock.fileno()) == 0
+    argv = json.loads(captured.read_text())
+    assert argv[:3] == ["resume", "--resume-from", str(record_path.parent)]
+    assert argv[argv.index("--effort") + 1] == "high"
+    assert argv[argv.index("--model") + 1] == "gpt-6-astra"
+    assert argv[argv.index("--repair-id") + 1] == "ci-1"
+    # Registration is checked again at admission, before another runtime starts.
+    row = d.row()
+    row["generation"] += 1
+    d.update(row)
+    with pytest.raises(ValueError, match="owner/authority/delegation"):
+        d.control.start_repair(1, "pipeline-1", "ci-2", "Failed import.")
+
+
+@pytest.mark.parametrize("target", ["parent", "child", "pr"])
+@pytest.mark.parametrize("timing", ["reserved", "claimed"])
+def test_dispatch_repair_rechecks_needs_human_before_popen(
+    registered_repair: tuple[DispatchHarness, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    target: str,
+    timing: str,
+) -> None:
+    d, runtime_type = registered_repair
+    job_id = d.control.start_repair(1, "pipeline-1", "ci-label", "Failed import.")
+    claimed = d.control.claim("o/r#1", job_id) if timing == "claimed" else None
+    if timing == "claimed":
+        assert claimed is not None
+    remote = (
+        d.h.gh.prs[0]
+        if target == "pr"
+        else d.h.gh.issues[1 if target == "parent" else 10]
+    )
+    remote["labels"].append({"name": "needs-human"})
+    if timing == "reserved":
+        claimed = d.control.claim("o/r#1", job_id)
+    popen = MagicMock()
+    popen.return_value.wait.return_value = 0
+    monkeypatch.setattr("subprocess.Popen", popen)
+    if claimed is not None:
+        runtime = runtime_type(Path(claimed["runner"]))
+        runtime.launch_context = lambda: d.control.launch_admission("o/r#1", job_id)
+        with pytest.raises(ValueError, match="needs-human|human decision"):
+            runtime.execute(claimed, 0)
+    popen.assert_not_called()
+    rejected = d.row()["dispatch"]["jobs"][job_id]
+    assert rejected["phase"] == "ended" and rejected["cancelled_before_start"]
+    assert (
+        "needs-human" in rejected["diagnostic"]
+        or "human decision" in rejected["diagnostic"]
+    )
+    assert not (Path(rejected["directory"]) / "runtime").exists()
+
+
+@pytest.mark.parametrize("change", ["handoff", "authorization"])
+def test_dispatch_repair_rechecks_registration_after_claim(
+    registered_repair: tuple[DispatchHarness, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    change: str,
+) -> None:
+    d, runtime_type = registered_repair
+    job_id = d.control.start_repair(1, "pipeline-1", "ci-owner", "Failed import.")
+    claimed = d.control.claim("o/r#1", job_id)
+    assert claimed is not None
+    with d.h.store.ownership(), d.h.store.locked():
+        row = d.h.store.parents["o/r#1"]
+        if change == "handoff":
+            row.update(session="codex:new-owner", generation=row["generation"] + 1)
+            current_auth = importlib.import_module("parent.execution").authorization(
+                d.control._session("o/r#1", row)
+            )
+            importlib.import_module("parent.development").transfer_controller(
+                row, current_auth, "claim後の引継ぎ", takeover=True
+            )
+        else:
+            row["repair_progressions"]["pipeline-1"]["authorization"][
+                "execution_basis_sha256"
+            ] = "f" * 64
+        d.h.store.save()
+    owner = d.row()["session"], d.row()["generation"]
+    runtime = runtime_type(Path(claimed["runner"]))
+    runtime.launch_context = lambda: d.control.launch_admission("o/r#1", job_id)
+    popen = MagicMock()
+    popen.return_value.wait.return_value = 0
+    monkeypatch.setattr("subprocess.Popen", popen)
+    with pytest.raises(ValueError, match="owner/authority/delegation"):
+        runtime.execute(claimed, 0)
+    popen.assert_not_called()
+    rejected = d.row()["dispatch"]["jobs"][job_id]
+    assert rejected["phase"] == "ended" and rejected["cancelled_before_start"]
+    assert "owner/authority/delegation" in rejected["diagnostic"]
+    assert not (Path(rejected["directory"]) / "runtime").exists()
+    assert (d.row()["session"], d.row()["generation"]) == owner
 
 
 def test_cancelled_resume_reservation_reuses_original_session(

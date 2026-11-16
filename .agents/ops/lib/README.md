@@ -155,7 +155,9 @@ reviewの本体・親の内部APIは `lib.ops_review` の固有import名から�
 他モデルの同名 `review` package/namespaceが先に読み込まれていても、それを置換しない。
 
 parent/dispatcherの `Store.locked()` / `consistent_snapshot()` とworktree expiryのjournal回復は、必ず
-**checkout → registry** の順に取得する。直接Python APIやworktreeからの呼出も、transaction中は
+**checkout → registry** の順に取得する。所有者変更・board送信の `Store.ownership()` を使う経路は、
+**checkout → ownership → registry** とし、ownershipを保持してcheckoutを待たない。
+直接Python APIやworktreeからの呼出も、transaction中は
 sourceのGit共通ディレクトリの共有lockを取る。保存済みjobがメイン由来のrunnerを参照する場合も、
 registryを持ったままrunnerのcheckout待ちに入らないためである。registryを一時解放するI/O中も
 checkoutは保持し、再取得の順序を変えない。更新が先ならregistry取得前に理由を出して待つ。
@@ -502,7 +504,7 @@ timer・systemd操作やagent起動は含まない。
 `--role parent` は `--agent claude`、`--role implementation` は `--agent codex` と同じ。
 両方の指定は拒否する。既定値の正本は [`agents.conf`](agents.conf)。
 親はOpus / xhigh、実装子はSol / max。実装子は `--model gpt-6-astra` で代替モデルを明示選択でき、
-effortはmaxを必須とする。親effortは設定または `--effort` で変更できる。
+effortはmaxを必須とする。[修正ターン](../parent/README.md#自動進行の修正ターン)の専用resumeだけhighを使う。親effortは設定または `--effort` で変更できる。
 
 - プロファイルなし: 完全な役割既定値 → タスクの `--model` / `--effort` の順。
   overrideがあっても不足・不正な既定設定を許容しない。
@@ -574,6 +576,10 @@ task ID省略時は初回promptのSHA-256をキーにする。後続workflowは�
 
 再開では初回と同じagent/profile/mode/task/worktree/branch/read_dirsと実行設定を使う。
 前回の明示model/effort overrideは省略すれば保持し、異なる実行値の指定は拒否する。
+修正turnの `--repair-id ID --repair-pr N` はwriteのimplementation resume専用で、effortをhighにする。
+`contract.repair` に識別情報を保存し、この指定があるターンのeffortだけsessionの契約比較から正規化する。
+次の通常resumeはmaxへ戻る。同じ修正IDはsession内で再利用できず、呼出側の保存予約から結果を回収する。
+task・モデル・session・worktree・branch・profile・service tier等の変更は通常どおり拒否する。
 configのパス・全体のSHA・既定値とoverrideの出典は来歴として保存する。
 照合は選択されたmodel/effort/service tier等の実行値で行い、コメント・他profile・configパスだけの変更では止めない。
 初回sessionのlockを全ターンで共有し、稼働中・古いrunからの再開を拒否する。

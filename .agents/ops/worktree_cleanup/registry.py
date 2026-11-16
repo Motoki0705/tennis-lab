@@ -66,11 +66,13 @@ class ExpiryStore(Store):
 
     @contextmanager
     def locked(self) -> Iterator[Store]:
-        with registry_checkout_lock(), self._recover_and_lock() as store:
-            yield store
+        # Recovery may replay an ownership index write as well as a parent
+        # row. It must wait for an in-flight send, just like a fresh release.
+        with registry_checkout_lock(), self.ownership(), self._recovered():
+            yield self
 
     @contextmanager
-    def _recover_and_lock(self) -> Iterator[Store]:
+    def _recovered(self) -> Iterator[Store]:
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         fd = os.open(
             self.directory / "registry.lock",

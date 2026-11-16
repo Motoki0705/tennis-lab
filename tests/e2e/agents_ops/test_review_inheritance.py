@@ -1,4 +1,4 @@
-"""Real git histories distinguish base conflict resolution from unrelated edits."""
+"""Real git histories allow inheritance only for an unchanged PR delta."""
 
 from __future__ import annotations
 
@@ -94,12 +94,12 @@ def test_inheritance_uses_file_deltas_and_the_base_period(
         workspace.full_diff(base, current["head_sha"])
     ).hexdigest()
     assert workspace.verify_rebased_snapshot(old, current) == (
-        kind not in {"extra", "rename", "mode"}
+        kind not in {"conflict", "extra", "rename", "mode"}
     )
     assert not workspace.verify_rebased_snapshot(old, {**current, "branch": "other"})
     compared = inspection.compare_snapshot(old, current)
     assert compared["rebase_inheritance_verified"] is (
-        kind not in {"extra", "rename", "mode"}
+        kind not in {"conflict", "extra", "rename", "mode"}
     )
     assert compared["fields"]["base_sha"] == {
         "before": start,

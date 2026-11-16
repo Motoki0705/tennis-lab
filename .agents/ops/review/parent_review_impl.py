@@ -53,12 +53,14 @@ from parent.state import (  # noqa: E402
 from parent.work_targets import require_separate_self_prs  # noqa: E402
 from parent_review_policy import (  # noqa: E402
     BaseAdvance,
+    compact_evidence,
     evaluate_coverage,
     evidence,
     execution_stages,
     hex_value,
     load_json,
     marker,
+    path_manifest,
     pending_handoff_candidates,
     pr_findings,
     records,
@@ -68,6 +70,7 @@ from parent_review_policy import (  # noqa: E402
     validate_resolution,
     validate_result,
 )
+from review_evidence import path_summary  # noqa: E402
 from review_interruption import (  # noqa: E402
     CLOSED,
     agent_started,
@@ -93,6 +96,7 @@ from review_workspace import (  # noqa: E402
     build_prompt,
     changed_paths,
     full_diff,
+    resolution_scope,
     workspace,
 )
 
@@ -1319,7 +1323,7 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
                 )
         require_current_pr(session, raw)
         record = {
-            "schema_version": 1,
+            "schema_version": 2,
             "kind": "evidence",
             "review_run_id": args.run,
             "result_sha256": digest(result),
@@ -1327,19 +1331,27 @@ def complete_evidence(args: argparse.Namespace) -> dict[str, Any]:
             "pr": args.pr,
             "wait": args.wait,
             "snapshot": current,
-            "evidence": proof,
+            "evidence": compact_evidence(proof),
         }
         validate_evidence_completion(record)
         path = run_dir / f"evidence-{digest(record)}.json"
         saved = (
-            read_json(path) if path.exists() else {"record": record, "published": False}
+            read_json(path)
+            if path.exists()
+            else {
+                "record": record,
+                "paths": {"reviewed_paths": proof["reviewed_paths"]},
+                "published": False,
+            }
         )
-        if saved["record"] != record:
+        if saved["record"] != record or saved.get("paths") != {
+            "reviewed_paths": proof["reviewed_paths"]
+        }:
             raise ValueError("evidence digest collision")
         Store.write_json(path, saved)
         body = comment_body(
             record,
-            f"PR #{args.pr} 証拠待ち {args.wait} の確認完了（AI起動0回）。\n\nCI: {proof['ci']}\nテスト: {proof['regression_tests']}\n確認: {proof['resolution']}\n確認パス: {proof['reviewed_paths']}",
+            f"PR #{args.pr} 証拠待ち {args.wait} の確認完了（AI起動0回）。\n\nCI: {proof['ci']}\nテスト: {proof['regression_tests']}\n確認: {proof['resolution']}\n確認パス: {path_summary(proof['reviewed_paths'])}",
         )
         session.public(body)
         for n in (args.pr, session.parent):
@@ -1461,7 +1473,8 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
         with session.gh.io_scope():
             diff = full_diff(original["head_sha"], fixed)
         with session.gh.io_scope():
-            paths = changed_paths(original["head_sha"], fixed)
+            scope = resolution_scope(original, current)
+        paths = scope.changed_paths
         proof = evidence(read_json(args.evidence))
         if proof["reviewed_paths"] != paths:
             raise ValueError("actual fix paths differ from the parent's reviewed paths")
@@ -1469,7 +1482,7 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
         with session.gh.io_scope():
             diff_sha256 = hashlib.sha256(diff).hexdigest()
         record = {
-            "schema_version": 1,
+            "schema_version": 2,
             "kind": "resolution",
             "review_run_id": args.run,
             "result_sha256": digest(result),
@@ -1479,22 +1492,27 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
             "reviewed_head": original["head_sha"],
             "fixed_snapshot": current,
             "fix_diff_sha256": diff_sha256,
-            "changed_paths": paths,
-            "evidence": proof,
+            **{key: path_manifest(value) for key, value in scope.paths().items()},
+            "evidence": compact_evidence(proof),
         }
         validate_resolution(record)
         key = digest(record)
         record_path = run_dir / f"resolution-{key}.json"
         if record_path.exists():
             saved = read_json(record_path)
-            if saved["record"] != record:
+            if saved["record"] != record or saved.get("paths") != scope.paths():
                 raise ValueError("resolution digest collision")
         else:
-            saved = {"record": record, "published": False, "recorded_at": now()}
+            saved = {
+                "record": record,
+                "paths": scope.paths(),
+                "published": False,
+                "recorded_at": now(),
+            }
             Store.write_json(record_path, saved)
             (run_dir / f"resolution-{key}.diff").write_bytes(diff)
         if not saved["published"]:
-            text = f"指摘 {args.finding} / PR #{args.pr} の修正確認\n\n[親run]({execution['parent_run_url']})\n\n修正head: {fixed}\n差分SHA-256: {record['fix_diff_sha256']}\n変更ファイル: {paths}\n\nCI: {proof['ci']}\n回帰テスト: {proof['regression_tests']}\n解消根拠: {proof['resolution']}\n\nCodex再実行なし。"
+            text = f"指摘 {args.finding} / PR #{args.pr} の修正確認\n\n[親run]({execution['parent_run_url']})\n\n修正head: {fixed}\n差分SHA-256: {record['fix_diff_sha256']}\n確認対象: {path_summary(paths)}\nbase側だけの変更（確認対象外）: {len(scope.base_only_paths)}件\nhead間の全変更: {len(scope.head_changed_paths)}件\n\nCI: {proof['ci']}\n回帰テスト: {proof['regression_tests']}\n解消根拠: {proof['resolution']}\n\nCodex再実行なし。"
             body = comment_body(record, text)
             session.public(body)
             # Parent record is committed only after the PR projection is posted.
@@ -1525,12 +1543,14 @@ def _resolve(args: argparse.Namespace) -> dict[str, Any]:
             result,
             [current if p["number"] == args.pr else p for p in request["prs"]],
             resolved,
-            {args.pr: paths},
+            {args.pr: scope.head_changed_paths},
             fix_diff_digests={args.pr: record["fix_diff_sha256"]},
+            review_paths={args.pr: paths},
             base_advances=advances,
         )
         return {
             "resolution": record,
+            "paths": scope.paths(),
             "coverage": {
                 "covered": coverage.covered,
                 "reasons": coverage.reasons,

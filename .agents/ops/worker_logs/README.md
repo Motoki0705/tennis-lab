@@ -2,7 +2,7 @@
 
 親の具体指示とworkerの最終報告を、実装PRとは別の追記専用ログPRへ保存する。
 手動 `run-worker`、自律 `start-worker` / `continue-worker`、dispatcherの直接入口が同じ保存処理を使う。
-共通runnerのcontract・result schema・終了値は変更しない。公開ログは担当registry、実行証拠、成果の受理を置き換えない。
+runnerの契約・終了判定・終了値は共通ランナーの記録に従う。公開ログは担当registry、実行証拠、成果の受理を置き換えない。
 
 ## 保存する内容と送受信の境界
 
@@ -52,11 +52,11 @@ raw・stderr等は追跡対象にしない。判断記録と生成READMEの追�
 | 群 | 内容 |
 |---|---|
 | `schema_version / repo / parent / issue / delegation_key` | version 1、公開repo、親・担当issue・公開系列 |
-| `turn` | sequence、initial/resume、planning/implementing、previous_sequence |
+| `turn` | sequence、initial/resume、planning/implementing、previous_sequence。修正ターンには `repair={pr}` を追加 |
 | `decision` | nullable。approve/investigate/rejectと判断元の公開sequence |
 | `sources` | 標準指示のcommit/path/blob、送信した担当issueのURLと本文digest |
 | `instruction` | task/answer、親の追加指示原文の `additional_instructions` 配列 |
-| `worker` | agent、model/max effortの選択値、観測値または明示的な未取得 |
+| `worker` | agent、model/effortの選択値、観測値または明示的な未取得。通常はmax、[修正ターン](../parent/README.md#自動進行の修正ターン)はhigh |
 | `runtime` | completedというターン終了の事実。タスク成功の認定ではない |
 | `artifacts` | 固定した開始commit、報告に明記された同repoのPR/commit参照 |
 | `files / sanitization` | 公開本文のdigest、無害化の版・本文別の総置換件数・ローカルパスの種類別マスク件数 |
@@ -64,6 +64,7 @@ raw・stderr等は追跡対象にしない。判断記録と生成READMEの追�
 
 担当issueのdigestは送信版を識別するもので、現在のissue URLが過去本文を表示する保証ではない。
 私的なID・絶対パス・合成promptのdigest・秘密の元値は公開metadataに入れない。
+修正ターンの32桁hex・UUIDの修正IDは、公開本文でも伏せる。
 公開PR自身の番号はcommit後に決まるためmetaを更新せず、PR本文の固定marker・HEADとprivate journalで対応付ける。
 
 ## 公開検査
@@ -133,6 +134,11 @@ mainにGitHub側の必須checkが導入された場合は、Pendingを無視せ�
 
 ## 状態と復旧CLI
 
+各ターンの終了後、手動応答の `log_publication` または次のCLIで `saved_to_main` を確認する。
+workerの終了値はrunnerの結果であり、公開CLIも保留なら0を返すため、終了値だけで保存成功とはしない。
+`pending` なら同じturnの `publish-worker-log` で公開を続ける。他の作業を一律停止せず、未保存の事実を残す。
+公開エラーの終了値は2。状態ごとの原因と次の操作は下の表で照合する。
+
 ```bash
 PYTHONPATH=.agents/ops .venv/bin/python -m parent --repo owner/repo --parent 123 \
   worker-log-status --child 124
@@ -176,8 +182,6 @@ commit直後のjournal中断は期待した親・内容からcommitを再利用�
 PRのbase SHA・固定base・観測したmainを残す。他のidentity不一致はその項目を診断に残して拒否する。
 診断原文は通常出力には含めない。
 
-自動hookのworker終了値は従来どおりrunnerの終了値で、手動応答の `log_publication` とこのCLIの状態が保存結果。
-公開CLIはエラーがあれば終了値2。保留の0も保存成功を意味せず、`saved_to_main` を確認する。
 定期poll、新しいtimer、追加agent、通常gateの変更は導入しない。
 
 ## 続行・一括回収・終了checkpoint

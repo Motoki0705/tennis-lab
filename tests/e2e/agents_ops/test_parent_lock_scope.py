@@ -328,11 +328,17 @@ def test_failed_get_reacquires_and_releases_the_registry_lock(
 
 
 PROJECT_GH_LOCK_CHECK = r"""
-import fcntl, io, json, os, pathlib, sys, time
+import fcntl, io, json, os, pathlib, re, sys
+operation = None
 if sys.argv[1:3] == ["api", "graphql"]:
     payload = sys.stdin.read()
     sys.stdin = io.StringIO(payload)
-    reading = json.loads(payload)["query"].lstrip().startswith("query ")
+    query = json.loads(payload)["query"]
+    reading = query.lstrip().startswith("query ")
+    operation = "query" if reading else re.search(r"\{ (\w+)\(input", query)[1]
+elif "--method" in sys.argv and sys.argv[sys.argv.index("--method") + 1] == "POST":
+    operation = "createProjectView"
+if operation:
     directory = pathlib.Path(os.environ["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"
     with (directory / "registry.lock").open("a") as probe:
         held = False
@@ -340,8 +346,8 @@ if sys.argv[1:3] == ["api", "graphql"]:
             fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             held = True
-        assert held != reading, "unexpected registry lock during GraphQL I/O"
-        if reading and os.environ.get("PARENT_TEST_CHANGE_REGISTRY"):
+        assert not held, "registry lock held during Project I/O"
+        if os.environ.get("PARENT_TEST_CHANGE_REGISTRY") == operation:
             path = directory / "registry.json"
             state = json.loads(path.read_text())
             state["parents"]["o/r#1204"]["generation"] += 1
@@ -362,7 +368,7 @@ def test_project_query_lock_boundary_and_stale_write_rejection(
         "project-setup",
         "--apply",
         ok=not change_registry,
-        **({"PARENT_TEST_CHANGE_REGISTRY": "1"} if change_registry else {}),
+        **({"PARENT_TEST_CHANGE_REGISTRY": "query"} if change_registry else {}),
     )
     if change_registry:
         assert "registry changed during GitHub retrieval" in result.stderr
@@ -374,6 +380,28 @@ def test_project_query_lock_boundary_and_stale_write_rejection(
             for call in p.calls()
             if call["args"][:2] == ["api", "graphql"]
         )
+
+
+@pytest.mark.parametrize("operation", ["createProjectV2Field", "createProjectView"])
+def test_project_write_owner_conflict_preserves_applied_write_and_recovers(
+    project_env: ProjectEnv, operation: str
+) -> None:
+    p = project_env
+    fake = p.tmp / "bin/gh"
+    shebang, body = fake.read_text().split("\n", 1)
+    fake.write_text(shebang + "\n" + PROJECT_GH_LOCK_CHECK + body)
+    result = p.run(
+        "project-setup",
+        "--apply",
+        ok=False,
+        PARENT_TEST_CHANGE_REGISTRY=operation,
+    )
+    assert "registry changed during GitHub retrieval" in result.stderr
+    # The remote effect can precede conflict detection. Do not repeat it blindly.
+    assert p.mutations()
+    assert len(p.state()["fields"]) > 7
+    p.run("project-setup", "--apply")
+    assert len(p.state()["fields"]) == 11 and len(p.state()["views"]) == 4
 
 
 @pytest.mark.parametrize("command", ["workflow-report", "record-cancellation"])

@@ -347,6 +347,10 @@ registry外側のversionは1を維持し、既存の親行にversion付き `disp
 
 初期予約はregistryのactive行に `session=dispatcher-reservation:<random token>` として保存する。
 これは起動権の予約であり、runtimeのsession identityではない。
+予約・実session結合・初期予約の取消によるreleased・親runtime完了によるendedは、
+[担当変更fence](../parent/README.md#担当変更と掲示板配送の排他)をregistryより先に取得する。
+runtime観測はロック外で行い、完了の適用前にfenceとregistryを取り直して保存済みintentを照合する。
+通常のstatus・子の進捗・未完了runtimeの観測はfenceに参加しない。
 worker自身が同じlockでreserved→startingを取得するため、Popen直後の応答喪失や複数launcherでも実runnerは1つだけ。
 取得時も保存したauthorization・担当generation・assignment ID・現在の委任IDと親/子の停止状態を検査し、
 parentの実行根拠検査、子の要件digest・正式関係と既存launch_planによる起動条件を再照合する。

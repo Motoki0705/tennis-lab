@@ -1,0 +1,12 @@
+{
+  "schema": "scene_dpt_paired_source_plan.v1",
+  "historical_plan_sha256": "480084c77be5d8b1b213d7b3a50a7c6368245ec4b2ee11c56af3870c22e9353a",
+  "selection": "Same five windows as the historical validation plan, all 32 outputs per window (160 frames per precision).",
+  "reference": "Verbatim MDDDPTDetector class from 13dff57d4, strict same weights, same decoded RGB tensor, same GPU and precision/compile mode.",
+  "atol": {
+    "heatmap": 1e-06,
+    "normalized_coordinates": 1e-06,
+    "score": 1e-06
+  },
+  "scope": "Checks source-port equivalence separately. Does not replace or relax the original historical validation tolerances."
+}

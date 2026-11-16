@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "2117788e70904bb891a3e4a2e0613683",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=review.run; artifact=output.json; content_sha256=8d5109ddd14cc73d25255f3dad5273effcd15b7221a50fba346b09fb7749f017; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "57a8918f893a44a4b52839f3aaaf31ef",
+      "repeat": null,
+      "status": "success",
+      "summary": "review.output.json: status=succeeded; verdict=request_changes; exception=False; previous_review_keys=[]; 固定HEADのPR #1973を指定範囲で確認しました。兄弟PRとの接続を妨げるschemaのmajorを1件報告します。Python・全10 CPU shard・Lintの成功を確認済みです。隔離CPUテストは許可リスト未設定のため実行していません。",
+      "verifies": []
+    },
+    "id": "faee95d3d54b48ddb689e90cabb6172d",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "4a72e0e3f92d43179cf43d76a937d05d",
+      "delegation": null,
+      "issue": null,
+      "parent": 1900,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "c4e0fb9c6a234d4593b80ad478cbacce"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-13T09:14:30.850513+00:00"
+      },
+      "recorded_at": "2026-11-13T09:14:30.850525+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

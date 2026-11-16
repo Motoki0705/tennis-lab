@@ -15,6 +15,8 @@ E: 是挂载到 `/mnt/wsl/tennis-data` 的 HDD ext4（`noatime`），保存权�
 | 位置 | D: | E: | 清理单位 |
 |---|---|---|---|
 | 主目录 `data/` | 实际目录 | 相同相对路径 | 数据集版本 |
+| 常驻输入 | `resident_units` 声明的实际目录 | 相同相对路径 | 永不清理 |
+| 未管理的E:引用 | `unmanaged_data_links` 列出的symlink | 原始文件/目录 | 不作为单位选择 |
 | 主目录 `outputs/` | 实际目录 | 相同相对路径 | task/purpose/experiment/run-id |
 | worktree `outputs/` | 链接到 D:`<main>/.worktree-outputs/<name>/` | `.worktree-outputs/<name>/...` | task/purpose/experiment/run-id |
 | 指向主 outputs 的既有 alias | 链接到主 `outputs/` | 主 `outputs/...` | 不建立独立单位 |
@@ -35,6 +37,65 @@ Linux readlink 即使使用 O_PATH fd 仍会更新旧链接的 atime，因此必
 硬链接只能用于 D: 内或 E: 内，不能跨 tier。复制保留**单位内**硬链接，单位之间、tier 之间使用独立 inode。
 清理只删除目标单位的名字。审计区分逻辑大小、去重后的分配量、外部硬链接、预计可回收量与文件系统空闲差值。
 其他名字仍存在时，磁盘块可能完全不释放。hydrate 创建新的 D: inode，不恢复跨单位硬链接。
+
+## 常驻输入与未管理的E:引用
+
+`resident_units` 声明永久保留的D:输入：ACCAD、samples、smplh、smplx和
+`data/tennis_multiview/{raw,processed}/meiji_4cam`。processed包含 `projects.json`。
+它们作为 `resident` 单位复用全量SHA-256的index/mirror/verify/hydrate协议，
+但evict始终保留，每日cycle也不清理。payload及祖先必须为实际目录，沿用其他单位的symlink/mount检查。
+这不将tennis_multiview其余部分变为受管理数据集；该设计仍属于另一个任务。
+
+`unmanaged_data_links` 明确列举允许的D:引用，包括其余raw/processed条目及两个旧顶层目录。
+tennis_multiview/raw/processed本身在D:上为实际容器，仅列出的非驻留子项链接到E:。
+也允许 `meiji_3cam.tar` 文件引用。完整清单以[config.toml](config.toml)为准。
+dataset、常驻、引用边界不能重复或相互包含。省略两个新键的旧custom配置仍可使用。
+
+已有引用必须为symlink，链接文本与 `Config.mirror / relative_path` 的**绝对路径完全一致**；
+拒绝相对或其他拼写。目标必须为配置E:mount上存在的普通文件/实际目录，祖先symlink和嵌套mount也拒绝。
+dataset container直属版本root及单位边界/祖先上的未声明symlink在读取target前拒绝。
+错误目标、dangling link或引用位置的实际目录在布局验证和实际操作（包括无关单位的显式操作及activate）时失败。
+配置布局时允许引用尚未建立。先检查E:挂载；未挂载绝不解释为空外部目录。
+
+引用保持为 `unmanaged`，不沿链接发现单位，也不能明确作为mirror/evict/hydrate的单位。
+保留E:未分类目录原有的metadata容量调查。命令输出与写操作audit包含 `unmanaged_links_D`；
+引用检查失败也通过stderr保留观察记录。
+
+共享 `PathResolver` 对解析后仍位于DATA root内的路径直接应用普通包含规则，不调用Git、不读取policy，也不进行E:例外验证。
+声明名称的链接即使指向D:内部也可能通过此路径边界，但这不证明存储布局有效。
+`scan`、`activate`及实际storage操作仍拒绝目标不等于精确E:对应路径的声明链接，包括D:内部目标。
+只有需要root外额外权限时才读取同一checkout的 [config.toml](config.toml)，不维护第二份引用名单。
+仅对标准DATA root，声明的D:链接精确指向已挂载E:对应路径时才允许。
+标准root必须精确等于 `main_checkout / data`；main checkout由runtime的 `PROJECT_ROOT` 查询Git绝对common directory，
+取其父目录，与storage CLI使用相同规则。仅basename为data的custom root不获得例外：内部链接保持原包含规则，
+外部链接（包括E:对应路径形状）仍被拒绝。runtime worktree尚未创建共享data链接也不改变标准root。
+Git repository身份仅在查询成功后按runtime checkout在进程内缓存；每次申请额外权限仍重新验证policy和link内容。
+首次必要的Git查询无法执行或缺少metadata时明确报错，普通包含判断无需此查询。
+
+绝对输入中的 `main_checkout/.claude/worktrees/<name>/data` 仅在 `.claude`、`worktrees`、worktree均为实际目录，
+且data为直接指向标准root的绝对symlink时接受。不接受任意前缀、链接祖先或root链接链。
+仅规范化此root前缀，随后仍检查原声明链接和精确E:目标。main/worktree两种写法得到相同逻辑DATA名与规范E:输入；
+alignment的scene-root边界及ClipSource序列化也遵循此契约。仍拒绝越出E:引用subtree、
+未声明外部链接、目标不匹配、未挂载及父路径逃逸。解析结果仍是规范E:路径；`PathResolver.relative` 将已验证引用转换回逻辑DATA相对名。
+Clip Studio发现、project序列化及review CLI使用此API，在保留保存名的同时不改变合成pipeline的物理workspace。普通实际目录/custom DATA root和其他role保持原包含规则。
+迁移后恢复consumer之前，须使用本次审核过的runtime和配置。
+
+Linux通过 `O_PATH|O_NOFOLLOW` fd调用 `readlinkat(fd, "")` 仍可能更新旧链接atime。
+**dry-run无变更契约仅豁免已声明未管理symlink entry自身的atime。** 此值不参与闲置判断或其他安全判断。
+payload内容与atime、其他管理metadata、状态文件及目录均保持不变，测试比较两端tree的metadata及file hash。
+管理payload内和未允许的symlink在读取文本前拒绝。
+
+全局布局验证（scan、activate、未指定单位的dry-run）及实际操作固定父目录/link fd，每条命令读取各链接一次，
+记录 `atime_before_ns`、`atime_after_ns`、`atime_changed`、方法及 `verification=verified`。
+显式选择管理单位的dry-run不会使用与其不重叠的未管理tree，只检查link entry/祖先，不读取target，
+并报告 `verification=deferred-explicit-dry-run`、`verified=false`、`method=lstat-only`。
+这不表示全布局已验证；部署前应执行scan。实际写操作仍完整校验target。
+全局scan若省略target验证将隐藏错误布局，因此不能省略此读取。
+
+首次迁移将历史outputs仅保留在E:，D:输出根从空目录开始。
+对常驻输入进行hash校验复制并创建允许的外部引用，与Clip Studio使用者协调切换期间的暂停和恢复时间，
+验证可通过D:原data相对路径打开raw视频和processed的 `projects.json`。
+容量验收以Linux文件系统空闲量为准，Windows物理D:差值只单独记录。VHDX sparse/压缩仍不属于本次迁移。
 
 ## checkpoint 单位与 CI assets
 
@@ -67,18 +128,16 @@ CI读取E:data/ckpt，只能看到已镜像的单位；仅在D:的新单位成�
 启动要求配置的E:挂载点有效，并重新读取源mount（device编号可能随重启变化），比较filesystem内root及device，不直接将 `/mnt/...` 拼写与FSROOT比较。
 已有mount的root/device不一致或允许写入时拒绝。
 
-第2阶段D:切换前，父会话协调CI及runner queue维护窗口并等待正在运行的job结束。
-停止活动queue会终止其中训练，必须先排空；其他session的训练另行协调。
-代码进入main后，由人类在main checkout执行：
+先完成所有不需要sudo的迁移及验收步骤。当前bind在D:切换后仍指向E:。
+之后父会话通知人类，协调CI/runner queue维护窗口并等待job结束；停止活动queue会终止训练，必须先排空。
+从已经review的checkout执行；installer支持linked worktree并通过Git共用目录确定main：
 
 ```bash
 runner_service="$(sudo cat /opt/actions-runner/.service)"
 sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
 sudo bash scripts/github_actions/install_self_hosted_runner.sh
 sudo /opt/tennis-lab-actions/bin/mount_assets.sh start
-# installer会启动service，存储迁移完成前再次暂停。
-sudo systemctl stop "$runner_service" tennis-lab-training-queue.service
-# 父会话执行已同意的D:切换、hydrate和只读验收。
+# 迁移及不需要sudo的验收已完成，恢复通常运行。
 sudo systemctl start tennis-lab-training-queue.service "$runner_service"
 ```
 
@@ -90,6 +149,19 @@ installer更新/opt helper/config及system unit对tennis-data-mount.service的�
 
 在包含所需实现的 checkout 中运行，dry-run 也必须通过有限
 [checkout launcher](../lib/README.md#既存cliと新規jobの接続)。
+
+可从linked worktree加载代码/config，用 `--repo` 选择main，无需更新main checkout。
+
+```bash
+export PYTHONPATH="$PWD/.agents/ops" PYTHONDONTWRITEBYTECODE=1
+R="$(git rev-parse --path-format=absolute --git-common-dir)"
+R="$(dirname "$R")"
+S=(.venv/bin/python .agents/ops/checkout_job.py --repo "$PWD" -- .venv/bin/python -m storage_tier --repo "$R")
+"${S[@]}" scan
+```
+
+user service仍从main导入；启用前main必须具有已review的常驻/引用配置及实现。
+worktree CLI成功不表示service已更新。不修改他人的dirty文件，与所有者协调部署。
 
 ```bash
 export PYTHONPATH="$PWD/.agents/ops"
