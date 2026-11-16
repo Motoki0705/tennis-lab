@@ -81,13 +81,16 @@ def test_lazy_borrow_last_demand_and_recorded_actual_lifetimes(tmp_path: Path) -
 
     request = spec(tmp_path, factory=create, initialize=lambda r: setattr(r, "loaded", True),
                    release=lambda r: setattr(r, "loaded", False))
+    copy = tmp_path / "same-weights.bin"
+    copy.write_bytes(b"model-a")
     a, b, cached = ("clip", "a"), ("clip", "b"), ("clip", "cached")
-    with InferenceRuntime({a: {"model": request}, b: {"different_alias": replace(request)}, cached: {"model": request}},
+    with InferenceRuntime({a: {"model": request}, b: {"different_alias": replace(request, weights={"checkpoint": copy})}, cached: {"model": request}},
                           model_event=event, cleanup=lambda _: None) as runtime:
         assert not events
         with runtime.node(a) as borrowed:
             assert borrowed.borrow("model").loaded
             assert borrowed.borrow("model") is references[0]()
+        assert runtime.select_ready((b, cached)) == b  # Same content at another path is a resident peer.
         with runtime.node(b) as borrowed:
             assert borrowed.borrow("different_alias") is references[0]()
         assert len(references) == 1 and runtime.loaded_keys
@@ -96,6 +99,25 @@ def test_lazy_borrow_last_demand_and_recorded_actual_lifetimes(tmp_path: Path) -
         assert not runtime.loaded_keys and references[0]() is None
     assert events == [("load", "start"), ("load", "end"), ("unload", "start"), ("unload", "end")]
     assert len(set(instances)) == 1
+
+
+@pytest.mark.parametrize("use_optional", [False, True])
+def test_unused_optional_assets_are_not_required_for_scheduling_or_cleanup(tmp_path: Path, use_optional: bool) -> None:
+    active = spec(tmp_path)
+    absent = replace(active, weights={"checkpoint": tmp_path / "not-installed.bin"})
+    a, b = ("clip", "active"), ("clip", "optional")
+    with InferenceRuntime({a: {"model": active}, b: {"optional": absent}}, cleanup=lambda _: None) as runtime:
+        assert runtime.select_ready((a, b)) == a
+        with runtime.node(a) as models:
+            models.borrow("model")
+        assert not runtime.loaded_keys
+        assert runtime.select_ready((b,)) == b
+        if use_optional:
+            with pytest.raises(FileNotFoundError), runtime.node(b) as models:
+                models.borrow("optional")
+        else:
+            with runtime.node(b):
+                pass
 
 
 @pytest.mark.parametrize("failure", [ValueError, KeyboardInterrupt])

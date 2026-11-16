@@ -67,6 +67,10 @@ dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manif
 clip/camera IDと資産pathを含めない。同じ内容の別pathは共有でき、異なる重み・設定は共有しない。
 checkpoint内のarchitectureは重み全体の内容identityにも含まれる。
 runtimeは開始した計画内でキーを固定し、借用時・初期化直後に資産の変化を検出したら停止する。
+順序選択の未常駐モデルの宣言は、種類・設定・資産pathだけで必要数を見積もり、資産を要求しない。
+初回借用と、常駐モデルに対する同条件の残り需要を調べる段階で内容キーを解決する。
+分岐により借用されない任意モデルの資産が無くても、cache/loadや他モデルの処理を妨げない。
+実際に借用する場合の資産欠落は停止し、別モデルへ置き換えない。
 
 `PlanExecutor.run()`は今回のtargetsの未完了nodeにruntimeを1つ作る。
 最初の借用で初期化し、そのキーを宣言する最後のnodeが完了した直後に解放する。

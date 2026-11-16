@@ -70,6 +70,12 @@ class ModelSpec(Generic[ModelT]):
                         self.architecture, self.device, self.dtype,
                         self._settings_json)
 
+    @property
+    def scheduling_key(self) -> tuple[Any, ...]:
+        """Cheap affinity hint, never used to decide model equivalence."""
+        return (self.kind, self.architecture, self.device, self.dtype, self._settings_json,
+                tuple(sorted(self.weights.items())))
+
 
 class ModelEventHook(Protocol):
     """Matches C1's model_event context-manager API without importing C1."""
@@ -130,9 +136,29 @@ class InferenceRuntime:
         return frozenset(self._owned)
 
     def keys_for(self, node: NodeKey) -> frozenset[ModelKey]:
-        if node not in self._keys:
-            self._keys[node] = {alias: spec._key_with(self._weight_hash) for alias, spec in self._remaining.get(node, {}).items()}
-        return frozenset(self._keys[node].values())
+        return frozenset(self._key_for(node, alias) for alias in self._remaining.get(node, {}))
+
+    def _key_for(self, node: NodeKey, alias: str) -> ModelKey:
+        keys = self._keys.setdefault(node, {})
+        if alias not in keys:
+            keys[alias] = self._remaining[node][alias]._key_with(self._weight_hash)
+        return keys[alias]
+
+    def _has_demand(self, key: ModelKey) -> bool:
+        for node, declarations in self._remaining.items():
+            for alias, spec in declarations.items():
+                if self._declares_key(node, alias, spec, key):
+                    return True
+        return False
+
+    def _declares_key(self, node: NodeKey, alias: str, spec: ModelSpec[Any], key: ModelKey) -> bool:
+        if (spec.kind, spec.architecture, spec.device, spec.dtype, spec._settings_json) != (
+                key.kind, key.architecture, key.device, key.dtype, key.settings):
+            return False
+        # Optional branches may never borrow their declared assets. A missing
+        # asset fails on borrowing, not on another model's lifetime check.
+        # Existing candidates use content identity, including path copies.
+        return all(path.is_file() for path in spec.weights.values()) and self._key_for(node, alias) == key
 
     def _weight_hash(self, path: Path) -> str:
         stat = path.stat()
@@ -148,9 +174,12 @@ class InferenceRuntime:
     def select_ready(self, ready: tuple[NodeKey, ...]) -> NodeKey:
         """Drain resident models' ready peers, CPU dependencies, then declaration order."""
         resident = self.loaded_keys
+        resources = {node: {spec.scheduling_key for spec in self._remaining.get(node, {}).values()} for node in ready}
+        shared = {node: {key for key in resident for alias, spec in self._remaining.get(node, {}).items()
+                         if self._declares_key(node, alias, spec, key)} for node in ready}
         return min(ready, key=lambda node: (
-            0 if resident & self.keys_for(node) else 1 if not self.keys_for(node) else 2,
-            len(self.keys_for(node) - resident), ready.index(node)))
+            0 if shared[node] else 1 if not resources[node] else 2,
+            len(resources[node]) - len(shared[node]), ready.index(node)))
 
     def __enter__(self) -> InferenceRuntime:
         if self._closed:
@@ -177,7 +206,7 @@ class InferenceRuntime:
             self._remaining.pop(node)
             self._keys.pop(node, None)
             for key in tuple(self._owned):
-                if not any(key in self.keys_for(other) for other in self._remaining):
+                if not self._has_demand(key):
                     self._release(key)
         finally:
             self._active = None
@@ -193,11 +222,9 @@ class InferenceRuntime:
         if alias not in self._remaining[node]:
             raise ValueError(f"Undeclared inference model: {node}.{alias}")
         spec = self._remaining[node][alias]
-        # Pin the remaining plan before loading; reused declarations may be
-        # used by another drain later, with a different weight file version.
-        for other in self._remaining:
-            self.keys_for(other)
-        key = self._keys[node][alias]
+        # Pin content on first demand. Other branches may never borrow their
+        # optional models, so do not hash all potential declarations eagerly.
+        key = self._key_for(node, alias)
         if spec._key_with(self._weight_hash) != key:
             raise ValueError(f"Model assets changed during the inference plan: {node}.{alias}")
         if key not in self._owned:
