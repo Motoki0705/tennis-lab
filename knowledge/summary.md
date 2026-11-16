@@ -20,7 +20,7 @@
 - **ボール3Dの評価基盤**（2026-11-03）: clip_000の人間参照を使い、[固定入力のCPU replay比較](nodes/tennis_scene/000032-run-ball3d-evaluation-foundation-20261103.md)を作りました。[レビュー修正後](nodes/tennis_scene/000033-run-ball3d-foundation-review-20261103.md)、全方式に共通の768点でのLOVO中央値/p90は、既定が8.97/25.40 px、LOESSなしが9.70/28.02 pxです。共通点は全対象の52.53%に限られ、可用性を条件とする比較です。[誤差分解](nodes/tennis_scene/000034-run-ball3d-error-decomposition-20261103.md)では、top-8候補にargmax失敗の約半数を回収できる候補がある一方、既存の採用maskを保つ3D候補oracleの改善は小さく、校正誤差と同期ずれも分離できていません。
 - **6方式の比較と採否**: [統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では後半LOVOとcoverageの一貫した改善は得られず、人間はbaseline維持を決定しました。後処理・三角測量側の追加改善はキャンセルされ、検出モデルの学習戦略の改善が必要と判断されました。比較は1 clip・近似校正・推定を含む2D参照に限られます。詳細は[凍結アーカイブ](history/summary-2026-11-05.md)を参照してください。
 
-- **動画一括推論の基準値**: [旧3clipの停止例](nodes/tennis_scene/000044-run-video-batch-baseline-20261116.md)と[追加8clip](nodes/tennis_scene/000045-run-video-batch-input-qualification-20261116.md)はCourtで停止し、全モデルの基準値には使いません。親判断で現行Courtが全4cameraで採用したclip_035・037へ変更し、[逐次計測](nodes/tennis_scene/000046-run-video-batch-baseline-035037-20261116.md)を準備しています。全段・全cache hitの基準値は未成立です。
+- **動画一括推論の基準値**: [旧3clipのCourt停止](nodes/tennis_scene/000044-run-video-batch-baseline-20261116.md)・[追加8clip](nodes/tennis_scene/000045-run-video-batch-input-qualification-20261116.md)を保持しています。親指定のclip_035・037へ替えた[逐次計測](nodes/tennis_scene/000046-run-video-batch-baseline-035037-20261116.md)は、035がCourtと人物処理を4camera通過した後、court_sideの長さ上限（1,055>1,024）で停止しました。停止prefixは6,289.220秒、model load比0.84%。037・warm・cache条件は未実行で、全段基準値は未成立です。入力長と上限の扱いは親判断を要し、停止例から全体の高速化率を推定しません。
 
 ## Court Detection
 

@@ -1,0 +1,6 @@
+{
+  "status": "failed",
+  "error_type": "ReconstructionUnavailable",
+  "error": "Full clip has 1055 sampled frames; maximum is 1024",
+  "continued": false
+}

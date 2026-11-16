@@ -1,0 +1,64 @@
+{
+  "related": {
+    "passed": 580,
+    "seconds": 55.68,
+    "log": "related-pytest.log",
+    "new_failures": 0
+  },
+  "focused": {
+    "collected": 50,
+    "passed": 50,
+    "seconds": 18.73,
+    "largest_function_expansion": 6,
+    "slowest_call_seconds_rounded": 0.64,
+    "all_setup_seconds_less_than": 0.015
+  },
+  "test_delta": {
+    "added_vs_main_cases": 22,
+    "added_this_continuation_cases": 5,
+    "removed_cases": 0,
+    "largest_new_function_expansion": 5
+  },
+  "pre_commit": {
+    "ruff": "passed",
+    "mypy": "passed",
+    "python_files_in_pr": 32,
+    "diff_base": "2736a24a3fa643254f441f318ed9241bc2c73724"
+  },
+  "knowledge_validator": {
+    "errors": 0,
+    "warnings": 0,
+    "base_ref": "origin/main"
+  },
+  "independent_validator": {
+    "requested": 0,
+    "attempted": 0,
+    "completed": 0
+  },
+  "contracts": [
+    "Enabled/disabled recording preserves artifact bytes, IDs and execution keys",
+    "Cache and load-only runs do not load models",
+    "Failed component records unload without publishing",
+    "Multi-clip PlanExecutor records correct clip/camera under reversed ready order",
+    "DINO compatible and final partial batch shapes equal actual forward tensors",
+    "AFLink CPU load SHA and shape recorded; inference results equal without recorder",
+    "Ball records MDD tensor after RGB conversion",
+    "Exception/resource failure retains JSON and resets execution context"
+  ],
+  "limits": "Existing related review video fixture setup measured 7.12–8.13 s, and an existing import/publication case call 6.14 s; additions stay below 5 s/case and 1 s/setup. No GPU inference is in pytest.",
+  "measured_source_commit": "cf4a1b0459588cf77f5ed81af9b69751c5b65ec7",
+  "source_fixes_after_measurement": [
+    "Preserve ValueError for unknown execute key",
+    "Do not emit execution spans for completed nodes",
+    "Correct unused Court prefix preparation from 8 to 5 artifacts"
+  ],
+  "regression_proof": {
+    "before_fix_failed": 3,
+    "after_fix_passed": 3,
+    "logs": [
+      "runner-regression-before-fix.log",
+      "runner-regression-after-fix.log"
+    ]
+  },
+  "manual_prefix_check": "prefix-preparation-validation.json: CPU fake artifacts only, 5 retained per clip; real GPU prefix/cache-hit conditions not run"
+}

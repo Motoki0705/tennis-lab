@@ -27,6 +27,8 @@ with InferenceRecorder(Path("outputs/measurement.json"), devices=("cuda:0",)):
 
 The inference runtime should emit model events at actual load/unload boundaries,
 using the same instance ID for both. Borrowing a resident model emits no load.
+`BaseInferenceModel.load`/`unload` and the instrumented component lifecycle methods
+already emit these events; the runtime should not wrap them in another model event.
 Use `recording_context` to attach pass, clip, camera or node attributes, and
 `span` for bounded work. `measured` decorates ordinary functions; generators need
 spans around their work, ending **before** each yield. The video prefetch iterator

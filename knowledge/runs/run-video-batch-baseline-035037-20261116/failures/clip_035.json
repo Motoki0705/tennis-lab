@@ -1,0 +1,5 @@
+{
+  "clip_id": "video_000/clip_035",
+  "failed_at": "2026-11-16T08:30:44.445042+00:00",
+  "error": "ReconstructionUnavailable: Full clip has 1055 sampled frames; maximum is 1024"
+}

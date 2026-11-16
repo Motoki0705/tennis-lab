@@ -254,6 +254,16 @@ def test_two_clips_keep_stores_and_dependencies_separate_under_ready_policy(tmp_
     assert all(node.component.calls == 1 for spec in clips for node in spec.nodes)
 
 
+@pytest.mark.parametrize("key", [("missing", "first"), ("a", "missing")])
+def test_unknown_execute_key_keeps_the_explicit_readiness_error(tmp_path: Path, key: NodeKey) -> None:
+    spec = clip(tmp_path)
+    executor = PlanExecutor(ExecutionPlan([spec]))
+    with pytest.raises(ValueError, match="not ready"):
+        executor.execute(key)
+    assert not executor.plan.references
+    assert all(node.component.calls == 0 for node in spec.nodes)
+
+
 def test_policy_cannot_select_unready_node(tmp_path: Path) -> None:
     spec = clip(tmp_path)
     executor = PlanExecutor(ExecutionPlan([spec]), select_ready=lambda _: ("a", "second"))
