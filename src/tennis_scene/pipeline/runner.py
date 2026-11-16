@@ -86,7 +86,8 @@ class PlanExecutor:
         """Run or load one ready node; completed nodes are never reconsidered."""
         plan = self.plan
         if key in plan.references:
-            return plan.references[key]
+            completed: ArtifactRef = plan.references[key]
+            return completed
         if key not in plan.ready():
             raise ValueError(f"Component is not ready: {key}")
         node, store = plan.nodes[key], plan.clips[key[0]].store
@@ -94,7 +95,7 @@ class PlanExecutor:
         started = time.monotonic()
         try:
             decision = plan.decide(key)
-            reference = decision.reference
+            reference: ArtifactRef | None = decision.reference
             if decision.action in ("load", "cached"):
                 if reference is None:
                     raise RuntimeError("Reused component has no artifact reference")
