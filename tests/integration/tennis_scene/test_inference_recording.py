@@ -94,6 +94,7 @@ def test_multi_clip_executor_records_the_selected_clip_and_camera(tmp_path: Path
     executor = PlanExecutor(ExecutionPlan(clips), select_ready=lambda ready: ready[-1])
     with InferenceRecorder(tmp_path / "multi.json"):
         executor.run()
+        executor.execute(("first", "values"))
     events = json.loads((tmp_path / "multi.json").read_text())["events"]
     nodes = [e["attributes"] for e in events if e["stage"] == "node"]
     assert [(e["clip_id"], e["camera_id"], e["outcome"]) for e in nodes] == [

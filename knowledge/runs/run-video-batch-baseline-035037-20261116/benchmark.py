@@ -117,14 +117,16 @@ def prepare_prefix(dataset: Path, backup: Path) -> None:
     Preserve the complete cold store in backup; no immutable file is changed.
     Source video paths remain the same so ordinary execution identities apply.
     """
-    from src.tennis_scene.generate_dataset.manifest import load_dataset_manifest
+    from src.tennis_scene.generate_dataset.manifest import ClipManifest, load_dataset_manifest
     from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
     for record in load_dataset_manifest(dataset).clips.values():
         root = dataset / record.path / "annotations/tennis_scene"
         index = json.loads((root / "scene.json").read_text())
         retained = {name: ref for name, ref in index["artifacts"].items()
                     if name.split("/")[0] in {"court_detection", "court_calibration"}}
-        if len(retained) != 8 or not index["exports"].get("scene"):
+        cameras = ClipManifest.load(dataset / record.path).camera_ids
+        expected = {f"court_detection/{camera}" for camera in cameras} | {"court_calibration"}
+        if set(retained) != expected or not index["exports"].get("scene"):
             raise ValueError("Cold run must complete all 4 Court views before prefix preparation")
         store = ClipStore(root, index["source"])
         for ref in retained.values():

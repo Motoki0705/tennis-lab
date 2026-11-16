@@ -1,0 +1,75 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.15, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/kamimura/projects/tennis-lab/.claude/worktrees/video-batch-baseline
+configfile: pyproject.toml
+plugins: cov-7.1.0, hydra-core-1.3.6, anyio-4.13.0, xdist-3.8.0
+collected 50 items
+
+<Dir video-batch-baseline>
+  <Dir tests>
+    <Dir unit>
+      <Dir utils>
+        <Module test_inference_recording.py>
+          <Function test_failure_keeps_model_pair_context_batch_and_valid_json>
+          <Function test_wall_breakdown_partitions_nested_and_prefetched_work>
+          <Function test_disabled_recording_never_reads_assets_or_creates_files>
+          <Function test_prefetch_carries_context_and_ends_spans_before_yield>
+          <Function test_temporary_peak_includes_short_lived_files>
+          <Function test_changed_weights_fail_before_another_model_load>
+          <Function test_nested_recorder_rejected_and_context_restored_after_failure>
+          <Function test_invalid_sampling_interval_fails_before_resources_start[0.0]>
+          <Function test_invalid_sampling_interval_fails_before_resources_start[-1.0]>
+          <Function test_invalid_sampling_interval_fails_before_resources_start[nan]>
+          <Function test_invalid_sampling_interval_fails_before_resources_start[inf]>
+          <Function test_invalid_sampling_interval_fails_before_resources_start[-inf]>
+          <Function test_initialization_failure_restores_the_execution_context>
+          <Function test_final_sampling_failure_saves_error_record_and_restores_context>
+    <Dir integration>
+      <Dir tennis_scene>
+        <Module test_inference_recording.py>
+          <Function test_multi_clip_executor_records_the_selected_clip_and_camera>
+          <Function test_aflink_records_actual_cpu_load_and_preserves_results>
+          <Function test_recording_preserves_artifact_bytes_execution_key_and_cache>
+          <Function test_runner_failure_records_unload_and_does_not_publish>
+          <Function test_ball_records_the_mdd_forward_shape_instead_of_rgb_shape>
+    <Dir unit>
+      <Dir submodules>
+        <Dir models>
+          <Dir dino>
+            <Module test_person_detector.py>
+              <Function test_decode_person_detections_filters_sorts_and_scales>
+              <Function test_decode_person_detections_returns_shaped_empty_arrays>
+              <Function test_decode_batch_uses_each_image_size_threshold_and_row_order>
+              <Function test_decode_rejects_mismatched_batch_axes[logit_shape0-box_shape0-sizes0]>
+              <Function test_decode_rejects_mismatched_batch_axes[logit_shape1-box_shape1-sizes1]>
+              <Function test_decode_rejects_mismatched_batch_axes[logit_shape2-box_shape2-sizes2]>
+              <Function test_decode_rejects_mismatched_batch_axes[logit_shape3-box_shape3-sizes3]>
+              <Function test_decode_rejects_mismatched_batch_axes[logit_shape4-box_shape4-sizes4]>
+              <Function test_decode_rejects_mismatched_batch_axes[logit_shape5-box_shape5-sizes5]>
+              <Function test_recording_reports_actual_compatible_and_partial_batches>
+              <Function test_predict_batch_matches_single_and_duplicate_rows[False-1]>
+              <Function test_predict_batch_matches_single_and_duplicate_rows[False-2]>
+              <Function test_predict_batch_matches_single_and_duplicate_rows[False-4]>
+              <Function test_predict_batch_matches_single_and_duplicate_rows[True-1]>
+              <Function test_predict_batch_matches_single_and_duplicate_rows[True-2]>
+              <Function test_predict_batch_matches_single_and_duplicate_rows[True-4]>
+              <Function test_predict_batch_splits_shapes_without_padding_or_reordering>
+              <Function test_predict_empty_batch_does_not_load_model>
+              <Function test_predict_batch_rejects_invalid_limits_before_loading[0]>
+              <Function test_predict_batch_rejects_invalid_limits_before_loading[-1]>
+              <Function test_predict_batch_rejects_invalid_limits_before_loading[True]>
+              <Function test_predict_batch_rejects_invalid_limits_before_loading[1.5]>
+              <Function test_predict_batch_validates_each_frame[shape0-uint8-ValueError]>
+              <Function test_predict_batch_validates_each_frame[shape1-uint8-ValueError]>
+              <Function test_predict_batch_validates_each_frame[shape2-uint8-ValueError]>
+              <Function test_predict_batch_validates_each_frame[shape3-float32-TypeError]>
+              <Function test_preprocess_frame_matches_official_resize_constraint>
+              <Function test_checkpoint_architecture_mismatch_is_explicit>
+              <Function test_uninitialized_dino_submodule_is_explicit>
+      <Dir tennis_scene>
+        <Dir pipeline>
+          <Module test_execution_plan.py>
+            <Function test_unknown_execute_key_keeps_the_explicit_readiness_error[key0]>
+            <Function test_unknown_execute_key_keeps_the_explicit_readiness_error[key1]>
+
+========================= 50 tests collected in 5.73s ==========================

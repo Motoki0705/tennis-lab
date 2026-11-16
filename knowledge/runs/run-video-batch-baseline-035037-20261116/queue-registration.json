@@ -1,0 +1,9 @@
+{
+  "commit": "cf4a1b0459588cf77f5ed81af9b69751c5b65ec7",
+  "command": "env TENNIS_LAB_DINO_EXTENSION=/home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-baseline/tennis_scene/evaluate/video-batch-baseline-035037-20261116/toolchain/MultiScaleDeformableAttention.so .venv/bin/python knowledge/runs/run-video-batch-baseline-035037-20261116/benchmark.py run --root outputs/tennis_scene/evaluate/video-batch-baseline-035037-20261116 --expect-commit cf4a1b0459588cf77f5ed81af9b69751c5b65ec7 --allocator-limit-gib 10",
+  "registration": "queued: 0-8205188447301195999_2026-11-16T06-45-52-698804000Z_2775652_video-batch-baseline-035037.job\n",
+  "resource": "all",
+  "provider": "codex",
+  "session": "01a1dfbd-594e-7f72-9f3a-53d3f7f3a340",
+  "issue": 1748
+}

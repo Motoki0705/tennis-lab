@@ -5,7 +5,7 @@ task: tennis_scene
 sequence: 44
 recorded_at: '2026-11-16'
 date: '2026-11-16'
-title: 動画逐次推論の固定入力・計測基盤と基準値
+title: 旧入力3clipのCourt停止例と逐次計測基盤
 provider: codex
 session: 01a1dfbd-594e-7f72-9f3a-53d3f7f3a340
 issue: 1748
