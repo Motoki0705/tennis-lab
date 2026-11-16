@@ -431,15 +431,15 @@ def test_permission_recheck_pins_identity_and_reinspects_all_references(
     before = lab.filesystem.snapshot(directory, hashes=True)
     usage = lab.engine.inspector.inspect((directory,), before)
     scope = usage.scope()
-    if outcome == "persistent":
+    if outcome in {"persistent", "replaced"}:
         assert usage.unknown and not usage.busy
-        assert len(waits) == 3
+        assert len(waits) == (3 if outcome == "persistent" else 1)
     else:
         assert not usage.unknown, usage.unknown
         assert len(waits) == 1
     expected_busy = outcome in {"fd", "cwd", "root", "maps", "mount"}
     assert bool(usage.busy) == expected_busy
-    assert usage.exited_processes == int(outcome in {"gone", "replaced"})
+    assert usage.exited_processes == int(outcome == "gone")
     assert scope["excluded_nondumpable_count"] == 0
     assert scope["excluded_capabilities_count"] == 0
     checks = scope["rechecks"]
@@ -447,15 +447,17 @@ def test_permission_recheck_pins_identity_and_reinspects_all_references(
     assert checks["max_rechecks_per_process"] == 3
     assert checks["interval_seconds"] == 0.05
     assert sum(waits) == pytest.approx(checks["wait_seconds"])
-    assert checks["resolved_processes"] == int(outcome != "persistent")
+    assert checks["resolved_processes"] == int(
+        outcome not in {"persistent", "replaced"}
+    )
     (record,) = checks["processes"]
     assert record["pid"] == int(process.name) and record["starttime_ticks"] == 314159
     assert record["attempts"] == len(waits)
     assert record["outcome"] == (
         "unknown"
-        if outcome == "persistent"
+        if outcome in {"persistent", "replaced"}
         else "exited"
-        if outcome in {"gone", "replaced"}
+        if outcome == "gone"
         else "busy"
         if expected_busy
         else "inspected"
@@ -561,6 +563,95 @@ def test_recheck_never_retries_io_errors_or_unpinned_identity(
     assert observed.rechecks["attempts"] == 0
 
 
+@pytest.mark.parametrize(
+    "phase",
+    [
+        "during-resources",
+        "after-resources",
+        "before-recheck",
+        "during-exclusion",
+        "closed-proof",
+    ],
+)
+@pytest.mark.parametrize("holds_target", [False, True], ids=["unrelated", "O_PATH"])
+def test_pid_successor_is_unknown_and_preserves_observed_references(
+    lab: Lab,
+    private_process: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+    holds_target: bool,
+) -> None:
+    unit = lab.unit()
+    directory = lab.config.repo / unit.path
+    process = private_process["path"]
+    inspector = lab.engine.inspector
+    private_process["denied"] = (
+        set() if phase in {"during-resources", "after-resources"} else {"maps"}
+    )
+    descriptor = process / "fd/7"
+    opened = os.open(directory / "a.bin", os.O_PATH)
+    if holds_target and phase != "during-resources":
+        descriptor.symlink_to(f"/proc/self/fd/{opened}")
+    resumed = False
+    original_resources = inspector.resources
+    original_evidence = inspector.exclusion_evidence
+    original_status = inspector.status
+
+    def replace() -> None:
+        path = process / "stat"
+        path.write_bytes(path.read_bytes().replace(b"314159", b"314160"))
+
+    def resources(*args: Any, **kwargs: Any) -> None:
+        if phase == "during-resources":
+            replace()
+            if holds_target:
+                descriptor.symlink_to(f"/proc/self/fd/{opened}")
+        original_resources(*args, **kwargs)
+        if phase == "after-resources":
+            replace()
+
+    def resume(delay: float) -> None:
+        nonlocal resumed
+        resumed = True
+        private_process["denied"] = set()
+        if phase == "before-recheck":
+            replace()
+
+    def evidence(target: Path) -> dict[str, Any]:
+        if phase == "during-exclusion":
+            replace()
+            private_process["denied"] = {"fd", "maps", "cwd"}
+        return cast(dict[str, Any], original_evidence(target))
+
+    def status(target: Path) -> dict[str, str]:
+        if phase == "closed-proof" and resumed:
+            replace()
+            (process / "status").write_text(
+                "Name:\tfinished\nState:\tZ (zombie)\nThreads:\t1\n"
+                "Uid:\t12345\t12345\t12345\t12345\n"
+            )
+            (process / "task" / process.name).mkdir(parents=True, exist_ok=True)
+            if descriptor.is_symlink():
+                descriptor.unlink()
+        return cast(dict[str, str], original_status(target))
+
+    monkeypatch.setattr(lab.usage, "sleep", resume)
+    monkeypatch.setattr(inspector, "resources", resources)
+    monkeypatch.setattr(inspector, "exclusion_evidence", evidence)
+    monkeypatch.setattr(inspector, "status", status)
+    try:
+        observed = inspector.inspect((directory,), lab.filesystem.snapshot(directory))
+    finally:
+        os.close(opened)
+    assert observed.busy == (["open-fd: pid=123456789 fd=7"] if holds_target else [])
+    assert observed.unknown and "PID replaced" in observed.unknown[0]
+    assert observed.exited_processes == 0
+    assert not observed.excluded_nondumpable and not observed.excluded_capabilities
+    if observed.rechecks["processes"]:
+        assert observed.rechecks["processes"][0]["outcome"] == "unknown"
+        assert observed.rechecks["resolved_processes"] == 0
+
+
 @pytest.mark.parametrize("replacement", ["after-resources", "during-exclusion"])
 def test_recheck_recognizes_pid_reuse_at_the_final_identity_check(
     lab: Lab,
@@ -603,10 +694,11 @@ def test_recheck_recognizes_pid_reuse_at_the_final_identity_check(
     monkeypatch.setattr(inspector, "resources", resources)
     monkeypatch.setattr(inspector, "exclusion_evidence", evidence)
     observed = inspector.inspect((directory,), lab.filesystem.snapshot(directory))
-    assert observed.exited_processes == 1 and not observed.unknown
-    assert not observed.busy and observed.inspected_processes == 0
+    assert observed.exited_processes == 0 and observed.unknown
+    assert not observed.busy and observed.inspected_processes == 1
     assert not observed.excluded_nondumpable and not observed.excluded_capabilities
-    assert observed.rechecks["processes"][0]["outcome"] == "exited"
+    assert observed.rechecks["processes"][0]["outcome"] == "unknown"
+    assert observed.rechecks["resolved_processes"] == 0
 
 
 def test_recheck_evidence_survives_later_inspections_and_is_audited(

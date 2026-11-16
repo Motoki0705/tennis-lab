@@ -320,15 +320,20 @@ An EACCES/EPERM without either exclusion proof triggers at most **three rechecks
 50ms apart** (150ms of requested sleeping per process per inspection; syscall and
 scheduling time are additional). Pin the PID and `/proc/<pid>/stat` starttime
 before inspecting resources. A missing or unstable initial identity fails closed.
-Before each recheck, a disappeared PID or a different starttime counts as exited;
-the replacement is not evidence about the original process. For the same identity,
+Before each recheck, a disappeared PID without a successor counts as exited.
+A different starttime means a successor exists: retain every observed busy
+reference and fail with unknown, even if no busy reference was found. The original
+identity's exit does not certify its successor. We do not re-anchor to the new
+identity: repeated PID churn would require further full inspections beyond the
+existing retry bound. For the same identity,
 recheck credentials and the existing closed-thread-group proof, then inspect **all
 fd, cwd, root, mmap and applicable mount references again**. Prior busy observations
 are retained. Changed credentials, unexpected I/O errors, or an uninspectable
 survivor after the limit remain unknown and prevent certification/deletion.
 Neither a permission denial nor a readable maps file proves that a process is idle.
-The final identity checks after resource inspection or exclusion evidence also
-recognize a different starttime as the original process's exit.
+This unknown rule also applies to replacements detected during the thread-group
+proof or final identity checks after resource inspection or exclusion evidence;
+the successor's exclusion evidence is never adopted for the pinned identity.
 
 `process_scope.rechecks` records the limit/interval, total attempts, requested
 `wait_seconds` (not measured wall time), and `resolved_processes` (distinct

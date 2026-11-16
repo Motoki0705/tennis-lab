@@ -17,7 +17,11 @@ RECHECK_INTERVAL = 0.05
 
 
 class ProcessExited(Exception):
-    """The pinned process disappeared or was replaced during inspection."""
+    """The pinned process disappeared or its thread group is proven closed."""
+
+
+class ProcessReplaced(StorageError):
+    """A successor needs its own inspection; observed references remain busy."""
 
 
 @dataclass
@@ -455,17 +459,22 @@ class Inspector:
                 try:
                     if attempt:
                         if self.starttime(process) != generation:
-                            raise ProcessExited("PID replaced before recheck")
+                            raise ProcessReplaced("PID replaced before recheck")
                         current = self.status(process)
                         if self.uids(process, current) != identities:
                             raise StorageError(
                                 "process credentials changed during recheck"
                             )
-                        if self.exited(process, current):
+                        closed = self.exited(process, current)
+                        if self.starttime(process) != generation:
+                            raise ProcessReplaced(
+                                "PID replaced during thread-group proof"
+                            )
+                        if closed:
                             raise ProcessExited("closed thread group during recheck")
                     self.resources(process, paths, inodes, location, result)
                     if self.starttime(process) != generation:
-                        raise ProcessExited("PID replaced during inspection")
+                        raise ProcessReplaced("PID replaced during inspection")
                     if recheck is not None:
                         recheck["outcome"] = (
                             "busy" if len(result.busy) > busy_start else "inspected"
@@ -501,7 +510,7 @@ class Inspector:
                         sleep(RECHECK_INTERVAL)
                     else:
                         if evidence["starttime_ticks"] != generation:
-                            raise ProcessExited("PID replaced during exclusion")
+                            raise ProcessReplaced("PID replaced during exclusion")
                         excluded = (
                             result.excluded_nondumpable
                             if evidence["kind"] == "nondumpable"
@@ -514,6 +523,16 @@ class Inspector:
                         if recheck is not None:
                             recheck["outcome"] = f"excluded-{evidence['kind']}"
                         return
+        except ProcessReplaced as exc:
+            # The successor may own any of the references already observed.
+            # Neither an old identity's exit nor a successor's exclusion proof
+            # certifies this mixed observation. Never erase busy on replacement,
+            # even if the successor disappears before this handler runs.
+            result.unknown.append(
+                f"pid={process.name}: {exc}; successor usage is unverified"
+            )
+            if recheck is not None:
+                recheck["last_error"] = str(exc)
         except (FileNotFoundError, ProcessLookupError, ProcessExited) as exc:
             if isinstance(exc, ProcessExited) or not process.exists():
                 result.exited_processes += 1
