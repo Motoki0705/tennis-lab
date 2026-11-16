@@ -17,6 +17,8 @@
 ## 明示実行と保存物
 
 Pythonのimport rootは `.agents/ops`。`--cwd` はcommit済みでtrackedファイルがcleanなgit checkoutを指定する。
+管理CLIの入口も本体import前にcheckoutを保護する。registry取得順と更新中の保守status/stopは
+[共通checkout lock](../lib/README.md#registryと保守呼出のlock順)に従う。
 `--run-dir` は毎回新規にする。run dirは0700、JSONは0600でatomic writeする。
 本文・ローカルパス等が入るため、保存物をそのまま公開issueへ貼らない。
 `--parent-state-dir` 省略時は [parent](../parent/README.md#責務と状態の正本) と同じregistryを使う。

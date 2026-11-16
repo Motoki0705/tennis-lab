@@ -43,7 +43,7 @@ def supervisor_confirmation(value: Any, request: Mapping[str, Any]) -> dict[str,
     expected = {"run_id": request["review_run_id"], "runner": None, "process": None}
     # The runner is also a standalone CLI; use the same module loading convention
     # as the parent CLI rather than giving its dependencies two package identities.
-    runtime = importlib.import_module("agent_runtime")
+    runtime = importlib.import_module("agent_runtime_impl")
     runtime.validate_cleanup_confirmation(confirmation, expected)
     return confirmation
 

@@ -258,7 +258,7 @@ def main() -> None:
         max_threads=int(option("--max-threads")),
     )
 
-    mcp = importlib.import_module("opsreport.mcp_server")
+    mcp = importlib.import_module("opsreport.mcp_server_impl")
 
     def response(name: str, arguments: dict[str, Any]) -> Any:
         result = mcp.dispatch(

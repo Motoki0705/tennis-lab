@@ -95,7 +95,7 @@ def _payload(
         parsed = events([comment], login, parent)[0]
         return "parent-session", {k: v for k, v in parsed.items() if k != "body"}
     if line.startswith("<!-- parent-review:v"):
-        from review.parent_review_policy import records
+        from lib.ops_review.parent_review_policy import records
 
         parsed = records([comment], login)[0]
         target = parsed.get("parent_issue", parsed.get("parent"))

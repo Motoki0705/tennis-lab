@@ -424,7 +424,7 @@ capture_module.locked = broken_outbox_lock
         worker_tests,
         "ENTRY",
         worker_tests.ENTRY.replace(
-            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+            "from parent.cli_impl import main", injection + "\nfrom parent.cli_impl import main"
         ),
     )
     p = reserved
@@ -489,7 +489,7 @@ Journal.read = broken_journal_read
         worker_tests,
         "ENTRY",
         worker_tests.ENTRY.replace(
-            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+            "from parent.cli_impl import main", injection + "\nfrom parent.cli_impl import main"
         ),
     )
     response = run(p, "--decision-id", selected["decision_id"])
@@ -521,7 +521,7 @@ capture_module.locked = broken_lock
         worker_tests,
         "ENTRY",
         worker_tests.ENTRY.replace(
-            "from parent.cli import main", injection + "\nfrom parent.cli import main"
+            "from parent.cli_impl import main", injection + "\nfrom parent.cli_impl import main"
         ),
     )
     response = run(reserved, "--decision-id", "invalid", ok=False)

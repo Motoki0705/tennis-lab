@@ -84,7 +84,7 @@ def candidate_records(
     for directory in (root / "review", root / "lib"):
         if str(directory) not in sys.path:
             sys.path.insert(0, str(directory))
-    from review.review_recovery import handoff_candidates
+    from lib.ops_review.review_recovery import handoff_candidates
 
     with session.gh.io_scope():
         records: list[dict[str, Any]] = handoff_candidates(

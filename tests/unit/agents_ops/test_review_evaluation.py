@@ -911,7 +911,7 @@ def test_direct_serve_rejects_formal_capture_without_writing(
     c.prepare(
         small_case.repo, small_case.state / "evaluation", 1699, data=small_case.data
     )
-    cli = importlib.import_module(c.__package__ + ".__main__")
+    cli = importlib.import_module(c.__package__ + ".cli_impl")
     actual = modules.transport.FrozenRetrieval
     monkeypatch.setattr(
         modules.transport,

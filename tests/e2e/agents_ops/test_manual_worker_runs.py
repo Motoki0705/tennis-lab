@@ -52,7 +52,7 @@ if os.environ.get("MANUAL_ADMISSION_FAILURE"):
             raise ValueError("injected admission rejection before Popen")
         return original_popen(command, *args, **kwargs)
     subprocess.Popen = rejected_popen
-from parent.cli import main
+from parent.cli_impl import main
 sys.exit(main(sys.argv[2:]))
 """
 MANUAL_SEED = pytest.StashKey[DirectorySeed]()
